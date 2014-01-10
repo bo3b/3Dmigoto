@@ -629,12 +629,13 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
         }
         case OPCODE_DCL_UNORDERED_ACCESS_VIEW_TYPED:
         {
-            psDecl->ui32NumOperands = 1;
+            psDecl->ui32NumOperands = 2;
             psDecl->value.eResourceDimension = DecodeResourceDimension(*pui32Token);
             psDecl->sUAV.ui32GloballyCoherentAccess = DecodeAccessCoherencyFlags(*pui32Token);
 			psDecl->sUAV.bCounter = 0;
 			psDecl->sUAV.ui32BufferSize = 0;
-            DecodeOperand(pui32Token+ui32OperandOffset, &psDecl->asOperands[0]);
+            ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psDecl->asOperands[0]);
+			psDecl->sUAV.Type = DecodeResourceReturnType(0, pui32Token[ui32OperandOffset]);
             break;
         }
         case OPCODE_DCL_UNORDERED_ACCESS_VIEW_RAW:
@@ -777,6 +778,17 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
 			    psInst->iWAddrOffset = DecodeImmediateAddressOffset(
 							    IMMEDIATE_ADDRESS_OFFSET_W, ui32ExtOpcodeToken);
             }
+			else if(eExtType == EXTENDED_OPCODE_RESOURCE_RETURN_TYPE)
+			{
+				psInst->xType = DecodeResourceReturnType(0, ui32ExtOpcodeToken);
+				psInst->yType = DecodeResourceReturnType(1, ui32ExtOpcodeToken);
+				psInst->zType = DecodeResourceReturnType(2, ui32ExtOpcodeToken);
+				psInst->wType = DecodeResourceReturnType(3, ui32ExtOpcodeToken);
+			}
+			else if(eExtType == EXTENDED_OPCODE_RESOURCE_DIM)
+			{
+				psInst->eResDim = DecodeExtendedResourceDimension(ui32ExtOpcodeToken);
+			}
 
 			ui32OperandOffset++;
 		}

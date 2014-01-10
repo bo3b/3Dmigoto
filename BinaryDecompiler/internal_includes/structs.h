@@ -69,6 +69,8 @@ struct Instruction
     int iUAddrOffset;
     int iVAddrOffset;
     int iWAddrOffset;
+	RESOURCE_RETURN_TYPE xType, yType, zType, wType;
+	RESOURCE_DIMENSION eResDim;
 
 #ifdef _DEBUG
     uint64_t id;
@@ -125,6 +127,7 @@ struct Declaration
         uint32_t ui32GloballyCoherentAccess;
         uint32_t ui32BufferSize;
 		uint8_t bCounter;
+		RESOURCE_RETURN_TYPE Type;
     } sUAV;
 
     struct TGSM
