@@ -5298,7 +5298,7 @@ public:
 						ResourceBinding *bindInfoPtr = &bindInfo;
 
 						memset(&bindInfo, 0, sizeof(bindInfo));
-						int bindstate = GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfoPtr);
+						int bindstate = GetResourceFromBindingPoint(RGROUP_TEXTURE, texReg, shader->sInfo, &bindInfoPtr);
 						bool bindStripped = (bindstate == 0);
 
 						if (bindStripped)

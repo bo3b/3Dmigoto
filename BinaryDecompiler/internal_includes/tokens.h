@@ -67,6 +67,11 @@ typedef enum RESOURCE_RETURN_TYPE
 
 static RESOURCE_RETURN_TYPE DecodeResourceReturnType(uint32_t ui32Coord, uint32_t ui32Token)
 {
+    return (RESOURCE_RETURN_TYPE)((ui32Token>>(ui32Coord * 4))&0xF);
+}
+
+static RESOURCE_RETURN_TYPE DecodeExtendedResourceReturnType(uint32_t ui32Coord, uint32_t ui32Token)
+{
     return (RESOURCE_RETURN_TYPE)((ui32Token>>(ui32Coord * 4 + 6))&0xF);
 }
 

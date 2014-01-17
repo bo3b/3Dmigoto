@@ -276,7 +276,8 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     const uint32_t* pui32ConstantBuffers;
     const uint32_t* pui32ResourceBindings;
     const uint32_t* pui32FirstToken = pui32Tokens;
-    uint32_t i, k;
+    uint32_t i;
+	uint32_t aui32NextConstBufferIndex[RGROUP_COUNT];
 
     const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
     const uint32_t ui32ConstantBufferOffset = *pui32Tokens++;
@@ -294,35 +295,20 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     psShaderInfo->ui32NumResourceBindings = ui32NumResourceBindings;
     psShaderInfo->psResourceBindings = psResBindings;
 
-    k=0;
+	for(i=0; i<RGROUP_COUNT; i++)
+	{
+		aui32NextConstBufferIndex[i] = 0;
+	}
     for(i=0; i < ui32NumResourceBindings; ++i)
     {
+		ResourceGroup eRGroup;
         pui32ResourceBindings = ReadResourceBinding(pui32FirstToken, pui32ResourceBindings, psResBindings+i);
 
-        switch(psResBindings[i].eType)
-        {
-            case RTYPE_CBUFFER:
-            {
-                ASSERT(k < MAX_CBUFFERS);
-                psShaderInfo->aui32ConstBufferBindpointRemap[psResBindings[i].ui32BindPoint] = k++;
-                break;
-            }
-            case RTYPE_UAV_RWBYTEADDRESS:
-            case RTYPE_UAV_RWSTRUCTURED:
-			case RTYPE_UAV_RWTYPED:
-			case RTYPE_UAV_APPEND_STRUCTURED:
-			case RTYPE_UAV_CONSUME_STRUCTURED:
-			case RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER:
-            {
-                ASSERT(k < MAX_UAV);
-                psShaderInfo->aui32UAVBindpointRemap[psResBindings[i].ui32BindPoint] = k++;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
+		eRGroup = ResourceTypeToResourceGroup(psResBindings[i].eType);
+
+		ASSERT(psResBindings[i].ui32BindPoint < MAX_RESOURCE_BINDINGS);
+		psShaderInfo->aui32ResourceMap[eRGroup][psResBindings[i].ui32BindPoint] = aui32NextConstBufferIndex[eRGroup]++;
+	}
 
     //Constant buffers
     pui32ConstantBuffers = (const uint32_t*)((const char*)pui32FirstToken + ui32ConstantBufferOffset);
@@ -436,34 +422,21 @@ static void ReadInterfaces(const uint32_t* pui32Tokens,
     psShaderInfo->psClassTypes = psClassTypes;
 }
 
-void GetConstantBufferFromBindingPoint(const uint32_t ui32BindPoint, ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
+void GetConstantBufferFromBindingPoint(const ResourceGroup eGroup, const uint32_t ui32BindPoint, const ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
 {
     uint32_t index;
     
-    ASSERT(ui32BindPoint < MAX_CBUFFERS);
+    ASSERT(ui32BindPoint < MAX_RESOURCE_BINDINGS);
+	ASSERT(eGroup < RGROUP_COUNT);
     
-    index = psShaderInfo->aui32ConstBufferBindpointRemap[ui32BindPoint]; 
+    index = psShaderInfo->aui32ResourceMap[eGroup].at(ui32BindPoint);
     
-    ASSERT(index < psShaderInfo->ui32NumConstantBuffers);
+	ASSERT(index < psShaderInfo->ui32NumConstantBuffers);
     
     *ppsConstBuf = psShaderInfo->psConstantBuffers + index;
 }
 
-void GetUAVBufferFromBindingPoint(const uint32_t ui32BindPoint, ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
-{
-    uint32_t index;
-    
-    ASSERT(ui32BindPoint < MAX_UAV);
-    
-    index = psShaderInfo->aui32UAVBindpointRemap[ui32BindPoint]; 
-    
-	// Bo3b: changed to <= from <, as this assert seems to fire often, with no harm.
-    ASSERT(index <= psShaderInfo->ui32NumConstantBuffers);
-    
-    *ppsConstBuf = psShaderInfo->psConstantBuffers + index;
-}
-
-int GetResourceFromBindingPoint(ResourceType eType, uint32_t ui32BindPoint, ShaderInfo* psShaderInfo, ResourceBinding** ppsOutBinding)
+int GetResourceFromBindingPoint(const ResourceGroup eGroup, uint32_t const ui32BindPoint, const ShaderInfo* psShaderInfo, ResourceBinding** ppsOutBinding)
 {
     uint32_t i;
     const uint32_t ui32NumBindings = psShaderInfo->ui32NumResourceBindings;
@@ -471,7 +444,7 @@ int GetResourceFromBindingPoint(ResourceType eType, uint32_t ui32BindPoint, Shad
 
     for(i=0; i<ui32NumBindings; ++i)
     {
-        if(psBindings[i].eType == eType)
+        if(ResourceTypeToResourceGroup(psBindings[i].eType) == eGroup)
         {
 			if(ui32BindPoint >= psBindings[i].ui32BindPoint && ui32BindPoint < (psBindings[i].ui32BindPoint + psBindings[i].ui32BindCount))
 			{
@@ -658,6 +631,37 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
     return 0;
 }
 
+ResourceGroup ResourceTypeToResourceGroup(ResourceType eType)
+{
+	switch(eType)
+	{
+	case RTYPE_CBUFFER:
+		return RGROUP_CBUFFER;
+
+	case RTYPE_SAMPLER:
+		return RGROUP_SAMPLER;
+
+	case RTYPE_TEXTURE:
+	case RTYPE_BYTEADDRESS:
+	case RTYPE_STRUCTURED:
+		return RGROUP_TEXTURE;
+
+	case RTYPE_UAV_RWTYPED:
+	case RTYPE_UAV_RWSTRUCTURED:
+	case RTYPE_UAV_RWBYTEADDRESS:
+	case RTYPE_UAV_APPEND_STRUCTURED:
+	case RTYPE_UAV_CONSUME_STRUCTURED:
+	case RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER:
+		return RGROUP_UAV;
+
+	case RTYPE_TBUFFER:
+		ASSERT(0); // Need to find out which group this belongs to
+		return RGROUP_TEXTURE;
+	}
+
+	ASSERT(0);
+	return RGROUP_CBUFFER;
+}
 
 void LoadShaderInfo(const uint32_t ui32MajorVersion,
     const uint32_t ui32MinorVersion,

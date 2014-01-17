@@ -49,6 +49,7 @@ enum {MAX_FUNCTION_POINTERS = 128};
 #define MAX_CBUFFERS 256
 #define MAX_UAV 256
 #define MAX_FUNCTION_TABLES 256
+#define MAX_RESOURCE_BINDINGS 256
 
 typedef enum SPECIAL_NAME
 {
@@ -126,6 +127,14 @@ typedef enum ResourceType_TAG
     RTYPE_UAV_CONSUME_STRUCTURED,//10
     RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER,//11
 } ResourceType;
+
+typedef enum ResourceGroup_TAG {
+	RGROUP_CBUFFER,
+	RGROUP_TEXTURE,
+	RGROUP_SAMPLER,
+	RGROUP_UAV,
+	RGROUP_COUNT,
+} ResourceGroup;
 
 typedef enum REFLECT_RESOURCE_DIMENSION
 {
@@ -323,8 +332,7 @@ struct ShaderInfo
     //Func table ID to class name ID.
     std::map<int, uint32_t> aui32TableIDToTypeID;
 
-    std::map<int, uint32_t> aui32ConstBufferBindpointRemap;
-    std::map<int, uint32_t> aui32UAVBindpointRemap;
+    std::map<int, uint32_t> aui32ResourceMap[RGROUP_COUNT];
 
     TESSELLATOR_PARTITIONING eTessPartitioning;
     TESSELLATOR_OUTPUT_PRIMITIVE eTessOutPrim;
@@ -346,8 +354,7 @@ struct ShaderInfo
 		psClassInstances(0),
 		ui32NumClassInstances(0),
 		aui32TableIDToTypeID(),
-		aui32ConstBufferBindpointRemap(),
-		aui32UAVBindpointRemap()
+		aui32ResourceMap()
 	{
 	}
 };

@@ -147,7 +147,7 @@ void MarkTextureAsShadow(ShaderInfo* psShaderInfo, std::vector<Declaration> &psD
 
 	ASSERT(psTextureOperand->eType == OPERAND_TYPE_RESOURCE);
 
-    found = GetResourceFromBindingPoint(RTYPE_TEXTURE, psTextureOperand->ui32RegisterNumber, psShaderInfo, &psBinding);
+    found = GetResourceFromBindingPoint(RGROUP_TEXTURE, psTextureOperand->ui32RegisterNumber, psShaderInfo, &psBinding);
 
 	if(found)
 	{
@@ -663,20 +663,21 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
 			psDecl->sUAV.bCounter = 0;
 			psDecl->sUAV.ui32BufferSize = 0;
             DecodeOperand(pui32Token+ui32OperandOffset, &psDecl->asOperands[0]);
+			
+            GetResourceFromBindingPoint(RGROUP_UAV, psDecl->asOperands[0].ui32RegisterNumber, psShader->sInfo, &psBinding);
 
-            if(GetResourceFromBindingPoint(RTYPE_UAV_RWSTRUCTURED, psDecl->asOperands[0].ui32RegisterNumber, psShader->sInfo, &psBinding))
-            {
-                GetUAVBufferFromBindingPoint(psBinding->ui32BindPoint, psShader->sInfo, &psBuffer);
-                psDecl->sUAV.ui32BufferSize = psBuffer->ui32TotalSizeInBytes;
-            }
-            else if(GetResourceFromBindingPoint(RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER, psDecl->asOperands[0].ui32RegisterNumber, psShader->sInfo, &psBinding) ||
-				GetResourceFromBindingPoint(RTYPE_UAV_APPEND_STRUCTURED, psDecl->asOperands[0].ui32RegisterNumber, psShader->sInfo, &psBinding) ||
-				GetResourceFromBindingPoint(RTYPE_UAV_CONSUME_STRUCTURED, psDecl->asOperands[0].ui32RegisterNumber, psShader->sInfo, &psBinding))
-            { 
-                GetUAVBufferFromBindingPoint(psBinding->ui32BindPoint, psShader->sInfo, &psBuffer);
-                psDecl->sUAV.ui32BufferSize = psBuffer->ui32TotalSizeInBytes;
+            GetConstantBufferFromBindingPoint(RGROUP_UAV, psBinding->ui32BindPoint, psShader->sInfo, &psBuffer);
+            psDecl->sUAV.ui32BufferSize = psBuffer->ui32TotalSizeInBytes;
+			switch(psBinding->eType)
+			{
+			case RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER:
+			case RTYPE_UAV_APPEND_STRUCTURED:
+			case RTYPE_UAV_CONSUME_STRUCTURED:
 				psDecl->sUAV.bCounter = 1;
-            }
+				break;
+			default:
+				break;
+			}
             break;
         }
         case OPCODE_DCL_RESOURCE_STRUCTURED:
@@ -780,10 +781,10 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
             }
 			else if(eExtType == EXTENDED_OPCODE_RESOURCE_RETURN_TYPE)
 			{
-				psInst->xType = DecodeResourceReturnType(0, ui32ExtOpcodeToken);
-				psInst->yType = DecodeResourceReturnType(1, ui32ExtOpcodeToken);
-				psInst->zType = DecodeResourceReturnType(2, ui32ExtOpcodeToken);
-				psInst->wType = DecodeResourceReturnType(3, ui32ExtOpcodeToken);
+				psInst->xType = DecodeExtendedResourceReturnType(0, ui32ExtOpcodeToken);
+				psInst->yType = DecodeExtendedResourceReturnType(1, ui32ExtOpcodeToken);
+				psInst->zType = DecodeExtendedResourceReturnType(2, ui32ExtOpcodeToken);
+				psInst->wType = DecodeExtendedResourceReturnType(3, ui32ExtOpcodeToken);
 			}
 			else if(eExtType == EXTENDED_OPCODE_RESOURCE_DIM)
 			{
