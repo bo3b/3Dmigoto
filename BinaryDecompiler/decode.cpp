@@ -1511,6 +1511,7 @@ Shader* DecodeDXBC(uint32_t* data)
 	uint32_t chunkCount;
 	uint32_t* chunkOffsets;
     ReflectionChunks refChunks;
+    uint32_t* shaderChunk = 0;
 
 	if(header->fourcc != FOURCC_DXBC)
 	{
@@ -1580,20 +1581,8 @@ Shader* DecodeDXBC(uint32_t* data)
             case FOURCC_SHDR:
             case FOURCC_SHEX:
             {
-                uint32_t ui32MajorVersion;
-                uint32_t ui32MinorVersion;
-
-                psShader = new Shader();
-
-                ui32MajorVersion = DecodeProgramMajorVersion(*(uint32_t*)(chunk + 1));
-                ui32MinorVersion = DecodeProgramMinorVersion(*(uint32_t*)(chunk + 1));
-
-                LoadShaderInfo(ui32MajorVersion,
-                    ui32MinorVersion,
-                    &refChunks,
-                    psShader->sInfo);
-			    Decode((uint32_t*)(chunk + 1), psShader);
-			    return psShader;
+                shaderChunk = (uint32_t*)(chunk + 1);
+                break;
             }
             default:
             {
@@ -1601,6 +1590,27 @@ Shader* DecodeDXBC(uint32_t* data)
             }
         }
 	}
+
+    if(shaderChunk)
+    {
+        uint32_t ui32MajorVersion;
+        uint32_t ui32MinorVersion;
+
+	psShader = new Shader();
+
+        ui32MajorVersion = DecodeProgramMajorVersion(*shaderChunk);
+        ui32MinorVersion = DecodeProgramMinorVersion(*shaderChunk);
+
+        LoadShaderInfo(ui32MajorVersion,
+            ui32MinorVersion,
+            &refChunks,
+            psShader->sInfo);
+
+        Decode(shaderChunk, psShader);
+
+        return psShader;
+    }
+
     return 0;
 }
 
