@@ -1,0 +1,458 @@
+#include "Main.h"
+#include <Shlobj.h>
+
+ThreadSafePointerSet D3D11Wrapper::IDXGIFactory::m_List;
+ThreadSafePointerSet D3D11Wrapper::IDXGIAdapter::m_List;
+ThreadSafePointerSet D3D11Wrapper::IDXGIOutput::m_List;
+ThreadSafePointerSet D3D11Wrapper::IDXGISwapChain::m_List;
+
+FILE *D3D11Wrapper::LogFile = 0;
+static bool gInitialized = false;
+static bool gAllowWindowCommands = false;
+static int SCREEN_WIDTH = -1;
+static int SCREEN_HEIGHT = -1;
+static int SCREEN_REFRESH = -1;
+static int FILTER_REFRESH[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
+static int SCREEN_FULLSCREEN = -1;
+
+static bool mBlockingMode = false;
+
+void InitializeDLL()
+{
+	if (!gInitialized)
+	{
+		gInitialized = true;
+		wchar_t dir[MAX_PATH];
+		GetModuleFileName(0, dir, MAX_PATH);
+		wcsrchr(dir, L'\\')[1] = 0;
+		wcscat(dir, L"d3dx.ini");
+		D3D11Wrapper::LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
+		if (D3D11Wrapper::LogFile) D3D11Wrapper::LogFile = fopen("dxgi_log.txt", "w");
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DLL initialized.\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		wchar_t val[MAX_PATH];
+		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
+		if (read) swscanf(val, L"%d", &SCREEN_WIDTH);
+		read = GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir);
+		if (read) swscanf(val, L"%d", &SCREEN_HEIGHT);
+		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir);
+		if (read) swscanf(val, L"%d", &SCREEN_REFRESH);
+		read = GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir);
+		if (read) swscanf(val, L"%d", &SCREEN_FULLSCREEN);
+		gAllowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, dir);
+		read = GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, val, MAX_PATH, dir);
+		if (read) swscanf(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", 
+			FILTER_REFRESH+0, FILTER_REFRESH+1, FILTER_REFRESH+2, FILTER_REFRESH+3, &FILTER_REFRESH+4,
+			FILTER_REFRESH+5, FILTER_REFRESH+6, FILTER_REFRESH+7, FILTER_REFRESH+8, &FILTER_REFRESH+9);
+	}
+}
+
+void DestroyDLL()
+{
+	if (D3D11Wrapper::LogFile)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "Destroying DLL...\n");
+		fclose(D3D11Wrapper::LogFile);
+	}
+}
+
+HRESULT WINAPI D3DKMTCloseAdapter() { return 0; }
+HRESULT WINAPI D3DKMTDestroyAllocation() { return 0; }
+HRESULT WINAPI D3DKMTDestroyContext() { return 0; }
+HRESULT WINAPI D3DKMTDestroyDevice() { return 0; }
+HRESULT WINAPI D3DKMTDestroySynchronizationObject() { return 0; }
+HRESULT WINAPI D3DKMTSetDisplayPrivateDriverFormat() { return 0; }
+HRESULT WINAPI D3DKMTSignalSynchronizationObject() { return 0; }
+HRESULT WINAPI D3DKMTUnlock() { return 0; }
+HRESULT WINAPI D3DKMTWaitForSynchronizationObject() { return 0; }
+HRESULT WINAPI D3DKMTCreateAllocation() { return 0; }
+HRESULT WINAPI D3DKMTCreateContext() { return 0; }
+HRESULT WINAPI D3DKMTCreateDevice() { return 0; }
+HRESULT WINAPI D3DKMTCreateSynchronizationObject() { return 0; }
+HRESULT WINAPI D3DKMTEscape() { return 0; }
+HRESULT WINAPI D3DKMTGetContextSchedulingPriority() { return 0; }
+HRESULT WINAPI D3DKMTGetDisplayModeList() { return 0; }
+HRESULT WINAPI D3DKMTGetMultisampleMethodList() { return 0; }
+HRESULT WINAPI D3DKMTGetRuntimeData() { return 0; }
+HRESULT WINAPI D3DKMTGetSharedPrimaryHandle() { return 0; }
+HRESULT WINAPI D3DKMTLock() { return 0; }
+HRESULT WINAPI D3DKMTPresent() { return 0; }
+HRESULT WINAPI D3DKMTQueryAllocationResidency() { return 0; }
+HRESULT WINAPI D3DKMTRender() { return 0; }
+HRESULT WINAPI D3DKMTSetAllocationPriority() { return 0; }
+HRESULT WINAPI D3DKMTSetContextSchedulingPriority() { return 0; }
+HRESULT WINAPI D3DKMTSetDisplayMode() { return 0; }
+HRESULT WINAPI D3DKMTSetGammaRamp() { return 0; }
+HRESULT WINAPI D3DKMTSetVidPnSourceOwner() { return 0; }
+
+typedef ULONG 	D3DKMT_HANDLE;
+typedef int		KMTQUERYADAPTERINFOTYPE;
+
+typedef struct _D3DKMT_QUERYADAPTERINFO 
+{
+  D3DKMT_HANDLE           hAdapter;
+  KMTQUERYADAPTERINFOTYPE Type;
+  VOID                    *pPrivateDriverData;
+  UINT                    PrivateDriverDataSize;
+} D3DKMT_QUERYADAPTERINFO;
+
+typedef void *D3D10DDI_HRTADAPTER;
+typedef void *D3D10DDI_HADAPTER;
+typedef void D3DDDI_ADAPTERCALLBACKS;
+typedef void D3D10DDI_ADAPTERFUNCS;
+typedef void D3D10_2DDI_ADAPTERFUNCS;
+
+typedef struct D3D10DDIARG_OPENADAPTER 
+{
+  D3D10DDI_HRTADAPTER           hRTAdapter;
+  D3D10DDI_HADAPTER             hAdapter;
+  UINT                          Interface;
+  UINT                          Version;
+  const D3DDDI_ADAPTERCALLBACKS *pAdapterCallbacks;
+  union {
+    D3D10DDI_ADAPTERFUNCS   *pAdapterFuncs;
+    D3D10_2DDI_ADAPTERFUNCS *pAdapterFuncs_2;
+  };
+} D3D10DDIARG_OPENADAPTER;
+
+static HMODULE hD3D11 = 0;
+typedef HRESULT (WINAPI *tD3DKMTQueryAdapterInfo)(_D3DKMT_QUERYADAPTERINFO *);
+static tD3DKMTQueryAdapterInfo _D3DKMTQueryAdapterInfo;
+typedef HRESULT (WINAPI *tOpenAdapter10)(D3D10DDIARG_OPENADAPTER *adapter);
+static tOpenAdapter10 _OpenAdapter10;
+typedef HRESULT (WINAPI *tOpenAdapter10_2)(D3D10DDIARG_OPENADAPTER *adapter);
+static tOpenAdapter10_2 _OpenAdapter10_2;
+typedef HRESULT (WINAPI *tD3DKMTGetDeviceState)(int a);
+static tD3DKMTGetDeviceState _D3DKMTGetDeviceState;
+typedef HRESULT (WINAPI *tD3DKMTOpenAdapterFromHdc)(int a);
+static tD3DKMTOpenAdapterFromHdc _D3DKMTOpenAdapterFromHdc;
+typedef HRESULT (WINAPI *tD3DKMTOpenResource)(int a);
+static tD3DKMTOpenResource _D3DKMTOpenResource;
+typedef HRESULT (WINAPI *tD3DKMTQueryResourceInfo)(int a);
+static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
+typedef void (WINAPI *tDXGIDumpJournal)(void (__stdcall *function)(const char *));
+static tDXGIDumpJournal _DXGIDumpJournal;
+typedef HRESULT (WINAPI *tDXGID3D10CreateDevice)(int a, int b, int c, int d, int e, int f);
+static tDXGID3D10CreateDevice _DXGID3D10CreateDevice;
+typedef HRESULT (WINAPI *tDXGID3D10CreateLayeredDevice)(int a, int b, int c, int d, int e);
+static tDXGID3D10CreateLayeredDevice _DXGID3D10CreateLayeredDevice;
+typedef HRESULT (WINAPI *tDXGID3D10GetLayeredDeviceSize)(int a, int b);
+static tDXGID3D10GetLayeredDeviceSize _DXGID3D10GetLayeredDeviceSize;
+typedef HRESULT (WINAPI *tDXGID3D10RegisterLayers)(int a, int b);
+static tDXGID3D10RegisterLayers _DXGID3D10RegisterLayers;
+typedef HRESULT (WINAPI *tDXGIReportAdapterConfiguration)(int a);
+static tDXGIReportAdapterConfiguration _DXGIReportAdapterConfiguration;
+typedef HRESULT (WINAPI *tCreateDXGIFactory)(const IID *const riid, void **ppFactory);
+static tCreateDXGIFactory _CreateDXGIFactory;
+typedef HRESULT (WINAPI *tCreateDXGIFactory1)(const IID *const riid, void **ppFactory);
+static tCreateDXGIFactory1 _CreateDXGIFactory1;
+typedef HRESULT (WINAPI *tCreateDXGIFactory2)(const IID *const riid, void **ppFactory);
+static tCreateDXGIFactory2 _CreateDXGIFactory2;
+
+static void InitD311()
+{
+	if (hD3D11) return;
+	InitializeDLL();
+	wchar_t sysDir[MAX_PATH];
+	SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
+	wcscat(sysDir, L"\\dxgi.dll");
+	hD3D11 = LoadLibrary(sysDir);	
+    if (hD3D11 == NULL)
+    {
+        if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "LoadLibrary on dxgi.dll failed\n");
+        if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+        return;
+    }
+
+	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo) GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
+	_OpenAdapter10 = (tOpenAdapter10) GetProcAddress(hD3D11, "OpenAdapter10");
+	_OpenAdapter10_2 = (tOpenAdapter10_2) GetProcAddress(hD3D11, "OpenAdapter10_2");
+	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState) GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
+	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc) GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
+	_D3DKMTOpenResource = (tD3DKMTOpenResource) GetProcAddress(hD3D11, "D3DKMTOpenResource");
+	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo) GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
+	_DXGIDumpJournal = (tDXGIDumpJournal) GetProcAddress(hD3D11, "DXGIDumpJournal");
+	_DXGID3D10CreateDevice = (tDXGID3D10CreateDevice) GetProcAddress(hD3D11, "DXGID3D10CreateDevice");
+	_DXGID3D10CreateLayeredDevice = (tDXGID3D10CreateLayeredDevice) GetProcAddress(hD3D11, "DXGID3D10CreateLayeredDevice");
+	_DXGID3D10RegisterLayers = (tDXGID3D10RegisterLayers) GetProcAddress(hD3D11, "DXGID3D10RegisterLayers");
+	_DXGIReportAdapterConfiguration = (tDXGIReportAdapterConfiguration) GetProcAddress(hD3D11, "DXGIReportAdapterConfiguration");
+	_CreateDXGIFactory = (tCreateDXGIFactory) GetProcAddress(hD3D11, "CreateDXGIFactory");
+	_CreateDXGIFactory1 = (tCreateDXGIFactory1) GetProcAddress(hD3D11, "CreateDXGIFactory1");
+	_CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hD3D11, "CreateDXGIFactory2");
+}
+
+HRESULT WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
+{
+	InitD311();
+	return (*_D3DKMTQueryAdapterInfo)(info);
+}
+
+HRESULT WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
+{
+	InitD311();
+	return (*_OpenAdapter10)(adapter);
+}
+
+HRESULT WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
+{
+	InitD311();
+	return (*_OpenAdapter10_2)(adapter);
+}
+
+void WINAPI DXGIDumpJournal(void (__stdcall *function)(const char *))
+{
+	InitD311();
+	(*_DXGIDumpJournal)(function);
+}
+
+HRESULT WINAPI DXGID3D10CreateDevice(int a, int b, int c, int d, int e, int f)
+{
+	InitD311();
+	return (*_DXGID3D10CreateDevice)(a, b, c, d, e, f);
+}
+
+HRESULT WINAPI DXGID3D10CreateLayeredDevice(int a, int b, int c, int d, int e)
+{
+	InitD311();
+	return (*_DXGID3D10CreateLayeredDevice)(a, b, c, d, e);
+}
+
+HRESULT WINAPI DXGID3D10GetLayeredDeviceSize(int a, int b)
+{
+	InitD311();
+	return (*_DXGID3D10GetLayeredDeviceSize)(a, b);
+}
+
+HRESULT WINAPI DXGID3D10RegisterLayers(int a, int b)
+{
+	InitD311();
+	return (*_DXGID3D10RegisterLayers)(a, b);
+}
+
+HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
+{
+	InitD311();
+	return (*_DXGIReportAdapterConfiguration)(a);
+}
+
+HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
+{
+	InitD311();
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CreateDXGIFactory2 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
+	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
+	D3D11Base::IDXGIFactory2 *origFactory = 0;
+	if (ppFactory)
+		*ppFactory = 0;
+	HRESULT ret;
+	if (_CreateDXGIFactory2)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  calling original CreateDXGIFactory2 API\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		ret = (*_CreateDXGIFactory2)(riid, (void **) &origFactory);
+	}
+	else if (_CreateDXGIFactory1)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  calling original CreateDXGIFactory1 API\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		ret = (*_CreateDXGIFactory1)(riid, (void **) &origFactory);
+	}
+	else
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  calling original CreateDXGIFactory API\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		ret = (*_CreateDXGIFactory)(riid, (void **) &origFactory);
+	}
+	if (ret != S_OK)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  failed with HRESULT=%x\n", ret);
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		return ret;
+	}
+	
+	D3D11Wrapper::IDXGIFactory2 *wrapper = D3D11Wrapper::IDXGIFactory2::GetDirectFactory(origFactory);
+	if(wrapper == NULL)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  error allocating wrapper.\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		origFactory->Release();
+		return E_OUTOFMEMORY;
+	}
+	
+	if (ppFactory)
+		*ppFactory = wrapper;
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origFactory, wrapper);
+	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	return ret;
+}
+
+HRESULT WINAPI CreateDXGIFactory(const IID *const riid, void **ppFactory)
+{
+	InitD311();
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CreateDXGIFactory called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
+	if (_CreateDXGIFactory2)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with riid=50c83a1c-e072-4c48-87b0-3630fa36a6d0\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		IID factory2 = { 0x50c83a1cul, 0xe072, 0x4c48, { 0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0 } };
+		return CreateDXGIFactory2(&factory2, ppFactory);
+	}
+	if (_CreateDXGIFactory1)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
+		return CreateDXGIFactory2(&factory1, ppFactory);
+	}
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with original riid\n");
+	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	return CreateDXGIFactory2(riid, ppFactory);
+}
+
+HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
+{
+	InitD311();
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CreateDXGIFactory1 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
+	if (_CreateDXGIFactory1)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
+		return CreateDXGIFactory2(&factory1, ppFactory);
+	}
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with original riid\n");
+	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	return CreateDXGIFactory2(riid, ppFactory);
+}
+
+int WINAPI D3DKMTGetDeviceState(int a)
+{
+	InitD311();
+	return (*_D3DKMTGetDeviceState)(a);
+}
+
+int WINAPI D3DKMTOpenAdapterFromHdc(int a)
+{
+	InitD311();
+	return (*_D3DKMTOpenAdapterFromHdc)(a);
+}
+
+int WINAPI D3DKMTOpenResource(int a)
+{
+	InitD311();
+	return (*_D3DKMTOpenResource)(a);
+}
+
+int WINAPI D3DKMTQueryResourceInfo(int a)
+{
+	InitD311();
+	return (*_D3DKMTQueryResourceInfo)(a);
+}
+
+static void ReplaceInterface(void **ppvObj)
+{
+    D3D11Wrapper::IDXGIAdapter1 *p1 = (D3D11Wrapper::IDXGIAdapter1*) D3D11Wrapper::IDXGIAdapter::m_List.GetDataPtr(*ppvObj);
+    if (p1)
+	{
+		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+		*ppvObj = p1;
+		unsigned long cnt2 = p1->AddRef();
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  interface replaced with IDXGIAdapter1 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p1->m_ulRef, cnt2);
+	}
+    D3D11Wrapper::IDXGIOutput *p2 = (D3D11Wrapper::IDXGIOutput*) D3D11Wrapper::IDXGIOutput::m_List.GetDataPtr(*ppvObj);
+    if (p2)
+	{
+		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+		*ppvObj = p2;
+		unsigned long cnt2 = p2->AddRef();
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  interface replaced with IDXGIOutput wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p2->m_ulRef, cnt2);
+	}
+    D3D11Wrapper::IDXGIFactory2 *p3 = (D3D11Wrapper::IDXGIFactory2*) D3D11Wrapper::IDXGIFactory::m_List.GetDataPtr(*ppvObj);
+    if (p3)
+	{
+		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+		*ppvObj = p3;
+		unsigned long cnt2 = p3->AddRef();
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  interface replaced with IDXGIFactory2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p3->m_ulRef, cnt2);
+	}
+    D3D11Wrapper::IDXGISwapChain *p4 = (D3D11Wrapper::IDXGISwapChain*) D3D11Wrapper::IDXGISwapChain::m_List.GetDataPtr(*ppvObj);
+    if (p4)
+	{
+		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+		*ppvObj = p4;
+		unsigned long cnt2 = p4->AddRef();
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  interface replaced with IDXGISwapChain wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p4->m_ulRef, cnt2);
+	}
+}
+
+STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
+{
+	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n", 
+		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
+		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
+		riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
+	/*
+	if (LogFile && unknown1) fprintf(LogFile, "  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
+	if (unknown1)
+	{
+		*ppvObj = 0;
+		return E_OUTOFMEMORY;
+	}
+	*/
+	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
+	if (LogFile) fprintf(LogFile, "  result = %x, handle = %x\n", hr, *ppvObj);
+	ReplaceInterface(ppvObj);
+	/*
+	if (!p1 && !p2 && !p3)
+	{
+		((IDirect3DUnknown*)*ppvObj)->Release();
+		hr = E_NOINTERFACE;
+		if (LogFile) fprintf(LogFile, "  removing unknown interface and returning error.\n");
+	}
+	*/
+	if (LogFile) fflush(LogFile);
+	return hr;
+}
+
+static IUnknown *ReplaceDevice(IUnknown *wrapper)
+{
+	if (!wrapper)
+		return wrapper;
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  checking for device wrapper, handle = %x\n", wrapper);
+	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
+	IUnknown *realDevice = wrapper;
+	if (wrapper->QueryInterface(marker, (void **) &realDevice) == 0x13bc7e31)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    device found. replacing with original handle = %x\n", realDevice);
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		return realDevice;
+	}
+	return wrapper;
+}
+
+struct SwapChainInfo
+{
+	int width, height;
+};
+static void SendScreenResolution(IUnknown *wrapper, int width, int height)
+{
+	if (!wrapper)
+		return;
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  sending screen resolution to DX11\n");	
+	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
+	SwapChainInfo info;
+	info.width = width;
+	info.height = height;
+	SwapChainInfo *infoPtr = &info;
+	if (wrapper->QueryInterface(marker, (void **) &infoPtr) == 0x13bc7e31)
+	{
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    notification successful.\n");
+		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	}
+}
+
+#include "Direct3DXGIFunctions.h"

@@ -1,0 +1,30 @@
+LIBRARY d3dcompiler_46.dll
+
+HEAPSIZE 4096
+
+EXPORTS
+	D3DAssemble							@1 
+	D3DCompile							@4
+	D3DCompile2							@3
+	D3DCompileFromFile					@5
+	D3DCompressShaders					@6
+	D3DCreateBlob			            @7
+	D3DDecompressShaders 				@8
+	D3DDisassemble 						@11
+	D3DDisassemble10Effect              @9 
+	D3DDisassemble11Trace  				@10
+	D3DDisassembleRegion                @12
+	D3DGetBlobPart		                @13
+	D3DGetDebugInfo	                    @14
+	D3DGetInputAndOutputSignatureBlob   @15
+	D3DGetInputSignatureBlob            @16
+	D3DGetOutputSignatureBlob           @17
+	D3DGetTraceInstructionOffsets       @18
+	D3DPreprocess		                @19
+	D3DReadFileToBlob				    @20
+	D3DReflect                          @21
+	D3DReturnFailure1 					@22
+	D3DSetBlobPart			            @23
+	D3DStripShader				        @24
+	D3DWriteBlobToFile				    @25
+	DebugSetMute			            @2

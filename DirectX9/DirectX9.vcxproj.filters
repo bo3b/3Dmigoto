@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="d3d9Wrapper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="d3d9Wrapper.h" />
+    <ClInclude Include="Direct3D9Functions.h" />
+    <ClInclude Include="Direct3DDevice9Functions.h" />
+    <ClInclude Include="Main.h" />
+    <ClInclude Include="Direct3DSwapChain9Functions.h" />
+    <ClInclude Include="Direct3DSurface9Functions.h" />
+    <ClInclude Include="Direct3DVertexDeclaration9Functions.h" />
+    <ClInclude Include="Direct3DTexture9Functions.h" />
+    <ClInclude Include="Direct3DVertexBuffer9Functions.h" />
+    <ClInclude Include="Direct3DIndexBuffer9Functions.h" />
+    <ClInclude Include="Direct3DQuery9Functions.h" />
+    <ClInclude Include="Direct3DVertexShader9Functions.h" />
+    <ClInclude Include="Direct3DPixelShader9Functions.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="d3d9Wrapper.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
+  </ItemGroup>
+</Project>
