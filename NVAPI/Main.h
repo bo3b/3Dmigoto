@@ -16,9 +16,3 @@
 #include <map>
 #include <ctime>
 #include <fstream>
-
-namespace D3D9Base
-{
-#include <d3d9.h>
-#include "../nvapi.h"
-}

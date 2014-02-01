@@ -1,6 +1,13 @@
 #include "Main.h"
-#include <XInput.h>
+
+namespace D3D9Base
+{
 #include <dxgi.h>
+#include <d3d9.h>
+#include "../nvapi.h"
+}
+
+#include <XInput.h>
 #include "../DirectInput.h"
 
 using namespace std;
@@ -98,8 +105,8 @@ extern "C"
 		__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE* pCreationMode);
 	static tNvAPI_Stereo_GetSurfaceCreationMode _NvAPI_Stereo_GetSurfaceCreationMode;
 	typedef int (__cdecl *tNvAPI_D3D1x_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
-                                            DXGI_SWAP_CHAIN_DESC* pDesc,
-                                            IDXGISwapChain** ppSwapChain,
+											D3D9Base::DXGI_SWAP_CHAIN_DESC* pDesc,
+											D3D9Base::IDXGISwapChain** ppSwapChain,
                                             D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D1x_CreateSwapChain _NvAPI_D3D1x_CreateSwapChain;
 	typedef int (__cdecl *tNvAPI_D3D9_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
@@ -676,8 +683,8 @@ static int __cdecl NvAPI_Stereo_GetSurfaceCreationMode(__in D3D9Base::StereoHand
 	return ret;
 }
 static int __cdecl NvAPI_D3D1x_CreateSwapChain(D3D9Base::StereoHandle hStereoHandle,
-                                            DXGI_SWAP_CHAIN_DESC* pDesc,
-                                            IDXGISwapChain** ppSwapChain,
+											D3D9Base::DXGI_SWAP_CHAIN_DESC* pDesc,
+											D3D9Base::IDXGISwapChain** ppSwapChain,
                                             D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode)
 {
 	if (CallsLogging())
