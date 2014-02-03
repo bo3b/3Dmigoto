@@ -7,8 +7,8 @@ This includes the entire code base, and it will compile, link, and run in it's c
 
 This is not the end-user version of the tool, this is for people developing the code by fixing
 bugs, adding new features, or documenting how to use it.
-
-
+<br>
+<br>
 The current project is set up using Visual Studio 2013 Express, so anyone can do development for free.
 
 To get started do:
@@ -29,9 +29,9 @@ https://github.com/bo3b/3Dmigoto.git
 1. Switch to Solution Explorer, and wait for it to parse all the files.
 1. Hit F7 to build the full solution.
 1. Output files are in .\Debug
-
-
+<br>
+<br>
 #####If you have any questions or problems don't hesitate to contact me.
 
 
-Big, big, impossibly big thanks to Chiri for open-sourcing 3Dmigoto.
+Big, big, _impossibly_ big thanks to Chiri for open-sourcing 3Dmigoto.
