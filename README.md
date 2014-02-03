@@ -1,7 +1,7 @@
 3Dmigoto
 ========
 
-###Chiri's DX11 wrapper to enable fixing broken stereoscopic effects.
+####Chiri's DX11 wrapper to enable fixing broken stereoscopic effects.
 
 This includes the entire code base, and it will compile, link, and run in it's current state.
 
@@ -31,3 +31,6 @@ https://github.com/bo3b/3Dmigoto.git
 1. Output files are in .\Debug
 
 #####If you have any questions or problems don't hesitate to contact me.
+
+
+Big, big, impossibly big thanks to Chiri for open-sourcing 3Dmigoto.
