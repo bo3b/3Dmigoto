@@ -91,6 +91,11 @@
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;../nvapi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+</Command>
+      <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -110,6 +115,17 @@
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;../nvapi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+del "$(TargetDir)*.exp"
+del "$(TargetDir)*.lib"
+del "$(TargetDir)*.zip"
+"$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto.zip -tzip "..\Release\*.*"
+</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
