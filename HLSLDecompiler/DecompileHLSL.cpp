@@ -9,6 +9,8 @@
 #include "..\BinaryDecompiler\internal_includes\structs.h"
 #include "..\BinaryDecompiler\internal_includes\decode.h"
 
+#include <excpt.h>
+
 using namespace std;
 
 enum DataType
@@ -3337,29 +3339,45 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	d.MatrixPos_MUL1 = params.MatrixPos_MUL1;
 
 	// Decompile binary.
-	Shader *shader = DecodeDXBC((uint32_t*) params.bytecode);
-	if (!shader) return string();
 
-	d.ReadResourceBindings(params.decompiled, params.decompiledSize);
-	d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
-	d.WriteResourceDefinitions();
-	d.WriteAddOnDeclarations();
-	d.ParseInputSignature(params.decompiled, params.decompiledSize);
-	d.ParseOutputSignature(params.decompiled, params.decompiledSize);
-	if (!params.ZeroOutput)
+	// This can crash, because of unknown or unseen syntax, so we wrap it in try/catch
+	// block to handle any exceptions and mark the shader as presently bad.
+	// In order for this to work, the /EHa option must be enabled for code-generation
+	// so that system level exceptions are caught too.
+	try
 	{
-		d.ParseCode(shader, params.decompiled, params.decompiledSize);
+		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
+		if (!shader) return string();
+	
+		d.ReadResourceBindings(params.decompiled, params.decompiledSize);
+		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
+		d.WriteResourceDefinitions();
+		d.WriteAddOnDeclarations();
+		d.ParseInputSignature(params.decompiled, params.decompiledSize);
+		d.ParseOutputSignature(params.decompiled, params.decompiledSize);
+		if (!params.ZeroOutput)
+		{
+			d.ParseCode(shader, params.decompiled, params.decompiledSize);
+		}
+		else
+		{
+			d.ParseCodeOnlyShaderType(shader, params.decompiled, params.decompiledSize);
+			d.WriteZeroOutputSignature(params.decompiled, params.decompiledSize);
+		}
+		d.mOutput.push_back('}');
+		shaderModel = d.mShaderType;
+		errorOccurred = d.mErrorOccurred;
+		FreeShaderInfo(shader->sInfo);
+		delete shader;
+		patched = d.mPatched;
+		return string(d.mOutput.begin(), d.mOutput.end());
 	}
-	else
+	catch (...)
 	{
-		d.ParseCodeOnlyShaderType(shader, params.decompiled, params.decompiledSize);
-		d.WriteZeroOutputSignature(params.decompiled, params.decompiledSize);
+		// Fatal error, but catch it and mark it as bad.
+		if (LogFile) fprintf(LogFile, "   ******* Exception caught while decompiling shader ******\n");
+		if (LogFile) fflush(LogFile);
+		errorOccurred = true;
+		return string();
 	}
-	d.mOutput.push_back('}');
-	shaderModel = d.mShaderType;
-	errorOccurred = d.mErrorOccurred;
-	FreeShaderInfo(shader->sInfo);
-	delete shader;
-	patched = d.mPatched;
-	return string(d.mOutput.begin(), d.mOutput.end());
 }
