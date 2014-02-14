@@ -461,6 +461,7 @@ void InitializeDLL()
 		// Shader separation overrides.
 		for (int i = 1;; ++i)
 		{
+			if (LogFile && LogDebug) fprintf(LogFile, "Find [ShaderOverride] i=%i\n", i);
 			wchar_t id[] = L"ShaderOverridexxx", val[MAX_PATH];
 			_itow(i, id+14, 10);
 			int read = GetPrivateProfileString(id, L"Hash", 0, val, MAX_PATH, dir);
@@ -473,9 +474,10 @@ void InitializeDLL()
 				float separation;
 				swscanf(val, L"%e", &separation);
 				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
-				if (LogFile && LogDebug) fprintf(LogFile, "[ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
+				if (LogFile && LogDebug) fprintf(LogFile, " [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
 			}
 			read = GetPrivateProfileString(id, L"Handling", 0, val, MAX_PATH, dir);
+			// bo3b: pretty sure this test is inverted and thus non-functional
 			if (read && !wcscmp(val, L"skip"))
 				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
 			read = GetPrivateProfileString(id, L"Iteration", 0, val, MAX_PATH, dir);

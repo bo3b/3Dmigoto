@@ -662,9 +662,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				char fileName[MAX_PATH];
 				wcstombs(fileName, val, MAX_PATH);
 				if (fw)
-					fprintf(LogFile, "    storing compiled shader to %s\n", fileName);
+					fprintf(LogFile, "    storing original binary shader to %s\n", fileName);
 				else
-					fprintf(LogFile, "    error storing compiled shader to %s\n", fileName);
+					fprintf(LogFile, "    error storing original binary shader to %s\n", fileName);
 				fflush(LogFile);
 			}
 			if (fw)
@@ -873,8 +873,13 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		// Skip?
 		wsprintf(val, L"%ls\\%08lx%08lx-%ls_bad.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (hFind != INVALID_HANDLE_VALUE) 
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			char fileName[MAX_PATH];
+			wcstombs(fileName, val, MAX_PATH);
+			if (LogFile) fprintf(LogFile, "    skipping shader marked bad. %s\n", fileName);
 			CloseHandle(hFind);
+		}
 		else
 		{
 			// Disassemble old shader for fixing.
