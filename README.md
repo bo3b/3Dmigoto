@@ -28,8 +28,7 @@ https://github.com/bo3b/3Dmigoto.git
 1. At the home menu in Team Explorer, double click StereovisionHacks.sln to open the solution.
 1. Switch to Solution Explorer, and wait for it to parse all the files.
 1. Hit F7 to build the full solution.
-1. Output files are in .\Debug
-2. Output files are not a complete install just yet. (overwrite the download install for now)
+1. Output files are in .\Debug (16 dll and 1 .ini)
 <br>
 <br>
 
