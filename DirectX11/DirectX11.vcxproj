@@ -96,7 +96,7 @@
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
-      <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
+      <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -120,11 +120,7 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
-del "$(TargetDir)*.exp"
-del "$(TargetDir)*.lib"
-del "$(TargetDir)*.zip"
-"$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto.zip -tzip "..\Release\*.*"
-</Command>
+"$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto.zip -tzip "..\Release\*.dll" "..\Release\d3dx.ini"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
