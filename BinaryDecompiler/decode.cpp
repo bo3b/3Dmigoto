@@ -254,6 +254,13 @@ uint32_t DecodeOperand (const uint32_t *pui32Tokens, Operand* psOperand)
                 psOperand->aui32Swizzle[2] = DecodeOperand4CompSwizzleSource(*pui32Tokens, 2);
                 psOperand->aui32Swizzle[3] = DecodeOperand4CompSwizzleSource(*pui32Tokens, 3);
             }
+			else
+			{
+				psOperand->aui32Swizzle[0] = OPERAND_4_COMPONENT_X;
+				psOperand->aui32Swizzle[1] = OPERAND_4_COMPONENT_Y;
+				psOperand->aui32Swizzle[2] = OPERAND_4_COMPONENT_Z;
+				psOperand->aui32Swizzle[3] = OPERAND_4_COMPONENT_W;
+			}
         }
         else
         if(psOperand->eSelMode == OPERAND_4_COMPONENT_SELECT_1_MODE)
