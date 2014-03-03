@@ -113,6 +113,7 @@ struct Declaration
         uint32_t aui32HullPhaseInstanceInfo[2];
         float fMaxTessFactor;
         uint32_t ui32IndexRange;
+		uint32_t ui32GSInstanceCount;
 
         struct Interface_TAG
         {
@@ -222,6 +223,8 @@ struct Shader
     std::map<int, int> abInputReferencedByInstruction;
 
 	//int aiOpcodeUsed[NUM_OPCODES];
+
+	uint32_t ui32CurrentVertexOutputStream;
 
 	Shader() :
 		ui32MajorVersion(0),
