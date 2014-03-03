@@ -1571,14 +1571,11 @@ Shader* DecodeDXBC(uint32_t* data)
 			case FOURCC_OSG1:
             {
                 refChunks.pui32Outputs11 = (uint32_t*)(chunk + 1);
-				printf("OSG1\n");
                 break;
             }
 			case FOURCC_OSG5:
 			{
                 refChunks.pui32OutputsWithStreams = (uint32_t*)(chunk + 1);
-				printf("OSG5\n");
-                break;
 				break;
 			}
             case FOURCC_SHDR:
