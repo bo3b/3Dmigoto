@@ -18,6 +18,7 @@ enum {FOURCC_OSGN = FOURCC('O', 'S', 'G', 'N')}; //Output signature
 
 enum {FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1')}; //Input signature with Stream and MinPrecision
 enum {FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1')}; //Output signature with Stream and MinPrecision
+enum {FOURCC_OSG5 = FOURCC('O', 'S', 'G', '5')}; //Output signature with Stream
 
 typedef struct DXBCContainerHeaderTAG
 {
@@ -741,7 +742,7 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
 		case OPCODE_DCL_STREAM:
 		{
 			psDecl->ui32NumOperands = 1;
-			DecodeOperand(pui32Token + ui32OperandOffset, &psDecl->asOperands[0]);
+			DecodeOperand(pui32Token+ui32OperandOffset, &psDecl->asOperands[0]);
 			break;
 		}
 		// Not seen yet, needs mod to structs.h-- REALLY need to update to latest JJ.
@@ -1528,6 +1529,7 @@ Shader* DecodeDXBC(uint32_t* data)
     refChunks.pui32Resources = NULL;
 	refChunks.pui32Inputs11 = NULL;
 	refChunks.pui32Outputs11 = NULL;
+	refChunks.pui32OutputsWithStreams = NULL;
 
 	chunkOffsets = (uint32_t*)(header + 1);
 
@@ -1569,8 +1571,16 @@ Shader* DecodeDXBC(uint32_t* data)
 			case FOURCC_OSG1:
             {
                 refChunks.pui32Outputs11 = (uint32_t*)(chunk + 1);
+				printf("OSG1\n");
                 break;
             }
+			case FOURCC_OSG5:
+			{
+                refChunks.pui32OutputsWithStreams = (uint32_t*)(chunk + 1);
+				printf("OSG5\n");
+                break;
+				break;
+			}
             case FOURCC_SHDR:
             case FOURCC_SHEX:
             {

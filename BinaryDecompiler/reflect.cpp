@@ -68,7 +68,8 @@ static void ReadInputSignatures(const uint32_t* pui32Tokens,
 
 static void ReadOutputSignatures(const uint32_t* pui32Tokens,
                         ShaderInfo* psShaderInfo,
-						const int extended)
+						const int minPrec,
+						const int streams)
 {
     uint32_t i;
 
@@ -90,7 +91,7 @@ static void ReadOutputSignatures(const uint32_t* pui32Tokens,
 		psCurrentSignature->ui32Stream = 0;
 		psCurrentSignature->eMinPrec = D3D_MIN_PRECISION_DEFAULT;
 
-		if(extended)
+		if(streams)
 			psCurrentSignature->ui32Stream = *pui32Tokens++;
 
 		ui32SemanticNameOffset = *pui32Tokens++;
@@ -104,7 +105,7 @@ static void ReadOutputSignatures(const uint32_t* pui32Tokens,
         //Shows which components are NEVER written.
         psCurrentSignature->ui32ReadWriteMask = (ui32ComponentMasks & 0x7F00) >> 8;
 
-		if(extended)
+		if(minPrec)
 			psCurrentSignature->eMinPrec = (MIN_PRECISION) *pui32Tokens++;
 
         ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstSignatureToken+ui32SemanticNameOffset), psCurrentSignature->SemanticName);
@@ -753,6 +754,7 @@ void LoadShaderInfo(const uint32_t ui32MajorVersion,
     const uint32_t* pui32Interfaces = psChunks->pui32Interfaces;
     const uint32_t* pui32Outputs = psChunks->pui32Outputs;
 	const uint32_t* pui32Outputs11 = psChunks->pui32Outputs11;
+	const uint32_t* pui32OutputsWithStreams = psChunks->pui32OutputsWithStreams;
 
     psInfo->eTessOutPrim = TESSELLATOR_OUTPUT_UNDEFINED;
     psInfo->eTessPartitioning = TESSELLATOR_PARTITIONING_UNDEFINED;
@@ -770,9 +772,11 @@ void LoadShaderInfo(const uint32_t ui32MajorVersion,
     if(pui32Interfaces)
         ReadInterfaces(pui32Interfaces, psInfo);
     if(pui32Outputs)
-        ReadOutputSignatures(pui32Outputs, psInfo, 0);
+        ReadOutputSignatures(pui32Outputs, psInfo, 0, 0);
     if(pui32Outputs11)
-        ReadOutputSignatures(pui32Outputs11, psInfo, 1);
+        ReadOutputSignatures(pui32Outputs11, psInfo, 1, 1);
+	if(pui32OutputsWithStreams)
+		ReadOutputSignatures(pui32OutputsWithStreams, psInfo, 0, 1);
 
     {
         uint32_t i;
