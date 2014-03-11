@@ -88,6 +88,7 @@
     <ClCompile Include="d3d9Wrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="d3d9Wrapper.h" />
     <ClInclude Include="Direct3D9Functions.h" />
     <ClInclude Include="Direct3DDevice9Functions.h" />

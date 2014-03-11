@@ -26,5 +26,6 @@ namespace D3D11Base
 
 namespace D3D11Wrapper
 {
+#include "../IDirect3DUnknown.h"
 #include "d3dxgiWrapper.h"
 }

@@ -1,44 +1,7 @@
 #pragma once
 
-#include <D3D11.h>
-
-// Forward declerations
+// Forward declarations
 class ID3D11DeviceContext;
-
-class IDirect3DUnknown
-{
-public:
-    IUnknown*   m_pUnk;
-    ULONG       m_ulRef;
-
-    IDirect3DUnknown(IUnknown* pUnk)
-    {
-        m_pUnk = pUnk;
-        m_ulRef = 1;
-    }
-
-    /*** IUnknown methods ***/
-    STDMETHOD(QueryInterface)(THIS_ REFIID riid, void** ppvObj);
-
-    STDMETHOD_(ULONG,AddRef)(THIS)
-    {
-		++m_ulRef;
-        return m_pUnk->AddRef();
-    }
-
-    STDMETHOD_(ULONG,Release)(THIS)
-    {
-		--m_ulRef;
-		ULONG ulRef = m_pUnk->Release();
-
-        if (ulRef == 0)
-        {
-            delete this;
-            return 0;
-        }
-        return ulRef;
-    }
-};
 
 class ID3D11Device : public IDirect3DUnknown
 {

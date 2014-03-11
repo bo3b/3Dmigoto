@@ -12,7 +12,7 @@
 #include <ctime>
 #include <XInput.h>
 
-const int NUM_ACTIONS = 21;
+const int NUM_ACTIONS = 22;
 extern wchar_t InputDevice[MAX_PATH];
 extern wchar_t InputAction[NUM_ACTIONS][MAX_PATH];
 extern int InputDeviceId;

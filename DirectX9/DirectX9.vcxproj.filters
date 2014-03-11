@@ -18,6 +18,7 @@
     <ClInclude Include="Direct3DVertexShader9Functions.h" />
     <ClInclude Include="Direct3DPixelShader9Functions.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="..\IDirect3DUnknown.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d9Wrapper.def" />

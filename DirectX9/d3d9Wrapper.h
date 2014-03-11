@@ -1,6 +1,6 @@
 #pragma once
 
-#include <D3D9.h>
+#include "../IDirect3DUnknown.h"
 
 class IDirect3D9;
 class IDirect3DDevice9;
@@ -27,42 +27,6 @@ typedef void (WINAPI *DebugSetMute)(int a);
 typedef void* (WINAPI *Direct3DShaderValidatorCreate9)(void);
 typedef void (WINAPI *PSGPError)(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, unsigned int a);
 typedef void (WINAPI *PSGPSampleTexture)(void *D3DFE_PROCESSVERTICES, unsigned int a, float (* const b)[4], unsigned int c, float (* const d)[4]);
-
-class IDirect3DUnknown
-{
-public:
-    IUnknown*   m_pUnk;
-    ULONG       m_ulRef;
-
-    IDirect3DUnknown(IUnknown* pUnk)
-    {
-        m_pUnk = pUnk;
-        m_ulRef = 1;
-    }
-
-    /*** IUnknown methods ***/
-    STDMETHOD(QueryInterface)(THIS_ REFIID riid, void** ppvObj);
-
-    STDMETHOD_(ULONG,AddRef)(THIS)
-    {
-		++m_ulRef;
-        return m_pUnk->AddRef();
-    }
-
-    STDMETHOD_(ULONG,Release)(THIS)
-    {
-		--m_ulRef;
-		ULONG ulRef = m_pUnk->Release();
-
-        if (ulRef == 0)
-        {
-			m_pUnk = 0;
-            delete this;
-            return 0;
-        }
-        return ulRef;
-    }
-};
 
 class IDirect3D9Base : public IDirect3DUnknown
 {

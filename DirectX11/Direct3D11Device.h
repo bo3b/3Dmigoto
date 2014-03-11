@@ -194,56 +194,77 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture1D(THIS_
 	return GetD3D11Device()->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
 
+// For any given vertex or pixel shader from the ShaderFixes folder, we need to track them at load time so
+// that we can associate a given active shader with an override file.  This allows us to reload the shaders
+// dynamically, and do on-the-fly fix testing.
+// ShaderModel is usually something like "vs_5_0", but "bin" is a valid ShaderModel string, and tells the 
+// reloader to disassemble the .bin file to determine the shader model.
+
+static void RegisterForReload(D3D11Base::ID3D11DeviceChild* ppShader, 
+	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage)
+{
+	if (LogFile) fprintf(LogFile, "    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
+	G->mReloadedShaders[ppShader].hash = hash;
+	G->mReloadedShaders[ppShader].shaderType = shaderType;
+	G->mReloadedShaders[ppShader].shaderModel = shaderModel;
+	G->mReloadedShaders[ppShader].linkage = pClassLinkage;
+	G->mReloadedShaders[ppShader].newShader = NULL;
+}
+
 static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
 {
 	wchar_t fileName[MAX_PATH];
 	wsprintf(fileName, L"%ls\\%ls", shader_path, findFileData.cFileName);
 	char cFileName[MAX_PATH];
+	bool shaderFix = (wcscmp(shader_path, SHADER_PATH) == 0);
+
 	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
 	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f != INVALID_HANDLE_VALUE)
+	if (f == INVALID_HANDLE_VALUE)
 	{
-		DWORD bytecodeLength = GetFileSize(f, 0);
-		char *pShaderBytecode = new char[bytecodeLength];
-		DWORD readSize;
-		if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) || bytecodeLength != readSize)
-		{
-			if (LogFile) fprintf(LogFile, "  Error reading binary vertex shader %s.\n", cFileName);
-			CloseHandle(f);
-			return;
-		}
-		CloseHandle(f);
-		if (LogFile) fprintf(LogFile, "  preloading vertex shader %s\n", cFileName);
-		if (LogFile) fflush(LogFile);
-		UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
-		UINT64 keyHash = 0;
-		for (int i = 0; i < 16; ++i)
-		{
-			UINT64 digit = findFileData.cFileName[i] > L'9' ? toupper(findFileData.cFileName[i]) - L'A'+10 : findFileData.cFileName[i] - L'0';
-			keyHash += digit << (60-i*4);
-		}
-		if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n", 
-			(UINT32)(keyHash >> 32), (UINT32)(keyHash),
-			(UINT32)(hash >> 32), (UINT32)(hash));
-		if (LogFile) fflush(LogFile);
-
-		// Create the new shader.
-		D3D11Base::ID3D11VertexShader *pVertexShader;
-		HRESULT hr = m_pDevice->CreateVertexShader(pShaderBytecode, bytecodeLength, 0, &pVertexShader);
-		delete pShaderBytecode; pShaderBytecode = 0;
-		if (hr == S_OK)
-		{
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mPreloadedVertexShaders[keyHash] = pVertexShader;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		}
-		else
-		{
-			if (LogFile) fprintf(LogFile, "    error creating shader.\n");
-			if (LogFile) fflush(LogFile);
-		}
+		if (LogFile) fprintf(LogFile, "  error reading binary vertex shader %s.\n", cFileName);
+		return;
 	}
-	else if (LogFile) fprintf(LogFile, "  error reading binary vertex shader %s.\n", cFileName);
+	DWORD bytecodeLength = GetFileSize(f, 0);
+	char *pShaderBytecode = new char[bytecodeLength];
+	DWORD readSize;
+	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) || bytecodeLength != readSize)
+	{
+		if (LogFile) fprintf(LogFile, "  Error reading binary vertex shader %s.\n", cFileName);
+		CloseHandle(f);
+		return;
+	}
+	CloseHandle(f);
+	
+	if (LogFile) fprintf(LogFile, "  preloading vertex shader %s\n", cFileName);
+	if (LogFile) fflush(LogFile);
+	UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
+	UINT64 keyHash = 0;
+	for (int i = 0; i < 16; ++i)
+	{
+		UINT64 digit = findFileData.cFileName[i] > L'9' ? toupper(findFileData.cFileName[i]) - L'A'+10 : findFileData.cFileName[i] - L'0';
+		keyHash += digit << (60-i*4);
+	}
+	if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n", 
+		(UINT32)(keyHash >> 32), (UINT32)(keyHash),
+		(UINT32)(hash >> 32), (UINT32)(hash));
+	if (LogFile) fflush(LogFile);
+
+	// Create the new shader.
+	D3D11Base::ID3D11VertexShader *pVertexShader;
+	HRESULT hr = m_pDevice->CreateVertexShader(pShaderBytecode, bytecodeLength, 0, &pVertexShader);
+	delete pShaderBytecode; pShaderBytecode = 0;
+	if (hr != S_OK)
+	{
+		if (LogFile) fprintf(LogFile, "    error creating shader.\n");
+		if (LogFile) fflush(LogFile);
+		return;
+	}
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	G->mPreloadedVertexShaders[keyHash] = pVertexShader;
+	if(shaderFix) RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
@@ -251,51 +272,55 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	wchar_t fileName[MAX_PATH];
 	wsprintf(fileName, L"%ls\\%ls", shader_path, findFileData.cFileName);
 	char cFileName[MAX_PATH];
+	bool shaderFix = (wcscmp(shader_path, SHADER_PATH) == 0);
+
 	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
 	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f != INVALID_HANDLE_VALUE)
+	if (f == INVALID_HANDLE_VALUE)
 	{
-		DWORD bytecodeLength = GetFileSize(f, 0);
-		char *pShaderBytecode = new char[bytecodeLength];
-		DWORD readSize;
-		if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) || bytecodeLength != readSize)
-		{
-			if (LogFile) fprintf(LogFile, "  Error reading binary pixel shader %s.\n", cFileName);
-			CloseHandle(f);
-			return;
-		}
-		CloseHandle(f);
-		if (LogFile) fprintf(LogFile, "  preloading pixel shader %s\n", cFileName);
-		if (LogFile) fflush(LogFile);
-		UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
-		UINT64 keyHash = 0;
-		for (int i = 0; i < 16; ++i)
-		{
-			UINT64 digit = findFileData.cFileName[i] > L'9' ? toupper(findFileData.cFileName[i]) - L'A'+10 : findFileData.cFileName[i] - L'0';
-			keyHash += digit << (60-i*4);
-		}
-		if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n", 
-			(UINT32)(keyHash >> 32), (UINT32)(keyHash),
-			(UINT32)(hash >> 32), (UINT32)(hash));
-		if (LogFile) fflush(LogFile);
-
-		// Create the new shader.
-		D3D11Base::ID3D11PixelShader *pPixelShader;
-		HRESULT hr = m_pDevice->CreatePixelShader(pShaderBytecode, bytecodeLength, 0, &pPixelShader);
-		delete pShaderBytecode; pShaderBytecode = 0;
-		if (hr == S_OK)
-		{
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mPreloadedPixelShaders[hash] = pPixelShader;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		}
-		else
-		{
-			if (LogFile) fprintf(LogFile, "    error creating shader.\n");
-			if (LogFile) fflush(LogFile);
-		}
+		if (LogFile) fprintf(LogFile, "  error reading binary pixel shader %s.\n", cFileName);
+		return;
 	}
-	else if (LogFile) fprintf(LogFile, "  error reading binary pixel shader %s.\n", cFileName);
+	DWORD bytecodeLength = GetFileSize(f, 0);
+	char *pShaderBytecode = new char[bytecodeLength];
+	DWORD readSize;
+	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) || bytecodeLength != readSize)
+	{
+		if (LogFile) fprintf(LogFile, "  Error reading binary pixel shader %s.\n", cFileName);
+		CloseHandle(f);
+		return;
+	}
+	CloseHandle(f);
+
+	if (LogFile) fprintf(LogFile, "  preloading pixel shader %s\n", cFileName);
+	if (LogFile) fflush(LogFile);
+	UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
+	UINT64 keyHash = 0;
+	for (int i = 0; i < 16; ++i)
+	{
+		UINT64 digit = findFileData.cFileName[i] > L'9' ? toupper(findFileData.cFileName[i]) - L'A'+10 : findFileData.cFileName[i] - L'0';
+		keyHash += digit << (60-i*4);
+	}
+	if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n", 
+		(UINT32)(keyHash >> 32), (UINT32)(keyHash),
+		(UINT32)(hash >> 32), (UINT32)(hash));
+	if (LogFile) fflush(LogFile);
+
+	// Create the new shader.
+	D3D11Base::ID3D11PixelShader *pPixelShader;
+	HRESULT hr = m_pDevice->CreatePixelShader(pShaderBytecode, bytecodeLength, 0, &pPixelShader);
+	delete pShaderBytecode; pShaderBytecode = 0;
+	if (hr != S_OK)
+	{
+		if (LogFile) fprintf(LogFile, "    error creating shader.\n");
+		if (LogFile) fflush(LogFile);
+		return;
+	}
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	G->mPreloadedPixelShaders[hash] = pPixelShader;
+	if (shaderFix) RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
@@ -622,10 +647,15 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateInputLayout(THIS_
 		BytecodeLength, ppInputLayout);
 }
 
-static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode, SIZE_T BytecodeLength, DWORD &pCodeSize, void **zeroShader)
+// Only used in CreateVertexShader and CreatePixelShader
+
+static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+	SIZE_T BytecodeLength, DWORD &pCodeSize, string &foundShaderModel, void **zeroShader)
 {
 	if (G->mBlockingMode)
 		return 0;
+
+	foundShaderModel = "";
 
 	*zeroShader = 0;
 	char *pCode = 0;
@@ -735,10 +765,12 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		}
 
 		// Read binary compiled shader.
+		bool fromCache = false;
 		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (f == INVALID_HANDLE_VALUE)
 		{
+			fromCache = true;
 			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		}
@@ -758,17 +790,23 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			{
 				if (LogFile) fprintf(LogFile, "    Bytecode loaded. Size = %d\n", pCodeSize);
 				if (LogFile) fflush(LogFile);
+				if (!fromCache)
+				{
+					foundShaderModel = "bin";		// tag it as needing disassemble
+				}
 			}
 			CloseHandle(f);
 		}
 		if (!pCode)
 		{
 			// Read HLSL shader.
+			bool fromCache = false;
 			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			wchar_t *shader_path = SHADER_PATH;
 			if (f == INVALID_HANDLE_VALUE)
 			{
+				fromCache = true;
 				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				shader_path = SHADER_CACHE_PATH;
@@ -810,6 +848,12 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					char *eol = pos;
 					while (eol[0] != 0x0a && pos < end) eol++;
 					string shaderModel(pos, eol);
+
+					// Only HLSL compiled shaders from ShaderFixes folder are reloading candidates
+					if (!fromCache)
+					{
+						foundShaderModel = shaderModel;
+					}
 
 					// Compile replacement.
 					if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
@@ -1106,11 +1150,14 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 
 	HRESULT hr = -1;
 	UINT64 hash;
+	string shaderModel;
 	D3D11Base::ID3D11VertexShader *zeroShader = 0;
+
 	if (pShaderBytecode && ppVertexShader)
 	{
 		// Calculate hash
-		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
+		hash = fnv_64_buf(pShaderBytecode, BytecodeLength); 
+		if (LogFile) fprintf(LogFile, "  bytecode hash = %016llx\n", hash);
 		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 		if (LogFile) fflush(LogFile);
 
@@ -1128,7 +1175,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
 					DWORD replaceShaderSize;
-					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, (void **) &zeroShader);
+					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, 
+						shaderModel, (void **) &zeroShader);
 					delete replaceShader;
 				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
@@ -1145,7 +1193,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	{
 		DWORD replaceShaderSize;
 		D3D11Base::ID3D11VertexShader *zeroShader = 0;
-		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, (void **) &zeroShader);
+		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, 
+			shaderModel, (void **) &zeroShader);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1156,6 +1205,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 				if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
 				if (LogFile) fflush(LogFile);
 
+				// If this shader was created from a .txt override, save the info to allow live overrides later
+				if (!shaderModel.empty())
+				{
+					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage);
+				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
 				{
 					// Compile original shader.
@@ -1313,7 +1367,9 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 
 	HRESULT hr = -1;
 	UINT64 hash;
+	string shaderModel;
 	D3D11Base::ID3D11PixelShader *zeroShader = 0;
+
 	if (pShaderBytecode && ppPixelShader)
 	{
 		// Calculate hash
@@ -1335,7 +1391,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
 					DWORD replaceShaderSize;
-					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, (void **) &zeroShader);
+					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, 
+						shaderModel, (void **) &zeroShader);
 					delete replaceShader;
 				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
@@ -1351,7 +1408,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	if (hr != S_OK && ppPixelShader && pShaderBytecode)
 	{
 		DWORD replaceShaderSize;
-		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, (void **) &zeroShader);
+		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, 
+			shaderModel, (void **) &zeroShader);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1363,6 +1421,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 				if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
 				if (LogFile) fflush(LogFile);
 
+				// If this shader was created from a .txt override, save the info to allow live overrides later
+				if (!shaderModel.empty())
+				{
+					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage);
+				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
 				{
 					// Compile original shader.

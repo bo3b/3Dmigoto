@@ -6,6 +6,7 @@
 #include <vector>
 #include <set>
 #include <iterator>
+#include <string>
 
 FILE *LogFile = 0;
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
@@ -15,6 +16,10 @@ const int MARKING_MODE_MONO = 1;
 const int MARKING_MODE_ORIGINAL = 2;
 const int MARKING_MODE_ZERO = 3;
 bool LogInput = false, LogDebug = false;
+
+// ToDo: this is a hack for the moment to get access to the real device
+// for loading new shaders.  This should be passed down to dxgi probably.
+D3D11Base::ID3D11Device* realDevice;
 
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
@@ -29,6 +34,30 @@ typedef std::map<D3D11Base::ID3D11Buffer *, UINT64> DataBufferMap;
 
 // Source compiled shaders.
 typedef std::map<UINT64, std::string> CompiledShaderMap;
+
+// Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
+//	pixelshader and vertexshader that are compiled from hlsl text from the ShaderFixes
+//	folder.  This keeps track of the original shader information using the ID3D11VertexShader*
+//	or ID3D11PixelShader* as a master key to the key map.
+//	We are using the base class of ID3D11DeviceChild* since both descend from that, and that allows
+//	us to use the same structure for Pixel and Vertex shaders both.
+
+// Info saved about originally overridden shaders passed in by the game in CreateVertexShader or 
+// CreatePixelShader that have been loaded as HLSL
+//	shaderType is "vs" or "ps" or maybe later "gs" (type wstring for file name use)
+//	shaderModel is only filled in when a shader is replaced.  (type string for old D3 API use)
+//	newShader is either ID3D11VertexShader or ID3D11PixelShader
+struct OriginalShaderInfo
+{
+	UINT64 hash;
+	std::wstring shaderType;
+	std::string shaderModel;
+	D3D11Base::ID3D11ClassLinkage* linkage;
+	D3D11Base::ID3D11DeviceChild* newShader;
+};
+
+// Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
+typedef std::map<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
 
 // Key is vertexshader, value is hash key.
 typedef std::map<D3D11Base::ID3D11VertexShader *, UINT64> VertexShaderMap;
@@ -79,6 +108,7 @@ struct Globals
 	int gSurfaceSquareCreateMode;
 
 	bool take_screenshot;
+	bool reload_fixes;
 	bool next_pixelshader, prev_pixelshader, mark_pixelshader;
 	bool next_vertexshader, prev_vertexshader, mark_vertexshader;
 	bool next_indexbuffer, prev_indexbuffer, mark_indexbuffer;
@@ -117,18 +147,18 @@ struct Globals
 
 	CompiledShaderMap mCompiledShaderMap;
 
-	PreloadVertexShaderMap mPreloadedVertexShaders;
-	VertexShaderMap mVertexShaders;
-	VertexShaderReplacementMap mOriginalVertexShaders;
-	VertexShaderReplacementMap mZeroVertexShaders;
-	UINT64 mCurrentVertexShader;
-	std::set<UINT64> mVisitedVertexShaders;
-	UINT64 mSelectedVertexShader;
+	VertexShaderMap mVertexShaders;							// All shaders ever registered with CreateVertexShader
+	PreloadVertexShaderMap mPreloadedVertexShaders;			// All shaders that were preloaded as .bin
+	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
+	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
+	UINT64 mCurrentVertexShader;							// Shader currently live in GPU pipeline.
+	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen in latest frame
+	UINT64 mSelectedVertexShader;							// Shader selected using XInput
 	int mSelectedVertexShaderPos;
 	std::set<UINT64> mSelectedVertexShader_IndexBuffer;
 
+	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
 	PreloadPixelShaderMap mPreloadedPixelShaders;
-	PixelShaderMap mPixelShaders;
 	PixelShaderReplacementMap mOriginalPixelShaders;
 	PixelShaderReplacementMap mZeroPixelShaders;
 	UINT64 mCurrentPixelShader;
@@ -137,6 +167,8 @@ struct Globals
 	int mSelectedPixelShaderPos;
 	std::set<UINT64> mSelectedPixelShader_IndexBuffer;
 
+	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
+
 	GeometryShaderMap mGeometryShaders;
 	ComputeShaderMap mComputeShaders;
 	DomainShaderMap mDomainShaders;
@@ -144,7 +176,7 @@ struct Globals
 
 	// Separation override for shader.
 	ShaderSeparationMap mShaderSeparationMap;
-	ShaderIterationMap mShaderIterationMap;
+	ShaderIterationMap mShaderIterationMap;					// Only for separation changes, not shaders.
 	ShaderIndexBufferFilter mShaderIndexBufferFilter;
 	
 	// Texture override.
@@ -184,6 +216,7 @@ struct Globals
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
 		take_screenshot(false),
+		reload_fixes(false),
 		next_pixelshader(false),
 		prev_pixelshader(false), 
 		mark_pixelshader(false),
@@ -455,6 +488,8 @@ void InitializeDLL()
 		end = InputAction[19] + wcslen(InputAction[19]) - 1; while (end > InputAction[19] && isspace(*end)) end--; *(end+1) = 0;
 		GetPrivateProfileString(L"Rendering", L"tune4_down", 0, InputAction[20], MAX_PATH, dir);
 		end = InputAction[20] + wcslen(InputAction[20]) - 1; while (end > InputAction[20] && isspace(*end)) end--; *(end+1) = 0;
+		GetPrivateProfileString(L"Rendering", L"reload_fixes", 0, InputAction[21], MAX_PATH, dir);
+		end = InputAction[21] + wcslen(InputAction[21]) - 1; while (end > InputAction[21] && isspace(*end)) end--; *(end+1) = 0;
 		InitDirectInput();
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Rendering", L"XInputDevice", -1, dir);				
@@ -1065,7 +1100,282 @@ static void DumpUsage()
 	}
 }
 
-static void RunFrameActions(D3D11Wrapper::ID3D11Device *device)
+// If the shader was loaded from the .bin cache file, then we don't presently have the shader model
+// available.  This will fetch the .bin file and disassemble it to look for the shader model, like 
+// when it is decompiled.
+// Note: this is pretty expensive, so this should only be done in specific situations like reloading all.
+
+static string GetShaderModel(UINT64 hash, wstring shaderType)
+{
+	wchar_t name[MAX_PATH];
+
+	// Read binary compiled shader from ShaderFixes with matching name.
+	swprintf(name, L"%ls\\%016llx-%ls_replace.bin", SHADER_PATH, hash, shaderType.c_str());
+	HANDLE f = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f != INVALID_HANDLE_VALUE)
+	{
+		if (LogFile) fprintf(LogFile, "    Using reloaded binary shader to get ShaderModel.\n");
+
+		DWORD pCodeSize = GetFileSize(f, 0);
+		char* pCode = new char[pCodeSize];
+		DWORD readSize;
+		if (!ReadFile(f, pCode, pCodeSize, &readSize, 0) || pCodeSize != readSize)
+		{
+			if (LogFile) fprintf(LogFile, "    Error reading .bin file: %s\n", name);
+			delete pCode; pCode = 0;
+			return "";
+		}
+		CloseHandle(f);
+
+		// Disassemble old shader to get shader model.
+		D3D11Base::ID3DBlob *disassembly;
+		HRESULT ret = D3D11Base::D3DDisassemble(pCode, readSize, D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, 
+			&disassembly);
+		if (ret != S_OK)
+		{
+			if (LogFile) fprintf(LogFile, "    disassembly of original shader failed: %s\n", name);
+			if (LogFile) fflush(LogFile);
+			delete pCode;
+			return "";
+		}
+		else
+		{
+			// Read shader model. This is the first not commented line.
+			char *pos = (char *)disassembly->GetBufferPointer();
+			char *end = pos + disassembly->GetBufferSize();
+			while (pos[0] == '/' && pos < end)
+			{
+				while (pos[0] != 0x0a && pos < end) pos++;
+				pos++;
+			}
+			// Extract model.
+			char *eol = pos;
+			while (eol[0] != 0x0a && pos < end) eol++;
+			string shaderModel(pos, eol);
+
+			// Todo: don't return success from middle of the routine.
+			return shaderModel;
+		}
+	}
+	else
+	{
+		// No .bin file found, something is wrong.
+		if (LogFile) fprintf(LogFile, "    ReloadShader failed in GetShaderModel, no .bin found: %s\n", name);
+		return "";
+	}
+}
+
+// Compile a new shader from  HLSL text input, and report on errors if any.
+// Return the binary blob of pCode to be activated with CreateVertexShader or CreatePixelShader.
+
+static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, UINT64 hash, wstring shaderType,
+	_Outptr_ D3D11Base::ID3DBlob** pCode)
+{
+	*pCode = NULL;
+	wchar_t fullName[MAX_PATH];
+	wsprintf(fullName, L"%s\\%s", shaderFixPath, fileName);
+
+	HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+	{
+		if (LogFile) fprintf(LogFile, "    ReloadShader shader not found: %ls\n", fullName);
+		if (LogFile) fflush(LogFile);
+		return;
+	}
+
+	if (LogFile) fprintf(LogFile, "    >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
+	if (LogFile) fflush(LogFile);
+
+	DWORD srcDataSize = GetFileSize(f, 0);
+	char *srcData = new char[srcDataSize];
+	DWORD readSize;
+
+	if (!ReadFile(f, srcData, srcDataSize, &readSize, 0) || srcDataSize != readSize)
+	{
+		if (LogFile) fprintf(LogFile, "    Error reading txt file.\n");
+		return;
+	}
+	CloseHandle(f);
+
+	if (LogFile) fprintf(LogFile, "    Reload source code loaded. Size = %d\n", srcDataSize);
+	if (LogFile) fflush(LogFile);
+
+	if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel);
+	if (LogFile) fflush(LogFile);
+
+	D3D11Base::ID3DBlob* pByteCode = NULL;
+	D3D11Base::ID3DBlob* pErrorMsgs = NULL;
+	HRESULT ret = D3D11Base::D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
+		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
+
+	delete srcData; srcData = 0;
+
+	// bo3b: pretty sure that we do not need to copy the data. That data is what we need to pass to CreateVertexShader
+	// Example taken from: http://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
+	//char *pCode = 0;
+	//SIZE_T pCodeSize;
+	//if (pCompiledOutput)
+	//{
+	//	pCodeSize = pCompiledOutput->GetBufferSize();
+	//	pCode = new char[pCodeSize];
+	//	memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
+	//	pCompiledOutput->Release(); pCompiledOutput = 0;
+	//}
+
+	if (LogFile) fprintf(LogFile, "    compile result of replacement HLSL shader: %x\n", ret);
+	if (LogFile) fflush(LogFile);
+	if (LogFile && pErrorMsgs)
+	{
+		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
+		SIZE_T errSize = pErrorMsgs->GetBufferSize();
+		fprintf(LogFile, "--------------------------------------------- BEGIN ---------------------------------------------\n");
+		fwrite(errMsg, 1, errSize - 1, LogFile);
+		fprintf(LogFile, "---------------------------------------------- END ----------------------------------------------\n");
+		fflush(LogFile);
+		pErrorMsgs->Release();
+	}
+
+	if (FAILED(ret))
+	{
+		if (pByteCode)
+			pByteCode->Release();
+		return;
+	}
+
+	// Write replacement .bin if necessary
+	if (G->CACHE_SHADERS && pByteCode)
+	{
+		wchar_t val[MAX_PATH];
+		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", shaderFixPath, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
+		FILE *fw = _wfopen(val, L"wb");
+		if (LogFile)
+		{
+			char fileName[MAX_PATH];
+			wcstombs(fileName, val, MAX_PATH);
+			if (fw)
+				fprintf(LogFile, "    storing compiled shader to %s\n", fileName);
+			else
+				fprintf(LogFile, "    error writing compiled shader to %s\n", fileName);
+			fflush(LogFile);
+		}
+		if (fw)
+		{
+			fwrite(pByteCode->GetBufferPointer(), 1, pByteCode->GetBufferSize(), fw);
+			fclose(fw);
+		}
+	}
+
+	// pCode on return == NULL for error cases, valid if made it this far.
+	*pCode = pByteCode;
+}
+
+// Strategy: When the user hits F10 as the reload key, we want to reload all of the hand-patched shaders in
+//	the ShaderFixes folder, and make them live in game.  That will allow the user to test out fixes on the 
+//	HLSL .txt files and do live experiments with fixes.  This makes it easier to figure things out.
+//	To do that, we need to patch what is being sent to VSSetShader and PSSetShader, as they get activated
+//	in game.  Since the original shader is already on the GPU from CreateVertexShader and CreatePixelShader,
+//	we need to override it on the fly. We cannot change what the game originally sent as the shader request,
+//	nor their storage location, because we cannot guarantee that they didn't make a copy and use it. So, the
+//	item to go on is the ID3D11VertexShader* that the game received back from CreateVertexShader and will thus
+//	use to activate it with VSSetShader.
+//	To do the override, we've made a new Map that maps the original ID3D11VertexShader* to the new one, and
+//	in VSSetShader, we will look for a map match, and if we find it, we'll apply the override of the newly
+//	loaded shader.
+//	Here in ReloadShader, we need to set up to make that possible, by filling in the mReloadedVertexShaders
+//	map with <old,new>. In this spot, we have been notified by the user via F10 or whatever input that they
+//	want the shaders reloaded. We need to take each shader hlsl.txt file, recompile it, call CreateVertexShader
+//	on it to make it available in the GPU, and save the new ID3D11VertexShader* in our <old,new> map. We get the
+//	old ID3D11VertexShader* reference by looking that up in the complete mVertexShaders map, by using the hash
+//	number we can get from the file name itself.
+//	Notably, if the user does multiple iterations, we'll still only use the same number of overrides, because
+//	the map will replace the last one. This probably does leak vertex shaders on the GPU though.
+
+// Todo: this is not a particularly good spot for the routine.  Need to move these compile/dissassemble routines
+//	including those in Direct3D11Device.h into a separate file and include a .h file.
+//	This routine plagarized from ReplaceShaders.
+
+// Reload all of the patched shaders from the ShaderFixes folder, and add them to the override map, so that the
+// new version will be used at VSSetShader and PSSetShader.
+// File names are uniform in the form: 3c69e169edc8cd5f-ps_replace.txt
+
+static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D11Device *realDevice)
+{
+	UINT64 hash;
+	D3D11Base::ID3D11DeviceChild* oldShader = NULL;
+	D3D11Base::ID3D11DeviceChild* newShader = NULL;
+	D3D11Base::ID3D11ClassLinkage* classLinkage;
+	string shaderModel;
+	wstring shaderType;		// "vs" or "ps" maybe "gs"
+	HRESULT hr = E_FAIL;
+
+	// Extract hash from first 16 characters of file name so we can look up details by hash
+	wstring ws = fileName;
+	hash = stoull(ws.substr(0, 16), NULL, 16);
+	
+	// Find the original shader bytecode in the mReloadedShaders Map. This map only contains entries for 
+	// shaders from the ShaderFixes folder, but can also include .bin files that were loaded directly.
+	// This needs to use the value to find the key, so a linear search.
+	for each (pair<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+	{
+		if (iter.second.hash == hash)
+		{
+			oldShader = iter.first;
+			classLinkage = iter.second.linkage;
+			shaderModel = iter.second.shaderModel;
+			shaderType = iter.second.shaderType;
+			break;
+		}
+	}
+
+	// If we didn't find the original shader, that is OK, because it might not have been loaded yet.
+	// Just skip it in that case.
+	if (!G->mReloadedShaders.empty() && oldShader == NULL)
+	{
+		if (LogFile) fprintf(LogFile, "> failed to find original shader in mVertexShaders: %ls\n", fileName);
+		return true;
+	}
+
+	// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
+	// Disassemble the binary to get that string.
+	if (shaderModel.compare("bin") == 0)
+	{
+		shaderModel = GetShaderModel(hash, shaderType);
+		if (shaderModel.empty())
+			return false;
+	}
+
+	// Compile replacement.
+	D3D11Base::ID3DBlob *pShaderBytecode = NULL;
+	CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &pShaderBytecode);
+	if (pShaderBytecode == NULL)
+		return false;
+
+	// This needs to call the real CreateVertexShader, not our wrapped version
+	if (shaderType.compare(L"vs") == 0)
+	{
+		hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+			(D3D11Base::ID3D11VertexShader**) &newShader);
+	}
+	else if (shaderType.compare(L"ps") == 0)
+	{
+		hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+			(D3D11Base::ID3D11PixelShader**) &newShader);
+	}
+	if (hr != S_OK)
+		return false;
+	pShaderBytecode->Release();
+
+	// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
+	G->mReloadedShaders[oldShader].newShader = newShader;
+	return true;
+}
+
+
+// Called indirectly through the QueryInterface for every vertical blanking, based on calls to
+// IDXGISwapChain1::Present1 and/or IDXGISwapChain::Present in the dxgi interface wrapper.
+// This looks for user input for shader hunting.
+
+static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions\n");
 	if (LogFile && LogDebug) fflush(LogFile);
@@ -1078,10 +1388,56 @@ static void RunFrameActions(D3D11Wrapper::ID3D11Device *device)
 		if (LogFile) fprintf(LogFile, "> capturing screenshot\n");
 		if (LogFile) fflush(LogFile);
 		G->take_screenshot = true;
-		if (device->mStereoHandle)
-			D3D11Base::NvAPI_Stereo_CapturePngImage(device->mStereoHandle);
+		D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+		if (wrapped->mStereoHandle)
+		{
+			D3D11Base::NvAPI_Status err;
+			err = D3D11Base::NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
+			if (err != D3D11Base::NVAPI_OK)
+			{
+				if (LogFile) fprintf(LogFile, "> screenshot failed, error:%d\n", err);
+				Beep(300, 200); Beep(200, 150);		// Brnk, dunk sound for failure.
+			}
+		}
 	}
 	if (!Action[3]) G->take_screenshot = false;
+
+	// Reload all fixes from ShaderFixes?
+	if (Action[21] && !G->reload_fixes)
+	{
+		if (LogFile) fprintf(LogFile, "> reloading *_replace.txt fixes from ShaderFixes\n");
+		G->reload_fixes = true;
+
+		if (SHADER_PATH[0])
+		{
+			bool success = false;
+			WIN32_FIND_DATA findFileData;
+			wchar_t fileName[MAX_PATH];
+
+			wsprintf(fileName, L"%ls\\*_replace.txt", SHADER_PATH);
+			HANDLE hFind = FindFirstFile(fileName, &findFileData);
+			if (hFind != INVALID_HANDLE_VALUE)
+			{
+				do
+				{
+					success = ReloadShader(SHADER_PATH, findFileData.cFileName, device);
+				} while (FindNextFile(hFind, &findFileData) && success);
+				FindClose(hFind);
+			}
+
+			if (success)
+			{
+				Beep(1500, 120); Beep(1800, 400);	// Small Ta-Da sound for success, to notify it's running fresh fixes.
+				if (LogFile) fprintf(LogFile, "> successfully reloaded shaders from ShaderFixes\n");
+			}
+			else
+			{
+				Beep(300, 200); Beep(200, 150);		// Brnk, dunk sound for failure.
+				if (LogFile) fprintf(LogFile, "> FAILED to reload shaders from ShaderFixes\n");
+			}
+		}
+	}
+	if (!Action[21]) G->reload_fixes = false;
 
 	// Traverse index buffers?
 	if (Action[4] && !G->next_indexbuffer)
@@ -1185,7 +1541,7 @@ static void RunFrameActions(D3D11Wrapper::ID3D11Device *device)
 		if (i == G->mVisitedPixelShaders.end() && G->mVisitedPixelShaders.size() != 0)
 		{
 			G->mSelectedPixelShaderPos = 0;
-			if (LogFile) fprintf(LogFile, "> traversing to pixel shader #0. Number of pxiel shaders in frame: %d\n", G->mVisitedPixelShaders.size());
+			if (LogFile) fprintf(LogFile, "> traversing to pixel shader #0. Number of pixel shaders in frame: %d\n", G->mVisitedPixelShaders.size());
 			if (LogFile) fflush(LogFile);
 			G->mSelectedPixelShader = *G->mVisitedPixelShaders.begin();
 		}
@@ -1486,6 +1842,32 @@ static void RunFrameActions(D3D11Wrapper::ID3D11Device *device)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+// Todo: straighten out these includes and methods to make more sense.
+
+// For reasons that I do not understand, this method is actually a part of the IDXGIDevice2 object. 
+// I think that this is here so that it can get access to the RunFrameActions routine directly,
+// because that is not a method, but simply a function.
+// Whenever I arrive here in the debugger, the object type of 'this' is IDXGIDevice2, and using the
+// expected GetD3D11Device off what I'd expect to be a D3D11Wrapper object, I also get another
+// IDXGIDevice2 object as probably an expected original/wrapper.
+// So... Pretty sure this method is actually part of IDXGIDevice2, NOT the ID3D11Device as I'd expect.
+// This was a problem that took me a couple of days to figure out, because I need the original ID3D11Device
+// in order to call CreateVertexShader here.
+// As part of that I also looked at the piece here before, taking screen snapshots.  That also does
+// not work for the same reason, because the object has a bad stereo texture, because the DXGIDevice2
+// does not include that override, so it gets junk out of memory.  Pretty sure.
+// More info.
+// The way this is defined, it is used in two places.  One for the ID3D11Device and one for the IDXGIDevice2.
+// These are not in conflict, but because of the way the includes are set up, this routine is assumed to be
+// the base class implementation for IDirect3DUnknown, and thus it is used for both those objects.
+// This is bad, because the ID3d11Device is not being accessed, we are only seeing this called from
+// IDXGIDevice2. So, 'this' is always a IDXGIDevice2 object.  
+// So, I'm fairly sure this is just a bug.
+// The current fix is to make a global to store the real ID3D11Device and use that when RunFrameActions
+// calls. The correct answer is to split these QueryInterface routines in two, make one for ID3D11Device
+// and one for IDXGIDevice2, and make a callback where the IDXGIDevice2 can know how to Present to the
+// proper object.
+
 STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
 	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
@@ -1522,8 +1904,9 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			case 0:
 			{
 				// Present received.
-				ID3D11Device *device = (ID3D11Device *)this;
-				RunFrameActions(device);
+				// Todo: this cast is wrong. The object is always IDXGIDevice2.
+//				ID3D11Device *device = (ID3D11Device *)this;
+				RunFrameActions(realDevice);
 				break;
 			}
 		}
@@ -1744,6 +2127,9 @@ HRESULT WINAPI D3D11CreateDevice(
 		if (LogFile) fflush(LogFile);
 		return ret;
 	}
+	
+	// Todo: doesn't really belong here
+	realDevice = origDevice;
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if(wrapper == NULL)
@@ -1826,6 +2212,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (LogFile) fflush(LogFile);
 	if (!origDevice || !origContext)
 		return ret;
+
+	// Todo: doesn't really belong here
+	realDevice = origDevice;
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if (wrapper == NULL)

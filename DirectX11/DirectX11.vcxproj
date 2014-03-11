@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\DirectInput.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />

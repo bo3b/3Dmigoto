@@ -17,6 +17,7 @@
     <ClInclude Include="DirectDXGIDevice.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="..\IDirect3DUnknown.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

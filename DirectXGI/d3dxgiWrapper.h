@@ -1,49 +1,6 @@
 #pragma once
 
-#include <D3D11.h>
-
-//
-// Forward declerations
-//
-class IDirect3DUnknown;
-
 extern FILE *LogFile;
-
-class IDirect3DUnknown
-{
-protected:
-    IUnknown*   m_pUnk;
-
-public:
-    ULONG       m_ulRef;
-
-    IDirect3DUnknown(IUnknown* pUnk)
-    {
-        m_pUnk = pUnk;
-        m_ulRef = 1;
-    }
-
-    /*** IUnknown methods ***/
-    STDMETHOD(QueryInterface)(THIS_ REFIID riid, void** ppvObj);
-
-    STDMETHOD_(ULONG,AddRef)(THIS)
-    {
-		++m_ulRef;
-        return m_pUnk->AddRef();
-    }
-
-    STDMETHOD_(ULONG,Release)(THIS)
-    {
-        ULONG ulRef = m_pUnk->Release();
-		--m_ulRef;
-        if (0 == ulRef)
-        {
-            delete this;
-            return 0;
-        }
-        return ulRef;
-    }
-};
 
 class IDXGIAdapter;
 class IDXGIAdapter1;
