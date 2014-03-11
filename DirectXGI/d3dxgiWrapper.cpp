@@ -26,10 +26,16 @@ void InitializeDLL()
 		GetModuleFileName(0, dir, MAX_PATH);
 		wcsrchr(dir, L'\\')[1] = 0;
 		wcscat(dir, L"d3dx.ini");
-		D3D11Wrapper::LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
-		if (D3D11Wrapper::LogFile) D3D11Wrapper::LogFile = fopen("dxgi_log.txt", "w");
+
+		// Switch to unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+		// to open active files.
+		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
+		{
+			D3D11Wrapper::LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
+			setvbuf(D3D11Wrapper::LogFile, NULL, _IONBF, 0);
+		}
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DLL initialized.\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf(val, L"%d", &SCREEN_WIDTH);
@@ -160,7 +166,7 @@ static void InitD311()
     if (hD3D11 == NULL)
     {
         if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "LoadLibrary on dxgi.dll failed\n");
-        if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+        
         return;
     }
 
@@ -240,7 +246,6 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	InitD311();
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CreateDXGIFactory2 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
 	
 	D3D11Base::IDXGIFactory2 *origFactory = 0;
 	if (ppFactory)
@@ -249,25 +254,25 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	if (_CreateDXGIFactory2)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  calling original CreateDXGIFactory2 API\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		ret = (*_CreateDXGIFactory2)(riid, (void **) &origFactory);
 	}
 	else if (_CreateDXGIFactory1)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  calling original CreateDXGIFactory1 API\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		ret = (*_CreateDXGIFactory1)(riid, (void **) &origFactory);
 	}
 	else
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  calling original CreateDXGIFactory API\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		ret = (*_CreateDXGIFactory)(riid, (void **) &origFactory);
 	}
 	if (ret != S_OK)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  failed with HRESULT=%x\n", ret);
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		return ret;
 	}
 	
@@ -275,7 +280,7 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	if(wrapper == NULL)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  error allocating wrapper.\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		origFactory->Release();
 		return E_OUTOFMEMORY;
 	}
@@ -283,7 +288,7 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	if (ppFactory)
 		*ppFactory = wrapper;
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origFactory, wrapper);
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
 	return ret;
 }
 
@@ -295,19 +300,19 @@ HRESULT WINAPI CreateDXGIFactory(const IID *const riid, void **ppFactory)
 	if (_CreateDXGIFactory2)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with riid=50c83a1c-e072-4c48-87b0-3630fa36a6d0\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		IID factory2 = { 0x50c83a1cul, 0xe072, 0x4c48, { 0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0 } };
 		return CreateDXGIFactory2(&factory2, ppFactory);
 	}
 	if (_CreateDXGIFactory1)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
 		return CreateDXGIFactory2(&factory1, ppFactory);
 	}
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with original riid\n");
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
 	return CreateDXGIFactory2(riid, ppFactory);
 }
 
@@ -319,12 +324,12 @@ HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
 	if (_CreateDXGIFactory1)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
 		return CreateDXGIFactory2(&factory1, ppFactory);
 	}
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  routing call to CreateDXGIFactory2 with original riid\n");
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
 	return CreateDXGIFactory2(riid, ppFactory);
 }
 
@@ -414,7 +419,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		if (LogFile) fprintf(LogFile, "  removing unknown interface and returning error.\n");
 	}
 	*/
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -428,7 +433,7 @@ static IUnknown *ReplaceDevice(IUnknown *wrapper)
 	if (wrapper->QueryInterface(marker, (void **) &realDevice) == 0x13bc7e31)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    device found. replacing with original handle = %x\n", realDevice);
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+		
 		return realDevice;
 	}
 	return wrapper;
@@ -451,7 +456,6 @@ static void SendScreenResolution(IUnknown *wrapper, int width, int height)
 	if (wrapper->QueryInterface(marker, (void **) &infoPtr) == 0x13bc7e31)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    notification successful.\n");
-		if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
 	}
 }
 

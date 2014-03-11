@@ -106,7 +106,6 @@ public:
 	{
 		mErrorOccurred = true;
 		if (LogFile) fprintf(LogFile, "    error parsing shader> %s\n", err.c_str());
-		if (LogFile) fflush(LogFile);
 	}
 
 	DataType TranslateType(const char *name)
@@ -2052,7 +2051,7 @@ public:
 			}
 			//if (LogFile && LogDebug) fprintf(LogFile, "parsing statement %s with args %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", statement,
 			//	op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
-			//if (LogFile && LogDebug) fflush(LogFile);
+			//
 
 			if (!strncmp(statement, "vs_", 3) ||
 				!strncmp(statement, "ps_", 3) ||
@@ -3376,7 +3375,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	{
 		// Fatal error, but catch it and mark it as bad.
 		if (LogFile) fprintf(LogFile, "   ******* Exception caught while decompiling shader ******\n");
-		if (LogFile) fflush(LogFile);
+		
 		errorOccurred = true;
 		return string();
 	}

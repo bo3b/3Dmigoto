@@ -24,16 +24,16 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11DeviceContext::AddRef(THIS)
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11DeviceContext::Release(THIS)
 {
 	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	if (LogFile) fflush(LogFile);
+	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile) fflush(LogFile);
+	
 	--m_ulRef;
 
     if (ulRef <= 0)
     {
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
+		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
         delete this;
     }
@@ -54,7 +54,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::GetDevice(THIS_
 	{
 		if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::GetDevice called");
 		if (LogFile) fprintf(LogFile, "  can't find wrapper for parent device. Returning original device handle = %x\n", origDevice);
-		if (LogFile) fflush(LogFile);
+		
 		*ppDevice = (ID3D11Device *)origDevice;
 		return;
 	}
@@ -73,10 +73,10 @@ STDMETHODIMP D3D11Wrapper::ID3D11DeviceContext::GetPrivateData(THIS_
 	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], 
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetD3D11DeviceContext()->GetPrivateData(guid, pDataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x, DataSize = %d\n", hr, *pDataSize);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -92,10 +92,10 @@ STDMETHODIMP D3D11Wrapper::ID3D11DeviceContext::SetPrivateData(THIS_
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], 
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 	if (LogFile) fprintf(LogFile, "  DataSize = %d\n", DataSize);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetD3D11DeviceContext()->SetPrivateData(guid, DataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -108,10 +108,10 @@ STDMETHODIMP D3D11Wrapper::ID3D11DeviceContext::SetPrivateDataInterface(THIS_
 	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], 
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetD3D11DeviceContext()->SetPrivateDataInterface(guid, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -136,7 +136,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
 	if (ppShaderResourceViews && NumViews && LogFile && LogDebug) fprintf(LogFile, "  ShaderResourceView[0] handle = %x\n", *ppShaderResourceViews);	
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	GetD3D11DeviceContext()->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 	
@@ -235,13 +234,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 		if (device && device->mStereoResourceView)
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-			if (LogFile && LogDebug) fflush(LogFile);
+			
 			m_pContext->PSSetShaderResources(125, 1, &device->mStereoResourceView);
 		}
 		else
 		{
 			if (LogFile) fprintf(LogFile, "  error querying device. Can't set NVidia stereo parameter texture.\n");
-			if (LogFile) fflush(LogFile);
 		}
 		device->Release();
 	}
@@ -256,8 +254,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
         UINT NumClassInstances)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShader called with pixelshader handle = %x\n", pPixelShader);
-	if (LogFile && LogDebug) fflush(LogFile);
-
+	
 	bool patchedShader = false;
 	if (pPixelShader)
 	{
@@ -268,7 +265,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		{
 			G->mCurrentPixelShader = i->second;
 			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader found: handle = %x, hash = %08lx%08lx\n", pPixelShader, (UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
-			if (LogFile && LogDebug) fflush(LogFile);
 
 			// Add to visited pixel shaders.
 			G->mVisitedPixelShaders.insert(i->second);
@@ -322,14 +318,14 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 			if (device->mStereoResourceView)
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-				if (LogFile && LogDebug) fflush(LogFile);
+				
 				GetD3D11DeviceContext()->PSSetShaderResources(125, 1, &device->mStereoResourceView);
 			}
 			// Set custom depth texture.
 			if (device->mZBufferResourceView)
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "  adding Z buffer to shader resources in slot 126.\n");
-				if (LogFile && LogDebug) fflush(LogFile);
+				
 				GetD3D11DeviceContext()->PSSetShaderResources(126, 1, &device->mZBufferResourceView);
 			}
 			device->Release();
@@ -337,7 +333,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		else
 		{
 			if (LogFile) fprintf(LogFile, "  error querying device. Can't set NVidia stereo parameter texture.\n");
-			if (LogFile) fflush(LogFile);
 		}
 	}
 }
@@ -389,7 +384,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			(UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer,
 			(UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader,
 			(UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
-		if (LogFile && LogDebug) fflush(LogFile);
+		
 		// Snapshot render target list.
 		if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
 		{
@@ -426,7 +421,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	if (i != G->mShaderSeparationMap.end())
 	{
 		if (LogFile && LogDebug) fprintf(LogFile, "  seperation override found for shader\n");
-		if (LogFile && LogDebug) fflush(LogFile);
+		
 		data.override = true;
 		separationValue = i->second;
 		if (separationValue == 10000)
@@ -438,7 +433,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			std::vector<int>::iterator k = j->second.begin();
 			int currentIteration = *k = *k + 1;
 			if (LogFile && LogDebug) fprintf(LogFile, "  current iteration = %d\n", currentIteration);
-			if (LogFile && LogDebug) fflush(LogFile);
+			
 			data.override = false;
 			while (++k != j->second.end())
 			{
@@ -451,7 +446,6 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			if (!data.override)
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "  override skipped\n");
-				if (LogFile && LogDebug) fflush(LogFile);
 			}
 		}
 		// Check index buffer filter.
@@ -480,17 +474,15 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 		if (device->mStereoHandle)
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "  setting custom separation value\n");
-			if (LogFile && LogDebug) fflush(LogFile);
+			
 			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &data.oldSeparation))
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "    Stereo_GetSeparation failed.\n");
-				if (LogFile && LogDebug) fflush(LogFile);
 			}
 			NvAPIOverride();
 			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "    Stereo_SetSeparation failed.\n");
-				if (LogFile && LogDebug) fflush(LogFile);
 			}
 		}
 		device->Release();
@@ -511,7 +503,6 @@ static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *cont
 			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, data.oldSeparation))
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "    Stereo_SetSeparation failed.\n");
-				if (LogFile && LogDebug) fflush(LogFile);
 			}
 		}
 		device->Release();
@@ -526,7 +517,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
         UINT NumClassInstances)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShader called with vertexshader handle = %x\n", pVertexShader);
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	bool patchedShader = false;
 	if (pVertexShader)
@@ -538,7 +528,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		{
 			G->mCurrentVertexShader = i->second;
 			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader found: handle = %x, hash = %08lx%08lx\n", pVertexShader, (UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader);
-			if (LogFile && LogDebug) fflush(LogFile);
 
 			// Add to visited vertex shaders.
 			G->mVisitedVertexShaders.insert(i->second);
@@ -593,7 +582,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 			if (device->mStereoResourceView)
 			{
 				if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-				if (LogFile && LogDebug) fflush(LogFile);
+				
 				GetD3D11DeviceContext()->VSSetShaderResources(125, 1, &device->mStereoResourceView);
 			}
 			device->Release();
@@ -601,7 +590,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		else
 		{
 			if (LogFile) fprintf(LogFile, "  error querying device. Can't set NVidia stereo parameter texture.\n");
-			if (LogFile) fflush(LogFile);
 		}
 	}
 }
@@ -616,7 +604,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DrawIndexed(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n", 
 		IndexCount, StartIndexLocation, BaseVertexLocation);
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -632,7 +619,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::Draw(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::Draw called with VertexCount = %d, StartVertexLocation = %d\n", 
 		VertexCount, StartVertexLocation);
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -706,7 +692,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::IASetIndexBuffer(THIS_
         __in  UINT Offset)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::IASetIndexBuffer called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	if (pIndexBuffer)
 	{
@@ -717,7 +702,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::IASetIndexBuffer(THIS_
 		{
 			G->mCurrentIndexBuffer = i->second;
 			if (LogFile && LogDebug) fprintf(LogFile, "  index buffer found: handle = %x, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer);
-			if (LogFile && LogDebug) fflush(LogFile);
 
 			// Add to visited index buffers.
 			G->mVisitedIndexBuffers.insert(G->mCurrentIndexBuffer);
@@ -747,7 +731,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DrawIndexedInstanced(THIS
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DrawIndexedInstanced called with IndexCountPerInstance = %d, InstanceCount = %d\n", 
 		IndexCountPerInstance, InstanceCount);
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -768,7 +751,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DrawInstanced(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DrawInstanced called with VertexCountPerInstance = %d, InstanceCount = %d\n", 
 		VertexCountPerInstance, InstanceCount);
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -814,7 +796,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
 	if (ppShaderResourceViews && NumViews && LogFile && LogDebug) fprintf(LogFile, "  ShaderResourceView[0] handle = %x\n", *ppShaderResourceViews);	
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	GetD3D11DeviceContext()->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 		
@@ -913,13 +894,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 		if (device && device->mStereoResourceView)
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-			if (LogFile && LogDebug) fflush(LogFile);
+			
 			m_pContext->VSSetShaderResources(125, 1, &device->mStereoResourceView);
 		}
 		else
 		{
 			if (LogFile) fprintf(LogFile, "  error querying device. Can't set NVidia stereo parameter texture.\n");
-			if (LogFile) fflush(LogFile);
 		}
 		device->Release();
 	}
@@ -949,7 +929,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::End(THIS_
         __in  D3D11Base::ID3D11Asynchronous *pAsync)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::End called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	GetD3D11DeviceContext()->End(pAsync);
 }
         
@@ -1006,7 +986,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
         __in_opt D3D11Base::ID3D11DepthStencilView *pDepthStencilView)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::OMSetRenderTargets called with NumViews = %d\n", NumViews);
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mCurrentRenderTargets.clear();
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1116,7 +1096,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargetsAndUnor
         __in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
 	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
-	if (LogFile) fflush(LogFile);
+	
 	GetD3D11DeviceContext()->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
 		UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
@@ -1150,14 +1130,13 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::SOSetTargets(THIS_
         __in_ecount_opt(NumBuffers)  const UINT *pOffsets)
 {
 	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::SOSetTargets called with NumBuffers = %d\n", NumBuffers);
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	GetD3D11DeviceContext()->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DrawAuto(THIS)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DrawAuto called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -1172,7 +1151,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DrawIndexedInstancedIndir
         __in  UINT AlignedByteOffsetForArgs)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DrawIndexedInstancedIndirect called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -1187,7 +1165,6 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DrawInstancedIndirect(THI
         __in  UINT AlignedByteOffsetForArgs)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DrawInstancedIndirect called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	DrawContext c = BeforeDraw(this);
 	if (!c.skip)
@@ -1308,11 +1285,10 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%x, color=[%f,%f,%f,%f]\n", pRenderTargetView, 
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
-	if (LogFile && LogDebug) fflush(LogFile);
 
 	// Update stereo parameter texture.
 	if (LogFile && LogDebug) fprintf(LogFile, "  updating stereo parameter texture.\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	ID3D11Device *device;
 	GetDevice(&device);
 
@@ -1435,7 +1411,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::HSSetShader(THIS_
         UINT NumClassInstances) 
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::HSSetShader called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	GetD3D11DeviceContext()->HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
 }
         
@@ -1480,7 +1456,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::DSSetShader(THIS_
         UINT NumClassInstances) 
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::DSSetShader called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	GetD3D11DeviceContext()->DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
 }
         
@@ -1538,7 +1514,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::CSSetShader(THIS_
         UINT NumClassInstances) 
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::CSSetShader called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	GetD3D11DeviceContext()->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
 }
         

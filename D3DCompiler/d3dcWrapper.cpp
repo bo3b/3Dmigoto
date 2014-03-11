@@ -23,7 +23,7 @@ void InitializeDLL()
 		D3DWrapper::LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
 		if (D3DWrapper::LogFile) D3DWrapper::LogFile = fopen("D3DCompiler_" COMPILER_DLL_VERSION "_log.txt", "w");
 		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "DLL initialized.\n");
-		if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+		
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Rendering", L"storage_directory", 0, SHADER_PATH, MAX_PATH, dir);
 		if (SHADER_PATH[0])
@@ -288,7 +288,7 @@ static void InitC46()
     if (!hC46)
     {
         if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "LoadLibrary on D3DCompiler_" COMPILER_DLL_VERSION "_org.dll failed\n");
-        if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+        
         return;
     }
 	GetModuleFileName(0, sysDir, MAX_PATH);
@@ -298,7 +298,7 @@ static void InitC46()
     if (!hD3D11)
     {
         if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "LoadLibrary on d3d11.dll wrapper failed\n");
-        if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+        
     }
 
 	// d3d11 bridge
@@ -355,7 +355,7 @@ HRESULT WINAPI D3DAssemble(LPCVOID data, SIZE_T datasize, LPCSTR filename,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DAssemble called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DAssemble)(data, datasize, filename, defines, include, flags, shader, error_messages);
 }
 HRESULT WINAPI D3DDisassemble11Trace(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -368,7 +368,7 @@ HRESULT WINAPI D3DDisassemble11Trace(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcD
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDisassemble11Trace called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DDisassemble11Trace)(pSrcData, SrcDataSize, pTrace, StartStep, NumSteps, Flags, ppDisassembly);
 }
 HRESULT WINAPI D3DReadFileToBlob(_In_ LPCWSTR pFileName,
@@ -376,7 +376,7 @@ HRESULT WINAPI D3DReadFileToBlob(_In_ LPCWSTR pFileName,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DReadFileToBlob called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DReadFileToBlob)(pFileName, ppContents);
 }
 HRESULT WINAPI D3DWriteBlobToFile(_In_ ID3DBlob* pBlob,
@@ -385,7 +385,7 @@ HRESULT WINAPI D3DWriteBlobToFile(_In_ ID3DBlob* pBlob,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DWriteBlobToFile called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DWriteBlobToFile)(pBlob, pFileName, bOverwrite);
 }
 HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -410,7 +410,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 		fprintf(D3DWrapper::LogFile, "  Entrypoint = %s\n", pEntrypoint);
 		fprintf(D3DWrapper::LogFile, "  Target = %s\n", pTarget);
 		fprintf(D3DWrapper::LogFile, "  ppErrorMsgs = %x\n", ppErrorMsgs);
-		fflush(D3DWrapper::LogFile);
+		
 	}
 
 	// Compile original shader.
@@ -431,7 +431,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 		sprintf(shaderName, "%08lx%08lx-%s_%08lx%08lx.txt", (UINT32)(binaryHash >> 32), (UINT32)binaryHash, pTarget, (UINT32)(sourceHash >> 32), (UINT32)sourceHash);
 		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "    Filename = %s\n", shaderName);
 		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "    Compiled bytecode size = %d, bytecode handle = %x\n", (*ppCode)->GetBufferSize(), (*ppCode)->GetBufferPointer());
-		if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+		
 		if (SHADER_PATH[0])
 		{
 			wchar_t val[MAX_PATH], entrypoint[MAX_PATH], target[MAX_PATH];
@@ -463,7 +463,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 						char path[MAX_PATH];
 						wcstombs(path, val, MAX_PATH);
 						fprintf(D3DWrapper::LogFile, "    Replacement shader found. Loading replacement HLSL code from file \"%s\".\n", path);
-						fflush(D3DWrapper::LogFile);
+						
 					}
 					if (f)
 					{
@@ -474,7 +474,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 						fread((void *) pSrcData, 1, SrcDataSize, f);
 						fclose(f);
 						if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "    Source code loaded. Size = %d\n", SrcDataSize);
-						if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+						
 
 						// Compile replacement.
 						if (*ppErrorMsgs) (*ppErrorMsgs)->Release();
@@ -498,7 +498,6 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 			fprintf(D3DWrapper::LogFile, "--------------------------------------------- BEGIN ---------------------------------------------\n");
 			fwrite(errMsg, 1, errSize, D3DWrapper::LogFile);
 			fprintf(D3DWrapper::LogFile, "\n---------------------------------------------- END ----------------------------------------------\n");
-			fflush(D3DWrapper::LogFile);
 		}
 	}
 	if (errorBlob) errorBlob->Release();
@@ -513,7 +512,6 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 		if (D3DWrapper::LogFile && success != 0xaa77125b)
 		{
 			fprintf(D3DWrapper::LogFile, "    sending code hash to d3d11.dll wrapper failed\n");
-			fflush(D3DWrapper::LogFile);
 		}
 	}
 	return ret;
@@ -535,7 +533,7 @@ HRESULT WINAPI D3DCompile2(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DCompile2 called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DCompile2)(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint,
 		pTarget, Flags1, Flags2, SecondaryDataFlags, pSecondaryData, SecondaryDataSize, ppCode, ppErrorMsgs);
 }
@@ -551,7 +549,7 @@ HRESULT WINAPI D3DCompileFromFile(_In_ LPCWSTR pFileName,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DCompileFromFile called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DCompileFromFile)(pFileName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2,
 		ppCode, ppErrorMsgs);
 }
@@ -565,7 +563,7 @@ HRESULT WINAPI D3DPreprocess(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DPreprocess called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DPreprocess)(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, ppCodeText, ppErrorMsgs);
 }
 HRESULT WINAPI D3DGetDebugInfo(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -582,7 +580,7 @@ HRESULT WINAPI D3DReflect(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 {
 	InitC46();
 	//if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DReflect called\n"); 
-	//if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	//
 	return (*_D3DReflect)(pSrcData, SrcDataSize, pInterface, ppReflector);
 }
 HRESULT WINAPI D3DDisassemble(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -593,7 +591,7 @@ HRESULT WINAPI D3DDisassemble(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 {
 	InitC46();
 	//if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDisassemble called\n"); 
-	//if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	//
 	return (*_D3DDisassemble)(pSrcData, SrcDataSize, Flags, szComments, ppDisassembly);
 }
 HRESULT WINAPI D3DDisassembleRegion(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -607,7 +605,7 @@ HRESULT WINAPI D3DDisassembleRegion(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcDa
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDisassembleRegion called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DDisassembleRegion)(pSrcData, SrcDataSize, Flags, szComments, StartByteOffset,
 		NumInsts, pFinishByteOffset, ppDisassembly);
 }
@@ -617,7 +615,7 @@ HRESULT WINAPI D3DDisassemble10Effect(_In_ interface ID3D10Effect *pEffect,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDisassemble10Effect called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DDisassemble10Effect)(pEffect, Flags, ppDisassembly);
 }
 HRESULT WINAPI D3DGetTraceInstructionOffsets(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -630,7 +628,7 @@ HRESULT WINAPI D3DGetTraceInstructionOffsets(_In_reads_bytes_(SrcDataSize) LPCVO
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DGetTraceInstructionOffsets called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DGetTraceInstructionOffsets)(pSrcData, SrcDataSize, Flags, StartInstIndex, NumInsts,
 		pOffsets, pTotalInsts);
 }
@@ -640,7 +638,7 @@ HRESULT WINAPI D3DGetInputSignatureBlob(_In_reads_bytes_(SrcDataSize) LPCVOID pS
 {
 	InitC46();
 	//if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DGetInputSignatureBlob called\n"); 
-	//if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	//
 	return (*_D3DGetInputSignatureBlob)(pSrcData, SrcDataSize, ppSignatureBlob);
 }
 HRESULT WINAPI D3DGetOutputSignatureBlob(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -649,7 +647,7 @@ HRESULT WINAPI D3DGetOutputSignatureBlob(_In_reads_bytes_(SrcDataSize) LPCVOID p
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DGetOutputSignatureBlob called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DGetOutputSignatureBlob)(pSrcData, SrcDataSize, ppSignatureBlob);
 }
 HRESULT WINAPI D3DGetInputAndOutputSignatureBlob(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -658,7 +656,7 @@ HRESULT WINAPI D3DGetInputAndOutputSignatureBlob(_In_reads_bytes_(SrcDataSize) L
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DGetInputAndOutputSignatureBlob called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DGetInputAndOutputSignatureBlob)(pSrcData, SrcDataSize, ppSignatureBlob);
 }
 HRESULT WINAPI D3DStripShader(_In_reads_bytes_(BytecodeLength) LPCVOID pShaderBytecode,
@@ -668,7 +666,7 @@ HRESULT WINAPI D3DStripShader(_In_reads_bytes_(BytecodeLength) LPCVOID pShaderBy
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DStripShader called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DStripShader)(pShaderBytecode, BytecodeLength, uStripFlags, ppStrippedBlob);
 }
 HRESULT WINAPI D3DGetBlobPart(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -679,7 +677,7 @@ HRESULT WINAPI D3DGetBlobPart(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DGetBlobPart called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DGetBlobPart)(pSrcData, SrcDataSize, Part, Flags, ppPart);
 }
 HRESULT WINAPI D3DSetBlobPart(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -692,7 +690,7 @@ HRESULT WINAPI D3DSetBlobPart(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DSetBlobPart called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DSetBlobPart)(pSrcData, SrcDataSize, Part, Flags, pPart, PartSize, ppNewShader);
 }
 HRESULT WINAPI D3DCompressShaders(_In_ UINT uNumShaders,
@@ -702,7 +700,7 @@ HRESULT WINAPI D3DCompressShaders(_In_ UINT uNumShaders,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DCompressShaders called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DCompressShaders)(uNumShaders, pShaderData, uFlags, ppCompressedData);
 }
 HRESULT WINAPI D3DDecompressShaders(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -716,7 +714,7 @@ HRESULT WINAPI D3DDecompressShaders(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcDa
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDecompressShaders called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DDecompressShaders)(pSrcData, SrcDataSize, uNumShaders, uStartIndex, pIndices,
 		uFlags, ppShaders, pTotalShaders);
 }
@@ -725,7 +723,7 @@ HRESULT WINAPI D3DCreateBlob(_In_ SIZE_T Size,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DCreateBlob called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DCreateBlob)(Size, ppBlob);
 }
 
@@ -743,7 +741,7 @@ HRESULT WINAPI D3DCompileFromMemory(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcDa
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DCompileFromMemory called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DCompileFromMemory)(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude,
 		pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
 }
@@ -755,7 +753,7 @@ HRESULT WINAPI D3DDisassembleCode(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDisassembleCode called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DDisassembleCode)(pSrcData, SrcDataSize, Flags, context, ppDisassembly);
 }
 HRESULT WINAPI D3DDisassembleEffect(_In_ interface ID3D10Effect *pEffect, 
@@ -764,7 +762,7 @@ HRESULT WINAPI D3DDisassembleEffect(_In_ interface ID3D10Effect *pEffect,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DDisassembleEffect called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DDisassembleEffect)(pEffect, Flags, ppDisassembly);
 }
 HRESULT WINAPI D3DGetCodeDebugInfo(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -773,7 +771,7 @@ HRESULT WINAPI D3DGetCodeDebugInfo(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcDat
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DGetCodeDebugInfo called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DGetCodeDebugInfo)(pSrcData, SrcDataSize, ppDebugInfo);
 }
 HRESULT WINAPI D3DPreprocessFromMemory(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
@@ -786,7 +784,7 @@ HRESULT WINAPI D3DPreprocessFromMemory(_In_reads_bytes_(SrcDataSize) LPCVOID pSr
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DPreprocessFromMemory called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DPreprocessFromMemory)(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude,
 		ppCodeText, ppErrorMsgs);
 }
@@ -797,6 +795,6 @@ HRESULT WINAPI D3DReflectCode(GUID *interfaceId,
 {
 	InitC46();
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "D3DReflectCode called\n"); 
-	if (D3DWrapper::LogFile) fflush(D3DWrapper::LogFile);
+	
 	return (*_D3DReflectCode)(interfaceId, unknown, pSrcData, SrcDataSize);
 }

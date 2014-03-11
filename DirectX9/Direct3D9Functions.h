@@ -24,18 +24,18 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9Base::AddRef(THIS)
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9Base::Release(THIS)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D9Device::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	if (LogFile && LogDebug) fflush(LogFile);
-    ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
+
+	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	--m_ulRef;
 
     if (ulRef == 0)
     {
 		if (LogFile && !LogDebug) fprintf(LogFile, "ID3D9Device::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); 
+
+		if (m_pUnk) m_List.DeleteMember(m_pUnk); 
 		m_pUnk = 0;
         delete this;
         return 0L;
@@ -46,29 +46,28 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9Base::Release(THIS)
 STDMETHODIMP D3D9Wrapper::IDirect3D9Base::RegisterSoftwareDevice(THIS_ void* pInitializeFunction)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::RegisterSoftwareDevice called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return ((IDirect3D9*)m_pUnk)->RegisterSoftwareDevice(pInitializeFunction);
 }
 
 STDMETHODIMP_(UINT) D3D9Wrapper::IDirect3D9::GetAdapterCount(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterCount called\n");
-	if (LogFile) fflush(LogFile);
+	
 	UINT ret = GetDirect3D9()->GetAdapterCount();
 	if (LogFile) fprintf(LogFile, "  return value = %d\n", ret);
-	if (LogFile) fflush(LogFile);
+	
 	return ret;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterIdentifier(THIS_ UINT Adapter,DWORD Flags,D3D9Base::D3DADAPTER_IDENTIFIER9* pIdentifier)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterIdentifier called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT ret = GetDirect3D9()->GetAdapterIdentifier(Adapter, Flags, pIdentifier);
 	if (ret == S_OK && LogFile)
 	{
 		fprintf(LogFile, "  returns driver=%s, description=%s, GDI=%s\n", pIdentifier->Driver, pIdentifier->Description, pIdentifier->DeviceName);
-		fflush(LogFile);
 	}
 	return ret;
 }
@@ -76,39 +75,39 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterIdentifier(THIS_ UINT Adapter,DW
 STDMETHODIMP_(UINT) D3D9Wrapper::IDirect3D9::GetAdapterModeCount(THIS_ UINT Adapter,D3D9Base::D3DFORMAT Format)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterModeCount called\n");
-	if (LogFile) fflush(LogFile);
+	
 	UINT ret = GetDirect3D9()->GetAdapterModeCount(Adapter, Format);
 	if (LogFile) fprintf(LogFile, "  return value = %d\n", ret);
-	if (LogFile) fflush(LogFile);
+	
 	return ret;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::EnumAdapterModes(THIS_ UINT Adapter,D3D9Base::D3DFORMAT Format,UINT Mode,D3D9Base::D3DDISPLAYMODE* pMode)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::EnumAdapterModes called: adapter #%d requested with mode #%d\n", Adapter, Mode);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetDirect3D9()->EnumAdapterModes(Adapter, Format, Mode, pMode);
 	if (hr == S_OK)
 	{
 		if (LogFile) fprintf(LogFile, "  driver returned width=%d, height=%d, refresh rate=%d\n", pMode->Width, pMode->Height, pMode->RefreshRate);
-		if (LogFile) fflush(LogFile);
+	
 		/*
 		if (SCREEN_REFRESH >= 0 && pMode->RefreshRate != SCREEN_REFRESH) 
 		{
 			if (LogFile) fprintf(LogFile, "  video mode ignored because of mismatched refresh rate.\n");
-			if (LogFile) fflush(LogFile);
+
 			pMode->Width = pMode->Height = 0;
 		}
 		else if (SCREEN_WIDTH >= 0 && pMode->Width != SCREEN_WIDTH) 
 		{
 			if (LogFile) fprintf(LogFile, "  video mode ignored because of mismatched screen width.\n");
-			if (LogFile) fflush(LogFile);
+
 			pMode->Width = pMode->Height = 0;
 		}
 		else if (SCREEN_HEIGHT >= 0 && pMode->Height != SCREEN_HEIGHT) 
 		{
 			if (LogFile) fprintf(LogFile, "  video mode ignored because of mismatched screen height.\n");
-			if (LogFile) fflush(LogFile);
+
 			pMode->Width = pMode->Height = 0;
 		}
 		*/
@@ -119,7 +118,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::EnumAdapterModes(THIS_ UINT Adapter,D3D9Ba
 STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterDisplayMode(THIS_ UINT Adapter,D3D9Base::D3DDISPLAYMODE* pMode)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterDisplayMode called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetDirect3D9()->GetAdapterDisplayMode(Adapter, pMode);
 	if (hr == S_OK && pMode)
 	{
@@ -139,12 +138,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterDisplayMode(THIS_ UINT Adapter,D
 			pMode->RefreshRate = SCREEN_REFRESH;
 		}
 		if (LogFile) fprintf(LogFile, "  returns result=%x, width=%d, height=%d, refresh rate=%d\n", hr, pMode->Width, pMode->Height, pMode->RefreshRate);
-		if (LogFile) fflush(LogFile);
 	}
 	else if (LogFile)
 	{
 		if (LogFile) fprintf(LogFile, "  returns result=%x\n", hr);
-		if (LogFile) fflush(LogFile);
 	}
 	return hr;
 }
@@ -152,7 +149,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterDisplayMode(THIS_ UINT Adapter,D
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceType(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DevType,D3D9Base::D3DFORMAT AdapterFormat,D3D9Base::D3DFORMAT BackBufferFormat,BOOL bWindowed)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CheckDeviceType called with adapter=%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	HRESULT hr = GetDirect3D9()->CheckDeviceType(Adapter, DevType, AdapterFormat, BackBufferFormat, bWindowed);
 	return hr;
 }
@@ -160,7 +157,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceType(THIS_ UINT Adapter,D3D9Bas
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceFormat(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,D3D9Base::D3DFORMAT AdapterFormat,DWORD Usage,D3D9Base::D3DRESOURCETYPE RType,D3D9Base::D3DFORMAT CheckFormat)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CheckDeviceFormat called with adapter=%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	HRESULT hr = GetDirect3D9()->CheckDeviceFormat(Adapter, DeviceType, AdapterFormat, Usage, RType, CheckFormat);
 	return hr;
 }
@@ -168,14 +165,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceFormat(THIS_ UINT Adapter,D3D9B
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceMultiSampleType(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,D3D9Base::D3DFORMAT SurfaceFormat,BOOL Windowed,D3D9Base::D3DMULTISAMPLE_TYPE MultiSampleType,DWORD* pQualityLevels)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CheckDeviceMultiSampleType called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	return GetDirect3D9()->CheckDeviceMultiSampleType(Adapter, DeviceType, SurfaceFormat, Windowed, MultiSampleType, pQualityLevels);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDepthStencilMatch(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,D3D9Base::D3DFORMAT AdapterFormat,D3D9Base::D3DFORMAT RenderTargetFormat,D3D9Base::D3DFORMAT DepthStencilFormat)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CheckDepthStencilMatch called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	HRESULT hr = GetDirect3D9()->CheckDepthStencilMatch(Adapter, DeviceType, AdapterFormat, RenderTargetFormat, DepthStencilFormat);
 	return hr;
 }
@@ -183,7 +180,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDepthStencilMatch(THIS_ UINT Adapter,
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceFormatConversion(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,D3D9Base::D3DFORMAT SourceFormat,D3D9Base::D3DFORMAT TargetFormat)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CheckDeviceFormatConversion called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	HRESULT hr = GetDirect3D9()->CheckDeviceFormatConversion(Adapter, DeviceType, SourceFormat, TargetFormat);
 	return hr;
 }
@@ -191,17 +188,17 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CheckDeviceFormatConversion(THIS_ UINT Ada
 STDMETHODIMP D3D9Wrapper::IDirect3D9::GetDeviceCaps(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,D3D9Base::D3DCAPS9* pCaps)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetDeviceCaps called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	HRESULT hr = GetDirect3D9()->GetDeviceCaps(Adapter, DeviceType, pCaps);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+
 	return hr;
 }
 
 STDMETHODIMP_(HMONITOR) D3D9Wrapper::IDirect3D9::GetAdapterMonitor(THIS_ UINT Adapter)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterMonitor called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	return GetDirect3D9()->GetAdapterMonitor(Adapter);
 }
 
@@ -215,6 +212,7 @@ DWORD WINAPI DeviceCreateThread(LPVOID lpParam)
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,HWND hFocusWindow,DWORD BehaviorFlags,D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters,D3D9Base::D3DDISPLAYMODEEX* pFullscreenDisplayMode,D3D9Wrapper::IDirect3DDevice9** ppReturnedDeviceInterface)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CreateDevice called with parameters FocusWindow = %x\n", hFocusWindow);
+
 	if (pPresentationParameters)
 	{
 		if (LogFile) fprintf(LogFile, "  BackBufferWidth = %d\n", pPresentationParameters->BackBufferWidth);
@@ -237,54 +235,53 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base
 		if (LogFile) fprintf(LogFile, "  FullscreenRefreshRate = %d\n", pFullscreenDisplayMode->RefreshRate);
 		if (LogFile) fprintf(LogFile, "  ScanLineOrdering = %d\n", pFullscreenDisplayMode->ScanLineOrdering);
 	}
-	if (LogFile) fflush(LogFile);
 
 	if (pPresentationParameters && SCREEN_REFRESH >= 0) 
 	{
 		if (LogFile) fprintf(LogFile, "    overriding refresh rate = %d\n", SCREEN_REFRESH);
-		if (LogFile) fflush(LogFile);
+
 		pPresentationParameters->FullScreen_RefreshRateInHz = SCREEN_REFRESH;
 	}
 	if (pFullscreenDisplayMode && SCREEN_REFRESH >= 0) 
 	{
 		if (LogFile) fprintf(LogFile, "    overriding full screen refresh rate = %d\n", SCREEN_REFRESH);
-		if (LogFile) fflush(LogFile);
+
 		pFullscreenDisplayMode->RefreshRate = SCREEN_REFRESH;
 	}
 	if (pPresentationParameters && SCREEN_WIDTH >= 0) 
 	{
 		if (LogFile) fprintf(LogFile, "    overriding width = %d\n", SCREEN_WIDTH);
-		if (LogFile) fflush(LogFile);
+
 		pPresentationParameters->BackBufferWidth = SCREEN_WIDTH;
 	}
 	if (pFullscreenDisplayMode && SCREEN_WIDTH >= 0) 
 	{
 		if (LogFile) fprintf(LogFile, "    overriding full screen width = %d\n", SCREEN_WIDTH);
-		if (LogFile) fflush(LogFile);
+
 		pFullscreenDisplayMode->Width = SCREEN_WIDTH;
 	}
 	if (pPresentationParameters && SCREEN_HEIGHT >= 0) 
 	{
 		if (LogFile) fprintf(LogFile, "    overriding height = %d\n", SCREEN_HEIGHT);
-		if (LogFile) fflush(LogFile);
+
 		pPresentationParameters->BackBufferHeight = SCREEN_HEIGHT;
 	}
 	if (pFullscreenDisplayMode && SCREEN_HEIGHT >= 0) 
 	{
 		if (LogFile) fprintf(LogFile, "    overriding full screen height = %d\n", SCREEN_HEIGHT);
-		if (LogFile) fflush(LogFile);
+
 		pFullscreenDisplayMode->Height = SCREEN_HEIGHT;
 	}
 	D3D9Base::D3DDISPLAYMODEEX fullScreenDisplayMode;
 	if (pPresentationParameters && SCREEN_FULLSCREEN >= 0 && SCREEN_FULLSCREEN < 2)
 	{
 		if (LogFile) fprintf(LogFile, "    overriding full screen = %d\n", SCREEN_FULLSCREEN);
-		if (LogFile) fflush(LogFile);
+
 		pPresentationParameters->Windowed = !SCREEN_FULLSCREEN;
 		if (SCREEN_FULLSCREEN && !pFullscreenDisplayMode)
 		{
 			if (LogFile) fprintf(LogFile, "    creating full screen parameter structure.\n");
-			if (LogFile) fflush(LogFile);
+
 			fullScreenDisplayMode.Size = sizeof(D3D9Base::D3DDISPLAYMODEEX);
 			fullScreenDisplayMode.Format = pPresentationParameters->BackBufferFormat;
 			fullScreenDisplayMode.Height = pPresentationParameters->BackBufferHeight;
@@ -337,7 +334,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+
 			if (ppReturnedDeviceInterface) *ppReturnedDeviceInterface = NULL;
 			return hr;
 		}
@@ -345,14 +342,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base
 	else
 	{
 		if (LogFile) fprintf(LogFile, "  postponing device creation and returning only wrapper\n");
-		if (LogFile) fflush(LogFile);
 	}
 
 	D3D9Wrapper::IDirect3DDevice9* newDevice = D3D9Wrapper::IDirect3DDevice9::GetDirect3DDevice(baseDevice);
 	if (newDevice == NULL)
 	{
 		if (LogFile) fprintf(LogFile, "  error creating IDirect3DDevice9 wrapper.\n");
-		if (LogFile) fflush(LogFile);
+
 		if (baseDevice) 
 			baseDevice->Release();
 		return E_OUTOFMEMORY;
@@ -371,7 +367,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base
 	}
 	
 	if (LogFile) fprintf(LogFile, "  returns result=%x, handle=%x, wrapper=%x\n", hr, baseDevice, newDevice);
-	if (LogFile) fflush(LogFile);
+
 	if (ppReturnedDeviceInterface) *ppReturnedDeviceInterface = newDevice;
 	return hr;
 }
@@ -380,7 +376,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDevice(THIS_ UINT Adapter,D3D9Base::
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::CreateDevice called: adapter #%d\n", Adapter);
 	if (LogFile) fprintf(LogFile, "  forwarding to CreateDeviceEx.\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Base::D3DDISPLAYMODEEX fullScreenDisplayMode;
 	fullScreenDisplayMode.Size = sizeof(D3D9Base::D3DDISPLAYMODEEX);
 	if (pPresentationParameters)
@@ -400,27 +396,27 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDevice(THIS_ UINT Adapter,D3D9Base::
 STDMETHODIMP_(UINT) D3D9Wrapper::IDirect3D9::GetAdapterModeCountEx(THIS_ UINT Adapter,CONST D3D9Base::D3DDISPLAYMODEFILTER* pFilter )
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterModeCountEx called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	return GetDirect3D9()->GetAdapterModeCountEx(Adapter, pFilter);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::EnumAdapterModesEx(THIS_ UINT Adapter,CONST D3D9Base::D3DDISPLAYMODEFILTER* pFilter,UINT Mode,D3D9Base::D3DDISPLAYMODEEX* pMode)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::EnumAdapterModesEx called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	return GetDirect3D9()->EnumAdapterModesEx(Adapter, pFilter, Mode, pMode);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterDisplayModeEx(THIS_ UINT Adapter,D3D9Base::D3DDISPLAYMODEEX* pMode,D3D9Base::D3DDISPLAYROTATION* pRotation)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterDisplayModeEx called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	return GetDirect3D9()->GetAdapterDisplayModeEx(Adapter, pMode, pRotation);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::GetAdapterLUID(THIS_ UINT Adapter,LUID * pLUID)
 {
 	if (LogFile) fprintf(LogFile, "IDirect3D9::GetAdapterLUID called: adapter #%d\n", Adapter);
-	if (LogFile) fflush(LogFile);
+
 	return GetDirect3D9()->GetAdapterLUID(Adapter, pLUID);
 }

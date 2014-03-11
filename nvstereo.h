@@ -164,7 +164,6 @@ namespace nv
 				if (ret != S_OK)
 				{
 					if (LogFile) fprintf(LogFile, "    error during creation of stereo staging texture. result = %x.\n", ret);
-					if (LogFile) fflush(LogFile);
 				}
                 delete sysData.pSysMem;
                 return staging;
@@ -250,7 +249,7 @@ namespace nv
                 if (updateRequired) {
 					if (LogFile) fprintf(LogFile, "  updating stereo texture with eyeSeparation = %e, separation = %e, convergence = %e, active = %d\n",
 						eyeSep, sep, conv, active?1:0);
-					if (LogFile) fflush(LogFile);
+					
                     mEyeSeparation = eyeSep;
                     mSeparation = sep;
                     mConvergence = conv;

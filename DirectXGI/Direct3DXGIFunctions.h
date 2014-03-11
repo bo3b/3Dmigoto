@@ -54,15 +54,15 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIFactory::Release(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
 	//if (LogFile) fprintf(LogFile, "  ignoring call\n");
-	if (LogFile) fflush(LogFile);
+	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile) fflush(LogFile);
+	
 	--m_ulRef;
     if (ulRef == 0)
     {
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
+		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
         delete this;
         return 0L;
@@ -77,7 +77,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::EnumAdapters(THIS_
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::EnumAdapters adapter %d requested\n", Adapter);
 	if (LogFile) fprintf(LogFile, "  routing call to IDXGIFactory1::EnumAdapters1\n");
-	if (LogFile) fflush(LogFile);
+	
 
 	D3D11Wrapper::IDXGIFactory1 *factory1 = (D3D11Wrapper::IDXGIFactory1*)this;
 	return factory1->EnumAdapters1(Adapter, ppAdapter);
@@ -114,17 +114,17 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::MakeWindowAssociation(THIS_
 		if (Flags & DXGI_MWA_NO_ALT_ENTER) fprintf(LogFile, " DXGI_MWA_NO_ALT_ENTER");
 		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) fprintf(LogFile, " DXGI_MWA_NO_PRINT_SCREEN");
 		if (Flags) fprintf(LogFile, "\n");
-		fflush(LogFile);
 	}
+
 	if (gAllowWindowCommands && Flags)
 	{
 		if (LogFile) fprintf(LogFile, "  overriding Flags to allow all window commands\n");
-		if (LogFile) fflush(LogFile);
+		
 		Flags = 0;
 	}
 	HRESULT hr = m_pFactory->MakeWindowAssociation(WindowHandle, Flags);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -133,7 +133,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetWindowAssociation(THIS_
             __out  HWND *pWindowHandle)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::GetWindowAssociation called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return m_pFactory->GetWindowAssociation(pWindowHandle);
 }
         
@@ -152,7 +152,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	if (pDesc && LogFile) fprintf(LogFile, "  Height = %d\n", pDesc->BufferDesc.Height);
 	if (pDesc && LogFile) fprintf(LogFile, "  Refresh rate = %f\n", 
 		(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
-	if (LogFile) fflush(LogFile);
 
 	if (pDesc && SCREEN_REFRESH >= 0)
 	{
@@ -176,7 +175,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	}
 
 	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -203,7 +202,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	if (pFullscreenDesc && LogFile) fprintf(LogFile, "  Refresh rate = %f\n", 
 		(float) pFullscreenDesc->RefreshRate.Numerator / (float) pFullscreenDesc->RefreshRate.Denominator);
 	if (pFullscreenDesc && LogFile) fprintf(LogFile, "  Windowed = %d\n", pFullscreenDesc->Windowed);
-	if (LogFile) fflush(LogFile);
 
 	if (pFullscreenDesc && SCREEN_REFRESH >= 0)
 	{
@@ -229,7 +227,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	}
 
 	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -250,7 +248,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d\n", pDesc->Width);
 	if (pDesc && LogFile) fprintf(LogFile, "  Height = %d\n", pDesc->Height);
 	if (pDesc && LogFile) fprintf(LogFile, "  Stereo = %d\n", pDesc->Stereo);
-	if (LogFile) fflush(LogFile);
 
 	if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
 	if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
@@ -270,7 +267,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	}
 
 	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -289,7 +286,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
 	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d\n", pDesc->Width);
 	if (pDesc && LogFile) fprintf(LogFile, "  Height = %d\n", pDesc->Height);
 	if (pDesc && LogFile) fprintf(LogFile, "  Stereo = %d\n", pDesc->Stereo);
-	if (LogFile) fflush(LogFile);
 
 	if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
 	if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
@@ -309,7 +305,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
 	}
 
 	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -319,7 +315,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSoftwareAdapter(THIS_
             __out  D3D11Base::IDXGIAdapter **ppAdapter)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::CreateSoftwareAdapter called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return m_pFactory->CreateSoftwareAdapter(Module, ppAdapter);
 }
 
@@ -329,7 +325,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory1::EnumAdapters1(THIS_
         __out  IDXGIAdapter1 **ppAdapter)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory1::EnumAdapters1 called: adapter #%d requested\n", Adapter);
-	if (LogFile) fflush(LogFile);
+	
 	D3D11Base::IDXGIAdapter1 *origAdapter;
 	HRESULT ret = GetFactory1()->EnumAdapters1(Adapter, &origAdapter);
 
@@ -383,14 +379,14 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory1::EnumAdapters1(THIS_
 		*ppAdapter = D3D11Wrapper::IDXGIAdapter1::GetDirectAdapter(origAdapter);
 	}
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origAdapter, *ppAdapter);
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
 	return ret;
 }
    
 STDMETHODIMP_(BOOL) D3D11Wrapper::IDXGIFactory1::IsCurrent(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory1::IsCurrent called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetFactory1()->IsCurrent();
 }
 
@@ -405,10 +401,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::SetPrivateData(THIS_
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	if (LogFile) fprintf(LogFile, "  DataSize = %d\n", DataSize);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetFactory()->SetPrivateData(Name, DataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -421,10 +417,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::SetPrivateDataInterface(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetFactory()->SetPrivateDataInterface(Name, pUnknown);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -439,10 +435,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetPrivateData(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetFactory()->GetPrivateData(Name, pDataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -454,10 +450,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetParent(THIS_
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetFactory()->GetParent(riid, ppParent);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -582,7 +578,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter1::GetDesc1(THIS_
             __out  D3D11Base::DXGI_ADAPTER_DESC1 *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter1::GetDesc1 called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetAdapter()->GetDesc1(pDesc);
 	if (LogFile)
 	{
@@ -592,7 +588,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter1::GetDesc1(THIS_
 			wcstombs(s, pDesc->Description, MAX_PATH);
 			fprintf(LogFile, "  returns adapter: %s, sysmem=%d, vidmem=%d, flags=%x\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory, pDesc->Flags);
 		}
-		fflush(LogFile);
 	}
 	return hr;
 }
@@ -600,7 +595,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter1::GetDesc1(THIS_
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIAdapter::AddRef(THIS)
 {
 //	if (LogFile) fprintf(LogFile, "IDXGIAdapter::AddRef called\n");
-//	if (LogFile) fflush(LogFile);
+//	
 	++m_ulRef;
 	return m_pUnk->AddRef();
 }
@@ -609,15 +604,15 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIAdapter::Release(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
 	//if (LogFile) fprintf(LogFile, "  ignoring call\n");
-	if (LogFile) fflush(LogFile);
+	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile) fflush(LogFile);
+	
 	--m_ulRef;
     if (ulRef == 0)
     {
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
+		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
         delete this;
         return 0L;
@@ -631,7 +626,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::EnumOutputs(THIS_
             __out IDXGIOutput **ppOutput)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::EnumOutputs called: output #%d requested\n", Output);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr;
 	D3D11Base::IDXGIOutput *pOrig;
 	if ((hr = GetAdapter()->EnumOutputs(Output, &pOrig)) == S_OK)
@@ -639,7 +634,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::EnumOutputs(THIS_
 		*ppOutput = IDXGIOutput::GetDirectOutput(pOrig);
 	}
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", hr, pOrig, *ppOutput);
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+
 	return hr;
 }
         
@@ -648,14 +643,13 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::GetDesc(THIS_
             __out D3D11Base::DXGI_ADAPTER_DESC *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::GetDesc called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetAdapter()->GetDesc(pDesc);
 	if (LogFile && hr == S_OK)
 	{
 		char s[MAX_PATH];
 		wcstombs(s, pDesc->Description, MAX_PATH);
 		fprintf(LogFile, "  returns adapter: %s, sysmem=%d, vidmem=%d\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory);
-		fflush(LogFile);
 	}
 	return hr;
 }
@@ -670,10 +664,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::SetPrivateData(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::SetPrivateData called with Name=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx, DataSize = %d\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7], DataSize);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetAdapter()->SetPrivateData(Name, DataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -686,7 +680,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::SetPrivateDataInterface(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	return GetAdapter()->SetPrivateDataInterface(Name, pUnknown);
 }
         
@@ -699,7 +693,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::GetPrivateData(THIS_
             __out_bcount(*pDataSize)  void *pData)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::GetPrivateData called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetAdapter()->GetPrivateData(Name, pDataSize, pData);
 }
         
@@ -716,14 +710,14 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::GetParent(THIS_
 	{
 		if (LogFile) fprintf(LogFile, "Callback from d3d11.dll wrapper: requesting real IDXGIAdapter handle.\n");
 		if (LogFile) fprintf(LogFile, "  returning handle = %x\n", GetAdapter());
-		if (LogFile) fflush(LogFile);
+		
 		*ppParent = GetAdapter();
 		return 0x13bc7e32;
 	}
 
 	if (LogFile) fprintf(LogFile, "IDXGIAdapter::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetAdapter()->GetParent(riid, ppParent);
 	if (hr == S_OK)
 	{
@@ -745,11 +739,11 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::CheckInterfaceSupport(THIS_
 		InterfaceName.Data4[1] == 0x9f && InterfaceName.Data4[2] == 0x4f && InterfaceName.Data4[3] == 0x27 && InterfaceName.Data4[4] == 0x04 && 
 		InterfaceName.Data4[5] == 0xf6 && InterfaceName.Data4[6] == 0x89 && InterfaceName.Data4[7] == 0xf0)
 		fprintf(LogFile, "  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = IID_ID3D10Device\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetAdapter()->CheckInterfaceSupport(InterfaceName, pUMDVersion);
 	if (LogFile && hr == S_OK && pUMDVersion) fprintf(LogFile, "  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
 	if (LogFile) fprintf(LogFile, "  returns hr=%x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -773,7 +767,7 @@ D3D11Wrapper::IDXGIOutput* D3D11Wrapper::IDXGIOutput::GetDirectOutput(D3D11Base:
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIOutput::AddRef(THIS)
 {
 //	if (LogFile) fprintf(LogFile, "IDXGIOutput::AddRef called\n", m_pUnk);
-//	if (LogFile) fflush(LogFile);
+//	
 	++m_ulRef;
 	return m_pUnk->AddRef();
 }
@@ -781,16 +775,16 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIOutput::AddRef(THIS)
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIOutput::Release(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	if (LogFile) fflush(LogFile);
+	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile) fflush(LogFile);
+	
 	--m_ulRef;
 
     if (ulRef == 0)
     {
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
+		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
         delete this;
         return 0L;
@@ -803,14 +797,13 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDesc(THIS_
         __out  D3D11Base::DXGI_OUTPUT_DESC *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetDesc called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT ret = GetOutput()->GetDesc(pDesc);
 	if (LogFile)
 	{
 		char str[MAX_PATH];
 		wcstombs(str, pDesc->DeviceName, MAX_PATH);
 		fprintf(LogFile, "  returned %s, desktop=%d\n", str, pDesc->AttachedToDesktop);
-		fflush(LogFile);
 	}
 	return ret;
 }
@@ -833,7 +826,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDisplayModeList(THIS_
         __out_ecount_part_opt(*pNumModes,*pNumModes)  D3D11Base::DXGI_MODE_DESC *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetDisplayModeList called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT ret = GetOutput()->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
 	if (ret == S_OK && pDesc)
 	{
@@ -867,7 +860,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::FindClosestMatchingMode(THIS_
 {
 	if (pModeToMatch && LogFile) fprintf(LogFile, "IDXGIOutput::FindClosestMatchingMode called: width=%d, height=%d, refresh rate=%f\n", 
 		pModeToMatch->Width, pModeToMatch->Height, (float) pModeToMatch->RefreshRate.Numerator / (float) pModeToMatch->RefreshRate.Denominator);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT ret = GetOutput()->FindClosestMatchingMode(pModeToMatch, pClosestMatch, ReplaceDevice(pConcernedDevice));
 	if (pClosestMatch && SCREEN_REFRESH >= 0)
 	{
@@ -878,14 +871,14 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::FindClosestMatchingMode(THIS_
 	if (pClosestMatch && SCREEN_HEIGHT >= 0) pClosestMatch->Height = SCREEN_HEIGHT;
 	if (pClosestMatch && LogFile) fprintf(LogFile, "  returning width=%d, height=%d, refresh rate=%f\n", 
 		pClosestMatch->Width, pClosestMatch->Height, (float) pClosestMatch->RefreshRate.Numerator / (float) pClosestMatch->RefreshRate.Denominator);
-	if (LogFile) fflush(LogFile);
+	
 	return ret;
 }
         
 STDMETHODIMP D3D11Wrapper::IDXGIOutput::WaitForVBlank(THIS_ )
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::WaitForVBlank called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->WaitForVBlank();
 }
         
@@ -895,14 +888,14 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::TakeOwnership(THIS_
         BOOL Exclusive)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::TakeOwnership called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->TakeOwnership(ReplaceDevice(pDevice), Exclusive);
 }
         
 void STDMETHODCALLTYPE D3D11Wrapper::IDXGIOutput::ReleaseOwnership(void)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::ReleaseOwnership called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->ReleaseOwnership();
 }
         
@@ -911,7 +904,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetGammaControlCapabilities(THIS_
         __out  D3D11Base::DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetGammaControlCapabilities called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->GetGammaControlCapabilities(pGammaCaps);
 }
         
@@ -920,7 +913,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetGammaControl(THIS_
         __in  const D3D11Base::DXGI_GAMMA_CONTROL *pArray)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::SetGammaControl called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->SetGammaControl(pArray);
 }
         
@@ -929,7 +922,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetGammaControl(THIS_
         __out  D3D11Base::DXGI_GAMMA_CONTROL *pArray)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetGammaControl called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->GetGammaControl(pArray);
 }
         
@@ -938,7 +931,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetDisplaySurface(THIS_
         __in  D3D11Base::IDXGISurface *pScanoutSurface)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::SetDisplaySurface called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->SetDisplaySurface(pScanoutSurface);
 }
         
@@ -947,7 +940,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDisplaySurfaceData(THIS_
         __in  D3D11Base::IDXGISurface *pDestination)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetDisplaySurfaceData called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->GetDisplaySurfaceData(pDestination);
 }
         
@@ -956,7 +949,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetFrameStatistics(THIS_
         __out  D3D11Base::DXGI_FRAME_STATISTICS *pStats)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetFrameStatistics called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->GetFrameStatistics(pStats);
 }
                
@@ -968,7 +961,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetPrivateData(THIS_
             __in_bcount(DataSize)  const void *pData)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::SetPrivateData called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->SetPrivateData(Name, DataSize, pData);
 }
         
@@ -981,7 +974,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetPrivateDataInterface(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->SetPrivateDataInterface(Name, pUnknown);
 }
         
@@ -994,7 +987,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetPrivateData(THIS_
             __out_bcount(*pDataSize)  void *pData)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetPrivateData called\n");
-	if (LogFile) fflush(LogFile);
+	
 	return GetOutput()->GetPrivateData(Name, pDataSize, pData);
 }
         
@@ -1006,14 +999,14 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetParent(THIS_
 {
 	if (LogFile) fprintf(LogFile, "IDXGIOutput::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetOutput()->GetParent(riid, ppParent);
 	if (hr == S_OK)
 	{
 		ReplaceInterface(ppParent);
 	}
 	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppParent);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -1054,15 +1047,15 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGISwapChain::AddRef(THIS)
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGISwapChain::Release(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	if (LogFile) fflush(LogFile);
+	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile) fflush(LogFile);
+	
 	--m_ulRef;
     if (ulRef == 0)
     {
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
+		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
 		if (m_WrappedDevice) m_WrappedDevice->Release(); m_WrappedDevice = 0;
         delete this;
@@ -1082,10 +1075,10 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetPrivateData(THIS_
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	if (LogFile) fprintf(LogFile, "  DataSize = %d\n", DataSize);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->SetPrivateData(Name, DataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1098,10 +1091,10 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetPrivateDataInterface(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->SetPrivateDataInterface(Name, pUnknown);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1116,10 +1109,10 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetPrivateData(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->GetPrivateData(Name, pDataSize, pData);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1131,7 +1124,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetParent(THIS_
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->GetParent(riid, ppParent);
 	if (hr == S_OK)
 	{
@@ -1154,7 +1147,6 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDevice(THIS_
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetDevice called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	if (LogFile) fflush(LogFile);
 
 	// Get old device pointer.
 	HRESULT hr = GetSwapChain()->GetDevice(riid, ppDevice);
@@ -1163,7 +1155,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDevice(THIS_
 		// Create device wrapper. We assume the wrapper has already been created.
 	}
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
@@ -1176,7 +1168,6 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
 	if (LogFile) fprintf(LogFile, "  SyncInterval = %d\n", SyncInterval);
 	if (LogFile) fprintf(LogFile, "  Flags = %d\n", Flags);
 	if (LogFile && !m_WrappedDevice) fprintf(LogFile, "  Warning: no parent wrapped device available!\n");
-	if (LogFile) fflush(LogFile);
 	*/
 	HRESULT hr = GetSwapChain()->Present(SyncInterval, Flags);
 
@@ -1190,12 +1181,12 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
 		if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
 		{
 			//if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
-			//if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+			//
 		}
 	}
 
 	//if (LogFile) fprintf(LogFile, "  returns %x\n", hr);
-	//if (LogFile) fflush(LogFile);
+	//
 	return hr;
 }
         
@@ -1218,7 +1209,6 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetFullscreenState(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::SetFullscreenState called with\n");
 	if (LogFile) fprintf(LogFile, "  Fullscreen = %d\n", Fullscreen);
 	if (LogFile) fprintf(LogFile, "  Target = %x\n", pTarget);
-	if (LogFile) fflush(LogFile);
 
 	HRESULT hr;
 	if (pTarget)	
@@ -1227,7 +1217,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetFullscreenState(THIS_
 		hr = GetSwapChain()->SetFullscreenState(Fullscreen, 0);
 
 	if (LogFile) fprintf(LogFile, "  returns %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1238,7 +1228,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetFullscreenState(THIS_
             _Out_opt_  IDXGIOutput **ppTarget)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetFullscreenState called\n");
-	if (LogFile) fflush(LogFile);
+	
 	D3D11Base::IDXGIOutput *origOutput;
 	HRESULT hr = GetSwapChain()->GetFullscreenState(pFullscreen, &origOutput);
 	if (hr == S_OK)
@@ -1248,7 +1238,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetFullscreenState(THIS_
 		if (LogFile && ppTarget) fprintf(LogFile, "  returns target IDXGIOutput = %x, wrapper = %x\n", origOutput, *ppTarget);
 	}
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1257,7 +1247,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDesc(THIS_
             _Out_  D3D11Base::DXGI_SWAP_CHAIN_DESC *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetDesc called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->GetDesc(pDesc);
 	if (hr == S_OK)
 	{
@@ -1268,7 +1258,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDesc(THIS_
 			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
 	}
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1296,7 +1286,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetContainingOutput(THIS_
             _Out_  IDXGIOutput **ppOutput)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetContainingOutput called\n");
-	if (LogFile) fflush(LogFile);
+	
 	D3D11Base::IDXGIOutput *origOutput;
 	HRESULT hr = GetSwapChain()->GetContainingOutput(&origOutput);
 	if (hr == S_OK)
@@ -1304,7 +1294,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetContainingOutput(THIS_
 		*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
 	}
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppOutput);
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
 	return hr;
 }
         
@@ -1313,7 +1303,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetFrameStatistics(THIS_
             _Out_  D3D11Base::DXGI_FRAME_STATISTICS *pStats)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetFrameStatistics called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->GetFrameStatistics(pStats);
 	return hr;
 }
@@ -1323,7 +1313,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetLastPresentCount(THIS_
             _Out_  UINT *pLastPresentCount)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain::GetLastPresentCount called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain()->GetLastPresentCount(pLastPresentCount);
 	return hr;
 }
@@ -1333,7 +1323,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetDesc1(THIS_
             _Out_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetDesc1 called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->GetDesc1(pDesc);
 	if (hr == S_OK)
 	{
@@ -1342,7 +1332,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetDesc1(THIS_
 		if (LogFile && pDesc) fprintf(LogFile, "  returns Height = %d\n", pDesc->Height);
 	}
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1351,7 +1341,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetFullscreenDesc(THIS_
             _Out_  D3D11Base::DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetFullscreenDesc called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->GetFullscreenDesc(pDesc);
 	if (hr == S_OK)
 	{
@@ -1360,7 +1350,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetFullscreenDesc(THIS_
 			(float) pDesc->RefreshRate.Numerator / (float) pDesc->RefreshRate.Denominator);
 	}
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1369,11 +1359,11 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetHwnd(THIS_
             _Out_  HWND *pHwnd)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetHwnd called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->GetHwnd(pHwnd);
 	if (hr == S_OK && LogFile && pHwnd) fprintf(LogFile, "  returns Hwnd = %x\n", *pHwnd);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1384,11 +1374,11 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetCoreWindow(THIS_
             _Out_  void **ppUnk)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetCoreWindow called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->GetCoreWindow(refiid, ppUnk);
 	if (hr == S_OK && LogFile && ppUnk) fprintf(LogFile, "  returns IUnknown = %x\n", *ppUnk);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1401,7 +1391,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::Present1 called\n");
 	if (LogFile) fprintf(LogFile, "  SyncInterval = %d\n", SyncInterval);
 	if (LogFile) fprintf(LogFile, "  PresentFlags = %d\n", PresentFlags);
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
 	if (m_WrappedDevice)
@@ -1414,22 +1404,21 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
 		if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
 		{
 			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
-			if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
 		}
 	}
 
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
 STDMETHODIMP_(BOOL) D3D11Wrapper::IDXGISwapChain1::IsTemporaryMonoSupported(THIS)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::IsTemporaryMonoSupported called\n");
-	if (LogFile) fflush(LogFile);
+	
 	BOOL ret = GetSwapChain1()->IsTemporaryMonoSupported();
 	if (LogFile) fprintf(LogFile, "  returns %d\n", ret);
-	if (LogFile) fflush(LogFile);
+	
 	return ret;
 }
         
@@ -1438,7 +1427,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetRestrictToOutput(THIS_
             _Out_  IDXGIOutput **ppRestrictToOutput)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetRestrictToOutput called\n");
-	if (LogFile) fflush(LogFile);
+	
 	D3D11Base::IDXGIOutput *origOutput;
 	HRESULT hr = GetSwapChain1()->GetRestrictToOutput(&origOutput);
 	if (hr == S_OK)
@@ -1446,7 +1435,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetRestrictToOutput(THIS_
 		*ppRestrictToOutput = IDXGIOutput::GetDirectOutput(origOutput);
 	}
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppRestrictToOutput);
-	if (D3D11Wrapper::LogFile) fflush(D3D11Wrapper::LogFile);
+	
 	return hr;
 }
         
@@ -1455,10 +1444,10 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::SetBackgroundColor(THIS_
             _In_  const D3D11Base::DXGI_RGBA *pColor)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::SetBackgroundColor called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->SetBackgroundColor(pColor);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1467,10 +1456,10 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetBackgroundColor(THIS_
             _Out_  D3D11Base::DXGI_RGBA *pColor)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetBackgroundColor called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->GetBackgroundColor(pColor);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1479,10 +1468,10 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::SetRotation(THIS_
             _In_  D3D11Base::DXGI_MODE_ROTATION Rotation)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::SetRotation called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->SetRotation(Rotation);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
         
@@ -1491,9 +1480,9 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetRotation(THIS_
             _Out_  D3D11Base::DXGI_MODE_ROTATION *pRotation)
 {
 	if (LogFile) fprintf(LogFile, "IDXGISwapChain1::GetRotation called\n");
-	if (LogFile) fflush(LogFile);
+	
 	HRESULT hr = GetSwapChain1()->GetRotation(pRotation);
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }

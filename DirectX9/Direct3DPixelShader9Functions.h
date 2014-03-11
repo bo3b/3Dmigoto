@@ -25,17 +25,17 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DPixelShader9::AddRef(THIS)
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DPixelShader9::Release(THIS)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DPixelShader9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	if (LogFile && LogDebug) fflush(LogFile);
+	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	--m_ulRef;
 
     if (ulRef == 0)
     {
 		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DPixelShader9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
-		if (LogFile) fflush(LogFile);
+		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); 
 		m_pUnk = 0;
         delete this;
@@ -47,13 +47,13 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DPixelShader9::Release(THIS)
 STDMETHODIMP D3D9Wrapper::IDirect3DPixelShader9::GetDevice(THIS_ IDirect3DDevice9** ppDevice)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DPixelShader9::GetDevice called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	D3D9Base::IDirect3DDevice9 *origDevice;
 	HRESULT hr = GetD3DPixelShader9()->GetDevice(&origDevice);
 	if (hr != S_OK)
 	{
 		if (LogFile) fprintf(LogFile, "  failed with hr = %x\n", hr);
-		if (LogFile) fflush(LogFile);
+		
 		return hr;
 	}
 	D3D9Base::IDirect3DDevice9Ex *origDeviceEx;
@@ -63,7 +63,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DPixelShader9::GetDevice(THIS_ IDirect3DDevice
 	if (hr != S_OK)
 	{
 		if (LogFile) fprintf(LogFile, "  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
-		if (LogFile) fflush(LogFile);
+		
 		return hr;
 	}
 	*ppDevice = D3D9Wrapper::IDirect3DDevice9::GetDirect3DDevice(origDeviceEx);
@@ -73,9 +73,9 @@ STDMETHODIMP D3D9Wrapper::IDirect3DPixelShader9::GetDevice(THIS_ IDirect3DDevice
 STDMETHODIMP D3D9Wrapper::IDirect3DPixelShader9::GetFunction(THIS_ void *data,UINT* pSizeOfData)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexShader9::GetFunction called\n");
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	HRESULT hr = GetD3DPixelShader9()->GetFunction(data, pSizeOfData);
 	if (LogFile && LogDebug) fprintf(LogFile, "  returns result=%x\n", hr);
-	if (LogFile && LogDebug) fflush(LogFile);
+	
 	return hr;
 }

@@ -76,7 +76,7 @@ void DestroyDLL()
 int WINAPI D3DPERF_BeginEvent(DWORD col, LPCWSTR wszName)
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_BeginEvent called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_BeginEvent call = (D3D9Wrapper::D3DPERF_BeginEvent)GetProcAddress(hD3D, "D3DPERF_BeginEvent");
 	return (*call)(col, wszName);
 }
@@ -84,7 +84,7 @@ int WINAPI D3DPERF_BeginEvent(DWORD col, LPCWSTR wszName)
 int WINAPI D3DPERF_EndEvent()
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_EndEvent called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_EndEvent call = (D3D9Wrapper::D3DPERF_EndEvent)GetProcAddress(hD3D, "D3DPERF_EndEvent");
 	return (*call)();
 }
@@ -92,7 +92,7 @@ int WINAPI D3DPERF_EndEvent()
 DWORD WINAPI D3DPERF_GetStatus()
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_GetStatus called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_GetStatus call = (D3D9Wrapper::D3DPERF_GetStatus)GetProcAddress(hD3D, "D3DPERF_GetStatus");
 	return (*call)();
 }
@@ -100,7 +100,7 @@ DWORD WINAPI D3DPERF_GetStatus()
 BOOL WINAPI D3DPERF_QueryRepeatFrame()
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_QueryRepeatFrame called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_QueryRepeatFrame call = (D3D9Wrapper::D3DPERF_QueryRepeatFrame)GetProcAddress(hD3D, "D3DPERF_QueryRepeatFrame");
 	return (*call)();
 }
@@ -108,7 +108,7 @@ BOOL WINAPI D3DPERF_QueryRepeatFrame()
 void WINAPI D3DPERF_SetMarker(D3D9Base::D3DCOLOR color, LPCWSTR name)
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_SetMarker called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_SetMarker call = (D3D9Wrapper::D3DPERF_SetMarker)GetProcAddress(hD3D, "D3DPERF_SetMarker");
 	(*call)(color, name);
 }
@@ -116,7 +116,7 @@ void WINAPI D3DPERF_SetMarker(D3D9Base::D3DCOLOR color, LPCWSTR name)
 void WINAPI D3DPERF_SetOptions(DWORD options)
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_SetOptions called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_SetOptions call = (D3D9Wrapper::D3DPERF_SetOptions)GetProcAddress(hD3D, "D3DPERF_SetOptions");
 	(*call)(options);
 }
@@ -124,7 +124,7 @@ void WINAPI D3DPERF_SetOptions(DWORD options)
 void WINAPI D3DPERF_SetRegion(D3D9Base::D3DCOLOR color, LPCWSTR name)
 {
 	if (LogFile) fprintf(LogFile, "D3DPERF_SetRegion called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::D3DPERF_SetRegion call = (D3D9Wrapper::D3DPERF_SetRegion)GetProcAddress(hD3D, "D3DPERF_SetRegion");
 	(*call)(color, name);
 }
@@ -132,7 +132,7 @@ void WINAPI D3DPERF_SetRegion(D3D9Base::D3DCOLOR color, LPCWSTR name)
 void WINAPI DebugSetLevel(int a1, int a2)
 {
 	if (LogFile) fprintf(LogFile, "DebugSetLevel called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::DebugSetLevel call = (D3D9Wrapper::DebugSetLevel)GetProcAddress(hD3D, "DebugSetLevel");
 	(*call)(a1, a2);
 }
@@ -140,7 +140,7 @@ void WINAPI DebugSetLevel(int a1, int a2)
 void WINAPI DebugSetMute(int a)
 {
 	if (LogFile) fprintf(LogFile, "DebugSetMute called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::DebugSetMute call = (D3D9Wrapper::DebugSetMute)GetProcAddress(hD3D, "DebugSetMute");
 	(*call)(a);
 }
@@ -148,7 +148,7 @@ void WINAPI DebugSetMute(int a)
 void *WINAPI Direct3DShaderValidatorCreate9()
 {
 	if (LogFile) fprintf(LogFile, "Direct3DShaderValidatorCreate9 called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::Direct3DShaderValidatorCreate9 call = (D3D9Wrapper::Direct3DShaderValidatorCreate9)GetProcAddress(hD3D, "Direct3DShaderValidatorCreate9");
 	return (*call)();
 }
@@ -156,7 +156,7 @@ void *WINAPI Direct3DShaderValidatorCreate9()
 void WINAPI PSGPError(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, unsigned int a)
 {
 	if (LogFile) fprintf(LogFile, "PSGPError called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::PSGPError call = (D3D9Wrapper::PSGPError)GetProcAddress(hD3D, "PSGPError");
 	(*call)(D3DFE_PROCESSVERTICES, PSGPERRORID, a);
 }
@@ -164,7 +164,7 @@ void WINAPI PSGPError(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, unsigned int
 void WINAPI PSGPSampleTexture(void *D3DFE_PROCESSVERTICES, unsigned int a, float (* const b)[4], unsigned int c, float (* const d)[4])
 {
 	if (LogFile) fprintf(LogFile, "PSGPSampleTexture called\n");
-	if (LogFile) fflush(LogFile);
+
 	D3D9Wrapper::PSGPSampleTexture call = (D3D9Wrapper::PSGPSampleTexture)GetProcAddress(hD3D, "PSGPSampleTexture");
 	(*call)(D3DFE_PROCESSVERTICES, a, b, c, d);
 }
@@ -179,19 +179,18 @@ STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, vo
 		riid.Data4[4] == m1.Data4[4] && riid.Data4[5] == m1.Data4[5] && riid.Data4[6] == m1.Data4[6] && riid.Data4[7] == m1.Data4[7])
 	{
 		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: requesting real ID3D9Device handle from %x\n", *ppvObj);
-		if (LogFile) fflush(LogFile);
+	
 	    D3D9Wrapper::IDirect3DDevice9 *p = (D3D9Wrapper::IDirect3DDevice9*) D3D9Wrapper::IDirect3DDevice9::m_List.GetDataPtr(*ppvObj);
 		if (p)
 		{
 			if (LogFile) fprintf(LogFile, "  given pointer was already the real device.\n");
-			if (LogFile) fflush(LogFile);
 		}
 		else
 		{
 			*ppvObj = ((D3D9Wrapper::IDirect3DDevice9 *)*ppvObj)->GetD3D9Device();
 		}
 		if (LogFile) fprintf(LogFile, "  returning handle = %x\n", *ppvObj);
-		if (LogFile) fflush(LogFile);
+	
 		return 0x13bc7e31;
 	}
 	else if (riid.Data1 == m2.Data1 && riid.Data2 == m2.Data2 && riid.Data3 == m2.Data3 && 
@@ -199,12 +198,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, vo
 		riid.Data4[4] == m2.Data4[4] && riid.Data4[5] == m2.Data4[5] && riid.Data4[6] == m2.Data4[6] && riid.Data4[7] == m2.Data4[7])
 	{
 		if (LogFile && LogDebug) fprintf(LogFile, "Callback from dxgi.dll wrapper: notification #%d received\n", (int) *ppvObj);
-		if (LogFile && LogDebug) fflush(LogFile);
+
 		switch ((int) *ppvObj)
 		{
 			case 0:
 			{
 				// Present received.
+				// Todo: Not sure if this is actually used, but the 'this' here is going to be the wrong object and not work.
 				IDirect3DDevice9 *device = (IDirect3DDevice9 *)this;
 				// RunFrameActions(device);
 				break;
@@ -219,14 +219,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, vo
 		SwapChainInfo *info = (SwapChainInfo *)*ppvObj;
 		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n", 
 			info->width, info->height);
-		if (LogFile) fflush(LogFile);
+	
 		//G->mSwapChainInfo = *info;
 		return 0x13bc7e31;
 	}
 
 	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
-	if (LogFile) fflush(LogFile);
+
 	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK)
 	{
@@ -320,7 +320,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, vo
 		}
 	}
 	if (LogFile) fprintf(LogFile, "  result = %x, handle = %x\n", hr, *ppvObj);
-	if (LogFile) fflush(LogFile);
+
 	return hr;
 }
 
@@ -368,17 +368,17 @@ D3D9Wrapper::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
     if (!hD3D)
     {
         if (LogFile) fprintf(LogFile, "LoadLibrary on d3d9.dll failed\n");
-		if (LogFile) fflush(LogFile);
+	
         return NULL;
     }
     if (LogFile) fprintf(LogFile, "Direct3DCreate9 called with Version=%d\n", Version);
-	if (LogFile) fflush(LogFile);
+
 
 	D3D9Wrapper::D3DCREATE pCreate = (D3D9Wrapper::D3DCREATE)GetProcAddress(hD3D, "Direct3DCreate9Ex");
     if (!pCreate)
     {
         if (LogFile) fprintf(LogFile, "  could not find Direct3DCreate9Ex in d3d9.dll\n");
-		if (LogFile) fflush(LogFile);
+	
         return NULL;
     }
 	D3D9Base::LPDIRECT3D9EX pD3D = NULL;
@@ -386,13 +386,13 @@ D3D9Wrapper::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
     if (FAILED(hr) || pD3D == NULL)
     {
 		if (LogFile) fprintf(LogFile, "  failed with hr=%x\n", hr);
-		if (LogFile) fflush(LogFile);
+	
         return NULL;
     }
     
     D3D9Wrapper::IDirect3D9 *wrapper = D3D9Wrapper::IDirect3D9::GetDirect3D(pD3D);
     if (LogFile) fprintf(LogFile, "  returns handle=%x, wrapper=%x\n", pD3D, wrapper);
-	if (LogFile) fflush(LogFile);
+
 	return wrapper;
 }
 
@@ -423,13 +423,13 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed creating device with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		if (me->pendingCreateDepthStencilSurface)
 		{
 			if (LogFile) fprintf(LogFile, "  calling postponed CreateDepthStencilSurface.\n");
-			if (LogFile) fflush(LogFile);
+		
 			hr = me->GetD3D9Device()->CreateDepthStencilSurface(
 				me->pendingCreateDepthStencilSurface->_Width,
 				me->pendingCreateDepthStencilSurface->_Height,
@@ -442,7 +442,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 			if (FAILED(hr))
 			{
 				if (LogFile) fprintf(LogFile, "    failed creating depth stencil surface with result=%x\n", hr);
-				if (LogFile) fflush(LogFile);
+			
 				return;
 			}
 			me->pendingCreateDepthStencilSurface = 0;
@@ -450,13 +450,13 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 		if (me->pendingSetDepthStencilSurface)
 		{
 			if (LogFile) fprintf(LogFile, "  calling postponed SetDepthStencilSurface.\n");
-			if (LogFile) fflush(LogFile);
+		
 			D3D9Base::LPDIRECT3DSURFACE9 baseStencil = replaceSurface9(me->pendingSetDepthStencilSurface);
 			hr = me->GetD3D9Device()->SetDepthStencilSurface(baseStencil);
 			if (FAILED(hr))
 			{
 				if (LogFile) fprintf(LogFile, "    failed calling SetDepthStencilSurface with result = %x\n", hr);
-				if (LogFile) fflush(LogFile);
+			
 				return;
 			}
 			me->pendingSetDepthStencilSurface = 0;
@@ -476,7 +476,7 @@ static void CheckVertexDeclaration9(D3D9Wrapper::IDirect3DVertexDeclaration9 *me
 	if (FAILED(hr))
 	{
 		if (LogFile) fprintf(LogFile, "    failed creating vertex declaration with result = %x\n", hr);
-		if (LogFile) fflush(LogFile);
+	
 		return;
 	}
 }
@@ -492,7 +492,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed creating texture with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 	}
@@ -506,7 +506,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed locking texture with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		for (int y = 0; y < me->_Height; ++y)
@@ -515,7 +515,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed unlocking texture with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		delete me->_Buffer; me->_Buffer = 0;
@@ -535,7 +535,7 @@ static void CheckSurface9(D3D9Wrapper::IDirect3DSurface9 *me)
 	if (FAILED(hr))
 	{
 		if (LogFile) fprintf(LogFile, "    failed getting surface with result = %x\n", hr);
-		if (LogFile) fflush(LogFile);
+	
 		return;
 	}
 }
@@ -551,7 +551,7 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed creating vertex buffer with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 	}
@@ -564,7 +564,7 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed locking vertex buffer with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		memcpy(ppbData, me->_Buffer, me->_Length);
@@ -572,7 +572,7 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed unlocking vertex buffer with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		delete me->_Buffer; me->_Buffer = 0;
@@ -590,7 +590,7 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed creating index buffer with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 	}
@@ -603,7 +603,7 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed locking index buffer with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		memcpy(ppbData, me->_Buffer, me->_Length);
@@ -611,7 +611,7 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
 		if (FAILED(hr))
 		{
 			if (LogFile) fprintf(LogFile, "    failed unlocking index buffer with result = %x\n", hr);
-			if (LogFile) fflush(LogFile);
+		
 			return;
 		}
 		delete me->_Buffer; me->_Buffer = 0;

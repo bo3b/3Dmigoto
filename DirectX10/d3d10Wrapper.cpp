@@ -72,7 +72,6 @@ void InitializeDLL()
 		XInputDeviceId = GetPrivateProfileInt(L"Rendering", L"XInputDevice", -1, dir);		
 
 		if (LogFile) fprintf(LogFile, "DLL initialized.\n");
-		if (LogFile) fflush(LogFile);
 	}
 }
 
@@ -230,7 +229,7 @@ static void InitD310()
     if (hD3D10 == NULL)
     {
         if (LogFile) fprintf(LogFile, "LoadLibrary on d3d10.dll failed\n");
-        if (LogFile) fflush(LogFile);
+        
         return;
     }
 
@@ -278,7 +277,7 @@ HRESULT WINAPI D3D10CompileEffectFromMemory(void *pData, SIZE_T DataLength, LPCS
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CompileEffectFromMemory called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10CompileEffectFromMemory)(pData, DataLength, pSrcFileName, 
 		pDefines, pInclude, HLSLFlags, FXFlags, 
 		ppCompiledEffect, ppErrors);
@@ -290,7 +289,7 @@ HRESULT WINAPI D3D10CompileShader(LPCSTR pSrcData, SIZE_T SrcDataLen, LPCSTR pFi
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CompileShader called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10CompileShader)(pSrcData, SrcDataLen, pFileName, 
 		pDefines, pInclude, pFunctionName, 
 		pProfile, Flags, ppShader, ppErrorMsgs);
@@ -300,7 +299,7 @@ HRESULT WINAPI D3D10CreateBlob(SIZE_T NumBytes, D3D11Base::LPD3D10BLOB *ppBuffer
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CreateBlob called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10CreateBlob)(NumBytes, ppBuffer);
 }
 
@@ -340,7 +339,7 @@ static void EnableStereo()
 		if (gCreateStereoProfile)
 		{
 			if (LogFile) fprintf(LogFile, "  enabling registry profile.\n");		
-			if (LogFile) fflush(LogFile);
+			
 			D3D11Base::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3D11Base::NVAPI_STEREO_DEFAULT_REGISTRY_PROFILE);
 		}
 	}
@@ -356,7 +355,7 @@ static D3D11Base::IDXGIAdapter *ReplaceAdapter(D3D11Base::IDXGIAdapter *wrapper)
 	if (wrapper->GetParent(marker, (void **) &realAdapter) == 0x13bc7e32)
 	{
 		if (LogFile) fprintf(LogFile, "    wrapper found. replacing with original handle = %x\n", realAdapter);
-		if (LogFile) fflush(LogFile);
+		
 		return realAdapter;
 	}
 	return wrapper;
@@ -367,14 +366,14 @@ HRESULT WINAPI D3D10CreateDevice(D3D11Base::IDXGIAdapter *pAdapter, D3D11Base::D
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CreateDevice called with adapter = %x\n", pAdapter);
-	if (LogFile) fflush(LogFile);
+	
 	D3D11Base::ID3D10Device *origDevice = 0;
 	EnableStereo();
 	HRESULT ret = (*_D3D10CreateDevice)(ReplaceAdapter(pAdapter), DriverType, Software, Flags, SDKVersion, &origDevice);
 	if (ret != S_OK)
 	{
 		if (LogFile) fprintf(LogFile, "  failed with HRESULT=%x\n", ret);
-		if (LogFile) fflush(LogFile);
+		
 		return ret;
 	}
 
@@ -382,14 +381,14 @@ HRESULT WINAPI D3D10CreateDevice(D3D11Base::IDXGIAdapter *pAdapter, D3D11Base::D
 	if (!wrapper)
 	{
 		if (LogFile) fprintf(LogFile, "  error allocating wrapper.\n");
-		if (LogFile) fflush(LogFile);
+		
 		origDevice->Release();
 		return E_OUTOFMEMORY;
 	}
 	*ppDevice = wrapper;
 
 	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origDevice, wrapper);
-	if (LogFile) fflush(LogFile);
+	
 	return ret;
 }
 
@@ -404,7 +403,6 @@ HRESULT WINAPI D3D10CreateDeviceAndSwapChain(D3D11Base::IDXGIAdapter *pAdapter, 
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, " Height = %d\n", pSwapChainDesc->BufferDesc.Height);
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, " Refresh rate = %f\n", 
 		(float) pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float) pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
-	if (LogFile) fflush(LogFile);
 
 	if (SCREEN_FULLSCREEN >= 0 && pSwapChainDesc) pSwapChainDesc->Windowed = !SCREEN_FULLSCREEN;
 	if (SCREEN_REFRESH >= 0 && pSwapChainDesc && !pSwapChainDesc->Windowed)
@@ -418,7 +416,6 @@ HRESULT WINAPI D3D10CreateDeviceAndSwapChain(D3D11Base::IDXGIAdapter *pAdapter, 
 		pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height, 
 		(float) pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float) pSwapChainDesc->BufferDesc.RefreshRate.Denominator,
 		pSwapChainDesc->Windowed);
-	if (LogFile) fflush(LogFile);
 
 	EnableStereo();
 
@@ -428,7 +425,7 @@ HRESULT WINAPI D3D10CreateDeviceAndSwapChain(D3D11Base::IDXGIAdapter *pAdapter, 
 	if (ret != S_OK)
 	{
 		if (LogFile) fprintf(LogFile, "  failed with HRESULT=%x\n", ret);
-		if (LogFile) fflush(LogFile);
+		
 		return ret;
 	}
 
@@ -436,14 +433,14 @@ HRESULT WINAPI D3D10CreateDeviceAndSwapChain(D3D11Base::IDXGIAdapter *pAdapter, 
 	if (wrapper == NULL)
 	{
 		if (LogFile) fprintf(LogFile, "  error allocating wrapper.\n");
-		if (LogFile) fflush(LogFile);
+		
 		origDevice->Release();
 		return E_OUTOFMEMORY;
 	}
 	*ppDevice = wrapper;
 
 	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origDevice, wrapper);
-	if (LogFile) fflush(LogFile);
+	
 	return ret;
 }
 
@@ -452,7 +449,7 @@ HRESULT WINAPI D3D10CreateEffectFromMemory(void *pData, SIZE_T DataLength, UINT 
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CreateEffectFromMemory called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10CreateEffectFromMemory)(pData, DataLength, FXFlags, 
 		pDevice, pEffectPool, ppEffect);
 }
@@ -462,7 +459,7 @@ HRESULT WINAPI D3D10CreateEffectPoolFromMemory(void *pData, SIZE_T DataLength, U
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CreateEffectPoolFromMemory called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10CreateEffectPoolFromMemory)(pData, DataLength, FXFlags, 
 		pDevice, ppEffectPool);
 }
@@ -472,7 +469,7 @@ HRESULT WINAPI D3D10CreateStateBlock(D3D11Base::ID3D10Device *pDevice, D3D11Base
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10CreateStateBlock called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10CreateStateBlock)(pDevice, pStateBlockMask,
 		ppStateBlock);
 }
@@ -481,7 +478,7 @@ HRESULT WINAPI D3D10DisassembleEffect(D3D11Base::ID3D10Effect *pEffect, BOOL Ena
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10DisassembleEffect called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10DisassembleEffect)(pEffect, EnableColorCode, ppDisassembly);
 }
 
@@ -490,7 +487,7 @@ HRESULT WINAPI D3D10DisassembleShader(const void *pShader, SIZE_T BytecodeLength
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10DisassembleShader called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10DisassembleShader)(pShader, BytecodeLength, EnableColorCode, pComments, 
 		ppDisassembly);
 }
@@ -499,7 +496,7 @@ LPCSTR WINAPI D3D10GetGeometryShaderProfile(D3D11Base::ID3D10Device *pDevice)
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetGeometryShaderProfile called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetGeometryShaderProfile)(pDevice);
 }
 
@@ -508,7 +505,7 @@ HRESULT WINAPI D3D10GetInputAndOutputSignatureBlob(const void *pShaderBytecode, 
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetInputAndOutputSignatureBlob called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetInputAndOutputSignatureBlob)(pShaderBytecode, BytecodeLength, 
 		ppSignatureBlob);
 }
@@ -518,7 +515,7 @@ HRESULT WINAPI D3D10GetInputSignatureBlob(const void *pShaderBytecode, SIZE_T By
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetInputSignatureBlob called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetInputSignatureBlob)(pShaderBytecode, BytecodeLength, 
 		ppSignatureBlob);
 }
@@ -528,7 +525,7 @@ HRESULT WINAPI D3D10GetOutputSignatureBlob(const void *pShaderBytecode, SIZE_T B
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetOutputSignatureBlob called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetOutputSignatureBlob)(pShaderBytecode, BytecodeLength, 
 		ppSignatureBlob);
 }
@@ -537,7 +534,7 @@ LPCSTR WINAPI D3D10GetPixelShaderProfile(D3D11Base::ID3D10Device *pDevice)
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetPixelShaderProfile called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetPixelShaderProfile)(pDevice);
 }
 
@@ -545,7 +542,7 @@ HRESULT WINAPI D3D10GetShaderDebugInfo(const void *pShaderBytecode, SIZE_T Bytec
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetShaderDebugInfo called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetShaderDebugInfo)(pShaderBytecode, BytecodeLength, ppDebugInfo);
 }
 
@@ -553,7 +550,7 @@ int WINAPI D3D10GetVersion()
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetVersion called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetVersion)();
 }
 
@@ -561,7 +558,7 @@ LPCSTR WINAPI D3D10GetVertexShaderProfile(D3D11Base::ID3D10Device *pDevice)
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10GetVertexShaderProfile called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10GetVertexShaderProfile)(pDevice);
 }
 
@@ -571,7 +568,7 @@ HRESULT WINAPI D3D10PreprocessShader(LPCSTR pSrcData, SIZE_T SrcDataSize, LPCSTR
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10PreprocessShader called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10PreprocessShader)(pSrcData, SrcDataSize, pFileName, 
 		pDefines, pInclude, 
 		ppShaderText, ppErrorMsgs);
@@ -582,7 +579,7 @@ HRESULT WINAPI D3D10ReflectShader(const void *pShaderBytecode, SIZE_T BytecodeLe
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10ReflectShader called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10ReflectShader)(pShaderBytecode, BytecodeLength, 
 		ppReflector);
 }
@@ -591,7 +588,7 @@ int WINAPI D3D10RegisterLayers()
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10RegisterLayers called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10RegisterLayers)();
 }
 
@@ -600,7 +597,7 @@ HRESULT WINAPI D3D10StateBlockMaskDifference(D3D11Base::D3D10_STATE_BLOCK_MASK *
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskDifference called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskDifference)(pA, 
 		pB, pResult);
 }
@@ -609,7 +606,7 @@ HRESULT WINAPI D3D10StateBlockMaskDisableAll(D3D11Base::D3D10_STATE_BLOCK_MASK *
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskDisableAll called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskDisableAll)(pMask);
 }
 
@@ -618,7 +615,7 @@ HRESULT WINAPI D3D10StateBlockMaskDisableCapture(D3D11Base::D3D10_STATE_BLOCK_MA
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskDisableCapture called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskDisableCapture)(pMask, 
 		StateType, RangeStart, RangeLength);
 }
@@ -627,7 +624,7 @@ HRESULT WINAPI D3D10StateBlockMaskEnableAll(D3D11Base::D3D10_STATE_BLOCK_MASK *p
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskEnableAll called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskEnableAll)(pMask);
 }
 
@@ -636,7 +633,7 @@ HRESULT WINAPI D3D10StateBlockMaskEnableCapture(D3D11Base::D3D10_STATE_BLOCK_MAS
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskEnableCapture called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskEnableCapture)(pMask, 
 		StateType, RangeStart, RangeLength);
 }
@@ -646,7 +643,7 @@ BOOL WINAPI D3D10StateBlockMaskGetSetting(D3D11Base::D3D10_STATE_BLOCK_MASK *pMa
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskGetSetting called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskGetSetting)(pMask, 
 		StateType, Entry);
 }
@@ -656,7 +653,7 @@ HRESULT WINAPI D3D10StateBlockMaskIntersect(D3D11Base::D3D10_STATE_BLOCK_MASK *p
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskIntersect called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskIntersect)(pA, 
 		pB, pResult);
 }
@@ -666,7 +663,7 @@ HRESULT WINAPI D3D10StateBlockMaskUnion(D3D11Base::D3D10_STATE_BLOCK_MASK *pA,
 {
 	InitD310();
 	if (LogFile) fprintf(LogFile, "D3D10StateBlockMaskUnion called.\n");
-	if (LogFile) fflush(LogFile);
+	
 	return (*_D3D10StateBlockMaskUnion)(pA, 
 		pB, pResult);
 }
@@ -679,19 +676,18 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		riid.Data4[4] == marker.Data4[4] && riid.Data4[5] == marker.Data4[5] && riid.Data4[6] == marker.Data4[6] && riid.Data4[7] == marker.Data4[7])
 	{
 		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: requesting real ID3D10Device handle from %x\n", *ppvObj);
-		if (LogFile) fflush(LogFile);
+		
 	    D3D11Wrapper::ID3D10Device *p = (D3D11Wrapper::ID3D10Device*) D3D11Wrapper::ID3D10Device::m_List.GetDataPtr(*ppvObj);
 		if (p)
 		{
 			if (LogFile) fprintf(LogFile, "  given pointer was already the real device.\n");
-			if (LogFile) fflush(LogFile);
 		}
 		else
 		{
 			*ppvObj = ((D3D11Wrapper::ID3D10Device *)*ppvObj)->m_pDevice;
 		}
 		if (LogFile) fprintf(LogFile, "  returning handle = %x\n", *ppvObj);
-		if (LogFile) fflush(LogFile);
+		
 		return 0x13bc7e31;
 	}
 
@@ -759,7 +755,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			if(wrapper == NULL)
 			{
 				if (LogFile) fprintf(LogFile, "  error allocating ID3D10Device wrapper.\n");
-				if (LogFile) fflush(LogFile);
+				
 				origDevice->Release();
 				return E_OUTOFMEMORY;
 			}
@@ -773,7 +769,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			if(wrapper == NULL)
 			{
 				if (LogFile) fprintf(LogFile, "  error allocating ID3D10Multithread wrapper.\n");
-				if (LogFile) fflush(LogFile);
+				
 				origDevice->Release();
 				return E_OUTOFMEMORY;
 			}
@@ -787,7 +783,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		}
 	}
 	if (LogFile) fprintf(LogFile, "  result = %x, handle = %x\n", hr, *ppvObj);
-	if (LogFile) fflush(LogFile);
+	
 	return hr;
 }
 
