@@ -285,7 +285,8 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
 		{
 			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
-			setvbuf(LogFile, NULL, _IONBF, 0);
+			if (GetPrivateProfileInt(L"Logging", L"unbuffered", 1, dir))
+				setvbuf(LogFile, NULL, _IONBF, 0);
 		}
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir);
@@ -1384,6 +1385,10 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions\n");
 	
+	// Regardless of log settings, since this runs every frame, let's flush the log
+	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
+	if (LogFile) fflush(LogFile);
+
 	UpdateInputState();
 
 	// Screenshot?
