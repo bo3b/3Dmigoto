@@ -155,28 +155,33 @@ static void ReadShaderVariableType(const uint32_t ui32MajorVersion,
 			varType->Name;
 	}
 
-	if(ui32MemberCount)
+	if (ui32MemberCount)
 	{
 		varType->Members = (ShaderVarType*)malloc(sizeof(ShaderVarType)*ui32MemberCount);
 
 		ui32MemberOffset = pui32tokens[3];
-	
-		pui32MemberTokens = (const uint32_t*)((const char*)pui32FirstConstBufToken+ui32MemberOffset);
 
-		for(i=0; i< ui32MemberCount; ++i)
+		pui32MemberTokens = (const uint32_t*)((const char*)pui32FirstConstBufToken + ui32MemberOffset);
+
+		for (i = 0; i< ui32MemberCount; ++i)
 		{
+			ShaderVarType member;
+			memcpy(&varType->Members[i], &member, sizeof(ShaderVarType));
+
 			uint32_t ui32NameOffset = *pui32MemberTokens++;
 			uint32_t ui32MemberTypeOffset = *pui32MemberTokens++;
-			
+
 			varType->Members[i].Parent = varType;
 			varType->Members[i].ParentCount = varType->ParentCount + 1;
 
 			varType->Members[i].Offset = *pui32MemberTokens++;
 
-			ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), varType->Members[i].Name);
+			std::string temp;
+			ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken + ui32NameOffset), temp);
+			varType->Members[i].Name = temp;
 
-			ReadShaderVariableType(ui32MajorVersion, pui32FirstConstBufToken, 
-				(const uint32_t*)((const char*)pui32FirstConstBufToken+ui32MemberTypeOffset), &varType->Members[i]);
+			ReadShaderVariableType(ui32MajorVersion, pui32FirstConstBufToken,
+				(const uint32_t*)((const char*)pui32FirstConstBufToken + ui32MemberTypeOffset), &varType->Members[i]);
 		}
 	}
 }
