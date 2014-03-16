@@ -37,16 +37,17 @@ void InitializeDLL()
 	if (!gInitialized)
 	{
 		gInitialized = true;
+
 		wchar_t dir[MAX_PATH];
 		GetModuleFileName(0, dir, MAX_PATH);
 		wcsrchr(dir, L'\\')[1] = 0;
 		wcscat(dir, L"d3dx.ini");
 		LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
 		if (LogFile)
-			LogFile = fopen("d3d9_log.txt", "w");
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir);
-		wchar_t val[MAX_PATH];
+			fopen_s(&LogFile, "d3d9_log.txt", "w");
+		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir) == 1;
+		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir) == 1;
+
 		SCREEN_WIDTH = GetPrivateProfileInt(L"Device", L"width", -1, dir);
 		SCREEN_HEIGHT = GetPrivateProfileInt(L"Device", L"height", -1, dir);
 		SCREEN_REFRESH = GetPrivateProfileInt(L"Device", L"refresh_rate", -1, dir);
@@ -500,7 +501,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 	{
 		me->pendingLockUnlock = false;
 		if (LogFile) fprintf(LogFile, "  calling postponed Lock.\n");
-		void *ppbData;
+
 		D3D9Base::D3DLOCKED_RECT rect;
 		HRESULT hr = me->LockRect(me->_Level, &rect, 0, me->_Flags);
 		if (FAILED(hr))
@@ -509,7 +510,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 		
 			return;
 		}
-		for (int y = 0; y < me->_Height; ++y)
+		for (UINT y = 0; y < me->_Height; ++y)
 			memcpy(((char*)rect.pBits) + y*rect.Pitch, me->_Buffer + y*me->_Width*4, rect.Pitch);
 		hr = me->UnlockRect(me->_Level);
 		if (FAILED(hr))

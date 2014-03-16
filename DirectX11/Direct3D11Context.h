@@ -143,7 +143,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 	if (ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		for (int i = 0; i < NumViews; ++i)
+		for (UINT i = 0; i < NumViews; ++i)
 		{
 			int pos = StartSlot + i;
 			if (!ppShaderResourceViews[i])
@@ -362,7 +362,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	data.override = false;
 	data.skip = G->mBlockingMode;
 	float separationValue;
-	int selectedRenderTargetPos;
+	UINT selectedRenderTargetPos;
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	// Stats
 	if (G->mCurrentVertexShader && G->mCurrentPixelShader)
@@ -803,7 +803,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 	if (ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		for (int i = 0; i < NumViews; ++i)
+		for (UINT i = 0; i < NumViews; ++i)
 		{
 			int pos = StartSlot + i;
 			if (!ppShaderResourceViews[i])
@@ -990,7 +990,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mCurrentRenderTargets.clear();
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	for (int i = 0; i < NumViews; ++i)
+	for (UINT i = 0; i < NumViews; ++i)
 	{			
 		if (ppRenderTargetViews[i] == 0) continue;
 		D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
@@ -1292,8 +1292,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 	ID3D11Device *device;
 	GetDevice(&device);
 
-	device->mParamTextureManager.mScreenWidth = G->mSwapChainInfo.width;
-	device->mParamTextureManager.mScreenHeight = G->mSwapChainInfo.height;
+	device->mParamTextureManager.mScreenWidth = (float) G->mSwapChainInfo.width;
+	device->mParamTextureManager.mScreenHeight = (float) G->mSwapChainInfo.height;
 	if (G->ENABLE_TUNE)
 	{
 		//device->mParamTextureManager.mSeparationModifier = gTuneValue;

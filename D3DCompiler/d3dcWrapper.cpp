@@ -21,7 +21,7 @@ void InitializeDLL()
 		wcsrchr(dir, L'\\')[1] = 0;
 		wcscat(dir, L"d3dx.ini");
 		D3DWrapper::LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
-		if (D3DWrapper::LogFile) D3DWrapper::LogFile = fopen("D3DCompiler_" COMPILER_DLL_VERSION "_log.txt", "w");
+		if (D3DWrapper::LogFile) fopen_s(&D3DWrapper::LogFile, "D3DCompiler_" COMPILER_DLL_VERSION "_log.txt", "w");
 		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "DLL initialized.\n");
 		
 		wchar_t val[MAX_PATH];
@@ -35,7 +35,7 @@ void InitializeDLL()
 			// Create directory?
 			CreateDirectory(SHADER_PATH, 0);
 		}
-		EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir);
+		EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir) == 1;
 	}
 }
 
@@ -441,7 +441,8 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 				(UINT32)(binaryHash >> 32), (UINT32)binaryHash, target, (UINT32)(sourceHash >> 32), (UINT32)sourceHash);
 			if (EXPORT_ALL)
 			{
-				FILE *f = _wfopen(val, L"wb");
+				FILE *f;
+				_wfopen_s(&f, val, L"wb");
 				if (f)
 				{
 					fwrite(pSrcData, 1, SrcDataSize, f);
@@ -457,7 +458,8 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 				{
 					wsprintf(val, L"%ls\\%ls", SHADER_PATH, findFileData.cFileName);
 					FindClose(hFind);
-					FILE *f = _wfopen(val, L"rb");
+					FILE *f;
+					_wfopen_s(&f, val, L"rb");
 					if (D3DWrapper::LogFile)
 					{
 						char path[MAX_PATH];

@@ -141,7 +141,7 @@ struct Globals
 	UINT64 mCurrentIndexBuffer;
 	std::set<UINT64> mVisitedIndexBuffers;
 	UINT64 mSelectedIndexBuffer;
-	int mSelectedIndexBufferPos;
+	unsigned int mSelectedIndexBufferPos;
 	std::set<UINT64> mSelectedIndexBuffer_VertexShader;
 	std::set<UINT64> mSelectedIndexBuffer_PixelShader;
 
@@ -154,7 +154,7 @@ struct Globals
 	UINT64 mCurrentVertexShader;							// Shader currently live in GPU pipeline.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen in latest frame
 	UINT64 mSelectedVertexShader;							// Shader selected using XInput
-	int mSelectedVertexShaderPos;
+	unsigned int mSelectedVertexShaderPos;
 	std::set<UINT64> mSelectedVertexShader_IndexBuffer;
 
 	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
@@ -164,7 +164,7 @@ struct Globals
 	UINT64 mCurrentPixelShader;
 	std::set<UINT64> mVisitedPixelShaders;
 	UINT64 mSelectedPixelShader;
-	int mSelectedPixelShaderPos;
+	unsigned int mSelectedPixelShaderPos;
 	std::set<UINT64> mSelectedPixelShader_IndexBuffer;
 
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
@@ -189,7 +189,7 @@ struct Globals
 	std::set<void *> mVisitedRenderTargets;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
-	int mSelectedRenderTargetPos;
+	unsigned int mSelectedRenderTargetPos;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
 	std::set<void *> mSelectedRenderTargetSnapshotList;
@@ -282,27 +282,27 @@ void InitializeDLL()
 		
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
-		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
+		if (GetPrivateProfileInt(L"Logging", L"calls", 0, dir))
 		{
 			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
 			if (GetPrivateProfileInt(L"Logging", L"unbuffered", 1, dir))
 				setvbuf(LogFile, NULL, _IONBF, 0);
 		}
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir);
+		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir) == 1;
+		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir) == 1;
 
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &G->SCREEN_WIDTH);
+		if (read) swscanf_s(val, L"%d", &G->SCREEN_WIDTH);
 		read = GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &G->SCREEN_HEIGHT);
+		if (read) swscanf_s(val, L"%d", &G->SCREEN_HEIGHT);
 		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &G->SCREEN_REFRESH);
+		if (read) swscanf_s(val, L"%d", &G->SCREEN_REFRESH);
 		read = GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &G->SCREEN_FULLSCREEN);
+		if (read) swscanf_s(val, L"%d", &G->SCREEN_FULLSCREEN);
 
-		G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, dir);
-		G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, dir);
+		G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, dir) == 1;
+		G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, dir) == 1;
 		G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, dir);
 		G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, dir);
 		read = GetPrivateProfileString(L"System", L"proxy_d3d11", 0, DLL_PATH, MAX_PATH, dir);
@@ -338,21 +338,21 @@ void InitializeDLL()
 			// Create directory?
 			CreateDirectory(SHADER_CACHE_PATH, 0);
 		}
-		G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, dir);
-		G->EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir);
-		G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, dir);
-		G->PRELOAD_SHADERS = GetPrivateProfileInt(L"Rendering", L"preload_shaders", 0, dir);
-		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, dir);
-		G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, dir);
-		G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, dir);
-		G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, dir);
-		G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, dir);
-		G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, dir);
-		G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, dir);
-		G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, dir);
-		G->ENABLE_TUNE = GetPrivateProfileInt(L"Rendering", L"tune_enable", 0, dir);
+		G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, dir) == 1;
+		G->EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir) == 1;
+		G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, dir) == 1;
+		G->PRELOAD_SHADERS = GetPrivateProfileInt(L"Rendering", L"preload_shaders", 0, dir) == 1;
+		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, dir) == 1;
+		G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, dir) == 1;
+		G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, dir) == 1;
+		G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, dir) == 1;
+		G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, dir) == 1;
+		G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, dir) == 1;
+		G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, dir) == 1;
+		G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, dir) == 1;
+		G->ENABLE_TUNE = GetPrivateProfileInt(L"Rendering", L"tune_enable", 0, dir) == 1;
 		read = GetPrivateProfileString(L"Rendering", L"tune_step", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%f", &G->gTuneStep);
+		if (read) swscanf_s(val, L"%f", &G->gTuneStep);
 		read = GetPrivateProfileString(L"Rendering", L"marking_mode", 0, val, MAX_PATH, dir);
 		if (read && !wcscmp(val, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
 		if (read && !wcscmp(val, L"mono")) G->marking_mode = MARKING_MODE_MONO;
@@ -429,7 +429,7 @@ void InitializeDLL()
 		if (read)
 		{
 			unsigned long hashHi, hashLo;
-			swscanf(val, L"%08lx%08lx", &hashHi, &hashLo);
+			swscanf_s(val, L"%08lx%08lx", &hashHi, &hashLo);
 			G->ZBufferHashToInject = (UINT64(hashHi) << 32) | UINT64(hashLo);
 		}
 		read = GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, val, MAX_PATH, dir);
@@ -507,16 +507,16 @@ void InitializeDLL()
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "Find [ShaderOverride] i=%i\n", i);
 			wchar_t id[] = L"ShaderOverridexxx", val[MAX_PATH];
-			_itow(i, id+14, 10);
+			_itow_s(i, id+14, 3, 10);
 			int read = GetPrivateProfileString(id, L"Hash", 0, val, MAX_PATH, dir);
 			if (!read) break;
 			unsigned long hashHi, hashLo;
-			swscanf(val, L"%08lx%08lx", &hashHi, &hashLo);
+			swscanf_s(val, L"%08lx%08lx", &hashHi, &hashLo);
 			read = GetPrivateProfileString(id, L"Separation", 0, val, MAX_PATH, dir);
 			if (read)
 			{
 				float separation;
-				swscanf(val, L"%e", &separation);
+				swscanf_s(val, L"%e", &separation);
 				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
 				if (LogFile && LogDebug) fprintf(LogFile, " [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
 			}
@@ -530,7 +530,7 @@ void InitializeDLL()
 				int iteration;
 				std::vector<int> iterations;
 				iterations.push_back(0);
-				swscanf(val, L"%d", &iteration);
+				swscanf_s(val, L"%d", &iteration);
 				iterations.push_back(iteration);
 				G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
 			}
@@ -538,7 +538,7 @@ void InitializeDLL()
 			if (read)
 			{
 				unsigned long hashHi2, hashLo2;
-				swscanf(val, L"%08lx%08lx", &hashHi2, &hashLo2);
+				swscanf_s(val, L"%08lx%08lx", &hashHi2, &hashLo2);
 				G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
 			}
 		}
@@ -546,11 +546,11 @@ void InitializeDLL()
 		for (int i = 1;; ++i)
 		{
 			wchar_t id[] = L"TextureOverridexxx", val[MAX_PATH];
-			_itow(i, id+15, 10);
+			_itow_s(i, id+15, 3, 10);
 			int read = GetPrivateProfileString(id, L"Hash", 0, val, MAX_PATH, dir);
 			if (!read) break;
 			unsigned long hashHi, hashLo;
-			swscanf(val, L"%08lx%08lx", &hashHi, &hashLo);
+			swscanf_s(val, L"%08lx%08lx", &hashHi, &hashLo);
 			int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, dir);
 			if (stereoMode >= 0)
 			{
@@ -569,7 +569,7 @@ void InitializeDLL()
 				std::vector<int> iterations;
 				iterations.push_back(0);
 				int id[10] = { 0,0,0,0,0,0,0,0,0,0 };
-				swscanf(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id+0,id+1,id+2,id+3,id+4,id+5,id+6,id+7,id+8,id+9);
+				swscanf_s(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id+0,id+1,id+2,id+3,id+4,id+5,id+6,id+7,id+8,id+9);
 				for (int j = 0; j < 10; ++j)
 				{
 					if (id[j] <= 0) break;
@@ -1118,7 +1118,7 @@ static string GetShaderModel(UINT64 hash, wstring shaderType)
 	wchar_t name[MAX_PATH];
 
 	// Read binary compiled shader from ShaderFixes with matching name.
-	swprintf(name, L"%ls\\%016llx-%ls_replace.bin", SHADER_PATH, hash, shaderType.c_str());
+	swprintf_s(name, _countof(name), L"%ls\\%016llx-%ls_replace.bin", SHADER_PATH, hash, shaderType.c_str());
 	HANDLE f = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f != INVALID_HANDLE_VALUE)
 	{
@@ -1254,7 +1254,8 @@ static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	{
 		wchar_t val[MAX_PATH];
 		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", shaderFixPath, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
-		FILE *fw = _wfopen(val, L"wb");
+		FILE *fw;
+		_wfopen_s(&fw, val, L"wb");
 		if (LogFile)
 		{
 			char fileName[MAX_PATH];
@@ -1321,6 +1322,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	// Find the original shader bytecode in the mReloadedShaders Map. This map only contains entries for 
 	// shaders from the ShaderFixes folder, but can also include .bin files that were loaded directly.
 	// This needs to use the value to find the key, so a linear search.
+	// Todo: leaks prior shader, release last one if there.
 	for each (pair<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
 		if (iter.second.hash == hash)

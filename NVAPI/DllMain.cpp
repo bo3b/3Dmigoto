@@ -146,46 +146,51 @@ static void loadDll()
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 		wcscat(sysDir, L"\\nvapi.dll");
 		nvDLL = LoadLibrary(sysDir);
+
 		DllCanUnloadNowPtr = (DllCanUnloadNowType)GetProcAddress(nvDLL, "DllCanUnloadNow");
 		DllGetClassObjectPtr = (DllGetClassObjectType)GetProcAddress(nvDLL, "DllGetClassObject");
 		DllRegisterServerPtr = (DllRegisterServerType)GetProcAddress(nvDLL, "DllRegisterServer");
 		DllUnregisterServerPtr = (DllUnregisterServerType)GetProcAddress(nvDLL, "DllUnregisterServer");
 		nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
+
 		GetModuleFileName(0, sysDir, MAX_PATH);
 		wcsrchr(sysDir, L'\\')[1] = 0;
 		wcscat(sysDir, L"d3dx.ini");
 		for (int i = 1;; ++i)
 		{
 			wchar_t id[] = L"Mapxxx", val[MAX_PATH];
-			_itow(i, id+3, 10);
+			_itow_s(i, id+3, 3, 10);
 			int read = GetPrivateProfileString(L"ConvergenceMap", id, 0, val, MAX_PATH, sysDir);
 			if (!read) break;
 			unsigned int fromHx;
 			float from, to;
-			swscanf(val, L"from %x to %e", &fromHx, &to);
+			swscanf_s(val, L"from %x to %e", &fromHx, &to);
 			from = *reinterpret_cast<float *>(&fromHx);
 			GameConvergenceMap[from] = to;
 			GameConvergenceMapInv[to] = from;
 		}
-		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir);
-		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir);
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir);
-		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir);
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir);
+		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir) == 1;
+		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir) == 1;
+		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir) == 1;
+		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir) == 1;
+		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
+
 		// Device
 		wchar_t valueString[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf(valueString, L"%d", &SCREEN_WIDTH);
+		if (read) swscanf_s(valueString, L"%d", &SCREEN_WIDTH);
 		read = GetPrivateProfileString(L"Device", L"height", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf(valueString, L"%d", &SCREEN_HEIGHT);
+		if (read) swscanf_s(valueString, L"%d", &SCREEN_HEIGHT);
 		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf(valueString, L"%d", &SCREEN_REFRESH);
+		if (read) swscanf_s(valueString, L"%d", &SCREEN_REFRESH);
 		read = GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf(valueString, L"%d", &SCREEN_FULLSCREEN);
+		if (read) swscanf_s(valueString, L"%d", &SCREEN_FULLSCREEN);
+
 		// Stereo
-		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, sysDir);
-		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir);
+		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, sysDir) == 1;
+		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir) == 1;
 		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, sysDir);
+
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
@@ -194,10 +199,11 @@ static void loadDll()
 		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && isspace(*end)) end--; *(end+1) = 0;
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
-			swscanf(valueString, L"%e", &ActionConvergence);
+			swscanf_s(valueString, L"%e", &ActionConvergence);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Separation", 0, valueString, MAX_PATH, sysDir))
-			swscanf(valueString, L"%e", &ActionSeparation);
+			swscanf_s(valueString, L"%e", &ActionSeparation);
 		InitDirectInput();
+		
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);		
 	}
@@ -205,28 +211,33 @@ static void loadDll()
 static bool CallsLogging()
 {
 	if (!LogCalls) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	if (!LogFile) fopen_s(&LogFile, "nvapi_log.txt", "w");
 	return true;
 }
 static bool SeparationLogging()
 {
 	if (!LogSeparation) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	if (!LogFile) fopen_s(&LogFile, "nvapi_log.txt", "w");
 	return true;
 }
 static bool ConvergenceLogging()
 {
 	if (!LogConvergence) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	if (!LogFile) fopen_s(&LogFile, "nvapi_log.txt", "w");
 	return true;
 }
+
+// Ignore the warnings for secure function here.  Too much trouble for no risk.
+// Better bet is to use logging api like Log4C.
+#pragma warning( disable : 4996 )
 static char *LogTime()
 {
-	time_t ltime = time(0); 
-	char *timeStr = asctime(localtime(&ltime)); 
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
 	timeStr[strlen(timeStr)-1] = 0;
 	return timeStr;
 }
+#pragma warning( default : 4996 )
 
 STDAPI DllCanUnloadNow(void)
 {

@@ -1,10 +1,12 @@
-#include "DecompileHLSL.h"
 #include <map>
 #include <string>
 #include <cstdio>
 #include <vector>
 #include <set>
 #include <algorithm>
+
+#include "DecompileHLSL.h"
+
 #include "..\BinaryDecompiler\include\pstdint.h"
 #include "..\BinaryDecompiler\internal_includes\structs.h"
 #include "..\BinaryDecompiler\internal_includes\decode.h"
@@ -141,7 +143,7 @@ public:
 
 		// Read until header.
 		const char *headerid = "// Input signature:";
-		int pos = 0;
+		unsigned pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			if (!strncmp(c+pos, headerid, strlen(headerid)))
@@ -612,7 +614,7 @@ public:
 		int structLevel = -1;
 		// Search for buffer.
 		const char *headerid = "// cbuffer ";
-		int pos = 0;
+		unsigned int pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			// Read next buffer.
@@ -1152,7 +1154,7 @@ public:
 		else if (absolute)
 			sprintf(right, "abs(%s)", right2);
 		else
-			strcpy(right, right2);
+			strcpy_s(right, sizeof(right), right2);
 	}
 
 	void CollectBrackets(char *op1, char *op2, char *op3, char *op4, char *op5, char *op6, char *op7, char *op8, char *op9, char *op10, char *op11, char *op12, char *op13, char *op14, char *op15)
@@ -1379,7 +1381,7 @@ public:
 			if (size == 2) sprintf(buffer + strlen(buffer), "int2(%d,%d)", (int)f0, (int)f1);
 			else if (size == 3) sprintf(buffer + strlen(buffer), "int3(%d,%d,%d)", (int)f0, (int)f1, (int)f2);
 			else if (size == 4) sprintf(buffer + strlen(buffer), "int4(%d,%d,%d,%d)", (int)f0, (int)f1, (int)f2, (int)f3);
-			strcpy(target, buffer);
+			strcpy_s(target, sizeof(*target), buffer);
 			return target;
 		}
 		char *pos = strrchr(target, '.');
@@ -1391,7 +1393,7 @@ public:
 				sprintf(buffer, "(int)%s", target);
 			else
 				sprintf(buffer, "(int%d)%s", size, target);
-			strcpy(target, buffer);
+			strcpy_s(target, sizeof(*target), buffer);
 		}
 		return target;
 	}
@@ -1409,7 +1411,7 @@ public:
 			if (size == 2) sprintf(buffer + strlen(buffer), "uint2(%d,%d)", (int)f0, (int)f1);
 			else if (size == 3) sprintf(buffer + strlen(buffer), "uint3(%d,%d,%d)", (int)f0, (int)f1, (int)f2);
 			else if (size == 4) sprintf(buffer + strlen(buffer), "uint4(%d,%d,%d,%d)", (int)f0, (int)f1, (int)f2, (int)f3);
-			strcpy(target, buffer);
+			strcpy_s(target, sizeof(*target), buffer);
 			return target;
 		}
 		char *pos = strrchr(target, '.');
@@ -1421,7 +1423,7 @@ public:
 				sprintf(buffer, "(uint)%s", target);
 			else
 				sprintf(buffer, "(uint%d)%s", size, target);
-			strcpy(target, buffer);
+			strcpy_s(target, sizeof(*target), buffer);
 		}
 		return target;
 	}
@@ -1449,7 +1451,7 @@ public:
 		if (o.eType == OPERAND_TYPE_IMMEDIATE32)
 		{
 			float oldValue;
-			sscanf(op, "l(%e", &oldValue);
+			sscanf_s(op, "l(%e", &oldValue);
 			if (!strncmp(op, "l(1.#INF00", strlen("l(1.#INF00")) || abs(oldValue - o.afImmediates[0]) < 0.1)
 			{
 				if (o.iNumComponents == 4)
@@ -1604,7 +1606,7 @@ public:
 			{
 				long found = 0;
 				for (CBufferData::iterator i = mCBufferData.begin(); i != mCBufferData.end(); ++i)
-					for (int j = 0; j < ZRepair_Dependencies1.size(); ++j)
+					for (unsigned int j = 0; j < ZRepair_Dependencies1.size(); ++j)
 						if (i->second.Name == ZRepair_Dependencies1[j])
 							found |= 1 << j;
 				if (!ZRepair_Dependencies1.size() || found == (1 << ZRepair_Dependencies1.size())-1)
@@ -1677,7 +1679,7 @@ public:
 				{
 					long found = 0;
 					for (CBufferData::iterator i = mCBufferData.begin(); i != mCBufferData.end(); ++i)
-						for (int j = 0; j < ZRepair_Dependencies2.size(); ++j)
+						for (unsigned int j = 0; j < ZRepair_Dependencies2.size(); ++j)
 							if (i->second.Name == ZRepair_Dependencies2[j])
 								found |= 1 << j;
 					if (!ZRepair_Dependencies2.size() || found == (1 << ZRepair_Dependencies2.size())-1)
@@ -1873,7 +1875,7 @@ public:
 
 					if (!ObjectPos_ID1.empty())
 					{
-						int offset = strstr(mOutput.data(), "void main(") - mOutput.data();
+						unsigned int offset = strstr(mOutput.data(), "void main(") - mOutput.data();
 						while (offset < mOutput.size())
 						{
 							char *pos = strstr(mOutput.data() + offset, ObjectPos_ID1.c_str());
@@ -1925,7 +1927,7 @@ public:
 
 					if (!ObjectPos_ID2.empty())
 					{
-						int offset = strstr(mOutput.data(), "void main(") - mOutput.data();
+						unsigned int offset = strstr(mOutput.data(), "void main(") - mOutput.data();
 						while (offset < mOutput.size())
 						{
 							char *pos = strstr(mOutput.data() + offset, ObjectPos_ID2.c_str());
@@ -2032,7 +2034,7 @@ public:
 
 		char buffer[512];
 		int pos = 0;
-		int iNr = 0;
+		unsigned int iNr = 0;
 		while (pos < size && iNr < shader->psInst.size())
 		{
 			Instruction *instr = &shader->psInst[iNr];
@@ -2074,7 +2076,7 @@ public:
 				if (strPos)
 				{
 					int bufIndex = 0;
-					if (sscanf(strPos+2, "%d", &bufIndex) != 1)
+					if (sscanf_s(strPos+2, "%d", &bufIndex) != 1)
 					{
 						logDecompileError("Error parsing buffer register index: "+string(op1));
 						return;
@@ -2086,7 +2088,7 @@ public:
 						return;
 					}
 					int bufSize = 0;
-					if (sscanf(strPos+1, "%d", &bufSize) != 1)
+					if (sscanf_s(strPos+1, "%d", &bufSize) != 1)
 					{
 						logDecompileError("Error parsing buffer size: "+string(op1));
 						return;
@@ -2119,7 +2121,7 @@ public:
 				if (op1[0] == 's')
 				{
 					int bufIndex = 0;
-					if (sscanf(op1+1, "%d", &bufIndex) != 1)
+					if (sscanf_s(op1+1, "%d", &bufIndex) != 1)
 					{
 						logDecompileError("Error parsing sampler register index: "+string(op1));
 						return;
@@ -2145,7 +2147,7 @@ public:
 				if (op2[0] == 't')
 				{
 					int bufIndex = 0;
-					if (sscanf(op2+1, "%d", &bufIndex) != 1)
+					if (sscanf_s(op2+1, "%d", &bufIndex) != 1)
 					{
 						logDecompileError("Error parsing texture register index: "+string(op2));
 						return;
@@ -2179,7 +2181,7 @@ public:
 			else if (!strcmp(statement, "dcl_indexrange"))
 			{
 				int numIndex = 0;
-				sscanf(op2, "%d", &numIndex);
+				sscanf_s(op2, "%d", &numIndex);
 				sprintf(buffer, "  float4 v[%d] = { ", numIndex);
 				for (int i = 0; i < numIndex; ++i)
 					sprintf(buffer+strlen(buffer), "v%d,", i);
@@ -2191,7 +2193,7 @@ public:
 			{
 				int numIndex = 0;
 				*strchr(op1, '[') = 0;
-				sscanf(op2, "%d", &numIndex);
+				sscanf_s(op2, "%d", &numIndex);
 				sprintf(buffer, "  float4 %s[%d];\n", op1, numIndex);
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 			}
@@ -2966,8 +2968,8 @@ public:
 				applySwizzle(".xyzw", op2);
 				applySwizzle(op1, op3);
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1), 
 					mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
@@ -2982,8 +2984,8 @@ public:
 				applySwizzle(op1, op3);
 				applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s)%s;\n", writeTarget(op1), 
@@ -2991,7 +2993,7 @@ public:
 				else
 				{
 					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf(statement, "sample_l_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+					sscanf_s(statement, "sample_l_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
 					sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
 						offsetx, offsety, strrchr(op3, '.'));
@@ -3008,8 +3010,8 @@ public:
 				applySwizzle(op1, fixImm(op5, instr->asOperands[4]));
 				applySwizzle(op1, fixImm(op6, instr->asOperands[5]));
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s)%s;\n", writeTarget(op1), 
@@ -3017,7 +3019,7 @@ public:
 				else
 				{
 					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf(statement, "sample_d_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+					sscanf_s(statement, "sample_d_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
 					sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(),
 						offsetx, offsety, strrchr(op3, '.'));
@@ -3033,8 +3035,8 @@ public:
 				applySwizzle(op1, op3);
 				applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s)%s;\n", writeTarget(op1), 
@@ -3042,7 +3044,7 @@ public:
 				else
 				{
 					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf(statement, "sample_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+					sscanf_s(statement, "sample_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
 					sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
 						offsetx, offsety, strrchr(op3, '.'));
@@ -3058,8 +3060,8 @@ public:
 				applySwizzle(op1, op3);
 				applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s)%s;\n", writeTarget(op1), 
@@ -3067,7 +3069,7 @@ public:
 				else
 				{
 					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf(statement, "sample_c_lz_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+					sscanf_s(statement, "sample_c_lz_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
 					sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
 						offsetx, offsety, strrchr(op3, '.'));
@@ -3083,8 +3085,8 @@ public:
 				applySwizzle(".xyzw", op2);
 				applySwizzle(op1, op3);
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.Gather(%s, %s)%s;\n", writeTarget(op1), 
@@ -3092,7 +3094,7 @@ public:
 				else
 				{
 					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf(statement, "gather4_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+					sscanf_s(statement, "gather4_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
 					sprintf(buffer, "  %s = %s.Gather(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), 
 						offsetx, offsety, strrchr(op3, '.'));
@@ -3108,8 +3110,8 @@ public:
 				applySwizzle(".xyzw", op2);
 				applySwizzle(op1, op3);
 				int textureId, samplerId;
-				sscanf(op3, "t%d.", &textureId);
-				sscanf(op4, "s%d", &samplerId);
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
 				truncateTexturePos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s)%s;\n", writeTarget(op1), 
@@ -3117,7 +3119,7 @@ public:
 				else
 				{
 					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf(statement, "gather4_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+					sscanf_s(statement, "gather4_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
 					sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s, int2(%d,%d))%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 						offsetx, offsety, strrchr(op3, '.'));
@@ -3133,7 +3135,7 @@ public:
 				applySwizzle(".xyzw", op2);
 				applySwizzle(op1, op3);
 				int textureId;
-				sscanf(op3, "t%d.", &textureId);
+				sscanf_s(op3, "t%d.", &textureId);
 				truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
@@ -3151,7 +3153,7 @@ public:
 				applySwizzle(op1, op3);
 				applySwizzle(".x", fixImm(op4, instr->asOperands[3]), true);
 				int textureId;
-				sscanf(op3, "t%d.", &textureId);
+				sscanf_s(op3, "t%d.", &textureId);
 				truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 				if (!instr->bAddressOffset)
 					sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
@@ -3179,7 +3181,7 @@ public:
 				if (instr->asOperands[1].eType == OPERAND_TYPE_IMMEDIATE32)
 					strcpy(op2, "bitmask.x");
 				int textureId;
-				sscanf(op3, "t%d.", &textureId);
+				sscanf_s(op3, "t%d.", &textureId);
 				sprintf(buffer, "  %s.GetDimensions(%s, %s, %s);\n", mTextureNames[textureId].c_str(), ci(GetSuffix(op1, 0)).c_str(), ci(GetSuffix(op1, 1)).c_str(), ci(op2).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
@@ -3345,6 +3347,8 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	// so that system level exceptions are caught too.
 	try
 	{
+		__debugbreak();
+
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
 		if (!shader) return string();
 	

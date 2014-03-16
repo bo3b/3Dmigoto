@@ -339,7 +339,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
-				bool found = true;
+				BOOL found = true;
 				while (found)
 				{
 					PreloadVertexShader(SHADER_PATH, findFileData, GetD3D11Device());
@@ -355,7 +355,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
-				bool found = true;
+				BOOL found = true;
 				while (found)
 				{
 					PreloadVertexShader(SHADER_CACHE_PATH, findFileData, GetD3D11Device());
@@ -371,7 +371,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
-				bool found = true;
+				BOOL found = true;
 				while (found)
 				{
 					PreloadPixelShader(SHADER_PATH, findFileData, GetD3D11Device());
@@ -387,7 +387,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
-				bool found = true;
+				BOOL found = true;
 				while (found)
 				{
 					PreloadPixelShader(SHADER_CACHE_PATH, findFileData, GetD3D11Device());
@@ -670,7 +670,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		}
 		if (!exists)
 		{
-			FILE *fw = _wfopen(val, L"wb");
+			FILE *fw;
+			_wfopen_s(&fw, val, L"wb");
 			if (LogFile)
 			{
 				char fileName[MAX_PATH];
@@ -725,7 +726,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				}
 				if (!exists)
 				{
-					f = _wfopen(val, L"wb");
+					FILE *f;
+					_wfopen_s(&f, val, L"wb");
 					if (LogFile)
 					{
 						char fileName[MAX_PATH];
@@ -868,7 +870,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					if (G->CACHE_SHADERS && pCode)
 					{
 						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", shader_path, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-						FILE *fw = _wfopen(val, L"wb");
+						FILE *fw;
+						_wfopen_s(&fw, val, L"wb");
 						if (LogFile)
 						{
 							char fileName[MAX_PATH];
@@ -959,7 +962,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				if (!errorOccurred && (G->EXPORT_HLSL || (G->EXPORT_FIXED && patched)))
 				{
 					wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
-					FILE *fw = _wfopen(val, L"wb");
+					FILE *fw;
+					_wfopen_s(&fw, val, L"wb");
 					if (LogFile)
 					{
 						char fileName[MAX_PATH];
@@ -1010,7 +1014,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					if (G->CACHE_SHADERS && pCode)
 					{
 						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
-						FILE *fw = _wfopen(val, L"wb");
+						FILE *fw;
+						_wfopen_s(&fw, val, L"wb");
 						if (fw)
 						{
 							fwrite(pCode, 1, pCodeSize, fw);

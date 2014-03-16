@@ -38,16 +38,16 @@ void InitializeDLL()
 		
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &SCREEN_WIDTH);
+		if (read) swscanf_s(val, L"%d", &SCREEN_WIDTH);
 		read = GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &SCREEN_HEIGHT);
+		if (read) swscanf_s(val, L"%d", &SCREEN_HEIGHT);
 		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &SCREEN_REFRESH);
+		if (read) swscanf_s(val, L"%d", &SCREEN_REFRESH);
 		read = GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d", &SCREEN_FULLSCREEN);
-		gAllowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, dir);
+		if (read) swscanf_s(val, L"%d", &SCREEN_FULLSCREEN);
+		gAllowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, dir) == 1;
 		read = GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, val, MAX_PATH, dir);
-		if (read) swscanf(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", 
+		if (read) swscanf_s(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			FILTER_REFRESH+0, FILTER_REFRESH+1, FILTER_REFRESH+2, FILTER_REFRESH+3, &FILTER_REFRESH+4,
 			FILTER_REFRESH+5, FILTER_REFRESH+6, FILTER_REFRESH+7, FILTER_REFRESH+8, &FILTER_REFRESH+9);
 	}
