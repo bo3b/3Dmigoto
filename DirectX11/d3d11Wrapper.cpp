@@ -280,6 +280,14 @@ void InitializeDLL()
 		wcsrchr(dir, L'\\')[1] = 0;
 		wcscat(dir, L"d3dx.ini");
 		
+		// If specified in Logging section, wait for Attach to Debugger.
+		if (GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, dir))
+			do
+			{
+				Sleep(250);
+			} while (!IsDebuggerPresent());
+			
+
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
