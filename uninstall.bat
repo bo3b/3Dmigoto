@@ -1,0 +1,17 @@
+del d3d9.dll
+del d3d10.dll
+del d3d11.dll
+del D3DCompiler_39.dll
+del D3DCompiler_39_org.dll
+del D3DCompiler_41.dll
+del D3DCompiler_41_org.dll
+del D3DCompiler_42.dll
+del D3DCompiler_42_org.dll
+del D3DCompiler_43.dll
+del D3DCompiler_43_org.dll
+del D3DCompiler_46.dll
+del D3DCompiler_46_org.dll
+del dxgi.dll
+del nvapi.dll
+del XInput9_1_0.dll
+del d3dx.ini

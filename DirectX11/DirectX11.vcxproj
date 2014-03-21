@@ -156,7 +156,7 @@
       <AdditionalDependencies>dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;../nvapi64.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+      <Command>xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
 </Command>
       <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
     </PostBuildEvent>
@@ -208,7 +208,7 @@
       <AdditionalDependencies>dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;../nvapi64.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+      <Command>xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
 "$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto.zip -tzip "..\Release\*.dll" "..\Release\d3dx.ini"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
