@@ -135,6 +135,7 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(TargetDir)*.*" "T:\SteamLibrary\SteamApps\common\Assassin's Creed 3\"  /E /Y
 </Command>
       <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
     </PostBuildEvent>
