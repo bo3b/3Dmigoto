@@ -1365,6 +1365,7 @@ public:
 				return ret + i->second + string(pos + strlen(i->first.c_str()));
 			}
 		}
+		input = input.substr(0, input.find("_sat"));
 		return input;
 	}
 
