@@ -1777,7 +1777,7 @@ public:
 				// Add screen position parameter.
 				char *pos = strstr(mOutput.data(), "void main(");
 
-				// This section appeared to back up the pos pointer too far, and can write the injection
+				// This section appeared to back up the pos pointer too far, and write the injection
 				// text into the header instead of the var block.  It looks to me like this was intended
 				// to be a while loop, and accidentally worked.
 				
@@ -1785,10 +1785,14 @@ public:
 				// in doing both 'out' and SV_.
 				// There will always be at least one output parameter of SV_*
 				// This is heavily modified from what it was.
-				// The injected parameter makes the most sense as being right before the output vars.
+				
+				// This is now inserted as the first parameter, because any later can generate
+				// an error in some shaders complaining that user SV vars must come before system SV vars.
+				// It seems to be fine, if not exactly correct, to have it as first parameter.
 
-				pos = strstr(pos, "\n  out ");
-				assert(pos != NULL);
+				//pos = strstr(pos, " : SV_");
+				//assert(pos != NULL);
+				//while (*--pos != '\n');
 
 				const char *PARAM_HEADER="\n  float4 injectedScreenPos : SV_Position,";
 				mOutput.insert(mOutput.begin() + (pos - mOutput.data()), PARAM_HEADER, PARAM_HEADER+strlen(PARAM_HEADER));
