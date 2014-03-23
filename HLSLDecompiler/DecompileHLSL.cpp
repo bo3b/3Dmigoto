@@ -1365,6 +1365,7 @@ public:
 				return ret + i->second + string(pos + strlen(i->first.c_str()));
 			}
 		}
+		input = input.substr(0, input.find("_sat"));
 		return input;
 	}
 
@@ -2483,33 +2484,51 @@ public:
 					remapTarget(op1);
 					applySwizzle(op1, op2);
 					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = %s(%s);\n", writeTarget(op1), statement, ci(op2).c_str());
+						sprintf(buffer, "  %s = sqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
 					else
-						sprintf(buffer, "  %s = saturate(%s(%s));\n", writeTarget(op1), statement, ci(op2).c_str());
+						sprintf(buffer, "  %s = saturate(sqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					removeBoolean(op1);
 					break;
 		
 				case OPCODE_MIN:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
 				case OPCODE_MAX:
 					remapTarget(op1);
 					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = %s(%s, %s);\n", writeTarget(op1), statement, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 					else
-						sprintf(buffer, "  %s = saturate(%s(%s, %s));\n", writeTarget(op1), statement, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					break;		
+					break;
 				case OPCODE_IMIN:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
 				case OPCODE_IMAX:
 					remapTarget(op1);
 					applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 					applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = %s(%s, %s);\n", writeTarget(op1), statement+1, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 					else
-						sprintf(buffer, "  %s = saturate(%s(%s, %s));\n", writeTarget(op1), statement+1, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
 
