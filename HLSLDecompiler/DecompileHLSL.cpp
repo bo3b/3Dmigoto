@@ -1791,9 +1791,8 @@ public:
 				// an error in some shaders complaining that user SV vars must come before system SV vars.
 				// It seems to be fine, if not exactly correct, to have it as first parameter.
 
-				//pos = strstr(pos, " : SV_");
-				//assert(pos != NULL);
-				//while (*--pos != '\n');
+				while (*++pos != '\n');
+				assert(pos != NULL);
 
 				const char *PARAM_HEADER="\n  float4 injectedScreenPos : SV_Position,";
 				mOutput.insert(mOutput.begin() + (pos - mOutput.data()), PARAM_HEADER, PARAM_HEADER+strlen(PARAM_HEADER));
