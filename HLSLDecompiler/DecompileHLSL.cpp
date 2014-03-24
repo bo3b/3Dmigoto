@@ -2479,6 +2479,13 @@ public:
 					removeBoolean(op1);
 					break;
 
+					// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
+					// from the text ASM.  This did not match the Mov, or Add or other opcodes, and was
+					// generating errors when we'd see 'max_sat'.  Anything with saturation added of these
+					// 5 could generate an error.
+					// This fix removes the dependency on 'statement', and codes the generated HLSL line directly.
+					// We are guessing, but it appears that this was a left-over from a conversion to using the
+					// James-Jones opcode parser as the primary parser.
 				case OPCODE_SQRT:
 					remapTarget(op1);
 					applySwizzle(op1, op2);
