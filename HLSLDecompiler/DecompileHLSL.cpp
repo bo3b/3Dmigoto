@@ -2893,6 +2893,8 @@ public:
 					mBooleanRegisters.insert(op1);
 					break;
 				}
+
+					// Switch statement in HLSL was missing. Added because AC4 uses it.
 				case OPCODE_SWITCH:
 					sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
@@ -2909,6 +2911,7 @@ public:
 					sprintf(buffer, "  default :\n");
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					break;
+
 				case OPCODE_IF:
 					applySwizzle(".x", op1);
 					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
@@ -2917,12 +2920,10 @@ public:
 						sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
-				case OPCODE_ELSE:mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer)); mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				case OPCODE_ELSE:
 					sprintf(buffer, "  } else {\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_ENDIF:
 					sprintf(buffer, "  }\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
@@ -2932,12 +2933,10 @@ public:
 					sprintf(buffer, "  while (true) {\n", op1);
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_BREAK:
 					sprintf(buffer, "  break;\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_BREAKC:
 					applySwizzle(".x", op1);
 					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
@@ -2946,7 +2945,6 @@ public:
 						sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_ENDLOOP:
 					sprintf(buffer, "  }\n", op1);
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
