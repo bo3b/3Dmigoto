@@ -1647,14 +1647,18 @@ public:
 						if (constantDeclaration && !wposAvailable)
 						{
 							// Copy depth texture usage to top.
-							mCodeStartPos = mOutput.insert(mOutput.begin()+mCodeStartPos, buf, buf+strlen(buf)) - mOutput.begin();
+							//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf)) - mOutput.begin();
+							vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf));
+							mCodeStartPos = iter - mOutput.begin();
 							mCodeStartPos += strlen(buf);
 						}
 						else if (!wposAvailable)
 						{
 							// Leave declaration where it is.
 							while (*pos != '\n') --pos;
-							mCodeStartPos = mOutput.insert(mOutput.begin() + (pos+1 - mOutput.data()), buf, buf+strlen(buf)) - mOutput.begin();
+							//mCodeStartPos = mOutput.insert(mOutput.begin() + (pos + 1 - mOutput.data()), buf, buf + strlen(buf)) - mOutput.begin();
+							vector<char>::iterator iter = mOutput.insert(mOutput.begin() + (pos + 1 - mOutput.data()), buf, buf + strlen(buf));
+							mCodeStartPos = iter - mOutput.begin();
 							mCodeStartPos += strlen(buf);
 						}
 						else
@@ -1709,17 +1713,34 @@ public:
 										 "  float zTex = zpos4.%c;\n"
 										 "  float zpos = %s;\n"
 										 "  float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg2, ZRepair_ZPosCalc2.c_str());
+							
+							// There are a whole series of fixes to the statements that are doing mOutput.insert() - mOutput.begin();
+							// We would get a series of Asserts (vector mismatch), but only rarely, usually at starting a new game in AC3.  
+							// The problem appers to be that mOutput.begin() was being calculated BEFORE the mOutput.insert(), which seems to
+							// be the compiler optimizing.
+							// The problem seems to be that the Insert could move the mOutput array altogether, and because the funny use of
+							// vector<char> the vector winds up being closeset to a char* pointer.  With the pointer moved, the saved off
+							// mOutput.begin() was invalid and would cause the debug Assert.
+							// By calculating that AFTER the insert has finished, we can avoid this rare buffer movement.
+							// I fixed every instance I could find of this insert-begin, not just the one that crashed.
+							// Previous code left as example of expected behavior, and documentation for where changes happened.
+							// It took two days to figure out, it's worth some comments.
+
 							if (constantDeclaration)
 							{
 								// Copy depth texture usage to top.
-								mCodeStartPos = mOutput.insert(mOutput.begin()+mCodeStartPos, buf, buf+strlen(buf)) - mOutput.begin();
+								//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf)) - mOutput.begin();
+								vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf));
+								mCodeStartPos = iter - mOutput.begin();
 								mCodeStartPos += strlen(buf);
 							}
 							else
 							{
 								// Leave declaration where it is.
 								while (*wpos != '\n') --wpos;
-								mCodeStartPos = mOutput.insert(wpos+1, buf, buf+strlen(buf)) - mOutput.begin();
+								//mCodeStartPos = mOutput.insert(wpos + 1, buf, buf + strlen(buf)) - mOutput.begin();
+								vector<char>::iterator iter = mOutput.insert(wpos + 1, buf, buf + strlen(buf));
+								mCodeStartPos = iter - mOutput.begin();
 								mCodeStartPos += strlen(buf);
 							}
 							wposAvailable = true;
@@ -1758,7 +1779,10 @@ public:
 									 "\n  float zpos = worldPos.z;"
 									 "\n  float wpos = 1.0 / zpos;", calcStatement);
 						pos = strchr(pos, '\n');
-						mCodeStartPos = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf+strlen(buf)) - mOutput.begin();
+
+						//mCodeStartPos = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf + strlen(buf)) - mOutput.begin();
+						vector<char>::iterator iter = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf + strlen(buf));
+						mCodeStartPos = iter - mOutput.begin();
 						mCodeStartPos += strlen(buf);
 						wposAvailable = true;
 					}
@@ -1773,8 +1797,11 @@ public:
 										    "  float zpos = zpos4.x - 1;\n"
          									"  float wpos = 1.0 / zpos;\n";
 				// Copy depth texture usage to top.
-				mCodeStartPos = mOutput.insert(mOutput.begin()+mCodeStartPos, INJECT_HEADER, INJECT_HEADER+strlen(INJECT_HEADER)) - mOutput.begin();
+				//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, INJECT_HEADER, INJECT_HEADER + strlen(INJECT_HEADER)) - mOutput.begin();
+				vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, INJECT_HEADER, INJECT_HEADER + strlen(INJECT_HEADER));
+				mCodeStartPos = iter - mOutput.begin();
 				mCodeStartPos += strlen(INJECT_HEADER);
+				
 				// Add screen position parameter.
 				char *pos = strstr(mOutput.data(), "void main(");
 
@@ -1823,7 +1850,9 @@ public:
 					if (!stereoParamsWritten)
 					{
 						if (mOutput[mCodeStartPos] != '\n') --mCodeStartPos;
-						mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, StereoDecl, StereoDecl+strlen(StereoDecl)) - mOutput.begin();
+						//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, StereoDecl, StereoDecl + strlen(StereoDecl)) - mOutput.begin();
+						vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, StereoDecl, StereoDecl + strlen(StereoDecl));
+						mCodeStartPos = iter - mOutput.begin();
 						mCodeStartPos += strlen(StereoDecl);
 						stereoParamsWritten = true;
 					}
