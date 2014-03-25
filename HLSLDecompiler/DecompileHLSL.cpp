@@ -2478,6 +2478,13 @@ public:
 					removeBoolean(op1);
 					break;
 
+					// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
+					// from the text ASM.  This did not match the Mov, or Add or other opcodes, and was
+					// generating errors when we'd see 'max_sat'.  Anything with saturation added of these
+					// 5 could generate an error.
+					// This fix removes the dependency on 'statement', and codes the generated HLSL line directly.
+					// We are guessing, but it appears that this was a left-over from a conversion to using the
+					// James-Jones opcode parser as the primary parser.
 				case OPCODE_SQRT:
 					remapTarget(op1);
 					applySwizzle(op1, op2);
@@ -2892,6 +2899,8 @@ public:
 					mBooleanRegisters.insert(op1);
 					break;
 				}
+
+					// Switch statement in HLSL was missing. Added because AC4 uses it.
 				case OPCODE_SWITCH:
 					sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
@@ -2908,6 +2917,7 @@ public:
 					sprintf(buffer, "  default :\n");
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					break;
+
 				case OPCODE_IF:
 					applySwizzle(".x", op1);
 					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
@@ -2916,12 +2926,10 @@ public:
 						sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
-				case OPCODE_ELSE:mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer)); mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				case OPCODE_ELSE:
 					sprintf(buffer, "  } else {\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_ENDIF:
 					sprintf(buffer, "  }\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
@@ -2931,12 +2939,10 @@ public:
 					sprintf(buffer, "  while (true) {\n", op1);
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_BREAK:
 					sprintf(buffer, "  break;\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_BREAKC:
 					applySwizzle(".x", op1);
 					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
@@ -2945,7 +2951,6 @@ public:
 						sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
-
 				case OPCODE_ENDLOOP:
 					sprintf(buffer, "  }\n", op1);
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
