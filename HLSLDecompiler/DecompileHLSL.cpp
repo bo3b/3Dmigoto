@@ -3045,21 +3045,6 @@ public:
 					removeBoolean(op1);
 					break;
 				}
-				case OPCODE_SAMPLE_B:
-				{
-					remapTarget(op1);
-					applySwizzle(".xyzw", op2);
-					applySwizzle(op1, op3);
-					int textureId, samplerId;
-					sscanf(op3, "t%d.", &textureId);
-					sscanf(op4, "s%d", &samplerId);
-					truncateTexturePos(op2, mTextureType[textureId].c_str());
-					sprintf(buffer, "  %s = %s.SampleBias(%s, %s)%s;\n", writeTarget(op1),
-						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-					removeBoolean(op1);
-					break;
-				}
 				case OPCODE_SAMPLE_L:
 				{
 					remapTarget(op1);
