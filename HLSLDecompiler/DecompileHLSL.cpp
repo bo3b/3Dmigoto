@@ -1319,14 +1319,60 @@ public:
 		return replaceInt(buffer);
 	}
 
+	// This was expected to take input of the form 
+	//	r1.xyxx
+	// and decide how to truncate it based on the input type of Texture2D, 3D or Cube.
+	// If it's Texture2D for example, that would trim to only the first two elements
+	// as a 2D texture, so r1.xy
+	//
+	// This failed for constants of the form 
+	//	float4(0.5, 0.5, 0, 0)
+	// which were found in AC3.
+	// The fix is to look for that constant format too, and if we see those, truncate
+	// the constant to match.  So, for example, float4(0.5, 0.5, 0, 0) with Texture2D
+	// becomes float2(0.5, 0.5) as the two elements. 
+
 	void truncateTexturePos(char *op, const char *textype)
 	{
-		int pos = 5;
-		if (!strncmp(textype, "Texture2D", 9)) pos = 3;
-		else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
-		else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
-		char *cpos = strrchr(op, '.');
-		cpos[pos] = 0;
+		char *cpos;
+
+		if (!strncmp(op, "float", 5))
+		{
+			if (!strncmp(textype, "Texture2D", 9))
+			{
+				cpos = strchr(op, ',');
+				cpos++;
+				cpos = strchr(cpos, ',');
+				cpos[0] = ')';
+				cpos[1] = 0;
+				op[5] = '2';	// now: float2(x,y)
+			}
+			else if (!strncmp(textype, "Texture3D", 9))
+			{
+				cpos = strchr(op, ',');
+				cpos++;
+				cpos = strchr(cpos, ',');
+				cpos++;
+				cpos = strchr(cpos, ',');
+				cpos[0] = ')';
+				cpos[1] = 0;
+				op[5] = '3';	// now: float3(x,y,z)
+			}
+			else if (!strncmp(textype, "TextureCube", 11))
+			{
+				// left as: float4(x,y,z,w)
+			}
+		} 
+		else 
+		{	
+			// Normal variant like r1.xyxx
+			int pos = 5;
+			if (!strncmp(textype, "Texture2D", 9)) pos = 3;
+			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
+			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
+			cpos = strrchr(op, '.');
+			cpos[pos] = 0;
+		}
 	}
 
 	void truncateTextureLoadPos(char *op, const char *textype)
