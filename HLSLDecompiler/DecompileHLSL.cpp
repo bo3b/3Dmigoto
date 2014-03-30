@@ -1120,7 +1120,21 @@ public:
 					else if (i->second.bt == DT_float4x4)
 						sprintf(right3+strlen(right3), "[%s/4]", indexRegister);
 					else
-						sprintf(right3+strlen(right3), "[%s]", indexRegister);
+					{
+						// Most common case, like: g_AmbientCube[r3.w]
+						
+						// Bug was to not handle the struct case here, and truncate string.
+						//  Like g_OmniLights[r5.w].m_PositionFar -> g_OmniLights[r5.w]
+						//sprintf(right3 + strlen(right3), "[%s]", indexRegister);
+
+						// Start fresh with original string and just replace, not char* manipulate.
+						// base: g_OmniLights[0].m_PositionFar
+						string base = i->second.Name;
+						int left = base.find('[') + 1;
+						int length = base.find(']') - left;
+						base.replace(left, length, indexRegister);
+						strcpy(right3, base.c_str());
+					}
 				}
 				if (i->second.bt != DT_float && i->second.bt != DT_bool && i->second.bt != DT_uint && i->second.bt != DT_int)
 				{
