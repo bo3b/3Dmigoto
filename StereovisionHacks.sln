@@ -45,6 +45,28 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencie
 		Dependencies\XInput9_1_0.dll = Dependencies\XInput9_1_0.dll
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AC3", "AC3", "{15D3946B-453B-43FF-9CC9-800DD2256C2C}"
+	ProjectSection(SolutionItems) = preProject
+		AC3\11328b83df8d0e8e-vs.txt = AC3\11328b83df8d0e8e-vs.txt
+		AC3\11328b83df8d0e8e-vs_replace.txt = AC3\11328b83df8d0e8e-vs_replace.txt
+		AC3\234487abf9e7f649-ps.txt = AC3\234487abf9e7f649-ps.txt
+		AC3\234487abf9e7f649-ps_replace.txt = AC3\234487abf9e7f649-ps_replace.txt
+		AC3\30970ea6391c6727-ps.txt = AC3\30970ea6391c6727-ps.txt
+		AC3\30970ea6391c6727-ps_replace.txt = AC3\30970ea6391c6727-ps_replace.txt
+		AC3\555bc261f8ceb53c-ps.txt = AC3\555bc261f8ceb53c-ps.txt
+		AC3\555bc261f8ceb53c-ps_replace.txt = AC3\555bc261f8ceb53c-ps_replace.txt
+		AC3\6929f85572d639e6-ps.txt = AC3\6929f85572d639e6-ps.txt
+		AC3\6929f85572d639e6-ps_replace.txt = AC3\6929f85572d639e6-ps_replace.txt
+		AC3\9d8a41dd9b1d7d21-ps.txt = AC3\9d8a41dd9b1d7d21-ps.txt
+		AC3\9d8a41dd9b1d7d21-ps_replace.txt = AC3\9d8a41dd9b1d7d21-ps_replace.txt
+		AC3\cb301b809e26fd79-ps.txt = AC3\cb301b809e26fd79-ps.txt
+		AC3\cb301b809e26fd79-ps_replace.txt = AC3\cb301b809e26fd79-ps_replace.txt
+		AC3\e4957a7d53cf49e4-vs.txt = AC3\e4957a7d53cf49e4-vs.txt
+		AC3\e4957a7d53cf49e4-vs_replace.txt = AC3\e4957a7d53cf49e4-vs_replace.txt
+		AC3\ee71a8fc444adb10-ps.txt = AC3\ee71a8fc444adb10-ps.txt
+		AC3\ee71a8fc444adb10-ps_replace.txt = AC3\ee71a8fc444adb10-ps_replace.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -155,5 +177,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{881AED83-BA3E-4BF3-B3A3-782E82BE575C} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{15D3946B-453B-43FF-9CC9-800DD2256C2C} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 	EndGlobalSection
 EndGlobal

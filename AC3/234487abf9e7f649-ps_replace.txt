@@ -1,0 +1,287 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float3x3 Operator374_1_matrix : packoffset(c128);
+  float3x3 Operator485_2_matrix : packoffset(c131);
+  float3x3 Operator328_3_matrix : packoffset(c134);
+  float3x3 Operator329_4_matrix : packoffset(c137);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_OmniLights[4] : packoffset(c32);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float4 m_Color;
+  } g_DirectLights[2] : packoffset(c40);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float3 m_Direction;
+    float4 m_ConeAngles;
+  } g_SpotLights[2] : packoffset(c44);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float4 m_Color;
+    float3 m_SpecularDirection;
+  } g_ShadowedDirect : packoffset(c52);
+
+  float4 g_ProjWorldToLight[8] : packoffset(c55);
+  float4 g_ProjShadowParams[2] : packoffset(c119);
+  float g_HasSunDX11 : packoffset(c251);
+  float4 g_LayeredSkyUserColor3 : packoffset(c3);
+  float g_AlphaTestValue : packoffset(c113);
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_UnusedPredicated1 : packoffset(c97);
+  float4 g_UnusedPredicated2 : packoffset(c98);
+  float4 g_UnusedPredicated3 : packoffset(c99);
+  float4 g_VPosToUV : packoffset(c0);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_AmbientCube[6] : packoffset(c24);
+
+  struct
+  {
+    float2 m_VPOS;
+    float2 m_ScreenPosition;
+    float3 m_WorldNormal;
+    float3 m_VertexWorldNormal;
+    float3 m_TangentSpaceNormal;
+    float3 m_WorldPosition;
+    float3 m_WorldEyeVector;
+    float3 m_NormalizedWorldEyeVector;
+    float4 m_UnitLightSpacePos;
+    float3 m_LightSpaceNormal;
+    float4 m_Albedo;
+    float m_alpha;
+    float m_WeatherExposed;
+    float m_DistanceAttenuation;
+    float4 m_LightColor;
+    float3 m_IncidentLightAngle;
+    float3 m_SpecularIncidentLightAngle;
+    float m_SpecularInfluence;
+    float m_Alpha;
+    float m_SpecularPower;
+    float4 m_DiffuseColor;
+    float m_SpecularGlossiness;
+    float m_SpecularIntensity;
+    float m_SpecularAlphaOpacityScaleFactor;
+    float4 m_EmissiveColor;
+    float3 m_ShadowResult;
+    float m_LinearDepth;
+  } c : packoffset(c252);
+
+  bool g_HasSunOther : packoffset(c271);
+}
+SamplerState WaveTexture_0_s : register(s0);
+SamplerState Layer0Reflection_0_s : register(s1);
+SamplerState g_DepthSampler_s : register(s8);
+Texture2D<float4> WaveTexture_0 : register(t0);
+TextureCube<float4> Layer0Reflection_0 : register(t1);
+Texture2D<float4> g_DepthSampler : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : COLOR0,
+  float4 v4 : COLOR1,
+  float4 v5 : TEXCOORD2,
+  float4 v6 : TEXCOORD3,
+  float4 v7 : TEXCOORD4,
+  float4 v8 : TEXCOORD5,
+  float4 v9 : TEXCOORD6,
+  uint v10 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask;
+  r0.xy = g_VPosToUV.xy * v0.xy;
+  r0.z = v5.w < 0.000000000e+000;
+  if (r0.z != 0) discard;
+  r1.xy = v5.xy;
+  r1.z = 1.000000000e+000;
+  r2.x = dot(r1.xyz, Operator328_3_matrix._m00_m10_m20);
+  r2.y = dot(r1.xyz, Operator328_3_matrix._m01_m11_m21);
+  r2.xyzw = WaveTexture_0.Sample(WaveTexture_0_s, r2.xy).xyzw;
+  r0.zw = float2(-5.000000e-001,-5.000000e-001) + r2.xy;
+  r0.zw = r0.zw + r0.zw;
+  r3.x = dot(r1.yxz, Operator329_4_matrix._m00_m10_m20);
+  r3.y = dot(r1.yxz, Operator329_4_matrix._m01_m11_m21);
+  r2.yz = r0.zw * v4.zz + r3.xy;
+  r3.xyzw = WaveTexture_0.Sample(WaveTexture_0_s, r2.yz).xyzw;
+  r2.yz = float2(-5.000000e-001,-5.000000e-001) + r3.xy;
+  r2.xy = r2.yz * r2.xx;
+  r2.xy = r2.xy * float2(2.000000e+000,2.000000e+000) + r0.zw;
+  r3.x = dot(r1.xyz, Operator374_1_matrix._m00_m10_m20);
+  r3.y = dot(r1.xyz, Operator374_1_matrix._m01_m11_m21);
+  r3.xyzw = WaveTexture_0.Sample(WaveTexture_0_s, r3.xy).xyzw;
+  r1.w = r3.x * r3.x;
+  r1.w = v4.y * r1.w;
+  r2.z = 8.000000000e+000 * r1.w;
+  r2.xy = r2.xy * r2.zz;
+  r2.z = dot(v6.xyz, v6.xyz);
+  r2.z = rsqrt(r2.z);
+  r3.xyz = v6.xyz * r2.zzz;
+  r2.z = dot(v7.xyz, v7.xyz);
+  r2.z = rsqrt(r2.z);
+  r4.xyz = v7.xyz * r2.zzz;
+  r2.z = dot(v8.xyz, v8.xyz);
+  r2.z = rsqrt(r2.z);
+  r5.xyz = v8.xyz * r2.zzz;
+  r2.yzw = r4.xyz * r2.yyy;
+  r2.xyz = r2.xxx * r3.xyz + r2.yzw;
+  r2.xyz = r5.xyz * float3(4.000000e+000,4.000000e+000,4.000000e+000) + r2.xyz;
+  r2.w = dot(r2.xyz, r2.xyz);
+  r2.w = rsqrt(r2.w);
+  r2.xyz = r2.xyz * r2.www;
+  r3.xyz = g_EyePosition.xyz + -v5.xyz;
+  r2.w = dot(r3.xyz, r3.xyz);
+  r2.w = rsqrt(r2.w);
+  r4.x = dot(r1.xyz, Operator485_2_matrix._m00_m10_m20);
+  r4.y = dot(r1.xyz, Operator485_2_matrix._m01_m11_m21);
+  r0.zw = r0.zw * v4.zz + r4.xy;
+  r4.xyzw = WaveTexture_0.Sample(WaveTexture_0_s, r0.zw).xyzw;
+  r0.xyzw = g_DepthSampler.Sample(g_DepthSampler_s, r0.xy).xyzw;
+  r0.x = -v1.w + r0.x;
+  r0.x = saturate(5.000000000e-001 * r0.x);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = r0.x * r0.x;
+  r0.y = r1.w * 8.000000000e+000 + r0.x;
+  r1.xyz = r4.www * r0.yyy + v3.xyz;
+  r0.x = r4.w * r0.y + -r0.x;
+  r0.x = 1.100000024e+000 + r0.x;
+  r0.x = v3.w * r0.x;
+  r4.xyz = -g_EyePosition.xzy + v5.xzy;
+  r0.z = dot(r4.xyz, r4.xyz);
+  r0.z = rsqrt(r0.z);
+  r4.xyz = r4.xyz * r0.zzz;
+  r0.z = dot(r4.xzy, r2.xyz);
+  r0.z = r0.z + r0.z;
+  r4.xyz = r2.xzy * -r0.zzz + r4.xyz;
+  r5.xyzw = Layer0Reflection_0.Sample(Layer0Reflection_0_s, r4.xyz).xyzw;
+  r4.xyz = g_LayeredSkyUserColor3.xyz * r5.xyz;
+  r0.y = -r4.w * r0.y + 1.000000000e+000;
+  r5.xyz = v5.xyz;
+  r5.w = 0.000000000e+000;
+  r5.xyzw = g_EyePosition.xyzw + -r5.xyzw;
+  r0.z = dot(r5.xyzw, r5.xyzw);
+  r0.z = rsqrt(r0.z);
+  r5.xyz = r5.xyz * r0.zzz;
+  r0.z = dot(r2.xyz, r5.xyz);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.z = r0.z * r0.z + 1.000000015e-001;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.y = r0.y * r0.z;
+  r0.z = saturate(dot(r2.xyz, g_DirectLights[0].m_Direction.xyz));
+  r5.xyz = g_DirectLights[0].m_Color.xyz * r0.zzz;
+  r6.xyz = r3.xyz * r2.www + g_DirectLights[0].m_Direction.xyz;
+  r0.w = dot(r6.xyz, r6.xyz);
+  r0.w = rsqrt(r0.w);
+  r6.xyz = r6.xyz * r0.www;
+  r0.w = saturate(dot(r2.xyz, r6.xyz));
+  r0.w = log2(r0.w);
+  r0.w = 1.782887573e+003 * r0.w;
+  r0.w = exp2(r0.w);
+  r0.z = r0.z * r0.w;
+  r0.z = g_DirectLights[0].m_Color.w * r0.z;
+  r0.z = 5.372662544e+000 * r0.z;
+  r6.xyz = g_DirectLights[0].m_Color.xyz * r0.zzz;
+  r5.xyz = r1.xyz * r5.xyz + r6.xyz;
+  r6.xyz = r5.xyz;
+  r0.w = r0.z;
+  r1.w = 0.000000000e+000;
+  while (true) {
+  r3.w = (int)r1.w >= (int)3;
+  if (r3.w != 0) break;
+  r3.w = 1 << (uint)r1.w;
+  r7.xyz = g_OmniLights[r3.w].m_PositionFar.xyz + -v5.xyz;
+  r4.w = dot(r7.xyz, r7.xyz);
+  r5.w = g_OmniLights[r3.w].m_PositionFar.w + -r4.w;
+  r5.w = saturate(abs(g_OmniLights[r3.w].m_ColorFade.w) * r5.w);
+  r6.w = 0.000000000e+000 < r5.w;
+  if (r6.w != 0) {
+  r4.w = rsqrt(r4.w);
+  r7.xyz = r7.xyz * r4.www;
+  r4.w = g_OmniLights[r3.w].m_ColorFade.w >= 0.000000000e+000;
+  r4.w = r4.w ? 0x3f800000 : 0;
+  r6.w = saturate(dot(r2.xyz, r7.xyz));
+  r8.xyz = g_OmniLights[r3.w].m_ColorFade.xyz * r6.www;
+  r9.xyz = r5.www * r1.xyz;
+  r7.xyz = r3.xyz * r2.www + r7.xyz;
+  r7.w = dot(r7.xyz, r7.xyz);
+  r7.w = rsqrt(r7.w);
+  r7.xyz = r7.xyz * r7.www;
+  r7.x = saturate(dot(r2.xyz, r7.xyz));
+  r7.x = log2(r7.x);
+  r7.x = 1.782887573e+003 * r7.x;
+  r7.x = exp2(r7.x);
+  r6.w = r7.x * r6.w;
+  r4.w = r6.w * r4.w;
+  r4.w = r4.w * r5.w;
+  r5.w = 5.372662544e+000 * r4.w;
+  r0.w = r4.w * 5.372662544e+000 + r0.w;
+  r7.xyz = g_OmniLights[r3.w].m_ColorFade.xyz * r5.www;
+  r7.xyz = r9.xyz * r8.xyz + r7.xyz;
+  r6.xyz = r7.xyz + r6.xyz;
+  }
+  r1.w = (int)r1.w + 1;
+  }
+  r3.xyz = r2.xyz * r2.xyz;
+  r5.x = r2.x >= 0;
+  r5.y = r2.y >= 0;
+  r5.z = r2.z >= 0;
+  r5.x = r5.x ? 0 : 0;
+  r5.y = r5.y ? 0 : 0;
+  r5.z = r5.z ? 0 : 0;
+  r2.x = 0 >= r2.x;
+  r2.y = 0 >= r2.y;
+  r2.z = 0 >= r2.z;
+  r2.x = r2.x ? 0 : 0;
+  r2.y = r2.y ? 0 : 0;
+  r2.z = r2.z ? 0 : 0;
+  r7.xyzw = g_AmbientCube[0].xyzw * r3.xxxx;
+  r8.xyzw = g_AmbientCube[1].xyzw * r3.xxxx;
+  r8.xyzw = r8.xyzw * r2.xxxx;
+  r7.xyzw = r7.xyzw * r5.xxxx + r8.xyzw;
+  r8.xyzw = g_AmbientCube[2].xyzw * r3.yyyy;
+  r7.xyzw = r8.xyzw * r5.yyyy + r7.xyzw;
+  r8.xyzw = g_AmbientCube[3].xyzw * r3.yyyy;
+  r7.xyzw = r8.xyzw * r2.yyyy + r7.xyzw;
+  r8.xyzw = g_AmbientCube[4].xyzw * r3.zzzz;
+  r5.xyzw = r8.xyzw * r5.zzzz + r7.xyzw;
+  r3.xyzw = g_AmbientCube[5].xyzw * r3.zzzz;
+  r2.xyzw = r3.xyzw * r2.zzzz + r5.xyzw;
+  r2.xyz = r2.xyz * r2.www;
+  r1.xyz = r2.xyz * r1.xyz + r6.xyz;
+  o0.xyz = r4.xyz * r0.yyy + r1.xyz;
+  o0.w = r0.w * 1.250000000e-001 + r0.x;
+  o1.xyz = v1.zzz / v1.www;
+  o1.w = r0.x;
+  return;
+}
