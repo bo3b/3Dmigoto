@@ -1,3 +1,5 @@
+// Bo3b: hand fixed shader that was generating an error because of
+//	a decompiler bug. Subscript wrong in dot product.
 
 cbuffer _Globals : register(b0)
 {
@@ -99,10 +101,15 @@ void main(
   r1.w = floor(r1.w);
   r1.xyzw = (int4)r1.xyzw;
   r2.xyzw = mad(int4(-4,-4,-4,-4), (int4)r1.xyzw, (int4)v5.xyzw);
-  r4.x = dot(g_WrinkleArray[r1.x].xyzw, r2.x.xyzw);
-  r4.y = dot(g_WrinkleArray[r1.y].xyzw, r2.y.xyzw);
-  r4.z = dot(g_WrinkleArray[r1.z].xyzw, r2.z.xyzw);
-  r4.w = dot(g_WrinkleArray[r1.w].xyzw, r2.w.xyzw);
+  // Compile error, invalid subscript. The .x.xyzw is clearly off.
+  // r4.x = dot(g_WrinkleArray[r1.x].xyzw, r2.x.xyzw);
+  // r4.y = dot(g_WrinkleArray[r1.y].xyzw, r2.y.xyzw);
+  // r4.z = dot(g_WrinkleArray[r1.z].xyzw, r2.z.xyzw);
+  // r4.w = dot(g_WrinkleArray[r1.w].xyzw, r2.w.xyzw);
+  r4.x = dot(g_wrinklearray[r1.x].xyzw, r2.xyzw);
+  r4.y = dot(g_wrinklearray[r1.y].xyzw, r2.xyzw);
+  r4.z = dot(g_wrinklearray[r1.z].xyzw, r2.xyzw);
+  r4.w = dot(g_wrinklearray[r1.w].xyzw, r2.xyzw);
   o3.w = dot(r4.xyzw, v6.xyzw);
   r1.xyz = v1.xyz;
   r1.xyz = float3(-1.270000e+002,-1.270000e+002,-1.270000e+002) + r1.xyz;
