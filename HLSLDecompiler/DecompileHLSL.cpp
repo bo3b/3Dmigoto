@@ -605,7 +605,7 @@ public:
 		mCBufferData.clear();
 		// Immediate buffer.
 		BufferEntry immediateEntry;
-		immediateEntry.Name = "icb";
+		immediateEntry.Name = "icb[0]";
 		immediateEntry.matrixRow = 0;
 		immediateEntry.isRowMajor = false;
 		immediateEntry.bt = DT_float4;

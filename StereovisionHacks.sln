@@ -47,8 +47,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencie
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AC3", "AC3", "{15D3946B-453B-43FF-9CC9-800DD2256C2C}"
 	ProjectSection(SolutionItems) = preProject
-		AC3\11328b83df8d0e8e-vs.txt = AC3\11328b83df8d0e8e-vs.txt
-		AC3\11328b83df8d0e8e-vs_replace.txt = AC3\11328b83df8d0e8e-vs_replace.txt
 		AC3\234487abf9e7f649-ps.txt = AC3\234487abf9e7f649-ps.txt
 		AC3\234487abf9e7f649-ps_replace.txt = AC3\234487abf9e7f649-ps_replace.txt
 		AC3\30970ea6391c6727-ps.txt = AC3\30970ea6391c6727-ps.txt
