@@ -2876,15 +2876,19 @@ public:
 			}
 			case OPCODE_SWITCH:
 				sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				break;
 			case OPCODE_CASE:
-				sprintf(buffer, "  case %s :", ci(op1).c_str());
+				sprintf(buffer, "  case %s :", ci(op1).substr(2, 1).c_str());
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				break;
 			case OPCODE_ENDSWITCH:
 				sprintf(buffer, "  }\n");
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				break;
 			case OPCODE_DEFAULT:
 				sprintf(buffer, "  default :\n");
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				break;
 			case OPCODE_IF:
 				applySwizzle(".x", op1);
@@ -2895,7 +2899,7 @@ public:
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
 
-			case OPCODE_ELSE:
+			case OPCODE_ELSE:mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer)); mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				sprintf(buffer, "  } else {\n");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
