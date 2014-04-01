@@ -176,6 +176,7 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+"$(SolutionDir)7zip\7za" a ..\Debug\3Dmigoto-Debug-V_alpha.zip "..\Debug\*.dll" "..\Debug\d3dx.ini"
 "$(SolutionDir)CopyToGames.bat"</Command>
       <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
     </PostBuildEvent>
