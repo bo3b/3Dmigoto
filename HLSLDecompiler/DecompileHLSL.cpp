@@ -13,6 +13,8 @@
 
 #include <excpt.h>
 
+#include "assert.h"
+
 using namespace std;
 
 enum DataType
@@ -1646,14 +1648,18 @@ public:
 						if (constantDeclaration && !wposAvailable)
 						{
 							// Copy depth texture usage to top.
-							mCodeStartPos = mOutput.insert(mOutput.begin()+mCodeStartPos, buf, buf+strlen(buf)) - mOutput.begin();
+							//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf)) - mOutput.begin();
+							vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf));
+							mCodeStartPos = iter - mOutput.begin();
 							mCodeStartPos += strlen(buf);
 						}
 						else if (!wposAvailable)
 						{
 							// Leave declaration where it is.
 							while (*pos != '\n') --pos;
-							mCodeStartPos = mOutput.insert(mOutput.begin() + (pos+1 - mOutput.data()), buf, buf+strlen(buf)) - mOutput.begin();
+							//mCodeStartPos = mOutput.insert(mOutput.begin() + (pos + 1 - mOutput.data()), buf, buf + strlen(buf)) - mOutput.begin();
+							vector<char>::iterator iter = mOutput.insert(mOutput.begin() + (pos + 1 - mOutput.data()), buf, buf + strlen(buf));
+							mCodeStartPos = iter - mOutput.begin();
 							mCodeStartPos += strlen(buf);
 						}
 						else
@@ -1708,17 +1714,34 @@ public:
 										 "  float zTex = zpos4.%c;\n"
 										 "  float zpos = %s;\n"
 										 "  float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg2, ZRepair_ZPosCalc2.c_str());
+							
+							// There are a whole series of fixes to the statements that are doing mOutput.insert() - mOutput.begin();
+							// We would get a series of Asserts (vector mismatch), but only rarely, usually at starting a new game in AC3.  
+							// The problem appers to be that mOutput.begin() was being calculated BEFORE the mOutput.insert(), which seems to
+							// be the compiler optimizing.
+							// The problem seems to be that the Insert could move the mOutput array altogether, and because the funny use of
+							// vector<char> the vector winds up being closeset to a char* pointer.  With the pointer moved, the saved off
+							// mOutput.begin() was invalid and would cause the debug Assert.
+							// By calculating that AFTER the insert has finished, we can avoid this rare buffer movement.
+							// I fixed every instance I could find of this insert-begin, not just the one that crashed.
+							// Previous code left as example of expected behavior, and documentation for where changes happened.
+							// It took two days to figure out, it's worth some comments.
+
 							if (constantDeclaration)
 							{
 								// Copy depth texture usage to top.
-								mCodeStartPos = mOutput.insert(mOutput.begin()+mCodeStartPos, buf, buf+strlen(buf)) - mOutput.begin();
+								//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf)) - mOutput.begin();
+								vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, buf, buf + strlen(buf));
+								mCodeStartPos = iter - mOutput.begin();
 								mCodeStartPos += strlen(buf);
 							}
 							else
 							{
 								// Leave declaration where it is.
 								while (*wpos != '\n') --wpos;
-								mCodeStartPos = mOutput.insert(wpos+1, buf, buf+strlen(buf)) - mOutput.begin();
+								//mCodeStartPos = mOutput.insert(wpos + 1, buf, buf + strlen(buf)) - mOutput.begin();
+								vector<char>::iterator iter = mOutput.insert(wpos + 1, buf, buf + strlen(buf));
+								mCodeStartPos = iter - mOutput.begin();
 								mCodeStartPos += strlen(buf);
 							}
 							wposAvailable = true;
@@ -1757,7 +1780,10 @@ public:
 									 "\n  float zpos = worldPos.z;"
 									 "\n  float wpos = 1.0 / zpos;", calcStatement);
 						pos = strchr(pos, '\n');
-						mCodeStartPos = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf+strlen(buf)) - mOutput.begin();
+
+						//mCodeStartPos = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf + strlen(buf)) - mOutput.begin();
+						vector<char>::iterator iter = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf + strlen(buf));
+						mCodeStartPos = iter - mOutput.begin();
 						mCodeStartPos += strlen(buf);
 						wposAvailable = true;
 					}
@@ -1772,28 +1798,31 @@ public:
 										    "  float zpos = zpos4.x - 1;\n"
          									"  float wpos = 1.0 / zpos;\n";
 				// Copy depth texture usage to top.
-				mCodeStartPos = mOutput.insert(mOutput.begin()+mCodeStartPos, INJECT_HEADER, INJECT_HEADER+strlen(INJECT_HEADER)) - mOutput.begin();
+				//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, INJECT_HEADER, INJECT_HEADER + strlen(INJECT_HEADER)) - mOutput.begin();
+				vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, INJECT_HEADER, INJECT_HEADER + strlen(INJECT_HEADER));
+				mCodeStartPos = iter - mOutput.begin();
 				mCodeStartPos += strlen(INJECT_HEADER);
+				
 				// Add screen position parameter.
 				char *pos = strstr(mOutput.data(), "void main(");
-				pos = strstr(pos, ")");
-				// Skip out parameters.
-				char *retPos = pos;
-				while (*--retPos != '\n');
-				if (!strncmp(retPos, "\n  out ", strlen("\n  out ")))
-				{
-					pos = retPos-1;
-					while (*--retPos != '\n');
-				}
-				// Skip system values.
-				char *checkPos = strchr(retPos, ':');
-				if (!strncmp(checkPos, ": SV_", strlen(": SV_")))
-				{
-					pos = retPos-1;
-					while (*--retPos != '\n');
-					checkPos = strchr(retPos, ':');
-				}
-				const char *PARAM_HEADER=",\n  float4 injectedScreenPos : SV_Position";
+
+				// This section appeared to back up the pos pointer too far, and write the injection
+				// text into the header instead of the var block.  It looks to me like this was intended
+				// to be a while loop, and accidentally worked.
+				
+				// It seems to me that ALL output variables will start with SV_, so there is no point
+				// in doing both 'out' and SV_.
+				// There will always be at least one output parameter of SV_*
+				// This is heavily modified from what it was.
+				
+				// This is now inserted as the first parameter, because any later can generate
+				// an error in some shaders complaining that user SV vars must come before system SV vars.
+				// It seems to be fine, if not exactly correct, to have it as first parameter.
+
+				while (*++pos != '\n');
+				assert(pos != NULL);
+
+				const char *PARAM_HEADER="\n  float4 injectedScreenPos : SV_Position,";
 				mOutput.insert(mOutput.begin() + (pos - mOutput.data()), PARAM_HEADER, PARAM_HEADER+strlen(PARAM_HEADER));
 				mCodeStartPos += strlen(PARAM_HEADER);
 				wposAvailable = true;
@@ -1822,7 +1851,9 @@ public:
 					if (!stereoParamsWritten)
 					{
 						if (mOutput[mCodeStartPos] != '\n') --mCodeStartPos;
-						mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, StereoDecl, StereoDecl+strlen(StereoDecl)) - mOutput.begin();
+						//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, StereoDecl, StereoDecl + strlen(StereoDecl)) - mOutput.begin();
+						vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, StereoDecl, StereoDecl + strlen(StereoDecl));
+						mCodeStartPos = iter - mOutput.begin();
 						mCodeStartPos += strlen(StereoDecl);
 						stereoParamsWritten = true;
 					}
@@ -2478,37 +2509,62 @@ public:
 				removeBoolean(op1);
 				break;
 
+					// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
+					// from the text ASM.  This did not match the Mov, or Add or other opcodes, and was
+					// generating errors when we'd see 'max_sat'.  Anything with saturation added of these
+					// 5 could generate an error.
+					// This fix removes the dependency on 'statement', and codes the generated HLSL line directly.
+					// We are guessing, but it appears that this was a left-over from a conversion to using the
+					// James-Jones opcode parser as the primary parser.
 			case OPCODE_SQRT:
 				remapTarget(op1);
 				applySwizzle(op1, op2);
 				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s(%s);\n", writeTarget(op1), statement, ci(op2).c_str());
+						sprintf(buffer, "  %s = sqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
 				else
-					sprintf(buffer, "  %s = saturate(%s(%s));\n", writeTarget(op1), statement, ci(op2).c_str());
+						sprintf(buffer, "  %s = saturate(sqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				removeBoolean(op1);
 				break;
 		
 			case OPCODE_MIN:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
 			case OPCODE_MAX:
 				remapTarget(op1);
 				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s(%s, %s);\n", writeTarget(op1), statement, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 				else
-					sprintf(buffer, "  %s = saturate(%s(%s, %s));\n", writeTarget(op1), statement, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;		
 			case OPCODE_IMIN:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
 			case OPCODE_IMAX:
 				remapTarget(op1);
 				applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 				applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s(%s, %s);\n", writeTarget(op1), statement+1, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 				else
-					sprintf(buffer, "  %s = saturate(%s(%s, %s));\n", writeTarget(op1), statement+1, ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
 
@@ -2874,6 +2930,8 @@ public:
 				mBooleanRegisters.insert(op1);
 				break;
 			}
+
+					// Switch statement in HLSL was missing. Added because AC4 uses it.
 			case OPCODE_SWITCH:
 				sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
@@ -2890,6 +2948,7 @@ public:
 				sprintf(buffer, "  default :\n");
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				break;
+
 			case OPCODE_IF:
 				applySwizzle(".x", op1);
 				if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
@@ -2898,12 +2957,10 @@ public:
 					sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
-
-			case OPCODE_ELSE:mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer)); mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				case OPCODE_ELSE:
 				sprintf(buffer, "  } else {\n");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
-
 			case OPCODE_ENDIF:
 				sprintf(buffer, "  }\n");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
@@ -2913,12 +2970,10 @@ public:
 				sprintf(buffer, "  while (true) {\n", op1);
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
-
 			case OPCODE_BREAK:
 				sprintf(buffer, "  break;\n");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
-
 			case OPCODE_BREAKC:
 				applySwizzle(".x", op1);
 				if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
@@ -2927,7 +2982,6 @@ public:
 					sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				break;
-
 			case OPCODE_ENDLOOP:
 				sprintf(buffer, "  }\n", op1);
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
