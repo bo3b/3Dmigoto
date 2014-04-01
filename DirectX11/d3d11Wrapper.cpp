@@ -19,7 +19,7 @@ bool LogInput = false, LogDebug = false;
 
 // ToDo: this is a hack for the moment to get access to the real device
 // for loading new shaders.  This should be passed down to dxgi probably.
-D3D11Base::ID3D11Device* realDevice;
+//D3D11Base::ID3D11Device* realDevice;
 
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
@@ -1892,7 +1892,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				// Present received.
 				// Todo: this cast is wrong. The object is always IDXGIDevice2.
 //				ID3D11Device *device = (ID3D11Device *)this;
-				RunFrameActions(realDevice);
+				// RunFrameActions(realDevice);
 				break;
 			}
 		}
@@ -2115,7 +2115,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	}
 	
 	// Todo: doesn't really belong here
-	realDevice = origDevice;
+	//realDevice = origDevice;
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if(wrapper == NULL)
@@ -2199,7 +2199,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		return ret;
 
 	// Todo: doesn't really belong here
-	realDevice = origDevice;
+	//realDevice = origDevice;
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if (wrapper == NULL)

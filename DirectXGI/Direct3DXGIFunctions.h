@@ -1171,19 +1171,19 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
 	*/
 	HRESULT hr = GetSwapChain()->Present(SyncInterval, Flags);
 
-	if (m_WrappedDevice)
-	{
-		// Forward call to device.
-		//if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
-		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
-		int param = 0;
-		if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
-		{
-			//if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
-			//
-		}
-	}
+	//if (m_WrappedDevice)
+	//{
+	//	// Forward call to device.
+	//	//if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
+	//	const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
+	//	IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
+	//	int param = 0;
+	//	if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
+	//	{
+	//		//if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
+	//		//
+	//	}
+	//}
 
 	//if (LogFile) fprintf(LogFile, "  returns %x\n", hr);
 	//
@@ -1394,18 +1394,18 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
 	
 	HRESULT hr = GetSwapChain1()->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
-	if (m_WrappedDevice)
-	{
-		// Forward call to device.
-		if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
-		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
-		int param = 0;
-		if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
-		{
-			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
-		}
-	}
+	//if (m_WrappedDevice)
+	//{
+	//	// Forward call to device.
+	//	if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
+	//	const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
+	//	IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
+	//	int param = 0;
+	//	if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
+	//	{
+	//		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
+	//	}
+	//}
 
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
 	
