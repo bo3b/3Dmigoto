@@ -607,7 +607,7 @@ public:
 		mCBufferData.clear();
 		// Immediate buffer.
 		BufferEntry immediateEntry;
-		immediateEntry.Name = "icb";
+		immediateEntry.Name = "icb[0]";
 		immediateEntry.matrixRow = 0;
 		immediateEntry.isRowMajor = false;
 		immediateEntry.bt = DT_float4;
@@ -1122,7 +1122,21 @@ public:
 					else if (i->second.bt == DT_float4x4)
 						sprintf(right3+strlen(right3), "[%s/4]", indexRegister);
 					else
-						sprintf(right3+strlen(right3), "[%s]", indexRegister);
+					{
+						// Most common case, like: g_AmbientCube[r3.w]
+						
+						// Bug was to not handle the struct case here, and truncate string.
+						//  Like g_OmniLights[r5.w].m_PositionFar -> g_OmniLights[r5.w]
+						//sprintf(right3 + strlen(right3), "[%s]", indexRegister);
+
+						// Start fresh with original string and just replace, not char* manipulate.
+						// base: g_OmniLights[0].m_PositionFar
+						string base = i->second.Name;
+						int left = base.find('[') + 1;
+						int length = base.find(']') - left;
+						base.replace(left, length, indexRegister);
+						strcpy(right3, base.c_str());
+					}
 				}
 				if (i->second.bt != DT_float && i->second.bt != DT_bool && i->second.bt != DT_uint && i->second.bt != DT_int)
 				{
@@ -1321,14 +1335,60 @@ public:
 		return replaceInt(buffer);
 	}
 
+	// This was expected to take input of the form 
+	//	r1.xyxx
+	// and decide how to truncate it based on the input type of Texture2D, 3D or Cube.
+	// If it's Texture2D for example, that would trim to only the first two elements
+	// as a 2D texture, so r1.xy
+	//
+	// This failed for constants of the form 
+	//	float4(0.5, 0.5, 0, 0)
+	// which were found in AC3.
+	// The fix is to look for that constant format too, and if we see those, truncate
+	// the constant to match.  So, for example, float4(0.5, 0.5, 0, 0) with Texture2D
+	// becomes float2(0.5, 0.5) as the two elements. 
+
 	void truncateTexturePos(char *op, const char *textype)
 	{
-		int pos = 5;
-		if (!strncmp(textype, "Texture2D", 9)) pos = 3;
-		else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
-		else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
-		char *cpos = strrchr(op, '.');
-		cpos[pos] = 0;
+		char *cpos;
+
+		if (!strncmp(op, "float", 5))
+		{
+			if (!strncmp(textype, "Texture2D", 9))
+			{
+				cpos = strchr(op, ',');
+				cpos++;
+				cpos = strchr(cpos, ',');
+				cpos[0] = ')';
+				cpos[1] = 0;
+				op[5] = '2';	// now: float2(x,y)
+			}
+			else if (!strncmp(textype, "Texture3D", 9))
+			{
+				cpos = strchr(op, ',');
+				cpos++;
+				cpos = strchr(cpos, ',');
+				cpos++;
+				cpos = strchr(cpos, ',');
+				cpos[0] = ')';
+				cpos[1] = 0;
+				op[5] = '3';	// now: float3(x,y,z)
+			}
+			else if (!strncmp(textype, "TextureCube", 11))
+			{
+				// left as: float4(x,y,z,w)
+			}
+		} 
+		else 
+		{	
+			// Normal variant like r1.xyxx
+			int pos = 5;
+			if (!strncmp(textype, "Texture2D", 9)) pos = 3;
+			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
+			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
+			cpos = strrchr(op, '.');
+			cpos[pos] = 0;
+		}
 	}
 
 	void truncateTextureLoadPos(char *op, const char *textype)

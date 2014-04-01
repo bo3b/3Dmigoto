@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.30110.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX9", "DirectX9\DirectX9.vcxproj", "{4265C0D8-8671-49C0-8EB5-EB940FD08482}"
 EndProject
@@ -28,17 +28,42 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1693604A-42AF-4848-B892-D1540FB17FDE}"
 	ProjectSection(SolutionItems) = preProject
 		7zip\7za.exe = 7zip\7za.exe
+		CopyToGames.bat = CopyToGames.bat
+		uninstall.bat = uninstall.bat
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D_Shaders", "D3D_Shaders\D3D_Shaders.vcxproj", "{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{881AED83-BA3E-4BF3-B3A3-782E82BE575C}"
+	ProjectSection(SolutionItems) = preProject
 		Dependencies\D3DCompiler_39_org.dll = Dependencies\D3DCompiler_39_org.dll
 		Dependencies\D3DCompiler_41_org.dll = Dependencies\D3DCompiler_41_org.dll
 		Dependencies\D3DCompiler_42_org.dll = Dependencies\D3DCompiler_42_org.dll
 		Dependencies\D3DCompiler_43_org.dll = Dependencies\D3DCompiler_43_org.dll
 		Dependencies\D3DCompiler_46_org.dll = Dependencies\D3DCompiler_46_org.dll
 		Dependencies\d3dx.ini = Dependencies\d3dx.ini
-		uninstall.bat = uninstall.bat
 		Dependencies\XInput9_1_0.dll = Dependencies\XInput9_1_0.dll
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D_Shaders", "D3D_Shaders\D3D_Shaders.vcxproj", "{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AC3", "AC3", "{15D3946B-453B-43FF-9CC9-800DD2256C2C}"
+	ProjectSection(SolutionItems) = preProject
+		AC3\234487abf9e7f649-ps.txt = AC3\234487abf9e7f649-ps.txt
+		AC3\234487abf9e7f649-ps_replace.txt = AC3\234487abf9e7f649-ps_replace.txt
+		AC3\30970ea6391c6727-ps.txt = AC3\30970ea6391c6727-ps.txt
+		AC3\30970ea6391c6727-ps_replace.txt = AC3\30970ea6391c6727-ps_replace.txt
+		AC3\555bc261f8ceb53c-ps.txt = AC3\555bc261f8ceb53c-ps.txt
+		AC3\555bc261f8ceb53c-ps_replace.txt = AC3\555bc261f8ceb53c-ps_replace.txt
+		AC3\6929f85572d639e6-ps.txt = AC3\6929f85572d639e6-ps.txt
+		AC3\6929f85572d639e6-ps_replace.txt = AC3\6929f85572d639e6-ps_replace.txt
+		AC3\9d8a41dd9b1d7d21-ps.txt = AC3\9d8a41dd9b1d7d21-ps.txt
+		AC3\9d8a41dd9b1d7d21-ps_replace.txt = AC3\9d8a41dd9b1d7d21-ps_replace.txt
+		AC3\cb301b809e26fd79-ps.txt = AC3\cb301b809e26fd79-ps.txt
+		AC3\cb301b809e26fd79-ps_replace.txt = AC3\cb301b809e26fd79-ps_replace.txt
+		AC3\e4957a7d53cf49e4-vs.txt = AC3\e4957a7d53cf49e4-vs.txt
+		AC3\e4957a7d53cf49e4-vs_replace.txt = AC3\e4957a7d53cf49e4-vs_replace.txt
+		AC3\ee71a8fc444adb10-ps.txt = AC3\ee71a8fc444adb10-ps.txt
+		AC3\ee71a8fc444adb10-ps_replace.txt = AC3\ee71a8fc444adb10-ps_replace.txt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -147,5 +172,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{881AED83-BA3E-4BF3-B3A3-782E82BE575C} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{15D3946B-453B-43FF-9CC9-800DD2256C2C} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 	EndGlobalSection
 EndGlobal
