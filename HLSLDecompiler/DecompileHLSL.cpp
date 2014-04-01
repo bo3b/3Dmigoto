@@ -2874,6 +2874,18 @@ public:
 				mBooleanRegisters.insert(op1);
 				break;
 			}
+			case OPCODE_SWITCH:
+				sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
+				break;
+			case OPCODE_CASE:
+				sprintf(buffer, "  case %s :", ci(op1).c_str());
+				break;
+			case OPCODE_ENDSWITCH:
+				sprintf(buffer, "  }\n");
+				break;
+			case OPCODE_DEFAULT:
+				sprintf(buffer, "  default :\n");
+				break;
 			case OPCODE_IF:
 				applySwizzle(".x", op1);
 				if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)

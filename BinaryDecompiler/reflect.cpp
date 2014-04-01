@@ -155,28 +155,38 @@ static void ReadShaderVariableType(const uint32_t ui32MajorVersion,
 			varType->Name;
 	}
 
-	if(ui32MemberCount)
+	if (ui32MemberCount)
 	{
 		varType->Members = (ShaderVarType*)malloc(sizeof(ShaderVarType)*ui32MemberCount);
 
 		ui32MemberOffset = pui32tokens[3];
-	
-		pui32MemberTokens = (const uint32_t*)((const char*)pui32FirstConstBufToken+ui32MemberOffset);
 
-		for(i=0; i< ui32MemberCount; ++i)
+		pui32MemberTokens = (const uint32_t*)((const char*)pui32FirstConstBufToken + ui32MemberOffset);
+
+		for (i = 0; i< ui32MemberCount; ++i)
 		{
+			// It's not completely clear why this is necessary, but the reason we build blank
+			// C++ object here is to create default structure for the object and construct it.
+			// This prevents a crash in ReadStringFromTokenStream.
+			ShaderVarType member;
+			memcpy(&varType->Members[i], &member, sizeof(ShaderVarType));
+
 			uint32_t ui32NameOffset = *pui32MemberTokens++;
 			uint32_t ui32MemberTypeOffset = *pui32MemberTokens++;
-			
+
 			varType->Members[i].Parent = varType;
 			varType->Members[i].ParentCount = varType->ParentCount + 1;
 
 			varType->Members[i].Offset = *pui32MemberTokens++;
 
-			ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), varType->Members[i].Name);
+			// Same fix here, where the uninitialized struct/object would crash upon string assignment.
+			// We did not understand the code, but this fixes the crash for AC3 shaders.
+			std::string temp;
+			ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken + ui32NameOffset), temp);
+			varType->Members[i].Name = temp;
 
-			ReadShaderVariableType(ui32MajorVersion, pui32FirstConstBufToken, 
-				(const uint32_t*)((const char*)pui32FirstConstBufToken+ui32MemberTypeOffset), &varType->Members[i]);
+			ReadShaderVariableType(ui32MajorVersion, pui32FirstConstBufToken,
+				(const uint32_t*)((const char*)pui32FirstConstBufToken + ui32MemberTypeOffset), &varType->Members[i]);
 		}
 	}
 }
