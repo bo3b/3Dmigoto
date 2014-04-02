@@ -21,6 +21,9 @@ void InitializeDLL()
 {
 	if (!gInitialized)
 	{
+		//DWORD one = 0x01;
+		//bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+
 		gInitialized = true;
 		wchar_t dir[MAX_PATH];
 		GetModuleFileName(0, dir, MAX_PATH);
