@@ -165,6 +165,19 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	D3D11Base::IDXGISwapChain *origSwapChain;
 	IUnknown *realDevice = ReplaceDevice(pDevice);
 	HRESULT hr = m_pFactory->CreateSwapChain(realDevice, pDesc, &origSwapChain);
+
+	// Todo: double check this fix.
+	// From debugging, it seems that this call is returning a half-error. The error code
+	// is 0x087A0001, not the proper DXGI_ERROR_INVALID_CALL=0x887A0001 that we'd expect.
+	// This is quite unusual.  
+	// If I simply ignore that error, then I can no longer reproduce the crash.
+
+	if (hr == 0x087A0001)
+	{
+		if (LogFile) fprintf(LogFile, "--------CreateSwapChain returned fake error: %X\n", hr);
+		hr = S_OK;
+	}
+
 	if (hr == S_OK)
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(origSwapChain);
