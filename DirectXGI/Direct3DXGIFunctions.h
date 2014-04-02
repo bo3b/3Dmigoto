@@ -165,6 +165,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	D3D11Base::IDXGISwapChain *origSwapChain;
 	IUnknown *realDevice = ReplaceDevice(pDevice);
 	HRESULT hr = m_pFactory->CreateSwapChain(realDevice, pDesc, &origSwapChain);
+	hr = S_OK;
 	if (hr == S_OK)
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(origSwapChain);
