@@ -165,20 +165,15 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	D3D11Base::IDXGISwapChain *origSwapChain;
 	IUnknown *realDevice = ReplaceDevice(pDevice);
 	HRESULT hr = m_pFactory->CreateSwapChain(realDevice, pDesc, &origSwapChain);
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
 
-	// Todo: double check this fix.
-	// From debugging, it seems that this call is returning a half-error. The error code
-	// is 0x087A0001, not the proper DXGI_ERROR_INVALID_CALL=0x887A0001 that we'd expect.
-	// This is quite unusual.  
-	// If I simply ignore that error, then I can no longer reproduce the crash.
+	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
+	// can be occluded when we return from creating the real swap chain.  
+	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
+	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
+	// There are other legitimate DXGI_STATUS results, so checking for FAILED is the correct way.
 
-	if (hr == 0x087A0001)
-	{
-		if (LogFile) fprintf(LogFile, "--------CreateSwapChain returned fake error: %X\n", hr);
-		hr = S_OK;
-	}
-
-	if (hr == S_OK)
+	if (!FAILED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -186,8 +181,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 		(*ppSwapChain)->m_RealDevice = realDevice;
 		if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
 	}
-
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
 	
 	return hr;
 }
