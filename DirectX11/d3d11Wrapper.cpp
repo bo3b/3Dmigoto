@@ -2186,10 +2186,11 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	D3D11Base::ID3D11DeviceContext *origContext = 0;
 	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(ReplaceAdapter(pAdapter), DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, &origDevice, pFeatureLevel, &origContext);
-	if (ret != S_OK)
+
+	// Changed to recognize that >0 DXGISTATUS values are possible, not just S_OK.
+	if (FAILED(ret))
 	{
 		if (LogFile) fprintf(LogFile, "  failed with HRESULT=%x\n", ret);
-
 		return ret;
 	}
 
@@ -2214,7 +2215,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		*ppDevice = wrapper;
 
 	D3D11Wrapper::ID3D11DeviceContext *wrapper2 = D3D11Wrapper::ID3D11DeviceContext::GetDirect3DDeviceContext(origContext);
-	if(wrapper == NULL)
+	if (wrapper2 == NULL)
 	{
 		if (LogFile) fprintf(LogFile, "  error allocating wrapper2.\n");
 

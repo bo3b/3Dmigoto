@@ -171,9 +171,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	// can be occluded when we return from creating the real swap chain.  
 	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
 	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
-	// There are other legitimate DXGI_STATUS results, so checking for FAILED is the correct way.
+	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
+	// Same bug fix is applied for the other CreateSwapChain* variants.
 
-	if (!FAILED(hr))
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -223,7 +224,9 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	HRESULT hr = -1;
 	if (pRestrictToOutput)
 		hr = GetFactory2()->CreateSwapChainForHwnd(realDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -231,8 +234,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 		(*ppSwapChain)->m_RealDevice = realDevice;
 		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	}
-
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
 	
 	return hr;
 }
@@ -263,7 +264,9 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	HRESULT hr = -1;
 	if (pRestrictToOutput)
 		hr = GetFactory2()->CreateSwapChainForCoreWindow(realDevice, pWindow, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -272,8 +275,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	}
 
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	
 	return hr;
 }
 
@@ -301,7 +302,9 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
 	HRESULT hr = -1;
 	if (pRestrictToOutput)
 		hr = GetFactory2()->CreateSwapChainForComposition(realDevice, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -310,8 +313,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
 		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	}
 
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	
 	return hr;
 }
 
