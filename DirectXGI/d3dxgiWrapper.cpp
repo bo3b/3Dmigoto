@@ -41,7 +41,7 @@ void InitializeDLL()
 		{
 			DWORD one = 0x01;
 			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
-			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
 		wchar_t val[MAX_PATH];

@@ -280,14 +280,6 @@ void InitializeDLL()
 		wcsrchr(dir, L'\\')[1] = 0;
 		wcscat(dir, L"d3dx.ini");
 		
-		// If specified in Logging section, wait for Attach to Debugger.
-		if (GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, dir))
-			do
-			{
-				Sleep(250);
-			} while (!IsDebuggerPresent());
-			
-
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
@@ -304,10 +296,19 @@ void InitializeDLL()
 		{
 			DWORD one = 0x01;
 			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
-			if (LogFile) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+			if (LogFile) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
-		wchar_t val[MAX_PATH];
+		// If specified in Logging section, wait for Attach to Debugger.
+		if (GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, dir)) 
+		{
+			do
+			{
+				Sleep(250);
+			} while (!IsDebuggerPresent());
+		}
+
+			wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf(val, L"%d", &G->SCREEN_WIDTH);
 		read = GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir);

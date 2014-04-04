@@ -205,7 +205,7 @@ static void loadDll()
 		{
 			DWORD one = 0x01;
 			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
-			if (CallsLogging()) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+			if (CallsLogging()) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
 		// Device
