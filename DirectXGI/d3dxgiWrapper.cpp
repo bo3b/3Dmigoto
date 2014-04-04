@@ -1,5 +1,6 @@
 #include "Main.h"
 #include <Shlobj.h>
+#include <ctime>
 
 ThreadSafePointerSet D3D11Wrapper::IDXGIFactory::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIAdapter::m_List;
@@ -17,6 +18,16 @@ static int SCREEN_FULLSCREEN = -1;
 
 static bool mBlockingMode = false;
 
+
+static char *LogTime()
+{
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
+	timeStr[strlen(timeStr) - 1] = 0;
+	return timeStr;
+}
+
+
 void InitializeDLL()
 {
 	if (!gInitialized)
@@ -32,9 +43,17 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
 		{
 			D3D11Wrapper::LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
-			setvbuf(D3D11Wrapper::LogFile, NULL, _IONBF, 0);
+			fprintf(D3D11Wrapper::LogFile, "\nDXGI DLL starting init  -  %s\n\n", LogTime());
 		}
-		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DXGI DLL initialized.\n");
+
+		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+		// to open active files.
+		int unbuffered = -1;
+		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, dir))
+		{
+			unbuffered = setvbuf(D3D11Wrapper::LogFile, NULL, _IONBF, 0);
+			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  unbuffered=1  return: %d\n", unbuffered);
+		}
 
 		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
 		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
@@ -59,6 +78,8 @@ void InitializeDLL()
 			FILTER_REFRESH+0, FILTER_REFRESH+1, FILTER_REFRESH+2, FILTER_REFRESH+3, &FILTER_REFRESH+4,
 			FILTER_REFRESH+5, FILTER_REFRESH+6, FILTER_REFRESH+7, FILTER_REFRESH+8, &FILTER_REFRESH+9);
 	}
+
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DXGI DLL initialized.\n");
 }
 
 void DestroyDLL()
