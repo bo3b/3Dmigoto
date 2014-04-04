@@ -151,6 +151,7 @@ static void loadDll()
 		DllRegisterServerPtr = (DllRegisterServerType)GetProcAddress(nvDLL, "DllRegisterServer");
 		DllUnregisterServerPtr = (DllUnregisterServerType)GetProcAddress(nvDLL, "DllUnregisterServer");
 		nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
+
 		GetModuleFileName(0, sysDir, MAX_PATH);
 		wcsrchr(sysDir, L'\\')[1] = 0;
 		wcscat(sysDir, L"d3dx.ini");
@@ -174,7 +175,7 @@ static void loadDll()
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir);
 
 		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
-		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, sysDir))
 		{
 			DWORD one = 0x01;
 			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
