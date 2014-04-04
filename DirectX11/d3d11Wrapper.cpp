@@ -2034,6 +2034,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 
 STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
+	if (LogFile) fprintf(LogFile, "D3D11Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(this).name());
+
 	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IID m2 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
 	IID m3 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
@@ -2121,6 +2123,9 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		return E_OUTOFMEMORY;
 	}
 	*/
+
+	if (LogFile) fprintf(LogFile, "  calling m_pUnk->QueryInterface, m_pUnk: %s\n", typeid(m_pUnk).name());
+
 	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK)
 	{
