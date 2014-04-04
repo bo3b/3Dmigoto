@@ -138,6 +138,32 @@ static bool LogDebug = false;
 bool LogInput = false;
 FILE *LogFile = 0;
 
+static bool CallsLogging()
+{
+	if (!LogCalls) return false;
+	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	return true;
+}
+static bool SeparationLogging()
+{
+	if (!LogSeparation) return false;
+	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	return true;
+}
+static bool ConvergenceLogging()
+{
+	if (!LogConvergence) return false;
+	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	return true;
+}
+static char *LogTime()
+{
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
+	timeStr[strlen(timeStr) - 1] = 0;
+	return timeStr;
+}
+
 static void loadDll()
 {
 	if (!nvDLL)
@@ -211,31 +237,6 @@ static void loadDll()
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);		
 	}
-}
-static bool CallsLogging()
-{
-	if (!LogCalls) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
-	return true;
-}
-static bool SeparationLogging()
-{
-	if (!LogSeparation) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
-	return true;
-}
-static bool ConvergenceLogging()
-{
-	if (!LogConvergence) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
-	return true;
-}
-static char *LogTime()
-{
-	time_t ltime = time(0); 
-	char *timeStr = asctime(localtime(&ltime)); 
-	timeStr[strlen(timeStr)-1] = 0;
-	return timeStr;
 }
 
 STDAPI DllCanUnloadNow(void)
