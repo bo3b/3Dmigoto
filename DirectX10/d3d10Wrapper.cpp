@@ -422,10 +422,11 @@ HRESULT WINAPI D3D10CreateDeviceAndSwapChain(D3D11Base::IDXGIAdapter *pAdapter, 
 	D3D11Base::ID3D10Device *origDevice = 0;
 	HRESULT ret = (*_D3D10CreateDeviceAndSwapChain)(ReplaceAdapter(pAdapter), DriverType, Software, Flags, SDKVersion, 
 		pSwapChainDesc, ppSwapChain, &origDevice);
-	if (ret != S_OK)
+	
+	// Changed to recognize that >0 DXGISTATUS values are possible, not just S_OK.
+	if (FAILED(ret))
 	{
 		if (LogFile) fprintf(LogFile, "  failed with HRESULT=%x\n", ret);
-		
 		return ret;
 	}
 

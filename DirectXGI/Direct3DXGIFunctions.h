@@ -165,8 +165,16 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	D3D11Base::IDXGISwapChain *origSwapChain;
 	IUnknown *realDevice = ReplaceDevice(pDevice);
 	HRESULT hr = m_pFactory->CreateSwapChain(realDevice, pDesc, &origSwapChain);
-	hr = S_OK;
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
+	// can be occluded when we return from creating the real swap chain.  
+	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
+	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
+	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
+	// Same bug fix is applied for the other CreateSwapChain* variants.
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -174,8 +182,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 		(*ppSwapChain)->m_RealDevice = realDevice;
 		if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
 	}
-
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
 	
 	return hr;
 }
@@ -218,7 +224,9 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	HRESULT hr = -1;
 	if (pRestrictToOutput)
 		hr = GetFactory2()->CreateSwapChainForHwnd(realDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -226,8 +234,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 		(*ppSwapChain)->m_RealDevice = realDevice;
 		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	}
-
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
 	
 	return hr;
 }
@@ -258,7 +264,9 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	HRESULT hr = -1;
 	if (pRestrictToOutput)
 		hr = GetFactory2()->CreateSwapChainForCoreWindow(realDevice, pWindow, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -267,8 +275,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	}
 
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	
 	return hr;
 }
 
@@ -296,7 +302,9 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
 	HRESULT hr = -1;
 	if (pRestrictToOutput)
 		hr = GetFactory2()->CreateSwapChainForComposition(realDevice, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	if (hr == S_OK)
+	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
+
+	if (SUCCEEDED(hr))
 	{
 		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
@@ -305,8 +313,6 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
 		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	}
 
-	if (LogFile) fprintf(LogFile, "  return value = %x\n", hr);
-	
 	return hr;
 }
 
@@ -1172,19 +1178,19 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
 	*/
 	HRESULT hr = GetSwapChain()->Present(SyncInterval, Flags);
 
-	//if (m_WrappedDevice)
-	//{
-	//	// Forward call to device.
-	//	//if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
-	//	const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-	//	IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
-	//	int param = 0;
-	//	if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
-	//	{
-	//		//if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
-	//		//
-	//	}
-	//}
+	if (m_WrappedDevice)
+	{
+		// Forward call to device.
+		//if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
+		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
+		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
+		int param = 0;
+		if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
+		{
+			//if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
+			//
+		}
+	}
 
 	//if (LogFile) fprintf(LogFile, "  returns %x\n", hr);
 	//
@@ -1395,18 +1401,18 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
 	
 	HRESULT hr = GetSwapChain1()->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
-	//if (m_WrappedDevice)
-	//{
-	//	// Forward call to device.
-	//	if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
-	//	const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-	//	IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
-	//	int param = 0;
-	//	if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
-	//	{
-	//		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
-	//	}
-	//}
+	if (m_WrappedDevice)
+	{
+		// Forward call to device.
+		if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
+		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
+		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
+		int param = 0;
+		if (deviceIU->QueryInterface(marker, (void **) &param) == 0x13bc7e31)
+		{
+			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
+		}
+	}
 
 	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
 	
