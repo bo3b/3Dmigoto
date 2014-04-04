@@ -24,6 +24,14 @@ void InitializeDLL()
 		if (D3DWrapper::LogFile) D3DWrapper::LogFile = fopen("D3DCompiler_" COMPILER_DLL_VERSION "_log.txt", "w");
 		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "DLL initialized.\n");
 		
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+		}
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Rendering", L"storage_directory", 0, SHADER_PATH, MAX_PATH, dir);
 		if (SHADER_PATH[0])

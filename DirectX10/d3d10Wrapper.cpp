@@ -29,6 +29,15 @@ void InitializeDLL()
 		LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
 		if (LogFile) LogFile = fopen("d3d10_log.txt", "w");
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (LogFile) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+		}
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf(val, L"%d", &SCREEN_WIDTH);
@@ -71,7 +80,7 @@ void InitializeDLL()
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Rendering", L"XInputDevice", -1, dir);		
 
-		if (LogFile) fprintf(LogFile, "DLL initialized.\n");
+		if (LogFile) fprintf(LogFile, "D3D10 DLL initialized.\n");
 	}
 }
 

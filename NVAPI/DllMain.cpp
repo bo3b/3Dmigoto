@@ -172,6 +172,15 @@ static void loadDll()
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir);
 		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir);
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (CallsLogging()) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+		}
+
 		// Device
 		wchar_t valueString[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, sysDir);

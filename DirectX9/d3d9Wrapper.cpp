@@ -46,6 +46,15 @@ void InitializeDLL()
 			LogFile = fopen("d3d9_log.txt", "w");
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir);
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (LogFile) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+		}
+
 		wchar_t val[MAX_PATH];
 		SCREEN_WIDTH = GetPrivateProfileInt(L"Device", L"width", -1, dir);
 		SCREEN_HEIGHT = GetPrivateProfileInt(L"Device", L"height", -1, dir);
@@ -60,7 +69,7 @@ void InitializeDLL()
 			SCREEN_REFRESH_DELAY = SCREEN_REFRESH; SCREEN_REFRESH = -1;
 		}
 
-		if (LogFile) fprintf(LogFile, "DLL initialized.\n");
+		if (LogFile) fprintf(LogFile, "D3D9 DLL initialized.\n");
 	}
 }
 

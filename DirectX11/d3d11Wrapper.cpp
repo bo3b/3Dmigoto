@@ -299,6 +299,14 @@ void InitializeDLL()
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir);
 
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (LogFile) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+		}
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf(val, L"%d", &G->SCREEN_WIDTH);
@@ -592,7 +600,7 @@ void InitializeDLL()
 		D3D11Base::NvAPI_Initialize();
 		InitializeCriticalSection(&G->mCriticalSection);
 
-		if (LogFile) fprintf(LogFile, "DLL initialized.\n");
+		if (LogFile) fprintf(LogFile, "D3D11 DLL initialized.\n");
 		if (LogFile && LogDebug) fprintf(LogFile, "[Rendering] XInputDevice = %d\n", XInputDeviceId);
 	}
 }
@@ -2002,19 +2010,19 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				hr = m_pUnk->QueryInterface(IDXGIDevice2, ppvObj);
 				if (hr != S_OK)
 				{
-					if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice2 interface. Trying IDXGIDevice1.\n");
+					if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice2 interface: %x. Trying IDXGIDevice1.\n", hr);
 
 					const IID IDXGIDevice1 = {0x77db970f,0x6276,0x48ba,{0xba,0x28,0x07,0x01,0x43,0xb4,0x39,0x2c}};
 					hr = m_pUnk->QueryInterface(IDXGIDevice1, ppvObj);
 					if (hr != S_OK)
 					{
-						if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice1 interface. Trying IDXGIDevice.\n");
+						if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice1 interface: %x. Trying IDXGIDevice.\n", hr);
 
 						const IID IDXGIDevice = {0x54ec77fa,0x1377,0x44e6,{0x8c,0x32,0x88,0xfd,0x5f,0x44,0xc8,0x4c}};
 						hr = m_pUnk->QueryInterface(IDXGIDevice, ppvObj);
 						if (hr != S_OK)
 						{
-							if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice interface.\n");
+							if (LogFile) fprintf(LogFile, "  fatal error querying IDXGIDevice interface: %x.\n", hr);
 
 							return E_OUTOFMEMORY;
 						}

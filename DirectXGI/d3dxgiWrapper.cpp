@@ -21,9 +21,6 @@ void InitializeDLL()
 {
 	if (!gInitialized)
 	{
-		//DWORD one = 0x01;
-		//bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
-
 		gInitialized = true;
 		wchar_t dir[MAX_PATH];
 		GetModuleFileName(0, dir, MAX_PATH);
@@ -37,8 +34,16 @@ void InitializeDLL()
 			D3D11Wrapper::LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
 			setvbuf(D3D11Wrapper::LogFile, NULL, _IONBF, 0);
 		}
-		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DLL initialized.\n");
-		
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DXGI DLL initialized.\n");
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CPU Affinity forced to 1- no multithreading: \n", result);
+		}
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf(val, L"%d", &SCREEN_WIDTH);
