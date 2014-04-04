@@ -570,7 +570,7 @@ void InitializeDLL()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
-		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && isspace(*end)) end--; *(end + 1) = 0;
+		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
 
 		read = GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile);
 		if (read && !wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
@@ -583,56 +583,56 @@ void InitializeDLL()
 		
 		// Actions
 		GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, iniFile);
-		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_pixelshader", 0, InputAction[1], MAX_PATH, iniFile);
-		end = InputAction[1] + wcslen(InputAction[1]) - 1; while (end > InputAction[1] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[1] + wcslen(InputAction[1]) - 1; while (end > InputAction[1] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, iniFile);
-		end = InputAction[2] + wcslen(InputAction[2]) - 1; while (end > InputAction[2] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[2] + wcslen(InputAction[2]) - 1; while (end > InputAction[2] && iswspace(*end)) end--; *(end + 1) = 0;
 		
 		GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, iniFile);
-		end = InputAction[3] + wcslen(InputAction[3]) - 1; while (end > InputAction[3] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[3] + wcslen(InputAction[3]) - 1; while (end > InputAction[3] && iswspace(*end)) end--; *(end + 1) = 0;
 		
 		GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, iniFile);
-		end = InputAction[4] + wcslen(InputAction[4]) - 1; while (end > InputAction[4] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[4] + wcslen(InputAction[4]) - 1; while (end > InputAction[4] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, iniFile);
-		end = InputAction[5] + wcslen(InputAction[5]) - 1; while (end > InputAction[5] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[5] + wcslen(InputAction[5]) - 1; while (end > InputAction[5] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_indexbuffer", 0, InputAction[6], MAX_PATH, iniFile);
-		end = InputAction[6] + wcslen(InputAction[6]) - 1; while (end > InputAction[6] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[6] + wcslen(InputAction[6]) - 1; while (end > InputAction[6] && iswspace(*end)) end--; *(end + 1) = 0;
 
 		GetPrivateProfileString(L"Hunting", L"next_vertexshader", 0, InputAction[7], MAX_PATH, iniFile);
-		end = InputAction[7] + wcslen(InputAction[7]) - 1; while (end > InputAction[7] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[7] + wcslen(InputAction[7]) - 1; while (end > InputAction[7] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_vertexshader", 0, InputAction[8], MAX_PATH, iniFile);
-		end = InputAction[8] + wcslen(InputAction[8]) - 1; while (end > InputAction[8] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[8] + wcslen(InputAction[8]) - 1; while (end > InputAction[8] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, iniFile);
-		end = InputAction[9] + wcslen(InputAction[9]) - 1; while (end > InputAction[9] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[9] + wcslen(InputAction[9]) - 1; while (end > InputAction[9] && iswspace(*end)) end--; *(end + 1) = 0;
 		
 		GetPrivateProfileString(L"Hunting", L"tune1_up", 0, InputAction[10], MAX_PATH, iniFile);
-		end = InputAction[10] + wcslen(InputAction[10]) - 1; while (end > InputAction[10] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[10] + wcslen(InputAction[10]) - 1; while (end > InputAction[10] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune1_down", 0, InputAction[11], MAX_PATH, iniFile);
-		end = InputAction[11] + wcslen(InputAction[11]) - 1; while (end > InputAction[11] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[11] + wcslen(InputAction[11]) - 1; while (end > InputAction[11] && iswspace(*end)) end--; *(end + 1) = 0;
 		
 		GetPrivateProfileString(L"Hunting", L"next_rendertarget", 0, InputAction[12], MAX_PATH, iniFile);
-		end = InputAction[12] + wcslen(InputAction[12]) - 1; while (end > InputAction[12] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[12] + wcslen(InputAction[12]) - 1; while (end > InputAction[12] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_rendertarget", 0, InputAction[13], MAX_PATH, iniFile);
-		end = InputAction[13] + wcslen(InputAction[13]) - 1; while (end > InputAction[13] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[13] + wcslen(InputAction[13]) - 1; while (end > InputAction[13] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_rendertarget", 0, InputAction[14], MAX_PATH, iniFile);
-		end = InputAction[14] + wcslen(InputAction[14]) - 1; while (end > InputAction[14] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[14] + wcslen(InputAction[14]) - 1; while (end > InputAction[14] && iswspace(*end)) end--; *(end + 1) = 0;
 		
 		GetPrivateProfileString(L"Hunting", L"tune2_up", 0, InputAction[15], MAX_PATH, iniFile);
-		end = InputAction[15] + wcslen(InputAction[15]) - 1; while (end > InputAction[15] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[15] + wcslen(InputAction[15]) - 1; while (end > InputAction[15] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune2_down", 0, InputAction[16], MAX_PATH, iniFile);
-		end = InputAction[16] + wcslen(InputAction[16]) - 1; while (end > InputAction[16] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[16] + wcslen(InputAction[16]) - 1; while (end > InputAction[16] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune3_up", 0, InputAction[17], MAX_PATH, iniFile);
-		end = InputAction[17] + wcslen(InputAction[17]) - 1; while (end > InputAction[17] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[17] + wcslen(InputAction[17]) - 1; while (end > InputAction[17] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune3_down", 0, InputAction[18], MAX_PATH, iniFile);
-		end = InputAction[18] + wcslen(InputAction[18]) - 1; while (end > InputAction[18] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[18] + wcslen(InputAction[18]) - 1; while (end > InputAction[18] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune4_up", 0, InputAction[19], MAX_PATH, iniFile);
-		end = InputAction[19] + wcslen(InputAction[19]) - 1; while (end > InputAction[19] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[19] + wcslen(InputAction[19]) - 1; while (end > InputAction[19] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune4_down", 0, InputAction[20], MAX_PATH, iniFile);
-		end = InputAction[20] + wcslen(InputAction[20]) - 1; while (end > InputAction[20] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[20] + wcslen(InputAction[20]) - 1; while (end > InputAction[20] && iswspace(*end)) end--; *(end + 1) = 0;
 		
 		GetPrivateProfileString(L"Hunting", L"reload_fixes", 0, InputAction[21], MAX_PATH, iniFile);
-		end = InputAction[21] + wcslen(InputAction[21]) - 1; while (end > InputAction[21] && isspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction[21] + wcslen(InputAction[21]) - 1; while (end > InputAction[21] && iswspace(*end)) end--; *(end + 1) = 0;
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, iniFile);
 

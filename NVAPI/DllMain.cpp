@@ -240,9 +240,9 @@ static void loadDll()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && isspace(*end)) end--; *(end+1) = 0;
+		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction[0], MAX_PATH, sysDir);
-		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
 			swscanf(valueString, L"%e", &ActionConvergence);

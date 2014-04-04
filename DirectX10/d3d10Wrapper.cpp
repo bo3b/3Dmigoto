@@ -76,29 +76,29 @@ void InitializeDLL()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, dir);
-		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && isspace(*end)) end--; *(end+1) = 0;
+		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
 		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, dir);
 		// Actions
 		GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, dir);
-		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_pixelshader", 0, InputAction[1], MAX_PATH, dir);
-		end = InputAction[1] + wcslen(InputAction[1]) - 1; while (end > InputAction[1] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[1] + wcslen(InputAction[1]) - 1; while (end > InputAction[1] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, dir);
-		end = InputAction[2] + wcslen(InputAction[2]) - 1; while (end > InputAction[2] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[2] + wcslen(InputAction[2]) - 1; while (end > InputAction[2] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, dir);
-		end = InputAction[3] + wcslen(InputAction[3]) - 1; while (end > InputAction[3] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[3] + wcslen(InputAction[3]) - 1; while (end > InputAction[3] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, dir);
-		end = InputAction[4] + wcslen(InputAction[4]) - 1; while (end > InputAction[4] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[4] + wcslen(InputAction[4]) - 1; while (end > InputAction[4] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, dir);
-		end = InputAction[5] + wcslen(InputAction[5]) - 1; while (end > InputAction[5] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[5] + wcslen(InputAction[5]) - 1; while (end > InputAction[5] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_indexbuffer", 0, InputAction[6], MAX_PATH, dir);
-		end = InputAction[6] + wcslen(InputAction[6]) - 1; while (end > InputAction[6] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[6] + wcslen(InputAction[6]) - 1; while (end > InputAction[6] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"next_vertexshader", 0, InputAction[7], MAX_PATH, dir);
-		end = InputAction[7] + wcslen(InputAction[7]) - 1; while (end > InputAction[7] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[7] + wcslen(InputAction[7]) - 1; while (end > InputAction[7] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_vertexshader", 0, InputAction[8], MAX_PATH, dir);
-		end = InputAction[8] + wcslen(InputAction[8]) - 1; while (end > InputAction[8] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[8] + wcslen(InputAction[8]) - 1; while (end > InputAction[8] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, dir);
-		end = InputAction[9] + wcslen(InputAction[9]) - 1; while (end > InputAction[9] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[9] + wcslen(InputAction[9]) - 1; while (end > InputAction[9] && iswspace(*end)) end--; *(end + 1) = 0;
 		InitDirectInput();
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, dir);		
