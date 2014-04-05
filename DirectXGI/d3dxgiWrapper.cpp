@@ -422,9 +422,11 @@ static void ReplaceInterface(void **ppvObj)
 	}
 }
 
+// Todo: Why is this named D3D11Wrapper, but in the d3dxgiWrapper?
+
 STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
-	if (LogFile) fprintf(LogFile, "D3D11Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(this).name());
+//	if (LogFile) fprintf(LogFile, "D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
 
 	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
@@ -439,8 +441,6 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		return E_OUTOFMEMORY;
 	}
 	*/
-	if (LogFile) fprintf(LogFile, "  calling m_pUnk->QueryInterface, m_pUnk: %s\n", typeid(m_pUnk).name());
-
 	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (LogFile) fprintf(LogFile, "  result = %x, handle = %x\n", hr, *ppvObj);
 	ReplaceInterface(ppvObj);
@@ -463,7 +463,7 @@ static IUnknown *ReplaceDevice(IUnknown *wrapper)
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  checking for device wrapper, handle = %x\n", wrapper);
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IUnknown *realDevice = wrapper;
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", typeid(wrapper).name());
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
 
 	if (wrapper->QueryInterface(marker, (void **)&realDevice) == 0x13bc7e31)
 	{
@@ -488,7 +488,7 @@ static void SendScreenResolution(IUnknown *wrapper, int width, int height)
 	info.width = width;
 	info.height = height;
 	SwapChainInfo *infoPtr = &info;
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", typeid(wrapper).name());
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
 
 	if (wrapper->QueryInterface(marker, (void **)&infoPtr) == 0x13bc7e31)
 	{

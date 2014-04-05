@@ -701,8 +701,12 @@ HRESULT WINAPI D3D10StateBlockMaskUnion(D3D11Base::D3D10_STATE_BLOCK_MASK *pA,
 		pB, pResult);
 }
 
+// Todo: Not real sure that D3D11Wrapper is the right name space for the D3D10Wrapper
+
 STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
+	if (LogFile) fprintf(LogFile, "D3D10Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	if (riid.Data1 == marker.Data1 && riid.Data2 == marker.Data2 && riid.Data3 == marker.Data3 && 
 		riid.Data4[0] == marker.Data4[0] && riid.Data4[1] == marker.Data4[1] && riid.Data4[2] == marker.Data4[2] && riid.Data4[3] == marker.Data4[3] && 

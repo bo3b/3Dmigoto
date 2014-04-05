@@ -1185,7 +1185,8 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
 		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
 		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
 		int param = 0;
-//		if (LogFile) fprintf(LogFile, "D3D11Wrapper::IDXGISwapChain::Present calling m_WrappedDevice->QueryInterface, m_WrappedDevice: %s\n", typeid(m_WrappedDevice).name());
+		//if (LogFile) fprintf(LogFile, "D3D11Wrapper::IDXGISwapChain::Present calling m_WrappedDevice->QueryInterface\n"
+		//								"   m_WrappedDevice: %s\n", typeid(*m_WrappedDevice).name());
 
 		if (deviceIU->QueryInterface(marker, (void **)&param) == 0x13bc7e31)
 		{
@@ -1407,10 +1408,12 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
 	{
 		// Forward call to device.
 		if (LogFile) fprintf(LogFile, "  forwarding Present call to device %x\n", m_WrappedDevice);
+
 		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
 		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
 		int param = 0;
-//		if (LogFile) fprintf(LogFile, "D3D11Wrapper::IDXGISwapChain::Present1 calling m_WrappedDevice->QueryInterface, m_WrappedDevice: %s\n", typeid(m_WrappedDevice).name());
+		//if (LogFile) fprintf(LogFile, "D3D11Wrapper::IDXGISwapChain::Present1 calling m_WrappedDevice->QueryInterface\n"
+		//								"   m_WrappedDevice: %s\n", typeid(*m_WrappedDevice).name());
 
 		if (deviceIU->QueryInterface(marker, (void **)&param) == 0x13bc7e31)
 		{
