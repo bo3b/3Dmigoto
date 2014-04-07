@@ -1,0 +1,109 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float4 Layer0Color_19 : packoffset(c105);
+  float4x4 g_World : packoffset(c8);
+  float4 g_ClipPlane : packoffset(c18);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DeconstructionEnabledDX11 : packoffset(c92);
+  float2 g_DeconstructionRanges : packoffset(c116);
+  bool g_DeconstructionEnabledOther : packoffset(c117);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  int4 v0 : POSITION0,
+  uint4 v1 : NORMAL0,
+  uint4 v2 : TANGENT0,
+  float2 v3 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : COLOR0,
+  out float4 o4 : TEXCOORD2,
+  out float4 o5 : TEXCOORD3,
+  out float4 o6 : TEXCOORD4,
+  out float4 o7 : TEXCOORD5)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = g_DeconstructionRanges.y + -g_DeconstructionRanges.x;
+  r0.x = 1.000000e+000 / r0.x;
+  r1.w = 1.000000000e+000;
+  r0.yzw = (int3)v0.xyz * (int3)v0.www;
+  r0.yzw = r0.yzw;
+  r1.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r0.yzw;
+  r2.xyzw = -g_EyePosition.xyzw + r1.xyzw;
+  r1.w = dot(r2.xyzw, r2.xyzw);
+  r1.w = sqrt(r1.w);
+  r1.w = -g_DeconstructionRanges.x + r1.w;
+  r0.x = saturate(r1.w * r0.x);
+  r1.w = r0.x * -2.000000000e+000 + 3.000000000e+000;
+  r0.x = r0.x * r0.x;
+  r0.x = r1.w * r0.x;
+  r2.xy = float2(1.600000e+001,1.600000e+001) * v3.xy;
+  r2.zw = float2(0.000000e+000,0.000000e+000);
+  r0.yzw = -r0.yzw * float3(3.051758e-005,3.051758e-005,3.051758e-005) + r2.xyw;
+  o2.xyzw = r2.xyzw;
+  r0.xyz = r0.xxx * r0.yzw + r1.xyz;
+  r0.w = 0.000000e+000 != g_DeconstructionEnabledDX11.x;
+  r0.x = r0.w ? r0.x : r1.x;
+  r0.y = r0.w ? r0.y : r1.y;
+  r0.z = r0.w ? r0.z : r1.z;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r1.xyzw;
+r1.x += stereoParams.x * (r1.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o1.xyzw = r1.xyzw;
+  o3.xyzw = Layer0Color_19.xyzw;
+  r1.x = dot(r0.xyzw, g_World._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_World._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_World._m02_m12_m22_m32);
+  o4.xyz = r1.xyz;
+  r0.x = dot(r1.xyz, g_ClipPlane.xyz);
+  o4.w = -g_ClipPlane.w + r0.x;
+  o5.w = 0.000000000e+000;
+  r0.xyz = v2.xyz;
+  r0.xyz = float3(-1.270000e+002,-1.270000e+002,-1.270000e+002) + r0.xyz;
+  r0.xyz = float3(7.874016e-003,7.874016e-003,7.874016e-003) * r0.xyz;
+  o5.x = dot(r0.xyz, g_World._m00_m10_m20);
+  o5.y = dot(r0.xyz, g_World._m01_m11_m21);
+  o5.z = dot(r0.xyz, g_World._m02_m12_m22);
+  r0.w = (int)0 < (int)v0.w;
+  r1.x = (int)v0.w < (int)0;
+  r0.w = ((int)r1.x ? -1 : 0) + ((int)r0.w ? 1 : 0);
+  r0.w = r0.w;
+  r1.xyz = v1.xyz;
+  r1.xyz = float3(-1.270000e+002,-1.270000e+002,-1.270000e+002) + r1.xyz;
+  r1.xyz = float3(7.874016e-003,7.874016e-003,7.874016e-003) * r1.xyz;
+  r2.xyz = r1.zxy * r0.yzx;
+  r0.xyz = r1.yzx * r0.zxy + -r2.xyz;
+  r0.xyz = r0.xyz * r0.www;
+  o6.x = dot(r0.xyz, g_World._m00_m10_m20);
+  o6.y = dot(r0.xyz, g_World._m01_m11_m21);
+  o6.z = dot(r0.xyz, g_World._m02_m12_m22);
+  o6.w = 0.000000000e+000;
+  o7.x = dot(r1.xyz, g_World._m00_m10_m20);
+  o7.y = dot(r1.xyz, g_World._m01_m11_m21);
+  o7.z = dot(r1.xyz, g_World._m02_m12_m22);
+  o7.w = 0.000000000e+000;
+  return;
+}

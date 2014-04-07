@@ -1,0 +1,142 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float NoiseClamping_14 : packoffset(c105);
+  float4 NoiseAmplitude_15 : packoffset(c106);
+  float NoiseFrequency_16 : packoffset(c107);
+  float NoiseSpeed_17 : packoffset(c108);
+  float NoiseAttenuation_18 : packoffset(c109);
+  float g_CurrentTime : packoffset(c20);
+  float4 g_WrinkleArray[11] : packoffset(c64);
+  float4 g_BoneMatrixArray[126] : packoffset(c120);
+  float4 g_SkinConstants : packoffset(c78);
+  float4x4 g_World : packoffset(c8);
+  float4 g_ClipPlane : packoffset(c18);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DeconstructionEnabledDX11 : packoffset(c92);
+  float2 g_DeconstructionRanges : packoffset(c116);
+  bool g_DeconstructionEnabledOther : packoffset(c246);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 v0 : POSITION0,
+  uint4 v1 : NORMAL0,
+  uint4 v2 : TANGENT0,
+  uint4 v3 : BINORMAL0,
+  float2 v4 : TEXCOORD0,
+  uint4 v5 : BLENDINDICES0,
+  float4 v6 : BLENDWEIGHT0,
+  float4 v7 : TEXCOORD3,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : COLOR0,
+  out float4 o4 : TEXCOORD2)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.x = NoiseSpeed_17 * g_CurrentTime;
+  r1.w = 1.000000000e+000;
+  r1.xyz = g_SkinConstants.xxx * v0.xyz;
+  r2.x = dot(r1.xyzw, g_World._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_World._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_World._m02_m12_m22_m32);
+  r0.xyz = r2.xyz * NoiseFrequency_16 + r0.xxx;
+  r0.xyz = r0.xyz * float3(9.750000e-001,7.750000e-001,3.750000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  r0.xyz = frac(r0.xyz);
+  r0.xyz = r0.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.xyz = abs(r0.xyz) * abs(r0.xyz);
+  r0.xyz = -abs(-r0.xyz) * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(3.000000e+000,3.000000e+000,3.000000e+000);
+  r0.xyz = r2.xyz * r0.xyz + float3(-5.000000e-001,-5.000000e-001,-5.000000e-001);
+  r0.xyz = r0.yxx + r0.zzy;
+  r2.x = v1.w;
+  r2.y = v2.w;
+  r2.z = v3.w;
+  r2.w = v0.w;
+  r2.xyzw = float4(3.921569e-003,3.921569e-003,3.921569e-003,1.000000e+000) * r2.xyzw;
+  r0.w = r2.y + r2.z;
+  o3.xyzw = r2.xyzw;
+  r0.w = saturate(NoiseAttenuation_18 * r0.w);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r2.xyz = NoiseAmplitude_15.xyz * r0.www;
+  r0.xyz = r2.xyz * r0.xyz;
+  r0.xyz = float3(3.333300e-001,3.333300e-001,3.333300e-001) * r0.xyz;
+  r1.w = NoiseClamping_14 * r0.w;
+  r0.xyz = max(r0.xyz, r1.www);
+  r0.xyz = r0.xyz * r0.www + r1.xyz;
+  r1.xyzw = (int4)v5.xyzw * int4(3,3,3,3);
+  r0.w = 1.000000000e+000;
+  r2.x = dot(r0.xyzw, g_BoneMatrixArray[r1.y].xyzw);
+  r3.xyzw = mad((int4)v5.xxyy, int4(3,3,3,3), int4(1,2,1,2));
+  r2.y = dot(r0.xyzw, g_BoneMatrixArray[r3.z].xyzw);
+  r2.z = dot(r0.xyzw, g_BoneMatrixArray[r3.w].xyzw);
+  r2.xyz = v6.yyy * r2.xyz;
+  r4.x = dot(r0.xyzw, g_BoneMatrixArray[r1.x].xyzw);
+  r4.y = dot(r0.xyzw, g_BoneMatrixArray[r3.x].xyzw);
+  r4.z = dot(r0.xyzw, g_BoneMatrixArray[r3.y].xyzw);
+  r2.xyz = r4.xyz * v6.xxx + r2.xyz;
+  r1.x = dot(r0.xyzw, g_BoneMatrixArray[r1.z].xyzw);
+  r3.x = dot(r0.xyzw, g_BoneMatrixArray[r1.w].xyzw);
+  r4.xyzw = mad((int4)v5.zzww, int4(3,3,3,3), int4(1,2,1,2));
+  r1.y = dot(r0.xyzw, g_BoneMatrixArray[r4.x].xyzw);
+  r1.z = dot(r0.xyzw, g_BoneMatrixArray[r4.y].xyzw);
+  r1.xyz = r1.xyz * v6.zzz + r2.xyz;
+  r3.y = dot(r0.xyzw, g_BoneMatrixArray[r4.z].xyzw);
+  r3.z = dot(r0.xyzw, g_BoneMatrixArray[r4.w].xyzw);
+  r0.xyz = r3.xyz * v6.www + r1.xyz;
+  r0.w = 1.000000000e+000;
+  r1.xyzw = -g_EyePosition.xyzw + r0.xyzw;
+  r0.w = dot(r1.xyzw, r1.xyzw);
+  r0.w = sqrt(r0.w);
+  r0.w = -g_DeconstructionRanges.x + r0.w;
+  r1.x = g_DeconstructionRanges.y + -g_DeconstructionRanges.x;
+  r1.x = 1.000000e+000 / r1.x;
+  r0.w = saturate(r1.x * r0.w);
+  r1.x = r0.w * -2.000000000e+000 + 3.000000000e+000;
+  r0.w = r0.w * r0.w;
+  r0.w = r1.x * r0.w;
+  r1.xy = float2(1.600000e+001,1.600000e+001) * v4.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r2.xyz = r1.xyw + -r0.xyz;
+  o2.xyzw = r1.xyzw;
+  r1.xyz = r0.www * r2.xyz + r0.xyz;
+  r0.w = 0.000000e+000 != g_DeconstructionEnabledDX11.x;
+  r0.x = r0.w ? r1.x : r0.x;
+  r0.y = r0.w ? r1.y : r0.y;
+  r0.z = r0.w ? r1.z : r0.z;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r1.xyzw;
+r1.x += stereoParams.x * (r1.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  r2.x = 1.000000e+000 / r1.w;
+  o1.xyzw = r2.xxxx * r1.xyzw;
+  r1.x = dot(r0.xyzw, g_World._m03_m13_m23_m33);
+  r1.x = 1.000000e+000 / r1.x;
+  r2.x = dot(r0.xyzw, g_World._m00_m10_m20_m30);
+  r2.y = dot(r0.xyzw, g_World._m01_m11_m21_m31);
+  r2.z = dot(r0.xyzw, g_World._m02_m12_m22_m32);
+  r0.xyz = r2.xyz * r1.xxx;
+  o4.xyz = r0.xyz;
+  r0.x = dot(r0.xyz, g_ClipPlane.xyz);
+  o4.w = -g_ClipPlane.w + r0.x;
+  return;
+}

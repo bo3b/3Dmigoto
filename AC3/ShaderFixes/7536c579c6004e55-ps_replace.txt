@@ -1,0 +1,207 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_ViewportScaleOffset : packoffset(c84);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_DeferredOmniLight : packoffset(c128);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float3 m_Color;
+  } g_DeferredDirectLight : packoffset(c130);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float3 m_Direction;
+    float4 m_ConeAngles;
+  } g_DeferredSpotLight : packoffset(c132);
+
+  float4 g_DeferredProjWorldToLight[4] : packoffset(c136);
+  float4 g_DeferredProjShadowParams : packoffset(c140);
+  float4 g_DeferredBackgroundColor : packoffset(c141);
+  float4 g_VPOSToUVs_Resolve : packoffset(c146);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DepthParams : packoffset(c110);
+  float4 g_LinearFogColor : packoffset(c16);
+  float4 g_LinearFogParams : packoffset(c17);
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_EyeXAxis : packoffset(c8);
+  float4 g_EyeYAxis : packoffset(c9);
+  float4 g_EyeZAxis : packoffset(c10);
+  float4 g_EyeWorldPosition_Resolve : packoffset(c11);
+
+  struct
+  {
+    float4 m_CloudUVScaleOffset;
+    float4 m_CloudShadowsParams;
+    float4 m_ShadowMapSize;
+    float4 m_OffsetsY;
+    float4 m_OffsetsX;
+    float4 m_ScalesY;
+    float4 m_ScalesX;
+    float4 m_OffsetsZ;
+    float4 m_ScalesZ;
+    float4 m_OffsetsW;
+    float4 m_ScalesW;
+    float4 m_NoiseScale;
+    float4 m_NearFar;
+    float4 m_FadeParams;
+    float4 m_CascadesRangesMax;
+    float4 m_ShadowContrast;
+    float4x4 m_WorldToLightProj;
+  } g_Shadows : packoffset(c64);
+
+
+  struct
+  {
+    float4 m_UseHQFiltering;
+  } g_ShadowPerfOptions : packoffset(c63);
+
+  float4 g_WorldLightmapParameters : packoffset(c87);
+  float4 g_WorldLightmapUVParameters : packoffset(c88);
+  float4 g_WorldLightmapColor : packoffset(c89);
+  float4 g_WorldAOParameters : packoffset(c90);
+  float4 g_WorldAORangeParameters : packoffset(c91);
+  float4 g_WeatherExposedParams : packoffset(c92);
+  float4 g_WinterParams : packoffset(c93);
+  float4 g_SnowSparklesParams : packoffset(c94);
+  float4 g_DebugValue : packoffset(c147) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+
+  struct
+  {
+    float2 m_VPOS;
+    float3 m_ShadowResult;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_WorldEyeVector;
+    float3 m_NormalizedWorldEyeVector;
+    float m_SpecularPower;
+  } c : packoffset(c148);
+
+}
+SamplerState DepthSurface_s : register(s2);
+SamplerState g_ShadowNoiseSampler_s : register(s6);
+SamplerState g_CloudShadowSampler_s : register(s14);
+SamplerComparisonState g_ShadowSampler_s : register(s15);
+Texture2D<float4> DepthSurface : register(t2);
+Texture2D<float4> g_ShadowNoiseSampler : register(t6);
+Texture2D<float4> g_CloudShadowSampler : register(t14);
+Texture2D<float4> g_ShadowTexture : register(t15);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r0.zw = g_ReverseProjectionParams2.xy + r0.xy;
+  r0.xy = r0.xy * g_ViewportScaleOffset.xy + g_ViewportScaleOffset.zw;
+  r1.xyzw = DepthSurface.Sample(DepthSurface_s, r0.xy).xyzw;
+  r0.x = g_ReverseProjectionParams.z + r1.x;
+  r1.z = g_ReverseProjectionParams.w / r0.x;
+  r0.xy = g_ReverseProjectionParams.xy * r0.zw;
+  r1.xy = r0.xy * r1.zz;
+  r1.w = 1.000000000e+000;
+
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r1.x +=  stereoParams.x * (-r1.z - stereoParams.y) * g_ReverseProjectionParams.x;
+
+
+  r0.z = dot(r1.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r0.x = dot(r1.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r0.y = dot(r1.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r0.w = 1.000000000e+000;
+  r1.y = dot(r0.xyzw, g_Shadows.m_WorldToLightProj._m00_m10_m20_m30);
+  r1.z = dot(r0.xyzw, g_Shadows.m_WorldToLightProj._m01_m11_m21_m31);
+  r1.w = dot(r0.xyzw, g_Shadows.m_WorldToLightProj._m02_m12_m22_m32);
+  r2.xyz = -g_EyePosition.xyz + r0.xyz;
+  r0.xy = r0.xy * g_Shadows.m_CloudUVScaleOffset.xy + g_Shadows.m_CloudUVScaleOffset.zw;
+  r0.z = dot(r2.xyz, r2.xyz);
+  r0.z = saturate(r0.z * g_Shadows.m_FadeParams.x + g_Shadows.m_FadeParams.y);
+  r2.xyz = r1.yzw * g_Shadows.m_ScalesY.xyz + g_Shadows.m_OffsetsY.xyz;
+  r3.x = abs(r2.x) < g_Shadows.m_CascadesRangesMax.y;
+  r3.y = abs(r2.y) < g_Shadows.m_CascadesRangesMax.y;
+  r0.w = r3.y ? r3.x : 0;
+  r1.x = r0.w ? g_Shadows.m_OffsetsY.w : g_Shadows.m_OffsetsX.w;
+  r3.xyz = r1.yzw * g_Shadows.m_ScalesZ.xyz + g_Shadows.m_OffsetsZ.xyz;
+  r4.x = abs(r3.x) < g_Shadows.m_CascadesRangesMax.z;
+  r4.y = abs(r3.y) < g_Shadows.m_CascadesRangesMax.z;
+  r2.w = r4.y ? r4.x : 0;
+  r1.x = r2.w ? g_Shadows.m_OffsetsZ.w : r1.x;
+  r4.xyz = r1.yzw * g_Shadows.m_ScalesW.xyz + g_Shadows.m_OffsetsW.xyz;
+  r1.yzw = r1.yzw * g_Shadows.m_ScalesX.xyz + g_Shadows.m_OffsetsX.xyz;
+  r1.y = r0.w ? r2.x : r1.y;
+  r1.z = r0.w ? r2.y : r1.z;
+  r1.w = r0.w ? r2.z : r1.w;
+  r1.y = r2.w ? r3.x : r1.y;
+  r1.z = r2.w ? r3.y : r1.z;
+  r1.w = r2.w ? r3.z : r1.w;
+  r2.x = abs(r4.x) < g_Shadows.m_CascadesRangesMax.w;
+  r2.y = abs(r4.y) < g_Shadows.m_CascadesRangesMax.w;
+  r0.w = r2.y ? r2.x : 0;
+  r1.x = r0.w ? g_Shadows.m_OffsetsW.w : r1.x;
+  r1.y = r0.w ? r4.x : r1.y;
+  r1.z = r0.w ? r4.y : r1.z;
+  r1.w = r0.w ? r4.z : r1.w;
+  r2.yzw = float3(5.000000e-001,5.000000e-001,5.000000e-001) + r1.yzw;
+  r2.x = r2.y * g_Shadows.m_ScalesX.w + r1.x;
+  r1.xy = c.m_VPOS.xy * float2(1.562500e-002,1.562500e-002);
+  r1.xyzw = g_ShadowNoiseSampler.Sample(g_ShadowNoiseSampler_s, r1.xy).xyzw;
+  r1.xy = float2(-5.000000e-001,-5.000000e-001) + r1.yx;
+  r1.xy = g_Shadows.m_NoiseScale.xx * r1.xy;
+  r1.zw = float2(-1.240012e-001,3.890280e-001) * r1.xx;
+  r3.xy = r1.yy * float2(1.299115e+000,-5.041982e-001) + -r1.zw;
+  r3.z = dot(r1.yx, float2(-1.240012e-001,1.299115e+000));
+  r1.zw = r3.xz * g_Shadows.m_ShadowMapSize.xy + r2.xz;
+  r0.w = g_ShadowTexture.SampleCmpLevelZero(g_ShadowSampler_s, r1.zw, r2.w).x;
+  r3.w = dot(r1.yx, float2(3.890280e-001,-5.041982e-001));
+  r1.zw = r3.yw * g_Shadows.m_ShadowMapSize.xy + r2.xz;
+  r1.z = g_ShadowTexture.SampleCmpLevelZero(g_ShadowSampler_s, r1.zw, r2.w).x;
+  r0.w = r1.z + r0.w;
+  r1.zw = float2(-1.205221e+000,1.975933e+000) * r1.xx;
+  r3.xy = r1.yy * float2(-3.350320e-001,1.601254e-001) + -r1.zw;
+  r3.z = dot(r1.yx, float2(-1.205221e+000,-3.350320e-001));
+  r3.w = dot(r1.yx, float2(1.975933e+000,1.601254e-001));
+  r1.xy = r3.yw * g_Shadows.m_ShadowMapSize.xy + r2.xz;
+  r1.zw = r3.xz * g_Shadows.m_ShadowMapSize.xy + r2.xz;
+  r1.z = g_ShadowTexture.SampleCmpLevelZero(g_ShadowSampler_s, r1.zw, r2.w).x;
+  r1.x = g_ShadowTexture.SampleCmpLevelZero(g_ShadowSampler_s, r1.xy, r2.w).x;
+  r0.w = r1.z + r0.w;
+  r0.w = r0.w + r1.x;
+  r0.z = r0.w * 2.500000000e-001 + r0.z;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.w = dot(c.m_WorldEyeVector.xyz, c.m_WorldEyeVector.xyz);
+  r0.w = sqrt(r0.w);
+  r0.w = r0.w * g_Shadows.m_CloudShadowsParams.w + g_Shadows.m_CloudShadowsParams.z;
+  r1.xyzw = g_CloudShadowSampler.SampleLevel(g_CloudShadowSampler_s, r0.xy, r0.w).xyzw;
+  r0.x = saturate(-g_Shadows.m_CloudShadowsParams.y + r1.x);
+  r0.x = saturate(g_Shadows.m_CloudShadowsParams.x + r0.x);
+  o0.xyz = r0.zzz * r0.xxx;
+  o0.w = 1.000000000e+000;
+  return;
+}

@@ -1,0 +1,61 @@
+//Mist
+cbuffer _Globals : register(b0)
+{
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_EyeWorldPosition : packoffset(c70);
+  float4 g_ShadowBiasScales : packoffset(c88);
+  float4 g_ShadowLightBiasDir : packoffset(c89);
+  float4 g_WorldEntityPosition : packoffset(c13);
+  float3x3 RainUVScroll : packoffset(c32);
+  float4x4 g_World : packoffset(c8);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  int4 v0 : POSITION0,
+  uint4 v1 : NORMAL0,
+  uint4 v2 : TANGENT0,
+  float4 v3 : COLOR0,
+  float2 v4 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : COLOR0,
+  out float4 o3 : TEXCOORD1)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = (int3)v0.xyz * (int3)v0.www;
+  r0.xyz = r0.xyz;
+  r0.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r0.xyz;
+  r0.w = 1.000000000e+000;
+  
+  
+  
+float4 r22;
+float4 stereoParams = StereoParams.Load(0);
+  r22.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r22.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r22.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r22.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+// r22.x += stereoParams.x *0.5; //* (r22.w - stereoParams.y);
+o0.xyzw = r22.xyzw;
+  
+ 
+  
+  
+  o1.xy = float2(1.600000e+001,1.600000e+001) * v4.xy;
+  r1.xy = float2(1.600000e+001,1.600000e+001) * v4.xy;
+  r1.y = g_WorldEntityPosition.z * 1.999999955e-002 + r1.y;
+  r1.z = 1.000000000e+000;
+  o1.z = dot(r1.xyz, RainUVScroll._m00_m10_m20);
+  o1.w = dot(r1.xyz, RainUVScroll._m01_m11_m21);
+  o2.xyzw = v3.xyzw;
+  r1.x = dot(r0.xyzw, g_World._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_World._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_World._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, g_World._m03_m13_m23_m33);
+  o3.xyzw = g_EyeWorldPosition.xyzw + -r1.xyzw;
+  return;
+}
