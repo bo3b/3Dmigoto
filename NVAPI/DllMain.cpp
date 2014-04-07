@@ -138,6 +138,32 @@ static bool LogDebug = false;
 bool LogInput = false;
 FILE *LogFile = 0;
 
+static bool CallsLogging()
+{
+	if (!LogCalls) return false;
+	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	return true;
+}
+static bool SeparationLogging()
+{
+	if (!LogSeparation) return false;
+	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	return true;
+}
+static bool ConvergenceLogging()
+{
+	if (!LogConvergence) return false;
+	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+	return true;
+}
+static char *LogTime()
+{
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
+	timeStr[strlen(timeStr) - 1] = 0;
+	return timeStr;
+}
+
 static void loadDll()
 {
 	if (!nvDLL)
@@ -151,6 +177,7 @@ static void loadDll()
 		DllRegisterServerPtr = (DllRegisterServerType)GetProcAddress(nvDLL, "DllRegisterServer");
 		DllUnregisterServerPtr = (DllUnregisterServerType)GetProcAddress(nvDLL, "DllUnregisterServer");
 		nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
+
 		GetModuleFileName(0, sysDir, MAX_PATH);
 		wcsrchr(sysDir, L'\\')[1] = 0;
 		wcscat(sysDir, L"d3dx.ini");
@@ -172,6 +199,26 @@ static void loadDll()
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir);
 		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir);
+
+		if (CallsLogging()) fprintf(LogFile, "\nNVapi DLL starting init  -  %s\n\n", LogTime());
+
+		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+		// to open active files.
+		int unbuffered = -1;
+		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, sysDir))
+		{
+			unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+			if (CallsLogging()) fprintf(LogFile, "  unbuffered=1  return: %d\n", unbuffered);
+		}
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, sysDir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (CallsLogging()) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
+		}
+
 		// Device
 		wchar_t valueString[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, sysDir);
@@ -182,16 +229,20 @@ static void loadDll()
 		if (read) swscanf(valueString, L"%d", &SCREEN_REFRESH);
 		read = GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, sysDir);
 		if (read) swscanf(valueString, L"%d", &SCREEN_FULLSCREEN);
+
 		// Stereo
 		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, sysDir);
+
+		if (CallsLogging()) fprintf(LogFile, "[Stereo]\n");
 		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir);
 		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, sysDir);
+
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && isspace(*end)) end--; *(end+1) = 0;
+		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction[0], MAX_PATH, sysDir);
-		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && isspace(*end)) end--; *(end+1) = 0;
+		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
 			swscanf(valueString, L"%e", &ActionConvergence);
@@ -201,31 +252,6 @@ static void loadDll()
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);		
 	}
-}
-static bool CallsLogging()
-{
-	if (!LogCalls) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
-	return true;
-}
-static bool SeparationLogging()
-{
-	if (!LogSeparation) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
-	return true;
-}
-static bool ConvergenceLogging()
-{
-	if (!LogConvergence) return false;
-	if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
-	return true;
-}
-static char *LogTime()
-{
-	time_t ltime = time(0); 
-	char *timeStr = asctime(localtime(&ltime)); 
-	timeStr[strlen(timeStr)-1] = 0;
-	return timeStr;
 }
 
 STDAPI DllCanUnloadNow(void)

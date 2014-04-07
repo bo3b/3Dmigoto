@@ -233,7 +233,7 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	UINT64 keyHash = 0;
 	for (int i = 0; i < 16; ++i)
 	{
-		UINT64 digit = findFileData.cFileName[i] > L'9' ? toupper(findFileData.cFileName[i]) - L'A'+10 : findFileData.cFileName[i] - L'0';
+		UINT64 digit = findFileData.cFileName[i] > L'9' ? towupper(findFileData.cFileName[i]) - L'A' + 10 : findFileData.cFileName[i] - L'0';
 		keyHash += digit << (60-i*4);
 	}
 	if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n", 
@@ -288,7 +288,7 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	UINT64 keyHash = 0;
 	for (int i = 0; i < 16; ++i)
 	{
-		UINT64 digit = findFileData.cFileName[i] > L'9' ? toupper(findFileData.cFileName[i]) - L'A'+10 : findFileData.cFileName[i] - L'0';
+		UINT64 digit = findFileData.cFileName[i] > L'9' ? towupper(findFileData.cFileName[i]) - L'A' + 10 : findFileData.cFileName[i] - L'0';
 		keyHash += digit << (60-i*4);
 	}
 	if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n", 
