@@ -112,6 +112,22 @@ void main(
   float wpos = 1.0 / zpos;
   float4 r0,r1,r2;
   uint4 bitmask;
+  
+//Mike_ar69 - Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+float4 r21, r22;
+r21.xyz = v3.xyz;
+// r21.w = 1.000000000e+000;
+// r22.x = dot(r21.xyzw, g_WorldToView._m00_m10_m20_m30);
+// r22.y = dot(r21.xyzw, g_WorldToView._m01_m11_m21_m31);
+// r22.z = dot(r21.xyzw, g_WorldToView._m02_m12_m22_m32);
+// r22.w = dot(r21.xyzw, g_WorldToView._m03_m13_m23_m33);
+// r22.x +=  stereoParams.x * (-r22.z - stereoParams.y ) * g_ReverseProjectionParams.x;
+// r21.x = dot(r22.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+// r21.y = dot(r22.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+// r21.z = dot(r22.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+ 
+  
   r0.x = v3.w < 0.000000000e+000;
   if (r0.x != 0) discard;
   r0.xy = v0.xy * g_VPosToUV.xy + float2(-1.000000e+000,-5.700000e-001);
@@ -128,11 +144,19 @@ void main(
   r0.x = r0.z ? r0.x : -r0.x;
   r0.y = r0.w ? r0.y : -r0.y;
   r0.xy = abs(r0.xy);
+  
+//Mike_ar69 - Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+// float4 r23; 
+// r23.xyzw = r0.xyzw;
+// r23.x -=  stereoParams.x * (wpos - stereoParams.y ) * g_ReverseProjectionParams.x;
+
   r1.xyzw = Operator725_0.Sample(Operator725_0_s, r0.xy).xyzw;
   r0.xyzw = g_RefractionSampler.Sample(g_RefractionSampler_s, r0.xy).xyzw;
+
   r1.xyz = r1.xyz + -r0.xyz;
   r0.xyz = saturate(IsScreenshot_4 * r1.xyz + r0.xyz);
-  r1.xyz = g_EyePosition.xyz + -v3.xyz;
+  r1.xyz = g_EyePosition.xyz + -r21.xyz; //-v3.xyz;
   r0.w = dot(r1.xyz, r1.xyz);
   r1.w = rsqrt(r0.w);
   r0.w = sqrt(r0.w);
@@ -165,7 +189,7 @@ void main(
   r0.y = dot(v6.xyz, v6.xyz);
   r0.y = rsqrt(r0.y);
   r0.yzw = v6.xyz * r0.yyy;
-  r1.xyz = v3.xyz;
+  r1.xyz = r21.xyz; //v3.xyz;
   r1.w = 0.000000000e+000;
   r1.xyzw = -g_EyePosition.xyzw + r1.xyzw;
   r1.w = dot(r1.xyzw, r1.xyzw);

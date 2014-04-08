@@ -128,20 +128,12 @@ float4 r21;
 float4 stereoParams = StereoParams.Load(0);
 r21.xyzw = r3.xyzw;
 r3.x += stereoParams.x * (r3.w - stereoParams.y);
-// if(r3.w == 1.0000e+000)
-// {
-	// o8.x=1;  //dont execute ps
-// }
-// else
-// {
-	// o8.x=0;  //execute ps
-	// r3.x +=  stereoParams.x * (r3.w - stereoParams.y);
-// }
+
 
 o0.xyzw = r21.xyzw;
+// o0.w = 0.0;
 
-
-  o1.xyzw = r3.xyzw;
+o1.xyzw = r3.xyzw;
   r0.y = VertexHidexDistanceyFallofzChaos_61.y * v3.w + -VertexHidexDistanceyFallofzChaos_61.y;
   r0.y = VertexHidexDistanceyFallofzChaos_61.z * r0.y + VertexHidexDistanceyFallofzChaos_61.y;
   r0.y = max(r0.y, 9.999999776e-003);

@@ -127,7 +127,7 @@ if(r1.w != 1.0000e+000)
 
   o0.xyzw = r10.xyzw; //r1.xyzw;
   o1.xyzw = r1.xyzw;
-  r0.xy = r1.xy / r1.ww;
+  r0.xy = r10.xy / r1.ww;
   r0.yzw = g_EyeYAxis.xyz * r0.yyy;
   r0.xyz = g_EyeXAxis.xyz * r0.xxx + r0.yzw;
   o2.xyz = g_EyeZAxis.xyz + r0.xyz;

@@ -44,7 +44,7 @@ void main(
   float wpos = 1.0 / zpos;
   float4 r0,r1,r2;
   uint4 bitmask;
- 
+
   r0.xyzw = DepthTextureLowRes.Sample(DepthTextureLowRes_s, v2.xy).xyzw;
   r1.xyzw = DepthTextureLowRes.Sample(DepthTextureLowRes_s, v2.zw).xyzw;
   r0.y = r1.x;
@@ -53,15 +53,20 @@ void main(
   r1.xyzw = DepthTextureLowRes.Sample(DepthTextureLowRes_s, v3.zw).xyzw;
   r0.w = r1.x;
   r1.xyzw = DepthTexture.Sample(DepthTexture_s, v1.xy).xyzw;
-
+// r1.xyzw = DepthTexture.Sample(DepthTexture_s, injectedScreenPos.xy).xyzw;
   r1.x = cb0[128].x + r1.x;
   r1.x = cb0[128].y / r1.x;
 
+// float2 r23;
+// float4 stereoParams = StereoParams.Load(0);
+// r23.xy = injectedScreenPos.xy;
+// r23.x += stereoParams.x * (r1.x - stereoParams.y);
   
   r0.xyzw = -r1.xxxx + r0.xyzw;
   r1.x = 5.000000000e+001 / r1.x;
   r0.xyzw = saturate(-abs(-r0.xyzw) * r1.xxxx + float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r1.xyzw = RandomNormalSampler.Sample(RandomNormalSampler_s, w1.xy).xyzw;  //Need to adjust this?
+  r1.xyzw = RandomNormalSampler.Sample(RandomNormalSampler_s, w1.xy).xyzw;  //Need to adjust this?cb0[106].xy
+// r1.xyzw = RandomNormalSampler.Sample(RandomNormalSampler_s, r23.xy * cb0[106].xy ).xyzw;
   r0.xyzw = r1.xyzw * r0.xyzw;
   r2.x = dot(r0.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
   r2.x = 0.000000000e+000 >= r2.x;
@@ -70,15 +75,15 @@ void main(
   r1.x = dot(r0.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
   r0.xyzw = r0.xyzw / r1.xxxx;
 
-  r10.yz = float2(0.000000e+000,0.000000e+000);
-  r10.xw = cb0[105].zw;
+  // r10.yz = float2(0.000000e+000,0.000000e+000);
+  // r10.xw = cb0[105].zw;
   
-  r22.zw = r20.xy * cb0[105].xy + r10.zw;
-  r22.xy = r20.xy * cb0[105].xy + cb0[105].zw;
+  // r22.zw = r20.xy * cb0[105].xy + r10.zw;
+  // r22.xy = r20.xy * cb0[105].xy + cb0[105].zw;
   
-  r23.xy = r20.xy * cb0[105].xy + r10.xy;
-  r10.xy = cb0[105].xy * r20.xy;
-  r23.zw = r10.xy;
+  // r23.xy = r20.xy * cb0[105].xy + r10.xy;
+  // r10.xy = cb0[105].xy * r20.xy;
+  // r23.zw = r10.xy;
 
   
   r1.xyzw = AOSampler.Sample(AOSampler_s, v2.xy).xyzw;

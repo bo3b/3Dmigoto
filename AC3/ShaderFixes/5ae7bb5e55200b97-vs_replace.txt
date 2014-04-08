@@ -30,7 +30,7 @@ float4 stereoParams = StereoParams.Load(0);
   r10.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
   r10.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
 
-if(r10.w == 1)
+if(r10.w == 1 || r10.z < 1)
 {
 	r10.x += stereoParams.x*0.8; // * (r10.w - stereoParams.y - 1);
 }  
