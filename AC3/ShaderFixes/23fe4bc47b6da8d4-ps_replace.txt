@@ -1,0 +1,214 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float4 CharacterPosition_1 : packoffset(c128);
+  float CurrentDistance_2 : packoffset(c129);
+  float3x3 Operator487_3_matrix : packoffset(c130);
+  float MaxDistance_4 : packoffset(c133);
+  float GlowIntensity_5 : packoffset(c134);
+  float3x3 Operator612_6_matrix : packoffset(c135);
+  float FullAlpha_7 : packoffset(c138);
+  float Distancecritic_8 : packoffset(c139);
+  float3x3 Operator674_9_matrix : packoffset(c140);
+  float DistanceNaval_10 : packoffset(c143);
+  float DistanceNavalFade_11 : packoffset(c144);
+  float4 g_LODBlendFactor : packoffset(c30);
+  float g_AlphaTestValue : packoffset(c113);
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_UnusedPredicated1 : packoffset(c97);
+  float4 g_UnusedPredicated2 : packoffset(c98);
+  float4 g_UnusedPredicated3 : packoffset(c99);
+  float4 g_VPosToUV : packoffset(c0);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_DisolveFactor : packoffset(c11);
+
+  struct
+  {
+    float2 m_VPOS;
+    float2 m_ScreenPosition;
+    float3 m_Albedo;
+    float m_Alpha;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_VertexWorldNormal;
+    float3 m_TangentSpaceNormal;
+    float m_SpecIntensity;
+    float m_SpecGlossiness;
+    float3 m_Emissive;
+    float m_WeatherExposed;
+    float m_LinearDepth;
+  } c : packoffset(c145);
+
+}
+SamplerState Operator482_0_s : register(s0);
+SamplerState g_DisolveNoiseTexture_s : register(s6);
+SamplerState g_DepthSampler_s : register(s8);
+SamplerState g_RefractionSampler_s : register(s12);
+Texture2D<float4> Operator482_0 : register(t0);
+Texture2D<float4> g_DisolveNoiseTexture : register(t6);
+Texture2D<float4> g_DepthSampler : register(t8);
+Texture2D<float4> g_RefractionSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  uint v8 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2,
+  out float4 o3 : SV_Target3)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask;
+  r0.xy = g_VPosToUV.xy * v0.xy;
+  r1.xyzw = float4(2.000000e+001,2.000000e+001,1.001000e+000,1.001000e+000) * r0.xyxy;
+  r2.xyzw = g_DisolveNoiseTexture.Sample(g_DisolveNoiseTexture_s, r1.xy).xyzw;
+  r1.xyzw = g_RefractionSampler.Sample(g_RefractionSampler_s, r1.zw).xyzw;
+  r0.z = r2.w * g_DisolveFactor.x + g_DisolveFactor.y;
+  r0.z = r0.z < 0.000000000e+000;
+  if (r0.z != 0) discard;
+  r2.xyz = -CharacterPosition_1.xyz + v3.xyz;
+  r0.z = dot(r2.xyz, r2.xyz);
+  r0.z = sqrt(r0.z);
+  r0.w = -DistanceNaval_10 + r0.z;
+  r0.w = saturate(r0.w / DistanceNavalFade_11);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.w = FullAlpha_7 * r0.w;
+  r1.w = CurrentDistance_2 / MaxDistance_4;
+  r2.x = CurrentDistance_2 + 3.000000000e+000;
+  r2.y = CurrentDistance_2 + -r2.x;
+  r1.w = r1.w * r2.y + r2.x;
+  r1.w = min(r1.w, MaxDistance_4);
+  r1.w = max(r1.w, Distancecritic_8);
+  r2.xyzw = float4(1.000000e+000,-1.000000e+000,1.000000e+000,1.000000e+000) * v7.xyzw;
+  r2.x = dot(r2.xyzw, r2.xyzw);
+  r2.x = rsqrt(r2.x);
+  r2.yz = float2(1.000000e+000,-1.000000e+000) * v7.xy;
+  r2.xy = r2.yz * r2.xx;
+  r3.xy = v2.xy;
+  r3.z = 1.000000000e+000;
+  r4.x = dot(r3.xyz, Operator674_9_matrix._m00_m10_m20);
+  r4.y = dot(r3.xyz, Operator674_9_matrix._m01_m11_m21);
+  r3.xyzw = Operator482_0.Sample(Operator482_0_s, r4.xy).xyzw;
+  r2.z = r3.x * 6.000000238e-001 + -1.299999952e+000;
+  r2.xy = r2.zz * r2.xy + r4.xy;
+  r2.z = 1.000000000e+000;
+  r3.x = dot(r2.xyz, Operator612_6_matrix._m00_m10_m20);
+  r3.y = dot(r2.xyz, Operator612_6_matrix._m01_m11_m21);
+  r3.xyzw = Operator482_0.Sample(Operator482_0_s, r3.xy).xyzw;
+  r1.w = r3.x + r1.w;
+  r3.xyz = r3.xxx * float3(8.627400e-002,6.274500e-002,5.882300e-002) + float3(1.372550e-001,1.921570e-001,2.196080e-001);
+  r0.z = -r1.w + r0.z;
+  r0.z = saturate(4.583333492e+000 * r0.z);
+  r1.w = 1.000000000e+000 + -r0.z;
+  r0.z = r0.z * 1.999990039e+004 + 1.000000015e-001;
+  r0.w = max(r0.w, r1.w);
+  r1.w = -g_AlphaTestValue + r0.w;
+  o3.w = r0.w;
+  r0.w = r1.w < 0.000000000e+000;
+  if (r0.w != 0) discard;
+  if (r0.w != 0) discard;
+  o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  o1.w = 0.000000000e+000;
+  r0.w = dot(v6.xyz, v6.xyz);
+  r0.w = rsqrt(r0.w);
+  r4.xyz = v6.xyz * r0.www;
+  o1.xyz = saturate(r4.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001));
+  r5.x = dot(r2.xyz, Operator487_3_matrix._m00_m10_m20);
+  r5.y = dot(r2.xyz, Operator487_3_matrix._m01_m11_m21);
+  r2.xyzw = Operator482_0.Sample(Operator482_0_s, r5.xy).xyzw;
+  r2.xy = r2.xx * float2(1.200000e-001,0.000000e+000) + float2(-6.000000e-002,0.000000e+000);
+  r2.zw = r0.xy * float2(1.001000e+000,1.001000e+000) + r2.xy;
+  r2.xy = v0.xy * g_VPosToUV.xy + r2.xy;
+  r5.xyzw = g_DepthSampler.Sample(g_DepthSampler_s, r0.xy).xyzw;
+  r5.z = -r5.x;
+  r6.xyzw = g_RefractionSampler.Sample(g_RefractionSampler_s, r2.zw).xyzw;
+  r0.xyw = -r6.xyz + r1.xyz;
+  r1.xyzw = g_DepthSampler.Sample(g_DepthSampler_s, r2.xy).xyzw;
+  r1.yz = float2(-5.000000e-001,-5.000000e-001) + r2.xy;
+  r1.yz = r1.yz * float2(2.000000e+000,-2.000000e+000) + g_ReverseProjectionParams2.xy;
+  r1.yz = g_ReverseProjectionParams.xy * r1.yz;
+  r2.z = -r1.x;
+  r2.xy = r2.zz * r1.yz;
+  r2.w = 1.000000000e+000;
+
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r2.x +=  stereoParams.x * (-r2.z - stereoParams.y) * g_ReverseProjectionParams.x;
+
+
+  r1.w = dot(r2.xyzw, g_ViewToWorld._m03_m13_m23_m33);
+  r1.x = dot(r2.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r1.y = dot(r2.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r1.z = dot(r2.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r2.xyz = v3.xyz;
+  r2.w = 0.000000000e+000;
+  r2.xyzw = -r2.xyzw + r1.xyzw;
+  r1.xyz = CharacterPosition_1.xyz + -r1.xyz;
+  r1.x = dot(r1.xyz, r1.xyz);
+  r1.x = sqrt(r1.x);
+  r1.x = -5.000000000e+000 + r1.x;
+  r1.x = saturate(5.000000075e-002 * r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r1.x = ceil(r1.x);
+  r1.y = dot(r2.xyzw, r2.xyzw);
+  r1.y = rsqrt(r1.y);
+  r1.yzw = r2.xyz * r1.yyy;
+  r1.y = dot(r4.xyz, r1.yzw);
+  r1.y = saturate(1.000000000e+003 * r1.y);
+  r0.xyw = r1.yyy * r0.xyw;
+  r0.xyw = r1.xxx * r0.xyw + r6.xyz;
+  r1.xyz = r0.yyy * float3(2.000000e+000,2.000000e+000,2.000000e+000) + -r0.xyw;
+  r2.xy = v0.xy * g_VPosToUV.xy + float2(-5.000000e-001,-5.000000e-001);
+  r2.xy = r2.xy * float2(2.000000e+000,-2.000000e+000) + g_ReverseProjectionParams2.xy;
+  r2.xy = g_ReverseProjectionParams.xy * r2.xy;
+  r5.xy = r2.xy * r5.zz;
+  r5.w = 1.000000000e+000;
+
+//Stereo Shift
+stereoParams = StereoParams.Load(0);
+r5.x +=  stereoParams.x * (-r5.z - stereoParams.y) * g_ReverseProjectionParams.x;
+
+
+  r2.x = dot(r5.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r5.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r5.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r2.w = dot(r5.xyzw, g_ViewToWorld._m03_m13_m23_m33);
+  r2.xyzw = CharacterPosition_1.xyzw + -r2.xyzw;
+  r1.w = dot(r2.xyzw, r2.xyzw);
+  r1.w = rsqrt(r1.w);
+  r2.xyz = r2.xyz * r1.www;
+  r1.w = dot(r4.xyz, r2.xyz);
+  r1.w = log2(abs(r1.w));
+  r0.z = r1.w * r0.z;
+  r0.z = exp2(r0.z);
+  r0.z = r0.z + r0.z;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.xyz = r0.zzz * r1.xyz + r0.xyw;
+  r0.xyz = r3.xyz * r0.xyz;
+  o2.xyz = float3(1.300000e+000,1.300000e+000,1.300000e+000) * r0.xyz;
+  o2.w = 0.000000000e+000;
+  o3.xyz = v1.zzz / v1.www;
+  return;
+}

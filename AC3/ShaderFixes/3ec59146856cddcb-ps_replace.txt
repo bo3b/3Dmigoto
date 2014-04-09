@@ -1,0 +1,184 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_ViewportScaleOffset : packoffset(c84);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_DeferredOmniLight : packoffset(c128);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float3 m_Color;
+  } g_DeferredDirectLight : packoffset(c130);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float3 m_Direction;
+    float4 m_ConeAngles;
+  } g_DeferredSpotLight : packoffset(c132);
+
+  float4 g_DeferredProjWorldToLight[4] : packoffset(c136);
+  float4 g_DeferredProjShadowParams : packoffset(c140);
+  float4 g_DeferredBackgroundColor : packoffset(c141);
+  float4 g_VPOSToUVs_Resolve : packoffset(c146);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DepthParams : packoffset(c110);
+  float4 g_LinearFogColor : packoffset(c16);
+  float4 g_LinearFogParams : packoffset(c17);
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_EyeXAxis : packoffset(c8);
+  float4 g_EyeYAxis : packoffset(c9);
+  float4 g_EyeZAxis : packoffset(c10);
+  float4 g_EyeWorldPosition_Resolve : packoffset(c11);
+
+  struct
+  {
+    float4 m_CloudUVScaleOffset;
+    float4 m_CloudShadowsParams;
+    float4 m_ShadowMapSize;
+    float4 m_OffsetsY;
+    float4 m_OffsetsX;
+    float4 m_ScalesY;
+    float4 m_ScalesX;
+    float4 m_OffsetsZ;
+    float4 m_ScalesZ;
+    float4 m_OffsetsW;
+    float4 m_ScalesW;
+    float4 m_NoiseScale;
+    float4 m_NearFar;
+    float4 m_FadeParams;
+    float4 m_CascadesRangesMax;
+    float4 m_ShadowContrast;
+    float4x4 m_WorldToLightProj;
+  } g_Shadows : packoffset(c64);
+
+
+  struct
+  {
+    float4 m_UseHQFiltering;
+  } g_ShadowPerfOptions : packoffset(c63);
+
+  float4 g_WorldLightmapParameters : packoffset(c87);
+  float4 g_WorldLightmapUVParameters : packoffset(c88);
+  float4 g_WorldLightmapColor : packoffset(c89);
+  float4 g_WorldAOParameters : packoffset(c90);
+  float4 g_WorldAORangeParameters : packoffset(c91);
+  float4 g_WeatherExposedParams : packoffset(c92);
+  float4 g_WinterParams : packoffset(c93);
+  float4 g_SnowSparklesParams : packoffset(c94);
+  float4 g_DebugValue : packoffset(c147) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+
+  struct
+  {
+    float2 m_VPOS;
+    float3 m_ShadowResult;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_WorldEyeVector;
+    float3 m_NormalizedWorldEyeVector;
+    float m_SpecularPower;
+  } c : packoffset(c148);
+
+}
+SamplerState g_ProjectorCookies_s : register(s9);
+Texture2DMS<float4,4> g_TextureAlbedoDX11_MSAA : register(t0);
+Texture2DMS<float4,4> g_TextureNormalDX11_MSAA : register(t1);
+Texture2DMS<float,4> g_TextureDepthDX11_MSAA : register(t2);
+Texture2DMS<float4,4> g_TextureLightingAccumulationDX11_MSAA : register(t3);
+Texture2D<float4> g_ProjectorCookies : register(t9);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r0.zw = g_ReverseProjectionParams2.xy + r0.xy;
+  r0.xy = r0.xy * g_ViewportScaleOffset.xy + g_ViewportScaleOffset.zw;
+  r0.zw = g_ReverseProjectionParams.xy * r0.zw;
+  g_TextureDepthDX11_MSAA.GetDimensions(r1.x, r1.y, bitmask.x);
+  r1.xy = r1.xy * r0.xy;
+  r1.xy = (int2)r1.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r1.x = g_TextureDepthDX11_MSAA.Load(r1.xyz,0.000000000e+000).x;
+  r1.x = g_ReverseProjectionParams.z + r1.x;
+  r1.z = g_ReverseProjectionParams.w / r1.x;
+  r1.xy = r1.zz * r0.zw;
+  r1.w = 1.000000000e+000;
+
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r1.x +=  stereoParams.x * (-r1.z - stereoParams.y) * g_ReverseProjectionParams.x;
+
+
+  r2.x = dot(r1.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r1.xyz = g_DeferredSpotLight.m_PositionFar.xyz + -r2.xyz;
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.z);
+  r0.z = g_DeferredSpotLight.m_PositionFar.w + -r0.z;
+  r0.z = saturate(g_DeferredSpotLight.m_ColorFade.w * r0.z);
+  r1.xyz = r1.xyz * r0.www;
+  r0.w = dot(r1.xyz, g_DeferredSpotLight.m_Direction.xyz);
+  r0.w = g_DeferredSpotLight.m_ConeAngles.x + -r0.w;
+  r0.w = saturate(g_DeferredSpotLight.m_ConeAngles.y * r0.w);
+  r1.w = r0.z * r0.w + -1.000000047e-003;
+  r0.z = r0.z * r0.w;
+  r0.w = r1.w < 0.000000000e+000;
+  if (r0.w != 0) discard;
+  g_TextureNormalDX11_MSAA.GetDimensions(r3.x, r3.y, bitmask.x);
+  r3.xy = r3.xy * r0.xy;
+  r3.xy = (int2)r3.xy;
+  r3.zw = float2(0.000000e+000,0.000000e+000);
+  r3.xyz = g_TextureNormalDX11_MSAA.Load(r3.xyz,0.000000000e+000).xyz;
+  r3.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r3.xyz;
+  r3.xyz = r3.xyz + r3.xyz;
+  r2.xyz = r3.xyz * g_DeferredProjShadowParams.yyy + r2.xyz;
+  r0.w = saturate(dot(r1.xyz, r3.xyz));
+  r1.xyz = g_DeferredProjWorldToLight[1].xyw * r2.yyy;
+  r1.xyz = r2.xxx * g_DeferredProjWorldToLight[0].xyw + r1.xyz;
+  r1.xyz = r2.zzz * g_DeferredProjWorldToLight[2].xyw + r1.xyz;
+  r1.xyz = g_DeferredProjWorldToLight[3].xyw + r1.xyz;
+  r1.xy = r1.xy / r1.zz;
+  r1.xyz = g_ProjectorCookies.Sample(g_ProjectorCookies_s, r1.xy).xyz;
+  g_TextureAlbedoDX11_MSAA.GetDimensions(r2.x, r2.y, bitmask.x);
+  r2.xy = r2.xy * r0.xy;
+  r2.xy = (int2)r2.xy;
+  r2.zw = float2(0.000000e+000,0.000000e+000);
+  r2.xyz = g_TextureAlbedoDX11_MSAA.Load(r2.xyz,0.000000000e+000).xyz;
+  r2.xyz = g_DeferredSpotLight.m_ColorFade.xyz * r2.xyz;
+  r2.xyz = r2.xyz * r0.zzz;
+  r1.xyz = r2.xyz * r1.xyz;
+  o0.xyz = r1.xyz * r0.www;
+  g_TextureLightingAccumulationDX11_MSAA.GetDimensions(r0.z, r0.w, bitmask.x);
+  r0.xy = r0.xy * r0.zw;
+  r0.xy = (int2)r0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.x = g_TextureLightingAccumulationDX11_MSAA.Load(r0.xyz,0.000000000e+000).w;
+  o0.w = r0.x;
+  return;
+}

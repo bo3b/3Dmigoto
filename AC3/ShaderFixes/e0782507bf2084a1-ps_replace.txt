@@ -1,0 +1,134 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float FogSplitFalloff_1 : packoffset(c128);
+  float FogSplitHeight_2 : packoffset(c129);
+  float4 MistWindVector_3 : packoffset(c130);
+  float FogBottomFar_4 : packoffset(c131);
+  float MistOpacity_5 : packoffset(c132);
+  float4 FogSunFrontColor_6 : packoffset(c133);
+  float4 FogSunBackColor_7 : packoffset(c134);
+  float3x3 RainUVScroll_8_matrix : packoffset(c135);
+  float FogBottomNear_9 : packoffset(c138);
+  float4 g_WeatherInfo : packoffset(c10);
+  float4 g_WorldEntityPosition : packoffset(c13);
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_UnusedPredicated1 : packoffset(c97);
+  float4 g_UnusedPredicated2 : packoffset(c98);
+  float4 g_UnusedPredicated3 : packoffset(c99);
+  float4 g_VPosToUV : packoffset(c0);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+
+  struct
+  {
+    float m_Alpha;
+    float2 m_VPOS;
+    float2 m_ScreenPosition;
+    float3 m_WorldPosition;
+    float m_LinearDepth;
+  } c : packoffset(c139);
+
+}
+SamplerState Layer0Diffuse_0_s : register(s0);
+SamplerState g_DepthSampler_s : register(s8);
+Texture2D<float4> Layer0Diffuse_0 : register(t0);
+Texture2D<float4> g_DepthSampler : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : COLOR0,
+  float4 v4 : TEXCOORD2,
+  uint v5 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = v4.xyz;
+  r0.w = 0.000000000e+000;
+  r0.xyzw = g_EyePosition.xyzw + -r0.xyzw;
+  r0.w = dot(r0.xyzw, r0.xyzw);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.xyz = MistWindVector_3.xyz * float3(2.000000e-002,2.000000e-002,2.000000e-002);
+  r1.xyz = r0.xyz * float3(-3.000000e-001,-3.000000e-001,-3.000000e-001) + r1.xyz;
+  r2.xyzw = Layer0Diffuse_0.Sample(Layer0Diffuse_0_s, r1.yz).xyzw;
+  r0.xyw = r0.xyz * r0.xyz;
+  r0.xyw = r0.xyw * float3(7.000000e-001,7.000000e-001,7.000000e-001) + float3(3.000000e-001,3.000000e-001,3.000000e-001);
+  r0.x = r0.x * r2.w;
+  r2.xyzw = Layer0Diffuse_0.Sample(Layer0Diffuse_0_s, r1.xz).xyzw;
+  r1.xyzw = Layer0Diffuse_0.Sample(Layer0Diffuse_0_s, r1.xy).xyzw;
+  r1.x = r2.w * r0.y;
+  r0.y = -r0.y * r2.w + 1.000000000e+000;
+  r0.x = r0.x * r0.y + r1.x;
+  r0.y = r1.w * r0.w;
+  r0.w = -r0.w * r1.w + 1.000000000e+000;
+  r0.x = r0.x * r0.w + r0.y;
+  r0.x = saturate(MistOpacity_5 * r0.x);
+  r1.x = v2.x;
+  r1.y = g_WorldEntityPosition.z * 1.999999955e-002 + v2.y;
+  r1.z = 1.000000000e+000;
+  r2.x = dot(r1.xyz, RainUVScroll_8_matrix._m00_m10_m20);
+  r2.y = dot(r1.xyz, RainUVScroll_8_matrix._m01_m11_m21);
+  r1.xyzw = Layer0Diffuse_0.Sample(Layer0Diffuse_0_s, r2.xy).xyzw;
+  r0.y = g_WeatherInfo.y * r1.y;
+  r0.x = r0.y * v3.w + r0.x;
+  r0.yw = v0.xy * g_VPosToUV.xy + float2(-5.000000e-001,-5.000000e-001);
+  r0.yw = r0.yw * float2(2.000000e+000,-2.000000e+000) + g_ReverseProjectionParams2.xy;
+  r0.yw = g_ReverseProjectionParams.xy * r0.yw;
+  r1.xy = g_VPosToUV.xy * v0.xy;
+  r1.xyzw = g_DepthSampler.Sample(g_DepthSampler_s, r1.xy).xyzw;
+  r1.z = -r1.x;
+  r1.xy = r1.zz * r0.yw;
+  r1.w = 1.000000000e+000;
+
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r1.x +=  stereoParams.x * (-r1.z - stereoParams.y) * g_ReverseProjectionParams.x;
+
+
+  r2.x = dot(r1.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r1.xyz = -g_EyePosition.xyz + r2.xyz;
+  r0.y = -FogSplitHeight_2 + r2.z;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = sqrt(r0.w);
+  r1.x = -FogBottomNear_9 + r0.w;
+  r0.w = 2.000000000e+001 + -r0.w;
+  r0.w = saturate(1.000000015e-001 * r0.w);
+  r0.w = -r0.w * r0.w + 1.000000000e+000;
+  r1.y = -FogBottomNear_9 + FogBottomFar_4;
+  r1.x = saturate(r1.x / r1.y);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r1.x = r1.x * r1.x;
+  r1.x = -r1.x * r1.x + 1.000000000e+000;
+  r1.y = FogBottomNear_9 + FogSplitFalloff_1;
+  r0.z = -r0.z * r1.y + g_EyePosition.z;
+  r0.z = -FogSplitHeight_2 + r0.z;
+  r0.y = min(r0.z, r0.y);
+  r0.z = 1.000000e+000 / FogSplitFalloff_1;
+  r0.y = saturate(-r0.y * r0.z + 1.000000000e+000);
+  r0.z = -r0.y * r1.x + 1.000000000e+000;
+  r0.y = r0.y * r1.x;
+  r0.x = r0.x * r0.z;
+  o0.w = r0.w * r0.x + r0.y;
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

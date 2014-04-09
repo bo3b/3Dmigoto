@@ -1,0 +1,238 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_ViewportScaleOffset : packoffset(c84);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_DeferredOmniLight : packoffset(c128);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float3 m_Color;
+  } g_DeferredDirectLight : packoffset(c130);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float3 m_Direction;
+    float4 m_ConeAngles;
+  } g_DeferredSpotLight : packoffset(c132);
+
+  float4 g_DeferredProjWorldToLight[4] : packoffset(c136);
+  float4 g_DeferredProjShadowParams : packoffset(c140);
+  float4 g_DeferredBackgroundColor : packoffset(c141);
+  float4 g_VPOSToUVs_Resolve : packoffset(c146);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DepthParams : packoffset(c110);
+  float4 g_LinearFogColor : packoffset(c16);
+  float4 g_LinearFogParams : packoffset(c17);
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_EyeXAxis : packoffset(c8);
+  float4 g_EyeYAxis : packoffset(c9);
+  float4 g_EyeZAxis : packoffset(c10);
+  float4 g_EyeWorldPosition_Resolve : packoffset(c11);
+
+  struct
+  {
+    float4 m_CloudUVScaleOffset;
+    float4 m_CloudShadowsParams;
+    float4 m_ShadowMapSize;
+    float4 m_OffsetsY;
+    float4 m_OffsetsX;
+    float4 m_ScalesY;
+    float4 m_ScalesX;
+    float4 m_OffsetsZ;
+    float4 m_ScalesZ;
+    float4 m_OffsetsW;
+    float4 m_ScalesW;
+    float4 m_NoiseScale;
+    float4 m_NearFar;
+    float4 m_FadeParams;
+    float4 m_CascadesRangesMax;
+    float4 m_ShadowContrast;
+    float4x4 m_WorldToLightProj;
+  } g_Shadows : packoffset(c64);
+
+
+  struct
+  {
+    float4 m_UseHQFiltering;
+  } g_ShadowPerfOptions : packoffset(c63);
+
+  float4 g_WorldLightmapParameters : packoffset(c87);
+  float4 g_WorldLightmapUVParameters : packoffset(c88);
+  float4 g_WorldLightmapColor : packoffset(c89);
+  float4 g_WorldAOParameters : packoffset(c90);
+  float4 g_WorldAORangeParameters : packoffset(c91);
+  float4 g_WeatherExposedParams : packoffset(c92);
+  float4 g_WinterParams : packoffset(c93);
+  float4 g_SnowSparklesParams : packoffset(c94);
+  float4 g_DebugValue : packoffset(c147) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+
+  struct
+  {
+    float2 m_VPOS;
+    float3 m_ShadowResult;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_WorldEyeVector;
+    float3 m_NormalizedWorldEyeVector;
+    float m_SpecularPower;
+  } c : packoffset(c148);
+
+}
+SamplerState g_WorldAOSampler_s : register(s4);
+SamplerState g_WeatherReflectionCubeMap_s : register(s5);
+SamplerState g_WorldLightmapColorSampler_s : register(s7);
+SamplerState g_WorldLightMapSampler_s : register(s12);
+SamplerState g_AmbientCubeTexture_s : register(s13);
+Texture2DMS<float4,4> g_TextureAlbedoDX11_MSAA : register(t0);
+Texture2DMS<float4,4> g_TextureNormalDX11_MSAA : register(t1);
+Texture2DMS<float,4> g_TextureDepthDX11_MSAA : register(t2);
+Texture2DMS<float4,4> g_TextureLightingAccumulationDX11_MSAA : register(t3);
+Texture2D<float4> g_WorldAOSampler : register(t4);
+TextureCube<float4> g_WeatherReflectionCubeMap : register(t5);
+Texture2D<float4> g_WorldLightmapColorSampler : register(t7);
+Texture2D<float4> g_WorldLightMapSampler : register(t12);
+TextureCube<float4> g_AmbientCubeTexture : register(t13);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  uint v4 : SV_SAMPLEINDEX0,
+  out float4 o0 : SV_Target0)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask;
+  r0.xy = float2(0.000000e+000,0.000000e+000);
+  r1.xy = v1.xy / v1.ww;
+  r1.zw = g_ReverseProjectionParams2.xy + r1.xy;
+  r1.xy = r1.xy * g_ViewportScaleOffset.xy + g_ViewportScaleOffset.zw;
+  r1.zw = g_ReverseProjectionParams.xy * r1.zw;
+  g_TextureDepthDX11_MSAA.GetDimensions(r2.x, r2.y, bitmask.x);
+  r2.xy = r2.xy * r1.xy;
+  r2.xy = (int2)r2.xy;
+  r2.zw = float2(0.000000e+000,0.000000e+000);
+  r0.w = g_TextureDepthDX11_MSAA.Load(r2.xyz,v4.x).x;
+  r0.w = g_ReverseProjectionParams.z + r0.w;
+  r2.z = g_ReverseProjectionParams.w / r0.w;
+  r2.xy = r2.zz * r1.zw;
+  r2.w = 1.000000000e+000;
+
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r2.x +=  stereoParams.x * (-r2.z - stereoParams.y) * g_ReverseProjectionParams.x;
+
+
+  r3.x = dot(r2.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r3.y = dot(r2.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r3.z = dot(r2.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r1.zw = r3.xy * g_WorldLightmapUVParameters.zw + float2(5.000000e-001,5.000000e-001);
+  r2.xyzw = g_WorldLightMapSampler.SampleLevel(g_WorldLightMapSampler_s, r1.zw, 0.000000000e+000).xyzw;
+  r4.xyz = g_WorldLightmapColorSampler.SampleLevel(g_WorldLightmapColorSampler_s, r1.zw, 0.000000000e+000).xyz;
+  r4.xyz = g_WorldLightmapColor.xxx * r4.xyz;
+  r1.zw = r2.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r5.xy = g_WorldLightmapColor.yy * r1.zw;
+  r0.z = r2.z * g_WorldLightmapParameters.w + g_WorldLightmapParameters.y;
+  r5.z = -r3.z;
+  r0.xyz = r5.xyz + r0.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyw = r0.xyz * r0.www;
+  r0.z = g_WorldLightmapParameters.z * abs(r0.z);
+  r0.z = saturate(-r0.z * r0.z + r2.w);
+  r2.xyz = r4.xyz * r0.zzz;
+  r4.xyz = g_EyePosition.xyz + -r3.xyz;
+  r0.z = dot(r4.xyz, r4.xyz);
+  r0.z = rsqrt(r0.z);
+  r5.xyz = r4.xyz * r0.zzz + r0.xyw;
+  r4.xyz = r4.xyz * r0.zzz;
+  r0.z = dot(r5.xyz, r5.xyz);
+  r0.z = rsqrt(r0.z);
+  r5.xyz = r5.xyz * r0.zzz;
+  g_TextureNormalDX11_MSAA.GetDimensions(r1.z, r1.w, bitmask.x);
+  r1.zw = r1.xy * r1.zw;
+  r6.xy = (int2)r1.zw;
+  r6.zw = float2(0.000000e+000,0.000000e+000);
+  r6.xyzw = g_TextureNormalDX11_MSAA.Load(r6.xyz,v4.x).xyzw;
+  r6.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r6.xyz;
+  r6.xyz = r6.xyz + r6.xyz;
+  r0.z = saturate(dot(r6.xyz, r5.xyz));
+  r0.z = log2(r0.z);
+  g_TextureLightingAccumulationDX11_MSAA.GetDimensions(r1.z, r1.w, bitmask.x);
+  r1.zw = r1.xy * r1.zw;
+  r5.xy = (int2)r1.zw;
+  r5.zw = float2(0.000000e+000,0.000000e+000);
+  r5.xyzw = g_TextureLightingAccumulationDX11_MSAA.Load(r5.xyz,v4.x).xyzw;
+  r1.z = g_WinterParams.w + -r5.w;
+  g_TextureAlbedoDX11_MSAA.GetDimensions(r7.x, r7.y, bitmask.x);
+  r1.xy = r7.xy * r1.xy;
+  r7.xy = (int2)r1.xy;
+  r7.zw = float2(0.000000e+000,0.000000e+000);
+  r7.xyzw = g_TextureAlbedoDX11_MSAA.Load(r7.xyz,v4.x).xyzw;
+  r1.x = r7.w * r1.z + r5.w;
+  r1.y = 1.200000000e+001 * r1.x;
+  r1.y = exp2(r1.y);
+  r0.z = r1.y * r0.z;
+  r1.y = 8.000000000e+000 + r1.y;
+  r0.z = exp2(r0.z);
+  r0.x = saturate(dot(r6.xyz, r0.xyw));
+  r0.y = r0.x * r0.z;
+  r0.xzw = r0.xxx * r2.xyz;
+  r0.y = r0.y * r1.y;
+  r0.y = 1.250000000e-001 * r0.y;
+  r1.yzw = r0.yyy * r2.xyz;
+  r1.yzw = r1.yzw * r6.www;
+  r0.xyz = r0.xzw * r7.xyz + r1.yzw;
+  r0.xyz = r5.xyz + r0.xyz;
+  r1.yzw = r6.xyz * g_WorldAOParameters.xxy + r3.xyz;
+  r1.yz = r1.yz * g_WorldAOParameters.zw + float2(5.000000e-001,5.000000e-001);
+  r0.w = g_WorldAORangeParameters.x + r1.w;
+  r1.y = g_WorldAOSampler.SampleLevel(g_WorldAOSampler_s, r1.yz, 0.000000000e+000).x;
+  r1.y = r1.y * g_WorldAORangeParameters.z + g_WorldAORangeParameters.w;
+  r0.w = -r1.y + r0.w;
+  r1.y = 1.000000e+000 / g_WorldAORangeParameters.x;
+  r0.w = saturate(r1.y * r0.w);
+  r0.w = r0.w * r0.w;
+  r1.y = saturate(dot(float3(1.000000e+000,1.000000e+000,1.000000e+000), r6.xyz));
+  r1.y = 2.000000030e-001 + r1.y;
+  r1.y = r1.y + r1.y;
+  r1.y = min(r1.y, 1.000000000e+000);
+  r0.w = max(r0.w, r1.y);
+  r0.w = max(r0.w, g_WorldAORangeParameters.y);
+  r1.yzw = g_AmbientCubeTexture.SampleLevel(g_AmbientCubeTexture_s, r6.xyz, 0.000000000e+000).xyz;
+  r1.yzw = float3(3.000000e+000,3.000000e+000,3.000000e+000) * r1.yzw;
+  r1.yzw = r1.yzw * r0.www;
+  r0.w = dot(-r4.xyz, r6.xyz);
+  r0.w = r0.w + r0.w;
+  r2.xyz = r6.xyz * -r0.www + -r4.xyz;
+  r0.w = -r1.x * 1.125000000e+000 + 1.000000000e+000;
+  r0.w = 5.000000000e+000 * r0.w;
+  r2.xyz = g_WeatherReflectionCubeMap.SampleLevel(g_WeatherReflectionCubeMap_s, r2.xyz, r0.w).xyz;
+  r2.xyz = r2.xyz * r1.xxx;
+  o0.w = r1.x;
+  r0.xyz = r2.xyz * r1.yzw + r0.xyz;
+  r1.xyz = saturate(r1.yzw * r7.xyz);
+  o0.xyz = r1.xyz + r0.xyz;
+  return;
+}

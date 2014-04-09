@@ -1,0 +1,105 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float4 g_LODBlendFactor : packoffset(c30);
+  float g_AlphaTestValue : packoffset(c113);
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_UnusedPredicated1 : packoffset(c97);
+  float4 g_UnusedPredicated2 : packoffset(c98);
+  float4 g_UnusedPredicated3 : packoffset(c99);
+  float4 g_VPosToUV : packoffset(c0);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_DisolveFactor : packoffset(c11);
+
+  struct
+  {
+    float2 m_VPOS;
+    float2 m_ScreenPosition;
+    float3 m_Albedo;
+    float m_Alpha;
+    float3 m_WorldNormal;
+    float3 m_VertexWorldNormal;
+    float3 m_TangentSpaceNormal;
+    float m_SpecIntensity;
+    float m_SpecGlossiness;
+    float3 m_Emissive;
+    float m_WeatherExposed;
+  } c : packoffset(c114);
+
+}
+SamplerState Layer0Diffuse_0_s : register(s0);
+SamplerState Layer0Normal_2_s : register(s2);
+SamplerState g_DisolveNoiseTexture_s : register(s6);
+Texture2D<float4> Layer0Diffuse_0 : register(t0);
+Texture2D<float4> Layer0Normal_2 : register(t2);
+Texture2D<float4> g_DisolveNoiseTexture : register(t6);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : COLOR0,
+  float4 v4 : TEXCOORD2,
+  float4 v5 : TEXCOORD3,
+  float4 v6 : TEXCOORD4,
+  uint v7 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2,
+  out float4 o3 : SV_Target3)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = g_VPosToUV.xy * v0.xy;
+  r0.xy = float2(2.000000e+001,2.000000e+001) * r0.xy;
+  r0.xyzw = g_DisolveNoiseTexture.Sample(g_DisolveNoiseTexture_s, r0.xy).xyzw;
+  r0.x = r0.w * g_DisolveFactor.x + g_DisolveFactor.y;
+  r0.x = r0.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyzw = Layer0Diffuse_0.Sample(Layer0Diffuse_0_s, v2.xy).xyzw;
+  r1.x = -g_AlphaTestValue + r0.w;
+  r1.x = r1.x < 0.000000000e+000;
+  if (r1.x != 0) discard;
+  if (r1.x != 0) discard;
+  r0.xyz = v3.xyz * r0.xyz;
+  o3.w = r0.w;
+  o0.xyz = r0.xyz + r0.xyz;
+  o0.w = 0.000000000e+000;
+  r0.x = dot(v4.xyz, v4.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v4.xyz * r0.xxx;
+  r0.w = dot(v5.xyz, v5.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v5.xyz * r0.www;
+  r2.xyzw = Layer0Normal_2.Sample(Layer0Normal_2_s, v2.xy).xyzw;
+  r2.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r2.xyz;
+  r2.xyz = r2.xyz + r2.xyz;
+  r1.xyz = r2.yyy * r1.xyz;
+  r0.xyz = r2.xxx * r0.xyz + r1.xyz;
+  r0.w = dot(v6.xyz, v6.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v6.xyz * r0.www;
+  r0.xyz = r2.zzz * r1.xyz + r0.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  o1.xyz = saturate(r0.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001));
+  o1.w = 5.999999866e-002;
+  o2.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,1.000000e-001);
+  o3.xyz = v1.zzz / v1.www;
+  return;
+}

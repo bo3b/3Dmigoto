@@ -1,0 +1,120 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float4 Layer0Color_19 : packoffset(c105);
+  float4 Layer0UVScale_20 : packoffset(c106);
+  float Layer0UVScaleNormal_21 : packoffset(c107);
+  float g_ClutterGroundPlaneLightingFactor : packoffset(c63);
+  float4x4 g_ClutterWorldMatrices[21] : packoffset(c120);
+  float4 g_ClutterInstanceData[21] : packoffset(c204);
+  float4 g_ClutterInstanceColor[21] : packoffset(c225);
+  float4x4 g_World : packoffset(c8);
+  float4 g_ClipPlane : packoffset(c18);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DeconstructionEnabledDX11 : packoffset(c92);
+  float2 g_DeconstructionRanges : packoffset(c116);
+  bool g_DeconstructionEnabledOther : packoffset(c246);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float3 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  float4 v2 : COLOR0,
+  int v3 : TEXCOORD3,
+  float2 v4 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : COLOR0,
+  out float4 o4 : COLOR1,
+  out float4 o5 : TEXCOORD2,
+  out float4 o6 : TEXCOORD3,
+  out float4 o7 : TEXCOORD4)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.x = 0.000000e+000 != g_DeconstructionEnabledDX11.x;
+  r0.y = g_DeconstructionRanges.y + -g_DeconstructionRanges.x;
+  r0.y = 1.000000e+000 / r0.y;
+  r1.w = 1.000000000e+000;
+  r2.xy = v0.xy;
+  r2.w = 1.000000000e+000;
+  r0.z = v3.x;
+  r2.z = g_ClutterInstanceData[r0.z].z * v0.z;
+  r0.w = 2 << (uint)v3.x;
+  r1.x = dot(r2.xyzw, g_ClutterWorldMatrices[r0.w/4]._m00_m10_m20_m30);
+  r1.y = dot(r2.xyzw, g_ClutterWorldMatrices[r0.w/4]._m01_m11_m21_m31);
+  r1.z = dot(r2.xyzw, g_ClutterWorldMatrices[r0.w/4]._m02_m12_m22_m32);
+  r2.xyzw = -g_EyePosition.xyzw + r1.xyzw;
+  r1.w = dot(r2.xyzw, r2.xyzw);
+  r1.w = sqrt(r1.w);
+  r1.w = -g_DeconstructionRanges.x + r1.w;
+  r0.y = saturate(r1.w * r0.y);
+  r1.w = r0.y * -2.000000000e+000 + 3.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = r1.w * r0.y;
+  r2.z = 0.000000000e+000;
+  r2.y = v4.y * g_ClutterInstanceData[r0.z].x + g_ClutterInstanceData[r0.z].y;
+  r3.xyzw = g_ClutterInstanceColor[r0.z].xyzw * v2.xyzw;
+  o3.xyzw = Layer0Color_19.xyzw * r3.xyzw;
+  r2.x = v4.x;
+  r3.xyz = r2.xyz + -r1.xyz;
+  r2.xy = Layer0UVScale_20.xy * r2.xy;
+  r3.xyz = r0.yyy * r3.xyz + r1.xyz;
+  r1.x = r0.x ? r3.x : r1.x;
+  r1.y = r0.x ? r3.y : r1.y;
+  r1.z = r0.x ? r3.z : r1.z;
+  r1.w = 1.000000000e+000;
+  r3.x = dot(r1.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r3.y = dot(r1.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r3.z = dot(r1.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r3.w = dot(r1.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r3.xyzw;
+r3.x += stereoParams.x * (r3.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o1.xyzw = r3.xyzw;
+  o2.zw = Layer0UVScaleNormal_21 * r2.xy;
+  o2.xy = r2.xy;
+  r0.x = g_ClutterWorldMatrices[r0.w/4]._m20;
+  r0.y = g_ClutterWorldMatrices[r0.w/4]._m21;
+  r0.z = g_ClutterWorldMatrices[r0.w/4]._m22;
+  r1.x = dot(r0.xyz, r0.xyz);
+  r1.x = rsqrt(r1.x);
+  r2.x = dot(v1.xyz, g_ClutterWorldMatrices[r0.w/4]._m00_m10_m20);
+  r2.y = dot(v1.xyz, g_ClutterWorldMatrices[r0.w/4]._m01_m11_m21);
+  r2.z = dot(v1.xyz, g_ClutterWorldMatrices[r0.w/4]._m02_m12_m22);
+  r0.xyz = r0.xyz * r1.xxx + -r2.xyz;
+  r0.xyz = g_ClutterGroundPlaneLightingFactor * r0.xyz + r2.xyz;
+  r0.w = dot(r0.xyz, g_World._m02_m12_m22);
+  o4.z = saturate(r0.w);
+  o7.z = r0.w;
+  o4.xw = float2(1.000000e+000,0.000000e+000);
+  o4.y = g_FogWeatherParams.y * 5.000000000e-001;
+  o5.x = g_World._m10;
+  o5.y = g_World._m11;
+  o5.z = g_World._m12;
+  o5.w = 0.000000000e+000;
+  o6.x = g_World._m00;
+  o6.y = g_World._m01;
+  o6.z = g_World._m02;
+  o6.w = 0.000000000e+000;
+  o7.x = dot(r0.xyz, g_World._m00_m10_m20);
+  o7.y = dot(r0.xyz, g_World._m01_m11_m21);
+  o7.w = 0.000000000e+000;
+  return;
+}
