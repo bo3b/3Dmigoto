@@ -140,7 +140,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 	GetD3D11DeviceContext()->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 	
 	// Resolve resource from resource view.
-	if (ppShaderResourceViews)
+	if (G->hunting && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (int i = 0; i < NumViews; ++i)
@@ -256,7 +256,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShader called with pixelshader handle = %x\n", pPixelShader);
 	
 	bool patchedShader = false;
-	if (pPixelShader)
+	if (G->hunting && pPixelShader)
 	{
 		// Store as current pixel shader.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -301,14 +301,20 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
 		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
 		{
-			pPixelShader = (D3D11Base::ID3D11PixelShader*) it->second.newShader;
+			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %x\n", it->second.newShader);
+			//pPixelShader = (D3D11Base::ID3D11PixelShader*) it->second.newShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			GetD3D11DeviceContext()->PSSetShader(NULL, ppClassInstances, NumClassInstances);
+			return;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	GetD3D11DeviceContext()->PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
 
-	if (patchedShader)
+	// Todo: For now, let's just apply stereo texture to every shader. Trade-off of searching for only the
+	// ones necessary, versus wasted on ones that don't use it.
+	// if (patchedShader)
 	{
 		D3D11Wrapper::ID3D11Device *device = 0;
 		GetDevice(&device);
@@ -361,6 +367,12 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	// Skip?
 	data.override = false;
 	data.skip = G->mBlockingMode;
+
+	// If we are not hunting shaders, we can skip all of this shader management for a performance bump.
+	// ToDo: this also kills texture overrides (not used in AC3 fix)
+	if (!G->hunting)
+		return data;
+
 	float separationValue;
 	int selectedRenderTargetPos;
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -489,6 +501,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	}
 	return data;
 }
+
 static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *context)
 {
 	if (data.skip)
@@ -519,7 +532,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShader called with vertexshader handle = %x\n", pVertexShader);
 
 	bool patchedShader = false;
-	if (pVertexShader)
+	if (G->hunting && pVertexShader)
 	{
 		// Store as current vertex shader.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -565,14 +578,20 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
 		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
 		{
-			pVertexShader = (D3D11Base::ID3D11VertexShader*)it->second.newShader;
+			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %x\n", it->second.newShader);
+			//pVertexShader = NULL; // it->second.newShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			GetD3D11DeviceContext()->VSSetShader(NULL, ppClassInstances, NumClassInstances);
+			return;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	GetD3D11DeviceContext()->VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
 
-	if (patchedShader)
+	// Todo: For now, send the stereo texture to every shader. Trade-off of looking for only those that use
+	// it versus wasted on those that don't.  CPU matters more.
+	// if (patchedShader)
 	{
 		D3D11Wrapper::ID3D11Device *device = 0;
 		GetDevice(&device);
@@ -693,7 +712,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::IASetIndexBuffer(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::IASetIndexBuffer called\n");
 
-	if (pIndexBuffer)
+	if (G->hunting && pIndexBuffer)
 	{
 		// Store as current index buffer.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -800,7 +819,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 	GetD3D11DeviceContext()->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 		
 	// Resolve resource from resource view.
-	if (ppShaderResourceViews)
+	if (G->hunting && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (int i = 0; i < NumViews; ++i)
@@ -987,95 +1006,99 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::OMSetRenderTargets called with NumViews = %d\n", NumViews);
 	
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mCurrentRenderTargets.clear();
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	for (int i = 0; i < NumViews; ++i)
-	{			
-		if (ppRenderTargetViews[i] == 0) continue;
-		D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
-		ppRenderTargetViews[i]->GetDesc(&desc);
-		if (LogFile && LogDebug) fprintf(LogFile, "  View #%d, Format = %d, Is2D = %d\n", i, desc.Format, D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
-		D3D11Base::ID3D11Resource *pResource;
-		if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension ||
-			D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2DMS == desc.ViewDimension)
+	if (G->hunting)
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		G->mCurrentRenderTargets.clear();
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		for (int i = 0; i < NumViews; ++i)
 		{
-		    ppRenderTargetViews[i]->GetResource(&pResource);
-			D3D11Base::ID3D11Texture2D *targetTexture = (D3D11Base::ID3D11Texture2D *)pResource;
-			D3D11Base::D3D11_TEXTURE2D_DESC texDesc;
-			targetTexture->GetDesc(&texDesc);
-			pResource->Release();
+			if (ppRenderTargetViews[i] == 0) continue;
+			D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
+			ppRenderTargetViews[i]->GetDesc(&desc);
+			if (LogFile && LogDebug) fprintf(LogFile, "  View #%d, Format = %d, Is2D = %d\n", i, desc.Format, D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
+			D3D11Base::ID3D11Resource *pResource;
+			if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension ||
+				D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2DMS == desc.ViewDimension)
+			{
+				ppRenderTargetViews[i]->GetResource(&pResource);
+				D3D11Base::ID3D11Texture2D *targetTexture = (D3D11Base::ID3D11Texture2D *)pResource;
+				D3D11Base::D3D11_TEXTURE2D_DESC texDesc;
+				targetTexture->GetDesc(&texDesc);
+				pResource->Release();
 
-			// Registered?
-			std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator tex = G->mTexture2D_ID.find(targetTexture);
-			UINT64 hash = 0;
-			if (tex == G->mTexture2D_ID.end())
-			{
-				if (LogFile && LogDebug) fprintf(LogFile, "    Unknown render target:\n");
-				if (LogFile && LogDebug) fprintf(LogFile, "    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n", texDesc.Width, texDesc.Height, 
-					texDesc.MipLevels, texDesc.ArraySize);
-				if (LogFile && LogDebug) fprintf(LogFile, "    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n", texDesc.Format, 
-					texDesc.Usage, texDesc.BindFlags, texDesc.CPUAccessFlags, texDesc.MiscFlags);
-				// Register current and visited targets.
-				hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-				hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-				hash ^= texDesc.ArraySize; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-				hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-				hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-				hash ^= texDesc.MiscFlags;
+				// Registered?
+				std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator tex = G->mTexture2D_ID.find(targetTexture);
+				UINT64 hash = 0;
+				if (tex == G->mTexture2D_ID.end())
+				{
+					if (LogFile && LogDebug) fprintf(LogFile, "    Unknown render target:\n");
+					if (LogFile && LogDebug) fprintf(LogFile, "    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n", texDesc.Width, texDesc.Height,
+						texDesc.MipLevels, texDesc.ArraySize);
+					if (LogFile && LogDebug) fprintf(LogFile, "    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n", texDesc.Format,
+						texDesc.Usage, texDesc.BindFlags, texDesc.CPUAccessFlags, texDesc.MiscFlags);
+					// Register current and visited targets.
+					hash ^= texDesc.Width; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Height; hash *= FNV_64_PRIME;
+					hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
+					hash ^= texDesc.ArraySize; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Format; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
+					hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
+					hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
+					hash ^= texDesc.MiscFlags;
+				}
+				else
+				{
+					hash = tex->second;
+				}
+				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+				G->mRenderTargets[targetTexture] = hash;
+				G->mCurrentRenderTargets.push_back(targetTexture);
+				G->mVisitedRenderTargets.insert(targetTexture);
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 			}
-			else
+			else if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE3D == desc.ViewDimension)
 			{
-				hash = tex->second;
-			}
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mRenderTargets[targetTexture] = hash;
-			G->mCurrentRenderTargets.push_back(targetTexture);
-			G->mVisitedRenderTargets.insert(targetTexture);
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		}
-		else if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE3D == desc.ViewDimension)
-		{
-		    ppRenderTargetViews[i]->GetResource(&pResource);
-			D3D11Base::ID3D11Texture3D *targetTexture = (D3D11Base::ID3D11Texture3D *)pResource;
-			D3D11Base::D3D11_TEXTURE3D_DESC texDesc;
-			targetTexture->GetDesc(&texDesc);
-			pResource->Release();
+				ppRenderTargetViews[i]->GetResource(&pResource);
+				D3D11Base::ID3D11Texture3D *targetTexture = (D3D11Base::ID3D11Texture3D *)pResource;
+				D3D11Base::D3D11_TEXTURE3D_DESC texDesc;
+				targetTexture->GetDesc(&texDesc);
+				pResource->Release();
 
-			// Registered?
-			std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator tex = G->mTexture3D_ID.find(targetTexture);
-			UINT64 hash = 0;
-			if (tex == G->mTexture3D_ID.end())
-			{
-				if (LogFile && LogDebug) fprintf(LogFile, "    Unknown 3D render target:\n");
-				if (LogFile && LogDebug) fprintf(LogFile, "    Width = %d, Height = %d, MipLevels = %d\n", texDesc.Width, texDesc.Height, texDesc.MipLevels);
-				if (LogFile && LogDebug) fprintf(LogFile, "    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n", texDesc.Format, 
-					texDesc.Usage, texDesc.BindFlags, texDesc.CPUAccessFlags, texDesc.MiscFlags);
-				// Register current and visited targets.
-				hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Depth; hash *= FNV_64_PRIME;
-				hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-				hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-				hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-				hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-				hash ^= texDesc.MiscFlags;
+				// Registered?
+				std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator tex = G->mTexture3D_ID.find(targetTexture);
+				UINT64 hash = 0;
+				if (tex == G->mTexture3D_ID.end())
+				{
+					if (LogFile && LogDebug) fprintf(LogFile, "    Unknown 3D render target:\n");
+					if (LogFile && LogDebug) fprintf(LogFile, "    Width = %d, Height = %d, MipLevels = %d\n", texDesc.Width, texDesc.Height, texDesc.MipLevels);
+					if (LogFile && LogDebug) fprintf(LogFile, "    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n", texDesc.Format,
+						texDesc.Usage, texDesc.BindFlags, texDesc.CPUAccessFlags, texDesc.MiscFlags);
+					// Register current and visited targets.
+					hash ^= texDesc.Width; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Height; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Depth; hash *= FNV_64_PRIME;
+					hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Format; hash *= FNV_64_PRIME;
+					hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
+					hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
+					hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
+					hash ^= texDesc.MiscFlags;
+				}
+				else
+				{
+					hash = tex->second;
+				}
+				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+				G->mRenderTargets[targetTexture] = hash;
+				G->mCurrentRenderTargets.push_back(targetTexture);
+				G->mVisitedRenderTargets.insert(targetTexture);
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 			}
-			else
-			{
-				hash = tex->second;
-			}
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mRenderTargets[targetTexture] = hash;
-			G->mCurrentRenderTargets.push_back(targetTexture);
-			G->mVisitedRenderTargets.insert(targetTexture);
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
+
 	GetD3D11DeviceContext()->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
 }
         
@@ -1286,31 +1309,34 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%x, color=[%f,%f,%f,%f]\n", pRenderTargetView, 
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
-	// Update stereo parameter texture.
-	if (LogFile && LogDebug) fprintf(LogFile, "  updating stereo parameter texture.\n");
-	
-	ID3D11Device *device;
-	GetDevice(&device);
-
-	device->mParamTextureManager.mScreenWidth = G->mSwapChainInfo.width;
-	device->mParamTextureManager.mScreenHeight = G->mSwapChainInfo.height;
-	if (G->ENABLE_TUNE)
+	if (G->hunting)
 	{
-		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
-		device->mParamTextureManager.mTuneVariable1 = G->gTuneValue1;
-		device->mParamTextureManager.mTuneVariable2 = G->gTuneValue2;
-		device->mParamTextureManager.mTuneVariable3 = G->gTuneValue3;
-		device->mParamTextureManager.mTuneVariable4 = G->gTuneValue4;
-		static int counter = 0;
-		if (counter-- < 0)
-		{
-			counter = 30;
-			device->mParamTextureManager.mForceUpdate = true;
-		}
-	}
+		// Update stereo parameter texture.
+		if (LogFile && LogDebug) fprintf(LogFile, "  updating stereo parameter texture.\n");
 
-	device->mParamTextureManager.UpdateStereoTexture(device->GetD3D11Device(), GetD3D11DeviceContext(), device->mStereoTexture, false);
-	device->Release();
+		ID3D11Device *device;
+		GetDevice(&device);
+
+		device->mParamTextureManager.mScreenWidth = G->mSwapChainInfo.width;
+		device->mParamTextureManager.mScreenHeight = G->mSwapChainInfo.height;
+		if (G->ENABLE_TUNE)
+		{
+			//device->mParamTextureManager.mSeparationModifier = gTuneValue;
+			device->mParamTextureManager.mTuneVariable1 = G->gTuneValue1;
+			device->mParamTextureManager.mTuneVariable2 = G->gTuneValue2;
+			device->mParamTextureManager.mTuneVariable3 = G->gTuneValue3;
+			device->mParamTextureManager.mTuneVariable4 = G->gTuneValue4;
+			static int counter = 0;
+			if (counter-- < 0)
+			{
+				counter = 30;
+				device->mParamTextureManager.mForceUpdate = true;
+			}
+		}
+
+		device->mParamTextureManager.UpdateStereoTexture(device->GetD3D11Device(), GetD3D11DeviceContext(), device->mStereoTexture, false);
+		device->Release();
+	}
 
 	GetD3D11DeviceContext()->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
@@ -1592,6 +1618,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSGetShader(THIS_
         /* [annotation] */ 
         __inout_opt  UINT *pNumClassInstances) 
 {
+	if (LogFile) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::VSGetShader out: %x", ppVertexShader);
+
 	GetD3D11DeviceContext()->VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
 }
         

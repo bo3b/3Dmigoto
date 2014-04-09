@@ -107,12 +107,14 @@ struct Globals
 	int gSurfaceCreateMode;
 	int gSurfaceSquareCreateMode;
 
+	bool hunting;
 	bool take_screenshot;
 	bool reload_fixes;
 	bool next_pixelshader, prev_pixelshader, mark_pixelshader;
 	bool next_vertexshader, prev_vertexshader, mark_vertexshader;
 	bool next_indexbuffer, prev_indexbuffer, mark_indexbuffer;
 	bool next_rendertarget, prev_rendertarget, mark_rendertarget;
+
 	bool EXPORT_ALL, EXPORT_HLSL, EXPORT_BINARY, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
@@ -215,6 +217,8 @@ struct Globals
 		mCurrentIndexBuffer(0),
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
+
+		hunting(true),
 		take_screenshot(false),
 		reload_fixes(false),
 		next_pixelshader(false),
@@ -229,6 +233,7 @@ struct Globals
 		next_rendertarget(false), 
 		prev_rendertarget(false), 
 		mark_rendertarget(false),
+
 		EXPORT_ALL(false), 
 		EXPORT_HLSL(false), 
 		EXPORT_BINARY(false), 
@@ -307,9 +312,11 @@ void InitializeDLL()
 			fprintf(LogFile, "----------- d3dx.ini settings -----------\n");
 		}
 
+		G->hunting = GetPrivateProfileInt(L"Logging", L"hunting", 0, iniFile);
+		
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile);
-
+				
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
 		int unbuffered = -1;
@@ -340,6 +347,8 @@ void InitializeDLL()
 		if (LogFile)
 		{
 			fprintf(LogFile, "[Logging]\n");
+			if (G->hunting)
+				fprintf(LogFile, "  hunting=1\n");
 			fprintf(LogFile, "  calls=1\n");
 			if (LogInput)
 				fprintf(LogFile, "  input=1\n");
@@ -1364,7 +1373,7 @@ static string GetShaderModel(UINT64 hash, wstring shaderType)
 static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, UINT64 hash, wstring shaderType,
 	_Outptr_ D3D11Base::ID3DBlob** pCode)
 {
-	*pCode = NULL;
+	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
 	wsprintf(fullName, L"%s\\%s", shaderFixPath, fileName);
 
@@ -1396,8 +1405,8 @@ static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel);
 
 
-	D3D11Base::ID3DBlob* pByteCode = NULL;
-	D3D11Base::ID3DBlob* pErrorMsgs = NULL;
+	D3D11Base::ID3DBlob* pByteCode = nullptr;
+	D3D11Base::ID3DBlob* pErrorMsgs = nullptr;
 	HRESULT ret = D3D11Base::D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
 		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
@@ -1430,9 +1439,13 @@ static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	if (FAILED(ret))
 	{
 		if (pByteCode)
+		{
 			pByteCode->Release();
+			pByteCode = 0;
+		}
 		return;
 	}
+
 
 	// Write replacement .bin if necessary
 	if (G->CACHE_SHADERS && pByteCode)
@@ -1519,8 +1532,8 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	}
 
 	// If we didn't find the original shader, that is OK, because it might not have been loaded yet.
-	// Just skip it in that case.
-	if (!G->mReloadedShaders.empty() && oldShader == NULL)
+	// Just skip it in that case, because the new version will be loaded when it is used.
+	if (oldShader == NULL)
 	{
 		if (LogFile) fprintf(LogFile, "> failed to find original shader in mVertexShaders: %ls\n", fileName);
 		return true;
@@ -1568,8 +1581,12 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions\n");
-	
+	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: \n");// , typeid(*device).name());
+
+	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
+	if (!G->hunting)
+		return;
+
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
@@ -1621,12 +1638,12 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 
 			if (success)
 			{
-				Beep(1500, 120); Beep(1800, 400);	// Small Ta-Da sound for success, to notify it's running fresh fixes.
+				Beep(1800, 400);		// High beep for success, to notify it's running fresh fixes.
 				if (LogFile) fprintf(LogFile, "> successfully reloaded shaders from ShaderFixes\n");
 			}
 			else
 			{
-				Beep(300, 200); Beep(200, 150);		// Brnk, dunk sound for failure.
+				Beep(200, 150);			// Bonk sound for failure.
 				if (LogFile) fprintf(LogFile, "> FAILED to reload shaders from ShaderFixes\n");
 			}
 		}
