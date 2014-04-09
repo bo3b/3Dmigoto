@@ -218,7 +218,7 @@ struct Globals
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
 
-		hunting(true),
+		hunting(false),
 		take_screenshot(false),
 		reload_fixes(false),
 		next_pixelshader(false),
@@ -312,8 +312,6 @@ void InitializeDLL()
 			fprintf(LogFile, "----------- d3dx.ini settings -----------\n");
 		}
 
-		G->hunting = GetPrivateProfileInt(L"Logging", L"hunting", 0, iniFile);
-		
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile);
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile);
 				
@@ -347,19 +345,12 @@ void InitializeDLL()
 		if (LogFile)
 		{
 			fprintf(LogFile, "[Logging]\n");
-			if (G->hunting)
-				fprintf(LogFile, "  hunting=1\n");
 			fprintf(LogFile, "  calls=1\n");
-			if (LogInput)
-				fprintf(LogFile, "  input=1\n");
-			if (LogDebug)
-				fprintf(LogFile, "  debug=1\n");
-			if (unbuffered != -1)
-				fprintf(LogFile, "  unbuffered=1  return: %d\n", unbuffered);
-			if (affinity != -1)
-				fprintf(LogFile, "  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
-			if (waitfordebugger)
-				fprintf(LogFile, "  waitfordebugger=1\n");
+			if (LogInput) fprintf(LogFile, "  input=1\n");
+			if (LogDebug) fprintf(LogFile, "  debug=1\n");
+			if (unbuffered != -1) fprintf(LogFile, "  unbuffered=1  return: %d\n", unbuffered);
+			if (affinity != -1) fprintf(LogFile, "  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
+			if (waitfordebugger) fprintf(LogFile, "  waitfordebugger=1\n");
 		}
 						 
 		// [System]
@@ -576,6 +567,8 @@ void InitializeDLL()
 
 
 		// [Hunting]
+		G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile);
+
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
@@ -654,6 +647,7 @@ void InitializeDLL()
 		if (LogFile)
 		{
 			fprintf(LogFile, "[Hunting]\n");
+			if (G->hunting)	fprintf(LogFile, "  hunting=1\n");
 			if (InputDevice) fwprintf(LogFile, L"  Input=%s\n", InputDevice);
 			if (G->marking_mode != -1) fwprintf(LogFile, L"  marking_mode=%d\n", G->marking_mode);
 
@@ -1583,13 +1577,13 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: \n");// , typeid(*device).name());
 
-	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
-	if (!G->hunting)
-		return;
-
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
+
+	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
+	if (!G->hunting)
+		return;
 
 	UpdateInputState();
 

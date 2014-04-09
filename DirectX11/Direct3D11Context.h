@@ -1309,7 +1309,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%x, color=[%f,%f,%f,%f]\n", pRenderTargetView, 
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
-	if (G->hunting)
+	//if (G->hunting)
 	{
 		// Update stereo parameter texture.
 		if (LogFile && LogDebug) fprintf(LogFile, "  updating stereo parameter texture.\n");
