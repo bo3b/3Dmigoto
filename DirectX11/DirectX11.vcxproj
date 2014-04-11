@@ -266,8 +266,9 @@ del AC3\3Dmigoto-AC3-V_alpha.zip
 
 REM Use 7zip command tool to create a full release that can be unzipped into game directory.
 REM On game specific builds, this also includes the ShaderFixes folder.
+REM And, the d3dx.ini from game specific folder
 
-7zip\7za a AC3\3Dmigoto-AC3-V_alpha.zip  .\Release\*.dll  .\Release\d3dx.ini  .\AC3\ShaderFixes\
+7zip\7za a AC3\3Dmigoto-AC3-V_alpha.zip  .\Release\*.dll  .\AC3\d3dx.ini  .\AC3\ShaderFixes\
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
