@@ -1575,7 +1575,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: \n");// , typeid(*device).name());
+	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: \n", typeid(*device).name());
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
@@ -2073,19 +2073,19 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		riid.Data4[0] == m2.Data4[0] && riid.Data4[1] == m2.Data4[1] && riid.Data4[2] == m2.Data4[2] && riid.Data4[3] == m2.Data4[3] && 
 		riid.Data4[4] == m2.Data4[4] && riid.Data4[5] == m2.Data4[5] && riid.Data4[6] == m2.Data4[6] && riid.Data4[7] == m2.Data4[7])
 	{
-		if (LogFile && LogDebug) fprintf(LogFile, "Callback from dxgi.dll wrapper: notification #%d received\n", (int) *ppvObj);
+		if (LogFile && LogDebug) fprintf(LogFile, "Callback from dxgi.dll wrapper: notification %s received\n", typeid(*ppvObj).name());
 	
-		switch ((int) *ppvObj)
-		{
-			case 0:
-			{
+		//switch ((int) *ppvObj)
+		//{
+		//	case 0:
+		//	{
 				// Present received.
 				// Todo: this cast is wrong. The object is always IDXGIDevice2.
 //				ID3D11Device *device = (ID3D11Device *)this;
-				RunFrameActions(realDevice);
-				break;
-			}
-		}
+		RunFrameActions((D3D11Base::ID3D11Device*) *ppvObj);
+			//	break;
+			//}
+		//}
 		return 0x13bc7e31;
 	}
 	else if (riid.Data1 == m3.Data1 && riid.Data2 == m3.Data2 && riid.Data3 == m3.Data3 && 
@@ -2293,6 +2293,11 @@ HRESULT WINAPI D3D11CreateDevice(
 	InitD311();
 	if (LogFile) fprintf(LogFile, "D3D11CreateDevice called with adapter = %x\n", pAdapter);
 
+#if defined(_DEBUG)
+	// If the project is in a debug build, enable the debug layer.
+	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
 	D3D11Base::ID3D11Device *origDevice = 0;
 	D3D11Base::ID3D11DeviceContext *origContext = 0;
 	EnableStereo();
@@ -2378,6 +2383,12 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		pSwapChainDesc->Windowed);
 
 	EnableStereo();
+
+#if defined(_DEBUG)
+	// If the project is in a debug build, enable the debug layer.
+	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
 	D3D11Base::ID3D11Device *origDevice = 0;
 	D3D11Base::ID3D11DeviceContext *origContext = 0;
 	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(ReplaceAdapter(pAdapter), DriverType, Software, Flags, pFeatureLevels,
