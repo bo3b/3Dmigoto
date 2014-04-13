@@ -1,4 +1,4 @@
-//Sun and HUD elements
+//Sun/Moon and HUD elements
 cbuffer _Globals : register(b0)
 {
   float4 g_ConstColor : packoffset(c128);
@@ -36,12 +36,12 @@ if(r10.w != 1)
 {
 	if(r10.z < 1)
 	{
-		r10.x -= stereoParams.x * (r10.w - stereoParams.y - 1);
+		r10.x -= stereoParams.x * (r10.w - stereoParams.y - 1);  //Move the sun, moon
 	}
 }
 if(r10.w == 1)
 {
-	r10.x += stereoParams.x * 0.8; // * (r10.w - stereoParams.y - 1);
+	r10.x += stereoParams.x * 0.8; //Hud
 }
  
   o0.xyzw = r10.xyzw;

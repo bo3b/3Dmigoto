@@ -32,8 +32,7 @@ void main(
   out float4 o4 : COLOR1,
   out float4 o5 : TEXCOORD2,
   out float4 o6 : TEXCOORD3,
-  out float4 o7 : TEXCOORD4,
-  out float4 o8 : TEXCOORD5)
+  out float4 o7 : TEXCOORD4)
 {
   float4 r0,r1,r2;
   uint4 bitmask;

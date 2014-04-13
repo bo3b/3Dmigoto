@@ -1,4 +1,4 @@
-// Clouds
+// Clouds + NightTime Stars
 cbuffer _Globals : register(b0)
 {
   float4x4 g_WorldViewProj : packoffset(c0);
