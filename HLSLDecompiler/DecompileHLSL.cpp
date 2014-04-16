@@ -1383,7 +1383,8 @@ public:
 		{	
 			// Normal variant like r1.xyxx
 			int pos = 5;
-			if (!strncmp(textype, "Texture2D", 9)) pos = 3;
+			if (!strncmp(textype, "Texture2DArray", 14)) pos = 4;
+			else if (!strncmp(textype, "Texture2D", 9)) pos = 3;
 			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
 			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
 			cpos = strrchr(op, '.');
