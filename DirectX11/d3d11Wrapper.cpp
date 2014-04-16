@@ -19,7 +19,7 @@ bool LogInput = false, LogDebug = false;
 
 // ToDo: this is a hack for the moment to get access to the real device
 // for loading new shaders.  This should be passed down to dxgi probably.
-D3D11Base::ID3D11Device* realDevice;
+D3D11Base::ID3D11Device* realDevice = nullptr;
 
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
@@ -1575,7 +1575,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: \n", typeid(*device).name());
+	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: %x\n", device);
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
@@ -2082,7 +2082,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				// Present received.
 				// Todo: this cast is wrong. The object is always IDXGIDevice2.
 //				ID3D11Device *device = (ID3D11Device *)this;
-		RunFrameActions((D3D11Base::ID3D11Device*) *ppvObj);
+		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
 			//	break;
 			//}
 		//}
@@ -2315,7 +2315,9 @@ HRESULT WINAPI D3D11CreateDevice(
 	}
 	
 	// Todo: doesn't really belong here
-	realDevice = origDevice;
+	if (realDevice == nullptr)
+		realDevice = origDevice;
+	if (LogFile) fprintf(LogFile, "--> D3D11CreateDevice saved realDevice = %x\n", realDevice);// typeid(*realDevice).name());
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if(wrapper == NULL)
@@ -2407,7 +2409,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		return ret;
 
 	// Todo: doesn't really belong here
-	realDevice = origDevice;
+	if (realDevice == nullptr)
+		realDevice = origDevice;
+	if (LogFile) fprintf(LogFile, "--> D3D11CreateDeviceAndSwapChain saved realDevice = %x\n", realDevice);// typeid(*realDevice).name());
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if (wrapper == NULL)
