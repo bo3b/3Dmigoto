@@ -35,7 +35,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		7zip\7za.exe = 7zip\7za.exe
 		CopyToGames.bat = CopyToGames.bat
-		AC3\d3dx.ini = AC3\d3dx.ini
 		uninstall.bat = uninstall.bat
 	EndProjectSection
 EndProject
@@ -48,7 +47,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencie
 		Dependencies\D3DCompiler_42_org.dll = Dependencies\D3DCompiler_42_org.dll
 		Dependencies\D3DCompiler_43_org.dll = Dependencies\D3DCompiler_43_org.dll
 		Dependencies\D3DCompiler_46_org.dll = Dependencies\D3DCompiler_46_org.dll
-		AC3\d3dx.ini = AC3\d3dx.ini
+		Dependencies\d3dx.ini = Dependencies\d3dx.ini
 		Dependencies\XInput9_1_0.dll = Dependencies\XInput9_1_0.dll
 	EndProjectSection
 EndProject
