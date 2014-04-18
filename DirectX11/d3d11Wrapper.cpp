@@ -21,6 +21,13 @@ bool LogInput = false, LogDebug = false;
 // for loading new shaders.  This should be passed down to dxgi probably.
 D3D11Base::ID3D11Device* realDevice = nullptr;
 
+// Hack for thread to shader hunt. Experiment.
+HANDLE HuntingThread;
+
+// Prototype so we can make it a thread.
+DWORD WINAPI Hunting(LPVOID empty);
+
+
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIDevice2::m_List;
@@ -772,6 +779,24 @@ void InitializeDLL()
 
 		InitializeCriticalSection(&G->mCriticalSection);
 
+		// Everything set up, let's make another thread for watching the keyboard for shader hunting.
+		// It's all multi-threaded rendering now anyway, so it has to be ready for that.
+		HuntingThread = CreateThread(
+			NULL,                   // default security attributes
+			0,                      // use default stack size  
+			Hunting,       // thread function name
+			&realDevice,	          // argument to thread function 
+			0,                      // use default creation flags 
+			NULL);				  // returns the thread identifier 
+
+
+		// If we can't init, just log it, not a fatal error.
+		if (HuntingThread == NULL)
+		{
+			DWORD dw = GetLastError();
+			if (LogFile) fprintf(LogFile, "Error while creating hunting thread: %x\n", dw);
+		}
+
 		if (LogFile) fprintf(LogFile, "D3D11 DLL initialized.\n");
 		if (LogFile && LogDebug) fprintf(LogFile, "[Rendering] XInputDevice = %d\n", XInputDeviceId);
 	}
@@ -779,6 +804,19 @@ void InitializeDLL()
 
 void DestroyDLL()
 {
+	TerminateThread(
+		_Inout_  HuntingThread,
+		_In_     0
+		);
+
+	// Should be the normal 100ms wait.
+	DWORD err =  WaitForSingleObject(
+		_In_  HuntingThread,
+		_In_  INFINITE
+		);
+	BOOL ok = CloseHandle(HuntingThread);
+	if (LogFile) fprintf(LogFile, "Hunting thread closed: %x, %d\n", err, ok);
+
 	if (LogFile)
 	{
 		if (LogFile) fprintf(LogFile, "Destroying DLL...\n");
@@ -2004,6 +2042,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	}
 
 	// Clear buffers.
+	// This will keep only a small subset live in the map array, for each loop of the
+	// hunting thread.  100ms worth
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mVisitedIndexBuffers.clear();
 	G->mVisitedVertexShaders.clear();
@@ -2016,6 +2056,25 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 		i->second[0] = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
+
+// Thread for allowing hunting, without modifying RunFrameActions.
+// Infinite loop.  It will be killed at exit.
+
+DWORD WINAPI Hunting(LPVOID empty)
+{
+	// If we are not in hunting mode, let thread die.
+	if (!G->hunting)
+		return 0;
+
+	while (true)
+	{
+		// Wait for shaders to accumulate in map arrays as scene is drawn.
+		Sleep(100);
+
+		RunFrameActions(realDevice);
+	}
+}
+
 
 // Todo: straighten out these includes and methods to make more sense.
 
