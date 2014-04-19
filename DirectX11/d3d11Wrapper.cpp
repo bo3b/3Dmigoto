@@ -1597,11 +1597,16 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 		hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 			(D3D11Base::ID3D11PixelShader**) &newShader);
 	}
-	if (hr != S_OK)
-		return false;
 	pShaderBytecode->Release();
+	if (FAILED(hr))
+		return false;
 
-	// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
+
+	// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
+	if (G->mReloadedShaders[oldShader].newShader != NULL)
+		G->mReloadedShaders[oldShader].newShader->Release();
+
+		// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
 	G->mReloadedShaders[oldShader].newShader = newShader;
 	return true;
 }
