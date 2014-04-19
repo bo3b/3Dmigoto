@@ -302,9 +302,11 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %x\n", it->second.newShader);
-			//pPixelShader = (D3D11Base::ID3D11PixelShader*) it->second.newShader;
+
+			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
+			D3D11Base::ID3D11PixelShader *shader = (D3D11Base::ID3D11PixelShader*) it->second.newShader;
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			GetD3D11DeviceContext()->PSSetShader((D3D11Base::ID3D11PixelShader*) it->second.newShader, ppClassInstances, NumClassInstances);
+			GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -579,9 +581,10 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %x\n", it->second.newShader);
-			//pVertexShader = NULL; // it->second.newShader;
+
+			D3D11Base::ID3D11VertexShader *shader = (D3D11Base::ID3D11VertexShader*) it->second.newShader;
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			GetD3D11DeviceContext()->VSSetShader((D3D11Base::ID3D11VertexShader*)it->second.newShader, ppClassInstances, NumClassInstances);
+			GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
