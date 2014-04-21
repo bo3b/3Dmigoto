@@ -3377,7 +3377,6 @@ public:
 					break;
 
 				case OPCODE_RET:
-					WritePatches();
 					sprintf(buffer, "  return;\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
@@ -3393,6 +3392,11 @@ public:
 			while (c[pos] != 0x0a && pos < size) pos++; pos++;
 			mLastStatement = instr;
 		}
+
+		// Moved this out of Opcode_ret, because it's possible to have more than one ret
+		// in a shader.  This is the last of a given shader, which seems more correct.
+		// This fixes the double injection of "injectedScreenPos : SV_Position"
+		WritePatches();
 	}
 
 	void ParseCodeOnlyShaderType(Shader *shader, const char *c, long size)
