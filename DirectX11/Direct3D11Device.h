@@ -976,7 +976,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					}
 				}
 
-				if (!errorOccurred && patched)
+				// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
+				// after auto-fixing shaders.
+				if (!errorOccurred)
 				{
 					// Compile replacement.
 					if (LogFile) fprintf(LogFile, "    compiling fixed HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
