@@ -96,18 +96,10 @@ Texture2D<float4> DepthSampler : register(t9);
 Texture2D<float4> FogRampSampler : register(t10);
 Texture2D<float4> FogExtinctionRampSampler : register(t11);
 
-Texture2D<float4> StereoParams : register(t125);
-Texture2D<float4> InjectedDepthTexture : register(t126);
-
-void main(
-  float4 injectedScreenPos : SV_Position,
-  float4 v0 : SV_Position0,
+Texture2D<float4> StereoParams : register(t125);
+void main(  float4 v0 : SV_Position0,
   out float4 o0 : SV_Target0)
-{
-  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
-  float zpos = zpos4.x - 1;
-  float wpos = 1.0 / zpos;
-  float4 r0,r1,r2;
+{  float4 r0,r1,r2;
   uint4 bitmask;
   r0.xy = v0.xy * g_VPosToUV.xy + g_VPosToUV.zw;
   r0.zw = r0.xy * g_VPOSReverseParams.xy + g_VPOSReverseParams.zw;

@@ -132,21 +132,13 @@ Texture2D<float4> g_ParticleShadowTexture : register(t7);
 TextureCube<float4> g_AmbientCubeTexture : register(t13);
 Texture2D<float4> g_ShadowMaskTexture : register(t15);
 
-Texture2D<float4> StereoParams : register(t125);
-Texture2D<float4> InjectedDepthTexture : register(t126);
-
-void main(
-  float4 injectedScreenPos : SV_Position,
-  float4 v0 : SV_Position0,
+Texture2D<float4> StereoParams : register(t125);
+void main(  float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
   float3 v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
-{
-  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
-  float zpos = zpos4.x - 1;
-  float wpos = 1.0 / zpos;
-  float4 r0,r1,r2,r3,r4;
+{  float4 r0,r1,r2,r3,r4;
   uint4 bitmask;
   r0.xy = v1.xy / v1.ww;
   r0.xy = r0.xy * g_ViewportScaleOffset.xy + g_ViewportScaleOffset.zw;

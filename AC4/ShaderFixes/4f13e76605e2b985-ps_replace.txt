@@ -107,12 +107,8 @@ Texture2D<float4> Operator917_2 : register(t2);
 Texture2D<float4> Operator1019_3 : register(t3);
 Texture2D<float4> DepthSurface : register(t8);
 
-Texture2D<float4> StereoParams : register(t125);
-Texture2D<float4> InjectedDepthTexture : register(t126);
-
-void main(
-  float4 injectedScreenPos : SV_Position,
-  float4 v0 : SV_Position0,
+Texture2D<float4> StereoParams : register(t125);
+void main(  float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float4 v2 : TEXCOORD1,
   float4 v3 : TEXCOORD2,
@@ -123,11 +119,7 @@ void main(
   uint v8 : SV_IsFrontFace0,
   out float4 o0 : SV_Target0,
   out float4 o1 : SV_Target1)
-{
-  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
-  float zpos = zpos4.x - 1;
-  float wpos = 1.0 / zpos;
-  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+{  float4 r0,r1,r2,r3,r4,r5,r6,r7;
   uint4 bitmask;
   r0.x = v3.w < 0.000000000e+000;
   if (r0.x != 0) discard;

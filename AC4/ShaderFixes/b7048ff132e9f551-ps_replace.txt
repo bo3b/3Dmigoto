@@ -124,22 +124,14 @@ Texture2DMS<float4,4> g_TextureNormalDX11_MSAA : register(t1);
 Texture2DMS<float,4> g_TextureDepthDX11_MSAA : register(t2);
 Texture2DMS<float4,4> g_TextureLightingAccumulationDX11_MSAA : register(t3);
 
-Texture2D<float4> StereoParams : register(t125);
-Texture2D<float4> InjectedDepthTexture : register(t126);
-
-void main(
-  float4 injectedScreenPos : SV_Position,
-  float4 v0 : SV_Position0,
+Texture2D<float4> StereoParams : register(t125);
+void main(  float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
   float3 v3 : TEXCOORD2,
   uint v4 : SV_SampleIndex0,
   out float4 o0 : SV_Target0)
-{
-  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
-  float zpos = zpos4.x - 1;
-  float wpos = 1.0 / zpos;
-  float4 r0,r1,r2,r3;
+{  float4 r0,r1,r2,r3;
   uint4 bitmask;
   r0.zw = float2(0.000000e+000,0.000000e+000);
   g_TextureDepthDX11_MSAA.GetDimensions(r1.x, r1.y, bitmask.x);

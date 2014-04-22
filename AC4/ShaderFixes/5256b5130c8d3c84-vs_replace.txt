@@ -83,7 +83,6 @@ cbuffer _Globals : register(b0)
 }
 
 Texture2D<float4> StereoParams : register(t125);
-Texture2D<float4> InjectedDepthTexture : register(t126);
 
 void main(
   int4 v0 : POSITION0,
