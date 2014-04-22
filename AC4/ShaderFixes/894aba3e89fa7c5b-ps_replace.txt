@@ -1,0 +1,101 @@
+//AC4: Shadows from smoke
+cbuffer ParticlePSM : register(b3)
+{
+  float4x4 g_LightViewPSM : packoffset(c0);
+  float4x4 g_LightProjPSM : packoffset(c4);
+  float4x4 g_LightViewProjPSM : packoffset(c8);
+  float4x4 g_LightViewPSM_T : packoffset(c12);
+  float4x4 g_LightProjPSM_T : packoffset(c16);
+  float4x4 g_LightViewProjPSM_T : packoffset(c20);
+}
+
+cbuffer CameraMatrix : register(b0)
+{
+  float4x4 g_WorldViewProj_ : packoffset(c0);
+  float4x4 g_WorldViewProj_T : packoffset(c4);
+  float4x4 g_World_ : packoffset(c8);
+  float4x4 g_World_T : packoffset(c12);
+  float4x4 g_View : packoffset(c16);
+  float4x4 g_View_T : packoffset(c20);
+  float4x4 g_Proj : packoffset(c24);
+  float4x4 g_Proj_T : packoffset(c28);
+  float4x4 g_ViewProj : packoffset(c32);
+  float4x4 g_ViewProj_T : packoffset(c36);
+  float4x4 g_WorldView_ : packoffset(c40);
+  float4x4 g_WorldView_T : packoffset(c44);
+  float4x4 g_LightView : packoffset(c48);
+  float4x4 g_LightProj : packoffset(c52);
+  float4x4 g_LightView_T : packoffset(c56);
+  float4x4 g_LightProj_T : packoffset(c60);
+  float4x4 g_ViewInv_T : packoffset(c64);
+  float4x4 g_ViewProjInv : packoffset(c68);
+  float4x4 g_ViewProjInv_T : packoffset(c72);
+  float4x4 g_LightViewProj : packoffset(c76);
+  float4x4 g_LightViewProj_T : packoffset(c80);
+  float4x4 g_LightViewProjPrecise_T : packoffset(c84);
+  float4x4 g_ViewProjPrecise : packoffset(c88);
+  float4x4 g_ViewProjPreciseInv : packoffset(c92);
+  float4x4 g_ViewProjPreciseInv_T : packoffset(c96);
+  float4 g_ViewTranslation : packoffset(c100);
+  float4 eye : packoffset(c101);
+  float4 right : packoffset(c102);
+  float4 dir : packoffset(c103);
+  float4 up : packoffset(c104);
+  float4 g_SunDirection_ : packoffset(c105);
+  float4 g_SunColor_ : packoffset(c106);
+}
+SamplerState g_PsmSampler_s : register(s1);
+Texture2DMS<float,32> g_Depth : register(t0);  //Texture2DMS<float,412378304> g_Depth : register(t0);
+Texture3D<float4> g_PSM : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = (int2)v0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.z = g_Depth.Load(r0.xyz,0.000000000e+000).x;
+  r0.xy = v1.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
+  r0.w = 1.000000000e+000;
+  
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r0.x +=  stereoParams.x * (r0.z - stereoParams.y); // * g_Proj[0].x;
+  
+  r1.x = dot(r0.xyzw, g_ViewProjPreciseInv_T._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_ViewProjPreciseInv_T._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_ViewProjPreciseInv_T._m02_m12_m22_m32);
+  r0.w = dot(r0.xyzw, g_ViewProjPreciseInv_T._m03_m13_m23_m33);
+  r0.xyz = g_ViewTranslation.xyz * r0.www + r1.xyz;
+  r1.x = dot(r0.xyzw, g_LightViewProjPrecise_T._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_LightViewProjPrecise_T._m03_m13_m23_m33);
+  r1.y = 1.000000e+000 / r1.y;
+  r1.x = r1.y * r1.x;
+  r2.x = saturate(r1.x * 5.000000000e-001 + 5.000000000e-001);
+  r1.x = dot(r0.xyzw, g_LightViewProjPrecise_T._m01_m11_m21_m31);
+  r0.x = dot(r0.xyzw, g_LightViewProjPrecise_T._m02_m12_m22_m32);
+  r2.z = saturate(r0.x * r1.y);
+  r0.x = r1.y * r1.x;
+  r2.y = saturate(r0.x * -5.000000000e-001 + 5.000000000e-001);
+  r0.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r2.xyz;
+  r0.x = min(r0.y, r0.x);
+  r0.x = min(r0.z, r0.x);
+  r0.y = min(r2.y, r2.x);
+  r0.z = g_PSM.Sample(g_PsmSampler_s, r2.xyz).x;
+  r0.y = min(r2.z, r0.y);
+  r0.x = min(r0.x, r0.y);
+  r0.x = 5.000000000e+000 * r0.x;
+  r0.x = min(r0.x, 1.000000000e+000);
+  r0.y = r0.z * 7.500000000e-001 + 2.500000000e-001;
+  r0.y = log2(r0.y);
+  r0.y = 1.500000000e+000 * r0.y;
+  r0.y = exp2(r0.y);
+  r0.x = r0.y * r0.x + -r0.x;
+  o0.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000) + r0.xxxx;
+  return;
+}

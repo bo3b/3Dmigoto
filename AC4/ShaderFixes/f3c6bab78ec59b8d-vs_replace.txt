@@ -1,4 +1,4 @@
-//Skybox on ship
+//Menu Lighting and Lightning
 cbuffer _Globals : register(b0)
 {
   float4 g_AmbientCube[3] : packoffset(c0);
@@ -78,45 +78,80 @@ cbuffer _Globals : register(b0)
   float4 g_LightingIrradianceCoeffsB : packoffset(c97);
   float4 g_NumLights : packoffset(c98);
   float g_HasSunNG : packoffset(c99);
-  float4 UVScaled_57 : packoffset(c100);
-  float4 SunsetUVs_58 : packoffset(c101);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_DeferredOmniLight : packoffset(c128);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float4 m_Color;
+  } g_DeferredDirectLight : packoffset(c130);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float4 m_Direction;
+    float4 m_ConeAngles;
+  } g_DeferredSpotLight : packoffset(c132);
+
+  float4 g_DeferredProjWorldToLight[4] : packoffset(c136);
+  float4 g_DeferredProjShadowParams : packoffset(c140);
+  float4 g_DeferredBackgroundColor : packoffset(c141);
+  float4 g_DepthParams : packoffset(c150);
+  float4 g_WorldLightMapParameters1 : packoffset(c155);
+  float4 g_WorldLightMapParameters2 : packoffset(c156);
+  float4 g_WorldLightMapParameters3 : packoffset(c157);
+  float4 g_WorldLightMapUVParameters : packoffset(c158);
+  float4 g_WorldAOParameters : packoffset(c144);
+  float4 g_WorldAORangeParameters : packoffset(c145);
+  float4 g_WeatherExposedParams : packoffset(c143);
+  float4 g_DebugValue : packoffset(c159) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
 }
 
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
-  int4 v0 : POSITION0,
-  uint4 v1 : NORMAL0,
-  uint4 v2 : TANGENT0,
-  float4 v3 : COLOR0,
-  float2 v4 : TEXCOORD0,
+  float3 v0 : POSITION0,
+  float4 v1 : COLOR0,
+  float2 v2 : TEXCOORD0,
   out float4 o0 : SV_Position0,
   out float4 o1 : TEXCOORD0,
-  out float4 o2 : TEXCOORD1,
-  out float4 o3 : COLOR0)
+  out float3 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2)
 {
-  float4 r0;
+  float4 r0,r1;
   uint4 bitmask;
-  r0.xyz = (int3)v0.xyz * (int3)v0.www;
-  r0.xyz = r0.xyz;
-  r0.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r0.xyz;
+  r0.xyz = v0.xyz;
   r0.w = 1.000000000e+000;
-  
-float4 r10;
+  r1.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r1.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r1.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
 float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r1.xyzw;
+if(r1.w != 1.0)
+{
+	r1.x += stereoParams.x * (r1.w - stereoParams.y);
+}
+o0.xyzw = r21.xyzw;
 
-  r10.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
-  r10.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
-  r10.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
-  r10.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
 
-r10.x +=  stereoParams.x * (stereoParams.y);
-o0.xyzw = r10.xyzw;
-
-  o2.xyzw = r0.xyzw;
-  r0.xy = UVScaled_57.xy * v4.xy;
-  o1.xy = r0.xy * float2(1.600000e+001,1.600000e+001) + SunsetUVs_58.xy;
-  o1.zw = float2(0.000000e+000,0.000000e+000);
-  o3.xyzw = v3.xyzw;
+  o1.xyzw = r1.xyzw;
+  r0.xy = r1.xy / r1.ww;
+  r0.yzw = g_EyeYAxis.xyz * r0.yyy;
+  r0.xyz = g_EyeXAxis.xyz * r0.xxx + r0.yzw;
+  o2.xyz = g_EyeZAxis.xyz + r0.xyz;
+  o3.xyz = g_EyeWorldPosition_Resolve.xyz;
   return;
 }
