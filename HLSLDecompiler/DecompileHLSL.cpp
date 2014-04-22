@@ -91,6 +91,7 @@ public:
 	string BackProject_Vector1, BackProject_Vector2;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	vector<string> ZRepair_Dependencies1, ZRepair_Dependencies2;
+	bool mZRepair_DepthBuffer;
 	vector<string> InvTransforms;
 	string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
 	string ZRepair_PositionTexture;
@@ -1852,8 +1853,8 @@ public:
 				}
 			}
 
-			// Add depth texture.
-			if (!wposAvailable)
+			// Add depth texture, as a last resort, but only if it's specified in d3dx.ini
+			if (!wposAvailable && mZRepair_DepthBuffer)
 			{
 				const char *INJECT_HEADER = "  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);\n"
 										    "  float zpos = zpos4.x - 1;\n"
@@ -3433,12 +3434,18 @@ public:
 		}
 	}
 
+	// The StereoParams are nearly always useful, but the depth buffer texture is rarely used.
 	void WriteAddOnDeclarations()
 	{
 		const char *StereoTextureCode = "\n"
-			                            "Texture2D<float4> StereoParams : register(t125);\n"
-										"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
-		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode+strlen(StereoTextureCode));
+			"Texture2D<float4> StereoParams : register(t125);\n";
+		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode + strlen(StereoTextureCode));
+
+		if (mZRepair_DepthBuffer)
+		{
+			const char *DepthTextureCode = "Texture2D<float4> InjectedDepthTexture : register(t126);\n";
+			mOutput.insert(mOutput.end(), DepthTextureCode, DepthTextureCode + strlen(DepthTextureCode));
+		}
 	}
 };
 
@@ -3464,6 +3471,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	d.ZRepair_ZPosCalc2 = params.ZRepair_ZPosCalc2;
 	d.ZRepair_PositionTexture = params.ZRepair_PositionTexture;
 	d.ZRepair_WorldPosCalc = params.ZRepair_WorldPosCalc;
+	d.mZRepair_DepthBuffer = params.ZRepair_DepthBuffer;
 	d.BackProject_Vector1 = params.BackProject_Vector1;
 	d.BackProject_Vector2 = params.BackProject_Vector2;
 	d.InvTransforms = params.InvTransforms;

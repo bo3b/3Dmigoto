@@ -19,6 +19,7 @@ struct ParseParameters
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
 	std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
 	std::string ZRepair_PositionTexture;
+	bool ZRepair_DepthBuffer;
 	std::vector<std::string> InvTransforms;
 	std::string ZRepair_WorldPosCalc;
 	std::string BackProject_Vector1, BackProject_Vector2;

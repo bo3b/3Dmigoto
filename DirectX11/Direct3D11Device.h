@@ -320,10 +320,10 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11Texture2D **ppTexture2D)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateTexture2D called with parameters\n");
-	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11Device::CreateTexture2D called with parameters\n");
+	if (pDesc && LogFile && LogDebug) fprintf(LogFile, "  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
-	if (pDesc && LogFile) fprintf(LogFile, "  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+	if (pDesc && LogFile && LogDebug) fprintf(LogFile, "  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
 	// Preload shaders?
@@ -423,7 +423,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->MiscFlags;
 	}
-	if (LogFile) fprintf(LogFile, "  InitialData = %x, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	if (LogFile && LogDebug) fprintf(LogFile, "  InitialData = %x, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 	
 	// Override custom settings?
 	bool override = false;
@@ -492,7 +492,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			if (LogFile) fprintf(LogFile, "    restore call failed.\n");
 		}
 	}
-	if (LogFile && ppTexture2D) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppTexture2D);
+	if (LogFile && LogDebug && ppTexture2D) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppTexture2D);
 
 	// Register texture.
 	if (ppTexture2D)
@@ -935,6 +935,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
 				p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
 				p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
+				p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
 				p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
 				p.BackProject_Vector1 = G->BackProject_Vector1;
 				p.BackProject_Vector2 = G->BackProject_Vector2;

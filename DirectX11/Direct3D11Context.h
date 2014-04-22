@@ -314,9 +314,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 
 	GetD3D11DeviceContext()->PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
 
-	// Todo: For now, let's just apply stereo texture to every shader. Trade-off of searching for only the
-	// ones necessary, versus wasted on ones that don't use it.
-	// if (patchedShader)
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	if (!G->hunting || patchedShader)
 	{
 		D3D11Wrapper::ID3D11Device *device = 0;
 		GetDevice(&device);
@@ -592,9 +592,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 
 	GetD3D11DeviceContext()->VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
 
-	// Todo: For now, send the stereo texture to every shader. Trade-off of looking for only those that use
-	// it versus wasted on those that don't.  CPU matters more.
-	// if (patchedShader)
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	if (!G->hunting || patchedShader)
 	{
 		D3D11Wrapper::ID3D11Device *device = 0;
 		GetDevice(&device);
