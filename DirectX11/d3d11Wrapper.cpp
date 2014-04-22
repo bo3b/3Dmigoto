@@ -2056,9 +2056,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// is to make the arrays of shaders stable so that hunting up and down the arrays
 	// is consistent, while the user is engaged.  After 1 minute, they are likely onto
 	// some other spot, and we should start with a fresh set, to keep the arrays and
-	// active shader list small for easier hunting.  The first time through, we'll have
-	// hundreds and hundreds stored, so the first keypress will be lost as it clears 
-	// the arrays.
+	// active shader list small for easier hunting.  Until the first keypress, the arrays
+	// are cleared at each thread wake, just like before. 
 	// The arrays will be continually filled by the SetShader sections, but should 
 	// rapidly converge upon all active shaders.
 
