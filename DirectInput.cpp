@@ -21,7 +21,7 @@ int XInputDeviceId = -1;
 
 HRESULT InitDirectInput();
 VOID FreeDirectInput();
-void UpdateInputState();
+bool UpdateInputState();
 static DWORD DeviceType;
 static DIJOYSTATE2 JoystickState;
 static DIMOUSESTATE2 MouseState;
@@ -448,10 +448,12 @@ BOOL CALLBACK EnumObjectsCallback( const DIDEVICEOBJECTINSTANCE* pdidoi,
 //-----------------------------------------------------------------------------
 // Name: UpdateInputState()
 // Desc: Get the input device's state and display it.
+// Ret: true, for new event.
 //-----------------------------------------------------------------------------
-void UpdateInputState()
+bool UpdateInputState()
 {
     HRESULT hr;
+	bool newEvent = false;
 
 	// Reading XInput device.
 	if (XInputDeviceId >= 0)
@@ -462,6 +464,7 @@ void UpdateInputState()
         // Simply get the state of the controller from XInput.
         DWORD dwResult = XInputGetState(XInputDeviceId, &state);
 		// if (LogInput) fprintf(LogFile, "Polling XInputDevice #%d with result = %d\n", XInputDeviceId, dwResult);
+
         if (dwResult == ERROR_SUCCESS)
 		{
 			for (int i = 0; i < NUM_ACTIONS; ++i)
@@ -482,13 +485,15 @@ void UpdateInputState()
 				else if (wcscmp(L"B", InputAction[i]) == 0) Action[i] = state.Gamepad.wButtons & XINPUT_GAMEPAD_B;
 				else if (wcscmp(L"X", InputAction[i]) == 0) Action[i] = state.Gamepad.wButtons & XINPUT_GAMEPAD_X;
 				else if (wcscmp(L"Y", InputAction[i]) == 0) Action[i] = state.Gamepad.wButtons & XINPUT_GAMEPAD_Y;
+
+				if (Action[i]) newEvent = true;
 			}
 		}
-		return;
+		return newEvent;
 	}
 
     if (NULL == g_pJoystick)
-        return;
+		return newEvent;
 
     // Poll the device to read the current state
     hr = g_pJoystick->Poll();
@@ -507,7 +512,7 @@ void UpdateInputState()
         // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
         // may occur when the app is minimized or in the process of 
         // switching, so just try again later 
-        return;
+		return newEvent;
     }
 
     // Get the input's device state
@@ -529,6 +534,11 @@ void UpdateInputState()
 			Action[i] = ActionButton[i] == 0xffffffff ? false :  KeyboardState[ActionButton[i]] != 0;
 	}
 	else if (LogInput) fprintf(LogFile, "GetDeviceState failed hr=%x\n", hr);
+
+	for (int i = 0; i < NUM_ACTIONS; ++i)
+		if (Action[i]) newEvent = true;
+
+	return newEvent;
 }
 
 //-----------------------------------------------------------------------------

@@ -115,6 +115,7 @@ struct Globals
 	int gSurfaceSquareCreateMode;
 
 	bool hunting;
+	time_t huntTime;
 	bool take_screenshot;
 	bool reload_fixes;
 	bool next_pixelshader, prev_pixelshader, mark_pixelshader;
@@ -226,6 +227,7 @@ struct Globals
 		mSelectedIndexBufferPos(0),
 
 		hunting(false),
+		huntTime(0),
 		take_screenshot(false),
 		reload_fixes(false),
 		next_pixelshader(false),
@@ -1628,8 +1630,11 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	if (!G->hunting)
 		return;
 
-	UpdateInputState();
-
+	// Update the huntTime whenever we get fresh user input.
+	bool newEvent = UpdateInputState();
+	if (newEvent)
+		G->huntTime = time(NULL);
+	
 	// Screenshot?
 	if (Action[3] && !G->take_screenshot)
 	{
@@ -2046,20 +2051,31 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 		if (LogFile) fprintf(LogFile, "> Value 4 tuned to %f\n", G->gTuneValue4);
 	}
 
-	// Clear buffers.
-	// This will keep only a small subset live in the map array, for each loop of the
-	// hunting thread.  100ms worth
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mVisitedIndexBuffers.clear();
-	G->mVisitedVertexShaders.clear();
-	G->mVisitedPixelShaders.clear();
-	G->mSelectedPixelShader_IndexBuffer.clear();
-	G->mSelectedVertexShader_IndexBuffer.clear();
-	G->mSelectedIndexBuffer_PixelShader.clear();
-	G->mSelectedIndexBuffer_VertexShader.clear();
-	for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
-		i->second[0] = 0;
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	// Clear buffers after some user idle time.  This allows the buffers to be
+	// stable during a hunt, and cleared after one minute of idle time.  The idea
+	// is to make the arrays of shaders stable so that hunting up and down the arrays
+	// is consistent, while the user is engaged.  After 1 minute, they are likely onto
+	// some other spot, and we should start with a fresh set, to keep the arrays and
+	// active shader list small for easier hunting.  The first time through, we'll have
+	// hundreds and hundreds stored, so the first keypress will be lost as it clears 
+	// the arrays.
+	// The arrays will be continually filled by the SetShader sections, but should 
+	// rapidly converge upon all active shaders.
+
+	if (difftime(time(NULL), G->huntTime) > 60)
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		G->mVisitedIndexBuffers.clear();
+		G->mVisitedVertexShaders.clear();
+		G->mVisitedPixelShaders.clear();
+		G->mSelectedPixelShader_IndexBuffer.clear();
+		G->mSelectedVertexShader_IndexBuffer.clear();
+		G->mSelectedIndexBuffer_PixelShader.clear();
+		G->mSelectedIndexBuffer_VertexShader.clear();
+		for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
+			i->second[0] = 0;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
 }
 
 // Thread for allowing hunting, without modifying RunFrameActions.
@@ -2073,8 +2089,8 @@ DWORD WINAPI Hunting(LPVOID empty)
 
 	while (true)
 	{
-		// Wait for shaders to accumulate in map arrays as scene is drawn.
-		Sleep(100);
+		// Idle time between user key presses. This is 3x 1/60 second.
+		Sleep(50);
 
 		RunFrameActions(realDevice);
 	}
@@ -2146,7 +2162,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				// Present received.
 				// Todo: this cast is wrong. The object is always IDXGIDevice2.
 //				ID3D11Device *device = (ID3D11Device *)this;
-		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
+	//	RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
 			//	break;
 			//}
 		//}
