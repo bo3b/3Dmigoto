@@ -1667,7 +1667,9 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 			WIN32_FIND_DATA findFileData;
 			wchar_t fileName[MAX_PATH];
 
-			wsprintf(fileName, L"%ls\\*_replace.txt", SHADER_PATH);
+			// Strict file name format, to allow renaming out of the way. "00aa7fa12bbf66b3-ps_replace.txt"
+			// Will still blow up if the first characters are not hex.
+			wsprintf(fileName, L"%ls\\????????????????-??_replace.txt", SHADER_PATH);
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
