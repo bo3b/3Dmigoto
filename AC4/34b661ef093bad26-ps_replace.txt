@@ -1,5 +1,5 @@
 // Manually fixed shader.
-// Missing Resource section in ASM, so missing paramters here.
+// Missing Resource section in ASM, so missing parameters here.
 // That led to injection of WritePatches which wrote 4 bad lines for every Load.
 
 Texture2DArray<float4> texArray : register(t0);
