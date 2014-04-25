@@ -2503,19 +2503,16 @@ public:
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
 
+					// Curiously enough, the documentation for ISHR and ISHL is wrong, and documents the parameters backwards.
+					// http://msdn.microsoft.com/en-us/library/windows/desktop/hh447145(v=vs.85).aspx
+					// This was proven by looking at actual game ASM, and trying to make the HLSL match the generated ASM.
+					// It is the C standard of: shift-expression << additive-expression 
+					// So, we need op2 as the Shift-Expression, op3 as the # of bits to shift.
 				case OPCODE_ISHR:
 					remapTarget(op1);
 					applySwizzle(op1, op2, true);
 					applySwizzle(op1, op3, true);
-					sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					break;
-
-				case OPCODE_USHR:
-					remapTarget(op1);
-					applySwizzle(op1, op2, true);
-					applySwizzle(op1, op3, true);
-					sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
+					sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
 
@@ -2523,7 +2520,17 @@ public:
 					remapTarget(op1);
 					applySwizzle(op1, op2, true);
 					applySwizzle(op1, op3, true);
-					sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
+					sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
+
+					// USHR appears to be documented correctly.
+					// But this code was still backwards.
+				case OPCODE_USHR:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
 
