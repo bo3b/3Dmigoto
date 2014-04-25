@@ -1,4 +1,5 @@
-3Dmigoto
+![alt text](http://3dmigoto.jarvismac.co.uk/wp-content/uploads/2013/08/3dmigoto_greenBck_500x143.png)
+
 ========
 
 ####Chiri's wrapper to enable fixing broken stereoscopic effects in DX11 games.
