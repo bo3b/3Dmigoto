@@ -1,0 +1,36 @@
+// Manually fixed shader.
+//	This was pretty complicated to get legit code.
+//	The fxc generates bad code for the bitmask, where it makes a -0 (0x80000000)
+//	which the -1 is then ignored.  It's not handling uint properly.
+//	By inverting the starting mask, I can get exact matching ASM.
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  uint v0 : SV_VertexID0,
+  out float4 o0 : SV_Position0)
+{
+	  // Changed to const float4 icb[] from float4x4 icb
+	  const float4 icb[] = { { -1.000000, 0, 0, 0},
+								  { -3.000000, 0, 0, 0},
+								  { -1.000000, 0, 0, 0},
+								  { 1.000000, 0, 0, 0},
+								  { 3.000000, 0, 0, 0},
+								  { 1.000000, 0, 0, 0} };
+  uint r0;
+  uint bitmask;
+
+  // Shift left was backwards
+	r0 = v0 << 1;
+  o0.x = icb[r0].x;
+
+  // bitmask becomes: 0xFFFFFFFE
+  // fails: bitmask.x = (((1 << 31)-1) << 1) & 0xffffffff;
+  bitmask.x = ((~(-1 << 31)) << 1) & 0xffffffff;
+  // 1 & ~bitmask = 1 & 1 = 1
+  r0.x = (((uint)v0.x << 1) & bitmask.x) | ((uint)1 & ~bitmask.x);
+
+  o0.y = icb[r0].x;
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  return;
+}
