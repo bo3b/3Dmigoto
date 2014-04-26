@@ -1,6 +1,7 @@
 // Manually fixed shader.
 // Missing Resource section in ASM, so missing texArray parameters here.
 // Also, shift right syntax seems to be reversed.
+// Fixed here to generate exact ASM, except for mov becomes round_z
 
 Texture2DArray<float4> texArray : register(t0);
 Texture2D<float4> t1 : register(t1);

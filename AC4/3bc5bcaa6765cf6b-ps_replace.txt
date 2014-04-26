@@ -1,7 +1,9 @@
 // Manually fixed shader.
-//   CS_Z_buffer.GetDimensions(r2.w, r2.w);  did Decompile properly, started as:
+//   CS_Z_buffer.GetDimensions(r2.w, r2.w);  did not Decompile properly, started as:
 //  CS_Z_buffer.GetDimensions(r2.w, r2., bitmask.x);
-
+//	With that as r1.x = CS_Z_buffer.Load(r0.xyw).x; it generates the same
+//	resinfo_indexable instruction.
+//	Other variants are because of floats for temps instead of int, but should be OK.
 
 cbuffer _Globals : register(b0)
 {
@@ -104,12 +106,11 @@ void main(
   float2 v1 : TEXCOORD0,
   out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r3,r4,r5,r6,r7,r8,r9;
-  uint4 r2;
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
   uint4 bitmask;
   r0.xy = (int2)v0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
-  r1.x = CS_Z_buffer.Load(r0.xyw).x;
+	r1.x = CS_Z_buffer.Load(r0.xyw).x;
   r1.y = round(v0.x);
   r1.z = round(v0.y);
   r2.xy = r1.yz * g_PixelPosToUV.xy + g_PixelPosToUV.zw;
@@ -167,7 +168,7 @@ void main(
   r3.xw = r7.xx * r6.xy;
   r3.xw = (int2)r3.xw;
   r3.xw = (int2)r3.xw + (int2)r0.xy;
-  r6.xy = (int2)r8.xx >> (uint2)r3.xw;
+  r6.xy = (uint2)r3.xw >> (int2)r8.xx;
   r6.zw = r8.xx;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r3.xw = r3.xw;
@@ -189,7 +190,7 @@ void main(
   r5.xy = r7.yy * r6.xy;
   r5.xy = (int2)r5.xy;
   r5.xy = (int2)r5.xy + (int2)r0.xy;
-  r6.xy = (int2)r8.yy >> (uint2)r5.xy;
+  r6.xy = (uint2)r5.xy >> (int2)r8.yy;
   r6.zw = r8.yy;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xy = r5.xy;
@@ -213,7 +214,7 @@ void main(
   r5.xy = r7.zz * r6.xy;
   r5.xy = (int2)r5.xy;
   r5.xy = (int2)r5.xy + (int2)r0.xy;
-  r6.xy = (int2)r8.zz >> (uint2)r5.xy;
+  r6.xy = (uint2)r5.xy >> (int2)r8.zz;
   r6.zw = r8.zz;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xy = r5.xy;
@@ -236,7 +237,7 @@ void main(
   r5.xy = r7.ww * r6.xy;
   r5.xy = (int2)r5.xy;
   r5.xy = (int2)r5.xy + (int2)r0.xy;
-  r6.xy = (int2)r8.ww >> (uint2)r5.xy;
+  r6.xy = (uint2)r5.xy >> (int2)r8.ww;
   r6.zw = r8.ww;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xy = r5.xy;
@@ -270,7 +271,7 @@ void main(
   r6.xy = r7.xx * r6.xy;
   r6.xy = (int2)r6.xy;
   r6.xy = (int2)r6.xy + (int2)r0.xy;
-  r9.xy = (int2)r8.xx >> (uint2)r6.xy;
+  r9.xy = (uint2)r6.xy >> (int2)r8.xx;
   r9.zw = r8.xx;
   r9.z = CS_Z_buffer.Load(r9.xyz).x;
   r6.xy = r6.xy;
@@ -293,7 +294,7 @@ void main(
   r5.xy = r7.yy * r6.xy;
   r5.xy = (int2)r5.xy;
   r5.xy = (int2)r5.xy + (int2)r0.xy;
-  r6.xy = (int2)r8.yy >> (uint2)r5.xy;
+  r6.xy = (uint2)r5.xy >> (int2)r8.yy;
   r6.zw = r8.yy;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xy = r5.xy;
@@ -316,7 +317,7 @@ void main(
   r5.xy = r7.zz * r6.xy;
   r5.xy = (int2)r5.xy;
   r5.xy = (int2)r5.xy + (int2)r0.xy;
-  r6.xy = (int2)r8.zz >> (uint2)r5.xy;
+  r6.xy = (uint2)r5.xy >> (int2)r8.zz;
   r6.zw = r8.zz;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xy = r5.xy;
@@ -339,7 +340,7 @@ void main(
   r5.xy = r7.ww * r6.xy;
   r5.xy = (int2)r5.xy;
   r5.xy = (int2)r5.xy + (int2)r0.xy;
-  r6.xy = (int2)r8.ww >> (uint2)r5.xy;
+  r6.xy = (uint2)r5.xy >> (int2)r8.ww;
   r6.zw = r8.ww;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xy = r5.xy;
@@ -372,7 +373,7 @@ void main(
   r5.xw = r7.xx * r6.xy;
   r5.xw = (int2)r5.xw;
   r5.xw = (int2)r5.xw + (int2)r0.xy;
-  r6.xy = (int2)r8.xx >> (uint2)r5.xw;
+  r6.xy = (uint2)r5.xw >> (int2)r8.xx;
   r6.zw = r8.xx;
   r6.z = CS_Z_buffer.Load(r6.xyz).x;
   r5.xw = r5.xw;
@@ -395,7 +396,7 @@ void main(
   r3.xw = r7.yy * r5.xy;
   r3.xw = (int2)r3.xw;
   r3.xw = (int2)r3.xw + (int2)r0.xy;
-  r6.xy = (int2)r8.yy >> (uint2)r3.xw;
+  r6.xy = (uint2)r3.xw >> (int2)r8.yy;
   r6.zw = r8.yy;
   r5.w = CS_Z_buffer.Load(r6.xyz).x;
   r3.xw = r3.xw;
@@ -418,7 +419,7 @@ void main(
   r3.xw = r7.zz * r5.xy;
   r3.xw = (int2)r3.xw;
   r3.xw = (int2)r3.xw + (int2)r0.xy;
-  r5.xy = (int2)r8.zz >> (uint2)r3.xw;
+  r5.xy = (uint2)r3.xw >> (int2)r8.zz;
   r5.zw = r8.zz;
   r5.z = CS_Z_buffer.Load(r5.xyz).x;
   r3.xw = r3.xw;
@@ -449,9 +450,9 @@ void main(
   r2.x = ddy_coarse(r1.x);
   r2.y = ddy_fine(r1.z);
   if (r1.y != 0) {
-	o0.xw = float2(1.000000e+000,1.000000e+000);
-	o0.yz = r3.yz;
-	return;
+  o0.xw = float2(1.000000e+000,1.000000e+000);
+  o0.yz = r3.yz;
+  return;
   }
   r0.xz = motion.Load(r0.xyz).xy;
   r0.xz = float2(-4.980000e-001,-4.980000e-001) + r0.xz;
