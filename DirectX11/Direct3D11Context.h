@@ -1600,6 +1600,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetShader(THIS_
         __inout_opt  UINT *pNumClassInstances) 
 {
 	GetD3D11DeviceContext()->PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
+
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::PSGetShader out: %x\n", *ppPixelShader);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetSamplers(THIS_
@@ -1621,9 +1623,10 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSGetShader(THIS_
         /* [annotation] */ 
         __inout_opt  UINT *pNumClassInstances) 
 {
-	if (LogFile) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::VSGetShader out: %x", ppVertexShader);
-
 	GetD3D11DeviceContext()->VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
+
+	// Todo: At GetShader, we need to return the original shader if it's been reloaded.
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::VSGetShader out: %x\n", *ppVertexShader);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetConstantBuffers(THIS_
