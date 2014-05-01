@@ -108,8 +108,8 @@ void main(
   
 	// constants specified in the .ini file.
 	float4 iniParams = IniParams.Load(0);
-	if (iniParams.x == 1.0f) {
-		o0.xyzw = float4(1.0f, 0, 1.0f, 1.0f);
+	if (iniParams.w == 1.0) {
+		o0.xyzw = float4(1.0, 0, 1.0, 1.0);
 		return;
 	}
 

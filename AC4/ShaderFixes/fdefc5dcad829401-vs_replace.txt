@@ -84,6 +84,7 @@ cbuffer _Globals : register(b0)
 }
 
 Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
 
 void main(
   float3 v0 : POSITION0,
@@ -96,6 +97,7 @@ void main(
   
 float4 r10;
 float4 stereoParams = StereoParams.Load(0);
+float4 iniParams = IniParams.Load(0);
 
   r0.xyz = v0.xyz;
   r0.w = 1.000000000e+000;
@@ -107,7 +109,7 @@ float4 stereoParams = StereoParams.Load(0);
  // if(r10.w == 1)
 if(r10.w == 1 && r10.z < 1)
 {
-	r10.x += stereoParams.x*0.8;
+	r10.x += stereoParams.x*iniParams.x;
 } 
 o0.xyzw = r10.xyzw;
   
