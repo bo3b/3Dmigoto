@@ -2,7 +2,7 @@
 
 D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
     : D3D11Wrapper::IDirect3DUnknown((IUnknown*) pDevice),
-	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), mZBufferResourceView(0)
+	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), mIniResourceView(0), mIniTexture(0), mZBufferResourceView(0)
 {
 	if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_CreateHandleFromIUnknown(pDevice, &mStereoHandle))
 		mStereoHandle = 0;
@@ -40,7 +40,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		desc.CPUAccessFlags = 0;
 		desc.MiscFlags = 0;
 		HRESULT ret = pDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
-		if (ret != S_OK)
+		if (FAILED(ret))
 		{
 			if (LogFile) fprintf(LogFile, "    call failed with result = %x.\n", ret);
 		}
@@ -57,13 +57,63 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 			descRV.Texture2D.MostDetailedMip = 0;
 			descRV.Texture2D.MipLevels = -1;
 			ret = pDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
-			if (ret != S_OK)
+			if (FAILED(ret))
 			{
 				if (LogFile) fprintf(LogFile, "    call failed with result = %x.\n", ret);
 			}
 			if (LogFile) fprintf(LogFile, "    stereo texture resource view created, handle = %x.\n", mStereoResourceView);
 		}
 	}
+
+	// If constants are specified in the .ini file that need to be sent to shaders, we need to create
+	// the resource view in order to deliver them via SetShaderResources.
+	// Check for depth buffer view.
+	if (G->iniParams.x != -1.0f)
+	{
+		D3D11Base::D3D11_TEXTURE1D_DESC desc;
+		memset(&desc, 0, sizeof(D3D11Base::D3D11_TEXTURE1D_DESC));
+		D3D11Base::D3D11_SUBRESOURCE_DATA initialData;
+
+		if (LogFile) fprintf(LogFile, "  creating .ini constant parameter texture.\n");
+
+		// Stuff the constants read from the .ini file into the subresource data structure, so 
+		// we can init the texture with them.
+		initialData.pSysMem = &G->iniParams;
+		initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * 1;	// only one 4 element struct 
+
+		desc.Width = 1;												// 1 texel, .rgba as a float4
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = D3D11Base::DXGI_FORMAT_R32G32B32A32_FLOAT;	// float4
+		desc.Usage = D3D11Base::D3D11_USAGE_DEFAULT;				// Read/Write access from GPU
+		desc.BindFlags = D3D11Base::D3D11_BIND_SHADER_RESOURCE;		// As resource view, access via t120
+		desc.CPUAccessFlags = 0;									// no CPU access after init
+		desc.MiscFlags = 0;
+		HRESULT ret = pDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
+		if (FAILED(ret))
+		{
+			if (LogFile) fprintf(LogFile, "    CreateTexture1D call failed with result = %x.\n", ret);
+		}
+		else
+		{
+			if (LogFile) fprintf(LogFile, "    IniParam texture created, handle = %x\n", mIniTexture);
+			if (LogFile) fprintf(LogFile, "  creating IniParam resource view.\n");
+
+			// Since we need to bind the texture to a shader input, we also need a resource view.
+			// The pDesc is set to NULL so that it will simply use the desc format above.
+			D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
+			memset(&descRV, 0, sizeof(D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC));
+
+			ret = pDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
+			if (FAILED(ret))
+			{
+				if (LogFile) fprintf(LogFile, "   CreateShaderResourceView call failed with result = %x.\n", ret);
+			}
+
+			if (LogFile) fprintf(LogFile, "    Iniparams resource view created, handle = %x.\n", mIniResourceView);
+		}
+	}
+
 }
 
 D3D11Wrapper::ID3D11Device* D3D11Wrapper::ID3D11Device::GetDirect3DDevice(D3D11Base::ID3D11Device *pOrig)
@@ -114,7 +164,19 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 		{
 			long result = mStereoTexture->Release();
 			mStereoTexture = 0;
-			if (LogFile) fprintf(LogFile, "  releasing streo texture, result = %d\n", result);
+			if (LogFile) fprintf(LogFile, "  releasing stereo texture, result = %d\n", result);
+		}
+		if (mIniResourceView)
+		{
+			long result = mIniResourceView->Release();
+			mIniResourceView = 0;
+			if (LogFile) fprintf(LogFile, "  releasing ini parameters resource view, result = %d\n", result);
+		}
+		if (mIniTexture)
+		{
+			long result = mIniTexture->Release();
+			mIniTexture = 0;
+			if (LogFile) fprintf(LogFile, "  releasing iniparams texture, result = %d\n", result);
 		}
 		if (!G->mPreloadedPixelShaders.empty())
 		{
@@ -841,7 +903,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					D3D11Base::ID3DBlob *pErrorMsgs;
 					D3D11Base::ID3DBlob *pCompiledOutput = 0;
 					ret = D3D11Base::D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
-						"main",	shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 					delete srcData; srcData = 0;
 					disassembly->Release();
 					if (pCompiledOutput)

@@ -7,6 +7,7 @@
 #include <set>
 #include <iterator>
 #include <string>
+#include <DirectXMath.h>
 
 FILE *LogFile = 0;		// off by default.
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
@@ -141,6 +142,8 @@ struct Globals
 	bool ENABLE_TUNE;
 	float gTuneValue1, gTuneValue2, gTuneValue3, gTuneValue4, gTuneStep;
 
+	DirectX::XMFLOAT4 iniParams;
+
 	SwapChainInfo mSwapChainInfo;
 
 	ThreadSafePointerSet m_AdapterList;
@@ -256,6 +259,9 @@ struct Globals
 		ENABLE_TUNE(false),
 		gTuneValue1(1.0f), gTuneValue2(1.0f), gTuneValue3(1.0f), gTuneValue4(1.0f),
 		gTuneStep(0.001f),
+
+		iniParams {-1.0f, -1.0f, -1.0f, -1.0f},
+
 		ENABLE_CRITICAL_SECTION(false),
 		SCREEN_WIDTH(-1),
 		SCREEN_HEIGHT(-1),
@@ -772,6 +778,25 @@ void InitializeDLL()
 		if (LogFile) fprintf(LogFile, "  ... missing mouse OverrideSettings ini section\n");
 		if (LogFile) fprintf(LogFile, "  ... missing convergence map ini section\n");
 		if (LogFile) fprintf(LogFile, "-----------------------------------------\n");
+
+		// Read in any constants defined in the ini, for use as shader parameters
+		read = GetPrivateProfileString(L"Constants", L"x", 0, setting, MAX_PATH, iniFile);
+		if (read) G->iniParams.x = stof(setting);
+		read = GetPrivateProfileString(L"Constants", L"y", 0, setting, MAX_PATH, iniFile);
+		if (read) G->iniParams.y = stof(setting);
+		read = GetPrivateProfileString(L"Constants", L"z", 0, setting, MAX_PATH, iniFile);
+		if (read) G->iniParams.z = stof(setting);
+		read = GetPrivateProfileString(L"Constants", L"w", 0, setting, MAX_PATH, iniFile);
+		if (read) G->iniParams.w = stof(setting);
+
+		if (LogFile && G->iniParams.x != -1.0f)
+		{
+			fprintf(LogFile, "[Constants]\n");
+			fprintf(LogFile, "  x=%f\n", G->iniParams.x);
+			fprintf(LogFile, "  y=%f\n", G->iniParams.y);
+			fprintf(LogFile, "  z=%f\n", G->iniParams.z);
+			fprintf(LogFile, "  w=%f\n", G->iniParams.w);
+		}
 
 		// Fire up the keyboards and controllers
 		InitDirectInput();

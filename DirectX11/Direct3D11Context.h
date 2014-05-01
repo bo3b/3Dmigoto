@@ -329,6 +329,13 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 				
 				GetD3D11DeviceContext()->PSSetShaderResources(125, 1, &device->mStereoResourceView);
 			}
+			// Set constants from ini file if they exist
+			if (device->mIniResourceView)
+			{
+				if (LogFile && LogDebug) fprintf(LogFile, "  adding ini constants as texture to shader resources in slot 120.\n");
+
+				GetD3D11DeviceContext()->PSSetShaderResources(120, 1, &device->mIniResourceView);
+			}
 			// Set custom depth texture.
 			if (device->mZBufferResourceView)
 			{
@@ -606,6 +613,14 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 				if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
 				
 				GetD3D11DeviceContext()->VSSetShaderResources(125, 1, &device->mStereoResourceView);
+			}
+
+			// Set constants from ini file if they exist
+			if (device->mIniResourceView)
+			{
+				if (LogFile && LogDebug) fprintf(LogFile, "  adding ini constants as texture to shader resources in slot 120.\n");
+
+				GetD3D11DeviceContext()->VSSetShaderResources(120, 1, &device->mIniResourceView);
 			}
 			device->Release();
 		}

@@ -12,6 +12,8 @@ public:
 	D3D11Base::ID3D11Texture2D *mStereoTexture;
 	D3D11Base::ID3D11ShaderResourceView *mStereoResourceView;
 	D3D11Base::ID3D11ShaderResourceView *mZBufferResourceView;
+	D3D11Base::ID3D11Texture1D *mIniTexture;
+	D3D11Base::ID3D11ShaderResourceView *mIniResourceView;
 
     ID3D11Device(D3D11Base::ID3D11Device *pDevice);
     static ID3D11Device* GetDirect3DDevice(D3D11Base::ID3D11Device *pDevice);
