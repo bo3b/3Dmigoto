@@ -163,3 +163,4 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+*.vsglog
