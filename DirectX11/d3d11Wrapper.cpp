@@ -1574,10 +1574,12 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	// Extract hash from first 16 characters of file name so we can look up details by hash
 	wstring ws = fileName;
 	hash = stoull(ws.substr(0, 16), NULL, 16);
-	
+
 	// Find the original shader bytecode in the mReloadedShaders Map. This map only contains entries for 
 	// shaders from the ShaderFixes folder, but can also include .bin files that were loaded directly.
 	// This needs to use the value to find the key, so a linear search.
+	// It's notable that the map can contain multiple copies of the same hash, used for different visual
+	// items, but with same original code.  We need to update all copies.
 	for each (pair<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
 		if (iter.second.hash == hash)
@@ -1586,55 +1588,55 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			classLinkage = iter.second.linkage;
 			shaderModel = iter.second.shaderModel;
 			shaderType = iter.second.shaderType;
-			break;
+
+			// If we didn't find an original shader, that is OK, because it might not have been loaded yet.
+			// Just skip it in that case, because the new version will be loaded when it is used.
+			if (oldShader == NULL)
+			{
+				if (LogFile) fprintf(LogFile, "> failed to find original shader in mVertexShaders: %ls\n", fileName);
+				continue;
+			}
+
+			// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
+			// Disassemble the binary to get that string.
+			if (shaderModel.compare("bin") == 0)
+			{
+				shaderModel = GetShaderModel(hash, shaderType);
+				if (shaderModel.empty())
+					return false;
+			}
+
+			// Compile replacement.
+			D3D11Base::ID3DBlob *pShaderBytecode = NULL;
+			CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &pShaderBytecode);
+			if (pShaderBytecode == NULL)
+				return false;
+
+			// This needs to call the real CreateVertexShader, not our wrapped version
+			if (shaderType.compare(L"vs") == 0)
+			{
+				hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+					(D3D11Base::ID3D11VertexShader**) &newShader);
+			}
+			else if (shaderType.compare(L"ps") == 0)
+			{
+				hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+					(D3D11Base::ID3D11PixelShader**) &newShader);
+			}
+			pShaderBytecode->Release();
+			if (FAILED(hr))
+				return false;
+
+
+			// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
+			if (G->mReloadedShaders[oldShader].newShader != NULL)
+				G->mReloadedShaders[oldShader].newShader->Release();
+
+			// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
+			G->mReloadedShaders[oldShader].newShader = newShader;
 		}
-	}
+	}	// for every registered shader mReloadedShaders 
 
-	// If we didn't find the original shader, that is OK, because it might not have been loaded yet.
-	// Just skip it in that case, because the new version will be loaded when it is used.
-	if (oldShader == NULL)
-	{
-		if (LogFile) fprintf(LogFile, "> failed to find original shader in mVertexShaders: %ls\n", fileName);
-		return true;
-	}
-
-	// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
-	// Disassemble the binary to get that string.
-	if (shaderModel.compare("bin") == 0)
-	{
-		shaderModel = GetShaderModel(hash, shaderType);
-		if (shaderModel.empty())
-			return false;
-	}
-
-	// Compile replacement.
-	D3D11Base::ID3DBlob *pShaderBytecode = NULL;
-	CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &pShaderBytecode);
-	if (pShaderBytecode == NULL)
-		return false;
-
-	// This needs to call the real CreateVertexShader, not our wrapped version
-	if (shaderType.compare(L"vs") == 0)
-	{
-		hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
-			(D3D11Base::ID3D11VertexShader**) &newShader);
-	}
-	else if (shaderType.compare(L"ps") == 0)
-	{
-		hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
-			(D3D11Base::ID3D11PixelShader**) &newShader);
-	}
-	pShaderBytecode->Release();
-	if (FAILED(hr))
-		return false;
-
-
-	// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
-	if (G->mReloadedShaders[oldShader].newShader != NULL)
-		G->mReloadedShaders[oldShader].newShader->Release();
-
-		// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
-	G->mReloadedShaders[oldShader].newShader = newShader;
 	return true;
 }
 
