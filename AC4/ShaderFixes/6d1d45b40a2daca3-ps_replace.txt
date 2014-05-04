@@ -1,7 +1,4 @@
-// Water
-//	Includes white foam, as a caustic.
-//  Bug was to not translate a fp literal of 0x3f800000 to 1.0f
-
+//AC4: Water/Sea - Caustics Fix
 cbuffer _Globals : register(b0)
 {
   float4 g_AmbientCube[3] : packoffset(c0);
@@ -210,6 +207,7 @@ Texture2D<float4> g_ShadowTexture : register(t15);
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
+  float4 injectedScreenPos : SV_Position,
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float4 v2 : TEXCOORD1,
@@ -224,8 +222,10 @@ void main(
   out float4 o0 : SV_Target0,
   out float2 o1 : SV_Target1)
 {
+
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
   uint4 bitmask;
+
   r0.xy = v0.xy * g_VPosToUV.xy + g_VPosToUV.zw;
   r0.z = dot(v6.xyz, v6.xyz);
   r0.z = rsqrt(r0.z);
@@ -237,15 +237,20 @@ void main(
   r0.z = rsqrt(r0.z);
   r3.xyz = v8.xyz * r0.zzz;
   r0.zw = NormalMapParams.xy * v2.xy;
+  
   r4.xy = ddx(r0.zw);
   r0.zw = ddy(r0.zw);
+  
   r0.zw = r0.zw * r0.zw;
   r0.zw = r4.xy * r4.xy + r0.zw;
   r0.zw = sqrt(r0.zw);
-	// Order irrelevant, but switched.  Nice to have it not switch anyway.
-	r0.z = max(r0.z, r0.w);
+  r0.z = max(r0.w, r0.z);
+  
   r0.z = log2(r0.z);
+  
   r0.z = min(r0.z, NormalMapParams.z);
+  
+  
   r4.xy = NormalMapUVScrolling.xy + v2.xy;
   r4.xyzw = NormalMap.SampleLevel(NormalMap_s, r4.xy, r0.z).xyzw;
   r4.xyz = r4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
@@ -303,14 +308,16 @@ void main(
   r8.xy = r5.xy * float2(2.000000e+000,-2.000000e+000) + r5.zw;
   r8.xy = g_ReverseProjectionParams.xy * r8.xy;
   r9.xy = r8.xy * r9.zz;
-  r9.w = 1.000000000e+000;
-  r10.z = dot(r9.xyzw, g_ViewToWorld._m02_m12_m22_m32);
-  r3.w = -v1.w + -r9.z;	
-  r3.w = 0.000000000e+000 >= r3.w;
-  // r3.w = r3.w ? 0x3f800000 : 0;
+  r9.w = 1.000000000e+000;						//r9 is a VIEW COORD
   
-	// float constants are not coming out right.
-	r3.w = r3.w ? 1.0 : 0;
+//Mike_ar69 - Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r9.x +=  stereoParams.x * (-r9.z - stereoParams.y )* g_ReverseProjectionParams.x ;
+  
+  r10.z = dot(r9.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r3.w = -v1.w + -r9.z;
+  r3.w = 0.000000000e+000 >= r3.w;
+  r3.w = r3.w ? 0x3f800000 : 0;
   r8.xy = -r5.xy + r0.xy;
   r8.xy = r3.ww * r8.xy + r5.xy;
   r11.xyzw = g_RefractionSampler.Sample(g_RefractionSampler_s, r8.xy).xyzw;
@@ -320,7 +327,9 @@ void main(
   r0.xy = r0.xy * float2(2.000000e+000,-2.000000e+000) + r5.zw;
   r0.xy = g_ReverseProjectionParams.xy * r0.xy;
   r12.xy = r0.xy * r12.zz;
-  r12.w = 1.000000000e+000;
+  r12.w = 1.000000000e+000;						//r12 is a VIEW COORD
+  
+  
   r0.x = dot(r12.xyzw, g_ViewToWorld._m02_m12_m22_m32);
   r0.y = -v1.w + -r12.z;
   r0.x = r0.x + -r10.z;
@@ -338,11 +347,13 @@ void main(
   r11.xyz = -r11.xyz * r12.xyz + r14.xyz;
   r8.xyz = r13.www * r11.xyz + r8.xyw;
   r13.xyz = r8.xyz + r7.xyz;
-  r0.x = 9.999999747e-005 < g_OceanConsts.m_RippleParamsSet1.w;
+  // r0.x = 9.999999747e-005 < g_OceanConsts.m_RippleParamsSet1.w;
+r0.x = 0.000100 < g_OceanConsts.m_RippleParamsSet1.w;
   if (r0.x != 0) {
   r0.x = sqrt(r1.x);
   r5.zw = g_OceanConsts.m_OceanViewOffset.xy + v9.zw;
-  r1.x = saturate(r1.z * r1.w + -1.000000015e-001);
+  // r1.x = saturate(r1.z * r1.w + -1.000000015e-001);
+r1.x = saturate(r1.z * r1.w + -1.0000000e-001);
   r1.x = dot(r1.xx, r1.xx);
   r1.z = 1.000000e+000 / g_OceanConsts.m_RippleParamsSet1.x;
   r7.xy = r5.zw * r1.zz;
@@ -383,22 +394,30 @@ void main(
   r0.y = dot(r4.xyz, r2.xyz);
   r0.y = 1.000000000e+000 + -r0.y;
   r0.y = min(abs(r0.y), 1.000000000e+000);
+  
   r0.y = log2(r0.y);
   r1.x = log2(r0.x);
+
+  
   r0.y = r0.y * FresnelPower + r1.x;
   r0.y = exp2(r0.y);
   r0.x = v3.w * r0.x;
   r1.xzw = r0.xxx * OceanSSSColor.xyz + v4.xyz;
   r7.xy = v5.xy + r2.xy;
   r7.z = v5.z;
-  r7.w = 1.000000000e+000;
+  r7.w = 1.000000000e+000;						//r7 is a WORLD COORD
+  
+  
   r8.y = dot(r7.xyzw, g_Shadows.m_WorldToLightProj._m00_m10_m20_m30);
   r8.z = dot(r7.xyzw, g_Shadows.m_WorldToLightProj._m01_m11_m21_m31);
   r8.w = dot(r7.xyzw, g_Shadows.m_WorldToLightProj._m02_m12_m22_m32);
+  
   r11.xyz = r8.yzw * g_Shadows.m_ScalesX.xyz + g_Shadows.m_OffsetsX.xyz;
   r14.xyz = r8.yzw * g_Shadows.m_ScalesY.xyz + g_Shadows.m_OffsetsY.xyz;
   r15.xyz = r8.yzw * g_Shadows.m_ScalesZ.xyz + g_Shadows.m_OffsetsZ.xyz;
   r8.xyz = r8.yzw * g_Shadows.m_ScalesW.xyz + g_Shadows.m_OffsetsW.xyz;
+  
+  
   r5.z = abs(r14.x) < g_Shadows.m_CascadesRangesMax.y;
   r5.w = abs(r14.y) < g_Shadows.m_CascadesRangesMax.y;
   r0.x = r5.w ? r5.z : 0;
@@ -408,19 +427,56 @@ void main(
   r5.z = abs(r8.x) < g_Shadows.m_CascadesRangesMax.w;
   r5.w = abs(r8.y) < g_Shadows.m_CascadesRangesMax.w;
   r3.w = r5.w ? r5.z : 0;
-  r11.x = r0.x ? r14.x : r11.x;
-  r11.y = r0.x ? r14.y : r11.y;
-  r11.z = r0.x ? r14.z : r11.z;
-  r11.x = r2.w ? r15.x : r11.x;
-  r11.y = r2.w ? r15.y : r11.y;
-  r11.z = r2.w ? r15.z : r11.z;
-  r8.x = r3.w ? r8.x : r11.x;
-  r8.y = r3.w ? r8.y : r11.y;
-  r8.z = r3.w ? r8.z : r11.z;
-  r0.x = r0.x ? g_Shadows.m_OffsetsY.w : g_Shadows.m_OffsetsX.w;
-  r0.x = r2.w ? g_Shadows.m_OffsetsZ.w : r0.x;
-  r0.x = r3.w ? g_Shadows.m_OffsetsW.w : r0.x;
-  r8.yzw = float3(5.000000e-001,5.000000e-001,5.000000e-001) + r8.xyz;
+  
+// r11.x = r0.x ? r14.x : r11.x;
+// r11.y = r0.x ? r14.y : r11.y;
+// r11.z = r0.x ? r14.z : r11.z; 
+if(r0.x)
+{
+	r11.xyz = r14.xyz;
+}
+
+// r11.x = r2.w ? r15.x : r11.x;
+// r11.y = r2.w ? r15.y : r11.y;
+// r11.z = r2.w ? r15.z : r11.z;
+if(r2.w)
+{
+	r11.xyz = r15.xyz;
+}
+  
+// r8.x = r3.w ? r8.x : r11.x;
+// r8.y = r3.w ? r8.y : r11.y;
+// r8.z = r3.w ? r8.z : r11.z;
+if(!r3.w)
+{
+	r8.xyz = r11.xyz;
+} 
+  
+// r0.x = r0.x ? g_Shadows.m_OffsetsY.w : g_Shadows.m_OffsetsX.w;
+if(r0.x)
+{
+	r0.x = g_Shadows.m_OffsetsY.w;
+}
+else
+{
+	r0.x = g_Shadows.m_OffsetsX.w;
+}
+  
+// r0.x = r2.w ? g_Shadows.m_OffsetsZ.w : r0.x;
+if(r2.w)
+{
+	r0.x = g_Shadows.m_OffsetsZ.w;
+}
+  
+// r0.x = r3.w ? g_Shadows.m_OffsetsW.w : r0.x;
+if(r3.w)
+{
+	r0.x = g_Shadows.m_OffsetsW.w;
+}
+
+
+
+   r8.yzw = float3(5.000000e-001,5.000000e-001,5.000000e-001) + r8.xyz;
   r8.x = r8.y * g_Shadows.m_ScalesX.w + r0.x;
   r5.zw = float2(1.562500e-002,1.562500e-002) * v0.xy;
   r11.xyzw = g_ShadowNoiseSampler.Sample(g_ShadowNoiseSampler_s, r5.zw).xyzw;
@@ -458,17 +514,25 @@ void main(
   r0.x = r0.x * r2.w + -r3.w;
   r0.x = 1.000000000e+000 + r0.x;
   r0.x = min(r0.x, 1.000000000e+000);
+
+//Caustics  
+//=================================================================================================================
   r2.w = dot(CausticParams_02.xyz, CausticParams_02.xyz);
   r2.w = r2.w == 0.000000;
+  
   if (r2.w != 0) {
   r7.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
   }
   if (r2.w == 0) {
-  r10.x = dot(r9.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r10.x = dot(r9.xyzw, g_ViewToWorld._m00_m10_m20_m30);						//r9 is a VIEW COORD
   r10.y = dot(r9.xyzw, g_ViewToWorld._m01_m11_m21_m31);
-  r10.w = dot(r9.xyzw, g_ViewToWorld._m03_m13_m23_m33);
-  r8.x = dot(r10.xyzw, WorldToCausticTransform._m00_m10_m20_m30);
+  r10.w = dot(r9.xyzw, g_ViewToWorld._m03_m13_m23_m33); //NOTE z-ccord worked out way earlier in the shader
+  
+//Caustics 
+  r8.x = dot(r10.xyzw, WorldToCausticTransform._m00_m10_m20_m30);			//r10 is a WORLD transform
   r8.y = dot(r10.xyzw, WorldToCausticTransform._m01_m11_m21_m31);
+
+//Caustics
   r5.zw = r8.xy / CausticParams_00.zw;
   r2.w = saturate(abs(r10.z) / CausticParams_00.x);
   r2.w = 1.000000000e+000 + -r2.w;
@@ -476,7 +540,10 @@ void main(
   r3.w = CausticParams_01.x * r3.w;
   r3.w = round(r3.w * 0.5) * 2;
   r8.xy = g_OceanConsts.m_WindPocketMapUVScrolling.xy + r5.zw;
+
+//Caustics
   r8.xyzw = CausticMapSampler.SampleLevel(CausticMapSampler_s, r8.xy, r3.w).xyzw;
+ 
   r11.xyzw = GBufferNormalSampler.Sample(GBufferNormalSampler_s, r5.xy).xyzw;
   r10.xyw = r11.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r3.w = dot(r10.xyw, r10.xyw);
@@ -490,19 +557,28 @@ void main(
   r3.w = r3.w * r3.w;
   r5.xyz = r8.xyz * r3.www;
   r5.xyz = r5.xyz * r0.xxx;
+  
+//Caustics 
   r3.w = abs(r10.z) * CausticFadeParams.x + CausticFadeParams.y;
   r2.w = r3.w * r2.w;
   r5.xyz = r5.xyz * r2.www;
   r2.w = dot(r9.xyz, r9.xyz);
   r2.w = sqrt(r2.w);
+  
+//Caustics 
   r2.w = saturate(r2.w / CausticParams_00.y);
   r2.w = 1.000000000e+000 + -r2.w;
   r5.xyz = r5.xyz * r2.www;
+  
+//Caustics 
   r5.xyz = CausticParams_01.yyy * r5.xyz;
   r5.xyz = r5.xyz * r4.www;
   r7.xyz = CausticParams_02.xyz * r5.xyz;
   r7.w = 0.000000000e+000;
   }
+//=================================================================================================================
+
+  
   r2.w = 1.000000000e+000 + -r13.w;
   r5.xyzw = r2.wwww * r7.xyzw;
   r5.xyzw = r5.xyzw * r12.xyzw + r13.xyzw;
@@ -511,6 +587,7 @@ void main(
   r1.y = rsqrt(r1.y);
   r3.xyz = r3.xyz * r1.yyy;
   r7.x = SpecularNormalScaler;
+
   r7.z = 1.000000000e+000;
   r7.xyz = r7.xxz * r2.xyz;
   r1.y = dot(r7.xyz, r7.xyz);
@@ -565,11 +642,18 @@ void main(
   r2.xyz = r2.xyz * r0.www;
   r2.xyw = r2.xyz * r2.xyz;
   r0.w = r2.z >= 0.000000000e+000;
-  // r1.y = r0.w ? 0x3f800000 : 0;
-	
-	// float constants are not coming out right.
-	r1.y = r0.w ? 1.0 : 0;
+  r1.y = r0.w ? 1.0 : 0;
   r0.w = r0.w ? 0.000000000e+000 : 1.000000000e+000;
+  
+if(r0.w)
+{
+	r0.w = 0.0;
+}
+else
+{
+	r0.w = 1.0;
+}
+  
   r2.x = r2.x + r2.y;
   r1.y = r2.w * r1.y;
   r3.xyzw = g_AmbientCube[1].xyzw * r1.yyyy;
@@ -580,5 +664,6 @@ void main(
   r2.xyz = r2.xyz * r5.xyz;
   r0.xyz = r2.xyz * r5.www + r0.xyz;
   o0.xyz = r0.xyz + r1.xzw;
+ 
   return;
 }

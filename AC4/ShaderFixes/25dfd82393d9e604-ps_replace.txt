@@ -185,8 +185,9 @@ r1.xyz = r21.xyz;
   r1.w = saturate(g_WeatherExposedParams.z + r1.w);
   r2.w = saturate(5.000000000e-001 + r2.w);
   r1.w = r2.w * r1.w;
-  r6.xyzw = g_LightingAccumulation_NG.Sample(g_PointClampSampler_NG_s, r0.xy).xyzw;
-  r7.xyzw = g_AmbientTexture.Sample(g_AmbientTexture_s, r0.xy).xyzw;
+  
+  r6.xyzw = g_LightingAccumulation_NG.Sample(g_PointClampSampler_NG_s, r0.xy).xyzw;  
+  r7.xyzw =  g_AmbientTexture.Sample(g_AmbientTexture_s, r0.xy).xyzw;
   r0.x = 1.000000000e+000 + -r6.w;
   r0.x = r1.w * r0.x;
   r0.y = r0.x * r6.w;
@@ -241,7 +242,7 @@ r1.xyz = r21.xyz;
   r0.w = max(r0.w, 0.000000000e+000);
   r0.w = g_WorldLightMapParameters3.w * r0.w;
   r1.xyz = r2.xyz * r0.www;
-  r1.xyz = r1.xyz * r3.xyz + r6.xyz;
+  r1.xyz = r1.xyz * r3.xyz ; //+ r6.xyz;			//<-- Disable as causes artifacts
   o0.xyz = r1.xyz + r0.xyz;
   return;
 }

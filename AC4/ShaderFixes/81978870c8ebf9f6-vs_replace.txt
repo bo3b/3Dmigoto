@@ -1,0 +1,50 @@
+//Decals
+cbuffer DecalParamscb : register(b5)
+{
+
+  struct
+  {
+    float4 m_UVConstantsDecals;
+    float4 m_ZConstantsDecals;
+    float3 m_UVector;
+    float3 m_VVector;
+    float3 m_NVector;
+    float4 m_WorldPosition;
+    float4x4 m_InvViewProjMatrix;
+    float4 m_ScreenExtentsBias;
+    float4x4 m_DecalsViewProjection;
+    float4 m_DecalLerpEnd;
+    float4 m_DecalLerpMask;
+    float4 m_DecalTintColor;
+    float m_DecalAlphaTestValue;
+  } g_DecalParams : packoffset(c0);
+
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  int4 v0 : POSITION0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyz = (int3)v0.xyz * (int3)v0.www;
+  r0.xyz = r0.xyz;
+  r0.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r0.xyz;
+  r0.w = 1.000000000e+000;
+
+float4 stereoParams = StereoParams.Load(0);
+float4 r10;
+
+  r10.x = dot(r0.xyzw, g_DecalParams.m_DecalsViewProjection._m00_m10_m20_m30);
+  r10.y = dot(r0.xyzw, g_DecalParams.m_DecalsViewProjection._m01_m11_m21_m31);
+  r10.z = dot(r0.xyzw, g_DecalParams.m_DecalsViewProjection._m02_m12_m22_m32);
+  r10.w = dot(r0.xyzw, g_DecalParams.m_DecalsViewProjection._m03_m13_m23_m33);
+  
+//Stereo Shift
+// r10.x -=  stereoParams.x * (r10.w - stereoParams.y);
+o0.xyz = r10.xyz;
+o0.w=0;			//This disables the decals for now
+  return;
+}

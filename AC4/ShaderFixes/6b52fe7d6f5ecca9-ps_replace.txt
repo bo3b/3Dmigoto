@@ -1,0 +1,71 @@
+// Manually fix error: Sample count must be non-zero.
+//	Was Texture2DMS<float,0>
+//	Also fix warning.
+
+cbuffer cb0 : register(b0)
+{
+  row_major float4x4 g_mViewProj : packoffset(c0);
+  row_major float4x4 g_mViewProjInv : packoffset(c4);
+  row_major float4x4 g_mLightProj[4] : packoffset(c8);
+  row_major float4x4 g_mLightProjInv[4] : packoffset(c24);
+  float3 g_vEyePosition : packoffset(c40);
+  float3 g_vLightPosition : packoffset(c41);
+  float3 g_vSigmaAbsorption : packoffset(c42);
+  float3 g_vSigmaScatter : packoffset(c43);
+  float g_fDistanceScale : packoffset(c40.w);
+  float g_fBufferWidthInv : packoffset(c41.w);
+  float g_fBufferHeightInv : packoffset(c42.w);
+  float g_fResMultiplier : packoffset(c43.w);
+  float4 g_vCascadeOffsetAndScale[4] : packoffset(c44);
+  float4 g_vLightDir : packoffset(c48);
+  float4 g_vAirlightParams : packoffset(c49);
+  float4 g_vCascadeTessFactor : packoffset(c50);
+  float4 g_vShadowMapDim : packoffset(c51);
+}
+	
+	Texture2DMS<float> tDepthMap : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.x = g_fBufferWidthInv;
+  r0.y = g_fBufferHeightInv;
+  r0.zw = g_fResMultiplier * r0.xy;
+  r1.xy = v1.xy / r0.zw;
+  r1.x = round(r1.x);
+  r1.y = round(r1.y);
+  r1.z = g_fResMultiplier;
+  r2.zw = float2(0.000000e+000,0.000000e+000);
+  r1.w = 0.000000000e+000;
+  r3.x = 0.000000000e+000;
+  while (true) {
+  r3.y = (int)r3.x >= (int)r1.z;
+  if (r3.y != 0) break;
+  r4.x = r3.x;
+  r3.y = r1.w;
+  r3.z = 0.000000000e+000;
+  while (true) {
+  r3.w = (int)r3.z >= (int)r1.z;
+  if (r3.w != 0) break;
+  r4.y = r3.z;
+  r4.yz = r4.xy * r0.xy;
+  r4.yz = r1.xy * r0.zw + r4.yz;
+  r4.yz = r4.yz / r0.xy;
+  r2.xy = (int2)r4.yz;
+  r2.x = tDepthMap.Load(r2.x,0.000000000e+000).x;
+  r3.y = r3.y + r2.x;
+  r3.z = (int)r3.z + 1;
+  }
+  r1.w = r3.y;
+  r3.x = (int)r3.x + 1;
+  }
+  r0.x = g_fResMultiplier * g_fResMultiplier;
+  o0.xyzw = r1.wwww / r0.xxxx;
+  return;
+}

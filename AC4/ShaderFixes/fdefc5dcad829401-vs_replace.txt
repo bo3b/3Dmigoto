@@ -109,7 +109,7 @@ float4 iniParams = IniParams.Load(0);
  // if(r10.w == 1)
 if(r10.w == 1 && r10.z < 1)
 {
-	r10.x += stereoParams.x*iniParams.x;
+	r10.x += stereoParams.x * iniParams.x;
 } 
 o0.xyzw = r10.xyzw;
   
