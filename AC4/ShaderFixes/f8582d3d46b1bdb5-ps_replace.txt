@@ -161,7 +161,7 @@ void main(
   r0.z = r0.z * r0.z;
   r0.z = r0.w * r0.z;
   r0.w = g_DistanceFieldFloatArray[0].y >= r0.x;
-  r0.w = r0.w ? 0x3f800000 : 0;
+  r0.w = r0.w ? 1.0 : 0;
   r1.w = r0.y ? r0.z : r0.w;
   r0.y = g_DistanceFieldFloatArray[2].x != -1.000000;
   if (r0.y != 0) {
