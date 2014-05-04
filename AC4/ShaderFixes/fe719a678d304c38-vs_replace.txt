@@ -81,7 +81,6 @@ cbuffer _Globals : register(b0)
 }
 
 Texture2D<float4> StereoParams : register(t125);
-Texture2D<float4> InjectedDepthTexture : register(t126);
 
 void main(
   int4 v0 : POSITION0,
@@ -115,8 +114,8 @@ float4 r21;
 // float4 stereoParams = StereoParams.Load(0);
 r21.xyzw = r1.xyzw;
 // r1.x += stereoParams.x * (r1.w - stereoParams.y);
-// o0.xyzw = r21.xyzw;
-
+o0.xyz = r21.xyz;
+o0.w = 0.0;
 
   o1.xyzw = r1.xyzw;
   o2.xy = float2(1.600000e+001,1.600000e+001) * v4.xy;

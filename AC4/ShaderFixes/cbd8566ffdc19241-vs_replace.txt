@@ -1,4 +1,4 @@
-//HUD - Compass; Map  NOT NEEDED
+//HUD - Compass; Map
 cbuffer _Globals : register(b0)
 {
   float4 g_AmbientCube[3] : packoffset(c0);
@@ -108,7 +108,7 @@ float4 iniParams = IniParams.Load(0);
   
 if(r10.w == 1 || r10.z == 0)
 {
-	r10.x += stereoParams.x*iniParams.x;
+	r10.x += stereoParams.x * iniParams.x;
 }  
 o0.xyzw = r10.xyzw;
   

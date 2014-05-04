@@ -1,0 +1,164 @@
+// AC4: Reflections Fix
+// Manually fixed shader.
+// (66,13-88): error X3018: invalid subscript 'xyzw'
+//	making that a float2, as .xy instead works, gives same code as long
+//	as you use ps_4_0 as target.
+
+cbuffer ScreenSpaceReflectionConstantscb : register(b2)
+{
+  struct
+  {
+    float4x4 m_WorldToProj;
+    float4x4 m_ProjToWorld;
+    float4 m_ScreenSize;
+    float4 m_LinearZConstants;
+    float m_DepthThreshold;
+    float m_InitRayStepLength;
+    float m_InvHiZMipIncrement;
+    float m_OnePlusInvHiZMipIncrement;
+    float m_FresnelTerm;
+    float m_VignetteSizeScale;
+    float m_VignetteSizeBias;
+    float m_ReflectionBlurriness;
+    float m_GlossShift;
+    float m_GlossContrast;
+    float m_InvDepthRange;
+    float m_AngleAttenuation;
+  } g_ScreenSpaceReflectionConstants : packoffset(c0);
+
+}
+SamplerState pointSampler_s : register(s0);
+SamplerState linearSampler_s : register(s2);
+Texture2D<float4> InputReflections2D : register(t1);
+Texture2D<float4> InputTextureOriginalGbuffer0 : register(t2);
+Texture2D<float4> InputTextureOriginalGbuffer1 : register(t3);
+Texture2D<float2> InputTextureDepth : register(t6);
+Texture2D<float4> InputTextureOriginalGbuffer2 : register(t7);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  
+  r3.xy = InputTextureDepth.SampleLevel(linearSampler_s, v1.xy, 0.000000000e+000).xy;
+
+ 
+//Mike_ar69 - Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+float4 r21, r22;
+r21.xy = v1.xy;
+if(stereoParams.z > 0)
+{
+	if (v0.w == 1)
+	{
+		r21.x -= stereoParams.x * (1 - 0.05* stereoParams.y);  //Empirircal fix for now
+	}
+}
+  
+  r0.xyzw = InputTextureOriginalGbuffer0.SampleLevel(pointSampler_s, v1.xy, 0.000000000e+000).xyzw;
+  r1.xyzw = InputTextureOriginalGbuffer1.SampleLevel(pointSampler_s, v1.xy, 0.000000000e+000).xyzw;
+  r2.xyzw = InputTextureOriginalGbuffer2.SampleLevel(linearSampler_s, v1.xy, 0.000000000e+000).xyzw;
+  r0.x = r0.w * r0.w;
+  r0.x = r2.w * r0.x + g_ScreenSpaceReflectionConstants.m_GlossShift;
+  r0.y = saturate(-r1.w * 3.000000000e+000 + 1.000000000e+000);
+  r0.x = saturate(-r0.x * r0.y + 5.000000000e-001);
+  r0.x = g_ScreenSpaceReflectionConstants.m_GlossContrast * r0.x;
+  r0.y = r1.z * 2.000000000e+000 + -8.000000119e-001;
+  r0.y = log2(r0.y);
+  r0.y = g_ScreenSpaceReflectionConstants.m_AngleAttenuation * r0.y;
+  r0.y = exp2(r0.y);
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.z = sqrt(r0.z);
+  r0.y = r0.y < 1.000000e-001;
+  r0.z = r0.z < 5.000000e-001;
+  r0.y = (int)r0.z | (int)r0.y;
+  r0.x = log2(r0.x);
+  r0.x = 8.000000119e-001 * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = r0.y ? 1.000000000e+000 : r0.x;
+
+
+//Correct access in the sampler with the stereo corrected coord
+  r2.xyzw = InputReflections2D.SampleLevel(linearSampler_s, r21.xy, 0.000000000e+000).xyzw;
+
+  r0.y = r0.x >= 7.500000000e-001;
+  r0.z = r3.x >= 1.000000000e+000;
+  r0.y = (int)r0.z | (int)r0.y;
+  r0.z = r2.w < 9.999999776e-003;
+  r0.y = (int)r0.z | (int)r0.y;
+  if (r0.y != 0) {
+	  o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+	  return;
+  }
+  r0.x = 1.000000000e+000 + -r0.x;
+  r1.xyzw = r1.zxyz * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-8.000000e-001,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  
+
+  
+  
+  r0.y = g_ScreenSpaceReflectionConstants.m_ProjToWorld._m10 * v1.y;
+  //r0.y = m10 * v1.y
+  r4.x = v1.x * g_ScreenSpaceReflectionConstants.m_ProjToWorld._m00 + g_ScreenSpaceReflectionConstants.m_ProjToWorld._m20;
+  //r4.x = m00 * v1.x + m20
+  r4.y = v1.x * g_ScreenSpaceReflectionConstants.m_ProjToWorld._m01 + g_ScreenSpaceReflectionConstants.m_ProjToWorld._m21;
+  //r4.y = m01 * v1.x + m21
+  r4.z = v1.x * g_ScreenSpaceReflectionConstants.m_ProjToWorld._m02 + g_ScreenSpaceReflectionConstants.m_ProjToWorld._m22;
+  //r4.z = m02 * v1.x + m22
+  r0.z = g_ScreenSpaceReflectionConstants.m_ProjToWorld._m11 * v1.y;
+  //r0.z = v1.y * m11
+  r0.w = g_ScreenSpaceReflectionConstants.m_ProjToWorld._m12 * v1.y;
+  //r0.w = v1.y * m12
+  r0.yzw = r4.xyz + r0.yzw;
+  //r0.y 	= m00 * v1.x + m10 * v1.y + m20
+  //r0.z	= m01 * v1.x + m11 * v1.y + m21
+  //r0.w	= m02 * v1.x + m12 * v1.y + m22
+
+//Mike_ar69 - Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+// float4 r21, r22;
+// r21.xyz = r0.yzw;
+// r21.w = 1.000000000e+000;
+// r22.x = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m00_m10_m20_m30);
+// r22.y = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m01_m11_m21_m31);
+// r22.z = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m02_m12_m22_m32);
+// r22.w = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m03_m13_m23_m33);
+// r22.x -=  stereoParams.x * (-r22.z - stereoParams.y );
+// r21.x = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m00_m10_m20_m30);
+// r21.y = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m01_m11_m21_m31);
+// r21.z = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m02_m12_m22_m32);
+// r0.yzw = r21.xyz;
+  
+  
+  r3.y = dot(r0.yzw, r1.yzw);
+  r3.y = r3.y + r3.y;
+  r0.yzw = r3.yyy * r1.yzw + -r0.yzw;
+  r3.yz = float2(-5.000000e-001,-5.000000e-001) + v1.xy;
+  r3.yz = saturate(g_ScreenSpaceReflectionConstants.m_VignetteSizeScale * abs(r3.yz) + g_ScreenSpaceReflectionConstants.m_VignetteSizeBias);
+  r3.y = r3.y * r3.z;
+  r0.y = saturate(dot(r1.yzw, r0.yzw));
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.z = 1.000000000e+000 + -g_ScreenSpaceReflectionConstants.m_FresnelTerm;
+  r0.w = r0.y * r0.y;
+  r0.w = r0.w * r0.w;
+  r0.y = r0.y * r0.w;
+  r0.y = r0.z * r0.y + g_ScreenSpaceReflectionConstants.m_FresnelTerm;
+  r1.x = saturate(r1.x);
+  r0.z = log2(r1.x);
+  r0.z = g_ScreenSpaceReflectionConstants.m_AngleAttenuation * r0.z;
+  r0.z = exp2(r0.z);
+  r0.w = saturate(-r3.x * 4.000000000e+000 + 4.000000000e+000);
+  r1.x = max(r2.w, 1.000000047e-003);
+  o0.xyz = r2.xyz / r1.xxx;
+  r0.x = saturate(r0.x + r0.x);
+  r0.x = r0.y * r0.x;
+  r0.x = r0.x * r2.w;
+  r0.x = r0.x * r0.z;
+  r0.x = r0.x * r0.w;
+  o0.w = r0.x * r3.y;
+  return;
+}
