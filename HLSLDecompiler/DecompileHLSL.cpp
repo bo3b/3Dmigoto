@@ -655,9 +655,9 @@ public:
 			mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 			do
 			{
-				const char *eolPos = strchr(c+pos, '\n');
-				memcpy(buffer, c+pos, eolPos-c-pos+1);
-				buffer[eolPos-c-pos+1] = 0;
+				const char *eolPos = strchr(c + pos, '\n');
+				memcpy(buffer, c + pos, eolPos - c - pos + 1);
+				buffer[eolPos - c - pos + 1] = 0;
 				// Skip opening bracket.
 				if (strstr(buffer, " {\n"))
 				{
@@ -681,16 +681,20 @@ public:
 					++structLevel;
 					mOutput.insert(mOutput.end(), '\n');
 					for (int i = -1; i < structLevel; ++i)
-					{ mOutput.insert(mOutput.end(), ' '); mOutput.insert(mOutput.end(), ' '); }
+					{
+						mOutput.insert(mOutput.end(), ' '); mOutput.insert(mOutput.end(), ' ');
+					}
 					const char *structHeader = strstr(buffer, "struct");
 					// Can't use structure declaration: If we use the structure name, it has to be copied on top.
 					//if (structLevel)
-						structHeader = "struct\n";
-					mOutput.insert(mOutput.end(), structHeader, structHeader+strlen(structHeader));
-					for (int i = -1; i < structLevel; ++i) 
-					{ mOutput.push_back(' '); mOutput.push_back(' '); }
+					structHeader = "struct\n";
+					mOutput.insert(mOutput.end(), structHeader, structHeader + strlen(structHeader));
+					for (int i = -1; i < structLevel; ++i)
+					{
+						mOutput.push_back(' '); mOutput.push_back(' ');
+					}
 					const char *structHeader2 = "{\n";
-					mOutput.insert(mOutput.end(), structHeader2, structHeader2+strlen(structHeader2));
+					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
 					while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					continue;
 				}
@@ -701,23 +705,25 @@ public:
 					int bpos = 0;
 					while (c[pos] != ';')
 						buffer[bpos++] = c[pos++];
-					string structName = string(buffer+2, buffer+bpos) + ".";
+					string structName = string(buffer + 2, buffer + bpos) + ".";
 					// Read offset.
 					while (c[pos] != '/' && pos < size) pos++;
 					int offset = 0;
-					numRead = sscanf(c+pos, "// Offset: %d", &offset);
+					numRead = sscanf(c + pos, "// Offset: %d", &offset);
 					if (numRead != 1)
 					{
-						logDecompileError("Error parsing buffer offset: "+string(c+pos, 80));
+						logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
 						return;
 					}
 					if (!structLevel)
-						sprintf(buffer+bpos, " : packoffset(c%d);\n\n", offset/16);
+						sprintf(buffer + bpos, " : packoffset(c%d);\n\n", offset / 16);
 					else
-						sprintf(buffer+bpos, ";\n\n");
-					for (int i = -1; i < structLevel; ++i) 
-					{ mOutput.push_back(' '); mOutput.push_back(' '); }
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						sprintf(buffer + bpos, ";\n\n");
+					for (int i = -1; i < structLevel; ++i)
+					{
+						mOutput.push_back(' '); mOutput.push_back(' ');
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					// Prefix struct attributes.
 					int arrayPos = structName.find('[');
 					if (arrayPos == string::npos)
@@ -726,15 +732,15 @@ public:
 						{
 							mCBufferData[*i].Name = structName + mCBufferData[*i].Name;
 							if (structLevel)
-								pendingStructAttributes[structLevel-1].push_back(*i);
+								pendingStructAttributes[structLevel - 1].push_back(*i);
 						}
 					}
 					else
 					{
 						int arraySize;
-						if (sscanf(structName.c_str()+arrayPos+1, "%d", &arraySize) != 1)
+						if (sscanf(structName.c_str() + arrayPos + 1, "%d", &arraySize) != 1)
 						{
-							logDecompileError("Error parsing struct array size: "+structName);
+							logDecompileError("Error parsing struct array size: " + structName);
 							return;
 						}
 						structName = structName.substr(0, arrayPos);
@@ -742,14 +748,14 @@ public:
 						int structSize = 0;
 						for (vector<int>::iterator j = pendingStructAttributes[structLevel].begin(); j != pendingStructAttributes[structLevel].end(); ++j)
 							structSize += getDataTypeSize(mCBufferData[*j].bt);
-						for (int i = arraySize-1; i >= 0; --i)
+						for (int i = arraySize - 1; i >= 0; --i)
 						{
 							sprintf(buffer, "%s[%d].", structName.c_str(), i);
 							for (vector<int>::iterator j = pendingStructAttributes[structLevel].begin(); j != pendingStructAttributes[structLevel].end(); ++j)
 							{
 								mCBufferData[*j + i * structSize].Name = buffer + mCBufferData[*j].Name;
 								if (structLevel)
-									pendingStructAttributes[structLevel-1].push_back(*j + i * structSize);
+									pendingStructAttributes[structLevel - 1].push_back(*j + i * structSize);
 							}
 						}
 					}
@@ -760,10 +766,10 @@ public:
 				}
 				// Read declaration.
 				char type[16]; type[0] = 0;
-				numRead = sscanf(c+pos, "// %s %s", type, name);
+				numRead = sscanf(c + pos, "// %s %s", type, name);
 				if (numRead != 2)
 				{
-					logDecompileError("Error parsing buffer item: "+string(c+pos, 80));
+					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 					return;
 				}
 				string modifier;
@@ -774,84 +780,125 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf(c+pos, "// %s %s %s", buffer, type, name);
+					numRead = sscanf(c + pos, "// %s %s %s", buffer, type, name);
 					if (numRead != 3)
 					{
-						logDecompileError("Error parsing buffer item: "+string(c+pos, 80));
+						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 						return;
 					}
 				}
 				char *endStatement = strchr(name, ';');
 				if (!endStatement)
 				{
-					logDecompileError("Error parsing buffer item: "+string(c+pos, 80));
+					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 					return;
 				}
 				*endStatement = 0;
 				pos += 2;
 				while (c[pos] != '/' && pos < size) pos++;
 				int offset = 0;
-				numRead = sscanf(c+pos, "// Offset: %d", &offset);
+				numRead = sscanf(c + pos, "// Offset: %d", &offset);
 				if (numRead != 1)
 				{
-					logDecompileError("Error parsing buffer offset: "+string(c+pos, 80));
+					logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
 					return;
 				}
 				e.Name = name;
 				e.matrixRow = 0;
-				e.bt = TranslateType(type);			
+				e.bt = TranslateType(type);
+
 				// Check binary type.
 				/*
 				for (int nBuf = 0; nBuf < shader->sInfo.ui32NumConstantBuffers; ++nBuf)
 				{
-					if (shader->sInfo.psConstantBuffers[nBuf].Name.compare(i->first)) continue;
-					ConstantBuffer &cBuf = shader->sInfo.psConstantBuffers[nBuf];
-					for (vector<ShaderVar>::iterator svar = cBuf.asVars.begin(); svar != cBuf.asVars.end(); ++svar)
-					{
-						if (svar->Name.compare(name)) continue;
-						// Check type.
-						DataType binaryType = TranslateTypeBin(*svar, type);
-					}
-				}	
+				if (shader->sInfo.psConstantBuffers[nBuf].Name.compare(i->first)) continue;
+				ConstantBuffer &cBuf = shader->sInfo.psConstantBuffers[nBuf];
+				for (vector<ShaderVar>::iterator svar = cBuf.asVars.begin(); svar != cBuf.asVars.end(); ++svar)
+				{
+				if (svar->Name.compare(name)) continue;
+				// Check type.
+				DataType binaryType = TranslateTypeBin(*svar, type);
+				}
+				}
 				*/
 
 				// Uses projection matrix?
 				if (e.bt == DT_float4x4 && e.Name.find_first_of("Projection") >= 0)
 				{
-					eolPos = strchr(c+pos, '\n');
+					eolPos = strchr(c + pos, '\n');
 					// Used?
-					if (*(eolPos-1) != ']')
+					if (*(eolPos - 1) != ']')
 						mUsesProjection = true;
 				}
+
+				// This section previously made a distinction for the floatYxZ formats, assuming that they were not able to
+				// be arrays.  That's untrue, so they were added into the for loop to create the array elements possible.
+				// This fixes a series of array out of bounds errors for anything using these floatYxZ matrices.
+
+				// Look for array based elements.  We need an mCBufferData element for each possible array element, to match
+				// possible uses of those offsets in the ASM code.
 				int ep = e.Name.find('[');
-				if (ep != string::npos && 
-					(e.bt == DT_bool || e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 || 
-					 e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
-					 e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4))
+				if (ep != string::npos &&
+					(e.bt == DT_bool || e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 ||
+					e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
+					e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4 ||
+					e.bt == DT_float4x4 || e.bt == DT_float3x4 || e.bt == DT_float4x3 || e.bt == DT_float3x3 || e.bt == DT_float4x2))
 				{
+					// Register each array element.
+					int numElements = 0;
+					sscanf(e.Name.substr(ep + 1).c_str(), "%d", &numElements);
+					string baseName = e.Name.substr(0, ep);
+
 					int counter = 0;
 					if (e.bt == DT_float || e.bt == DT_bool || e.bt == DT_uint || e.bt == DT_int) counter = 4;
 					else if (e.bt == DT_float2 || e.bt == DT_uint2 || e.bt == DT_int2) counter = 8;
 					else if (e.bt == DT_float3 || e.bt == DT_uint3 || e.bt == DT_int3) counter = 12;
 					else if (e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
-					// Register each array element.
-					int numElements = 0;
-					sscanf(e.Name.substr(ep+1).c_str(), "%d", &numElements);
-					// Correct invalid array size.
+					else if (e.bt == DT_float4x2) counter = 16 * 2;
+					else if (e.bt == DT_float3x3 || e.bt == DT_float4x3) counter = 16 * 3;
+					else if (e.bt == DT_float3x4 || e.bt == DT_float4x4) counter = 16 * 4;
+
+					// Correct possible invalid array size. (16 byte boundaries)
 					int byteSize;
-					sscanf(strstr(c+pos, "Size:")+5, "%d", &byteSize);
+					sscanf(strstr(c + pos, "Size:") + 5, "%d", &byteSize);
 					if ((counter == 4 && numElements*counter < byteSize) ||
 						(counter == 12 && numElements*counter < byteSize))
 						counter = 16;
-					string baseName = e.Name.substr(0, ep);
+					
 					for (int i = 0; i < numElements; ++i)
 					{
 						sprintf(buffer, "%s[%d]", baseName.c_str(), i);
 						e.Name = buffer;
-						int offsetPos = (bufferRegister << 16) + offset + i*counter;
-						mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+						int offsetPos;
+
+						switch (e.bt)
+						{
+							case DT_float4x4:
+							case DT_float3x4:
+								e.matrixRow = 3;
+								offsetPos = (bufferRegister << 16) + offset + i*counter + 3 * 16;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+							case DT_float4x3:
+							case DT_float3x3:
+								e.matrixRow = 2;
+								offsetPos = (bufferRegister << 16) + offset + i*counter + 2 * 16;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+							case DT_float4x2:
+								e.matrixRow = 1;
+								offsetPos = (bufferRegister << 16) + offset + i*counter + 1 * 16;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+								e.matrixRow = 0;
+								offsetPos = (bufferRegister << 16) + offset + i*counter;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+
+								break;
+							default:
+								offsetPos = (bufferRegister << 16) + offset + i*counter;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+						}
 					}
 				}
+				// Non-array versions of floatYxZ
 				else if (e.bt == DT_float4x4 || e.bt == DT_float4x3 || e.bt == DT_float4x2 || e.bt == DT_float3x4 || e.bt == DT_float3x3)
 				{
 					e.matrixRow = 0; int offsetPos = (bufferRegister << 16) + offset; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
@@ -863,11 +910,13 @@ public:
 							e.matrixRow = 3; offsetPos = (bufferRegister << 16) + offset + 3*16; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 					}
 				}
+				// Non-array versions of scalar entities like float4
 				else
 				{
 					int offsetPos = (bufferRegister << 16) + offset;
 					mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 				}
+
 				// Default value?
 				while (c[pos] != 0x0a && pos < size) pos++; pos++;
 				const char *defaultid = "//      = ";
