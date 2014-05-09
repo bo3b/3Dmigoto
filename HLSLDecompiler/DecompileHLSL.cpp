@@ -2205,7 +2205,7 @@ public:
 			}
 			else if (!strcmp(statement, "dcl_immediateConstantBuffer"))
 			{
-				sprintf(buffer, "  float4x4 icb =");
+				sprintf(buffer, "  const float4 icb[] =");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				pos += strlen(statement);
 				while (c[pos] != 0x0a && pos < size) 
@@ -3129,6 +3129,12 @@ public:
 					}
 					break;
 				}
+
+					// This generated code needed to change because the fxc compiler generates bad code when
+					// using the sample that they specify in the documentation at:
+					// http://msdn.microsoft.com/en-us/library/windows/desktop/hh446837(v=vs.85).aspx
+					// I worked out the alternate technique that works for all, and does not tickle
+					// the bug that treats 0x80000000 as "-0" as a uint, where it should not exist.
 				case OPCODE_BFI:
 				{
 					remapTarget(op1);
@@ -3141,7 +3147,10 @@ public:
 					while (*++pop1)
 					{
 						sprintf(op6, "%s.%c", op1, *pop1);
-						sprintf(buffer, "  bitmask.%c = (((1 << %s)-1) << %s) & 0xffffffff;\n"
+
+						// Fails: bitmask.%c = (((1 << %s) - 1) << %s) & 0xffffffff;
+
+						sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;\n"
 										"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
 							*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), 
 							writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);

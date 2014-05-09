@@ -5,6 +5,10 @@
 //	which the -1 is then ignored.  It's not handling uint properly.
 //	By inverting the starting mask, I can get exact matching ASM.
 
+// icb[] fixed
+// bitmask fixed
+// missing - on mad
+
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
