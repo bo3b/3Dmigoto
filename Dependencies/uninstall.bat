@@ -1,3 +1,7 @@
+REM Delete everything that could be in the target folder, including debug items.
+REM If something is not there, the DEL skips without error.
+REM Also deletes the ShaderCache, ShaderFixes, ShaderFromGame folders
+
 del d3d9.dll
 del d3d9_log.txt
 del d3d9.exp
@@ -75,3 +79,17 @@ del nvapi.lib
 
 del XInput9_1_0.dll
 del d3dx.ini
+
+del D3D_Shaders.exe
+del D3D_Shaders.pdb
+del D3D_Shaders.ilk
+
+del BinaryDecompiler.lib
+
+del ShaderUsage.txt
+
+rmdir /s /q ShaderFixes
+rmdir /s /q ShaderCache
+rmdir /s /q ShaderFromGame
+
+del uninstall.bat
