@@ -1,0 +1,139 @@
+//Decals
+cbuffer DecalParamscb : register(b5)
+{
+
+  struct
+  {
+    float4 m_UVConstantsDecals;
+    float4 m_ZConstantsDecals;
+    float3 m_UVector;
+    float3 m_VVector;
+    float3 m_NVector;
+    float4 m_WorldPosition;
+    float4x4 m_InvViewProjMatrix;
+    float4 m_ScreenExtentsBias;
+    float4x4 m_DecalsViewProjection;
+    float4 m_DecalLerpEnd;
+    float4 m_DecalLerpMask;
+    float4 m_DecalTintColor;
+    float m_DecalAlphaTestValue;
+  } g_DecalParams : packoffset(c0);
+
+}
+SamplerState decalTexture_s : register(s0);
+SamplerState worldNormalsTexture_s : register(s2);
+SamplerState depthTexture_s : register(s8);
+Texture2D<float4> decalTexture : register(t0);
+Texture2D<float4> worldNormalsTexture : register(t2);
+Texture2D<float4> depthTexture : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xy = v0.xy * g_DecalParams.m_ScreenExtentsBias.xy + g_DecalParams.m_ScreenExtentsBias.zw;
+  r1.xyzw = worldNormalsTexture.Sample(worldNormalsTexture_s, r0.xy).xyzw;
+  r1.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r1.xyz;
+  r1.xyz = r1.xyz + r1.xyz;
+  r0.z = dot(r1.xyz, g_DecalParams.m_NVector.xyz);
+  r0.w = 0.000000000e+000 >= r0.z;
+  r1.w = dot(r1.xyz, g_DecalParams.m_UVector.xyz);
+  r1.x = dot(r1.xyz, g_DecalParams.m_VVector.xyz);
+  r1.y = abs(r1.w) < abs(r0.z);
+  r1.z = abs(r1.x) < abs(r0.z);
+  r1.y = r1.z ? r1.y : 0;
+  r0.w = r0.w ? r1.y : 0;
+  if (r0.w != 0) discard;
+  r0.w = abs(r0.z) < abs(r1.x);
+  r0.z = abs(r0.z) < abs(r1.w);
+  r1.z = abs(r1.w) < abs(r1.x);
+  r0.w = r0.w ? r1.z : 0;
+  r2.x = r0.w ? g_DecalParams.m_VVector.x : g_DecalParams.m_NVector.x;
+  r2.y = r0.w ? g_DecalParams.m_VVector.y : g_DecalParams.m_NVector.y;
+  r2.z = r0.w ? g_DecalParams.m_VVector.z : g_DecalParams.m_NVector.z;
+  r1.z = abs(r1.x) < abs(r1.w);
+  r1.x = 0 < r1.x;
+  r1.w = 0 < r1.w;
+  r3.x = r1.w ? g_DecalParams.m_NVector.x : -g_DecalParams.m_NVector.x;
+  r3.y = r1.w ? g_DecalParams.m_NVector.y : -g_DecalParams.m_NVector.y;
+  r3.z = r1.w ? g_DecalParams.m_NVector.z : -g_DecalParams.m_NVector.z;
+  r4.x = r1.x ? -g_DecalParams.m_NVector.x : g_DecalParams.m_NVector.x;
+  r4.y = r1.x ? -g_DecalParams.m_NVector.y : g_DecalParams.m_NVector.y;
+  r4.z = r1.x ? -g_DecalParams.m_NVector.z : g_DecalParams.m_NVector.z;
+  r4.x = r0.w ? r4.x : g_DecalParams.m_VVector.x;
+  r4.y = r0.w ? r4.y : g_DecalParams.m_VVector.y;
+  r4.z = r0.w ? r4.z : g_DecalParams.m_VVector.z;
+  r0.z = r0.z ? r1.z : 0;
+  r1.x = r0.z ? g_DecalParams.m_UVector.x : r2.x;
+  r1.z = r0.z ? g_DecalParams.m_UVector.y : r2.y;
+  r1.w = r0.z ? g_DecalParams.m_UVector.z : r2.z;
+  r1.x = r1.y ? g_DecalParams.m_NVector.x : r1.x;
+  r1.z = r1.y ? g_DecalParams.m_NVector.y : r1.z;
+  r1.w = r1.y ? g_DecalParams.m_NVector.z : r1.w;
+  r2.xyzw = depthTexture.Sample(depthTexture_s, r0.xy).yzxw;
+  r2.xy = r0.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
+  r2.w = 1.000000000e+000;
+  
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+// r2.x +=  stereoParams.x * (r2.z - stereoParams.y)*0.5; // * g_ReverseProjectionParams.x;
+
+  r5.x = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m00_m10_m20_m30);
+  r5.y = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m01_m11_m21_m31);
+  r5.z = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m02_m12_m22_m32);
+  r0.x = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m03_m13_m23_m33);
+  r0.xyw = r5.xyz / r0.xxx;
+  r0.xyw = -g_DecalParams.m_WorldPosition.xyz + r0.xyw;
+  r1.x = dot(r0.xyw, r1.xzw);
+  r1.x = sqrt(r1.x);
+  r1.x = g_DecalParams.m_ZConstantsDecals.z * 2.000000000e+000 + -r1.x;
+  r1.x = r1.x < 0.000000000e+000;
+  if (r1.x != 0) discard;
+  r1.x = (int)r1.y | (int)r0.z;
+  r2.x = r0.z ? r3.x : g_DecalParams.m_UVector.x;
+  r2.y = r0.z ? r3.y : g_DecalParams.m_UVector.y;
+  r2.z = r0.z ? r3.z : g_DecalParams.m_UVector.z;
+  r1.y = r1.y ? g_DecalParams.m_UVector.x : r2.x;
+  r1.z = r1.y ? g_DecalParams.m_UVector.y : r2.y;
+  r1.w = r1.y ? g_DecalParams.m_UVector.z : r2.z;
+  r1.z = dot(r1.yzw, r0.xyw);
+  r2.x = r1.x ? g_DecalParams.m_VVector.x : r4.x;
+  r2.y = r1.x ? g_DecalParams.m_VVector.y : r4.y;
+  r2.z = r1.x ? g_DecalParams.m_VVector.z : r4.z;
+  r1.w = dot(r2.xyz, r0.xyw);
+  r0.z = dot(r0.xyw, r0.xyw);
+  r0.x = dot(g_DecalParams.m_NVector.xyz, r0.xyw);
+  r0.x = abs(r0.x) / g_DecalParams.m_ZConstantsDecals.w;
+  r2.xyzw = g_DecalParams.m_DecalLerpMask.xyzw * r0.xxxx;
+  r0.x = sqrt(r0.z);
+  r0.yz = r1.zw / r0.xx;
+  r0.xw = r0.xx / g_DecalParams.m_UVConstantsDecals.xy;
+  r0.xy = r0.yz * r0.xw + float2(1.000000e+000,1.000000e+000);
+  r1.xy = -r0.xy * float2(5.000000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+  r1.zw = float2(5.000000e-001,5.000000e-001) * r0.xy;
+  r0.x = r1.x < 0;
+  r0.y = r1.y < 0;
+  r0.z = r1.z < 0;
+  r0.w = r1.w < 0;
+  r1.xyzw = decalTexture.Sample(decalTexture_s, r1.zw).xyzw;
+  r0.xy = (int2)r0.zw | (int2)r0.xy;
+  r0.x = (int)r0.y | (int)r0.x;
+  if (r0.x != 0) discard;
+  r0.xyzw = g_DecalParams.m_DecalTintColor.xyzw * r1.xyzw;
+  r1.xyzw = -r1.xyzw * g_DecalParams.m_DecalTintColor.xyzw + g_DecalParams.m_DecalLerpEnd.xyzw;
+  r3.xyzw = g_DecalParams.m_DecalLerpMask.xyzw * g_DecalParams.m_WorldPosition.wwww;
+  r0.xyzw = r3.xyzw * r1.xyzw + r0.xyzw;
+  r1.xyzw = g_DecalParams.m_DecalLerpEnd.xyzw + -r0.xyzw;
+  r0.xyzw = r2.xyzw * r1.xyzw + r0.xyzw;
+  r1.x = -g_DecalParams.m_DecalAlphaTestValue + r0.w;
+  o0.xyzw = r0.xyzw;
+  r0.x = r1.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  o1.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

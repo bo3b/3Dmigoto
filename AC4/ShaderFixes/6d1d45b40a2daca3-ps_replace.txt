@@ -312,12 +312,16 @@ void main(
   
 //Mike_ar69 - Stereo Shift
 float4 stereoParams = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r9.xyzw;
 r9.x +=  stereoParams.x * (-r9.z - stereoParams.y )* g_ReverseProjectionParams.x ;
   
   r10.z = dot(r9.xyzw, g_ViewToWorld._m02_m12_m22_m32);
   r3.w = -v1.w + -r9.z;
   r3.w = 0.000000000e+000 >= r3.w;
-  r3.w = r3.w ? 0x3f800000 : 0;
+
+  // r3.w = r3.w ? 0x3f800000 : 0;
+r3.w = r3.w ? 1.0 : 0;
   r8.xy = -r5.xy + r0.xy;
   r8.xy = r3.ww * r8.xy + r5.xy;
   r11.xyzw = g_RefractionSampler.Sample(g_RefractionSampler_s, r8.xy).xyzw;
@@ -347,13 +351,13 @@ r9.x +=  stereoParams.x * (-r9.z - stereoParams.y )* g_ReverseProjectionParams.x
   r11.xyz = -r11.xyz * r12.xyz + r14.xyz;
   r8.xyz = r13.www * r11.xyz + r8.xyw;
   r13.xyz = r8.xyz + r7.xyz;
-  // r0.x = 9.999999747e-005 < g_OceanConsts.m_RippleParamsSet1.w;
-r0.x = 0.000100 < g_OceanConsts.m_RippleParamsSet1.w;
+  r0.x = 9.999999747e-005 < g_OceanConsts.m_RippleParamsSet1.w;
+// r0.x = 0.000100 < g_OceanConsts.m_RippleParamsSet1.w;
   if (r0.x != 0) {
   r0.x = sqrt(r1.x);
   r5.zw = g_OceanConsts.m_OceanViewOffset.xy + v9.zw;
-  // r1.x = saturate(r1.z * r1.w + -1.000000015e-001);
-r1.x = saturate(r1.z * r1.w + -1.0000000e-001);
+  r1.x = saturate(r1.z * r1.w + -1.000000015e-001);
+// r1.x = saturate(r1.z * r1.w + -1.0000000e-001);
   r1.x = dot(r1.xx, r1.xx);
   r1.z = 1.000000e+000 / g_OceanConsts.m_RippleParamsSet1.x;
   r7.xy = r5.zw * r1.zz;
@@ -428,51 +432,51 @@ r1.x = saturate(r1.z * r1.w + -1.0000000e-001);
   r5.w = abs(r8.y) < g_Shadows.m_CascadesRangesMax.w;
   r3.w = r5.w ? r5.z : 0;
   
-// r11.x = r0.x ? r14.x : r11.x;
-// r11.y = r0.x ? r14.y : r11.y;
-// r11.z = r0.x ? r14.z : r11.z; 
-if(r0.x)
-{
-	r11.xyz = r14.xyz;
-}
+r11.x = r0.x ? r14.x : r11.x;
+r11.y = r0.x ? r14.y : r11.y;
+r11.z = r0.x ? r14.z : r11.z; 
+// if(r0.x)
+// {
+	// r11.xyz = r14.xyz;
+// }
 
-// r11.x = r2.w ? r15.x : r11.x;
-// r11.y = r2.w ? r15.y : r11.y;
-// r11.z = r2.w ? r15.z : r11.z;
-if(r2.w)
-{
-	r11.xyz = r15.xyz;
-}
+r11.x = r2.w ? r15.x : r11.x;
+r11.y = r2.w ? r15.y : r11.y;
+r11.z = r2.w ? r15.z : r11.z;
+// if(r2.w)
+// {
+	// r11.xyz = r15.xyz;
+// }
   
-// r8.x = r3.w ? r8.x : r11.x;
-// r8.y = r3.w ? r8.y : r11.y;
-// r8.z = r3.w ? r8.z : r11.z;
-if(!r3.w)
-{
-	r8.xyz = r11.xyz;
-} 
+r8.x = r3.w ? r8.x : r11.x;
+r8.y = r3.w ? r8.y : r11.y;
+r8.z = r3.w ? r8.z : r11.z;
+// if(!r3.w)
+// {
+	// r8.xyz = r11.xyz;
+// } 
   
-// r0.x = r0.x ? g_Shadows.m_OffsetsY.w : g_Shadows.m_OffsetsX.w;
-if(r0.x)
-{
-	r0.x = g_Shadows.m_OffsetsY.w;
-}
-else
-{
-	r0.x = g_Shadows.m_OffsetsX.w;
-}
+r0.x = r0.x ? g_Shadows.m_OffsetsY.w : g_Shadows.m_OffsetsX.w;
+// if(r0.x)
+// {
+	// r0.x = g_Shadows.m_OffsetsY.w;
+// }
+// else
+// {
+	// r0.x = g_Shadows.m_OffsetsX.w;
+// }
   
-// r0.x = r2.w ? g_Shadows.m_OffsetsZ.w : r0.x;
-if(r2.w)
-{
-	r0.x = g_Shadows.m_OffsetsZ.w;
-}
+r0.x = r2.w ? g_Shadows.m_OffsetsZ.w : r0.x;
+// if(r2.w)
+// {
+	// r0.x = g_Shadows.m_OffsetsZ.w;
+// }
   
-// r0.x = r3.w ? g_Shadows.m_OffsetsW.w : r0.x;
-if(r3.w)
-{
-	r0.x = g_Shadows.m_OffsetsW.w;
-}
+r0.x = r3.w ? g_Shadows.m_OffsetsW.w : r0.x;
+// if(r3.w)
+// {
+	// r0.x = g_Shadows.m_OffsetsW.w;
+// }
 
 
 
@@ -645,14 +649,14 @@ if(r3.w)
   r1.y = r0.w ? 1.0 : 0;
   r0.w = r0.w ? 0.000000000e+000 : 1.000000000e+000;
   
-if(r0.w)
-{
-	r0.w = 0.0;
-}
-else
-{
-	r0.w = 1.0;
-}
+// if(r0.w)
+// {
+	// r0.w = 0.0;
+// }
+// else
+// {
+	// r0.w = 1.0;
+// }
   
   r2.x = r2.x + r2.y;
   r1.y = r2.w * r1.y;
