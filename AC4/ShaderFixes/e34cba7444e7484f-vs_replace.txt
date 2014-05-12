@@ -110,16 +110,14 @@ r1.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
 r1.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
 r1.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
   
-// move out to max separation, max depth
+// move stars out to proper depth
 float4 stereo = StereoParams.Load(0);
 r1.x += stereo.x * (r1.w - stereo.y);
 o0 = r1;
   
-o2.xyzw = r1; //r0.xyzw;
+  o2.xyzw = r0.xyzw;
  
-r1.xy = float2(1.600000e+001,1.600000e+001) * v3.xy;
-r1.x += stereo.x;
-o1.xy = r1.xy;
+  o1.xy = float2(1.600000e+001,1.600000e+001) * v3.xy;
   o1.zw = float2(0.000000e+000,0.000000e+000);
 
   o3.x = -g_LayeredSkyUserColor.w + 1.000000000e+000;
