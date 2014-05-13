@@ -80,15 +80,41 @@ void main(
   r2.w = 1.000000000e+000;
   
 //Stereo Shift
-float4 stereoParams = StereoParams.Load(0);
-// r2.x +=  stereoParams.x * (r2.z - stereoParams.y)*0.5; // * g_ReverseProjectionParams.x;
+// float4 stereoParams = StereoParams.Load(0);
+// r2.x -=  stereoParams.x * (r2.z); // - stereoParams.y); // * g_ReverseProjectionParams.x;
 
   r5.x = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m00_m10_m20_m30);
   r5.y = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m01_m11_m21_m31);
   r5.z = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m02_m12_m22_m32);
   r0.x = dot(r2.xyzw, g_DecalParams.m_InvViewProjMatrix._m03_m13_m23_m33);
+  
+  
+ //Mike_ar69 - Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+// float4 r21, r22;
+// r21.xyz = r5.xyz / r5.www;
+// r21.w = 1.000000000e+000;
+// r22.x = dot(r21.xyzw, g_DecalParams.m_DecalsViewProjection._m00_m10_m20_m30);
+// r22.y = dot(r21.xyzw, g_DecalParams.m_DecalsViewProjection._m01_m11_m21_m31);
+// r22.z = dot(r21.xyzw, g_DecalParams.m_DecalsViewProjection._m02_m12_m22_m32);
+// r22.w = dot(r21.xyzw, g_DecalParams.m_DecalsViewProjection._m03_m13_m23_m33);
+// r22.x -=  stereoParams.x * (r22.w - stereoParams.y )*1920; // * g_ReverseProjectionParams.x;
+// r21.x = dot(r22.xyzw, g_DecalParams.m_InvViewProjMatrix._m00_m10_m20_m30);
+// r21.y = dot(r22.xyzw, g_DecalParams.m_InvViewProjMatrix._m01_m11_m21_m31);
+// r21.z = dot(r22.xyzw, g_DecalParams.m_InvViewProjMatrix._m02_m12_m22_m32);
+// r21.w = dot(r22.xyzw, g_DecalParams.m_InvViewProjMatrix._m03_m13_m23_m33);
+// r5.xyzw = r21.xyzw;  //
+  
+// r0.x = r5.w;
+  
   r0.xyw = r5.xyz / r0.xxx;
+  
   r0.xyw = -g_DecalParams.m_WorldPosition.xyz + r0.xyw;
+  
+//Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+// r0.x +=  stereoParams.x * (r0.w - stereoParams.y); // * g_ReverseProjectionParams.x;
+  
   r1.x = dot(r0.xyw, r1.xzw);
   r1.x = sqrt(r1.x);
   r1.x = g_DecalParams.m_ZConstantsDecals.z * 2.000000000e+000 + -r1.x;
