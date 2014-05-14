@@ -20,9 +20,8 @@ void main(
   r0.y = dot(v0.xyz, projTM._m01_m11_m21);
   r0.z = dot(v0.xyz, projTM._m03_m13_m23);
 
-// ro.w = 0 here, make moon stereo
 float4 stereo = StereoParams.Load(0);
-r0.x += stereo.x * (-stereo.y);
+r0.x += stereo.x * (stereo.y);
 
   o0.xyzw = r0.xyzz;
   o1.xy = v1.xy;
