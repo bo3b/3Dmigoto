@@ -254,13 +254,14 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture1D(THIS_
 // reloader to disassemble the .bin file to determine the shader model.
 
 static void RegisterForReload(D3D11Base::ID3D11DeviceChild* ppShader, 
-	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage)
+	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage, FILETIME timeStamp)
 {
 	if (LogFile) fprintf(LogFile, "    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
 	G->mReloadedShaders[ppShader].shaderModel = shaderModel;
 	G->mReloadedShaders[ppShader].linkage = pClassLinkage;
+	G->mReloadedShaders[ppShader].timeStamp = timeStamp;
 	G->mReloadedShaders[ppShader].newShader = NULL;
 }
 
@@ -269,7 +270,6 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	wchar_t fileName[MAX_PATH];
 	wsprintf(fileName, L"%ls\\%ls", shader_path, findFileData.cFileName);
 	char cFileName[MAX_PATH];
-	bool shaderFix = (wcscmp(shader_path, SHADER_PATH) == 0);
 
 	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
 	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -281,7 +281,10 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	DWORD bytecodeLength = GetFileSize(f, 0);
 	char *pShaderBytecode = new char[bytecodeLength];
 	DWORD readSize;
-	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) || bytecodeLength != readSize)
+	FILETIME ftWrite;
+	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) 
+		|| !GetFileTime(f, NULL, NULL, &ftWrite)
+		|| bytecodeLength != readSize)
 	{
 		if (LogFile) fprintf(LogFile, "  Error reading binary vertex shader %s.\n", cFileName);
 		CloseHandle(f);
@@ -315,7 +318,7 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mPreloadedVertexShaders[keyHash] = pVertexShader;
-	if(shaderFix) RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL);
+	RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, ftWrite);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -324,7 +327,6 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	wchar_t fileName[MAX_PATH];
 	wsprintf(fileName, L"%ls\\%ls", shader_path, findFileData.cFileName);
 	char cFileName[MAX_PATH];
-	bool shaderFix = (wcscmp(shader_path, SHADER_PATH) == 0);
 
 	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
 	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -336,7 +338,10 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	DWORD bytecodeLength = GetFileSize(f, 0);
 	char *pShaderBytecode = new char[bytecodeLength];
 	DWORD readSize;
-	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0) || bytecodeLength != readSize)
+	FILETIME ftWrite;
+	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0)
+		|| !GetFileTime(f, NULL, NULL, &ftWrite)
+		|| bytecodeLength != readSize)
 	{
 		if (LogFile) fprintf(LogFile, "  Error reading binary pixel shader %s.\n", cFileName);
 		CloseHandle(f);
@@ -370,7 +375,7 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mPreloadedPixelShaders[hash] = pPixelShader;
-	if (shaderFix) RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL);
+	RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, ftWrite);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -696,12 +701,13 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateInputLayout(THIS_
 // Only used in CreateVertexShader and CreatePixelShader
 
 static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-	SIZE_T BytecodeLength, DWORD &pCodeSize, string &foundShaderModel, void **zeroShader)
+	SIZE_T BytecodeLength, DWORD &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader)
 {
 	if (G->mBlockingMode)
 		return 0;
 
 	foundShaderModel = "";
+	timeStamp = { 0 };
 
 	*zeroShader = 0;
 	char *pCode = 0;
@@ -808,12 +814,10 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		}
 
 		// Read binary compiled shader.
-		bool fromCache = false;
 		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (f == INVALID_HANDLE_VALUE)
 		{
-			fromCache = true;
 			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		}
@@ -824,32 +828,43 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			pCodeSize = GetFileSize(f, 0);
 			pCode = new char[pCodeSize];
 			DWORD readSize;
-			if (!ReadFile(f, pCode, pCodeSize, &readSize, 0) || pCodeSize != readSize)
+			FILETIME ftWrite;
+			if (!ReadFile(f, pCode, pCodeSize, &readSize, 0) 
+				|| !GetFileTime(f, NULL, NULL, &ftWrite)
+				|| pCodeSize != readSize)
 			{
 				if (LogFile) fprintf(LogFile, "    Error reading file.\n");
 				delete pCode; pCode = 0;
+				CloseHandle(f);
 			}
 			else
 			{
 				if (LogFile) fprintf(LogFile, "    Bytecode loaded. Size = %d\n", pCodeSize);
-				
-				if (!fromCache)
+				CloseHandle(f);
+
+				foundShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
+
+				// For timestamp, we need the time stamp on the .txt file for comparison, not this .bin file.
+				wchar_t *end = wcsstr(val, L".bin");
+				wcscpy(end, L".txt");
+				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+				if ((f != INVALID_HANDLE_VALUE)
+					&& GetFileTime(f, NULL, NULL, &ftWrite))
 				{
-					foundShaderModel = "bin";		// tag it as needing disassemble
+					timeStamp = ftWrite;
+					CloseHandle(f);
 				}
 			}
-			CloseHandle(f);
 		}
+
 		if (!pCode)
 		{
 			// Read HLSL shader.
-			bool fromCache = false;
 			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			wchar_t *shader_path = SHADER_PATH;
 			if (f == INVALID_HANDLE_VALUE)
 			{
-				fromCache = true;
 				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				shader_path = SHADER_CACHE_PATH;
@@ -861,7 +876,10 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				DWORD srcDataSize = GetFileSize(f, 0);
 				char *srcData = new char[srcDataSize];
 				DWORD readSize;
-				if (!ReadFile(f, srcData, srcDataSize, &readSize, 0) || srcDataSize != readSize)
+				FILETIME ftWrite;
+				if (!ReadFile(f, srcData, srcDataSize, &readSize, 0)
+					|| !GetFileTime(f, NULL, NULL, &ftWrite)
+					|| srcDataSize != readSize)
 					if (LogFile) fprintf(LogFile, "    Error reading file.\n");
 				CloseHandle(f);
 				if (LogFile) fprintf(LogFile, "    Source code loaded. Size = %d\n", srcDataSize);
@@ -891,11 +909,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					while (eol[0] != 0x0a && pos < end) eol++;
 					string shaderModel(pos, eol);
 
-					// Only HLSL compiled shaders from ShaderFixes folder are reloading candidates
-					if (!fromCache)
-					{
-						foundShaderModel = shaderModel;
-					}
+					// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
+					foundShaderModel = shaderModel;
+					timeStamp = ftWrite;
 
 					// Compile replacement.
 					if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
@@ -1188,6 +1204,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	HRESULT hr = -1;
 	UINT64 hash;
 	string shaderModel;
+	FILETIME ftWrite;
 	D3D11Base::ID3D11VertexShader *zeroShader = 0;
 
 	if (pShaderBytecode && ppVertexShader)
@@ -1212,7 +1229,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 				{
 					DWORD replaceShaderSize;
 					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, 
-						shaderModel, (void **) &zeroShader);
+						shaderModel, ftWrite, (void **) &zeroShader);
 					delete replaceShader;
 				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
@@ -1230,7 +1247,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		DWORD replaceShaderSize;
 		D3D11Base::ID3D11VertexShader *zeroShader = 0;
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, 
-			shaderModel, (void **) &zeroShader);
+			shaderModel, ftWrite, (void **) &zeroShader);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1244,7 +1261,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 				// If this shader was created from a .txt override, save the info to allow live overrides later
 				if (!shaderModel.empty())
 				{
-					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage);
+					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, ftWrite);
 				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
 				{
@@ -1396,6 +1413,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	HRESULT hr = -1;
 	UINT64 hash;
 	string shaderModel;
+	FILETIME ftWrite;
 	D3D11Base::ID3D11PixelShader *zeroShader = 0;
 
 	if (pShaderBytecode && ppPixelShader)
@@ -1419,7 +1437,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 				{
 					DWORD replaceShaderSize;
 					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, 
-						shaderModel, (void **) &zeroShader);
+						shaderModel, ftWrite, (void **) &zeroShader);
 					delete replaceShader;
 				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
@@ -1436,7 +1454,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	{
 		DWORD replaceShaderSize;
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, 
-			shaderModel, (void **) &zeroShader);
+			shaderModel, ftWrite, (void **) &zeroShader);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1451,7 +1469,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 				// If this shader was created from a .txt override, save the info to allow live overrides later
 				if (!shaderModel.empty())
 				{
-					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage);
+					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, ftWrite);
 				}
 				if (G->marking_mode == MARKING_MODE_ORIGINAL)
 				{

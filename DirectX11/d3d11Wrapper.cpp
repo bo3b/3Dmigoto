@@ -54,6 +54,7 @@ typedef std::map<UINT64, std::string> CompiledShaderMap;
 // CreatePixelShader that have been loaded as HLSL
 //	shaderType is "vs" or "ps" or maybe later "gs" (type wstring for file name use)
 //	shaderModel is only filled in when a shader is replaced.  (type string for old D3 API use)
+//	timeStamp allows reloading/recompiling only modified shaders
 //	newShader is either ID3D11VertexShader or ID3D11PixelShader
 struct OriginalShaderInfo
 {
@@ -61,6 +62,7 @@ struct OriginalShaderInfo
 	std::wstring shaderType;
 	std::string shaderModel;
 	D3D11Base::ID3D11ClassLinkage* linkage;
+	FILETIME timeStamp;
 	D3D11Base::ID3D11DeviceChild* newShader;
 };
 
@@ -1421,15 +1423,17 @@ static string GetShaderModel(UINT64 hash, wstring shaderType)
 	else
 	{
 		// No .bin file found, something is wrong.
-		if (LogFile) fprintf(LogFile, "    ReloadShader failed in GetShaderModel, no .bin found: %s\n", name);
+		if (LogFile) fwprintf(LogFile, L"    ReloadShader failed in GetShaderModel, no .bin found: %s\n", name);
 		return "";
 	}
 }
 
 // Compile a new shader from  HLSL text input, and report on errors if any.
 // Return the binary blob of pCode to be activated with CreateVertexShader or CreatePixelShader.
+// If the timeStamp has not changed from when it was loaded, skip the recompile, and return false as not an 
+// error, but skipped.  On actual errors, return true so that we bail out.
 
-static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, UINT64 hash, wstring shaderType,
+static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, UINT64 hash, wstring shaderType, FILETIME* timeStamp,
 	_Outptr_ D3D11Base::ID3DBlob** pCode)
 {
 	*pCode = nullptr;
@@ -1441,28 +1445,36 @@ static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	{
 		if (LogFile) fprintf(LogFile, "    ReloadShader shader not found: %ls\n", fullName);
 	
-		return;
+		return true;
 	}
-
-	if (LogFile) fprintf(LogFile, "    >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
 
 
 	DWORD srcDataSize = GetFileSize(f, 0);
 	char *srcData = new char[srcDataSize];
 	DWORD readSize;
+	FILETIME curFileTime;
 
-	if (!ReadFile(f, srcData, srcDataSize, &readSize, 0) || srcDataSize != readSize)
+	if (!ReadFile(f, srcData, srcDataSize, &readSize, 0) 
+		|| !GetFileTime(f, NULL, NULL, &curFileTime)
+		|| srcDataSize != readSize)
 	{
 		if (LogFile) fprintf(LogFile, "    Error reading txt file.\n");
-		return;
+	
+		return true;
 	}
 	CloseHandle(f);
 
+	if (LogFile) fprintf(LogFile, "   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
 	if (LogFile) fprintf(LogFile, "    Reload source code loaded. Size = %d\n", srcDataSize);
-
-
 	if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel);
 
+	// Check file time stamp, and only recompile shaders that have been edited since they were loaded.
+	// This dramatically improves the F10 reload speed.
+	if (!CompareFileTime(timeStamp, &curFileTime))
+	{
+		return false;
+	}
+	*timeStamp = curFileTime;
 
 	D3D11Base::ID3DBlob* pByteCode = nullptr;
 	D3D11Base::ID3DBlob* pErrorMsgs = nullptr;
@@ -1502,7 +1514,7 @@ static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 			pByteCode->Release();
 			pByteCode = 0;
 		}
-		return;
+		return true;
 	}
 
 
@@ -1530,6 +1542,8 @@ static void CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 
 	// pCode on return == NULL for error cases, valid if made it this far.
 	*pCode = pByteCode;
+
+	return true;
 }
 
 // Strategy: When the user hits F10 as the reload key, we want to reload all of the hand-patched shaders in
@@ -1569,14 +1583,16 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	D3D11Base::ID3D11ClassLinkage* classLinkage;
 	string shaderModel;
 	wstring shaderType;		// "vs" or "ps" maybe "gs"
+	FILETIME timeStamp;
 	HRESULT hr = E_FAIL;
 
 	// Extract hash from first 16 characters of file name so we can look up details by hash
 	wstring ws = fileName;
 	hash = stoull(ws.substr(0, 16), NULL, 16);
 
-	// Find the original shader bytecode in the mReloadedShaders Map. This map only contains entries for 
-	// shaders from the ShaderFixes folder, but can also include .bin files that were loaded directly.
+	// Find the original shader bytecode in the mReloadedShaders Map. This map contains entries for all
+	// shaders from the ShaderFixes and ShaderCache folder, and can also include .bin files that were loaded directly.
+	// We include ShaderCache because that allows moving files into ShaderFixes as they are identified.
 	// This needs to use the value to find the key, so a linear search.
 	// It's notable that the map can contain multiple copies of the same hash, used for different visual
 	// items, but with same original code.  We need to update all copies.
@@ -1588,6 +1604,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			classLinkage = iter.second.linkage;
 			shaderModel = iter.second.shaderModel;
 			shaderType = iter.second.shaderType;
+			timeStamp = iter.second.timeStamp;
 
 			// If we didn't find an original shader, that is OK, because it might not have been loaded yet.
 			// Just skip it in that case, because the new version will be loaded when it is used.
@@ -1606,9 +1623,15 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 					return false;
 			}
 
-			// Compile replacement.
+			// Compile replacement.  If timestamp is unchanged, skip to next shader.
 			D3D11Base::ID3DBlob *pShaderBytecode = NULL;
-			CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &pShaderBytecode);
+			if (!CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &timeStamp, &pShaderBytecode))
+				continue;
+
+			// Update timestamp, since we have an edited file.
+			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
+
+			// If we compiled but got nothing, that's a fatal error we need to report.
 			if (pShaderBytecode == NULL)
 				return false;
 
