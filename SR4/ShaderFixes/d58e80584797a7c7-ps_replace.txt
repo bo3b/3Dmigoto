@@ -1,0 +1,121 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[3];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 IR_Light_Pos : packoffset(c0);
+  float4 IR_light_back_color : packoffset(c1);
+  float4 IR_Light_Color : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 V_ambient_render : packoffset(c2);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+
+cbuffer vc8 : register(b8)
+{
+  bool Shadow_map_enabled : packoffset(c0);
+}
+SamplerState ir_shadow_mapSampler_s : register(s0);
+SamplerState ir_ambient_occlusionSampler_s : register(s1);
+SamplerState IR_GBuffer_LightingSampler_s : register(s12);
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+Texture2D<float4> ir_shadow_mapSampler : register(t0);
+Texture2D<float4> ir_ambient_occlusionSampler : register(t1);
+Texture2D<float4> IR_GBuffer_LightingSampler : register(t12);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  
+//mike_ar69 
+float4 stereoParams = StereoParams.Load(0);
+float4 r21;
+
+  r0.x = dot(v2.xyz, v2.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v2.xyz * r0.xxx;
+  r1.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, v1.xy).xyzw;
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r1.xy, r1.xy);
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r1.z = sqrt(r0.w);
+  r0.w = r1.z + r1.z;
+  r1.xyz = r0.www * r1.xyz;
+  r1.w = -r1.z;
+  r1.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r1.xyw;
+  r0.w = dot(r1.xyz, IR_Light_Pos.xyz);
+  r1.w = r0.w + r0.w;
+  
+r21.xyz = -r1.www * r1.xyz;
+r21.x +=  stereoParams.x * (-r1.w - stereoParams.y)*0.5;
+
+  r2.xyz = -r21.xyz + -IR_Light_Pos.xyz; //r1.www * r1.xyz + -IR_Light_Pos.xyz;
+  r1.w = saturate(dot(r2.xyz, -r0.xyz));
+  r1.w = log2(r1.w);
+  r2.xyzw = IR_GBuffer_LightingSampler.Sample(IR_GBuffer_LightingSampler_s, v1.xy).xyzw;
+  r2.x = 5.120000000e+002 * r2.x;
+  r2.x = 9.999999747e-005 + abs(r2.x);
+  r1.w = r2.x * r1.w;
+  r1.w = exp2(r1.w);
+  r2.y = dot(IR_Light_Color.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.w = r2.y * r1.w;
+  r2.y = r2.z * 2.000000000e+000 + -1.000000000e+000;
+  r2.z = r2.z + r2.z;
+  r2.z = saturate(r2.z);
+  r2.y = saturate(1.000000000e+000 + -r2.y);
+  r2.y = r2.y + -r2.z;
+  r2.w = saturate(r0.w);
+  r3.x = r2.w * r2.y + r2.z;
+  r1.w = r3.x * r1.w;
+  r3.x = saturate(-r0.w);
+  r2.y = r3.x * r2.y + r2.z;
+  r2.z = -2.000000000e+000 * r0.w;
+  r1.xyz = r2.zzz * r1.xyz + IR_Light_Pos.xyz;
+  r0.x = saturate(dot(r1.xyz, -r0.xyz));
+  r0.x = log2(r0.x);
+  r0.x = r2.x * r0.x;
+  r0.x = exp2(r0.x);
+  r3.xyzw = ir_ambient_occlusionSampler.Sample(ir_ambient_occlusionSampler_s, v1.xy).xyzw;
+  r0.y = saturate(1.000000000e+000 + -r3.x);
+  r1.xyz = IR_light_back_color.xyz * r0.yyy;
+  r3.xyzw = cb4[2].xyzw * r0.yyyy;
+  r0.y = dot(r1.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r0.x = r0.x * r0.y;
+  r0.x = r0.x * r2.y;
+  r0.x = 5.000000000e-001 * r0.x;
+  r0.y = r0.w * -5.000000000e-001 + 5.000000000e-001;
+  r0.z = 1.000000000e+000 + -abs(-r0.w);
+  r0.y = r0.y * r0.y;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r2.xyz = r1.xyz * r0.yyy;
+  r2.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r2.xyz;
+  r0.w = dot(r2.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r2.xyz = r1.xyz * r2.www + r2.xyz;
+  r1.xyz = r1.xyz * r0.yyy + -r2.xyz;
+  r4.xyz = IR_light_back_color.xyz * r0.yyy;
+  r4.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r4.xyz;
+  r0.y = dot(r4.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r4.xyzw = ir_shadow_mapSampler.Sample(ir_shadow_mapSampler_s, v1.xy).xyzw;
+  r2.w = Shadow_map_enabled ? r4.x : 1.000000000e+000;
+  r0.w = saturate(r2.w + r0.w);
+  r2.xyz = r2.www * r1.xyz + r2.xyz;
+  r0.x = r0.x * r0.w;
+  r2.w = r1.w * r0.y + r0.x;
+  o0.xyzw = r3.xyzw * r0.zzzz + r2.xyzw;
+  return;
+}

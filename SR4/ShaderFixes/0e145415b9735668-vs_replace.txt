@@ -1,0 +1,110 @@
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[50];
+}
+
+
+cbuffer vc2 : register(b2)
+{
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float4x4 IR_World2View : packoffset(c22);
+  float4x4 IR_Light_Inv_Proj_TM : packoffset(c26);
+  float4 Dyn_decal_tint : packoffset(c42);
+  float4 Dyn_decal_params_1 : packoffset(c43);
+  float4 Dyn_decal_params_2 : packoffset(c44);
+  float3 Dyn_decal_pos : packoffset(c45);
+  float3 Dyn_decal_rvec : packoffset(c46);
+  float3 Dyn_decal_uvec : packoffset(c47);
+  float3 Dyn_decal_fvec : packoffset(c48);
+  float3 Dyn_decal_scale : packoffset(c49);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6,
+  out float4 o8 : TEXCOORD7,
+  out float4 o9 : TEXCOORD8,
+  out float4 o10 : TEXCOORD9)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r0.xyzw;
+r0.x += stereoParams.x * (r0.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o8.xyzw = r0.xyzw;
+  r0.w = 1.000000000e+000;
+  r1.xyz = cb2[45].xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(cb2[16].xyzw, r1.xyzw);
+  r0.y = dot(cb2[17].xyzw, r1.xyzw);
+  r0.z = dot(cb2[18].xyzw, r1.xyzw);
+  o1.x = dot(r0.xyzw, cb2[22].xyzw);
+  o1.y = dot(r0.xyzw, cb2[23].xyzw);
+  o1.z = dot(r0.xyzw, cb2[24].xyzw);
+  r0.xyz = -cb2[4].xyz + r0.xyz;
+  r1.x = dot(cb2[16].xyz, cb2[46].xyz);
+  r1.y = dot(cb2[17].xyz, cb2[46].xyz);
+  r1.z = dot(cb2[18].xyz, cb2[46].xyz);
+  o2.x = dot(r1.xyz, cb2[22].xyz);
+  o2.y = dot(r1.xyz, cb2[23].xyz);
+  o2.z = dot(r1.xyz, cb2[24].xyz);
+  r1.x = dot(cb2[16].xyz, cb2[47].xyz);
+  r1.y = dot(cb2[17].xyz, cb2[47].xyz);
+  r1.z = dot(cb2[18].xyz, cb2[47].xyz);
+  o3.x = dot(r1.xyz, cb2[22].xyz);
+  o3.y = dot(r1.xyz, cb2[23].xyz);
+  o3.z = dot(r1.xyz, cb2[24].xyz);
+  r1.x = dot(cb2[16].xyz, cb2[48].xyz);
+  r1.y = dot(cb2[17].xyz, cb2[48].xyz);
+  r1.z = dot(cb2[18].xyz, cb2[48].xyz);
+  o4.x = dot(r1.xyz, cb2[22].xyz);
+  o4.y = dot(r1.xyz, cb2[23].xyz);
+  o4.z = dot(r1.xyz, cb2[24].xyz);
+  o5.xyzw = cb2[43].xyzw;
+  o6.xyzw = cb2[42].xyzw;
+  o7.xyzw = cb2[44].xyzw;
+  r0.w = cb2[5].x * 3.264000000e+004 + 1.275000000e+002;
+  o9.w = 1.525902189e-005 * r0.w;
+  o9.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / cb2[49].xyz;
+  r0.w = cb2[10].x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 5.000000075e-002 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = cb2[10].y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -cb2[10].w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o10.w = 1.000000000e+000 + -r0.x;
+  r0.xyzw = cb2[27].xyzw * v0.yyyy;
+  r0.xyzw = cb2[26].xyzw * v0.xxxx + r0.xyzw;
+  r0.xyzw = cb2[29].xyzw + r0.xyzw;
+  r0.xyz = r0.xyz / r0.www;
+  o10.xyz = r0.xyz / r0.zzz;
+  return;
+}

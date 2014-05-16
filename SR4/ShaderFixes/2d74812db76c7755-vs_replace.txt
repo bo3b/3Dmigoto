@@ -1,0 +1,126 @@
+
+cbuffer vc0 : register(b0)
+{
+  float Normal_Map_Height : packoffset(c0);
+  float Normal_Map_TilingU : packoffset(c1);
+  float Normal_Map_TilingV : packoffset(c2);
+  float Self_Illumination : packoffset(c4);
+  float4 Diffuse_Color : packoffset(c5);
+  float Reflection_Amount : packoffset(c6);
+  float4 Glow_Color : packoffset(c7);
+  float Scroll_Speed : packoffset(c8);
+  float4 Specular_Color : packoffset(c9);
+  float Specular_Map_Amount : packoffset(c10);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  float4 Object_instance_params : packoffset(c15);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  int4 v4 : TEXCOORD1,
+  int3 v5 : POSITION1,
+  float3 v6 : COLOR0,
+  float3 v7 : NORMAL1,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6,
+  out float4 o8 : TEXCOORD7)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyzw = v5.xyzy;
+  r0.xyzw = v6.xxxy * r0.xyzw;
+  r1.xyz = r0.xyz * float3(1.220703e-004,1.220703e-004,1.220703e-004) + v0.xyz;
+  r0.x = r0.w * 1.831054688e-004 + r1.y;
+  r1.y = -v6.y * 1.600000024e+000 + r0.x;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(objTM._m00_m01_m02_m03, r1.xyzw);
+  r0.y = dot(objTM._m10_m11_m12_m13, r1.xyzw);
+  r0.z = dot(objTM._m20_m21_m22_m23, r1.xyzw);
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r1.xyzw;
+r1.x += stereoParams.x * (r1.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o5.xyzw = r1.xyzw;
+  r1.xy = v4.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r1.xy;
+  r1.xyz = v7.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.xyzw = v2.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.xyz = v6.xxx * r1.xyz + r2.xyz;
+  r0.w = r2.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = 2.550000000e+002 * r0.w;
+  r0.w = Object_instance_params_2.x * 3.264000000e+004 + r0.w;
+  o6.w = 1.525902189e-005 * r0.w;
+  r2.x = dot(objTM._m00_m01_m02, r1.xyz);
+  r2.y = dot(objTM._m10_m11_m12, r1.xyz);
+  r2.z = dot(objTM._m20_m21_m22, r1.xyz);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r2.xyz * r0.www;
+  r2.xyzw = v3.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.x = dot(objTM._m00_m01_m02, r2.xyz);
+  r3.y = dot(objTM._m10_m11_m12, r2.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r2.xyz);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r3.xyz * r0.www;
+  r3.xyz = r2.yzx * r1.zxy;
+  r3.xyz = r1.yzx * r2.zxy + -r3.xyz;
+  o7.xyz = r1.xyz;
+  o3.xyz = r2.xyz;
+  o2.xyz = r3.xyz * r2.www;
+  o4.xyz = Object_instance_params.xyz * Diffuse_Color.xyz;
+  o4.w = Diffuse_Color.w;
+  o6.xyz = eyePos.xyz + -r0.xyz;
+  r0.xyz = -eyePos.xyz + r0.xyz;
+  r0.w = Fog_dist.x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 5.000000075e-002 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o7.w = 1.000000000e+000 + -r0.x;
+  r0.xy = v1.xy;
+  r0.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  o8.z = Normal_Map_TilingU * r0.x;
+  o8.w = Normal_Map_TilingV * r0.y;
+  o8.xy = r0.xy;
+  return;
+}
