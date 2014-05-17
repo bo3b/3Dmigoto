@@ -112,7 +112,8 @@ if(r10.w != 1)
 {
 	if(r10.z < 1)
 	{
-		r10.x -= stereoParams.x * (r10.w - stereoParams.y - 0.98);  //Move the sun, moon
+		// r10.x -= stereoParams.x * (r10.w - stereoParams.y - 0.98);  //Move the sun, moon
+		r10.x += stereoParams.x * (stereoParams.y);  //Move the sun, moon
 	}
 }
 if(r10.w == 1)

@@ -119,7 +119,24 @@ r21.xy = v1.xy;
   //r0.y 	= m00 * v1.x + m10 * v1.y + m20
   //r0.z	= m01 * v1.x + m11 * v1.y + m21
   //r0.w	= m02 * v1.x + m12 * v1.y + m22
- 
+
+//Mike_ar69 - Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+// float4 r21, r22;
+// r21.xyz = r0.yzw;
+// r21.w = 1.000000000e+000;
+// r22.x = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m00_m10_m20_m30);
+// r22.y = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m01_m11_m21_m31);
+// r22.z = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m02_m12_m22_m32);
+// r22.w = dot(r21.xyzw, g_ScreenSpaceReflectionConstants.m_WorldToProj._m03_m13_m23_m33);
+// r22.x -=  stereoParams.x * (r22.w - stereoParams.y );
+// r21.x = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m00_m10_m20_m30);
+// r21.y = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m01_m11_m21_m31);
+// r21.z = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m02_m12_m22_m32);
+// r21.w = dot(r22.xyzw, g_ScreenSpaceReflectionConstants.m_ProjToWorld._m03_m13_m23_m33);
+// r21.xyz /= r21.www;
+// r0.yzw = r21.xyz;
+  
   
   r3.y = dot(r0.yzw, r1.yzw);
   r3.y = r3.y + r3.y;

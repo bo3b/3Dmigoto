@@ -1,4 +1,4 @@
-//Raindrops on screen
+//Raindrips on screen
 cbuffer _Globals : register(b0)
 {
   float4 g_AmbientCube[3] : packoffset(c0);
