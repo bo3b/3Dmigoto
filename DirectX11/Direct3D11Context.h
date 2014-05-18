@@ -299,12 +299,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
-		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
-			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %x\n", it->second.newShader);
+			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %x\n", it->second.replacement);
 
 			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
-			D3D11Base::ID3D11PixelShader *shader = (D3D11Base::ID3D11PixelShader*) it->second.newShader;
+			D3D11Base::ID3D11PixelShader *shader = (D3D11Base::ID3D11PixelShader*) it->second.replacement;
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 			GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
@@ -585,11 +585,11 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
-		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
-			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %x\n", it->second.newShader);
+			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %x\n", it->second.replacement);
 
-			D3D11Base::ID3D11VertexShader *shader = (D3D11Base::ID3D11VertexShader*) it->second.newShader;
+			D3D11Base::ID3D11VertexShader *shader = (D3D11Base::ID3D11VertexShader*) it->second.replacement;
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 			GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;

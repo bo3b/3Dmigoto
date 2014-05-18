@@ -1,4 +1,3 @@
-#include "../HLSLDecompiler/DecompileHLSL.h"
 
 D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
     : D3D11Wrapper::IDirect3DUnknown((IUnknown*) pDevice),
@@ -254,15 +253,17 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture1D(THIS_
 // reloader to disassemble the .bin file to determine the shader model.
 
 static void RegisterForReload(D3D11Base::ID3D11DeviceChild* ppShader, 
-	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage, FILETIME timeStamp)
+	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage, D3D11Base::ID3DBlob* byteCode, FILETIME timeStamp)
 {
 	if (LogFile) fprintf(LogFile, "    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
+	
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
 	G->mReloadedShaders[ppShader].shaderModel = shaderModel;
 	G->mReloadedShaders[ppShader].linkage = pClassLinkage;
+	G->mReloadedShaders[ppShader].byteCode = byteCode;
 	G->mReloadedShaders[ppShader].timeStamp = timeStamp;
-	G->mReloadedShaders[ppShader].newShader = NULL;
+	G->mReloadedShaders[ppShader].replacement = NULL;
 }
 
 static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
@@ -308,17 +309,24 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	// Create the new shader.
 	D3D11Base::ID3D11VertexShader *pVertexShader;
 	HRESULT hr = m_pDevice->CreateVertexShader(pShaderBytecode, bytecodeLength, 0, &pVertexShader);
-	delete pShaderBytecode; pShaderBytecode = 0;
-	if (hr != S_OK)
+	if (FAILED(hr))
 	{
 		if (LogFile) fprintf(LogFile, "    error creating shader.\n");
 		
+		delete pShaderBytecode; pShaderBytecode = 0;
 		return;
 	}
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mPreloadedVertexShaders[keyHash] = pVertexShader;
-	RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, ftWrite);
+		G->mPreloadedVertexShaders[keyHash] = pVertexShader;
+		if (G->hunting)
+		{
+			D3D11Base::ID3DBlob* blob;
+			D3DCreateBlob(bytecodeLength, &blob);
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
+			RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite);
+		}
+		delete pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -365,17 +373,24 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	// Create the new shader.
 	D3D11Base::ID3D11PixelShader *pPixelShader;
 	HRESULT hr = m_pDevice->CreatePixelShader(pShaderBytecode, bytecodeLength, 0, &pPixelShader);
-	delete pShaderBytecode; pShaderBytecode = 0;
-	if (hr != S_OK)
+	if (FAILED(hr))
 	{
 		if (LogFile) fprintf(LogFile, "    error creating shader.\n");
 		
+		delete pShaderBytecode; pShaderBytecode = 0;
 		return;
 	}
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mPreloadedPixelShaders[hash] = pPixelShader;
-	RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, ftWrite);
+		G->mPreloadedPixelShaders[hash] = pPixelShader;
+		if (G->hunting)
+		{
+			D3D11Base::ID3DBlob* blob;
+			D3DCreateBlob(bytecodeLength, &blob);
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
+			RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite);
+		}
+		delete pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -1252,29 +1267,34 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		{
 			// Create the new shader.
 			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %x\n", GetD3D11Device());
+
 			hr = GetD3D11Device()->CreateVertexShader(replaceShader, replaceShaderSize, pClassLinkage, ppVertexShader);
-			delete replaceShader; replaceShader = 0;
-			if (hr == S_OK)
+			if (SUCCEEDED(hr))
 			{
 				if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
 
-				// If this shader was created from a .txt override, save the info to allow live overrides later
-				if (!shaderModel.empty())
+				if (G->hunting)
 				{
-					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, ftWrite);
-				}
-				if (G->marking_mode == MARKING_MODE_ORIGINAL)
-				{
-					// Compile original shader.
-					D3D11Base::ID3D11VertexShader *originalShader;
-					GetD3D11Device()->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-					G->mOriginalVertexShaders[*ppVertexShader] = originalShader;
+					// Hunting mode:  keep byteCode around for possible replacement or marking
+					D3D11Base::ID3DBlob* blob;
+					D3DCreateBlob(replaceShaderSize, &blob);
+					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
+
+					if (G->marking_mode == MARKING_MODE_ORIGINAL)
+					{
+						// Compile original shader.
+						D3D11Base::ID3D11VertexShader *originalShader;
+						GetD3D11Device()->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+						G->mOriginalVertexShaders[*ppVertexShader] = originalShader;
+					}
 				}
 			}
 			else
 			{
 				if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
 			}
+			delete replaceShader; replaceShader = 0;
 		}
 	}
 	if (hr != S_OK)
@@ -1459,30 +1479,34 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		{
 			// Create the new shader.
 			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %x\n", GetD3D11Device());
-			hr = GetD3D11Device()->CreatePixelShader(replaceShader, replaceShaderSize, pClassLinkage, ppPixelShader);
 			
-			delete replaceShader; replaceShader = 0;
-			if (hr == S_OK)
+			hr = GetD3D11Device()->CreatePixelShader(replaceShader, replaceShaderSize, pClassLinkage, ppPixelShader);
+			if (SUCCEEDED(hr))
 			{
 				if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
 
-				// If this shader was created from a .txt override, save the info to allow live overrides later
-				if (!shaderModel.empty())
+				if (G->hunting)
 				{
-					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, ftWrite);
-				}
-				if (G->marking_mode == MARKING_MODE_ORIGINAL)
-				{
-					// Compile original shader.
-					D3D11Base::ID3D11PixelShader *originalShader;
-					GetD3D11Device()->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-					G->mOriginalPixelShaders[*ppPixelShader] = originalShader;
+					// Hunting mode:  keep byteCode around for possible replacement or marking
+					D3D11Base::ID3DBlob* blob;
+					D3DCreateBlob(replaceShaderSize, &blob);
+					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
+
+					if (G->marking_mode == MARKING_MODE_ORIGINAL)
+					{
+						// Compile original shader.
+						D3D11Base::ID3D11PixelShader *originalShader;
+						GetD3D11Device()->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+						G->mOriginalPixelShaders[*ppPixelShader] = originalShader;
+					}
 				}
 			}
 			else
 			{
 				if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
-			}
+			}	
+			delete replaceShader; replaceShader = 0;
 		}
 	}
 	if (hr != S_OK)

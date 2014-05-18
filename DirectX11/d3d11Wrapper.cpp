@@ -8,6 +8,7 @@
 #include <iterator>
 #include <string>
 #include <DirectXMath.h>
+#include "../HLSLDecompiler/DecompileHLSL.h"
 
 FILE *LogFile = 0;		// off by default.
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
@@ -54,6 +55,8 @@ typedef std::map<UINT64, std::string> CompiledShaderMap;
 // CreatePixelShader that have been loaded as HLSL
 //	shaderType is "vs" or "ps" or maybe later "gs" (type wstring for file name use)
 //	shaderModel is only filled in when a shader is replaced.  (type string for old D3 API use)
+//	linkage is passed as a parameter, seems to be rarely if ever used.
+//	byteCode is the original shader byte code passed in by game, or recompiled by override.
 //	timeStamp allows reloading/recompiling only modified shaders
 //	replacement is either ID3D11VertexShader or ID3D11PixelShader
 struct OriginalShaderInfo
@@ -62,6 +65,7 @@ struct OriginalShaderInfo
 	std::wstring shaderType;
 	std::string shaderModel;
 	D3D11Base::ID3D11ClassLinkage* linkage;
+	D3D11Base::ID3DBlob* byteCode;
 	FILETIME timeStamp;
 	D3D11Base::ID3D11DeviceChild* replacement;
 };
@@ -1363,6 +1367,146 @@ static void DumpUsage()
 	}
 }
 
+//--------------------------------------------------------------------------------------------------
+
+// Write the decompiled text as HLSL source code to the txt file.
+// This will overwrite the file that is there.  
+// The assumption is that the shaderByteCode that we start with is always the most up to date,
+// and thus won't ever overwrite something edited but not active.  If a file was already extant
+// in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
+
+static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
+{
+	wchar_t fullName[MAX_PATH];
+
+	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
+	FILE *fw = _wfopen(fullName, L"wb");
+	if (fw)
+	{
+		if (LogFile)	fwprintf(LogFile, L"    storing patched shader to %s\n", fullName);
+
+		fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+		fclose(fw);
+		return true;
+	}
+	else
+	{
+		fwprintf(LogFile, L"    error storing marked shader to %s\n", fullName);
+		return false;
+	}
+}
+
+
+// Decompile code passed in as assembly text, and shader byte code.
+// This is pretty heavyweight obviously, so it is only being done during Mark operations.
+// Todo: another copy/paste job, we really need some subroutines, utility library.
+
+static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, D3D11Base::ID3DBlob* disassembly)
+{
+	if (LogFile) fprintf(LogFile, "    creating HLSL representation.\n");
+
+	bool patched = false;
+	string shaderModel;
+	bool errorOccurred = false;
+	ParseParameters p;
+	p.bytecode = pShaderByteCode->GetBufferPointer();
+	p.decompiled = (const char *)disassembly->GetBufferPointer();
+	p.decompiledSize = disassembly->GetBufferSize();
+	p.recompileVs = G->FIX_Recompile_VS;
+	p.fixSvPosition = G->FIX_SV_Position;
+	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
+	p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
+	p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
+	p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
+	p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
+	p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
+	p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
+	p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
+	p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
+	p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
+	p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
+	p.BackProject_Vector1 = G->BackProject_Vector1;
+	p.BackProject_Vector2 = G->BackProject_Vector2;
+	p.ObjectPos_ID1 = G->ObjectPos_ID1;
+	p.ObjectPos_ID2 = G->ObjectPos_ID2;
+	p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
+	p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
+	p.MatrixPos_ID1 = G->MatrixPos_ID1;
+	p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
+	p.InvTransforms = G->InvTransforms;
+	p.fixLightPosition = G->FIX_Light_Position;
+	p.ZeroOutput = false;
+	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+
+	if (!decompiledCode.size())
+	{
+		if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
+	}
+
+	return decompiledCode;
+}
+
+
+// Get the text disassembly of the shader byte code specified.
+
+static D3D11Base::ID3DBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
+{
+	D3D11Base::ID3DBlob *disassembly;
+	
+	HRESULT ret = D3D11Base::D3DDisassemble(pCode->GetBufferPointer(), pCode->GetBufferSize(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0,
+		&disassembly);
+	if (FAILED(ret))
+	{
+		if (LogFile) fprintf(LogFile, "    disassembly of original shader failed: \n");
+		return NULL;
+	}
+
+	return disassembly;
+}
+
+// Write the disassembly to the text file.
+// Overwrite any file that is there, under the assumption that any newer version should match the HLSL.
+
+static void WriteDisassembly(UINT64 hash, wstring shaderType, D3D11Base::ID3DBlob* asmTextBlob)
+{
+	wchar_t fullName[MAX_PATH];
+
+	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
+	FILE *f = _wfopen(fullName, L"wb");
+	if (LogFile)
+	{
+		if (f)
+			fwprintf(LogFile, L"    storing disassembly to %s\n", fullName);
+		else
+			fwprintf(LogFile, L"    Shader Mark could not write asm text file: %s\n", fullName);
+	}
+	if (f)
+	{
+		fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), f);
+		fclose(f);
+	}
+}
+
+// Different version that takes asm text already.
+
+static string GetShaderModel(D3D11Base::ID3DBlob* asmTextBlob)
+{
+	// Read shader model. This is the first not commented line.
+	char *pos = (char *)asmTextBlob->GetBufferPointer();
+	char *end = pos + asmTextBlob->GetBufferSize();
+	while (pos[0] == '/' && pos < end)
+	{
+		while (pos[0] != 0x0a && pos < end) pos++;
+		pos++;
+	}
+	// Extract model.
+	char *eol = pos;
+	while (eol[0] != 0x0a && pos < end) eol++;
+	string shaderModel(pos, eol);
+
+	return shaderModel;
+}
+
 // If the shader was loaded from the .bin cache file, then we don't presently have the shader model
 // available.  This will fetch the .bin file and disassemble it to look for the shader model, like 
 // when it is decompiled.
@@ -1403,21 +1547,11 @@ static string GetShaderModel(UINT64 hash, wstring shaderType)
 		}
 		else
 		{
-			// Read shader model. This is the first not commented line.
-			char *pos = (char *)disassembly->GetBufferPointer();
-			char *end = pos + disassembly->GetBufferSize();
-			while (pos[0] == '/' && pos < end)
-			{
-				while (pos[0] != 0x0a && pos < end) pos++;
-				pos++;
-			}
-			// Extract model.
-			char *eol = pos;
-			while (eol[0] != 0x0a && pos < end) eol++;
-			string shaderModel(pos, eol);
+			string model = GetShaderModel(disassembly);
+			disassembly->Release(); disassembly = 0;
 
 			// Todo: don't return success from middle of the routine.
-			return shaderModel;
+			return model;
 		}
 	}
 	else
@@ -1464,10 +1598,6 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	}
 	CloseHandle(f);
 
-	if (LogFile) fprintf(LogFile, "   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
-	if (LogFile) fprintf(LogFile, "    Reload source code loaded. Size = %d\n", srcDataSize);
-	if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel);
-
 	// Check file time stamp, and only recompile shaders that have been edited since they were loaded.
 	// This dramatically improves the F10 reload speed.
 	if (!CompareFileTime(timeStamp, &curFileTime))
@@ -1475,6 +1605,11 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 		return false;
 	}
 	*timeStamp = curFileTime;
+
+	if (LogFile) fprintf(LogFile, "   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
+	if (LogFile) fprintf(LogFile, "    Reload source code loaded. Size = %d\n", srcDataSize);
+	if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel);
+
 
 	D3D11Base::ID3DBlob* pByteCode = nullptr;
 	D3D11Base::ID3DBlob* pErrorMsgs = nullptr;
@@ -1546,6 +1681,7 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	return true;
 }
 
+
 // Strategy: When the user hits F10 as the reload key, we want to reload all of the hand-patched shaders in
 //	the ShaderFixes folder, and make them live in game.  That will allow the user to test out fixes on the 
 //	HLSL .txt files and do live experiments with fixes.  This makes it easier to figure things out.
@@ -1610,7 +1746,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			// Just skip it in that case, because the new version will be loaded when it is used.
 			if (oldShader == NULL)
 			{
-				if (LogFile) fprintf(LogFile, "> failed to find original shader in mVertexShaders: %ls\n", fileName);
+				if (LogFile) fprintf(LogFile, "> failed to find original shader in mReloadedShaders: %ls\n", fileName);
 				continue;
 			}
 
@@ -1661,6 +1797,66 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	}	// for every registered shader mReloadedShaders 
 
 	return true;
+}
+
+
+// When a shader is marked by the user, we want to automatically move it to the ShaderFixes folder
+// The universal way to do this is to keep the shaderByteCode around, and when mark happens, use that as
+// the replacement and build code to match.  This handles all the variants of preload, cache, hlsl 
+// or not, and allows creating new files on a first run.  Should be handy.
+
+static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
+{
+	bool success = false;
+	string shaderModel;
+	D3D11Base::ID3DBlob* asmTextBlob;
+	string decompiled;
+
+	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
+	for each (pair<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+	{
+		if (iter.second.hash == hash)
+		{
+			asmTextBlob = GetDisassembly(iter.second.byteCode);
+			if (!asmTextBlob)
+				break;
+
+			WriteDisassembly(hash, iter.second.shaderType, asmTextBlob);
+
+			// Disassembly file is written, now decompile the current byte code into HLSL.
+			shaderModel = GetShaderModel(asmTextBlob);
+			decompiled = Decompile(iter.second.byteCode, asmTextBlob);
+			if (decompiled.empty())
+				break;
+
+			// Save the decompiled text into the .txt source file.
+			if (!WriteHLSL(decompiled, hash, iter.second.shaderType))
+				break;
+
+			// Lastly, reload the shader generated, to check for decompile errors, set it as the active 
+			// shader code, in case there are visual errors, and make it the match the code in the file.
+			wchar_t fileName[MAX_PATH];
+			wsprintf(fileName, L"%08lx%08lx-%ls_replace.txt", (UINT32)(hash >> 32), (UINT32)(hash), iter.second.shaderType.c_str());
+			if (!ReloadShader(SHADER_PATH, fileName, device))
+				break;
+
+			// There can be more than one in the map with the same hash, but we only need a single copy to
+			// make the hlsl file output, so exit with success.
+			success = true;
+			break;
+		}
+	}
+
+	if (success)
+	{
+		Beep(1800, 400);		// High beep for success, to notify it's running fresh fixes.
+		if (LogFile) fprintf(LogFile, "> successfully copied Marked shader to ShaderFixes\n");
+	}
+	else
+	{
+		Beep(200, 150);			// Bonk sound for failure.
+		if (LogFile) fprintf(LogFile, "> FAILED to copy Marked shader to ShaderFixes\n");
+	}
 }
 
 
@@ -1897,6 +2093,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 			{
 				fprintf(LogFile, "       vertex shader was compiled from source code %s\n", i->second);
 			}
+			// Copy marked shader to ShaderFixes
+			CopyToFixes(G->mSelectedPixelShader, device);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (G->DumpUsage) DumpUsage();
 	}
@@ -1964,20 +2162,22 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	{
 		G->mark_vertexshader = true;
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		if (LogFile)
-		{
-			fprintf(LogFile, ">>>> Vertex shader marked: vertex shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedVertexShader >> 32), (UINT32)G->mSelectedVertexShader);
-			for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
-				fprintf(LogFile, "     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-			for (std::set<UINT64>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-				fprintf(LogFile, "     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-		}
+			if (LogFile)
+			{
+				fprintf(LogFile, ">>>> Vertex shader marked: vertex shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedVertexShader >> 32), (UINT32)G->mSelectedVertexShader);
+				for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
+					fprintf(LogFile, "     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+				for (std::set<UINT64>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
+					fprintf(LogFile, "     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+			}
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			fprintf(LogFile, "       shader was compiled from source code %s\n", i->second);
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				fprintf(LogFile, "       shader was compiled from source code %s\n", i->second);
+			}
+			// Copy marked shader to ShaderFixes
+			CopyToFixes(G->mSelectedVertexShader, device);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (G->DumpUsage) DumpUsage();
 	}
