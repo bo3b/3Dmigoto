@@ -55,7 +55,7 @@ typedef std::map<UINT64, std::string> CompiledShaderMap;
 //	shaderType is "vs" or "ps" or maybe later "gs" (type wstring for file name use)
 //	shaderModel is only filled in when a shader is replaced.  (type string for old D3 API use)
 //	timeStamp allows reloading/recompiling only modified shaders
-//	newShader is either ID3D11VertexShader or ID3D11PixelShader
+//	replacement is either ID3D11VertexShader or ID3D11PixelShader
 struct OriginalShaderInfo
 {
 	UINT64 hash;
@@ -63,7 +63,7 @@ struct OriginalShaderInfo
 	std::string shaderModel;
 	D3D11Base::ID3D11ClassLinkage* linkage;
 	FILETIME timeStamp;
-	D3D11Base::ID3D11DeviceChild* newShader;
+	D3D11Base::ID3D11DeviceChild* replacement;
 };
 
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
@@ -1579,7 +1579,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 {
 	UINT64 hash;
 	D3D11Base::ID3D11DeviceChild* oldShader = NULL;
-	D3D11Base::ID3D11DeviceChild* newShader = NULL;
+	D3D11Base::ID3D11DeviceChild* replacement = NULL;
 	D3D11Base::ID3D11ClassLinkage* classLinkage;
 	string shaderModel;
 	wstring shaderType;		// "vs" or "ps" maybe "gs"
@@ -1639,12 +1639,12 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			if (shaderType.compare(L"vs") == 0)
 			{
 				hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
-					(D3D11Base::ID3D11VertexShader**) &newShader);
+					(D3D11Base::ID3D11VertexShader**) &replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
 				hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
-					(D3D11Base::ID3D11PixelShader**) &newShader);
+					(D3D11Base::ID3D11PixelShader**) &replacement);
 			}
 			pShaderBytecode->Release();
 			if (FAILED(hr))
@@ -1652,11 +1652,11 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 
 
 			// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
-			if (G->mReloadedShaders[oldShader].newShader != NULL)
-				G->mReloadedShaders[oldShader].newShader->Release();
+			if (G->mReloadedShaders[oldShader].replacement != NULL)
+				G->mReloadedShaders[oldShader].replacement->Release();
 
 			// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
-			G->mReloadedShaders[oldShader].newShader = newShader;
+			G->mReloadedShaders[oldShader].replacement = replacement;
 		}
 	}	// for every registered shader mReloadedShaders 
 
@@ -1879,24 +1879,24 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	{
 		G->mark_pixelshader = true;
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		if (LogFile)
-		{
-			fprintf(LogFile, ">>>> Pixel shader marked: pixel shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedPixelShader >> 32), (UINT32)G->mSelectedPixelShader);
-			for (std::set<UINT64>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
-				fprintf(LogFile, "     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-			for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-				fprintf(LogFile, "     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-		}
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedPixelShader);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			fprintf(LogFile, "       pixel shader was compiled from source code %s\n", i->second);
-		}
-		i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			fprintf(LogFile, "       vertex shader was compiled from source code %s\n", i->second);
-		}
+			if (LogFile)
+			{
+				fprintf(LogFile, ">>>> Pixel shader marked: pixel shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedPixelShader >> 32), (UINT32)G->mSelectedPixelShader);
+				for (std::set<UINT64>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
+					fprintf(LogFile, "     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+				for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
+					fprintf(LogFile, "     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+			}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedPixelShader);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				fprintf(LogFile, "       pixel shader was compiled from source code %s\n", i->second);
+			}
+			i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				fprintf(LogFile, "       vertex shader was compiled from source code %s\n", i->second);
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (G->DumpUsage) DumpUsage();
 	}
