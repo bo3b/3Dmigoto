@@ -1300,6 +1300,16 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	if (hr != S_OK)
 	{
 		hr = GetD3D11Device()->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
+
+		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
+		// have a copy for every shader seen.
+		if (G->hunting)
+		{
+			D3D11Base::ID3DBlob* blob;
+			D3DCreateBlob(BytecodeLength, &blob);
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+			RegisterForReload(*ppVertexShader, hash, L"vs", "bin", pClassLinkage, blob, ftWrite);
+		}
 	}
 	if (hr == S_OK && ppVertexShader && pShaderBytecode)
 	{
@@ -1512,6 +1522,16 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	if (hr != S_OK)
 	{
 		hr = GetD3D11Device()->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
+	
+		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
+		// have a copy for every shader seen.
+		if (G->hunting)
+		{
+			D3D11Base::ID3DBlob* blob;
+			D3DCreateBlob(BytecodeLength, &blob);
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+			RegisterForReload(*ppPixelShader, hash, L"ps", "bin", pClassLinkage, blob, ftWrite);
+		}
 	}
 	if (hr == S_OK && ppPixelShader && pShaderBytecode)
 	{
