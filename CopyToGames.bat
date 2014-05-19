@@ -10,3 +10,5 @@ echo
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\BioShock Infinite\Binaries\Win32\" /F /Y
 echo 
 xcopy "%1*.*" "T:\Bootleg\Saints Row IV\" /F /Y
+echo 
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Saints Row the Third\" /F /Y
