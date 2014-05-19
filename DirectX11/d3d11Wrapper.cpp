@@ -1507,60 +1507,6 @@ static string GetShaderModel(D3D11Base::ID3DBlob* asmTextBlob)
 	return shaderModel;
 }
 
-// If the shader was loaded from the .bin cache file, then we don't presently have the shader model
-// available.  This will fetch the .bin file and disassemble it to look for the shader model, like 
-// when it is decompiled.
-// Note: this is pretty expensive, so this should only be done in specific situations like reloading all.
-
-static string GetShaderModel(UINT64 hash, wstring shaderType)
-{
-	wchar_t name[MAX_PATH];
-
-	// Read binary compiled shader from ShaderFixes with matching name.
-	swprintf(name, L"%ls\\%016llx-%ls_replace.bin", SHADER_PATH, hash, shaderType.c_str());
-	HANDLE f = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f != INVALID_HANDLE_VALUE)
-	{
-		if (LogFile) fprintf(LogFile, "    Using reloaded binary shader to get ShaderModel.\n");
-
-		DWORD pCodeSize = GetFileSize(f, 0);
-		char* pCode = new char[pCodeSize];
-		DWORD readSize;
-		if (!ReadFile(f, pCode, pCodeSize, &readSize, 0) || pCodeSize != readSize)
-		{
-			if (LogFile) fprintf(LogFile, "    Error reading .bin file: %s\n", name);
-			delete pCode; pCode = 0;
-			return "";
-		}
-		CloseHandle(f);
-
-		// Disassemble old shader to get shader model.
-		D3D11Base::ID3DBlob *disassembly;
-		HRESULT ret = D3D11Base::D3DDisassemble(pCode, readSize, D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, 
-			&disassembly);
-		if (ret != S_OK)
-		{
-			if (LogFile) fprintf(LogFile, "    disassembly of original shader failed: %s\n", name);
-		
-			delete pCode;
-			return "";
-		}
-		else
-		{
-			string model = GetShaderModel(disassembly);
-			disassembly->Release(); disassembly = 0;
-
-			// Todo: don't return success from middle of the routine.
-			return model;
-		}
-	}
-	else
-	{
-		// No .bin file found, something is wrong.
-		if (LogFile) fwprintf(LogFile, L"    ReloadShader failed in GetShaderModel, no .bin found: %s\n", name);
-		return "";
-	}
-}
 
 // Compile a new shader from  HLSL text input, and report on errors if any.
 // Return the binary blob of pCode to be activated with CreateVertexShader or CreatePixelShader.
@@ -1717,6 +1663,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	D3D11Base::ID3D11DeviceChild* oldShader = NULL;
 	D3D11Base::ID3D11DeviceChild* replacement = NULL;
 	D3D11Base::ID3D11ClassLinkage* classLinkage;
+	D3D11Base::ID3DBlob* shaderCode;
 	string shaderModel;
 	wstring shaderType;		// "vs" or "ps" maybe "gs"
 	FILETIME timeStamp;
@@ -1741,6 +1688,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			shaderModel = iter.second.shaderModel;
 			shaderType = iter.second.shaderType;
 			timeStamp = iter.second.timeStamp;
+			shaderCode = iter.second.byteCode;
 
 			// If we didn't find an original shader, that is OK, because it might not have been loaded yet.
 			// Just skip it in that case, because the new version will be loaded when it is used.
@@ -1754,22 +1702,26 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			// Disassemble the binary to get that string.
 			if (shaderModel.compare("bin") == 0)
 			{
-				shaderModel = GetShaderModel(hash, shaderType);
+				D3D11Base::ID3DBlob* asmTextBlob = GetDisassembly(shaderCode);
+				if (!asmTextBlob)
+					return false;
+				shaderModel = GetShaderModel(asmTextBlob);
 				if (shaderModel.empty())
 					return false;
+				G->mReloadedShaders[oldShader].shaderModel = shaderModel;
 			}
 
-			// Compile replacement.  If timestamp is unchanged, skip to next shader.
+			// Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
 			D3D11Base::ID3DBlob *pShaderBytecode = NULL;
 			if (!CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &timeStamp, &pShaderBytecode))
 				continue;
 
-			// Update timestamp, since we have an edited file.
-			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
-
 			// If we compiled but got nothing, that's a fatal error we need to report.
 			if (pShaderBytecode == NULL)
 				return false;
+
+			// Update timestamp, since we have an edited file.
+			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
 
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
