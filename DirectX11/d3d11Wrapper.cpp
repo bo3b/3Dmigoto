@@ -1369,31 +1369,47 @@ static void DumpUsage()
 
 //--------------------------------------------------------------------------------------------------
 
+// Convenience class to avoid passing wrong objects all of Blob type.
+// For strong type checking.  Already had a couple of bugs with generic ID3DBlobs.
+
+class AsmTextBlob: public D3D11Base::ID3DBlob
+{
+};
+
+
+
 // Write the decompiled text as HLSL source code to the txt file.
-// This will overwrite the file that is there.  
-// The assumption is that the shaderByteCode that we start with is always the most up to date,
-// and thus won't ever overwrite something edited but not active.  If a file was already extant
-// in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
+// This will not overwrite any file that is already there. 
+// The assumption is that the shaderByteCode that we have here is always the most up to date,
+// and thus is not different than the file on disk.
+// If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
 static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 {
 	wchar_t fullName[MAX_PATH];
+	FILE *fw;
 
 	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
-	FILE *fw = _wfopen(fullName, L"wb");
+	fw = _wfopen(fullName, L"rb");
 	if (fw)
 	{
-		if (LogFile)	fwprintf(LogFile, L"    storing patched shader to %s\n", fullName);
-
-		fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+		fwprintf(LogFile, L"    error storing marked shader, file already exists: %s\n", fullName);
 		fclose(fw);
-		return true;
+		return false;
 	}
-	else
+
+	fw = _wfopen(fullName, L"wb");
+	if (!fw)
 	{
 		fwprintf(LogFile, L"    error storing marked shader to %s\n", fullName);
 		return false;
 	}
+
+	if (LogFile) fwprintf(LogFile, L"    storing patched shader to %s\n", fullName);
+
+	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+	fclose(fw);
+	return true;
 }
 
 
@@ -1401,7 +1417,7 @@ static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 // This is pretty heavyweight obviously, so it is only being done during Mark operations.
 // Todo: another copy/paste job, we really need some subroutines, utility library.
 
-static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, D3D11Base::ID3DBlob* disassembly)
+static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disassembly)
 {
 	if (LogFile) fprintf(LogFile, "    creating HLSL representation.\n");
 
@@ -1449,7 +1465,7 @@ static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, D3D11Base::ID3DBlo
 
 // Get the text disassembly of the shader byte code specified.
 
-static D3D11Base::ID3DBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
+static AsmTextBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
 {
 	D3D11Base::ID3DBlob *disassembly;
 	
@@ -1461,35 +1477,46 @@ static D3D11Base::ID3DBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
 		return NULL;
 	}
 
-	return disassembly;
+	return (AsmTextBlob*) disassembly;
 }
 
 // Write the disassembly to the text file.
-// Overwrite any file that is there, under the assumption that any newer version should match the HLSL.
+// If the file already exists, return an error, to avoid overwrite.  
+// Generally if the file is already there, the code we would write on Mark is the same anyway.
 
-static void WriteDisassembly(UINT64 hash, wstring shaderType, D3D11Base::ID3DBlob* asmTextBlob)
+static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTextBlob)
 {
 	wchar_t fullName[MAX_PATH];
+	FILE *f;
 
 	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
-	FILE *f = _wfopen(fullName, L"wb");
-	if (LogFile)
-	{
-		if (f)
-			fwprintf(LogFile, L"    storing disassembly to %s\n", fullName);
-		else
-			fwprintf(LogFile, L"    Shader Mark could not write asm text file: %s\n", fullName);
-	}
+	
+	// Check if the file already exists.
+	f = _wfopen(fullName, L"rb");
 	if (f)
 	{
-		fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), f);
+		fwprintf(LogFile, L"    Shader Mark .bin file already exists: %s\n", fullName);
 		fclose(f);
+		return false;
 	}
+
+	f = _wfopen(fullName, L"wb");
+	if (!f)
+	{
+		if (LogFile) fwprintf(LogFile, L"    Shader Mark could not write asm text file: %s\n", fullName);
+		return false;
+	}
+
+	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), f);
+	fclose(f);
+	if (LogFile) fwprintf(LogFile, L"    storing disassembly to %s\n", fullName);
+	
+	return true;
 }
 
 // Different version that takes asm text already.
 
-static string GetShaderModel(D3D11Base::ID3DBlob* asmTextBlob)
+static string GetShaderModel(AsmTextBlob* asmTextBlob)
 {
 	// Read shader model. This is the first not commented line.
 	char *pos = (char *)asmTextBlob->GetBufferPointer();
@@ -1702,7 +1729,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			// Disassemble the binary to get that string.
 			if (shaderModel.compare("bin") == 0)
 			{
-				D3D11Base::ID3DBlob* asmTextBlob = GetDisassembly(shaderCode);
+				AsmTextBlob* asmTextBlob = GetDisassembly(shaderCode);
 				if (!asmTextBlob)
 					return false;
 				shaderModel = GetShaderModel(asmTextBlob);
@@ -1734,19 +1761,21 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 				hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(D3D11Base::ID3D11PixelShader**) &replacement);
 			}
-			pShaderBytecode->Release();
 			if (FAILED(hr))
 				return false;
 
 
 			// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
+			// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
 			if (G->mReloadedShaders[oldShader].replacement != NULL)
 				G->mReloadedShaders[oldShader].replacement->Release();
-
-			// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
 			G->mReloadedShaders[oldShader].replacement = replacement;
+
+			// New binary shader code, to replace the prior loaded shader byte code. 
+			shaderCode->Release();
+			G->mReloadedShaders[oldShader].byteCode = pShaderBytecode;
 		}
-	}	// for every registered shader mReloadedShaders 
+	}	// for every registered shader in mReloadedShaders 
 
 	return true;
 }
@@ -1761,7 +1790,7 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 {
 	bool success = false;
 	string shaderModel;
-	D3D11Base::ID3DBlob* asmTextBlob;
+	AsmTextBlob* asmTextBlob;
 	string decompiled;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
@@ -1773,7 +1802,8 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 			if (!asmTextBlob)
 				break;
 
-			WriteDisassembly(hash, iter.second.shaderType, asmTextBlob);
+			if(!WriteDisassembly(hash, iter.second.shaderType, asmTextBlob))
+				break;
 
 			// Disassembly file is written, now decompile the current byte code into HLSL.
 			shaderModel = GetShaderModel(asmTextBlob);
