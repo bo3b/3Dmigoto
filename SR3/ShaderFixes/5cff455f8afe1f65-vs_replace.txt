@@ -1,0 +1,110 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+  float4 Dyn_decal_params_1 : packoffset(c43);
+  float4 Dyn_decal_params_2 : packoffset(c44);
+  float3 Dyn_decal_pos : packoffset(c45);
+  float3 Dyn_decal_rvec : packoffset(c46);
+  float3 Dyn_decal_uvec : packoffset(c47);
+  float3 Dyn_decal_fvec : packoffset(c48);
+  float3 Dyn_decal_scale : packoffset(c49);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  float4 v2 : POSITION2,
+  float4 v3 : POSITION3,
+  float4 v4 : POSITION4,
+  float4 v5 : COLOR2,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6,
+  out float4 o8 : TEXCOORD7)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(v2.xyzw, r0.xyzw);
+  r1.y = dot(v3.xyzw, r0.xyzw);
+  r1.z = dot(v4.xyzw, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  r0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  r0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  r0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  o0.xyzw = r0.xyzw;
+  // o6.xyzw = r0.xyzw;
+
+// bo3b- Position is right, texture is misaligned.
+float4 tex = r0;
+float4 stereo = StereoParams.Load(0);
+tex.x += stereo.x * (tex.w - stereo.y);
+o6.xyzw = tex.xyzw;
+
+  r0.x = -1.000000000e+000;
+  r0.yzw = -Dyn_decal_pos.xyz + v0.xyz;
+  r0.yzw = r0.yzw / Dyn_decal_scale.xyz;
+  r2.x = dot(r0.yzw, Dyn_decal_uvec.xyz);
+  r2.x = Dyn_decal_params_1.y * r2.x;
+  r2.y = r2.x * r0.x;
+  r3.x = dot(r0.yzw, Dyn_decal_rvec.xyz);
+  r3.z = dot(r0.yzw, Dyn_decal_fvec.xyz);
+  r2.xz = Dyn_decal_params_1.xz * r3.xz;
+  o1.xy = float2(5.000000e-001,5.000000e-001) + r2.xy;
+  o4.w = r2.z;
+  r0.xyz = v1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.y = dot(v2.xyz, r0.xyz);
+  r2.z = dot(v3.xyz, r0.xyz);
+  r2.x = dot(v4.xyz, r0.xyz);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r3.x = dot(r2.yzx, IR_World2View._m00_m10_m20);
+  r3.y = dot(r2.yzx, IR_World2View._m01_m11_m21);
+  r3.z = dot(r2.yzx, IR_World2View._m02_m12_m22);
+  o2.xyz = r3.xyz;
+  r4.xyz = Dyn_decal_scale.yyy * Dyn_decal_rvec.zxy;
+  r5.xyz = r4.xyz * r0.yzx;
+  r4.xyz = r4.zxy * r0.zxy + -r5.xyz;
+  o4.z = dot(Dyn_decal_fvec.xyz, r0.xyz);
+  r0.x = dot(r4.xyz, r4.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r4.xyz * r0.xxx;
+  r4.z = dot(v2.xyz, r0.xyz);
+  r4.x = dot(v3.xyz, r0.xyz);
+  r4.y = dot(v4.xyz, r0.xyz);
+  o4.x = dot(Dyn_decal_fvec.xyz, r0.xyz);
+  r0.x = dot(r4.xyz, r4.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r4.xyz * r0.xxx;
+  r4.x = dot(r0.zxy, IR_World2View._m00_m10_m20);
+  r4.y = dot(r0.zxy, IR_World2View._m01_m11_m21);
+  r4.z = dot(r0.zxy, IR_World2View._m02_m12_m22);
+  o3.xyz = r4.xyz;
+  r5.xyz = r2.xyz * r0.xyz;
+  r0.xyz = r2.zxy * r0.yzx + -r5.xyz;
+  o4.y = dot(Dyn_decal_fvec.xyz, r0.xyz);
+  o5.xyzw = Dyn_decal_params_2.xyzw;
+  r0.x = v5.x * 3.264000000e+004 + 3.289500000e+004;
+  o7.w = 1.525902189e-005 * r0.x;
+  o7.x = dot(r1.xyzw, IR_World2View._m00_m10_m20_m30);
+  o7.y = dot(r1.xyzw, IR_World2View._m01_m11_m21_m31);
+  o7.z = dot(r1.xyzw, IR_World2View._m02_m12_m22_m32);
+  r0.xyz = r4.yzx * r3.zxy;
+  o8.xyz = r3.yzx * r4.zxy + -r0.xyz;
+  o8.w = v5.y;
+  return;
+}

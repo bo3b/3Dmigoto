@@ -1,0 +1,58 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : POSITION2,
+  float4 v3 : POSITION3,
+  float4 v4 : POSITION4,
+  float4 v5 : COLOR2,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(v2.xyzw, r0.xyzw);
+  r1.y = dot(v3.xyzw, r0.xyzw);
+  r1.z = dot(v4.xyzw, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  r0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  r0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  r0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  o0.xyzw = r0.xyzw;
+  // o2.xyzw = r0.xyzw;
+
+// bo3b- Position is right, texture is misaligned.
+float4 tex = r0;
+float4 stereo = StereoParams.Load(0);
+tex.x += stereo.x * (tex.w - stereo.y);
+o2.xyzw = tex.xyzw;
+
+  r0.xy = v1.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r0.x = v5.x * 3.264000000e+004 + 3.289550000e+004;
+  o3.w = 1.525902189e-005 * r0.x;
+  o3.x = dot(r1.xyzw, IR_World2View._m00_m10_m20_m30);
+  o3.y = dot(r1.xyzw, IR_World2View._m01_m11_m21_m31);
+  o3.z = dot(r1.xyzw, IR_World2View._m02_m12_m22_m32);
+  o4.x = IR_World2View._m10;
+  o4.y = IR_World2View._m11;
+  o4.z = IR_World2View._m12;
+  o4.w = v5.y;
+  return;
+}
