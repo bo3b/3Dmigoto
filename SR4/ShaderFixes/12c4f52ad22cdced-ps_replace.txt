@@ -1,5 +1,6 @@
 // Numerous buildings, or windows on them.
 // Manually fixed shader for 0x3f8000000 = 1.0
+//Mike_ar69 and the incorrect AND translation "r3.x = r3.x ? 0 : 0;" which should be "r3.x = r3.x ? 1 : 1;"
 
 cbuffer cb4 : register(b4)
 {
@@ -119,18 +120,18 @@ r0.z = r0.z ? 1.0 : 0;
   r3.y = 5.000000e-001 >= r3.y;
   r3.z = 5.000000e-001 >= r3.z;
   r3.w = 5.000000e-001 >= r3.w;
-  r3.x = r3.x ? 0 : 0;
-  r3.y = r3.y ? 0 : 0;
-  r3.z = r3.z ? 0 : 0;
-  r3.w = r3.w ? 0 : 0;
+  r3.x = r3.x ? 1 : 1;
+  r3.y = r3.y ? 1 : 1;
+  r3.z = r3.z ? 1 : 1;
+  r3.w = r3.w ? 1 : 1;
   r4.x = 1.220722e-005 >= abs(r4.x);
   r4.y = 1.220722e-005 >= abs(r4.y);
   r4.z = 1.220722e-005 >= abs(r4.z);
   r4.w = 1.220722e-005 >= abs(r4.w);
-  r4.x = r4.x ? 0 : 0;
-  r4.y = r4.y ? 0 : 0;
-  r4.z = r4.z ? 0 : 0;
-  r4.w = r4.w ? 0 : 0;
+  r4.x = r4.x ? 1 : 1;
+  r4.y = r4.y ? 1 : 1;
+  r4.z = r4.z ? 1 : 1;
+  r4.w = r4.w ? 1 : 1;
   r3.xyzw = r4.xyzw + r3.xyzw;
   r1.zw = r3.xy + r3.zw;
   r1.z = r1.z >= r1.w;

@@ -1,3 +1,4 @@
+//NO fix
 cbuffer cb2 : register(b2)
 {
   float4 cb2[19];
@@ -59,11 +60,11 @@ void main(
 
 
 //Mike_ar69 - Stereo Shift
-float4 r21;
-float4 stereoParams = StereoParams.Load(0);
-r21.xyzw = r0.xyzw;
-r0.x += stereoParams.x * (r0.w - stereoParams.y);
-o0.xyzw = r21.xyzw;
+// float4 r21;
+// float4 stereoParams = StereoParams.Load(0);
+// r21.xyzw = r0.xyzw;
+// r0.x += stereoParams.x * (r0.w - stereoParams.y);
+o0.xyzw = r0.xyzw;
 
 
   o2.xyzw = r0.xyzw;

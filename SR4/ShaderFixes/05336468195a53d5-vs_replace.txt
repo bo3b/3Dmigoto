@@ -1,0 +1,51 @@
+//Skybox
+cbuffer vc0 : register(b0)
+{
+  float2 Cloud_U_Offset : packoffset(c0);
+  float3 TOD_Light_Color_Front : packoffset(c1);
+  float3 TOD_Light_Color_Rear : packoffset(c2);
+  float4 Layer_strengths : packoffset(c3);
+  float Rimlight_scale : packoffset(c4);
+  float4 Layer_strengths2 : packoffset(c5);
+  float Sky_fog_amt : packoffset(c6);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  
+ //mike_ar69 
+float4 stereoParams = StereoParams.Load(0);
+float4 r21;
+
+  r0.x = dot(objTM._m00_m01_m02, v0.xyz);
+  r0.y = dot(objTM._m10_m11_m12, v0.xyz);
+  r0.z = dot(objTM._m20_m21_m22, v0.xyz);
+  r1.x = dot(r0.xyz, projTM._m00_m10_m20);
+  r1.y = dot(r0.xyz, projTM._m01_m11_m21);
+  r1.z = dot(r0.xyz, projTM._m03_m13_m23);
+  
+r1.x += stereoParams.x*(stereoParams.y);
+
+  
+  o0.xyzw = r1.xyzz;
+  r0.xy = v1.xy;
+  r0.y = 9.765625000e-004 * r0.y;
+  o1.xz = r0.xx * float2(9.765625e-004,9.765625e-004) + Cloud_U_Offset.xy;
+  o1.yw = r0.yy;
+  return;
+}

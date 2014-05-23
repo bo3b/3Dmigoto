@@ -38,6 +38,7 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4;
@@ -62,15 +63,16 @@ float4 r21;
   r1.xy = v2.xy;
   
 r21.xyz = -r1.xyz;
-r21.x +=  stereoParams.x * (-r1.z - stereoParams.y)*0.5;
+r21.x +=  stereoParams.x * (r1.z - stereoParams.y)*v3; //0.62;
 
   r2.xyz = -IR_Light_Pos.xyz + -r21.xyz; //r1.xyz;
+  
   r0.w = dot(IR_Light_Dir.xyz, r2.xyz);
   r0.w = max(r0.w, 0.000000000e+000);
   r0.w = min(r0.w, IR_Light_Dir.w);
   r2.xyz = IR_Light_Dir.xyz * r0.www + IR_Light_Pos.xyz;
-  r3.xyz = r2.xyz + -r1.xyz;
-  r2.xyz = -r2.xyz + r1.xyz;
+  r3.xyz = r2.xyz + r21.xyz; //-r1.xyz;
+  r2.xyz = -r2.xyz + -r21.xyz; //r1.xyz;
   r1.w = dot(r3.xyz, r3.xyz);
   r1.w = sqrt(r1.w);
   r3.xyz = r3.xyz / r1.www;
@@ -78,9 +80,9 @@ r21.x +=  stereoParams.x * (-r1.z - stereoParams.y)*0.5;
   r2.w = dot(r0.xyz, r3.xyz);
   r3.w = r2.w + r2.w;
   r0.xyz = r3.www * r0.xyz + -r3.xyz;
-  r3.x = dot(r1.xyz, r1.xyz);
+  r3.x = dot(-r21.xyz, -r21.xyz); //dot(r1.xyz, r1.xyz);
   r3.x = rsqrt(r3.x);
-  r1.xyz = r3.xxx * r1.xyz;
+  r1.xyz = r3.xxx * -r21.xyz; //r1.xyz;
   r0.x = saturate(dot(r0.xyz, -r1.xyz));
   r0.x = log2(r0.x);
   r3.xyzw = IR_GBuffer_LightingSampler.Sample(IR_GBuffer_LightingSampler_s, v1.xy).xyzw;

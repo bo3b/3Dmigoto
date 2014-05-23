@@ -37,6 +37,7 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4;
@@ -61,7 +62,7 @@ float4 r21;
   r0.w = 1.000000e+000 / r0.w;
   
 r21.xyz = v2.xyz * r0.www;
-r21.x +=  stereoParams.x * (-r0.w - stereoParams.y)*0.5;
+r21.x -=  stereoParams.x * (-r0.w - stereoParams.y)*v3; //0.62;
 
   r1.xyz = -r21.xyz + IR_Light_Pos.xyz; //-v2.xyz * r0.www + IR_Light_Pos.xyz;
   
@@ -72,8 +73,8 @@ r21.x +=  stereoParams.x * (-r0.w - stereoParams.y)*0.5;
   r2.x = dot(r0.xyz, r1.xyz);
   r2.y = r2.x + r2.x;
   r0.xyz = r2.yyy * r0.xyz + -r1.xyz;
-  r1.xyz = v2.xyz * r0.www;
-  r2.yzw = v2.xyz * r0.www + -IR_Light_Pos.xyz;
+  r1.xyz = r21.xyz; //v2.xyz * r0.www;
+  r2.yzw = r21.xyz + -IR_Light_Pos.xyz; //v2.xyz * r0.www + -IR_Light_Pos.xyz;
   r0.w = dot(r1.xyz, r1.xyz);
   r0.w = rsqrt(r0.w);
   r1.xyz = r1.xyz * r0.www;

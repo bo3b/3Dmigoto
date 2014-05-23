@@ -1,3 +1,4 @@
+//Decals (disable)
 cbuffer cb2 : register(b2)
 {
   float4 cb2[50];
@@ -40,17 +41,16 @@ void main(
 {
   float4 r0,r1;
   uint4 bitmask;
+  
+//mike_ar69 
+float4 stereoParams = StereoParams.Load(0);
+float4 r21, r22;
+
   r0.xyz = v0.xyz;
   r0.w = 1.000000000e+000;
-
-
-//Mike_ar69 - Stereo Shift
-float4 r21;
-float4 stereoParams = StereoParams.Load(0);
-r21.xyzw = r0.xyzw;
-r0.x += stereoParams.x * (r0.w - stereoParams.y);
-o0.xyzw = r21.xyzw;
-
+  o0.xyz = r0.xyz;
+  
+o0.w=0;
 
   o8.xyzw = r0.xyzw;
   r0.w = 1.000000000e+000;
@@ -59,9 +59,15 @@ o0.xyzw = r21.xyzw;
   r0.x = dot(cb2[16].xyzw, r1.xyzw);
   r0.y = dot(cb2[17].xyzw, r1.xyzw);
   r0.z = dot(cb2[18].xyzw, r1.xyzw);
-  o1.x = dot(r0.xyzw, cb2[22].xyzw);
-  o1.y = dot(r0.xyzw, cb2[23].xyzw);
-  o1.z = dot(r0.xyzw, cb2[24].xyzw);
+  
+  r21.x = dot(r0.xyzw, cb2[22].xyzw);	//WorldToView
+  r21.y = dot(r0.xyzw, cb2[23].xyzw);
+  r21.z = dot(r0.xyzw, cb2[24].xyzw);
+  
+// r21.x +=  stereoParams.x * (r21.z - stereoParams.y)*cb2[26].x; 
+  
+o1.xyz = r21.xyz;
+
   r0.xyz = -cb2[4].xyz + r0.xyz;
   r1.x = dot(cb2[16].xyz, cb2[46].xyz);
   r1.y = dot(cb2[17].xyz, cb2[46].xyz);
@@ -78,9 +84,11 @@ o0.xyzw = r21.xyzw;
   r1.x = dot(cb2[16].xyz, cb2[48].xyz);
   r1.y = dot(cb2[17].xyz, cb2[48].xyz);
   r1.z = dot(cb2[18].xyz, cb2[48].xyz);
-  o4.x = dot(r1.xyz, cb2[22].xyz);
+  
+  o4.x = dot(r1.xyz, cb2[22].xyz);			//WorldToView
   o4.y = dot(r1.xyz, cb2[23].xyz);
   o4.z = dot(r1.xyz, cb2[24].xyz);
+  
   o5.xyzw = cb2[43].xyzw;
   o6.xyzw = cb2[42].xyzw;
   o7.xyzw = cb2[44].xyzw;
@@ -101,8 +109,12 @@ o0.xyzw = r21.xyzw;
   r0.x = exp2(-r0.x);
   r0.x = min(r0.x, 1.000000000e+000);
   o10.w = 1.000000000e+000 + -r0.x;
-  r0.xyzw = cb2[27].xyzw * v0.yyyy;
-  r0.xyzw = cb2[26].xyzw * v0.xxxx + r0.xyzw;
+  
+r21.xyz = v0.xyz;
+r21.x +=  stereoParams.x * (r21.z - stereoParams.y)*4.5*cb2[26].x; 
+  
+  r0.xyzw = cb2[27].xyzw * r21.yyyy;					//Light Inverse Proj
+  r0.xyzw = cb2[26].xyzw * r21.xxxx + r0.xyzw;
   r0.xyzw = cb2[29].xyzw + r0.xyzw;
   r0.xyz = r0.xyz / r0.www;
   o10.xyz = r0.xyz / r0.zzz;

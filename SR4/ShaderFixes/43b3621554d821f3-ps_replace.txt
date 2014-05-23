@@ -1,4 +1,4 @@
-//Shadows
+//Shadows (cutscene in white house shooting the ships)
 cbuffer vc0 : register(b0)
 {
   float4 Near_clip_params : packoffset(c0);
@@ -8,8 +8,8 @@ cbuffer vc0 : register(b0)
   float4 near_far_depth_params : packoffset(c7);
   float Shadow_map_resolution : packoffset(c8);
 }
-SamplerState Depth_mapSampler_s : register(s0);
-SamplerState Shadow_mapSampler_s : register(s1);
+SamplerState Depth_mapSampler_s_s : register(s0);
+SamplerState Shadow_mapSampler_s_s : register(s1);
 Texture2D<float4> Depth_mapSampler : register(t0);
 Texture2D<float4> Shadow_mapSampler : register(t1);
 
@@ -18,6 +18,7 @@ Texture2D<float4> StereoParams : register(t125);
 void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7;
@@ -28,15 +29,20 @@ float4 stereoParams = StereoParams.Load(0);
 float4 r21;
 
   r0.xy = v1.xy / v1.ww;
+  
   r1.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
-  r1.xyzw = Depth_mapSampler.Sample(Depth_mapSampler_s, r1.xy).xyzw;
+  r1.xyzw = Depth_mapSampler.Sample(Depth_mapSampler_s_s, r1.xy).xyzw;
   r0.z = r1.x;
   r1.x = -near_far_depth_params.z * r1.x + Near_clip_params.y;
   r1.x = near_far_depth_params.y / r1.x;
+ 
+// r21.w = r1.x; ///near_far_depth_params.y; 
+
   r1.xy = saturate(r1.xx * Shadow_fade_params.xy + -Shadow_fade_params.zw);
   r0.w = 1.000000000e+000;
-
-// r0.x +=  stereoParams.x * (-r0.z - stereoParams.y)*0.83; //*cb4[10].x;   //guessing here...
+  
+r0.x += stereoParams.x * ( -r1.x-stereoParams.y)*0.62;
+// r0.x += stereoParams.x * ( -r0.z - stereoParams.y)*0.62; //near_far_depth_params.w; //*r0.z; //0.8; //*stereoParams.y;		//Only for a fixed convergence=1 though...
 
   r2.x = dot(r0.xyzw, Shadow_map_matrix._m00_m10_m20_m30);
   r2.y = dot(r0.xyzw, Shadow_map_matrix._m01_m11_m21_m31);
@@ -45,8 +51,8 @@ float4 r21;
   r0.xyz = r2.xyz / r0.xxx;
   r0.w = 1.000000e+000 / Shadow_map_resolution;
   r2.xyzw = r0.wwww * float4(2.000000e+000,0.000000e+000,-1.000000e+000,1.000000e+000) + r0.xyxy;
-  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r2.xy).xyzw;
-  r2.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r2.zw).xyzw;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r2.xy).xyzw;
+  r2.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r2.zw).xyzw;
   r1.z = 4.999999874e-005 + r2.x;
   r1.z = r1.z < r0.z;
   r2.y = r1.z ? 0.000000000e+000 : 1.000000000e+000;
@@ -54,17 +60,13 @@ float4 r21;
   r1.z = r1.z < r0.z;
   r3.x = r1.z ? 0.000000000e+000 : 1.000000000e+000;
   r4.xyzw = r0.wwww * float4(2.000000e+000,1.000000e+000,1.000000e+000,2.000000e+000) + r0.xyxy;
-  r5.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r4.xy).xyzw;
-  r4.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r4.zw).xyzw;
-  r1.z = 4.999999874e-005 + r4.x;
-  r1.z = r1.z < r0.z;
-  r4.y = r1.z ? 0.000000000e+000 : 1.000000000e+000;
+  r5.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r4.xy).xyzw;
   r1.z = 4.999999874e-005 + r5.x;
   r1.z = r1.z < r0.z;
   r3.y = r1.z ? 0.000000000e+000 : 1.000000000e+000;
   r5.xyzw = r0.wwww * float4(-1.000000e+000,0.000000e+000,0.000000e+000,-1.000000e+000) + r0.xyxy;
-  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r5.xy).xyzw;
-  r5.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r5.zw).xyzw;
+  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r5.xy).xyzw;
+  r5.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r5.zw).xyzw;
   r1.z = 4.999999874e-005 + r5.x;
   r1.z = r1.z < r0.z;
   r5.x = r1.z ? 0.000000000e+000 : 1.000000000e+000;
@@ -76,63 +78,65 @@ float4 r21;
   r2.zw = frac(r2.zw);
   r1.zw = r2.zz * r1.zw + r2.xy;
   r1.z = dot(r1.zw, float2(1.000000e+000,1.000000e+000));
-  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r0.xy).xyzw;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r0.xy).xyzw;
   r1.w = 4.999999874e-005 + r3.x;
   r1.w = r1.w < r0.z;
   r3.x = r1.w ? 0.000000000e+000 : 1.000000000e+000;
   r2.xy = r0.xy + r0.ww;
-  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r2.xy).xyzw;
+  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r2.xy).xyzw;
   r1.w = 4.999999874e-005 + r6.x;
   r1.w = r1.w < r0.z;
   r3.w = r1.w ? 0.000000000e+000 : 1.000000000e+000;
   r6.xyzw = r0.wwww * float4(1.000000e+000,0.000000e+000,0.000000e+000,1.000000e+000) + r0.xyxy;
-  r7.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r6.xy).xyzw;
-  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r6.zw).xyzw;
+  r7.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r6.zw).xyzw;
+  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r6.xy).xyzw;
   r1.w = 4.999999874e-005 + r6.x;
   r1.w = r1.w < r0.z;
-  r3.z = r1.w ? 0.000000000e+000 : 1.000000000e+000;
+  r3.y = r1.w ? 0.000000000e+000 : 1.000000000e+000;
   r1.w = 4.999999874e-005 + r7.x;
   r1.w = r1.w < r0.z;
-  r3.y = r1.w ? 0.000000000e+000 : 1.000000000e+000;
+  r3.z = r1.w ? 0.000000000e+000 : 1.000000000e+000;
   r1.w = dot(r3.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
   r1.z = r1.w + r1.z;
   r3.xyzw = r0.wwww * float4(1.000000e+000,-1.000000e+000,0.000000e+000,2.000000e+000) + r0.xyxy;
-  r6.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r3.zw).xyzw;
-  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r3.xy).xyzw;
-  r1.w = 4.999999874e-005 + r3.x;
-  r1.w = r1.w < r0.z;
-  r5.y = r1.w ? 0.000000000e+000 : 1.000000000e+000;
-  r1.w = 4.999999874e-005 + r6.x;
-  r1.w = r1.w < r0.z;
-  r4.x = r1.w ? 0.000000000e+000 : 1.000000000e+000;
-  r2.xy = -r5.xy + r4.xy;
-  r2.xy = r2.ww * r2.xy + r5.xy;
-  r1.w = dot(r2.xy, float2(1.000000e+000,1.000000e+000));
-  r1.z = r1.z + r1.w;
-  r2.xy = r0.ww * float2(2.000000e+000,2.000000e+000) + r0.xy;
-  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r2.xy).xyzw;
-  r1.w = 4.999999874e-005 + r3.x;
-  r1.w = r1.w < r0.z;
-  r2.y = r1.w ? 0.000000000e+000 : 1.000000000e+000;
-  r3.xy = r0.ww * float2(-1.000000e+000,-1.000000e+000) + r0.xy;
-  r4.xyzw = r0.wwww * float4(2.000000e+000,-1.000000e+000,-1.000000e+000,2.000000e+000) + r0.xyxy;
-  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r3.xy).xyzw;
+  r6.xyzw = r0.wwww * float4(2.000000e+000,-1.000000e+000,-1.000000e+000,2.000000e+000) + r0.xyxy;
+  r7.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r3.zw).xyzw;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r3.xy).xyzw;
   r0.x = 4.999999874e-005 + r3.x;
   r0.x = r0.x < r0.z;
-  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r4.xy).xyzw;
-  r4.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r4.zw).xyzw;
+  r5.y = r0.x ? 0.000000000e+000 : 1.000000000e+000;
+  r0.x = 4.999999874e-005 + r7.x;
+  r0.x = r0.x < r0.z;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r4.zw).xyzw;
+  r4.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r4.xw).xyzw;
   r0.w = 4.999999874e-005 + r4.x;
+  r0.w = r0.w < r0.z;
+  r2.y = r0.w ? 0.000000000e+000 : 1.000000000e+000;
+  r0.w = 4.999999874e-005 + r3.x;
   r0.w = r0.w < r0.z;
   r0.x = r0.x ? 0 : 1;
   r0.y = r0.w ? 0 : 1;
-  r0.w = 4.999999874e-005 + r3.x;
-  r0.z = r0.w < r0.z;
-  r2.x = r0.z ? 0.000000000e+000 : 1.000000000e+000;
-  r0.zw = r2.xy + -r0.xy;
-  r0.xy = r2.zz * r0.zw + r0.xy;
-  r0.y = r0.y + -r0.x;
-  r0.x = r2.w * r0.y + r0.x;
+  r0.xy = -r5.xy + r0.xy;
+  r0.xy = r2.ww * r0.xy + r5.xy;
+  r0.x = dot(r0.xy, float2(1.000000e+000,1.000000e+000));
   r0.x = r1.z + r0.x;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r6.xy).xyzw;
+  r0.y = 4.999999874e-005 + r3.x;
+  r0.y = r0.y < r0.z;
+  r2.x = r0.y ? 0.000000000e+000 : 1.000000000e+000;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r6.zy).xyzw;
+  r4.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s_s, r6.zw).xyzw;
+  r0.y = 4.999999874e-005 + r4.x;
+  r0.y = r0.y < r0.z;
+  r4.y = r0.y ? 0.000000000e+000 : 1.000000000e+000;
+  r0.y = 4.999999874e-005 + r3.x;
+  r0.y = r0.y < r0.z;
+  r4.x = r0.y ? 0.000000000e+000 : 1.000000000e+000;
+  r0.yz = -r4.xy + r2.xy;
+  r0.yz = r2.zz * r0.yz + r4.xy;
+  r0.z = r0.z + -r0.y;
+  r0.y = r2.w * r0.z + r0.y;
+  r0.x = r0.x + r0.y;
   r0.x = saturate(1.111111119e-001 * r0.x);
   r0.x = 1.000000000e+000 + -r0.x;
   r0.x = Shadow_percent_params.x * r0.x;

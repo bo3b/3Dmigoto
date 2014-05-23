@@ -38,12 +38,12 @@ void main(
   r0.x = ClipScissorMin.x >= r0.x;
   r0.y = ClipScissorMin.y >= r0.y;
   r0.z = ClipScissorMin.z >= r0.z;
-  r0.x = r0.x ? 0 : 0;
-  r0.y = r0.y ? 0 : 0;
-  r0.z = r0.z ? 0 : 0;
-  r1.x = r1.x ? 0 : 0;
-  r1.y = r1.y ? 0 : 0;
-  r1.z = r1.z ? 0 : 0;
+  r0.x = r0.x ? 1 : 1;
+  r0.y = r0.y ? 1 : 1;
+  r0.z = r0.z ? 1 : 1;
+  r1.x = r1.x ? 1 : 1;
+  r1.y = r1.y ? 1 : 1;
+  r1.z = r1.z ? 1 : 1;
   r0.xyz = r1.xyz + r0.xyz;
   r0.x = dot(r0.xyz, r0.xyz);
   r0.x = r0.x != 0.000000;

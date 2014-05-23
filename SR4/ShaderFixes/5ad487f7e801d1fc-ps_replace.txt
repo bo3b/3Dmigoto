@@ -43,6 +43,7 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4;
@@ -55,20 +56,14 @@ float4 r21;
   r0.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
   r0.x = cb4[10].z * r0.x + cb4[10].w;
   r0.x = 1.000000e+000 / r0.x;
-// float r22;
-// r22=r0.x;
 
-// r21.xyz = -v2.xyz * r0.xxx;
-// r21.x +=  stereoParams.x * (-r0.x - stereoParams.y); //*0.62;
 
-  // r0.yzw = r21.xyz + IR_Light_Pos.xyz; //-v2.xyz * r0.xxx + IR_Light_Pos.xyz;
-  r0.yzw = -v2.xyz * r0.xxx + IR_Light_Pos.xyz;
-  
-  
 r21.xyz = v2.xyz * r0.xxx;
-r21.x +=  stereoParams.x * (-r0.x - stereoParams.y)*0.4; //*Camera_uvec.x; //0.62;
+r21.x -=  stereoParams.x * (r0.x - stereoParams.y)*v3; //0.62;
 
+  r0.yzw = -r21.xyz + IR_Light_Pos.xyz; 
   r1.xyz = r21.xyz; //v2.xyz * r0.xxx;
+
   r0.x = dot(r0.yzw, r0.yzw);
   r0.x = sqrt(r0.x);
   r1.w = -IR_Light_Info.y + r0.x;
@@ -152,7 +147,6 @@ r21.x +=  stereoParams.x * (-r0.x - stereoParams.y)*0.4; //*Camera_uvec.x; //0.6
   r1.xyw = r1.xxx * Camera_rvec.xyz + r2.xyz;
   r1.xyz = r1.zzz * Camera_fvec.xyz + r1.xyw;
   
-
 
   r1.xyz = Camera_pos.xyz + r1.xyz;
   r1.w = 1.000000000e+000;

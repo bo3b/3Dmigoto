@@ -32,6 +32,7 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2;
@@ -56,7 +57,7 @@ float4 r21;
   r1.xy = v2.xy;
   
 r21.xyz = r1.xyz;
-r21.x +=  stereoParams.x * (-r1.z - stereoParams.y)*0.5;
+r21.x -=  stereoParams.x * (r1.z - stereoParams.y)*v3; //0.62;
 
   r1.xyz = IR_Light_Pos.xyz + -r21.xyz; //-r1.xyz;
   

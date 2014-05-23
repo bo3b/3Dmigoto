@@ -1,3 +1,4 @@
+//Shadows
 cbuffer cb4 : register(b4)
 {
   float4 cb4[11];
@@ -44,6 +45,7 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8;
@@ -54,20 +56,24 @@ float4 stereoParams = StereoParams.Load(0);
 float4 r21;
 
   r0.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
+ 
   r0.x = cb4[10].z * r0.x + cb4[10].w;
   r0.x = 1.000000e+000 / r0.x;
   r0.yzw = v2.xyz * r0.xxx;
 
 r21.xyz = v2.xyz * r0.xxx;
-r21.x +=  stereoParams.x * (-r0.x - stereoParams.y)*0.31;
-r0.yzw = r21.xyz;
+
+// r21.x -=  stereoParams.x * (r0.x - stereoParams.y)*(cb4[4].x * cb4[4].y); // ; //0.62; 0.5*cb4[4].x works!  but only default FOV...0.36 for zoom FOV
+r21.x -=  stereoParams.x * (r0.x - stereoParams.y) * v3;
+
+r0.y = r21.x;
+r0.z = r21.y;
+r0.w = r21.z;
 
   r1.xyz = Camera_uvec.xyz * r0.zzz;
   r1.xyz = r0.yyy * Camera_rvec.xyz + r1.xyz;
   r1.xyz = r0.www * Camera_fvec.xyz + r1.xyz;
   
-
-
   r1.xyz = Camera_pos.xyz + r1.xyz;
   
   r1.w = 1.000000000e+000;
@@ -168,7 +174,7 @@ r0.yzw = r21.xyz;
   r1.x = r2.x + r1.x;
   r1.x = -r1.x * 1.111111119e-001 + 1.000000000e+000;
   r1.y = -v2.z * r0.x + Shadow_map_fade_params.y;
-  r2.xyz = -v2.xyz * r0.xxx + IR_Light_Pos.xyz;
+  r2.xyz = -r21.xyz + IR_Light_Pos.xyz; // -v2.xyz * r0.xxx + IR_Light_Pos.xyz;
   r0.x = saturate(Shadow_map_fade_params.z * r1.y);
   r0.x = -r1.x * r0.x + 1.000000000e+000;
   r1.x = dot(r2.xyz, r2.xyz);
@@ -185,9 +191,9 @@ r0.yzw = r21.xyz;
   r1.y = log2(r1.y);
   r1.y = IR_Light_Info.x * r1.y;
   r1.y = exp2(r1.y);
-  r2.x = dot(r0.yzw, r0.yzw);
+  r2.x = dot(r21.xyz, r21.xyz); //dot(r0.yzw, r0.yzw);
   r2.x = rsqrt(r2.x);
-  r0.yzw = r2.xxx * r0.yzw;
+  r0.yzw = r2.xxx * r21.xyz; //r0.yzw;
   r2.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, v1.xy).xyzw;
   r2.xy = r2.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
   r2.w = dot(r2.xy, r2.xy);

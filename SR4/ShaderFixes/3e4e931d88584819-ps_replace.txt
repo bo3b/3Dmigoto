@@ -38,6 +38,7 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
+  float  v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4;
@@ -52,7 +53,7 @@ float4 r21;
   r0.x = 1.000000e+000 / r0.x;
   
 r21.xyz = -v2.xyz * r0.xxx;
-r21.x +=  stereoParams.x * (-r0.x - stereoParams.y)*0.5;
+r21.x +=  stereoParams.x * (r0.x - stereoParams.y)*v3; //0.62;
 
   r0.yzw = -r21.xyz + -IR_Light_Pos.xyz; //v2.xyz * r0.xxx + -IR_Light_Pos.xyz;
   
@@ -60,9 +61,9 @@ r21.x +=  stereoParams.x * (-r0.x - stereoParams.y)*0.5;
   r0.y = max(r0.y, 0.000000000e+000);
   r0.y = min(r0.y, IR_Light_Dir.w);
   r1.xyz = IR_Light_Dir.xyz * r0.yyy + IR_Light_Pos.xyz;
-  r2.xyz = v2.xyz * r0.xxx + -r1.xyz;
-  r1.xyz = -v2.xyz * r0.xxx + r1.xyz;
-  r0.xzw = v2.xyz * r0.xxx;
+  r2.xyz = -r21.xyz -r1.xyz; //v2.xyz * r0.xxx + -r1.xyz;
+  r1.xyz = r21.xyz + r1.xyz; //-v2.xyz * r0.xxx + r1.xyz;
+  r0.xzw = -r21.xyz; //v2.xyz * r0.xxx;
   r3.x = dot(r2.xyz, Projection_texture_xform._m00_m10_m20);
   r3.y = dot(r2.xyz, Projection_texture_xform._m01_m11_m21);
   r3.z = dot(r2.xyz, Projection_texture_xform._m02_m12_m22);
