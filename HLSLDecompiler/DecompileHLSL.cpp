@@ -831,6 +831,15 @@ public:
 						mUsesProjection = true;
 				}
 
+				// SR3 variant of projection matrix.
+				if (e.bt == DT_float4x4 && e.Name.find_first_of("projTM") >= 0)
+				{
+					eolPos = strchr(c + pos, '\n');
+					// Used?
+					if (*(eolPos - 1) != ']')
+						mUsesProjection = true;
+				}
+
 				// This section previously made a distinction for the floatYxZ formats, assuming that they were not able to
 				// be arrays.  That's untrue, so they were added into the for loop to create the array elements possible.
 				// This fixes a series of array out of bounds errors for anything using these floatYxZ matrices.
@@ -1583,7 +1592,8 @@ public:
 	void WritePatches()
 	{
 		bool stereoParamsWritten = false;
-		const char *StereoDecl = "\n  float4 stereoParams = StereoParams.Load(0);\n  float4 stereoScreenRes = StereoParams.Load(int3(2,0,0));\n  float4 stereoTune = StereoParams.Load(int3(1,0,0));";
+		const char *StereoDecl = "\n\n  float4 stereoParams = StereoParams.Load(0);";
+			// float4 stereoScreenRes = StereoParams.Load(int3(2,0,0));\n  float4 stereoTune = StereoParams.Load(int3(1,0,0));";
 
 		// Vertex shader patches
 		if (!mShaderType.substr(0, 3).compare("vs_"))
@@ -1683,19 +1693,31 @@ public:
 						if (dotPos > 0) rvalue2 = i->second.substr(0, dotPos);
 						if (!rvalue2.compare(rvalue))
 						{
-							// Write fix.
+							// Write params before return;.
 							if (!stereoParamsWritten)
 							{
-								vector<char>::iterator writePos = mOutput.end()-1;
-								if (*writePos != '\n') --writePos;
-								mOutput.insert(writePos, StereoDecl, StereoDecl+strlen(StereoDecl));
+								vector<char>::iterator writePos = mOutput.end() - 1;
+								while (*writePos != '\n')
+									--writePos;
+								--writePos;
+								while (*writePos != '\n')
+									--writePos;
+								mOutput.insert(writePos, StereoDecl, StereoDecl + strlen(StereoDecl));
 								stereoParamsWritten = true;
-							}
+							} 
+
+							// Back up to before the final return statement to output.
+							vector<char>::iterator writePos = mOutput.end() - 1;
+							while (*writePos != '\n')
+								--writePos;
+							--writePos;
+							while (*writePos != '\n')
+								--writePos;
 							char buffer[256];
 							string outputReg = i->first;
 							if (outputReg.find('.') != string::npos) outputReg = outputReg.substr(0, outputReg.find('.'));
-							sprintf(buffer, "  if (%s.w != 1) %s.x += stereoParams.x * (%s.w - stereoParams.y);\n", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+							sprintf(buffer, "\n  if (%s.w != 1) %s.x += stereoParams.x * (%s.w - stereoParams.y);", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
+							mOutput.insert(writePos, buffer, buffer+strlen(buffer));
 							mPatched = true;
 						}
 					}
