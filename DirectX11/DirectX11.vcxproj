@@ -300,7 +300,7 @@
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 "$(SolutionDir)7zip\7za" a ..\Debug\3Dmigoto-Debug-V_alpha.zip "..\Debug\*.dll" "..\Debug\d3dx.ini" "..\Debug\uninstall.bat"
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)"</Command>
+call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -322,6 +322,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)"</Command>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
+call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
 </Command>
       <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
     </PostBuildEvent>
@@ -348,7 +349,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)"</Command>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 "$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto-V_alpha.zip -tzip "..\Release\*.dll" "..\Release\d3dx.ini" "..\Release\uninstall.bat"
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)"
+call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
@@ -552,7 +553,8 @@ REM And, the d3dx.ini from game specific folder
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
-"$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto.zip -tzip "..\Release\*.dll" "..\Release\d3dx.ini"</Command>
+call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
+</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
