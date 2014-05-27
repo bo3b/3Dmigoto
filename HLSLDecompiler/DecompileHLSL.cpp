@@ -1490,6 +1490,41 @@ public:
 		return input;
 	}
 
+	
+	// Only necessary for opcode_AND when used as boolean tests.
+	// Converts literals of the form: l(0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000) to l(1.0, 1.0, 1.0, 1.0)
+
+	// In the microsoft world, 10 year old C specs are not interesting, so no stdclib function exists here for float,
+	// and the std::hexfloat i/o stream fails to handle 32 bits properly. It's quite sad how weak this stuff is.
+	// This took quite a long time to figure out how to make it work properly.  The easist answer seemed to be
+	// to use reinterpret_cast from uint to float, but that appears to be unnecessary, as the %x assigned directly
+	// to a float seems to work properly (but is not documented.)
+
+	void convertHexToFloat(char *target)
+	{
+		char convert[128];
+		int count;
+		float lit[4];
+		int printed;
+
+		if (target[0] == 'l')
+		{
+			count = sscanf_s(target, "l(%x,%x,%x,%x)", &lit[0], &lit[1], &lit[2], &lit[3]);
+			assert(count != 0);
+
+			printed = sprintf_s(convert, "l(", 128);
+			for (size_t i = 0; i < count; i++)
+			{
+				printed += sprintf_s(&convert[printed], 128 - printed, "%f,", lit[i]);
+			}
+			
+			// Overwrite trailing comma to be closing paren, no matter how many literals were converted.
+			convert[printed-1] = ')';
+
+			strcpy(target, convert);
+		}
+	}
+
 	char *convertToInt(char *target)
 	{
 		int isMinus = target[0] == '-' ? 1 : 0;
@@ -2533,8 +2568,21 @@ public:
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 					break;
 
+					// AND opcodes were generating bad code, as the hex constants were being converted badly.
+					// The most common case was 0x3f800000 being converted directly to integer decimal of 1065353216, instead
+					// of the most likely answer of floating point 1.0f.
+					// This also happened for conversion of Pi.
+					// There are bitmasks used for AND, and those need to stay as Hex constants.
+					// But anything used after IF statements/booleans, needs to be converted as float.
+					// Rather than modify applySwizzle for this single opcode, it makes more sense to convert them here,
+					// before they are seen by applySwizzle as float.  
 				case OPCODE_AND:
 					remapTarget(op1);
+					if (isBoolean(op2) || isBoolean(op3))
+					{
+						convertHexToFloat(op2);
+						convertHexToFloat(op3);
+					}
 					applySwizzle(op1, op2);
 					applySwizzle(op1, op3);
 					if (isBoolean(op2) || isBoolean(op3))
