@@ -215,7 +215,7 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -255,7 +255,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='AC3|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -309,7 +309,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -539,7 +539,7 @@ REM And, the d3dx.ini from game specific folder
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -621,7 +621,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64 ;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
