@@ -814,21 +814,21 @@ void InitializeDLL()
 
 		// Everything set up, let's make another thread for watching the keyboard for shader hunting.
 		// It's all multi-threaded rendering now anyway, so it has to be ready for that.
-		//HuntingThread = CreateThread(
-		//	NULL,                   // default security attributes
-		//	0,                      // use default stack size  
-		//	Hunting,       // thread function name
-		//	&realDevice,	          // argument to thread function 
-		//	0,                      // use default creation flags 
-		//	NULL);				  // returns the thread identifier 
+		HuntingThread = CreateThread(
+			NULL,                   // default security attributes
+			0,                      // use default stack size  
+			Hunting,       // thread function name
+			&realDevice,	          // argument to thread function 
+			0,                      // use default creation flags 
+			NULL);				  // returns the thread identifier 
 
 
-		//// If we can't init, just log it, not a fatal error.
-		//if (HuntingThread == NULL)
-		//{
-		//	DWORD dw = GetLastError();
-		//	if (LogFile) fprintf(LogFile, "Error while creating hunting thread: %x\n", dw);
-		//}
+		// If we can't init, just log it, not a fatal error.
+		if (HuntingThread == NULL)
+		{
+			DWORD dw = GetLastError();
+			if (LogFile) fprintf(LogFile, "Error while creating hunting thread: %x\n", dw);
+		}
 
 		if (LogFile) fprintf(LogFile, "D3D11 DLL initialized.\n");
 		if (LogFile && LogDebug) fprintf(LogFile, "[Rendering] XInputDevice = %d\n", XInputDeviceId);
@@ -837,18 +837,18 @@ void InitializeDLL()
 
 void DestroyDLL()
 {
-	//TerminateThread(
-	//	_Inout_  HuntingThread,
-	//	_In_     0
-	//	);
+	TerminateThread(
+		_Inout_  HuntingThread,
+		_In_     0
+		);
 
-	//// Should be the normal 100ms wait.
-	//DWORD err =  WaitForSingleObject(
-	//	_In_  HuntingThread,
-	//	_In_  INFINITE
-	//	);
-	//BOOL ok = CloseHandle(HuntingThread);
-	//if (LogFile) fprintf(LogFile, "Hunting thread closed: %x, %d\n", err, ok);
+	// Should be the normal 100ms wait.
+	DWORD err =  WaitForSingleObject(
+		_In_  HuntingThread,
+		_In_  INFINITE
+		);
+	BOOL ok = CloseHandle(HuntingThread);
+	if (LogFile) fprintf(LogFile, "Hunting thread closed: %x, %d\n", err, ok);
 
 	if (LogFile)
 	{
