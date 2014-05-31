@@ -157,6 +157,7 @@ typedef HRESULT (WINAPI *tOpenAdapter10)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10 _OpenAdapter10;
 typedef HRESULT (WINAPI *tOpenAdapter10_2)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10_2 _OpenAdapter10_2;
+
 typedef HRESULT (WINAPI *tD3DKMTGetDeviceState)(int a);
 static tD3DKMTGetDeviceState _D3DKMTGetDeviceState;
 typedef HRESULT (WINAPI *tD3DKMTOpenAdapterFromHdc)(int a);
@@ -165,18 +166,26 @@ typedef HRESULT (WINAPI *tD3DKMTOpenResource)(int a);
 static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef HRESULT (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
+
 typedef void (WINAPI *tDXGIDumpJournal)(void (__stdcall *function)(const char *));
 static tDXGIDumpJournal _DXGIDumpJournal;
-typedef HRESULT (WINAPI *tDXGID3D10CreateDevice)(int a, int b, int c, int d, int e, int f);
+
+typedef HRESULT(WINAPI *tDXGID3D10CreateDevice)(HMODULE d3d10core, D3D11Wrapper::IDXGIFactory *factory, 
+	D3D11Wrapper::IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device);
 static tDXGID3D10CreateDevice _DXGID3D10CreateDevice;
+
 typedef HRESULT (WINAPI *tDXGID3D10CreateLayeredDevice)(int a, int b, int c, int d, int e);
 static tDXGID3D10CreateLayeredDevice _DXGID3D10CreateLayeredDevice;
-typedef HRESULT (WINAPI *tDXGID3D10GetLayeredDeviceSize)(int a, int b);
+
+typedef HRESULT(WINAPI *tDXGID3D10GetLayeredDeviceSize)(const void *pLayers, UINT NumLayers);
 static tDXGID3D10GetLayeredDeviceSize _DXGID3D10GetLayeredDeviceSize;
-typedef HRESULT (WINAPI *tDXGID3D10RegisterLayers)(int a, int b);
+
+typedef HRESULT(WINAPI *tDXGID3D10RegisterLayers)(const struct dxgi_device_layer *layers, UINT layer_count);
 static tDXGID3D10RegisterLayers _DXGID3D10RegisterLayers;
+
 typedef HRESULT (WINAPI *tDXGIReportAdapterConfiguration)(int a);
 static tDXGIReportAdapterConfiguration _DXGIReportAdapterConfiguration;
+
 typedef HRESULT (WINAPI *tCreateDXGIFactory)(const IID *const riid, void **ppFactory);
 static tCreateDXGIFactory _CreateDXGIFactory;
 typedef HRESULT (WINAPI *tCreateDXGIFactory1)(const IID *const riid, void **ppFactory);
@@ -240,28 +249,32 @@ void WINAPI DXGIDumpJournal(void (__stdcall *function)(const char *))
 	(*_DXGIDumpJournal)(function);
 }
 
-HRESULT WINAPI DXGID3D10CreateDevice(int a, int b, int c, int d, int e, int f)
+HRESULT WINAPI DXGID3D10CreateDevice(HMODULE d3d10core, D3D11Wrapper::IDXGIFactory *factory,
+	D3D11Wrapper::IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device)
 {
 	InitD311();
-	return (*_DXGID3D10CreateDevice)(a, b, c, d, e, f);
+	return (*_DXGID3D10CreateDevice)(d3d10core, factory, adapter, flags, unknown0, device);
 }
 
+// A bunch of these interfaces were using unknown int for their prototypes, but on x64
+// anything that was a pointer would be off.  All of the other ones are fixed as best the
+// internet can say, but this one is missing any interface info, and probably will not work.
 HRESULT WINAPI DXGID3D10CreateLayeredDevice(int a, int b, int c, int d, int e)
 {
 	InitD311();
 	return (*_DXGID3D10CreateLayeredDevice)(a, b, c, d, e);
 }
 
-HRESULT WINAPI DXGID3D10GetLayeredDeviceSize(int a, int b)
+HRESULT WINAPI DXGID3D10GetLayeredDeviceSize(const void *pLayers, UINT NumLayers)
 {
 	InitD311();
-	return (*_DXGID3D10GetLayeredDeviceSize)(a, b);
+	return (*_DXGID3D10GetLayeredDeviceSize)(pLayers, NumLayers);
 }
 
-HRESULT WINAPI DXGID3D10RegisterLayers(int a, int b)
+HRESULT WINAPI DXGID3D10RegisterLayers(const struct dxgi_device_layer *layers, UINT layer_count)
 {
 	InitD311();
-	return (*_DXGID3D10RegisterLayers)(a, b);
+	return (*_DXGID3D10RegisterLayers)(layers, layer_count);
 }
 
 HRESULT WINAPI DXGIReportAdapterConfiguration(int a)

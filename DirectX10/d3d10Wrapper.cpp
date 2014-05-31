@@ -241,13 +241,23 @@ typedef int (WINAPI *tOpenAdapter10)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10 _OpenAdapter10;
 typedef int (WINAPI *tOpenAdapter10_2)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10_2 _OpenAdapter10_2;
+
 typedef int (WINAPI *tD3D11CoreCreateDevice)(__int32, int, int, LPCSTR lpModuleName, int, int, int, int, int, int);
 static tD3D11CoreCreateDevice _D3D11CoreCreateDevice;
-typedef int (WINAPI *tD3D11CoreCreateLayeredDevice)(int a, int b, int c, int d, int e);
+
+//typedef int (WINAPI *tD3D11CoreCreateLayeredDevice)(int a, int b, int c, int d, int e);
+//static tD3D11CoreCreateLayeredDevice _D3D11CoreCreateLayeredDevice;
+typedef HRESULT(WINAPI *tD3D11CoreCreateLayeredDevice)(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj);
 static tD3D11CoreCreateLayeredDevice _D3D11CoreCreateLayeredDevice;
-typedef int (WINAPI *tD3D11CoreGetLayeredDeviceSize)(int a, int b);
+
+//typedef int (WINAPI *tD3D11CoreGetLayeredDeviceSize)(int a, int b);
+//static tD3D11CoreGetLayeredDeviceSize _D3D11CoreGetLayeredDeviceSize;
+typedef SIZE_T(WINAPI *tD3D11CoreGetLayeredDeviceSize)(const void *unknown0, DWORD unknown1);
 static tD3D11CoreGetLayeredDeviceSize _D3D11CoreGetLayeredDeviceSize;
-typedef int (WINAPI *tD3D11CoreRegisterLayers)(int a, int b);
+
+//typedef int (WINAPI *tD3D11CoreRegisterLayers)(int a, int b);
+//static tD3D11CoreRegisterLayers _D3D11CoreRegisterLayers;
+typedef HRESULT(WINAPI *tD3D11CoreRegisterLayers)(const void *unknown0, DWORD unknown1);
 static tD3D11CoreRegisterLayers _D3D11CoreRegisterLayers;
 
 static void InitD310()

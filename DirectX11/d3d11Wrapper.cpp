@@ -1064,21 +1064,29 @@ typedef struct D3D10DDIARG_OPENADAPTER
 } D3D10DDIARG_OPENADAPTER;
 
 static HMODULE hD3D11 = 0;
+
 typedef int (WINAPI *tD3DKMTQueryAdapterInfo)(_D3DKMT_QUERYADAPTERINFO *);
 static tD3DKMTQueryAdapterInfo _D3DKMTQueryAdapterInfo;
+
 typedef int (WINAPI *tOpenAdapter10)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10 _OpenAdapter10;
+
 typedef int (WINAPI *tOpenAdapter10_2)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10_2 _OpenAdapter10_2;
+
 typedef int (WINAPI *tD3D11CoreCreateDevice)(__int32, int, int, LPCSTR lpModuleName, int, int, int, int, int, int);
 static tD3D11CoreCreateDevice _D3D11CoreCreateDevice;
-typedef int (WINAPI *tD3D11CoreCreateLayeredDevice)(int a, int b, int c, int d, int e);
+
+typedef HRESULT(WINAPI *tD3D11CoreCreateLayeredDevice)(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj);
 static tD3D11CoreCreateLayeredDevice _D3D11CoreCreateLayeredDevice;
-typedef int (WINAPI *tD3D11CoreGetLayeredDeviceSize)(int a, int b);
+
+typedef SIZE_T(WINAPI *tD3D11CoreGetLayeredDeviceSize)(const void *unknown0, DWORD unknown1);
 static tD3D11CoreGetLayeredDeviceSize _D3D11CoreGetLayeredDeviceSize;
-typedef int (WINAPI *tD3D11CoreRegisterLayers)(int a, int b);
+
+typedef HRESULT(WINAPI *tD3D11CoreRegisterLayers)(const void *unknown0, DWORD unknown1);
 static tD3D11CoreRegisterLayers _D3D11CoreRegisterLayers;
-typedef HRESULT (WINAPI *tD3D11CreateDevice)(
+
+typedef HRESULT(WINAPI *tD3D11CreateDevice)(
 	D3D11Base::IDXGIAdapter *pAdapter,
 	D3D11Base::D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
@@ -1104,6 +1112,7 @@ typedef HRESULT (WINAPI *tD3D11CreateDeviceAndSwapChain)(
 	D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevel,
 	D3D11Base::ID3D11DeviceContext **ppImmediateContext);
 static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
+
 typedef int (WINAPI *tD3DKMTGetDeviceState)(int a);
 static tD3DKMTGetDeviceState _D3DKMTGetDeviceState;
 typedef int (WINAPI *tD3DKMTOpenAdapterFromHdc)(int a);
@@ -1209,23 +1218,24 @@ int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, i
 	return (*_D3D11CoreCreateDevice)(a, b, c, lpModuleName, e, f, g, h, i, j);
 }
 
-int WINAPI D3D11CoreCreateLayeredDevice(int a, int b, int c, int d, int e)
+
+HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
 {
 	InitD311();
     if (LogFile) fprintf(LogFile, "D3D11CoreCreateLayeredDevice called.\n");
 
-	return (*_D3D11CoreCreateLayeredDevice)(a, b, c, d, e);
+	return (*_D3D11CoreCreateLayeredDevice)(unknown0, unknown1, unknown2, riid, ppvObj);
 }
 
-int WINAPI D3D11CoreGetLayeredDeviceSize(int a, int b)
+SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
-	// Call from D3DCompiler ?
-	if (a == 0x77aa128b)
+	// Call from D3DCompiler (magic number from there) ?
+	if ((intptr_t)unknown0 == 0x77aa128b)
 	{
 	    if (LogFile) fprintf(LogFile, "Shader code info from D3DCompiler_xx.dll wrapper received:\n");
 	
-		D3D11BridgeData *data = (D3D11BridgeData *)b;
+		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
 	    if (LogFile) fprintf(LogFile, "  Bytecode hash = %08lx%08lx\n", (UINT32)(data->BinaryHash >> 32), (UINT32)data->BinaryHash);
 	    if (LogFile) fprintf(LogFile, "  Filename = %s\n", data->HLSLFileName);
 	
@@ -1234,15 +1244,15 @@ int WINAPI D3D11CoreGetLayeredDeviceSize(int a, int b)
 	}
     if (LogFile) fprintf(LogFile, "D3D11CoreGetLayeredDeviceSize called.\n");
 
-	return (*_D3D11CoreGetLayeredDeviceSize)(a, b);
+	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
 }
 
-int WINAPI D3D11CoreRegisterLayers(int a, int b)
+HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
     if (LogFile) fprintf(LogFile, "D3D11CoreRegisterLayers called.\n");
 
-	return (*_D3D11CoreRegisterLayers)(a, b);
+	return (*_D3D11CoreRegisterLayers)(unknown0, unknown1);
 }
 
 static void EnableStereo()
