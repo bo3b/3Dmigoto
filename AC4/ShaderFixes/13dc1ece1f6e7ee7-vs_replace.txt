@@ -1,0 +1,26 @@
+//To fix reflections NO
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0)
+{
+
+//Mike_ar69 - Stereo Shift
+// float4 stereoParams = StereoParams.Load(0);
+// float4 r21;
+// r21.xyz = v0.xyz;
+// if(v0.w==1)
+// {
+	// r21.x += stereoParams.x * (v0.z - stereoParams.y);
+// }
+
+  o0.xyz = v0.xyz;
+  o0.w = 1.000000000e+000;  
+  o1.xy = v1.xy;
+  
+// o2.xy = r21.xy;
+  return;
+}

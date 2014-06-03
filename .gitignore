@@ -3,8 +3,17 @@
 
 # User-specific files
 *.suo
+*.suo.bak
 *.user
 *.sln.docstates
+*.tlog
+*.lastbuildstate
+*.res
+
+# Project specific ignores
+/7zip/7-zip.chm
+/7zip/license.txt
+/7zip/readme.txt
 
 # Build results
 
@@ -154,3 +163,5 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+*.vsglog
+*.zip

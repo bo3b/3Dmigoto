@@ -25,4 +25,4 @@ extern bool LogInput;
 
 HRESULT InitDirectInput();
 VOID FreeDirectInput();
-void UpdateInputState();
+bool UpdateInputState();

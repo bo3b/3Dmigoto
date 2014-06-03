@@ -1,0 +1,179 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[40];
+}
+
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 ViewProjInv : packoffset(c24);
+  float4x4 ViewInv : packoffset(c28);
+  float4 ProjectedCorners[4] : packoffset(c32);
+  float4 ProjectorPosition : packoffset(c62);
+  float4 ViewportUvScale : packoffset(c63);
+  float4x4 OceanParticleWorld : packoffset(c40);
+  float4x4 OceanParticleViewProj : packoffset(c36);
+  float4 ParticleBlendSettings : packoffset(c60);
+  float4 OceanParticleTexturePage : packoffset(c10);
+}
+SamplerState DisplacementTexture_s : register(s0);
+Texture2D<float4> DisplacementTexture : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float2 v0 : POSITION0,
+  float4 v1 : NORMAL0,
+  float4 v2 : TEXCOORD0,
+  float4 v3 : TEXCOORD1,
+  float4 v4 : TEXCOORD2,
+  float4 v5 : TEXCOORD3,
+  float4 v6 : TEXCOORD4,
+  float4 v7 : TEXCOORD5,
+  float4 v8 : TEXCOORD6,
+  float4 v9 : TEXCOORD7,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD4)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask;
+  r0.z = 0.000000000e+000;
+  r1.xy = v2.wz + -v2.zy;
+  r0.w = max(v2.x, 0.000000000e+000);
+  r0.w = min(r0.w, v2.w);
+  r1.zw = -v2.zy + r0.ww;
+  r1.zw = max(r1.zw, float2(0.000000e+000,0.000000e+000));
+  r1.xy = saturate(r1.zw / r1.xy);
+  r1.w = 1.000000000e+000 + -r1.y;
+  r0.y = saturate(r0.w / v2.y);
+  r2.x = v2.z < r0.w;
+  r2.y = v2.y < r0.w;
+  r0.x = 1.000000000e+000 + -r0.y;
+  r1.z = 0.000000000e+000;
+  r0.x = r2.y ? r1.z : r0.x;
+  r0.y = r2.y ? r1.w : r0.y;
+  r0.z = r2.y ? r1.y : r0.z;
+  r1.xyzw = r1.zzxx * float4(1.000000e+000,1.000000e+000,-1.000000e+000,1.000000e+000) + float4(0.000000e+000,0.000000e+000,1.000000e+000,0.000000e+000);
+  r0.w = 0.000000000e+000;
+  r0.x = r2.x ? r1.x : r0.x;
+  r0.y = r2.x ? r1.y : r0.y;
+  r0.z = r2.x ? r1.z : r0.z;
+  r0.w = r2.x ? r1.w : r0.w;
+  r1.x = dot(r0.xyzw, v9.xyzw);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r2.xy = v1.xy;
+  r2.z = 1.000000000e+000;
+  r3.x = dot(r2.xyz, cb0[36].xyw);
+  r3.y = dot(r2.xyz, cb0[37].xyw);
+  r3.z = dot(r2.xyz, cb0[39].xyw);
+  r1.yzw = r3.xyz / r3.zzz;
+  r2.xy = -cb0[32].xy + r1.yz;
+  r2.zw = cb0[34].yx + -cb0[32].yx;
+  r3.x = r2.y * r2.w;
+  r3.x = r2.x * r2.z + -r3.x;
+  r3.yz = -cb0[34].yx + cb0[32].yx;
+  r3.yz = cb0[35].yx + r3.yz;
+  r3.yz = -cb0[33].yx + r3.yz;
+  r4.xy = cb0[33].yx + -cb0[32].yx;
+  r3.w = r4.y * r3.y;
+  r3.w = r3.z * r4.x + -r3.w;
+  r3.x = r3.w * r3.x;
+  r3.x = 4.000000000e+000 * r3.x;
+  r4.z = r4.y * r2.z;
+  r4.x = r2.w * r4.x + -r4.z;
+  r4.z = r2.x * r3.y + r4.x;
+  r2.y = -r2.y * r3.z + r4.z;
+  r3.x = r2.y * r2.y + -r3.x;
+  r4.z = sqrt(r3.x);
+  r3.x = 0.000000000e+000 >= r3.x;
+  r4.w = -r4.z + -r2.y;
+  r2.y = r4.z + -r2.y;
+  r4.z = r3.w + r3.w;
+  r4.w = r4.w / r4.z;
+  r2.y = r2.y / r4.z;
+  r5.x = abs(r2.y) < abs(r4.w);
+  r4.w = r5.x ? r2.y : r4.w;
+  r5.x = r2.y < 0.000000000e+000;
+  r5.y = 1.000000000e+000 < r2.y;
+  r5.x = (int)r5.y | (int)r5.x;
+  r5.y = r5.x ? r4.w : r2.y;
+  r2.x = -r4.y * r5.y + r2.x;
+  r2.y = r3.z * r5.y + r2.w;
+  r5.x = r2.x / r2.y;
+  r5.x = r3.x ? -1000 : r5.x;
+  r5.y = r3.x ? -1000 : r5.y;
+  r5.z = 1.000000000e+000 + -r5.y;
+  r6.xyzw = DisplacementTexture.SampleLevel(DisplacementTexture_s, r5.xz, 0.000000000e+000).xyzw;
+  r1.yz = r6.xy * r1.xx + v1.xy;
+  r2.x = dot(r1.yzw, cb0[36].xyw);
+  r2.y = dot(r1.yzw, cb0[37].xyw);
+  r1.x = dot(r1.yzw, cb0[39].xyw);
+  r1.yz = r2.xy / r1.xx;
+  r1.yz = -cb0[32].xy + r1.yz;
+  r1.w = r1.z * r2.w;
+  r1.w = r1.y * r2.z + -r1.w;
+  r1.w = r3.w * r1.w;
+  r1.w = 4.000000000e+000 * r1.w;
+  r2.x = r1.y * r3.y + r4.x;
+  r1.z = -r1.z * r3.z + r2.x;
+  r1.w = r1.z * r1.z + -r1.w;
+  r2.x = sqrt(r1.w);
+  r1.w = 0.000000000e+000 >= r1.w;
+  r2.y = -r2.x + -r1.z;
+  r1.z = r2.x + -r1.z;
+  r1.z = r1.z / r4.z;
+  r2.x = r2.y / r4.z;
+  r2.y = abs(r1.z) < abs(r2.x);
+  r2.x = r2.y ? r1.z : r2.x;
+  r2.y = r1.z < 0.000000000e+000;
+  r2.z = 1.000000000e+000 < r1.z;
+  r2.y = (int)r2.z | (int)r2.y;
+  r2.y = r2.y ? r2.x : r1.z;
+  r1.y = -r4.y * r2.y + r1.y;
+  r1.z = r3.z * r2.y + r2.w;
+  r2.x = r1.y / r1.z;
+  r2.x = r1.w ? -1000 : r2.x;
+  r2.y = r1.w ? -1000 : r2.y;
+  r2.z = 1.000000000e+000 + -r2.y;
+  r2.xy = r2.xz * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r2.zw = float2(1.000000e+000,1.000000e+000);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r2.xyzw;
+r2.x += stereoParams.x * (r2.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  r1.x = (int)cb0[10].z;
+  r1.y = (int)v1.w;
+  r1.xz = max(r1.xy, -r1.xy);
+  r1.y = (int)r1.y & 0x80000000;
+  r1.x = r1.z % r1.x;
+  r1.z = -(int)r1.x;
+  r1.x = r1.y ? r1.z : r1.x;
+  r1.x = r1.x;
+  r1.z = round(v1.w);
+  r1.z = r1.z / cb0[10].z;
+  r1.y = floor(r1.z);
+  r1.zw = v0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r1.zw = cb0[10].xy * r1.zw;
+  o1.xy = r1.xy * cb0[10].xy + r1.zw;
+  o1.zw = float2(0.000000e+000,0.000000e+000);
+  o2.y = dot(r0.xyzw, v5.xyzw);
+  o2.x = dot(r0.xyzw, v6.xyzw);
+  o2.z = dot(r0.xyzw, v7.xyzw);
+  o2.w = dot(r0.xyzw, v8.xyzw);
+  o3.xy = v1.xy;
+  o3.z = 0.000000000e+000;
+  o4.y = 1.000000000e+000 + -r5.y;
+  o4.x = r5.x;
+  o4.zw = float2(0.000000e+000,0.000000e+000);
+  return;
+}

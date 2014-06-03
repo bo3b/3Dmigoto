@@ -1,0 +1,61 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  out float4 o0 : SV_Position0,
+  out float o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(objTM._m00_m01_m02_m03, r1.xyzw);
+  r0.y = dot(objTM._m10_m11_m12_m13, r1.xyzw);
+  r0.z = dot(objTM._m20_m21_m22_m23, r1.xyzw);
+  r1.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = -eyePos.xyz + r0.xyz;
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r1.xyzw;
+r1.x += stereoParams.x * (r1.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o2.xyzw = r1.xyzw;
+  r0.w = Fog_dist.x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 5.000000075e-002 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o1.x = 1.000000000e+000 + -r0.x;
+  return;
+}

@@ -1,0 +1,30 @@
+// Manually fixed shader.
+//  error X3018: invalid subscript 'xyzw'
+//	Can't quite make it exact, r0=uint4 makes it do extra conversions.
+//	The key change was to shorten .Load to .xy
+
+Texture2DMS<float,4> g_DepthBuffer : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  g_DepthBuffer.GetDimensions(r0.x, r0.y, bitmask.x);
+  r0.xy = r0.xy;
+  r0.xy = v1.xy * r0.xy;
+  r0.xy = (int2)r0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+	r1.xyzw = g_DepthBuffer.Load(r0.xy,0);
+	r2.xyzw = g_DepthBuffer.Load(r0.xy,1);
+  r1.x = min(r1.x, r2.x);
+	r2.xyzw = g_DepthBuffer.Load(r0.xyw,2);
+	r0.xyzw = g_DepthBuffer.Load(r0.xyz,3);
+  r0.y = min(r1.x, r2.x);
+  o0.x = min(r0.x, r0.y);
+  return;
+}

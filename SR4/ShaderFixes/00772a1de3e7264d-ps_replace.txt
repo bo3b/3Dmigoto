@@ -1,0 +1,40 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Meteor_strength : packoffset(c0);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.x = 5.000000000e-001 + -v1.y;
+  r0.x = -r0.x * 2.000000000e+000 + 1.000000000e+000;
+  r0.y = -5.000000000e-001 + v1.y;
+  r0.y = -r0.y * 2.000000000e+000 + 1.000000000e+000;
+  r0.z = v1.y < 5.000000000e-001;
+  r0.x = r0.z ? r0.x : r0.y;
+  r0.y = Meteor_strength * v1.x;
+  r0.y = r0.y * r0.x;
+  r0.y = 2.000000030e-001 * r0.y;
+  r0.z = v1.x * v1.z;
+  r0.w = r0.z * r0.x + r0.y;
+  r0.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

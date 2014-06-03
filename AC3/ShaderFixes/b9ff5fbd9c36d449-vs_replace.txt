@@ -1,0 +1,59 @@
+//AO - NO
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[107];
+}
+
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_SSAOZConstants : packoffset(c128);
+  float4 g_SSAOControl : packoffset(c130);
+  float4 g_SSAOFadeParams : packoffset(c133);
+  float4 g_SSAOScreenRadiusClampPS : packoffset(c131);
+  float4 g_SSAORandomNormalTexScalePS : packoffset(c132);
+  float4 g_SSAOScreenRadiusClampVS : packoffset(c105);
+  float4 g_SSAORandomNormalTexScaleVS : packoffset(c106);
+  float4 g_pixelToTexelOffset : packoffset(c150);
+  float4 g_vTexDimsInRepeatBlocks : packoffset(c140);
+  float3 g_vTexDims : packoffset(c141);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float2 p1 : TEXCOORD1,
+  out float4 o2 : TEXCOORD2,
+  out float4 o3 : TEXCOORD3)
+{
+  float4 r0;
+  uint4 bitmask;
+  
+// float2 r20;  
+// r20.xy = v1.xy;
+// float4 stereoParams = StereoParams.Load(0);
+// r20.x += stereoParams.x * (v0.z - stereoParams.y);
+
+  o0.xyz = v0.xyz;
+  o0.w = 1.000000000e+000;
+  
+  p1.xy = cb0[106].xy * v1.xy;
+  o1.xy = v1.xy;
+  
+  r0.yz = float2(0.000000e+000,0.000000e+000);
+  r0.xw = cb0[105].zw;
+  
+  o2.zw = v1.xy * cb0[105].xy + r0.zw;
+  o2.xy = v1.xy * cb0[105].xy + cb0[105].zw;
+  
+  o3.xy = v1.xy * cb0[105].xy + r0.xy;
+  r0.xy = cb0[105].xy * v1.xy;
+  o3.zw = r0.xy;
+  
+  return;
+}

@@ -1,0 +1,73 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float Layer0DetailScale_2 : packoffset(c105);
+  float4x4 g_World : packoffset(c8);
+  float4 g_ClipPlane : packoffset(c18);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DeconstructionEnabledDX11 : packoffset(c92);
+  float2 g_DeconstructionRanges : packoffset(c116);
+  bool g_DeconstructionEnabledOther : packoffset(c117);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  int4 v0 : POSITION0,
+  uint4 v1 : NORMAL0,
+  float2 v2 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyz = (int3)v0.xyz * (int3)v0.www;
+  r1.xyz = r1.xyz;
+  r0.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r1.xyz;
+  r1.xyzw = -g_EyePosition.xyzw + r0.xyzw;
+  r0.w = dot(r1.xyzw, r1.xyzw);
+  r0.w = sqrt(r0.w);
+  r0.w = -g_DeconstructionRanges.x + r0.w;
+  r1.x = g_DeconstructionRanges.y + -g_DeconstructionRanges.x;
+  r1.x = 1.000000e+000 / r1.x;
+  r0.w = saturate(r1.x * r0.w);
+  r1.x = r0.w * -2.000000000e+000 + 3.000000000e+000;
+  r0.w = r0.w * r0.w;
+  r0.w = r1.x * r0.w;
+  r1.xyz = r0.www * -r0.xyz + r0.xyz;
+  r0.w = 0.000000e+000 != g_DeconstructionEnabledDX11.x;
+  r0.x = r0.w ? r1.x : r0.x;
+  r0.y = r0.w ? r1.y : r0.y;
+  r0.z = r0.w ? r1.z : r0.z;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r1.xyzw;
+r1.x += stereoParams.x * (r1.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o1.xyzw = r1.xyzw;
+  r1.x = dot(r0.xyzw, g_World._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, g_World._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, g_World._m02_m12_m22_m32);
+  o2.xyz = r1.xyz;
+  r0.x = dot(r1.xyz, g_ClipPlane.xyz);
+  o2.w = -g_ClipPlane.w + r0.x;
+  return;
+}

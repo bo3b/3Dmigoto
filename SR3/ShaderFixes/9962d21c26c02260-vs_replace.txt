@@ -1,0 +1,94 @@
+// Clouds, contrails.
+
+cbuffer vc0 : register(b0)
+{
+  float2 Cloud_U_Offset : packoffset(c0);
+  float Cloud_Fade_Height : packoffset(c1);
+  float Cloud_Full_Height : packoffset(c2);
+  float3 TOD_Light_Dir : packoffset(c3);
+  float3 TOD_Light_Color_Front : packoffset(c4);
+  float3 TOD_Light_Color_Rear : packoffset(c5);
+  float4 Layer_strengths : packoffset(c6);
+  float Rimlight_scale : packoffset(c7);
+  float Rimlight_power : packoffset(c8);
+  float4 Scale : packoffset(c9);
+  float Offset : packoffset(c10);
+  float4 Layer_strengths2 : packoffset(c11);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = dot(objTM._m00_m01_m02, v0.xyz);
+  r0.y = dot(objTM._m10_m11_m12, v0.xyz);
+  r0.z = dot(objTM._m20_m21_m22, v0.xyz);
+  r1.x = dot(r0.xyz, projTM._m00_m10_m20);
+  r1.y = dot(r0.xyz, projTM._m01_m11_m21);
+  r1.z = dot(r0.xyz, projTM._m03_m13_m23);
+  o0.xyzw = r1.xyzz;
+o0 *= 5000;
+  r1.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  o1.xyz = r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  o2.xyz = r0.xyz * r0.www;
+  r0.xyzw = v3.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.xyz = r1.zxy * r0.yzx;
+  r0.xyz = r1.yzx * r0.zxy + -r2.xyz;
+  o3.xyz = r0.xyz * r0.www;
+  r0.y = Scale.w + v0.y;
+  r0.xz = v0.xz;
+  r0.xyz = Scale.xyz * r0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.x = -eyePos.y + r1.x;
+  r1.y = Offset + r1.x;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r0.xyz = -eyePos.xyz + r1.xyz;
+  r0.w = Fog_dist.x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 9.999999776e-003 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o4.w = 1.000000000e+000 + -r0.x;
+  o4.xyz = v3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.xy = v1.yx;
+  r1.z = 9.765625000e-004 * r0.x;
+  r1.xy = r0.yy * float2(9.765625e-004,9.765625e-004) + Cloud_U_Offset.xy;
+  o5.xyzw = r1.xzyz;
+
+  float4 stereoParams = StereoParams.Load(0);
+  // o1.x += stereoParams.x * ( - stereoParams.y);
+  return;
+}

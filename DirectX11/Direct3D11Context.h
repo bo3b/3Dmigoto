@@ -140,7 +140,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 	GetD3D11DeviceContext()->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 	
 	// Resolve resource from resource view.
-	if (ppShaderResourceViews)
+	if (G->hunting && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (UINT i = 0; i < NumViews; ++i)
@@ -256,7 +256,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShader called with pixelshader handle = %x\n", pPixelShader);
 	
 	bool patchedShader = false;
-	if (pPixelShader)
+	if (G->hunting && pPixelShader)
 	{
 		// Store as current pixel shader.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -299,16 +299,24 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
-		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
-			pPixelShader = (D3D11Base::ID3D11PixelShader*) it->second.newShader;
+			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %x\n", it->second.replacement);
+
+			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
+			D3D11Base::ID3D11PixelShader *shader = (D3D11Base::ID3D11PixelShader*) it->second.replacement;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
+			return;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	GetD3D11DeviceContext()->PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
 
-	if (patchedShader)
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	if (!G->hunting || patchedShader)
 	{
 		D3D11Wrapper::ID3D11Device *device = 0;
 		GetDevice(&device);
@@ -320,6 +328,13 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 				if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
 				
 				GetD3D11DeviceContext()->PSSetShaderResources(125, 1, &device->mStereoResourceView);
+			}
+			// Set constants from ini file if they exist
+			if (device->mIniResourceView)
+			{
+				if (LogFile && LogDebug) fprintf(LogFile, "  adding ini constants as texture to shader resources in slot 120.\n");
+
+				GetD3D11DeviceContext()->PSSetShaderResources(120, 1, &device->mIniResourceView);
 			}
 			// Set custom depth texture.
 			if (device->mZBufferResourceView)
@@ -361,6 +376,12 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	// Skip?
 	data.override = false;
 	data.skip = G->mBlockingMode;
+
+	// If we are not hunting shaders, we can skip all of this shader management for a performance bump.
+	// ToDo: this also kills texture overrides (not used in AC3 fix)
+	if (!G->hunting)
+		return data;
+
 	float separationValue;
 	UINT selectedRenderTargetPos;
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -489,6 +510,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	}
 	return data;
 }
+
 static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *context)
 {
 	if (data.skip)
@@ -507,6 +529,19 @@ static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *cont
 		}
 		device->Release();
 	}
+
+	// When in hunting mode, we need to get time to run the UI for stepping through shaders.
+	// This gets called for every Draw, and is a definitely overkill, but is a convenient spot
+	// where we are absolutely certain that everyone is set up correctly.  And where we can
+	// get the original ID3D11Device.  This used to be done through the DXGI Present interface,
+	// but that had a number of problems.
+	if (G->hunting)
+	{
+		D3D11Wrapper::ID3D11Device *device;
+		context->GetDevice(&device);
+
+		RunFrameActions((D3D11Base::ID3D11Device *)device->m_pUnk);
+	}
 }
 
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
@@ -519,7 +554,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShader called with vertexshader handle = %x\n", pVertexShader);
 
 	bool patchedShader = false;
-	if (pVertexShader)
+	if (G->hunting && pVertexShader)
 	{
 		// Store as current vertex shader.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -563,16 +598,23 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
-		if (it != G->mReloadedShaders.end() && it->second.newShader != NULL)
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
-			pVertexShader = (D3D11Base::ID3D11VertexShader*)it->second.newShader;
+			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %x\n", it->second.replacement);
+
+			D3D11Base::ID3D11VertexShader *shader = (D3D11Base::ID3D11VertexShader*) it->second.replacement;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
+			return;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	GetD3D11DeviceContext()->VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
 
-	if (patchedShader)
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	if (!G->hunting || patchedShader)
 	{
 		D3D11Wrapper::ID3D11Device *device = 0;
 		GetDevice(&device);
@@ -584,6 +626,14 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 				if (LogFile && LogDebug) fprintf(LogFile, "  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
 				
 				GetD3D11DeviceContext()->VSSetShaderResources(125, 1, &device->mStereoResourceView);
+			}
+
+			// Set constants from ini file if they exist
+			if (device->mIniResourceView)
+			{
+				if (LogFile && LogDebug) fprintf(LogFile, "  adding ini constants as texture to shader resources in slot 120.\n");
+
+				GetD3D11DeviceContext()->VSSetShaderResources(120, 1, &device->mIniResourceView);
 			}
 			device->Release();
 		}
@@ -693,7 +743,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::IASetIndexBuffer(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::IASetIndexBuffer called\n");
 
-	if (pIndexBuffer)
+	if (G->hunting && pIndexBuffer)
 	{
 		// Store as current index buffer.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -800,7 +850,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 	GetD3D11DeviceContext()->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 		
 	// Resolve resource from resource view.
-	if (ppShaderResourceViews)
+	if (G->hunting && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (UINT i = 0; i < NumViews; ++i)
@@ -987,6 +1037,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::OMSetRenderTargets called with NumViews = %d\n", NumViews);
 	
+	if (G->hunting)
+	{
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mCurrentRenderTargets.clear();
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1076,6 +1128,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
+	}
+
 	GetD3D11DeviceContext()->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
 }
         
@@ -1286,6 +1340,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%x, color=[%f,%f,%f,%f]\n", pRenderTargetView, 
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
+	//if (G->hunting)
+	{
 	// Update stereo parameter texture.
 	if (LogFile && LogDebug) fprintf(LogFile, "  updating stereo parameter texture.\n");
 	
@@ -1311,6 +1367,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 
 	device->mParamTextureManager.UpdateStereoTexture(device->GetD3D11Device(), GetD3D11DeviceContext(), device->mStereoTexture, false);
 	device->Release();
+	}
 
 	GetD3D11DeviceContext()->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
@@ -1571,6 +1628,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetShader(THIS_
         __inout_opt  UINT *pNumClassInstances) 
 {
 	GetD3D11DeviceContext()->PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
+
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::PSGetShader out: %x\n", *ppPixelShader);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetSamplers(THIS_
@@ -1593,6 +1652,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSGetShader(THIS_
         __inout_opt  UINT *pNumClassInstances) 
 {
 	GetD3D11DeviceContext()->VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
+
+	// Todo: At GetShader, we need to return the original shader if it's been reloaded.
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::VSGetShader out: %x\n", *ppVertexShader);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetConstantBuffers(THIS_

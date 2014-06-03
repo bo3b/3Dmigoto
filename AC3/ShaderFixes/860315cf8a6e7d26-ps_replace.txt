@@ -1,0 +1,144 @@
+//deferred - no? 
+cbuffer _Globals : register(b0)
+{
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float ParallaxScale_1 : packoffset(c128);
+  float4 WhiteColor_2 : packoffset(c129);
+  float SpecFactor_3 : packoffset(c130);
+  float4 MatCapOffset_4 : packoffset(c131);
+  float4 IrisColor_5 : packoffset(c132);
+  float Depthbias_6 : packoffset(c133);
+  float DepthScale_7 : packoffset(c134);
+  float OcclusionColor_8 : packoffset(c135);
+  float PupilScale_9 : packoffset(c136);
+  float g_AlphaTestValue : packoffset(c113);
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_UnusedPredicated1 : packoffset(c97);
+  float4 g_UnusedPredicated2 : packoffset(c98);
+  float4 g_UnusedPredicated3 : packoffset(c99);
+  float4 g_VPosToUV : packoffset(c0);
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float2 g_ReverseProjectionParams2 : packoffset(c101);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+
+  struct
+  {
+    float3 m_Albedo;
+    float m_Alpha;
+    float2 m_VPOS;
+    float2 m_ScreenPosition;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_VertexWorldNormal;
+    float3 m_TangentSpaceNormal;
+    float m_SpecIntensity;
+    float m_SpecGlossiness;
+    float3 m_Emissive;
+    float m_WeatherExposed;
+    float m_LinearDepth;
+  } c : packoffset(c137);
+
+}
+SamplerState Layer0Diffuse_0_s : register(s0);
+SamplerState Operator30_1_s : register(s1);
+SamplerState Operator11_2_s : register(s2);
+SamplerState g_DepthSampler_s : register(s8);
+Texture2D<float4> Layer0Diffuse_0 : register(t0);
+Texture2D<float4> Operator30_1 : register(t1);
+Texture2D<float4> Operator11_2 : register(t2);
+Texture2D<float4> g_DepthSampler : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : COLOR0,
+  float4 v4 : TEXCOORD2,
+  float4 v5 : TEXCOORD3,
+  float4 v6 : TEXCOORD4,
+  float4 v7 : TEXCOORD5,
+  float4 v8 : TEXCOORD6,
+  uint v9 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  float4 injectedScreenPos : SV_Position,
+  out float4 o2 : SV_Target2,
+  out float4 o3 : SV_Target3)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = g_VPosToUV.xy * v0.xy;
+  r0.xyzw = g_DepthSampler.Sample(g_DepthSampler_s, r0.xy).xyzw;
+  r0.x = -v1.w + r0.x;
+  r0.x = saturate(DepthScale_7 * r0.x + Depthbias_6);
+  r0.y = -g_AlphaTestValue + r0.x;
+  o3.w = r0.x;
+  r0.x = r0.y < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  if (r0.x != 0) discard;
+  r0.xyzw = float4(1.000000e+000,-1.000000e+000,1.000000e+000,1.000000e+000) * v8.xyzw;
+  r0.x = dot(r0.xyzw, r0.xyzw);
+  r0.x = rsqrt(r0.x);
+  r0.yz = float2(1.000000e+000,-1.000000e+000) * v8.xy;
+  r0.xy = r0.yz * r0.xx;
+  r0.z = ParallaxScale_1 * -1.500000060e-001;
+  r1.xyzw = Operator30_1.Sample(Operator30_1_s, v2.xy).xyzw;
+  r0.z = r1.x * r0.z;
+  r0.xy = r0.zz * r0.xy + v2.xy;
+  r0.xy = float2(-5.000000e-001,-5.000000e-001) + r0.xy;
+  r0.z = PupilScale_9 + -1.000000000e+000;
+  r0.z = v3.y * r0.z + 1.000000000e+000;
+  r0.xy = r0.xy * r0.zz + float2(5.000000e-001,5.000000e-001);
+  r0.xyzw = Layer0Diffuse_0.Sample(Layer0Diffuse_0_s, r0.xy).xyzw;
+  r1.xyz = OcclusionColor_8 * IrisColor_5.xyz;
+  r2.xyz = WhiteColor_2.xyz * OcclusionColor_8 + -r1.xyz;
+  r1.xyz = v3.xxx * r2.xyz + r1.xyz;
+  o0.xyz = r1.xyz * r0.xyz;
+  o0.w = 0.000000000e+000;
+  o1.w = 0.000000000e+000;
+  r0.x = dot(v7.xyz, v7.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v7.xyz * r0.xxx;
+  o1.xyz = saturate(r0.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001));
+  
+//Stereo Shift
+// float4 r7, r10;
+// r10.xyz = r0.xyz;
+// r10.w = 1.0e+000;
+// r7.x = dot(r10.xyzw, g_WorldToView._m00_m10_m20_m30);
+// r7.y = dot(r10.xyzw, g_WorldToView._m01_m11_m21_m31);
+// r7.z = dot(r10.xyzw, g_WorldToView._m02_m12_m22_m32);
+// r7.w = dot(r10.xyzw, g_WorldToView._m03_m13_m23_m33);
+
+// float4 stereoParams = StereoParams.Load(0);
+// r7.x +=  stereoParams.x * (-r7.z - stereoParams.y) * g_ReverseProjectionParams.x; 
+
+// r10.x = dot(r7.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+// r10.y = dot(r7.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+// r10.z = dot(r7.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+// r10.w = dot(r7.xyzw, g_ViewToWorld._m03_m13_m23_m33);  
+
+// r0.xyz = r10.xyz;
+
+
+  r1.x = dot(r0.xyz, g_WorldToView._m00_m10_m20);
+  r1.y = dot(r0.xyz, g_WorldToView._m01_m11_m21);
+  r0.xy = r1.xy * float2(5.000000e-001,5.000000e-001) + MatCapOffset_4.xy;
+  r0.xy = float2(5.000000e-001,5.000000e-001) + r0.xy;
+  r0.xyzw = Operator11_2.Sample(Operator11_2_s, r0.xy).xyzw;
+  r0.w = OcclusionColor_8 * SpecFactor_3;
+  o2.xyz = r0.xyz * r0.www;
+  o2.w = 0.000000000e+000;
+  o3.xyz = v1.zzz / v1.www;
+  return;
+}

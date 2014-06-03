@@ -3,6 +3,7 @@
 #include "Main.h"
 #include <Shlobj.h>
 #include <algorithm>
+#include <ctime>
 
 FILE *D3DWrapper::LogFile = 0;
 static bool gInitialized = false;
@@ -10,6 +11,16 @@ static bool EXPORT_ALL = false;
 static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
 
 using namespace std;
+
+
+static char *LogTime()
+{
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
+	timeStr[strlen(timeStr) - 1] = 0;
+	return timeStr;
+}
+
 
 void InitializeDLL()
 {
@@ -22,7 +33,25 @@ void InitializeDLL()
 		wcscat(dir, L"d3dx.ini");
 		D3DWrapper::LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
 		if (D3DWrapper::LogFile) fopen_s(&D3DWrapper::LogFile, "D3DCompiler_" COMPILER_DLL_VERSION "_log.txt", "w");
-		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "DLL initialized.\n");
+
+		if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "\nD3DCompiler_" COMPILER_DLL_VERSION " starting init  -  %s\n\n", LogTime());
+
+		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+		// to open active files.
+		int unbuffered = -1;
+		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, dir))
+		{
+			unbuffered = setvbuf(D3DWrapper::LogFile, NULL, _IONBF, 0);
+			if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "  unbuffered=1  return: %d\n", unbuffered);
+		}
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
+		}
 		
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Rendering", L"storage_directory", 0, SHADER_PATH, MAX_PATH, dir);
@@ -37,6 +66,8 @@ void InitializeDLL()
 		}
 		EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir) == 1;
 	}
+
+	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "DLL initialized.\n");
 }
 
 void DestroyDLL()

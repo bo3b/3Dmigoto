@@ -1,0 +1,124 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float Reflection_Plane_Height : packoffset(c30);
+  float4 Dyn_decal_tint : packoffset(c42);
+  float4 Dyn_decal_params_1 : packoffset(c43);
+  float4 Dyn_decal_params_2 : packoffset(c44);
+  float3 Dyn_decal_pos : packoffset(c45);
+  float3 Dyn_decal_rvec : packoffset(c46);
+  float3 Dyn_decal_uvec : packoffset(c47);
+  float3 Dyn_decal_fvec : packoffset(c48);
+  float3 Dyn_decal_scale : packoffset(c49);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6,
+  out float3 o8 : TEXCOORD7)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  r0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  r0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r2.xzw = r1.xzw;
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereoParams = StereoParams.Load(0);
+r21.xyzw = r0.xyzw;
+r0.x += stereoParams.x * (r0.w - stereoParams.y);
+o0.xyzw = r21.xyzw;
+
+
+  o5.xyzw = r0.xyzw;
+  r2.y = Reflection_Plane_Height;
+  o1.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
+  o1.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
+  o1.z = dot(r2.xyzw, projTM._m02_m12_m22_m32);
+  o1.w = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = Dyn_decal_scale.yyy * Dyn_decal_rvec.zxy;
+  r2.xyz = v1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.xyz = r2.yzx * r0.xyz;
+  r0.xyz = r0.zxy * r2.zxy + -r3.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r3.z = dot(objTM._m00_m01_m02, r0.xyz);
+  r3.x = dot(objTM._m10_m11_m12, r0.xyz);
+  r3.y = dot(objTM._m20_m21_m22, r0.xyz);
+  o2.x = dot(Dyn_decal_fvec.xyz, r0.xyz);
+  r0.x = dot(r3.xyz, r3.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r3.xyz * r0.xxx;
+  r3.x = dot(objTM._m00_m01_m02, r2.xyz);
+  r3.y = dot(objTM._m10_m11_m12, r2.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r2.xyz);
+  o2.z = dot(Dyn_decal_fvec.xyz, r2.xyz);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r3.xyz * r0.www;
+  r3.xyz = r2.zxy * r0.xyz;
+  r0.xyz = r2.yzx * r0.yzx + -r3.xyz;
+  o6.xyz = r2.xyz;
+  o2.y = dot(Dyn_decal_fvec.xyz, r0.xyz);
+  r0.xyz = -Dyn_decal_pos.xyz + v0.xyz;
+  r0.xyz = r0.xyz / Dyn_decal_scale.xyz;
+  r2.x = dot(r0.xyz, Dyn_decal_rvec.xyz);
+  r2.z = dot(r0.xyz, Dyn_decal_fvec.xyz);
+  r0.x = dot(r0.xyz, Dyn_decal_uvec.xyz);
+  r0.x = Dyn_decal_params_1.y * r0.x;
+  r2.xz = Dyn_decal_params_1.xz * r2.xz;
+  o2.w = r2.z;
+  o3.xyzw = Dyn_decal_params_2.xyzw;
+  o4.xyzw = Dyn_decal_tint.xyzw;
+  o6.w = Object_instance_params_2.x * 4.980544746e-001 + 5.019454956e-001;
+  o7.xyz = eyePos.xyz + -r1.xyz;
+  r0.yzw = -eyePos.xyz + r1.xyz;
+  r1.x = saturate(-Dyn_decal_params_1.w * 8.333333244e-005 + 1.000000000e+000);
+  r1.x = r1.x * r1.x;
+  o7.w = r1.x * 8.899999857e-001 + 1.000000015e-001;
+  r1.x = Fog_dist.x * r0.z;
+  r1.y = -1.442695022e+000 * r1.x;
+  r1.y = exp2(r1.y);
+  r1.y = 1.000000000e+000 + -r1.y;
+  r1.x = r1.y / r1.x;
+  r1.y = 5.000000075e-002 < abs(r0.z);
+  r0.y = dot(r0.yzw, r0.yzw);
+  r0.y = sqrt(r0.y);
+  r0.y = Fog_dist.y * r0.y;
+  r0.z = r1.y ? r1.x : 1.000000000e+000;
+  r0.y = r0.z * r0.y + -Fog_dist.w;
+  r0.y = exp2(-r0.y);
+  r0.y = min(r0.y, 1.000000000e+000);
+  o8.z = 1.000000000e+000 + -r0.y;
+  r0.y = -1.000000000e+000;
+  r2.y = r0.y * r0.x;
+  o8.xy = float2(5.000000e-001,5.000000e-001) + r2.xy;
+  return;
+}

@@ -93,6 +93,7 @@ public:
 	string BackProject_Vector1, BackProject_Vector2;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	vector<string> ZRepair_Dependencies1, ZRepair_Dependencies2;
+	bool mZRepair_DepthBuffer;
 	vector<string> InvTransforms;
 	string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
 	string ZRepair_PositionTexture;
@@ -470,6 +471,8 @@ public:
 					}
 				if (!strcmp(dim, "2d"))
 					mTextureType[slot] = "Texture2D<" + string(format) + ">";
+				else if (!strcmp(dim, "2darray"))
+					mTextureType[slot] = "Texture2DArray<" + string(format) + ">";
 				else if (!strcmp(dim, "3d"))
 					mTextureType[slot] = "Texture3D<" + string(format) + ">";
 				else if (!strcmp(dim, "cube"))
@@ -654,9 +657,9 @@ public:
 			mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 			do
 			{
-				const char *eolPos = strchr(c+pos, '\n');
-				memcpy(buffer, c+pos, eolPos-c-pos+1);
-				buffer[eolPos-c-pos+1] = 0;
+				const char *eolPos = strchr(c + pos, '\n');
+				memcpy(buffer, c + pos, eolPos - c - pos + 1);
+				buffer[eolPos - c - pos + 1] = 0;
 				// Skip opening bracket.
 				if (strstr(buffer, " {\n"))
 				{
@@ -680,16 +683,20 @@ public:
 					++structLevel;
 					mOutput.insert(mOutput.end(), '\n');
 					for (int i = -1; i < structLevel; ++i)
-					{ mOutput.insert(mOutput.end(), ' '); mOutput.insert(mOutput.end(), ' '); }
+					{
+						mOutput.insert(mOutput.end(), ' '); mOutput.insert(mOutput.end(), ' ');
+					}
 					const char *structHeader = strstr(buffer, "struct");
 					// Can't use structure declaration: If we use the structure name, it has to be copied on top.
 					//if (structLevel)
 						structHeader = "struct\n";
-					mOutput.insert(mOutput.end(), structHeader, structHeader+strlen(structHeader));
+					mOutput.insert(mOutput.end(), structHeader, structHeader + strlen(structHeader));
 					for (int i = -1; i < structLevel; ++i) 
-					{ mOutput.push_back(' '); mOutput.push_back(' '); }
+					{
+						mOutput.push_back(' '); mOutput.push_back(' ');
+					}
 					const char *structHeader2 = "{\n";
-					mOutput.insert(mOutput.end(), structHeader2, structHeader2+strlen(structHeader2));
+					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
 					while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					continue;
 				}
@@ -700,23 +707,25 @@ public:
 					int bpos = 0;
 					while (c[pos] != ';')
 						buffer[bpos++] = c[pos++];
-					string structName = string(buffer+2, buffer+bpos) + ".";
+					string structName = string(buffer + 2, buffer + bpos) + ".";
 					// Read offset.
 					while (c[pos] != '/' && pos < size) pos++;
 					int offset = 0;
-					numRead = sscanf(c+pos, "// Offset: %d", &offset);
+					numRead = sscanf(c + pos, "// Offset: %d", &offset);
 					if (numRead != 1)
 					{
-						logDecompileError("Error parsing buffer offset: "+string(c+pos, 80));
+						logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
 						return;
 					}
 					if (!structLevel)
-						sprintf(buffer+bpos, " : packoffset(c%d);\n\n", offset/16);
+						sprintf(buffer + bpos, " : packoffset(c%d);\n\n", offset / 16);
 					else
-						sprintf(buffer+bpos, ";\n\n");
+						sprintf(buffer + bpos, ";\n\n");
 					for (int i = -1; i < structLevel; ++i) 
-					{ mOutput.push_back(' '); mOutput.push_back(' '); }
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					{
+						mOutput.push_back(' '); mOutput.push_back(' ');
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					// Prefix struct attributes.
 					int arrayPos = structName.find('[');
 					if (arrayPos == string::npos)
@@ -725,15 +734,15 @@ public:
 						{
 							mCBufferData[*i].Name = structName + mCBufferData[*i].Name;
 							if (structLevel)
-								pendingStructAttributes[structLevel-1].push_back(*i);
+								pendingStructAttributes[structLevel - 1].push_back(*i);
 						}
 					}
 					else
 					{
 						int arraySize;
-						if (sscanf(structName.c_str()+arrayPos+1, "%d", &arraySize) != 1)
+						if (sscanf(structName.c_str() + arrayPos + 1, "%d", &arraySize) != 1)
 						{
-							logDecompileError("Error parsing struct array size: "+structName);
+							logDecompileError("Error parsing struct array size: " + structName);
 							return;
 						}
 						structName = structName.substr(0, arrayPos);
@@ -741,14 +750,14 @@ public:
 						int structSize = 0;
 						for (vector<int>::iterator j = pendingStructAttributes[structLevel].begin(); j != pendingStructAttributes[structLevel].end(); ++j)
 							structSize += getDataTypeSize(mCBufferData[*j].bt);
-						for (int i = arraySize-1; i >= 0; --i)
+						for (int i = arraySize - 1; i >= 0; --i)
 						{
 							sprintf(buffer, "%s[%d].", structName.c_str(), i);
 							for (vector<int>::iterator j = pendingStructAttributes[structLevel].begin(); j != pendingStructAttributes[structLevel].end(); ++j)
 							{
 								mCBufferData[*j + i * structSize].Name = buffer + mCBufferData[*j].Name;
 								if (structLevel)
-									pendingStructAttributes[structLevel-1].push_back(*j + i * structSize);
+									pendingStructAttributes[structLevel - 1].push_back(*j + i * structSize);
 							}
 						}
 					}
@@ -759,10 +768,10 @@ public:
 				}
 				// Read declaration.
 				char type[16]; type[0] = 0;
-				numRead = sscanf(c+pos, "// %s %s", type, name);
+				numRead = sscanf(c + pos, "// %s %s", type, name);
 				if (numRead != 2)
 				{
-					logDecompileError("Error parsing buffer item: "+string(c+pos, 80));
+					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 					return;
 				}
 				string modifier;
@@ -773,32 +782,33 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf(c+pos, "// %s %s %s", buffer, type, name);
+					numRead = sscanf(c + pos, "// %s %s %s", buffer, type, name);
 					if (numRead != 3)
 					{
-						logDecompileError("Error parsing buffer item: "+string(c+pos, 80));
+						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 						return;
 					}
 				}
 				char *endStatement = strchr(name, ';');
 				if (!endStatement)
 				{
-					logDecompileError("Error parsing buffer item: "+string(c+pos, 80));
+					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 					return;
 				}
 				*endStatement = 0;
 				pos += 2;
 				while (c[pos] != '/' && pos < size) pos++;
 				int offset = 0;
-				numRead = sscanf(c+pos, "// Offset: %d", &offset);
+				numRead = sscanf(c + pos, "// Offset: %d", &offset);
 				if (numRead != 1)
 				{
-					logDecompileError("Error parsing buffer offset: "+string(c+pos, 80));
+					logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
 					return;
 				}
 				e.Name = name;
 				e.matrixRow = 0;
 				e.bt = TranslateType(type);			
+
 				// Check binary type.
 				/*
 				for (int nBuf = 0; nBuf < shader->sInfo.ui32NumConstantBuffers; ++nBuf)
@@ -817,40 +827,89 @@ public:
 				// Uses projection matrix?
 				if (e.bt == DT_float4x4 && e.Name.find_first_of("Projection") >= 0)
 				{
-					eolPos = strchr(c+pos, '\n');
+					eolPos = strchr(c + pos, '\n');
 					// Used?
-					if (*(eolPos-1) != ']')
+					if (*(eolPos - 1) != ']')
 						mUsesProjection = true;
 				}
+
+				// SR3 variant of projection matrix.
+				if (e.bt == DT_float4x4 && e.Name.find_first_of("projTM") >= 0)
+				{
+					eolPos = strchr(c + pos, '\n');
+					// Used?
+					if (*(eolPos - 1) != ']')
+						mUsesProjection = true;
+				}
+
+				// This section previously made a distinction for the floatYxZ formats, assuming that they were not able to
+				// be arrays.  That's untrue, so they were added into the for loop to create the array elements possible.
+				// This fixes a series of array out of bounds errors for anything using these floatYxZ matrices.
+
+				// Look for array based elements.  We need an mCBufferData element for each possible array element, to match
+				// possible uses of those offsets in the ASM code.
 				int ep = e.Name.find('[');
 				if (ep != string::npos && 
 					(e.bt == DT_bool || e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 || 
 					 e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
-					 e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4))
+					e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4 ||
+					e.bt == DT_float4x4 || e.bt == DT_float3x4 || e.bt == DT_float4x3 || e.bt == DT_float3x3 || e.bt == DT_float4x2))
 				{
+					// Register each array element.
+					int numElements = 0;
+					sscanf(e.Name.substr(ep + 1).c_str(), "%d", &numElements);
+					string baseName = e.Name.substr(0, ep);
+
 					int counter = 0;
 					if (e.bt == DT_float || e.bt == DT_bool || e.bt == DT_uint || e.bt == DT_int) counter = 4;
 					else if (e.bt == DT_float2 || e.bt == DT_uint2 || e.bt == DT_int2) counter = 8;
 					else if (e.bt == DT_float3 || e.bt == DT_uint3 || e.bt == DT_int3) counter = 12;
 					else if (e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
-					// Register each array element.
-					int numElements = 0;
-					sscanf(e.Name.substr(ep+1).c_str(), "%d", &numElements);
-					// Correct invalid array size.
+					else if (e.bt == DT_float4x2) counter = 16 * 2;
+					else if (e.bt == DT_float3x3 || e.bt == DT_float4x3) counter = 16 * 3;
+					else if (e.bt == DT_float3x4 || e.bt == DT_float4x4) counter = 16 * 4;
+
+					// Correct possible invalid array size. (16 byte boundaries)
 					int byteSize;
-					sscanf(strstr(c+pos, "Size:")+5, "%d", &byteSize);
+					sscanf(strstr(c + pos, "Size:") + 5, "%d", &byteSize);
 					if ((counter == 4 && numElements*counter < byteSize) ||
 						(counter == 12 && numElements*counter < byteSize))
 						counter = 16;
-					string baseName = e.Name.substr(0, ep);
+					
 					for (int i = 0; i < numElements; ++i)
 					{
 						sprintf(buffer, "%s[%d]", baseName.c_str(), i);
 						e.Name = buffer;
-						int offsetPos = (bufferRegister << 16) + offset + i*counter;
+						int offsetPos;
+
+						switch (e.bt)
+						{
+							case DT_float4x4:
+							case DT_float3x4:
+								e.matrixRow = 3;
+								offsetPos = (bufferRegister << 16) + offset + i*counter + 3 * 16;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+							case DT_float4x3:
+							case DT_float3x3:
+								e.matrixRow = 2;
+								offsetPos = (bufferRegister << 16) + offset + i*counter + 2 * 16;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+							case DT_float4x2:
+								e.matrixRow = 1;
+								offsetPos = (bufferRegister << 16) + offset + i*counter + 1 * 16;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+								e.matrixRow = 0;
+								offsetPos = (bufferRegister << 16) + offset + i*counter;
+								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+
+								break;
+							default:
+								offsetPos = (bufferRegister << 16) + offset + i*counter;
 						mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 					}
 				}
+				}
+				// Non-array versions of floatYxZ
 				else if (e.bt == DT_float4x4 || e.bt == DT_float4x3 || e.bt == DT_float4x2 || e.bt == DT_float3x4 || e.bt == DT_float3x3)
 				{
 					e.matrixRow = 0; int offsetPos = (bufferRegister << 16) + offset; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
@@ -862,11 +921,13 @@ public:
 							e.matrixRow = 3; offsetPos = (bufferRegister << 16) + offset + 3*16; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 					}
 				}
+				// Non-array versions of scalar entities like float4
 				else
 				{
 					int offsetPos = (bufferRegister << 16) + offset;
 					mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 				}
+
 				// Default value?
 				while (c[pos] != 0x0a && pos < size) pos++; pos++;
 				const char *defaultid = "//      = ";
@@ -1383,7 +1444,8 @@ public:
 		{	
 			// Normal variant like r1.xyxx
 			int pos = 5;
-			if (!strncmp(textype, "Texture2D", 9)) pos = 3;
+			if (!strncmp(textype, "Texture2DArray", 14)) pos = 4;
+			else if (!strncmp(textype, "Texture2D", 9)) pos = 3;
 			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
 			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
 			cpos = strrchr(op, '.');
@@ -1428,6 +1490,41 @@ public:
 			}
 		}
 		return input;
+	}
+
+	
+	// Only necessary for opcode_AND when used as boolean tests.
+	// Converts literals of the form: l(0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000) to l(1.0, 1.0, 1.0, 1.0)
+
+	// In the microsoft world, 10 year old C specs are not interesting, so no stdclib function exists here for float,
+	// and the std::hexfloat i/o stream fails to handle 32 bits properly. It's quite sad how weak this stuff is.
+	// This took quite a long time to figure out how to make it work properly.  The easist answer seemed to be
+	// to use reinterpret_cast from uint to float, but that appears to be unnecessary, as the %x assigned directly
+	// to a float seems to work properly (but is not documented.)
+
+	void convertHexToFloat(char *target)
+	{
+		char convert[128];
+		int count;
+		float lit[4];
+		int printed;
+
+		if (target[0] == 'l')
+		{
+			count = sscanf_s(target, "l(%x,%x,%x,%x)", &lit[0], &lit[1], &lit[2], &lit[3]);
+			assert(count != 0);
+
+			printed = sprintf_s(convert, "l(", 128);
+			for (size_t i = 0; i < count; i++)
+			{
+				printed += sprintf_s(&convert[printed], 128 - printed, "%f,", lit[i]);
+			}
+			
+			// Overwrite trailing comma to be closing paren, no matter how many literals were converted.
+			convert[printed-1] = ')';
+
+			strcpy(target, convert);
+		}
 	}
 
 	char *convertToInt(char *target)
@@ -1532,7 +1629,8 @@ public:
 	void WritePatches()
 	{
 		bool stereoParamsWritten = false;
-		const char *StereoDecl = "\n  float4 stereoParams = StereoParams.Load(0);\n  float4 stereoScreenRes = StereoParams.Load(int3(2,0,0));\n  float4 stereoTune = StereoParams.Load(int3(1,0,0));";
+		const char *StereoDecl = "\n\n  float4 stereoParams = StereoParams.Load(0);";
+			// float4 stereoScreenRes = StereoParams.Load(int3(2,0,0));\n  float4 stereoTune = StereoParams.Load(int3(1,0,0));";
 
 		// Vertex shader patches
 		if (!mShaderType.substr(0, 3).compare("vs_"))
@@ -1632,19 +1730,31 @@ public:
 						if (dotPos > 0) rvalue2 = i->second.substr(0, dotPos);
 						if (!rvalue2.compare(rvalue))
 						{
-							// Write fix.
+							// Write params before return;.
 							if (!stereoParamsWritten)
 							{
-								vector<char>::iterator writePos = mOutput.end()-1;
-								if (*writePos != '\n') --writePos;
-								mOutput.insert(writePos, StereoDecl, StereoDecl+strlen(StereoDecl));
+								vector<char>::iterator writePos = mOutput.end() - 1;
+								while (*writePos != '\n')
+									--writePos;
+								--writePos;
+								while (*writePos != '\n')
+									--writePos;
+								mOutput.insert(writePos, StereoDecl, StereoDecl + strlen(StereoDecl));
 								stereoParamsWritten = true;
 							}
+
+							// Back up to before the final return statement to output.
+							vector<char>::iterator writePos = mOutput.end() - 1;
+							while (*writePos != '\n')
+								--writePos;
+							--writePos;
+							while (*writePos != '\n')
+								--writePos;
 							char buffer[256];
 							string outputReg = i->first;
 							if (outputReg.find('.') != string::npos) outputReg = outputReg.substr(0, outputReg.find('.'));
-							sprintf(buffer, "  if (%s.w != 1) %s.x += stereoParams.x * (%s.w - stereoParams.y);\n", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+							sprintf(buffer, "\n  if (%s.w != 1) %s.x += stereoParams.x * (%s.w - stereoParams.y);", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
+							mOutput.insert(writePos, buffer, buffer+strlen(buffer));
 							mPatched = true;
 						}
 					}
@@ -1851,8 +1961,8 @@ public:
 				}
 			}
 
-			// Add depth texture.
-			if (!wposAvailable)
+			// Add depth texture, as a last resort, but only if it's specified in d3dx.ini
+			if (!wposAvailable && mZRepair_DepthBuffer)
 			{
 				const char *INJECT_HEADER = "  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);\n"
 										    "  float zpos = zpos4.x - 1;\n"
@@ -2154,7 +2264,7 @@ public:
 			}
 			else if (!strcmp(statement, "dcl_immediateConstantBuffer"))
 			{
-				sprintf(buffer, "  float4x4 icb =");
+				sprintf(buffer, "  const float4 icb[] =");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 				pos += strlen(statement);
 				while (c[pos] != 0x0a && pos < size) 
@@ -2311,263 +2421,283 @@ public:
 			}
 			else 
 			{
-			switch (instr->eOpcode)
-			{
-
-			case OPCODE_ITOF:
-			case OPCODE_UTOF:
-			case OPCODE_MOV:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(%s);\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				if (op1[0] == 'o') 
+				switch (instr->eOpcode)
 				{
-					char *dotPos = strchr(op1, '.'); if (dotPos) *dotPos = 0;
-					if (!dotPos || dotPos[1] == 'x')
-						mOutputRegisterValues[op1] = op2;
-				}
-				removeBoolean(op1);
-				break;
-		
-			case OPCODE_NOT:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ~%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
 
-			case OPCODE_INEG:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				sprintf(buffer, "  %s = -%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_F32TOF16:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = f32tof16(%s);\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-		
-			case OPCODE_F16TOF32:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = f16tof32(%s);\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_FRC:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = frac(%s);\n", writeTarget(op1), ci(op2).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(frac(%s));\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-
-			case OPCODE_MUL:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				mMulOperand = op3; mMulOperand2 = op2; mMulTarget = op1;
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(%s * %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-
-			case OPCODE_IMUL:
-				remapTarget(op2);
-				applySwizzle(op2, op3, true);
-				applySwizzle(op2, op4, true);
-				mMulOperand = strncmp(op3, "int", 3) ? op3 : op4;
-				sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op2), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-
-			case OPCODE_DIV:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s / %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(%s / %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			case OPCODE_UDIV:
-			{
-				remapTarget(op1);
-				remapTarget(op2);
-				char *maskOp = instr->asOperands[0].eType != OPERAND_TYPE_NULL ? op1 : op2;
-				applySwizzle(maskOp, fixImm(op3, instr->asOperands[2]), true);
-				applySwizzle(maskOp, fixImm(op4, instr->asOperands[3]), true);
-				if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
-				{
+				case OPCODE_ITOF:
+				case OPCODE_UTOF:
+				case OPCODE_MOV:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = %s / %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
 					else
-						sprintf(buffer, "  %s = saturate(%s / %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = saturate(%s);\n", writeTarget(op1), ci(op2).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				}
-				if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
-				{
+					if (op1[0] == 'o') 
+					{
+						char *dotPos = strchr(op1, '.'); if (dotPos) *dotPos = 0;
+						if (!dotPos || dotPos[1] == 'x')
+							mOutputRegisterValues[op1] = op2;
+					}
+					removeBoolean(op1);
+					break;
+		
+				case OPCODE_NOT:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ~%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_INEG:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					sprintf(buffer, "  %s = -%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_F32TOF16:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = f32tof16(%s);\n", writeTarget(op1), ci(op2).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+		
+				case OPCODE_F16TOF32:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = f16tof32(%s);\n", writeTarget(op1), ci(op2).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_FRC:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
 					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = %s %% %s;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = frac(%s);\n", writeTarget(op1), ci(op2).c_str());
 					else
-						sprintf(buffer, "  %s = saturate(%s %% %s);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = saturate(frac(%s));\n", writeTarget(op1), ci(op2).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				}
-				removeBoolean(op1);
-				break;
-			}
+					removeBoolean(op1);
+					break;
 
-			case OPCODE_ADD:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+				case OPCODE_MUL:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					mMulOperand = op3; mMulOperand2 = op2; mMulTarget = op1;
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(%s * %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 
-			case OPCODE_IADD:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				if (isBoolean(op2) && isBoolean(op3))
+				case OPCODE_IMUL:
+					remapTarget(op2);
+					applySwizzle(op2, op3, true);
+					applySwizzle(op2, op4, true);
+					mMulOperand = strncmp(op3, "int", 3) ? op3 : op4;
+					sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op2), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+
+				case OPCODE_DIV:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = %s / %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(%s / %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				case OPCODE_UDIV:
 				{
-					if (op2[0] == '-') strcpy(op2, op2+1);
-					else if (op3[0] == '-') strcpy(op3, op3+1);
-					sprintf(buffer, "  %s = (%s ? -1 : 0) + (%s ? 1 : 0);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					remapTarget(op1);
+					remapTarget(op2);
+					char *maskOp = instr->asOperands[0].eType != OPERAND_TYPE_NULL ? op1 : op2;
+					applySwizzle(maskOp, fixImm(op3, instr->asOperands[2]), true);
+					applySwizzle(maskOp, fixImm(op4, instr->asOperands[3]), true);
+					if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
+					{
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = %s / %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(%s / %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					}
+					if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
+					{
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = %s %% %s;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(%s %% %s);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					}
+					removeBoolean(op1);
+					break;
 				}
-				else
-					sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
 
-			case OPCODE_AND:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(op1, op3);
-				if (isBoolean(op2) || isBoolean(op3))
+				case OPCODE_ADD:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+
+				case OPCODE_IADD:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					if (isBoolean(op2) && isBoolean(op3))
+					{
+						if (op2[0] == '-') strcpy(op2, op2+1);
+						else if (op3[0] == '-') strcpy(op3, op3+1);
+						sprintf(buffer, "  %s = (%s ? -1 : 0) + (%s ? 1 : 0);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					}
+					else
+						sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+					// AND opcodes were generating bad code, as the hex constants were being converted badly.
+					// The most common case was 0x3f800000 being converted directly to integer decimal of 1065353216, instead
+					// of the most likely answer of floating point 1.0f.
+					// This also happened for conversion of Pi.
+					// There are bitmasks used for AND, and those need to stay as Hex constants.
+					// But anything used after IF statements/booleans, needs to be converted as float.
+					// Rather than modify applySwizzle for this single opcode, it makes more sense to convert them here,
+					// before they are seen by applySwizzle as float.  
+				case OPCODE_AND:
+					remapTarget(op1);
+					if (isBoolean(op2) || isBoolean(op3))
+					{
+						convertHexToFloat(op2);
+						convertHexToFloat(op3);
+					}
+					applySwizzle(op1, op2);
+					applySwizzle(op1, op3);
+					if (isBoolean(op2) || isBoolean(op3))
+					{
+						char *cmp = isBoolean(op2) ? op2 : op3;
+						char *arg = isBoolean(op2) ? op3 : op2;
+						int idx = 0;
+						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+						while (*++pop1)
+						{
+							sprintf(op4, "%s.%c", op1, *pop1);
+							sprintf(buffer, "  %s = %s ? %s : 0;\n", writeTarget(op4), ci(GetSuffix(cmp, idx)).c_str(), ci(GetSuffix(arg, idx)).c_str());
+							mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+							++idx;
+						}
+					}
+					else
+					{
+						sprintf(buffer, "  %s = %s & %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					}
+					break;
+
+				case OPCODE_OR:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					applySwizzle(op1, op3);
+					sprintf(buffer, "  %s = %s | %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_XOR:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					applySwizzle(op1, op3);
+					sprintf(buffer, "  %s = %s ^ %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+					// Curiously enough, the documentation for ISHR and ISHL is wrong, and documents the parameters backwards.
+					// http://msdn.microsoft.com/en-us/library/windows/desktop/hh447145(v=vs.85).aspx
+					// This was proven by looking at actual game ASM, and trying to make the HLSL match the generated ASM.
+					// It is the C standard of: shift-expression << additive-expression 
+					// So, we need op2 as the Shift-Expression, op3 as the # of bits to shift.
+				case OPCODE_ISHR:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_ISHL:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
+
+					// USHR appears to be documented correctly.
+					// But this code was still backwards.
+				case OPCODE_USHR:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_UBFE:
 				{
-					char *cmp = isBoolean(op2) ? op2 : op3;
-					char *arg = isBoolean(op2) ? op3 : op2;
+					remapTarget(op1);
+					applySwizzle(op1, op2);	// width
+					applySwizzle(op1, op3); // offset
+					applySwizzle(op1, op4);
 					int idx = 0;
 					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
 					while (*++pop1)
 					{
-						sprintf(op4, "%s.%c", op1, *pop1);
-						sprintf(buffer, "  %s = %s ? %s : 0;\n", writeTarget(op4), ci(GetSuffix(cmp, idx)).c_str(), ci(GetSuffix(arg, idx)).c_str());
+						sprintf(op5, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  if (%s == 0) %s = 0;\n"
+										"  else if (%s+%s < 32) { %s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); }\n"
+										"  else %s = (uint)%s >> %s;\n",
+							ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), 
+							ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), 
+							writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
 						++idx;
 					}
+					break;
 				}
-				else
-				{
-					sprintf(buffer, "  %s = %s & %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+				case OPCODE_EXP:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = exp2(%s);\n", writeTarget(op1), ci(op2).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(exp2(%s));\n", writeTarget(op1), ci(op2).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				}
-				break;
+					removeBoolean(op1);
+					break;
 
-			case OPCODE_OR:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(op1, op3);
-				sprintf(buffer, "  %s = %s | %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_XOR:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(op1, op3);
-				sprintf(buffer, "  %s = %s ^ %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_ISHR:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_USHR:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_ISHL:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_UBFE:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);	// width
-				applySwizzle(op1, op3); // offset
-				applySwizzle(op1, op4);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
-				{
-					sprintf(op5, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  if (%s == 0) %s = 0;\n"
-                                    "  else if (%s+%s < 32) { %s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); }\n"
-                                    "  else %s = (uint)%s >> %s;\n",
-						ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), 
-						ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), 
-						writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+				case OPCODE_LOG:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
-				}
-				break;
-			}
-			case OPCODE_EXP:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = exp2(%s);\n", writeTarget(op1), ci(op2).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(exp2(%s));\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-
-			case OPCODE_LOG:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+					removeBoolean(op1);
+					break;
 
 					// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
 					// from the text ASM.  This did not match the Mov, or Add or other opcodes, and was
@@ -2576,18 +2706,18 @@ public:
 					// This fix removes the dependency on 'statement', and codes the generated HLSL line directly.
 					// We are guessing, but it appears that this was a left-over from a conversion to using the
 					// James-Jones opcode parser as the primary parser.
-			case OPCODE_SQRT:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				if (!instr->bSaturate)
+				case OPCODE_SQRT:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					if (!instr->bSaturate)
 						sprintf(buffer, "  %s = sqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
-				else
+					else
 						sprintf(buffer, "  %s = saturate(sqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 		
-			case OPCODE_MIN:
+				case OPCODE_MIN:
 					remapTarget(op1);
 					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
@@ -2597,17 +2727,17 @@ public:
 						sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					break;
-			case OPCODE_MAX:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				if (!instr->bSaturate)
+				case OPCODE_MAX:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
 						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				else
+					else
 						sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;		
-			case OPCODE_IMIN:
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_IMIN:
 					remapTarget(op1);
 					applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 					applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
@@ -2617,774 +2747,793 @@ public:
 						sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					break;
-			case OPCODE_IMAX:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
-				if (!instr->bSaturate)
+				case OPCODE_IMAX:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
+					if (!instr->bSaturate)
 						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				else
+					else
 						sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
 
-			case OPCODE_MAD:
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				applySwizzle(op1, fixImm(op4, instr->asOperands[3]));
-				// Check for operation reorder.
-				/* 
-				if (mLastStatement && mLastStatement->eOpcode == OPCODE_MUL && strstr(op4, mMulTarget.c_str()) && 
-					mMulTarget.compare(0, 3, mMulOperand, mMulOperand[0] == '-' ? 1 : 0, 3) && 
-					mMulTarget.compare(0, 3, mMulOperand2, mMulOperand2[0] == '-' ? 1 : 0, 3))
-					sprintf(op4 + ((op4[0] == '-') ? 1 : 0), "(%s * %s)", mMulOperand.c_str(), mMulOperand2.c_str());
-				*/
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = %s * %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(%s * %s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+				case OPCODE_MAD:
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					applySwizzle(op1, fixImm(op4, instr->asOperands[3]));
+					// Check for operation reorder.
+					/* 
+					if (mLastStatement && mLastStatement->eOpcode == OPCODE_MUL && strstr(op4, mMulTarget.c_str()) && 
+						mMulTarget.compare(0, 3, mMulOperand, mMulOperand[0] == '-' ? 1 : 0, 3) && 
+						mMulTarget.compare(0, 3, mMulOperand2, mMulOperand2[0] == '-' ? 1 : 0, 3))
+						sprintf(op4 + ((op4[0] == '-') ? 1 : 0), "(%s * %s)", mMulOperand.c_str(), mMulOperand2.c_str());
+					*/
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = %s * %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(%s * %s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 
-			case OPCODE_IMAD:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				applySwizzle(op1, op4, true);
-				sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_UMAD:
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				applySwizzle(op1, op4, true);
-				sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op4)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+				case OPCODE_IMAD:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					applySwizzle(op1, op4, true);
+					sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_UMAD:
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					applySwizzle(op1, op4, true);
+					sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op4)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
 
-			case OPCODE_DP2:
-				remapTarget(op1);
-				applySwizzle(".xy", fixImm(op2, instr->asOperands[1]));
-				applySwizzle(".xy", fixImm(op3, instr->asOperands[2]));
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+				case OPCODE_DP2:
+					remapTarget(op1);
+					applySwizzle(".xy", fixImm(op2, instr->asOperands[1]));
+					applySwizzle(".xy", fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 
-			case OPCODE_DP3:
-				remapTarget(op1);
-				applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
-				applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+				case OPCODE_DP3:
+					remapTarget(op1);
+					applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
+					applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 		
-			case OPCODE_DP4:
-				remapTarget(op1);
-				applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
-				applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
-				if (!instr->bSaturate)
-					sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				else
-					sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
+				case OPCODE_DP4:
+					remapTarget(op1);
+					applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
+					applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
+					if (!instr->bSaturate)
+						sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					else
+						sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 
-			case OPCODE_RSQ:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_RSQ:
 				{
-					sprintf(op3, "%s.%c", op1, *pop1);
-					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					else
-						sprintf(buffer, "  %s = saturate(rsqrt(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op3, "%s.%c", op1, *pop1);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(rsqrt(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					removeBoolean(op1);
+					break;
 				}
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_ROUND_NI:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_ROUND_NI:
 				{
-					sprintf(op3, "%s.%c", op1, *pop1);
-					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = floor(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					else
-						sprintf(buffer, "  %s = saturate(floor(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op3, "%s.%c", op1, *pop1);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = floor(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(floor(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					removeBoolean(op1);
+					break;
 				}
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_ROUND_PI:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_ROUND_PI:
 				{
-					sprintf(op3, "%s.%c", op1, *pop1);
-					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = ceil(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					else
-						sprintf(buffer, "  %s = saturate(ceil(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op3, "%s.%c", op1, *pop1);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = ceil(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(ceil(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					removeBoolean(op1);
+					break;
 				}
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_ROUND_Z:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_ROUND_Z:
 				{
-					sprintf(op3, "%s.%c", op1, *pop1);
-					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = round(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					else
-						sprintf(buffer, "  %s = saturate(round(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op3, "%s.%c", op1, *pop1);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = round(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(round(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					removeBoolean(op1);
+					break;
 				}
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_ROUND_NE:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_ROUND_NE:
 				{
-					sprintf(op3, "%s.%c", op1, *pop1);
-					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = round(%s * 0.5) * 2;\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					else
-						sprintf(buffer, "  %s = saturate(round(%s * 0.5) * 2);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op3, "%s.%c", op1, *pop1);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = round(%s * 0.5) * 2;\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(round(%s * 0.5) * 2);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					removeBoolean(op1);
+					break;
 				}
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_FTOI:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+				case OPCODE_FTOI:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
 
-			case OPCODE_FTOU:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+				case OPCODE_FTOU:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
 
-			case OPCODE_SINCOS:
-				remapTarget(op1);
-				remapTarget(op2);
-				if (!strncmp(op1, "null", 4)) 
-					applySwizzle(op2, op3);
-				else 
+				case OPCODE_SINCOS:
+					remapTarget(op1);
+					remapTarget(op2);
+					if (!strncmp(op1, "null", 4)) 
+						applySwizzle(op2, op3);
+					else 
+						applySwizzle(op1, op3);
+					if (!strncmp(op1, "null", 4))
+						sprintf(buffer, "  %s = cos(%s);\n", writeTarget(op2), ci(op3).c_str());
+					else if (!strncmp(op2, "null", 4))
+						sprintf(buffer, "  %s = sin(%s);\n", writeTarget(op1), ci(op3).c_str());
+					else
+						sprintf(buffer, "  sincos(%s, %s, %s);\n", ci(op3).c_str(), writeTarget(op1), writeTarget(op2));
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					removeBoolean(op2);
+					break;
+
+				case OPCODE_MOVC:
+				{
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					applySwizzle(op1, fixImm(op4, instr->asOperands[3]));
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
+					while (*++pop1)
+					{
+						if (pop1) sprintf(op5, "%s.%c", op1, *pop1); else sprintf(op5, "%s", op1);
+						if (pop2) sprintf(op6, "%s.%c", op2, *++pop2); else sprintf(op6, "%s", op2);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					removeBoolean(op1);
+					break;
+				}
+				case OPCODE_NE:
+				case OPCODE_INE:
+				{
+					remapTarget(op1);
+					applySwizzle(op1, op2);
 					applySwizzle(op1, op3);
-				if (!strncmp(op1, "null", 4))
-					sprintf(buffer, "  %s = cos(%s);\n", writeTarget(op2), ci(op3).c_str());
-				else if (!strncmp(op2, "null", 4))
-					sprintf(buffer, "  %s = sin(%s);\n", writeTarget(op1), ci(op3).c_str());
-				else
-					sprintf(buffer, "  sincos(%s, %s, %s);\n", ci(op3).c_str(), writeTarget(op1), writeTarget(op2));
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				removeBoolean(op2);
-				break;
-
-			case OPCODE_MOVC:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				applySwizzle(op1, fixImm(op4, instr->asOperands[3]));
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
-				while (*++pop1)
-				{
-					if (pop1) sprintf(op5, "%s.%c", op1, *pop1); else sprintf(op5, "%s", op1);
-					if (pop2) sprintf(op6, "%s.%c", op2, *++pop2); else sprintf(op6, "%s", op2);
-					if (!instr->bSaturate)
-						sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-					else
-						sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_NE:
-			case OPCODE_INE:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(op1, op3);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_EQ:
+				case OPCODE_IEQ:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					applySwizzle(op1, op3);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_EQ:
-			case OPCODE_IEQ:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(op1, op3);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_LT:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_LT:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_ILT:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = (int)%s < (int)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_ILT:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_ULT:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = (int)%s < (int)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = (uint)%s < (uint)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_ULT:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_GE:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = (uint)%s < (uint)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+					applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_GE:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-				applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_IGE:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = (int)%s >= (int)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_IGE:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
+				case OPCODE_UGE:
 				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = (int)%s >= (int)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
+					remapTarget(op1);
+					applySwizzle(op1, op2, true);
+					applySwizzle(op1, op3, true);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op4, "%s.%c", op1, *pop1);
+						sprintf(buffer, "  %s = (uint)%s >= (uint)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					mBooleanRegisters.insert(op1);
+					break;
 				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
-			case OPCODE_UGE:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2, true);
-				applySwizzle(op1, op3, true);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
-				{
-					sprintf(op4, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  %s = (uint)%s >= (uint)%s;\n", writeTarget(op4), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
-				}
-				mBooleanRegisters.insert(op1);
-				break;
-			}
 
 					// Switch statement in HLSL was missing. Added because AC4 uses it.
-			case OPCODE_SWITCH:
-				sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-				break;
-			case OPCODE_CASE:
-				sprintf(buffer, "  case %s :", ci(op1).substr(2, 1).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-				break;
-			case OPCODE_ENDSWITCH:
-				sprintf(buffer, "  }\n");
-				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-				break;
-			case OPCODE_DEFAULT:
-				sprintf(buffer, "  default :\n");
-				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-				break;
+				case OPCODE_SWITCH:
+					sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
+				case OPCODE_CASE:
+					sprintf(buffer, "  case %s :", ci(op1).substr(2, 1).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
+				case OPCODE_ENDSWITCH:
+					sprintf(buffer, "  }\n");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
+				case OPCODE_DEFAULT:
+					sprintf(buffer, "  default :\n");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
 
-			case OPCODE_IF:
-				applySwizzle(".x", op1);
-				if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-					sprintf(buffer, "  if (%s == 0) {\n", ci(op1).c_str());
-				else
-					sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+				case OPCODE_IF:
+					applySwizzle(".x", op1);
+					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
+						sprintf(buffer, "  if (%s == 0) {\n", ci(op1).c_str());
+					else
+						sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
 				case OPCODE_ELSE:
-				sprintf(buffer, "  } else {\n");
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_ENDIF:
-				sprintf(buffer, "  }\n");
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_LOOP:
-				sprintf(buffer, "  while (true) {\n", op1);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_BREAK:
-				sprintf(buffer, "  break;\n");
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_BREAKC:
-				applySwizzle(".x", op1);
-				if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-					sprintf(buffer, "  if (%s == 0) break;\n", ci(op1).c_str());
-				else
-					sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_ENDLOOP:
-				sprintf(buffer, "  }\n", op1);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_SWAPC:
-			{
-				remapTarget(op1);
-				remapTarget(op2);
-				applySwizzle(op1, op3);
-				applySwizzle(op1, op4);
-				applySwizzle(op1, op5);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
-				char *pop3 = strrchr(op3, '.'); if (pop3) *pop3 = 0;
-				while (*++pop1)
-				{
-					sprintf(op6, "%s.%c", op1, *pop1);
-					if (pop2) sprintf(op7, "%s.%c", op2, *++pop2); else sprintf(op7, "%s", op2);
-					if (pop3) sprintf(op8, "%s.%c", op3, *++pop3); else sprintf(op8, "%s", op3);
-					sprintf(buffer, "  %s = (int)%s ? %s : %s; %s = (int)%s ? %s : %s;\n", 
-						writeTarget(op6), ci(op8).c_str(), ci(GetSuffix(op5, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str(),
-						writeTarget(op7), ci(op8).c_str(), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op5, idx)).c_str());
+					sprintf(buffer, "  } else {\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-					++idx;
-				}
-				break;
-			}
-			case OPCODE_BFI:
-			{
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(op1, op3);
-				applySwizzle(op1, op4);
-				applySwizzle(op1, op5);
-				int idx = 0;
-				char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-				while (*++pop1)
-				{
-					sprintf(op6, "%s.%c", op1, *pop1);
-					sprintf(buffer, "  bitmask.%c = (((1 << %s)-1) << %s) & 0xffffffff;\n"
-					                "  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
-						*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), 
-						writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);
+					break;
+				case OPCODE_ENDIF:
+					sprintf(buffer, "  }\n");
 					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				}
-				break;
-			}
-			case OPCODE_SAMPLE:
-			{
-				//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				int textureId, samplerId;
-				sscanf_s(op3, "t%d.", &textureId);
-				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1), 
-					mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_SAMPLE_L:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
-				int textureId, samplerId;
-				sscanf_s(op3, "t%d.", &textureId);
-				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s)%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
-				else
-				{
-					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf_s(statement, "sample_l_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
-						offsetx, offsety, strrchr(op3, '.'));
-				}
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_SAMPLE_D:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				applySwizzle(op1, fixImm(op5, instr->asOperands[4]));
-				applySwizzle(op1, fixImm(op6, instr->asOperands[5]));
-				int textureId, samplerId;
-				sscanf_s(op3, "t%d.", &textureId);
-				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s)%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(), strrchr(op3, '.'));
-				else
-				{
-					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf_s(statement, "sample_d_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(),
-						offsetx, offsety, strrchr(op3, '.'));
-				}
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_SAMPLE_C:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
-				int textureId, samplerId;
-				sscanf_s(op3, "t%d.", &textureId);
-				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s)%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
-				else
-				{
-					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf_s(statement, "sample_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
-						offsetx, offsety, strrchr(op3, '.'));
-				}
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_SAMPLE_C_LZ:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
-				int textureId, samplerId;
-				sscanf_s(op3, "t%d.", &textureId);
-				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s)%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
-				else
-				{
-					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf_s(statement, "sample_c_lz_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
-						offsetx, offsety, strrchr(op3, '.'));
-				}
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
+					break;
 
-			case OPCODE_GATHER4:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				int textureId, samplerId;
+				case OPCODE_LOOP:
+					sprintf(buffer, "  while (true) {\n", op1);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_BREAK:
+					sprintf(buffer, "  break;\n");
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_BREAKC:
+					applySwizzle(".x", op1);
+					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
+						sprintf(buffer, "  if (%s == 0) break;\n", ci(op1).c_str());
+					else
+						sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_ENDLOOP:
+					sprintf(buffer, "  }\n", op1);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_SWAPC:
+				{
+					remapTarget(op1);
+					remapTarget(op2);
+					applySwizzle(op1, op3);
+					applySwizzle(op1, op4);
+					applySwizzle(op1, op5);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
+					char *pop3 = strrchr(op3, '.'); if (pop3) *pop3 = 0;
+					while (*++pop1)
+					{
+						sprintf(op6, "%s.%c", op1, *pop1);
+						if (pop2) sprintf(op7, "%s.%c", op2, *++pop2); else sprintf(op7, "%s", op2);
+						if (pop3) sprintf(op8, "%s.%c", op3, *++pop3); else sprintf(op8, "%s", op3);
+						sprintf(buffer, "  %s = (int)%s ? %s : %s; %s = (int)%s ? %s : %s;\n", 
+							writeTarget(op6), ci(op8).c_str(), ci(GetSuffix(op5, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str(),
+							writeTarget(op7), ci(op8).c_str(), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op5, idx)).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+						++idx;
+					}
+					break;
+				}
+
+					// This generated code needed to change because the fxc compiler generates bad code when
+					// using the sample that they specify in the documentation at:
+					// http://msdn.microsoft.com/en-us/library/windows/desktop/hh446837(v=vs.85).aspx
+					// I worked out the alternate technique that works for all, and does not tickle
+					// the bug that treats 0x80000000 as "-0" as a uint, where it should not exist.
+				case OPCODE_BFI:
+				{
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					applySwizzle(op1, op3);
+					applySwizzle(op1, op4);
+					applySwizzle(op1, op5);
+					int idx = 0;
+					char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+					while (*++pop1)
+					{
+						sprintf(op6, "%s.%c", op1, *pop1);
+
+						// Fails: bitmask.%c = (((1 << %s) - 1) << %s) & 0xffffffff;
+
+						sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;\n"
+										"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
+							*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), 
+							writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);
+						mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					}
+					break;
+				}
+				case OPCODE_SAMPLE:
+				{
+					//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					int textureId, samplerId;
 				sscanf_s(op3, "t%d.", &textureId);
 				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.Gather(%s, %s)%s;\n", writeTarget(op1), 
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1), 
 						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-				else
-				{
-					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf_s(statement, "gather4_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					sprintf(buffer, "  %s = %s.Gather(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), 
-						offsetx, offsety, strrchr(op3, '.'));
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 				}
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-
-			case OPCODE_GATHER4_C:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				int textureId, samplerId;
+				case OPCODE_SAMPLE_L:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
+					int textureId, samplerId;
 				sscanf_s(op3, "t%d.", &textureId);
 				sscanf_s(op4, "s%d", &samplerId);
-				truncateTexturePos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s)%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));			
-				else
-				{
-					int offsetx = 0, offsety = 0, offsetz = 0;
-					sscanf_s(statement, "gather4_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s, int2(%d,%d))%s;\n", writeTarget(op1), 
-						mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
-						offsetx, offsety, strrchr(op3, '.'));
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s)%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+					else
+					{
+						int offsetx = 0, offsety = 0, offsetz = 0;
+					sscanf_s(statement, "sample_l_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+						sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
+							offsetx, offsety, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
 				}
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-
-			case OPCODE_LD:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				int textureId;
+				case OPCODE_SAMPLE_D:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					applySwizzle(op1, fixImm(op5, instr->asOperands[4]));
+					applySwizzle(op1, fixImm(op6, instr->asOperands[5]));
+					int textureId, samplerId;
 				sscanf_s(op3, "t%d.", &textureId);
-				truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-				else
-					sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), 
-						instr->iUAddrOffset, instr->iVAddrOffset, instr->iWAddrOffset, strrchr(op3, '.'));
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-			case OPCODE_LD_MS:
-			{
-				remapTarget(op1);
-				applySwizzle(".xyzw", op2);
-				applySwizzle(op1, op3);
-				applySwizzle(".x", fixImm(op4, instr->asOperands[3]), true);
-				int textureId;
+				sscanf_s(op4, "s%d", &samplerId);
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s)%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(), strrchr(op3, '.'));
+					else
+					{
+						int offsetx = 0, offsety = 0, offsetz = 0;
+					sscanf_s(statement, "sample_d_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+						sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(),
+							offsetx, offsety, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
+				case OPCODE_SAMPLE_C:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
+					int textureId, samplerId;
 				sscanf_s(op3, "t%d.", &textureId);
-				truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
-				if (!instr->bAddressOffset)
-					sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
-				else
-					sprintf(buffer, "  %s = %s.Load(%s, %s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(),
-						instr->iUAddrOffset, instr->iVAddrOffset, instr->iWAddrOffset, strrchr(op3, '.'));
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				removeBoolean(op1);
-				break;
-			}
-
-			case OPCODE_DISCARD:
-				applySwizzle(".x", op1);
-				if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-					sprintf(buffer, "  if (%s == 0) discard;\n", ci(op1).c_str());				
-				else
-					sprintf(buffer, "  if (%s != 0) discard;\n", ci(op1).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-
-			case OPCODE_RESINFO:
-			{
-				remapTarget(op1);
-				applySwizzle(".x", fixImm(op2, instr->asOperands[1]), true);
-				if (instr->asOperands[1].eType == OPERAND_TYPE_IMMEDIATE32)
-					strcpy(op2, "bitmask.x");
-				int textureId;
+				sscanf_s(op4, "s%d", &samplerId);
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s)%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+					else
+					{
+						int offsetx = 0, offsety = 0, offsetz = 0;
+					sscanf_s(statement, "sample_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+						sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
+							offsetx, offsety, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
+				case OPCODE_SAMPLE_C_LZ:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
+					int textureId, samplerId;
 				sscanf_s(op3, "t%d.", &textureId);
-				sprintf(buffer, "  %s.GetDimensions(%s, %s, %s);\n", mTextureNames[textureId].c_str(), ci(GetSuffix(op1, 0)).c_str(), ci(GetSuffix(op1, 1)).c_str(), ci(op2).c_str());
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			}
+				sscanf_s(op4, "s%d", &samplerId);
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s)%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+					else
+					{
+						int offsetx = 0, offsety = 0, offsetz = 0;
+					sscanf_s(statement, "sample_c_lz_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+						sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), 
+							offsetx, offsety, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
 
-			case OPCODE_EVAL_SAMPLE_INDEX:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(".x", fixImm(op3, instr->asOperands[2]), true);
-				sprintf(buffer, "  %s = EvaluateAttributeAtSample(%s, %s);\n", writeTarget(op1), op2, op3);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_EVAL_CENTROID:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = EvaluateAttributeCentroid(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_EVAL_SNAPPED:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				applySwizzle(".xy", fixImm(op3, instr->asOperands[2]), true);
-				sprintf(buffer, "  %s = EvaluateAttributeSnapped(%s, %s);\n", writeTarget(op1), op2, op3);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+				case OPCODE_GATHER4:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					int textureId, samplerId;
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.Gather(%s, %s)%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+					else
+					{
+						int offsetx = 0, offsety = 0, offsetz = 0;
+					sscanf_s(statement, "gather4_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+						sprintf(buffer, "  %s = %s.Gather(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), 
+							offsetx, offsety, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
 
-			case OPCODE_DERIV_RTX_COARSE:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ddx_coarse(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_DERIV_RTX_FINE:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ddx_fine(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_DERIV_RTY_COARSE:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ddy_coarse(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_DERIV_RTY_FINE:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ddy_fine(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_DERIV_RTX:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ddx(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
-			case OPCODE_DERIV_RTY:
-				remapTarget(op1);
-				applySwizzle(op1, op2);
-				sprintf(buffer, "  %s = ddy(%s);\n", writeTarget(op1), op2);
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+				case OPCODE_GATHER4_C:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					int textureId, samplerId;
+				sscanf_s(op3, "t%d.", &textureId);
+				sscanf_s(op4, "s%d", &samplerId);
+					truncateTexturePos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s)%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));			
+					else
+					{
+						int offsetx = 0, offsety = 0, offsetz = 0;
+					sscanf_s(statement, "gather4_c_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+						sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s, int2(%d,%d))%s;\n", writeTarget(op1), 
+							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
+							offsetx, offsety, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
 
-			case OPCODE_RET:
-				WritePatches();
-				sprintf(buffer, "  return;\n");
-				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
-				break;
+					// For the _aoffimmi format, this was picking up 0..15, instead of the necessary -8..7
+					// It's a 4 bit number being used in an int, hence missing negatives.
+					// This fix follows the form of the _Gather opcode above, but should maybe use the
+					// instr-> parameters after they are fixed.
+					// Fixed both _LD and LD_MS
+				case OPCODE_LD:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					int textureId;
+				sscanf_s(op3, "t%d.", &textureId);
+					truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+					else {
+						int offsetU = 0, offsetV = 0, offsetW = 0;
+						sscanf(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
+						sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), 
+							offsetU, offsetV, offsetW, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
+				case OPCODE_LD_MS:
+				{
+					remapTarget(op1);
+					applySwizzle(".xyzw", op2);
+					applySwizzle(op1, op3);
+					applySwizzle(".x", fixImm(op4, instr->asOperands[3]), true);
+					int textureId;
+				sscanf_s(op3, "t%d.", &textureId);
+					truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+					if (!instr->bAddressOffset)
+						sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
+					else{
+						int offsetU = 0, offsetV = 0, offsetW = 0;
+						sscanf(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
+						sprintf(buffer, "  %s = %s.Load(%s, %s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(),
+							offsetU, offsetV, offsetW, strrchr(op3, '.'));
+					}
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					removeBoolean(op1);
+					break;
+				}
 
-			default:
-				logDecompileError("Unknown statement: "+string(statement));		
-				return;
-			}
+				case OPCODE_DISCARD:
+					applySwizzle(".x", op1);
+					if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
+						sprintf(buffer, "  if (%s == 0) discard;\n", ci(op1).c_str());				
+					else
+						sprintf(buffer, "  if (%s != 0) discard;\n", ci(op1).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_RESINFO:
+				{
+					remapTarget(op1);
+					applySwizzle(".x", fixImm(op2, instr->asOperands[1]), true);
+					if (instr->asOperands[1].eType == OPERAND_TYPE_IMMEDIATE32)
+						strcpy(op2, "bitmask.x");
+					int textureId;
+				sscanf_s(op3, "t%d.", &textureId);
+					sprintf(buffer, "  %s.GetDimensions(%s, %s, %s);\n", mTextureNames[textureId].c_str(), ci(GetSuffix(op1, 0)).c_str(), ci(GetSuffix(op1, 1)).c_str(), ci(op2).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				}
+
+				case OPCODE_EVAL_SAMPLE_INDEX:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					applySwizzle(".x", fixImm(op3, instr->asOperands[2]), true);
+					sprintf(buffer, "  %s = EvaluateAttributeAtSample(%s, %s);\n", writeTarget(op1), op2, op3);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_EVAL_CENTROID:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = EvaluateAttributeCentroid(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_EVAL_SNAPPED:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					applySwizzle(".xy", fixImm(op3, instr->asOperands[2]), true);
+					sprintf(buffer, "  %s = EvaluateAttributeSnapped(%s, %s);\n", writeTarget(op1), op2, op3);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_DERIV_RTX_COARSE:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ddx_coarse(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_DERIV_RTX_FINE:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ddx_fine(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_DERIV_RTY_COARSE:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ddy_coarse(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_DERIV_RTY_FINE:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ddy_fine(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_DERIV_RTX:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ddx(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+				case OPCODE_DERIV_RTY:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					sprintf(buffer, "  %s = ddy(%s);\n", writeTarget(op1), op2);
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				case OPCODE_RET:
+					sprintf(buffer, "  return;\n");
+					mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
+					break;
+
+				default:
+					logDecompileError("Unknown statement: "+string(statement));		
+					return;
+				}
 			iNr++;
 			}
 
@@ -3392,6 +3541,11 @@ public:
 			while (c[pos] != 0x0a && pos < size) pos++; pos++;
 			mLastStatement = instr;
 		}
+
+		// Moved this out of Opcode_ret, because it's possible to have more than one ret
+		// in a shader.  This is the last of a given shader, which seems more correct.
+		// This fixes the double injection of "injectedScreenPos : SV_Position"
+		WritePatches();
 	}
 
 	void ParseCodeOnlyShaderType(Shader *shader, const char *c, long size)
@@ -3428,12 +3582,18 @@ public:
 		}
 	}
 
+	// The StereoParams are nearly always useful, but the depth buffer texture is rarely used.
 	void WriteAddOnDeclarations()
 	{
 		const char *StereoTextureCode = "\n"
-			                            "Texture2D<float4> StereoParams : register(t125);\n"
-										"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
-		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode+strlen(StereoTextureCode));
+			"Texture2D<float4> StereoParams : register(t125);\n";
+		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode + strlen(StereoTextureCode));
+
+		if (mZRepair_DepthBuffer)
+		{
+			const char *DepthTextureCode = "Texture2D<float4> InjectedDepthTexture : register(t126);\n";
+			mOutput.insert(mOutput.end(), DepthTextureCode, DepthTextureCode + strlen(DepthTextureCode));
+		}
 	}
 };
 
@@ -3459,6 +3619,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	d.ZRepair_ZPosCalc2 = params.ZRepair_ZPosCalc2;
 	d.ZRepair_PositionTexture = params.ZRepair_PositionTexture;
 	d.ZRepair_WorldPosCalc = params.ZRepair_WorldPosCalc;
+	d.mZRepair_DepthBuffer = params.ZRepair_DepthBuffer;
 	d.BackProject_Vector1 = params.BackProject_Vector1;
 	d.BackProject_Vector2 = params.BackProject_Vector2;
 	d.InvTransforms = params.InvTransforms;
@@ -3477,8 +3638,6 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	// so that system level exceptions are caught too.
 	try
 	{
-		__debugbreak();
-
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
 		if (!shader) return string();
 	

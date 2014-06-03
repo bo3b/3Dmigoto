@@ -1,0 +1,134 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+cbuffer vc3 : register(b3)
+{
+  row_major float3x4 Bone_weights[64] : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  int2 v4 : TEXCOORD1,
+  int2 v5 : TEXCOORD2,
+  int3 v6 : POSITION1,
+  float3 v7 : COLOR0,
+  float3 v8 : NORMAL1,
+  uint4 v9 : BLENDINDICES0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float2 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyzw = v6.xyzy;
+  r1.xyzw = v7.xxxy * r1.xyzw;
+  r2.xyz = r1.xyz * float3(1.220703e-004,1.220703e-004,1.220703e-004) + v0.xyz;
+  r1.x = r1.w * 1.831054688e-004 + r2.y;
+  r2.y = -v7.y * 1.600000024e+000 + r1.x;
+  r2.w = 1.000000000e+000;
+  r1.x = (int)v9.x * 3;
+  r0.x = dot(Bone_weights[v9.x]._m00_m01_m02_m03, r2.xyzw);
+  r0.y = dot(Bone_weights[v9.x]._m10_m11_m12_m13, r2.xyzw);
+  r0.z = dot(Bone_weights[v9.x]._m20_m21_m22_m23, r2.xyzw);
+  r2.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r2.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r2.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r2.w = 1.000000000e+000;
+  r0.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
+  r0.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r2.xyzw, projTM._m02_m12_m22_m32);
+  r0.w = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  o0.xyzw = r0.xyzw;
+  // o3.xyzw = r0.xyzw;
+
+// bo3b- Position is right, texture is misaligned.
+float4 tex = r0;
+float4 stereo = StereoParams.Load(0);
+tex.x += stereo.x * (tex.w - stereo.y);
+o3.xyzw = tex.xyzw;
+
+  r0.xyz = v3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.x = dot(Bone_weights[v9.x]._m00_m01_m02, r0.xyz);
+  r3.y = dot(Bone_weights[v9.x]._m10_m11_m12, r0.xyz);
+  r3.z = dot(Bone_weights[v9.x]._m20_m21_m22, r0.xyz);
+  r0.x = dot(r3.xyz, r3.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r3.xyz * r0.xxx;
+  r3.x = dot(objTM._m00_m01_m02, r0.xyz);
+  r3.y = dot(objTM._m10_m11_m12, r0.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r0.xyz);
+  r0.x = dot(r3.xyz, r3.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r3.xyz * r0.xxx;
+  o1.xyz = r0.xyz;
+  o1.w = v3.w * 2.000000000e+000 + -1.000000000e+000;
+  r1.yz = v4.xy;
+  o2.xy = float2(9.765625e-004,9.765625e-004) * r1.yz;
+  o4.xyz = eyePos.xyz + -r2.xyz;
+  r1.yzw = -eyePos.xyz + r2.xyz;
+  r2.xyzw = v2.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = r2.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = 2.550000000e+002 * r0.w;
+  r0.w = Object_instance_params_2.x * 3.264000000e+004 + r0.w;
+  o4.w = 1.525902189e-005 * r0.w;
+  r3.xyz = v8.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.xyz = v7.xxx * r3.xyz + r2.xyz;
+  r3.x = dot(Bone_weights[v9.x]._m00_m01_m02, r2.xyz);
+  r3.y = dot(Bone_weights[v9.x]._m10_m11_m12, r2.xyz);
+  r3.z = dot(Bone_weights[v9.x]._m20_m21_m22, r2.xyz);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r3.xyz * r0.www;
+  r3.x = dot(objTM._m00_m01_m02, r2.xyz);
+  r3.y = dot(objTM._m10_m11_m12, r2.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r2.xyz);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r3.xyz * r0.www;
+  o5.xyz = r2.xyz;
+  o5.w = max(v7.y, v7.x);
+  r3.xyz = r2.zxy * r0.yzx;
+  r0.xyz = r2.yzx * r0.zxy + -r3.xyz;
+  r0.w = saturate(v3.w);
+  r0.w = r0.w >= 5.000000000e-001;
+  r0.w = r0.w ? -1.000000000e+000 : 1.000000000e+000;
+  o6.xyz = r0.www * r0.xyz;
+  r0.x = Fog_dist.x * r1.z;
+  r0.y = -1.442695022e+000 * r0.x;
+  r0.y = exp2(r0.y);
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.x = r0.y / r0.x;
+  r0.y = 9.999999776e-003 < abs(r1.z);
+  r0.z = dot(r1.yzw, r1.yzw);
+  r0.z = sqrt(r0.z);
+  r0.z = Fog_dist.y * r0.z;
+  r0.x = r0.y ? r0.x : 1.000000000e+000;
+  r0.x = r0.x * r0.z + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o6.w = 1.000000000e+000 + -r0.x;
+  r0.xy = v5.xy;
+  o7.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r0.xy = v1.xy;
+  o7.zw = float2(2.929688e-003,2.929688e-003) * r0.xy;
+  return;
+}

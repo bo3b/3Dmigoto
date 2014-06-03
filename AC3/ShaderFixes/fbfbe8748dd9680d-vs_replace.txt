@@ -1,0 +1,58 @@
+//Explosion marks on the ground
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[95];
+}
+
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_ZConstantsDecals : packoffset(c121);
+  float3 g_UVector : packoffset(c122);
+  float3 g_VVector : packoffset(c123);
+  float3 g_NVector : packoffset(c132);
+  float4 g_WorldPosition : packoffset(c124);
+  float4x4 g_InvViewProjMatrix : packoffset(c125);
+  float4 g_ScreenExtentsBias : packoffset(c129);
+  float4x4 g_ViewProjection : packoffset(c91);
+  float4 g_DecalLerpEnd : packoffset(c130);
+  float4 g_DecalLerpMask : packoffset(c133);
+  float4 g_DecalTintColor : packoffset(c134);
+  float g_DecalAlphaTestValue : packoffset(c135);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  int4 v0 : POSITION0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyz = (int3)v0.xyz * (int3)v0.www;
+  r0.xyz = r0.xyz;
+  r0.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r0.xyz;
+  r0.w = 1.000000000e+000;
+//Mike_ar69
+float4 r10;
+  r10.x = dot(r0.xyzw, cb0[91].xyzw);
+  r10.y = dot(r0.xyzw, cb0[92].xyzw);
+  r10.z = dot(r0.xyzw, cb0[93].xyzw);
+  r10.w = dot(r0.xyzw, cb0[94].xyzw);
+  
+
+float4 stereoParams = StereoParams.Load(0);
+// r10.x -=  stereoParams.x * (r10.w - stereoParams.y);  
+o0.xyz = r10.xyz;
+if (stereoParams.x == 0.00e+000)
+{
+	o0.w = r10.w;
+}
+else
+{
+	o0.w = 0.0e+000;
+}
+  return;
+}

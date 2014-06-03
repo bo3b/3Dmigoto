@@ -1,0 +1,132 @@
+//Explosion marks on the ground
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[136];
+}
+
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_TileOffset : packoffset(c96);
+  float4 g_ZConstantsDecals : packoffset(c121);
+  float3 g_UVector : packoffset(c122);
+  float3 g_VVector : packoffset(c123);
+  float3 g_NVector : packoffset(c132);
+  float4 g_WorldPosition : packoffset(c124);
+  float4x4 g_InvViewProjMatrix : packoffset(c125);
+  float4 g_ScreenExtentsBias : packoffset(c129);
+  float4x4 g_ViewProjection : packoffset(c91);
+  float4 g_DecalLerpEnd : packoffset(c130);
+  float4 g_DecalLerpMask : packoffset(c133);
+  float4 g_DecalTintColor : packoffset(c134);
+  float g_DecalAlphaTestValue : packoffset(c135);
+}
+SamplerState decalTexture_s : register(s0);
+SamplerState depthTexture_s : register(s8);
+Texture2D<float4> decalTexture : register(t0);
+Texture2D<float4> depthTexture : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture2D<float4> InjectedDepthTexture : register(t126);
+
+void main(
+  float4 injectedScreenPos : SV_Position,
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);
+  float zpos = zpos4.x - 1;
+  float wpos = 1.0 / zpos;
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = v0.xy * cb0[129].xy + cb0[129].zw;
+  r1.xyzw = depthTexture.Sample(depthTexture_s, r0.xy).yzxw;
+// float4 r25;
+// r25.z = r1.z;
+  r1.xy = r0.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
+  r1.w = 1.000000000e+000;
+  
+//Mike_ar69
+// float4 stereoParams = StereoParams.Load(0);
+// r1.x +=  stereoParams.x * (-zpos-stereoParams.y);  
+  r0.x = dot(r1.xyzw, cb0[125].xyzw);  //Inv View Proj
+  r0.y = dot(r1.xyzw, cb0[126].xyzw);
+  r0.z = dot(r1.xyzw, cb0[127].xyzw);
+  r0.w = dot(r1.xyzw, cb0[128].xyzw);
+  r0.xyz = r0.xyz / r0.www;
+  
+// r0.w = 1.000000000e+000;
+// float4 r21, r22;
+// r21.xyzw = r0.xyzw;
+// r22.x = dot(r21.xyzw, cb0[91].xyzw);  //View Proj
+// r22.y = dot(r21.xyzw, cb0[92].xyzw);
+// r22.z = dot(r21.xyzw, cb0[93].xyzw);
+// r22.w = dot(r21.xyzw, cb0[94].xyzw);
+// float4 stereoParams = StereoParams.Load(0);
+// r22.x -=  stereoParams.x * (r22.w - stereoParams.y);  
+// r21.x = dot(r22.xyzw, cb0[125].xyzw);  //Inv View Proj
+// r21.y = dot(r22.xyzw, cb0[126].xyzw);
+// r21.z = dot(r22.xyzw, cb0[127].xyzw);
+// r21.w = dot(r22.xyzw, cb0[128].xyzw);
+// r0.xyz = r21.xyz;
+
+  r0.xyz = -cb0[124].xyz + r0.xyz;
+  r0.w = dot(cb0[122].xyz, r0.xyz);
+  r1.x = dot(cb0[123].xyz, r0.xyz);
+  r0.xyz = r0.xyz / cb0[121].zzz;
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.y = r1.x / r0.w;
+  r0.z = 0.000000000e+000 >= r0.w;
+  r0.z = r0.z ? 0x3f800000 : 0;
+  r0.w = 1.000000000e+000 + -r1.x;
+  r1.x = max(abs(r0.y), 1.000000000e+000);
+  r1.x = 1.000000e+000 / r1.x;
+  r1.y = min(abs(r0.y), 1.000000000e+000);
+  r1.x = r1.y * r1.x;
+  r1.y = r1.x * r1.x;
+  r1.z = r1.y * 2.083509974e-002 + -8.513300121e-002;
+  r1.z = r1.y * r1.z + 1.801410019e-001;
+  r1.z = r1.y * r1.z + -3.302994967e-001;
+  r1.y = r1.y * r1.z + 9.998660088e-001;
+  r1.z = r1.x * r1.y;
+  r1.z = r1.z * -2.000000000e+000 + 1.570796371e+000;
+  r1.w = 1.000000000e+000 < abs(r0.y);
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.y = r0.y < -r0.y;
+  r1.z = r1.w ? r1.z : 0;
+  r1.x = r1.x * r1.y + r1.z;
+  r0.y = r0.y ? -r1.x : r1.x;
+  r1.x = 0.000000000e+000 < r0.w;
+  r0.w = r0.w < 0.000000000e+000;
+  r0.w = ((int)r0.w ? -1 : 0) + ((int)r1.x ? 1 : 0);
+  r0.w = r0.w;
+  r0.z = r0.z * r0.w;
+  r0.y = r0.z * 3.141592741e+000 + r0.y;
+  sincos(r0.y, r1.x, r2.x);
+  r0.z = r2.x * r0.x;
+  r0.w = r1.x * r0.x;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.zw;
+  r1.xy = -r0.xy * float2(5.000000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+  r1.zw = float2(5.000000e-001,5.000000e-001) * r0.xy;
+  r0.x = r1.x < 0;
+  r0.y = r1.y < 0;
+  r0.z = r1.z < 0;
+  r0.w = r1.w < 0;
+  
+  r1.xyzw = decalTexture.Sample(decalTexture_s, r1.zw).xyzw;
+  r0.xy = (int2)r0.zw | (int2)r0.xy;
+  r0.x = (int)r0.y | (int)r0.x;
+  if (r0.x != 0) discard;
+  r0.xyzw = cb0[134].xyzw * r1.xyzw;
+  r1.xyzw = -r1.xyzw * cb0[134].xyzw + cb0[130].xyzw;
+  r2.xyzw = cb0[133].xyzw * cb0[124].wwww;
+  r0.xyzw = r2.xyzw * r1.xyzw + r0.xyzw;
+  r1.x = -cb0[135].x + r0.w;
+  o0.xyzw = r0.xyzw;
+  r0.x = r1.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  o1.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

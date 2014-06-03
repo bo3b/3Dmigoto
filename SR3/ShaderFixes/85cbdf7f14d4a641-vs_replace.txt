@@ -1,0 +1,80 @@
+// Skybox, horizon clouds.
+
+cbuffer vc0 : register(b0)
+{
+  float4 Hemisphere_colors[10] : packoffset(c0);
+  float4 Scale : packoffset(c10);
+  float Offset : packoffset(c11);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.z = dot(objTM._m20_m21_m22, v0.xyz);
+  r0.x = dot(objTM._m00_m01_m02, v0.xyz);
+  r0.y = dot(objTM._m10_m11_m12, v0.xyz);
+  r1.x = dot(r0.xyz, projTM._m00_m10_m20);
+  r1.y = dot(r0.xyz, projTM._m01_m11_m21);
+  r1.z = dot(r0.xyz, projTM._m03_m13_m23);
+  r0.x = min(abs(r0.y), 1.000000000e+001);
+  o0.xyzw = r1.xyzz;
+o0 *= 5000;
+  o1.xyz = v0.xyz;
+  r0.y = r0.x * -1.872929977e-003 + 7.426100224e-002;
+  r0.zw = float2(1.000000e-001,4.000000e-001) * r0.xx;
+  r0.x = -r0.x * 1.000000015e-001 + 1.000000000e+000;
+  r0.x = sqrt(r0.x);
+  r0.y = r0.y * r0.z + -2.121143937e-001;
+  r0.y = r0.y * r0.z + 1.570728779e+000;
+  r0.x = -r0.y * r0.x + 1.570796371e+000;
+  r0.x = r0.x * 2.546478748e+000 + r0.w;
+  r0.y = 5.000000000e-001 * r0.x;
+  r0.z = round(r0.y * 0.5) * 2;
+  r0.y = floor(r0.y);
+  r0.y = (uint)r0.y;
+  r0.x = r0.x * 5.000000000e-001 + -r0.z;
+  r1.xyz = Hemisphere_colors[r0.y].xyz + Hemisphere_colors[r0.y].xyz;
+  o2.xyz = r1.xyz * r0.xxx + Hemisphere_colors[r0.y].xyz;
+  r0.xy = v0.xz;
+  r0.xz = Scale.xz * r0.xy;
+  r1.x = Scale.w + v0.y;
+  r0.y = Scale.y * r1.x + -Scale.w;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.x = -eyePos.y + r1.x;
+  r1.y = Offset + r1.x;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r0.xyz = -eyePos.xyz + r1.xyz;
+  r0.w = Fog_dist.x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 9.999999776e-003 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.w = 1.000000000e+000 + -r0.x;
+  return;
+}

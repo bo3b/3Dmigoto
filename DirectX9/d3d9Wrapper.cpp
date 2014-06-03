@@ -1,5 +1,6 @@
 #include "Main.h"
 #include <Shlobj.h>
+#include <ctime>
 
 ThreadSafePointerSet D3D9Wrapper::IDirect3DSwapChain9::m_List;
 ThreadSafePointerSet D3D9Wrapper::IDirect3DDevice9::m_List;
@@ -32,6 +33,16 @@ struct SwapChainInfo
 	int width, height;
 };
 
+
+static char *LogTime()
+{
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
+	timeStr[strlen(timeStr) - 1] = 0;
+	return timeStr;
+}
+
+
 void InitializeDLL()
 {
 	if (!gInitialized)
@@ -44,10 +55,30 @@ void InitializeDLL()
 		wcscat(dir, L"d3dx.ini");
 		LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
 		if (LogFile)
-			fopen_s(&LogFile, "d3d9_log.txt", "w");
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir) == 1;
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir) == 1;
+			LogFile = fopen("d3d9_log.txt", "w");
+		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir);
+		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir);
 
+		if (LogFile) fprintf(LogFile, "\nD3D9 DLL starting init  -  %s\n\n", LogTime());
+
+		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+		// to open active files.
+		int unbuffered = -1;
+		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, dir))
+		{
+			unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+			if (LogFile) fprintf(LogFile, "  unbuffered=1  return: %d\n", unbuffered);
+		}
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (LogFile) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
+		}
+
+		wchar_t val[MAX_PATH];
 		SCREEN_WIDTH = GetPrivateProfileInt(L"Device", L"width", -1, dir);
 		SCREEN_HEIGHT = GetPrivateProfileInt(L"Device", L"height", -1, dir);
 		SCREEN_REFRESH = GetPrivateProfileInt(L"Device", L"refresh_rate", -1, dir);
@@ -61,7 +92,7 @@ void InitializeDLL()
 			SCREEN_REFRESH_DELAY = SCREEN_REFRESH; SCREEN_REFRESH = -1;
 		}
 
-		if (LogFile) fprintf(LogFile, "DLL initialized.\n");
+		if (LogFile) fprintf(LogFile, "D3D9 DLL initialized.\n");
 	}
 }
 
@@ -172,6 +203,8 @@ void WINAPI PSGPSampleTexture(void *D3DFE_PROCESSVERTICES, unsigned int a, float
 
 STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D9Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+
 	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IID m2 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
 	IID m3 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };

@@ -1,5 +1,6 @@
 #include "Main.h"
 #include <Shlobj.h>
+#include <ctime>
 
 ThreadSafePointerSet D3D11Wrapper::IDXGIFactory::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIAdapter::m_List;
@@ -17,6 +18,16 @@ static int SCREEN_FULLSCREEN = -1;
 
 static bool mBlockingMode = false;
 
+
+static char *LogTime()
+{
+	time_t ltime = time(0);
+	char *timeStr = asctime(localtime(&ltime));
+	timeStr[strlen(timeStr) - 1] = 0;
+	return timeStr;
+}
+
+
 void InitializeDLL()
 {
 	if (!gInitialized)
@@ -32,10 +43,26 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
 		{
 			D3D11Wrapper::LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
-			setvbuf(D3D11Wrapper::LogFile, NULL, _IONBF, 0);
+			fprintf(D3D11Wrapper::LogFile, "\nDXGI DLL starting init  -  %s\n\n", LogTime());
 		}
-		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DLL initialized.\n");
-		
+
+		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+		// to open active files.
+		int unbuffered = -1;
+		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, dir))
+		{
+			unbuffered = setvbuf(D3D11Wrapper::LogFile, NULL, _IONBF, 0);
+			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  unbuffered=1  return: %d\n", unbuffered);
+		}
+
+		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
+		{
+			DWORD one = 0x01;
+			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
+		}
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf_s(val, L"%d", &SCREEN_WIDTH);
@@ -51,6 +78,8 @@ void InitializeDLL()
 			FILTER_REFRESH+0, FILTER_REFRESH+1, FILTER_REFRESH+2, FILTER_REFRESH+3, &FILTER_REFRESH+4,
 			FILTER_REFRESH+5, FILTER_REFRESH+6, FILTER_REFRESH+7, FILTER_REFRESH+8, &FILTER_REFRESH+9);
 	}
+
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "DXGI DLL initialized.\n");
 }
 
 void DestroyDLL()
@@ -128,6 +157,7 @@ typedef HRESULT (WINAPI *tOpenAdapter10)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10 _OpenAdapter10;
 typedef HRESULT (WINAPI *tOpenAdapter10_2)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10_2 _OpenAdapter10_2;
+
 typedef HRESULT (WINAPI *tD3DKMTGetDeviceState)(int a);
 static tD3DKMTGetDeviceState _D3DKMTGetDeviceState;
 typedef HRESULT (WINAPI *tD3DKMTOpenAdapterFromHdc)(int a);
@@ -136,18 +166,26 @@ typedef HRESULT (WINAPI *tD3DKMTOpenResource)(int a);
 static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef HRESULT (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
+
 typedef void (WINAPI *tDXGIDumpJournal)(void (__stdcall *function)(const char *));
 static tDXGIDumpJournal _DXGIDumpJournal;
-typedef HRESULT (WINAPI *tDXGID3D10CreateDevice)(int a, int b, int c, int d, int e, int f);
+
+typedef HRESULT(WINAPI *tDXGID3D10CreateDevice)(HMODULE d3d10core, D3D11Wrapper::IDXGIFactory *factory, 
+	D3D11Wrapper::IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device);
 static tDXGID3D10CreateDevice _DXGID3D10CreateDevice;
+
 typedef HRESULT (WINAPI *tDXGID3D10CreateLayeredDevice)(int a, int b, int c, int d, int e);
 static tDXGID3D10CreateLayeredDevice _DXGID3D10CreateLayeredDevice;
-typedef HRESULT (WINAPI *tDXGID3D10GetLayeredDeviceSize)(int a, int b);
+
+typedef HRESULT(WINAPI *tDXGID3D10GetLayeredDeviceSize)(const void *pLayers, UINT NumLayers);
 static tDXGID3D10GetLayeredDeviceSize _DXGID3D10GetLayeredDeviceSize;
-typedef HRESULT (WINAPI *tDXGID3D10RegisterLayers)(int a, int b);
+
+typedef HRESULT(WINAPI *tDXGID3D10RegisterLayers)(const struct dxgi_device_layer *layers, UINT layer_count);
 static tDXGID3D10RegisterLayers _DXGID3D10RegisterLayers;
+
 typedef HRESULT (WINAPI *tDXGIReportAdapterConfiguration)(int a);
 static tDXGIReportAdapterConfiguration _DXGIReportAdapterConfiguration;
+
 typedef HRESULT (WINAPI *tCreateDXGIFactory)(const IID *const riid, void **ppFactory);
 static tCreateDXGIFactory _CreateDXGIFactory;
 typedef HRESULT (WINAPI *tCreateDXGIFactory1)(const IID *const riid, void **ppFactory);
@@ -211,28 +249,32 @@ void WINAPI DXGIDumpJournal(void (__stdcall *function)(const char *))
 	(*_DXGIDumpJournal)(function);
 }
 
-HRESULT WINAPI DXGID3D10CreateDevice(int a, int b, int c, int d, int e, int f)
+HRESULT WINAPI DXGID3D10CreateDevice(HMODULE d3d10core, D3D11Wrapper::IDXGIFactory *factory,
+	D3D11Wrapper::IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device)
 {
 	InitD311();
-	return (*_DXGID3D10CreateDevice)(a, b, c, d, e, f);
+	return (*_DXGID3D10CreateDevice)(d3d10core, factory, adapter, flags, unknown0, device);
 }
 
+// A bunch of these interfaces were using unknown int for their prototypes, but on x64
+// anything that was a pointer would be off.  All of the other ones are fixed as best the
+// internet can say, but this one is missing any interface info, and probably will not work.
 HRESULT WINAPI DXGID3D10CreateLayeredDevice(int a, int b, int c, int d, int e)
 {
 	InitD311();
 	return (*_DXGID3D10CreateLayeredDevice)(a, b, c, d, e);
 }
 
-HRESULT WINAPI DXGID3D10GetLayeredDeviceSize(int a, int b)
+HRESULT WINAPI DXGID3D10GetLayeredDeviceSize(const void *pLayers, UINT NumLayers)
 {
 	InitD311();
-	return (*_DXGID3D10GetLayeredDeviceSize)(a, b);
+	return (*_DXGID3D10GetLayeredDeviceSize)(pLayers, NumLayers);
 }
 
-HRESULT WINAPI DXGID3D10RegisterLayers(int a, int b)
+HRESULT WINAPI DXGID3D10RegisterLayers(const struct dxgi_device_layer *layers, UINT layer_count)
 {
 	InitD311();
-	return (*_DXGID3D10RegisterLayers)(a, b);
+	return (*_DXGID3D10RegisterLayers)(layers, layer_count);
 }
 
 HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
@@ -393,9 +435,13 @@ static void ReplaceInterface(void **ppvObj)
 	}
 }
 
+// Todo: Why is this named D3D11Wrapper, but in the d3dxgiWrapper?
+
 STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
-	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n", 
+//	if (LogFile) fprintf(LogFile, "D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+
+	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
 		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
@@ -430,7 +476,9 @@ static IUnknown *ReplaceDevice(IUnknown *wrapper)
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  checking for device wrapper, handle = %x\n", wrapper);
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IUnknown *realDevice = wrapper;
-	if (wrapper->QueryInterface(marker, (void **) &realDevice) == 0x13bc7e31)
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
+
+	if (wrapper->QueryInterface(marker, (void **)&realDevice) == 0x13bc7e31)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    device found. replacing with original handle = %x\n", realDevice);
 		
@@ -453,7 +501,9 @@ static void SendScreenResolution(IUnknown *wrapper, int width, int height)
 	info.width = width;
 	info.height = height;
 	SwapChainInfo *infoPtr = &info;
-	if (wrapper->QueryInterface(marker, (void **) &infoPtr) == 0x13bc7e31)
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
+
+	if (wrapper->QueryInterface(marker, (void **)&infoPtr) == 0x13bc7e31)
 	{
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    notification successful.\n");
 	}

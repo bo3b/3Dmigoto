@@ -1,0 +1,89 @@
+// Manually fixed shader.
+// Missing Resource section in ASM, so missing parameters here.
+
+Texture2D<float4> t0 : register(t0);
+Texture2DMS<float4> tex2DMS : register(t1);
+
+SamplerState s0 : register(s0);
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_TARGET0)
+{
+	int4 r0;
+  float4 r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = (int2)v0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+	r0.xyz = tex2DMS.Load(r0.xy,0.000000000e+000).xyz;
+  r0.xyz = r0.xyz * cb1[3].xxx + cb1[3].yyy;
+  r1.xyz = cb1[1].xyz * r0.yyy;
+  r0.xyw = r0.xxx * cb1[0].xyz + r1.xyz;
+  r0.xyz = r0.zzz * cb1[2].xyz + r0.xyw;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.xyzw = cb0[0].zwzw * float4(3.000000e+000,0.000000e+000,0.000000e+000,3.000000e+000) + v1.xyxy;
+  r2.xyzw = cb0[1].xyxy * r1.xyzw + cb0[1].zwzw;
+  r3.z = t0.SampleLevel(s0, r1.zw, 0.000000000e+000).x;
+  r1.z = t0.SampleLevel(s0, r1.xy, 0.000000000e+000).x;
+  r3.xy = r3.zz * r2.zw;
+  r1.xy = r2.xy * r1.zz;
+  r2.xy = cb0[1].xy * v1.xy + cb0[1].zw;
+  r4.z = t0.SampleLevel(s0, v1.xy, 0.000000000e+000).x;
+  r4.xy = r4.zz * r2.xy;
+  r2.xyz = -r4.xyz + r3.xyz;
+  r0.w = dot(r0.xyz, r2.xyz);
+  r1.w = dot(r2.xyz, r2.xyz);
+  r2.x = rsqrt(r1.w);
+  r1.w = saturate(r1.w * cb0[2].z + 1.000000000e+000);
+  r0.w = saturate(r0.w * r2.x + -cb0[2].w);
+  r0.w = r0.w * r1.w;
+  r1.xyz = -r4.xyz + r1.xyz;
+  r1.w = dot(r0.xyz, r1.xyz);
+  r1.x = dot(r1.xyz, r1.xyz);
+  r1.y = rsqrt(r1.x);
+  r1.x = saturate(r1.x * cb0[2].z + 1.000000000e+000);
+  r1.y = saturate(r1.w * r1.y + -cb0[2].w);
+  r0.w = r1.y * r1.x + r0.w;
+  r1.xyzw = cb0[0].zwzw * float4(-3.000000e+000,0.000000e+000,-0.000000e+000,-3.000000e+000) + v1.xyxy;
+  r2.z = t0.SampleLevel(s0, r1.xy, 0.000000000e+000).x;
+  r3.xyzw = cb0[1].xyxy * r1.xyzw + cb0[1].zwzw;
+  r1.z = t0.SampleLevel(s0, r1.zw, 0.000000000e+000).x;
+  r2.xy = r3.xy * r2.zz;
+  r2.xyz = r2.xyz + -r4.xyz;
+  r1.xy = r3.zw * r1.zz;
+  r1.xyz = r1.xyz + -r4.xyz;
+  r1.w = dot(r0.xyz, r2.xyz);
+  r0.x = dot(r0.xyz, r1.xyz);
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.z = dot(r2.xyz, r2.xyz);
+  r1.x = rsqrt(r0.z);
+  r0.z = saturate(r0.z * cb0[2].z + 1.000000000e+000);
+  r1.x = saturate(r1.w * r1.x + -cb0[2].w);
+  r0.z = r1.x * r0.z + r0.w;
+  r0.w = rsqrt(r0.y);
+  r0.y = saturate(r0.y * cb0[2].z + 1.000000000e+000);
+  r0.x = saturate(r0.x * r0.w + -cb0[2].w);
+  r0.x = r0.x * r0.y + r0.z;
+  r0.x = cb0[3].x * r0.x;
+  r0.x = saturate(-r0.x * 5.000000000e-001 + 1.000000000e+000);
+  r0.x = log2(r0.x);
+  r0.x = cb0[3].w * r0.x;
+  o0.xyzw = exp2(r0.xxxx);
+  return;
+}
