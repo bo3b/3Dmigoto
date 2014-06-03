@@ -19,16 +19,6 @@ const int MARKING_MODE_ORIGINAL = 2;
 const int MARKING_MODE_ZERO = 3;
 bool LogInput = false, LogDebug = false;
 
-// ToDo: this is a hack for the moment to get access to the real device
-// for loading new shaders.  This should be passed down to dxgi probably.
-D3D11Base::ID3D11Device* realDevice = nullptr;
-
-// Hack for thread to shader hunt. Experiment.
-HANDLE HuntingThread;
-
-// Prototype so we can make it a thread.
-DWORD WINAPI Hunting(LPVOID empty);
-
 
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
@@ -814,21 +804,21 @@ void InitializeDLL()
 
 		// Everything set up, let's make another thread for watching the keyboard for shader hunting.
 		// It's all multi-threaded rendering now anyway, so it has to be ready for that.
-		HuntingThread = CreateThread(
-			NULL,                   // default security attributes
-			0,                      // use default stack size  
-			Hunting,       // thread function name
-			&realDevice,	          // argument to thread function 
-			0,                      // use default creation flags 
-			NULL);				  // returns the thread identifier 
+		//HuntingThread = CreateThread(
+		//	NULL,                   // default security attributes
+		//	0,                      // use default stack size  
+		//	Hunting,				// thread function name
+		//	&realDevice,			// argument to thread function 
+		//	CREATE_SUSPENDED,		// Run late, to avoid window conflicts in DInput
+		//	NULL);					// returns the thread identifier 
 
 
-		// If we can't init, just log it, not a fatal error.
-		if (HuntingThread == NULL)
-		{
-			DWORD dw = GetLastError();
-			if (LogFile) fprintf(LogFile, "Error while creating hunting thread: %x\n", dw);
-		}
+		//// If we can't init, just log it, not a fatal error.
+		//if (HuntingThread == NULL)
+		//{
+		//	DWORD dw = GetLastError();
+		//	if (LogFile) fprintf(LogFile, "Error while creating hunting thread: %x\n", dw);
+		//}
 
 		if (LogFile) fprintf(LogFile, "D3D11 DLL initialized.\n");
 		if (LogFile && LogDebug) fprintf(LogFile, "[Rendering] XInputDevice = %d\n", XInputDeviceId);
@@ -837,18 +827,18 @@ void InitializeDLL()
 
 void DestroyDLL()
 {
-	TerminateThread(
-		_Inout_  HuntingThread,
-		_In_     0
-		);
+	//TerminateThread(
+	//	_Inout_  HuntingThread,
+	//	_In_     0
+	//	);
 
-	// Should be the normal 100ms wait.
-	DWORD err =  WaitForSingleObject(
-		_In_  HuntingThread,
-		_In_  INFINITE
-		);
-	BOOL ok = CloseHandle(HuntingThread);
-	if (LogFile) fprintf(LogFile, "Hunting thread closed: %x, %d\n", err, ok);
+	//// Should be the normal 100ms wait.
+	//DWORD err =  WaitForSingleObject(
+	//	_In_  HuntingThread,
+	//	_In_  INFINITE
+	//	);
+	//BOOL ok = CloseHandle(HuntingThread);
+	//if (LogFile) fprintf(LogFile, "Hunting thread closed: %x, %d\n", err, ok);
 
 	if (LogFile)
 	{
@@ -1855,6 +1845,25 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 // Called indirectly through the QueryInterface for every vertical blanking, based on calls to
 // IDXGISwapChain1::Present1 and/or IDXGISwapChain::Present in the dxgi interface wrapper.
 // This looks for user input for shader hunting.
+// No longer called from Present, because we weren't getting calls from some games, probably because
+// of a missing wrapper on some games.  
+// This will do the same basic task, of giving time to the UI so that we can hunt shaders by selectively
+// disabling them.  
+// Another approach was to use an alternate Thread to give this time, but that still meant we needed to
+// get the proper ID3D11Device object to pass in, and possibly introduces race conditions or threading
+// problems. (Didn't see any, but.)
+// Another problem from here is that the DirectInput code has some sort of bug where if you call for
+// key events before the window has been created, that it locks out DirectInput from then on. To avoid
+// that we can do a late-binding approach to start looking for events.  
+
+// Rather than do all that, we now insert a RunFrameActions in the Draw method of the Context object,
+// where it is absolutely certain that the game is fully loaded and ready to go, because it's actively
+// drawing.  This gives us too many calls, maybe 5 per frame, but should not be a problem. The code
+// is expecting to be called in a loop, and locks out auto-repeat using that looping.
+
+// Draw is a very late binding for the game, and should solve all these problems, and allow us to retire
+// the dxgi wrapper as unneeded.  The draw is caught at AfterDraw in the Context, which is called for
+// every type of Draw, including DrawIndexed.
 
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
@@ -1868,10 +1877,12 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	if (!G->hunting)
 		return;
 
-	// Update the huntTime whenever we get fresh user input.
 	bool newEvent = UpdateInputState();
+
+	// Update the huntTime whenever we get fresh user input.
 	if (newEvent)
 		G->huntTime = time(NULL);
+
 	
 	// Screenshot?
 	if (Action[3] && !G->take_screenshot)
@@ -2321,24 +2332,6 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	}
 }
 
-// Thread for allowing hunting, without modifying RunFrameActions.
-// Infinite loop.  It will be killed at exit.
-
-DWORD WINAPI Hunting(LPVOID empty)
-{
-	// If we are not in hunting mode, let thread die.
-	if (!G->hunting)
-		return 0;
-
-	while (true)
-	{
-		// Idle time between user key presses. This is 3x 1/60 second.
-		Sleep(50);
-
-		RunFrameActions(realDevice);
-	}
-}
-
 
 // Todo: straighten out these includes and methods to make more sense.
 
@@ -2397,7 +2390,9 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		riid.Data4[4] == m2.Data4[4] && riid.Data4[5] == m2.Data4[5] && riid.Data4[6] == m2.Data4[6] && riid.Data4[7] == m2.Data4[7])
 	{
 		if (LogFile && LogDebug) fprintf(LogFile, "Callback from dxgi.dll wrapper: notification %s received\n", typeid(*ppvObj).name());
-	
+
+		// This callback from DXGI has been disabled, because the DXGI interface does not get called in all games.
+		// We have switched to using a similar callback, but from DeviceContext so that we don't need DXGI.
 		//switch ((int) *ppvObj)
 		//{
 		//	case 0:
@@ -2405,7 +2400,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				// Present received.
 				// Todo: this cast is wrong. The object is always IDXGIDevice2.
 //				ID3D11Device *device = (ID3D11Device *)this;
-		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
+//		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
 			//	break;
 			//}
 		//}
@@ -2637,11 +2632,6 @@ HRESULT WINAPI D3D11CreateDevice(
 		return ret;
 	}
 	
-	// Todo: doesn't really belong here
-	if (realDevice == nullptr)
-		realDevice = origDevice;
-	if (LogFile) fprintf(LogFile, "--> D3D11CreateDevice saved realDevice = %x\n", realDevice);// typeid(*realDevice).name());
-
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if(wrapper == NULL)
 	{
@@ -2730,11 +2720,6 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	if (!origDevice || !origContext)
 		return ret;
-
-	// Todo: doesn't really belong here
-	if (realDevice == nullptr)
-		realDevice = origDevice;
-	if (LogFile) fprintf(LogFile, "--> D3D11CreateDeviceAndSwapChain saved realDevice = %x\n", realDevice);// typeid(*realDevice).name());
 
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
 	if (wrapper == NULL)
