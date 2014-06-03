@@ -1,7 +1,7 @@
 // Base class for all wrapper objects. 
 // Not sure, but apparently this is to allow IPC between the objects using QueryInterface.
 
-class IDirect3DUnknown
+class IDirect3DUnknown 
 {
 public:
 	IUnknown*   m_pUnk;
@@ -12,6 +12,17 @@ public:
 		m_pUnk = pUnk;
 		m_ulRef = 1;
 	}
+
+	IDirect3DUnknown GetOrig()
+	{
+		return m_pUnk;
+	}
+
+	ULONG GetRefCount()
+	{
+		return m_ulRef;
+	}
+
 
 	/*** IUnknown methods ***/
 	STDMETHOD(QueryInterface)(THIS_ REFIID riid, void** ppvObj);
