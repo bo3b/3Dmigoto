@@ -15,6 +15,8 @@ echo
 xcopy "%1*.*" "T:\Bootleg\Saints Row IV\" /F /Y
 echo 
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Saints Row the Third\" /F /Y
+echo 
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\F.E.A.R. 3\" /F /Y
 
 exit
 
