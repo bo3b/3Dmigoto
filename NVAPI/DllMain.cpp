@@ -167,6 +167,7 @@ static char *LogTime()
 	timeStr[strlen(timeStr) - 1] = 0;
 	return timeStr;
 }
+#pragma warning( default : 4996 )
 
 static void loadDll()
 {
