@@ -34,7 +34,11 @@ void main(
   r1.z = dot(r0.xyz, projTM._m03_m13_m23);
   r0.x = min(abs(r0.y), 1.000000000e+001);
   o0.xyzw = r1.xyzz;
-o0 *= 5000;
+
+// bo3b: move clouds to max depth, 
+float4 stereo = StereoParams.Load(0);
+// o0.x += stereo.x * (stereo.y);  not necessary? Makes clouds like a bowl.
+
   o1.xyz = v0.xyz;
   r0.y = r0.x * -1.872929977e-003 + 7.426100224e-002;
   r0.zw = float2(1.000000e-001,4.000000e-001) * r0.xx;

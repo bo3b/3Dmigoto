@@ -48,7 +48,11 @@ void main(
   r1.y = dot(r0.xyz, projTM._m01_m11_m21);
   r1.z = dot(r0.xyz, projTM._m03_m13_m23);
   o0.xyzw = r1.xyzz;
-o0 *= 5000;
+
+// bo3b: move contrails to depth.
+float4 stereo = StereoParams.Load(0);
+o0.x += stereo.x * (stereo.y );
+
   r1.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   o1.xyz = r1.xyz;
   r0.w = dot(r0.xyz, r0.xyz);
@@ -87,8 +91,5 @@ o0 *= 5000;
   r1.z = 9.765625000e-004 * r0.x;
   r1.xy = r0.yy * float2(9.765625e-004,9.765625e-004) + Cloud_U_Offset.xy;
   o5.xyzw = r1.xzyz;
-
-  float4 stereoParams = StereoParams.Load(0);
-  // o1.x += stereoParams.x * ( - stereoParams.y);
   return;
 }
