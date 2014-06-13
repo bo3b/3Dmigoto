@@ -1627,7 +1627,7 @@ public:
 	void WritePatches()
 	{
 		bool stereoParamsWritten = false;
-		const char *StereoDecl = "\n\n  float4 stereoParams = StereoParams.Load(0);";
+		const char *StereoDecl = "\n\n// Auto-fixed shader\nfloat4 stereo = StereoParams.Load(0);";
 			// float4 stereoScreenRes = StereoParams.Load(int3(2,0,0));\n  float4 stereoTune = StereoParams.Load(int3(1,0,0));";
 
 		// Vertex shader patches
@@ -1678,7 +1678,7 @@ public:
 					if (lastPos && lastPos != mOutput.data())
 					{
 						pos = strchr(lastPos, '\n');
-						const char *viewDirectionDecl = "\n  out float3 viewDirection : TEXCOORD31,";
+						const char *viewDirectionDecl = "\nout float3 viewDirection : TEXCOORD31,";
 						mOutput.insert(mOutput.begin() + (pos - mOutput.data()), viewDirectionDecl, viewDirectionDecl+strlen(viewDirectionDecl));
 					}
 					// Add view direction calculation.
@@ -1698,7 +1698,7 @@ public:
 						mOutput.insert(writePos, StereoDecl, StereoDecl+strlen(StereoDecl));
 						stereoParamsWritten = true;
 						char buffer[256];
-						sprintf(buffer, "  %s.x -= stereoParams.x * (%s.w - stereoParams.y);\n", mSV_Position.c_str(), mSV_Position.c_str(), mSV_Position.c_str());
+						sprintf(buffer, "%s.x -= stereo.x * (%s.w - stereo.y);\n", mSV_Position.c_str(), mSV_Position.c_str(), mSV_Position.c_str());
 						mOutput.insert(mOutput.end()-1, buffer, buffer+strlen(buffer));
 					}
 				}
@@ -1751,7 +1751,7 @@ public:
 							char buffer[256];
 							string outputReg = i->first;
 							if (outputReg.find('.') != string::npos) outputReg = outputReg.substr(0, outputReg.find('.'));
-							sprintf(buffer, "\n  if (%s.w != 1) %s.x += stereoParams.x * (%s.w - stereoParams.y);", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
+							sprintf(buffer, "\n%s.x += stereo.x * (%s.w - stereo.y);", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
 							mOutput.insert(writePos, buffer, buffer+strlen(buffer));
 							mPatched = true;
 						}
@@ -1801,17 +1801,17 @@ public:
 						char buf[512];
 						if (!wposAvailable)
 						{
-							sprintf(buf, "  float4 zpos4 = %s;\n"
-										 "  float zTex = zpos4.%c;\n"
-										 "  float zpos = %s;\n"
-										 "  float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg1, ZRepair_ZPosCalc1.c_str());
+							sprintf(buf, "float4 zpos4 = %s;\n"
+										 "float zTex = zpos4.%c;\n"
+										 "float zpos = %s;\n"
+										 "float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg1, ZRepair_ZPosCalc1.c_str());
 						}
 						else
 						{
-							sprintf(buf, "  zpos4 = %s;\n"
-										 "  zTex = zpos4.%c;\n"
-										 "  zpos = %s;\n"
-										 "  wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg1, ZRepair_ZPosCalc1.c_str());
+							sprintf(buf, "zpos4 = %s;\n"
+										 "zTex = zpos4.%c;\n"
+										 "zpos = %s;\n"
+										 "wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg1, ZRepair_ZPosCalc1.c_str());
 						}
 						if (constantDeclaration && !wposAvailable)
 						{
@@ -1878,10 +1878,10 @@ public:
 							const char ZPOS_REG[] = "zpos4";
 							wpos = mOutput.insert(wpos, ZPOS_REG, ZPOS_REG+strlen(ZPOS_REG));
 							char buf[256];
-							sprintf(buf, "  float4 zpos4 = %s;\n"
-										 "  float zTex = zpos4.%c;\n"
-										 "  float zpos = %s;\n"
-										 "  float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg2, ZRepair_ZPosCalc2.c_str());
+							sprintf(buf, "float4 zpos4 = %s;\n"
+										 "float zTex = zpos4.%c;\n"
+										 "float zpos = %s;\n"
+										 "float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg2, ZRepair_ZPosCalc2.c_str());
 							
 							// There are a whole series of fixes to the statements that are doing mOutput.insert() - mOutput.begin();
 							// We would get a series of Asserts (vector mismatch), but only rarely, usually at starting a new game in AC3.  
@@ -1944,9 +1944,9 @@ public:
 						applySwizzle(".xyz", buf);
 						char calcStatement[256];
 						sprintf(calcStatement, ZRepair_WorldPosCalc.c_str(), buf);
-						sprintf(buf, "\n  float3 worldPos = %s;"
-									 "\n  float zpos = worldPos.z;"
-									 "\n  float wpos = 1.0 / zpos;", calcStatement);
+						sprintf(buf, "\nfloat3 worldPos = %s;"
+									 "\nfloat zpos = worldPos.z;"
+									 "\nfloat wpos = 1.0 / zpos;", calcStatement);
 						pos = strchr(pos, '\n');
 
 						//mCodeStartPos = mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buf, buf + strlen(buf)) - mOutput.begin();
@@ -1962,9 +1962,9 @@ public:
 			// Add depth texture, as a last resort, but only if it's specified in d3dx.ini
 			if (!wposAvailable && mZRepair_DepthBuffer)
 			{
-				const char *INJECT_HEADER = "  float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);\n"
-										    "  float zpos = zpos4.x - 1;\n"
-         									"  float wpos = 1.0 / zpos;\n";
+				const char *INJECT_HEADER = "float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);\n"
+										    "float zpos = zpos4.x - 1;\n"
+         									"float wpos = 1.0 / zpos;\n";
 				// Copy depth texture usage to top.
 				//mCodeStartPos = mOutput.insert(mOutput.begin() + mCodeStartPos, INJECT_HEADER, INJECT_HEADER + strlen(INJECT_HEADER)) - mOutput.begin();
 				vector<char>::iterator iter = mOutput.insert(mOutput.begin() + mCodeStartPos, INJECT_HEADER, INJECT_HEADER + strlen(INJECT_HEADER));
@@ -1990,7 +1990,7 @@ public:
 				while (*++pos != '\n');
 				assert(pos != NULL);
 
-				const char *PARAM_HEADER="\n  float4 injectedScreenPos : SV_Position,";
+				const char *PARAM_HEADER="\nfloat4 injectedScreenPos : SV_Position,";
 				mOutput.insert(mOutput.begin() + (pos - mOutput.data()), PARAM_HEADER, PARAM_HEADER+strlen(PARAM_HEADER));
 				mCodeStartPos += strlen(PARAM_HEADER);
 				wposAvailable = true;
@@ -2044,7 +2044,7 @@ public:
 								int dotPos = regName.rfind('.');
 								if (dotPos >= 0) regName = regName.substr(0, dotPos+2);
 								while (*mpos != '\n') --mpos;
-								sprintf(buf, "\n  %s -= stereoParams.x * (wpos - stereoParams.y);", regName.c_str());
+								sprintf(buf, "\n%s -= stereo.x * (wpos - stereo.y);", regName.c_str());
 								mOutput.insert(mOutput.begin() + (mpos - mOutput.data()), buf, buf+strlen(buf));
 								mPatched = true;
 							}
@@ -2060,7 +2060,7 @@ public:
 									int dotPos = regName.rfind('.');
 									if (dotPos >= 0) regName = regName.substr(0, dotPos+2);
 									while (*mpos != '\n') --mpos;
-									sprintf(buf, "\n  %s -= stereoParams.x * (wpos - stereoParams.y);", regName.c_str());
+									sprintf(buf, "\n%s -= stereo.x * (wpos - stereo.y);", regName.c_str());
 									mOutput.insert(mOutput.begin() + (mpos - mOutput.data()), buf, buf+strlen(buf));
 									mPatched = true;									
 								}
@@ -2070,7 +2070,7 @@ public:
 					bool parameterWritten = false;
 					const char *ParamPos1 = "SV_Position0,";
 					const char *ParamPos2 = "\n  out ";
-					const char *NewParam = "\n  float3 viewDirection : TEXCOORD31,";
+					const char *NewParam = "\nfloat3 viewDirection : TEXCOORD31,";
 
 					if (!ObjectPos_ID1.empty())
 					{
@@ -2097,10 +2097,10 @@ public:
 								char buf[512]; 
 								if (ObjectPos_MUL1.empty())
 									ObjectPos_MUL1 = string("1,1,1");
-								sprintf(buf, "\n  float3 stereoPos%dMul = float3(%s);"
-											 "\n  %s += viewDirection.%c * stereoParams.x * (wpos - stereoParams.y) * stereoPos%dMul.x;"
-											 "\n  %s += viewDirection.%c * stereoParams.x * (wpos - stereoParams.y) * stereoPos%dMul.y;"
-											 "\n  %s += viewDirection.%c * stereoParams.x * (wpos - stereoParams.y) * stereoPos%dMul.z;",
+								sprintf(buf, "\nfloat3 stereoPos%dMul = float3(%s);"
+											 "\n%s += viewDirection.%c * stereo.x * (wpos - stereo.y) * stereoPos%dMul.x;"
+											 "\n%s += viewDirection.%c * stereo.x * (wpos - stereo.y) * stereoPos%dMul.y;"
+											 "\n%s += viewDirection.%c * stereo.x * (wpos - stereo.y) * stereoPos%dMul.z;",
 											 uuidVar, ObjectPos_MUL1.c_str(), 
 											 op2, lightPosDecl[0], uuidVar, 
 											 op3, lightPosDecl[1], uuidVar,
@@ -2149,10 +2149,10 @@ public:
 								char buf[512];
 								if (ObjectPos_MUL2.empty())
 									ObjectPos_MUL2 = string("1,1,1");
-								sprintf(buf, "\n  float3 stereoPos%dMul = float3(%s);"
-											 "\n  %s += viewDirection.%c * stereoParams.x * (wpos - stereoParams.y) * stereoPos%dMul.x;"
-											 "\n  %s += viewDirection.%c * stereoParams.x * (wpos - stereoParams.y) * stereoPos%dMul.y;"
-											 "\n  %s += viewDirection.%c * stereoParams.x * (wpos - stereoParams.y) * stereoPos%dMul.z;", 
+								sprintf(buf, "\nfloat3 stereoPos%dMul = float3(%s);"
+											 "\n%s += viewDirection.%c * stereo.x * (wpos - stereo.y) * stereoPos%dMul.x;"
+											 "\n%s += viewDirection.%c * stereo.x * (wpos - stereo.y) * stereoPos%dMul.y;"
+											 "\n%s += viewDirection.%c * stereo.x * (wpos - stereo.y) * stereoPos%dMul.z;", 
 											 uuidVar, ObjectPos_MUL2.c_str(), 
 											 op2, spotPosDecl[0], uuidVar,
 											 op3, spotPosDecl[1], uuidVar,
@@ -2194,10 +2194,10 @@ public:
 							char buf[512];
 							if (MatrixPos_MUL1.empty())
 								MatrixPos_MUL1 = string("1,1,1");
-							sprintf(buf, "\n  float3 stereoMat%dMul = float3(%s);"
-										 "\n  %s -= viewDirection.x * stereoParams.x * (wpos - stereoParams.y) * stereoMat%dMul.x;"
-										 "\n  %s -= viewDirection.y * stereoParams.x * (wpos - stereoParams.y) * stereoMat%dMul.y;"
-										 "\n  %s -= viewDirection.z * stereoParams.x * (wpos - stereoParams.y) * stereoMat%dMul.z;",
+							sprintf(buf, "\nfloat3 stereoMat%dMul = float3(%s);"
+										 "\n%s -= viewDirection.x * stereo.x * (wpos - stereo.y) * stereoMat%dMul.x;"
+										 "\n%s -= viewDirection.y * stereo.x * (wpos - stereo.y) * stereoMat%dMul.y;"
+										 "\n%s -= viewDirection.z * stereo.x * (wpos - stereo.y) * stereoMat%dMul.z;",
 										  uuidVar, MatrixPos_MUL1.c_str(), 
 										  regName1.c_str(), uuidVar,
 										  regName2.c_str(), uuidVar,
