@@ -73,5 +73,9 @@ void main(
   o3.z = 1.525902189e-005 * r0.x;
   r0.xy = v1.xy;
   o3.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o2.x += stereo.x * (o2.w - stereo.y);
   return;
 }

@@ -1,0 +1,145 @@
+
+cbuffer vc0 : register(b0)
+{
+  float Glow_ScrollU : packoffset(c0);
+  float Glow_ScrollV : packoffset(c1);
+  float Diffuse_ScrollU : packoffset(c2);
+  float Diffuse_ScrollV : packoffset(c3);
+  float4 Diffuse_Color : packoffset(c4);
+  float Self_Illumination : packoffset(c5);
+  float Diffuse_Distortion_Amount : packoffset(c6);
+  float Distortion_ScrollU : packoffset(c7);
+  float Distortion_ScrollV : packoffset(c8);
+  float4 Glow_Color : packoffset(c9);
+  float Glow_Falloff_Power : packoffset(c10);
+  float Main_Opacity : packoffset(c11);
+  float Glow_Falloff_Inversion : packoffset(c12);
+  float Distortion_Amount : packoffset(c13);
+  float Fade_Distance : packoffset(c14);
+  float Angle_Power : packoffset(c15);
+  float Soft_Fade_Alpha : packoffset(c16);
+  float Alpha_Falloff_Amount : packoffset(c17) = float(0.000000e+000);
+  float Alpha_Falloff_Power : packoffset(c18) = float(1.000000e+000);
+  float Alpha_ScrollU : packoffset(c19);
+  float Alpha_ScrollV : packoffset(c20);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float Reflection_Plane_Height : packoffset(c30);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : NORMAL0,
+  float3 v3 : TANGENT0,
+  int2 v4 : TEXCOORD1,
+  int2 v5 : TEXCOORD2,
+  float4 v6 : POSITION2,
+  float4 v7 : POSITION3,
+  float4 v8 : POSITION4,
+  float4 v9 : COLOR2,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(v6.xyzw, r1.xyzw);
+  r0.z = dot(v8.xyzw, r1.xyzw);
+  r0.y = dot(v7.xyzw, r1.xyzw);
+  r1.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r0.xzw = -eyePos.xyz + r0.xyz;
+  o4.w = -Reflection_Plane_Height + r0.y;
+  o0.xyzw = r1.xyzw;
+  o2.xyzw = r1.xyzw;
+  r1.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.x = dot(v6.xyz, r1.xyz);
+  r2.y = dot(v7.xyz, r1.xyz);
+  r2.z = dot(v8.xyz, r1.xyz);
+  r0.y = dot(r2.xyz, r2.xyz);
+  r0.y = rsqrt(r0.y);
+  r1.xyz = r2.xyz * r0.yyy;
+  o1.xyz = r1.xyz;
+  o4.z = dot(r0.xzw, r1.xyz);
+  r0.y = Fog_dist.x * r0.z;
+  r1.x = -1.442695022e+000 * r0.y;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.y = r1.x / r0.y;
+  r1.x = 9.999999776e-003 < abs(r0.z);
+  r0.y = r1.x ? r0.y : 1.000000000e+000;
+  r1.x = dot(r0.xzw, r0.xzw);
+  r1.x = sqrt(r1.x);
+  r1.x = Fog_dist.y * r1.x;
+  r0.y = r0.y * r1.x + -Fog_dist.w;
+  r0.y = exp2(-r0.y);
+  r0.y = min(r0.y, 1.000000000e+000);
+  o3.w = 1.000000000e+000 + -r0.y;
+  r1.x = -objTM._m03;
+  r1.y = -objTM._m13;
+  r1.z = -objTM._m23;
+  o3.xyz = eyePos.xyz + r1.xyz;
+  r1.xyz = v3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.x = dot(v6.xyz, r1.xyz);
+  r2.y = dot(v7.xyz, r1.xyz);
+  r2.z = dot(v8.xyz, r1.xyz);
+  r0.y = dot(r2.xyz, r2.xyz);
+  r0.y = rsqrt(r0.y);
+  r1.xyz = r2.xyz * r0.yyy;
+  o4.x = dot(r0.xzw, r1.xyz);
+  o4.y = 0.000000000e+000;
+  r0.xy = v5.xy;
+  r0.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r0.z = Time.x * 1.000000047e-003;
+  r0.z = frac(r0.z);
+  r0.w = Glow_ScrollU * r0.z;
+  o5.z = r0.w * 1.000000000e+001 + r0.x;
+  r0.x = Glow_ScrollV * r0.z;
+  o5.w = r0.x * 1.000000000e+001 + r0.y;
+  r0.x = Diffuse_ScrollU * r0.z;
+  r0.yw = v1.xy;
+  r0.yw = float2(9.765625e-004,9.765625e-004) * r0.yw;
+  o5.x = r0.x * 1.000000000e+001 + r0.y;
+  r0.x = Diffuse_ScrollV * r0.z;
+  o5.y = r0.x * 1.000000000e+001 + r0.w;
+  r0.x = Distortion_ScrollU * r0.z;
+  o6.x = r0.x * 1.000000000e+001 + r0.y;
+  r0.x = Distortion_ScrollV * r0.z;
+  o6.y = r0.x * 1.000000000e+001 + r0.w;
+  r0.x = Alpha_ScrollU * r0.z;
+  r0.y = Alpha_ScrollV * r0.z;
+  r0.zw = v4.xy;
+  r0.zw = float2(9.765625e-004,9.765625e-004) * r0.zw;
+  o6.z = r0.x * 1.000000000e+001 + r0.z;
+  o6.w = r0.y * 1.000000000e+001 + r0.w;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o2.x += stereo.x * (o2.w - stereo.y);
+  return;
+}

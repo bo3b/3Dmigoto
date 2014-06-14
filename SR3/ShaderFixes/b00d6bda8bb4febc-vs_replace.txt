@@ -1,0 +1,294 @@
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float4x4 Inv_proj_matrix : packoffset(c4);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 Eye_orient : packoffset(c11);
+  row_major float3x4 objTM : packoffset(c16);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float2 Z_dimensions : packoffset(c0);
+  float4 Diffuse_color : packoffset(c1);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float4 Ambient_color : packoffset(c5);
+  float Self_illum : packoffset(c6);
+  float4 VFX_material_tint : packoffset(c7);
+  float4 Parametric_particle_constants[22] : packoffset(c8);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float3 v1 : TEXCOORD0,
+  float v2 : TEXCOORD1,
+  float2 v3 : TEXCOORD2,
+  float v4 : TEXCOORD3,
+  float v5 : TEXCOORD4,
+  float4 v6 : COLOR0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float2 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask;
+  r0.xy = v6.wx * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.z = Parametric_particle_constants[13].w * r0.x + Parametric_particle_constants[13].z;
+  r0.z = 1.000000047e-003 * r0.z;
+  r0.z = max(r0.z, 9.999999939e-009);
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.w = log2(r0.z);
+  r0.z = r0.z == 1.000000;
+  r1.x = 6.931471825e-001 * r0.w;
+  r1.y = Parametric_particle_constants[13].x + -v4.x;
+  r0.w = r1.y * r0.w;
+  r0.w = exp2(r0.w);
+  r0.w = -1.000000000e+000 + r0.w;
+  r0.w = r0.w / r1.x;
+  r0.z = r0.z ? r1.y : r0.w;
+  r1.xzw = Parametric_particle_constants[7].xyz * r0.yyy + Parametric_particle_constants[6].xyz;
+  r2.xyz = Parametric_particle_constants[5].xyz * r0.yyy + Parametric_particle_constants[4].xyz;
+  r1.xzw = -r2.xyz + r1.xzw;
+  r0.y = r1.y * r1.y;
+  r1.xzw = r1.xzw * r0.yyy;
+  r2.xyz = r0.yyy * r2.xyz;
+  r0.y = 9.999999975e-007 + v5.x;
+  r0.y = saturate(r1.y / r0.y);
+  r0.w = v5.x < r1.y;
+  r1.xyz = r1.xzw * r0.yyy;
+  r1.xyz = float3(1.666667e-001,1.666667e-001,1.666667e-001) * r1.xyz;
+  r1.xyz = r2.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + r1.xyz;
+  r1.xyz = v1.xyz + r1.xyz;
+  r2.xyz = v0.xyz;
+  r2.w = 1.000000000e+000;
+  r3.x = dot(objTM._m00_m01_m02_m03, r2.xyzw);
+  r3.y = dot(objTM._m10_m11_m12_m13, r2.xyzw);
+  r3.z = dot(objTM._m20_m21_m22_m23, r2.xyzw);
+  r1.xyz = r1.xyz * r0.zzz + r3.xyz;
+  r1.x = r0.w ? -2147483648 : r1.x;
+  r1.y = r0.w ? -2147483648 : r1.y;
+  r1.z = r0.w ? -2147483648 : r1.z;
+  r2.xyz = Eye_orient._m00_m01_m02;
+  r4.xyz = -eyePos.xyz;
+  r4.w = 1.000000000e+000;
+  r2.w = dot(Eye_orient._m00_m01_m02_m03, r4.xyzw);
+  r1.w = 1.000000000e+000;
+  r5.x = dot(r2.xyzw, r1.xyzw);
+  r6.w = dot(Eye_orient._m10_m11_m12_m13, r4.xyzw);
+  r4.w = dot(Eye_orient._m20_m21_m22_m23, r4.xyzw);
+  r6.xyz = Eye_orient._m10_m11_m12;
+  r5.y = dot(r6.xyzw, r1.xyzw);
+  r3.w = 1.000000000e+000;
+  r2.x = dot(r2.xyzw, r3.xyzw);
+  r2.y = dot(r6.xyzw, r3.xyzw);
+  r0.zw = r5.xy + -r2.xy;
+  r2.w = dot(r0.zw, r0.zw);
+  r5.w = rsqrt(r2.w);
+  r2.w = sqrt(r2.w);
+  r0.zw = r5.ww * r0.zw;
+  r5.w = Parametric_particle_constants[15].y * r0.x + Parametric_particle_constants[11].z;
+  r6.x = Parametric_particle_constants[15].x * r0.x + Parametric_particle_constants[10].z;
+  r5.w = -r6.x + r5.w;
+  r6.yz = -Parametric_particle_constants[12].yw + float2(1.000001e+000,1.000001e+000);
+  r7.xyzw = -Parametric_particle_constants[12].yxwz + r0.yyyy;
+  r6.yz = r7.xz / r6.yz;
+  r5.w = r6.z * r5.w + r6.x;
+  r6.z = Parametric_particle_constants[14].w * r0.x + Parametric_particle_constants[9].z;
+  r0.x = Parametric_particle_constants[14].z * r0.x + Parametric_particle_constants[8].z;
+  r6.x = r6.x + -r6.z;
+  r7.xz = Parametric_particle_constants[12].yw + -Parametric_particle_constants[12].xz;
+  r7.xz = float2(1.000000e-006,1.000000e-006) + r7.xz;
+  r7.xy = r7.yw / r7.xz;
+  r6.x = r7.y * r6.x + r6.z;
+  r6.z = r6.z + -r0.x;
+  r8.x = r0.y < Parametric_particle_constants[12].y;
+  r8.y = r0.y < Parametric_particle_constants[12].x;
+  r8.z = r0.y < Parametric_particle_constants[12].w;
+  r8.w = r0.y < Parametric_particle_constants[12].z;
+  r5.w = r8.z ? r6.x : r5.w;
+  r6.xw = Parametric_particle_constants[12].xz + float2(1.000000e-006,1.000000e-006);
+  r6.xw = r0.yy / r6.xw;
+  r0.y = Parametric_particle_constants[15].z * r0.y;
+  r0.x = r6.w * r6.z + r0.x;
+  r0.x = r8.w ? r0.x : r5.w;
+  r5.w = 5.000000000e-001 * r0.x;
+  r9.xy = r5.ww * r0.zw;
+  r9.z = 0.000000000e+000;
+  r4.xyz = Eye_orient._m20_m21_m22;
+  r2.z = dot(r4.xyzw, r3.xyzw);
+  r5.z = dot(r4.xyzw, r1.xyzw);
+  r3.xyz = r9.xyz + r5.xyz;
+  r2.xyz = -r9.xyz + r2.xyz;
+  r4.x = v3.x < 5.000000e-001;
+  r4.y = v3.y < 5.000000e-001;
+  r2.x = r4.x ? r3.x : r2.x;
+  r2.y = r4.x ? r3.y : r2.y;
+  r2.z = r4.x ? r3.z : r2.z;
+  r3.x = r5.w * -r0.w;
+  r3.y = r5.w * r0.z;
+  r3.zw = float2(0.000000e+000,1.000000e+000);
+  r4.xzw = r3.xyz + r2.xyz;
+  r2.xyz = -r3.xyz + r2.xyz;
+  r2.x = r4.y ? r4.x : r2.x;
+  r2.y = r4.y ? r4.z : r2.y;
+  r2.z = r4.y ? r4.w : r2.z;
+  r3.xyz = Eye_orient._m10_m11_m12 * r2.yyy;
+  r3.xyz = Eye_orient._m00_m01_m02 * r2.xxx + r3.xyz;
+  r2.xyz = Eye_orient._m20_m21_m22 * r2.zzz + r3.xyz;
+  r2.xyz = eyePos.xyz + r2.xyz;
+  r0.z = r0.x + r2.w;
+  r3.xyz = Eye_orient._m00_m01_m02 * r0.xxx;
+  r0.xzw = Eye_orient._m10_m11_m12 * r0.zzz;
+  r0.xzw = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r0.xzw;
+  r0.xzw = r3.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + r0.xzw;
+  r3.xyz = r1.xyz + r0.xzw;
+  r1.xyz = r1.xyz + -r0.xzw;
+  r4.x = dot(r3.xyzw, projTM._m00_m10_m20_m30);
+  r4.y = dot(r3.xyzw, projTM._m01_m11_m21_m31);
+  r0.x = dot(r3.xyzw, projTM._m03_m13_m23_m33);
+  r0.xz = r4.xy / r0.xx;
+  r1.w = 1.000000000e+000;
+  r3.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  r3.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  r0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r1.xy = r3.xy / r0.ww;
+  r0.xz = r1.xy + -r0.xz;
+  r0.x = dot(r0.xz, r0.xz);
+  r0.x = sqrt(r0.x);
+  r0.z = Effect_opacity.z + -r0.x;
+  r0.x = Effect_opacity.y < r0.x;
+  r0.w = Effect_opacity.z + -Effect_opacity.y;
+  r0.z = saturate(r0.z / r0.w);
+  r1.xyzw = Parametric_particle_constants[1].xyzw + -Parametric_particle_constants[0].xyzw;
+  r1.xyzw = r6.xxxx * r1.xyzw + Parametric_particle_constants[0].xyzw;
+  r3.xyzw = Parametric_particle_constants[2].xyzw + -Parametric_particle_constants[1].xyzw;
+  r3.xyzw = r7.xxxx * r3.xyzw + Parametric_particle_constants[1].xyzw;
+  r4.xyzw = Parametric_particle_constants[3].xyzw + -Parametric_particle_constants[2].xyzw;
+  r4.xyzw = r6.yyyy * r4.xyzw + Parametric_particle_constants[2].xyzw;
+  r3.x = r8.x ? r3.x : r4.x;
+  r3.y = r8.x ? r3.y : r4.y;
+  r3.z = r8.x ? r3.z : r4.z;
+  r3.w = r8.x ? r3.w : r4.w;
+  r1.x = r8.y ? r1.x : r3.x;
+  r1.y = r8.y ? r1.y : r3.y;
+  r1.z = r8.y ? r1.z : r3.z;
+  r1.w = r8.y ? r1.w : r3.w;
+  r0.w = Effect_opacity.x * r1.w;
+  r0.z = r0.w * r0.z;
+  r0.x = r0.x ? r0.z : r0.w;
+  r3.x = 0 < Effect_opacity.z;
+  r3.y = 0 < Effect_opacity.y;
+  r0.z = (int)r3.y | (int)r3.x;
+  r0.x = r0.z ? r0.x : r0.w;
+  r0.z = r0.x < 9.999999747e-006;
+  o1.w = r0.x;
+  r2.x = r0.z ? -2147483648 : r2.x;
+  r2.y = r0.z ? -2147483648 : r2.y;
+  r2.z = r0.z ? -2147483648 : r2.z;
+  r2.w = 1.000000000e+000;
+  r3.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
+  r3.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
+  r3.z = dot(r2.xyzw, projTM._m02_m12_m22_m32);
+  r3.w = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  r0.xzw = -eyePos.xyz + r2.xyz;
+  o0.xyzw = r3.xyzw;
+  o2.xyzw = r3.xyzw;
+  r2.xyz = r1.xyz * VFX_material_tint.xyz + -r1.xyz;
+  o1.xyz = VFX_material_tint.www * r2.xyz + r1.xyz;
+  r1.xy = Parametric_particle_constants[11].xw + -Parametric_particle_constants[10].xw;
+  r1.xy = r6.yy * r1.xy + Parametric_particle_constants[10].xw;
+  r1.zw = Parametric_particle_constants[10].xw + -Parametric_particle_constants[9].xw;
+  r1.zw = r7.xx * r1.zw + Parametric_particle_constants[9].xw;
+  r1.x = r8.x ? r1.z : r1.x;
+  r1.y = r8.x ? r1.w : r1.y;
+  r1.zw = Parametric_particle_constants[9].xw + -Parametric_particle_constants[8].xw;
+  r1.zw = r6.xx * r1.zw + Parametric_particle_constants[8].xw;
+  o3.z = r8.y ? r1.z : r1.x;
+  o3.w = r8.y ? r1.w : r1.y;
+  r1.x = saturate(r0.y);
+  r1.x = 9.990000129e-001 * r1.x;
+  r1.y = Parametric_particle_constants[21].z < 1.000000000e+000;
+  r0.y = r1.y ? r1.x : r0.y;
+  r1.x = 1.000000000e+003 + -r0.y;
+  r1.y = Parametric_particle_constants[21].w >= 1;
+  r1.z = Parametric_particle_constants[21].z >= 2;
+  r0.y = r1.y ? r1.x : r0.y;
+  r1.x = round(r0.y);
+  r1.x = -r1.x + r0.y;
+  r1.x = 1.000000000e+000 + -r1.x;
+  r1.x = r1.x + -r0.y;
+  r1.y = 5.000000000e-001 * r0.y;
+  r1.w = r1.y >= -r1.y;
+  r1.y = frac(abs(r1.y));
+  r1.y = r1.w ? r1.y : -r1.y;
+  r1.y = r1.y + r1.y;
+  r1.y = floor(r1.y);
+  r1.x = r1.y * r1.x + r0.y;
+  r0.y = r1.z ? r1.x : r0.y;
+  r0.y = 9.999999939e-009 + r0.y;
+  r1.x = UV_anim_tiling.x * UV_anim_tiling.y;
+  r1.y = round(r1.x);
+  r1.x = (int)r1.x;
+  r1.x = max(r1.x, -r1.x);
+  r0.y = r1.y * r0.y;
+  r0.y = (int)r0.y;
+  r1.z = Parametric_particle_constants[15].w * v6.w;
+  r1.y = r1.z * r1.y;
+  r1.y = (int)r1.y;
+  r0.y = (int)r1.y + (int)r0.y;
+  r1.y = max(r0.y, -r0.y);
+  r0.y = (int)r0.y & 0x80000000;
+  r1.x = r1.y % r1.x;
+  r1.y = -(int)r1.x;
+  r0.y = r0.y ? r1.y : r1.x;
+  r1.x = (int)r0.y & 0x80000000;
+  r1.y = max(r0.y, -r0.y);
+  r0.y = r0.y;
+  r0.y = r0.y / UV_anim_tiling.x;
+  r0.y = round(r0.y);
+  r1.z = (int)UV_anim_tiling.x;
+  r1.z = max(r1.z, -r1.z);
+  r1.y = r1.y % r1.z;
+  r1.z = -(int)r1.y;
+  r1.x = r1.x ? r1.z : r1.y;
+  r1.x = r1.x;
+  r1.yz = float2(1.000000e+000,1.000000e+000) / UV_anim_tiling.xy;
+  r2.xy = v3.xy * r1.yz;
+  o3.x = r1.x * r1.y + r2.x;
+  o3.y = r0.y * r1.z + r2.y;
+  r0.y = Fog_dist.x * r0.z;
+  r1.x = -1.442695022e+000 * r0.y;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.y = r1.x / r0.y;
+  r1.x = 9.999999776e-003 < abs(r0.z);
+  r0.x = dot(r0.xzw, r0.xzw);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.y : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o4.x = 1.000000000e+000 + -r0.x;
+  r0.x = Time.x * 1.000000047e-003;
+  r0.x = frac(r0.x);
+  o4.y = 1.000000000e+002 * r0.x;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o2.x += stereo.x * (o2.w - stereo.y);
+  return;
+}
