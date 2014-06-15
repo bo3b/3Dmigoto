@@ -118,6 +118,6 @@ void main(
 // Auto-fixed shader
 float4 stereo = StereoParams.Load(0);
 o5.x += stereo.x * (o5.w - stereo.y);
-o8.x += stereo.x * (o8.w - stereo.y);
+// o8.x += stereo.x * (o8.w - stereo.y);
   return;
 }
