@@ -1,0 +1,238 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[17];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[13];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Normal_Map_Height : packoffset(c1);
+  float Normal_Map_TilingU : packoffset(c2);
+  float Normal_Map_TilingV : packoffset(c3);
+  float Normal_map_detail_height : packoffset(c5);
+  float Specular_Map_Amount : packoffset(c6);
+  float4 Specular_Color : packoffset(c7);
+  float4 Diffuse_Color : packoffset(c8);
+  float Normal_map_refl_offset : packoffset(c9) = float(3.000000e+002);
+  float Reflection_Amount : packoffset(c10) = float(1.000000e+000);
+  float4 Wet_mask_levels : packoffset(c11) = float4(4.400000e-002,1.600000e+001,0.000000e+000,0.000000e+000);
+  float Diffuse_scale_wet : packoffset(c12) = float(5.000000e-001);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+  float4 Ground_reflection_coef : packoffset(c15);
+  float4 Hood_Control : packoffset(c16);
+}
+SamplerState Normal_MapSampler_s : register(s0);
+SamplerState Detail_Normal_MapSampler_s : register(s1);
+SamplerState Diffuse_MapSampler_s : register(s2);
+SamplerState Reflection_Mask_MapSampler_s : register(s3);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+SamplerState Planar_Reflection_MapSampler_s : register(s15);
+Texture2D<float4> Normal_MapSampler : register(t0);
+Texture2D<float4> Detail_Normal_MapSampler : register(t1);
+Texture2D<float4> Diffuse_MapSampler : register(t2);
+Texture2D<float4> Reflection_Mask_MapSampler : register(t3);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+Texture2D<float4> Planar_Reflection_MapSampler : register(t15);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask;
+  r0.xy = v2.xy / v2.ww; //v2.xy / v2.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.x = cb4[9].z * r0.x;
+  r0.y = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r1.y = cb4[9].w * r0.y;
+  r1.x = 5.000000000e-001 * r0.x;
+  r0.xy = float2(-5.000000e-001,-5.000000e-001) + r1.xy;
+  r0.z = floor(r0.x);
+  r0.w = floor(r0.y);
+  r0.xy = r0.xy + -r0.zw;
+  r0.zw = float2(5.000000e-001,5.000000e-001) + r0.zw;
+  r1.xy = r0.zw * cb4[9].xy + cb4[9].xy;
+  r1.zw = cb4[9].xy * r0.zw;
+  r2.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.xy).xzwy;
+  r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.zw).xyzw;
+  r2.x = r3.y;
+  r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.xw).xyzw;
+  r4.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.zy).xyzw;
+  r2.z = r4.y;
+  r2.y = r3.y;
+  r3.xyzw = -v5.wwww + r2.xyzw;
+  r2.x = 5.000000e-001 >= r2.x;
+  r2.y = 5.000000e-001 >= r2.y;
+  r2.z = 5.000000e-001 >= r2.z;
+  r2.w = 5.000000e-001 >= r2.w;
+  r2.x = r2.x ? 1 : 0;
+  r2.y = r2.y ? 1 : 0;
+  r2.z = r2.z ? 1 : 0;
+  r2.w = r2.w ? 1 : 0;
+  r3.x = 1.220722e-005 >= abs(r3.x);
+  r3.y = 1.220722e-005 >= abs(r3.y);
+  r3.z = 1.220722e-005 >= abs(r3.z);
+  r3.w = 1.220722e-005 >= abs(r3.w);
+  r3.x = r3.x ? 1 : 0;
+  r3.y = r3.y ? 1 : 0;
+  r3.z = r3.z ? 1 : 0;
+  r3.w = r3.w ? 1 : 0;
+  r2.xyzw = r3.xyzw + r2.xyzw;
+  r0.zw = r2.xy + r2.zw;
+  r0.z = r0.z >= r0.w;
+  r0.w = r0.w >= r0.z;
+  r0.w = r0.w ? 1 : 0;   								//*****************VERIFY 
+  r0.z = r0.z ? -1.000000000e+000 : -0.000000000e+000;
+  r0.z = r0.w + r0.z;
+  r0.w = r0.z == 0.000000;
+  r1.x = saturate(r0.x + r0.z);
+  r2.zw = max(r2.yw, r2.xz);
+  r0.z = r2.y + -r2.x;
+  r2.x = r2.w + -r2.z;
+  r2.y = r2.x == 0.000000;
+  r1.y = saturate(r2.x + r0.y);
+  r3.z = saturate(r0.x + r0.z);
+  r0.x = abs(r0.z) >= 1.000000000e+000;
+  r0.y = r0.w ? r2.y : 0;
+  r0.x = r0.x ? r0.y : 0;
+  r3.xw = float2(0.000000e+000,0.000000e+000);
+  r0.x = r0.x ? r3.z : r1.x;
+  r0.y = r0.x ? r3.w : r1.y;
+  r0.zw = cb4[9].xy;
+  r0.xy = r0.xy * r0.zw + r1.zw;
+  r0.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r0.xy).xyzw;
+  r0.xyzw = max(r0.xyzw, float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.x = dot(r0.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.x = max(r1.x, 1.000000047e-003);
+  r0.w = r0.w / r1.x;
+  r1.xyz = r0.xyz * r0.www;
+  r2.xy = -cb4[16].xz + v3.xz;
+  r0.w = dot(r2.xy, r2.xy);
+  r0.w = sqrt(r0.w);
+  r1.w = max(r0.w, 3.000000000e+001);
+  r0.w = -Time.x + r0.w;
+  r1.w = min(r1.w, 4.000000000e+001);
+  r1.w = -3.000000000e+001 + r1.w;
+  r1.w = -r1.w * 1.000000015e-001 + 1.000000000e+000;
+  r2.xyzw = Reflection_Mask_MapSampler.Sample(Reflection_Mask_MapSampler_s, v7.xy).xyzw;
+  r0.w = r2.y * 1.000000000e+001 + r0.w;
+  r0.w = sin(r0.w);
+  r0.w = 2.500000037e-002 * r0.w;
+  r0.w = sin(r0.w);
+  r0.w = max(r0.w, 0.000000000e+000);
+  r0.w = cb4[16].y * r0.w;
+  r3.y = r0.w * r1.w;
+  r2.yw = v7.xy + r3.xy;
+  r4.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, r2.yw).xyzw;
+  r3.xzw = saturate(r4.xyz);
+  r3.xzw = cb0[7].xyz * r3.xzw;
+  r3.xzw = cb0[6].xxx * r3.xzw;
+  r1.xyz = r3.xzw * r1.xyz;
+  r5.xyzw = Normal_MapSampler.Sample(Normal_MapSampler_s, v7.xy).xyzw;
+// r5.xyzw = float4(0,0,0,0);
+  r5.yzw = r5.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r5.x = r5.y * r5.w;
+  r0.w = dot(r5.xz, -r5.xz);
+  r0.w = saturate(1.000000000e+000 + r0.w);
+  r6.z = sqrt(r0.w);
+// r6.z = 0;
+  r7.xyzw = Detail_Normal_MapSampler.Sample(Detail_Normal_MapSampler_s, v7.zw).xyzw;
+  r7.xyz = r7.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r7.w = r7.x * r7.z;
+  r0.w = 1.000000000e+000 + -r2.x;
+  r0.w = cb0[5].x * r0.w;
+  r6.xy = -r7.yw * r0.ww + -r5.zx;
+  r0.w = dot(r6.xyz, r6.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xzw = r6.xyz * r0.www;
+  r5.xyz = v1.xyz * r3.zzz;
+  r5.xyz = r3.xxx * v6.xyz + r5.xyz;
+  r3.xzw = r3.www * v5.xyz + r5.xyz;
+  r0.w = dot(r3.xzw, r3.xzw);
+  r0.w = rsqrt(r0.w);
+  r2.yw = r3.xw * r0.ww;
+  r0.w = r2.z * r2.y;
+  r0.w = saturate(r0.w * 2.000000030e-001 + r2.z);
+  r3.xzw = r4.xyz * cb0[8].xyz + -cb0[11].xxx;
+  r3.xzw = max(r3.xzw, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r3.xzw = cb0[11].yyy * r3.xzw;
+  r3.xzw = min(r3.xzw, float3(1.000000e+000,1.000000e+000,1.000000e+000));
+  r3.xzw = saturate(r3.xzw + r0.www);
+  r1.w = -1.000000000e+000 + r2.x;
+  r2.x = saturate(-r2.z * 1.500000000e+000 + 1.000000000e+000);
+  r1.w = cb4[15].z * r1.w + 1.000000000e+000;
+  r3.xzw = r3.xzw * r1.www;
+  r1.w = dot(float3(3.000000e-001,6.000000e-001,1.000000e-001), r3.xzw);
+  r2.z = cb0[10].x * v4.w;
+  r2.z = cb4[15].y * r2.z;
+  r1.w = r2.z * r1.w;
+  r2.z = cb4[15].x * cb0[9].x;
+  r2.yz = r2.yw * r2.zz;
+  r3.xz = float2(1.000000e+000,1.000000e+000) / Target_dimensions.xy;
+  r2.yz = r3.xz * r2.yz;
+  r2.w = 1.000000000e+002 / v3.w;
+  r2.w = min(r2.w, 1.000000000e+000);
+  r2.yz = r2.yz * r2.ww;
+  r3.xz = v4.xy / v4.zz;
+  r5.xy = r3.xz * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r5.z = 1.000000000e+000 + -r5.y;
+  r2.xy = r2.yz * r2.xx + r5.xz;
+  r2.xyzw = Planar_Reflection_MapSampler.Sample(Planar_Reflection_MapSampler_s, r2.xy).xyzw;
+  r2.xyz = r2.xyz / cb4[1].xyz;
+  r2.xyz = r2.xyz * r1.www;
+  r1.w = saturate(cb4[15].z + r0.w);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r2.w = 1.000000000e+000 + -r1.w;
+  r3.xzw = r2.xyz * r1.www;
+  r2.xyz = r2.xyz * r2.www;
+  r1.xyz = r2.xyz * r1.xyz;
+  r0.xyz = r0.xyz * r0.www + r2.xyz;
+  r0.xyz = r1.xyz * cb4[15].www + r0.xyz;
+  r0.w = cb4[16].y + -7.500000000e-001;
+  r0.w = max(r0.w, 0.000000000e+000);
+  r0.w = r0.w * r3.y;
+  r0.w = 8.000000000e+001 * r0.w;
+  r1.xyz = cb0[8].xyz * r4.xyz;
+  r2.xyz = -r4.xyz * cb0[8].xyz + float3(5.140000e-001,8.400000e-002,8.460000e-001);
+  r1.xyz = r0.www * r2.xyz + r1.xyz;
+  r0.w = -cb0[12].x + 1.000000000e+000;
+  r0.w = r2.w * r0.w + cb0[12].x;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * r0.xyz + r3.xzw;
+  r0.w = 1.000000000e+000 + -v6.w;
+  r0.xyz = r0.www * r0.xyz;
+  r0.xyz = v6.www * cb4[4].xyz + r0.xyz;
+  r0.w = 1.000000000e+000;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

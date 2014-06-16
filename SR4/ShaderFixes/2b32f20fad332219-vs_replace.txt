@@ -8,8 +8,8 @@ cbuffer cb2 : register(b2)
 
 cbuffer vc2 : register(b2)
 {
-  float3 Prim_resolution_scale : packoffset(c32);
-  // float4 Prim_resolution_scale : packoffset(c32);
+  // float3 Prim_resolution_scale : packoffset(c32);
+  float4 Prim_resolution_scale : packoffset(c32);
 }
 
 Texture2D<float4> StereoParams : register(t125);

@@ -1,3 +1,4 @@
+//No fix for low lighting
 cbuffer cb0 : register(b0)
 {
   float4 cb0[4];
@@ -48,7 +49,8 @@ void main(
   out float4 o4 : TEXCOORD3,
   out float4 o5 : TEXCOORD4,
   out float4 o6 : TEXCOORD5,
-  out float4 o7 : TEXCOORD6)
+  out float4 o7 : TEXCOORD6,
+  out float4 o8 : TEXCOORD7)
 {
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask;
@@ -64,16 +66,18 @@ void main(
   r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
   r2.xzw = r0.xzw;
 
-
 //Mike_ar69 - Stereo Shift
 float4 r21;
 float4 stereoParams = StereoParams.Load(0);
 r21.xyzw = r1.xyzw;
-r1.x += stereoParams.x * (r1.w - stereoParams.y);
-o0.xyzw = r21.xyzw;
 
+r1.x += stereoParams.x * (r1.w - stereoParams.y);
+
+o0.xyzw = r21.xyzw;
+o8.xyzw = r21.xyzw;
 
   o2.xyzw = r1.xyzw;
+  
   r1.xyzw = v2.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r3.x = dot(v4.xyz, r1.xyz);
   r3.y = dot(v5.xyz, r1.xyz);
@@ -113,6 +117,7 @@ o0.xyzw = r21.xyzw;
   o4.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
   o4.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
   o4.z = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  
   r0.y = Fog_dist.x * r0.z;
   r1.x = -1.442695022e+000 * r0.y;
   r1.x = exp2(r1.x);

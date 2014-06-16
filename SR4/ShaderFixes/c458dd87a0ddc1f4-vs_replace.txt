@@ -1,4 +1,4 @@
-//NO
+//Removes shadow border
 cbuffer vc2 : register(b2)
 {
   float4x4 projTM : packoffset(c0);
@@ -29,9 +29,11 @@ float4 r10;
   r10.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
   r10.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
   r10.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
-  
-// r10.x += stereoParams.x * (r10.w - stereoParams.y);
-
+ 
+// if(r10.w == 1.0)
+// {
+	// r10.x -= stereoParams.x * (r10.w - stereoParams.y);
+// }
 o0.xyzw = r10.xyzw;  
 
   return;

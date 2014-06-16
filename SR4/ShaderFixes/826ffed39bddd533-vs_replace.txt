@@ -76,7 +76,7 @@ void main(
   r4.y = r0.x == 2;
   r4.z = r0.x == 3;
   r0.x = r4.x ? 0 : 1;
-  r0.w = r4.x ? 1 : 1;
+  r0.w = r4.x ? 1 : 0;
   r0.x = r4.y ? 0 : r0.x;
   r0.w = r4.y ? 0 : r0.w;
   r0.x = r4.z ? 1 : r0.x;
