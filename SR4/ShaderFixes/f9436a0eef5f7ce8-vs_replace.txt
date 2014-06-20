@@ -137,9 +137,11 @@ void main(
   r5.yzw = v1.xyz + r5.yzw;
   r5.yzw = r5.yzw * r1.xxx + r7.xyz;
   r0.y = v5.x < r1.w;
-  r5.y = r0.y ? 1.0E+024 : r5.y;
-  r5.z = r0.y ? 1.0E+024 : r5.z;
-  r5.w = r0.y ? 1.0E+024 : r5.w;
+
+  // patched by hand to generate same ASM constants
+  r5.y = r0.y ? 1.000000000e+024 : r5.y;
+  r5.z = r0.y ? 1.000000000e+024 : r5.z;
+  r5.w = r0.y ? 1.000000000e+024 : r5.w;
   r6.xyz = r5.yzw + r2.xyz;
   r2.xyz = r5.yzw + -r2.xyz;
   r6.w = 1.000000000e+000;
@@ -203,9 +205,11 @@ void main(
   r0.yz = r1.yw * r0.wz;
   r5.yzw = r0.yyy * r7.xyz + r5.yzw;
   r5.yzw = r0.zzz * r6.yzw + r5.yzw;
-  r7.x = r1.x ? 1.0E+024 : r5.y;
-  r7.y = r1.x ? 1.0E+024 : r5.z;
-  r7.z = r1.x ? 1.0E+024 : r5.w;
+
+  // patched by hand to generate same ASM constants
+  r7.x = r1.x ? 1.000000000e+024 : r5.y;
+  r7.y = r1.x ? 1.000000000e+024 : r5.z;
+  r7.z = r1.x ? 1.000000000e+024 : r5.w;
   r7.w = 1.000000000e+000;
   r8.x = dot(r7.xyzw, projTM._m00_m10_m20_m30);
   r8.y = dot(r7.xyzw, projTM._m01_m11_m21_m31);

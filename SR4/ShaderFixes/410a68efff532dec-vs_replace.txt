@@ -79,11 +79,14 @@ void main(
   r3.z = dot(objTM._m20_m21_m22_m23, r2.xyzw);
   r1.xyw = r1.xyw * r0.www + r3.xyz;
   
-  r1.x = r1.z ? 1.0E+024 : r1.x;
-  r1.y = r1.z ? 1.0E+024 : r1.y;
-  r1.z = r1.z ? 1.0E+024 : r1.w;
+  // bo3b: patched to generate same ASM constants
+  r1.x = r1.z ? 1.000000000e+024 : r1.x;
+  r1.y = r1.z ? 1.000000000e+024 : r1.y;
+  r1.z = r1.z ? 1.000000000e+024 : r1.w;
 
-
+  //r1.x = r1.z ? 1 : r1.x;
+  //r1.y = r1.z ? 1 : r1.y;
+  //r1.z = r1.z ? 1 : r1.w;
   
   r2.xyz = Eye_orient._m00_m01_m02;
   r4.xyz = -eyePos.xyz;
@@ -197,9 +200,14 @@ void main(
   r1.xyz = Eye_orient._m20_m21_m22 * r1.zzz + r1.xyw;
   r2.xyz = eyePos.xyz + r1.xyz;
   
-  r2.x = r2.w ? 1.0E+024 : r2.x;
-  r2.y = r2.w ? 1.0E+024 : r2.y;
-  r2.z = r2.w ? 1.0E+024 : r2.z;
+  //r2.x = r2.w ? 1 : r2.x;
+  //r2.y = r2.w ? 1 : r2.y;
+  //r2.z = r2.w ? 1 : r2.z;
+ 
+  // bo3b: patched by hand to generate same ASM contants
+  r2.x = r2.w ? 1.000000000e+024 : r2.x;
+  r2.y = r2.w ? 1.000000000e+024 : r2.y;
+  r2.z = r2.w ? 1.000000000e+024 : r2.z;
   
   r2.w = 1.000000000e+000;
   r4.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);

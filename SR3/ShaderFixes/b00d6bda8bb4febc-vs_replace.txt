@@ -78,9 +78,9 @@ void main(
   r3.y = dot(objTM._m10_m11_m12_m13, r2.xyzw);
   r3.z = dot(objTM._m20_m21_m22_m23, r2.xyzw);
   r1.xyz = r1.xyz * r0.zzz + r3.xyz;
-  r1.x = r0.w ? -2147483648 : r1.x;
-  r1.y = r0.w ? -2147483648 : r1.y;
-  r1.z = r0.w ? -2147483648 : r1.z;
+  r1.x = r0.w ? 1.000000000e+024 : r1.x;
+  r1.y = r0.w ? 1.000000000e+024 : r1.y;
+  r1.z = r0.w ? 1.000000000e+024 : r1.z;
   r2.xyz = Eye_orient._m00_m01_m02;
   r4.xyz = -eyePos.xyz;
   r4.w = 1.000000000e+000;
@@ -195,9 +195,9 @@ void main(
   r0.x = r0.z ? r0.x : r0.w;
   r0.z = r0.x < 9.999999747e-006;
   o1.w = r0.x;
-  r2.x = r0.z ? -2147483648 : r2.x;
-  r2.y = r0.z ? -2147483648 : r2.y;
-  r2.z = r0.z ? -2147483648 : r2.z;
+  r2.x = r0.z ? 1.000000000e+024 : r2.x;
+  r2.y = r0.z ? 1.000000000e+024 : r2.y;
+  r2.z = r0.z ? 1.000000000e+024 : r2.z;
   r2.w = 1.000000000e+000;
   r3.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
   r3.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
