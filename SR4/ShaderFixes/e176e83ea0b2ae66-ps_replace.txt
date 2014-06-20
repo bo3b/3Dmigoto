@@ -70,7 +70,7 @@ float4 r21, r22;
 
   
 r21.xyz = -r1.www * r1.xyz;
-r21.x +=  stereoParams.x * (r0.w - stereoParams.y)*v3; //0.62;
+// r21.x +=  stereoParams.x * (r0.w - stereoParams.y)*v3; //0.62;
 
 r22.xyz = -r21.xyz/r1.www;
 

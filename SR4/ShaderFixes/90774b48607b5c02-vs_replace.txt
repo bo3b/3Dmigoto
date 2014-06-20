@@ -1,3 +1,4 @@
+//Reflections
 
 cbuffer vc2 : register(b2)
 {
@@ -9,6 +10,7 @@ cbuffer vc2 : register(b2)
 }
 
 Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
 
 void main(
   float4 v0 : POSITION0,
@@ -21,6 +23,12 @@ void main(
 {
   float4 r0,r1,r2;
   uint4 bitmask;
+  
+//mike_ar69 
+float4 stereoParams = StereoParams.Load(0);
+float4 iniParams = IniParams.Load(0);
+float4 r21;
+
   r0.xyz = Eye_orient._m10_m11_m12 * v1.yyy;
   r0.xyz = Eye_orient._m00_m01_m02 * v1.xxx + r0.xyz;
   r0.xyz = -Eye_orient._m20_m21_m22 * float3(1.000000e-001,1.000000e-001,1.000000e-001) + r0.xyz;
@@ -38,11 +46,10 @@ void main(
 
 
 //Mike_ar69 - Stereo Shift
-float4 r21;
-float4 stereoParams = StereoParams.Load(0);
 r21.xyzw = r1.xyzw;
-r1.x += stereoParams.x * (r1.w - stereoParams.y);
-o0.xyzw = r21.xyzw;
+r1.x += stereoParams.x * (r1.w - stereoParams.y)*iniParams.y;
+o0.xyzw = r1.xyzw;
+
 
 
   o2.xyzw = r1.xyzw;

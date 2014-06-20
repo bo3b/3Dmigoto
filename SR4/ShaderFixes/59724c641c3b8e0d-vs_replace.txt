@@ -141,13 +141,9 @@ void main(
   r1.yzw = r5.yzw * r1.zzz + r7.xyz;
   r2.w = v5.x < r0.z;
   
-  // r1.y = r2.w ? -2147483648 : r1.y;
-  // r1.z = r2.w ? -2147483648 : r1.z;
-  // r1.w = r2.w ? -2147483648 : r1.w;
-
-  r1.y = r2.w ? -2147483648 : r1.y;
-  r1.z = r2.w ? -2147483648 : r1.z;
-  r1.w = r2.w ? -2147483648 : r1.w;
+  r1.y = r2.w ? 1.0E+024 : r1.y;
+  r1.z = r2.w ? 1.0E+024 : r1.z;
+  r1.w = r2.w ? 1.0E+024 : r1.w;
   
   r6.xyz = r1.yzw + r2.xyz;
   r2.xyz = r1.yzw + -r2.xyz;
@@ -213,13 +209,9 @@ void main(
   r1.yzw = r0.zzz * r7.xyz + r1.yzw;
   r1.yzw = r0.xxx * r5.yzw + r1.yzw;
   
-  // r7.x = r2.y ? -2147483648 : r1.y;
-  // r7.y = r2.y ? -2147483648 : r1.z;
-  // r7.z = r2.y ? -2147483648 : r1.w;
-
-  r7.x = r2.y ? -2147483648 : r1.y;
-  r7.y = r2.y ? -2147483648 : r1.z;
-  r7.z = r2.y ? -2147483648 : r1.w;
+  r7.x = r2.y ? 1.0E+024 : r1.y;
+  r7.y = r2.y ? 1.0E+024 : r1.z;
+  r7.z = r2.y ? 1.0E+024 : r1.w;
   
   r7.w = 1.000000000e+000;
   r8.x = dot(r7.xyzw, projTM._m00_m10_m20_m30);

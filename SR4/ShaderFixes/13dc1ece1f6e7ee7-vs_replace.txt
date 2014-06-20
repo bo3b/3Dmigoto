@@ -1,4 +1,4 @@
-
+//DISABLE FOR NON SLI
 Texture2D<float4> StereoParams : register(t125);
 
 void main(

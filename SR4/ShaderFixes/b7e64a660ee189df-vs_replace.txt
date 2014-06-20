@@ -76,13 +76,9 @@ void main(
   r3.z = dot(objTM._m20_m21_m22_m23, r2.xyzw);
   r1.xyz = r1.xyz * r0.zzz + r3.xyz;
   
-  // r1.x = r0.w ? -2147483648 : r1.x;
-  // r1.y = r0.w ? -2147483648 : r1.y;
-  // r1.z = r0.w ? -2147483648 : r1.z;
-
-  r1.x = r0.w ? 1 : r1.x;
-  r1.y = r0.w ? 1 : r1.y;
-  r1.z = r0.w ? 1 : r1.z;
+  r1.x = r0.w ? 1.0E+024 : r1.x;
+  r1.y = r0.w ? 1.0E+024 : r1.y;
+  r1.z = r0.w ? 1.0E+024 : r1.z;
   
   r2.xyz = Eye_orient._m00_m01_m02;
   r4.xyz = -eyePos.xyz;
@@ -199,13 +195,9 @@ void main(
   r1.x = r0.w < 9.999999747e-006;
   o1.w = r0.w;
   
-  // r1.x = r1.x ? -2147483648 : r2.x;
-  // r1.y = r1.x ? -2147483648 : r2.y;
-  // r1.z = r1.x ? -2147483648 : r2.z;
-
-  r1.x = r1.x ? 1 : r2.x;
-  r1.y = r1.x ? 1 : r2.y;
-  r1.z = r1.x ? 1 : r2.z;
+  r1.x = r1.x ? 1.0E+024 : r2.x;
+  r1.y = r1.x ? 1.0E+024 : r2.y;
+  r1.z = r1.x ? 1.0E+024 : r2.z;
   
   r1.w = 1.000000000e+000;
   r2.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);

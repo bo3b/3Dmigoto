@@ -1,5 +1,4 @@
 //HUD Cross Hair
-
 cbuffer cb2 : register(b2)
 {
   float4 cb2[33];
@@ -8,8 +7,7 @@ cbuffer cb2 : register(b2)
 
 cbuffer vc2 : register(b2)
 {
-  // float3 Prim_resolution_scale : packoffset(c32);
-  float4 Prim_resolution_scale : packoffset(c32);
+  float3 Prim_resolution_scale : packoffset(c32);
 }
 
 Texture2D<float4> StereoParams : register(t125);
@@ -31,9 +29,10 @@ float4 iniParams = IniParams.Load(0);
 float4 r10;
 
   r0.xy = cb2[32].xy * v0.xy;
+
   r10.xy = r0.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
   r10.zw = float2(1.000000e+000,1.000000e+000);
-  
+
 r10.x +=  stereoParams.x * iniParams.x; 
 o0.xyzw = r10.xyzw;
   
