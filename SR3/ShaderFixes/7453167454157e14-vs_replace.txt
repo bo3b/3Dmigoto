@@ -1,3 +1,5 @@
+// Blood pools and blood spatters
+
 cbuffer cb2 : register(b2)
 {
   float4 cb2[50];
@@ -101,5 +103,15 @@ void main(
 // Auto-fixed shader
 float4 stereo = StereoParams.Load(0);
 o8.x += stereo.x * (o8.w - stereo.y);
+
+// texture 5, 9, 10 all affect pool.
+// Doesn't matter here though. Because the pixel shader
+// does deferred rendering.
+
+// o10 = 0;
+// o9.x += stereo.x * (o9.w - stereo.y);
+// o5 = 0;
+// o9 = 0;
+// o5.x += stereo.x * (o5.w - stereo.y);
   return;
 }
