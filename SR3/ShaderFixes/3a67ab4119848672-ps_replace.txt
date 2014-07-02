@@ -62,6 +62,7 @@ float4 shift;
 
 shift.xyz = v2.xyz * r0.www;					//	<-- Set r21 to be the NEGATIVE of what is on the line with IR_Light_Pos
 shift.x -=  stereo.x * (r0.w - stereo.y) * v3;	//0.62;	<-- This is a "-=" expression becasue we have "IR_Light_Pos"
+// pretty sure these are not needed.  causes weird angle lighting.
 // r0.y = shift.x;
 // r0.z = shift.y;
 // r0.w = shift.z;

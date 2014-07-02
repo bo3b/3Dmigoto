@@ -1,4 +1,5 @@
 // Skybox, horizon clouds.
+// all one skybox, bowl like.
 
 cbuffer vc0 : register(b0)
 {
@@ -37,7 +38,7 @@ void main(
 
 // bo3b: move clouds to max depth, 
 float4 stereo = StereoParams.Load(0);
-// o0.x += stereo.x * (stereo.y);  not necessary? Makes clouds like a bowl.
+o0.x += stereo.x * (stereo.y); 
 
   o1.xyz = v0.xyz;
   r0.y = r0.x * -1.872929977e-003 + 7.426100224e-002;
