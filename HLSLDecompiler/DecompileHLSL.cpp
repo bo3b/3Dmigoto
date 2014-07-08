@@ -1231,7 +1231,7 @@ public:
 		else if (absolute)
 			sprintf(right, "abs(%s)", right2);
 		else
-			strcpy_s(right, sizeof(right), right2);
+			strcpy_s(right, 128, right2);		// All input params are 128 char arrays, like op1, op2, op3
 	}
 
 	void CollectBrackets(char *op1, char *op2, char *op3, char *op4, char *op5, char *op6, char *op7, char *op8, char *op9, char *op10, char *op11, char *op12, char *op13, char *op14, char *op15)
