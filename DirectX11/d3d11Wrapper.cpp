@@ -278,11 +278,17 @@ struct Globals
 static Globals *G;
 
 
-static char *LogTime()
+static string LogTime()
 {
+	string timeStr;
+	char cTime[32];
+	tm timestruct;
+
 	time_t ltime = time(0);
-	char *timeStr = asctime(localtime(&ltime));
-	timeStr[strlen(timeStr) - 1] = 0;
+	localtime_s(&timestruct, &ltime);
+	asctime_s(cTime, sizeof(cTime), &timestruct);
+
+	timeStr = cTime;
 	return timeStr;
 }
 
@@ -319,7 +325,7 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
 		{
 			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
-			if (LogFile) fprintf(LogFile, "\nD3D11 DLL starting init  -  %s\n\n", LogTime());
+			if (LogFile) fprintf(LogFile, "\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
 			fprintf(LogFile, "----------- d3dx.ini settings -----------\n");
 		}
 
@@ -382,10 +388,10 @@ void InitializeDLL()
 		if (read) swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
 		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile);
 		if (read) swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
-		read = GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	// in DXGI dll
+		read = GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	 // in DXGI dll
 		G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile);
 		G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
-		bool allowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile);	// in DXGI dll
+		bool allowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1; // in DXGI dll
 
 		if (LogFile)
 		{
@@ -400,7 +406,7 @@ void InitializeDLL()
 		}
 
 		// [Stereo]
-		bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile);				// in NVapi dll
+		bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll
 		G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;
 		G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
 		G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
@@ -578,7 +584,7 @@ void InitializeDLL()
 
 
 		// [Hunting]
-		G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile);
+		G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
 
 		// DirectInput
 		InputDevice[0] = 0;
@@ -652,7 +658,7 @@ void InitializeDLL()
 		// Todo: Not sure this is best spot.
 		G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
 		read = GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile);
-		if (read) swscanf(setting, L"%f", &G->gTuneStep);
+		if (read) swscanf_s(setting, L"%f", &G->gTuneStep);
 
 
 		if (LogFile)
@@ -688,7 +694,7 @@ void InitializeDLL()
 		for (int i = 1;; ++i)
 		{
 			if (LogFile && LogDebug) fprintf(LogFile, "Find [ShaderOverride] i=%i\n", i);
-			wchar_t id[] = L"ShaderOverridexxx", val[MAX_PATH];
+			wchar_t id[] = L"ShaderOverridexxx";
 			_itow_s(i, id + 14, 3, 10);
 			read = GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile);
 			if (!read) break;
@@ -731,7 +737,7 @@ void InitializeDLL()
 		// Texture overrides.
 		for (int i = 1;; ++i)
 		{
-			wchar_t id[] = L"TextureOverridexxx", val[MAX_PATH];
+			wchar_t id[] = L"TextureOverridexxx";
 			_itow_s(i, id + 15, 3, 10);
 			read = GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile);
 			if (!read) break;
@@ -1390,7 +1396,7 @@ static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 	FILE *fw;
 
 	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
-	fw = _wfopen(fullName, L"rb");
+	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 		{
 		fwprintf(LogFile, L"    error storing marked shader, file already exists: %s\n", fullName);
@@ -1398,7 +1404,7 @@ static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 		return false;
 		}
 
-	fw = _wfopen(fullName, L"wb");
+	_wfopen_s(&fw, fullName, L"wb");
 	if (!fw)
 	{
 		fwprintf(LogFile, L"    error storing marked shader to %s\n", fullName);
@@ -1492,7 +1498,7 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
 	
 	// Check if the file already exists.
-	f = _wfopen(fullName, L"rb");
+	_wfopen_s(&f, fullName, L"rb");
 	if (f)
 	{
 		fwprintf(LogFile, L"    Shader Mark .bin file already exists: %s\n", fullName);
@@ -1500,7 +1506,7 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 		return false;
 	}
 
-	f = _wfopen(fullName, L"wb");
+	_wfopen_s(&f, fullName, L"wb");
 	if (!f)
 	{
 		if (LogFile) fwprintf(LogFile, L"    Shader Mark could not write asm text file: %s\n", fullName);

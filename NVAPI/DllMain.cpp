@@ -204,11 +204,11 @@ static void loadDll()
 			GameConvergenceMap[from] = to;
 			GameConvergenceMapInv[to] = from;
 		}
-		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir);
-		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir);
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir);
-		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir);
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir);
+		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir) == 1;
+		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir) == 1;
+		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir) == 1;
+		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir) == 1;
+		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
 
 		if (CallsLogging()) fprintf(LogFile, "\nNVapi DLL starting init  -  %s\n\n", LogTime());
 
@@ -225,7 +225,7 @@ static void loadDll()
 		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, sysDir))
 		{
 			DWORD one = 0x01;
-			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			BOOL result = SetProcessAffinityMask(GetCurrentProcess(), one);
 			if (CallsLogging()) fprintf(LogFile, "CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
