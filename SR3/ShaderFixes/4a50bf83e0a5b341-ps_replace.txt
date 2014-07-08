@@ -1,0 +1,129 @@
+// blood spatters
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[11];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+SamplerState Decal_diffuse_mapSampler_s : register(s0);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> Decal_diffuse_mapSampler : register(t0);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  float3 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  float4 v9 : TEXCOORD8,
+  float4 v10 : TEXCOORD9,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = v8.xy / v8.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r1.y = 5.000000000e-001 * r0.x;
+  r1.xw = -r0.yy * float2(5.000000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+  r0.xy = r1.yx * cb4[9].zw + float2(-5.000000e-001,-5.000000e-001);
+  r0.y = floor(r0.x);
+  r0.z = floor(r0.y);
+  r0.x = r0.x + -r0.y;
+  r0.yz = float2(5.000000e-001,5.000000e-001) + r0.yz;
+  r2.x = r0.y * cb4[9].x + cb4[9].x;
+  r2.yz = cb4[9].xy * r0.yz;
+  r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r2.xz).xyzw;
+  r0.yz = r2.xz + -r2.yz;
+  r4.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r2.yz).xyzw;
+  r3.x = r4.y;
+  r1.x = 5.000000e-001 >= r3.x;
+  r1.z = 5.000000e-001 >= r3.y;
+  r2.xw = -v9.ww + r3.xy;
+  r2.x = 1.950103e-003 >= abs(r2.x);
+  r2.w = 1.950103e-003 >= abs(r2.w);
+  r2.x = r2.x ? 1 : 0;
+  r2.w = r2.w ? 1 : 0;
+  r1.x = r1.x ? 1 : 0;
+  r1.z = r1.z ? 1 : 0;
+  r1.xz = r2.xw + r1.xz;
+  r0.w = dot(r2.xw, float2(1.000000e+000,1.000000e+000));
+  r1.x = r1.z + -r1.x;
+  r0.x = saturate(r1.x + r0.x);
+  r0.xy = r0.xx * r0.yz + r2.yz;
+  r2.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r0.xy).xyzw;
+  r0.xyz = max(r2.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r2.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r1.yw).xyzw;
+  r1.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, r1.yw).xyzw;
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.w = cb4[10].z * r2.x + cb4[10].w;
+  r1.w = 1.000000e+000 / r1.w;
+  r2.xyz = v10.xyz * r1.www + -v1.xyz;
+  r2.xyz = v9.xyz * r2.xyz;
+  r1.w = dot(r2.xyz, v3.xyz);
+  r3.y = v5.y * r1.w;
+  r4.x = dot(r2.xyz, v2.xyz);
+  r1.w = dot(r2.xyz, v4.xyz);
+  r4.y = -1.000000000e+000;
+  r3.xz = v5.xz;
+  r2.xy = r4.xy * r3.xy + float2(5.000000e-001,5.000000e-001);
+  r1.w = r3.z * r1.w;
+  r1.w = saturate(abs(r1.w) * v7.z + v7.w);
+  r1.w = 1.000000000e+000 + -r1.w;
+  r2.xyzw = Decal_diffuse_mapSampler.Sample(Decal_diffuse_mapSampler_s, r2.xy).xyzw;
+  r2.xyzw = Diffuse_Color.xyzw * r2.xyzw;
+  r0.xyz = r2.xyz * r0.xyz;
+  r2.x = v6.w * r2.w;
+  r0.xyz = v6.xyz * r0.xyz;
+  r2.y = 1.000000000e+000 + -v10.w;
+  r0.xyz = r2.yyy * r0.xyz;
+  r3.xyz = v10.www * cb4[4].xyz + r0.xyz;
+  r0.x = dot(r1.xy, r1.xy);
+  r0.xw = min(r0.xw, float2(1.000000e+000,1.000000e+000));
+  r0.x = 1.000000000e+000 + -r0.x;
+  r1.z = sqrt(r0.x);
+  r0.x = r1.z + r1.z;
+  r4.xyz = r0.xxx * r1.xyz;
+  r4.w = -r4.z;
+  r0.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r4.xyw;
+  r1.x = dot(r0.xyz, v2.xyz);
+  r1.y = dot(r0.xyz, v3.xyz);
+  r1.z = dot(r0.xyz, v4.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.x = r1.z * r0.x;
+  r0.x = saturate(r0.x * v7.x + v7.y);
+  r0.x = r1.w * r0.x;
+  r0.x = r2.x * r0.x;
+  r3.w = saturate(r0.x * r0.w);
+  o0.xyzw = cb4[1].xyzw * r3.xyzw;
+
+// Disable blood for now.
+o0 = 0;  
+  return;
+}

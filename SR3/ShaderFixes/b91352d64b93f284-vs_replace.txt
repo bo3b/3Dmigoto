@@ -37,14 +37,7 @@ void main(
   r0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
   r0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
   o0.xyzw = r0.xyzw;
-  // o1.xyzw = r0.xyzw;
-
-// bo3b- Position is right, texture is misaligned.
-float4 tex = r0;
-float4 stereo = StereoParams.Load(0);
-tex.x += stereo.x * (tex.w - stereo.y);
-o1.xyzw = tex.xyzw;
-
+  o1.xyzw = r0.xyzw;
   r0.x = 3.264000000e+004 * v8.x;
   r2.xyzw = v2.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r0.y = r2.w * 5.000000000e-001 + 5.000000000e-001;
@@ -64,5 +57,9 @@ o1.xyzw = tex.xyzw;
   o3.y = dot(r0.xyz, IR_World2View._m01_m11_m21);
   o3.z = dot(r0.xyz, IR_World2View._m02_m12_m22);
   o3.w = v8.y;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o1.x += stereo.x * (o1.w - stereo.y);
   return;
 }

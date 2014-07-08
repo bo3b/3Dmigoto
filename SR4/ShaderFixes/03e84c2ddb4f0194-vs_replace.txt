@@ -1,3 +1,4 @@
+//No fix for low lighting
 cbuffer cb0 : register(b0)
 {
   float4 cb0[7];

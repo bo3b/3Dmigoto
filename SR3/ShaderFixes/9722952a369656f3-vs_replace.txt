@@ -1,3 +1,5 @@
+// Light spray on wall above/below lamps.
+
 cbuffer cb2 : register(b2)
 {
   float4 cb2[30];
@@ -16,7 +18,8 @@ void main(
   float2 v1 : TEXCOORD0,
   out float4 o0 : SV_Position0,
   out float2 o1 : TEXCOORD0,
-  out float3 o2 : TEXCOORD1)
+  out float3 o2 : TEXCOORD1,
+  out float  o3 : TEXCOORD2)	
 {
   float4 r0;
   uint4 bitmask;
@@ -28,5 +31,10 @@ void main(
   r0.xyzw = cb2[29].xyzw + r0.xyzw;
   r0.xyz = r0.xyz / r0.www;
   o2.xyz = r0.xyz / r0.zzz;
+
+// bo3b: Add P11 variable as output so PS can use it. 
+//  Used for both lamp shade and light spray.
+o3 = cb2[26].x;
+
   return;
 }

@@ -1,4 +1,8 @@
-//Shadows (cutscene in white house shooting the ships)
+//Shadows 
+//APPROX FIXS
+// - (cutscene in white house shooting the ships)
+// - scene in SitCom world
+
 cbuffer vc0 : register(b0)
 {
   float4 Near_clip_params : packoffset(c0);
@@ -18,7 +22,8 @@ Texture2D<float4> StereoParams : register(t125);
 void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
-  float  v3 : TEXCOORD2,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7;
@@ -26,9 +31,20 @@ void main(
   
 //mike_ar69 
 float4 stereoParams = StereoParams.Load(0);
-float4 r21;
+float4 r21, r11;
 
-  r0.xy = v1.xy / v1.ww;
+  r0.xy = v1.xy / v1.ww; //v1.xy / v1.ww;
+
+
+  
+// r11.xy = v0.xy;
+// r11.z = 1.0/1920.0;
+// r11.w = 1.0/1080.0;
+// r11.xy = r11.xy * r11.zw;
+// r11.zw = r11.zw * float2(0.5, 0.5);
+// r1.xy = r11.xy + r11.zw;
+// r0.x = (r1.x - 0.5) * 2.0;
+// r0.y = (r1.y - 0.5) * -2.0;  
   
   r1.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r1.xyzw = Depth_mapSampler.Sample(Depth_mapSampler_s_s, r1.xy).xyzw;
@@ -36,13 +52,21 @@ float4 r21;
   r1.x = -near_far_depth_params.z * r1.x + Near_clip_params.y;
   r1.x = near_far_depth_params.y / r1.x;
  
-// r21.w = r1.x; ///near_far_depth_params.y; 
+r21.w = r1.x; 
 
   r1.xy = saturate(r1.xx * Shadow_fade_params.xy + -Shadow_fade_params.zw);
   r0.w = 1.000000000e+000;
-  
-r0.x += stereoParams.x * ( -r1.x-stereoParams.y)*0.62;
-// r0.x += stereoParams.x * ( -r0.z - stereoParams.y)*0.62; //near_far_depth_params.w; //*r0.z; //0.8; //*stereoParams.y;		//Only for a fixed convergence=1 though...
+
+
+//r0.x += stereoParams.x * (-r0.z + stereoParams.y*0.9/r21.w - 0.05/(stereoParams.y*r21.w));   //GOOD DEFAULT FIT
+// r0.x += stereoParams.x * (-r0.z );// + stereoParams.y);//*0.62;  Works when C=0.185 
+
+
+// r0.x -= stereoParams.x * (v1.w );
+// r0.x += stereoParams.x * ( -r21.w)*0.05;
+r0.x += stereoParams.x * (-r0.z + stereoParams.y*0.9/r21.w - 0.05/(stereoParams.y*r21.w));  
+// r0.x += stereoParams.x * (-r0.z + stereoParams.y); //*0.62;
+// r0.x += stereoParams.x * (-r0.z - stereoParams.y)*0.62;
 
   r2.x = dot(r0.xyzw, Shadow_map_matrix._m00_m10_m20_m30);
   r2.y = dot(r0.xyzw, Shadow_map_matrix._m01_m11_m21_m31);

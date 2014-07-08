@@ -133,13 +133,14 @@ void main(
   r1.y = r1.x < 9.999999747e-006;
   o1.w = r1.x;
   
-  // r0.x = r1.y ? -2147483648 : r0.x;
-  // r0.y = r1.y ? -2147483648 : r0.y;
-  // r0.z = r1.y ? -2147483648 : r0.z;
+  // patched by hand to generate same ASM constants
+  r0.x = r1.y ? 1.000000000e+024 : r0.x;
+  r0.y = r1.y ? 1.000000000e+024 : r0.y;
+  r0.z = r1.y ? 1.000000000e+024 : r0.z;
   
-  r0.x = r1.y ? 1 : r0.x;
-  r0.y = r1.y ? 1 : r0.y;
-  r0.z = r1.y ? 1 : r0.z;
+  //r0.x = r1.y ? 1 : r0.x;
+  //r0.y = r1.y ? 1 : r0.y;
+  //r0.z = r1.y ? 1 : r0.z;
   
   r1.x = dot(objTM._m00_m01_m02, r0.xyz);
   r1.y = dot(objTM._m10_m11_m12, r0.xyz);

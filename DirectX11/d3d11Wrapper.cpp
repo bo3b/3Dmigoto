@@ -1775,6 +1775,8 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			// New binary shader code, to replace the prior loaded shader byte code. 
 			shaderCode->Release();
 			G->mReloadedShaders[oldShader].byteCode = pShaderBytecode;
+
+			if (LogFile) fprintf(LogFile, "> successfully reloaded shader: %ls\n", fileName);
 		}
 	}	// for every registered shader in mReloadedShaders 
 

@@ -1,0 +1,38 @@
+//HUD Map
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[33];
+}
+
+
+cbuffer vc2 : register(b2)
+{
+  float3 Prim_resolution_scale : packoffset(c32);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float3 v0 : POSITION0,
+  float4 v1 : COLOR0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : COLOR0)
+{
+  float4 r0;
+  uint4 bitmask;
+//mike_ar69 
+float4 stereoParams = StereoParams.Load(0);
+float4 iniParams = IniParams.Load(0);
+float4 r10;
+
+  r0.xy = cb2[32].xy * v0.xy;
+  r10.xy = r0.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
+  r10.zw = float2(1.000000e+000,1.000000e+000);
+  
+r10.x +=  stereoParams.x * iniParams.x; 
+o0.xyzw = r10.xyzw;
+
+  o1.xyzw = v1.xyzw;
+  return;
+}

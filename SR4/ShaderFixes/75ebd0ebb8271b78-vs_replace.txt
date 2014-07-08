@@ -64,7 +64,7 @@ void main(
   r2.y = r0.x == 2;
   r2.z = r0.x == 3;
   r0.x = r2.x ? 0 : 1;
-  r0.w = r2.x ? 1 : 1;
+  r0.w = r2.x ? 1 : 0;
   r0.x = r2.y ? 0 : r0.x;
   r0.w = r2.y ? 0 : r0.w;
   r0.x = r2.z ? 1 : r0.x;

@@ -132,9 +132,9 @@ void main(
   r1.x = r1.y ? r1.x : r1.z;
   r1.y = r1.x < 9.999999747e-006;
   o1.w = r1.x;
-  r0.x = r1.y ? -2147483648 : r0.x;
-  r0.y = r1.y ? -2147483648 : r0.y;
-  r0.z = r1.y ? -2147483648 : r0.z;
+  r0.x = r1.y ? 1.000000000e+024 : r0.x;
+  r0.y = r1.y ? 1.000000000e+024 : r0.y;
+  r0.z = r1.y ? 1.000000000e+024 : r0.z;
   r1.x = dot(objTM._m00_m01_m02, r0.xyz);
   r1.y = dot(objTM._m10_m11_m12, r0.xyz);
   r1.z = dot(objTM._m20_m21_m22, r0.xyz);
@@ -144,14 +144,7 @@ void main(
   r2.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
   r2.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
   o0.xyzw = r2.xyzw;
-  // o2.xyzw = r2.xyzw;
-
-// bo3b- Position is right, texture is misaligned.
-float4 tex = r2;
-float4 stereo = StereoParams.Load(0);
-tex.x += stereo.x * (tex.w - stereo.y);
-o2.xyzw = tex.xyzw;
-
+  o2.xyzw = r2.xyzw;
   r0.xyz = v1.xyz * VFX_material_tint.xyz + -v1.xyz;
   o1.xyz = VFX_material_tint.www * r0.xyz + v1.xyz;
   r0.xyz = Ambient_color.xyz * VFX_material_tint.xyz + -Ambient_color.xyz;
@@ -203,5 +196,9 @@ o2.xyzw = tex.xyzw;
   r0.x = exp2(-r0.x);
   r0.x = min(r0.x, 1.000000000e+000);
   o6.z = 1.000000000e+000 + -r0.x;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o2.x += stereo.x * (o2.w - stereo.y);
   return;
 }

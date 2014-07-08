@@ -1070,6 +1070,13 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					if (fw)
 					{
 						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
+
+						// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
+						FILETIME ftWrite;
+						GetFileTime(fw, NULL, NULL, &ftWrite);
+						foundShaderModel = shaderModel;
+						timeStamp = ftWrite;
+
 						fclose(fw);
 					}
 				}

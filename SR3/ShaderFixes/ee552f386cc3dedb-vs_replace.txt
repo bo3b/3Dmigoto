@@ -38,13 +38,10 @@ void main(
   r1.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
   r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
   o0.xyzw = r1.xyzw;
-  // o1.xyzw = r1.xyzw;
+  o1.xyzw = r1.xyzw;
 
-// bo3b- Position is right, texture is misaligned.
-float4 tex = r1;
+// Auto-fixed shader
 float4 stereo = StereoParams.Load(0);
-tex.x += stereo.x * (tex.w - stereo.y);
-o1.xyzw = tex.xyzw;
-
+o1.x += stereo.x * (o1.w - stereo.y);
   return;
 }

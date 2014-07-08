@@ -109,11 +109,15 @@ extern "C"
 											D3D9Base::IDXGISwapChain** ppSwapChain,
                                             D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D1x_CreateSwapChain _NvAPI_D3D1x_CreateSwapChain;
+
 	typedef int (__cdecl *tNvAPI_D3D9_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
                                            D3D9Base::D3DPRESENT_PARAMETERS *pPresentationParameters,
                                            D3D9Base::IDirect3DSwapChain9 **ppSwapChain,
                                            D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D9_CreateSwapChain _NvAPI_D3D9_CreateSwapChain;
+
+	typedef int(__cdecl *tNvAPI_D3D_GetCurrentSLIState)(__in IUnknown *pDevice, __in D3D9Base::NV_GET_CURRENT_SLI_STATE *pSliState);
+	static tNvAPI_D3D_GetCurrentSLIState _NvAPI_D3D_GetCurrentSLIState;
 }
 
 static HMODULE nvDLL = 0;
@@ -787,6 +791,16 @@ static int __cdecl NvAPI_D3D9_CreateSwapChain(D3D9Base::StereoHandle hStereoHand
 	return ret;
 }
 
+static int __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice, __in D3D9Base::NV_GET_CURRENT_SLI_STATE *pSliState)
+{
+	int ret = (*_NvAPI_D3D_GetCurrentSLIState)(pDevice, pSliState);
+	if (CallsLogging())
+	{
+		fprintf(LogFile, "%s - NvAPI_D3D_GetCurrentSLIState called with device = %x. Result = %d\n", LogTime(), pDevice, ret);
+	}
+	return ret;
+}
+
 extern "C" __declspec(dllexport) int * __cdecl nvapi_QueryInterface(unsigned int offset)
 {
 	loadDll();
@@ -929,6 +943,227 @@ extern "C" __declspec(dllexport) int * __cdecl nvapi_QueryInterface(unsigned int
 			_NvAPI_D3D9_CreateSwapChain = (tNvAPI_D3D9_CreateSwapChain)ptr;
 			ptr = (int *)NvAPI_D3D9_CreateSwapChain;
 			break;
+
+			// Informational logging
+		case 0x4B708B54:
+			_NvAPI_D3D_GetCurrentSLIState = (tNvAPI_D3D_GetCurrentSLIState)ptr;
+			ptr = (int *)NvAPI_D3D_GetCurrentSLIState;
+			break;
 	}
 	return ptr;
 }
+
+/*  List of all hex API constants from: 
+http://stackoverflow.com/questions/13291783/how-to-get-the-id-memory-address-of-dll-function
+
+NvAPI_GetUnAttachedAssociatedDisplayName  -  4888D790
+NvAPI_Stereo_Disable  -  2EC50C2B
+NvAPI_GPU_GetPCIIdentifiers  -  2DDFB66E
+NvAPI_GPU_GetECCErrorInfo  -  C71F85A6
+NvAPI_Disp_InfoFrameControl  -  6067AF3F
+NvAPI_Mosaic_GetCurrentTopo  -  EC32944E
+NvAPI_Unload  -  D22BDD7E
+NvAPI_EnableCurrentMosaicTopology  -  74073CC9
+NvAPI_DRS_GetNumProfiles  -  1DAE4FBC
+NvAPI_DRS_LoadSettingsFromFile  -  D3EDE889
+NvAPI_Stereo_SetFrustumAdjustMode  -  7BE27FA2
+NvAPI_Mosaic_SetCurrentTopo  -  9B542831
+NvAPI_DRS_GetApplicationInfo  -  ED1F8C69
+NvAPI_Stereo_Activate  -  F6A1AD68
+NvAPI_Stereo_GetFrustumAdjustMode  -  E6839B43
+NvAPI_D3D_SetFPSIndicatorState  -  A776E8DB
+NvAPI_GetLogicalGPUFromPhysicalGPU  -  ADD604D1
+NvAPI_GetAssociatedNvidiaDisplayName  -  22A78B05
+NvAPI_GetViewEx  -  DBBC0AF4
+NvAPI_Stereo_CapturePngImage  -  8B7E99B5
+NvAPI_Stereo_GetSurfaceCreationMode  -  36F1C736
+NvAPI_GPU_GetEDID  -  37D32E69
+NvAPI_Stereo_CreateConfigurationProfileRegistryKey  -  BE7692EC
+NvAPI_VIO_Status  -  0E6CE4F1
+NvAPI_DRS_GetCurrentGlobalProfile  -  617BFF9F
+NvAPI_VIO_GetPCIInfo  -  B981D935
+NvAPI_GetSupportedMosaicTopologies  -  410B5C25
+NvAPI_VIO_SetSyncDelay  -  2697A8D1
+NvAPI_GPU_SetIllumination  -  0254A187
+NvAPI_VIO_GetGamma  -  51D53D06
+NvAPI_Disp_ColorControl  -  92F9D80D
+NvAPI_GetSupportedViews  -  66FB7FC0
+NvAPI_DRS_LoadSettings  -  375DBD6B
+NvAPI_DRS_CreateApplication  -  4347A9DE
+NvAPI_EnumLogicalGPUs  -  48B3EA59
+NvAPI_Stereo_SetSurfaceCreationMode  -  F5DCFCBA
+NvAPI_DISP_GetDisplayConfig  -  11ABCCF8
+NvAPI_GetCurrentMosaicTopology  -  F60852BD
+NvAPI_DisableHWCursor  -  AB163097
+NvAPI_D3D9_AliasSurfaceAsTexture  -  E5CEAE41
+NvAPI_GPU_GetBusSlotId  -  2A0A350F
+NvAPI_GPU_GetTachReading  -  5F608315
+NvAPI_Stereo_SetSeparation  -  5C069FA3
+NvAPI_GPU_GetECCStatusInfo  -  CA1DDAF3
+NvAPI_VIO_IsFrameLockModeCompatible  -  7BF0A94D
+NvAPI_Mosaic_EnumDisplayGrids  -  DF2887AF
+NvAPI_DISP_SetDisplayConfig  -  5D8CF8DE
+NvAPI_DRS_EnumAvailableSettingIds  -  F020614A
+NvAPI_VIO_SetConfig  -  0E4EEC07
+NvAPI_GPU_GetPerfDecreaseInfo  -  7F7F4600
+NvAPI_SYS_GetLidAndDockInfo  -  CDA14D8A
+NvAPI_GPU_GetPstates20  -  6FF81213
+NvAPI_GPU_GetAllOutputs  -  7D554F8E
+NvAPI_GPU_GetConnectedSLIOutputs  -  0680DE09
+NvAPI_VIO_IsRunning  -  96BD040E
+NvAPI_Initialize  -  0150E828
+NvAPI_VIO_Close  -  D01BD237
+NvAPI_Stereo_GetStereoSupport  -  296C434D
+NvAPI_GPU_GetGPUType  -  C33BAEB1
+NvAPI_Stereo_CaptureJpegImage  -  932CB140
+NvAPI_DRS_GetProfileInfo  -  61CD6FD6
+NvAPI_Stereo_SetConfigurationProfileValue  -  24409F48
+NvAPI_VIO_SyncFormatDetect  -  118D48A3
+NvAPI_VIO_GetCapabilities  -  1DC91303
+NvAPI_GPU_GetCurrentAGPRate  -  C74925A0
+NvAPI_I2CWrite  -  E812EB07
+NvAPI_Stereo_GetSeparation  -  451F2134
+NvAPI_GPU_GetPstatesInfoEx  -  843C0256
+NvAPI_DRS_SetCurrentGlobalProfile  -  1C89C5DF
+NvAPI_Mosaic_GetTopoGroup  -  CB89381D
+NvAPI_GPU_GetCurrentPCIEDownstreamWidth  -  D048C3B1
+NvAPI_D3D9_RegisterResource  -  A064BDFC
+NvAPI_DRS_RestoreProfileDefaultSetting  -  53F0381E
+NvAPI_VIO_GetSyncDelay  -  462214A9
+NvAPI_GPU_GetVbiosOEMRevision  -  2D43FB31
+NvAPI_GetVBlankCounter  -  67B5DB55
+NvAPI_GetDisplayDriverVersion  -  F951A4D1
+NvAPI_DRS_EnumSettings  -  AE3039DA
+NvAPI_GPU_QueryIlluminationSupport  -  A629DA31
+NvAPI_GetLogicalGPUFromDisplay  -  EE1370CF
+NvAPI_DRS_EnumApplications  -  7FA2173A
+NvAPI_Mosaic_EnableCurrentTopo  -  5F1AA66C
+NvAPI_Stereo_IsActivated  -  1FB0BC30
+NvAPI_VIO_Stop  -  6BA2A5D6
+NvAPI_SYS_GetChipSetInfo  -  53DABBCA
+NvAPI_GPU_GetActiveOutputs  -  E3E89B6F
+NvAPI_DRS_GetSettingNameFromId  -  D61CBE6E
+NvAPI_GetPhysicalGPUFromUnAttachedDisplay  -  5018ED61
+NvAPI_Mosaic_GetSupportedTopoInfo  -  FDB63C81
+NvAPI_GPU_GetIRQ  -  E4715417
+NvAPI_GPU_GetOutputType  -  40A505E4
+NvAPI_Stereo_IsEnabled  -  348FF8E1
+NvAPI_Stereo_Enable  -  239C4545
+NvAPI_GPU_GetSystemType  -  BAAABFCC
+NvAPI_GPU_SetEDID  -  E83D6456
+NvAPI_GetPhysicalGPUsFromLogicalGPU  -  AEA3FA32
+NvAPI_VIO_GetConfig  -  D34A789B
+NvAPI_GetInterfaceVersionString  -  01053FA5
+NvAPI_GPU_ResetECCErrorInfo  -  C02EEC20
+NvAPI_SetCurrentMosaicTopology  -  D54B8989
+NvAPI_DISP_GetDisplayIdByDisplayName  -  AE457190
+NvAPI_GetView  -  D6B99D89
+NvAPI_Stereo_DeleteConfigurationProfileRegistryKey  -  F117B834
+NvAPI_DRS_DestroySession  -  DAD9CFF8
+NvAPI_GPU_WorkstationFeatureQuery  -  004537DF
+NvAPI_VIO_QueryTopology  -  869534E2
+NvAPI_DRS_EnumAvailableSettingValues  -  2EC39F90
+NvAPI_DRS_GetBaseProfile  -  DA8466A0
+NvAPI_OGL_ExpertModeDefaultsGet  -  AE921F12
+NvAPI_DRS_DeleteApplicationEx  -  C5EA85A1
+NvAPI_D3D1x_CreateSwapChain  -  1BC21B66
+NvAPI_GPU_GetConnectedDisplayIds  -  0078DBA2
+NvAPI_DRS_FindProfileByName  -  7E4A9A0B
+NvAPI_D3D9_UnregisterResource  -  BB2B17AA
+NvAPI_DRS_EnumProfiles  -  BC371EE0
+NvAPI_VIO_EnumDevices  -  FD7C5557
+NvAPI_DRS_CreateProfile  -  CC176068
+NvAPI_D3D9_StretchRectEx  -  22DE03AA
+NvAPI_DRS_GetSetting  -  73BF8338
+NvAPI_Stereo_InitActivation  -  C7177702
+NvAPI_EnumNvidiaDisplayHandle  -  9ABDD40D
+NvAPI_GPU_GetConnectedSLIOutputsWithLidState  -  96043CC7
+NvAPI_Stereo_DecreaseConvergence  -  4C87E317
+NvAPI_GPU_GetBusType  -  1BB18724
+NvAPI_DRS_FindApplicationByName  -  EEE566B2
+NvAPI_D3D9_ClearRT  -  332D3942
+NvAPI_GPU_GetVirtualFrameBufferSize  -  5A04B644
+NvAPI_GPU_GetAllDisplayIds  -  785210A2
+NvAPI_DRS_SetSetting  -  577DD202
+NvAPI_Stereo_GetConvergence  -  4AB00934
+NvAPI_GPU_GetCurrentPstate  -  927DA4F6
+NvAPI_VIO_SetCSC  -  A1EC8D74
+NvAPI_CreateDisplayFromUnAttachedDisplay  -  63F9799E
+NvAPI_DRS_SaveSettingsToFile  -  2BE25DF8
+NvAPI_DRS_DeleteProfile  -  17093206
+NvAPI_Stereo_Trigger_Activation  -  0D6C6CD2
+NvAPI_GPU_GetThermalSettings  -  E3640A56
+NvAPI_Stereo_SetNotificationMessage  -  6B9B409E
+NvAPI_Stereo_CreateHandleFromIUnknown  -  AC7E37F4
+NvAPI_Stereo_DecreaseSeparation  -  DA044458
+NvAPI_GPU_ValidateOutputCombination  -  34C9C2D4
+NvAPI_Stereo_ReverseStereoBlitControl  -  3CD58F89
+NvAPI_GPU_GetConnectedOutputs  -  1730BFC9
+NvAPI_DRS_GetSettingIdFromName  -  CB7309CD
+NvAPI_EnumPhysicalGPUs  -  E5AC921F
+NvAPI_VIO_GetCSC  -  7B0D72A3
+NvAPI_GPU_GetVbiosRevision  -  ACC3DA0A
+NvAPI_SYS_GetDriverAndBranchVersion  -  2926AAAD
+NvAPI_SetDisplayPort  -  FA13E65A
+NvAPI_GPU_GetPhysicalFrameBufferSize  -  46FBEB03
+NvAPI_DRS_CreateSession  -  0694D52E
+NvAPI_VIO_EnumSignalFormats  -  EAD72FE4
+NvAPI_GPU_GetECCConfigurationInfo  -  77A796F3
+NvAPI_Mosaic_GetOverlapLimits  -  989685F0
+NvAPI_GetHDMISupportInfo  -  6AE16EC3
+NvAPI_Mosaic_EnumDisplayModes  -  78DB97D7
+NvAPI_Stereo_DeleteConfigurationProfileValue  -  49BCEECF
+NvAPI_OGL_ExpertModeSet  -  3805EF7A
+NvAPI_GetPhysicalGPUsFromDisplay  -  34EF9506
+NvAPI_Mosaic_GetDisplayViewportsByResolution  -  DC6DC8D3
+NvAPI_VIO_Open  -  44EE4841
+NvAPI_DRS_SaveSettings  -  FCBC7E14
+NvAPI_D3D9_CreateSwapChain  -  1A131E09
+NvAPI_GPU_GetHDCPSupportStatus  -  F089EEF5
+NvAPI_DISP_GetAssociatedUnAttachedNvidiaDisplayHandle  -  A70503B2
+NvAPI_Stereo_DestroyHandle  -  3A153134
+NvAPI_DRS_RestoreAllDefaults  -  5927B094
+NvAPI_VIO_SetGamma  -  964BF452
+NvAPI_GPU_GetBoardInfo  -  22D54523
+NvAPI_DRS_SetProfileInfo  -  16ABD3A9
+NvAPI_DISP_GetGDIPrimaryDisplayId  -  1E9D8A31
+NvAPI_Stereo_SetDriverMode  -  5E8F0BEC
+NvAPI_D3D_GetCurrentSLIState  -  4B708B54
+NvAPI_SetViewEx  -  06B89E68
+NvAPI_I2CRead  -  2FDE12C5
+NvAPI_DRS_RestoreProfileDefault  -  FA5F6134
+NvAPI_GetDisplayPortInfo  -  C64FF367
+NvAPI_VIO_Start  -  CDE8E1A3
+NvAPI_OGL_ExpertModeGet  -  22ED9516
+NvAPI_EnumNvidiaUnAttachedDisplayHandle  -  20DE9260
+NvAPI_SYS_GetGpuAndOutputIdFromDisplayId  -  112BA1A5
+NvAPI_Stereo_Deactivate  -  2D68DE96
+NvAPI_GPU_GetFullName  -  CEEE8E9F
+NvAPI_DRS_DeleteProfileSetting  -  E4A26362
+NvAPI_OGL_ExpertModeDefaultsSet  -  B47A657E
+NvAPI_GetErrorMessage  -  6C2D048C
+NvAPI_SetRefreshRateOverride  -  3092AC32
+NvAPI_Stereo_IncreaseSeparation  -  C9A8ECEC
+NvAPI_GPU_GetGpuCoreCount  -  C7026A87
+NvAPI_SYS_GetDisplayIdFromGpuAndOutputId  -  08F2BAB4
+NvAPI_GPU_GetIllumination  -  9A1B9365
+NvAPI_SetView  -  0957D7B6
+NvAPI_GetAssociatedNvidiaDisplayHandle  -  35C29134
+NvAPI_GPU_GetBusId  -  1BE0B8E5
+NvAPI_DRS_DeleteApplication  -  2C694BC6
+NvAPI_Stereo_SetActiveEye  -  96EEA9F8
+NvAPI_GPU_GetAGPAperture  -  6E042794
+NvAPI_GetAssociatedDisplayOutputId  -  D995937E
+NvAPI_EnableHWCursor  -  2863148D
+NvAPI_Stereo_GetEyeSeparation  -  CE653127
+NvAPI_DISP_GetMonitorCapabilities  -  3B05C7E1
+NvAPI_Stereo_SetConvergence  -  3DD6B54B
+NvAPI_GPU_WorkstationFeatureSetup  -  6C1F3FE4
+NvAPI_GPU_GetConnectedOutputsWithLidState  -  CF8CAF39
+NvAPI_Stereo_IncreaseConvergence  -  A17DAABE
+NvAPI_GPU_GetDynamicPstatesInfoEx  -  60DED2ED
+NvAPI_GPU_GetVbiosVersionString  -  A561FD7D
+NvAPI_GPU_SetECCConfiguration  -  1CF639D9
+NvAPI_VIO_EnumDataFormats  -  221FA8E8
+
+*/
