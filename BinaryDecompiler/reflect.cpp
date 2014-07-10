@@ -490,6 +490,10 @@ int GetResourceFromBindingPoint(ResourceType eType, uint32_t ui32BindPoint, Shad
     return 0;
 }
 
+// bo3b: fix the assignment warning for x64, because the data will never be expected to be larger than 4G.
+//  Might be better to get latest version of James-Jones, but this has been modified to all be in C++
+#pragma warning(push)
+#pragma warning(disable : 4267)
 int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, ShaderVar** ppsShaderVar)
 {
     uint32_t i;
@@ -508,6 +512,7 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
     }
     return 0;
 }
+#pragma warning(pop)
 
 void LoadShaderInfo(const uint32_t ui32MajorVersion,
     const uint32_t ui32MinorVersion,
