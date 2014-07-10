@@ -863,7 +863,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 
 				// For timestamp, we need the time stamp on the .txt file for comparison, not this .bin file.
 				wchar_t *end = wcsstr(val, L".bin");
-				wcscpy_s(end, 4, L".txt");
+				wcscpy_s(end, sizeof(L".bin"), L".txt");
 				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				if ((f != INVALID_HANDLE_VALUE)
 					&& GetFileTime(f, NULL, NULL, &ftWrite))
