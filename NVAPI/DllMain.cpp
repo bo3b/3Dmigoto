@@ -163,6 +163,7 @@ static bool ConvergenceLogging()
 
 // Ignore the warnings for secure function here.  Too much trouble for no risk.
 // Better bet is to use logging api like Log4C.
+// Made another example in d3d11wrapper.cpp
 #pragma warning( disable : 4996 )
 static char *LogTime()
 {
@@ -410,8 +411,8 @@ static int __cdecl NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDevice9 *pDe
 	if (CallsLogging()) 
 	{
 		fprintf(LogFile, "%s - D3D9_VideoSetStereoInfo called width\n", LogTime());
-		fprintf(LogFile, "  IDirect3DDevice9 = %x\n", pDev);
-		fprintf(LogFile, "  hSurface = %x\n", pStereoInfo->hSurface);
+		fprintf(LogFile, "  IDirect3DDevice9 = %p\n", pDev);
+		fprintf(LogFile, "  hSurface = %p\n", pStereoInfo->hSurface);
 		fprintf(LogFile, "  Format = %x\n", pStereoInfo->eFormat);
 		fprintf(LogFile, "  StereoEnable = %d\n", pStereoInfo->bStereoEnable);
 	}
@@ -486,7 +487,7 @@ static int __cdecl NvAPI_Stereo_GetStereoSupport(
 	int ret = (*_NvAPI_Stereo_GetStereoSupport)(hMonitor, pCaps);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_GetStereoSupportStereo_Enable called with hMonitor = %x. Returns:\n", LogTime(),
+		fprintf(LogFile, "%s - Stereo_GetStereoSupportStereo_Enable called with hMonitor = %p. Returns:\n", LogTime(),
 			hMonitor);
 		fprintf(LogFile, "  result = %d\n", ret);
 		fprintf(LogFile, "  version = %d\n", pCaps->version);
@@ -502,7 +503,7 @@ static int __cdecl NvAPI_Stereo_CreateHandleFromIUnknown(
 	int ret = (*_NvAPI_Stereo_CreateHandleFromIUnknown)(pDevice, pStereoHandle);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_CreateHandleFromIUnknown called with device = %x. Result = %d\n", LogTime(), pDevice, ret);
+		fprintf(LogFile, "%s - Stereo_CreateHandleFromIUnknown called with device = %p. Result = %d\n", LogTime(), pDevice, ret);
 	}
 	return ret;
 }
@@ -538,7 +539,7 @@ static int __cdecl NvAPI_Stereo_Deactivate(D3D9Base::StereoHandle stereoHandle)
 	int ret = (*_NvAPI_Stereo_Deactivate)(stereoHandle);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "  Result = %d\n", LogTime(), ret);
+		fprintf(LogFile, "  Result = %d\n", ret);
 	}
 	return ret;	
 }
@@ -648,7 +649,7 @@ static int __cdecl NvAPI_Stereo_SetDriverMode(D3D9Base::NV_STEREO_DRIVER_MODE mo
 {
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_SetDriverMode called with mode = %d. Result = %d\n", LogTime(), mode);
+		fprintf(LogFile, "%s - Stereo_SetDriverMode called with mode = %d.\n", LogTime(), mode);
 		switch (mode)
 		{
 			case D3D9Base::NVAPI_STEREO_DRIVER_MODE_AUTOMATIC:
@@ -796,12 +797,16 @@ static int __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice, __in D3D
 	int ret = (*_NvAPI_D3D_GetCurrentSLIState)(pDevice, pSliState);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - NvAPI_D3D_GetCurrentSLIState called with device = %x. Result = %d\n", LogTime(), pDevice, ret);
+		fprintf(LogFile, "%s - NvAPI_D3D_GetCurrentSLIState called with device = %p. Result = %d\n", LogTime(), pDevice, ret);
 	}
 	return ret;
 }
 
-extern "C" __declspec(dllexport) int * __cdecl nvapi_QueryInterface(unsigned int offset)
+// __declspec(dllexport)
+// Removed this declare spec, because we are using the .def file for declarations.
+// This fixes a warning from x64 compiles.
+
+extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset)
 {
 	loadDll();
 	int *ptr = (*nvapi_QueryInterfacePtr)(offset);
