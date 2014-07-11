@@ -6,7 +6,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 	if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_CreateHandleFromIUnknown(pDevice, &mStereoHandle))
 		mStereoHandle = 0;
 	mParamTextureManager.mStereoHandle = mStereoHandle;
-	if (LogFile) fprintf(LogFile, "  creating NVAPI stereo handle. Handle = %x\n", mStereoHandle);
+	if (LogFile) fprintf(LogFile, "  creating NVAPI stereo handle. Handle = %p\n", mStereoHandle);
 	
 	// Override custom settings.
 	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
@@ -45,7 +45,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		}
 		else
 		{
-			if (LogFile) fprintf(LogFile, "    stereo texture created, handle = %x\n", mStereoTexture);
+			if (LogFile) fprintf(LogFile, "    stereo texture created, handle = %p\n", mStereoTexture);
 			if (LogFile) fprintf(LogFile, "  creating stereo parameter resource view.\n");
 			
 			// Since we need to bind the texture to a shader input, we also need a resource view.
@@ -60,7 +60,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 			{
 				if (LogFile) fprintf(LogFile, "    call failed with result = %x.\n", ret);
 			}
-			if (LogFile) fprintf(LogFile, "    stereo texture resource view created, handle = %x.\n", mStereoResourceView);
+			if (LogFile) fprintf(LogFile, "    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
 		}
 	}
 
@@ -95,7 +95,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		}
 		else
 		{
-			if (LogFile) fprintf(LogFile, "    IniParam texture created, handle = %x\n", mIniTexture);
+			if (LogFile) fprintf(LogFile, "    IniParam texture created, handle = %p\n", mIniTexture);
 			if (LogFile) fprintf(LogFile, "  creating IniParam resource view.\n");
 
 			// Since we need to bind the texture to a shader input, we also need a resource view.
@@ -109,7 +109,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 				if (LogFile) fprintf(LogFile, "   CreateShaderResourceView call failed with result = %x.\n", ret);
 			}
 
-			if (LogFile) fprintf(LogFile, "    Iniparams resource view created, handle = %x.\n", mIniResourceView);
+			if (LogFile) fprintf(LogFile, "    Iniparams resource view created, handle = %p.\n", mIniResourceView);
 		}
 	}
 
@@ -134,7 +134,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11Device::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11Device::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
@@ -143,7 +143,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 
     if (ulRef == 0)
     {
-		if (LogFile && !LogDebug) fprintf(LogFile, "ID3D11Device::Release handle=%x, counter=%d, internal counter = %d, this=%x\n", m_pUnk, m_ulRef, ulRef, this);
+		if (LogFile && !LogDebug) fprintf(LogFile, "ID3D11Device::Release handle=%p, counter=%d, internal counter = %d, this=%p\n", m_pUnk, m_ulRef, ulRef, this);
 		if (LogFile) fprintf(LogFile, "  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
@@ -215,7 +215,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateBuffer(THIS_
 	if (LogFile) fprintf(LogFile, "  CPUAccessFlags = %x\n", pDesc->CPUAccessFlags);
 	if (LogFile) fprintf(LogFile, "  MiscFlags = %x\n", pDesc->MiscFlags);
 	if (LogFile) fprintf(LogFile, "  StructureByteStride = %d\n", pDesc->StructureByteStride);
-	if (LogFile) fprintf(LogFile, "  InitialData = %x\n", pInitialData);
+	if (LogFile) fprintf(LogFile, "  InitialData = %p\n", pInitialData);
 	*/
 	HRESULT hr = GetD3D11Device()->CreateBuffer(pDesc, pInitialData, ppBuffer);
 	if (hr == S_OK && ppBuffer)
@@ -230,7 +230,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateBuffer(THIS_
 		hash ^= pDesc->MiscFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->StructureByteStride;
 		G->mDataBuffers[*ppBuffer] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Buffer registered: handle = %x, hash = %08lx%08lx\n", *ppBuffer, (UINT32)(hash >> 32), (UINT32)hash);
+		if (LogFile && LogDebug) fprintf(LogFile, "    Buffer registered: handle = %p, hash = %08lx%08lx\n", *ppBuffer, (UINT32)(hash >> 32), (UINT32)hash);
 	}
 	return hr;
 }
@@ -505,7 +505,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->MiscFlags;
 	}
-	if (LogFile && LogDebug) fprintf(LogFile, "  InitialData = %x, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	if (LogFile && LogDebug) fprintf(LogFile, "  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 	
 	// Override custom settings?
 	bool override = false;
@@ -574,7 +574,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			if (LogFile) fprintf(LogFile, "    restore call failed.\n");
 		}
 	}
-	if (LogFile && LogDebug && ppTexture2D) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppTexture2D);
+	if (LogFile && LogDebug && ppTexture2D) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture.
 	if (ppTexture2D)
@@ -592,7 +592,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
             __out_opt  D3D11Base::ID3D11Texture3D **ppTexture3D)
 {
 	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateTexture3D called with parameters\n");
-	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d, Height = %d, Depth = %d, MipLevels = %d, InitialData = %x\n",
+	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d, Height = %d, Depth = %d, MipLevels = %d, InitialData = %p\n",
 		pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->MipLevels, pInitialData);
 	if (pDesc && LogFile) fprintf(LogFile, "  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
@@ -622,7 +622,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
 		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->MiscFlags;
 	}
-	if (LogFile) fprintf(LogFile, "  InitialData = %x, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	if (LogFile) fprintf(LogFile, "  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 
 	HRESULT hr = GetD3D11Device()->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
 
@@ -653,7 +653,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateShaderResourceView(THIS_
 		map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator i = G->mTexture2D_ID.find((D3D11Base::ID3D11Texture2D *) pResource);
 		if (i != G->mTexture2D_ID.end() && i->second == G->ZBufferHashToInject)
 		{
-			if (LogFile) fprintf(LogFile, "  resource view of z buffer found: handle = %x, hash = %08lx%08lx\n", *ppSRView, (UINT32)(i->second >> 32), (UINT32)i->second);
+			if (LogFile) fprintf(LogFile, "  resource view of z buffer found: handle = %p, hash = %08lx%08lx\n", *ppSRView, (UINT32)(i->second >> 32), (UINT32)i->second);
 			
 			mZBufferResourceView = *ppSRView;
 		}
@@ -1226,7 +1226,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11VertexShader **ppVertexShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateVertexShader called with BytecodeLength = %d, handle = %x, ClassLinkage = %x\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateVertexShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1278,7 +1278,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		if (replaceShader)
 		{
 			// Create the new shader.
-			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %x\n", GetD3D11Device());
+			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %p\n", GetD3D11Device());
 
 			hr = GetD3D11Device()->CreateVertexShader(replaceShader, replaceShaderSize, pClassLinkage, ppVertexShader);
 			if (SUCCEEDED(hr))
@@ -1327,7 +1327,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mVertexShaders[*ppVertexShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Vertex shader registered: handle = %x, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
+		if (LogFile && LogDebug) fprintf(LogFile, "    Vertex shader registered: handle = %p, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
 	    
 		if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
 		{
@@ -1342,7 +1342,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppVertexShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppVertexShader);
 	
 	return hr;
 }
@@ -1357,7 +1357,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11GeometryShader **ppGeometryShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateGeometryShader called with BytecodeLength = %d, handle = %x\n", BytecodeLength, pShaderBytecode);
+	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateGeometryShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1395,7 +1395,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mGeometryShaders[*ppGeometryShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Geometry shader registered: handle = %x, hash = %08lx%08lx\n", 
+		if (LogFile && LogDebug) fprintf(LogFile, "    Geometry shader registered: handle = %p, hash = %08lx%08lx\n", 
 			*ppGeometryShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
@@ -1406,7 +1406,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppGeometryShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
 	
 	return hr;
 }
@@ -1435,7 +1435,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShaderWithStreamOutput(TH
 	
 	HRESULT hr = GetD3D11Device()->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
 		NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppGeometryShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
 	
 	return hr;
 }
@@ -1450,7 +1450,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11PixelShader **ppPixelShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreatePixelShader called with BytecodeLength = %d, handle = %x, ClassLinkage = %x\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+	if (LogFile) fprintf(LogFile, "ID3D11Device::CreatePixelShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1500,7 +1500,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		if (replaceShader)
 		{
 			// Create the new shader.
-			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %x\n", GetD3D11Device());
+			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %p\n", GetD3D11Device());
 			
 			hr = GetD3D11Device()->CreatePixelShader(replaceShader, replaceShaderSize, pClassLinkage, ppPixelShader);
 			if (SUCCEEDED(hr))
@@ -1549,7 +1549,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mPixelShaders[*ppPixelShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Pixel shader: handle = %x, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
+		if (LogFile && LogDebug) fprintf(LogFile, "    Pixel shader: handle = %p, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
 	    
 		if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
 		{
@@ -1564,7 +1564,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppPixelShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppPixelShader);
 	
 	return hr;
 }
@@ -1579,7 +1579,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11HullShader **ppHullShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateHullShader called with BytecodeLength = %d, handle = %x\n", BytecodeLength, pShaderBytecode);
+	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateHullShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1617,7 +1617,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mHullShaders[*ppHullShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Hull shader: handle = %x, hash = %08lx%08lx\n", 
+		if (LogFile && LogDebug) fprintf(LogFile, "    Hull shader: handle = %p, hash = %08lx%08lx\n", 
 			*ppHullShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
@@ -1628,7 +1628,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppHullShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppHullShader);
 	
 	return hr;
 }
@@ -1643,7 +1643,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11DomainShader **ppDomainShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateDomainShader called with BytecodeLength = %d, handle = %x\n", BytecodeLength, pShaderBytecode);
+	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateDomainShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1681,7 +1681,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mDomainShaders[*ppDomainShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Domain shader: handle = %x, hash = %08lx%08lx\n", 
+		if (LogFile && LogDebug) fprintf(LogFile, "    Domain shader: handle = %p, hash = %08lx%08lx\n", 
 			*ppDomainShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
@@ -1692,7 +1692,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppDomainShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppDomainShader);
 	
 	return hr;
 }
@@ -1707,7 +1707,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D11ComputeShader **ppComputeShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateComputeShader called with BytecodeLength = %d, handle = %x\n", BytecodeLength, pShaderBytecode);
+	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateComputeShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1745,7 +1745,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mComputeShaders[*ppComputeShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Compute shader: handle = %x, hash = %08lx%08lx\n", 
+		if (LogFile && LogDebug) fprintf(LogFile, "    Compute shader: handle = %p, hash = %08lx%08lx\n", 
 			*ppComputeShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
@@ -1756,7 +1756,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppComputeShader);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppComputeShader);
 	
 	return hr;
 }
@@ -1867,7 +1867,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDeferredContext(THIS_
 	}
 	*ppDeferredContext = wrapper;
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origContext, wrapper);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p, wrapper = %p\n", ret, origContext, wrapper);
 	
 	return ret;
 }
@@ -2004,7 +2004,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11Device::GetImmediateContext(THIS_
 	if (wrapper)
 	{
 		*ppImmediateContext = wrapper;
-		if (LogFile && LogDebug) fprintf(LogFile, "  returns handle = %x, wrapper = %x\n", origContext, wrapper);
+		if (LogFile && LogDebug) fprintf(LogFile, "  returns handle = %p, wrapper = %p\n", origContext, wrapper);
 		
 		return;
 	}
@@ -2019,7 +2019,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11Device::GetImmediateContext(THIS_
 		origContext->Release();
 	}
 	*ppImmediateContext = wrapper;
-	if (LogFile) fprintf(LogFile, "  returns handle = %x, wrapper = %x\n", origContext, wrapper);
+	if (LogFile) fprintf(LogFile, "  returns handle = %p, wrapper = %p\n", origContext, wrapper);
 	
 }
         

@@ -1876,7 +1876,7 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: %x\n", device);
+	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: %p\n", device);
 	
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
@@ -2379,7 +2379,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		riid.Data4[0] == m1.Data4[0] && riid.Data4[1] == m1.Data4[1] && riid.Data4[2] == m1.Data4[2] && riid.Data4[3] == m1.Data4[3] && 
 		riid.Data4[4] == m1.Data4[4] && riid.Data4[5] == m1.Data4[5] && riid.Data4[6] == m1.Data4[6] && riid.Data4[7] == m1.Data4[7])
 	{
-		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: requesting real ID3D11Device handle from %x\n", *ppvObj);
+		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: requesting real ID3D11Device handle from %p\n", *ppvObj);
 
 		D3D11Wrapper::ID3D11Device *p = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(*ppvObj);
 		if (p)
@@ -2390,7 +2390,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		{
 			*ppvObj = ((D3D11Wrapper::ID3D11Device *)*ppvObj)->m_pUnk;
 		}
-		if (LogFile) fprintf(LogFile, "  returning handle = %x\n", *ppvObj);
+		if (LogFile) fprintf(LogFile, "  returning handle = %p\n", *ppvObj);
 		
 		return 0x13bc7e31;
 	}
@@ -2427,7 +2427,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		return 0x13bc7e31;
 	}
 
-	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n", 
+	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 
 	bool d3d10device = riid.Data1 == 0x9b7e4c0f && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 && 
@@ -2512,7 +2512,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			{
 				// Cast again, but always use IDXGIDevice2 interface.
 				D3D11Base::IDXGIDevice *oldDevice = (D3D11Base::IDXGIDevice *)*ppvObj;
-				if (LogFile) fprintf(LogFile, "  releasing received IDXGIDevice, handle=%x. Querying IDXGIDevice2 interface.\n", *ppvObj);
+				if (LogFile) fprintf(LogFile, "  releasing received IDXGIDevice, handle=%p. Querying IDXGIDevice2 interface.\n", *ppvObj);
 
 				oldDevice->Release();
 				const IID IID_IGreet = {0x7A5E6E81,0x3DF8,0x11D3,{0x90,0x3D,0x00,0x10,0x5A,0xA4,0x5B,0xDC}};
@@ -2548,7 +2548,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 					return E_OUTOFMEMORY;
 				}
 				*ppvObj = wrapper;
-				if (LogFile) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper, original device handle=%x. Wrapper counter=%d\n", 
+				if (LogFile) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper, original device handle=%p. Wrapper counter=%d\n", 
 					origDevice, wrapper->m_ulRef);
 			}
 			// Check for DirectX10 cast.
@@ -2582,7 +2582,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			}
 		}
 	}
-	if (LogFile) fprintf(LogFile, "  result = %x, handle = %x\n", hr, *ppvObj);
+	if (LogFile) fprintf(LogFile, "  result = %x, handle = %p\n", hr, *ppvObj);
 
 	return hr;
 }
@@ -2591,12 +2591,12 @@ static D3D11Base::IDXGIAdapter *ReplaceAdapter(D3D11Base::IDXGIAdapter *wrapper)
 {
 	if (!wrapper)
 		return wrapper;
-	if (LogFile) fprintf(LogFile, "  checking for adapter wrapper, handle = %x\n", wrapper);
+	if (LogFile) fprintf(LogFile, "  checking for adapter wrapper, handle = %p\n", wrapper);
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x00 } };
 	D3D11Base::IDXGIAdapter *realAdapter;
 	if (wrapper->GetParent(marker, (void **) &realAdapter) == 0x13bc7e32)
 	{
-		if (LogFile) fprintf(LogFile, "    wrapper found. replacing with original handle = %x\n", realAdapter);
+		if (LogFile) fprintf(LogFile, "    wrapper found. replacing with original handle = %p\n", realAdapter);
 
 		// Register adapter.
 		G->m_AdapterList.AddMember(realAdapter, wrapper);
@@ -2618,7 +2618,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	D3D11Wrapper::ID3D11DeviceContext **ppImmediateContext)
 {
 	InitD311();
-	if (LogFile) fprintf(LogFile, "D3D11CreateDevice called with adapter = %x\n", pAdapter);
+	if (LogFile) fprintf(LogFile, "D3D11CreateDevice called with adapter = %p\n", pAdapter);
 
 #if defined(_DEBUG)
 	// If the project is in a debug build, enable the debug layer.
@@ -2666,7 +2666,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (ppImmediateContext)
 		*ppImmediateContext = wrapper2;
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, device handle = %x, device wrapper = %x, context handle = %x, context wrapper = %x\n", ret, origDevice, wrapper, origContext, wrapper2);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, wrapper, origContext, wrapper2);
 
 	return ret;
 }
@@ -2686,7 +2686,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	D3D11Wrapper::ID3D11DeviceContext **ppImmediateContext)
 {
 	InitD311();
-	if (LogFile) fprintf(LogFile, "D3D11CreateDeviceAndSwapChain called with adapter = %x\n", pAdapter);
+	if (LogFile) fprintf(LogFile, "D3D11CreateDeviceAndSwapChain called with adapter = %p\n", pAdapter);
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Windowed = %d\n", pSwapChainDesc->Windowed);
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Width = %d\n", pSwapChainDesc->BufferDesc.Width);
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Height = %d\n", pSwapChainDesc->BufferDesc.Height);
@@ -2725,7 +2725,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		return ret;
 	}
 
-	if (LogFile) fprintf(LogFile, "  CreateDeviceAndSwapChain returned device handle = %x, context handle = %x\n", origDevice, origContext);
+	if (LogFile) fprintf(LogFile, "  CreateDeviceAndSwapChain returned device handle = %p, context handle = %p\n", origDevice, origContext);
 
 	if (!origDevice || !origContext)
 		return ret;
@@ -2754,7 +2754,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (ppImmediateContext)
 		*ppImmediateContext = wrapper2;
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, device handle = %x, device wrapper = %x, context handle = %x, context wrapper = %x\n", ret, origDevice, wrapper, origContext, wrapper2);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, wrapper, origContext, wrapper2);
 
 	return ret;
 }

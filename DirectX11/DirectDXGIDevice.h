@@ -23,7 +23,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIDevice2::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIDevice2::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "IDXGIDevice2::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	if (LogFile) fprintf(LogFile, "IDXGIDevice2::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
@@ -90,7 +90,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::GetParent(THIS_
 	{
 		// Create Wrapper. We assume, the wrapper was already created using directX DLL wrapper.
 	}
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *ppParent);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppParent);
 	
 	return hr;
 }
@@ -107,13 +107,13 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::GetAdapter(THIS_
 		D3D11Base::IDXGIAdapter *wrapper = (D3D11Base::IDXGIAdapter *) G->m_AdapterList.GetDataPtr(*pAdapter);
 		if (wrapper)
 		{
-			if (LogFile) fprintf(LogFile, "  adapter replaced by wrapper. Original IDXGIAdapter = %x.\n", *pAdapter);
+			if (LogFile) fprintf(LogFile, "  adapter replaced by wrapper. Original IDXGIAdapter = %p.\n", *pAdapter);
 			
 			*pAdapter = wrapper;
 			wrapper->AddRef();
 		}
 	}
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %x\n", hr, *pAdapter);
+	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *pAdapter);
 	
 	return hr;
 }

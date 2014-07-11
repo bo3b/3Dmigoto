@@ -24,7 +24,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Device::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Device::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::Release handle=%x, counter=%d\n", m_pUnk, m_ulRef);
+	if (LogFile) fprintf(LogFile, "ID3D10Device::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
 	
     m_pUnk->Release();
 
@@ -533,7 +533,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::ClearRenderTargetView(THIS_
             /* [annotation] */ 
             __in  const FLOAT ColorRGBA[ 4 ])
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::ClearRenderTargetView called with handle %x, color=(rgba)(%f,%f,%f,%f)\n", 
+	if (LogFile) fprintf(LogFile, "ID3D10Device::ClearRenderTargetView called with handle %p, color=(rgba)(%f,%f,%f,%f)\n", 
 		pRenderTargetView, ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 	
 	m_pDevice->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
@@ -1317,7 +1317,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Multithread::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Multithread::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Multithread::Release handle=%x, counter=%d\n", m_pUnk, m_ulRef);
+	if (LogFile) fprintf(LogFile, "ID3D10Multithread::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
 	
     m_pUnk->Release();
 

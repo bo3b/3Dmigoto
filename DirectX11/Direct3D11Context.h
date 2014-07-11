@@ -23,7 +23,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11DeviceContext::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11DeviceContext::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
@@ -53,7 +53,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::GetDevice(THIS_
 	if (!wrapper)
 	{
 		if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::GetDevice called");
-		if (LogFile) fprintf(LogFile, "  can't find wrapper for parent device. Returning original device handle = %x\n", origDevice);
+		if (LogFile) fprintf(LogFile, "  can't find wrapper for parent device. Returning original device handle = %p\n", origDevice);
 		
 		*ppDevice = (ID3D11Device *)origDevice;
 		return;
@@ -135,7 +135,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
         __in_ecount(NumViews) D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
-	if (ppShaderResourceViews && NumViews && LogFile && LogDebug) fprintf(LogFile, "  ShaderResourceView[0] handle = %x\n", *ppShaderResourceViews);	
+	if (ppShaderResourceViews && NumViews && LogFile && LogDebug) fprintf(LogFile, "  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);	
 
 	GetD3D11DeviceContext()->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 	
@@ -253,7 +253,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
         __in_ecount_opt(NumClassInstances) D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShader called with pixelshader handle = %x\n", pPixelShader);
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
 	
 	bool patchedShader = false;
 	if (G->hunting && pPixelShader)
@@ -264,7 +264,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		if (i != G->mPixelShaders.end())
 		{
 			G->mCurrentPixelShader = i->second;
-			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader found: handle = %x, hash = %08lx%08lx\n", pPixelShader, (UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
+			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader found: handle = %p, hash = %08lx%08lx\n", pPixelShader, (UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
 
 			// Add to visited pixel shaders.
 			G->mVisitedPixelShaders.insert(i->second);
@@ -276,7 +276,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		}
 		else 
 		{
-			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader %x not found\n", pPixelShader);
+			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader %p not found\n", pPixelShader);
 		}
 
 		// Replacement map.
@@ -301,7 +301,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
-			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %x\n", it->second.replacement);
+			if (LogFile && LogDebug) fprintf(LogFile, "  pixel shader replaced by: %p\n", it->second.replacement);
 
 			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
 			D3D11Base::ID3D11PixelShader *shader = (D3D11Base::ID3D11PixelShader*) it->second.replacement;
@@ -551,7 +551,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
         __in_ecount_opt(NumClassInstances) D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShader called with vertexshader handle = %x\n", pVertexShader);
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
 
 	bool patchedShader = false;
 	if (G->hunting && pVertexShader)
@@ -562,7 +562,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		if (i != G->mVertexShaders.end())
 		{
 			G->mCurrentVertexShader = i->second;
-			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader found: handle = %x, hash = %08lx%08lx\n", pVertexShader, (UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader);
+			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader found: handle = %p, hash = %08lx%08lx\n", pVertexShader, (UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader);
 
 			// Add to visited vertex shaders.
 			G->mVisitedVertexShaders.insert(i->second);
@@ -574,7 +574,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		}
 		else 
 		{
-			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader %x not found\n", pVertexShader);
+			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader %p not found\n", pVertexShader);
 			// G->mCurrentVertexShader = 0;
 		}
 		
@@ -600,7 +600,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
-			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %x\n", it->second.replacement);
+			if (LogFile && LogDebug) fprintf(LogFile, "  vertex shader replaced by: %p\n", it->second.replacement);
 
 			D3D11Base::ID3D11VertexShader *shader = (D3D11Base::ID3D11VertexShader*) it->second.replacement;
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -751,7 +751,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::IASetIndexBuffer(THIS_
 		if (i != G->mDataBuffers.end())
 		{
 			G->mCurrentIndexBuffer = i->second;
-			if (LogFile && LogDebug) fprintf(LogFile, "  index buffer found: handle = %x, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer);
+			if (LogFile && LogDebug) fprintf(LogFile, "  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer);
 
 			// Add to visited index buffers.
 			G->mVisitedIndexBuffers.insert(G->mCurrentIndexBuffer);
@@ -760,7 +760,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::IASetIndexBuffer(THIS_
 			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
 			//	pIndexBuffer = 0;
 		}
-		else if (LogFile && LogDebug) fprintf(LogFile, "  index buffer %x not found\n", pIndexBuffer);
+		else if (LogFile && LogDebug) fprintf(LogFile, "  index buffer %p not found\n", pIndexBuffer);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -845,7 +845,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
         __in_ecount(NumViews) D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::VSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
-	if (ppShaderResourceViews && NumViews && LogFile && LogDebug) fprintf(LogFile, "  ShaderResourceView[0] handle = %x\n", *ppShaderResourceViews);	
+	if (ppShaderResourceViews && NumViews && LogFile && LogDebug) fprintf(LogFile, "  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);	
 
 	GetD3D11DeviceContext()->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 		
@@ -1337,7 +1337,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
         /* [annotation] */ 
         __in  const FLOAT ColorRGBA[ 4 ])
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%x, color=[%f,%f,%f,%f]\n", pRenderTargetView, 
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%p, color=[%f,%f,%f,%f]\n", pRenderTargetView, 
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
 	//if (G->hunting)
@@ -1629,7 +1629,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetShader(THIS_
 {
 	GetD3D11DeviceContext()->PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
 
-	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::PSGetShader out: %x\n", *ppPixelShader);
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::PSGetShader out: %p\n", *ppPixelShader);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetSamplers(THIS_
@@ -1654,7 +1654,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSGetShader(THIS_
 	GetD3D11DeviceContext()->VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
 
 	// Todo: At GetShader, we need to return the original shader if it's been reloaded.
-	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::VSGetShader out: %x\n", *ppVertexShader);
+	if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11DeviceContext::VSGetShader out: %p\n", *ppVertexShader);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSGetConstantBuffers(THIS_
