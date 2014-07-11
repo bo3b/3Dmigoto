@@ -8,7 +8,7 @@ struct ParseParameters
 {
 	const void *bytecode;
 	const char *decompiled;
-	SIZE_T decompiledSize;
+	long decompiledSize;
 
 	bool fixSvPosition;
 	bool fixLightPosition;
