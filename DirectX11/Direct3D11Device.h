@@ -716,7 +716,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateInputLayout(THIS_
 // Only used in CreateVertexShader and CreatePixelShader
 
 static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-	SIZE_T BytecodeLength, DWORD &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader)
+	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader)
 {
 	if (G->mBlockingMode)
 		return 0;
@@ -842,13 +842,13 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		{
 			if (LogFile) fprintf(LogFile, "    Replacement binary shader found.\n");
 			
-			pCodeSize = GetFileSize(f, 0);
-			pCode = new char[pCodeSize];
+			DWORD codeSize = GetFileSize(f, 0);
+			pCode = new char[codeSize];
 			DWORD readSize;
 			FILETIME ftWrite;
-			if (!ReadFile(f, pCode, pCodeSize, &readSize, 0) 
+			if (!ReadFile(f, pCode, codeSize, &readSize, 0)
 				|| !GetFileTime(f, NULL, NULL, &ftWrite)
-				|| pCodeSize != readSize)
+				|| codeSize != readSize)
 			{
 				if (LogFile) fprintf(LogFile, "    Error reading file.\n");
 				delete pCode; pCode = 0;
@@ -856,6 +856,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			}
 			else
 			{
+				pCodeSize = codeSize;
 				if (LogFile) fprintf(LogFile, "    Bytecode loaded. Size = %d\n", pCodeSize);
 				CloseHandle(f);
 
@@ -1177,7 +1178,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				
 				if (pCompiledOutput)
 				{
-					long codeSize = pCompiledOutput->GetBufferSize();
+					SIZE_T codeSize = pCompiledOutput->GetBufferSize();
 					char *code = new char[codeSize];
 					memcpy(code, pCompiledOutput->GetBufferPointer(), codeSize);
 					pCompiledOutput->Release(); pCompiledOutput = 0;
@@ -1231,6 +1232,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	HRESULT hr = -1;
 	UINT64 hash;
 	string shaderModel;
+	SIZE_T replaceShaderSize;
 	FILETIME ftWrite;
 	D3D11Base::ID3D11VertexShader *zeroShader = 0;
 
@@ -1254,7 +1256,6 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 				
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
-					DWORD replaceShaderSize;
 					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, 
 						shaderModel, ftWrite, (void **) &zeroShader);
 					delete replaceShader;
@@ -1271,7 +1272,6 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	}
 	if (hr != S_OK && ppVertexShader && pShaderBytecode)
 	{
-		DWORD replaceShaderSize;
 		D3D11Base::ID3D11VertexShader *zeroShader = 0;
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize, 
 			shaderModel, ftWrite, (void **) &zeroShader);
@@ -1455,6 +1455,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	HRESULT hr = -1;
 	UINT64 hash;
 	string shaderModel;
+	SIZE_T replaceShaderSize;
 	FILETIME ftWrite;
 	D3D11Base::ID3D11PixelShader *zeroShader = 0;
 
@@ -1477,7 +1478,6 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 				
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
-					DWORD replaceShaderSize;
 					char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, 
 						shaderModel, ftWrite, (void **) &zeroShader);
 					delete replaceShader;
@@ -1494,7 +1494,6 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	}
 	if (hr != S_OK && ppPixelShader && pShaderBytecode)
 	{
-		DWORD replaceShaderSize;
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize, 
 			shaderModel, ftWrite, (void **) &zeroShader);
 		if (replaceShader)

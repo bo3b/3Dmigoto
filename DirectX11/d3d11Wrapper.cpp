@@ -1293,6 +1293,15 @@ static void EnableStereo()
 	}
 }
 
+// bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
+//  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
+//  will lose data, so rather than do anything heroic here, I'm just doing type casts on the strlen function.
+
+DWORD castStrLen(const char* string)
+{
+	return (DWORD) strlen(string);
+}
+
 static void DumpUsage()
 {
 	wchar_t dir[MAX_PATH];
@@ -1308,60 +1317,59 @@ static void DumpUsage()
 		std::map<UINT64, ShaderInfoData>::iterator i;
 		for (i = G->mVertexShaderInfo.begin(); i != G->mVertexShaderInfo.end(); ++i)
 		{
-			sprintf(buf, "<VertexShader hash=\"%08lx%08lx\">\n"
-						 "  <CalledPixelShaders>", (UINT32)(i->first >> 32), (UINT32)i->first);
-			WriteFile(f, buf, strlen(buf), &written, 0);
+			sprintf(buf, "<VertexShader hash=\"%016llx\">\n  <CalledPixelShaders>", i->first);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			std::set<UINT64>::iterator j;
 			for (j = i->second.PartnerShader.begin(); j != i->second.PartnerShader.end(); ++j)
 			{
-				sprintf(buf, "%08lx%08lx ", (UINT32)(*j >> 32), (UINT32)*j);
-				WriteFile(f, buf, strlen(buf), &written, 0);
+				sprintf(buf, "%016llx ", *j);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
 			const char *REG_HEADER = "</CalledPixelShaders>\n";
-			WriteFile(f, REG_HEADER, strlen(REG_HEADER), &written, 0);
+			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
 			std::map<int, void *>::iterator k;
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
 				if (k->second)
 				{
 					UINT64 id = G->mRenderTargets[k->second];
-					sprintf(buf, "  <Register id=%d handle=%08lx>%08lx%08lx</Register>\n", k->first, k->second, (UINT32)(id >> 32), (UINT32)id);
-					WriteFile(f, buf, strlen(buf), &written, 0);
+					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			const char *FOOTER = "</VertexShader>\n";
-			WriteFile(f, FOOTER, strlen(FOOTER), &written, 0);
+			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
 		for (i = G->mPixelShaderInfo.begin(); i != G->mPixelShaderInfo.end(); ++i)
 		{
-			sprintf(buf, "<PixelShader hash=\"%08lx%08lx\">\n"
-						 "  <ParentVertexShaders>", (UINT32)(i->first >> 32), (UINT32)i->first);
-			WriteFile(f, buf, strlen(buf), &written, 0);
+			sprintf(buf, "<PixelShader hash=\"%016llx\">\n"
+						 "  <ParentVertexShaders>", i->first);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			std::set<UINT64>::iterator j;
 			for (j = i->second.PartnerShader.begin(); j != i->second.PartnerShader.end(); ++j)
 			{
-				sprintf(buf, "%08lx%08lx ", (UINT32)(*j >> 32), (UINT32)*j);
-				WriteFile(f, buf, strlen(buf), &written, 0);
+				sprintf(buf, "%016llx ", *j);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
 			const char *REG_HEADER = "</ParentVertexShaders>\n";
-			WriteFile(f, REG_HEADER, strlen(REG_HEADER), &written, 0);
+			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
 			std::map<int, void *>::iterator k;
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
 				if (k->second)
 				{
 					UINT64 id = G->mRenderTargets[k->second];
-					sprintf(buf, "  <Register id=%d handle=%08lx>%08lx%08lx</Register>\n", k->first, k->second, (UINT32)(id >> 32), (UINT32)id);
-					WriteFile(f, buf, strlen(buf), &written, 0);
+					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			std::vector<void *>::iterator m;
 			int pos = 0;
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); ++m)
 			{
 				UINT64 id = G->mRenderTargets[*m];
-				sprintf(buf, "  <RenderTarget id=%d handle=%08lx>%08lx%08lx</RenderTarget>\n", pos, *m, (UINT32)(id >> 32), (UINT32)id);
-				WriteFile(f, buf, strlen(buf), &written, 0);
+				sprintf(buf, "  <RenderTarget id=%d handle=%p>%016llx</RenderTarget>\n", pos, *m, id);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
 				++pos;
 			}
 			const char *FOOTER = "</PixelShader>\n";
-			WriteFile(f, FOOTER, strlen(FOOTER), &written, 0);
+			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		CloseHandle(f);
@@ -2260,11 +2268,11 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 		if (LogFile)
 		{
 			UINT64 id = G->mRenderTargets[G->mSelectedRenderTarget];
-			fprintf(LogFile, ">>>> Render target marked: render target handle = %08lx, hash = %08lx%08lx\n", G->mSelectedRenderTarget, (UINT32)(id >> 32), (UINT32)id);
+			fprintf(LogFile, ">>>> Render target marked: render target handle = %p, hash = %08lx%08lx\n", G->mSelectedRenderTarget, (UINT32)(id >> 32), (UINT32)id);
 			for (std::set<void *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
 			{
 				id = G->mRenderTargets[*i];
-				fprintf(LogFile, "       render target handle = %08lx, hash = %08lx%08lx\n", *i, (UINT32)(id >> 32), (UINT32)id);
+				fprintf(LogFile, "       render target handle = %p, hash = %08lx%08lx\n", *i, (UINT32)(id >> 32), (UINT32)id);
 			}
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
