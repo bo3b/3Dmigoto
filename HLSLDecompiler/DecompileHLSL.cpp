@@ -1,3 +1,17 @@
+// The goal with this file is too keep it as much C++ as possible.
+// So we avoid adding Windows specific stuff if at all possible.
+//
+// To that end, we are also changing some fundamental use types from int/long to size_t
+// where it makes sense as an actual size measurement.  We are doing this because the basic
+// functions like strlen and sizeof return size_t, which varies in size from x32 to x64.
+// Otherwise comparisons to strlen or assignments can report warnings of truncation.
+// This also fixes all signed/unsigned mismatch warnings.
+//
+// Also using 'size_t' for some for loops here, because of the inherent problems of 'int'
+// being signed.  I tried using 'auto', but it made poor choices that still had warnings.
+// I changed all the variants that are simple and clear, and left the unusual, less clear variants as is.
+// Changing to size_t fixes a large number of signed/unsigned mismatch warnings.
+
 #include <map>
 #include <string>
 #include <cstdio>
@@ -137,7 +151,7 @@ public:
 		return DT_Unknown;
 	}
 
-	void ParseInputSignature(const char *c, long size)
+	void ParseInputSignature(const char *c, size_t size)
 	{
 		mRemappedInputRegisters.clear();
 		// Write header.
@@ -146,7 +160,7 @@ public:
 
 		// Read until header.
 		const char *headerid = "// Input signature:";
-		unsigned pos = 0;
+		size_t pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			if (!strncmp(c+pos, headerid, strlen(headerid)))
@@ -191,12 +205,12 @@ public:
 				sprintf(registerName, "w%d.", slot);
 				const char *INDEX_MASK = "xyzw";
 				string newName = registerName;
-				for (int j = 0; j < strlen(mask); ++j)
+				for (size_t j = 0; j < strlen(mask); ++j)
 					newName.push_back(INDEX_MASK[j]);
 				mRemappedInputRegisters.push_back(pair<string, string>(regNameStr + "." + string(mask), newName));
 				if (strlen(mask) > 1)
 				{
-					for (int j = 0; j < strlen(mask); ++j)
+					for (size_t j = 0; j < strlen(mask); ++j)
 					{
 						newName = registerName;
 						newName.push_back(INDEX_MASK[j]);
@@ -223,14 +237,14 @@ public:
 		}
 	}
 
-	void ParseOutputSignature(const char *c, long size)
+	void ParseOutputSignature(const char *c, size_t size)
 	{
 		mOutputRegisterType.clear();
 		mRemappedOutputRegisters.clear();
 		mSV_Position.clear();
 		// Read until header.
 		const char *headerid = "// Output signature:";
-		int pos = 0;
+		size_t pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			if (!strncmp(c+pos, headerid, strlen(headerid)))
@@ -271,12 +285,12 @@ public:
 					sprintf(registerName, "p%d.", slot);
 					const char *INDEX_MASK = "xyzw";
 					string newName = registerName;
-					for (int j = 0; j < strlen(mask); ++j)
+					for (size_t j = 0; j < strlen(mask); ++j)
 						newName.push_back(INDEX_MASK[j]);
 					mRemappedOutputRegisters[regNameStr + "." + string(mask)] = newName;
 					if (strlen(mask) > 1)
 					{
-						for (int j = 0; j < strlen(mask); ++j)
+						for (size_t j = 0; j < strlen(mask); ++j)
 						{
 							newName = registerName;
 							newName.push_back(INDEX_MASK[j]);
@@ -321,11 +335,12 @@ public:
 		const char *mainFooter = ")\n{\n";
 		mOutput.insert(mOutput.end(), mainFooter, mainFooter+strlen(mainFooter));
 	}
-	void WriteZeroOutputSignature(const char *c, long size)
+
+	void WriteZeroOutputSignature(const char *c, size_t size)
 	{
 		// Read until header.
 		const char *headerid = "// Output signature:";
-		int pos = 0;
+		size_t pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			if (!strncmp(c+pos, headerid, strlen(headerid)))
@@ -392,7 +407,7 @@ public:
 		}
 	}
 
-	void ReadResourceBindings(const char *c, long size)
+	void ReadResourceBindings(const char *c, size_t size)
 	{
 		mCBufferNames.clear();
 		mSamplerNames.clear();
@@ -403,7 +418,7 @@ public:
 		mTextureNamesArraySize.clear();
 		// Read until header.
 		const char *headerid = "// Resource Bindings:";
-		int pos = 0;
+		size_t pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			if (!strncmp(c+pos, headerid, strlen(headerid)))
@@ -604,7 +619,7 @@ public:
 		return 0;
 	}
 
-	void ParseBufferDefinitions(Shader *shader, const char *c, long size)
+	void ParseBufferDefinitions(Shader *shader, const char *c, size_t size)
 	{
 		mUsesProjection = false;
 		mCBufferData.clear();
@@ -619,7 +634,7 @@ public:
 		int structLevel = -1;
 		// Search for buffer.
 		const char *headerid = "// cbuffer ";
-		unsigned int pos = 0;
+		size_t pos = 0;
 		while (pos < size - strlen(headerid))
 		{
 			// Read next buffer.
@@ -1515,7 +1530,7 @@ public:
 			assert(count != 0);
 
 			printed = sprintf_s(convert, "l(", 128);
-			for (size_t i = 0; i < count; i++)
+			for (int i = 0; i < count; i++)
 			{
 				printed += sprintf_s(&convert[printed], 128 - printed, "%f,", lit[i]);
 			}
