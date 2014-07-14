@@ -189,7 +189,8 @@ public:
 			int index, slot; format[0] = 0; mask[0] = 0;
 			if (!strncmp(c+pos, "// no Input", strlen("// no Input")))
 				break;
-			int numRead = sscanf(c+pos, "// %s %d %s %d %s %s", name, &index, mask, &slot, format2, format);
+			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s", 
+				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
 			if (numRead != 6)
 			{
 				logDecompileError("Error parsing input signature: "+string(c+pos, 80));
@@ -272,7 +273,8 @@ public:
 			int index, slot; format[0] = 0; mask[0] = 0;
 			if (!strncmp(c+pos, "// no Output", strlen("// no Output")))
 				break;
-			int numRead = sscanf(c+pos, "// %s %d %s %d %s %s", name, &index, mask, &slot, format2, format);
+			int numRead = sscanf_s(c+pos, "// %s %d %s %d %s %s", 
+				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
 			if (numRead == 6)
 			{
 				// finish type.
@@ -318,7 +320,8 @@ public:
 			else if (numRead == 3)
 			{
 				char sysValue[64];
-				numRead = sscanf(c+pos, "// %s %d %s %s %s %s", name, &index, mask, sysValue, format2, format);
+				int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
 				// Write.
 				char buffer[256];
 				sprintf(buffer, "  out %s %s : %s,\n", format, sysValue, name);
@@ -369,7 +372,8 @@ public:
 			int index, slot; format[0] = 0; mask[0] = 0;
 			if (!strncmp(c+pos, "// no Output", strlen("// no Output")))
 				break;
-			int numRead = sscanf(c+pos, "// %s %d %s %d %s %s", name, &index, mask, &slot, format2, format);
+			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
 			if (numRead == 6)
 			{
 				// Already used?
@@ -394,7 +398,8 @@ public:
 			else if (numRead == 3)
 			{
 				char sysValue[64];
-				numRead = sscanf(c+pos, "// %s %d %s %s %s %s", name, &index, mask, sysValue, format2, format);
+				int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
 				// Write.
 				char buffer[256];
 				sprintf(buffer, "  %s = 0;\n", sysValue);
@@ -445,8 +450,9 @@ public:
 			char name[256], type[16], format[16], dim[16];
 			int slot, arraySize;
 			type[0] = 0;
-			int numRead = sscanf(c+pos, "// %s %s %s %s %d %d", name, type, format, dim, &slot, &arraySize);
-			if (numRead != 6) 
+			int numRead = sscanf_s(c + pos, "// %s %s %s %s %d %d",
+				name, sizeof(name), type, sizeof(type), format, sizeof(format), dim, sizeof(dim), &slot, &arraySize);
+			if (numRead != 6)
 				logDecompileError("Error parsing resource declaration: "+string(c+pos, 80));
 			if (!strcmp(type, "sampler"))
 			{
@@ -654,7 +660,7 @@ public:
 			}
 			if (pos >= size - strlen(headerid)) return;
 			char name[256];
-			int numRead = sscanf(c+pos, "// cbuffer %s", name);
+			int numRead = sscanf_s(c+pos, "// cbuffer %s", name, sizeof(name));
 			if (numRead != 1)
 			{
 				logDecompileError("Error parsing buffer name: "+string(c+pos, 80));
@@ -788,7 +794,7 @@ public:
 				}
 				// Read declaration.
 				char type[16]; type[0] = 0;
-				numRead = sscanf(c + pos, "// %s %s", type, name);
+				numRead = sscanf_s(c + pos, "// %s %s", type, sizeof(type), name, sizeof(name));
 				if (numRead != 2)
 				{
 					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -802,7 +808,7 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf(c + pos, "// %s %s %s", buffer, type, name);
+					numRead = sscanf_s(c + pos, "// %s %s %s", buffer, sizeof(buffer), type, sizeof(type), name, sizeof(name));
 					if (numRead != 3)
 					{
 						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -1054,7 +1060,7 @@ public:
 					{
 						sprintf(right2, "int%d(", pos);
 						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf(right2+strlen(right2), "%d,", int(args[idx[i]]));
+							sprintf_s(right2+strlen(right2), sizeof(right2)-strlen(right2), "%d,", int(args[idx[i]]));
 						right2[strlen(right2)-1] = 0;
 						strcat(right2, ")");
 					}
@@ -1062,7 +1068,7 @@ public:
 					{
 						sprintf(right2, "float%d(", pos);
 						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf(right2+strlen(right2), "%e,", args[idx[i]]);
+							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%e,", args[idx[i]]);
 						right2[strlen(right2)-1] = 0;
 						strcat(right2, ")");
 					}
@@ -1186,22 +1192,22 @@ public:
 					{
 						char newOperand[32]; strcpy(newOperand, isCorrected->second.c_str());
 						applySwizzle(indexRegister, newOperand, true);
-						sprintf(right3+strlen(right3), "[%s]", newOperand);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 					}
 					else if (mLastStatement && mLastStatement->eOpcode == OPCODE_IMUL && 
 						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
 					{
 						char newOperand[32]; strcpy(newOperand, mMulOperand.c_str());
 						applySwizzle(indexRegister, newOperand, true);
-						sprintf(right3+strlen(right3), "[%s]", newOperand);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 						mCorrectedIndexRegisters[indexRegisterName] = mMulOperand;
 					}
 					else if (i->second.bt == DT_float4x2)
-						sprintf(right3+strlen(right3), "[%s/2]", indexRegister);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/2]", indexRegister);
 					else if (i->second.bt == DT_float4x3 || i->second.bt == DT_float3x4)
-						sprintf(right3+strlen(right3), "[%s/3]", indexRegister);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/3]", indexRegister);
 					else if (i->second.bt == DT_float4x4)
-						sprintf(right3+strlen(right3), "[%s/4]", indexRegister);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/4]", indexRegister);
 					else
 					{
 						// Most common case, like: g_AmbientCube[r3.w]
@@ -1352,15 +1358,22 @@ public:
 		}
 	}
 
-	char statement[128], op1[128], op2[128], op3[128], op4[128], op5[128], op6[128], op7[128], op8[128], op9[128], op10[128], op11[128], op12[128], op13[128], op14[128], op15[128];
+	char statement[128], 
+		op1[opcodeSize], op2[opcodeSize], op3[opcodeSize], op4[opcodeSize], op5[opcodeSize], op6[opcodeSize], op7[opcodeSize], op8[opcodeSize], 
+		op9[opcodeSize], op10[opcodeSize], op11[opcodeSize], op12[opcodeSize], op13[opcodeSize], op14[opcodeSize], op15[opcodeSize];
 	int ReadStatement(const char *pos)
 	{
 		// Kill newline.
 		static char lineBuffer[256];
 		strncpy(lineBuffer, pos, 255); lineBuffer[255] = 0;
 		char *newlinePos = strchr(lineBuffer, '\n'); if (newlinePos) *newlinePos = 0;
-		op1[0] = 0; op2[0] = 0; op3[0] = 0; op4[0] = 0; op5[0] = 0; op6[0] = 0; op7[0] = 0; op8[0] = 0; op9[0] = 0; op10[0] = 0; op11[0] = 0; op12[0] = 0; op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		int numRead = sscanf(lineBuffer, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s", statement, op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
+		op1[0] = 0; op2[0] = 0; op3[0] = 0; op4[0] = 0; op5[0] = 0; op6[0] = 0; op7[0] = 0; op8[0] = 0; 
+		op9[0] = 0; op10[0] = 0; op11[0] = 0; op12[0] = 0; op13[0] = 0; op14[0] = 0; op15[0] = 0;
+		
+		int numRead = sscanf_s(lineBuffer, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s", 
+			statement, sizeof(statement), 
+			op1, opcodeSize, op2, opcodeSize, op3, opcodeSize, op4, opcodeSize, op5, opcodeSize, op6, opcodeSize, op7, opcodeSize, op8, opcodeSize,
+			op9, opcodeSize, op10, opcodeSize, op11, opcodeSize, op12, opcodeSize, op13, opcodeSize, op14, opcodeSize, op15, opcodeSize);
 		CollectBrackets(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
 		return numRead;
 	}
@@ -2441,7 +2454,7 @@ public:
 				const char *varDecl = "  float4 ";
 				mOutput.insert(mOutput.end(), varDecl, varDecl+strlen(varDecl));
 				int numTemps;
-				sscanf(c+pos, "%s %d", statement, &numTemps);
+				sscanf_s(c+pos, "%s %d", statement, sizeof(statement), &numTemps);
 				for (int i = 0; i < numTemps; ++i)
 				{
 					sprintf(buffer, "r%d,", i);
