@@ -1014,7 +1014,7 @@ public:
 		if (right[0] == '|' || right[1] == '|')
 		{
 			absolute = true;
-			strcpy(strchr(right,'|'), strchr(right,'|')+1);
+			strcpy_s(strchr(right,'|'), strlen(right), strchr(right,'|')+1);	// Shrinking string, can never overflow.
 			*strchr(right, '|') = 0;
 		}
 		const char *strPos = strchr(left, '.') + 1;
@@ -1268,95 +1268,6 @@ public:
 			strcpy_s(right, opcodeSize, right2);		// All input params are 128 char arrays, like op1, op2, op3
 	}
 
-	void CollectBrackets(char *op1, char *op2, char *op3, char *op4, char *op5, char *op6, char *op7, char *op8, char *op9, char *op10, char *op11, char *op12, char *op13, char *op14, char *op15)
-	{
-		if (!strncmp(op1, "l(", 2) && op1[strlen(op1)-1] != ')' && op1[strlen(op1)-2] != ')')
-		{
-			strcat(op1, " "); strcat(op1, op2);
-			strcat(op1, " "); strcat(op1, op3);
-			strcat(op1, " "); strcat(op1, op4);
-			strcpy(op2, op5); strcpy(op3, op6); strcpy(op4, op7); strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12); strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		if (!strncmp(op2, "l(", 2) && op2[strlen(op2)-1] != ')' && op2[strlen(op2)-2] != ')')
-		{
-			strcat(op2, " "); strcat(op2, op3);
-			strcat(op2, " "); strcat(op2, op4);
-			strcat(op2, " "); strcat(op2, op5);
-			strcpy(op3, op6); strcpy(op4, op7); strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		if (!strncmp(op3, "l(", 2) && op3[strlen(op3)-1] != ')' && op3[strlen(op3)-2] != ')')
-		{
-			strcat(op3, " "); strcat(op3, op4);
-			strcat(op3, " "); strcat(op3, op5);
-			strcat(op3, " "); strcat(op3, op6);
-			strcpy(op4, op7); strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		if (!strncmp(op4, "l(", 2) && op4[strlen(op4)-1] != ')' && op4[strlen(op4)-2] != ')')
-		{
-			strcat(op4, " "); strcat(op4, op5);
-			strcat(op4, " "); strcat(op4, op6);
-			strcat(op4, " "); strcat(op4, op7);
-			strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		if (!strncmp(op5, "l(", 2) && op5[strlen(op5)-1] != ')' && op5[strlen(op5)-2] != ')')
-		{
-			strcat(op5, " "); strcat(op5, op6);
-			strcat(op5, " "); strcat(op5, op7);
-			strcat(op5, " "); strcat(op5, op8);
-			strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		if (!strncmp(op6, "l(", 2) && op6[strlen(op6)-1] != ')' && op6[strlen(op6)-2] != ')')
-		{
-			strcat(op6, " "); strcat(op6, op7);
-			strcat(op6, " "); strcat(op6, op8);
-			strcat(op6, " "); strcat(op6, op9);
-			strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		if (!strncmp(op7, "l(", 2) && op7[strlen(op7)-1] != ')' && op7[strlen(op7)-2] != ')')
-		{
-			strcat(op7, " "); strcat(op7, op8);
-			strcat(op7, " "); strcat(op7, op9);
-			strcat(op7, " "); strcat(op7, op10);
-			strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
-			op13[0] = 0; op14[0] = 0; op15[0] = 0;
-		}
-		while (!strcmp(op2, "+"))
-		{
-			strcat(op1, op2); strcat(op1, op3);
-			strcpy(op2, op4); strcpy(op3, op5); strcpy(op4, op6); strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
-			op14[0] = 0; op15[0] = 0;
-		}
-		while (!strcmp(op3, "+"))
-		{
-			strcat(op2, op3); strcat(op2, op4);
-			strcpy(op3, op5); strcpy(op4, op6); strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12);  strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
-			op14[0] = 0; op15[0] = 0;
-		}
-		while (!strcmp(op4, "+"))
-		{
-			strcat(op3, op4); strcat(op3, op5);
-			strcpy(op4, op6); strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
-			op14[0] = 0; op15[0] = 0;
-		}
-		while (!strcmp(op5, "+"))
-		{
-			strcat(op4, op5); strcat(op4, op6);
-			strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
-			op14[0] = 0; op15[0] = 0;
-		}
-		while (!strcmp(op6, "+"))
-		{
-			strcat(op5, op6); strcat(op5, op7);
-			strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
-			op14[0] = 0; op15[0] = 0;
-		}
-	}
 
 	char statement[128], 
 		op1[opcodeSize], op2[opcodeSize], op3[opcodeSize], op4[opcodeSize], op5[opcodeSize], op6[opcodeSize], op7[opcodeSize], op8[opcodeSize], 
@@ -1374,7 +1285,98 @@ public:
 			statement, sizeof(statement), 
 			op1, opcodeSize, op2, opcodeSize, op3, opcodeSize, op4, opcodeSize, op5, opcodeSize, op6, opcodeSize, op7, opcodeSize, op8, opcodeSize,
 			op9, opcodeSize, op10, opcodeSize, op11, opcodeSize, op12, opcodeSize, op13, opcodeSize, op14, opcodeSize, op15, opcodeSize);
-		CollectBrackets(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
+
+		// Was previously a subroutine to CollectBrackets, but generated a lot of warnings, so putting it inline allows
+		// the automatic CRT_SECURE macros to find the sizes.
+		//  CollectBrackets(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
+		{
+			if (!strncmp(op1, "l(", 2) && op1[strlen(op1) - 1] != ')' && op1[strlen(op1) - 2] != ')')
+			{
+				strcat(op1, " "); strcat(op1, op2);
+				strcat(op1, " "); strcat(op1, op3);
+				strcat(op1, " "); strcat(op1, op4);
+				strcpy(op2, op5); strcpy(op3, op6); strcpy(op4, op7); strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12); strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			if (!strncmp(op2, "l(", 2) && op2[strlen(op2) - 1] != ')' && op2[strlen(op2) - 2] != ')')
+			{
+				strcat(op2, " "); strcat(op2, op3);
+				strcat(op2, " "); strcat(op2, op4);
+				strcat(op2, " "); strcat(op2, op5);
+				strcpy(op3, op6); strcpy(op4, op7); strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			if (!strncmp(op3, "l(", 2) && op3[strlen(op3) - 1] != ')' && op3[strlen(op3) - 2] != ')')
+			{
+				strcat(op3, " "); strcat(op3, op4);
+				strcat(op3, " "); strcat(op3, op5);
+				strcat(op3, " "); strcat(op3, op6);
+				strcpy(op4, op7); strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			if (!strncmp(op4, "l(", 2) && op4[strlen(op4) - 1] != ')' && op4[strlen(op4) - 2] != ')')
+			{
+				strcat(op4, " "); strcat(op4, op5);
+				strcat(op4, " "); strcat(op4, op6);
+				strcat(op4, " "); strcat(op4, op7);
+				strcpy(op5, op8); strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			if (!strncmp(op5, "l(", 2) && op5[strlen(op5) - 1] != ')' && op5[strlen(op5) - 2] != ')')
+			{
+				strcat(op5, " "); strcat(op5, op6);
+				strcat(op5, " "); strcat(op5, op7);
+				strcat(op5, " "); strcat(op5, op8);
+				strcpy(op6, op9); strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			if (!strncmp(op6, "l(", 2) && op6[strlen(op6) - 1] != ')' && op6[strlen(op6) - 2] != ')')
+			{
+				strcat(op6, " "); strcat(op6, op7);
+				strcat(op6, " "); strcat(op6, op8);
+				strcat(op6, " "); strcat(op6, op9);
+				strcpy(op7, op10); strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			if (!strncmp(op7, "l(", 2) && op7[strlen(op7) - 1] != ')' && op7[strlen(op7) - 2] != ')')
+			{
+				strcat(op7, " "); strcat(op7, op8);
+				strcat(op7, " "); strcat(op7, op9);
+				strcat(op7, " "); strcat(op7, op10);
+				strcpy(op8, op11); strcpy(op9, op12);  strcpy(op10, op13); strcpy(op11, op14); strcpy(op12, op15);
+				op13[0] = 0; op14[0] = 0; op15[0] = 0;
+			}
+			while (!strcmp(op2, "+"))
+			{
+				strcat(op1, op2); strcat(op1, op3);
+				strcpy(op2, op4); strcpy(op3, op5); strcpy(op4, op6); strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
+				op14[0] = 0; op15[0] = 0;
+			}
+			while (!strcmp(op3, "+"))
+			{
+				strcat(op2, op3); strcat(op2, op4);
+				strcpy(op3, op5); strcpy(op4, op6); strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12);  strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
+				op14[0] = 0; op15[0] = 0;
+			}
+			while (!strcmp(op4, "+"))
+			{
+				strcat(op3, op4); strcat(op3, op5);
+				strcpy(op4, op6); strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
+				op14[0] = 0; op15[0] = 0;
+			}
+			while (!strcmp(op5, "+"))
+			{
+				strcat(op4, op5); strcat(op4, op6);
+				strcpy(op5, op7); strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
+				op14[0] = 0; op15[0] = 0;
+			}
+			while (!strcmp(op6, "+"))
+			{
+				strcat(op5, op6); strcat(op5, op7);
+				strcpy(op6, op8); strcpy(op7, op9); strcpy(op8, op10); strcpy(op9, op11); strcpy(op10, op12); strcpy(op11, op13); strcpy(op12, op14); strcpy(op13, op15);
+				op14[0] = 0; op15[0] = 0;
+			}
+		}
 		return numRead;
 	}
 
@@ -1514,7 +1516,7 @@ public:
 	{
 		StringStringMap::iterator i = mRemappedOutputRegisters.find(target);
 		if (i != mRemappedOutputRegisters.end())
-			strcpy(target, i->second.c_str());
+			strcpy_s(target, opcodeSize, i->second.c_str());		// only used for opcode strings.
 		return target;
 	}
 
