@@ -1,0 +1,154 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[5];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Specular_Color : packoffset(c1);
+  float3 Base_Paint_Color : packoffset(c2);
+  float grime_tiling_u : packoffset(c3);
+  float grime_tiling_v : packoffset(c4);
+  float grime_amount : packoffset(c5);
+  float3 Fresnel_Color : packoffset(c6);
+  float Fresnel_Min_Cos_Angle : packoffset(c7);
+  float Fresnel_Inverse_Cos_Angle_Range : packoffset(c8);
+  float3 Reflection_Cos_Min_Angles : packoffset(c9);
+  float3 Reflection_Inv_Range_Cos_Angles : packoffset(c10);
+  float Ambient_Reflection_Amount : packoffset(c11);
+  float Specular_Alpha : packoffset(c12);
+  float grime_override : packoffset(c13);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+cbuffer vc3 : register(b3)
+{
+  row_major float3x4 Bone_weights[64] : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  int3 v4 : POSITION1,
+  float3 v5 : COLOR0,
+  float3 v6 : NORMAL1,
+  uint4 v7 : BLENDINDICES0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyzw = v4.xyzy;
+  r1.xyzw = v5.xxxy * r1.xyzw;
+  r2.xyz = r1.xyz * float3(1.220703e-004,1.220703e-004,1.220703e-004) + v0.xyz;
+  r1.x = r1.w * 1.831054688e-004 + r2.y;
+  r2.y = -v5.y * 1.600000024e+000 + r1.x;
+  r2.w = 1.000000000e+000;
+  r1.x = (int)v7.x * 3;
+  r0.x = dot(Bone_weights[v7.x]._m00_m01_m02_m03, r2.xyzw);
+  r0.y = dot(Bone_weights[v7.x]._m10_m11_m12_m13, r2.xyzw);
+  r0.z = dot(Bone_weights[v7.x]._m20_m21_m22_m23, r2.xyzw);
+  r2.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r2.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r2.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r2.w = 1.000000000e+000;
+  r0.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
+  r0.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r2.xyzw, projTM._m02_m12_m22_m32);
+  r0.w = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  o0.xyzw = r0.xyzw;
+  o3.xyzw = r0.xyzw;
+  r0.xyz = v3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.x = dot(Bone_weights[v7.x]._m00_m01_m02, r0.xyz);
+  r3.y = dot(Bone_weights[v7.x]._m10_m11_m12, r0.xyz);
+  r3.z = dot(Bone_weights[v7.x]._m20_m21_m22, r0.xyz);
+  r0.x = dot(r3.xyz, r3.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r3.xyz * r0.xxx;
+  r3.x = dot(objTM._m00_m01_m02, r0.xyz);
+  r3.y = dot(objTM._m10_m11_m12, r0.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r0.xyz);
+  r0.x = dot(r3.xyz, r3.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r3.xyz * r0.xxx;
+  o1.xyz = r0.xyz;
+  o1.w = v3.w * 2.000000000e+000 + -1.000000000e+000;
+  r1.yzw = -eyePos.xyz + r2.xyz;
+  o4.xyz = eyePos.xyz + -r2.xyz;
+  r0.w = Fog_dist.x * r1.z;
+  r2.x = -1.442695022e+000 * r0.w;
+  r2.x = exp2(r2.x);
+  r2.x = 1.000000000e+000 + -r2.x;
+  r0.w = r2.x / r0.w;
+  r2.x = 9.999999776e-003 < abs(r1.z);
+  r1.y = dot(r1.yzw, r1.yzw);
+  r1.y = sqrt(r1.y);
+  r1.y = Fog_dist.y * r1.y;
+  r0.w = r2.x ? r0.w : 1.000000000e+000;
+  r0.w = r0.w * r1.y + -Fog_dist.w;
+  r0.w = exp2(-r0.w);
+  r0.w = min(r0.w, 1.000000000e+000);
+  o2.x = 1.000000000e+000 + -r0.w;
+  r2.xyzw = v2.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = r2.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = 2.550000000e+002 * r0.w;
+  r0.w = Object_instance_params_2.x * 3.264000000e+004 + r0.w;
+  o4.w = 1.525902189e-005 * r0.w;
+  r1.yzw = v6.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.yzw = v5.xxx * r1.yzw + r2.xyz;
+  r2.x = dot(Bone_weights[v7.x]._m00_m01_m02, r1.yzw);
+  r2.y = dot(Bone_weights[v7.x]._m10_m11_m12, r1.yzw);
+  r2.z = dot(Bone_weights[v7.x]._m20_m21_m22, r1.yzw);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r2.xyz * r0.www;
+  r2.x = dot(objTM._m00_m01_m02, r1.xyz);
+  r2.y = dot(objTM._m10_m11_m12, r1.xyz);
+  r2.z = dot(objTM._m20_m21_m22, r1.xyz);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r2.xyz * r0.www;
+  o5.xyz = r1.xyz;
+  o5.w = max(v5.y, v5.x);
+  r2.xyz = r1.zxy * r0.yzx;
+  r0.xyz = r1.yzx * r0.zxy + -r2.xyz;
+  r0.w = saturate(v3.w);
+  r1.x = r0.w >= 5.000000000e-001;
+  r1.x = r1.x ? -5.019608e-001 : 0;
+  r1.y = r1.x ? -1 : 1;
+  o6.xyz = r1.yyy * r0.xyz;
+  r0.x = r1.x + r0.w;
+  o6.w = saturate(2.007874012e+000 * r0.x);
+  r0.xy = v1.xy;
+  r1.x = cb0[3].x * r0.x;
+  r1.y = cb0[4].x * r0.y;
+  o7.zw = float2(2.929688e-003,2.929688e-003) * r0.xy;
+  o7.xy = float2(9.765625e-004,9.765625e-004) * r1.xy;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o1.x += stereo.x * (o1.w - stereo.y);
+o3.x += stereo.x * (o3.w - stereo.y);
+  return;
+}

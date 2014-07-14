@@ -51,18 +51,7 @@ void main(
   r1.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
   r0.w = cb4[10].z * r1.x + cb4[10].w;
   r0.w = 1.000000e+000 / r0.w;
-  
-// bo3b: apply correction to the calculated inverse matrix using Mike's technique
-// float4 stereo = StereoParams.Load(0);
-// float4 shift;
-  
-// shift.xyz = v2.xyz * r0.www;					//	<-- Set r21 to be the NEGATIVE of what is on the line with IR_Light_Pos
-// shift.x -=  stereo.x * (r0.w - stereo.y) * v3;	//0.62;	<-- This is a "-=" expression becasue we have "IR_Light_Pos"
-
-// r1.xyz = -shift.xyz + IR_Light_Pos.xyz;			// -v2.xyz * r0.www + IR_Light_Pos.xyz;
-// not sure, seems to be both kinds of lights here.
-// And not seen with ShaderUsage, so leaving for now.
-
+  r1.xyz = -v2.xyz * r0.www + IR_Light_Pos.xyz;
   r1.w = dot(r1.xyz, r1.xyz);
   r1.w = sqrt(r1.w);
   r1.xyz = r1.xyz / r1.www;

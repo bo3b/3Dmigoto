@@ -1,8 +1,3 @@
-// <PixelShader hash="370781fbb5c4d993">
-//   <ParentVertexShaders>9722952a369656f3 c458dd87a0ddc1f4 </ParentVertexShaders>
-//   <RenderTarget id=0 handle=212a2050>482c306d56939a00</RenderTarget>
-// </PixelShader>
-
 cbuffer cb4 : register(b4)
 {
   float4 cb4[11];

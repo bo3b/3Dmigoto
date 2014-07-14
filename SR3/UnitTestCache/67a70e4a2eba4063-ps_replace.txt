@@ -1,5 +1,3 @@
-// Blood pools
-
 cbuffer cb4 : register(b4)
 {
   float4 cb4[11];

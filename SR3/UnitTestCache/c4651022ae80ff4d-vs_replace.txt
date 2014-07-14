@@ -1,0 +1,61 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float3 Position_scale : packoffset(c20);
+  float3 ClipScissorMin : packoffset(c33);
+  float3 ClipScissorMax : packoffset(c34);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  float4 v2 : TANGENT0,
+  float4 v3 : POSITION2,
+  float4 v4 : POSITION3,
+  float4 v5 : POSITION4,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(v3.xyzw, r0.xyzw);
+  r1.y = dot(v4.xyzw, r0.xyzw);
+  r1.z = dot(v5.xyzw, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  r0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  r0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  r0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = r0.xyz / r0.www;
+  r1.x = r0.x >= ClipScissorMax.x;
+  r1.y = r0.y >= ClipScissorMax.y;
+  r1.z = r0.z >= ClipScissorMax.z;
+  r0.x = ClipScissorMin.x >= r0.x;
+  r0.y = ClipScissorMin.y >= r0.y;
+  r0.z = ClipScissorMin.z >= r0.z;
+  r0.x = r0.x ? 1 : 0;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r1.x = r1.x ? 1 : 0;
+  r1.y = r1.y ? 1 : 0;
+  r1.z = r1.z ? 1 : 0;
+  r0.xyz = r1.xyz + r0.xyz;
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = r0.x != 0.000000;
+  r0.x = r0.x ? -9.999900e-001 : -2;
+  r0.y = r0.x ? 9.999900e-001 : -2;
+  r0.z = r0.x ? 1.000000e-005 : -2;
+  r0.w = r0.x ? 1 : 1;
+  o0.xyzw = r0.xyzw;
+  o1.xyzw = r0.xyzw;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o1.x += stereo.x * (o1.w - stereo.y);
+  return;
+}

@@ -1,0 +1,44 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float4 v1 : NORMAL0,
+  float4 v2 : TANGENT0,
+  int2 v3 : TEXCOORD0,
+  float4 v4 : COLOR0,
+  float4 v5 : COLOR1,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  o0.xyzw = r1.xyzw;
+  o2.xyzw = r1.xyzw;
+  r0.xy = v3.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r0.x = v1.w * 2.000000000e+000 + -1.000000000e+000;
+  r0.x = r0.x * 5.000000000e-001 + 5.000000000e-001;
+  r0.x = 2.550000000e+002 * r0.x;
+  r0.x = v5.x * 3.264000000e+004 + r0.x;
+  o3.w = 1.525902189e-005 * r0.x;
+  o3.xyz = v4.xyz;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o2.x += stereo.x * (o2.w - stereo.y);
+  return;
+}

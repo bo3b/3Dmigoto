@@ -1,0 +1,129 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Normal_Map_Height : packoffset(c1);
+  float Normal_Map_TilingU : packoffset(c2);
+  float Normal_Map_TilingV : packoffset(c3);
+  float Normal_map_detail_height : packoffset(c5);
+  float Specular_Map_Amount : packoffset(c6);
+  float4 Specular_Color : packoffset(c7);
+  float4 Diffuse_Color : packoffset(c8);
+  float Normal_map_refl_offset : packoffset(c9) = float(3.000000e+002);
+  float Reflection_Amount : packoffset(c10) = float(1.000000e+000);
+  float4 Wet_mask_levels : packoffset(c11) = float4(4.400000e-002,1.600000e+001,0.000000e+000,0.000000e+000);
+  float Diffuse_scale_wet : packoffset(c12) = float(5.000000e-001);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  float4 Object_instance_params : packoffset(c15);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Render_offset : packoffset(c19);
+  float3 Position_scale : packoffset(c20);
+  float Reflection_Plane_Height : packoffset(c30);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(objTM._m00_m01_m02_m03, r1.xyzw);
+  r0.y = dot(objTM._m10_m11_m12_m13, r1.xyzw);
+  r0.z = dot(objTM._m20_m21_m22_m23, r1.xyzw);
+  r1.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r2.xzw = r0.xzw;
+  o0.xyzw = r1.xyzw;
+  o1.xyzw = r1.xyzw;
+  r1.xyzw = v2.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.x = dot(objTM._m00_m01_m02, r1.xyz);
+  r3.y = dot(objTM._m10_m11_m12, r1.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r1.xyz);
+  r0.w = r1.w * 5.000000000e-001 + 5.000000000e-001;
+  r1.x = dot(r3.xyz, r3.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = r3.xyz * r1.xxx;
+  r3.xyzw = v3.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r4.x = dot(objTM._m00_m01_m02, r3.xyz);
+  r4.y = dot(objTM._m10_m11_m12, r3.xyz);
+  r4.z = dot(objTM._m20_m21_m22, r3.xyz);
+  r1.w = dot(r4.xyz, r4.xyz);
+  r1.w = rsqrt(r1.w);
+  r3.xyz = r4.xyz * r1.www;
+  r4.xyz = r3.yzx * r1.zxy;
+  r4.xyz = r1.yzx * r3.zxy + -r4.xyz;
+  o4.xyz = r1.xyz;
+  o5.xyz = r3.xyz;
+  o2.xyz = r4.xyz * r3.www;
+  r1.x = Object_instance_params_2.x * 3.264000000e+004;
+  r0.w = r0.w * 2.550000000e+002 + r1.x;
+  r0.w = 3.276800000e+004 + r0.w;
+  o2.w = 1.525902189e-005 * r0.w;
+  r1.xyz = eyePos.xyz + -r0.xyz;
+  r0.xzw = -eyePos.xyz + r0.xyz;
+  r1.x = dot(r1.xyz, r1.xyz);
+  r1.y = saturate(abs(r1.y) * 6.666667014e-002 + -2.000000030e-001);
+  r1.y = 1.000000000e+000 + -r1.y;
+  o3.w = sqrt(r1.x);
+  r2.y = Reflection_Plane_Height + -Render_offset.y;
+  o3.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
+  o3.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
+  o3.z = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  r0.y = r2.y + -r0.y;
+  r0.y = 6.666667014e-002 * abs(r0.y);
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.y = 1.000000000e+000 + -r0.y;
+  o4.w = r0.y * r1.y;
+  r0.y = Fog_dist.x * r0.z;
+  r1.x = -1.442695022e+000 * r0.y;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.y = r1.x / r0.y;
+  r1.x = 9.999999776e-003 < abs(r0.z);
+  r0.x = dot(r0.xzw, r0.xzw);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.y : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o5.w = 1.000000000e+000 + -r0.x;
+  r0.xy = v1.xy;
+  r0.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  o6.z = cb0[2].x * r0.x;
+  o6.w = cb0[3].x * r0.y;
+  o6.xy = r0.xy;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+o1.x += stereo.x * (o1.w - stereo.y);
+o4.x += stereo.x * (o4.w - stereo.y);
+  return;
+}
