@@ -103,7 +103,7 @@ public:
 	set<string> mBooleanRegisters;
 
 	vector<char> mOutput;
-	int mCodeStartPos;
+	size_t mCodeStartPos;		// Used as index into buffer, name misleadingly suggests pointer usage.
 	bool mErrorOccurred;
 	bool mFixSvPosition;
 	bool mRecompileVs;
@@ -753,7 +753,7 @@ public:
 					}
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					// Prefix struct attributes.
-					int arrayPos = structName.find('[');
+					size_t arrayPos = structName.find('[');
 					if (arrayPos == string::npos)
 					{
 						for (vector<int>::iterator i = pendingStructAttributes[structLevel].begin(); i != pendingStructAttributes[structLevel].end(); ++i)
@@ -874,7 +874,7 @@ public:
 
 				// Look for array based elements.  We need an mCBufferData element for each possible array element, to match
 				// possible uses of those offsets in the ASM code.
-				int ep = e.Name.find('[');
+				size_t ep = e.Name.find('[');
 				if (ep != string::npos && 
 					(e.bt == DT_bool || e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 || 
 					 e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
@@ -1020,7 +1020,7 @@ public:
 		const char *strPos = strchr(left, '.') + 1;
 		char idx[4] = { -1, -1, -1, -1 };
 		char map[4] = { 3, 0, 1, 2 };
-		int pos = 0;
+		size_t pos = 0;							// Used as index into string buffer
 		if (strPos == (const char *)1)
 			strPos = "x";
 		while (*strPos && pos < 4)
@@ -1219,8 +1219,8 @@ public:
 						// Start fresh with original string and just replace, not char* manipulate.
 						// base: g_OmniLights[0].m_PositionFar
 						string base = i->second.Name;
-						int left = base.find('[') + 1;
-						int length = base.find(']') - left;
+						size_t left = base.find('[') + 1;
+						size_t length = base.find(']') - left;
 						base.replace(left, length, indexRegister);
 						strcpy(right3, base.c_str());
 					}
@@ -1400,7 +1400,7 @@ public:
 		if (dotPos && dotPos[1] >= 'w' && dotPos[1] <= 'z')
 		{
 			string buffer = s;
-			int targetPos = buffer.find_last_of('.');
+			size_t targetPos = buffer.find_last_of('.');
 			buffer[targetPos+1] = dotPos[1+index];
 			buffer.resize(targetPos+2);
 			if (!buffer.substr(0, 4).compare("abs("))
@@ -1594,7 +1594,7 @@ public:
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
-			int size = strlen(pos+1);
+			size_t size = strlen(pos + 1);
 			if (size == 1)
 				sprintf(buffer, "(int)%s", target);
 			else
@@ -1630,7 +1630,7 @@ public:
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
-			int size = strlen(pos+1);
+			size_t size = strlen(pos + 1);
 			if (size == 1)
 				sprintf(buffer, "(uint)%s", target);
 			else
@@ -1643,7 +1643,7 @@ public:
 	bool isBoolean(char *arg)
 	{
 		string regName = arg[0] == '-' ? arg+1 : arg;
-		int dotPos = regName.rfind('.');
+		size_t dotPos = regName.rfind('.');
 		if (dotPos >= 0) regName = regName.substr(0, dotPos);
 		set<string>::iterator i = mBooleanRegisters.find(regName);
 		return i != mBooleanRegisters.end();
@@ -1652,7 +1652,7 @@ public:
 	void removeBoolean(char *arg)
 	{
 		string regName = arg[0] == '-' ? arg+1 : arg;
-		int dotPos = regName.rfind('.');
+		size_t dotPos = regName.rfind('.');
 		if (dotPos >= 0) regName = regName.substr(0, dotPos);
 		mBooleanRegisters.erase(regName);
 	}
@@ -1766,7 +1766,7 @@ public:
 				map<string, string>::iterator positionValue = mOutputRegisterValues.find(mSV_Position);
 				if (positionValue != mOutputRegisterValues.end())
 				{
-					int dotPos = positionValue->second.rfind('.');
+					size_t dotPos = positionValue->second.rfind('.');
 					string rvalue = positionValue->second;
 					if (dotPos > 0) rvalue = positionValue->second.substr(0, dotPos);
 					// Search for same value on other outputs.
@@ -2096,7 +2096,7 @@ public:
 								char *bpos = mpos+2;
 								while (*bpos != ' ' && *bpos != ';') ++bpos;
 								string regName(mpos+2, bpos);
-								int dotPos = regName.rfind('.');
+								size_t dotPos = regName.rfind('.');
 								if (dotPos >= 0) regName = regName.substr(0, dotPos+2);
 								while (*mpos != '\n') --mpos;
 								sprintf(buf, "\n%s -= stereo.x * (wpos - stereo.y);", regName.c_str());
@@ -2112,7 +2112,7 @@ public:
 									char *bpos = mpos+1;
 									while (*bpos != ' ' && *bpos != ',' && *bpos != ';') ++bpos;
 									string regName(mpos+1, bpos);
-									int dotPos = regName.rfind('.');
+									size_t dotPos = regName.rfind('.');
 									if (dotPos >= 0) regName = regName.substr(0, dotPos+2);
 									while (*mpos != '\n') --mpos;
 									sprintf(buf, "\n%s -= stereo.x * (wpos - stereo.y);", regName.c_str());
@@ -2280,14 +2280,14 @@ public:
 		}
 	}
 
-	void ParseCode(Shader *shader, const char *c, long size)
+	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
 		mBooleanRegisters.clear();
 		mCodeStartPos = mOutput.size();
 
 		char buffer[512];
-		int pos = 0;
+		size_t pos = 0;
 		unsigned int iNr = 0;
 		while (pos < size && iNr < shader->psInst.size())
 		{
@@ -3601,13 +3601,13 @@ public:
 		WritePatches();
 	}
 
-	void ParseCodeOnlyShaderType(Shader *shader, const char *c, long size)
+	void ParseCodeOnlyShaderType(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
 		mBooleanRegisters.clear();
 		mCodeStartPos = mOutput.size();
 
-		int pos = 0;
+		size_t pos = 0;
 		while (pos < size)
 		{
 			// Ignore comments.
