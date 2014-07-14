@@ -1,0 +1,78 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 blend_weights_1 : packoffset(c0);
+  float4 blend_weights_2 : packoffset(c1);
+  float2 target_dimension : packoffset(c2);
+}
+SamplerState baseSampler_s : register(s0);
+SamplerState body_femaleSampler_s : register(s1);
+SamplerState body_maleSampler_s : register(s2);
+SamplerState skinnySampler_s : register(s3);
+SamplerState fatSampler_s : register(s4);
+SamplerState muscleSampler_s : register(s5);
+SamplerState body_ageSampler_s : register(s6);
+SamplerState face_ageSampler_s : register(s7);
+Texture2D<float4> baseSampler : register(t0);
+Texture2D<float4> body_femaleSampler : register(t1);
+Texture2D<float4> body_maleSampler : register(t2);
+Texture2D<float4> skinnySampler : register(t3);
+Texture2D<float4> fatSampler : register(t4);
+Texture2D<float4> muscleSampler : register(t5);
+Texture2D<float4> body_ageSampler : register(t6);
+Texture2D<float4> face_ageSampler : register(t7);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = body_femaleSampler.Sample(body_femaleSampler_s, v1.xy).xyzw;
+  r0.xyz = r0.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = r0.x * r0.z;
+  r0.xy = blend_weights_1.yy * -r0.wy;
+  r1.xyzw = baseSampler.Sample(baseSampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_1.xx * -r1.wy + r0.xy;
+  r1.xyzw = body_maleSampler.Sample(body_maleSampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_1.zz * -r1.wy + r0.xy;
+  r1.xyzw = skinnySampler.Sample(skinnySampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_1.ww * -r1.wy + r0.xy;
+  r1.xyzw = fatSampler.Sample(fatSampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_2.xx * -r1.wy + r0.xy;
+  r1.xyzw = muscleSampler.Sample(muscleSampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_2.yy * -r1.wy + r0.xy;
+  r1.xyzw = body_ageSampler.Sample(body_ageSampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_2.zz * -r1.wy + r0.xy;
+  r1.xyzw = face_ageSampler.Sample(face_ageSampler_s, v1.xy).xyzw;
+  r1.xyz = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.w = r1.x * r1.z;
+  r0.xy = blend_weights_2.ww * -r1.wy + r0.xy;
+  r0.z = dot(r0.xy, r0.xy);
+  r0.z = sqrt(r0.z);
+  r0.z = max(r0.z, 1.000000000e+000);
+  r0.xy = r0.xy / r0.zz;
+  r0.xy = -r0.xy;
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.z = sqrt(r0.w);
+  r0.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + r0.xyz;
+  o0.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r0.xyz;
+  o0.w = 1.000000000e+000;
+  return;
+}

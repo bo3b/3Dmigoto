@@ -1,0 +1,236 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[14];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Self_Illumination : packoffset(c0);
+  float4 Hair_Parameters : packoffset(c1);
+  float2 Hair_Spec_Alpha : packoffset(c2);
+  float4 Hair_Spec_Color1 : packoffset(c3);
+  float4 Hair_Spec_Color2 : packoffset(c4);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+  float4 IR_Stipple_Pattern_Offset : packoffset(c11);
+  float4 IR_Stipple_Repeat_Info : packoffset(c12);
+  float4 lightPos : packoffset(c13);
+}
+SamplerState Dob_MapSampler_s : register(s0);
+SamplerState Diffuse_MapSampler_s : register(s1);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+Texture2D<float4> Dob_MapSampler : register(t0);
+Texture2D<float4> Diffuse_MapSampler : register(t1);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask;
+  r0.xyz = v3.xyz / v3.www;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.z = cb4[10].z * r0.z + cb4[10].w;
+  r0.z = 1.000000e+000 / r0.z;
+  r0.z = saturate(3.051757813e-005 * r0.z);
+  r1.x = 5.000000000e-001 * r0.x;
+  r1.z = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r1.xyzw = cb4[9].xyxy * float4(9.000000e-001,9.000000e-001,9.000000e-001,9.000000e-001) + r1.xzxz;
+  r0.xy = r1.zw * cb4[9].zw + float2(-5.000000e-001,-5.000000e-001);
+  r0.x = floor(r0.x);
+  r0.y = floor(r0.y);
+  r2.xy = cb4[11].xy + r0.xy;
+  r3.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r0.xyxy;
+  r3.xyzw = cb4[9].xyxy * r3.xyzw;
+  r0.xy = float2(5.000000e-001,5.000000e-001) * r2.xy;
+  r2.x = r0.x >= -r0.x;
+  r2.y = r0.y >= -r0.y;
+  r0.xy = frac(abs(r0.xy));
+  r0.x = r2.x ? r0.x : -r0.x;
+  r0.y = r2.y ? r0.y : -r0.y;
+  r2.xyzw = r0.xxxx * float4(-6.000000e+000,4.000000e+000,6.000000e+000,0.000000e+000) + float4(2.000000e+000,-1.000000e+000,-2.000000e+000,1.000000e+000);
+  r4.xyzw = r0.xxxx * float4(2.000000e+000,4.000000e+000,-2.000000e+000,4.000000e+000) + float4(0.000000e+000,-2.000000e+000,2.000000e+000,0.000000e+000);
+  r2.xyzw = -r4.xyzw + r2.xyzw;
+  r0.w = 2.000000000e+000 * r0.y;
+  r2.xyzw = r0.wwww * r2.xyzw + r4.xyzw;
+  r2.xyzw = r2.xyzw * cb4[9].xyxy + r3.xyzw;
+  r4.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r2.xy).xzyw;
+  r0.w = r4.x + -r0.z;
+  r5.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r2.zw).xyzw;
+  r4.w = r5.y;
+  r3.x = r5.x + -r0.z;
+  r3.x = abs(r3.x) >= cb4[10].y;
+  r5.xyzw = r0.xxxx * float4(-2.000000e+000,0.000000e+000,2.000000e+000,-4.000000e+000) + float4(0.000000e+000,0.000000e+000,-2.000000e+000,0.000000e+000);
+  r5.xyzw = r0.yyyy * float4(0.000000e+000,-2.000000e+000,4.000000e+000,2.000000e+000) + r5.xyzw;
+  r5.xyzw = r5.xyzw * cb4[9].xyxy + r3.zwzw;
+  r6.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r5.xy).xyzw;
+  r4.x = r6.y;
+  r0.x = r6.x + -r0.z;
+  r6.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r5.zw).xyzw;
+  r4.y = r6.y;
+  r0.y = r6.x + -r0.z;
+  r0.x = abs(r0.x) >= cb4[10].y;
+  r0.y = abs(r0.y) >= cb4[10].y;
+  r0.w = abs(r0.w) >= cb4[10].y;
+  r4.xyzw = -v4.wwww + r4.xyzw;
+  r4.x = 1.220722e-005 >= abs(r4.x);
+  r4.y = 1.220722e-005 >= abs(r4.y);
+  r4.z = 1.220722e-005 >= abs(r4.z);
+  r4.w = 1.220722e-005 >= abs(r4.w);
+  r4.x = r4.x ? 1 : 0;
+  r4.y = r4.y ? 1 : 0;
+  r4.z = r4.z ? 1 : 0;
+  r4.w = r4.w ? 1 : 0;
+  r0.x = r0.x ? 0 : r4.x;
+  r0.y = r0.y ? 0 : r4.y;
+  r0.w = r0.w ? 0 : r4.z;
+  r0.z = r0.x + r0.y;
+  r3.x = r3.x ? 0.000000000e+000 : r4.w;
+  r0.z = r0.z + r0.w;
+  r0.z = r0.z + r3.x;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.xy = r0.xy + r0.zz;
+  r0.xy = min(r0.xy, float2(1.000000e+000,1.000000e+000));
+  r4.xyzw = r5.xyzw + -r1.xyzw;
+  r1.xyzw = r2.xyzw + -r1.xyzw;
+  r3.y = dot(r4.zw, r4.zw);
+  r3.z = dot(r4.xy, r4.xy);
+  r3.yz = sqrt(r3.yz);
+  r3.yz = r3.yz / cb4[11].zz;
+  r3.yz = saturate(float2(1.000000e+000,1.000000e+000) + -r3.yz);
+  r0.y = r3.y * r0.y;
+  r4.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r5.zw).xyzw;
+  r5.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r5.xy).xyzw;
+  r4.xyzw = r4.xyzw * r0.yyyy;
+  r3.y = r3.z * r0.x;
+  r0.x = r3.z * r0.x + r0.y;
+  r4.xyzw = r5.xyzw * r3.yyyy + r4.xyzw;
+  r0.y = r0.w + r0.z;
+  r0.z = r3.x + r0.z;
+  r0.yz = min(r0.yz, float2(1.000000e+000,1.000000e+000));
+  r0.w = dot(r1.xy, r1.xy);
+  r1.x = dot(r1.zw, r1.zw);
+  r1.x = sqrt(r1.x);
+  r1.x = r1.x / cb4[11].z;
+  r1.x = saturate(1.000000000e+000 + -r1.x);
+  r0.w = sqrt(r0.w);
+  r0.w = r0.w / cb4[11].z;
+  r0.w = saturate(1.000000000e+000 + -r0.w);
+  r1.y = r0.w * r0.y;
+  r0.x = r0.w * r0.y + r0.x;
+  r0.x = r1.x * r0.z + r0.x;
+  r0.y = r1.x * r0.z;
+  r3.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r2.xy).xyzw;
+  r2.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r2.zw).xyzw;
+  r1.xyzw = r3.xyzw * r1.yyyy + r4.xyzw;
+  r1.xyzw = r2.xyzw * r0.yyyy + r1.xyzw;
+  r0.xyzw = r1.xyzw / r0.xxxx;
+  r0.xyzw = max(r0.xyzw, float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.x = dot(r0.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.x = max(r1.x, 1.000000047e-003);
+  r0.w = r0.w / r1.x;
+  r1.xyz = r0.xyz * r0.www;
+  r0.w = dot(v2.xyz, v2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v2.xyz * r0.www;
+  r0.w = dot(v4.xyz, v4.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = v4.xyz * r0.www;
+  r4.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v1.xy).xyzw;
+  r4.xyz = r4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r4.xyz, r4.xyz);
+  r0.w = rsqrt(r0.w);
+  r4.xyz = r4.xyz * r0.www;
+  r3.xyz = -r4.xxx * r3.xyz;
+  r2.xyz = -r4.yyy * r2.xyz + r3.xyz;
+  r0.w = dot(v5.xyz, v5.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = v5.xyz * r0.www;
+  r2.xyz = r4.zzz * r3.xyz + r2.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r3.xyz = -cb4[13].xyz + float3(0.000000e+000,0.000000e+000,1.000000e+000);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r0.w = dot(r2.xyz, r3.xyz);
+  r0.w = 1.000000000e+000 + -abs(-r0.w);
+  r1.w = r0.w * r0.w;
+  r0.w = log2(r0.w);
+  r0.w = 1.000000000e+001 * r0.w;
+  r0.w = exp2(r0.w);
+  r1.w = r1.w * r1.w;
+  r2.x = 1.000000000e+000 + -r0.w;
+  r2.yzw = r0.www * r1.xyz;
+  r0.w = r2.x * r1.w;
+  r1.xyz = r0.www * r1.xyz;
+  r1.xyz = Hair_Spec_Color2.xyz * r1.xyz;
+  r1.xyz = r2.yzw * Hair_Spec_Color1.xyz + r1.xyz;
+  r2.xyzw = Dob_MapSampler.Sample(Dob_MapSampler_s, v1.xy).xzwy;
+  r0.w = Hair_Spec_Alpha.x * r2.x;
+  r1.xyz = r0.www * r1.xyz;
+  r0.w = floor(Hair_Parameters.x);
+  r3.x = r0.w == 0;
+  r3.y = r0.w == 2;
+  r3.z = r0.w == 4;
+  r3.w = r0.w == 6;
+  r4.xy = (int2)r3.yx | (int2)r3.xw;
+  r1.w = (int)r3.z | (int)r4.x;
+  r1.w = (int)r3.w | (int)r1.w;
+  r3.x = Hair_Parameters.x + -r0.w;
+  r4.x = r0.w == 1;
+  r4.z = r0.w == 3;
+  r4.w = r0.w == 5;
+  r0.w = 1.000000000e+000 + -r3.x;
+  r0.w = r1.w ? r0.w : r3.x;
+  r1.w = Hair_Parameters.y + -Hair_Parameters.z;
+  r1.w = r2.y * r1.w + Hair_Parameters.z;
+  r0.w = -r1.w * r0.w + 1.000000000e+000;
+  r1.w = 1.000000000e+000 + -r1.w;
+  r5.x = r2.y * Hair_Parameters.w + Hair_Spec_Alpha.y;
+  r5.z = r5.x * r0.w;
+  r5.y = r5.x * r1.w;
+  r6.x = r4.y ? r5.x : 0;
+  r6.y = r4.y ? r5.z : 0;
+  r6.z = r4.y ? r5.y : 0;
+  r6.x = r4.x ? r5.z : r6.x;
+  r6.y = r4.x ? r5.x : r6.y;
+  r6.z = r4.x ? r5.y : r6.z;
+  r3.x = r3.y ? r5.y : r6.x;
+  r3.y = r3.y ? r5.x : r6.y;
+  r3.w = r3.y ? r5.z : r6.z;
+  r3.x = r4.z ? r5.y : r3.x;
+  r3.y = r4.z ? r5.z : r3.y;
+  r3.w = r4.z ? r5.x : r3.w;
+  r3.x = r3.z ? r5.z : r3.x;
+  r3.y = r3.z ? r5.y : r3.y;
+  r3.z = r3.z ? r5.x : r3.w;
+  r3.x = r4.w ? r5.x : r3.x;
+  r3.y = r4.w ? r5.y : r3.y;
+  r3.z = r4.w ? r5.z : r3.z;
+  r0.xyz = r3.xyz * r0.xyz + r1.xyz;
+  r0.w = 1.000000000e+000 + -v5.w;
+  r0.xyz = r0.www * r0.xyz;
+  r2.xyz = v5.www * cb4[4].xyz + r0.xyz;
+  o0.xyzw = cb4[1].xyzw * r2.xyzw;
+  return;
+}

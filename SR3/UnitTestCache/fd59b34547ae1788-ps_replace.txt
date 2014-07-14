@@ -1,0 +1,32 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState particle_samplerSampler_s : register(s0);
+SamplerState edgemap_samplerSampler_s : register(s1);
+Texture2D<float4> particle_samplerSampler : register(t0);
+Texture2D<float4> edgemap_samplerSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyzw = edgemap_samplerSampler.Sample(edgemap_samplerSampler_s, v1.xy).xyzw;
+  r0.x = 9.999999776e-003 + -r0.x;
+  r0.x = r0.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyzw = particle_samplerSampler.Sample(particle_samplerSampler_s, v1.xy).xyzw;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

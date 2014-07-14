@@ -1,0 +1,17 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 IR_light_debug_flags : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  o0.xw = float2(1.250000e-001,1.000000e+000);
+  o0.yz = IR_light_debug_flags.xy * float2(1.250000e-001,1.250000e-001);
+  return;
+}

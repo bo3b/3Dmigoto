@@ -1,0 +1,166 @@
+cbuffer cb8 : register(b8)
+{
+  float4 cb8[1];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float4 Lighting : packoffset(c1);
+  float4 Ambient_Color : packoffset(c3);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 Object_instance_params : packoffset(c15);
+  row_major float3x4 objTM : packoffset(c16);
+  float4x4 IR_World2View : packoffset(c22);
+  float Reflection_Plane_Height : packoffset(c30);
+  float3 Tree_wind_dir : packoffset(c35);
+  float4 Tree_wind_times : packoffset(c36);
+  float4 Tree_wind_distances : packoffset(c37);
+  float3 Tree_wind_leaves : packoffset(c38);
+  float3 Tree_wind_frond_ripple : packoffset(c39);
+  float3 Tree_wind_gust : packoffset(c40);
+  float4 Tree_wind_gust_hints : packoffset(c41);
+}
+
+cbuffer vc8 : register(b8)
+{
+  bool Tree_enable_leaf_wind : packoffset(c0.z);
+  bool Tree_enable_frond_wind : packoffset(c0.w);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  float4 v4 : POSITION1,
+  float4 v5 : COLOR1,
+  float4 v6 : COLOR0,
+  out float4 o0 : SV_Position0,
+  out float o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = v6.z * 2.000000000e+000 + Tree_wind_times.z;
+  r0.x = -1.000000000e+000 + r0.x;
+  r0.y = v4.z + r0.x;
+  r0.x = sin(r0.x);
+  r0.y = cos(r0.y);
+  r0.x = r0.x * r0.y;
+  r1.z = Tree_wind_gust_hints.y + Tree_wind_dir.z;
+  r1.xy = Tree_wind_dir.xy;
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.y = rsqrt(r0.y);
+  r0.yzw = r1.xyz * r0.yyy;
+  r1.xyzw = v5.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.xyz = v0.www * r1.xyz;
+  r2.x = dot(r1.xyz, r1.xyz);
+  r2.x = sqrt(r2.x);
+  r0.yzw = r2.xxx * r0.yzw;
+  r2.x = Tree_wind_gust_hints.z * Tree_wind_gust.x;
+  r0.yzw = r2.xxx * r0.yzw;
+  r2.x = Tree_wind_times.y + objTM._m13;
+  r1.w = r1.w * 3.141592503e+000 + r2.x;
+  r2.xy = float2(3.000000e-001,9.500000e-001) * r1.ww;
+  r1.w = sin(r2.x);
+  r2.x = cos(r2.y);
+  r2.y = -r1.w * r2.x + 1.000000000e+000;
+  r1.w = r2.x * r1.w;
+  r2.x = Tree_wind_gust_hints.z * r2.y + r1.w;
+  r0.yzw = r2.xxx * r0.yzw;
+  r0.yzw = Tree_wind_distances.yyy * r0.yzw;
+  r2.x = -Tree_wind_gust.x * Tree_wind_gust_hints.z + 1.000000000e+000;
+  r1.xyz = r2.xxx * r1.xyz;
+  r1.xyz = r1.xyz * r1.www;
+  r1.w = Tree_wind_times.x + objTM._m03;
+  r2.xy = float2(3.000000e-001,9.500000e-001) * r1.ww;
+  r1.w = sin(r2.x);
+  r2.x = cos(r2.y);
+  r1.w = Tree_wind_distances.x * r1.w;
+  r1.w = r1.w * r2.x + Tree_wind_gust.y;
+  r2.x = Tree_wind_distances.z * v0.y;
+  r2.x = max(r2.x, 0.000000000e+000);
+  r2.x = log2(r2.x);
+  r2.x = Tree_wind_distances.w * r2.x;
+  r2.x = exp2(r2.x);
+  r1.w = r2.x * r1.w;
+  r2.xyz = -v4.xyz + v0.xyz;
+  r2.xyz = Object_instance_params.xxx * r2.xyz + v4.xyz;
+  r3.x = dot(objTM._m00_m01_m02, r2.xyz);
+  r3.z = dot(objTM._m20_m21_m22, r2.xyz);
+  r2.x = dot(objTM._m10_m11_m12, r2.xyz);
+  r2.y = -r1.w * Tree_wind_gust_hints.x + r2.x;
+  r2.xz = Tree_wind_dir.xz * r1.ww + r3.xz;
+  r1.xyz = r1.xyz * Tree_wind_distances.yyy + r2.xyz;
+  r0.yzw = r0.yzw * Tree_wind_gust.zzz + r1.xyz;
+  r1.x = dot(r0.yw, r0.yw);
+  r1.x = rsqrt(r1.x);
+  r1.xy = r1.xx * r0.yw;
+  r1.x = saturate(dot(-r1.xy, Tree_wind_dir.xz));
+  r1.x = r1.x * 2.000000000e+000 + 5.000000000e-001;
+  r1.x = Tree_wind_leaves.z * r1.x;
+  r1.x = r1.x * Tree_wind_leaves.x + Tree_wind_leaves.x;
+  r1.yzw = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.x = dot(objTM._m00_m01_m02, r1.yzw);
+  r2.y = dot(objTM._m10_m11_m12, r1.yzw);
+  r2.z = dot(objTM._m20_m21_m22, r1.yzw);
+  r2.w = dot(r2.xyz, r2.xyz);
+  r2.w = rsqrt(r2.w);
+  r3.xyz = r2.xyz * r2.www;
+  r3.w = r3.y * 1.000000000e+003 + Tree_wind_times.w;
+  r3.w = sin(r3.w);
+  r1.x = r3.w * r1.x;
+  r4.xyz = v6.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.w = 1.000000000e+001 * r4.x;
+  r4.x = r3.w * r1.x;
+  r5.xyz = r3.xyz * r1.xxx;
+  r5.xyz = r5.xyz * r3.www + r0.yzw;
+  r0.y = cb8[0].z ? r5.x : r0.y;
+  r0.z = cb8[0].z ? r5.y : r0.z;
+  r0.w = cb8[0].z ? r5.z : r0.w;
+  r5.y = saturate(Tree_wind_leaves.y * r4.x);
+  r5.xz = float2(0.000000e+000,0.000000e+000);
+  r2.xyz = r2.xyz * r2.www + r5.xyz;
+  r1.x = dot(r2.xyz, r2.xyz);
+  r1.x = rsqrt(r1.x);
+  r2.xyz = r2.xyz * r1.xxx;
+  r2.x = cb8[0].z ? r2.x : r3.x;
+  r2.y = cb8[0].z ? r2.y : r3.y;
+  r2.z = cb8[0].z ? r2.z : r3.z;
+  r2.xyz = r2.xyz * r0.xxx;
+  r2.xyz = r2.xyz * r4.zzz;
+  r0.x = log2(r4.y);
+  r0.x = 2.200000048e+000 * r0.x;
+  o2.w = exp2(r0.x);
+  r2.xyz = Tree_wind_frond_ripple.xxx * r2.xyz;
+  r2.xyz = r2.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + r0.yzw;
+  r0.x = cb8[0].w ? r2.x : r0.y;
+  r0.y = cb8[0].w ? r2.y : r0.z;
+  r0.z = cb8[0].w ? r2.z : r0.w;
+  r2.x = objTM._m03 + r0.x;
+  r2.y = objTM._m13 + r0.y;
+  r2.z = objTM._m23 + r0.z;
+  r2.w = 1.000000000e+000;
+  o0.x = dot(r2.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r2.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r2.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r2.xyzw, projTM._m03_m13_m23_m33);
+  o1.x = -Reflection_Plane_Height + v0.y;
+  o2.x = dot(r1.yzw, IR_World2View._m00_m10_m20);
+  o2.y = dot(r1.yzw, IR_World2View._m01_m11_m21);
+  o2.z = dot(r1.yzw, IR_World2View._m02_m12_m22);
+  r0.xy = v1.xy;
+  o3.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  o3.z = Object_instance_params.z * Lighting.y;
+  o3.w = -Object_instance_params.z + 1.000000000e+000;
+  return;
+}

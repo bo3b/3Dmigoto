@@ -1,0 +1,75 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4x4 rao_inv_proj : packoffset(c0);
+  float4x4 rao_ellipsoid2view : packoffset(c4);
+  float3 rao_offset_radii : packoffset(c8);
+  float rao_strength : packoffset(c9);
+  float4x4 rao_view2ellipsoid : packoffset(c10);
+  float4 rao_occluder_sphere : packoffset(c14);
+}
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = -v1.y * 2.000000000e+000 + 1.000000000e+000;
+  r0.xyzw = rao_inv_proj._m01_m11_m21_m31 * r0.xxxx;
+  r1.x = v1.x * 2.000000000e+000 + -1.000000000e+000;
+  r0.xyzw = rao_inv_proj._m00_m10_m20_m30 * r1.xxxx + r0.xyzw;
+  r1.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
+  r0.xyzw = rao_inv_proj._m02_m12_m22_m32 * r1.xxxx + r0.xyzw;
+  r0.xyzw = rao_inv_proj._m03_m13_m23_m33 + r0.xyzw;
+  r0.xyz = r0.xyz / r0.www;
+  r1.xyz = rao_view2ellipsoid._m01_m11_m21 * r0.yyy;
+  r1.xyz = rao_view2ellipsoid._m00_m10_m20 * r0.xxx + r1.xyz;
+  r1.xyz = rao_view2ellipsoid._m02_m12_m22 * r0.zzz + r1.xyz;
+  r1.xyz = rao_view2ellipsoid._m03_m13_m23 + r1.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r2.xyz = rao_ellipsoid2view._m01_m11_m21 * r1.yyy;
+  r2.xyz = rao_ellipsoid2view._m00_m10_m20 * r1.xxx + r2.xyz;
+  r2.xyz = rao_ellipsoid2view._m02_m12_m22 * r1.zzz + r2.xyz;
+  r1.xyz = rao_offset_radii.xyz * r1.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = sqrt(r0.w);
+  r1.x = dot(r2.xyz, r2.xyz);
+  r1.yzw = -rao_occluder_sphere.xyz + r0.xyz;
+  r0.xyz = rao_occluder_sphere.xyz + -r0.xyz;
+  r1.y = dot(r1.yzw, r1.yzw);
+  r1.xy = sqrt(r1.xy);
+  r1.z = r1.y + -r1.x;
+  r1.y = r1.y + r1.y;
+  r1.x = r1.y / r1.x;
+  r1.x = min(r1.x, 1.000000000e+000);
+  r0.w = r1.z / r0.w;
+  r0.w = saturate(1.000000000e+000 + -r0.w);
+  r0.w = r0.w * r1.x;
+  r0.w = rao_strength * r0.w;
+  r1.x = dot(r0.xyz, r0.xyz);
+  r1.x = rsqrt(r1.x);
+  r0.xyz = r1.xxx * r0.xyz;
+  r1.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, v1.xy).xyzw;
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.w = dot(r1.xy, r1.xy);
+  r1.w = min(r1.w, 1.000000000e+000);
+  r1.w = 1.000000000e+000 + -r1.w;
+  r1.z = sqrt(r1.w);
+  r1.w = r1.z + r1.z;
+  r1.xyz = r1.www * r1.xyz;
+  r1.w = -r1.z;
+  r1.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r1.xyw;
+  r0.x = saturate(dot(r1.xyz, r0.xyz));
+  o0.xyzw = r0.wwww * r0.xxxx;
+  return;
+}

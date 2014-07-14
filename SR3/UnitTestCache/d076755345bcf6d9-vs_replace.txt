@@ -1,0 +1,26 @@
+
+cbuffer vc0 : register(b0)
+{
+  float2 pixel_steps : packoffset(c0);
+  float max_size : packoffset(c1);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : COLOR0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xy = pixel_steps.xy * v0.xy;
+  o0.xy = min(r0.xy, max_size);
+  o0.z = v0.z;
+  o0.w = 1.000000000e+000;
+  o1.xy = v1.xy;
+  o2.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+  return;
+}

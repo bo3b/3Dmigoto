@@ -1,0 +1,122 @@
+
+cbuffer vc0 : register(b0)
+{
+  float blur_radius : packoffset(c0);
+  float4 focal_params : packoffset(c1);
+  float4 pixel_steps : packoffset(c2);
+  float4 depth_params : packoffset(c3);
+}
+Texture2D<float4> depth_textureTexture : register(t0);
+Texture2D<float4> color_samplerTexture : register(t1);
+Texture2D<float4> color_src_samplerTexture : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8;
+  uint4 bitmask;
+  r0.xy = pixel_steps.xy * v1.xy;
+  r0.xy = (int2)r0.xy;
+  r1.x = (int)r0.y & 3;
+  r1.y = (int)r0.y + (int)-r1.x;
+  r1.yz = (int2)r1.yy + int2(1,-1);
+  r0.z = r1.y;
+  r1.y = (int)0 < (int)r1.z;
+  r0.w = 0.000000000e+000;
+  r2.xyzw = depth_textureTexture.Load(r0.xzw, int3(0, 2, 0)).xyzw;
+  r1.z = depth_params.z * r2.x + depth_params.w;
+  r1.z = 1.000000e+000 / r1.z;
+  r1.zw = -focal_params.zx + r1.zz;
+  r2.xy = focal_params.wy + -focal_params.zx;
+  r1.zw = saturate(r1.zw / r2.xy);
+  r1.w = 1.000000000e+000 + -r1.w;
+  r1.z = blur_radius * r1.z + r1.w;
+  r3.xyzw = depth_textureTexture.Load(r0.xzw, int3(0, 1, 0)).xyzw;
+  r1.w = depth_params.z * r3.x + depth_params.w;
+  r1.w = 1.000000e+000 / r1.w;
+  r2.zw = -focal_params.zx + r1.ww;
+  r2.zw = saturate(r2.zw / r2.xy);
+  r1.w = 1.000000000e+000 + -r2.w;
+  r1.w = blur_radius * r2.z + r1.w;
+  r1.z = min(r1.z, r1.w);
+  r3.xyzw = depth_textureTexture.Load(r0.xzw, int3(0, 0, 0)).xyzw;
+  r2.z = depth_params.z * r3.x + depth_params.w;
+  r2.z = 1.000000e+000 / r2.z;
+  r2.zw = -focal_params.zx + r2.zz;
+  r2.zw = saturate(r2.zw / r2.xy);
+  r2.w = 1.000000000e+000 + -r2.w;
+  r2.z = blur_radius * r2.z + r2.w;
+  r1.w = min(r1.w, r2.z);
+  r1.zw = r1.zw * r1.zw;
+  r2.w = 4.000000000e+000 * r1.w;
+  r3.x = r1.z * 4.000000000e+000 + r2.w;
+  r3.x = 1.000000000e+000 + r3.x;
+  r3.y = -r2.w / r3.x;
+  r4.xyzw = color_samplerTexture.Load(r0.xzw, int3(0, 1, 0)).xyzw;
+  r5.xyz = r4.xyz * r3.yyy;
+  r6.xyzw = depth_textureTexture.Load(r0.xzw, int3(0, -2, 0)).xyzw;
+  r3.z = depth_params.z * r6.x + depth_params.w;
+  r3.z = 1.000000e+000 / r3.z;
+  r3.zw = -focal_params.zx + r3.zz;
+  r3.zw = saturate(r3.zw / r2.xy);
+  r3.w = 1.000000000e+000 + -r3.w;
+  r3.z = blur_radius * r3.z + r3.w;
+  r1.y = (int)r1.y & (int)r3.z;
+  r6.xyzw = depth_textureTexture.Load(r0.xzw, int3(0, -1, 0)).xyzw;
+  r3.z = depth_params.z * r6.x + depth_params.w;
+  r3.z = 1.000000e+000 / r3.z;
+  r3.zw = -focal_params.zx + r3.zz;
+  r2.xy = saturate(r3.zw / r2.xy);
+  r2.y = 1.000000000e+000 + -r2.y;
+  r2.x = blur_radius * r2.x + r2.y;
+  r1.y = min(r1.y, r2.x);
+  r2.x = min(r2.z, r2.x);
+  r2.x = r2.x * r2.x;
+  r1.y = r1.y * r1.y;
+  r1.yz = float2(4.000000e+000,4.000000e+000) * r1.yz;
+  r2.y = r2.x * 4.000000000e+000 + r1.y;
+  r2.x = 4.000000000e+000 * r2.x;
+  r2.y = 1.000000000e+000 + r2.y;
+  r2.z = -r2.x / r2.y;
+  r6.xyzw = color_samplerTexture.Load(r0.xzw, int3(0, -1, 0)).xyzw;
+  r7.xyzw = color_samplerTexture.Load(r0.xzw, int3(0, 0, 0)).xyzw;
+  r8.xzw = r0.xww;
+  r8.y = (uint)r0.y >> 2;
+  r0.xyz = r2.zzz * r6.xyz + r5.xyz;
+  r0.xyz = r7.xyz + -r0.xyz;
+  r0.w = r3.y * r1.z;
+  r3.y = r3.y * -r2.w;
+  r3.y = r2.z * -r2.x + r3.y;
+  r2.z = r2.z * r1.y;
+  r5.xyzw = color_src_samplerTexture.Load(r8.xyz, int3(0, 0, 0)).xyzw;
+  r7.xyzw = color_src_samplerTexture.Load(r8.xyw, int3(0, -1, 0)).xyzw;
+  r0.xyz = -r0.www * r5.xyz + r0.xyz;
+  r0.xyz = -r2.zzz * r7.xyz + r0.xyz;
+  r0.w = r1.w * 4.000000000e+000 + r2.x;
+  r0.w = 1.000000000e+000 + r0.w;
+  r0.w = r0.w + -r3.y;
+  r0.xyz = r0.xyz / r0.www;
+  r3.yzw = r1.zzz * r5.xyz + r4.xyz;
+  r3.yzw = r2.www * r0.xyz + r3.yzw;
+  r3.xyz = r3.yzw / r3.xxx;
+  r1.z = r1.x == 1;
+  r1.w = r1.x == 2;
+  r3.x = r1.w ? r3.x : r5.x;
+  r3.y = r1.w ? r3.y : r5.y;
+  r3.z = r1.w ? r3.z : r5.z;
+  r3.x = r1.z ? r0.x : r3.x;
+  r3.y = r1.z ? r0.y : r3.y;
+  r3.z = r1.z ? r0.z : r3.z;
+  r0.xyz = r2.xxx * r0.xyz + r6.xyz;
+  r0.xyz = r1.yyy * r7.xyz + r0.xyz;
+  r0.xyz = r0.xyz / r2.yyy;
+  o0.x = r1.x ? r3.x : r0.x;
+  o0.y = r1.x ? r3.y : r0.y;
+  o0.z = r1.x ? r3.z : r0.z;
+  o0.w = 0.000000000e+000;
+  return;
+}

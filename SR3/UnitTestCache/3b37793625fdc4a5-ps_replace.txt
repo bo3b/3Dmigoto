@@ -1,0 +1,98 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[6];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float2 target_dimension : packoffset(c2);
+  float3 hsb_offset : packoffset(c4);
+  float3 unmasked_hsb_offset : packoffset(c5);
+}
+SamplerState mask_mapSampler_s : register(s11);
+SamplerState skin_mapSampler_s : register(s12);
+Texture2D<float4> mask_mapSampler : register(t11);
+Texture2D<float4> skin_mapSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyzw = skin_mapSampler.Sample(skin_mapSampler_s, v1.xy).xyzw;
+  r0.w = min(r0.y, r0.x);
+  r0.w = min(r0.z, r0.w);
+  r1.x = r0.x == r0.w;
+  r1.y = r0.y == r0.w;
+  r2.xyz = r0.yzx + -r0.zxy;
+  r1.z = r1.y ? r2.y : r2.z;
+  r1.z = r1.x ? r2.x : r1.z;
+  r0.x = max(r0.y, r0.x);
+  r0.x = max(r0.z, r0.x);
+  r0.w = r0.x + -r0.w;
+  r1.w = max(r0.w, 9.999999776e-003);
+  r1.z = r1.z / r1.w;
+  r1.y = r1.y ? 5.000000000e+000 : 1.000000000e+000;
+  r1.x = r1.x ? 3.000000000e+000 : r1.y;
+  r1.x = r1.x + -r1.z;
+  r0.y = 1.666666716e-001 * r1.x;
+  r1.x = max(r0.x, 9.999999776e-003);
+  r0.z = r0.w / r1.x;
+  r1.xyz = cb0[5].xyz + r0.yzx;
+  r2.xyzw = mask_mapSampler.Sample(mask_mapSampler_s, v1.xy).xyzw;
+  r1.xyz = cb0[4].zxy * r2.zxy + r1.zxy;
+  r0.w = r2.x + r2.y;
+  r0.w = r0.w + r2.z;
+  r0.w = 0.000000000e+000 < r0.w;
+  r0.x = r0.w ? r1.z : r0.z;
+  r0.y = r0.w ? r1.x : r0.x;
+  r0.z = r0.w ? r1.y : r0.y;
+  r0.w = 9.499999881e-001 + r0.y;
+  r0.w = 5.000000075e-002 * r0.w;
+  r1.x = r0.y < 5.000000075e-002;
+  r1.x = saturate(r1.x ? r0.w : r0.y);
+  r0.y = frac(r0.z);
+  r0.x = saturate(r0.x);
+  r0.z = 6.000000000e+000 * r0.y;
+  r0.z = floor(r0.z);
+  r0.w = (int)r0.z;
+  r0.y = r0.y * 6.000000000e+000 + -r0.z;
+  r2.x = r0.w == 0;
+  r2.y = r0.w == 2;
+  r2.z = r0.w == 4;
+  r2.w = r0.w == 1;
+  r0.z = r0.w == 3;
+  r0.w = r0.w == 5;
+  r1.w = 1.000000000e+000 + -r0.y;
+  r3.x = (int)r2.y | (int)r2.x;
+  r3.x = (int)r2.z | (int)r3.x;
+  r0.y = r3.x ? r1.w : r0.y;
+  r0.y = -r0.x * r0.y + 1.000000000e+000;
+  r0.x = 1.000000000e+000 + -r0.x;
+  r1.yz = r1.xx * r0.xy;
+  r3.x = r2.x ? r1.x : 0;
+  r3.y = r2.x ? r1.z : 0;
+  r3.z = r2.x ? r1.y : 0;
+  r3.x = r2.w ? r1.z : r3.x;
+  r3.y = r2.w ? r1.x : r3.y;
+  r3.z = r2.w ? r1.y : r3.z;
+  r2.x = r2.y ? r1.y : r3.x;
+  r2.y = r2.y ? r1.x : r3.y;
+  r2.w = r2.y ? r1.z : r3.z;
+  r0.x = r0.z ? r1.y : r2.x;
+  r0.y = r0.z ? r1.z : r2.y;
+  r0.z = r0.z ? r1.x : r2.w;
+  r0.x = r2.z ? r1.z : r0.x;
+  r0.y = r2.z ? r1.y : r0.y;
+  r0.z = r2.z ? r1.x : r0.z;
+  o0.x = r0.w ? r1.x : r0.x;
+  o0.y = r0.w ? r1.y : r0.y;
+  o0.z = r0.w ? r1.z : r0.z;
+  o0.w = 1.000000000e+000;
+  return;
+}

@@ -1,0 +1,47 @@
+
+cbuffer vc0 : register(b0)
+{
+  float2 Points_target_dimensions : packoffset(c0);
+  float2 Depth_buffer_dimensions : packoffset(c1);
+  float Near_clip : packoffset(c2);
+  float Far_clip : packoffset(c3);
+  float3 Raycast_translation : packoffset(c4);
+}
+SamplerState Depth_buffer_samplerSampler_s : register(s0);
+Texture2D<float4> Depth_buffer_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v1.xyz / v1.www;
+  r0.xyz = float3(1.000000e+000,1.000000e+000,-1.000000e-003) + r0.xyz;
+  r0.w = 2.000000000e+000 < r0.x;
+  r1.xw = -r0.yy * float2(5.000000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+  r0.y = 1.000000000e+000 < r1.x;
+  r0.y = (int)r0.y | (int)r0.w;
+  r0.w = r0.x < 0.000000000e+000;
+  r0.y = (int)r0.w | (int)r0.y;
+  r0.w = r1.x < 0.000000000e+000;
+  r0.y = (int)r0.w | (int)r0.y;
+  r1.y = 5.000000000e-001 * r0.x;
+  r1.xyzw = Depth_buffer_samplerSampler.Sample(Depth_buffer_samplerSampler_s, r1.yw).xyzw;
+  r0.x = r1.x < r0.z;
+  r0.z = r1.x * Far_clip + Near_clip;
+  r0.x = (int)r0.y | (int)r0.x;
+  o0.w = (int)r0.x & (int)v1.z;
+  r0.xyw = v3.xyz + -v2.xyz;
+  r1.x = dot(r0.xyw, r0.xyw);
+  r1.x = rsqrt(r1.x);
+  r0.xyw = r1.xxx * r0.xyw;
+  r0.xyz = r0.xyw * r0.zzz + v2.xyz;
+  o0.xyz = -Raycast_translation.xyz + r0.xyz;
+  return;
+}

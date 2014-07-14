@@ -1,0 +1,26 @@
+
+cbuffer vc4 : register(b4)
+{
+  float2 Tint_saturation : packoffset(c0);
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Base_samplerSampler_s : register(s0);
+Texture2D<float4> Base_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Base_samplerSampler.Sample(Base_samplerSampler_s, v1.xy).xyzw;
+  r1.x = dot(float3(3.000000e-001,5.900000e-001,1.100000e-001), r0.xyz);
+  r0.xyz = -r1.xxx + r0.xyz;
+  r0.xyz = Tint_saturation.xxx * r0.xyz + r1.xxx;
+  o0.xyz = Tint_color.xyz * r0.xyz;
+  o0.w = r0.w;
+  return;
+}

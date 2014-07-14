@@ -1,0 +1,31 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  o0.x = dot(r1.xyz, projTM._m00_m10_m20);
+  o0.y = dot(r1.xyz, projTM._m01_m11_m21);
+  o0.z = dot(r1.xyz, projTM._m02_m12_m22);
+  o0.w = dot(r1.xyz, projTM._m03_m13_m23);
+  r0.xy = v1.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  return;
+}

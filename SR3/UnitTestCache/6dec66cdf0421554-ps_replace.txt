@@ -1,0 +1,44 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[27];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float3 Luminance_conversion : packoffset(c16);
+  float4 Bloom_curve_values : packoffset(c26);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float2 Tint_saturation : packoffset(c0);
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Base_samplerSampler_s : register(s0);
+Texture2D<float4> Base_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Base_samplerSampler.Sample(Base_samplerSampler_s, v1.xy).xyzw;
+  r0.xyzw = Tint_color.wwww * r0.xyzw;
+  r1.x = dot(r0.xyz, float3(3.000000e-001,3.000000e-001,3.000000e-001));
+  r1.y = cb0[26].x + -r1.x;
+  r1.y = cb0[26].z * abs(r1.y) + cb0[26].w;
+  r1.z = r1.x < cb0[26].x;
+  r1.w = cb0[26].y * r1.x;
+  r1.x = 1.000000047e-003 + r1.x;
+  r1.y = r1.z ? r1.w : r1.y;
+  r1.yzw = r1.yyy * r0.xyz;
+  r1.xyz = r1.yzw / r1.xxx;
+  r0.xyz = float3(3.000000e+000,3.000000e+000,3.000000e+000) * r1.xyz;
+  o0.xyzw = max(r0.xyzw, float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000));
+  return;
+}

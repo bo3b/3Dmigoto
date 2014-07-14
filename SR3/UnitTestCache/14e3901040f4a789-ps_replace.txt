@@ -1,0 +1,35 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[9];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float Alpha_Threshold : packoffset(c8);
+}
+SamplerState Diffuse_mapSampler_s : register(s0);
+Texture2D<float4> Diffuse_mapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = float2(1.000000e+002,1.000000e+002) * v1.xy;
+  r0.x = r0.x * r0.y;
+  r0.x = frac(r0.x);
+  r1.xyzw = Diffuse_mapSampler.Sample(Diffuse_mapSampler_s, v1.xy).xyzw;
+  r0.x = -v1.w * r0.x + r1.w;
+  r0.y = r0.x * v1.z + -cb4[8].x;
+  r0.x = v1.z * r0.x;
+  o0.w = r0.x;
+  r0.x = r0.y < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

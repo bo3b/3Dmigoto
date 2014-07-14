@@ -1,0 +1,113 @@
+cbuffer cb8 : register(b8)
+{
+  float4 cb8[2];
+}
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[10];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float4 Lighting : packoffset(c1);
+  float4 Specular_Color : packoffset(c2);
+  float4 Ambient_Color : packoffset(c3);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 Fog_color : packoffset(c4);
+  float Alpha_Threshold : packoffset(c8);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+
+cbuffer vc8 : register(b8)
+{
+  bool Alpha_test_use_dsf : packoffset(c1.z);
+}
+SamplerState Diffuse_mapSampler_s : register(s0);
+SamplerState Specular_mapSampler_s : register(s1);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+Texture2D<float4> Diffuse_mapSampler : register(t0);
+Texture2D<float4> Specular_mapSampler : register(t1);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = float2(1.000000e+002,1.000000e+002) * v2.xy;
+  r0.x = r0.x * r0.y;
+  r0.x = frac(r0.x);
+  r1.xyzw = Diffuse_mapSampler.Sample(Diffuse_mapSampler_s, v2.xy).xyzw;
+  r1.xyzw = Diffuse_Color.xyzw * r1.xyzw;
+  r0.x = -v2.w * r0.x + r1.w;
+  r0.w = v2.z * r0.x;
+  r2.xy = v1.xy / v1.ww;
+  r2.xy = float2(1.000000e+000,1.000000e+000) + r2.xy;
+  r1.w = cb4[9].z * r2.x;
+  r2.x = -r2.y * 5.000000000e-001 + 1.000000000e+000;
+  r2.z = cb4[9].w * r2.x;
+  r2.y = 5.000000000e-001 * r1.w;
+  r2.xy = float2(-5.000000e-001,-5.000000e-001) + r2.yz;
+  r2.y = floor(r2.x);
+  r2.z = floor(r2.y);
+  r1.w = r2.x + -r2.y;
+  r2.xy = float2(5.000000e-001,5.000000e-001) + r2.yz;
+  r3.x = r2.x * cb4[9].x + cb4[9].x;
+  r3.yz = cb4[9].xy * r2.xy;
+  r2.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r3.xz).xyzw;
+  r2.zw = r3.xz + -r3.yz;
+  r4.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r3.yz).xyzw;
+  r2.x = r4.y;
+  r3.xw = -v3.xx + r2.xy;
+  r2.x = 5.000000e-001 >= r2.x;
+  r2.y = 5.000000e-001 >= r2.y;
+  r2.x = r2.x ? 1 : 0;
+  r2.y = r2.y ? 1 : 0;
+  r3.x = 1.220722e-005 >= abs(r3.x);
+  r3.w = 1.220722e-005 >= abs(r3.w);
+  r3.x = r3.x ? 1 : 0;
+  r3.w = r3.w ? 1 : 0;
+  r4.x = dot(r3.xw, float2(1.000000e+000,1.000000e+000));
+  r2.xy = r3.xw + r2.xy;
+  r2.x = r2.y + -r2.x;
+  r1.w = saturate(r2.x + r1.w);
+  r2.xy = r1.ww * r2.zw + r3.yz;
+  r2.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r2.xy).xyzw;
+  r2.xyzw = max(r2.xyzw, float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.w = min(r4.x, 1.000000000e+000);
+  r1.w = cb8[1].z ? r1.w : 1.000000000e+000;
+  r1.w = r0.w * r1.w + -cb4[8].x;
+  r1.w = r1.w < 0.000000000e+000;
+  if (r1.w != 0) discard;
+  r1.w = dot(r2.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.w = max(r1.w, 1.000000047e-003);
+  r1.w = r2.w / r1.w;
+  r3.xyz = r2.xyz * r1.www;
+  r1.xyz = r2.xyz * r1.xyz;
+  r2.xyzw = Specular_mapSampler.Sample(Specular_mapSampler_s, v2.xy).xyzw;
+  r2.xyz = Specular_Color.xyz * r2.xyz;
+  r2.xyz = r2.xyz * r3.xyz;
+  r1.xyz = r1.xyz * v3.yyy + r2.xyz;
+  r1.w = 1.000000000e+000 + -v3.z;
+  r1.xyz = r1.www * r1.xyz;
+  r0.xyz = v3.zzz * cb4[4].xyz + r1.xyz;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

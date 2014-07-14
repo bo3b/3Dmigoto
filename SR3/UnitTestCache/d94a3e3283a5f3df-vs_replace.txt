@@ -1,0 +1,127 @@
+cbuffer cb5 : register(b5)
+{
+  float4 cb5[8];
+}
+
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 Eye_orient : packoffset(c11);
+  row_major float3x4 objTM : packoffset(c16);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float4 Diffuse_color : packoffset(c1);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float4 Ambient_color : packoffset(c5);
+  float Self_illum : packoffset(c6);
+  float4 VFX_material_tint : packoffset(c7);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : POSITION0,
+  float4 v1 : COLOR0,
+  float v2 : COLOR1,
+  float2 v3 : TEXCOORD0,
+  float v4 : COLOR2,
+  float v5 : TEXCOORD2,
+  float4 v6 : POSITION1,
+  float4 v7 : TEXCOORD1,
+  float2 v8 : COLOR3,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r0.xyz = -eyePos.zxy + r1.zxy;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(v6.xyz, v6.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v6.yzx * r0.www;
+  r3.xyz = r2.xyz * r0.xyz;
+  r0.xyz = r0.zxy * r2.yzx + -r3.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.xyz = v7.xxx * r0.xyz + r1.xyz;
+  r2.xyz = Eye_orient._m21_m22_m20 * r0.zxy;
+  r0.xyz = r0.yzx * Eye_orient._m22_m20_m21 + -r2.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.xyz = r0.xyz * v7.yyy + r1.xyz;
+  r0.w = 1.000000000e+000;
+  o0.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = -eyePos.xyz + r0.xyz;
+  r1.xyz = v1.xyz * cb5[7].xyz + -v1.xyz;
+  r1.xyz = cb5[7].www * r1.xyz + v1.xyz;
+  r2.xyz = cb5[5].xyz * cb5[7].xyz + -cb5[5].xyz;
+  r2.xyz = cb5[7].www * r2.xyz + cb5[5].xyz;
+  o1.xyz = r2.xyz + r1.xyz;
+  o1.w = cb5[4].x * v1.w;
+  r0.w = 9.999999939e-009 + v5.x;
+  r1.x = cb5[3].x * cb5[3].y;
+  r1.y = round(r1.x);
+  r1.x = (int)r1.x;
+  r1.x = max(r1.x, -r1.x);
+  r0.w = r1.y * r0.w;
+  r0.w = (int)r0.w;
+  r1.y = max(r0.w, -r0.w);
+  r0.w = (int)r0.w & 0x80000000;
+  r1.x = r1.y % r1.x;
+  r1.y = -(int)r1.x;
+  r0.w = r0.w ? r1.y : r1.x;
+  r1.x = (int)r0.w & 0x80000000;
+  r1.y = max(r0.w, -r0.w);
+  r0.w = r0.w;
+  r0.w = r0.w / cb5[3].x;
+  r0.w = round(r0.w);
+  r1.z = (int)cb5[3].x;
+  r1.z = max(r1.z, -r1.z);
+  r1.y = r1.y % r1.z;
+  r1.z = -(int)r1.y;
+  r1.x = r1.x ? r1.z : r1.y;
+  r1.x = r1.x;
+  r1.yz = float2(1.000000e+000,1.000000e+000) / cb5[3].xy;
+  r2.xy = v3.xy * r1.yz;
+  o2.x = r1.x * r1.y + r2.x;
+  o2.y = r0.w * r1.z + r2.y;
+  o2.zw = v8.xy;
+  r0.w = Fog_dist.x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 9.999999776e-003 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o3.y = 1.000000000e+000 + -r0.x;
+  o3.x = v2.x;
+  o3.z = v4.x;
+  return;
+}

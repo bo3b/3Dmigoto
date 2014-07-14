@@ -1,0 +1,40 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Draw_distance : packoffset(c0);
+  float Star_strength : packoffset(c1);
+  float2 Render_target_dimensions : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.x = Star_strength * v1.z;
+  r0.x = v1.w * r0.x;
+  r0.yz = float2(-5.000000e-001,-5.000000e-001) + v1.xy;
+  r0.y = dot(r0.yz, r0.yz);
+  r0.y = sqrt(r0.y);
+  r0.y = -r0.y * 2.000000000e+000 + 1.000000000e+000;
+  r0.y = max(r0.y, 0.000000000e+000);
+  r0.x = r0.x * r0.y;
+  o0.xyz = cb4[1].xyz * r0.yyy;
+  r0.x = cb4[1].w * r0.x;
+  o0.w = 1.200000000e+001 * r0.x;
+  return;
+}

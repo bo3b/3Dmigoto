@@ -1,0 +1,169 @@
+cbuffer cb8 : register(b8)
+{
+  float4 cb8[2];
+}
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[10];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[16];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Specular_Map_Amount : packoffset(c4);
+  float4 Specular_Color : packoffset(c5);
+  float Specular_Alpha : packoffset(c6);
+  float Self_Illumination : packoffset(c7);
+  float Decal_Map_TilingU : packoffset(c8);
+  float Decal_Map_TilingV : packoffset(c9);
+  float Decal_Map_Opacity : packoffset(c10);
+  float Decal_Map_TilingU_2 : packoffset(c11);
+  float Decal_Map_TilingV_2 : packoffset(c12);
+  float Spec_Map_TilingU : packoffset(c13);
+  float Spec_Map_TilingV : packoffset(c14);
+  float Decal_Map_Opacity_2 : packoffset(c15);
+  float4 Diffuse_Color : packoffset(c16);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float Alpha_Threshold : packoffset(c8);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+
+cbuffer vc8 : register(b8)
+{
+  bool Alpha_test_use_dsf : packoffset(c1.z);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+SamplerState Specular_MapSampler_s : register(s2);
+SamplerState Decal_MapSampler_s : register(s3);
+SamplerState Decal_Map_2Sampler_s : register(s4);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+Texture2D<float4> Specular_MapSampler : register(t2);
+Texture2D<float4> Decal_MapSampler : register(t3);
+Texture2D<float4> Decal_Map_2Sampler : register(t4);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xy = v2.xy / v2.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.x = cb4[9].z * r0.x;
+  r0.y = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r1.y = cb4[9].w * r0.y;
+  r1.x = 5.000000000e-001 * r0.x;
+  r0.xy = float2(-5.000000e-001,-5.000000e-001) + r1.xy;
+  r0.z = floor(r0.x);
+  r0.w = floor(r0.y);
+  r0.xy = r0.xy + -r0.zw;
+  r0.zw = float2(5.000000e-001,5.000000e-001) + r0.zw;
+  r1.xy = r0.zw * cb4[9].xy + cb4[9].xy;
+  r1.zw = cb4[9].xy * r0.zw;
+  r2.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.xy).xzwy;
+  r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.zw).xyzw;
+  r2.x = r3.y;
+  r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.xw).xyzw;
+  r4.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.zy).xyzw;
+  r2.z = r4.y;
+  r2.y = r3.y;
+  r3.xyzw = -v3.wwww + r2.xyzw;
+  r2.x = 5.000000e-001 >= r2.x;
+  r2.y = 5.000000e-001 >= r2.y;
+  r2.z = 5.000000e-001 >= r2.z;
+  r2.w = 5.000000e-001 >= r2.w;
+  r2.x = r2.x ? 1 : 0;
+  r2.y = r2.y ? 1 : 0;
+  r2.z = r2.z ? 1 : 0;
+  r2.w = r2.w ? 1 : 0;
+  r3.x = 1.220722e-005 >= abs(r3.x);
+  r3.y = 1.220722e-005 >= abs(r3.y);
+  r3.z = 1.220722e-005 >= abs(r3.z);
+  r3.w = 1.220722e-005 >= abs(r3.w);
+  r3.x = r3.x ? 1 : 0;
+  r3.y = r3.y ? 1 : 0;
+  r3.z = r3.z ? 1 : 0;
+  r3.w = r3.w ? 1 : 0;
+  r0.z = dot(r3.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+  r2.xyzw = r3.xyzw + r2.xyzw;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.z = cb8[1].z ? r0.z : 1.000000000e+000;
+  r3.w = 1.000000000e+000;
+  r4.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v4.xy).xyzw;
+  r3.xyz = v3.xyz;
+  r5.xyzw = r4.xyzw * r3.xyzw;
+  r0.z = r5.w * r0.z + -cb4[8].x;
+  r0.z = r0.z < 0.000000000e+000;
+  if (r0.z != 0) discard;
+  r0.zw = r2.xy + r2.zw;
+  r0.z = r0.z >= r0.w;
+  r0.w = r0.w >= r0.z;
+  r0.w = r0.w ? 1.000000 : 0;
+  r0.z = r0.z ? -1.000000000e+000 : -0.000000000e+000;
+  r0.z = r0.w + r0.z;
+  r0.w = r0.z == 0.000000;
+  r1.x = saturate(r0.x + r0.z);
+  r2.zw = max(r2.yw, r2.xz);
+  r0.z = r2.y + -r2.x;
+  r2.x = r2.w + -r2.z;
+  r2.y = r2.x == 0.000000;
+  r1.y = saturate(r2.x + r0.y);
+  r0.x = saturate(r0.x + r0.z);
+  r0.z = abs(r0.z) >= 1.000000000e+000;
+  r0.w = r0.w ? r2.y : 0;
+  r0.z = r0.z ? r0.w : 0;
+  r0.y = 0.000000000e+000;
+  r0.x = r0.z ? r0.x : r1.x;
+  r0.y = r0.z ? r0.y : r1.y;
+  r0.zw = cb4[9].xy;
+  r0.xy = r0.xy * r0.zw + r1.zw;
+  r0.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r0.xy).xyzw;
+  r0.xyzw = max(r0.xyzw, float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.x = dot(r0.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.x = max(r1.x, 1.000000047e-003);
+  r0.w = r0.w / r1.x;
+  r1.xyz = r0.xyz * r0.www;
+  r2.xyzw = Specular_MapSampler.Sample(Specular_MapSampler_s, v5.zw).xyzw;
+  r2.xyz = cb0[5].xyz * r2.xyz;
+  r2.xyz = cb0[4].xxx * r2.xyz;
+  r1.xyz = r2.xyz * r1.xyz;
+  r2.xyzw = Decal_MapSampler.Sample(Decal_MapSampler_s, v5.xy).xyzw;
+  r2.xyz = -r4.xyz * r3.xyz + r2.xyz;
+  r0.w = cb0[10].x * r2.w;
+  r2.xyz = r0.www * r2.xyz + r5.xyz;
+  r3.xyzw = Decal_Map_2Sampler.Sample(Decal_Map_2Sampler_s, v4.zw).xyzw;
+  r3.xyz = r3.xyz + -r2.xyz;
+  r0.w = cb0[15].x * r3.w;
+  r2.xyz = r0.www * r3.xyz + r2.xyz;
+  r3.xyz = cb0[7].xxx * r2.xyz;
+  r0.xyz = r2.xyz * r0.xyz + r3.xyz;
+  r0.xyz = r1.xyz * cb0[6].xxx + r0.xyz;
+  r0.w = 1.000000000e+000 + -v1.x;
+  r0.xyz = r0.www * r0.xyz;
+  r5.xyz = v1.xxx * cb4[4].xyz + r0.xyz;
+  o0.xyzw = cb4[1].xyzw * r5.xyzw;
+  return;
+}

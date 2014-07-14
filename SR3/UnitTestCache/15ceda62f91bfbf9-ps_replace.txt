@@ -1,0 +1,93 @@
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[3];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Wave_information : packoffset(c0);
+  float4 Wave_shift : packoffset(c1);
+  float4 Wave_ambient_information : packoffset(c2);
+  float4 Wave_ambient_information2 : packoffset(c3);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float2 Target_dimensions : packoffset(c2);
+}
+SamplerState frame_n_texSampler_s : register(s0);
+SamplerState frame_n1_texSampler_s : register(s1);
+SamplerState damping_mapSampler_s : register(s2);
+Texture2D<float4> frame_n_texSampler : register(t0);
+Texture2D<float4> frame_n1_texSampler : register(t1);
+Texture2D<float4> damping_mapSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = float2(1.000000e+000,1.000000e+000) / cb1[2].xy;
+  r1.xyzw = -Wave_shift.xyzw * r0.xyxy + v1.xyxy;
+  r0.zw = r0.xy * float2(-1.000000e+000,0.000000e+000) + r1.xy;
+  r2.xyzw = frame_n_texSampler.Sample(frame_n_texSampler_s, r0.zw).xyzw;
+  r2.x = 4.000000000e+000 * r2.x;
+  r0.zw = r0.xy * float2(0.000000e+000,1.000000e+000) + r1.xy;
+  r3.xyzw = frame_n_texSampler.Sample(frame_n_texSampler_s, r0.zw).xyzw;
+  r2.w = 4.000000000e+000 * r3.x;
+  r3.xyzw = r0.xyxy * float4(1.000000e+000,0.000000e+000,0.000000e+000,-1.000000e+000) + r1.xyxy;
+  r4.xyzw = frame_n_texSampler.Sample(frame_n_texSampler_s, r3.xy).xyzw;
+  r3.xyzw = frame_n_texSampler.Sample(frame_n_texSampler_s, r3.zw).xyzw;
+  r2.z = 4.000000000e+000 * r3.x;
+  r2.y = 4.000000000e+000 * r4.x;
+  r0.z = dot(r2.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+  r0.w = -Wave_information.x * 4.000000000e+000 + 2.000000000e+000;
+  r2.xyzw = frame_n_texSampler.Sample(frame_n_texSampler_s, r1.xy).xyzw;
+  r2.x = 4.000000000e+000 * r2.x;
+  r0.w = r2.x * r0.w;
+  r0.z = Wave_information.x * r0.z + r0.w;
+  r2.xyzw = frame_n1_texSampler.Sample(frame_n1_texSampler_s, r1.zw).xyzw;
+  r0.z = -r2.x * 4.000000000e+000 + r0.z;
+  r2.xy = float2(5.000000e-001,5.000000e-001) * r0.xy;
+  r0.xy = -r0.xy * float2(5.000000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+  r2.xy = max(r2.xy, v1.xy);
+  r0.xy = min(r0.xy, r2.xy);
+  r2.xyzw = damping_mapSampler.Sample(damping_mapSampler_s, r0.xy).xyzw;
+  r3.xyzw = float4(-5.000000e-001,-5.000000e-001,-5.000000e-001,-5.000000e-001) + r1.xyzw;
+  r0.x = dot(r3.xy, r3.xy);
+  r0.y = dot(r3.zw, r3.zw);
+  r0.xy = sqrt(r0.xy);
+  r0.xy = float2(-4.500000e-001,-4.500000e-001) + r0.xy;
+  r0.xy = saturate(float2(2.000000e+001,2.000000e+001) * r0.xy);
+  r0.xy = float2(1.000000e+000,1.000000e+000) + -r0.xy;
+  r0.x = Wave_information.y * r0.x;
+  r0.x = r0.x * r0.y;
+  r0.x = r0.x * r2.x;
+  r0.x = r0.z * r0.x;
+  r0.x = saturate(r0.x * 1.250000000e-001 + 5.000000000e-001);
+  o0.x = r0.x * 2.000000000e+000 + -1.000000000e+000;
+  r0.x = cb1[2].x * r1.x;
+  r0.y = cb1[2].y * -r1.y;
+  r1.y = r0.y * Wave_ambient_information.w + Wave_information.w;
+  r1.x = r0.x * Wave_ambient_information.w + Wave_information.z;
+  r0.xy = -Wave_ambient_information.xy + r1.xy;
+  r0.x = dot(r0.xy, r0.xy);
+  r0.x = sqrt(r0.x);
+  r0.x = Wave_ambient_information.z + r0.x;
+  r0.x = Wave_ambient_information2.x * r0.x;
+  r0.x = 6.283185482e+000 * r0.x;
+  r0.x = sin(r0.x);
+  r0.x = Wave_ambient_information2.y * r0.x;
+  r0.x = r0.x * r2.x;
+  r0.y = Wave_ambient_information2.y + Wave_ambient_information2.y;
+  r0.x = r0.x / r0.y;
+  r0.x = saturate(5.000000000e-001 + r0.x);
+  o0.y = r0.x * 2.000000000e+000 + -1.000000000e+000;
+  o0.zw = float2(0.000000e+000,0.000000e+000);
+  return;
+}

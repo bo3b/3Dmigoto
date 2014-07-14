@@ -1,0 +1,120 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[11];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Specular_Map_Amount : packoffset(c1);
+  float4 Specular_Color : packoffset(c2);
+  float Specular_Alpha : packoffset(c3);
+  float Self_Illumination : packoffset(c4);
+  float ClampU : packoffset(c5);
+  float ClampV : packoffset(c6);
+  float Room_Depth : packoffset(c7);
+  float Decal_Map_Opacity : packoffset(c8);
+  float4 Diffuse_Color : packoffset(c10);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float4 Dual_Paraboloid_Transform : packoffset(c3);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  int2 v4 : TEXCOORD1,
+  float4 v5 : POSITION2,
+  float4 v6 : POSITION3,
+  float4 v7 : POSITION4,
+  float4 v8 : COLOR1,
+  float4 v9 : COLOR2,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  o0.w = 1.000000000e+000;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.z = dot(v7.xyzw, r0.xyzw);
+  r2.y = Dual_Paraboloid_Transform.w * r1.z;
+  r1.y = dot(v6.xyzw, r0.xyzw);
+  r2.x = dot(v5.xyzw, r0.xyzw);
+  r2.z = -Dual_Paraboloid_Transform.w * r1.y;
+  r0.xyz = Dual_Paraboloid_Transform.xyz + r2.xyz;
+  r1.x = r2.x;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = sqrt(r0.w);
+  r2.xyz = r0.xyz / r0.www;
+  r0.x = -1.000000015e-001 + r0.w;
+  o0.z = 1.000100048e-003 * r0.x;
+  o3.w = r0.z;
+  r0.x = 1.000000000e+000 + r2.z;
+  o0.xy = r2.xy / r0.xx;
+  o1.xyz = cb0[10].xyz * v8.xyz;
+  r0.xyz = -eyePos.xyz + r1.xyz;
+  r1.xyz = eyePos.xyz + -r1.xyz;
+  r0.w = Fog_dist.x * r0.y;
+  r1.w = -1.442695022e+000 * r0.w;
+  r1.w = exp2(r1.w);
+  r1.w = 1.000000000e+000 + -r1.w;
+  r0.w = r1.w / r0.w;
+  r1.w = 9.999999776e-003 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.w ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.w = 1.000000000e+000 + -r0.x;
+  r0.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.x = dot(v5.xyz, r0.xyz);
+  r2.y = dot(v6.xyz, r0.xyz);
+  r2.z = dot(v7.xyz, r0.xyz);
+  r0.x = dot(r2.xyz, r2.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r2.xyz * r0.xxx;
+  o2.x = dot(r0.xyz, IR_World2View._m00_m10_m20);
+  o2.y = dot(r0.xyz, IR_World2View._m01_m11_m21);
+  o2.z = dot(r0.xyz, IR_World2View._m02_m12_m22);
+  r2.xyzw = v3.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.x = dot(v5.xyz, r2.xyz);
+  r3.y = dot(v6.xyz, r2.xyz);
+  r3.z = dot(v7.xyz, r2.xyz);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r3.xyz * r0.www;
+  r3.xyz = r2.yzx * r0.zxy;
+  r3.xyz = r0.yzx * r2.zxy + -r3.xyz;
+  o3.z = dot(r1.xyz, r0.xyz);
+  o3.y = dot(r1.xyz, -r2.xyz);
+  r0.xyz = r3.xyz * r2.www;
+  o3.x = dot(r1.xyz, -r0.xyz);
+  r0.xy = v1.xy;
+  o4.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r0.xy = v4.xy;
+  o4.zw = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  return;
+}

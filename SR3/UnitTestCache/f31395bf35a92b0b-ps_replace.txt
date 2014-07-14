@@ -1,0 +1,70 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 Near_clip_params : packoffset(c0);
+  float4x4 Shadow_map_matrix : packoffset(c1);
+  float4 Shadow_fade_params : packoffset(c5);
+  float4 Shadow_percent_params : packoffset(c6);
+  float4 near_far_depth_params : packoffset(c7);
+  float Shadow_map_resolution : packoffset(c8);
+}
+SamplerState Depth_mapSampler_s : register(s0);
+SamplerState Shadow_mapSampler_s : register(s1);
+Texture2D<float4> Depth_mapSampler : register(t0);
+Texture2D<float4> Shadow_mapSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r1.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r1.xyzw = Depth_mapSampler.Sample(Depth_mapSampler_s, r1.xy).xyzw;
+  r0.z = r1.x;
+  r1.x = -near_far_depth_params.z * r1.x + Near_clip_params.y;
+  r1.x = near_far_depth_params.y / r1.x;
+  r1.xy = saturate(r1.xx * Shadow_fade_params.xy + -Shadow_fade_params.zw);
+  r0.w = 1.000000000e+000;
+  r2.x = dot(r0.xyzw, Shadow_map_matrix._m00_m10_m20_m30);
+  r2.y = dot(r0.xyzw, Shadow_map_matrix._m01_m11_m21_m31);
+  r2.z = dot(r0.xyzw, Shadow_map_matrix._m02_m12_m22_m32);
+  r0.x = dot(r0.xyzw, Shadow_map_matrix._m03_m13_m23_m33);
+  r0.xyz = r2.xyz / r0.xxx;
+  r0.w = 1.000000e+000 / Shadow_map_resolution;
+  r1.zw = r0.xy + r0.ww;
+  r2.xyzw = r0.wwww * float4(1.000000e+000,0.000000e+000,0.000000e+000,1.000000e+000) + r0.xyxy;
+  r3.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r1.zw).xyzw;
+  r0.w = 4.999999874e-005 + r3.x;
+  r0.w = r0.w < r0.z;
+  r3.y = r0.w ? 0.000000000e+000 : 1.000000000e+000;
+  r4.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r2.xy).xyzw;
+  r2.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r2.zw).xyzw;
+  r0.w = 4.999999874e-005 + r2.x;
+  r0.w = r0.w < r0.z;
+  r2.y = r0.w ? 0.000000000e+000 : 1.000000000e+000;
+  r0.w = 4.999999874e-005 + r4.x;
+  r0.w = r0.w < r0.z;
+  r3.x = r0.w ? 0.000000000e+000 : 1.000000000e+000;
+  r4.xyzw = Shadow_mapSampler.Sample(Shadow_mapSampler_s, r0.xy).xyzw;
+  r0.w = 4.999999874e-005 + r4.x;
+  r0.z = r0.w < r0.z;
+  r0.xy = Shadow_map_resolution * r0.xy;
+  r0.xy = frac(r0.xy);
+  r2.x = r0.z ? 0.000000000e+000 : 1.000000000e+000;
+  r0.zw = r3.xy + -r2.xy;
+  r0.xz = r0.xx * r0.zw + r2.xy;
+  r0.z = r0.z + -r0.x;
+  r0.x = r0.y * r0.z + r0.x;
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = Shadow_percent_params.x * r0.x;
+  r0.y = 1.000000000e+000 + -r1.y;
+  r0.y = r1.x * r0.y;
+  o0.xyz = r0.xxx * r0.yyy;
+  o0.w = 1.000000000e+000;
+  return;
+}

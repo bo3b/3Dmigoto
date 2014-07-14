@@ -1,0 +1,42 @@
+
+cbuffer vc0 : register(b0)
+{
+  float Blur_scale : packoffset(c0);
+  float Radial_blur_radius : packoffset(c1);
+  float2 Radial_blur_position : packoffset(c2);
+}
+SamplerState base_samplerSampler_s : register(s0);
+Texture2D<float4> base_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = Radial_blur_position.xy + -v1.xy;
+  r0.zw = Radial_blur_radius * r0.xy;
+  r0.z = dot(r0.zw, r0.zw);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.z = max(r0.z, 0.000000000e+000);
+  r0.z = r0.z * r0.z;
+  r0.z = Blur_scale * r0.z;
+  r1.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r0.w = 0.000000000e+000;
+  while (true) {
+  r1.w = (int)r0.w >= (int)8;
+  if (r1.w != 0) break;
+  r1.w = r0.w;
+  r2.xy = r1.ww * r0.xy;
+  r2.xy = r2.xy * r0.zz + v1.xy;
+  r2.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r2.xy).xyzw;
+  r1.xyz = r2.xyz + r1.xyz;
+  r0.w = (int)r0.w + 1;
+  }
+  o0.xyz = float3(1.250000e-001,1.250000e-001,1.250000e-001) * r1.xyz;
+  o0.w = 0.000000000e+000;
+  return;
+}

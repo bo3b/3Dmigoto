@@ -1,0 +1,57 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float2 target_dimension : packoffset(c2);
+  float4 framebuffer_info : packoffset(c3);
+}
+SamplerState framebuffer_mapSampler_s : register(s8);
+SamplerState comp_normal_mapSampler_s : register(s9);
+SamplerState diffuse_mapSampler_s : register(s10);
+Texture2D<float4> framebuffer_mapSampler : register(t8);
+Texture2D<float4> comp_normal_mapSampler : register(t9);
+Texture2D<float4> diffuse_mapSampler : register(t10);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = v1.x < cb0[3].z;
+  r0.y = v1.y < cb0[3].w;
+  r0.x = (int)r0.y | (int)r0.x;
+  r0.yz = cb0[3].zw + cb0[3].xy;
+  r0.y = r0.y < v1.x;
+  r0.z = r0.z < v1.y;
+  r0.x = (int)r0.y | (int)r0.x;
+  r0.x = (int)r0.z | (int)r0.x;
+  if (r0.x != 0) discard;
+  r0.xy = -cb0[3].zw + v1.xy;
+  r0.xy = r0.xy / cb0[3].xy;
+  r1.xyzw = diffuse_mapSampler.Sample(diffuse_mapSampler_s, r0.xy).xyzw;
+  r0.xyzw = comp_normal_mapSampler.Sample(comp_normal_mapSampler_s, r0.xy).xyzw;
+  r0.xyz = r0.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = saturate(2.500000000e+002 * r1.w);
+  r0.w = r0.x * r0.z;
+  r2.xyzw = framebuffer_mapSampler.Sample(framebuffer_mapSampler_s, v1.zw).xyzw;
+  r2.xyz = r2.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.w = r2.x * r2.z;
+  r0.xy = r2.wy + -r0.wy;
+  r0.xy = r1.xx * r0.xy + -r2.wy;
+  r0.xy = -r0.xy;
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.z = sqrt(r0.w);
+  r0.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + r0.xyz;
+  o0.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r0.xyz;
+  o0.w = 1.000000000e+000;
+  return;
+}

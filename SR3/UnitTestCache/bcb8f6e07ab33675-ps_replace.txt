@@ -1,0 +1,27 @@
+SamplerState Diffuse_mapSampler_s : register(s0);
+Texture2D<float4> Diffuse_mapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.x = v3.x * v3.y;
+  r0.x = 8.000000000e+002 * r0.x;
+  r0.x = frac(r0.x);
+  r0.y = 1.000000000e+000 + -v3.w;
+  r0.x = -r0.y * r0.x + v3.w;
+  r1.xyzw = Diffuse_mapSampler.Sample(Diffuse_mapSampler_s, v3.xy).xyzw;
+  r0.xy = r1.ww * r0.xx + float2(-1.000000e-001,-4.000000e-001);
+  r0.y = r0.y < 0.000000000e+000;
+  if (r0.y != 0) discard;
+  r0.z = 0.000000000e+000;
+  o0.xyzw = r0.zzzx;
+  return;
+}

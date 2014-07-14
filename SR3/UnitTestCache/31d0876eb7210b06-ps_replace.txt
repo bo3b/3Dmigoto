@@ -1,0 +1,86 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float4x4 Inv_proj_matrix : packoffset(c4);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float2 Z_dimensions : packoffset(c0);
+  float4 Diffuse_color : packoffset(c1);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float4 Ambient_color : packoffset(c5);
+  float Self_illum : packoffset(c6);
+  float4 VFX_material_tint : packoffset(c7);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+SamplerState Diffuse_Map_1Sampler_s : register(s0);
+SamplerState Depth_bufferSampler_s : register(s1);
+SamplerState Diffuse_Map_2Sampler_s : register(s2);
+Texture2D<float4> Diffuse_Map_1Sampler : register(t0);
+Texture2D<float4> Depth_bufferSampler : register(t1);
+Texture2D<float4> Diffuse_Map_2Sampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.z = 0.000000000e+000;
+  r1.xyzw = Diffuse_Map_1Sampler.Sample(Diffuse_Map_1Sampler_s, v2.xy).xyzw;
+  r0.xy = saturate(r1.yw);
+  r1.xyzw = Diffuse_Map_2Sampler.Sample(Diffuse_Map_2Sampler_s, r0.xz).xyzw;
+  r0.x = v1.w * r0.y;
+  r0.y = dot(r1.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.xyz = r1.xyz + -r0.yyy;
+  r0.yzw = v3.xxx * r1.xyz + r0.yyy;
+  r1.x = Color_correct_matrix._m00;
+  r1.y = Color_correct_matrix._m01;
+  r1.z = Color_correct_matrix._m02;
+  r1.x = dot(r0.yzw, r1.xyz);
+  r2.x = Color_correct_matrix._m10;
+  r2.y = Color_correct_matrix._m11;
+  r2.z = Color_correct_matrix._m12;
+  r1.y = dot(r0.yzw, r2.xyz);
+  r2.x = Color_correct_matrix._m20;
+  r2.y = Color_correct_matrix._m21;
+  r2.z = Color_correct_matrix._m22;
+  r1.z = dot(r0.yzw, r2.xyz);
+  r0.yzw = v1.xyz * r1.xyz;
+  r1.xyz = -v1.xyz * r1.xyz + cb4[4].xyz;
+  r1.xyz = v3.www * r1.xyz + r0.yzw;
+  r2.xyzw = Depth_bufferSampler.Sample(Depth_bufferSampler_s, v2.zw).yzxw;
+  r2.x = 1.000000000e+000;
+  r0.y = dot(r2.xxzx, Inv_proj_matrix._m02_m12_m22_m32);
+  r0.z = dot(r2.xxzx, Inv_proj_matrix._m03_m13_m23_m33);
+  r0.y = r0.y / r0.z;
+  r0.y = -v3.y + r0.y;
+  r0.z = saturate(Diffuse_color.w * r0.y);
+  r0.y = r0.y < -Diffuse_color.w;
+  r0.y = r0.y ? 1.000000000e+000 : r0.z;
+  r1.w = r0.x * r0.y;
+  r0.xyzw = cb4[1].xyzw * r1.xyzw;
+  r1.x = v3.z * -r0.w + r0.w;
+  o0.xyz = r0.xyz * r0.www;
+  o0.w = max(r1.x, 0.000000000e+000);
+  return;
+}

@@ -1,0 +1,118 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[13];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[5];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Normal_Map_Height : packoffset(c3);
+  float Normal_Map_Height_2 : packoffset(c4);
+  float Normal_Map_TilingU : packoffset(c5);
+  float Normal_Map_TilingV : packoffset(c6);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Stipple_Repeat_Info : packoffset(c12);
+}
+SamplerState Normal_MapSampler_s : register(s2);
+SamplerState Normal_Map_2Sampler_s : register(s3);
+SamplerState Decal_Map_2Sampler_s : register(s4);
+SamplerState IR_Stipple_PatternSampler_s : register(s14);
+Texture2D<float4> Normal_MapSampler : register(t2);
+Texture2D<float4> Normal_Map_2Sampler : register(t3);
+Texture2D<float4> Decal_Map_2Sampler : register(t4);
+Texture3D<float4> IR_Stipple_PatternSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = v3.xy / v3.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.x = cb4[12].x * r0.x;
+  r0.y = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r1.y = cb4[12].y * r0.y;
+  r1.x = 5.000000000e-001 * r0.x;
+  r1.z = cb4[12].z;
+  r0.xyzw = IR_Stipple_PatternSampler.Sample(IR_Stipple_PatternSampler_s, r1.xyz).xyzw;
+  r0.x = -5.000000000e-001 + r0.x;
+  r0.x = r0.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyzw = Normal_Map_2Sampler.Sample(Normal_Map_2Sampler_s, v6.zw).xyzw;
+  r0.yzw = r0.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.x = r0.y * r0.w;
+  r1.xy = -r0.zx;
+  r0.x = dot(r0.zx, r1.xy);
+  r0.x = saturate(1.000000000e+000 + r0.x);
+  r1.z = sqrt(r0.x);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r1.xyz * r0.xxx + float3(-0.000000e+000,-0.000000e+000,-1.000000e+000);
+  r0.xyz = cb0[4].xxx * r0.xyz + float3(0.000000e+000,0.000000e+000,1.000000e+000);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyzw = Normal_MapSampler.Sample(Normal_MapSampler_s, v6.xy).xyzw;
+  r1.yzw = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = r1.y * r1.w;
+  r2.xy = -r1.zx;
+  r1.x = dot(r1.zx, r2.xy);
+  r1.x = saturate(1.000000000e+000 + r1.x);
+  r2.z = sqrt(r1.x);
+  r1.xyz = float3(-0.000000e+000,-0.000000e+000,-1.000000e+000) + r2.xyz;
+  r1.xyz = cb0[3].xxx * r1.xyz + float3(0.000000e+000,0.000000e+000,1.000000e+000);
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = rsqrt(r1.w);
+  r1.xyz = r1.xyz * r1.www;
+  r0.xyz = r0.xyz * r0.www + -r1.xyz;
+  r2.xyzw = Decal_Map_2Sampler.Sample(Decal_Map_2Sampler_s, v6.zw).xyzw;
+  r0.xyz = r2.www * r0.xyz + r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(v5.xyz, v5.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v5.xyz * r0.www;
+  r1.xyz = r1.xyz * r0.yyy;
+  r0.y = dot(v2.xyz, v2.xyz);
+  r0.y = rsqrt(r0.y);
+  r2.xyz = v2.xyz * r0.yyy;
+  r0.xyw = r0.xxx * r2.xyz + r1.xyz;
+  r1.x = dot(v1.xyz, v1.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = v1.xyz * r1.xxx;
+  r0.xyz = r0.zzz * r1.xyz + r0.xyw;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www + float3(0.000000e+000,0.000000e+000,-1.000000e+000);
+  r0.z = dot(r0.xyz, r0.xyz);
+  r0.z = rsqrt(r0.z);
+  r0.xy = r0.xy * r0.zz;
+  o0.xy = r0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  o1.x = saturate(3.051757813e-005 * v4.z);
+  o1.y = v4.w;
+  o1.zw = float2(0.000000e+000,1.000000e+000);
+  o2.xzw = float3(1.000000e+000,0.000000e+000,1.000000e+000);
+  o2.y = v5.w;
+  return;
+}

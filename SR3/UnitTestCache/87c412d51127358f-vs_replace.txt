@@ -1,0 +1,31 @@
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[30];
+}
+
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 IR_Light_Inv_Proj_TM : packoffset(c26);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1)
+{
+  float4 r0;
+  uint4 bitmask;
+  o0.xyz = v0.xyz;
+  o0.w = 1.000000000e+000;
+  o1.xy = v1.xy;
+  r0.xyzw = cb2[27].xyzw * v0.yyyy;
+  r0.xyzw = cb2[26].xyzw * v0.xxxx + r0.xyzw;
+  r0.xyzw = cb2[29].xyzw + r0.xyzw;
+  o2.xyz = r0.xyz / r0.www;
+  return;
+}

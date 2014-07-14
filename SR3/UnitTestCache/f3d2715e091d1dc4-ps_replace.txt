@@ -1,0 +1,42 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Sampling_offsets[16] : packoffset(c0);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState base_samplerSampler_s : register(s0);
+Texture2D<float4> base_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = Sampling_offsets[5].xy + v1.xy;
+  r0.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r0.xy).xyzw;
+  r1.xy = Sampling_offsets[7].xy + v1.xy;
+  r1.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r1.xy).xyzw;
+  r0.xyzw = r1.xyzw + r0.xyzw;
+  r1.xy = Sampling_offsets[13].xy + v1.xy;
+  r1.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r1.xy).xyzw;
+  r0.xyzw = r1.xyzw + r0.xyzw;
+  r1.xy = Sampling_offsets[15].xy + v1.xy;
+  r1.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r1.xy).xyzw;
+  r0.xyzw = r1.xyzw + r0.xyzw;
+  r0.xyzw = cb4[1].xyzw * r0.xyzw;
+  o0.xyzw = float4(2.500000e-001,2.500000e-001,2.500000e-001,2.500000e-001) * r0.xyzw;
+  return;
+}

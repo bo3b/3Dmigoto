@@ -1,0 +1,156 @@
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[42];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float4 Lighting : packoffset(c1);
+  float4 Ambient_Color : packoffset(c3);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Dual_Paraboloid_Transform : packoffset(c3);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4 Object_instance_params : packoffset(c15);
+  row_major float3x4 objTM : packoffset(c16);
+  float4x4 IR_World2View : packoffset(c22);
+  float3 Tree_wind_dir : packoffset(c35);
+  float4 Tree_wind_times : packoffset(c36);
+  float4 Tree_wind_distances : packoffset(c37);
+  float3 Tree_wind_leaves : packoffset(c38);
+  float3 Tree_wind_gust : packoffset(c40);
+  float4 Tree_wind_gust_hints : packoffset(c41);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  float4 v4 : POSITION1,
+  float4 v5 : COLOR1,
+  float4 v6 : COLOR0,
+  out float4 o0 : SV_Position0,
+  out float o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.z = cb2[41].y + cb2[35].z;
+  r0.xy = cb2[35].xy;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.xyzw = v5.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.xyz = v0.www * r1.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = sqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = cb2[41].z * cb2[40].x;
+  r0.xyz = r0.www * r0.xyz;
+  r0.w = cb2[36].y + cb2[17].w;
+  r0.w = r1.w * 3.141592503e+000 + r0.w;
+  r2.xy = float2(3.000000e-001,9.500000e-001) * r0.ww;
+  r0.w = sin(r2.x);
+  r1.w = cos(r2.y);
+  r2.x = -r0.w * r1.w + 1.000000000e+000;
+  r0.w = r1.w * r0.w;
+  r1.w = cb2[41].z * r2.x + r0.w;
+  r0.xyz = r1.www * r0.xyz;
+  r0.xyz = cb2[37].yyy * r0.xyz;
+  r1.w = -cb2[40].x * cb2[41].z + 1.000000000e+000;
+  r1.xyz = r1.www * r1.xyz;
+  r1.xyz = r1.xyz * r0.www;
+  r0.w = cb2[36].x + cb2[16].w;
+  r2.xy = float2(3.000000e-001,9.500000e-001) * r0.ww;
+  r0.w = sin(r2.x);
+  r1.w = cos(r2.y);
+  r0.w = cb2[37].x * r0.w;
+  r0.w = r0.w * r1.w + cb2[40].y;
+  r1.w = cb2[37].z * v0.y;
+  r1.w = max(r1.w, 0.000000000e+000);
+  r1.w = log2(r1.w);
+  r1.w = cb2[37].w * r1.w;
+  r1.w = exp2(r1.w);
+  r0.w = r1.w * r0.w;
+  r1.w = v4.x + -v4.y;
+  r1.w = cb2[15].x * r1.w + v4.y;
+  r2.xy = v4.zw * r1.ww;
+  r1.w = dot(cb2[16].xyz, cb2[16].xyz);
+  r1.w = sqrt(r1.w);
+  r2.xw = r2.yx * r1.ww;
+  r2.yz = float2(0.000000e+000,0.000000e+000);
+  r3.xyz = v0.xyz;
+  r3.w = 1.000000000e+000;
+  r4.x = dot(cb2[16].xyzw, r3.xyzw);
+  r4.y = dot(cb2[17].xyzw, r3.xyzw);
+  r4.z = dot(cb2[18].xyzw, r3.xyzw);
+  r2.xyz = r4.xyz + r2.xyz;
+  r2.xyz = r2.www * float3(0.000000e+000,0.000000e+000,-1.000000e+000) + r2.xyz;
+  r3.xyz = v6.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.xz = float2(1.000000e+001,1.000000e-002) * r3.xz;
+  r2.w = log2(r3.y);
+  r2.w = 2.200000048e+000 * r2.w;
+  o2.w = exp2(r2.w);
+  r1.w = r3.z * r1.w;
+  r2.xyz = r1.www * float3(0.000000e+000,1.000000e+000,0.000000e+000) + r2.xyz;
+  r1.w = dot(r2.xz, r2.xz);
+  r1.w = rsqrt(r1.w);
+  r3.yz = r2.xz * r1.ww;
+  r1.w = saturate(dot(-r3.yz, cb2[35].xz));
+  r1.w = r1.w * 2.000000000e+000 + 5.000000000e-001;
+  r1.w = cb2[38].z * r1.w;
+  r1.w = r1.w * cb2[38].x + cb2[38].x;
+  r3.yzw = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r4.x = dot(cb2[16].xyz, r3.yzw);
+  r4.y = dot(cb2[17].xyz, r3.yzw);
+  r4.z = dot(cb2[18].xyz, r3.yzw);
+  r2.w = dot(r4.xyz, r4.xyz);
+  r2.w = rsqrt(r2.w);
+  r4.xyz = r4.xyz * r2.www;
+  r2.w = r4.y * 1.000000000e+003 + cb2[36].w;
+  r2.w = sin(r2.w);
+  r1.w = r2.w * r1.w;
+  r4.xyz = r4.xyz * r1.www;
+  r2.xyz = r4.xyz * r3.xxx + r2.xyz;
+  r4.xz = cb2[35].xz * r0.ww + r2.xz;
+  r4.y = -r0.w * cb2[41].x + r2.y;
+  r1.xyz = r1.xyz * cb2[37].yyy + r4.xyz;
+  r0.xyz = r0.xyz * cb2[40].zzz + r1.xyz;
+  r1.y = cb1[3].w * r0.z;
+  r1.z = -cb1[3].w * r0.y;
+  r1.x = r0.x;
+  r0.xyz = cb1[3].xyz + r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = sqrt(r0.w);
+  r1.xyz = r0.xyz / r0.www;
+  o1.x = r0.z;
+  r0.x = -1.000000015e-001 + r0.w;
+  o0.z = 1.000100048e-003 * r0.x;
+  r0.x = 1.000000000e+000 + r1.z;
+  o0.xy = r1.xy / r0.xx;
+  o0.w = 1.000000000e+000;
+  o2.x = dot(r3.yzw, cb2[22].xyz);
+  o2.y = dot(r3.yzw, cb2[23].xyz);
+  o2.z = dot(r3.yzw, cb2[24].xyz);
+  r0.xy = v1.xy;
+  o3.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  o3.z = cb2[15].z * Lighting.y;
+  o3.w = -cb2[15].z + 1.000000000e+000;
+  return;
+}

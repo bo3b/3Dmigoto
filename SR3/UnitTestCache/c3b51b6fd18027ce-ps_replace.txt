@@ -1,0 +1,20 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  out float4 o0 : SV_Target0)
+{
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  o0.w = Diffuse_Color.w;
+  return;
+}

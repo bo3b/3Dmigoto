@@ -1,0 +1,13 @@
+SamplerState particle_samplerSampler_s : register(s0);
+Texture2D<float4> particle_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  o0.xyzw = particle_samplerSampler.Sample(particle_samplerSampler_s, v1.xy).xyzw;
+  return;
+}

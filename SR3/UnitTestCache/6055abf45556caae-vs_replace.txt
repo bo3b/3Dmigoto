@@ -1,0 +1,47 @@
+
+cbuffer vc0 : register(b0)
+{
+  float3 Scale : packoffset(c0);
+  float3 Offset : packoffset(c1);
+  float Mem_offset : packoffset(c2);
+  float4 Mem_base : packoffset(c3);
+  float3 Camera_velocity : packoffset(c4);
+  float4 World_xform[3] : packoffset(c5);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float3 Render_offset : packoffset(c19);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.x = World_xform[0].z;
+  r0.y = World_xform[1].y;
+  r0.z = World_xform[2].x;
+  r1.xyw = -Render_offset.xzy + World_xform[2].ywz;
+  r0.w = r1.y;
+  r2.xyz = v0.xyz * Scale.xyz + Offset.xyz;
+  r2.w = 1.000000000e+000;
+  r0.z = dot(r0.xyzw, r2.xyzw);
+  r3.w = r1.x;
+  r3.xy = World_xform[0].xw;
+  r3.z = World_xform[1].z;
+  r0.x = dot(r3.xyzw, r2.xyzw);
+  r1.x = World_xform[0].y;
+  r1.yz = World_xform[1].xw;
+  r0.y = dot(r1.xyzw, r2.xyzw);
+  r0.w = 1.000000000e+000;
+  o0.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  return;
+}

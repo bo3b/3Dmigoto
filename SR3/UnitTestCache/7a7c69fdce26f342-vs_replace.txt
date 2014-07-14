@@ -1,0 +1,34 @@
+
+cbuffer vc0 : register(b0)
+{
+  float2 Wave_speeds : packoffset(c0);
+  float4 Normal_map_strengths : packoffset(c1);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float2 Target_dimensions : packoffset(c2);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0;
+  uint4 bitmask;
+  o0.xyz = v0.xyz;
+  o0.w = 1.000000000e+000;
+  r0.xy = Time.xx * Wave_speeds.xy;
+  r0.zw = float2(0.000000e+000,5.000000e-001);
+  o1.xy = v1.xy + r0.xz;
+  o1.zw = v1.xy + -r0.xw;
+  o2.xy = v1.xy + r0.zy;
+  o2.zw = v1.xy + -r0.wy;
+  return;
+}

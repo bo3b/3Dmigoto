@@ -1,0 +1,111 @@
+
+cbuffer vc0 : register(b0)
+{
+  float blur_radius : packoffset(c0);
+  float4 focal_params : packoffset(c1);
+  float4 pixel_steps : packoffset(c2);
+  float4 depth_params : packoffset(c3);
+}
+Texture2D<float4> depth_textureTexture : register(t0);
+Texture2D<float4> color_samplerTexture : register(t1);
+Texture2D<float4> color_src_samplerTexture : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask;
+  r0.xy = focal_params.wy + -focal_params.zx;
+  r0.zw = pixel_steps.xy * v1.xy;
+  r0.zw = (int2)r0.zw;
+  r1.x = (int)r0.z & 3;
+  r1.y = (int)r0.z + (int)-r1.x;
+  r2.xy = (int2)r1.yy + int2(1,-1);
+  r2.z = r0.w;
+  r3.x = (uint)r0.z >> 2;
+  r2.w = 0.000000000e+000;
+  r4.xyzw = depth_textureTexture.Load(r2.xzw, int3(1, 0, 0)).xyzw;
+  r0.z = depth_params.z * r4.x + depth_params.w;
+  r0.z = 1.000000e+000 / r0.z;
+  r0.zw = -focal_params.zx + r0.zz;
+  r0.zw = saturate(r0.zw / r0.xy);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.z = blur_radius * r0.z + r0.w;
+  r4.xyzw = depth_textureTexture.Load(r2.xzw, int3(0, 0, 0)).xyzw;
+  r0.w = depth_params.z * r4.x + depth_params.w;
+  r0.w = 1.000000e+000 / r0.w;
+  r1.yz = -focal_params.zx + r0.ww;
+  r1.yz = saturate(r1.yz / r0.xy);
+  r0.w = 1.000000000e+000 + -r1.z;
+  r0.w = blur_radius * r1.y + r0.w;
+  r0.zw = r0.zw * r0.zw;
+  r1.y = 4.000000000e+000 * r0.w;
+  r1.z = r0.z * 4.000000000e+000 + r1.y;
+  r1.z = 1.000000000e+000 + r1.z;
+  r1.w = -r1.y / r1.z;
+  r4.xyzw = color_samplerTexture.Load(r2.xzw, int3(1, 0, 0)).xyzw;
+  r5.xyz = r4.xyz * r1.www;
+  r6.xyzw = depth_textureTexture.Load(r2.xzw, int3(-2, 0, 0)).xyzw;
+  r4.w = depth_params.z * r6.x + depth_params.w;
+  r4.w = 1.000000e+000 / r4.w;
+  r6.xy = -focal_params.zx + r4.ww;
+  r6.xy = saturate(r6.xy / r0.xy);
+  r4.w = 1.000000000e+000 + -r6.y;
+  r4.w = blur_radius * r6.x + r4.w;
+  r2.y = (int)0 < (int)r2.y;
+  r2.y = r2.y ? r4.w : 0;
+  r2.y = r2.y * r2.y;
+  r2.y = 4.000000000e+000 * r2.y;
+  r6.xyzw = depth_textureTexture.Load(r2.xzw, int3(-1, 0, 0)).xyzw;
+  r4.w = depth_params.z * r6.x + depth_params.w;
+  r4.w = 1.000000e+000 / r4.w;
+  r6.xy = -focal_params.zx + r4.ww;
+  r0.xy = saturate(r6.xy / r0.xy);
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.x = blur_radius * r0.x + r0.y;
+  r0.x = r0.x * r0.x;
+  r0.y = r0.x * 4.000000000e+000 + r2.y;
+  r0.xz = float2(4.000000e+000,4.000000e+000) * r0.xz;
+  r0.y = 1.000000000e+000 + r0.y;
+  r4.w = -r0.x / r0.y;
+  r6.xyzw = color_samplerTexture.Load(r2.xzw, int3(-1, 0, 0)).xyzw;
+  r7.xyzw = color_samplerTexture.Load(r2.xzw, int3(0, 0, 0)).xyzw;
+  r3.yzw = r2.zww;
+  r2.xzw = r4.www * r6.xyz + r5.xyz;
+  r2.xzw = r7.xyz + -r2.xzw;
+  r5.x = r1.w * r0.z;
+  r1.w = r1.w * -r1.y;
+  r1.w = r4.w * -r0.x + r1.w;
+  r4.w = r4.w * r2.y;
+  r7.xyzw = color_src_samplerTexture.Load(r3.xyz, int3(0, 0, 0)).xyzw;
+  r3.xyzw = color_src_samplerTexture.Load(r3.xyw, int3(-1, 0, 0)).xyzw;
+  r2.xzw = -r5.xxx * r7.xyz + r2.xzw;
+  r2.xzw = -r4.www * r3.xyz + r2.xzw;
+  r0.w = r0.w * 4.000000000e+000 + r0.x;
+  r0.w = 1.000000000e+000 + r0.w;
+  r0.w = r0.w + -r1.w;
+  r2.xzw = r2.xzw / r0.www;
+  r4.xyz = r0.zzz * r7.xyz + r4.xyz;
+  r4.xyz = r1.yyy * r2.xzw + r4.xyz;
+  r1.yzw = r4.xyz / r1.zzz;
+  r0.z = r1.x == 1;
+  r0.w = r1.x == 2;
+  r1.y = r0.w ? r1.y : r7.x;
+  r1.z = r0.w ? r1.z : r7.y;
+  r1.w = r0.w ? r1.w : r7.z;
+  r1.y = r0.z ? r2.x : r1.y;
+  r1.z = r0.z ? r2.z : r1.z;
+  r1.w = r0.z ? r2.w : r1.w;
+  r0.xzw = r0.xxx * r2.xzw + r6.xyz;
+  r0.xzw = r2.yyy * r3.xyz + r0.xzw;
+  r0.xyz = r0.xzw / r0.yyy;
+  o0.x = r1.x ? r1.y : r0.x;
+  o0.y = r1.x ? r1.z : r0.y;
+  o0.z = r1.x ? r1.w : r0.z;
+  o0.w = 0.000000000e+000;
+  return;
+}

@@ -1,0 +1,133 @@
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[19];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Hemisphere_colors[10] : packoffset(c0);
+  float4 Scale : packoffset(c10);
+  float Offset : packoffset(c11);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Dual_Paraboloid_Transform : packoffset(c3);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = cb1[3].xyz * float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r1.xyz = v0.xyz;
+  r1.w = 0.000000000e+000;
+  r0.w = dot(cb2[18].xyzw, r1.xyzw);
+  r2.y = cb1[3].w * r0.w;
+  r0.w = dot(cb2[17].xyzw, r1.xyzw);
+  r2.x = dot(cb2[16].xyzw, r1.xyzw);
+  r2.z = -cb1[3].w * r0.w;
+  r0.w = max(abs(r0.w), 0.000000000e+000);
+  r0.w = min(r0.w, 1.000000000e+001);
+  r0.w = r0.w / 1.000000000e+001;
+  r0.xyz = r2.xyz + r0.xyz;
+  r1.x = r2.x / -1.000000000e+001;
+  r1.x = max(r1.x, -1.000000000e+000);
+  r1.x = min(r1.x, 1.000000000e+000);
+  r1.y = dot(r0.xyz, r0.xyz);
+  r1.y = sqrt(r1.y);
+  r1.yzw = r0.xyz / r1.yyy;
+  o2.w = r0.z;
+  r0.x = 1.000000000e+000 + r1.w;
+  o0.xy = r1.yz / r0.xx;
+  o0.zw = float2(1.000000e+000,1.000000e+000);
+  r0.x = -1.872929931e-002 * abs(r1.x);
+  r0.x = 7.426100224e-002 + r0.x;
+  r0.x = r0.x * abs(r1.x);
+  r0.x = -2.121143937e-001 + r0.x;
+  r0.x = r0.x * abs(r1.x);
+  r0.x = 1.570728779e+000 + r0.x;
+  r0.y = 1.000000000e+000 + -abs(-r1.x);
+  r0.z = r1.x < -r1.x;
+  r0.y = sqrt(r0.y);
+  r0.x = r0.x * r0.y;
+  r0.y = -2.000000000e+000 * r0.x;
+  r0.y = 3.141592741e+000 + r0.y;
+  r0.y = (int)r0.z & (int)r0.y;
+  r0.x = r0.x + r0.y;
+  r0.yz = float2(4.000000e+000,-1.872930e-002) * r0.ww;
+  r0.z = 7.426100224e-002 + r0.z;
+  r0.z = r0.z * r0.w;
+  r0.z = -2.121143937e-001 + r0.z;
+  r0.z = r0.z * r0.w;
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.w = sqrt(r0.w);
+  r0.z = 1.570728779e+000 + r0.z;
+  r0.z = r0.z * r0.w;
+  r0.z = 1.570796371e+000 + -r0.z;
+  r0.xz = r0.xz / float2(3.141593e+000,3.141593e+000);
+  r0.z = 2.000000000e+000 * r0.z;
+  r0.z = 4.000000000e+000 * r0.z;
+  r0.y = r0.y + r0.z;
+  r0.y = r0.y / 2.000000000e+000;
+  r0.z = round(r0.y);
+  r0.z = r0.y + -r0.z;
+  r0.y = floor(r0.y);
+  r0.y = (int)r0.y;
+  r1.xyz = Hemisphere_colors[r0.y].xyz + Hemisphere_colors[r0.y].xyz;
+  r1.xyz = r1.xyz * r0.zzz;
+  r1.xyz = Hemisphere_colors[r0.y].xyz + r1.xyz;
+  r2.xyz = Hemisphere_colors[r0.y].xyz + Hemisphere_colors[r0.y].xyz;
+  r2.xyz = r2.xyz * r0.zzz;
+  r0.yzw = Hemisphere_colors[r0.y].xyz + r2.xyz;
+  r1.xyz = r1.xyz + -r0.yzw;
+  r1.xyz = r1.xyz * r0.xxx;
+  o1.xyz = r1.xyz + r0.yzw;
+  r0.y = Scale.w + v0.y;
+  r0.xz = v0.xz;
+  r0.xyz = Scale.xyz * r0.xyz;
+  r0.y = -Scale.w + r0.y;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(cb2[17].xyzw, r0.xyzw);
+  r1.x = -cb2[4].y + r1.x;
+  r1.y = Offset + r1.x;
+  r1.x = dot(cb2[16].xyzw, r0.xyzw);
+  r1.z = dot(cb2[18].xyzw, r0.xyzw);
+  r0.xyz = -cb2[4].xyz + r1.xyz;
+  r0.w = cb2[10].x * r0.y;
+  r1.x = 1.442695022e+000 * -r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 9.999999776e-003 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = cb2[10].y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x;
+  r0.x = -cb2[10].w + r0.x;
+  r0.x = saturate(exp2(-r0.x));
+  o1.w = 1.000000000e+000 + -r0.x;
+  o2.xyz = v0.xyz;
+  return;
+}

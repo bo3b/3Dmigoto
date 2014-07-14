@@ -1,0 +1,85 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float2 Cloud_U_Offset : packoffset(c0);
+  float Cloud_Fade_Height : packoffset(c1);
+  float Cloud_Full_Height : packoffset(c2);
+  float3 TOD_Light_Dir : packoffset(c3);
+  float3 TOD_Light_Color_Front : packoffset(c4);
+  float3 TOD_Light_Color_Rear : packoffset(c5);
+  float4 Layer_strengths : packoffset(c6);
+  float Rimlight_scale : packoffset(c7);
+  float Rimlight_power : packoffset(c8);
+  float4 Scale : packoffset(c9);
+  float Offset : packoffset(c10);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 Fog_color : packoffset(c4);
+}
+SamplerState Layer01_mapSampler_s : register(s0);
+SamplerState Layer23_mapSampler_s : register(s1);
+Texture2D<float4> Layer01_mapSampler : register(t0);
+Texture2D<float4> Layer23_mapSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.x = -Cloud_Fade_Height + v2.y;
+  r0.y = Cloud_Full_Height + -Cloud_Fade_Height;
+  r0.x = saturate(r0.x / r0.y);
+  r1.xyzw = Layer23_mapSampler.Sample(Layer23_mapSampler_s, v3.zw).xyzw;
+  r2.zw = r1.yw;
+  r3.xyzw = Layer01_mapSampler.Sample(Layer01_mapSampler_s, v3.xy).xyzw;
+  r2.xy = r3.yw;
+  r2.xyzw = Layer_strengths.xyzw * r2.xyzw;
+  r0.yzw = r2.yzw * r0.xxx;
+  r2.xyzw = -r2.xyzw * r0.xxxx + float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+  r0.x = r2.y * r3.x;
+  r0.x = r0.y * r3.z + r0.x;
+  r0.yz = r0.zw * r1.xz;
+  r0.x = r2.z * r0.x + r0.y;
+  r0.x = saturate(r2.w * r0.x + r0.z);
+  r0.y = r2.x * r2.y;
+  r0.y = r0.y * r2.z;
+  r0.y = -r0.y * r2.w + 1.000000000e+000;
+  r0.z = -Rimlight_power * r0.y;
+  r1.w = r0.y * r0.y;
+  r0.y = exp2(r0.z);
+  r0.y = min(r0.y, 1.000000000e+000);
+  r2.xyz = Rimlight_scale * TOD_Light_Color_Front.xyz;
+  r0.yzw = r2.xyz * r0.yyy;
+  r2.x = dot(v1.xyz, TOD_Light_Dir.xyz);
+  r2.x = r2.x * 5.000000000e-001 + 5.000000000e-001;
+  r2.yzw = TOD_Light_Color_Rear.xyz + -TOD_Light_Color_Front.xyz;
+  r2.xyz = r2.xxx * r2.yzw + TOD_Light_Color_Front.xyz;
+  r2.w = saturate(dot(v2.xyz, TOD_Light_Dir.xyz));
+  r2.w = log2(r2.w);
+  r2.w = 3.000000000e+001 * r2.w;
+  r2.w = exp2(r2.w);
+  r0.yzw = r0.yzw * r2.www + r2.xyz;
+  r0.xyz = r0.xxx * r0.yzw + cb4[2].xyz;
+  r0.w = 1.000000000e+000 + -v2.w;
+  r0.xyz = r0.www * r0.xyz;
+  r1.xyz = v2.www * cb4[4].xyz + r0.xyz;
+  r0.xyzw = cb4[1].xyzw * r1.xyzw;
+  r0.xyz = r0.xyz * r0.www;
+  o0.xyzw = min(r0.xyzw, float4(3.200000e+001,3.200000e+001,3.200000e+001,3.200000e+001));
+  return;
+}

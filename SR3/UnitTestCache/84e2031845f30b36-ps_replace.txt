@@ -1,0 +1,51 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color_2 : packoffset(c0);
+  float Glow_Falloff_Inversion_1 : packoffset(c1);
+  float Glow_Falloff_Power_1 : packoffset(c2);
+  float4 Glow_Color_1 : packoffset(c3);
+  float Self_Illumination_2 : packoffset(c4);
+  float4 Glow_Color_2 : packoffset(c5);
+  float Glow_Falloff_Power_2 : packoffset(c6);
+  float Glow_Falloff_Inversion_2 : packoffset(c7);
+  float4 Diffuse_Color : packoffset(c8);
+  float Self_Illumination_1 : packoffset(c9);
+  float Diffuse_ScrollU_1 : packoffset(c10);
+  float Diffuse_ScrollV_1 : packoffset(c11);
+  float Diffuse_ScrollU_2 : packoffset(c12);
+  float Diffuse_ScrollV_2 : packoffset(c13);
+  float Glow_ScrollU_1 : packoffset(c14);
+  float Glow_ScrollV_1 : packoffset(c15);
+  float Glow_ScrollU_2 : packoffset(c16);
+  float Glow_ScrollV_2 : packoffset(c17);
+  float Specular_Alpha : packoffset(c18);
+  float Diffuse_Light_Amount : packoffset(c19);
+}
+SamplerState Diffuse_Map_2Sampler_s : register(s0);
+SamplerState Diffuse_MapSampler_s : register(s3);
+Texture2D<float4> Diffuse_Map_2Sampler : register(t0);
+Texture2D<float4> Diffuse_MapSampler : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Diffuse_Map_2Sampler.Sample(Diffuse_Map_2Sampler_s, v1.xy).xyzw;
+  r1.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v4.xy).xyzw;
+  r0.x = Diffuse_Color.w * r1.w;
+  r0.y = r0.w * Diffuse_Color_2.w + -r0.x;
+  r0.z = saturate(v4.z);
+  o0.w = r0.z * r0.y + r0.x;
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

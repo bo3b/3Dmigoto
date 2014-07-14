@@ -1,0 +1,50 @@
+
+cbuffer vc0 : register(b0)
+{
+  float2 texture_dimensions : packoffset(c0);
+}
+SamplerState texture_samplerSampler_s : register(s0);
+Texture2D<float4> texture_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = v1.x * texture_dimensions.x + -5.000000000e-001;
+  r0.y = floor(r0.x);
+  r0.x = r0.x + -r0.y;
+  r0.y = 3.000000000e+000 * r0.x;
+  r0.yw = r0.yx * r0.xx;
+  r0.z = -r0.x * r0.x;
+  r0.z = r0.z * r0.x + r0.y;
+  r0.z = -3.000000000e+000 * r0.x + r0.z;
+  r1.x = 6.000000000e+000 * r0.w;
+  r0.w = r0.w * r0.x;
+  r1.x = r0.y * r0.x + -r1.x;
+  r0.y = -3.000000000e+000 * r0.w + r0.y;
+  r0.w = 1.666666716e-001 * r0.w;
+  r0.y = 3.000000000e+000 * r0.x + r0.y;
+  r0.yz = float2(1.000000e+000,1.000000e+000) + r0.yz;
+  r0.y = 1.666666716e-001 * r0.y + r0.w;
+  r0.y = r0.w / r0.y;
+  r0.y = -r0.x + r0.y;
+  r0.w = 4.000000000e+000 + r1.x;
+  r0.w = 1.666666716e-001 * r0.w;
+  r0.z = 1.666666716e-001 * r0.z + r0.w;
+  r0.w = r0.w / r0.z;
+  r0.x = r0.x + -r0.w;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.w = 1.000000e+000 / texture_dimensions.x;
+  r1.xy = r0.xx * r0.ww + v1.xy;
+  r0.xy = -r0.yy * r0.ww + v1.xy;
+  r2.xyzw = texture_samplerSampler.Sample(texture_samplerSampler_s, r0.xy).xyzw;
+  r1.xyzw = texture_samplerSampler.Sample(texture_samplerSampler_s, r1.xy).xyzw;
+  r1.xyzw = r1.xyzw + -r2.xyzw;
+  o0.xyzw = r0.zzzz * r1.xyzw + r2.xyzw;
+  return;
+}

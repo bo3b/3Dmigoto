@@ -1,0 +1,61 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[3];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Decal_Map_TilingU : packoffset(c1);
+  float Decal_Map_TilingV : packoffset(c2);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD1,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  o0.x = dot(r1.xyz, projTM._m00_m10_m20);
+  o0.y = dot(r1.xyz, projTM._m01_m11_m21);
+  o0.z = dot(r1.xyz, projTM._m02_m12_m22);
+  o0.w = dot(r1.xyz, projTM._m03_m13_m23);
+  r0.xyz = -eyePos.xyz + r1.xyz;
+  r0.w = Fog_dist.x * r0.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 9.999999776e-003 < abs(r0.y);
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.w : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o1.z = 1.000000000e+000 + -r0.x;
+  r0.xy = v1.xy;
+  r1.x = cb0[1].x * r0.x;
+  r1.y = cb0[2].x * r0.y;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r1.xy;
+  return;
+}

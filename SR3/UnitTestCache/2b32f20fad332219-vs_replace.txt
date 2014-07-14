@@ -1,0 +1,30 @@
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[33];
+}
+
+
+cbuffer vc2 : register(b2)
+{
+  float3 Prim_resolution_scale : packoffset(c32);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  float4 v2 : COLOR0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : COLOR0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xy = cb2[32].xy * v0.xy;
+  o0.xy = r0.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
+  o0.zw = float2(1.000000e+000,1.000000e+000);
+  o1.xy = v1.xy;
+  o2.xyzw = v2.xyzw;
+  return;
+}

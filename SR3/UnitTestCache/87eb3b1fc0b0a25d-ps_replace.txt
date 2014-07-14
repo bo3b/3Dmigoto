@@ -1,0 +1,86 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[17];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Lod_profile : packoffset(c1);
+  float Horiz_fade_value : packoffset(c2);
+  float4 Billboard_tangents[3] : packoffset(c3);
+  float4 Camera_azimuth_trig : packoffset(c6);
+  float Num_billboards : packoffset(c7);
+  float4 Billboard_texcoords[6] : packoffset(c8);
+  float4 Horiz_texcoords : packoffset(c14);
+  float2 Camera_angles : packoffset(c15);
+  float4 Lighting : packoffset(c16);
+}
+SamplerState Diffuse_mapSampler_s : register(s0);
+SamplerState Normal_mapSampler_s : register(s2);
+Texture2D<float4> Diffuse_mapSampler : register(t0);
+Texture2D<float4> Normal_mapSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = v1.x * v1.y;
+  r0.x = 8.000000000e+002 * r0.x;
+  r0.x = frac(r0.x);
+  r0.y = 1.000000000e+000 + -v4.w;
+  r0.x = -r0.y * r0.x + v4.w;
+  r1.xyzw = Diffuse_mapSampler.Sample(Diffuse_mapSampler_s, v1.xy).xyzw;
+  r0.x = r1.w * r0.x + -4.000000060e-001;
+  r0.x = r0.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.x = dot(v4.xyz, v4.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v4.xyz * r0.xxx;
+  r1.xyzw = Normal_mapSampler.Sample(Normal_mapSampler_s, v1.xy).xyzw;
+  r1.yzw = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = r1.y * r1.w;
+  r2.xy = -r1.zx;
+  r0.w = dot(r1.zx, r2.xy);
+  r0.w = saturate(1.000000000e+000 + r0.w);
+  r2.z = sqrt(r0.w);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r2.xyz * r0.www;
+  r0.xyz = r1.yyy * r0.xyz;
+  r0.w = dot(v2.xyz, v2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v2.xyz * r0.www;
+  r0.xyz = r1.xxx * r2.xyz + r0.xyz;
+  r0.w = dot(v5.xyz, v5.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyw = v5.xyz * r0.www;
+  r0.xyz = r1.zzz * r1.xyw + r0.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www + float3(0.000000e+000,0.000000e+000,-1.000000e+000);
+  r0.z = dot(r0.xyz, r0.xyz);
+  r0.z = rsqrt(r0.z);
+  r0.xy = r0.xy * r0.zz;
+  o0.xy = r0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  o1.x = saturate(3.051757813e-005 * v3.z);
+  o1.y = v3.w;
+  o1.zw = float2(0.000000e+000,1.000000e+000);
+  r0.x = cb0[16].z * 4.882812500e-004;
+  o2.x = max(r0.x, 3.906250000e-003);
+  o2.y = v5.w;
+  o2.zw = float2(0.000000e+000,1.000000e+000);
+  return;
+}

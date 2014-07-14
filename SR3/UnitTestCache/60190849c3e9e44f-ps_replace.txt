@@ -1,0 +1,57 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[18];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[9];
+}
+
+
+cbuffer vc1 : register(b1)
+{
+  float2 Prim_tex_texel_size : packoffset(c8);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float Alpha_test_ref : packoffset(c17);
+}
+SamplerState Y_texSampler_s : register(s0);
+SamplerState Cr_texSampler_s : register(s1);
+SamplerState Cb_texSampler_s : register(s2);
+Texture2D<float4> Y_texSampler : register(t0);
+Texture2D<float4> Cr_texSampler : register(t1);
+Texture2D<float4> Cb_texSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float4 v2 : COLOR0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyzw = Cr_texSampler.Sample(Cr_texSampler_s, v1.xy).yxzw;
+  r2.xyzw = Cb_texSampler.Sample(Cb_texSampler_s, v1.xy).xyzw;
+  r1.z = r2.x;
+  r2.xy = cb1[8].xy + v1.xy;
+  r2.xyzw = Y_texSampler.Sample(Y_texSampler_s, r2.xy).xyzw;
+  r1.x = r2.x;
+  r1.w = 1.000000000e+000;
+  r0.y = dot(float4(1.164124e+000,-8.134766e-001,-3.914490e-001,5.297050e-001), r1.xyzw);
+  r0.x = dot(float3(1.164124e+000,1.595795e+000,-8.706551e-001), r1.xyw);
+  r0.z = dot(float3(1.164124e+000,2.017822e+000,-1.081669e+000), r1.xzw);
+  r0.xyzw = v2.xyzw * r0.xyzw;
+  r1.x = r0.w * cb4[1].w + -cb4[17].x;
+  r0.xyzw = cb4[1].xyzw * r0.xyzw;
+  o0.xyzw = r0.xyzw;
+  r0.x = r1.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  return;
+}

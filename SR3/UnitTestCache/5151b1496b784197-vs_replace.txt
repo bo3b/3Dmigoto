@@ -1,0 +1,27 @@
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  int2 v2 : TEXCOORD1,
+  int4 v3 : POSITION1,
+  float4 v4 : NORMAL1,
+  uint4 v5 : BLENDWEIGHT0,
+  uint4 v6 : BLENDINDICES0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = v2.xy;
+  r0.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r1.xy = frac(r0.xy);
+  o1.zw = r0.xy;
+  r1.z = 1.000000000e+000 + -r1.y;
+  o0.xy = r1.xz * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  o0.zw = float2(7.500000e-001,1.000000e+000);
+  r0.xy = v1.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  return;
+}

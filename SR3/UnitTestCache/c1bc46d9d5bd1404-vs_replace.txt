@@ -1,0 +1,65 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 Object_instance_params_2 : packoffset(c5);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float4 v1 : NORMAL0,
+  float3 v2 : TANGENT0,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  o0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.x = dot(objTM._m00_m01_m02, r0.xyz);
+  r2.y = dot(objTM._m10_m11_m12, r0.xyz);
+  r2.z = dot(objTM._m20_m21_m22, r0.xyz);
+  r0.x = dot(r2.xyz, r2.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r2.xyz * r0.xxx;
+  o1.x = dot(r0.xyz, IR_World2View._m00_m10_m20);
+  o1.y = dot(r0.xyz, IR_World2View._m01_m11_m21);
+  o1.z = dot(r0.xyz, IR_World2View._m02_m12_m22);
+  o2.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  o3.x = dot(r1.xyzw, IR_World2View._m00_m10_m20_m30);
+  o3.y = dot(r1.xyzw, IR_World2View._m01_m11_m21_m31);
+  o3.z = dot(r1.xyzw, IR_World2View._m02_m12_m22_m32);
+  r0.xyzw = v1.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = r0.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = 2.550000000e+002 * r0.w;
+  r0.w = Object_instance_params_2.x * 3.264000000e+004 + r0.w;
+  o3.w = 1.525902189e-005 * r0.w;
+  r1.x = dot(objTM._m00_m01_m02, r0.xyz);
+  r1.y = dot(objTM._m10_m11_m12, r0.xyz);
+  r1.z = dot(objTM._m20_m21_m22, r0.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r1.xyz * r0.xxx;
+  o4.x = dot(r0.xyz, IR_World2View._m00_m10_m20);
+  o4.y = dot(r0.xyz, IR_World2View._m01_m11_m21);
+  o4.z = dot(r0.xyz, IR_World2View._m02_m12_m22);
+  o4.w = Object_instance_params_2.y;
+  return;
+}

@@ -1,0 +1,28 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float4 Diffuse_Color_2 : packoffset(c1);
+  float Decal_Map_Opacity : packoffset(c2);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.x = Diffuse_Color_2.w + -Diffuse_Color.w;
+  r1.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v3.xy).xyzw;
+  r0.x = r1.z * r0.x + Diffuse_Color.w;
+  o0.w = r1.z * r0.x;
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

@@ -1,0 +1,47 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float2 depth_pixel_steps : packoffset(c3);
+}
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
+  r0.x = 9.999899864e-001 >= r0.x;
+  r0.x = r0.x ? 0.000000000e+000 : 1.000000000e+000;
+  r1.xw = cb0[3].xy;
+  r1.yz = float2(0.000000e+000,0.000000e+000);
+  r1.xyzw = v1.xyxy + r1.xyzw;
+  r2.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r1.xy).xyzw;
+  r1.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r1.zw).xyzw;
+  r0.y = 9.999899864e-001 >= r1.x;
+  r0.z = 9.999899864e-001 >= r2.x;
+  r0.y = r0.y ? -1 : 0;
+  r0.z = r0.z ? -1 : 0;
+  r0.x = r0.x + r0.z;
+  r0.x = 1.000000000e+000 + r0.x;
+  r0.x = r0.x + r0.y;
+  r0.x = 1.000000000e+000 + r0.x;
+  r0.yz = cb0[3].xy + v1.xy;
+  r1.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r0.yz).xyzw;
+  r0.y = 9.999899864e-001 >= r1.x;
+  r0.y = r0.y ? -1.000000000e+000 : -0.000000000e+000;
+  r0.x = r0.x + r0.y;
+  r0.x = 1.000000000e+000 + r0.x;
+  o0.xyzw = float4(2.500000e-001,2.500000e-001,2.500000e-001,2.500000e-001) * r0.xxxx;
+  return;
+}

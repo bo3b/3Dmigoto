@@ -1,0 +1,46 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[21];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Adapt_time : packoffset(c17);
+  float Desired_brightness : packoffset(c18);
+  float Exposure_min : packoffset(c19);
+  float Exposure_max : packoffset(c20);
+}
+SamplerState Base_samplerSampler_s : register(s0);
+SamplerState Lum_adapt_samplerSampler_s : register(s1);
+Texture2D<float4> Base_samplerSampler : register(t0);
+Texture2D<float4> Lum_adapt_samplerSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Base_samplerSampler.Sample(Base_samplerSampler_s, float2(5.000000e-001,5.000000e-001)).xyzw;
+  r0.x = max(r0.x, 9.999999747e-006);
+  r0.y = 1.000000000e+004 < r0.x;
+  r0.x = r0.y ? 1.000000000e+000 : r0.x;
+  r1.xyzw = Lum_adapt_samplerSampler.Sample(Lum_adapt_samplerSampler_s, float2(5.000000e-001,5.000000e-001)).xyzw;
+  r0.y = 1.000000000e+004 < abs(r1.x);
+  r0.y = r0.y ? 1.000000000e+000 : r1.x;
+  r0.z = cb0[18].x * r0.y;
+  r0.x = r0.z / r0.x;
+  r0.x = max(r0.x, 9.999999747e-006);
+  r0.x = max(r0.x, cb0[19].x);
+  r0.x = min(r0.x, cb0[20].x);
+  r0.z = r0.y < r0.x;
+  r0.x = r0.x + -r0.y;
+  r0.w = cb0[17].x * 2.000000030e-001;
+  r0.z = r0.z ? r0.w : cb0[17].x;
+  o0.xyz = r0.zzz * r0.xxx + r0.yyy;
+  o0.w = 1.000000000e+000;
+  return;
+}

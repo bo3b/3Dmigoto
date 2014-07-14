@@ -1,0 +1,106 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float2 Cloud_U_Offset : packoffset(c0);
+  float Cloud_Fade_Height : packoffset(c1);
+  float Cloud_Full_Height : packoffset(c2);
+  float3 TOD_Light_Dir : packoffset(c3);
+  float3 TOD_Light_Color_Front : packoffset(c4);
+  float3 TOD_Light_Color_Rear : packoffset(c5);
+  float4 Layer_strengths : packoffset(c6);
+  float Rimlight_scale : packoffset(c7);
+  float Rimlight_power : packoffset(c8);
+  float4 Scale : packoffset(c9);
+  float Offset : packoffset(c10);
+  float4 Layer_strengths2 : packoffset(c11);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 Fog_color : packoffset(c4);
+}
+SamplerState Diffuse_Map_1Sampler_s : register(s0);
+SamplerState Diffuse_Map_2Sampler_s : register(s1);
+Texture2D<float4> Diffuse_Map_1Sampler : register(t0);
+Texture2D<float4> Diffuse_Map_2Sampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = v2.w < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyzw = Diffuse_Map_2Sampler.Sample(Diffuse_Map_2Sampler_s, v3.xy).xyzw;
+  r0.z = r0.z * r0.z;
+  r0.x = saturate(r0.x * r0.x + -r0.z);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r1.xyzw = Diffuse_Map_1Sampler.Sample(Diffuse_Map_1Sampler_s, v3.xy).xyzw;
+  r0.z = r1.z * r1.z;
+  r0.z = saturate(r1.x * r1.x + -r0.z);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.xz = sqrt(r0.xz);
+  r0.x = r0.x * Layer_strengths2.x + r0.z;
+  r0.x = r0.x * 5.000000000e-001 + -1.000000000e+000;
+  r0.x = Layer_strengths.y * r0.x + 1.000000000e+000;
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = Layer_strengths.z * r0.x;
+  r0.z = dot(v1.xyz, TOD_Light_Dir.xyz);
+  r0.z = r0.z * 5.000000000e-001 + 5.000000000e-001;
+  r1.xzw = r0.zzz * -TOD_Light_Color_Front.xyz + TOD_Light_Color_Front.xyz;
+  r0.y = -r1.y + r0.y;
+  r0.y = Layer_strengths2.x * r0.y + r1.y;
+  r0.z = Layer_strengths.x * r0.y;
+  r0.w = -Cloud_Fade_Height + abs(v1.y);
+  r1.y = Cloud_Full_Height + -Cloud_Fade_Height;
+  r0.w = saturate(r0.w / r1.y);
+  r1.y = -r0.z * r0.w + 1.000000000e+000;
+  r0.z = r0.z * r0.w;
+  r2.w = -r1.y;
+  r0.w = 1.000000000e+000 + r2.w;
+  r0.w = 1.000000000e+000 + -r0.w;
+  r1.y = r0.z * r0.y;
+  r3.x = saturate(r1.y);
+  r0.w = r3.x * r0.w;
+  r0.w = Rimlight_power * r0.w;
+  r3.xyz = Rimlight_scale * TOD_Light_Color_Front.xyz;
+  r3.xyz = r3.xyz * r0.www;
+  r0.w = dot(v1.xyz, -TOD_Light_Dir.xyz);
+  r3.w = saturate(r0.w);
+  r0.w = r0.w * 5.000000000e-001 + 5.000000000e-001;
+  r3.w = log2(r3.w);
+  r3.w = 1.500000000e+001 * r3.w;
+  r3.w = exp2(r3.w);
+  r3.xyz = r3.xyz * r3.www;
+  r3.w = dot(v2.xyz, -TOD_Light_Dir.xyz);
+  r3.w = r3.w * 5.000000000e-001 + 5.000000000e-001;
+  r4.xyz = TOD_Light_Color_Rear.xyz + -TOD_Light_Color_Front.xyz;
+  r5.xyz = r3.www * r4.xyz + TOD_Light_Color_Front.xyz;
+  r4.xyz = r0.www * r4.xyz + TOD_Light_Color_Front.xyz;
+  r3.xyz = r5.xyz * r4.xyz + r3.xyz;
+  r1.xzw = r0.xxx * r1.xzw + r3.xyz;
+  r0.xyz = r0.zzz * r0.yyy + r1.xzw;
+  r2.xyz = cb4[2].xyz + r0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = 1.000000000e+000 + -v1.w;
+  r1.x = r1.x * r1.y;
+  r0.xyz = v1.www * cb4[4].xyz + r1.xxx;
+  r0.xyzw = r2.xyzw + r0.xyzw;
+  r0.xyzw = cb4[1].xyzw * r0.xyzw;
+  o0.xyz = r0.xyz * r0.www;
+  o0.w = r0.w;
+  return;
+}

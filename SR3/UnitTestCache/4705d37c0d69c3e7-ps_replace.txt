@@ -1,0 +1,41 @@
+
+cbuffer vc0 : register(b0)
+{
+  float3 rays_color : packoffset(c0);
+  float3 sun_position : packoffset(c1);
+  float ray_length : packoffset(c2);
+}
+SamplerState mask_textureSampler_s : register(s0);
+Texture2D<float4> mask_textureSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = -sun_position.xy + v1.xy;
+  r0.zw = float2(-1.000000e+000,-1.000000e+000) + r0.xy;
+  r0.z = max(r0.w, r0.z);
+  r0.z = max(r0.z, 0.000000000e+000);
+  r0.z = 1.000000000e+000 + r0.z;
+  r0.xy = r0.xy / r0.zz;
+  r0.xy = ray_length * r0.xy;
+  r0.zw = v1.xy;
+  r1.xyz = float3(1.000000e+000,0.000000e+000,0.000000e+000);
+  while (true) {
+  r1.w = (int)r1.z >= (int)32;
+  if (r1.w != 0) break;
+  r0.zw = -r0.xy * float2(3.125000e-002,3.125000e-002) + r0.zw;
+  r2.xyzw = mask_textureSampler.Sample(mask_textureSampler_s, r0.zw).xyzw;
+  r1.y = r2.x * r1.x + r1.y;
+  r1.x = 9.100000262e-001 * r1.x;
+  r1.z = (int)r1.z + 1;
+  }
+  o0.xyz = rays_color.xyz * r1.yyy;
+  o0.w = 0.000000000e+000;
+  return;
+}

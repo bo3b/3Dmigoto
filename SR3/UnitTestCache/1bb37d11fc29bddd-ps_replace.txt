@@ -1,0 +1,54 @@
+
+cbuffer vc0 : register(b0)
+{
+  float3x3 Composite_UV_XForm : packoffset(c0);
+  float4 Composite_information : packoffset(c3);
+}
+SamplerState base_textureSampler_s : register(s0);
+SamplerState composite_textureSampler_s : register(s1);
+Texture2D<float4> base_textureSampler : register(t0);
+Texture2D<float4> composite_textureSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = composite_textureSampler.Sample(composite_textureSampler_s, v1.zw).xyzw;
+  r0.x = -5.000000000e-001 + r0.x;
+  r0.x = Composite_information.x * r0.x;
+  r0.y = 0.000000000e+000 < r0.x;
+  r0.z = r0.x < 0.000000000e+000;
+  r0.x = 5.000000000e-001 * r0.x;
+  r0.x = r0.x * r0.x;
+  r0.y = (int)r0.z + (int)-r0.y;
+  r0.y = r0.y;
+  r0.x = r0.x * r0.y;
+  r1.xyzw = base_textureSampler.Sample(base_textureSampler_s, v1.xy).xyzw;
+  r0.y = 0.000000000e+000 < r1.x;
+  r0.z = r1.x < 0.000000000e+000;
+  r0.y = ((int)r0.z ? -1 : 0) + ((int)r0.y ? 1 : 0);
+  r0.y = r0.y;
+  r0.z = 4.000000000e+000 * r1.x;
+  r0.w = Composite_information.y * r1.y;
+  r0.z = r0.z * r0.z;
+  r0.x = r0.z * r0.y + r0.x;
+  r0.y = 0.000000000e+000 < r0.x;
+  r0.z = r0.x < 0.000000000e+000;
+  r0.x = sqrt(abs(r0.x));
+  r0.y = (int)r0.z + (int)-r0.y;
+  r0.y = r0.y;
+  r0.x = r0.y * r0.x;
+  r0.x = saturate(r0.x * 1.250000000e-001 + 5.000000000e-001);
+  o0.x = r0.x * 2.000000000e+000 + -1.000000000e+000;
+  o0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.x = Composite_information.y + Composite_information.y;
+  r0.x = r0.w / r0.x;
+  r0.x = saturate(5.000000000e-001 + r0.x);
+  o0.y = r0.x * 2.000000000e+000 + -1.000000000e+000;
+  return;
+}

@@ -1,0 +1,85 @@
+
+cbuffer vc0 : register(b0)
+{
+  float Specular_Power : packoffset(c0);
+  float3 Start_position : packoffset(c1);
+  float Current_time : packoffset(c2);
+  float3 Prev_cam_position : packoffset(c3);
+  float4 Size_params : packoffset(c4);
+  float4 Rain_params : packoffset(c5);
+  float Speed : packoffset(c6);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float3 v1 : POSITION1,
+  float v2 : TEXCOORD1,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = Speed * 3.333333206e+001;
+  r0.yzw = v1.xyz + v0.xyz;
+  r1.xyz = v0.xyz + -r0.yzw;
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = sqrt(r1.w);
+  r0.x = r1.w / r0.x;
+  r1.w = 9.999999975e-007 + r0.x;
+  r0.x = Rain_params.x + r0.x;
+  r2.x = Current_time + -abs(-v2.x);
+  r2.y = -3.333333507e-002 + r2.x;
+  r2.y = saturate(r2.y / r1.w);
+  r1.w = saturate(r2.x / r1.w);
+  r0.x = r0.x < r2.x;
+  r2.xyz = r2.yyy * r1.xyz + r0.yzw;
+  r0.yzw = r1.www * r1.xyz + r0.yzw;
+  r1.x = 9.900000095e-001 < r1.w;
+  r1.yzw = -Prev_cam_position.xyz + r2.xyz;
+  r2.xyz = -eyePos.xyz + r0.yzw;
+  r1.yzw = -r2.xyz + r1.yzw;
+  r2.x = dot(r2.xyz, r2.xyz);
+  r2.x = sqrt(r2.x);
+  r2.x = saturate(r2.x / Rain_params.y);
+  r2.yzw = -v0.xyz + r0.yzw;
+  r1.y = dot(r1.yzw, r2.yzw);
+  r1.y = r1.y < 0.000000000e+000;
+  r1.x = (int)r1.x | (int)r1.y;
+  r1.y = v2.x >= 0.000000000e+000;
+  r1.x = r1.y ? 0.000000000e+000 : r1.x;
+  r0.y = r1.x ? v0.x : r0.y;
+  r0.z = r1.x ? v0.y : r0.z;
+  r0.w = r1.x ? v0.z : r0.w;
+  r1.x = 5.000000000e-001 / Rain_params.y;
+  r1.x = r2.x < r1.x;
+  r0.x = (int)r0.x | (int)r1.x;
+  r0.x = r0.x ? -2147483648 : r0.y;
+  r0.y = r0.x ? -2147483648 : r0.z;
+  r0.z = r0.x ? -2147483648 : r0.w;
+  r0.w = 1.000000000e+000;
+  o0.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  o1.x = IR_World2View._m10;
+  o1.y = IR_World2View._m11;
+  o1.z = IR_World2View._m12;
+  o2.x = dot(r0.xyzw, IR_World2View._m00_m10_m20_m30);
+  o2.y = dot(r0.xyzw, IR_World2View._m01_m11_m21_m31);
+  o2.z = dot(r0.xyzw, IR_World2View._m02_m12_m22_m32);
+  o2.w = Object_instance_params_2.y;
+  return;
+}

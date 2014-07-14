@@ -1,0 +1,45 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Blur_scale : packoffset(c0);
+  float3 Distortion_scale : packoffset(c1);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState base_samplerSampler_s : register(s0);
+SamplerState distortion_samplerSampler_s : register(s1);
+SamplerState blurred_samplerSampler_s : register(s2);
+Texture2D<float4> base_samplerSampler : register(t0);
+Texture2D<float4> distortion_samplerSampler : register(t1);
+Texture2D<float4> blurred_samplerSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyzw = distortion_samplerSampler.Sample(distortion_samplerSampler_s, v1.xy).xyzw;
+  r0.xyz = cb4[1].xyz * r0.xyz;
+  r0.z = Blur_scale * r0.z;
+  r0.xy = r0.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.003922e+000,-1.003922e+000);
+  r0.xy = r0.xy * Distortion_scale.xy + v1.xy;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r1.xyzw = blurred_samplerSampler.Sample(blurred_samplerSampler_s, r0.xy).xyzw;
+  r2.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r0.xy).xyzw;
+  r0.xyw = -r2.xyz + r1.xyz;
+  o0.xyz = r0.zzz * r0.xyw + r2.xyz;
+  o0.w = r2.w;
+  return;
+}

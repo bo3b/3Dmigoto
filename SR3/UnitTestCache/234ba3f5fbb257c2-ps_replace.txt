@@ -1,0 +1,64 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[14];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Decal_Map_TilingU : packoffset(c0);
+  float Decal_Map_TilingV : packoffset(c1);
+  float Decal_Map_Opacity : packoffset(c2);
+  float Self_Illumination : packoffset(c3);
+  float4 Diffuse_Color : packoffset(c4);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 V_back_ambient_render : packoffset(c3);
+  float4 Fog_color : packoffset(c4);
+  float4 V_light_color : packoffset(c6);
+  float4 lightPos : packoffset(c13);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+SamplerState Decal_MapSampler_s : register(s1);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+Texture2D<float4> Decal_MapSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.x = v2.w < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyz = -cb4[3].xyz + cb4[2].xyz;
+  r0.w = dot(cb4[13].xyz, v2.xyz);
+  r1.x = r0.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = saturate(r0.w);
+  r0.xyz = r1.xxx * r0.xyz + cb4[3].xyz;
+  r0.xyz = r0.www * cb4[6].xyz + r0.xyz;
+  r1.xyzw = Decal_MapSampler.Sample(Decal_MapSampler_s, v3.zw).xyzw;
+  r0.w = Decal_Map_Opacity * r1.w;
+  r2.w = 1.000000000e+000;
+  r3.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v3.xy).xyzw;
+  r2.xyz = v1.xyz;
+  r4.xyzw = r3.xyzw * r2.xyzw;
+  r1.xyz = -r3.xyz * r2.xyz + r1.xyz;
+  r1.xyz = r0.www * r1.xyz + r4.xyz;
+  r2.xyz = Self_Illumination * r1.xyz;
+  r0.xyz = r1.xyz * r0.xyz + r2.xyz;
+  r0.w = 1.000000000e+000 + -v1.w;
+  r0.xyz = r0.www * r0.xyz;
+  r4.xyz = v1.www * cb4[4].xyz + r0.xyz;
+  o0.xyzw = cb4[1].xyzw * r4.xyzw;
+  return;
+}

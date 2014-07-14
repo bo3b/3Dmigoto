@@ -1,0 +1,76 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Blur_scale : packoffset(c0);
+  float3 Distortion_scale : packoffset(c1);
+  float3 Signal_noise : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState base_samplerSampler_s : register(s0);
+SamplerState distortion_samplerSampler_s : register(s1);
+SamplerState blurred_samplerSampler_s : register(s2);
+Texture2D<float4> base_samplerSampler : register(t0);
+Texture2D<float4> distortion_samplerSampler : register(t1);
+Texture2D<float4> blurred_samplerSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = Signal_noise.z + v1.y;
+  r0.x = Signal_noise.x * r0.x;
+  r0.x = 3.141592503e+000 * r0.x;
+  r0.x = sin(r0.x);
+  r1.xyzw = distortion_samplerSampler.Sample(distortion_samplerSampler_s, v1.xy).xyzw;
+  r0.y = -r1.w * cb4[1].w + 1.000000000e+000;
+  r1.xyz = cb4[1].xyz * r1.xyz;
+  r0.x = Signal_noise.y * r0.x + r0.y;
+  r0.zw = float2(2.560000e+002,2.560000e+002) * r1.xy;
+  r1.x = Blur_scale * r1.z;
+  r1.x = min(r1.x, 1.000000000e+000);
+  r0.z = floor(r0.z);
+  r0.w = floor(r0.w);
+  r0.zw = r0.zw * float2(7.812500e-003,7.812500e-003) + float2(-1.000000e+000,-1.000000e+000);
+  r1.yz = r0.zw * Distortion_scale.xy + float2(5.000000e-004,5.000000e-004);
+  r0.zw = r0.zw * Distortion_scale.xy + v1.xy;
+  r1.w = r1.y * r0.x;
+  r2.xy = r1.yz * r0.xx + r0.zw;
+  r0.x = r1.z * r0.y;
+  r3.y = r0.x * 5.000000000e-001 + r0.w;
+  r2.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r2.xy).xyzw;
+  r3.x = r1.w * 5.000000000e-001 + r0.z;
+  r3.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r3.xy).xyzw;
+  r4.xyzw = base_samplerSampler.Sample(base_samplerSampler_s, r0.zw).xyzw;
+  r5.xyzw = blurred_samplerSampler.Sample(blurred_samplerSampler_s, r0.zw).xyzw;
+  r0.x = saturate(r4.x / r3.y);
+  r2.w = r3.y;
+  r0.xz = float2(2.500000e+000,3.333333e+000) * r0.xx;
+  r0.xz = min(r0.xz, float2(1.000000e+000,1.000000e+000));
+  r2.xy = float2(0.000000e+000,0.000000e+000);
+  r1.yzw = r0.xxx * float3(0.000000e+000,2.000000e-001,0.000000e+000) + r2.xwy;
+  r0.xzw = r0.zzz * float3(1.000000e-001,2.500000e-001,0.000000e+000) + float3(9.000000e-001,7.500000e-001,1.000000e+000);
+  r2.y = -2.000000030e-001;
+  r2.x = r4.x;
+  o0.w = r4.w;
+  r1.yzw = r2.xyz + r1.yzw;
+  r0.xzw = saturate(r1.yzw * r0.xzw);
+  r0.xzw = r0.xzw + -r2.xwz;
+  r0.xyz = r0.yyy * r0.xzw + r2.xwz;
+  r1.yzw = r5.xyz + -r0.xyz;
+  o0.xyz = r1.xxx * r1.yzw + r0.xyz;
+  return;
+}

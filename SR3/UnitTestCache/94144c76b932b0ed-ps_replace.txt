@@ -1,0 +1,30 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 IR_light_debug_flags : packoffset(c0);
+}
+SamplerState LbufferSampler_s : register(s0);
+Texture2D<float4> LbufferSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyzw = LbufferSampler.Sample(LbufferSampler_s, v1.xy).xyzw;
+  r0.x = dot(r0.xyz, IR_light_debug_flags.xyz);
+  r0.x = IR_light_debug_flags.w * r0.x;
+  r0.y = 1.600000024e+000 * r0.x;
+  r0.y = saturate(r0.y);
+  r0.z = saturate(r0.x * 1.600000024e+000 + -2.000000000e+000);
+  r0.x = saturate(-r0.x * 1.600000024e+000 + 2.000000000e+000);
+  o0.y = 5.000000000e-001 * r0.x;
+  r0.x = r0.y + r0.z;
+  o0.x = 5.000000000e-001 * r0.x;
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  return;
+}

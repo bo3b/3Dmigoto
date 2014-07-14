@@ -1,0 +1,20 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 ssao_uv_scale_offset : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0)
+{
+  o0.xyz = v0.xyz;
+  o0.w = 1.000000000e+000;
+  o1.zw = v1.xy * ssao_uv_scale_offset.xy + ssao_uv_scale_offset.zw;
+  o1.xy = v1.xy;
+  return;
+}

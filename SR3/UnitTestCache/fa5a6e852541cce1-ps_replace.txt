@@ -1,0 +1,32 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Sampler0Sampler_s : register(s0);
+SamplerState Sampler1Sampler_s : register(s1);
+Texture2D<float4> Sampler0Sampler : register(t0);
+Texture2D<float4> Sampler1Sampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Sampler1Sampler.Sample(Sampler1Sampler_s, v1.xy).xyzw;
+  r1.xyzw = Sampler0Sampler.Sample(Sampler0Sampler_s, v1.xy).xyzw;
+  r0.xyzw = -r1.xyzw + r0.xyzw;
+  r0.xyzw = cb4[1].wwww * r0.xyzw + r1.xyzw;
+  o0.xyz = cb4[1].xyz * r0.xyz;
+  o0.w = r0.w;
+  return;
+}

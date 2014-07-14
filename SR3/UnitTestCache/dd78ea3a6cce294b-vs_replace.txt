@@ -1,0 +1,85 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[5];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Decal_Map_TilingU : packoffset(c1);
+  float Decal_Map_TilingV : packoffset(c2);
+  float Decal_Map_Opacity : packoffset(c3);
+  float3 Decal_Color : packoffset(c4);
+  float Self_Illumination : packoffset(c5);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+  float Reflection_Plane_Height : packoffset(c30);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  float4 v3 : POSITION2,
+  float4 v4 : POSITION3,
+  float4 v5 : POSITION4,
+  float4 v6 : COLOR1,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(v3.xyzw, r1.xyzw);
+  r0.z = dot(v5.xyzw, r1.xyzw);
+  r0.y = dot(v4.xyzw, r1.xyzw);
+  o0.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r0.xzw = -eyePos.xyz + r0.xyz;
+  o3.w = -Reflection_Plane_Height + r0.y;
+  r1.xy = v1.xy;
+  r2.x = cb0[1].x * r1.x;
+  r2.y = cb0[2].x * r1.y;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r2.xy;
+  r0.y = Fog_dist.x * r0.z;
+  r1.x = -1.442695022e+000 * r0.y;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.y = r1.x / r0.y;
+  r1.x = 9.999999776e-003 < abs(r0.z);
+  r0.x = dot(r0.xzw, r0.xzw);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.y : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.w = 1.000000000e+000 + -r0.x;
+  o2.xyz = cb0[4].xyz * v6.xyz;
+  r0.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = dot(v3.xyz, r0.xyz);
+  r1.y = dot(v4.xyz, r0.xyz);
+  r1.z = dot(v5.xyz, r0.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r1.xyz * r0.xxx;
+  o3.x = dot(r0.xyz, IR_World2View._m00_m10_m20);
+  o3.y = dot(r0.xyz, IR_World2View._m01_m11_m21);
+  o3.z = dot(r0.xyz, IR_World2View._m02_m12_m22);
+  return;
+}

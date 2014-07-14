@@ -1,0 +1,100 @@
+
+cbuffer vc0 : register(b0)
+{
+  float Self_Illumination : packoffset(c0);
+  float4 Diffuse_Color : packoffset(c1);
+  float4 Night_Additive_Color : packoffset(c2);
+  float Illumination_Map_Amount : packoffset(c3);
+  float Illumination_Map_Scroll : packoffset(c4);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float4 Dual_Paraboloid_Transform : packoffset(c3);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float4 Fog_dist : packoffset(c10);
+  float4 Object_instance_params : packoffset(c15);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  int2 v3 : TEXCOORD2,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r2.y = Dual_Paraboloid_Transform.w * r1.z;
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r2.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r2.z = -Dual_Paraboloid_Transform.w * r1.y;
+  r0.xyz = Dual_Paraboloid_Transform.xyz + r2.xyz;
+  r1.x = r2.x;
+  r1.xyz = -eyePos.xyz + r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = sqrt(r0.w);
+  r2.xyz = r0.xyz / r0.www;
+  r0.x = -1.000000015e-001 + r0.w;
+  o0.z = 1.000100048e-003 * r0.x;
+  o3.w = r0.z;
+  r0.x = 1.000000000e+000 + r2.z;
+  o0.xy = r2.xy / r0.xx;
+  o0.w = 1.000000000e+000;
+  o1.xyz = Object_instance_params.xyz * Diffuse_Color.xyz;
+  r0.x = Fog_dist.x * r1.y;
+  r0.y = -1.442695022e+000 * r0.x;
+  r0.y = exp2(r0.y);
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.x = r0.y / r0.x;
+  r0.y = 9.999999776e-003 < abs(r1.y);
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.z = sqrt(r0.z);
+  r0.z = Fog_dist.y * r0.z;
+  r0.x = r0.y ? r0.x : 1.000000000e+000;
+  r0.x = r0.x * r0.z + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.w = 1.000000000e+000 + -r0.x;
+  o2.x = Object_instance_params.w * Night_Additive_Color.x;
+  o2.yz = Object_instance_params_2.zw * Night_Additive_Color.yz;
+  r0.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = dot(objTM._m00_m01_m02, r0.xyz);
+  r1.y = dot(objTM._m10_m11_m12, r0.xyz);
+  r1.z = dot(objTM._m20_m21_m22, r0.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r1.xyz * r0.xxx;
+  o3.x = dot(r0.xyz, IR_World2View._m00_m10_m20);
+  o3.y = dot(r0.xyz, IR_World2View._m01_m11_m21);
+  o3.z = dot(r0.xyz, IR_World2View._m02_m12_m22);
+  r0.x = Time.x * 1.000000047e-003;
+  r0.x = frac(r0.x);
+  r0.x = Illumination_Map_Scroll * r0.x;
+  r0.z = 1.000000000e+001 * r0.x;
+  r0.xy = v3.xy;
+  r0.w = 0.000000000e+000;
+  o4.zw = r0.xy * float2(9.765625e-004,9.765625e-004) + r0.zw;
+  r0.xy = v1.xy;
+  o4.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  return;
+}

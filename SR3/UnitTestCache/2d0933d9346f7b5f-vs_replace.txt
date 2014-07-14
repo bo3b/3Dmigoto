@@ -1,0 +1,213 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 Eye_orient : packoffset(c11);
+  row_major float3x4 objTM : packoffset(c16);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float2 Z_dimensions : packoffset(c0);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : POSITION0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : COLOR0,
+  float4 v6 : COLOR1,
+  float4 v7 : TEXCOORD4,
+  float4 v8 : COLOR2,
+  float4 v9 : POSITION3,
+  float4 v10 : POSITION4,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r0.xyz = eyePos.xyz + -r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r2.x = rsqrt(r0.w);
+  r0.w = sqrt(r0.w);
+  r0.xyz = r2.xxx * r0.xyz;
+  r2.x = dot(-r0.xyz, v9.xyz);
+  r0.x = dot(r0.xyz, Eye_orient._m00_m01_m02);
+  r0.y = max(r2.x, -1.000000000e+000);
+  r0.z = 0.000000000e+000 < r2.x;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r2.x = abs(r0.y) * -1.872929931e-002 + 7.426100224e-002;
+  r2.x = r2.x * abs(r0.y) + -2.121143937e-001;
+  r2.x = r2.x * abs(r0.y) + 1.570728779e+000;
+  r2.y = 1.000000000e+000 + -abs(-r0.y);
+  r0.y = r0.y < -r0.y;
+  r2.y = sqrt(r2.y);
+  r2.z = r2.x * r2.y;
+  r2.z = r2.z * -2.000000000e+000 + 3.141592741e+000;
+  r0.y = r0.y ? r2.z : 0;
+  r0.y = r2.x * r2.y + r0.y;
+  r0.y = 6.366198063e-001 * r0.y;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r2.x = r0.y * -2.000000000e+000 + 3.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = -r2.x * r0.y + 1.000000000e+000;
+  r0.y = log2(r0.y);
+  r0.y = v8.w * r0.y;
+  r0.y = exp2(r0.y);
+  r2.xyz = v8.xyz * r0.yyy;
+  r2.xyz = (int3)r0.zzz & (int3)r2.xyz;
+  r0.y = saturate(v3.w);
+  r0.z = r0.y * -2.000000000e+000 + 3.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = r0.z * r0.y;
+  r0.y = log2(r0.y);
+  r0.yz = v4.xy * r0.yy;
+  r0.yz = exp2(r0.yz);
+  r3.xy = v7.wy + -v7.zx;
+  r2.w = 9.999999975e-007 + r3.x;
+  r3.x = min(r0.w, v7.w);
+  r0.w = min(r0.w, v4.w);
+  r0.w = -v4.z + r0.w;
+  r0.w = max(r0.w, 0.000000000e+000);
+  r3.x = -v7.z + r3.x;
+  r3.x = max(r3.x, 0.000000000e+000);
+  r2.w = r3.x / r2.w;
+  r2.w = rsqrt(r2.w);
+  r2.w = 1.000000e+000 / r2.w;
+  r2.w = r2.w * r3.y + v7.x;
+  r0.z = r2.w * r0.z;
+  r2.y = r0.z * r2.y;
+  r3.x = 1.000000e-005 < v8.x;
+  r3.y = 1.000000e-005 < v8.y;
+  r3.z = 1.000000e-005 < v8.z;
+  r0.z = r3.y ? r2.y : r0.z;
+  r2.y = v2.y * r0.z;
+  r2.w = 1.745329238e-002 * v3.z;
+  r3.y = v2.x * r0.x;
+  r0.x = min(abs(r0.x), 1.000000000e+000);
+  r3.y = r3.y * 5.000000000e-001 + 5.000000000e-001;
+  r2.w = r3.y * 6.283185005e+000 + r2.w;
+  sincos(r2.w, r4.x, r5.x);
+  r6.xyzw = float4(-0.000000e+000,-1.000000e+000,1.000000e+000,0.000000e+000) * r5.xxxx;
+  r7.xyzw = r4.xxxx * float4(1.000000e+000,0.000000e+000,0.000000e+000,1.000000e+000) + r6.xyzw;
+  r8.xyzw = float4(-5.000000e-001,-5.000000e-001,-5.000000e-001,-5.000000e-001) + v1.wwzz;
+  r9.xyzw = r8.xyzw * r7.xyzw;
+  r3.yw = r9.zw * r2.yy;
+  r2.y = r8.w * r2.y;
+  r2.w = r8.y * r0.z;
+  r3.yw = r9.xy * r0.zz + r3.yw;
+  r7.xy = r7.zw * v10.xx + r3.yw;
+  r0.z = -Z_dimensions.x / Z_dimensions.y;
+  r7.z = r7.y * r0.z;
+  r1.w = 1.000000000e+000;
+  r8.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  r8.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  r0.z = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r3.yw = r8.xy / r0.zz;
+  r7.xy = r3.yw + r7.xz;
+  r4.yzw = Eye_orient._m00_m01_m02 * r5.xxx;
+  r4.yzw = r4.xxx * Eye_orient._m10_m11_m12 + r4.yzw;
+  r5.xyz = Eye_orient._m00_m01_m02 * r4.xxx;
+  r5.xyz = r6.yyy * Eye_orient._m10_m11_m12 + r5.xyz;
+  r6.xyz = r4.yzw * v10.xxx + r1.xyz;
+  r4.xyz = r2.yyy * r4.yzw + r6.xyz;
+  r4.xyz = r2.www * r5.xyz + r4.xyz;
+  r1.xyz = -eyePos.xyz + r1.xyz;
+  r4.w = 1.000000000e+000;
+  r5.x = dot(r4.xyzw, projTM._m00_m10_m20_m30);
+  r5.y = dot(r4.xyzw, projTM._m01_m11_m21_m31);
+  r5.z = dot(r4.xyzw, projTM._m02_m12_m22_m32);
+  r5.w = dot(r4.xyzw, projTM._m03_m13_m23_m33);
+  r0.z = 5.000000000e-001 < v0.w;
+  r7.zw = float2(0.000000e+000,1.000000e+000);
+  r4.x = r0.z ? r5.x : r7.x;
+  r4.y = r0.z ? r5.y : r7.y;
+  r4.z = r0.z ? r5.z : r7.z;
+  r4.w = r0.z ? r5.w : r7.w;
+  r0.z = v4.w + -v4.z;
+  r0.z = 9.999999975e-007 + r0.z;
+  r0.z = r0.w / r0.z;
+  r0.z = rsqrt(r0.z);
+  r0.z = 1.000000e+000 / r0.z;
+  r5.xyzw = v6.xyzw + -v5.xyzw;
+  r5.xyzw = r0.zzzz * r5.xyzw + v5.xyzw;
+  r0.y = r5.w * r0.y;
+  r0.z = r0.y * r2.z;
+  r0.y = r3.z ? r0.z : r0.y;
+  r0.y = Effect_opacity.x * r0.y;
+  r0.z = r0.y < 3.921568859e-003;
+  o1.w = r0.y;
+  o0.x = r0.z ? -2147483648 : r4.x;
+  o0.y = r0.z ? -2147483648 : r4.y;
+  o0.z = r0.z ? -2147483648 : r4.z;
+  o0.w = r4.w;
+  r0.y = r0.x * -2.000000000e+000 + 3.000000000e+000;
+  r0.x = r0.x * r0.x;
+  r0.x = -r0.y * r0.x + 1.000000000e+000;
+  r0.x = log2(r0.x);
+  r0.x = v3.x * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = r0.x * v1.y + 1.000000000e+000;
+  r0.y = r0.x * r2.x;
+  r0.x = r3.x ? r0.y : r0.x;
+  o1.xyz = r5.xyz * r0.xxx;
+  r0.x = Fog_dist.x * r1.y;
+  r0.y = -1.442695022e+000 * r0.x;
+  r0.y = exp2(r0.y);
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.x = r0.y / r0.x;
+  r0.y = 9.999999776e-003 < abs(r1.y);
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.z = sqrt(r0.z);
+  r0.z = Fog_dist.y * r0.z;
+  r0.x = r0.y ? r0.x : 1.000000000e+000;
+  r0.x = r0.x * r0.z + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.x = 1.000000000e+000 + -r0.x;
+  r0.x = 9.999999939e-009 + v2.w;
+  r0.y = UV_anim_tiling.x * UV_anim_tiling.y;
+  r0.z = round(r0.y);
+  r0.y = (int)r0.y;
+  r0.x = r0.z * r0.x;
+  r0.x = (int)r0.x;
+  r0.yz = max(r0.yx, -r0.yx);
+  r0.x = (int)r0.x & 0x80000000;
+  r0.y = r0.z % r0.y;
+  r0.z = -(int)r0.y;
+  r0.x = r0.x ? r0.z : r0.y;
+  r0.y = (int)r0.x & 0x80000000;
+  r0.z = max(r0.x, -r0.x);
+  r0.x = r0.x;
+  r0.x = r0.x / UV_anim_tiling.x;
+  r0.x = round(r0.x);
+  r0.w = (int)UV_anim_tiling.x;
+  r0.w = max(r0.w, -r0.w);
+  r0.z = r0.z % r0.w;
+  r0.w = -(int)r0.z;
+  r0.y = r0.y ? r0.w : r0.z;
+  r0.y = r0.y;
+  r0.zw = float2(1.000000e+000,1.000000e+000) / UV_anim_tiling.xy;
+  r1.xy = v1.zw * r0.zw;
+  o3.x = r0.y * r0.z + r1.x;
+  o3.y = r0.x * r0.w + r1.y;
+  o3.z = v1.x;
+  o3.w = v2.z;
+  return;
+}

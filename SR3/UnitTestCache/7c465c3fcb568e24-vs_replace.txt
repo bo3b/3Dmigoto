@@ -1,0 +1,97 @@
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[3];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[22];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float3 Light_shafts_light_pos : packoffset(c21);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  row_major float3x4 objTM : packoffset(c16);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6,
+  out float4 o8 : TEXCOORD7,
+  out float4 o9 : TEXCOORD8)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  o0.xyz = v0.xyz;
+  o0.w = 1.000000000e+000;
+  r0.w = 1.000000000e+000;
+  r1.xyz = cb0[21].xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(objTM._m00_m01_m02_m03, r1.xyzw);
+  r0.y = dot(objTM._m10_m11_m12_m13, r1.xyzw);
+  r0.z = dot(objTM._m20_m21_m22_m23, r1.xyzw);
+  r1.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r0.x = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  r0.x = -r0.x / r1.y;
+  r0.y = r1.x / r1.y;
+  r1.x = r0.y * 5.000000000e-001 + 5.000000000e-001;
+  r1.y = r0.x * 5.000000000e-001 + 5.000000000e-001;
+  r0.xy = float2(5.000000e-001,5.000000e-001) / cb1[2].xy;
+  r1.zw = v1.xy + r0.xy;
+  o1.xyzw = r1.xyzw;
+  o2.xy = r1.zw;
+  r0.zw = v1.xy + -r1.xy;
+  r1.zw = r0.zw * float2(8.437500e-001,8.437500e-001) + r1.xy;
+  o2.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(7.790291e-001,7.790291e-001) + r1.xy;
+  o3.xy = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(7.293671e-001,7.293671e-001) + r1.xy;
+  o3.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(6.875000e-001,6.875000e-001) + r1.xy;
+  o4.xy = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(6.506144e-001,6.506144e-001) + r1.xy;
+  o4.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(6.172673e-001,6.172673e-001) + r1.xy;
+  o5.xy = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(5.866014e-001,5.866014e-001) + r1.xy;
+  o5.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(5.580583e-001,5.580583e-001) + r1.xy;
+  o6.xy = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(5.312500e-001,5.312500e-001) + r1.xy;
+  o6.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(5.058941e-001,5.058941e-001) + r1.xy;
+  o7.xy = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(4.817774e-001,4.817774e-001) + r1.xy;
+  o7.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(4.587341e-001,4.587341e-001) + r1.xy;
+  o8.xy = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(4.366326e-001,4.366326e-001) + r1.xy;
+  o8.zw = r1.zw + r0.xy;
+  r1.zw = r0.zw * float2(4.153660e-001,4.153660e-001) + r1.xy;
+  r0.zw = r0.zw * float2(3.948463e-001,3.948463e-001) + r1.xy;
+  o9.zw = r0.zw + r0.xy;
+  o9.xy = r1.zw + r0.xy;
+  return;
+}

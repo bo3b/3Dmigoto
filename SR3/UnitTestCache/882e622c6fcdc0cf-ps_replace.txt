@@ -1,0 +1,137 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[11];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Glow_ScrollU : packoffset(c0);
+  float Glow_ScrollV : packoffset(c1);
+  float Diffuse_ScrollU : packoffset(c2);
+  float Diffuse_ScrollV : packoffset(c3);
+  float4 Diffuse_Color : packoffset(c4);
+  float Self_Illumination : packoffset(c5);
+  float Diffuse_Distortion_Amount : packoffset(c6);
+  float Distortion_ScrollU : packoffset(c7);
+  float Distortion_ScrollV : packoffset(c8);
+  float4 Glow_Color : packoffset(c9);
+  float Glow_Falloff_Power : packoffset(c10);
+  float Main_Opacity : packoffset(c11);
+  float Glow_Falloff_Inversion : packoffset(c12);
+  float Distortion_Amount : packoffset(c13);
+  float Fade_Distance : packoffset(c14);
+  float Angle_Power : packoffset(c15);
+  float Soft_Fade_Alpha : packoffset(c16);
+  float Alpha_Falloff_Amount : packoffset(c17) = float(0.000000e+000);
+  float Alpha_Falloff_Power : packoffset(c18) = float(1.000000e+000);
+  float Alpha_ScrollU : packoffset(c19);
+  float Alpha_ScrollV : packoffset(c20);
+  float Illum_Cycle : packoffset(c21);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+SamplerState Glow_MapSampler_s : register(s1);
+SamplerState Distortion_MapSampler_s : register(s2);
+SamplerState Alpha_MaskSampler_s : register(s3);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+Texture2D<float4> Glow_MapSampler : register(t1);
+Texture2D<float4> Distortion_MapSampler : register(t2);
+Texture2D<float4> Alpha_MaskSampler : register(t3);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = float2(5.000000e-001,5.000000e-001) / Target_dimensions.xy;
+  r1.xyz = v2.xyz / v2.www;
+  r0.zw = float2(1.000000e+000,1.000000e+000) + r1.xy;
+  r1.x = cb4[10].z * r1.z + cb4[10].w;
+  r1.x = 1.000000e+000 / r1.x;
+  r2.x = 5.000000000e-001 * r0.z;
+  r2.z = -r0.w * 5.000000000e-001 + 1.000000000e+000;
+  r0.xy = r2.xz + r0.xy;
+  r0.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r0.xy).xyzw;
+  r0.x = cb4[10].z * r0.x + cb4[10].w;
+  r0.x = 1.000000e+000 / r0.x;
+  r0.x = r0.x + -r1.x;
+  r0.y = max(1.000000047e-003, Soft_Fade_Alpha);
+  r0.y = 1.000000e+000 / r0.y;
+  r0.x = saturate(r0.x * r0.y);
+  r0.y = dot(v3.xyz, v3.xyz);
+  r0.y = rsqrt(r0.y);
+  r0.yzw = v3.xyz * r0.yyy;
+  r1.x = dot(v1.xyz, v1.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = v1.xyz * r1.xxx;
+  r0.y = saturate(dot(r0.yzw, r1.xyz));
+  r0.y = log2(r0.y);
+  r0.z = Alpha_Falloff_Power + 1.000000047e-003;
+  r0.y = r0.z * r0.y;
+  r0.y = exp2(r0.y);
+  r0.y = -1.000000000e+000 + r0.y;
+  r0.y = Alpha_Falloff_Amount * r0.y + 1.000000000e+000;
+  r1.xyzw = Distortion_MapSampler.Sample(Distortion_MapSampler_s, v6.xy).xyzw;
+  r1.xyzw = r1.xyxy * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.zw = r1.zw * Distortion_Amount + v6.zw;
+  r1.xyzw = r1.xyzw * Diffuse_Distortion_Amount + v5.xyzw;
+  r2.xyzw = Alpha_MaskSampler.Sample(Alpha_MaskSampler_s, r0.zw).xyzw;
+  r0.y = r2.y * r0.y;
+  r0.y = Main_Opacity * r0.y;
+  r0.x = r0.y * r0.x;
+  r0.y = 1.000000e+000 / Fade_Distance;
+  r0.y = saturate(v2.z * r0.y);
+  r0.z = r0.y * -2.000000000e+000 + 3.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = r0.z * r0.y;
+  r0.z = dot(v4.xyz, v4.xyz);
+  r0.z = rsqrt(r0.z);
+  r0.w = v4.z * r0.z;
+  r0.z = -v4.z * r0.z + Glow_Falloff_Inversion;
+  r0.z = log2(abs(r0.z));
+  r0.z = Glow_Falloff_Power * r0.z;
+  r0.z = exp2(r0.z);
+  r0.w = log2(abs(r0.w));
+  r0.w = Angle_Power * r0.w;
+  r0.w = exp2(r0.w);
+  r0.y = r0.y * r0.w;
+  r0.x = r0.x * r0.y;
+  o0.w = cb4[1].w * r0.x;
+  r2.xyzw = Glow_MapSampler.Sample(Glow_MapSampler_s, r1.zw).xyzw;
+  r1.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, r1.xy).xyzw;
+  r0.xyw = Glow_Color.xyz * r2.xyz;
+  r0.xyz = r0.xyw * r0.zzz;
+  r0.xyz = Self_Illumination * r0.xyz;
+  r0.xyz = float3(4.000000e+000,4.000000e+000,4.000000e+000) * r0.xyz;
+  r0.w = saturate(Self_Illumination);
+  r0.xyz = r0.www * r0.xyz;
+  r0.xyz = r1.xyz * Diffuse_Color.xyz + r0.xyz;
+  r0.w = 1.000000000e+000 + -v4.w;
+  r0.xyz = r0.www * r0.xyz;
+  o0.xyz = v4.www * cb4[4].xyz + r0.xyz;
+  return;
+}

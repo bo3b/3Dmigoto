@@ -1,0 +1,34 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Orbital_tint : packoffset(c0);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Orbital_mapSampler_s : register(s0);
+Texture2D<float4> Orbital_mapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyzw = Orbital_mapSampler.Sample(Orbital_mapSampler_s, v1.xy).xyzw;
+  r0.x = Orbital_tint.w * r0.w;
+  r0.x = cb4[1].w * r0.x;
+  o0.w = min(r0.x, 3.200000000e+001);
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

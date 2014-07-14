@@ -1,0 +1,37 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 focal_params : packoffset(c1);
+  float4 pixel_steps : packoffset(c2);
+  float4 depth_params : packoffset(c3);
+}
+Texture2D<float4> depth_textureTexture : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xy = cb0[2].xy * v1.xy;
+  r0.xy = (int2)r0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.xyzw = depth_textureTexture.Load(r0.xyz).xyzw;
+  r0.x = cb0[3].z * r0.x + cb0[3].w;
+  r0.x = 1.000000e+000 / r0.x;
+  r0.xy = -cb0[1].zx + r0.xx;
+  r0.zw = cb0[1].wy + -cb0[1].zx;
+  r0.xy = saturate(r0.xy / r0.zw);
+  r0.x = r0.x + -r0.y;
+  o0.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + r0.xxx;
+  o0.w = 1.000000000e+000;
+  return;
+}

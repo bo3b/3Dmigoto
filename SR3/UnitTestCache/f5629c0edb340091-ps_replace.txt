@@ -1,0 +1,59 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[14];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float4 Lighting : packoffset(c1);
+  float4 Ambient_Color : packoffset(c3);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 V_back_ambient_render : packoffset(c3);
+  float4 V_light_color : packoffset(c6);
+  float Alpha_Threshold : packoffset(c8);
+  float4 lightPos : packoffset(c13);
+}
+SamplerState Diffuse_mapSampler_s : register(s0);
+Texture2D<float4> Diffuse_mapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xy = float2(1.000000e+002,1.000000e+002) * v3.xy;
+  r0.x = r0.x * r0.y;
+  r0.x = frac(r0.x);
+  r1.xyzw = Diffuse_mapSampler.Sample(Diffuse_mapSampler_s, v3.xy).xyzw;
+  r1.xyzw = Diffuse_Color.xyzw * r1.xyzw;
+  r0.x = -v3.w * r0.x + r1.w;
+  r0.y = r0.x * v3.z + -cb4[8].x;
+  r2.w = v3.z * r0.x;
+  r0.x = r0.y < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.x = v1.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyz = -cb4[3].xyz + cb4[2].xyz;
+  r0.w = dot(cb4[13].xyz, v2.xyz);
+  r1.w = r0.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = saturate(r0.w);
+  r0.xyz = r1.www * r0.xyz + cb4[3].xyz;
+  r0.xyz = r0.www * cb4[6].xyz + r0.xyz;
+  r0.xyz = r1.xyz * r0.xyz;
+  r2.xyz = v2.www * r0.xyz;
+  o0.xyzw = cb4[1].xyzw * r2.xyzw;
+  return;
+}

@@ -1,0 +1,30 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Bloom_add_texture_0_samplerSampler_s : register(s4);
+SamplerState Bloom_add_texture_1_samplerSampler_s : register(s5);
+Texture2D<float4> Bloom_add_texture_0_samplerSampler : register(t4);
+Texture2D<float4> Bloom_add_texture_1_samplerSampler : register(t5);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Bloom_add_texture_1_samplerSampler.Sample(Bloom_add_texture_1_samplerSampler_s, v1.xy).xyzw;
+  r0.xyzw = cb4[1].xyzw * r0.xyzw;
+  r1.xyzw = Bloom_add_texture_0_samplerSampler.Sample(Bloom_add_texture_0_samplerSampler_s, v1.xy).xyzw;
+  o0.xyzw = r1.xyzw * cb4[1].xyzw + r0.xyzw;
+  return;
+}

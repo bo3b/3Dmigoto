@@ -1,0 +1,55 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float3 Position_scale : packoffset(c20);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  int2 v2 : TEXCOORD1,
+  int2 v3 : TEXCOORD2,
+  float3 v4 : NORMAL0,
+  float4 v5 : TANGENT0,
+  float4 v6 : POSITION2,
+  float4 v7 : POSITION3,
+  float4 v8 : POSITION4,
+  out float4 o0 : SV_Position0,
+  out float3 o1 : TEXCOORD0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(v6.xyzw, r0.xyzw);
+  r1.y = dot(v7.xyzw, r0.xyzw);
+  r1.z = dot(v8.xyzw, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  o0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = v4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = dot(v6.xyz, r0.xyz);
+  r1.y = dot(v7.xyz, r0.xyz);
+  r1.z = dot(v8.xyz, r0.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = r1.xyz * r0.xxx;
+  r1.xyzw = v5.xyzw * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.x = dot(v6.xyz, r1.xyz);
+  r2.y = dot(v7.xyz, r1.xyz);
+  r2.z = dot(v8.xyz, r1.xyz);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r2.xyz * r0.www;
+  r0.z = r1.y * r0.z;
+  r0.y = r0.y * r1.z + -r0.z;
+  o1.z = r0.x;
+  o1.x = r1.x;
+  o1.y = r0.y * r1.w;
+  return;
+}

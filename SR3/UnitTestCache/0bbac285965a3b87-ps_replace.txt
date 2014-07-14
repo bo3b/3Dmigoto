@@ -1,0 +1,31 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.x = v2.z / v2.w;
+  r0.w = 1.000000000e+000 + -v1.x;
+  r0.yz = float2(1.000000e+000,1.000000e+000);
+  r0.xyz = r0.www * r0.xyz;
+  r0.xyz = v1.xxx * cb4[4].xyz + r0.xyz;
+  r0.w = 1.000000000e+000;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

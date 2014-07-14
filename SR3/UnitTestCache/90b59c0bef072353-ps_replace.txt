@@ -1,0 +1,31 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 Sampling_offsets[16] : packoffset(c0);
+}
+SamplerState Base_samplerSampler_s : register(s0);
+Texture2D<float4> Base_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = float2(0.000000e+000,0.000000e+000);
+  while (true) {
+  r0.z = (int)r0.y >= (int)16;
+  if (r0.z != 0) break;
+  r1.xy = Sampling_offsets[r0.y].xy + float2(5.000000e-001,5.000000e-001);
+  r1.xyzw = Base_samplerSampler.Sample(Base_samplerSampler_s, r1.xy).xyzw;
+  r0.x = r1.x + r0.x;
+  r0.y = (int)r0.y + 1;
+  }
+  r0.x = 9.016843885e-002 * r0.x;
+  r0.x = exp2(r0.x);
+  o0.xyzw = float4(1.000000e+002,1.000000e+002,1.000000e+002,1.000000e+002) * r0.xxxx;
+  return;
+}

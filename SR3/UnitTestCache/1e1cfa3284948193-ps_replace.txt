@@ -1,0 +1,106 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[3];
+}
+
+
+cbuffer vc1 : register(b1)
+{
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Light_shafts_brightpass_samplerSampler_s : register(s2);
+Texture2D<float4> Light_shafts_brightpass_samplerSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  float4 v9 : TEXCOORD8,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v2.xy).xyzw;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v2.zw).xyzw;
+  r0.w = cb1[2].x / cb1[2].y;
+  r2.yz = v1.xy + -v1.zw;
+  r2.x = r2.y * r0.w;
+  r0.w = dot(r2.xz, r2.xz);
+  r0.w = sqrt(r0.w);
+  r0.w = min(r0.w, 5.000000000e+000);
+  r0.w = 2.000000030e-001 * r0.w;
+  r0.w = log2(r0.w);
+  r0.w = 1.600000024e+000 * r0.w;
+  r0.w = exp2(r0.w);
+  r0.w = -5.770780087e+000 * r0.w;
+  r0.w = exp2(r0.w);
+  r0.w = -1.999999955e-002 + r0.w;
+  r0.w = max(r0.w, 0.000000000e+000);
+  r1.xyz = r1.xyz * r0.www;
+  r1.xyz = float3(9.375000e-001,9.375000e-001,9.375000e-001) * r1.xyz;
+  r0.xyz = r0.xyz * r0.www + r1.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v3.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(8.750000e-001,8.750000e-001,8.750000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v3.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(8.125000e-001,8.125000e-001,8.125000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v4.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(7.500000e-001,7.500000e-001,7.500000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v4.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(6.875000e-001,6.875000e-001,6.875000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v5.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(6.250000e-001,6.250000e-001,6.250000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v5.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(5.625000e-001,5.625000e-001,5.625000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v6.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v6.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(4.375000e-001,4.375000e-001,4.375000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v7.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(3.750000e-001,3.750000e-001,3.750000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v7.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(3.125000e-001,3.125000e-001,3.125000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v8.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(2.500000e-001,2.500000e-001,2.500000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v8.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(1.875000e-001,1.875000e-001,1.875000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v9.xy).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(1.250000e-001,1.250000e-001,1.250000e-001) + r0.xyz;
+  r1.xyzw = Light_shafts_brightpass_samplerSampler.Sample(Light_shafts_brightpass_samplerSampler_s, v9.zw).xyzw;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * float3(6.250000e-002,6.250000e-002,6.250000e-002) + r0.xyz;
+  r0.xyz = cb4[1].xyz * r0.xyz;
+  o0.xyz = float3(3.125000e-001,3.125000e-001,3.125000e-001) * r0.xyz;
+  o0.w = cb4[1].w;
+  return;
+}

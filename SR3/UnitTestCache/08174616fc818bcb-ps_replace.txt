@@ -1,0 +1,74 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[11];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Normal_Map_TilingU : packoffset(c4);
+  float Normal_Map_TilingV : packoffset(c5);
+  float Normal_Map_Height : packoffset(c6);
+  float Specular_Power : packoffset(c9);
+  float Fresnel_Strength : packoffset(c10);
+}
+SamplerState Normal_MapSampler_s : register(s1);
+Texture2D<float4> Normal_MapSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyzw = Normal_MapSampler.Sample(Normal_MapSampler_s, v1.xy).xyzw;
+  r0.yzw = r0.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.x = r0.y * r0.w;
+  r1.xy = -r0.zx;
+  r0.x = dot(r0.zx, r1.xy);
+  r0.x = saturate(1.000000000e+000 + r0.x);
+  r1.z = sqrt(r0.x);
+  r0.xyz = float3(-0.000000e+000,-0.000000e+000,-1.000000e+000) + r1.xyz;
+  r0.xyz = cb0[6].xxx * r0.xyz + float3(0.000000e+000,0.000000e+000,1.000000e+000);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(v5.xyz, v5.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v5.xyz * r0.www;
+  r1.xyz = r1.xyz * r0.yyy;
+  r0.y = dot(v3.xyz, v3.xyz);
+  r0.y = rsqrt(r0.y);
+  r2.xyz = v3.xyz * r0.yyy;
+  r0.xyw = r0.xxx * r2.xyz + r1.xyz;
+  r1.x = dot(v2.xyz, v2.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = v2.xyz * r1.xxx;
+  r0.xyz = r0.zzz * r1.xyz + r0.xyw;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www + float3(0.000000e+000,0.000000e+000,-1.000000e+000);
+  r0.z = dot(r0.xyz, r0.xyz);
+  r0.z = rsqrt(r0.z);
+  r0.xy = r0.xy * r0.zz;
+  o0.xy = r0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  o1.x = saturate(3.051757813e-005 * v4.z);
+  o1.y = v4.w;
+  o1.zw = float2(0.000000e+000,1.000000e+000);
+  r0.x = cb0[9].x * 1.953125000e-003;
+  o2.x = max(r0.x, 3.906250000e-003);
+  o2.y = v5.w;
+  o2.z = cb0[10].x;
+  o2.w = 1.000000000e+000;
+  return;
+}

@@ -1,0 +1,34 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[9];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float Alpha_Threshold : packoffset(c8);
+}
+SamplerState Decal_MapSampler_s : register(s0);
+Texture2D<float4> Decal_MapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Decal_MapSampler.Sample(Decal_MapSampler_s, v1.xy).xyzw;
+  r1.x = -cb4[8].x + r0.w;
+  r1.x = r1.x < 0.000000000e+000;
+  if (r1.x != 0) discard;
+  r1.x = 1.000000000e+000 + -v1.z;
+  r1.xyz = r1.xxx * r0.xyz;
+  r0.xyz = v1.zzz * cb4[4].xyz + r1.xyz;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

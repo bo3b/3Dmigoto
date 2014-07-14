@@ -1,0 +1,181 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[12];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[13];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Specular_Map_Amount : packoffset(c4);
+  float4 Specular_Color : packoffset(c5);
+  float Specular_Alpha : packoffset(c6);
+  float Self_Illumination : packoffset(c7);
+  float Decal_Map_Opacity : packoffset(c8);
+  float Decal_Map_TilingU : packoffset(c9);
+  float Decal_Map_TilingV : packoffset(c10);
+  float4 Diffuse_Color : packoffset(c11);
+  float4 Wet_mask_levels : packoffset(c12);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+  float4 IR_Stipple_Pattern_Offset : packoffset(c11);
+  float4 IR_Stipple_Repeat_Info : packoffset(c12);
+}
+SamplerState Diffuse_MapSampler_s : register(s1);
+SamplerState Decal_MapSampler_s : register(s2);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+Texture2D<float4> Diffuse_MapSampler : register(t1);
+Texture2D<float4> Decal_MapSampler : register(t2);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask;
+  r0.xyz = v2.xyz / v2.www;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.z = cb4[10].z * r0.z + cb4[10].w;
+  r0.z = 1.000000e+000 / r0.z;
+  r0.z = saturate(3.051757813e-005 * r0.z);
+  r1.x = 5.000000000e-001 * r0.x;
+  r1.z = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r1.xyzw = cb4[9].xyxy * float4(9.000000e-001,9.000000e-001,9.000000e-001,9.000000e-001) + r1.xzxz;
+  r0.xy = r1.zw * cb4[9].zw + float2(-5.000000e-001,-5.000000e-001);
+  r0.x = floor(r0.x);
+  r0.y = floor(r0.y);
+  r2.xy = cb4[11].xy + r0.xy;
+  r3.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r0.xyxy;
+  r3.xyzw = cb4[9].xyxy * r3.xyzw;
+  r0.xy = float2(5.000000e-001,5.000000e-001) * r2.xy;
+  r2.x = r0.x >= -r0.x;
+  r2.y = r0.y >= -r0.y;
+  r0.xy = frac(abs(r0.xy));
+  r0.x = r2.x ? r0.x : -r0.x;
+  r0.y = r2.y ? r0.y : -r0.y;
+  r2.xyzw = r0.xxxx * float4(-6.000000e+000,4.000000e+000,6.000000e+000,0.000000e+000) + float4(2.000000e+000,-1.000000e+000,-2.000000e+000,1.000000e+000);
+  r4.xyzw = r0.xxxx * float4(2.000000e+000,4.000000e+000,-2.000000e+000,4.000000e+000) + float4(0.000000e+000,-2.000000e+000,2.000000e+000,0.000000e+000);
+  r2.xyzw = -r4.xyzw + r2.xyzw;
+  r0.w = 2.000000000e+000 * r0.y;
+  r2.xyzw = r0.wwww * r2.xyzw + r4.xyzw;
+  r2.xyzw = r2.xyzw * cb4[9].xyxy + r3.xyzw;
+  r4.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r2.xy).xzyw;
+  r0.w = r4.x + -r0.z;
+  r5.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r2.zw).xyzw;
+  r4.w = r5.y;
+  r3.x = r5.x + -r0.z;
+  r3.x = abs(r3.x) >= cb4[10].y;
+  r5.xyzw = r0.xxxx * float4(-2.000000e+000,0.000000e+000,2.000000e+000,-4.000000e+000) + float4(0.000000e+000,0.000000e+000,-2.000000e+000,0.000000e+000);
+  r5.xyzw = r0.yyyy * float4(0.000000e+000,-2.000000e+000,4.000000e+000,2.000000e+000) + r5.xyzw;
+  r5.xyzw = r5.xyzw * cb4[9].xyxy + r3.zwzw;
+  r6.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r5.xy).xyzw;
+  r4.x = r6.y;
+  r0.x = r6.x + -r0.z;
+  r6.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r5.zw).xyzw;
+  r4.y = r6.y;
+  r0.y = r6.x + -r0.z;
+  r0.x = abs(r0.x) >= cb4[10].y;
+  r0.y = abs(r0.y) >= cb4[10].y;
+  r0.w = abs(r0.w) >= cb4[10].y;
+  r4.xyzw = -v3.wwww + r4.xyzw;
+  r4.x = 1.220722e-005 >= abs(r4.x);
+  r4.y = 1.220722e-005 >= abs(r4.y);
+  r4.z = 1.220722e-005 >= abs(r4.z);
+  r4.w = 1.220722e-005 >= abs(r4.w);
+  r4.x = r4.x ? 1 : 0;
+  r4.y = r4.y ? 1 : 0;
+  r4.z = r4.z ? 1 : 0;
+  r4.w = r4.w ? 1 : 0;
+  r0.x = r0.x ? 0 : r4.x;
+  r0.y = r0.y ? 0 : r4.y;
+  r0.w = r0.w ? 0 : r4.z;
+  r0.z = r0.x + r0.y;
+  r3.x = r3.x ? 0.000000000e+000 : r4.w;
+  r0.z = r0.z + r0.w;
+  r0.z = r0.z + r3.x;
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.xy = r0.xy + r0.zz;
+  r0.xy = min(r0.xy, float2(1.000000e+000,1.000000e+000));
+  r4.xyzw = r5.xyzw + -r1.xyzw;
+  r1.xyzw = r2.xyzw + -r1.xyzw;
+  r3.y = dot(r4.zw, r4.zw);
+  r3.z = dot(r4.xy, r4.xy);
+  r3.yz = sqrt(r3.yz);
+  r3.yz = r3.yz / cb4[11].zz;
+  r3.yz = saturate(float2(1.000000e+000,1.000000e+000) + -r3.yz);
+  r0.y = r3.y * r0.y;
+  r4.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r5.zw).xyzw;
+  r5.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r5.xy).xyzw;
+  r4.xyzw = r4.xyzw * r0.yyyy;
+  r3.y = r3.z * r0.x;
+  r0.x = r3.z * r0.x + r0.y;
+  r4.xyzw = r5.xyzw * r3.yyyy + r4.xyzw;
+  r0.y = r0.w + r0.z;
+  r0.z = r3.x + r0.z;
+  r0.yz = min(r0.yz, float2(1.000000e+000,1.000000e+000));
+  r0.w = dot(r1.xy, r1.xy);
+  r1.x = dot(r1.zw, r1.zw);
+  r1.x = sqrt(r1.x);
+  r1.x = r1.x / cb4[11].z;
+  r1.x = saturate(1.000000000e+000 + -r1.x);
+  r0.w = sqrt(r0.w);
+  r0.w = r0.w / cb4[11].z;
+  r0.w = saturate(1.000000000e+000 + -r0.w);
+  r1.y = r0.w * r0.y;
+  r0.x = r0.w * r0.y + r0.x;
+  r0.x = r1.x * r0.z + r0.x;
+  r0.y = r1.x * r0.z;
+  r3.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r2.xy).xyzw;
+  r2.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r2.zw).xyzw;
+  r1.xyzw = r3.xyzw * r1.yyyy + r4.xyzw;
+  r1.xyzw = r2.xyzw * r0.yyyy + r1.xyzw;
+  r0.xyzw = r1.xyzw / r0.xxxx;
+  r0.xyzw = max(r0.xyzw, float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.x = dot(r0.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.x = max(r1.x, 1.000000047e-003);
+  r0.w = r0.w / r1.x;
+  r1.xyz = r0.xyz * r0.www;
+  r2.xyz = max(cb0[5].xyz, cb0[12].xxx);
+  r2.xyz = min(r2.xyz, cb0[12].yyy);
+  r2.xyz = -cb0[12].xxx + r2.xyz;
+  r2.xyz = cb0[12].yyy * r2.xyz;
+  r2.xyz = cb0[4].xxx * r2.xyz;
+  r3.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v4.xy).xyzw;
+  r2.xyz = r3.xyz * r2.xyz;
+  r1.xyz = r2.xyz * r1.xyz;
+  r2.w = 1.000000000e+000;
+  r2.xyz = v3.xyz;
+  r4.xyzw = r3.xyzw * r2.xyzw;
+  r5.xyzw = Decal_MapSampler.Sample(Decal_MapSampler_s, v4.zw).xyzw;
+  r2.xyz = -r3.xyz * r2.xyz + r5.xyz;
+  r0.w = cb0[8].x * r5.w;
+  r2.xyz = r0.www * r2.xyz + r4.xyz;
+  r3.xyz = cb0[7].xxx * r2.xyz;
+  r0.xyz = r2.xyz * r0.xyz + r3.xyz;
+  r0.xyz = r1.xyz * cb0[6].xxx + r0.xyz;
+  r0.w = 1.000000000e+000 + -v1.x;
+  r0.xyz = r0.www * r0.xyz;
+  r4.xyz = v1.xxx * cb4[4].xyz + r0.xyz;
+  o0.xyzw = cb4[1].xyzw * r4.xyzw;
+  return;
+}

@@ -1,0 +1,149 @@
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float4x4 Inv_proj_matrix : packoffset(c4);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  row_major float3x4 Eye_orient : packoffset(c11);
+  row_major float3x4 objTM : packoffset(c16);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float2 Z_dimensions : packoffset(c0);
+  float4 Diffuse_color : packoffset(c1);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float4 Ambient_color : packoffset(c5);
+  float Self_illum : packoffset(c6);
+  float4 VFX_material_tint : packoffset(c7);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : POSITION0,
+  float4 v1 : COLOR0,
+  float v2 : COLOR1,
+  float2 v3 : TEXCOORD0,
+  float v4 : COLOR2,
+  float v5 : TEXCOORD2,
+  float4 v6 : POSITION1,
+  float4 v7 : TEXCOORD1,
+  float2 v8 : COLOR3,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(objTM._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(objTM._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(objTM._m20_m21_m22_m23, r0.xyzw);
+  r0.xyz = -eyePos.zxy + r1.zxy;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(v6.xyz, v6.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v6.yzx * r0.www;
+  r3.xyz = r2.xyz * r0.xyz;
+  r0.xyz = r0.zxy * r2.yzx + -r3.xyz;
+  r2.x = dot(r0.xyz, r0.xyz);
+  r2.x = rsqrt(r2.x);
+  r0.w = v7.x;
+  r0.xyzw = r2.xxxx * r0.xyzw;
+  r2.x = v7.x;
+  r2.w = 0.000000000e+000;
+  r1.w = v0.w;
+  r1.xyzw = r2.xxxw * r0.xyzw + r1.xyzw;
+  r2.xyz = Eye_orient._m21_m22_m20 * r0.zxy;
+  r0.xyz = r0.yzx * Eye_orient._m22_m20_m21 + -r2.xyz;
+  r2.x = dot(r0.xyz, r0.xyz);
+  r2.x = rsqrt(r2.x);
+  r0.w = v7.y;
+  r0.xyzw = r2.xxxx * r0.xyzw;
+  r2.x = v7.y;
+  r2.w = 0.000000000e+000;
+  r0.xyzw = r0.xyzw * r2.xxxw + r1.xyzw;
+  r1.xyz = r0.xyz;
+  r1.w = 1.000000000e+000;
+  o0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r0.xyz = v1.xyz * VFX_material_tint.xyz + -v1.xyz;
+  r0.xyz = VFX_material_tint.www * r0.xyz + v1.xyz;
+  r2.xyz = Ambient_color.xyz * VFX_material_tint.xyz + -Ambient_color.xyz;
+  r2.xyz = VFX_material_tint.www * r2.xyz + Ambient_color.xyz;
+  o1.xyz = r2.xyz + r0.xyz;
+  o1.w = Effect_opacity.x * v1.w;
+  r0.x = 9.999999939e-009 + v5.x;
+  r0.y = UV_anim_tiling.x * UV_anim_tiling.y;
+  r0.z = round(r0.y);
+  r0.y = (int)r0.y;
+  r0.x = r0.z * r0.x;
+  r0.x = (int)r0.x;
+  r0.yz = max(r0.yx, -r0.yx);
+  r0.x = (int)r0.x & 0x80000000;
+  r0.y = r0.z % r0.y;
+  r0.z = -(int)r0.y;
+  r0.x = r0.x ? r0.z : r0.y;
+  r0.y = (int)r0.x & 0x80000000;
+  r0.z = max(r0.x, -r0.x);
+  r0.x = r0.x;
+  r0.x = r0.x / UV_anim_tiling.x;
+  r0.x = round(r0.x);
+  r1.w = (int)UV_anim_tiling.x;
+  r1.w = max(r1.w, -r1.w);
+  r0.z = r0.z % r1.w;
+  r1.w = -(int)r0.z;
+  r0.y = r0.y ? r1.w : r0.z;
+  r0.y = r0.y;
+  r2.xy = float2(1.000000e+000,1.000000e+000) / UV_anim_tiling.xy;
+  r2.zw = v3.xy * r2.xy;
+  o2.x = r0.y * r2.x + r2.z;
+  o2.y = r0.x * r2.y + r2.w;
+  o2.zw = v8.xy;
+  r0.xyz = r1.xyz / r0.www;
+  r1.xyz = -eyePos.xyz + r1.xyz;
+  r2.xy = r0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r2.z = 1.000000000e+000 + -r2.y;
+  r2.yw = float2(5.000000e-001,5.000000e-001) / Z_dimensions.xy;
+  o3.xy = r2.xz + r2.yw;
+  o3.z = v2.x;
+  o3.w = v4.x;
+  r1.w = Fog_dist.x * r1.y;
+  r2.x = -1.442695022e+000 * r1.w;
+  r2.x = exp2(r2.x);
+  r2.x = 1.000000000e+000 + -r2.x;
+  r1.w = r2.x / r1.w;
+  r2.x = 9.999999776e-003 < abs(r1.y);
+  r1.x = dot(r1.xyz, r1.xyz);
+  r1.x = sqrt(r1.x);
+  r1.x = Fog_dist.y * r1.x;
+  r1.y = r2.x ? r1.w : 1.000000000e+000;
+  r1.x = r1.y * r1.x + -Fog_dist.w;
+  r1.x = exp2(-r1.x);
+  r1.x = min(r1.x, 1.000000000e+000);
+  o4.x = 1.000000000e+000 + -r1.x;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, Inv_proj_matrix._m02_m12_m22_m32);
+  r0.x = dot(r0.xyzw, Inv_proj_matrix._m03_m13_m23_m33);
+  o4.z = r1.x / r0.x;
+  r0.x = Time.x * 1.000000047e-003;
+  r0.x = frac(r0.x);
+  o4.y = 1.000000000e+002 * r0.x;
+  return;
+}

@@ -1,0 +1,62 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[16];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Specular_Power : packoffset(c0);
+  float Spec_power_wet : packoffset(c1) = float(4.000000e+001);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Stipple_Repeat_Info : packoffset(c12);
+  float4 Ground_reflection_coef : packoffset(c15);
+}
+SamplerState IR_Stipple_PatternSampler_s : register(s14);
+Texture3D<float4> IR_Stipple_PatternSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.x = cb4[12].x * r0.x;
+  r0.y = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r1.y = cb4[12].y * r0.y;
+  r1.x = 5.000000000e-001 * r0.x;
+  r1.z = cb4[12].z;
+  r0.xyzw = IR_Stipple_PatternSampler.Sample(IR_Stipple_PatternSampler_s, r1.xyz).xyzw;
+  r0.x = -5.000000000e-001 + r0.x;
+  r0.x = r0.x < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyz = float3(0.000000e+000,0.000000e+000,-1.000000e+000) + v3.xyz;
+  r0.z = dot(r0.xyz, r0.xyz);
+  r0.z = rsqrt(r0.z);
+  r0.xy = r0.xy * r0.zz;
+  o0.xy = r0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  o1.x = saturate(3.051757813e-005 * v2.z);
+  o1.y = v2.w;
+  o1.zw = float2(0.000000e+000,1.000000e+000);
+  r0.x = Spec_power_wet + -Specular_Power;
+  r0.x = cb4[15].z * r0.x + Specular_Power;
+  r0.x = 1.953125000e-003 * r0.x;
+  o2.x = max(r0.x, 3.906250000e-003);
+  o2.y = v3.w;
+  o2.zw = float2(0.000000e+000,1.000000e+000);
+  return;
+}

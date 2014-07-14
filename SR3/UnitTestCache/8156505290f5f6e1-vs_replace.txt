@@ -1,0 +1,45 @@
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 Object_instance_params_2 : packoffset(c5);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  float4 v2 : POSITION2,
+  float4 v3 : POSITION3,
+  float4 v4 : POSITION4,
+  float4 v5 : COLOR2,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(v2.xyzw, r0.xyzw);
+  r1.y = dot(v3.xyzw, r0.xyzw);
+  r1.z = dot(v4.xyzw, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  o0.x = dot(r1.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r1.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r1.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r1.xyzw, projTM._m03_m13_m23_m33);
+  r0.x = v5.x * 3.264000000e+004 + 1.275000000e+002;
+  o1.w = 1.525902189e-005 * r0.x;
+  o1.x = dot(r1.xyzw, IR_World2View._m00_m10_m20_m30);
+  o1.y = dot(r1.xyzw, IR_World2View._m01_m11_m21_m31);
+  o1.z = dot(r1.xyzw, IR_World2View._m02_m12_m22_m32);
+  o2.x = IR_World2View._m10;
+  o2.y = IR_World2View._m11;
+  o2.z = IR_World2View._m12;
+  o2.w = v5.y;
+  return;
+}

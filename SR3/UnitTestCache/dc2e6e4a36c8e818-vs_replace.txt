@@ -1,0 +1,47 @@
+
+cbuffer vc3 : register(b3)
+{
+  row_major float3x4 Bone_weights[64] : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  uint4 v2 : BLENDWEIGHT0,
+  uint4 v3 : BLENDINDICES0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xyzw = v2.xyzw;
+  r1.x = r0.x + r0.y;
+  r1.x = r1.x + r0.z;
+  r1.x = r1.x + r0.w;
+  r1.x = 1.000000e+000 / r1.x;
+  r2.xyz = v0.xyz;
+  r2.w = 1.000000000e+000;
+  r3.xyzw = (int4)v3.xyzw * int4(3,3,3,3);
+  r4.xyzw = Bone_weights[v3.y]._m00_m01_m02_m03 * r0.yyyy;
+  r4.xyzw = r0.xxxx * Bone_weights[v3.x]._m00_m01_m02_m03 + r4.xyzw;
+  r4.xyzw = r0.zzzz * Bone_weights[v3.z]._m00_m01_m02_m03 + r4.xyzw;
+  r4.xyzw = r0.wwww * Bone_weights[v3.w]._m00_m01_m02_m03 + r4.xyzw;
+  r4.x = dot(r4.xyzw, r2.xyzw);
+  r5.xyzw = Bone_weights[v3.y]._m10_m11_m12_m13 * r0.yyyy;
+  r5.xyzw = r0.xxxx * Bone_weights[v3.x]._m10_m11_m12_m13 + r5.xyzw;
+  r5.xyzw = r0.zzzz * Bone_weights[v3.z]._m10_m11_m12_m13 + r5.xyzw;
+  r5.xyzw = r0.wwww * Bone_weights[v3.w]._m10_m11_m12_m13 + r5.xyzw;
+  r4.y = dot(r5.xyzw, r2.xyzw);
+  r5.xyzw = Bone_weights[v3.y]._m20_m21_m22_m23 * r0.yyyy;
+  r5.xyzw = r0.xxxx * Bone_weights[v3.x]._m20_m21_m22_m23 + r5.xyzw;
+  r5.xyzw = r0.zzzz * Bone_weights[v3.z]._m20_m21_m22_m23 + r5.xyzw;
+  r0.xyzw = r0.wwww * Bone_weights[v3.w]._m20_m21_m22_m23 + r5.xyzw;
+  r4.z = dot(r0.xyzw, r2.xyzw);
+  o0.xyz = r4.xyz * r1.xxx;
+  o0.w = 1.000000000e+000;
+  r0.xy = v1.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  return;
+}

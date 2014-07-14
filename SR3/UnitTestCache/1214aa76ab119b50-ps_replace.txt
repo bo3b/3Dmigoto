@@ -1,0 +1,68 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[14];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float Self_Illumination : packoffset(c0);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 V_back_ambient_render : packoffset(c3);
+  float4 Fog_color : packoffset(c4);
+  float4 V_light_color : packoffset(c6);
+  float4 lightPos : packoffset(c13);
+}
+SamplerState Y_texSampler_s : register(s0);
+SamplerState Cr_texSampler_s : register(s1);
+SamplerState Cb_texSampler_s : register(s2);
+Texture2D<float4> Y_texSampler : register(t0);
+Texture2D<float4> Cr_texSampler : register(t1);
+Texture2D<float4> Cb_texSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = v2.z < 0.000000000e+000;
+  if (r0.x != 0) discard;
+  r0.xyzw = Cr_texSampler.Sample(Cr_texSampler_s, v2.xy).yxzw;
+  r1.xyzw = Cb_texSampler.Sample(Cb_texSampler_s, v2.xy).xyzw;
+  r0.z = r1.x;
+  r1.xyzw = Y_texSampler.Sample(Y_texSampler_s, v2.xy).xyzw;
+  r0.x = r1.x;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(float4(1.164124e+000,-8.134766e-001,-3.914490e-001,5.297050e-001), r0.xyzw);
+  r0.y = dot(float3(1.164124e+000,1.595795e+000,-8.706551e-001), r0.xyw);
+  r0.x = dot(float3(1.164124e+000,2.017822e+000,-1.081669e+000), r0.xzw);
+  r2.z = log2(r0.x);
+  r2.x = log2(r0.y);
+  r2.y = log2(r1.x);
+  r0.xyz = float3(2.200000e+000,2.200000e+000,2.200000e+000) * r2.xyz;
+  r0.xyz = exp2(r0.xyz);
+  r1.xyz = Self_Illumination * r0.xyz;
+  r2.xyz = -cb4[3].xyz + cb4[2].xyz;
+  r0.w = dot(cb4[13].xyz, v1.xyz);
+  r1.w = r0.w * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = saturate(r0.w);
+  r2.xyz = r1.www * r2.xyz + cb4[3].xyz;
+  r2.xyz = r0.www * cb4[6].xyz + r2.xyz;
+  r0.xyz = r0.xyz * r2.xyz + r1.xyz;
+  r0.w = 1.000000000e+000 + -v1.w;
+  r0.xyz = r0.www * r0.xyz;
+  r0.xyz = v1.www * cb4[4].xyz + r0.xyz;
+  r0.w = 1.000000000e+000;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

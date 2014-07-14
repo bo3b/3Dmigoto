@@ -1,0 +1,77 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[23];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float3 Luminance_conversion : packoffset(c16);
+  float Bloom_amount : packoffset(c22);
+  float4 Lut_scale_offset : packoffset(c25);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float2 Tint_saturation : packoffset(c0);
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Base_samplerSampler_s : register(s0);
+SamplerState Bloom_stage_0_samplerSampler_s : register(s5);
+SamplerState Lut_sampler_2dSampler_s : register(s7);
+Texture2D<float4> Base_samplerSampler : register(t0);
+Texture2D<float4> Bloom_stage_0_samplerSampler : register(t5);
+Texture2D<float4> Lut_sampler_2dSampler : register(t7);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyzw = Bloom_stage_0_samplerSampler.Sample(Bloom_stage_0_samplerSampler_s, v1.xy).xyzw;
+  r0.xyz = cb0[22].xxx * r0.zxy;
+  r0.xyz = float3(3.333333e-001,3.333333e-001,3.333333e-001) * r0.xyz;
+  r1.xyzw = Base_samplerSampler.Sample(Base_samplerSampler_s, v1.xy).xyzw;
+  r0.w = dot(float3(3.000000e-001,5.900000e-001,1.100000e-001), r1.xyz);
+  r1.xyz = r1.zxy + -r0.www;
+  r1.xyz = Tint_saturation.xxx * r1.xyz + r0.www;
+  r0.xyz = r1.xyz * Tint_color.zxy + r0.xyz;
+  r0.xyz = saturate(float3(6.711410e-001,6.711410e-001,6.711410e-001) * r0.xyz);
+  o0.w = r1.w;
+  r1.xyz = r0.xyz * r0.xyz;
+  r1.xyz = r1.xyz * r0.xyz;
+  r1.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r1.xyz;
+  r0.xyz = r0.xyz * float3(1.500000e+000,1.500000e+000,1.500000e+000) + -r1.xyz;
+  r0.xyz = sqrt(r0.xyz);
+  r0.w = 3.100000000e+001 * r0.x;
+  r0.w = floor(r0.w);
+  r1.xy = float2(8.000000e+000,1.250000e-001) * r0.ww;
+  r1.x = r1.x >= -r1.x;
+  r2.y = round(r1.y);
+  r1.x = r1.x ? 8 : -8;
+  r1.y = r1.x ? 1.250000e-001 : -1.250000e-001;
+  r1.y = r1.y * r0.w;
+  r1.y = frac(r1.y);
+  r1.x = r1.x * r1.y;
+  r2.x = round(r1.x);
+  r0.yz = r0.yz * float2(3.100000e+001,3.100000e+001) + float2(5.000000e-001,5.000000e-001);
+  r0.x = r0.x * 3.100000000e+001 + -r0.w;
+  r0.w = 1.000000000e+000 + r0.w;
+  r0.w = min(r0.w, 3.100000000e+001);
+  r0.yzw = float3(3.906250e-003,7.812500e-003,1.250000e-001) * r0.yzw;
+  r1.xy = r2.xy * float2(1.250000e-001,2.500000e-001) + r0.yz;
+  r1.xyzw = Lut_sampler_2dSampler.Sample(Lut_sampler_2dSampler_s, r1.xy).xyzw;
+  r1.w = frac(r0.w);
+  r2.y = round(r0.w);
+  r0.w = 8.000000000e+000 * r1.w;
+  r2.x = round(r0.w);
+  r0.yz = r2.xy * float2(1.250000e-001,2.500000e-001) + r0.yz;
+  r2.xyzw = Lut_sampler_2dSampler.Sample(Lut_sampler_2dSampler_s, r0.yz).xyzw;
+  r0.yzw = r2.xyz + -r1.xyz;
+  o0.xyz = r0.xxx * r0.yzw + r1.xyz;
+  return;
+}

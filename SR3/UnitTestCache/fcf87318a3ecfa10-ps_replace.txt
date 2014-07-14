@@ -1,0 +1,77 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4x4 rao_inv_proj : packoffset(c0);
+  float3 rao_box_min : packoffset(c4);
+  float3 rao_box_max : packoffset(c5);
+  float4x4 rao_view2box : packoffset(c6);
+  float3 rao_offset_radii : packoffset(c10);
+  float rao_strength : packoffset(c11);
+}
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, v1.xy).xyzw;
+  r0.xy = r0.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.z = sqrt(r0.w);
+  r0.w = r0.z + r0.z;
+  r0.xyz = r0.www * r0.xyz;
+  r0.w = -r0.z;
+  r0.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r0.xyw;
+  r1.xyz = rao_view2box._m01_m11_m21 * r0.yyy;
+  r0.xyw = rao_view2box._m00_m10_m20 * r0.xxx + r1.xyz;
+  r0.xyz = rao_view2box._m02_m12_m22 * r0.zzz + r0.xyw;
+  r0.w = -v1.y * 2.000000000e+000 + 1.000000000e+000;
+  r1.xyzw = rao_inv_proj._m01_m11_m21_m31 * r0.wwww;
+  r0.w = v1.x * 2.000000000e+000 + -1.000000000e+000;
+  r1.xyzw = rao_inv_proj._m00_m10_m20_m30 * r0.wwww + r1.xyzw;
+  r2.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
+  r1.xyzw = rao_inv_proj._m02_m12_m22_m32 * r2.xxxx + r1.xyzw;
+  r1.xyzw = rao_inv_proj._m03_m13_m23_m33 + r1.xyzw;
+  r1.xyz = r1.xyz / r1.www;
+  r2.xyz = rao_view2box._m01_m11_m21 * r1.yyy;
+  r1.xyw = rao_view2box._m00_m10_m20 * r1.xxx + r2.xyz;
+  r1.xyz = rao_view2box._m02_m12_m22 * r1.zzz + r1.xyw;
+  r1.xyz = rao_view2box._m03_m13_m23 + r1.xyz;
+  r2.xyz = -rao_box_max.xyz + r1.xyz;
+  r2.xyz = max(r2.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r2.xyz = -r2.xyz + r1.xyz;
+  r3.xyz = rao_box_min.xyz + -r1.xyz;
+  r3.xyz = max(r3.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r2.xyz = r3.xyz + r2.xyz;
+  r1.xyz = -r2.xyz + r1.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = sqrt(r0.w);
+  r1.w = max(r0.w, 9.999999975e-007);
+  r0.w = 2.000000000e+001 * r0.w;
+  r0.w = min(r0.w, 1.000000000e+000);
+  r1.xyz = r1.xyz / r1.www;
+  r0.x = saturate(dot(r0.xyz, -r1.xyz));
+  r1.xyz = rao_offset_radii.xyz * r1.xyz;
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.y = sqrt(r0.y);
+  r0.y = r1.w / r0.y;
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.y = max(r0.y, 0.000000000e+000);
+  r0.z = rao_strength * r0.y;
+  r0.y = -4.499999881e-001 + r0.y;
+  r0.y = saturate(1.000000000e+001 * r0.y);
+  r0.x = r0.z * r0.x;
+  r0.x = r0.x * r0.w;
+  o0.xyzw = r0.xxxx * r0.yyyy;
+  return;
+}

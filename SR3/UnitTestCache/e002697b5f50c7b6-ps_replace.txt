@@ -1,0 +1,43 @@
+
+cbuffer vc0 : register(b0)
+{
+  float3 Bbox_size : packoffset(c0);
+  float4 Extrusion_info : packoffset(c1);
+  float4 Near_clip_params : packoffset(c2);
+  float4 Camera_pos : packoffset(c3);
+  float4 Camera_rvec : packoffset(c4);
+  float4 Camera_uvec : packoffset(c5);
+  float4 Camera_fvec : packoffset(c6);
+  float4x4 Shadow_map_projTM : packoffset(c7);
+  float4 Shadow_fade_params : packoffset(c11);
+  float2 Shadow_map_dimensions : packoffset(c12);
+  float4 Shadow_percent_params : packoffset(c13);
+}
+SamplerState Depth_mapSampler_s : register(s0);
+Texture2D<float4> Depth_mapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r0.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.xyzw = Depth_mapSampler.Sample(Depth_mapSampler_s, r0.xy).xyzw;
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.y = Near_clip_params.y + -Near_clip_params.x;
+  r0.x = -r0.y * r0.x + Near_clip_params.y;
+  r0.y = Near_clip_params.y * Near_clip_params.x;
+  r0.x = r0.y / r0.x;
+  r0.xy = -Shadow_fade_params.xy + r0.xx;
+  r0.xy = saturate(Shadow_fade_params.zw * r0.xy);
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.x = r0.x * r0.y;
+  o0.xyz = Shadow_percent_params.xxx * r0.xxx;
+  o0.w = 1.000000000e+000;
+  return;
+}

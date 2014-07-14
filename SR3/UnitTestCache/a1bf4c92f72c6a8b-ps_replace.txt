@@ -1,0 +1,28 @@
+SamplerState ssao_texSampler_s : register(s0);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_GBuffer_LightingSampler_s : register(s12);
+Texture2D<float4> ssao_texSampler : register(t0);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_GBuffer_LightingSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = IR_GBuffer_LightingSampler.Sample(IR_GBuffer_LightingSampler_s, v1.xy).xyzw;
+  r0.x = 5.000000000e-001 < r0.y;
+  r0.x = r0.x ? 1.000000 : 0;
+  r1.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, v1.xy).xyzw;
+  r0.y = r1.y >= 5.000000000e-001;
+  r0.x = r0.y ? 0.000000000e+000 : r0.x;
+  r1.xyzw = ssao_texSampler.Sample(ssao_texSampler_s, v1.zw).xyzw;
+  r0.x = -r0.x * r1.x + 1.000000000e+000;
+  o0.xyz = max(r0.xxx, float3(5.000000e-002,5.000000e-002,5.000000e-002));
+  o0.w = 1.000000000e+000;
+  return;
+}

@@ -1,0 +1,84 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float4 Mountain_color_front : packoffset(c1);
+  float4 Mountain_fog_color : packoffset(c2);
+  float Mountain_fog_density : packoffset(c3);
+  float3 TOD_Light_Dir : packoffset(c4);
+  float4 Mountain_color_back : packoffset(c5);
+  float4 Scale : packoffset(c6);
+  float Offset : packoffset(c7);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 V_ambient_render : packoffset(c2);
+  float4 Fog_color : packoffset(c4);
+  float4 V_light_color : packoffset(c6);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+SamplerState Normal_mapSampler_s : register(s1);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+Texture2D<float4> Normal_mapSampler : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  float3 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = dot(v4.xyz, v4.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v4.xyz * r0.xxx;
+  r1.xyzw = Normal_mapSampler.Sample(Normal_mapSampler_s, v1.xy).xyzw;
+  r1.yzw = r1.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.x = r1.y * r1.w;
+  r2.xy = -r1.zx;
+  r0.w = dot(r1.zx, r2.xy);
+  r0.w = saturate(1.000000000e+000 + r0.w);
+  r2.z = sqrt(r0.w);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r2.xyz * r0.www;
+  r0.xyz = r1.yyy * r0.xyz;
+  r0.w = dot(v5.xyz, v5.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v5.xyz * r0.www;
+  r0.xyz = r1.xxx * r2.xyz + r0.xyz;
+  r0.w = dot(v2.xyz, v2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyw = v2.xyz * r0.www;
+  r0.xyz = r1.zzz * r1.xyw + r0.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.x = dot(r0.xyz, -TOD_Light_Dir.xyz);
+  r0.x = r0.x * 5.000000000e-001 + 5.000000000e-001;
+  r0.y = -Mountain_color_back.w + Mountain_color_front.w;
+  r0.x = r0.x * r0.y + Mountain_color_back.w;
+  r0.y = dot(v3.xyz, -TOD_Light_Dir.xyz);
+  r0.y = r0.y * 5.000000000e-001 + 5.000000000e-001;
+  r0.z = Mountain_color_back.w + -Mountain_color_front.w;
+  r0.y = r0.y * r0.z + Mountain_color_front.w;
+  r0.x = min(r0.y, r0.x);
+  r1.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v1.xy).xyzw;
+  r0.x = r1.w * r0.x;
+  r0.x = cb4[1].w * r0.x;
+  o0.w = min(r0.x, 3.200000000e+001);
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

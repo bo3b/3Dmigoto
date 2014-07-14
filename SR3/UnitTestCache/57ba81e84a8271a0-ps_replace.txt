@@ -1,0 +1,113 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[11];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 IR_Light_Pos : packoffset(c0);
+  float4 Link_categories : packoffset(c1);
+  float4 IR_light_back_color : packoffset(c2);
+  float4 IR_Light_Color : packoffset(c3);
+  float4 IR_Light_Info : packoffset(c4);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+SamplerState IR_GBuffer_LightingSampler_s : register(s12);
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> IR_GBuffer_LightingSampler : register(t12);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, v1.xy).xyzw;
+  r0.xy = r0.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.z = sqrt(r0.w);
+  r0.w = r0.z + r0.z;
+  r0.xyz = r0.www * r0.xyz;
+  r0.w = -r0.z;
+  r0.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r0.xyw;
+  r1.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
+  r1.z = cb4[10].x * r1.x + cb4[10].y;
+  r1.xy = v2.xy;
+  r2.xyz = IR_Light_Pos.xyz + -r1.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = sqrt(r0.w);
+  r2.xyz = r2.xyz / r0.www;
+  r0.w = -IR_Light_Info.y + r0.w;
+  r1.w = dot(r0.xyz, r2.xyz);
+  r2.w = r1.w + r1.w;
+  r0.xyz = r2.www * r0.xyz + -r2.xyz;
+  r2.x = dot(r1.xyz, r1.xyz);
+  r2.x = rsqrt(r2.x);
+  r1.xyz = r2.xxx * r1.xyz;
+  r0.x = saturate(dot(r0.xyz, -r1.xyz));
+  r0.x = log2(r0.x);
+  r2.xyzw = IR_GBuffer_LightingSampler.Sample(IR_GBuffer_LightingSampler_s, v1.xy).xyzw;
+  r0.y = 5.120000000e+002 * r2.x;
+  r0.y = 9.999999747e-005 + abs(r0.y);
+  r0.x = r0.y * r0.x;
+  r0.x = exp2(r0.x);
+  r0.y = dot(IR_Light_Color.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r0.x = r0.x * r0.y;
+  r0.y = saturate(r1.w);
+  r1.xy = r1.ww * float2(-5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r1.xy = r1.xy * r1.xy;
+  r1.xy = min(r1.xy, float2(1.000000e+000,1.000000e+000));
+  r0.z = r2.z * 2.000000000e+000 + -1.000000000e+000;
+  r1.zw = r2.zy + r2.zy;
+  r0.z = saturate(1.000000000e+000 + -r0.z);
+  r1.z = saturate(r1.z);
+  r0.z = -r1.z + r0.z;
+  r0.y = r0.y * r0.z + r1.z;
+  r2.w = r0.x * r0.y;
+  r0.xyz = IR_Light_Color.xyz * r1.yyy;
+  r2.xyz = IR_light_back_color.xyz * r1.xxx + r0.xyz;
+  r0.x = IR_Light_Info.z + -IR_Light_Info.y;
+  r0.x = saturate(r0.w / r0.x);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = log2(r0.x);
+  r0.x = IR_Light_Info.x * r0.x;
+  r0.x = exp2(r0.x);
+  r0.xyzw = r2.xyzw * r0.xxxx;
+  r1.x = r1.w >= -r1.w;
+  r1.y = frac(abs(r1.w));
+  r1.x = r1.x ? r1.y : -r1.y;
+  r2.x = r1.x >= -1.666667e-001;
+  r2.y = r1.x >= 1.666667e-001;
+  r2.z = r1.x >= 5.000000e-001;
+  r2.w = r1.x >= 8.333333e-001;
+  r1.x = 1.666667e-001 >= r1.x;
+  r1.y = 5.000000e-001 >= r1.x;
+  r1.z = 8.333333e-001 >= r1.x;
+  r1.w = 1.166667e+000 >= r1.x;
+  r1.x = r1.x ? 1 : 0;
+  r1.y = r1.y ? 1 : 0;
+  r1.z = r1.z ? 1 : 0;
+  r1.w = r1.w ? 1 : 0;
+  r2.x = r2.x ? 1 : 0;
+  r2.y = r2.y ? 1 : 0;
+  r2.z = r2.z ? 1 : 0;
+  r2.w = r2.w ? 1 : 0;
+  r1.xyzw = min(r1.xyzw, r2.xyzw);
+  r1.x = saturate(dot(Link_categories.xyzw, r1.xyzw));
+  o0.xyzw = r1.xxxx * r0.xyzw;
+  return;
+}

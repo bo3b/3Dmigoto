@@ -1,0 +1,34 @@
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+  float Specular_Map_Amount : packoffset(c1);
+  float4 Specular_Color : packoffset(c2);
+  float Specular_Alpha : packoffset(c3);
+  float Self_Illumination : packoffset(c4);
+  float Normal_Map_TilingU : packoffset(c5);
+  float Normal_Map_TilingV : packoffset(c6);
+  float Normal_Map_Height : packoffset(c7);
+  float Sphere_Map_Amount : packoffset(c8);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v5.xy).xyzw;
+  o0.w = Diffuse_Color.w * r0.w;
+  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}

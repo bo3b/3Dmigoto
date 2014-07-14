@@ -1,0 +1,177 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[11];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 IR_Light_Pos : packoffset(c0);
+  float4 Link_categories : packoffset(c1);
+  float4 IR_light_back_color : packoffset(c2);
+  float4x4 Projection_texture_xform : packoffset(c3);
+  float3 Scroll : packoffset(c7);
+  float4 IR_Light_Color : packoffset(c8);
+  float4 IR_Light_Info : packoffset(c9);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+SamplerState Projection_textureSampler_s : register(s0);
+SamplerState IR_GBuffer_LightingSampler_s : register(s12);
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> Projection_textureSampler : register(t0);
+Texture2D<float4> IR_GBuffer_LightingSampler : register(t12);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, v1.xy).xyzw;
+  r0.xy = r0.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.z = sqrt(r0.w);
+  r0.w = r0.z + r0.z;
+  r0.xyz = r0.www * r0.xyz;
+  r0.w = -r0.z;
+  r0.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r0.xyw;
+  r1.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, v1.xy).xyzw;
+  r0.w = cb4[10].z * r1.x + cb4[10].w;
+  r0.w = 1.000000e+000 / r0.w;
+  
+// bo3b: apply correction to the calculated inverse matrix using Mike's technique
+// float4 stereo = StereoParams.Load(0);
+// float4 shift;
+  
+// shift.xyz = v2.xyz * r0.www;					//	<-- Set r21 to be the NEGATIVE of what is on the line with IR_Light_Pos
+// shift.x -=  stereo.x * (r0.w - stereo.y) * v3;	//0.62;	<-- This is a "-=" expression becasue we have "IR_Light_Pos"
+
+// r1.xyz = -shift.xyz + IR_Light_Pos.xyz;			// -v2.xyz * r0.www + IR_Light_Pos.xyz;
+// not sure, seems to be both kinds of lights here.
+// And not seen with ShaderUsage, so leaving for now.
+
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = sqrt(r1.w);
+  r1.xyz = r1.xyz / r1.www;
+  r1.w = -IR_Light_Info.y + r1.w;
+  r2.x = dot(r0.xyz, r1.xyz);
+  r2.y = r2.x + r2.x;
+  r0.xyz = r2.yyy * r0.xyz + -r1.xyz;
+  r1.xyz = v2.xyz * r0.www;
+  r2.yzw = v2.xyz * r0.www + -IR_Light_Pos.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r0.x = saturate(dot(r0.xyz, -r1.xyz));
+  r0.x = log2(r0.x);
+  r3.xyzw = IR_GBuffer_LightingSampler.Sample(IR_GBuffer_LightingSampler_s, v1.xy).xyzw;
+  r0.y = 5.120000000e+002 * r3.x;
+  r0.y = 9.999999747e-005 + abs(r0.y);
+  r0.x = r0.y * r0.x;
+  r0.x = exp2(r0.x);
+  r0.y = dot(IR_Light_Color.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r0.x = r0.x * r0.y;
+  r0.y = saturate(r2.x);
+  r0.zw = r2.xx * float2(-5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.zw = r0.zw * r0.zw;
+  r0.zw = min(r0.zw, float2(1.000000e+000,1.000000e+000));
+  r1.x = r3.z * 2.000000000e+000 + -1.000000000e+000;
+  r1.yz = r3.zy + r3.zy;
+  r1.x = saturate(1.000000000e+000 + -r1.x);
+  r1.y = saturate(r1.y);
+  r1.x = r1.x + -r1.y;
+  r0.y = r0.y * r1.x + r1.y;
+  r3.w = r0.x * r0.y;
+  r0.xyw = IR_Light_Color.xyz * r0.www;
+  r3.xyz = IR_light_back_color.xyz * r0.zzz + r0.xyw;
+  r0.x = IR_Light_Info.z + -IR_Light_Info.y;
+  r0.x = saturate(r1.w / r0.x);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = log2(r0.x);
+  r0.x = IR_Light_Info.x * r0.x;
+  r0.x = exp2(r0.x);
+  r0.xyzw = r3.xyzw * r0.xxxx;
+  r1.x = r1.z >= -r1.z;
+  r1.y = frac(abs(r1.z));
+  r1.x = r1.x ? r1.y : -r1.y;
+  r3.x = r1.x >= -1.666667e-001;
+  r3.y = r1.x >= 1.666667e-001;
+  r3.z = r1.x >= 5.000000e-001;
+  r3.w = r1.x >= 8.333333e-001;
+  r1.x = 1.666667e-001 >= r1.x;
+  r1.y = 5.000000e-001 >= r1.x;
+  r1.z = 8.333333e-001 >= r1.x;
+  r1.w = 1.166667e+000 >= r1.x;
+  r1.x = r1.x ? 1 : 0;
+  r1.y = r1.y ? 1 : 0;
+  r1.z = r1.z ? 1 : 0;
+  r1.w = r1.w ? 1 : 0;
+  r3.x = r3.x ? 1 : 0;
+  r3.y = r3.y ? 1 : 0;
+  r3.z = r3.z ? 1 : 0;
+  r3.w = r3.w ? 1 : 0;
+  r1.xyzw = min(r1.xyzw, r3.xyzw);
+  r1.x = saturate(dot(Link_categories.xyzw, r1.xyzw));
+  r0.xyzw = r1.xxxx * r0.xyzw;
+  r1.y = dot(r2.yzw, Projection_texture_xform._m00_m10_m20);
+  r1.x = dot(r2.yzw, Projection_texture_xform._m01_m11_m21);
+  r1.z = dot(r2.yzw, Projection_texture_xform._m02_m12_m22);
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = rsqrt(r1.w);
+  r1.xyz = r1.xyz * r1.www;
+  r1.w = max(abs(r1.y), abs(r1.x));
+  r1.w = 1.000000e+000 / r1.w;
+  r2.x = min(abs(r1.y), abs(r1.x));
+  r1.w = r2.x * r1.w;
+  r2.x = r1.w * r1.w;
+  r2.y = r2.x * 2.083509974e-002 + -8.513300121e-002;
+  r2.y = r2.x * r2.y + 1.801410019e-001;
+  r2.y = r2.x * r2.y + -3.302994967e-001;
+  r2.x = r2.x * r2.y + 9.998660088e-001;
+  r2.y = r2.x * r1.w;
+  r2.y = r2.y * -2.000000000e+000 + 1.570796371e+000;
+  r2.z = abs(r1.y) < abs(r1.x);
+  r2.y = r2.z ? r2.y : 0;
+  r1.w = r1.w * r2.x + r2.y;
+  r2.x = r1.y < -r1.y;
+  r2.y = r1.z < -r1.z;
+  r2.x = r2.x ? -3.141593 : 0;
+  r1.w = r2.x + r1.w;
+  r2.x = min(r1.y, r1.x);
+  r2.x = r2.x < -r2.x;
+  r1.x = max(r1.y, r1.x);
+  r1.x = r1.x >= -r1.x;
+  r1.x = r1.x ? r2.x : 0;
+  r1.x = r1.x ? -r1.w : r1.w;
+  r1.x = r1.x * 1.591550708e-001 + 5.000000000e-001;
+  r1.x = 1.000000000e+000 + -r1.x;
+  r1.x = r1.x * Scroll.z + Scroll.x;
+  r1.w = abs(r1.z) * -1.872929931e-002 + 7.426100224e-002;
+  r1.w = r1.w * abs(r1.z) + -2.121143937e-001;
+  r1.w = r1.w * abs(r1.z) + 1.570728779e+000;
+  r1.z = 1.000000000e+000 + -abs(-r1.z);
+  r1.z = sqrt(r1.z);
+  r2.x = r1.w * r1.z;
+  r2.x = r2.x * -2.000000000e+000 + 3.141592741e+000;
+  r2.x = (int)r2.y & (int)r2.x;
+  r1.z = r1.w * r1.z + r2.x;
+  r1.z = -r1.z * 3.183101416e-001 + Scroll.y;
+  r1.y = 1.000000000e+000 + r1.z;
+  r1.xyzw = Projection_textureSampler.Sample(Projection_textureSampler_s, r1.xy).xyzw;
+  r2.xyzw = r0.xyzw * r1.xyzx + -r0.xyzw;
+  o0.xyzw = r1.wwww * r2.xyzw + r0.xyzw;
+  return;
+}

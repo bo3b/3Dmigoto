@@ -1,0 +1,69 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[16];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c15);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  float4 Object_instance_params : packoffset(c15);
+  row_major float3x4 objTM : packoffset(c16);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+  float Reflection_Plane_Height : packoffset(c30);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.w = 1.000000000e+000;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(objTM._m00_m01_m02_m03, r1.xyzw);
+  r0.z = dot(objTM._m20_m21_m22_m23, r1.xyzw);
+  r0.y = dot(objTM._m10_m11_m12_m13, r1.xyzw);
+  o0.x = dot(r0.xyzw, projTM._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, projTM._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, projTM._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, projTM._m03_m13_m23_m33);
+  r0.xzw = -eyePos.xyz + r0.xyz;
+  o3.w = -Reflection_Plane_Height + r0.y;
+  r1.xy = v1.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r1.xy;
+  r0.y = Fog_dist.x * r0.z;
+  r1.x = -1.442695022e+000 * r0.y;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.y = r1.x / r0.y;
+  r1.x = 9.999999776e-003 < abs(r0.z);
+  r0.x = dot(r0.xzw, r0.xzw);
+  r0.x = sqrt(r0.x);
+  r0.x = Fog_dist.y * r0.x;
+  r0.y = r1.x ? r0.y : 1.000000000e+000;
+  r0.x = r0.y * r0.x + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.w = 1.000000000e+000 + -r0.x;
+  o2.xyz = Object_instance_params.xyz * cb0[15].xyz;
+  o3.x = IR_World2View._m10;
+  o3.y = IR_World2View._m11;
+  o3.z = IR_World2View._m12;
+  return;
+}

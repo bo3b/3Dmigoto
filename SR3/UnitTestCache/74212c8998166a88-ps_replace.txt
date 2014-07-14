@@ -1,0 +1,94 @@
+cbuffer cb8 : register(b8)
+{
+  float4 cb8[2];
+}
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[10];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c0);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float Alpha_Threshold : packoffset(c8);
+  float4 IR_Pixel_Steps : packoffset(c9);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+
+cbuffer vc8 : register(b8)
+{
+  bool Alpha_test_use_dsf : packoffset(c1.z);
+}
+SamplerState Diffuse_MapSampler_s : register(s0);
+SamplerState IR_GBuffer_DSF_DataSampler_s : register(s9);
+SamplerState IR_LBufferSampler_s : register(s12);
+Texture2D<float4> Diffuse_MapSampler : register(t0);
+Texture2D<float4> IR_GBuffer_DSF_DataSampler : register(t9);
+Texture2D<float4> IR_LBufferSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xy = v2.xy / v2.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r0.y = -r0.y * 5.000000000e-001 + 1.000000000e+000;
+  r0.xz = cb4[9].zw * r0.xy;
+  r0.y = 5.000000000e-001 * r0.x;
+  r0.xy = float2(-5.000000e-001,-5.000000e-001) + r0.yz;
+  r0.y = floor(r0.x);
+  r0.z = floor(r0.y);
+  r0.x = r0.x + -r0.y;
+  r0.yz = float2(5.000000e-001,5.000000e-001) + r0.yz;
+  r1.x = r0.y * cb4[9].x + cb4[9].x;
+  r1.yz = cb4[9].xy * r0.yz;
+  r2.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.xz).xyzw;
+  r0.yz = r1.xz + -r1.yz;
+  r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s, r1.yz).xyzw;
+  r2.x = r3.y;
+  r1.xw = -v3.zz + r2.xy;
+  r2.x = 5.000000e-001 >= r2.x;
+  r2.y = 5.000000e-001 >= r2.y;
+  r2.x = r2.x ? 1 : 0;
+  r2.y = r2.y ? 1 : 0;
+  r1.x = 1.220722e-005 >= abs(r1.x);
+  r1.w = 1.220722e-005 >= abs(r1.w);
+  r1.x = r1.x ? 1 : 0;
+  r1.w = r1.w ? 1 : 0;
+  r0.w = dot(r1.xw, float2(1.000000e+000,1.000000e+000));
+  r1.xw = r1.xw + r2.xy;
+  r1.x = r1.w + -r1.x;
+  r0.x = saturate(r1.x + r0.x);
+  r0.xy = r0.xx * r0.yz + r1.yz;
+  r1.xyzw = IR_LBufferSampler.Sample(IR_LBufferSampler_s, r0.xy).xyzw;
+  r0.xyz = max(r1.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.w = cb8[1].z ? r0.w : 1.000000000e+000;
+  r1.xyzw = Diffuse_Color.xyzw * v1.xyzw;
+  r2.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, v3.xy).xyzw;
+  r1.xyzw = r2.xyzw * r1.xyzw;
+  r0.w = r1.w * r0.w + -cb4[8].x;
+  r0.w = r0.w < 0.000000000e+000;
+  if (r0.w != 0) discard;
+  r0.xyz = r1.xyz * r0.xyz;
+  r0.w = 1.000000000e+000 + -v3.w;
+  r0.xyz = r0.www * r0.xyz;
+  r1.xyz = v3.www * cb4[4].xyz + r0.xyz;
+  o0.xyzw = cb4[1].xyzw * r1.xyzw;
+  return;
+}

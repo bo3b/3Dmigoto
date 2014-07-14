@@ -1,0 +1,90 @@
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[14];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Diffuse_Color : packoffset(c13);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Dual_Paraboloid_Transform : packoffset(c3);
+}
+
+cbuffer vc2 : register(b2)
+{
+  float4x4 projTM : packoffset(c0);
+  float4 eyePos : packoffset(c4);
+  float4 Fog_dist : packoffset(c10);
+  float3 Position_scale : packoffset(c20);
+  float4x4 IR_World2View : packoffset(c22);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  int2 v1 : TEXCOORD0,
+  int2 v2 : TEXCOORD1,
+  float3 v3 : NORMAL0,
+  float4 v4 : TANGENT0,
+  float4 v5 : POSITION2,
+  float4 v6 : POSITION3,
+  float4 v7 : POSITION4,
+  float4 v8 : COLOR1,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.z = dot(v7.xyzw, r0.xyzw);
+  r2.y = cb1[3].w * r1.z;
+  r1.y = dot(v6.xyzw, r0.xyzw);
+  r2.x = dot(v5.xyzw, r0.xyzw);
+  r2.z = -cb1[3].w * r1.y;
+  r0.xyz = cb1[3].xyz + r2.xyz;
+  r1.x = r2.x;
+  r1.xyz = -eyePos.xyz + r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = sqrt(r0.w);
+  r2.xyz = r0.xyz / r0.www;
+  r0.x = -1.000000015e-001 + r0.w;
+  o0.z = 1.000100048e-003 * r0.x;
+  o3.w = r0.z;
+  r0.x = 1.000000000e+000 + r2.z;
+  o0.xy = r2.xy / r0.xx;
+  o0.w = 1.000000000e+000;
+  r0.xy = v1.xy;
+  o1.xy = float2(9.765625e-004,9.765625e-004) * r0.xy;
+  r0.x = Fog_dist.x * r1.y;
+  r0.y = -1.442695022e+000 * r0.x;
+  r0.y = exp2(r0.y);
+  r0.y = 1.000000000e+000 + -r0.y;
+  r0.x = r0.y / r0.x;
+  r0.y = 9.999999776e-003 < abs(r1.y);
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.z = sqrt(r0.z);
+  r0.z = Fog_dist.y * r0.z;
+  r0.x = r0.y ? r0.x : 1.000000000e+000;
+  r0.x = r0.x * r0.z + -Fog_dist.w;
+  r0.x = exp2(-r0.x);
+  r0.x = min(r0.x, 1.000000000e+000);
+  o2.w = 1.000000000e+000 + -r0.x;
+  o2.xyz = cb0[13].xyz * v8.xyz;
+  o3.x = IR_World2View._m10;
+  o3.y = IR_World2View._m11;
+  o3.z = IR_World2View._m12;
+  return;
+}

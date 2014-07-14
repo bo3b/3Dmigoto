@@ -1,0 +1,37 @@
+
+cbuffer vc0 : register(b0)
+{
+  float Blending_lut_weight_0 : packoffset(c0);
+  float Blending_lut_weight_1 : packoffset(c1);
+  float Blending_lut_weight_2 : packoffset(c2);
+  float Blending_lut_weight_3 : packoffset(c3);
+}
+SamplerState Blending_lut_sampler_0Sampler_s : register(s0);
+SamplerState Blending_lut_sampler_1Sampler_s : register(s1);
+SamplerState Blending_lut_sampler_2Sampler_s : register(s2);
+SamplerState Blending_lut_sampler_3Sampler_s : register(s3);
+Texture2D<float4> Blending_lut_sampler_0Sampler : register(t0);
+Texture2D<float4> Blending_lut_sampler_1Sampler : register(t1);
+Texture2D<float4> Blending_lut_sampler_2Sampler : register(t2);
+Texture2D<float4> Blending_lut_sampler_3Sampler : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyzw = Blending_lut_sampler_1Sampler.Sample(Blending_lut_sampler_1Sampler_s, v1.xy).xyzw;
+  r0.xyz = Blending_lut_weight_1 * r0.xyz;
+  r1.xyzw = Blending_lut_sampler_0Sampler.Sample(Blending_lut_sampler_0Sampler_s, v1.xy).xyzw;
+  r0.xyz = r1.xyz * Blending_lut_weight_0 + r0.xyz;
+  r1.xyzw = Blending_lut_sampler_2Sampler.Sample(Blending_lut_sampler_2Sampler_s, v1.xy).xyzw;
+  r0.xyz = r1.xyz * Blending_lut_weight_2 + r0.xyz;
+  r1.xyzw = Blending_lut_sampler_3Sampler.Sample(Blending_lut_sampler_3Sampler_s, v1.xy).xyzw;
+  o0.xyz = r1.xyz * Blending_lut_weight_3 + r0.xyz;
+  o0.w = 1.000000000e+000;
+  return;
+}

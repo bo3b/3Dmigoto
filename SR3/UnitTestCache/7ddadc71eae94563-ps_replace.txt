@@ -1,0 +1,67 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[3];
+}
+
+
+cbuffer vc1 : register(b1)
+{
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Frame_BufferSampler_s : register(s14);
+Texture2D<float4> Frame_BufferSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = v2.xy / v2.ww;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + r0.xy;
+  r1.xw = cb1[2].xy;
+  r0.x = r1.x * r0.x;
+  r1.yz = float2(5.000000e-001,5.000000e-001);
+  r0.z = -r0.y * r1.y + 1.000000000e+000;
+  r0.xy = r0.xz * r1.zw;
+  r0.x = round(r0.x);
+  r0.y = round(r0.y);
+  r0.z = dot(v1.xyz, v1.xyz);
+  r0.z = sqrt(r0.z);
+  r0.z = min(r0.z, 1.500000000e+000);
+  r0.z = -r0.z * 6.666666865e-001 + 1.000000000e+000;
+  r0.z = r0.z * 6.000000000e+001 + 2.000000000e+001;
+  r0.z = min(r0.z, 6.000000000e+001);
+  r0.z = r0.z * r0.z;
+  r0.z = 1.085069471e-006 * r0.z;
+  r0.w = cb1[2].x * cb1[2].y;
+  r0.z = r0.w * r0.z;
+  r0.z = sqrt(r0.z);
+  r1.xy = r0.xy / r0.zz;
+  r1.z = r1.x >= -r1.x;
+  r1.w = r1.y >= -r1.y;
+  r1.xy = frac(abs(r1.xy));
+  r1.x = r1.z ? r1.x : -r1.x;
+  r1.y = r1.w ? r1.y : -r1.y;
+  r0.w = 5.000000000e-001 * r0.z;
+  r0.zw = r1.xy * r0.zz + -r0.ww;
+  r0.xy = r0.xy + -r0.zw;
+  r0.xy = r0.xy / cb1[2].xy;
+  r0.xyzw = Frame_BufferSampler.Sample(Frame_BufferSampler_s, r0.xy).xyzw;
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

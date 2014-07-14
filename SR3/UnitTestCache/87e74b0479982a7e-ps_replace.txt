@@ -1,0 +1,46 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Sampling_offsets[16] : packoffset(c0);
+  float3 Luminance_conversion : packoffset(c16);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+}
+SamplerState Base_samplerSampler_s : register(s0);
+Texture2D<float4> Base_samplerSampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xy = float2(0.000000e+000,0.000000e+000);
+  while (true) {
+  r0.z = (int)r0.y >= (int)9;
+  if (r0.z != 0) break;
+  r0.zw = Sampling_offsets[r0.y].xy + v1.xy;
+  r1.xyzw = Base_samplerSampler.Sample(Base_samplerSampler_s, r0.zw).xyzw;
+  r1.xyz = cb4[1].www * r1.xyz;
+  r0.z = dot(r1.xyz, Luminance_conversion.xyz);
+  r0.z = max(r0.z, 0.000000000e+000);
+  r0.z = 9.999999747e-005 + r0.z;
+  r0.z = log2(r0.z);
+  r0.x = r0.z * 6.931471825e-001 + r0.x;
+  r0.y = (int)r0.y + 1;
+  }
+  o0.xyz = float3(1.111111e-001,1.111111e-001,1.111111e-001) * r0.xxx;
+  o0.w = 1.000000000e+000;
+  return;
+}

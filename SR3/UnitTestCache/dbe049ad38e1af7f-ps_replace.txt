@@ -1,0 +1,46 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[3];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 pixel_steps : packoffset(c2);
+}
+Texture2D<float4> color_samplerTexture : register(t1);
+Texture2D<float4> matrix_samplerTexture : register(t2);
+Texture2D<float4> color_src_samplerTexture : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xy = cb0[2].zw * v1.xy;
+  r0.yz = (int2)r0.xy;
+  r1.x = (int)r0.y ^ 2;
+  r1.y = max(r0.y, -r0.y);
+  r1.y = (uint)r1.y >> 1;
+  r1.z = -(int)r1.y;
+  r1.x = (int)r1.x & 0x80000000;
+  r0.x = r1.x ? r1.z : r1.y;
+  r0.w = 0.000000000e+000;
+  r1.xyzw = color_src_samplerTexture.Load(r0.xzw).xyzw;
+  r1.w = (int)r0.y & 1;
+  if (r1.w == 0) {
+  r2.xyzw = matrix_samplerTexture.Load(r0.yzw).xyzw;
+  r3.xyzw = color_samplerTexture.Load(r0.yzw).xyzw;
+  r0.xyzw = color_src_samplerTexture.Load(r0.xzw, int3(-1, 0, 0)).xyzw;
+  r0.xyz = -r2.xxx * r0.xyz + r3.xyz;
+  r0.xyz = -r2.zzz * r1.xyz + r0.xyz;
+  r1.xyz = r0.xyz / r2.yyy;
+  }
+  o0.xyz = r1.xyz;
+  o0.w = 0.000000000e+000;
+  return;
+}

@@ -1,0 +1,57 @@
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[2];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float2 Z_dimensions : packoffset(c0);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+SamplerState Diffuse_Map_1Sampler_s : register(s0);
+Texture2D<float4> Diffuse_Map_1Sampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = Color_correct_matrix._m00;
+  r0.y = Color_correct_matrix._m01;
+  r0.z = Color_correct_matrix._m02;
+  r1.xyzw = Diffuse_Map_1Sampler.Sample(Diffuse_Map_1Sampler_s, v3.xy).xyzw;
+  r0.w = dot(r1.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r2.xyz = r1.xyz + -r0.www;
+  r2.xyz = v3.zzz * r2.xyz + r0.www;
+  r1.x = dot(r2.xyz, r0.xyz);
+  r0.x = Color_correct_matrix._m10;
+  r0.y = Color_correct_matrix._m11;
+  r0.z = Color_correct_matrix._m12;
+  r1.y = dot(r2.xyz, r0.xyz);
+  r0.x = Color_correct_matrix._m20;
+  r0.y = Color_correct_matrix._m21;
+  r0.z = Color_correct_matrix._m22;
+  r1.z = dot(r2.xyz, r0.xyz);
+  r0.xyzw = v1.xyzw * r1.xyzw;
+  r1.x = 1.000000000e+000 + -v2.x;
+  r0.xyz = r1.xxx * r0.xyz;
+  r0.xyzw = cb4[1].xyzw * r0.xyzw;
+  o0.xyz = r0.xyz * r0.www;
+  o0.w = saturate(v3.w * -r0.w + r0.w);
+  return;
+}

@@ -1,0 +1,71 @@
+cbuffer cb5 : register(b5)
+{
+  float4 cb5[37];
+}
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+}
+
+cbuffer vc5 : register(b5)
+{
+  float4 Diffuse_color : packoffset(c1);
+  float2 UV_anim_tiling : packoffset(c3);
+  float4 Effect_opacity : packoffset(c4);
+  float4 Ambient_color : packoffset(c5);
+  float Self_illum : packoffset(c6);
+  float4 VFX_material_tint : packoffset(c7);
+  float4 Parametric_particle_constants[20] : packoffset(c8);
+  float3x3 Color_correct_matrix : packoffset(c34);
+}
+SamplerState Diffuse_Map_1Sampler_s : register(s0);
+Texture2D<float4> Diffuse_Map_1Sampler : register(t0);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = cb5[34].x;
+  r0.y = cb5[35].x;
+  r0.z = cb5[36].x;
+  r1.xyzw = Diffuse_Map_1Sampler.Sample(Diffuse_Map_1Sampler_s, v2.xy).xyzw;
+  r0.w = dot(r1.xyz, float3(3.000000e-001,5.900000e-001,1.100000e-001));
+  r1.xyz = r1.xyz + -r0.www;
+  r1.xyz = v3.xxx * r1.xyz + r0.www;
+  r0.w = -v2.z + r1.w;
+  r0.x = dot(r1.xyz, r0.xyz);
+  r2.x = cb5[34].y;
+  r2.y = cb5[35].y;
+  r2.z = cb5[36].y;
+  r0.y = dot(r1.xyz, r2.xyz);
+  r2.x = cb5[34].z;
+  r2.y = cb5[35].z;
+  r2.z = cb5[36].z;
+  r0.z = dot(r1.xyz, r2.xyz);
+  r1.xyz = v1.xyz * r0.xyz;
+  r0.xyz = -v1.xyz * r0.xyz + cb4[4].xyz;
+  r1.xyz = v3.yyy * r0.xyz + r1.xyz;
+  r0.x = 1.000000000e+000 + -v2.w;
+  r0.x = saturate(r0.w / r0.x);
+  r1.w = v1.w * r0.x;
+  r0.xyzw = cb4[1].xyzw * r1.xyzw;
+  r1.x = v3.z * -r0.w + r0.w;
+  o0.xyz = r0.xyz * r0.www;
+  o0.w = max(r1.x, 0.000000000e+000);
+  return;
+}

@@ -1,0 +1,83 @@
+
+cbuffer vc0 : register(b0)
+{
+  float ssao_fade_parameter : packoffset(c0);
+  float4x4 ssao_inv_proj : packoffset(c1);
+  float2 ssao_projection_scales : packoffset(c5);
+  float4 ssao_interleave_offsets[4] : packoffset(c6);
+  float4 ssao_blue_noise_offsets[8] : packoffset(c10);
+  float ssao_sample_radius_reference : packoffset(c18);
+}
+SamplerState IR_GBuffer_NormalsSampler_s : register(s13);
+SamplerState IR_GBuffer_DepthSampler_s : register(s14);
+Texture2D<float4> IR_GBuffer_NormalsSampler : register(t13);
+Texture2D<float4> IR_GBuffer_DepthSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xy = ssao_interleave_offsets[0].xy + v1.xy;
+  r1.xyzw = IR_GBuffer_NormalsSampler.Sample(IR_GBuffer_NormalsSampler_s, r0.xy).xyzw;
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.z = dot(r1.xy, r1.xy);
+  r0.z = min(r0.z, 1.000000000e+000);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r1.z = sqrt(r0.z);
+  r0.z = r1.z + r1.z;
+  r1.xyz = r0.zzz * r1.xyz;
+  r1.w = -r1.z;
+  r1.xyz = float3(0.000000e+000,0.000000e+000,1.000000e+000) + r1.xyw;
+  r2.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r0.xy).xyzw;
+  r0.z = ssao_sample_radius_reference * 1.000000000e+001;
+  r0.w = r0.x * 2.000000000e+000 + -1.000000000e+000;
+  r1.w = -r0.y * 2.000000000e+000 + 1.000000000e+000;
+  r3.xyzw = ssao_inv_proj._m01_m11_m21_m31 * r1.wwww;
+  r3.xyzw = ssao_inv_proj._m00_m10_m20_m30 * r0.wwww + r3.xyzw;
+  r2.xyzw = ssao_inv_proj._m02_m12_m22_m32 * r2.xxxx + r3.xyzw;
+  r2.xyzw = ssao_inv_proj._m03_m13_m23_m33 + r2.xyzw;
+  r2.xyz = r2.xyz / r2.www;
+  r3.xy = ssao_sample_radius_reference * ssao_projection_scales.xy;
+  r3.xy = r3.xy / r2.zz;
+  r3.yz = max(r3.xy, float2(1.500000e-002,1.500000e-002));
+  r0.w = r3.y + -r3.x;
+  r0.w = r0.w * 1.000000000e+002 + 1.000000000e+000;
+  r0.z = r0.w * r0.z;
+  r0.z = ssao_fade_parameter * r0.z;
+  r0.w = 0.000000000e+000;
+  r1.w = 0.000000000e+000;
+  while (true) {
+  r2.w = (int)r1.w >= (int)8;
+  if (r2.w != 0) break;
+  r3.xw = ssao_blue_noise_offsets[r1.w].xy * r3.yz + r0.xy;
+  r4.xyzw = IR_GBuffer_DepthSampler.Sample(IR_GBuffer_DepthSampler_s, r3.xw).xyzw;
+  r2.w = r3.x * 2.000000000e+000 + -1.000000000e+000;
+  r3.x = -r3.w * 2.000000000e+000 + 1.000000000e+000;
+  r5.xyzw = ssao_inv_proj._m01_m11_m21_m31 * r3.xxxx;
+  r5.xyzw = ssao_inv_proj._m00_m10_m20_m30 * r2.wwww + r5.xyzw;
+  r4.xyzw = ssao_inv_proj._m02_m12_m22_m32 * r4.xxxx + r5.xyzw;
+  r4.xyzw = ssao_inv_proj._m03_m13_m23_m33 + r4.xyzw;
+  r4.xyz = r4.xyz / r4.www;
+  r4.xyz = r4.xyz + -r2.xyz;
+  r2.w = dot(r4.xyz, r4.xyz);
+  r3.x = rsqrt(r2.w);
+  r4.xyz = r4.xyz * r3.xxx;
+  r3.x = dot(r1.xyz, r4.xyz);
+  r3.x = saturate(-2.000000030e-001 + r3.x);
+  r3.x = r3.x * r0.z;
+  r2.w = sqrt(r2.w);
+  r2.w = 1.000000000e+000 + r2.w;
+  r2.w = r3.x / r2.w;
+  r2.w = min(r2.w, 2.000000000e+000);
+  r0.w = r2.w + r0.w;
+  r1.w = (int)r1.w + 1;
+  }
+  r0.x = 1.250000000e-001 * r0.w;
+  o0.xyzw = saturate(r0.xxxx);
+  return;
+}
