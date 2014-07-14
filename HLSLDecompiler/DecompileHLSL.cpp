@@ -1840,7 +1840,7 @@ public:
 					// Search depth texture usage.
 					sprintf(op1, " = %s.Sample", ZRepair_DepthTexture1.c_str());
 					char *pos = strstr(mOutput.data(), op1);
-					int searchPos = 0;
+					ptrdiff_t searchPos = 0;					// used as difference between pointers.
 					while (pos)
 					{
 						char *bpos = pos;
@@ -2129,7 +2129,7 @@ public:
 
 					if (!ObjectPos_ID1.empty())
 					{
-						unsigned int offset = strstr(mOutput.data(), "void main(") - mOutput.data();
+						size_t offset = strstr(mOutput.data(), "void main(") - mOutput.data();	// pointer difference, but only used as offset.
 						while (offset < mOutput.size())
 						{
 							char *pos = strstr(mOutput.data() + offset, ObjectPos_ID1.c_str());
@@ -2145,7 +2145,10 @@ public:
 								while (*--pos != '=');
 								char *bpos = pos;
 								while (*--bpos != '\n');
-								int size = (pos-1)-(bpos+3); memcpy(op1, bpos+3, size);	op1[size] = 0;						
+								size_t size = (pos-1)-(bpos+3); 
+								memcpy(op1, bpos+3, size);	
+								op1[size] = 0;						
+								
 								strcpy(op2, op1); applySwizzle(".x", op2);
 								strcpy(op3, op1); applySwizzle(".y", op3);
 								strcpy(op4, op1); applySwizzle(".z", op4);
@@ -2181,7 +2184,7 @@ public:
 
 					if (!ObjectPos_ID2.empty())
 					{
-						unsigned int offset = strstr(mOutput.data(), "void main(") - mOutput.data();
+						size_t offset = strstr(mOutput.data(), "void main(") - mOutput.data();	// pointer difference, but only used as offset.
 						while (offset < mOutput.size())
 						{
 							char *pos = strstr(mOutput.data() + offset, ObjectPos_ID2.c_str());
@@ -2197,7 +2200,10 @@ public:
 								while (*--pos != '=');
 								char *bpos = pos;
 								while (*--bpos != '\n');
-								int size = (pos-1)-(bpos+3); memcpy(op1, bpos+3, size);	op1[size] = 0;						
+								size_t size = (pos-1)-(bpos+3);
+								memcpy(op1, bpos+3, size);	
+								op1[size] = 0;						
+								
 								strcpy(op2, op1); applySwizzle(".x", op2);
 								strcpy(op3, op1); applySwizzle(".y", op3);
 								strcpy(op4, op1); applySwizzle(".z", op4);
