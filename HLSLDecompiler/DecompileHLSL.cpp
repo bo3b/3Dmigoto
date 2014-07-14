@@ -11,6 +11,11 @@
 // being signed.  I tried using 'auto', but it made poor choices that still had warnings.
 // I changed all the variants that are simple and clear, and left the unusual, less clear variants as is.
 // Changing to size_t fixes a large number of signed/unsigned mismatch warnings.
+//
+// We are also using the CRT_SECURE flags to automatically fix sprintf, sscanf into _s safe versions
+// where it can. _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1 _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT = 1
+//
+// All sscanf that did not use %s or %c were switched to sscanf_s to avoid warnings.
 
 #include <map>
 #include <string>
@@ -495,7 +500,7 @@ public:
 				else if (!strncmp(dim, "2dMS", 4))
 				{
 					int msnumber;
-					sscanf(dim+4, "%d", &msnumber);
+					sscanf_s(dim+4, "%d", &msnumber);
 					char buffer[256];
 					sprintf(buffer, "Texture2DMS<%s,%d>", format, msnumber);
 					mTextureType[slot] = buffer;
@@ -726,16 +731,16 @@ public:
 					// Read offset.
 					while (c[pos] != '/' && pos < size) pos++;
 					int offset = 0;
-					numRead = sscanf(c + pos, "// Offset: %d", &offset);
+					numRead = sscanf_s(c + pos, "// Offset: %d", &offset);
 					if (numRead != 1)
 					{
 						logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
 						return;
 					}
 					if (!structLevel)
-						sprintf(buffer + bpos, " : packoffset(c%d);\n\n", offset / 16);
+						sprintf_s(buffer + bpos, sizeof(buffer) - bpos, " : packoffset(c%d);\n\n", offset / 16);
 					else
-						sprintf(buffer + bpos, ";\n\n");
+						sprintf_s(buffer + bpos, sizeof(buffer) - bpos, ";\n\n");
 					for (int i = -1; i < structLevel; ++i) 
 					{
 						mOutput.push_back(' '); mOutput.push_back(' ');
@@ -755,7 +760,7 @@ public:
 					else
 					{
 						int arraySize;
-						if (sscanf(structName.c_str() + arrayPos + 1, "%d", &arraySize) != 1)
+						if (sscanf_s(structName.c_str() + arrayPos + 1, "%d", &arraySize) != 1)
 						{
 							logDecompileError("Error parsing struct array size: " + structName);
 							return;
@@ -814,7 +819,7 @@ public:
 				pos += 2;
 				while (c[pos] != '/' && pos < size) pos++;
 				int offset = 0;
-				numRead = sscanf(c + pos, "// Offset: %d", &offset);
+				numRead = sscanf_s(c + pos, "// Offset: %d", &offset);
 				if (numRead != 1)
 				{
 					logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
@@ -872,7 +877,7 @@ public:
 				{
 					// Register each array element.
 					int numElements = 0;
-					sscanf(e.Name.substr(ep + 1).c_str(), "%d", &numElements);
+					sscanf_s(e.Name.substr(ep + 1).c_str(), "%d", &numElements);
 					string baseName = e.Name.substr(0, ep);
 
 					int counter = 0;
@@ -886,7 +891,7 @@ public:
 
 					// Correct possible invalid array size. (16 byte boundaries)
 					int byteSize;
-					sscanf(strstr(c + pos, "Size:") + 5, "%d", &byteSize);
+					sscanf_s(strstr(c + pos, "Size:") + 5, "%d", &byteSize);
 					if ((counter == 4 && numElements*counter < byteSize) ||
 						(counter == 12 && numElements*counter < byteSize))
 						counter = 16;
@@ -953,7 +958,7 @@ public:
 				if (!strncmp(c+pos, defaultid, strlen(defaultid)))
 				{
 					float v[4] = { 0,0,0,0 };
-					numRead = sscanf(c+pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v+0, v+1, v+2, v+3);
+					numRead = sscanf_s(c+pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v+0, v+1, v+2, v+3);
 					if (structLevel < 0)
 					{
 						if (suboffset == 0)
@@ -1032,7 +1037,7 @@ public:
 				{
 					char *endPos = strchr(beginPos, ',');
 					if (endPos) *endPos = 0;
-					sscanf(beginPos, "%f", args+i);
+					sscanf_s(beginPos, "%f", args+i);
 					beginPos = endPos+1;
 				}
 				if (pos == 1)
@@ -1090,7 +1095,7 @@ public:
 				}
 				else
 				{
-					if (sscanf(strPos+2, "%d", &bufIndex) != 1)
+					if (sscanf_s(strPos+2, "%d", &bufIndex) != 1)
 					{
 						logDecompileError("Error parsing buffer register index: "+string(right2));
 						return;
@@ -1111,7 +1116,7 @@ public:
 					indexRegister[4] = 0;
 					strPos += 5;
 				}
-				if (sscanf(strPos+1, "%d", &bufOffset) != 1)
+				if (sscanf_s(strPos+1, "%d", &bufOffset) != 1)
 				{
 					logDecompileError("Error parsing buffer offset: "+string(right2));
 					return;
@@ -1224,10 +1229,18 @@ public:
 						{
 							switch (*strPos)
 							{
-								case 'x': sprintf(right3+strlen(right3), i->second.isRowMajor ? "_m%d0" : "_m0%d", i->second.matrixRow); break;
-								case 'y': sprintf(right3+strlen(right3), i->second.isRowMajor ? "_m%d1" : "_m1%d", i->second.matrixRow); break;
-								case 'z': sprintf(right3+strlen(right3), i->second.isRowMajor ? "_m%d2" : "_m2%d", i->second.matrixRow); break;
-								case 'w': sprintf(right3+strlen(right3), i->second.isRowMajor ? "_m%d3" : "_m3%d", i->second.matrixRow); break;
+								case 'x': 
+									sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), i->second.isRowMajor ? "_m%d0" : "_m0%d", i->second.matrixRow);
+									break;
+								case 'y': 
+									sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), i->second.isRowMajor ? "_m%d1" : "_m1%d", i->second.matrixRow);
+									break;
+								case 'z': 
+									sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), i->second.isRowMajor ? "_m%d2" : "_m2%d", i->second.matrixRow);
+									break;
+								case 'w': 
+									sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), i->second.isRowMajor ? "_m%d3" : "_m3%d", i->second.matrixRow);
+									break;
 								default: logDecompileError("Error parsing matrix index: "+string(right2));
 							}
 						}
@@ -1242,11 +1255,11 @@ public:
 			}
 		}
 		if (absolute && negative)
-			sprintf(right, "-abs(%s)", right2);
+			sprintf_s(right, opcodeSize, "-abs(%s)", right2);
 		else if (absolute)
-			sprintf(right, "abs(%s)", right2);
+			sprintf_s(right, opcodeSize, "abs(%s)", right2);
 		else
-			strcpy_s(right, 128, right2);		// All input params are 128 char arrays, like op1, op2, op3
+			strcpy_s(right, opcodeSize, right2);		// All input params are 128 char arrays, like op1, op2, op3
 	}
 
 	void CollectBrackets(char *op1, char *op2, char *op3, char *op4, char *op5, char *op6, char *op7, char *op8, char *op9, char *op10, char *op11, char *op12, char *op13, char *op14, char *op15)
@@ -1355,7 +1368,7 @@ public:
 	string replaceInt(string input)
 	{
 		float number;
-		if (sscanf(input.c_str(), "%f", &number) != 1)
+		if (sscanf_s(input.c_str(), "%f", &number) != 1)
 			return input;
 		if (floor(number) != number)
 			return input;
@@ -1519,7 +1532,7 @@ public:
 
 	void convertHexToFloat(char *target)
 	{
-		char convert[128];
+		char convert[opcodeSize];
 		int count;
 		float lit[4];
 		int printed;
@@ -1529,75 +1542,85 @@ public:
 			count = sscanf_s(target, "l(%x,%x,%x,%x)", &lit[0], &lit[1], &lit[2], &lit[3]);
 			assert(count != 0);
 
-			printed = sprintf_s(convert, "l(", 128);
+			printed = sprintf_s(convert, sizeof(convert), "l(");
 			for (int i = 0; i < count; i++)
 			{
-				printed += sprintf_s(&convert[printed], 128 - printed, "%f,", lit[i]);
+				printed += sprintf_s(&convert[printed], sizeof(convert) - printed, "%f,", lit[i]);
 			}
 			
 			// Overwrite trailing comma to be closing paren, no matter how many literals were converted.
 			convert[printed-1] = ')';
 
-			strcpy(target, convert);
+			strcpy_s(target, opcodeSize, convert);
 		}
 	}
 
 	char *convertToInt(char *target)
 	{
+		char buffer[opcodeSize];
+
 		int isMinus = target[0] == '-' ? 1 : 0;
 		if (!strncmp(target + isMinus, "int", 3) || !strncmp(target + isMinus, "uint", 4)) return target;
 		if (!strncmp(target + isMinus, "float", 5))
 		{
 			int size = 0; float f0, f1, f2, f3;
-			sscanf(target + isMinus, "float%d(%f,%f,%f,%f)", &size, &f0, &f1, &f2, &f3);
-			char buffer[128]; buffer[0] = 0;
+			sscanf_s(target + isMinus, "float%d(%f,%f,%f,%f)", &size, &f0, &f1, &f2, &f3);
+
+			buffer[0] = 0;
 			if (isMinus) strcpy(buffer, "-");
-			if (size == 2) sprintf(buffer + strlen(buffer), "int2(%d,%d)", (int)f0, (int)f1);
-			else if (size == 3) sprintf(buffer + strlen(buffer), "int3(%d,%d,%d)", (int)f0, (int)f1, (int)f2);
-			else if (size == 4) sprintf(buffer + strlen(buffer), "int4(%d,%d,%d,%d)", (int)f0, (int)f1, (int)f2, (int)f3);
-			strcpy_s(target, sizeof(*target), buffer);
+
+			if (size == 2) sprintf_s(buffer + strlen(buffer), opcodeSize - strlen(buffer), "int2(%d,%d)", (int)f0, (int)f1);
+			else if (size == 3) sprintf_s(buffer + strlen(buffer), opcodeSize - strlen(buffer), "int3(%d,%d,%d)", (int)f0, (int)f1, (int)f2);
+			else if (size == 4) sprintf_s(buffer + strlen(buffer), opcodeSize - strlen(buffer), "int4(%d,%d,%d,%d)", (int)f0, (int)f1, (int)f2, (int)f3);
+			
+			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
 			int size = strlen(pos+1);
-			char buffer[128];
 			if (size == 1)
 				sprintf(buffer, "(int)%s", target);
 			else
 				sprintf(buffer, "(int%d)%s", size, target);
-			strcpy_s(target, sizeof(*target), buffer);
+			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
 	}
 
 	char *convertToUInt(char *target)
 	{
+		char buffer[opcodeSize];
+
 		int isMinus = target[0] == '-' ? 1 : 0;
 		if (!strncmp(target + isMinus, "int", 3) || !strncmp(target + isMinus, "uint", 4)) return target;
 		if (!strncmp(target + isMinus, "float", 5))
 		{
-			int size = 0; float f0, f1, f2, f3;
-			sscanf(target + isMinus, "float%d(%f,%f,%f,%f)", &size, &f0, &f1, &f2, &f3);
-			char buffer[128]; buffer[0] = 0;
+			int size = 0; 
+			float f0, f1, f2, f3;
+			
+			sscanf_s(target + isMinus, "float%d(%f,%f,%f,%f)", &size, &f0, &f1, &f2, &f3);
+
+			buffer[0] = 0;
 			if (isMinus) strcpy(buffer, "-");
-			if (size == 2) sprintf(buffer + strlen(buffer), "uint2(%d,%d)", (int)f0, (int)f1);
-			else if (size == 3) sprintf(buffer + strlen(buffer), "uint3(%d,%d,%d)", (int)f0, (int)f1, (int)f2);
-			else if (size == 4) sprintf(buffer + strlen(buffer), "uint4(%d,%d,%d,%d)", (int)f0, (int)f1, (int)f2, (int)f3);
-			strcpy_s(target, sizeof(*target), buffer);
+
+			if (size == 2) sprintf_s(buffer + strlen(buffer), opcodeSize - strlen(buffer), "uint2(%d,%d)", (int)f0, (int)f1);
+			else if (size == 3) sprintf_s(buffer + strlen(buffer), opcodeSize - strlen(buffer), "uint3(%d,%d,%d)", (int)f0, (int)f1, (int)f2);
+			else if (size == 4) sprintf_s(buffer + strlen(buffer), opcodeSize - strlen(buffer), "uint4(%d,%d,%d,%d)", (int)f0, (int)f1, (int)f2, (int)f3);
+			
+			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
 			int size = strlen(pos+1);
-			char buffer[128];
 			if (size == 1)
 				sprintf(buffer, "(uint)%s", target);
 			else
 				sprintf(buffer, "(uint%d)%s", size, target);
-			strcpy_s(target, sizeof(*target), buffer);
+			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
 	}
@@ -1629,13 +1652,13 @@ public:
 			if (!strncmp(op, "l(1.#INF00", strlen("l(1.#INF00")) || abs(oldValue - o.afImmediates[0]) < 0.1)
 			{
 				if (o.iNumComponents == 4)
-					sprintf(op, "l(%.9e,%.9e,%.9e,%.9e)", o.afImmediates[0],o.afImmediates[1],o.afImmediates[2],o.afImmediates[3]);
+					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
 				else if (o.iNumComponents == 3)
-					sprintf(op, "l(%.9e,%.9e,%.9e)", o.afImmediates[0],o.afImmediates[1],o.afImmediates[2]);
+					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
 				else if (o.iNumComponents == 2)
-					sprintf(op, "l(%.9e,%.9e)", o.afImmediates[0],o.afImmediates[1]);
+					sprintf_s(op, opcodeSize, "l(%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1]);
 				else if (o.iNumComponents == 1)
-					sprintf(op, "l(%.9e)", o.afImmediates[0]);
+					sprintf_s(op, opcodeSize, "l(%.9e)", o.afImmediates[0]);
 			}
 		}
 		return op;
@@ -2400,7 +2423,7 @@ public:
 				sscanf_s(op2, "%d", &numIndex);
 				sprintf(buffer, "  float4 v[%d] = { ", numIndex);
 				for (int i = 0; i < numIndex; ++i)
-					sprintf(buffer+strlen(buffer), "v%d,", i);
+					sprintf_s(buffer+strlen(buffer), sizeof(buffer)-strlen(buffer), "v%d,", i);
 				buffer[strlen(buffer)-1] = 0;
 				strcat(buffer, " };\n");
 				mOutput.insert(mOutput.end(), buffer, buffer+strlen(buffer));
@@ -3430,7 +3453,7 @@ public:
 						sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 					else {
 						int offsetU = 0, offsetV = 0, offsetW = 0;
-						sscanf(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
+						sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
 						sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), 
 							offsetU, offsetV, offsetW, strrchr(op3, '.'));
 					}
@@ -3451,7 +3474,7 @@ public:
 						sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
 					else{
 						int offsetU = 0, offsetV = 0, offsetW = 0;
-						sscanf(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
+						sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
 						sprintf(buffer, "  %s = %s.Load(%s, %s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(),
 							offsetU, offsetV, offsetW, strrchr(op3, '.'));
 					}

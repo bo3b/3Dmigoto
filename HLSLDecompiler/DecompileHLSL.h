@@ -7,6 +7,12 @@
 // The goal with this file is too keep it as much C++ as possible.
 // So we avoid adding Windows specific stuff if at all possible.
 
+// Let's use these constants instead of hard coded numbers, so that we can use safe versions
+// of sprintf_s, sscanf_s, strcpy_s
+
+const int opcodeSize = 128;
+const int stringSize = 256;
+
 struct ParseParameters
 {
 	const void *bytecode;

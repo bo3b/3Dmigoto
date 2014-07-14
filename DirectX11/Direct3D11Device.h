@@ -1020,7 +1020,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				ParseParameters p;
 				p.bytecode = pShaderBytecode;
 				p.decompiled = (const char *) disassembly->GetBufferPointer();
-				p.decompiledSize = (long) disassembly->GetBufferSize();
+				p.decompiledSize = disassembly->GetBufferSize();
 				p.recompileVs = G->FIX_Recompile_VS;
 				p.fixSvPosition = G->FIX_SV_Position;
 				p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
@@ -1153,7 +1153,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			ParseParameters p;
 			p.bytecode = pShaderBytecode;
 			p.decompiled = (const char *) disassembly->GetBufferPointer();
-			p.decompiledSize = (long) disassembly->GetBufferSize();
+			p.decompiledSize = disassembly->GetBufferSize();
 			p.recompileVs = G->FIX_Recompile_VS;
 			p.fixSvPosition = false;
 			p.ZeroOutput = true;

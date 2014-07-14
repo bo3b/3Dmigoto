@@ -1441,7 +1441,7 @@ static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disas
 	ParseParameters p;
 	p.bytecode = pShaderByteCode->GetBufferPointer();
 	p.decompiled = (const char *)disassembly->GetBufferPointer();
-	p.decompiledSize = (long) disassembly->GetBufferSize();
+	p.decompiledSize = disassembly->GetBufferSize();
 	p.recompileVs = G->FIX_Recompile_VS;
 	p.fixSvPosition = G->FIX_SV_Position;
 	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
