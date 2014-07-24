@@ -1,0 +1,41 @@
+// Water surface with reflections in basement.  Can be disabled.
+
+Texture2D<float4> t10 : register(t10);
+
+SamplerState s10 : register(s10);
+
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[15];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_POSITION0,
+  out float2 o1 : TEXCOORD0,
+  out float p1 : TEXCOORD2)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  o0.x = dot(r0.xyzw, cb0[0].xyzw);
+  o0.y = dot(r0.xyzw, cb0[1].xyzw);
+  o0.z = dot(r0.xyzw, cb0[2].xyzw);
+  o0.w = dot(r0.xyzw, cb0[3].xyzw);
+  r0.x = cb2[14].x;
+  r0.y = 5.000000000e-001;
+  r0.x = t10.SampleLevel(s10, r0.xy, 0.000000000e+000).x;
+  p1.x = r0.x;
+  o1.xy = v1.xy;
+  return;
+}

@@ -1,0 +1,109 @@
+// Water under grate.  Seems OK to just disable.
+//
+// Makes top bars double up and separate out at distance.
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[2];
+}
+
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[15];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : COLOR0,
+  float2 v2 : TEXCOORD0,
+  float3 v3 : NORMAL0,
+  float3 v4 : TEXCOORD1,
+  out float4 o0 : SV_POSITION0,
+  out float4 o1 : COLOR0,
+  out float2 o2 : TEXCOORD0,
+  out float p2 : TEXCOORD4,
+  out float4 o3 : TEXCOORD1,
+  out float4 o4 : TEXCOORD2,
+  out float4 o5 : TEXCOORD3)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, cb0[0].xyzw);
+  r1.y = dot(r0.xyzw, cb0[1].xyzw);
+  r1.z = dot(r0.xyzw, cb0[2].xyzw);
+  r1.w = dot(r0.xyzw, cb0[3].xyzw);
+  o0.xyzw = r1.xyzw;
+  o1.xyzw = v1.zzzw;
+  
+ // o1 = 0;  // Fixes the double vision. But kills the moving water under grate.
+// depth = v1.zzzw;
+// depth.x += stereo.x * (depth.w - stereo.y);
+// o1.xyzw = depth;
+  
+  r0.x = cb3[1].z * cb2[10].w;
+  sincos(r0.x, r0.x, r2.x);
+  r0.yz = float2(-5.000000e-001,-5.000000e-001) + v2.yx;
+  r0.xw = r0.xx * r0.yz;
+  r3.x = r2.x * r0.z + -r0.x;
+  r3.y = r2.x * r0.y + r0.w;
+  r0.xy = float2(5.000000e-001,5.000000e-001) + r3.xy;
+  o2.xy = cb3[1].xy * cb2[10].ww + r0.xy;
+// o2 = 0; No effect.
+  
+  p2.x = r1.w;
+  r0.xzw = float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  r0.y = cb2[13].y;
+  r0.xyzw = cb3[0].xxxx * r0.xyzw;
+  r2.xzw = cb2[13].xzw;
+  r2.y = -1.000000000e+000;
+  r0.xyzw = r2.xyzw * r0.xyzw;
+  r2.xyz = v4.zxy * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r2.w = dot(r2.xyz, r2.xyz);
+  r2.w = rsqrt(r2.w);
+  r2.xyz = r2.xyz * r2.www;
+  r3.x = dot(r2.yzx, cb0[0].xyz);
+  r3.y = dot(r2.yzx, cb0[1].xyz);
+  r3.z = dot(r2.yzx, cb0[2].xyz);
+  r3.w = dot(r2.yzx, cb0[3].xyz);
+  r0.xyzw = r3.xyzw * r0.xyzw;
+  o3.xyzw = v1.xxxx * r0.xyzw;
+//o3 = 0; no effect
+  
+  r0.xyz = v3.yzx * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r3.xyz = r2.xyz * r0.xyz;
+  r0.xyz = r2.zxy * r0.yzx + -r3.xyz;
+  r2.x = dot(r0.xyz, cb0[0].xyz);
+  r2.y = dot(r0.xyz, cb0[1].xyz);
+  r2.z = dot(r0.xyz, cb0[2].xyz);
+  r2.w = dot(r0.xyz, cb0[3].xyz);
+  r0.xyzw = float4(-1.000000e+000,1.000000e+000,-1.000000e+000,-1.000000e+000) * cb3[0].yyyy;
+  r0.xyzw = cb2[13].xyzw * r0.xyzw;
+  r0.xyzw = r0.xyzw * r2.xyzw;
+  o4.xyzw = v1.yyyy * r0.xyzw;
+//o4 = 0;  No effect.
+
+  r0.xyzw = cb2[14].xyzw * r1.wwww;
+  o5.xyzw = r1.xyzw * cb2[13].xyzw + r0.xyzw;
+// o5 =0; // makes double image go away, but changes it bizarrely.
+ 
+// Output texture to stereoize too. 
+// Didn't work, but if I cut the separation in half, it works.  No idea why.
+float4 stereo = StereoParams.Load(0);
+o5.x += stereo.x/2 * (o5.w - stereo.y);
+
+  return;
+}

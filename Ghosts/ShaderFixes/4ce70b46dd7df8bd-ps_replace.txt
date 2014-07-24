@@ -1,0 +1,27 @@
+// On screen crosshair. Screen depth.
+// Also screen depth nameplates in blue.
+// Also the entire UI for pause.
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s0 : register(s0);
+
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : COLOR0,
+  float2 v2 : TEXCOORD0,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyzw = t0.Sample(s0, v2.xy).xyzw;
+  o0.xyzw = v1.xyzw * r0.xyzw;
+ 
+ // Disable it altogether as useless in 3D.  
+ // Except that it disables pause UI too.  Maybe by texture?
+ // o0 = 0;
+  return;
+}
