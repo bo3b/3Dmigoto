@@ -1407,7 +1407,7 @@ static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 		{
-		fwprintf(LogFile, L"    error storing marked shader, file already exists: %s\n", fullName);
+		if (LogFile) fwprintf(LogFile, L"    error storing marked shader, file already exists: %s\n", fullName);
 		fclose(fw);
 		return false;
 		}
@@ -1415,7 +1415,7 @@ static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 	_wfopen_s(&fw, fullName, L"wb");
 	if (!fw)
 	{
-		fwprintf(LogFile, L"    error storing marked shader to %s\n", fullName);
+		if (LogFile) fwprintf(LogFile, L"    error storing marked shader to %s\n", fullName);
 		return false;
 	}
 
@@ -1509,7 +1509,7 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 	_wfopen_s(&f, fullName, L"rb");
 	if (f)
 	{
-		fwprintf(LogFile, L"    Shader Mark .bin file already exists: %s\n", fullName);
+		if (LogFile) fwprintf(LogFile, L"    Shader Mark .bin file already exists: %s\n", fullName);
 		fclose(f);
 		return false;
 	}

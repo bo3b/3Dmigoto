@@ -6,7 +6,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 	if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_CreateHandleFromIUnknown(pDevice, &mStereoHandle))
 		mStereoHandle = 0;
 	mParamTextureManager.mStereoHandle = mStereoHandle;
-	if (LogFile) fprintf(LogFile, "  creating NVAPI stereo handle. Handle = %p\n", mStereoHandle);
+	if (LogFile) fprintf(LogFile, "  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
 	
 	// Override custom settings.
 	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
