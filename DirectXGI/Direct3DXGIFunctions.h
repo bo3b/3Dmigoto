@@ -52,7 +52,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIFactory::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIFactory::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "IDXGIFactory::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	if (LogFile) fprintf(LogFile, "IDXGIFactory::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 	//if (LogFile) fprintf(LogFile, "  ignoring call\n");
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
@@ -108,7 +108,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::MakeWindowAssociation(THIS_
 {
 	if (LogFile)
 	{
-		fprintf(LogFile, "IDXGIFactory::MakeWindowAssociation called with WindowHandle = %x, Flags = %x\n", WindowHandle, Flags);
+		fprintf(LogFile, "IDXGIFactory::MakeWindowAssociation called with WindowHandle = %p, Flags = %x\n", WindowHandle, Flags);
 		if (Flags) fprintf(LogFile, "  Flags =");
 		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) fprintf(LogFile, " DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
 		if (Flags & DXGI_MWA_NO_ALT_ENTER) fprintf(LogFile, " DXGI_MWA_NO_ALT_ENTER");
@@ -146,7 +146,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
             __out  IDXGISwapChain **ppSwapChain)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory::CreateSwapChain called with parameters\n");
-	if (LogFile) fprintf(LogFile, "  Device = %x\n", pDevice);
+	if (LogFile) fprintf(LogFile, "  Device = %p\n", pDevice);
 	if (pDesc && LogFile) fprintf(LogFile, "  Windowed = %d\n", pDesc->Windowed);
 	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d\n", pDesc->BufferDesc.Width);
 	if (pDesc && LogFile) fprintf(LogFile, "  Height = %d\n", pDesc->BufferDesc.Height);
@@ -201,7 +201,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
 	if (LogFile) fprintf(LogFile, "IDXGIFactory2::CreateSwapChainForHwnd called with parameters\n");
-	if (LogFile) fprintf(LogFile, "  Device = %x\n", pDevice);
+	if (LogFile) fprintf(LogFile, "  Device = %p\n", pDevice);
 	if (LogFile) fprintf(LogFile, "  HWND = %x\n", hWnd);
 	if (pDesc && LogFile) fprintf(LogFile, "  Stereo = %d\n", pDesc->Stereo);
 	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d\n", pDesc->Width);

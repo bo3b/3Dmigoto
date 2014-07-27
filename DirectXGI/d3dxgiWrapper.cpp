@@ -329,7 +329,7 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	
 	if (ppFactory)
 		*ppFactory = wrapper;
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origFactory, wrapper);
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %p, wrapper = %p\n", ret, origFactory, wrapper);
 	
 	return ret;
 }
@@ -441,7 +441,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 {
 //	if (LogFile) fprintf(LogFile, "D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
 
-	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
+	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
 		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
@@ -455,7 +455,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 	}
 	*/
 	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
-	if (LogFile) fprintf(LogFile, "  result = %x, handle = %x\n", hr, *ppvObj);
+	if (LogFile) fprintf(LogFile, "  result = %x, handle = %p\n", hr, *ppvObj);
 	ReplaceInterface(ppvObj);
 	/*
 	if (!p1 && !p2 && !p3)
@@ -473,14 +473,14 @@ static IUnknown *ReplaceDevice(IUnknown *wrapper)
 {
 	if (!wrapper)
 		return wrapper;
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  checking for device wrapper, handle = %x\n", wrapper);
+	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  checking for device wrapper, handle = %p\n", wrapper);
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IUnknown *realDevice = wrapper;
 	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
 
 	if (wrapper->QueryInterface(marker, (void **)&realDevice) == 0x13bc7e31)
 	{
-		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    device found. replacing with original handle = %x\n", realDevice);
+		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    device found. replacing with original handle = %p\n", realDevice);
 		
 		return realDevice;
 	}
