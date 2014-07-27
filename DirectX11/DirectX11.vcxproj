@@ -667,7 +667,7 @@ cd "$(SolutionDir)"
 REM copy all 3Dmigoto specific DLLs, and dependent files into the Release directory.  
 REM These are any items that are not specifically built, but required for the tool to work.
 
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
 
 REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
 
@@ -677,7 +677,7 @@ REM Use 7zip command tool to create a full release that can be unzipped into gam
 REM On game specific builds, this also includes the ShaderFixes folder.
 REM And, the d3dx.ini from game specific folder
 
-7zip\7za a Ghosts\3Dmigoto-Ghosts-Ver.zip  .\Release\*.dll  .\Ghosts\d3dx.ini  .\Ghosts\ShaderFixes\ .\Release\uninstall.bat
+7zip\7za a Ghosts\3Dmigoto-Ghosts-Ver.zip  .\x64\Release\*.dll  .\Ghosts\d3dx.ini  .\Ghosts\ShaderFixes\ .\x64\Release\uninstall.bat
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
