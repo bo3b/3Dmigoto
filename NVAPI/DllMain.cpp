@@ -8,7 +8,7 @@ namespace D3D9Base
 }
 
 #include <XInput.h>
-#include "../DirectInput.h"
+#include "DirectInput.h"
 
 using namespace std;
 
@@ -142,6 +142,32 @@ static bool LogDebug = false;
 bool LogInput = false;
 FILE *LogFile = 0;
 
+// Thread to watch for aim mode changes.
+HANDLE AimingThread;
+
+// Prototype so we can make it a thread.
+DWORD WINAPI Hunting(LPVOID empty);
+
+static void AimingThreadInit()
+{
+	// Everything set up, let's make another thread for watching the keyboard for shader hunting.
+	// It's all multi-threaded rendering now anyway, so it has to be ready for that.
+	AimingThread = CreateThread(
+		NULL,                   // default security attributes
+		0,                      // use default stack size  
+		Hunting,				// thread function name
+		0,						// argument to thread function 
+		CREATE_SUSPENDED,		// Run late, to avoid window conflicts in DInput
+		NULL);					// returns the thread identifier 
+
+	// If we can't init, just log it, not a fatal error.
+	if (AimingThread == NULL)
+	{
+		DWORD dw = GetLastError();
+		if (LogCalls) fprintf(LogFile, "Error while creating aiming thread: %x\n", dw);
+	}
+}
+
 static bool CallsLogging()
 {
 	if (!LogCalls) return false;
@@ -180,7 +206,11 @@ static void loadDll()
 	{
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
+#if _WIN64
+		wcscat(sysDir, L"\\nvapi64.dll");
+#else
 		wcscat(sysDir, L"\\nvapi.dll");
+#endif
 		nvDLL = LoadLibrary(sysDir);
 
 		DllCanUnloadNowPtr = (DllCanUnloadNowType)GetProcAddress(nvDLL, "DllCanUnloadNow");
@@ -251,20 +281,38 @@ static void loadDll()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
-		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction[0], MAX_PATH, sysDir);
-		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
+		//wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
+		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction, MAX_PATH, sysDir);
+		//end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
 			swscanf_s(valueString, L"%e", &ActionConvergence);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Separation", 0, valueString, MAX_PATH, sysDir))
 			swscanf_s(valueString, L"%e", &ActionSeparation);
+
 		InitDirectInput();
 		
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);		
+
+		AimingThreadInit();
 	}
 }
+
+// No DestroyDLL function?
+//TerminateThread(
+//	_Inout_  HuntingThread,
+//	_In_     0
+//	);
+
+//// Should be the normal 100ms wait.
+//DWORD err =  WaitForSingleObject(
+//	_In_  HuntingThread,
+//	_In_  INFINITE
+//	);
+//BOOL ok = CloseHandle(HuntingThread);
+//if (LogFile) fprintf(LogFile, "Hunting thread closed: %x, %d\n", err, ok);
+
 
 STDAPI DllCanUnloadNow(void)
 {
@@ -308,6 +356,7 @@ static int __cdecl NvAPI_Stereo_GetConvergence(D3D9Base::StereoHandle stereoHand
 	}
 	return ret;
 }
+
 static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHandle, float newConvergence)
 {
 	if (ConvergenceLogging() && SetConvergence != newConvergence)
@@ -315,6 +364,7 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 		fprintf(LogFile, "%s - Request SetConvergence to %e, hex=%x\n", LogTime(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
 	}
 	UpdateInputState();
+
 	// Save current user convergence value.
 	float currentConvergence;
 	_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)(*nvapi_QueryInterfacePtr)(0x4ab00934);
@@ -328,6 +378,7 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 	else
 		// Normal convergence value. Replace with user value.
 		newConvergence = UserConvergence;
+
 	// Action key mapping?
 	if (Action && ActionConvergence != -1e30f)
 	{
@@ -365,6 +416,7 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 	}
 	return (*_NvAPI_Stereo_SetConvergence)(stereoHandle, newConvergence);
 }
+
 static int __cdecl NvAPI_Stereo_GetSeparation(D3D9Base::StereoHandle stereoHandle, float *pSeparationPercentage)
 {
 	int ret = (*_NvAPI_Stereo_GetSeparation)(stereoHandle, pSeparationPercentage);
@@ -801,6 +853,26 @@ static int __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice, __in D3D
 	}
 	return ret;
 }
+
+
+// Thread for allowing aiming, getting time to check for key input that matches aiming.
+// Infinite loop.  It will be killed at exit.
+
+DWORD WINAPI Hunting(LPVOID empty)
+{
+	while (true)
+	{
+		// Idle time between user key presses. This is 3x 1/60 second.
+		Sleep(50);
+
+		UpdateInputState();
+
+		{
+			if (LogInput) fprintf(LogFile, "%s - New user input: %x", LogTime(), ActionButton);
+		}
+	}
+}
+
 
 // __declspec(dllexport)
 // Removed this declare spec, because we are using the .def file for declarations.
