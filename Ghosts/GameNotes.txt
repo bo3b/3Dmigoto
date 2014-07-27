@@ -3,7 +3,7 @@ Seems like using the standard profile is working OK.
 3D doesn't always engage at game launch.  alt-tab out and back in, and it starts up.
 
 The dog fur is a special setting, and looks like it has a deferred rendering problem.
-It can be set to Off in the settings, which seems fine.
+It can be set to Off in the settings, which seems fine.  Low also seems to work without glitches.
 
 Water or grates are weird.  Double bars/mesh, that separate to distance.  Haloing of all overlap.
 
