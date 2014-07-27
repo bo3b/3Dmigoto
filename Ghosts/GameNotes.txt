@@ -1,0 +1,13 @@
+Seems like using the standard profile is working OK.
+
+3D doesn't always engage at game launch.  alt-tab out and back in, and it starts up.
+
+The dog fur is a special setting, and looks like it has a deferred rendering problem.
+It can be set to Off in the settings, which seems fine.
+
+Water or grates are weird.  Double bars/mesh, that separate to distance.  Haloing of all overlap.
+
+Crosshair is at screen depth, but if you enable Laser sight, it follows depths.
+Nameplates are on same shader, as well as pause UI.
+
+Screen Space AO set to HBA0+ makes screen white out and is bad. High works.

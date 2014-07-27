@@ -10,8 +10,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX11", "DirectX11\DirectX11.vcxproj", "{92A679C7-A67F-4B16-B055-7A2F4C23DD80}"
 	ProjectSection(ProjectDependencies) = postProject
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86} = {374CBD29-E904-48E5-BF6F-A464B1EDCA86}
-		{16459E48-9CD1-49FE-8703-D8B275CFCE1E} = {16459E48-9CD1-49FE-8703-D8B275CFCE1E}
-		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078} = {0783CE5A-6B8F-4E16-A26F-04F9F21AD078}
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4} = {258D0AD2-B762-41E3-A0C1-CF831D859DA4}
 	EndProjectSection
 EndProject
@@ -2687,6 +2685,39 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SR3", "SR3", "{11238DC9-B95
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{FCE500D2-F150-46E4-AA82-1F18803730B1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "x64 Dependencies", "x64 Dependencies", "{9B1DC82F-514E-46C3-9AE4-2C6307245154}"
+	ProjectSection(SolutionItems) = preProject
+		Dependencies64\D3DCompiler_46_org.dll = Dependencies64\D3DCompiler_46_org.dll
+		Dependencies64\d3dx.ini = Dependencies64\d3dx.ini
+		Dependencies64\uninstall.bat = Dependencies64\uninstall.bat
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ghosts", "Ghosts", "{8A670747-7C9F-49C1-B54F-AB8E77C003F8}"
+	ProjectSection(SolutionItems) = preProject
+		Ghosts\33f4d9a560829ec4-ps.txt = Ghosts\33f4d9a560829ec4-ps.txt
+		Ghosts\33f4d9a560829ec4-ps_replace.txt = Ghosts\33f4d9a560829ec4-ps_replace.txt
+		Ghosts\4ce70b46dd7df8bd-ps.txt = Ghosts\4ce70b46dd7df8bd-ps.txt
+		Ghosts\553c1cd11db85a43-ps.txt = Ghosts\553c1cd11db85a43-ps.txt
+		Ghosts\80aa6ec5bbb47060-vs.txt = Ghosts\80aa6ec5bbb47060-vs.txt
+		Ghosts\83259d2254a419db-ps.txt = Ghosts\83259d2254a419db-ps.txt
+		Ghosts\d3dx.ini = Ghosts\d3dx.ini
+		Ghosts\f7f2b4dc28738f85-vs.txt = Ghosts\f7f2b4dc28738f85-vs.txt
+		Ghosts\GameNotes.txt = Ghosts\GameNotes.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{77E9C6FD-D927-437A-8F11-582CEDF28BCF}"
+	ProjectSection(SolutionItems) = preProject
+		Ghosts\ShaderFixes\33f4d9a560829ec4-ps_replace.txt = Ghosts\ShaderFixes\33f4d9a560829ec4-ps_replace.txt
+		Ghosts\ShaderFixes\49fe43057b6e203e-vs_replace.txt = Ghosts\ShaderFixes\49fe43057b6e203e-vs_replace.txt
+		Ghosts\ShaderFixes\4ce70b46dd7df8bd-ps_replace.txt = Ghosts\ShaderFixes\4ce70b46dd7df8bd-ps_replace.txt
+		Ghosts\ShaderFixes\553c1cd11db85a43-ps_replace.txt = Ghosts\ShaderFixes\553c1cd11db85a43-ps_replace.txt
+		Ghosts\ShaderFixes\5e78da56c90c6e79-vs_replace.txt = Ghosts\ShaderFixes\5e78da56c90c6e79-vs_replace.txt
+		Ghosts\ShaderFixes\80aa6ec5bbb47060-vs_replace.txt = Ghosts\ShaderFixes\80aa6ec5bbb47060-vs_replace.txt
+		Ghosts\ShaderFixes\83259d2254a419db-ps_replace.txt = Ghosts\ShaderFixes\83259d2254a419db-ps_replace.txt
+		Ghosts\ShaderFixes\f7f2b4dc28738f85-vs_replace.txt = Ghosts\ShaderFixes\f7f2b4dc28738f85-vs_replace.txt
+		Ghosts\ShaderFixes\fe790ffcac1e71cd-vs_replace.txt = Ghosts\ShaderFixes\fe790ffcac1e71cd-vs_replace.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		AC3|Win32 = AC3|Win32
@@ -2947,5 +2978,11 @@ Global
 		{6FBD1F50-1E91-4E75-94EF-54B6EB66B645} = {EF386258-0476-4029-BA88-D86F5024713B}
 		{11238DC9-B954-41AB-825C-2A7CFC4CCE65} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{FCE500D2-F150-46E4-AA82-1F18803730B1} = {11238DC9-B954-41AB-825C-2A7CFC4CCE65}
+		{9B1DC82F-514E-46C3-9AE4-2C6307245154} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{8A670747-7C9F-49C1-B54F-AB8E77C003F8} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{77E9C6FD-D927-437A-8F11-582CEDF28BCF} = {8A670747-7C9F-49C1-B54F-AB8E77C003F8}
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal

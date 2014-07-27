@@ -1,0 +1,82 @@
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[27];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : COLOR0,
+  float4 v2 : TEXCOORD0,
+  float4 v3 : NORMAL0,
+  float4 v4 : TEXCOORD2,
+  float2 v5 : TEXCOORD3,
+  float4 v6 : TEXCOORD5,
+  out float4 o0 : SV_POSITION0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD5,
+  out float4 o5 : TEXCOORD6,
+  out float4 o6 : COLOR1)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.w = -cb2[26].x + cb0[0].w;
+  r0.xyz = cb0[0].xyz;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(r1.xyzw, r0.xyzw);
+  r2.w = -cb2[26].y + cb0[1].w;
+  r2.xyz = cb0[1].xyz;
+  r0.y = dot(r1.xyzw, r2.xyzw);
+  r2.w = -cb2[26].z + cb0[2].w;
+  r2.xyz = cb0[2].xyz;
+  r0.z = dot(r1.xyzw, r2.xyzw);
+  r0.w = dot(r1.xyzw, cb0[3].xyzw);
+  o0.x = dot(r0.xyzw, cb1[0].xyzw);
+  o0.y = dot(r0.xyzw, cb1[1].xyzw);
+  o0.z = dot(r0.xyzw, cb1[2].xyzw);
+  o0.w = dot(r0.xyzw, cb1[3].xyzw);
+  o4.xyz = r0.xyz;
+  o1.xyzw = v2.xyzw;
+  r0.xyz = v3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.x = dot(r0.xyz, cb0[0].xyz);
+  r1.y = dot(r0.xyz, cb0[1].xyz);
+  r1.z = dot(r0.xyz, cb0[2].xyz);
+  o2.xyz = r1.xyz;
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = sqrt(r0.x);
+  o2.w = 0.000000000e+000;
+  r0.y = 0.000000000e+000 < v0.w;
+  r0.z = v0.w < 0.000000000e+000;
+  r0.y = ((int)r0.y ? -1 : 0) + ((int)r0.z ? 1 : 0);
+  r0.y = r0.y;
+  o3.w = r0.y / r0.x;
+  r0.xyz = v4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  o3.x = dot(r0.xyz, cb0[0].xyz);
+  o3.y = dot(r0.xyz, cb0[1].xyz);
+  o3.z = dot(r0.xyz, cb0[2].xyz);
+  o5.xy = v1.xy;
+  o5.zw = v5.xy;
+  o6.xyzw = v6.xyzw * float4(2.007874e+000,2.007874e+000,2.007874e+000,2.007874e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  return;
+}
