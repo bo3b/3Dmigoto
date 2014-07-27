@@ -33,6 +33,11 @@ void main(
 {
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask;
+
+float4 stereo = StereoParams.Load(0);
+float separation = stereo.x;
+float convergence = stereo.y;
+
   r0.xyz = v0.xyz;
   r0.w = 1.000000000e+000;
   r1.x = dot(r0.xyzw, cb0[0].xyzw);
@@ -87,9 +92,10 @@ void main(
   o5.xyzw = r1.xyzw + -r0.xyzw;
 
 // Output texture to stereoize too. 
-// Didn't work, but if I cut the separation in half, it works.  No idea why.
-float4 stereo = StereoParams.Load(0);
-o5.x += stereo.x/2 * (o5.w - stereo.y);
-
+// Didn't work, but if I cut the separation in half, it works.  Mike suggests that there
+// are times when a matrix is 2x bigger than usual.
+// This fixes two layers of water effects and makes it look OK.
+o4.x += separation * (o4.w - convergence) / 2;
+o5.x += separation * (o5.w - convergence) / 2;
   return;
 }
