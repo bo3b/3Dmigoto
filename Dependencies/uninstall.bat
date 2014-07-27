@@ -77,6 +77,14 @@ del nvapi.pdb
 del nvapi.ilk
 del nvapi.lib
 
+del nvapi64.dll
+del nvapi_log.txt
+del nvapi64.exp
+del nvapi64.pdb
+del nvapi64.ilk
+del nvapi64.lib
+
+
 del XInput9_1_0.dll
 del d3dx.ini
 
