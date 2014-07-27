@@ -52,7 +52,7 @@ HRESULT InitDirectInput()
 	// Log XInput devices.
 	if (LogInput)
 	{
-		if (!LogFile) LogFile = fopen("nvapi_log.txt", "w");
+		if (!LogFile) fopen_s(&LogFile, "nvapi_log.txt", "w");
 		for (int i = 0; i < 4; ++i)
 		{
 			XINPUT_STATE state;
@@ -144,9 +144,13 @@ HRESULT InitDirectInput()
 	{
 		if (LogInput) fprintf(LogFile, "DirectInput action not found. Checking for ButtonXX syntax.\n");
 		ActionButton = 0;
-		swscanf(InputAction, L"Button%d", &ActionButton);
-		if (LogInput) fprintf(LogFile, "Using input button #%d for action at offset 0x%x.\n", ActionButton, ActionButton + offsetof(DIJOYSTATE2, rgbButtons));
-		ActionButton += offsetof(DIJOYSTATE2, rgbButtons);
+		int ret = swscanf_s(InputAction, L"Button%d", &ActionButton);
+		if (ret > 0)
+		{
+			if (LogInput) fprintf(LogFile, "Using input button #%d for action at offset 0x%x.\n", 
+				ActionButton, ActionButton + offsetof(DIJOYSTATE2, rgbButtons));
+			ActionButton += offsetof(DIJOYSTATE2, rgbButtons);
+		}
 	}
 
     return S_OK;
@@ -233,11 +237,11 @@ HRESULT SetupForIsXInputDevice()
                     // If it does, then get the VID/PID from var.bstrVal
                     DWORD dwPid = 0, dwVid = 0;
                     WCHAR* strVid = wcsstr(var.bstrVal, L"VID_");
-                    if (strVid && swscanf(strVid, L"VID_%4X", &dwVid) != 1)
+					if (strVid && swscanf_s(strVid, L"VID_%4X", &dwVid) != 1)
                         dwVid = 0;
                     WCHAR* strPid = wcsstr(var.bstrVal, L"PID_");
-                    if (strPid && swscanf(strPid, L"PID_%4X", &dwPid) != 1)
-                        dwPid = 0;
+					if (strPid && swscanf_s(strPid, L"PID_%4X", &dwPid) != 1)
+						dwPid = 0;
 
                     DWORD dwVidPid = MAKELONG( dwVid, dwPid );
 
@@ -434,20 +438,20 @@ void UpdateInputState()
 		{
 			if (wcscmp(L"LeftTrigger", InputAction) == 0) Action = state.Gamepad.bLeftTrigger != 0;
 			else if (wcscmp(L"RightTrigger", InputAction) == 0) Action = state.Gamepad.bRightTrigger != 0;
-			else if (wcscmp(L"DPAD_UP", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
-			else if (wcscmp(L"DPAD_DOWN", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
-			else if (wcscmp(L"DPAD_LEFT", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
-			else if (wcscmp(L"DPAD_RIGHT", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
-			else if (wcscmp(L"START", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_START;
-			else if (wcscmp(L"BACK", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
-			else if (wcscmp(L"LEFT_THUMB", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB;
-			else if (wcscmp(L"RIGHT_THUMB", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB;
-			else if (wcscmp(L"LEFT_SHOULDER", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER;
-			else if (wcscmp(L"RIGHT_SHOULDER", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER;
-			else if (wcscmp(L"A", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_A;
-			else if (wcscmp(L"B", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_B;
-			else if (wcscmp(L"X", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_X;
-			else if (wcscmp(L"Y", InputAction) == 0) Action = state.Gamepad.wButtons & XINPUT_GAMEPAD_Y;
+			else if (wcscmp(L"DPAD_UP", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0;
+			else if (wcscmp(L"DPAD_DOWN", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) != 0;
+			else if (wcscmp(L"DPAD_LEFT", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) != 0;
+			else if (wcscmp(L"DPAD_RIGHT", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0;
+			else if (wcscmp(L"START", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_START) != 0;
+			else if (wcscmp(L"BACK", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) != 0;
+			else if (wcscmp(L"LEFT_THUMB", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB) != 0;
+			else if (wcscmp(L"RIGHT_THUMB", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
+			else if (wcscmp(L"LEFT_SHOULDER", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
+			else if (wcscmp(L"RIGHT_SHOULDER", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0;
+			else if (wcscmp(L"A", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) != 0;
+			else if (wcscmp(L"B", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0;
+			else if (wcscmp(L"X", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) != 0;
+			else if (wcscmp(L"Y", InputAction) == 0) Action = (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) != 0;
 		}
 		return;
 	}
