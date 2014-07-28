@@ -1,0 +1,107 @@
+// Shadows on sides of cars.  
+
+cbuffer Viewport : register(b0)
+{
+  float4x4 _ViewRotProjectionMatrix : packoffset(c0);
+  float4x4 _ViewProjectionMatrix : packoffset(c4);
+  float4x4 _ProjectionMatrix : packoffset(c8);
+  float4x4 _InvProjectionMatrix : packoffset(c12);
+  float4x4 _InvProjectionMatrixDepth : packoffset(c16);
+  float4x4 _DepthTextureTransform : packoffset(c20);
+  float4x3 _ViewMatrix : packoffset(c24);
+  float4x3 _InvViewMatrix : packoffset(c27);
+  float4x4 _PreviousViewProjectionMatrix : packoffset(c30);
+  float4 _CameraDistances : packoffset(c34);
+  float4 _ViewportSize : packoffset(c35);
+  float4 _CameraPosition_MaxStaticReflectionMipIndex : packoffset(c36);
+  float4 _CameraDirection_MaxParaboloidReflectionMipIndex : packoffset(c37);
+  float4 _ViewPoint_ExposureScale : packoffset(c38);
+  float4 _FogColorVector_ExposedWhitePointOverExposureScale : packoffset(c39);
+  float3 _SideFogColor : packoffset(c40);
+  float3 _SunFogColorDelta : packoffset(c41);
+  float3 _OppositeFogColorDelta : packoffset(c42);
+  float4 _FogValues0 : packoffset(c43);
+  float4 _FogValues1 : packoffset(c44);
+  float4 _CameraNearPlaneSize : packoffset(c45);
+  float4 _UncompressDepthWeights_ShadowProjDepthMinValue : packoffset(c46);
+  float4 _UncompressDepthWeightsWS_ReflectionFadeTarget : packoffset(c47);
+  float4 _WorldAmbientColorParams0 : packoffset(c48);
+  float4 _WorldAmbientColorParams1 : packoffset(c49);
+  float4 _WorldAmbientColorParams2 : packoffset(c50);
+  float4 _GlobalWorldTextureParams : packoffset(c51);
+  float4 _CullingCameraPosition_OneOverAutoExposureScale : packoffset(c52);
+  float4 _AmbientSkyColor_ReflectionScaleStrength : packoffset(c53);
+  float4 _AmbientGroundColor_ReflectionScaleDistanceMul : packoffset(c54);
+  float4 _FacettedShadowCastParams : packoffset(c55);
+  float4 _FSMClipPlanes : packoffset(c56);
+  float2 _ReflectionGIControl : packoffset(c57);
+}
+SamplerState Viewport__DepthVPSampler__SampObj___s : register(s0);
+SamplerState Viewport__GBufferNormalTexture__SampObj___s : register(s1);
+SamplerState AmbientOcclusionVolume__AmbientOcclusionTexure__SampObj___s : register(s2);
+Texture2D<float4> Viewport__DepthVPSampler__TexObj__ : register(t0);
+Texture2D<float4> Viewport__GBufferNormalTexture__TexObj__ : register(t1);
+Texture2D<float4> AmbientOcclusionVolume__AmbientOcclusionTexure__TexObj__ : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float4 v1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  float4 v3 : TEXCOORD3,
+  float4 v4 : TEXCOORD4,
+  float4 v5 : TEXCOORD5,
+  float v6 : TEXCOORD6,
+  float4 v7 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = v0.xy / v0.zz;
+  r0.z = Viewport__DepthVPSampler__TexObj__.Sample(Viewport__DepthVPSampler__SampObj___s, r0.xy).x;
+  r1.xyz = Viewport__GBufferNormalTexture__TexObj__.Sample(Viewport__GBufferNormalTexture__SampObj___s, r0.xy).xyz;
+  r1.xyz = r1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = 1.000000000e+000;
+  r0.x = dot(r0.zw, _InvProjectionMatrix._m22_m32);
+  r0.y = dot(r0.zw, _InvProjectionMatrix._m23_m33);
+  r0.x = -r0.x / r0.y;
+  r0.yzw = v5.xyz / v5.zzz;
+  r2.x = v1.w;
+  r2.y = v2.w;
+  r2.z = v3.w;
+  r0.xyz = r0.yzw * -r0.xxx + -r2.xyz;
+  r2.z = dot(r0.xyz, v3.xyz);
+  r2.z = abs(r2.z);
+  r3.x = dot(r0.xyz, v1.xyz);
+  r3.y = dot(r0.xyz, v2.xyz);
+  r3.zw = abs(r3.xy) * abs(r3.xy);
+  r4.xy = r3.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r2.xy = r3.zw * r3.zw;
+  r2.xyz = min(r2.xyz, float3(1.000000e+000,1.000000e+000,1.000000e+000));
+  r2.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r2.xyz;
+  r0.w = r2.x * r2.y;
+  r0.w = r0.w * r2.z;
+  r4.z = 1.000000000e+000 + -r4.y;
+  r2.xyzw = AmbientOcclusionVolume__AmbientOcclusionTexure__TexObj__.Sample(AmbientOcclusionVolume__AmbientOcclusionTexure__SampObj___s, r4.xz).xyzw;
+  r1.w = dot(r2.xyzw, v4.xyzw);
+  r0.w = r1.w * r0.w;
+  r2.x = dot(r1.xyz, _ViewMatrix._m00_m10_m20);
+  r2.y = dot(r1.xyz, _ViewMatrix._m01_m11_m21);
+  r2.z = dot(r1.xyz, _ViewMatrix._m02_m12_m22);
+  r1.x = dot(r2.xyz, r2.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = r2.xyz * r1.xxx;
+  r1.w = dot(r0.xyz, r0.xyz);
+  r1.w = rsqrt(r1.w);
+  r0.xyz = r1.www * r0.xyz;
+  r0.x = dot(r1.xyz, r0.xyz);
+  r0.x = saturate(5.000000000e-001 + r0.x);
+  r0.x = -r0.x * v6.x + 1.000000000e+000;
+  r0.x = r0.w * r0.x;
+  r0.x = v5.w * r0.x;
+  r0.x = saturate(min(r0.x, v4.w));
+  r0.x = v0.w + -r0.x;
+  o0.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000) + r0.xxxx;
+  return;
+}
