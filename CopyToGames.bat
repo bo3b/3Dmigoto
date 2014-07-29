@@ -24,4 +24,5 @@ exit
 :Copyx64
 @echo on
 echo 
-xcopy "%1*.*" "T:\Bootleg\Watch_Dogs\bin\"  /F /Y
+xcopy "%1*.*" "T:\Bootleg\Watch Dogs\bin\"  /F /Y
+xcopy "%1*.*" "C:\Games\Call of Duty - Ghosts\"  /F /Y
