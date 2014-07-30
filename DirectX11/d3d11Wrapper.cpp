@@ -1153,7 +1153,7 @@ static void InitD311()
 	{
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
-		wcscat(sysDir, L"\\original_d3d11.dll");
+		wcscat(sysDir, L"\\d3d11.dll");
 		if (LogFile)
 		{
 			char path[MAX_PATH];
@@ -1426,12 +1426,15 @@ class AsmTextBlob: public D3D11Base::ID3DBlob
 
 
 // Write the decompiled text as HLSL source code to the txt file.
+// Now also writing the ASM text to the bottom of the file, commented out.
+// This keeps the ASM with the HLSL for reference and should be more convenient.
+//
 // This will not overwrite any file that is already there. 
 // The assumption is that the shaderByteCode that we have here is always the most up to date,
 // and thus is not different than the file on disk.
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
-static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
+static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, wstring shaderType)
 	{
 	wchar_t fullName[MAX_PATH];
 	FILE *fw;
@@ -1455,6 +1458,11 @@ static bool WriteHLSL(string hlslText, UINT64 hash, wstring shaderType)
 	if (LogFile) fwprintf(LogFile, L"    storing patched shader to %s\n", fullName);
 
 	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+	
+	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), fw);
+	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
 	fclose(fw);
 	return true;
 }
@@ -1525,7 +1533,7 @@ static AsmTextBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
 	}
 		
 	return (AsmTextBlob*) disassembly;
-		}
+}
 
 // Write the disassembly to the text file.
 // If the file already exists, return an error, to avoid overwrite.  
@@ -1852,18 +1860,17 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 			if (!asmTextBlob)
 				break;
 
-			if(!WriteDisassembly(hash, iter.second.shaderType, asmTextBlob))
-				break;
-
 			// Disassembly file is written, now decompile the current byte code into HLSL.
 			shaderModel = GetShaderModel(asmTextBlob);
 			decompiled = Decompile(iter.second.byteCode, asmTextBlob);
 			if (decompiled.empty())
 				break;
 
-			// Save the decompiled text into the .txt source file.
-			if (!WriteHLSL(decompiled, hash, iter.second.shaderType))
+			// Save the decompiled text, and ASM text into the .txt source file.
+			if (!WriteHLSL(decompiled, asmTextBlob, hash, iter.second.shaderType))
 				break;
+
+			asmTextBlob->Release();
 
 			// Lastly, reload the shader generated, to check for decompile errors, set it as the active 
 			// shader code, in case there are visual errors, and make it the match the code in the file.

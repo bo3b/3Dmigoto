@@ -1046,7 +1046,6 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				p.fixLightPosition = G->FIX_Light_Position;
 				p.ZeroOutput = false;
 				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-				disassembly->Release();
 				if (!decompiledCode.size())
 				{
 					if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
@@ -1072,6 +1071,13 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					{
 						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
 
+						// Now also write the ASM text to the shader file as a set of comments at the bottom.
+						// That will make the ASM code the master reference for fixing shaders, and should be more 
+						// convenient, especially in light of the numerous decompiler bugs we see.
+						fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+						fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), fw);
+						fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
 						// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
 						FILETIME ftWrite;
 						GetFileTime(fw, NULL, NULL, &ftWrite);
@@ -1081,9 +1087,10 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						fclose(fw);
 					}
 				}
+				disassembly->Release();
 
 				// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
-				// after auto-fixing shaders.
+				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
 				if (!errorOccurred)
 				{
 					// Compile replacement.
