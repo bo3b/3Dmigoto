@@ -1,0 +1,12 @@
+// Shadows in the bathroom in hotel room.
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float v0 : SV_ClipDistance0,
+  float4 v1 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  return;
+}
