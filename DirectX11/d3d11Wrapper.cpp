@@ -1153,7 +1153,11 @@ static void InitD311()
 	{
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
+#if WATCH_DOGS
+		wcscat(sysDir, L"\\original_d3d11.dll");
+#else
 		wcscat(sysDir, L"\\d3d11.dll");
+#endif
 		if (LogFile)
 		{
 			char path[MAX_PATH];
