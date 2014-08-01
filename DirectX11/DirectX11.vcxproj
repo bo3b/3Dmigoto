@@ -340,6 +340,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='WatchDogs|x64'">
     <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(IncludePath)</IncludePath>
     <TargetName>d3d11</TargetName>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -816,11 +818,14 @@ REM And, the d3dx.ini from game specific folder
     <ClCompile>
       <ExceptionHandling>Async</ExceptionHandling>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>WATCH_DOGS=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WATCH_DOGS=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
