@@ -581,6 +581,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WatchDogs|x64'">
     <ClCompile>
       <PreprocessorDefinitions>WATCH_DOGS=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>NVApiDecorator.def</ModuleDefinitionFile>
