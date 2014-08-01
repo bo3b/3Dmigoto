@@ -2719,6 +2719,35 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes"
 		Ghosts\ShaderFixes\fe790ffcac1e71cd-vs_replace.txt = Ghosts\ShaderFixes\fe790ffcac1e71cd-vs_replace.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WatchDogs", "WatchDogs", "{9AF45EF4-9E5F-467B-A56C-FB8207BB8188}"
+	ProjectSection(SolutionItems) = preProject
+		WatchDogs\013440ada4dfb33f-vs.txt = WatchDogs\013440ada4dfb33f-vs.txt
+		WatchDogs\013440ada4dfb33f-vs_replace.txt = WatchDogs\013440ada4dfb33f-vs_replace.txt
+		WatchDogs\297301ee509f95cc-ps.txt = WatchDogs\297301ee509f95cc-ps.txt
+		WatchDogs\297301ee509f95cc-ps_replace.txt = WatchDogs\297301ee509f95cc-ps_replace.txt
+		WatchDogs\73339ea29a5972eb-vs.txt = WatchDogs\73339ea29a5972eb-vs.txt
+		WatchDogs\73339ea29a5972eb-vs_replace.txt = WatchDogs\73339ea29a5972eb-vs_replace.txt
+		WatchDogs\81fefdce7775a13e-ps.txt = WatchDogs\81fefdce7775a13e-ps.txt
+		WatchDogs\81fefdce7775a13e-ps_replace.txt = WatchDogs\81fefdce7775a13e-ps_replace.txt
+		WatchDogs\9507aa37e2bc1979-ps.txt = WatchDogs\9507aa37e2bc1979-ps.txt
+		WatchDogs\9507aa37e2bc1979-ps_replace.txt = WatchDogs\9507aa37e2bc1979-ps_replace.txt
+		WatchDogs\c052b8ce2e9c0961-ps.txt = WatchDogs\c052b8ce2e9c0961-ps.txt
+		WatchDogs\e195cd9c9ca300fd-vs.txt = WatchDogs\e195cd9c9ca300fd-vs.txt
+		WatchDogs\e195cd9c9ca300fd-vs_replace.txt = WatchDogs\e195cd9c9ca300fd-vs_replace.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{3536BA7D-F99F-4F5A-9123-189E11FF62B6}"
+	ProjectSection(SolutionItems) = preProject
+		WatchDogs\ShaderFixes\217fff587e1346a6-ps.txt = WatchDogs\ShaderFixes\217fff587e1346a6-ps.txt
+		WatchDogs\ShaderFixes\217fff587e1346a6-ps_replace.txt = WatchDogs\ShaderFixes\217fff587e1346a6-ps_replace.txt
+		WatchDogs\ShaderFixes\25679b83947d6e37-vs.txt = WatchDogs\ShaderFixes\25679b83947d6e37-vs.txt
+		WatchDogs\ShaderFixes\25679b83947d6e37-vs_replace.txt = WatchDogs\ShaderFixes\25679b83947d6e37-vs_replace.txt
+		WatchDogs\ShaderFixes\69623da532d5ac8e-ps.txt = WatchDogs\ShaderFixes\69623da532d5ac8e-ps.txt
+		WatchDogs\ShaderFixes\69623da532d5ac8e-ps_replace.txt = WatchDogs\ShaderFixes\69623da532d5ac8e-ps_replace.txt
+		WatchDogs\ShaderFixes\7a55872c9645fdd5-vs.txt = WatchDogs\ShaderFixes\7a55872c9645fdd5-vs.txt
+		WatchDogs\ShaderFixes\7a55872c9645fdd5-vs_replace.txt = WatchDogs\ShaderFixes\7a55872c9645fdd5-vs_replace.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		AC3|Win32 = AC3|Win32
@@ -3055,6 +3084,8 @@ Global
 		{9B1DC82F-514E-46C3-9AE4-2C6307245154} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{8A670747-7C9F-49C1-B54F-AB8E77C003F8} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{77E9C6FD-D927-437A-8F11-582CEDF28BCF} = {8A670747-7C9F-49C1-B54F-AB8E77C003F8}
+		{9AF45EF4-9E5F-467B-A56C-FB8207BB8188} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{3536BA7D-F99F-4F5A-9123-189E11FF62B6} = {9AF45EF4-9E5F-467B-A56C-FB8207BB8188}
 	EndGlobalSection
 	GlobalSection(Performance) = preSolution
 		HasPerformanceSessions = true
