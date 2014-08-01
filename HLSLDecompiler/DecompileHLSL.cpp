@@ -3406,6 +3406,18 @@ public:
 					removeBoolean(op1);
 					break;
 				}
+					// This opcode was missing, and used in WatchDogs. 
+					//	expected code is: samplepos r0.xy, t1.xyxx, v1.x
+					//	To: r0.xy = t1.GetSamplePosition(v1.x);
+				case OPCODE_SAMPLE_POS:
+					remapTarget(op1);
+					applySwizzle(op1, op2);
+					int textureId;
+					sscanf_s(op2, "t%d.", &textureId);
+					sprintf(buffer, "  %s = %s.GetSamplePosition(%s);\n", writeTarget(op1),
+						mTextureNames[textureId].c_str(), ci(op3).c_str());
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					break;
 
 				case OPCODE_GATHER4:
 				{
