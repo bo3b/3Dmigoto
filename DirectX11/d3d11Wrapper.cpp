@@ -2672,7 +2672,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	InitD311();
 	if (LogFile) fprintf(LogFile, "D3D11CreateDevice called with adapter = %p\n", pAdapter);
 
-#if defined(_DEBUG)
+#if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
 	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -2760,7 +2760,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	EnableStereo();
 
-#if defined(_DEBUG)
+#if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
 	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
 #endif
