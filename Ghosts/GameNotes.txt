@@ -11,3 +11,13 @@ Crosshair is at screen depth, but if you enable Laser sight, it follows depths.
 Nameplates are on same shader, as well as pause UI.
 
 Screen Space AO set to HBA0+ makes screen white out and is bad. High works.
+
+
+Can set Distortion to Off to avoid water distortion effect.
+
+Can kill shader 49fe43057b6e203e-vs_replace.txt to resolve water reflection problems.
+
+
+Might be best to just kill the sun in space.  There is a flare on the UI shader, so we can't kill
+that piece.  Maybe texture map.
+

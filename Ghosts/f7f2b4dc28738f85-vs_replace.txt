@@ -1,0 +1,52 @@
+// On screen crosshair. Screen depth.
+// Also screen depth nameplates in blue.
+// Also the entire UI for pause.
+
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[18];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : COLOR0,
+  float2 v2 : TEXCOORD0,
+  out float4 o0 : SV_POSITION0,
+  out float4 o1 : COLOR0,
+  out float2 o2 : TEXCOORD0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.w = -cb2[17].x + cb0[0].w;
+  r0.xyz = cb0[0].xyz;
+  r1.xyz = v0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.x = dot(r1.xyzw, r0.xyzw);
+  r2.w = -cb2[17].y + cb0[1].w;
+  r2.xyz = cb0[1].xyz;
+  r0.y = dot(r1.xyzw, r2.xyzw);
+  r2.w = -cb2[17].z + cb0[2].w;
+  r2.xyz = cb0[2].xyz;
+  r0.z = dot(r1.xyzw, r2.xyzw);
+  r0.w = dot(r1.xyzw, cb0[3].xyzw);
+  o0.x = dot(r0.xyzw, cb1[0].xyzw);
+  o0.y = dot(r0.xyzw, cb1[1].xyzw);
+  o0.z = dot(r0.xyzw, cb1[2].xyzw);
+  o0.w = dot(r0.xyzw, cb1[3].xyzw);
+  o1.xyzw = v1.xyzw;
+  o2.xy = v2.xy;
+  return;
+}
