@@ -1198,13 +1198,8 @@ static void InitD311()
 //		}
 //	}
 
-	// Getting the nvapi to load early, at load time, before any execution is the goal.
-	// This call to the dll api makes the linker force a dependency on that dll, and thus
-	// preload the dll, which should make it load at the same time as this d3d11.dll.
-	// This queries directly for the Initialize routine.
-	int* address = nvapi_QueryInterface(0x0150E828);
 
-	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo) GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
+	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
 	_OpenAdapter10 = (tOpenAdapter10) GetProcAddress(hD3D11, "OpenAdapter10");
 	_OpenAdapter10_2 = (tOpenAdapter10_2) GetProcAddress(hD3D11, "OpenAdapter10_2");
 	_D3D11CoreCreateDevice = (tD3D11CoreCreateDevice) GetProcAddress(hD3D11, "D3D11CoreCreateDevice");
@@ -1217,6 +1212,12 @@ static void InitD311()
 	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc) GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
 	_D3DKMTOpenResource = (tD3DKMTOpenResource) GetProcAddress(hD3D11, "D3DKMTOpenResource");
 	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo) GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
+
+	// Getting the nvapi to load early, at load time, before any execution is the goal.
+	// This call to the dll api makes the linker force a dependency on that dll, and thus
+	// preload the dll, which should make it load at the same time as this d3d11.dll.
+	// This queries directly for the Initialize routine.
+	int* address = nvapi_QueryInterface(0x0150E828);
 }
 
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
