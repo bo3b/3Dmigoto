@@ -10,6 +10,8 @@
 #include <DirectXMath.h>
 #include "../HLSLDecompiler/DecompileHLSL.h"
 
+#include "../Nektra/NktHookLib.h"
+
 FILE *LogFile = 0;		// off by default.
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gInitialized = false;
