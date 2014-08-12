@@ -1157,7 +1157,7 @@ static void InitD311()
 #if WATCH_DOGS
 		wcscat(sysDir, L"\\original_d3d11.dll");
 #else
-		wcscat(sysDir, L"\\d3d11.dll");
+		wcscat(sysDir, L"\\D3D11.DLL");		// case sensitive compare in LoadLibrary hook, so this will skip
 #endif
 		if (LogFile)
 		{
