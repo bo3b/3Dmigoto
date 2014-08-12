@@ -38,12 +38,26 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 	// This is late enough that we can look for standard logging.
 	if (LogFile) fwprintf(LogFile, L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
 
-	if (wcscmp(lpLibFileName, L"C:\\Windows\\system32\\d3d11.dll") == 0)
+	// Bypass the known expected call from our wrapped d3d11, where it needs to call to the system to get APIs.
+	// This is a bit of a hack, but if the string comes in as original_d3d11, that's from us, and needs to switch to the real one.
+	if (_wcsicmp(lpLibFileName, L"C:\\Windows\\system32\\original_d3d11.DLL") == 0)
+	{
+		if (LogFile) fwprintf(LogFile, L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n", 
+			lpLibFileName, L"C:\\Windows\\system32\\d3d11.dll");
+
+		return sLoadLibraryExW_Hook.fnLoadLibraryExW(L"C:\\Windows\\system32\\d3d11.dll", hFile, dwFlags);
+	}
+
+	// This is to be case insenstive as we don't know if NVidia will change that and otherwise break it
+	// it with a driver upgrade.
+	if (_wcsicmp(lpLibFileName, L"C:\\Windows\\system32\\d3d11.dll") == 0)
 	{
 		if (LogFile) fwprintf(LogFile, L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, L"d3d11.dll");
+
 		return sLoadLibraryExW_Hook.fnLoadLibraryExW(L"d3d11.dll", hFile, dwFlags);
 	}
 
+	// Normal unchanged case.
 	return sLoadLibraryExW_Hook.fnLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 
@@ -93,6 +107,9 @@ BOOL WINAPI DllMain(
 {
 	bool result = true;
 
+	// Only do this hooking for known bad scenario of Watch Dogs.  
+	// Might need to expand this, but no point in doing this for other targets until we know.
+#if WATCH_DOGS
 	switch (fdwReason)
 	{
 		case DLL_PROCESS_ATTACH:
@@ -111,6 +128,7 @@ BOOL WINAPI DllMain(
 			// Do thread-specific cleanup.
 			break;
 	}
+#endif
 
 	return result;
 }

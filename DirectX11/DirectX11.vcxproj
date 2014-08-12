@@ -831,6 +831,12 @@ REM And, the d3dx.ini from game specific folder
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\D3DCompile*.DLL” “$(TargetDir)” /E /Y
+xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
+call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WatchDogs|Win32'">
     <ClCompile>
