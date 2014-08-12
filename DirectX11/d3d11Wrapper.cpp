@@ -1118,6 +1118,7 @@ static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef int (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 
+
 extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
 static void InitD311()
@@ -1154,10 +1155,11 @@ static void InitD311()
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 #if WATCH_DOGS
-		wcscat(sysDir, L"\\original_d3d11.dll");
+		wcscat(sysDir, L"\\original_d3d11.dll");	// We'll look for this in MainHook to avoid callback to self.
 #else
 		wcscat(sysDir, L"\\d3d11.dll");
 #endif
+
 		if (LogFile)
 		{
 			char path[MAX_PATH];
@@ -1218,6 +1220,7 @@ static void InitD311()
 	// preload the dll, which should make it load at the same time as this d3d11.dll.
 	// This queries directly for the Initialize routine.
 	int* address = nvapi_QueryInterface(0x0150E828);
+
 }
 
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)

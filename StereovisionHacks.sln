@@ -2748,6 +2748,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes"
 		WatchDogs\ShaderFixes\7a55872c9645fdd5-vs_replace.txt = WatchDogs\ShaderFixes\7a55872c9645fdd5-vs_replace.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Nektra", "Nektra", "{0893CB33-AB1E-4391-A284-B7292160549C}"
+	ProjectSection(SolutionItems) = preProject
+		Nektra\NktHookLib.h = Nektra\NktHookLib.h
+		Nektra\NktHookLib.lib = Nektra\NktHookLib.lib
+		Nektra\nkthooklib.pdb = Nektra\nkthooklib.pdb
+		Nektra\NktHookLib64.lib = Nektra\NktHookLib64.lib
+		Nektra\nkthooklib64.pdb = Nektra\nkthooklib64.pdb
+		Nektra\NktHookLib64_Debug.lib = Nektra\NktHookLib64_Debug.lib
+		Nektra\nkthooklib64_debug.pdb = Nektra\nkthooklib64_debug.pdb
+		Nektra\NktHookLib_Debug.lib = Nektra\NktHookLib_Debug.lib
+		Nektra\nkthooklib_debug.pdb = Nektra\nkthooklib_debug.pdb
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		AC3|Win32 = AC3|Win32
@@ -3086,5 +3099,9 @@ Global
 		{77E9C6FD-D927-437A-8F11-582CEDF28BCF} = {8A670747-7C9F-49C1-B54F-AB8E77C003F8}
 		{9AF45EF4-9E5F-467B-A56C-FB8207BB8188} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{3536BA7D-F99F-4F5A-9123-189E11FF62B6} = {9AF45EF4-9E5F-467B-A56C-FB8207BB8188}
+		{0893CB33-AB1E-4391-A284-B7292160549C} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal

@@ -207,11 +207,11 @@ static void loadDll()
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 #if _WIN64
-	#if WATCH_DOGS
-			wcscat(sysDir, L"\\original_nvapi64.dll");
-	#else
+//	#if WATCH_DOGS
+//			wcscat(sysDir, L"\\original_nvapi64.dll");
+//	#else
 			wcscat(sysDir, L"\\nvapi64.dll");
-	#endif
+//	#endif
 #else
 		wcscat(sysDir, L"\\nvapi.dll");
 #endif
