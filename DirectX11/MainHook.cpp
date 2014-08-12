@@ -100,6 +100,9 @@ static void RemoveHooks()
 }
 
 
+// Only do this hooking for known bad scenario of Watch Dogs.  
+// Might need to expand this, but no point in doing this for other targets until we know.
+#if WATCH_DOGS
 BOOL WINAPI DllMain(
 	_In_  HINSTANCE hinstDLL,
 	_In_  DWORD fdwReason,
@@ -107,9 +110,6 @@ BOOL WINAPI DllMain(
 {
 	bool result = true;
 
-	// Only do this hooking for known bad scenario of Watch Dogs.  
-	// Might need to expand this, but no point in doing this for other targets until we know.
-#if WATCH_DOGS
 	switch (fdwReason)
 	{
 		case DLL_PROCESS_ATTACH:
@@ -128,7 +128,7 @@ BOOL WINAPI DllMain(
 			// Do thread-specific cleanup.
 			break;
 	}
-#endif
 
 	return result;
 }
+#endif
