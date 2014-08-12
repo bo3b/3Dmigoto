@@ -4,6 +4,7 @@
     <ClCompile Include="d3d11Wrapper.cpp" />
     <ClCompile Include="..\DirectInput.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="MainHook.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />

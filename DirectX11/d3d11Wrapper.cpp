@@ -10,8 +10,6 @@
 #include <DirectXMath.h>
 #include "../HLSLDecompiler/DecompileHLSL.h"
 
-#include "../Nektra/NktHookLib.h"
-
 FILE *LogFile = 0;		// off by default.
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gInitialized = false;
@@ -1120,6 +1118,7 @@ static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef int (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 
+
 extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
 static void InitD311()
@@ -1220,6 +1219,7 @@ static void InitD311()
 	// preload the dll, which should make it load at the same time as this d3d11.dll.
 	// This queries directly for the Initialize routine.
 	int* address = nvapi_QueryInterface(0x0150E828);
+
 }
 
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
