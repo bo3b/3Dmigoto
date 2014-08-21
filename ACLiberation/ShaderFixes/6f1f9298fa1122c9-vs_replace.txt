@@ -1,0 +1,58 @@
+//HUD Part 1 and Sun Moon
+cbuffer _Globals : register(b0)
+{
+  float4 g_ConstColor : packoffset(c128);
+  float4 g_ConstColorAdd : packoffset(c129);
+  float4 g_TextBlurWeights : packoffset(c12);
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4x4 g_WorldView : packoffset(c4);
+  float4x4 g_World : packoffset(c8);
+  float4x4 g_Proj : packoffset(c84);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float3 v0 : POSITION0,
+  float4 v1 : COLOR0,
+  float2 v2 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0,
+  out float4 o2 : COLOR0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  
+float4 stereoParams = StereoParams.Load(0);
+float4 iniParams = IniParams.Load(0);
+float4 r10;
+  
+  r10.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r10.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r10.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r10.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+  
+  if(r10.w != 1)
+{
+	if(r10.z < 1)
+	{
+		// r10.x -= stereoParams.x * (r10.w - stereoParams.y - 0.98);  //Move the sun, moon
+		//r10.x += stereoParams.x * (stereoParams.y);  //Move the sun, moon
+		r10.x += stereoParams.x* (stereoParams.y)*1.1; //Move the sun, moon
+	}
+}
+
+if(r10.w == 1)
+{
+		r10.x += stereoParams.x * iniParams.x; //Hud
+	
+}
+o0.xyzw = r10.xyzw;
+  
+  o1.xy = v2.xy;
+  o2.xyzw = v1.zyxw;
+  return;
+}

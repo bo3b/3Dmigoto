@@ -1,0 +1,41 @@
+//Stars
+cbuffer _Globals : register(b0)
+{
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4x4 g_WorldView : packoffset(c4);
+  float4x4 g_Proj : packoffset(c84);
+  float4 g_FogColor : packoffset(c16);
+  float4 g_FogParams : packoffset(c17);
+  float4 g_FogWeatherParams : packoffset(c90);
+  float4 g_FogSunBackColor : packoffset(c31);
+  float4x4 g_World : packoffset(c8);
+  float4 g_ClipPlane : packoffset(c18);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DeconstructionRanges : packoffset(c92);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  int4 v0 : POSITION0,
+  uint4 v1 : NORMAL0,
+  uint4 v2 : TANGENT0,
+  float2 v3 : TEXCOORD0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask;
+  r0.xyz = (int3)v0.www * (int3)v0.xyz;
+  r0.xyz = r0.xyz;
+  r0.xyz = float3(3.051758e-005,3.051758e-005,3.051758e-005) * r0.xyz;
+  r0.w = 1.000000000e+000;
+float4 r22;
+float4 stereoParams = StereoParams.Load(0);
+  r22.x = dot(r0.xyzw, g_WorldViewProj._m00_m10_m20_m30);
+  r22.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
+  r22.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
+  r22.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
+r22.x += stereoParams.x* (stereoParams.y)*1.1;
+o0.xyzw = r22.xyzw;
+  return;
+}
