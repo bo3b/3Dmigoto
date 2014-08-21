@@ -565,6 +565,7 @@ cd "$(SolutionDir)"
 REM copy all 3Dmigoto specific DLLs, and dependent files into the Release directory.  
 REM These are any items that are not specifically built, but required for the tool to work.
 
+xcopy “$(WindowsSdkDir_80)Redist\D3D\x86\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 
 REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
