@@ -1,4 +1,4 @@
-
+//duplicate
 cbuffer _Globals : register(b0)
 {
   float4 g_ReverseProjectionParams : packoffset(c100);
@@ -33,7 +33,7 @@ cbuffer _Globals : register(b0)
   float4 g_hdrWindowParams : packoffset(c147);
   float4x4 g_ViewToWorld : packoffset(c102);
   float4x4 g_WorldToView : packoffset(c106);
-  float4 g_DeferredProjShadowParams : packoffset(c12);
+  float4 g_EyePosition : packoffset(c12);
   float4 g_DepthParams : packoffset(c110);
   float4 g_LinearFogColor : packoffset(c16);
   float4 g_LinearFogParams : packoffset(c17);

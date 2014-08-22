@@ -35,7 +35,7 @@ float4 stereoParams = StereoParams.Load(0);
   r22.y = dot(r0.xyzw, g_WorldViewProj._m01_m11_m21_m31);
   r22.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
   r22.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
-r22.x += stereoParams.x* (stereoParams.y)*1.1;
+r22.x += stereoParams.x* (stereoParams.y);
 o0.xyzw = r22.xyzw;
   return;
 }

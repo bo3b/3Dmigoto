@@ -34,7 +34,7 @@ float4 r10;
   r10.z = dot(r0.xyzw, g_WorldViewProj._m02_m12_m22_m32);
   r10.w = dot(r0.xyzw, g_WorldViewProj._m03_m13_m23_m33);
  
-r10.x += stereoParams.x * iniParams.x; //Hud
+r10.x += stereoParams.x * iniParams.x; //HUD
 	
 o0.xyzw = r10.xyzw;
 
@@ -43,5 +43,6 @@ o0.xyzw = r10.xyzw;
   r0.z = dot(r0.xyzw, g_TextureMatrix._m01_m11_m21_m31);
   o1.x = dot(r0.xyww, g_TextureMatrix._m00_m10_m20_m30);
   o1.y = 1.000000000e+000 + -r0.z;
+  
   return;
 }
