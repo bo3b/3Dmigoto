@@ -1,0 +1,421 @@
+//Night Lights 2
+cbuffer _Globals : register(b0)
+{
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float4 g_ReverseProjectionParams2 : packoffset(c101);
+  float4 g_ViewportScaleOffset : packoffset(c84);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_DeferredOmniLight : packoffset(c128);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float3 m_Color;
+  } g_DeferredDirectLight : packoffset(c130);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float3 m_Direction;
+    float4 m_ConeAngles;
+  } g_DeferredSpotLight : packoffset(c132);
+
+  float4 g_DeferredProjWorldToLight[4] : packoffset(c136);
+  float4 g_DeferredProjShadowParams : packoffset(c140);
+  float4 g_DeferredBackgroundColor : packoffset(c141);
+  float4 g_hdrWindowParams : packoffset(c147);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DepthParams : packoffset(c110);
+  float4 g_LinearFogColor : packoffset(c16);
+  float4 g_LinearFogParams : packoffset(c17);
+  float4 g_DepthValueParams : packoffset(c18);
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_EyeXAxis : packoffset(c8);
+  float4 g_EyeYAxis : packoffset(c9);
+  float4 g_EyeZAxis : packoffset(c10);
+  float4 g_EyeWorldPosition_Resolve : packoffset(c11);
+
+  struct
+  {
+    float4 m_CloudUVScaleOffset;
+    float4 m_CloudShadowsParams;
+    float4 m_ShadowMapSize;
+    float4 m_OffsetsY;
+    float4 m_OffsetsX;
+    float4 m_ScalesY;
+    float4 m_ScalesX;
+    float4 m_OffsetsZ;
+    float4 m_ScalesZ;
+    float4 m_OffsetsW;
+    float4 m_ScalesW;
+    float4 m_NoiseScale;
+    float4 m_NearFar;
+    float4 m_FadeParams;
+    float4 m_CascadesRangesMax;
+    float4 m_ShadowContrast;
+    float4x4 m_WorldToLightProj;
+  } g_Shadows : packoffset(c64);
+
+
+  struct
+  {
+    float4 m_UseHQFiltering;
+  } g_ShadowPerfOptions : packoffset(c63);
+
+  float4 g_IrradianceSHCoef[7] : packoffset(c24);
+  float4 g_WorldLightmapParameters : packoffset(c87);
+  float4 g_WorldLightmapUVParameters : packoffset(c88);
+  float4 g_WorldLightmapColor : packoffset(c89);
+  float4 g_WorldAOParameters : packoffset(c90);
+  float4 g_WorldAORangeParameters : packoffset(c91);
+  float4 g_DebugValue : packoffset(c148) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+
+  struct
+  {
+    float2 m_VPOS;
+    float3 m_ShadowResult;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_WorldEyeVector;
+    float3 m_NormalizedWorldEyeVector;
+    float m_SpecularPower;
+  } c : packoffset(c149);
+
+}
+Texture2DMS<float4,8> g_TextureAlbedoDX11_MSAA : register(t0);
+Texture2DMS<float4,8> g_TextureNormalDX11_MSAA : register(t1);
+Texture2DMS<float,8> g_TextureDepthDX11_MSAA : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  uint v4 : SV_SampleIndex0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r0.zw = g_ReverseProjectionParams2.xy + r0.xy;
+  r0.xy = r0.xy * g_ViewportScaleOffset.xy + g_ViewportScaleOffset.zw;
+  r0.zw = g_ReverseProjectionParams.xy * r0.zw;
+  g_TextureDepthDX11_MSAA.GetDimensions(r1.x, r1.y, bitmask.x);
+  r1.xy = r1.xy;
+  r1.xy = r1.xy * r0.xy;
+  r1.xy = (int2)r1.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r1.x = g_TextureDepthDX11_MSAA.Load(r1.xyz,v4.x).x;
+  r1.y = g_ReverseProjectionParams.z * r1.x + g_ReverseProjectionParams.w;
+  r1.x = g_ReverseProjectionParams2.z * r1.x + g_ReverseProjectionParams2.w;
+  r1.z = r1.y / r1.x;
+  r1.xy = r1.zz * r0.zw;
+  r1.w = 1.000000000e+000;
+ 
+//Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r1.x +=  stereoParams.x * (-r1.z - stereoParams.y) * g_ReverseProjectionParams.x;
+    
+  r2.x = dot(r1.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  r1.xyz = g_DeferredOmniLight.m_PositionFar.xyz + -r2.xyz;
+  r2.xyz = g_EyePosition.xyz + -r2.xyz;
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.w = sqrt(r0.z);
+  r0.z = rsqrt(r0.z);
+  r1.xyz = r1.xyz * r0.zzz;
+  r0.z = g_DeferredOmniLight.m_PositionFar.w + -r0.w;
+  r0.z = saturate(g_DeferredOmniLight.m_ColorFade.w * r0.z);
+  r0.w = r0.z * r0.z + -1.000000047e-003;
+  r0.z = r0.z * r0.z;
+  r0.w = r0.w < 0.000000000e+000;
+  if (r0.w != 0) discard;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www + r1.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r0.w = saturate(dot(r2.xyz, r1.xyz));
+  r0.w = 1.000000000e+000 + -r0.w;
+  r1.w = r0.w * r0.w;
+  r1.w = r1.w * r1.w;
+  r0.w = r1.w * r0.w;
+  g_TextureAlbedoDX11_MSAA.GetDimensions(r3.x, r3.y, bitmask.x);
+  r3.xy = r3.xy;
+  r3.xy = r3.xy * r0.xy;
+  r3.xy = (int2)r3.xy;
+  r3.zw = float2(0.000000e+000,0.000000e+000);
+  r3.xyzw = g_TextureAlbedoDX11_MSAA.Load(r3.xyz,v4.x).xyzw;
+  r1.w = 1.000000000e+000 + -r3.w;
+  r0.w = r1.w * r0.w + r3.w;
+  r3.xyz = g_DeferredOmniLight.m_ColorFade.xyz * r3.xyz;
+  r3.xyz = r3.xyz * r0.zzz;
+  g_TextureNormalDX11_MSAA.GetDimensions(r4.x, r4.y, bitmask.x);
+  r4.xy = r4.xy;
+  r0.xy = r4.xy * r0.xy;
+  r4.xy = (int2)r0.xy;
+  r4.zw = float2(0.000000e+000,0.000000e+000);
+  r4.xyzw = g_TextureNormalDX11_MSAA.Load(r4.xyz,v4.x).xyzw;
+  r4.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r4.xyz;
+  r4.xyz = r4.xyz + r4.xyz;
+  r0.x = saturate(dot(r4.xyz, r2.xyz));
+  r0.y = saturate(dot(r1.xyz, r4.xyz));
+  r0.x = log2(r0.x);
+  r1.x = 1.200000000e+001 * r4.w;
+  o0.w = r4.w;
+  r1.x = exp2(r1.x);
+  r0.x = r1.x * r0.x;
+  r1.x = 2.000000000e+000 + r1.x;
+  r0.x = exp2(r0.x);
+  r0.x = r0.y * r0.x;
+  r0.x = r0.x * r1.x;
+  r0.x = 1.250000000e-001 * r0.x;
+  r1.xyz = g_DeferredOmniLight.m_ColorFade.xyz * r0.xxx;
+  r1.xyz = r1.xyz * r0.zzz;
+  r0.xzw = r1.xyz * r0.www;
+  o0.xyz = r3.xyz * r0.yyy + r0.xzw;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float4 g_ReverseProjectionParams;  // Offset: 1600 Size:    16
+//   float4 g_ReverseProjectionParams2; // Offset: 1616 Size:    16
+//   float4 g_ViewportScaleOffset;      // Offset: 1344 Size:    16
+//   
+//   struct
+//   {
+//       
+//       float4 m_PositionFar;          // Offset: 2048
+//       float4 m_ColorFade;            // Offset: 2064
+//
+//   } g_DeferredOmniLight;             // Offset: 2048 Size:    32
+//   
+//   struct
+//   {
+//       
+//       float3 m_Direction;            // Offset: 2080
+//       float3 m_Color;                // Offset: 2096
+//
+//   } g_DeferredDirectLight;           // Offset: 2080 Size:    28 [unused]
+//   
+//   struct
+//   {
+//       
+//       float4 m_PositionFar;          // Offset: 2112
+//       float4 m_ColorFade;            // Offset: 2128
+//       float3 m_Direction;            // Offset: 2144
+//       float4 m_ConeAngles;           // Offset: 2160
+//
+//   } g_DeferredSpotLight;             // Offset: 2112 Size:    64 [unused]
+//   float4 g_DeferredProjWorldToLight[4];// Offset: 2176 Size:    64 [unused]
+//   float4 g_DeferredProjShadowParams; // Offset: 2240 Size:    16 [unused]
+//   float4 g_DeferredBackgroundColor;  // Offset: 2256 Size:    16 [unused]
+//   float4 g_hdrWindowParams;          // Offset: 2352 Size:    16 [unused]
+//   float4x4 g_ViewToWorld;            // Offset: 1632 Size:    64
+//   float4x4 g_WorldToView;            // Offset: 1696 Size:    64 [unused]
+//   float4 g_EyePosition;              // Offset:  192 Size:    16
+//   float4 g_DepthParams;              // Offset: 1760 Size:    16 [unused]
+//   float4 g_LinearFogColor;           // Offset:  256 Size:    16 [unused]
+//   float4 g_LinearFogParams;          // Offset:  272 Size:    16 [unused]
+//   float4 g_DepthValueParams;         // Offset:  288 Size:    16 [unused]
+//   float4x4 g_WorldViewProj;          // Offset:    0 Size:    64 [unused]
+//   float4 g_EyeXAxis;                 // Offset:  128 Size:    16 [unused]
+//   float4 g_EyeYAxis;                 // Offset:  144 Size:    16 [unused]
+//   float4 g_EyeZAxis;                 // Offset:  160 Size:    16 [unused]
+//   float4 g_EyeWorldPosition_Resolve; // Offset:  176 Size:    16 [unused]
+//   
+//   struct
+//   {
+//       
+//       float4 m_CloudUVScaleOffset;   // Offset: 1024
+//       float4 m_CloudShadowsParams;   // Offset: 1040
+//       float4 m_ShadowMapSize;        // Offset: 1056
+//       float4 m_OffsetsY;             // Offset: 1072
+//       float4 m_OffsetsX;             // Offset: 1088
+//       float4 m_ScalesY;              // Offset: 1104
+//       float4 m_ScalesX;              // Offset: 1120
+//       float4 m_OffsetsZ;             // Offset: 1136
+//       float4 m_ScalesZ;              // Offset: 1152
+//       float4 m_OffsetsW;             // Offset: 1168
+//       float4 m_ScalesW;              // Offset: 1184
+//       float4 m_NoiseScale;           // Offset: 1200
+//       float4 m_NearFar;              // Offset: 1216
+//       float4 m_FadeParams;           // Offset: 1232
+//       float4 m_CascadesRangesMax;    // Offset: 1248
+//       float4 m_ShadowContrast;       // Offset: 1264
+//       float4x4 m_WorldToLightProj;   // Offset: 1280
+//
+//   } g_Shadows;                       // Offset: 1024 Size:   320 [unused]
+//   
+//   struct
+//   {
+//       
+//       float4 m_UseHQFiltering;       // Offset: 1008
+//
+//   } g_ShadowPerfOptions;             // Offset: 1008 Size:    16 [unused]
+//   float4 g_IrradianceSHCoef[7];      // Offset:  384 Size:   112 [unused]
+//   float4 g_WorldLightmapParameters;  // Offset: 1392 Size:    16 [unused]
+//   float4 g_WorldLightmapUVParameters;// Offset: 1408 Size:    16 [unused]
+//   float4 g_WorldLightmapColor;       // Offset: 1424 Size:    16 [unused]
+//   float4 g_WorldAOParameters;        // Offset: 1440 Size:    16 [unused]
+//   float4 g_WorldAORangeParameters;   // Offset: 1456 Size:    16 [unused]
+//   float4 g_DebugValue;               // Offset: 2368 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   
+//   struct
+//   {
+//       
+//       float2 m_VPOS;                 // Offset: 2384
+//       float3 m_ShadowResult;         // Offset: 2400
+//       float3 m_WorldPosition;        // Offset: 2416
+//       float3 m_WorldNormal;          // Offset: 2432
+//       float3 m_WorldEyeVector;       // Offset: 2448
+//       float3 m_NormalizedWorldEyeVector;// Offset: 2464
+//       float m_SpecularPower;         // Offset: 2476
+//
+//   } c;                               // Offset: 2384 Size:    96 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// g_TextureAlbedoDX11_MSAA          texture  float4       2dMS8    0        1
+// g_TextureNormalDX11_MSAA          texture  float4       2dMS8    1        1
+// g_TextureDepthDX11_MSAA           texture   float       2dMS8    2        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xy w
+// TEXCOORD                 1   xyz         2     NONE   float       
+// TEXCOORD                 2   xyz         3     NONE   float       
+// SV_SampleIndex           0   x           4   SAMPLE    uint   x   
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+// Pixel Shader runs at sample frequency
+//
+ps_4_1
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[130], immediateIndexed
+dcl_resource_texture2dms(8) (float,float,float,float) t0
+dcl_resource_texture2dms(8) (float,float,float,float) t1
+dcl_resource_texture2dms(8) (float,float,float,float) t2
+dcl_input_ps linear v1.xyw
+dcl_input_ps_sgv v4.x, sampleIndex
+dcl_output o0.xyzw
+dcl_temps 5
+div r0.xy, v1.xyxx, v1.wwww
+add r0.zw, r0.xxxy, cb0[101].xxxy
+mad r0.xy, r0.xyxx, cb0[84].xyxx, cb0[84].zwzz
+mul r0.zw, r0.zzzw, cb0[100].xxxy
+resinfo_uint r1.xy, l(0), t2.xyzw
+utof r1.xy, r1.xyxx
+mul r1.xy, r0.xyxx, r1.xyxx
+ftoi r1.xy, r1.xyxx
+mov r1.zw, l(0,0,0,0)
+ldms r1.x, r1.xyzw, t2.xyzw, v4.x
+mad r1.y, cb0[100].z, r1.x, cb0[100].w
+mad r1.x, cb0[101].z, r1.x, cb0[101].w
+div r1.z, r1.y, r1.x
+mul r1.xy, r0.zwzz, r1.zzzz
+mov r1.w, l(1.000000)
+dp4 r2.x, r1.xyzw, cb0[102].xyzw
+dp4 r2.y, r1.xyzw, cb0[103].xyzw
+dp4 r2.z, r1.xyzw, cb0[104].xyzw
+add r1.xyz, -r2.xyzx, cb0[128].xyzx
+add r2.xyz, -r2.xyzx, cb0[12].xyzx
+dp3 r0.z, r1.xyzx, r1.xyzx
+sqrt r0.w, r0.z
+rsq r0.z, r0.z
+mul r1.xyz, r0.zzzz, r1.xyzx
+add r0.z, -r0.w, cb0[128].w
+mul_sat r0.z, r0.z, cb0[129].w
+mad r0.w, r0.z, r0.z, l(-0.001000)
+mul r0.z, r0.z, r0.z
+lt r0.w, r0.w, l(0.000000)
+discard_nz r0.w
+dp3 r0.w, r2.xyzx, r2.xyzx
+rsq r0.w, r0.w
+mad r2.xyz, r2.xyzx, r0.wwww, r1.xyzx
+dp3 r0.w, r2.xyzx, r2.xyzx
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, r2.xyzx
+dp3_sat r0.w, r2.xyzx, r1.xyzx
+add r0.w, -r0.w, l(1.000000)
+mul r1.w, r0.w, r0.w
+mul r1.w, r1.w, r1.w
+mul r0.w, r0.w, r1.w
+resinfo_uint r3.xy, l(0), t0.xyzw
+utof r3.xy, r3.xyxx
+mul r3.xy, r0.xyxx, r3.xyxx
+ftoi r3.xy, r3.xyxx
+mov r3.zw, l(0,0,0,0)
+ldms r3.xyzw, r3.xyzw, t0.xyzw, v4.x
+add r1.w, -r3.w, l(1.000000)
+mad r0.w, r1.w, r0.w, r3.w
+mul r3.xyz, r3.xyzx, cb0[129].xyzx
+mul r3.xyz, r0.zzzz, r3.xyzx
+resinfo_uint r4.xy, l(0), t1.xyzw
+utof r4.xy, r4.xyxx
+mul r0.xy, r0.xyxx, r4.xyxx
+ftoi r4.xy, r0.xyxx
+mov r4.zw, l(0,0,0,0)
+ldms r4.xyzw, r4.xyzw, t1.xyzw, v4.x
+add r4.xyz, r4.xyzx, l(-0.500000, -0.500000, -0.500000, 0.000000)
+add r4.xyz, r4.xyzx, r4.xyzx
+dp3_sat r0.x, r4.xyzx, r2.xyzx
+dp3_sat r0.y, r1.xyzx, r4.xyzx
+log r0.x, r0.x
+mul r1.x, r4.w, l(12.000000)
+mov o0.w, r4.w
+exp r1.x, r1.x
+mul r0.x, r0.x, r1.x
+add r1.x, r1.x, l(2.000000)
+exp r0.x, r0.x
+mul r0.x, r0.x, r0.y
+mul r0.x, r1.x, r0.x
+mul r0.x, r0.x, l(0.125000)
+mul r1.xyz, r0.xxxx, cb0[129].xyzx
+mul r1.xyz, r0.zzzz, r1.xyzx
+mul r0.xzw, r0.wwww, r1.xxyz
+mad o0.xyz, r3.xyzx, r0.yyyy, r0.xzwx
+ret 
+// Approximately 76 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

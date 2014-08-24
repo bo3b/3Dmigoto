@@ -1,0 +1,936 @@
+//Light produced by windows inside houses
+cbuffer _Globals : register(b0)
+{
+  float4 g_ReverseProjectionParams : packoffset(c100);
+  float4 g_ReverseProjectionParams2 : packoffset(c101);
+  float4 g_ViewportScaleOffset : packoffset(c84);
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+  } g_DeferredOmniLight : packoffset(c128);
+
+
+  struct
+  {
+    float3 m_Direction;
+    float3 m_Color;
+  } g_DeferredDirectLight : packoffset(c130);
+
+
+  struct
+  {
+    float4 m_PositionFar;
+    float4 m_ColorFade;
+    float3 m_Direction;
+    float4 m_ConeAngles;
+  } g_DeferredSpotLight : packoffset(c132);
+
+  float4 g_DeferredProjWorldToLight[4] : packoffset(c136);
+  float4 g_DeferredProjShadowParams : packoffset(c140);
+  float4 g_DeferredBackgroundColor : packoffset(c141);
+  float4 g_hdrWindowParams : packoffset(c147);
+  float4x4 g_ViewToWorld : packoffset(c102);
+  float4x4 g_WorldToView : packoffset(c106);
+  float4 g_EyePosition : packoffset(c12);
+  float4 g_DepthParams : packoffset(c110);
+  float4 g_LinearFogColor : packoffset(c16);
+  float4 g_LinearFogParams : packoffset(c17);
+  float4 g_DepthValueParams : packoffset(c18);
+  float4x4 g_WorldViewProj : packoffset(c0);
+  float4 g_EyeXAxis : packoffset(c8);
+  float4 g_EyeYAxis : packoffset(c9);
+  float4 g_EyeZAxis : packoffset(c10);
+  float4 g_EyeWorldPosition_Resolve : packoffset(c11);
+
+  struct
+  {
+    float4 m_CloudUVScaleOffset;
+    float4 m_CloudShadowsParams;
+    float4 m_ShadowMapSize;
+    float4 m_OffsetsY;
+    float4 m_OffsetsX;
+    float4 m_ScalesY;
+    float4 m_ScalesX;
+    float4 m_OffsetsZ;
+    float4 m_ScalesZ;
+    float4 m_OffsetsW;
+    float4 m_ScalesW;
+    float4 m_NoiseScale;
+    float4 m_NearFar;
+    float4 m_FadeParams;
+    float4 m_CascadesRangesMax;
+    float4 m_ShadowContrast;
+    float4x4 m_WorldToLightProj;
+  } g_Shadows : packoffset(c64);
+
+
+  struct
+  {
+    float4 m_UseHQFiltering;
+  } g_ShadowPerfOptions : packoffset(c63);
+
+  float4 g_IrradianceSHCoef[7] : packoffset(c24);
+  float4 g_WorldLightmapParameters : packoffset(c87);
+  float4 g_WorldLightmapUVParameters : packoffset(c88);
+  float4 g_WorldLightmapColor : packoffset(c89);
+  float4 g_WorldAOParameters : packoffset(c90);
+  float4 g_WorldAORangeParameters : packoffset(c91);
+  float4 g_DebugValue : packoffset(c148) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+
+  struct
+  {
+    float2 m_VPOS;
+    float3 m_ShadowResult;
+    float3 m_WorldPosition;
+    float3 m_WorldNormal;
+    float3 m_WorldEyeVector;
+    float3 m_NormalizedWorldEyeVector;
+    float m_SpecularPower;
+  } c : packoffset(c149);
+
+}
+SamplerState g_ShadowNoiseSampler_s : register(s6);
+SamplerState g_ProjectorShadow_s : register(s11);
+Texture2DMS<float4,8> g_TextureAlbedoDX11_MSAA : register(t0);
+Texture2DMS<float4,8> g_TextureNormalDX11_MSAA : register(t1);
+Texture2DMS<float,8> g_TextureDepthDX11_MSAA : register(t2);
+Texture2D<float4> g_ShadowNoiseSampler : register(t6);
+Texture2D<float4> g_ProjectorShadow : register(t11);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  uint v4 : SV_SampleIndex0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask;
+  r0.xy = v1.xy / v1.ww;
+  r0.zw = r0.xy * g_ViewportScaleOffset.xy + g_ViewportScaleOffset.zw;
+  g_TextureDepthDX11_MSAA.GetDimensions(r1.x, r1.y, bitmask.x);
+  r1.xy = r1.xy;
+  r1.xy = r1.xy * r0.zw;
+  r1.xy = (int2)r1.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r1.x = g_TextureDepthDX11_MSAA.Load(r1.xyz,v4.x).x;
+  r1.y = g_ReverseProjectionParams.z * r1.x + g_ReverseProjectionParams.w;
+  r1.x = g_ReverseProjectionParams2.z * r1.x + g_ReverseProjectionParams2.w;
+  r1.z = r1.y / r1.x;
+  r0.xy = g_ReverseProjectionParams2.xy + r0.xy;
+  r0.xy = g_ReverseProjectionParams.xy * r0.xy;
+  r1.xy = r0.xy * r1.zz;
+  r1.w = 1.000000000e+000;
+  
+  //Stereo Shift
+float4 stereoParams = StereoParams.Load(0);
+r1.x +=  stereoParams.x * (-r1.z - stereoParams.y) * g_ReverseProjectionParams.x;
+  
+  r2.x = dot(r1.xyzw, g_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_ViewToWorld._m02_m12_m22_m32);
+  g_TextureNormalDX11_MSAA.GetDimensions(r0.x, r0.y, bitmask.x);
+  r0.xy = r0.xy;
+  r0.xy = r0.zw * r0.xy;
+  r1.xy = (int2)r0.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r1.xyzw = g_TextureNormalDX11_MSAA.Load(r1.xyz,v4.x).xyzw;
+  g_TextureAlbedoDX11_MSAA.GetDimensions(r0.x, r0.y, bitmask.x);
+  r0.xy = r0.xy;
+  r0.xy = r0.zw * r0.xy;
+  r0.xy = (int2)r0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.xyzw = g_TextureAlbedoDX11_MSAA.Load(r0.xyz,v4.x).xyzw;
+  r1.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r1.xyz;
+  r1.xyz = r1.xyz + r1.xyz;
+  r3.xyz = g_EyePosition.xyz + -r2.xyz;
+  r2.w = dot(r3.xyz, r3.xyz);
+  r2.w = rsqrt(r2.w);
+  r3.w = 1.200000000e+001 * r1.w;
+  r3.w = exp2(r3.w);
+  r4.xyz = g_DeferredSpotLight.m_PositionFar.xyz + -r2.xyz;
+  r4.w = dot(r4.xyz, r4.xyz);
+  r5.x = sqrt(r4.w);
+  r5.x = g_DeferredSpotLight.m_PositionFar.w + -r5.x;
+  r5.x = saturate(g_DeferredSpotLight.m_ColorFade.w * r5.x);
+  r5.x = r5.x * r5.x;
+  r4.w = rsqrt(r4.w);
+  r4.xyz = r4.xyz * r4.www;
+  r4.w = dot(r4.xyz, g_DeferredSpotLight.m_Direction.xyz);
+  r4.w = g_DeferredSpotLight.m_ConeAngles.x + -r4.w;
+  r4.w = saturate(g_DeferredSpotLight.m_ConeAngles.y * r4.w);
+  r5.y = r5.x * r4.w;
+  r2.xyz = r1.xyz * g_DeferredProjShadowParams.yyy + r2.xyz;
+  r6.xyzw = g_DeferredProjWorldToLight[1].xyzw * r2.yyyy;
+  r6.xyzw = r2.xxxx * g_DeferredProjWorldToLight[0].xyzw + r6.xyzw;
+  r6.xyzw = r2.zzzz * g_DeferredProjWorldToLight[2].xyzw + r6.xyzw;
+  r6.xyzw = g_DeferredProjWorldToLight[3].xyzw + r6.xyzw;
+  r2.xyz = saturate(r6.xyz / r6.www);
+  r5.z = g_Shadows.m_ShadowMapSize.w / g_Shadows.m_ShadowMapSize.z;
+  r5.z = round(r5.z);
+  r2.x = r2.x / r5.z;
+  r6.x = g_DeferredProjShadowParams.x + r2.x;
+  r6.y = 1.000000000e+000 + -r2.y;
+  r2.x = saturate(g_DeferredProjShadowParams.z + r2.z);
+  r2.yz = g_Shadows.m_ShadowMapSize.zw * float2(5.000000e-001,5.000000e-001) + r6.xy;
+  r5.zw = float2(1.562500e-002,1.562500e-002) * v0.xy;
+  r5.zw = g_ShadowNoiseSampler.Sample(g_ShadowNoiseSampler_s, r5.zw).xy;
+  r5.zw = float2(-5.000000e-001,-5.000000e-001) + r5.wz;
+  r5.zw = g_Shadows.m_NoiseScale.xx * r5.zw;
+  r6.x = 0.000000e+000 != g_ShadowPerfOptions.m_UseHQFiltering.x;
+  if (r6.x != 0) {
+  r6.xy = float2(5.417546e-001,-2.868566e-001) * r5.zz;
+  r6.xy = r5.ww * float2(-1.351325e+000,-1.481807e+000) + -r6.xy;
+  r6.z = dot(r5.wz, float2(5.417546e-001,-1.351325e+000));
+  r6.xz = r6.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.x = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.xz, 0.000000000e+000).x;
+  r6.x = r6.x < r2.x;
+  r6.x = r6.x ? 0.000000000e+000 : 1.000000000e+000;
+  r6.w = dot(r5.zw, float2(-1.481807e+000,-2.868566e-001));
+  r6.yz = r6.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(1.044665e+000,-3.782768e-001) * r5.zz;
+  r7.xy = r5.ww * float2(8.528456e-002,-5.675442e-001) + -r6.yz;
+  r7.z = dot(r5.wz, float2(1.044665e+000,8.528456e-002));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(-3.782768e-001,-5.675442e-001));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(4.234782e-001,1.544053e+000) * r5.zz;
+  r7.xy = r5.ww * float2(9.909384e-001,-1.166829e+000) + -r6.yz;
+  r7.z = dot(r5.wz, float2(4.234782e-001,9.909384e-001));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(1.544053e+000,-1.166829e+000));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(1.927134e+000,1.555011e+000) * r5.zz;
+  r7.xy = r5.ww * float2(-3.878524e-002,9.570452e-001) + -r6.yz;
+  r7.z = dot(r5.wz, float2(1.927134e+000,-3.878524e-002));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(1.555011e+000,9.570452e-001));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(-1.772642e+000,-9.153258e-001) * r5.zz;
+  r7.xy = r5.ww * float2(-3.506712e-002,8.353496e-001) + -r6.yz;
+  r7.z = dot(r5.wz, float2(-1.772642e+000,-3.506712e-002));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(-9.153258e-001,8.353496e-001));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(-1.392839e+000,-1.669042e-001) * r5.zz;
+  r7.xy = r5.ww * float2(-9.032954e-001,2.045898e-001) + -r6.yz;
+  r7.z = dot(r5.wz, float2(-1.392839e+000,-9.032954e-001));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(-1.669042e-001,2.045898e-001));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(9.123722e-001,-4.192604e-002) * r5.zz;
+  r7.xy = r5.ww * float2(1.637838e+000,1.650586e+000) + -r6.yz;
+  r7.z = dot(r5.wz, float2(9.123722e-001,1.637838e+000));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(-4.192604e-002,1.650586e+000));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.yz = float2(-9.770750e-001,-1.745379e+000) * r5.zz;
+  r7.xy = r5.ww * float2(1.710768e+000,9.450100e-001) + -r6.yz;
+  r7.z = dot(r5.wz, float2(-9.770750e-001,1.710768e+000));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r7.w = dot(r5.wz, float2(-1.745379e+000,9.450100e-001));
+  r6.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r6.x = r6.x + r6.y;
+  r6.x = 6.250000000e-002 * r6.x;
+  } else {
+  r6.yz = float2(5.417546e-001,-2.868566e-001) * r5.zz;
+  r7.xy = r5.ww * float2(-1.351325e+000,-1.481807e+000) + -r6.yz;
+  r7.z = dot(r5.wz, float2(5.417546e-001,-1.351325e+000));
+  r6.yz = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.yz, 0.000000000e+000).x;
+  r6.y = r6.y < r2.x;
+  r6.y = r6.y ? 0.000000000e+000 : 1.000000000e+000;
+  r7.w = dot(r5.zw, float2(-1.481807e+000,-2.868566e-001));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(1.044665e+000,-3.782768e-001) * r5.zz;
+  r7.xy = r5.ww * float2(8.528456e-002,-5.675442e-001) + -r6.zw;
+  r7.z = dot(r5.wz, float2(1.044665e+000,8.528456e-002));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(-3.782768e-001,-5.675442e-001));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(4.234782e-001,1.544053e+000) * r5.zz;
+  r7.xy = r5.ww * float2(9.909384e-001,-1.166829e+000) + -r6.zw;
+  r7.z = dot(r5.wz, float2(4.234782e-001,9.909384e-001));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(1.544053e+000,-1.166829e+000));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(1.927134e+000,1.555011e+000) * r5.zz;
+  r7.xy = r5.ww * float2(-3.878524e-002,9.570452e-001) + -r6.zw;
+  r7.z = dot(r5.wz, float2(1.927134e+000,-3.878524e-002));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(1.555011e+000,9.570452e-001));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(-1.772642e+000,-9.153258e-001) * r5.zz;
+  r7.xy = r5.ww * float2(-3.506712e-002,8.353496e-001) + -r6.zw;
+  r7.z = dot(r5.wz, float2(-1.772642e+000,-3.506712e-002));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(-9.153258e-001,8.353496e-001));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(-1.392839e+000,-1.669042e-001) * r5.zz;
+  r7.xy = r5.ww * float2(-9.032954e-001,2.045898e-001) + -r6.zw;
+  r7.z = dot(r5.wz, float2(-1.392839e+000,-9.032954e-001));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(-1.669042e-001,2.045898e-001));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(9.123722e-001,-4.192604e-002) * r5.zz;
+  r7.xy = r5.ww * float2(1.637838e+000,1.650586e+000) + -r6.zw;
+  r7.z = dot(r5.wz, float2(9.123722e-001,1.637838e+000));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(-4.192604e-002,1.650586e+000));
+  r6.zw = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r6.zw = float2(-9.770750e-001,-1.745379e+000) * r5.zz;
+  r7.xy = r5.ww * float2(1.710768e+000,9.450100e-001) + -r6.zw;
+  r7.z = dot(r5.wz, float2(-9.770750e-001,1.710768e+000));
+  r6.zw = r7.xz * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r6.z = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r6.zw, 0.000000000e+000).x;
+  r6.z = r6.z < r2.x;
+  r6.z = r6.z ? 0.000000000e+000 : 1.000000000e+000;
+  r6.y = r6.y + r6.z;
+  r7.w = dot(r5.wz, float2(-1.745379e+000,9.450100e-001));
+  r2.yz = r7.yw * g_Shadows.m_ShadowMapSize.zw + r2.yz;
+  r2.y = g_ProjectorShadow.SampleLevel(g_ProjectorShadow_s, r2.yz, 0.000000000e+000).x;
+  r2.x = r2.y < r2.x;
+  r2.x = r2.x ? 0.000000000e+000 : 1.000000000e+000;
+  r2.x = r6.y + r2.x;
+  r6.x = 6.250000000e-002 * r2.x;
+  }
+  r2.x = r5.x * r4.w + -1.000000047e-003;
+  r2.x = r2.x < 0.000000000e+000;
+  if (r2.x != 0) discard;
+  r2.x = saturate(dot(r4.xyz, r1.xyz));
+  r0.xyz = g_DeferredSpotLight.m_ColorFade.xyz * r0.xyz;
+  r0.xyz = r0.xyz * r5.yyy;
+  r0.xyz = r0.xyz * r6.xxx;
+  r2.yzw = r3.xyz * r2.www + r4.xyz;
+  r3.x = dot(r2.yzw, r2.yzw);
+  r3.x = rsqrt(r3.x);
+  r2.yzw = r3.xxx * r2.yzw;
+  r1.x = saturate(dot(r1.xyz, r2.yzw));
+  r1.x = log2(r1.x);
+  r1.x = r3.w * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = r2.x * r1.x;
+  r1.y = 2.000000000e+000 + r3.w;
+  r1.x = r1.x * r1.y;
+  r1.x = 1.250000000e-001 * r1.x;
+  r1.xyz = g_DeferredSpotLight.m_ColorFade.xyz * r1.xxx;
+  r1.xyz = r1.xyz * r5.yyy;
+  r1.xyz = r1.xyz * r6.xxx;
+  r2.y = saturate(dot(r2.yzw, r4.xyz));
+  r2.y = 1.000000000e+000 + -r2.y;
+  r2.z = r2.y * r2.y;
+  r2.z = r2.z * r2.z;
+  r2.y = r2.y * r2.z;
+  r2.z = 1.000000000e+000 + -r0.w;
+  r0.w = r2.z * r2.y + r0.w;
+  r1.xyz = r1.xyz * r0.www;
+  o0.xyz = r0.xyz * r2.xxx + r1.xyz;
+  o0.w = r1.w;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float4 g_ReverseProjectionParams;  // Offset: 1600 Size:    16
+//   float4 g_ReverseProjectionParams2; // Offset: 1616 Size:    16
+//   float4 g_ViewportScaleOffset;      // Offset: 1344 Size:    16
+//   
+//   struct
+//   {
+//       
+//       float4 m_PositionFar;          // Offset: 2048
+//       float4 m_ColorFade;            // Offset: 2064
+//
+//   } g_DeferredOmniLight;             // Offset: 2048 Size:    32 [unused]
+//   
+//   struct
+//   {
+//       
+//       float3 m_Direction;            // Offset: 2080
+//       float3 m_Color;                // Offset: 2096
+//
+//   } g_DeferredDirectLight;           // Offset: 2080 Size:    28 [unused]
+//   
+//   struct
+//   {
+//       
+//       float4 m_PositionFar;          // Offset: 2112
+//       float4 m_ColorFade;            // Offset: 2128
+//       float3 m_Direction;            // Offset: 2144
+//       float4 m_ConeAngles;           // Offset: 2160
+//
+//   } g_DeferredSpotLight;             // Offset: 2112 Size:    64
+//   float4 g_DeferredProjWorldToLight[4];// Offset: 2176 Size:    64
+//   float4 g_DeferredProjShadowParams; // Offset: 2240 Size:    16
+//   float4 g_DeferredBackgroundColor;  // Offset: 2256 Size:    16 [unused]
+//   float4 g_hdrWindowParams;          // Offset: 2352 Size:    16 [unused]
+//   float4x4 g_ViewToWorld;            // Offset: 1632 Size:    64
+//   float4x4 g_WorldToView;            // Offset: 1696 Size:    64 [unused]
+//   float4 g_EyePosition;              // Offset:  192 Size:    16
+//   float4 g_DepthParams;              // Offset: 1760 Size:    16 [unused]
+//   float4 g_LinearFogColor;           // Offset:  256 Size:    16 [unused]
+//   float4 g_LinearFogParams;          // Offset:  272 Size:    16 [unused]
+//   float4 g_DepthValueParams;         // Offset:  288 Size:    16 [unused]
+//   float4x4 g_WorldViewProj;          // Offset:    0 Size:    64 [unused]
+//   float4 g_EyeXAxis;                 // Offset:  128 Size:    16 [unused]
+//   float4 g_EyeYAxis;                 // Offset:  144 Size:    16 [unused]
+//   float4 g_EyeZAxis;                 // Offset:  160 Size:    16 [unused]
+//   float4 g_EyeWorldPosition_Resolve; // Offset:  176 Size:    16 [unused]
+//   
+//   struct
+//   {
+//       
+//       float4 m_CloudUVScaleOffset;   // Offset: 1024
+//       float4 m_CloudShadowsParams;   // Offset: 1040
+//       float4 m_ShadowMapSize;        // Offset: 1056
+//       float4 m_OffsetsY;             // Offset: 1072
+//       float4 m_OffsetsX;             // Offset: 1088
+//       float4 m_ScalesY;              // Offset: 1104
+//       float4 m_ScalesX;              // Offset: 1120
+//       float4 m_OffsetsZ;             // Offset: 1136
+//       float4 m_ScalesZ;              // Offset: 1152
+//       float4 m_OffsetsW;             // Offset: 1168
+//       float4 m_ScalesW;              // Offset: 1184
+//       float4 m_NoiseScale;           // Offset: 1200
+//       float4 m_NearFar;              // Offset: 1216
+//       float4 m_FadeParams;           // Offset: 1232
+//       float4 m_CascadesRangesMax;    // Offset: 1248
+//       float4 m_ShadowContrast;       // Offset: 1264
+//       float4x4 m_WorldToLightProj;   // Offset: 1280
+//
+//   } g_Shadows;                       // Offset: 1024 Size:   320
+//   
+//   struct
+//   {
+//       
+//       float4 m_UseHQFiltering;       // Offset: 1008
+//
+//   } g_ShadowPerfOptions;             // Offset: 1008 Size:    16
+//   float4 g_IrradianceSHCoef[7];      // Offset:  384 Size:   112 [unused]
+//   float4 g_WorldLightmapParameters;  // Offset: 1392 Size:    16 [unused]
+//   float4 g_WorldLightmapUVParameters;// Offset: 1408 Size:    16 [unused]
+//   float4 g_WorldLightmapColor;       // Offset: 1424 Size:    16 [unused]
+//   float4 g_WorldAOParameters;        // Offset: 1440 Size:    16 [unused]
+//   float4 g_WorldAORangeParameters;   // Offset: 1456 Size:    16 [unused]
+//   float4 g_DebugValue;               // Offset: 2368 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   
+//   struct
+//   {
+//       
+//       float2 m_VPOS;                 // Offset: 2384
+//       float3 m_ShadowResult;         // Offset: 2400
+//       float3 m_WorldPosition;        // Offset: 2416
+//       float3 m_WorldNormal;          // Offset: 2432
+//       float3 m_WorldEyeVector;       // Offset: 2448
+//       float3 m_NormalizedWorldEyeVector;// Offset: 2464
+//       float m_SpecularPower;         // Offset: 2476
+//
+//   } c;                               // Offset: 2384 Size:    96 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// g_ShadowNoiseSampler              sampler      NA          NA    6        1
+// g_ProjectorShadow                 sampler      NA          NA   11        1
+// g_TextureAlbedoDX11_MSAA          texture  float4       2dMS8    0        1
+// g_TextureNormalDX11_MSAA          texture  float4       2dMS8    1        1
+// g_TextureDepthDX11_MSAA           texture   float       2dMS8    2        1
+// g_ShadowNoiseSampler              texture  float4          2d    6        1
+// g_ProjectorShadow                 texture  float4          2d   11        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xyzw        1     NONE   float   xy w
+// TEXCOORD                 1   xyz         2     NONE   float       
+// TEXCOORD                 2   xyz         3     NONE   float       
+// SV_SampleIndex           0   x           4   SAMPLE    uint   x   
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+// Pixel Shader runs at sample frequency
+//
+ps_4_1
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[141], immediateIndexed
+dcl_sampler s6, mode_default
+dcl_sampler s11, mode_default
+dcl_resource_texture2dms(8) (float,float,float,float) t0
+dcl_resource_texture2dms(8) (float,float,float,float) t1
+dcl_resource_texture2dms(8) (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t11
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xyw
+dcl_input_ps_sgv v4.x, sampleIndex
+dcl_output o0.xyzw
+dcl_temps 8
+div r0.xy, v1.xyxx, v1.wwww
+mad r0.zw, r0.xxxy, cb0[84].xxxy, cb0[84].zzzw
+resinfo_uint r1.xy, l(0), t2.xyzw
+utof r1.xy, r1.xyxx
+mul r1.xy, r0.zwzz, r1.xyxx
+ftoi r1.xy, r1.xyxx
+mov r1.zw, l(0,0,0,0)
+ldms r1.x, r1.xyzw, t2.xyzw, v4.x
+mad r1.y, cb0[100].z, r1.x, cb0[100].w
+mad r1.x, cb0[101].z, r1.x, cb0[101].w
+div r1.z, r1.y, r1.x
+add r0.xy, r0.xyxx, cb0[101].xyxx
+mul r0.xy, r0.xyxx, cb0[100].xyxx
+mul r1.xy, r1.zzzz, r0.xyxx
+mov r1.w, l(1.000000)
+dp4 r2.x, r1.xyzw, cb0[102].xyzw
+dp4 r2.y, r1.xyzw, cb0[103].xyzw
+dp4 r2.z, r1.xyzw, cb0[104].xyzw
+resinfo_uint r0.xy, l(0), t1.xyzw
+utof r0.xy, r0.xyxx
+mul r0.xy, r0.xyxx, r0.zwzz
+ftoi r1.xy, r0.xyxx
+mov r1.zw, l(0,0,0,0)
+ldms r1.xyzw, r1.xyzw, t1.xyzw, v4.x
+resinfo_uint r0.xy, l(0), t0.xyzw
+utof r0.xy, r0.xyxx
+mul r0.xy, r0.xyxx, r0.zwzz
+ftoi r0.xy, r0.xyxx
+mov r0.zw, l(0,0,0,0)
+ldms r0.xyzw, r0.xyzw, t0.xyzw, v4.x
+add r1.xyz, r1.xyzx, l(-0.500000, -0.500000, -0.500000, 0.000000)
+add r1.xyz, r1.xyzx, r1.xyzx
+add r3.xyz, -r2.xyzx, cb0[12].xyzx
+dp3 r2.w, r3.xyzx, r3.xyzx
+rsq r2.w, r2.w
+mul r3.w, r1.w, l(12.000000)
+exp r3.w, r3.w
+add r4.xyz, -r2.xyzx, cb0[132].xyzx
+dp3 r4.w, r4.xyzx, r4.xyzx
+sqrt r5.x, r4.w
+add r5.x, -r5.x, cb0[132].w
+mul_sat r5.x, r5.x, cb0[133].w
+mul r5.x, r5.x, r5.x
+rsq r4.w, r4.w
+mul r4.xyz, r4.wwww, r4.xyzx
+dp3 r4.w, r4.xyzx, cb0[134].xyzx
+add r4.w, -r4.w, cb0[135].x
+mul_sat r4.w, r4.w, cb0[135].y
+mul r5.y, r4.w, r5.x
+mad r2.xyz, r1.xyzx, cb0[140].yyyy, r2.xyzx
+mul r6.xyzw, r2.yyyy, cb0[137].xyzw
+mad r6.xyzw, r2.xxxx, cb0[136].xyzw, r6.xyzw
+mad r6.xyzw, r2.zzzz, cb0[138].xyzw, r6.xyzw
+add r6.xyzw, r6.xyzw, cb0[139].xyzw
+div_sat r2.xyz, r6.xyzx, r6.wwww
+div r5.z, cb0[66].w, cb0[66].z
+round_z r5.z, r5.z
+div r2.x, r2.x, r5.z
+add r6.x, r2.x, cb0[140].x
+add r6.y, -r2.y, l(1.000000)
+add_sat r2.x, r2.z, cb0[140].z
+mad r2.yz, cb0[66].zzwz, l(0.000000, 0.500000, 0.500000, 0.000000), r6.xxyx
+mul r5.zw, v0.xxxy, l(0.000000, 0.000000, 0.015625, 0.015625)
+sample r5.zw, r5.zwzz, t6.zwxy, s6
+add r5.zw, r5.wwwz, l(0.000000, 0.000000, -0.500000, -0.500000)
+mul r5.zw, r5.zzzw, cb0[75].xxxx
+ne r6.x, l(0.000000, 0.000000, 0.000000, 0.000000), cb0[63].x
+if_nz r6.x
+  mul r6.xy, r5.zzzz, l(0.541755, -0.286857, 0.000000, 0.000000)
+  mad r6.xy, r5.wwww, l(-1.351325, -1.481807, 0.000000, 0.000000), -r6.xyxx
+  dp2 r6.z, r5.wzww, l(0.541755, -1.351325, 0.000000, 0.000000)
+  mad r6.xz, r6.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.x, r6.xzxx, t11.xyzw, s11, l(0.000000)
+  lt r6.x, r6.x, r2.x
+  movc r6.x, r6.x, l(0), l(1.000000)
+  dp2 r6.w, r5.zwzz, l(-1.481807, -0.286857, 0.000000, 0.000000)
+  mad r6.yz, r6.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, 1.044665, -0.378277, 0.000000)
+  mad r7.xy, r5.wwww, l(0.085285, -0.567544, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(1.044665, 0.085285, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(-0.378277, -0.567544, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, 0.423478, 1.544053, 0.000000)
+  mad r7.xy, r5.wwww, l(0.990938, -1.166829, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(0.423478, 0.990938, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(1.544053, -1.166829, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, 1.927134, 1.555011, 0.000000)
+  mad r7.xy, r5.wwww, l(-0.038785, 0.957045, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(1.927134, -0.038785, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(1.555011, 0.957045, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, -1.772642, -0.915326, 0.000000)
+  mad r7.xy, r5.wwww, l(-0.035067, 0.835350, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(-1.772642, -0.035067, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(-0.915326, 0.835350, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, -1.392839, -0.166904, 0.000000)
+  mad r7.xy, r5.wwww, l(-0.903295, 0.204590, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(-1.392839, -0.903295, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(-0.166904, 0.204590, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, 0.912372, -0.041926, 0.000000)
+  mad r7.xy, r5.wwww, l(1.637838, 1.650586, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(0.912372, 1.637838, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(-0.041926, 1.650586, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.yz, r5.zzzz, l(0.000000, -0.977075, -1.745379, 0.000000)
+  mad r7.xy, r5.wwww, l(1.710768, 0.945010, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(-0.977075, 1.710768, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  dp2 r7.w, r5.wzww, l(-1.745379, 0.945010, 0.000000, 0.000000)
+  mad r6.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  add r6.x, r6.y, r6.x
+  mul r6.x, r6.x, l(0.062500)
+else 
+  mul r6.yz, r5.zzzz, l(0.000000, 0.541755, -0.286857, 0.000000)
+  mad r7.xy, r5.wwww, l(-1.351325, -1.481807, 0.000000, 0.000000), -r6.yzyy
+  dp2 r7.z, r5.wzww, l(0.541755, -1.351325, 0.000000, 0.000000)
+  mad r6.yz, r7.xxzx, cb0[66].zzwz, r2.yyzy
+  sample_l r6.y, r6.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r6.y, r6.y, r2.x
+  movc r6.y, r6.y, l(0), l(1.000000)
+  dp2 r7.w, r5.zwzz, l(-1.481807, -0.286857, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, 1.044665, -0.378277)
+  mad r7.xy, r5.wwww, l(0.085285, -0.567544, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(1.044665, 0.085285, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(-0.378277, -0.567544, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, 0.423478, 1.544053)
+  mad r7.xy, r5.wwww, l(0.990938, -1.166829, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(0.423478, 0.990938, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(1.544053, -1.166829, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, 1.927134, 1.555011)
+  mad r7.xy, r5.wwww, l(-0.038785, 0.957045, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(1.927134, -0.038785, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(1.555011, 0.957045, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, -1.772642, -0.915326)
+  mad r7.xy, r5.wwww, l(-0.035067, 0.835350, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(-1.772642, -0.035067, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(-0.915326, 0.835350, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, -1.392839, -0.166904)
+  mad r7.xy, r5.wwww, l(-0.903295, 0.204590, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(-1.392839, -0.903295, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(-0.166904, 0.204590, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, 0.912372, -0.041926)
+  mad r7.xy, r5.wwww, l(1.637838, 1.650586, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(0.912372, 1.637838, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(-0.041926, 1.650586, 0.000000, 0.000000)
+  mad r6.zw, r7.yyyw, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  mul r6.zw, r5.zzzz, l(0.000000, 0.000000, -0.977075, -1.745379)
+  mad r7.xy, r5.wwww, l(1.710768, 0.945010, 0.000000, 0.000000), -r6.zwzz
+  dp2 r7.z, r5.wzww, l(-0.977075, 1.710768, 0.000000, 0.000000)
+  mad r6.zw, r7.xxxz, cb0[66].zzzw, r2.yyyz
+  sample_l r6.z, r6.zwzz, t11.yzxw, s11, l(0.000000)
+  lt r6.z, r6.z, r2.x
+  movc r6.z, r6.z, l(0), l(1.000000)
+  add r6.y, r6.z, r6.y
+  dp2 r7.w, r5.wzww, l(-1.745379, 0.945010, 0.000000, 0.000000)
+  mad r2.yz, r7.yywy, cb0[66].zzwz, r2.yyzy
+  sample_l r2.y, r2.yzyy, t11.yxzw, s11, l(0.000000)
+  lt r2.x, r2.y, r2.x
+  movc r2.x, r2.x, l(0), l(1.000000)
+  add r2.x, r2.x, r6.y
+  mul r6.x, r2.x, l(0.062500)
+endif 
+mad r2.x, r5.x, r4.w, l(-0.001000)
+lt r2.x, r2.x, l(0.000000)
+discard_nz r2.x
+dp3_sat r2.x, r4.xyzx, r1.xyzx
+mul r0.xyz, r0.xyzx, cb0[133].xyzx
+mul r0.xyz, r5.yyyy, r0.xyzx
+mul r0.xyz, r6.xxxx, r0.xyzx
+mad r2.yzw, r3.xxyz, r2.wwww, r4.xxyz
+dp3 r3.x, r2.yzwy, r2.yzwy
+rsq r3.x, r3.x
+mul r2.yzw, r2.yyzw, r3.xxxx
+dp3_sat r1.x, r1.xyzx, r2.yzwy
+log r1.x, r1.x
+mul r1.x, r1.x, r3.w
+exp r1.x, r1.x
+mul r1.x, r1.x, r2.x
+add r1.y, r3.w, l(2.000000)
+mul r1.x, r1.y, r1.x
+mul r1.x, r1.x, l(0.125000)
+mul r1.xyz, r1.xxxx, cb0[133].xyzx
+mul r1.xyz, r5.yyyy, r1.xyzx
+mul r1.xyz, r6.xxxx, r1.xyzx
+dp3_sat r2.y, r2.yzwy, r4.xyzx
+add r2.y, -r2.y, l(1.000000)
+mul r2.z, r2.y, r2.y
+mul r2.z, r2.z, r2.z
+mul r2.y, r2.z, r2.y
+add r2.z, -r0.w, l(1.000000)
+mad r0.w, r2.z, r2.y, r0.w
+mul r1.xyz, r0.wwww, r1.xyzx
+mad o0.xyz, r0.xyzx, r2.xxxx, r1.xyzx
+mov o0.w, r1.w
+ret 
+// Approximately 327 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
