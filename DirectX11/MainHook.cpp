@@ -102,7 +102,7 @@ static void RemoveHooks()
 
 // Only do this hooking for known bad scenario of Watch Dogs.  
 // Might need to expand this, but no point in doing this for other targets until we know.
-#if WATCH_DOGS
+#if WATCH_DOGS || _DEBUG
 BOOL WINAPI DllMain(
 	_In_  HINSTANCE hinstDLL,
 	_In_  DWORD fdwReason,
