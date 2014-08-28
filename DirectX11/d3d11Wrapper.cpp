@@ -187,7 +187,7 @@ struct Globals
 	ShaderSeparationMap mShaderSeparationMap;
 	ShaderIterationMap mShaderIterationMap;					// Only for separation changes, not shaders.
 	ShaderIndexBufferFilter mShaderIndexBufferFilter;
-	
+
 	// Texture override.
 	TextureStereoMap mTextureStereoMap;
 	TextureTypeMap mTextureTypeMap;
@@ -230,22 +230,22 @@ struct Globals
 		take_screenshot(false),
 		reload_fixes(false),
 		next_pixelshader(false),
-		prev_pixelshader(false), 
+		prev_pixelshader(false),
 		mark_pixelshader(false),
-		next_vertexshader(false), 
+		next_vertexshader(false),
 		prev_vertexshader(false),
 		mark_vertexshader(false),
-		next_indexbuffer(false), 
-		prev_indexbuffer(false), 
+		next_indexbuffer(false),
+		prev_indexbuffer(false),
 		mark_indexbuffer(false),
-		next_rendertarget(false), 
-		prev_rendertarget(false), 
+		next_rendertarget(false),
+		prev_rendertarget(false),
 		mark_rendertarget(false),
 
-		EXPORT_ALL(false), 
-		EXPORT_HLSL(false), 
-		EXPORT_BINARY(false), 
-		EXPORT_FIXED(false), 
+		EXPORT_ALL(false),
+		EXPORT_HLSL(false),
+		EXPORT_BINARY(false),
+		EXPORT_FIXED(false),
 		CACHE_SHADERS(false),
 		PRELOAD_SHADERS(false),
 		FIX_SV_Position(false),
@@ -256,7 +256,7 @@ struct Globals
 		gTuneValue1(1.0f), gTuneValue2(1.0f), gTuneValue3(1.0f), gTuneValue4(1.0f),
 		gTuneStep(0.001f),
 
-		iniParams {-1.0f, -1.0f, -1.0f, -1.0f},
+		iniParams{ -1.0f, -1.0f, -1.0f, -1.0f },
 
 		ENABLE_CRITICAL_SECTION(false),
 		SCREEN_WIDTH(-1),
@@ -271,7 +271,7 @@ struct Globals
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0)
 	{
-		mSwapChainInfo.width = -1; 
+		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;
 	}
 };
@@ -296,7 +296,7 @@ static char *readStringParameter(wchar_t *val)
 {
 	static char buf[MAX_PATH];
 	wcstombs(buf, val, MAX_PATH);
-	char *end = buf + strlen(buf) - 1; while (end > buf && isspace(*end)) end--; *(end+1) = 0;
+	char *end = buf + strlen(buf) - 1; while (end > buf && isspace(*end)) end--; *(end + 1) = 0;
 	char *start = buf; while (isspace(*start)) start++;
 	return start;
 }
@@ -313,11 +313,11 @@ void InitializeDLL()
 		int read;
 
 		gInitialized = true;
-		
+
 		GetModuleFileName(0, iniFile, MAX_PATH);
 		wcsrchr(iniFile, L'\\')[1] = 0;
 		wcscat(iniFile, L"d3dx.ini");
-		
+
 		// Log all settings that are _enabled_, in order, 
 		// so that there is no question what settings we are using.
 
@@ -331,13 +331,13 @@ void InitializeDLL()
 
 		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
-				
+
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
 		int unbuffered = -1;
 		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
 		{
-			 unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+			unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
 		}
 
 		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
@@ -347,7 +347,7 @@ void InitializeDLL()
 			DWORD one = 0x01;
 			affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
 		}
-		
+
 		// If specified in Logging section, wait for Attach to Debugger.
 		bool waitfordebugger = false;
 		if (GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile))
@@ -358,7 +358,7 @@ void InitializeDLL()
 				Sleep(250);
 			} while (!IsDebuggerPresent());
 		}
-			
+
 		if (LogFile)
 		{
 			fprintf(LogFile, "[Logging]\n");
@@ -578,7 +578,7 @@ void InitializeDLL()
 		if (read) G->MatrixPos_ID1 = readStringParameter(setting);
 		read = GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH, iniFile);
 		if (read) G->MatrixPos_MUL1 = readStringParameter(setting);
-		
+
 		// Todo: finish logging all these settings
 		if (LogFile) fprintf(LogFile, "  ... missing automatic ini section\n");
 
@@ -599,7 +599,7 @@ void InitializeDLL()
 
 		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, iniFile);
 		// Todo: This deviceNr is in wrong section- actually found in NVapi dll
-		
+
 		// Actions
 		GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, iniFile);
 		end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
@@ -607,10 +607,10 @@ void InitializeDLL()
 		end = InputAction[1] + wcslen(InputAction[1]) - 1; while (end > InputAction[1] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, iniFile);
 		end = InputAction[2] + wcslen(InputAction[2]) - 1; while (end > InputAction[2] && iswspace(*end)) end--; *(end + 1) = 0;
-		
+
 		GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, iniFile);
 		end = InputAction[3] + wcslen(InputAction[3]) - 1; while (end > InputAction[3] && iswspace(*end)) end--; *(end + 1) = 0;
-		
+
 		GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, iniFile);
 		end = InputAction[4] + wcslen(InputAction[4]) - 1; while (end > InputAction[4] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, iniFile);
@@ -624,19 +624,19 @@ void InitializeDLL()
 		end = InputAction[8] + wcslen(InputAction[8]) - 1; while (end > InputAction[8] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, iniFile);
 		end = InputAction[9] + wcslen(InputAction[9]) - 1; while (end > InputAction[9] && iswspace(*end)) end--; *(end + 1) = 0;
-		
+
 		GetPrivateProfileString(L"Hunting", L"tune1_up", 0, InputAction[10], MAX_PATH, iniFile);
 		end = InputAction[10] + wcslen(InputAction[10]) - 1; while (end > InputAction[10] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune1_down", 0, InputAction[11], MAX_PATH, iniFile);
 		end = InputAction[11] + wcslen(InputAction[11]) - 1; while (end > InputAction[11] && iswspace(*end)) end--; *(end + 1) = 0;
-		
+
 		GetPrivateProfileString(L"Hunting", L"next_rendertarget", 0, InputAction[12], MAX_PATH, iniFile);
 		end = InputAction[12] + wcslen(InputAction[12]) - 1; while (end > InputAction[12] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"previous_rendertarget", 0, InputAction[13], MAX_PATH, iniFile);
 		end = InputAction[13] + wcslen(InputAction[13]) - 1; while (end > InputAction[13] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"mark_rendertarget", 0, InputAction[14], MAX_PATH, iniFile);
 		end = InputAction[14] + wcslen(InputAction[14]) - 1; while (end > InputAction[14] && iswspace(*end)) end--; *(end + 1) = 0;
-		
+
 		GetPrivateProfileString(L"Hunting", L"tune2_up", 0, InputAction[15], MAX_PATH, iniFile);
 		end = InputAction[15] + wcslen(InputAction[15]) - 1; while (end > InputAction[15] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune2_down", 0, InputAction[16], MAX_PATH, iniFile);
@@ -649,7 +649,7 @@ void InitializeDLL()
 		end = InputAction[19] + wcslen(InputAction[19]) - 1; while (end > InputAction[19] && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"Hunting", L"tune4_down", 0, InputAction[20], MAX_PATH, iniFile);
 		end = InputAction[20] + wcslen(InputAction[20]) - 1; while (end > InputAction[20] && iswspace(*end)) end--; *(end + 1) = 0;
-		
+
 		GetPrivateProfileString(L"Hunting", L"reload_fixes", 0, InputAction[21], MAX_PATH, iniFile);
 		end = InputAction[21] + wcslen(InputAction[21]) - 1; while (end > InputAction[21] && iswspace(*end)) end--; *(end + 1) = 0;
 		// XInput
@@ -860,184 +860,184 @@ struct D3D11BridgeData
 	char *HLSLFileName;
 };
 
-int WINAPI D3DKMTCloseAdapter() 
-{ 
+int WINAPI D3DKMTCloseAdapter()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTCloseAdapter called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTDestroyAllocation() 
-{ 
+int WINAPI D3DKMTDestroyAllocation()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTDestroyAllocation called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTDestroyContext() 
-{ 
+int WINAPI D3DKMTDestroyContext()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTDestroyContext called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTDestroyDevice() 
-{ 
+int WINAPI D3DKMTDestroyDevice()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTDestroyDevice called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTDestroySynchronizationObject() 
-{ 
+int WINAPI D3DKMTDestroySynchronizationObject()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTDestroySynchronizationObject called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSetDisplayPrivateDriverFormat() 
-{ 
+int WINAPI D3DKMTSetDisplayPrivateDriverFormat()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSetDisplayPrivateDriverFormat called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSignalSynchronizationObject() 
-{ 
+int WINAPI D3DKMTSignalSynchronizationObject()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSignalSynchronizationObject called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTUnlock() 
-{ 
+int WINAPI D3DKMTUnlock()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTUnlock called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTWaitForSynchronizationObject() 
-{ 
+int WINAPI D3DKMTWaitForSynchronizationObject()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTWaitForSynchronizationObject called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTCreateAllocation() 
-{ 
+int WINAPI D3DKMTCreateAllocation()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTCreateAllocation called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTCreateContext() 
-{ 
+int WINAPI D3DKMTCreateContext()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTCreateContext called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTCreateDevice() 
-{ 
+int WINAPI D3DKMTCreateDevice()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTCreateDevice called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTCreateSynchronizationObject() 
-{ 
+int WINAPI D3DKMTCreateSynchronizationObject()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTCreateSynchronizationObject called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTEscape() 
-{ 
+int WINAPI D3DKMTEscape()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTEscape called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTGetContextSchedulingPriority() 
-{ 
+int WINAPI D3DKMTGetContextSchedulingPriority()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTGetContextSchedulingPriority called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTGetDisplayModeList() 
-{ 
+int WINAPI D3DKMTGetDisplayModeList()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTGetDisplayModeList called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTGetMultisampleMethodList() 
-{ 
+int WINAPI D3DKMTGetMultisampleMethodList()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTGetMultisampleMethodList called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTGetRuntimeData() 
-{ 
+int WINAPI D3DKMTGetRuntimeData()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTGetRuntimeData called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTGetSharedPrimaryHandle() 
-{ 
+int WINAPI D3DKMTGetSharedPrimaryHandle()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTGetRuntimeData called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTLock() 
-{ 
+int WINAPI D3DKMTLock()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTLock called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTPresent() 
-{ 
+int WINAPI D3DKMTPresent()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTPresent called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTQueryAllocationResidency() 
-{ 
+int WINAPI D3DKMTQueryAllocationResidency()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTQueryAllocationResidency called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTRender() 
-{ 
+int WINAPI D3DKMTRender()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTRender called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSetAllocationPriority() 
-{ 
+int WINAPI D3DKMTSetAllocationPriority()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSetAllocationPriority called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSetContextSchedulingPriority() 
-{ 
+int WINAPI D3DKMTSetContextSchedulingPriority()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSetContextSchedulingPriority called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSetDisplayMode() 
-{ 
+int WINAPI D3DKMTSetDisplayMode()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSetDisplayMode called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSetGammaRamp() 
-{ 
+int WINAPI D3DKMTSetGammaRamp()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSetGammaRamp called.\n");
 
-	return 0; 
+	return 0;
 }
-int WINAPI D3DKMTSetVidPnSourceOwner() 
-{ 
+int WINAPI D3DKMTSetVidPnSourceOwner()
+{
 	if (LogFile && LogDebug) fprintf(LogFile, "D3DKMTSetVidPnSourceOwner called.\n");
 
-	return 0; 
+	return 0;
 }
 
 typedef ULONG 	D3DKMT_HANDLE;
 typedef int		KMTQUERYADAPTERINFOTYPE;
 
-typedef struct _D3DKMT_QUERYADAPTERINFO 
+typedef struct _D3DKMT_QUERYADAPTERINFO
 {
-  D3DKMT_HANDLE           hAdapter;
-  KMTQUERYADAPTERINFOTYPE Type;
-  VOID                    *pPrivateDriverData;
-  UINT                    PrivateDriverDataSize;
+	D3DKMT_HANDLE           hAdapter;
+	KMTQUERYADAPTERINFOTYPE Type;
+	VOID                    *pPrivateDriverData;
+	UINT                    PrivateDriverDataSize;
 } D3DKMT_QUERYADAPTERINFO;
 
 typedef void *D3D10DDI_HRTADAPTER;
@@ -1046,17 +1046,17 @@ typedef void D3DDDI_ADAPTERCALLBACKS;
 typedef void D3D10DDI_ADAPTERFUNCS;
 typedef void D3D10_2DDI_ADAPTERFUNCS;
 
-typedef struct D3D10DDIARG_OPENADAPTER 
+typedef struct D3D10DDIARG_OPENADAPTER
 {
-  D3D10DDI_HRTADAPTER           hRTAdapter;
-  D3D10DDI_HADAPTER             hAdapter;
-  UINT                          Interface;
-  UINT                          Version;
-  const D3DDDI_ADAPTERCALLBACKS *pAdapterCallbacks;
-  union {
-    D3D10DDI_ADAPTERFUNCS   *pAdapterFuncs;
-    D3D10_2DDI_ADAPTERFUNCS *pAdapterFuncs_2;
-  };
+	D3D10DDI_HRTADAPTER           hRTAdapter;
+	D3D10DDI_HADAPTER             hAdapter;
+	UINT                          Interface;
+	UINT                          Version;
+	const D3DDDI_ADAPTERCALLBACKS *pAdapterCallbacks;
+	union {
+		D3D10DDI_ADAPTERFUNCS   *pAdapterFuncs;
+		D3D10_2DDI_ADAPTERFUNCS *pAdapterFuncs_2;
+	};
 } D3D10DDIARG_OPENADAPTER;
 
 static HMODULE hD3D11 = 0;
@@ -1094,7 +1094,7 @@ typedef HRESULT(WINAPI *tD3D11CreateDevice)(
 	D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevel,
 	D3D11Base::ID3D11DeviceContext **ppImmediateContext);
 static tD3D11CreateDevice _D3D11CreateDevice;
-typedef HRESULT (WINAPI *tD3D11CreateDeviceAndSwapChain)(
+typedef HRESULT(WINAPI *tD3D11CreateDeviceAndSwapChain)(
 	D3D11Base::IDXGIAdapter *pAdapter,
 	D3D11Base::D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
@@ -1175,45 +1175,45 @@ static void InitD311()
 		return;
 	}
 
-// This doesn't work for Watch Dogs, as this runtime is later than their load of
-// the System32 version of nvapi64.dll.  That means the nvapi wrapper is not loaded and
-// thus no call overrides worked.
+	// This doesn't work for Watch Dogs, as this runtime is later than their load of
+	// the System32 version of nvapi64.dll.  That means the nvapi wrapper is not loaded and
+	// thus no call overrides worked.
 
-//	// Load the NVAPI dll manually, so that we can get our local version for sure.
-//	// Some games and drivers seem to bypass the local directory and go straight to system version.
-//	WCHAR dllName[MAX_PATH];
-//#if _WIN64
-//	wcscat(dllName, L"nvapi64.dll");
-//#else
-//	wcscat(dllName, L"nvapi.dll");
-//#endif
-//	HMODULE nvdll = LoadLibrary(dllName);
-//	if (LogFile)
-//	{
-//		if (nvdll == NULL)
-//			fwprintf(LogFile, L"LoadLibrary on %s, failed: %d\n", dllName, GetLastError());
-//		else
-//		{
-//			WCHAR path[MAX_PATH];
-//			GetModuleFileName(nvdll, path, sizeof(path));
-//			fwprintf(LogFile, L"LoadLibrary success on %s\n", path);
-//		}
-//	}
+	//	// Load the NVAPI dll manually, so that we can get our local version for sure.
+	//	// Some games and drivers seem to bypass the local directory and go straight to system version.
+	//	WCHAR dllName[MAX_PATH];
+	//#if _WIN64
+	//	wcscat(dllName, L"nvapi64.dll");
+	//#else
+	//	wcscat(dllName, L"nvapi.dll");
+	//#endif
+	//	HMODULE nvdll = LoadLibrary(dllName);
+	//	if (LogFile)
+	//	{
+	//		if (nvdll == NULL)
+	//			fwprintf(LogFile, L"LoadLibrary on %s, failed: %d\n", dllName, GetLastError());
+	//		else
+	//		{
+	//			WCHAR path[MAX_PATH];
+	//			GetModuleFileName(nvdll, path, sizeof(path));
+	//			fwprintf(LogFile, L"LoadLibrary success on %s\n", path);
+	//		}
+	//	}
 
 
 	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
-	_OpenAdapter10 = (tOpenAdapter10) GetProcAddress(hD3D11, "OpenAdapter10");
-	_OpenAdapter10_2 = (tOpenAdapter10_2) GetProcAddress(hD3D11, "OpenAdapter10_2");
-	_D3D11CoreCreateDevice = (tD3D11CoreCreateDevice) GetProcAddress(hD3D11, "D3D11CoreCreateDevice");
-	_D3D11CoreCreateLayeredDevice = (tD3D11CoreCreateLayeredDevice) GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice");
-	_D3D11CoreGetLayeredDeviceSize = (tD3D11CoreGetLayeredDeviceSize) GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize");
-	_D3D11CoreRegisterLayers = (tD3D11CoreRegisterLayers) GetProcAddress(hD3D11, "D3D11CoreRegisterLayers");
-	_D3D11CreateDevice = (tD3D11CreateDevice) GetProcAddress(hD3D11, "D3D11CreateDevice");
-	_D3D11CreateDeviceAndSwapChain = (tD3D11CreateDeviceAndSwapChain) GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
-	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState) GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
-	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc) GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
-	_D3DKMTOpenResource = (tD3DKMTOpenResource) GetProcAddress(hD3D11, "D3DKMTOpenResource");
-	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo) GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
+	_OpenAdapter10 = (tOpenAdapter10)GetProcAddress(hD3D11, "OpenAdapter10");
+	_OpenAdapter10_2 = (tOpenAdapter10_2)GetProcAddress(hD3D11, "OpenAdapter10_2");
+	_D3D11CoreCreateDevice = (tD3D11CoreCreateDevice)GetProcAddress(hD3D11, "D3D11CoreCreateDevice");
+	_D3D11CoreCreateLayeredDevice = (tD3D11CoreCreateLayeredDevice)GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice");
+	_D3D11CoreGetLayeredDeviceSize = (tD3D11CoreGetLayeredDeviceSize)GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize");
+	_D3D11CoreRegisterLayers = (tD3D11CoreRegisterLayers)GetProcAddress(hD3D11, "D3D11CoreRegisterLayers");
+	_D3D11CreateDevice = (tD3D11CreateDevice)GetProcAddress(hD3D11, "D3D11CreateDevice");
+	_D3D11CreateDeviceAndSwapChain = (tD3D11CreateDeviceAndSwapChain)GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
+	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState)GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
+	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc)GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
+	_D3DKMTOpenResource = (tD3DKMTOpenResource)GetProcAddress(hD3D11, "D3DKMTOpenResource");
+	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
 
 	// Getting the nvapi to load early, at load time, before any execution is the goal.
 	// This call to the dll api makes the linker force a dependency on that dll, and thus
@@ -1226,7 +1226,7 @@ static void InitD311()
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
 	InitD311();
-    if (LogFile) fprintf(LogFile, "D3DKMTQueryAdapterInfo called.\n");
+	if (LogFile) fprintf(LogFile, "D3DKMTQueryAdapterInfo called.\n");
 
 	return (*_D3DKMTQueryAdapterInfo)(info);
 }
@@ -1234,7 +1234,7 @@ int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
-    if (LogFile) fprintf(LogFile, "OpenAdapter10 called.\n");
+	if (LogFile) fprintf(LogFile, "OpenAdapter10 called.\n");
 
 	return (*_OpenAdapter10)(adapter);
 }
@@ -1242,7 +1242,7 @@ int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
-    if (LogFile) fprintf(LogFile, "OpenAdapter10_2 called.\n");
+	if (LogFile) fprintf(LogFile, "OpenAdapter10_2 called.\n");
 
 	return (*_OpenAdapter10_2)(adapter);
 }
@@ -1250,7 +1250,7 @@ int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
 {
 	InitD311();
-    if (LogFile) fprintf(LogFile, "D3D11CoreCreateDevice called.\n");
+	if (LogFile) fprintf(LogFile, "D3D11CoreCreateDevice called.\n");
 
 	return (*_D3D11CoreCreateDevice)(a, b, c, lpModuleName, e, f, g, h, i, j);
 }
@@ -1259,7 +1259,7 @@ int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, i
 HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
 {
 	InitD311();
-    if (LogFile) fprintf(LogFile, "D3D11CoreCreateLayeredDevice called.\n");
+	if (LogFile) fprintf(LogFile, "D3D11CoreCreateLayeredDevice called.\n");
 
 	return (*_D3D11CoreCreateLayeredDevice)(unknown0, unknown1, unknown2, riid, ppvObj);
 }
@@ -1270,16 +1270,16 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 	// Call from D3DCompiler (magic number from there) ?
 	if ((intptr_t)unknown0 == 0x77aa128b)
 	{
-	    if (LogFile) fprintf(LogFile, "Shader code info from D3DCompiler_xx.dll wrapper received:\n");
-	
+		if (LogFile) fprintf(LogFile, "Shader code info from D3DCompiler_xx.dll wrapper received:\n");
+
 		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
-	    if (LogFile) fprintf(LogFile, "  Bytecode hash = %08lx%08lx\n", (UINT32)(data->BinaryHash >> 32), (UINT32)data->BinaryHash);
-	    if (LogFile) fprintf(LogFile, "  Filename = %s\n", data->HLSLFileName);
-	
+		if (LogFile) fprintf(LogFile, "  Bytecode hash = %08lx%08lx\n", (UINT32)(data->BinaryHash >> 32), (UINT32)data->BinaryHash);
+		if (LogFile) fprintf(LogFile, "  Filename = %s\n", data->HLSLFileName);
+
 		G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
 		return 0xaa77125b;
 	}
-    if (LogFile) fprintf(LogFile, "D3D11CoreGetLayeredDeviceSize called.\n");
+	if (LogFile) fprintf(LogFile, "D3D11CoreGetLayeredDeviceSize called.\n");
 
 	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
 }
@@ -1287,7 +1287,7 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
-    if (LogFile) fprintf(LogFile, "D3D11CoreRegisterLayers called.\n");
+	if (LogFile) fprintf(LogFile, "D3D11CoreRegisterLayers called.\n");
 
 	return (*_D3D11CoreRegisterLayers)(unknown0, unknown1);
 }
@@ -1303,7 +1303,7 @@ static void EnableStereo()
 	{
 		D3D11Base::NvAPI_ShortString errorMessage;
 		NvAPI_GetErrorMessage(status, errorMessage);
-		if (LogFile) fprintf(LogFile, "  stereo init failed: %s\n", errorMessage);		
+		if (LogFile) fprintf(LogFile, "  stereo init failed: %s\n", errorMessage);
 	}
 	else
 	{
@@ -1311,24 +1311,24 @@ static void EnableStereo()
 		D3D11Base::NvU8 isStereoEnabled;
 		status = D3D11Base::NvAPI_Stereo_IsEnabled(&isStereoEnabled);
 		// Stereo status report an error
-		if ( status != D3D11Base::NVAPI_OK)
+		if (status != D3D11Base::NVAPI_OK)
 		{
 			// GeForce Stereoscopic 3D driver is not installed on the system
-			if (LogFile) fprintf(LogFile, "  stereo init failed: no stereo driver detected.\n");		
+			if (LogFile) fprintf(LogFile, "  stereo init failed: no stereo driver detected.\n");
 		}
 		// Stereo is available but not enabled, let's enable it
-		else if(D3D11Base::NVAPI_OK == status && !isStereoEnabled)
+		else if (D3D11Base::NVAPI_OK == status && !isStereoEnabled)
 		{
-			if (LogFile) fprintf(LogFile, "  stereo available and disabled. Enabling stereo.\n");		
+			if (LogFile) fprintf(LogFile, "  stereo available and disabled. Enabling stereo.\n");
 			status = D3D11Base::NvAPI_Stereo_Enable();
 			if (status != D3D11Base::NVAPI_OK)
-				if (LogFile) fprintf(LogFile, "    enabling stereo failed.\n");		
+				if (LogFile) fprintf(LogFile, "    enabling stereo failed.\n");
 		}
 
 		if (G->gCreateStereoProfile)
 		{
-			if (LogFile) fprintf(LogFile, "  enabling registry profile.\n");		
-		
+			if (LogFile) fprintf(LogFile, "  enabling registry profile.\n");
+
 			D3D11Base::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3D11Base::NVAPI_STEREO_DEFAULT_REGISTRY_PROFILE);
 		}
 	}
@@ -1340,7 +1340,7 @@ static void EnableStereo()
 
 DWORD castStrLen(const char* string)
 {
-	return (DWORD) strlen(string);
+	return (DWORD)strlen(string);
 }
 
 static void DumpUsage()
@@ -1372,9 +1372,9 @@ static void DumpUsage()
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
 				if (k->second)
 				{
-					UINT64 id = G->mRenderTargets[k->second];
-					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				UINT64 id = G->mRenderTargets[k->second];
+				sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			const char *FOOTER = "</VertexShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
@@ -1382,7 +1382,7 @@ static void DumpUsage()
 		for (i = G->mPixelShaderInfo.begin(); i != G->mPixelShaderInfo.end(); ++i)
 		{
 			sprintf(buf, "<PixelShader hash=\"%016llx\">\n"
-						 "  <ParentVertexShaders>", i->first);
+				"  <ParentVertexShaders>", i->first);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			std::set<UINT64>::iterator j;
 			for (j = i->second.PartnerShader.begin(); j != i->second.PartnerShader.end(); ++j)
@@ -1396,9 +1396,9 @@ static void DumpUsage()
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
 				if (k->second)
 				{
-					UINT64 id = G->mRenderTargets[k->second];
-					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				UINT64 id = G->mRenderTargets[k->second];
+				sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			std::vector<void *>::iterator m;
 			int pos = 0;
@@ -1418,7 +1418,7 @@ static void DumpUsage()
 	else
 	{
 		if (LogFile) fprintf(LogFile, "Error dumping ShaderUsage.txt\n");
-	
+
 	}
 }
 
@@ -1427,7 +1427,7 @@ static void DumpUsage()
 // Convenience class to avoid passing wrong objects all of Blob type.
 // For strong type checking.  Already had a couple of bugs with generic ID3DBlobs.
 
-class AsmTextBlob: public D3D11Base::ID3DBlob
+class AsmTextBlob : public D3D11Base::ID3DBlob
 {
 };
 
@@ -1443,18 +1443,18 @@ class AsmTextBlob: public D3D11Base::ID3DBlob
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
 static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, wstring shaderType)
-	{
+{
 	wchar_t fullName[MAX_PATH];
 	FILE *fw;
 
 	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
-		{
+	{
 		if (LogFile) fwprintf(LogFile, L"    error storing marked shader, file already exists: %s\n", fullName);
 		fclose(fw);
 		return false;
-		}
+	}
 
 	_wfopen_s(&fw, fullName, L"wb");
 	if (!fw)
@@ -1466,7 +1466,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 	if (LogFile) fwprintf(LogFile, L"    storing patched shader to %s\n", fullName);
 
 	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
-	
+
 	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), fw);
 	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
@@ -1530,17 +1530,17 @@ static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disas
 
 static AsmTextBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
 {
-		D3D11Base::ID3DBlob *disassembly;
-	
+	D3D11Base::ID3DBlob *disassembly;
+
 	HRESULT ret = D3D11Base::D3DDisassemble(pCode->GetBufferPointer(), pCode->GetBufferSize(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0,
-			&disassembly);
+		&disassembly);
 	if (FAILED(ret))
-		{
+	{
 		if (LogFile) fprintf(LogFile, "    disassembly of original shader failed: \n");
 		return NULL;
 	}
-		
-	return (AsmTextBlob*) disassembly;
+
+	return (AsmTextBlob*)disassembly;
 }
 
 // Write the disassembly to the text file.
@@ -1548,12 +1548,12 @@ static AsmTextBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
 // Generally if the file is already there, the code we would write on Mark is the same anyway.
 
 static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTextBlob)
-		{
+{
 	wchar_t fullName[MAX_PATH];
 	FILE *f;
 
 	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
-	
+
 	// Check if the file already exists.
 	_wfopen_s(&f, fullName, L"rb");
 	if (f)
@@ -1573,7 +1573,7 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), f);
 	fclose(f);
 	if (LogFile) fwprintf(LogFile, L"    storing disassembly to %s\n", fullName);
-	
+
 	return true;
 }
 
@@ -1581,21 +1581,21 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 
 static string GetShaderModel(AsmTextBlob* asmTextBlob)
 {
-			// Read shader model. This is the first not commented line.
+	// Read shader model. This is the first not commented line.
 	char *pos = (char *)asmTextBlob->GetBufferPointer();
 	char *end = pos + asmTextBlob->GetBufferSize();
-			while (pos[0] == '/' && pos < end)
-			{
-				while (pos[0] != 0x0a && pos < end) pos++;
-				pos++;
-			}
-			// Extract model.
-			char *eol = pos;
-			while (eol[0] != 0x0a && pos < end) eol++;
-			string shaderModel(pos, eol);
+	while (pos[0] == '/' && pos < end)
+	{
+		while (pos[0] != 0x0a && pos < end) pos++;
+		pos++;
+	}
+	// Extract model.
+	char *eol = pos;
+	while (eol[0] != 0x0a && pos < end) eol++;
+	string shaderModel(pos, eol);
 
-			return shaderModel;
-		}
+	return shaderModel;
+}
 
 
 // Compile a new shader from  HLSL text input, and report on errors if any.
@@ -1614,7 +1614,7 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	if (f == INVALID_HANDLE_VALUE)
 	{
 		if (LogFile) fprintf(LogFile, "    ReloadShader shader not found: %ls\n", fullName);
-	
+
 		return true;
 	}
 
@@ -1624,12 +1624,12 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	DWORD readSize;
 	FILETIME curFileTime;
 
-	if (!ReadFile(f, srcData, srcDataSize, &readSize, 0) 
+	if (!ReadFile(f, srcData, srcDataSize, &readSize, 0)
 		|| !GetFileTime(f, NULL, NULL, &curFileTime)
 		|| srcDataSize != readSize)
 	{
 		if (LogFile) fprintf(LogFile, "    Error reading txt file.\n");
-	
+
 		return true;
 	}
 	CloseHandle(f);
@@ -1763,7 +1763,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	// Extract hash from first 16 characters of file name so we can look up details by hash
 	wstring ws = fileName;
 	hash = stoull(ws.substr(0, 16), NULL, 16);
-	
+
 	// Find the original shader bytecode in the mReloadedShaders Map. This map contains entries for all
 	// shaders from the ShaderFixes and ShaderCache folder, and can also include .bin files that were loaded directly.
 	// We include ShaderCache because that allows moving files into ShaderFixes as they are identified.
@@ -1784,53 +1784,53 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			// If we didn't find an original shader, that is OK, because it might not have been loaded yet.
 			// Just skip it in that case, because the new version will be loaded when it is used.
 			if (oldShader == NULL)
-	{
+			{
 				if (LogFile) fprintf(LogFile, "> failed to find original shader in mReloadedShaders: %ls\n", fileName);
 				continue;
-	}
+			}
 
-	// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
-	// Disassemble the binary to get that string.
-	if (shaderModel.compare("bin") == 0)
-	{
+			// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
+			// Disassemble the binary to get that string.
+			if (shaderModel.compare("bin") == 0)
+			{
 				AsmTextBlob* asmTextBlob = GetDisassembly(shaderCode);
 				if (!asmTextBlob)
 					return false;
 				shaderModel = GetShaderModel(asmTextBlob);
-		if (shaderModel.empty())
-			return false;
+				if (shaderModel.empty())
+					return false;
 				G->mReloadedShaders[oldShader].shaderModel = shaderModel;
-	}
+			}
 
 			// Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
-	D3D11Base::ID3DBlob *pShaderBytecode = NULL;
+			D3D11Base::ID3DBlob *pShaderBytecode = NULL;
 			if (!CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &timeStamp, &pShaderBytecode))
 				continue;
 
 			// If we compiled but got nothing, that's a fatal error we need to report.
-	if (pShaderBytecode == NULL)
-		return false;
+			if (pShaderBytecode == NULL)
+				return false;
 
 			// Update timestamp, since we have an edited file.
 			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
 
-	// This needs to call the real CreateVertexShader, not our wrapped version
-	if (shaderType.compare(L"vs") == 0)
-	{
-		hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+			// This needs to call the real CreateVertexShader, not our wrapped version
+			if (shaderType.compare(L"vs") == 0)
+			{
+				hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(D3D11Base::ID3D11VertexShader**) &replacement);
-	}
-	else if (shaderType.compare(L"ps") == 0)
-	{
-		hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+			}
+			else if (shaderType.compare(L"ps") == 0)
+			{
+				hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(D3D11Base::ID3D11PixelShader**) &replacement);
-	}
+			}
 			if (FAILED(hr))
-		return false;
+				return false;
 
 
 			// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
-	// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
+			// New shader is loaded on GPU and ready to be used as override in VSSetShader or PSSetShader
 			if (G->mReloadedShaders[oldShader].replacement != NULL)
 				G->mReloadedShaders[oldShader].replacement->Release();
 			G->mReloadedShaders[oldShader].replacement = replacement;
@@ -1933,7 +1933,7 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
 	if (LogFile && LogDebug) fprintf(LogFile, "Running frame actions.  Device: %p\n", device);
-	
+
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
@@ -2161,8 +2161,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 		{
 			fprintf(LogFile, "       vertex shader was compiled from source code %s\n", i->second);
 		}
-			// Copy marked shader to ShaderFixes
-			CopyToFixes(G->mSelectedPixelShader, device);
+		// Copy marked shader to ShaderFixes
+		CopyToFixes(G->mSelectedPixelShader, device);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (G->DumpUsage) DumpUsage();
 	}
@@ -2244,8 +2244,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 		{
 			fprintf(LogFile, "       shader was compiled from source code %s\n", i->second);
 		}
-			// Copy marked shader to ShaderFixes
-			CopyToFixes(G->mSelectedVertexShader, device);
+		// Copy marked shader to ShaderFixes
+		CopyToFixes(G->mSelectedVertexShader, device);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (G->DumpUsage) DumpUsage();
 	}
@@ -2383,18 +2383,18 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 
 	if (difftime(time(NULL), G->huntTime) > 60)
 	{
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mVisitedIndexBuffers.clear();
-	G->mVisitedVertexShaders.clear();
-	G->mVisitedPixelShaders.clear();
-	G->mSelectedPixelShader_IndexBuffer.clear();
-	G->mSelectedVertexShader_IndexBuffer.clear();
-	G->mSelectedIndexBuffer_PixelShader.clear();
-	G->mSelectedIndexBuffer_VertexShader.clear();
-	for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
-		i->second[0] = 0;
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		G->mVisitedIndexBuffers.clear();
+		G->mVisitedVertexShaders.clear();
+		G->mVisitedPixelShaders.clear();
+		G->mSelectedPixelShader_IndexBuffer.clear();
+		G->mSelectedVertexShader_IndexBuffer.clear();
+		G->mSelectedIndexBuffer_PixelShader.clear();
+		G->mSelectedIndexBuffer_VertexShader.clear();
+		for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
+			i->second[0] = 0;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
 }
 
 
@@ -2431,8 +2431,8 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IID m2 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
 	IID m3 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
-	if (riid.Data1 == m1.Data1 && riid.Data2 == m1.Data2 && riid.Data3 == m1.Data3 && 
-		riid.Data4[0] == m1.Data4[0] && riid.Data4[1] == m1.Data4[1] && riid.Data4[2] == m1.Data4[2] && riid.Data4[3] == m1.Data4[3] && 
+	if (riid.Data1 == m1.Data1 && riid.Data2 == m1.Data2 && riid.Data3 == m1.Data3 &&
+		riid.Data4[0] == m1.Data4[0] && riid.Data4[1] == m1.Data4[1] && riid.Data4[2] == m1.Data4[2] && riid.Data4[3] == m1.Data4[3] &&
 		riid.Data4[4] == m1.Data4[4] && riid.Data4[5] == m1.Data4[5] && riid.Data4[6] == m1.Data4[6] && riid.Data4[7] == m1.Data4[7])
 	{
 		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: requesting real ID3D11Device handle from %p\n", *ppvObj);
@@ -2447,63 +2447,63 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			*ppvObj = ((D3D11Wrapper::ID3D11Device *)*ppvObj)->m_pUnk;
 		}
 		if (LogFile) fprintf(LogFile, "  returning handle = %p\n", *ppvObj);
-		
+
 		return 0x13bc7e31;
 	}
-	else if (riid.Data1 == m2.Data1 && riid.Data2 == m2.Data2 && riid.Data3 == m2.Data3 && 
-		riid.Data4[0] == m2.Data4[0] && riid.Data4[1] == m2.Data4[1] && riid.Data4[2] == m2.Data4[2] && riid.Data4[3] == m2.Data4[3] && 
+	else if (riid.Data1 == m2.Data1 && riid.Data2 == m2.Data2 && riid.Data3 == m2.Data3 &&
+		riid.Data4[0] == m2.Data4[0] && riid.Data4[1] == m2.Data4[1] && riid.Data4[2] == m2.Data4[2] && riid.Data4[3] == m2.Data4[3] &&
 		riid.Data4[4] == m2.Data4[4] && riid.Data4[5] == m2.Data4[5] && riid.Data4[6] == m2.Data4[6] && riid.Data4[7] == m2.Data4[7])
 	{
 		if (LogFile && LogDebug) fprintf(LogFile, "Callback from dxgi.dll wrapper: notification %s received\n", typeid(*ppvObj).name());
-	
+
 		// This callback from DXGI has been disabled, because the DXGI interface does not get called in all games.
 		// We have switched to using a similar callback, but from DeviceContext so that we don't need DXGI.
 		//switch ((int) *ppvObj)
 		//{
 		//	case 0:
 		//	{
-				// Present received.
-				// Todo: this cast is wrong. The object is always IDXGIDevice2.
-//				ID3D11Device *device = (ID3D11Device *)this;
-//		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
-			//	break;
-			//}
+		// Present received.
+		// Todo: this cast is wrong. The object is always IDXGIDevice2.
+		//				ID3D11Device *device = (ID3D11Device *)this;
+		//		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
+		//	break;
+		//}
 		//}
 		return 0x13bc7e31;
 	}
-	else if (riid.Data1 == m3.Data1 && riid.Data2 == m3.Data2 && riid.Data3 == m3.Data3 && 
-		riid.Data4[0] == m3.Data4[0] && riid.Data4[1] == m3.Data4[1] && riid.Data4[2] == m3.Data4[2] && riid.Data4[3] == m3.Data4[3] && 
+	else if (riid.Data1 == m3.Data1 && riid.Data2 == m3.Data2 && riid.Data3 == m3.Data3 &&
+		riid.Data4[0] == m3.Data4[0] && riid.Data4[1] == m3.Data4[1] && riid.Data4[2] == m3.Data4[2] && riid.Data4[3] == m3.Data4[3] &&
 		riid.Data4[4] == m3.Data4[4] && riid.Data4[5] == m3.Data4[5] && riid.Data4[6] == m3.Data4[6] && riid.Data4[7] == m3.Data4[7])
 	{
 		SwapChainInfo *info = (SwapChainInfo *)*ppvObj;
-		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n", 
+		if (LogFile) fprintf(LogFile, "Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n",
 			info->width, info->height);
-		
+
 		G->mSwapChainInfo = *info;
 		return 0x13bc7e31;
 	}
 
-	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n", 
+	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 
-	bool d3d10device = riid.Data1 == 0x9b7e4c0f && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 && 
-		riid.Data4[1] == 0x9f && riid.Data4[2] == 0x4f && riid.Data4[3] == 0x27 && riid.Data4[4] == 0x04 && 
+	bool d3d10device = riid.Data1 == 0x9b7e4c0f && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 &&
+		riid.Data4[1] == 0x9f && riid.Data4[2] == 0x4f && riid.Data4[3] == 0x27 && riid.Data4[4] == 0x04 &&
 		riid.Data4[5] == 0xf6 && riid.Data4[6] == 0x89 && riid.Data4[7] == 0xf0;
-	bool d3d10multithread = riid.Data1 == 0x9b7e4e00 && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 && 
-		riid.Data4[1] == 0x9f && riid.Data4[2] == 0x4f && riid.Data4[3] == 0x27 && riid.Data4[4] == 0x04 && 
+	bool d3d10multithread = riid.Data1 == 0x9b7e4e00 && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 &&
+		riid.Data4[1] == 0x9f && riid.Data4[2] == 0x4f && riid.Data4[3] == 0x27 && riid.Data4[4] == 0x04 &&
 		riid.Data4[5] == 0xf6 && riid.Data4[6] == 0x89 && riid.Data4[7] == 0xf0;
-	bool dxgidevice = riid.Data1 == 0x54ec77fa && riid.Data2 == 0x1377 && riid.Data3 == 0x44e6 && riid.Data4[0] == 0x8c && 
-			 riid.Data4[1] == 0x32 && riid.Data4[2] == 0x88 && riid.Data4[3] == 0xfd && riid.Data4[4] == 0x5f && 
-			 riid.Data4[5] == 0x44 && riid.Data4[6] == 0xc8 && riid.Data4[7] == 0x4c;
-    bool dxgidevice1 = riid.Data1 == 0x77db970f && riid.Data2 == 0x6276 && riid.Data3 == 0x48ba && riid.Data4[0] == 0xba && 
-			 riid.Data4[1] == 0x28 && riid.Data4[2] == 0x07 && riid.Data4[3] == 0x01 && riid.Data4[4] == 0x43 && 
-			 riid.Data4[5] == 0xb4 && riid.Data4[6] == 0x39 && riid.Data4[7] == 0x2c;
-    bool dxgidevice2 = riid.Data1 == 0x05008617 && riid.Data2 == 0xfbfd && riid.Data3 == 0x4051 && riid.Data4[0] == 0xa7 && 
-			 riid.Data4[1] == 0x90 && riid.Data4[2] == 0x14 && riid.Data4[3] == 0x48 && riid.Data4[4] == 0x84 && 
-			 riid.Data4[5] == 0xb4 && riid.Data4[6] == 0xf6 && riid.Data4[7] == 0xa9;
-    bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
-			 riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
-			 riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
+	bool dxgidevice = riid.Data1 == 0x54ec77fa && riid.Data2 == 0x1377 && riid.Data3 == 0x44e6 && riid.Data4[0] == 0x8c &&
+		riid.Data4[1] == 0x32 && riid.Data4[2] == 0x88 && riid.Data4[3] == 0xfd && riid.Data4[4] == 0x5f &&
+		riid.Data4[5] == 0x44 && riid.Data4[6] == 0xc8 && riid.Data4[7] == 0x4c;
+	bool dxgidevice1 = riid.Data1 == 0x77db970f && riid.Data2 == 0x6276 && riid.Data3 == 0x48ba && riid.Data4[0] == 0xba &&
+		riid.Data4[1] == 0x28 && riid.Data4[2] == 0x07 && riid.Data4[3] == 0x01 && riid.Data4[4] == 0x43 &&
+		riid.Data4[5] == 0xb4 && riid.Data4[6] == 0x39 && riid.Data4[7] == 0x2c;
+	bool dxgidevice2 = riid.Data1 == 0x05008617 && riid.Data2 == 0xfbfd && riid.Data3 == 0x4051 && riid.Data4[0] == 0xa7 &&
+		riid.Data4[1] == 0x90 && riid.Data4[2] == 0x14 && riid.Data4[3] == 0x48 && riid.Data4[4] == 0x84 &&
+		riid.Data4[5] == 0xb4 && riid.Data4[6] == 0xf6 && riid.Data4[7] == 0xa9;
+	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e &&
+		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 &&
+		riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
 	if (LogFile && d3d10device) fprintf(LogFile, "  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = ID3D10Device\n");
 	if (LogFile && d3d10multithread) fprintf(LogFile, "  9b7e4e00-342c-4106-a19f-4f2704f689f0 = ID3D10Multithread\n");
 	if (LogFile && dxgidevice) fprintf(LogFile, "  54ec77fa-1377-44e6-8c32-88fd5f44c84c = IDXGIDevice\n");
@@ -2513,8 +2513,8 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 	if (LogFile && unknown1) fprintf(LogFile, "  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
 	if (unknown1)
 	{
-		*ppvObj = 0;
-		return E_OUTOFMEMORY;
+	*ppvObj = 0;
+	return E_OUTOFMEMORY;
 	}
 	*/
 
@@ -2571,20 +2571,20 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				if (LogFile) fprintf(LogFile, "  releasing received IDXGIDevice, handle=%p. Querying IDXGIDevice2 interface.\n", *ppvObj);
 
 				oldDevice->Release();
-				const IID IID_IGreet = {0x7A5E6E81,0x3DF8,0x11D3,{0x90,0x3D,0x00,0x10,0x5A,0xA4,0x5B,0xDC}};
-				const IID IDXGIDevice2 = {0x05008617,0xfbfd,0x4051,{0xa7,0x90,0x14,0x48,0x84,0xb4,0xf6,0xa9}};
+				const IID IID_IGreet = { 0x7A5E6E81, 0x3DF8, 0x11D3, { 0x90, 0x3D, 0x00, 0x10, 0x5A, 0xA4, 0x5B, 0xDC } };
+				const IID IDXGIDevice2 = { 0x05008617, 0xfbfd, 0x4051, { 0xa7, 0x90, 0x14, 0x48, 0x84, 0xb4, 0xf6, 0xa9 } };
 				hr = m_pUnk->QueryInterface(IDXGIDevice2, ppvObj);
 				if (hr != S_OK)
 				{
 					if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice2 interface: %x. Trying IDXGIDevice1.\n", hr);
 
-					const IID IDXGIDevice1 = {0x77db970f,0x6276,0x48ba,{0xba,0x28,0x07,0x01,0x43,0xb4,0x39,0x2c}};
+					const IID IDXGIDevice1 = { 0x77db970f, 0x6276, 0x48ba, { 0xba, 0x28, 0x07, 0x01, 0x43, 0xb4, 0x39, 0x2c } };
 					hr = m_pUnk->QueryInterface(IDXGIDevice1, ppvObj);
 					if (hr != S_OK)
 					{
 						if (LogFile) fprintf(LogFile, "  error querying IDXGIDevice1 interface: %x. Trying IDXGIDevice.\n", hr);
 
-						const IID IDXGIDevice = {0x54ec77fa,0x1377,0x44e6,{0x8c,0x32,0x88,0xfd,0x5f,0x44,0xc8,0x4c}};
+						const IID IDXGIDevice = { 0x54ec77fa, 0x1377, 0x44e6, { 0x8c, 0x32, 0x88, 0xfd, 0x5f, 0x44, 0xc8, 0x4c } };
 						hr = m_pUnk->QueryInterface(IDXGIDevice, ppvObj);
 						if (hr != S_OK)
 						{
@@ -2596,7 +2596,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 				}
 				D3D11Base::IDXGIDevice2 *origDevice = (D3D11Base::IDXGIDevice2 *)*ppvObj;
 				D3D11Wrapper::IDXGIDevice2 *wrapper = D3D11Wrapper::IDXGIDevice2::GetDirectDevice2(origDevice);
-				if(wrapper == NULL)
+				if (wrapper == NULL)
 				{
 					if (LogFile) fprintf(LogFile, "  error allocating IDXGIDevice2 wrapper.\n");
 
@@ -2604,7 +2604,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 					return E_OUTOFMEMORY;
 				}
 				*ppvObj = wrapper;
-				if (LogFile) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper, original device handle=%p. Wrapper counter=%d\n", 
+				if (LogFile) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper, original device handle=%p. Wrapper counter=%d\n",
 					origDevice, wrapper->m_ulRef);
 			}
 			// Check for DirectX10 cast.
@@ -2612,7 +2612,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			{
 				D3D11Base::ID3D10Device *origDevice = (D3D11Base::ID3D10Device *)*ppvObj;
 				D3D11Wrapper::ID3D10Device *wrapper = D3D11Wrapper::ID3D10Device::GetDirect3DDevice(origDevice);
-				if(wrapper == NULL)
+				if (wrapper == NULL)
 				{
 					if (LogFile) fprintf(LogFile, "  error allocating ID3D10Device wrapper.\n");
 
@@ -2626,7 +2626,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			{
 				D3D11Base::ID3D10Multithread *origDevice = (D3D11Base::ID3D10Multithread *)*ppvObj;
 				D3D11Wrapper::ID3D10Multithread *wrapper = D3D11Wrapper::ID3D10Multithread::GetDirect3DMultithread(origDevice);
-				if(wrapper == NULL)
+				if (wrapper == NULL)
 				{
 					if (LogFile) fprintf(LogFile, "  error allocating ID3D10Multithread wrapper.\n");
 
@@ -2650,7 +2650,7 @@ static D3D11Base::IDXGIAdapter *ReplaceAdapter(D3D11Base::IDXGIAdapter *wrapper)
 	if (LogFile) fprintf(LogFile, "  checking for adapter wrapper, handle = %p\n", wrapper);
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x00 } };
 	D3D11Base::IDXGIAdapter *realAdapter;
-	if (wrapper->GetParent(marker, (void **) &realAdapter) == 0x13bc7e32)
+	if (wrapper->GetParent(marker, (void **)&realAdapter) == 0x13bc7e32)
 	{
 		if (LogFile) fprintf(LogFile, "    wrapper found. replacing with original handle = %p\n", realAdapter);
 
@@ -2696,9 +2696,9 @@ HRESULT WINAPI D3D11CreateDevice(
 
 		return ret;
 	}
-	
+
 	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
-	if(wrapper == NULL)
+	if (wrapper == NULL)
 	{
 		if (LogFile) fprintf(LogFile, "  error allocating wrapper.\n");
 
@@ -2746,8 +2746,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Windowed = %d\n", pSwapChainDesc->Windowed);
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Width = %d\n", pSwapChainDesc->BufferDesc.Width);
 	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Height = %d\n", pSwapChainDesc->BufferDesc.Height);
-	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Refresh rate = %f\n", 
-		(float) pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float) pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
+	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  Refresh rate = %f\n",
+		(float)pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float)pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
 
 	if (G->SCREEN_FULLSCREEN >= 0 && pSwapChainDesc) pSwapChainDesc->Windowed = !G->SCREEN_FULLSCREEN;
 	if (G->SCREEN_REFRESH >= 0 && pSwapChainDesc && !pSwapChainDesc->Windowed)
@@ -2757,9 +2757,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	}
 	if (G->SCREEN_WIDTH >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Width = G->SCREEN_WIDTH;
 	if (G->SCREEN_HEIGHT >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  calling with parameters width = %d, height = %d, refresh rate = %f, windowed = %d\n", 
-		pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height, 
-		(float) pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float) pSwapChainDesc->BufferDesc.RefreshRate.Denominator,
+	if (LogFile && pSwapChainDesc) fprintf(LogFile, "  calling with parameters width = %d, height = %d, refresh rate = %f, windowed = %d\n",
+		pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height,
+		(float)pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float)pSwapChainDesc->BufferDesc.RefreshRate.Denominator,
 		pSwapChainDesc->Windowed);
 
 	EnableStereo();
@@ -2852,17 +2852,17 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 static UINT64 fnv_64_buf(const void *buf, size_t len)
 {
 	UINT64 hval = 0;
-    unsigned const char *bp = (unsigned const char *)buf;	/* start of buffer */
-    unsigned const char *be = bp + len;		/* beyond end of buffer */
+	unsigned const char *bp = (unsigned const char *)buf;	/* start of buffer */
+	unsigned const char *be = bp + len;		/* beyond end of buffer */
 
-    // FNV-1 hash each octet of the buffer
-    while (bp < be) 
+	// FNV-1 hash each octet of the buffer
+	while (bp < be)
 	{
 		// multiply by the 64 bit FNV magic prime mod 2^64 */
 		hval *= FNV_64_PRIME;
 		// xor the bottom with the current octet
 		hval ^= (UINT64)*bp++;
-    }
+	}
 	return hval;
 }
 

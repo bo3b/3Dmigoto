@@ -14,106 +14,106 @@ using namespace std;
 
 extern "C"
 {
-	typedef HRESULT (__stdcall *DllCanUnloadNowType)(void);
+	typedef HRESULT(__stdcall *DllCanUnloadNowType)(void);
 	static DllCanUnloadNowType DllCanUnloadNowPtr;
-	typedef HRESULT (__stdcall *DllGetClassObjectType)(void);
+	typedef HRESULT(__stdcall *DllGetClassObjectType)(void);
 	static DllGetClassObjectType DllGetClassObjectPtr;
-	typedef HRESULT (__stdcall *DllRegisterServerType)(void);
+	typedef HRESULT(__stdcall *DllRegisterServerType)(void);
 	static DllRegisterServerType DllRegisterServerPtr;
-	typedef HRESULT (__stdcall *DllUnregisterServerType)(void);
+	typedef HRESULT(__stdcall *DllUnregisterServerType)(void);
 	static DllUnregisterServerType DllUnregisterServerPtr;
 	typedef int *(__cdecl *nvapi_QueryInterfaceType)(unsigned int offset);
 	static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
 
-	typedef int (__cdecl *tNvAPI_Stereo_GetConvergence)(D3D9Base::StereoHandle stereoHandle, float *pConvergence);
+	typedef int(__cdecl *tNvAPI_Stereo_GetConvergence)(D3D9Base::StereoHandle stereoHandle, float *pConvergence);
 	static tNvAPI_Stereo_GetConvergence _NvAPI_Stereo_GetConvergence;
-	typedef int (__cdecl *tNvAPI_Stereo_SetConvergence)(D3D9Base::StereoHandle stereoHandle, float newConvergence);
+	typedef int(__cdecl *tNvAPI_Stereo_SetConvergence)(D3D9Base::StereoHandle stereoHandle, float newConvergence);
 	static tNvAPI_Stereo_SetConvergence _NvAPI_Stereo_SetConvergence;
-	typedef int (__cdecl *tNvAPI_Stereo_GetSeparation)(D3D9Base::StereoHandle stereoHandle, float *pSeparationPercentage);
+	typedef int(__cdecl *tNvAPI_Stereo_GetSeparation)(D3D9Base::StereoHandle stereoHandle, float *pSeparationPercentage);
 	static tNvAPI_Stereo_GetSeparation _NvAPI_Stereo_GetSeparation;
-	typedef int (__cdecl *tNvAPI_Stereo_SetSeparation)(D3D9Base::StereoHandle stereoHandle, float newSeparationPercentage);
+	typedef int(__cdecl *tNvAPI_Stereo_SetSeparation)(D3D9Base::StereoHandle stereoHandle, float newSeparationPercentage);
 	static tNvAPI_Stereo_SetSeparation _NvAPI_Stereo_SetSeparation;
-	typedef int (__cdecl *tNvAPI_Stereo_Disable)();
+	typedef int(__cdecl *tNvAPI_Stereo_Disable)();
 	static tNvAPI_Stereo_Disable _NvAPI_Stereo_Disable;
-	typedef int (__cdecl *tNvAPI_D3D9_VideoSetStereoInfo)(D3D9Base::IDirect3DDevice9 *pDev,
-                                              D3D9Base::NV_DX_VIDEO_STEREO_INFO *pStereoInfo);
+	typedef int(__cdecl *tNvAPI_D3D9_VideoSetStereoInfo)(D3D9Base::IDirect3DDevice9 *pDev,
+		D3D9Base::NV_DX_VIDEO_STEREO_INFO *pStereoInfo);
 	static tNvAPI_D3D9_VideoSetStereoInfo _NvAPI_D3D9_VideoSetStereoInfo;
-	typedef int (__cdecl *tNvAPI_Stereo_CreateConfigurationProfileRegistryKey)(
+	typedef int(__cdecl *tNvAPI_Stereo_CreateConfigurationProfileRegistryKey)(
 		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType);
 	static tNvAPI_Stereo_CreateConfigurationProfileRegistryKey _NvAPI_Stereo_CreateConfigurationProfileRegistryKey;
-	typedef int (__cdecl *tNvAPI_Stereo_DeleteConfigurationProfileRegistryKey)(
+	typedef int(__cdecl *tNvAPI_Stereo_DeleteConfigurationProfileRegistryKey)(
 		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType);
 	static tNvAPI_Stereo_DeleteConfigurationProfileRegistryKey _NvAPI_Stereo_DeleteConfigurationProfileRegistryKey;
-	typedef int (__cdecl *tNvAPI_Stereo_SetConfigurationProfileValue)(
-		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType, 
+	typedef int(__cdecl *tNvAPI_Stereo_SetConfigurationProfileValue)(
+		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType,
 		D3D9Base::NV_STEREO_REGISTRY_ID valueRegistryID, void *pValue);
 	static tNvAPI_Stereo_SetConfigurationProfileValue _NvAPI_Stereo_SetConfigurationProfileValue;
-	typedef int (__cdecl *tNvAPI_Stereo_DeleteConfigurationProfileValue)(
-		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType, 
+	typedef int(__cdecl *tNvAPI_Stereo_DeleteConfigurationProfileValue)(
+		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType,
 		D3D9Base::NV_STEREO_REGISTRY_ID valueRegistryID);
 	static tNvAPI_Stereo_DeleteConfigurationProfileValue _NvAPI_Stereo_DeleteConfigurationProfileValue;
-	typedef int (__cdecl *tNvAPI_Stereo_Enable)(void);
+	typedef int(__cdecl *tNvAPI_Stereo_Enable)(void);
 	static tNvAPI_Stereo_Enable _NvAPI_Stereo_Enable;
-	typedef int (__cdecl *tNvAPI_Stereo_IsEnabled)(D3D9Base::NvU8 *pIsStereoEnabled);
+	typedef int(__cdecl *tNvAPI_Stereo_IsEnabled)(D3D9Base::NvU8 *pIsStereoEnabled);
 	static tNvAPI_Stereo_IsEnabled _NvAPI_Stereo_IsEnabled;
-	typedef int (__cdecl *tNvAPI_Stereo_GetStereoSupport)(
+	typedef int(__cdecl *tNvAPI_Stereo_GetStereoSupport)(
 		__in D3D9Base::NvMonitorHandle hMonitor, __out D3D9Base::NVAPI_STEREO_CAPS *pCaps);
 	static tNvAPI_Stereo_GetStereoSupport _NvAPI_Stereo_GetStereoSupport;
-	typedef int (__cdecl *tNvAPI_Stereo_CreateHandleFromIUnknown)(
+	typedef int(__cdecl *tNvAPI_Stereo_CreateHandleFromIUnknown)(
 		IUnknown *pDevice, D3D9Base::StereoHandle *pStereoHandle);
 	static tNvAPI_Stereo_CreateHandleFromIUnknown _NvAPI_Stereo_CreateHandleFromIUnknown;
-	typedef int (__cdecl *tNvAPI_Stereo_DestroyHandle)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_DestroyHandle)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_DestroyHandle _NvAPI_Stereo_DestroyHandle;
-	typedef int (__cdecl *tNvAPI_Stereo_Activate)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_Activate)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_Activate _NvAPI_Stereo_Activate;
-	typedef int (__cdecl *tNvAPI_Stereo_Deactivate)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_Deactivate)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_Deactivate _NvAPI_Stereo_Deactivate;
-	typedef int (__cdecl *tNvAPI_Stereo_IsActivated)(D3D9Base::StereoHandle stereoHandle, D3D9Base::NvU8 *pIsStereoOn);
+	typedef int(__cdecl *tNvAPI_Stereo_IsActivated)(D3D9Base::StereoHandle stereoHandle, D3D9Base::NvU8 *pIsStereoOn);
 	static tNvAPI_Stereo_IsActivated _NvAPI_Stereo_IsActivated;
-	typedef int (__cdecl *tNvAPI_Stereo_DecreaseSeparation)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_DecreaseSeparation)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_DecreaseSeparation _NvAPI_Stereo_DecreaseSeparation;
-	typedef int (__cdecl *tNvAPI_Stereo_IncreaseSeparation)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_IncreaseSeparation)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_IncreaseSeparation _NvAPI_Stereo_IncreaseSeparation;
-	typedef int (__cdecl *tNvAPI_Stereo_DecreaseConvergence)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_DecreaseConvergence)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_DecreaseConvergence _NvAPI_Stereo_DecreaseConvergence;
-	typedef int (__cdecl *tNvAPI_Stereo_IncreaseConvergence)(D3D9Base::StereoHandle stereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_IncreaseConvergence)(D3D9Base::StereoHandle stereoHandle);
 	static tNvAPI_Stereo_IncreaseConvergence _NvAPI_Stereo_IncreaseConvergence;
-	typedef int (__cdecl *tNvAPI_Stereo_GetFrustumAdjustMode)(D3D9Base::StereoHandle stereoHandle, 
+	typedef int(__cdecl *tNvAPI_Stereo_GetFrustumAdjustMode)(D3D9Base::StereoHandle stereoHandle,
 		D3D9Base::NV_FRUSTUM_ADJUST_MODE *pFrustumAdjustMode);
 	static tNvAPI_Stereo_GetFrustumAdjustMode _NvAPI_Stereo_GetFrustumAdjustMode;
-	typedef int (__cdecl *tNvAPI_Stereo_SetFrustumAdjustMode)(D3D9Base::StereoHandle stereoHandle, 
+	typedef int(__cdecl *tNvAPI_Stereo_SetFrustumAdjustMode)(D3D9Base::StereoHandle stereoHandle,
 		D3D9Base::NV_FRUSTUM_ADJUST_MODE newFrustumAdjustModeValue);
 	static tNvAPI_Stereo_SetFrustumAdjustMode _NvAPI_Stereo_SetFrustumAdjustMode;
-	typedef int (__cdecl *tNvAPI_Stereo_InitActivation)(__in D3D9Base::StereoHandle hStereoHandle, 
+	typedef int(__cdecl *tNvAPI_Stereo_InitActivation)(__in D3D9Base::StereoHandle hStereoHandle,
 		__in D3D9Base::NVAPI_STEREO_INIT_ACTIVATION_FLAGS flags);
 	static tNvAPI_Stereo_InitActivation _NvAPI_Stereo_InitActivation;
-	typedef int (__cdecl *tNvAPI_Stereo_Trigger_Activation)(__in D3D9Base::StereoHandle hStereoHandle);
+	typedef int(__cdecl *tNvAPI_Stereo_Trigger_Activation)(__in D3D9Base::StereoHandle hStereoHandle);
 	static tNvAPI_Stereo_Trigger_Activation _NvAPI_Stereo_Trigger_Activation;
-	typedef int (__cdecl *tNvAPI_Stereo_ReverseStereoBlitControl)(D3D9Base::StereoHandle hStereoHandle, D3D9Base::NvU8 TurnOn);
+	typedef int(__cdecl *tNvAPI_Stereo_ReverseStereoBlitControl)(D3D9Base::StereoHandle hStereoHandle, D3D9Base::NvU8 TurnOn);
 	static tNvAPI_Stereo_ReverseStereoBlitControl _NvAPI_Stereo_ReverseStereoBlitControl;
-	typedef int (__cdecl *tNvAPI_Stereo_SetActiveEye)(D3D9Base::StereoHandle hStereoHandle, 
+	typedef int(__cdecl *tNvAPI_Stereo_SetActiveEye)(D3D9Base::StereoHandle hStereoHandle,
 		D3D9Base::NV_STEREO_ACTIVE_EYE StereoEye);
 	static tNvAPI_Stereo_SetActiveEye _NvAPI_Stereo_SetActiveEye;
-	typedef int (__cdecl *tNvAPI_Stereo_SetDriverMode)(D3D9Base::NV_STEREO_DRIVER_MODE mode);
+	typedef int(__cdecl *tNvAPI_Stereo_SetDriverMode)(D3D9Base::NV_STEREO_DRIVER_MODE mode);
 	static tNvAPI_Stereo_SetDriverMode _NvAPI_Stereo_SetDriverMode;
-	typedef int (__cdecl *tNvAPI_Stereo_GetEyeSeparation)(D3D9Base::StereoHandle hStereoHandle,  float *pSeparation );
+	typedef int(__cdecl *tNvAPI_Stereo_GetEyeSeparation)(D3D9Base::StereoHandle hStereoHandle, float *pSeparation);
 	static tNvAPI_Stereo_GetEyeSeparation _NvAPI_Stereo_GetEyeSeparation;
-	typedef int (__cdecl *tNvAPI_Stereo_SetSurfaceCreationMode)(__in D3D9Base::StereoHandle hStereoHandle, 
+	typedef int(__cdecl *tNvAPI_Stereo_SetSurfaceCreationMode)(__in D3D9Base::StereoHandle hStereoHandle,
 		__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE creationMode);
 	static tNvAPI_Stereo_SetSurfaceCreationMode _NvAPI_Stereo_SetSurfaceCreationMode;
-	typedef int (__cdecl *tNvAPI_Stereo_GetSurfaceCreationMode)(__in D3D9Base::StereoHandle hStereoHandle, 
+	typedef int(__cdecl *tNvAPI_Stereo_GetSurfaceCreationMode)(__in D3D9Base::StereoHandle hStereoHandle,
 		__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE* pCreationMode);
 	static tNvAPI_Stereo_GetSurfaceCreationMode _NvAPI_Stereo_GetSurfaceCreationMode;
-	typedef int (__cdecl *tNvAPI_D3D1x_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
-											D3D9Base::DXGI_SWAP_CHAIN_DESC* pDesc,
-											D3D9Base::IDXGISwapChain** ppSwapChain,
-                                            D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
+	typedef int(__cdecl *tNvAPI_D3D1x_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
+		D3D9Base::DXGI_SWAP_CHAIN_DESC* pDesc,
+		D3D9Base::IDXGISwapChain** ppSwapChain,
+		D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D1x_CreateSwapChain _NvAPI_D3D1x_CreateSwapChain;
 
-	typedef int (__cdecl *tNvAPI_D3D9_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
-                                           D3D9Base::D3DPRESENT_PARAMETERS *pPresentationParameters,
-                                           D3D9Base::IDirect3DSwapChain9 **ppSwapChain,
-                                           D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
+	typedef int(__cdecl *tNvAPI_D3D9_CreateSwapChain)(D3D9Base::StereoHandle hStereoHandle,
+		D3D9Base::D3DPRESENT_PARAMETERS *pPresentationParameters,
+		D3D9Base::IDirect3DSwapChain9 **ppSwapChain,
+		D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D9_CreateSwapChain _NvAPI_D3D9_CreateSwapChain;
 
 	typedef int(__cdecl *tNvAPI_D3D_GetCurrentSLIState)(__in IUnknown *pDevice, __in D3D9Base::NV_GET_CURRENT_SLI_STATE *pSliState);
@@ -121,8 +121,8 @@ extern "C"
 }
 
 static HMODULE nvDLL = 0;
-static bool NoStereoDisable=0;
-static bool ForceAutomaticStereo=0;
+static bool NoStereoDisable = 0;
+static bool ForceAutomaticStereo = 0;
 static float UserConvergence, SetConvergence = -1e30f, GetConvergence = -1e30f;
 static float UserSeparation, SetSeparation = -1e30f, GetSeparation = -1e30f;
 static map<float, float> GameConvergenceMap, GameConvergenceMapInv;
@@ -207,11 +207,11 @@ static void loadDll()
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 #if _WIN64
-//	#if WATCH_DOGS
-//			wcscat(sysDir, L"\\original_nvapi64.dll");
-//	#else
-			wcscat(sysDir, L"\\nvapi64.dll");
-//	#endif
+		//	#if WATCH_DOGS
+		//			wcscat(sysDir, L"\\original_nvapi64.dll");
+		//	#else
+		wcscat(sysDir, L"\\nvapi64.dll");
+		//	#endif
 #else
 		wcscat(sysDir, L"\\nvapi.dll");
 #endif
@@ -229,7 +229,7 @@ static void loadDll()
 		for (int i = 1;; ++i)
 		{
 			wchar_t id[] = L"Mapxxx", val[MAX_PATH];
-			_itow_s(i, id+3, 3, 10);
+			_itow_s(i, id + 3, 3, 10);
 			int read = GetPrivateProfileString(L"ConvergenceMap", id, 0, val, MAX_PATH, sysDir);
 			if (!read) break;
 			unsigned int fromHx;
@@ -295,9 +295,9 @@ static void loadDll()
 			swscanf_s(valueString, L"%e", &ActionSeparation);
 
 		InitDirectInput();
-		
+
 		// XInput
-		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);		
+		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);
 
 		AimingThreadInit();
 	}
@@ -324,10 +324,10 @@ STDAPI DllCanUnloadNow(void)
 	return (*DllCanUnloadNowPtr)();
 }
 STDAPI DllGetClassObject(
-  __in   REFCLSID rclsid,
-  __in   REFIID riid,
-  __out  LPVOID *ppv
-)
+	__in   REFCLSID rclsid,
+	__in   REFIID riid,
+	__out  LPVOID *ppv
+	)
 {
 	loadDll();
 	return (*DllGetClassObjectPtr)();
@@ -346,7 +346,7 @@ STDAPI DllUnregisterServer(void)
 static int __cdecl NvAPI_Stereo_GetConvergence(D3D9Base::StereoHandle stereoHandle, float *pConvergence)
 {
 	// Callback from DX wrapper?
-	if ((unsigned int) stereoHandle == 0x77aa8ebc && *pConvergence == 1.23f)
+	if ((unsigned int)stereoHandle == 0x77aa8ebc && *pConvergence == 1.23f)
 	{
 		if (CallsLogging() && LogDebug) fprintf(LogFile, "%s - Callback from DirectX wrapper: override next call.\n", LogTime());
 		gDirectXOverride = true;
@@ -408,11 +408,11 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 		if (currentSeparation == ActionSeparation)
 		{
 			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
-			(*_NvAPI_Stereo_SetSeparation)(stereoHandle, UserSeparation);			
+			(*_NvAPI_Stereo_SetSeparation)(stereoHandle, UserSeparation);
 		}
 	}
 	// Update needed?
-	if (currentConvergence == newConvergence) 
+	if (currentConvergence == newConvergence)
 		return 0;
 	if (ConvergenceLogging() && SetConvergence != newConvergence)
 	{
@@ -462,9 +462,9 @@ static int __cdecl NvAPI_Stereo_Disable()
 	return (*_NvAPI_Stereo_Disable)();
 }
 static int __cdecl NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDevice9 *pDev,
-                                              D3D9Base::NV_DX_VIDEO_STEREO_INFO *pStereoInfo)
+	D3D9Base::NV_DX_VIDEO_STEREO_INFO *pStereoInfo)
 {
-	if (CallsLogging()) 
+	if (CallsLogging())
 	{
 		fprintf(LogFile, "%s - D3D9_VideoSetStereoInfo called width\n", LogTime());
 		fprintf(LogFile, "  IDirect3DDevice9 = %p\n", pDev);
@@ -475,7 +475,7 @@ static int __cdecl NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDevice9 *pDe
 	return (*_NvAPI_D3D9_VideoSetStereoInfo)(pDev, pStereoInfo);
 }
 static int __cdecl NvAPI_Stereo_CreateConfigurationProfileRegistryKey(
-		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType)
+	D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType)
 {
 	if (CallsLogging())
 	{
@@ -485,7 +485,7 @@ static int __cdecl NvAPI_Stereo_CreateConfigurationProfileRegistryKey(
 	return (*_NvAPI_Stereo_CreateConfigurationProfileRegistryKey)(registryProfileType);
 }
 static int __cdecl NvAPI_Stereo_DeleteConfigurationProfileRegistryKey(
-		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType)
+	D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType)
 {
 	if (CallsLogging())
 	{
@@ -495,8 +495,8 @@ static int __cdecl NvAPI_Stereo_DeleteConfigurationProfileRegistryKey(
 	return (*_NvAPI_Stereo_DeleteConfigurationProfileRegistryKey)(registryProfileType);
 }
 static int __cdecl NvAPI_Stereo_SetConfigurationProfileValue(
-		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType, 
-		D3D9Base::NV_STEREO_REGISTRY_ID valueRegistryID, void *pValue)
+	D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType,
+	D3D9Base::NV_STEREO_REGISTRY_ID valueRegistryID, void *pValue)
 {
 	if (CallsLogging())
 	{
@@ -508,8 +508,8 @@ static int __cdecl NvAPI_Stereo_SetConfigurationProfileValue(
 	return (*_NvAPI_Stereo_DeleteConfigurationProfileRegistryKey)(registryProfileType);
 }
 static int __cdecl NvAPI_Stereo_DeleteConfigurationProfileValue(
-		D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType, 
-		D3D9Base::NV_STEREO_REGISTRY_ID valueRegistryID)
+	D3D9Base::NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType,
+	D3D9Base::NV_STEREO_REGISTRY_ID valueRegistryID)
 {
 	if (CallsLogging())
 	{
@@ -538,7 +538,7 @@ static int __cdecl NvAPI_Stereo_IsEnabled(D3D9Base::NvU8 *pIsStereoEnabled)
 	return ret;
 }
 static int __cdecl NvAPI_Stereo_GetStereoSupport(
-		__in D3D9Base::NvMonitorHandle hMonitor, __out D3D9Base::NVAPI_STEREO_CAPS *pCaps)
+	__in D3D9Base::NvMonitorHandle hMonitor, __out D3D9Base::NVAPI_STEREO_CAPS *pCaps)
 {
 	int ret = (*_NvAPI_Stereo_GetStereoSupport)(hMonitor, pCaps);
 	if (CallsLogging())
@@ -554,7 +554,7 @@ static int __cdecl NvAPI_Stereo_GetStereoSupport(
 	return ret;
 }
 static int __cdecl NvAPI_Stereo_CreateHandleFromIUnknown(
-		IUnknown *pDevice, D3D9Base::StereoHandle *pStereoHandle)
+	IUnknown *pDevice, D3D9Base::StereoHandle *pStereoHandle)
 {
 	int ret = (*_NvAPI_Stereo_CreateHandleFromIUnknown)(pDevice, pStereoHandle);
 	if (CallsLogging())
@@ -597,7 +597,7 @@ static int __cdecl NvAPI_Stereo_Deactivate(D3D9Base::StereoHandle stereoHandle)
 	{
 		fprintf(LogFile, "  Result = %d\n", ret);
 	}
-	return ret;	
+	return ret;
 }
 static int __cdecl NvAPI_Stereo_IsActivated(D3D9Base::StereoHandle stereoHandle, D3D9Base::NvU8 *pIsStereoOn)
 {
@@ -614,7 +614,7 @@ static int __cdecl NvAPI_Stereo_DecreaseSeparation(D3D9Base::StereoHandle stereo
 	{
 		fprintf(LogFile, "%s - Stereo_DecreaseSeparation called.\n", LogTime());
 	}
-	return (*_NvAPI_Stereo_DecreaseSeparation)(stereoHandle);	
+	return (*_NvAPI_Stereo_DecreaseSeparation)(stereoHandle);
 }
 static int __cdecl NvAPI_Stereo_IncreaseSeparation(D3D9Base::StereoHandle stereoHandle)
 {
@@ -622,7 +622,7 @@ static int __cdecl NvAPI_Stereo_IncreaseSeparation(D3D9Base::StereoHandle stereo
 	{
 		fprintf(LogFile, "%s - Stereo_IncreaseSeparation called.\n", LogTime());
 	}
-	return (*_NvAPI_Stereo_IncreaseSeparation)(stereoHandle);	
+	return (*_NvAPI_Stereo_IncreaseSeparation)(stereoHandle);
 }
 static int __cdecl NvAPI_Stereo_DecreaseConvergence(D3D9Base::StereoHandle stereoHandle)
 {
@@ -630,7 +630,7 @@ static int __cdecl NvAPI_Stereo_DecreaseConvergence(D3D9Base::StereoHandle stere
 	{
 		fprintf(LogFile, "%s - Stereo_DecreaseConvergence called.\n", LogTime());
 	}
-	return (*_NvAPI_Stereo_DecreaseConvergence)(stereoHandle);	
+	return (*_NvAPI_Stereo_DecreaseConvergence)(stereoHandle);
 }
 static int __cdecl NvAPI_Stereo_IncreaseConvergence(D3D9Base::StereoHandle stereoHandle)
 {
@@ -638,10 +638,10 @@ static int __cdecl NvAPI_Stereo_IncreaseConvergence(D3D9Base::StereoHandle stere
 	{
 		fprintf(LogFile, "%s - Stereo_IncreaseConvergence called.\n", LogTime());
 	}
-	return (*_NvAPI_Stereo_IncreaseConvergence)(stereoHandle);	
+	return (*_NvAPI_Stereo_IncreaseConvergence)(stereoHandle);
 }
-static int __cdecl NvAPI_Stereo_GetFrustumAdjustMode(D3D9Base::StereoHandle stereoHandle, 
-		D3D9Base::NV_FRUSTUM_ADJUST_MODE *pFrustumAdjustMode)
+static int __cdecl NvAPI_Stereo_GetFrustumAdjustMode(D3D9Base::StereoHandle stereoHandle,
+	D3D9Base::NV_FRUSTUM_ADJUST_MODE *pFrustumAdjustMode)
 {
 	int ret = (*_NvAPI_Stereo_GetFrustumAdjustMode)(stereoHandle, pFrustumAdjustMode);
 	if (CallsLogging())
@@ -651,8 +651,8 @@ static int __cdecl NvAPI_Stereo_GetFrustumAdjustMode(D3D9Base::StereoHandle ster
 	}
 	return ret;
 }
-static int __cdecl NvAPI_Stereo_SetFrustumAdjustMode(D3D9Base::StereoHandle stereoHandle, 
-		D3D9Base::NV_FRUSTUM_ADJUST_MODE newFrustumAdjustModeValue)
+static int __cdecl NvAPI_Stereo_SetFrustumAdjustMode(D3D9Base::StereoHandle stereoHandle,
+	D3D9Base::NV_FRUSTUM_ADJUST_MODE newFrustumAdjustModeValue)
 {
 	if (CallsLogging())
 	{
@@ -660,13 +660,13 @@ static int __cdecl NvAPI_Stereo_SetFrustumAdjustMode(D3D9Base::StereoHandle ster
 	}
 	return (*_NvAPI_Stereo_SetFrustumAdjustMode)(stereoHandle, newFrustumAdjustModeValue);
 }
-static int __cdecl NvAPI_Stereo_InitActivation(__in D3D9Base::StereoHandle hStereoHandle, 
-		__in D3D9Base::NVAPI_STEREO_INIT_ACTIVATION_FLAGS flags)
+static int __cdecl NvAPI_Stereo_InitActivation(__in D3D9Base::StereoHandle hStereoHandle,
+	__in D3D9Base::NVAPI_STEREO_INIT_ACTIVATION_FLAGS flags)
 {
 	int ret = (*_NvAPI_Stereo_InitActivation)(hStereoHandle, flags);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_InitActivation called with flags = %d. Result = %d\n", LogTime(), 
+		fprintf(LogFile, "%s - Stereo_InitActivation called with flags = %d. Result = %d\n", LogTime(),
 			flags, ret);
 	}
 	return ret;
@@ -685,18 +685,18 @@ static int __cdecl NvAPI_Stereo_ReverseStereoBlitControl(D3D9Base::StereoHandle 
 	int ret = (*_NvAPI_Stereo_ReverseStereoBlitControl)(hStereoHandle, TurnOn);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_Trigger_Activation called with TurnOn = %d. Result = %d\n", LogTime(), 
+		fprintf(LogFile, "%s - Stereo_Trigger_Activation called with TurnOn = %d. Result = %d\n", LogTime(),
 			TurnOn, ret);
 	}
 	return ret;
 }
-static int __cdecl NvAPI_Stereo_SetActiveEye(D3D9Base::StereoHandle hStereoHandle, 
-		D3D9Base::NV_STEREO_ACTIVE_EYE StereoEye)
+static int __cdecl NvAPI_Stereo_SetActiveEye(D3D9Base::StereoHandle hStereoHandle,
+	D3D9Base::NV_STEREO_ACTIVE_EYE StereoEye)
 {
 	int ret = (*_NvAPI_Stereo_SetActiveEye)(hStereoHandle, StereoEye);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_SetActiveEye called with StereoEye = %d. Result = %d\n", LogTime(), 
+		fprintf(LogFile, "%s - Stereo_SetActiveEye called with StereoEye = %d. Result = %d\n", LogTime(),
 			StereoEye, ret);
 	}
 	return ret;
@@ -731,18 +731,18 @@ static int __cdecl NvAPI_Stereo_SetDriverMode(D3D9Base::NV_STEREO_DRIVER_MODE mo
 	}
 	return ret;
 }
-static int __cdecl NvAPI_Stereo_GetEyeSeparation(D3D9Base::StereoHandle hStereoHandle,  float *pSeparation )
+static int __cdecl NvAPI_Stereo_GetEyeSeparation(D3D9Base::StereoHandle hStereoHandle, float *pSeparation)
 {
 	int ret = (*_NvAPI_Stereo_GetEyeSeparation)(hStereoHandle, pSeparation);
 	if (SeparationLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_GetEyeSeparation called. Result = %d, Separation = %f\n", LogTime(), 
+		fprintf(LogFile, "%s - Stereo_GetEyeSeparation called. Result = %d, Separation = %f\n", LogTime(),
 			ret, *pSeparation);
 	}
 	return ret;
 }
-static int __cdecl NvAPI_Stereo_SetSurfaceCreationMode(__in D3D9Base::StereoHandle hStereoHandle, 
-		__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE creationMode)
+static int __cdecl NvAPI_Stereo_SetSurfaceCreationMode(__in D3D9Base::StereoHandle hStereoHandle,
+	__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE creationMode)
 {
 	if (gDirectXOverride)
 	{
@@ -760,34 +760,34 @@ static int __cdecl NvAPI_Stereo_SetSurfaceCreationMode(__in D3D9Base::StereoHand
 	int ret = (*_NvAPI_Stereo_SetSurfaceCreationMode)(hStereoHandle, creationMode);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_SetSurfaceCreationMode called with CreationMode = %d. Result = %d\n", LogTime(), 
+		fprintf(LogFile, "%s - Stereo_SetSurfaceCreationMode called with CreationMode = %d. Result = %d\n", LogTime(),
 			creationMode, ret);
 	}
 	return ret;
 }
-static int __cdecl NvAPI_Stereo_GetSurfaceCreationMode(__in D3D9Base::StereoHandle hStereoHandle, 
-		__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
+static int __cdecl NvAPI_Stereo_GetSurfaceCreationMode(__in D3D9Base::StereoHandle hStereoHandle,
+	__in D3D9Base::NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
 {
 	int ret = (*_NvAPI_Stereo_GetSurfaceCreationMode)(hStereoHandle, pCreationMode);
 	if (CallsLogging())
 	{
-		fprintf(LogFile, "%s - Stereo_GetSurfaceCreationMode called. Result = %d, CreationMode = %d\n", LogTime(), 
+		fprintf(LogFile, "%s - Stereo_GetSurfaceCreationMode called. Result = %d, CreationMode = %d\n", LogTime(),
 			ret, *pCreationMode);
 	}
 	return ret;
 }
 static int __cdecl NvAPI_D3D1x_CreateSwapChain(D3D9Base::StereoHandle hStereoHandle,
-											D3D9Base::DXGI_SWAP_CHAIN_DESC* pDesc,
-											D3D9Base::IDXGISwapChain** ppSwapChain,
-                                            D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode)
+	D3D9Base::DXGI_SWAP_CHAIN_DESC* pDesc,
+	D3D9Base::IDXGISwapChain** ppSwapChain,
+	D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode)
 {
 	if (CallsLogging())
 	{
 		fprintf(LogFile, "%s - D3D1x_CreateSwapChain called with parameters\n", LogTime());
 		fprintf(LogFile, "  Width = %d\n", pDesc->BufferDesc.Width);
 		fprintf(LogFile, "  Height = %d\n", pDesc->BufferDesc.Height);
-		fprintf(LogFile, "  Refresh rate = %f\n", 
-			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
+		fprintf(LogFile, "  Refresh rate = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 		fprintf(LogFile, "  Windowed = %d\n", pDesc->Windowed);
 	}
 
@@ -808,9 +808,9 @@ static int __cdecl NvAPI_D3D1x_CreateSwapChain(D3D9Base::StereoHandle hStereoHan
 	return ret;
 }
 static int __cdecl NvAPI_D3D9_CreateSwapChain(D3D9Base::StereoHandle hStereoHandle,
-                                           D3D9Base::D3DPRESENT_PARAMETERS *pPresentationParameters,
-                                           D3D9Base::IDirect3DSwapChain9 **ppSwapChain,
-                                           D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode)
+	D3D9Base::D3DPRESENT_PARAMETERS *pPresentationParameters,
+	D3D9Base::IDirect3DSwapChain9 **ppSwapChain,
+	D3D9Base::NV_STEREO_SWAPCHAIN_MODE mode)
 {
 	if (CallsLogging())
 	{
@@ -820,17 +820,17 @@ static int __cdecl NvAPI_D3D9_CreateSwapChain(D3D9Base::StereoHandle hStereoHand
 		fprintf(LogFile, "  Refresh rate = %d\n", pPresentationParameters->FullScreen_RefreshRateInHz);
 		fprintf(LogFile, "  Windowed = %d\n", pPresentationParameters->Windowed);
 	}
-	if (SCREEN_REFRESH >= 0) 
+	if (SCREEN_REFRESH >= 0)
 	{
 		if (CallsLogging()) fprintf(LogFile, "    overriding refresh rate = %d\n", SCREEN_REFRESH);
 		pPresentationParameters->FullScreen_RefreshRateInHz = SCREEN_REFRESH;
 	}
-	if (SCREEN_WIDTH >= 0) 
+	if (SCREEN_WIDTH >= 0)
 	{
 		if (CallsLogging()) fprintf(LogFile, "    overriding width = %d\n", SCREEN_WIDTH);
 		pPresentationParameters->BackBufferWidth = SCREEN_WIDTH;
 	}
-	if (SCREEN_HEIGHT >= 0) 
+	if (SCREEN_HEIGHT >= 0)
 	{
 		if (CallsLogging()) fprintf(LogFile, "    overriding height = %d\n", SCREEN_HEIGHT);
 		pPresentationParameters->BackBufferHeight = SCREEN_HEIGHT;
@@ -896,11 +896,11 @@ extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset)
 			_NvAPI_Stereo_SetConvergence = (tNvAPI_Stereo_SetConvergence)ptr;
 			ptr = (int *)NvAPI_Stereo_SetConvergence;
 			break;
-		case 0x451f2134: 
+		case 0x451f2134:
 			_NvAPI_Stereo_GetSeparation = (tNvAPI_Stereo_GetSeparation)ptr;
 			ptr = (int *)NvAPI_Stereo_GetSeparation;
 			break;
-		case 0x5c069fa3: 
+		case 0x5c069fa3:
 			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)ptr;
 			ptr = (int *)NvAPI_Stereo_SetSeparation;
 			break;
@@ -1034,7 +1034,7 @@ extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset)
 	return ptr;
 }
 
-/*  List of all hex API constants from: 
+/*  List of all hex API constants from:
 http://stackoverflow.com/questions/13291783/how-to-get-the-id-memory-address-of-dll-function
 
 NvAPI_GetUnAttachedAssociatedDisplayName  -  4888D790
