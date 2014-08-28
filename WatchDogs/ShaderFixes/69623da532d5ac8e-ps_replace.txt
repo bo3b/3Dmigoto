@@ -1,4 +1,5 @@
 // Shadows from buildings, trees.  Shader active appears to be dependent upon settings.
+// This is Shadows->Ultra
 
 cbuffer ShadowMaskBlur : register(b0)
 {
