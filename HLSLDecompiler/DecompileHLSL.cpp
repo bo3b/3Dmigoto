@@ -3411,6 +3411,7 @@ public:
 					case OPCODE_SAMPLE_POS:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
 						int textureId;
 						sscanf_s(op2, "t%d.", &textureId);
 						sprintf(buffer, "  %s = %s.GetSamplePosition(%s);\n", writeTarget(op1),
