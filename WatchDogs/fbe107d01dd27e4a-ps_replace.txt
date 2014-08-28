@@ -90,8 +90,8 @@ Texture2D<float4> LightProbes__FloorCeilingTexture__TexObj__ : register(t1);
 Texture3D<float4> LightProbes__VolumeTextureB__TexObj__ : register(t2);
 Texture3D<float4> LightProbes__VolumeTextureG__TexObj__ : register(t3);
 Texture3D<float4> LightProbes__VolumeTextureR__TexObj__ : register(t4);
-Texture2DMS<float4,32> LightProbesGlobal__GBufferNormalTextureMS : register(t5);
-Texture2DMS<float4,32> LightProbesGlobal__ProbeDepthSamplerMS : register(t6);
+Texture2DMS<float4> LightProbesGlobal__GBufferNormalTextureMS : register(t5);
+Texture2DMS<float4> LightProbesGlobal__ProbeDepthSamplerMS : register(t6);
 
 Texture2D<float4> StereoParams : register(t125);
 
@@ -113,7 +113,7 @@ void main(
   r1.x = dot(r1.xy, _InvProjectionMatrix._m23_m33);
   r0.w = -r0.w / r1.x;
   r1.z = -r0.w;
-  r2.xy = LightProbesGlobal__ProbeDepthSamplerMS.GetSamplePosition(l(0));
+  r2.xy = LightProbesGlobal__ProbeDepthSamplerMS.GetSamplePosition(0);
   r2.xy = v2.xy + r2.xy;
   r2.xy = _ViewportSize.zw * r2.xy;
   r2.zw = _ProbeUVToViewSpace.xy * r2.xy + _ProbeUVToViewSpace.zw;
