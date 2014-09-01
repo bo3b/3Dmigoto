@@ -147,7 +147,7 @@ void main(
   r2.xyz = r2.xyz * r0.www + -_LightDirection.xyz;
   r5.xyzw = DeferredLightingCommon__NormalTextureMS.Load(r3.xy, v1.x).xyzw;
   r5.xyz = r5.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r0.w = round(r5.w);
+  r0.w = int(r5.w);
   r6.xyzw = float4(5.000000e-001,2.500000e-001,6.250000e-002,3.125000e-002) * r0.wwww;
   r0.w = dot(r5.xyz, r5.xyz);
   r0.w = r0.w == 0.000000;
@@ -236,7 +236,7 @@ void main(
   r4.y = r4.x * r4.x;
   r4.y = r4.y * r4.y;
   r4.x = r4.x * r4.y;
-  r4.y = max(r9.x, r9.y);
+  r4.y = max(r9.y, r9.x);
   r4.y = r4.y + -r9.x;
   r4.x = r4.y * r4.x + r9.x;
   r0.xyzw = r4.xxxx * r0.xyzw;
@@ -284,7 +284,7 @@ void main(
   r2.x = r2.z * r2.x;
   r2.x = r2.x * r4.x;
   r2.z = saturate(r2.y);
-  r2.w = max(r2.w, r2.z);
+  r2.w = max(r2.z, r2.w);
   r2.w = max(r2.w, 1.000000012e-007);
   r2.w = 1.000000e+000 / r2.w;
   r2.x = r2.x * r2.w;
@@ -312,10 +312,13 @@ void main(
   r6.xyzw = r6.xyzw * r9.wwww;
   r7.xyzw = r4.xwww * r4.xwww;
   r7.xyzw = r7.xyzw * r7.xyzw;
-  r2.x = saturate(r2.x ? r7.x : r4.x);
-  r2.y = saturate(r2.x ? r7.y : r4.y);
-  r2.z = saturate(r2.x ? r7.z : r4.z);
-  r2.w = saturate(r2.x ? r7.w : r4.w);
+  // bo3b: This section seemed to make the compiler generate bad code,
+  // although the Decompile seems completely reasonable.
+  // r2.x = saturate(r2.x ? r7.x : r4.x);
+  // r2.y = saturate(r2.x ? r7.y : r4.y);
+  // r2.z = saturate(r2.x ? r7.z : r4.z);
+  // r2.w = saturate(r2.x ? r7.w : r4.w);
+  r2.xyzw = saturate(r2.xxxx ? r7.xyzw : r4.xyzw);
   r1.xyzw = r2.xyzw * r1.xyzw + r6.xyzw;
   r1.xyzw = r1.xyzw + r5.xyzz;
   r0.xyzw = r3.xyzw * r1.xyzw + r0.xyzw;
