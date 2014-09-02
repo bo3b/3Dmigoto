@@ -936,6 +936,7 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
         case OPCODE_DDIV:
 		case OPCODE_RESINFO:
 		case OPCODE_XOR:
+		case OPCODE_SAMPLE_POS:		// bo3b: added for WatchDogs
         {
             psInst->ui32NumOperands = 3;
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[0]);
