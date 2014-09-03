@@ -505,10 +505,19 @@ public:
 					mTextureType[slot] = "TextureCube<" + string(format) + ">";
 				else if (!strncmp(dim, "2dMS", 4))
 				{
+					// The documentation says it's not legal, but we see Texture 2DMS with no ending size in WatchDogs. 
+					// Instead of "2dMS4", it's just "2dMS". If we set that to Texture2DMS<float4>, with no size, 
+					// it generates the same code as the ASM.	 sscanf returns -1 as an error.
+					//
+					// if (LogFile) fprintf(LogFile, "--> Texture %s: sprintf=%d as %s\n", dim, error, buffer);
 					int msnumber;
-					sscanf_s(dim + 4, "%d", &msnumber);
+					int scanned;
 					char buffer[256];
-					sprintf(buffer, "Texture2DMS<%s,%d>", format, msnumber);
+					scanned = sscanf_s(dim + 4, "%d", &msnumber);
+					if (scanned == 1)
+						sprintf(buffer, "Texture2DMS<%s,%d>", format, msnumber);
+					else
+						sprintf(buffer, "Texture2DMS<%s>", format);
 					mTextureType[slot] = buffer;
 				}
 				else
@@ -3598,6 +3607,16 @@ public:
 
 					case OPCODE_RET:
 						sprintf(buffer, "  return;\n");
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						break;
+
+						// Missing opcode needed for WatchDogs. Used as "retc_nz r0.x"
+					case OPCODE_RETC:
+						applySwizzle(".x", op1);
+						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
+							sprintf(buffer, "  if (%s == 0) return;\n", ci(op1).c_str());
+						else
+							sprintf(buffer, "  if (%s != 0) return;\n", ci(op1).c_str());
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						break;
 
