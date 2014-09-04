@@ -2737,16 +2737,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WatchDogs", "WatchDogs", "{
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{3536BA7D-F99F-4F5A-9123-189E11FF62B6}"
-	ProjectSection(SolutionItems) = preProject
-		WatchDogs\ShaderFixes\217fff587e1346a6-ps.txt = WatchDogs\ShaderFixes\217fff587e1346a6-ps.txt
-		WatchDogs\ShaderFixes\217fff587e1346a6-ps_replace.txt = WatchDogs\ShaderFixes\217fff587e1346a6-ps_replace.txt
-		WatchDogs\ShaderFixes\25679b83947d6e37-vs.txt = WatchDogs\ShaderFixes\25679b83947d6e37-vs.txt
-		WatchDogs\ShaderFixes\25679b83947d6e37-vs_replace.txt = WatchDogs\ShaderFixes\25679b83947d6e37-vs_replace.txt
-		WatchDogs\ShaderFixes\69623da532d5ac8e-ps.txt = WatchDogs\ShaderFixes\69623da532d5ac8e-ps.txt
-		WatchDogs\ShaderFixes\69623da532d5ac8e-ps_replace.txt = WatchDogs\ShaderFixes\69623da532d5ac8e-ps_replace.txt
-		WatchDogs\ShaderFixes\7a55872c9645fdd5-vs.txt = WatchDogs\ShaderFixes\7a55872c9645fdd5-vs.txt
-		WatchDogs\ShaderFixes\7a55872c9645fdd5-vs_replace.txt = WatchDogs\ShaderFixes\7a55872c9645fdd5-vs_replace.txt
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Nektra", "Nektra", "{0893CB33-AB1E-4391-A284-B7292160549C}"
 	ProjectSection(SolutionItems) = preProject

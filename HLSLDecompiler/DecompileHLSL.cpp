@@ -3026,26 +3026,41 @@ public:
 						removeBoolean(op2);
 						break;
 
+						// Failing case of: "movc_sat r2.xyzw, r2.xxxx, r7.xyzw, r4.xyzw"
+						// Turned into: 
+						// r2.x = saturate(r2.x ? r7.x : r4.x);
+						// r2.y = saturate(r2.x ? r7.y : r4.y);
+						// r2.z = saturate(r2.x ? r7.z : r4.z);
+						// r2.w = saturate(r2.x ? r7.w : r4.w);
+						// which damages r2.x at the first line, and uses it in each. 
+						// Changed it to just be:   "r2.xyzw = saturate(r2.xxxx ? r7.xyzw : r4.xyzw);"
+						// But I'm not sure why this was unrolled to begin with.
 					case OPCODE_MOVC:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						applySwizzle(op1, fixImm(op4, instr->asOperands[3]));
-						int idx = 0;
-						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-						char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
-						while (*++pop1)
-						{
-							if (pop1) sprintf(op5, "%s.%c", op1, *pop1); else sprintf(op5, "%s", op1);
-							if (pop2) sprintf(op6, "%s.%c", op2, *++pop2); else sprintf(op6, "%s", op2);
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-							++idx;
-						}
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
+						//int idx = 0;
+						//char *pop1 = strrchr(op1, '.'); *pop1 = 0;
+						//char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
+						//while (*++pop1)
+						//{
+							//if (pop1) sprintf(op5, "%s.%c", op1, *pop1); else sprintf(op5, "%s", op1);
+							//if (pop2) sprintf(op6, "%s.%c", op2, *++pop2); else sprintf(op6, "%s", op2);
+							//if (!instr->bSaturate)
+							//	sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
+							//else
+							//	sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
+							//mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						//	++idx;
+						//}
 						mBooleanRegisters.insert(op1);
 						removeBoolean(op1);
 						break;
@@ -3310,6 +3325,33 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
 							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						removeBoolean(op1);
+						break;
+					}
+
+						// Missing opcode for WatchDogs.  Very similar to SAMPLE_L, so copied from there.
+					case OPCODE_SAMPLE_B:
+					{
+						remapTarget(op1);
+						applySwizzle(".xyzw", op2);
+						applySwizzle(op1, op3);
+						applySwizzle(".x", fixImm(op5, instr->asOperands[4]));
+						int textureId, samplerId;
+						sscanf_s(op3, "t%d.", &textureId);
+						sscanf_s(op4, "s%d", &samplerId);
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						if (!instr->bAddressOffset)
+							sprintf(buffer, "  %s = %s.SampleBias(%s, %s, %s)%s;\n", writeTarget(op1),
+							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+						else
+						{
+							int offsetx = 0, offsety = 0, offsetz = 0;
+							sscanf_s(statement, "sample_b_aoffimmi_indexable(%d,%d,%d", &offsetx, &offsety, &offsetz);
+							sprintf(buffer, "  %s = %s.SampleBias(%s, %s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
+								offsetx, offsety, strrchr(op3, '.'));
+						}
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						removeBoolean(op1);
 						break;
