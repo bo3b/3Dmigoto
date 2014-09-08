@@ -1,0 +1,284 @@
+//Night Lights
+cbuffer Viewport : register(b0)
+{
+  float4x4 _ViewRotProjectionMatrix : packoffset(c0);
+  float4x4 _ViewProjectionMatrix : packoffset(c4);
+  float4x4 _ProjectionMatrix : packoffset(c8);
+  float4x4 _InvProjectionMatrix : packoffset(c12);
+  float4x4 _InvProjectionMatrixDepth : packoffset(c16);
+  float4x4 _DepthTextureTransform : packoffset(c20);
+  float4x3 _ViewMatrix : packoffset(c24);
+  float4x3 _InvViewMatrix : packoffset(c27);
+  float4x4 _PreviousViewProjectionMatrix : packoffset(c30);
+  float4 _CameraDistances : packoffset(c34);
+  float4 _ViewportSize : packoffset(c35);
+  float4 _CameraPosition_MaxStaticReflectionMipIndex : packoffset(c36);
+  float4 _CameraDirection_MaxParaboloidReflectionMipIndex : packoffset(c37);
+  float4 _ViewPoint_ExposureScale : packoffset(c38);
+  float4 _FogColorVector_ExposedWhitePointOverExposureScale : packoffset(c39);
+  float3 _SideFogColor : packoffset(c40);
+  float3 _SunFogColorDelta : packoffset(c41);
+  float3 _OppositeFogColorDelta : packoffset(c42);
+  float4 _FogValues0 : packoffset(c43);
+  float4 _FogValues1 : packoffset(c44);
+  float4 _CameraNearPlaneSize : packoffset(c45);
+  float4 _UncompressDepthWeights_ShadowProjDepthMinValue : packoffset(c46);
+  float4 _UncompressDepthWeightsWS_ReflectionFadeTarget : packoffset(c47);
+  float4 _WorldAmbientColorParams0 : packoffset(c48);
+  float4 _WorldAmbientColorParams1 : packoffset(c49);
+  float4 _WorldAmbientColorParams2 : packoffset(c50);
+  float4 _GlobalWorldTextureParams : packoffset(c51);
+  float4 _CullingCameraPosition_OneOverAutoExposureScale : packoffset(c52);
+  float4 _AmbientSkyColor_ReflectionScaleStrength : packoffset(c53);
+  float4 _AmbientGroundColor_ReflectionScaleDistanceMul : packoffset(c54);
+  float4 _FacettedShadowCastParams : packoffset(c55);
+  float4 _FSMClipPlanes : packoffset(c56);
+  float2 _ReflectionGIControl : packoffset(c57);
+}
+
+cbuffer CopyGrid : register(b1)
+{
+  float4 _GridColor : packoffset(c0);
+}
+SamplerState CopyGrid__DepthCopyTexture__SampObj___s : register(s0);
+SamplerState CopyGrid__colorSampler1__SampObj___s : register(s1);
+SamplerState CopyGrid__DotSampler__SampObj___s : register(s2);
+Texture2D<float4> CopyGrid__DepthCopyTexture__TexObj__ : register(t0);
+Texture2D<float4> CopyGrid__colorSampler1__TexObj__ : register(t1);
+Texture2D<float4> CopyGrid__DotSampler__TexObj__ : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : TEXCOORD0,
+  float2 v1 : TEXCOORD1,
+  float4 v2 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.x = 0.000000000e+000;
+  r0.y = _ViewportSize.w;
+  r0.xy = v1.xy + r0.xy;
+  r0.xyz = CopyGrid__colorSampler1__TexObj__.Sample(CopyGrid__colorSampler1__SampObj___s, r0.xy).xyz;
+  r0.xyz = r0.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r1.xyz = CopyGrid__colorSampler1__TexObj__.Sample(CopyGrid__colorSampler1__SampObj___s, v1.xy).xyz;
+  r1.xyz = r1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r1.xyz, r0.xyz);
+  r2.x = _ViewportSize.z;
+  r2.yz = float2(0.000000e+000,0.000000e+000);
+  r2.xy = v1.xy + r2.xy;
+  r3.xyz = CopyGrid__colorSampler1__TexObj__.Sample(CopyGrid__colorSampler1__SampObj___s, r2.xy).xyz;
+  r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.y = dot(r1.xyz, r3.xyz);
+  r2.w = -_ViewportSize.w;
+  r2.xy = v1.xy + r2.zw;
+  r2.xyz = CopyGrid__colorSampler1__TexObj__.Sample(CopyGrid__colorSampler1__SampObj___s, r2.xy).xyz;
+  r2.xyz = r2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.z = dot(r1.xyz, r2.xyz);
+  r2.z = -_ViewportSize.z;
+  r2.yw = float2(1.000000e+000,0.000000e+000);
+  r2.zw = v1.xy + r2.zw;
+  r3.xyz = CopyGrid__colorSampler1__TexObj__.Sample(CopyGrid__colorSampler1__SampObj___s, r2.zw).xyz;
+  r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.x = dot(r1.xyz, r3.xyz);
+  r1.x = 7.000000e-001 < abs(r1.x);
+  r1.y = 7.000000e-001 < abs(r1.y);
+  r0.xyzw = min(abs(r0.xyzw), float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+  r0.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000) + -r0.xyzw;
+  r0.x = dot(r0.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+  r0.x = min(r0.x, 1.000000000e+000);
+  r0.x = -5.000000000e-001 + r0.x;
+  r0.x = r0.x + r0.x;
+  r0.x = max(r0.x, 0.000000000e+000);
+  r0.y = r0.x * -2.000000000e+000 + 3.000000000e+000;
+  r0.x = r0.x * r0.x;
+  r0.x = r0.y * r0.x;
+  r2.x = CopyGrid__DepthCopyTexture__TexObj__.Sample(CopyGrid__DepthCopyTexture__SampObj___s, v1.xy).x;
+  r0.y = dot(r2.xy, _InvProjectionMatrix._m22_m32);
+  r0.z = dot(r2.xy, _InvProjectionMatrix._m23_m33);
+  r0.y = -r0.y / r0.z;
+  r2.xyz = v0.xyz / v0.zzz;
+  r2.xyz = r2.xyz * -r0.yyy;
+  r2.w = 1.000000000e+000;
+  
+float4 stereo = StereoParams.Load(0);
+r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;  
+
+
+  r3.x = dot(r2.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+  r3.y = dot(r2.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+  r3.z = dot(r2.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+  r0.yzw = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r3.xyz;
+  r2.xyz = CopyGrid__DotSampler__TexObj__.Sample(CopyGrid__DotSampler__SampObj___s, r0.yw).xyz;
+  r3.xyz = CopyGrid__DotSampler__TexObj__.Sample(CopyGrid__DotSampler__SampObj___s, r0.yz).xyz;
+  r0.yzw = CopyGrid__DotSampler__TexObj__.Sample(CopyGrid__DotSampler__SampObj___s, r0.zw).xyz;
+  r1.y = r1.y ? r2.x : r3.x;
+  r1.z = r1.y ? r2.y : r3.y;
+  r1.w = r1.y ? r2.z : r3.z;
+  r0.y = r1.x ? r0.y : r1.y;
+  r0.z = r1.x ? r0.z : r1.z;
+  r0.w = r1.x ? r0.w : r1.w;
+  r0.xyz = r0.yzw * r0.xxx;
+  o0.xyz = _GridColor.xyz * r0.xyz;
+  o0.w = 0.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer Viewport
+// {
+//
+//   float4x4 _ViewRotProjectionMatrix; // Offset:    0 Size:    64 [unused]
+//   float4x4 _ViewProjectionMatrix;    // Offset:   64 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  128 Size:    64 [unused]
+//   float4x4 _InvProjectionMatrix;     // Offset:  192 Size:    64
+//   float4x4 _InvProjectionMatrixDepth;// Offset:  256 Size:    64 [unused]
+//   float4x4 _DepthTextureTransform;   // Offset:  320 Size:    64 [unused]
+//   float4x3 _ViewMatrix;              // Offset:  384 Size:    48 [unused]
+//   float4x3 _InvViewMatrix;           // Offset:  432 Size:    48
+//   float4x4 _PreviousViewProjectionMatrix;// Offset:  480 Size:    64 [unused]
+//   float4 _CameraDistances;           // Offset:  544 Size:    16 [unused]
+//   float4 _ViewportSize;              // Offset:  560 Size:    16
+//   float4 _CameraPosition_MaxStaticReflectionMipIndex;// Offset:  576 Size:    16 [unused]
+//   float4 _CameraDirection_MaxParaboloidReflectionMipIndex;// Offset:  592 Size:    16 [unused]
+//   float4 _ViewPoint_ExposureScale;   // Offset:  608 Size:    16 [unused]
+//   float4 _FogColorVector_ExposedWhitePointOverExposureScale;// Offset:  624 Size:    16 [unused]
+//   float3 _SideFogColor;              // Offset:  640 Size:    12 [unused]
+//   float3 _SunFogColorDelta;          // Offset:  656 Size:    12 [unused]
+//   float3 _OppositeFogColorDelta;     // Offset:  672 Size:    12 [unused]
+//   float4 _FogValues0;                // Offset:  688 Size:    16 [unused]
+//   float4 _FogValues1;                // Offset:  704 Size:    16 [unused]
+//   float4 _CameraNearPlaneSize;       // Offset:  720 Size:    16 [unused]
+//   float4 _UncompressDepthWeights_ShadowProjDepthMinValue;// Offset:  736 Size:    16 [unused]
+//   float4 _UncompressDepthWeightsWS_ReflectionFadeTarget;// Offset:  752 Size:    16 [unused]
+//   float4 _WorldAmbientColorParams0;  // Offset:  768 Size:    16 [unused]
+//   float4 _WorldAmbientColorParams1;  // Offset:  784 Size:    16 [unused]
+//   float4 _WorldAmbientColorParams2;  // Offset:  800 Size:    16 [unused]
+//   float4 _GlobalWorldTextureParams;  // Offset:  816 Size:    16 [unused]
+//   float4 _CullingCameraPosition_OneOverAutoExposureScale;// Offset:  832 Size:    16 [unused]
+//   float4 _AmbientSkyColor_ReflectionScaleStrength;// Offset:  848 Size:    16 [unused]
+//   float4 _AmbientGroundColor_ReflectionScaleDistanceMul;// Offset:  864 Size:    16 [unused]
+//   float4 _FacettedShadowCastParams;  // Offset:  880 Size:    16 [unused]
+//   float4 _FSMClipPlanes;             // Offset:  896 Size:    16 [unused]
+//   float2 _ReflectionGIControl;       // Offset:  912 Size:     8 [unused]
+//
+// }
+//
+// cbuffer CopyGrid
+// {
+//
+//   float4 _GridColor;                 // Offset:    0 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// CopyGrid__DepthCopyTexture__SampObj__    sampler      NA          NA    0        1
+// CopyGrid__colorSampler1__SampObj__    sampler      NA          NA    1        1
+// CopyGrid__DotSampler__SampObj__    sampler      NA          NA    2        1
+// CopyGrid__DepthCopyTexture__TexObj__    texture  float4          2d    0        1
+// CopyGrid__colorSampler1__TexObj__    texture  float4          2d    1        1
+// CopyGrid__DotSampler__TexObj__    texture  float4          2d    2        1
+// Viewport                          cbuffer      NA          NA    0        1
+// CopyGrid                          cbuffer      NA          NA    1        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyz         0     NONE   float   xyz 
+// TEXCOORD                 1   xy          1     NONE   float   xy  
+// SV_Position              0   xyzw        2      POS   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[36], immediateIndexed
+dcl_constantbuffer cb1[1], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_input_ps linear v0.xyz
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 4
+mov r0.x, l(0)
+mov r0.y, cb0[35].w
+add r0.xy, r0.xyxx, v1.xyxx
+sample_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t1.xyzw, s1
+mad r0.xyz, r0.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, v1.xyxx, t1.xyzw, s1
+mad r1.xyz, r1.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.w, r1.xyzx, r0.xyzx
+mov r2.x, cb0[35].z
+mov r2.yz, l(0,0,0,0)
+add r2.xy, r2.xyxx, v1.xyxx
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, r2.xyxx, t1.xyzw, s1
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.y, r1.xyzx, r3.xyzx
+mov r2.w, -cb0[35].w
+add r2.xy, r2.zwzz, v1.xyxx
+sample_indexable(texture2d)(float,float,float,float) r2.xyz, r2.xyxx, t1.xyzw, s1
+mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.z, r1.xyzx, r2.xyzx
+mov r2.z, -cb0[35].z
+mov r2.yw, l(0,1.000000,0,0)
+add r2.zw, r2.zzzw, v1.xxxy
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, r2.zwzz, t1.xyzw, s1
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.x, r1.xyzx, r3.xyzx
+lt r1.xy, l(0.700000, 0.700000, 0.000000, 0.000000), |r1.xyxx|
+min r0.xyzw, |r0.xyzw|, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r0.xyzw, -r0.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+dp4 r0.x, r0.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+min r0.x, r0.x, l(1.000000)
+add r0.x, r0.x, l(-0.500000)
+add r0.x, r0.x, r0.x
+max r0.x, r0.x, l(0.000000)
+mad r0.y, r0.x, l(-2.000000), l(3.000000)
+mul r0.x, r0.x, r0.x
+mul r0.x, r0.x, r0.y
+sample_indexable(texture2d)(float,float,float,float) r2.x, v1.xyxx, t0.xyzw, s0
+dp2 r0.y, r2.xyxx, cb0[14].zwzz
+dp2 r0.z, r2.xyxx, cb0[15].zwzz
+div r0.y, -r0.y, r0.z
+div r2.xyz, v0.xyzx, v0.zzzz
+mul r2.xyz, -r0.yyyy, r2.xyzx
+mov r2.w, l(1.000000)
+dp4 r3.x, r2.xyzw, cb0[27].xyzw
+dp4 r3.y, r2.xyzw, cb0[28].xyzw
+dp4 r3.z, r2.xyzw, cb0[29].xyzw
+mul r0.yzw, r3.xxyz, l(0.000000, 0.500000, 0.500000, 0.500000)
+sample_indexable(texture2d)(float,float,float,float) r2.xyz, r0.ywyy, t2.xyzw, s2
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, r0.yzyy, t2.xyzw, s2
+sample_indexable(texture2d)(float,float,float,float) r0.yzw, r0.zwzz, t2.wxyz, s2
+movc r1.yzw, r1.yyyy, r2.xxyz, r3.xxyz
+movc r0.yzw, r1.xxxx, r0.yyzw, r1.yyzw
+mul r0.xyz, r0.xxxx, r0.yzwy
+mul o0.xyz, r0.xyzx, cb1[0].xyzx
+mov o0.w, l(0)
+ret 
+// Approximately 56 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

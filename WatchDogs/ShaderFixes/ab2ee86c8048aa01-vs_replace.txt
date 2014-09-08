@@ -1,0 +1,364 @@
+//Water haloing
+cbuffer Viewport : register(b0)
+{
+  float4x4 _ViewRotProjectionMatrix : packoffset(c0);
+  float4x4 _ViewProjectionMatrix : packoffset(c4);
+  float4x4 _ProjectionMatrix : packoffset(c8);
+  float4x4 _InvProjectionMatrix : packoffset(c12);
+  float4x4 _InvProjectionMatrixDepth : packoffset(c16);
+  float4x4 _DepthTextureTransform : packoffset(c20);
+  float4x3 _ViewMatrix : packoffset(c24);
+  float4x3 _InvViewMatrix : packoffset(c27);
+  float4x4 _PreviousViewProjectionMatrix : packoffset(c30);
+  float4 _CameraDistances : packoffset(c34);
+  float4 _ViewportSize : packoffset(c35);
+  float4 _CameraPosition_MaxStaticReflectionMipIndex : packoffset(c36);
+  float4 _CameraDirection_MaxParaboloidReflectionMipIndex : packoffset(c37);
+  float4 _ViewPoint_ExposureScale : packoffset(c38);
+  float4 _FogColorVector_ExposedWhitePointOverExposureScale : packoffset(c39);
+  float3 _SideFogColor : packoffset(c40);
+  float3 _SunFogColorDelta : packoffset(c41);
+  float3 _OppositeFogColorDelta : packoffset(c42);
+  float4 _FogValues0 : packoffset(c43);
+  float4 _FogValues1 : packoffset(c44);
+  float4 _CameraNearPlaneSize : packoffset(c45);
+  float4 _UncompressDepthWeights_ShadowProjDepthMinValue : packoffset(c46);
+  float4 _UncompressDepthWeightsWS_ReflectionFadeTarget : packoffset(c47);
+  float4 _WorldAmbientColorParams0 : packoffset(c48);
+  float4 _WorldAmbientColorParams1 : packoffset(c49);
+  float4 _WorldAmbientColorParams2 : packoffset(c50);
+  float4 _GlobalWorldTextureParams : packoffset(c51);
+  float4 _CullingCameraPosition_OneOverAutoExposureScale : packoffset(c52);
+  float4 _AmbientSkyColor_ReflectionScaleStrength : packoffset(c53);
+  float4 _AmbientGroundColor_ReflectionScaleDistanceMul : packoffset(c54);
+  float4 _FacettedShadowCastParams : packoffset(c55);
+  float4 _FSMClipPlanes : packoffset(c56);
+  float2 _ReflectionGIControl : packoffset(c57);
+}
+
+cbuffer WaterGridRendering : register(b1)
+{
+  float4x4 _GridMatrix : packoffset(c0);
+  float4 _SizeParams : packoffset(c4);
+  float4 _WaterParams : packoffset(c5);
+  float4 _WaterParams1 : packoffset(c6);
+  float4 _WaterParams2 : packoffset(c7);
+  float3 _SunColor : packoffset(c8);
+  float3 _SunDirection : packoffset(c9);
+}
+SamplerState Viewport__ParaboloidReflectionTexture__SampObj___s : register(s0);
+SamplerState WaterGridRendering__VectorMapTexture__SampObj___s : register(s1);
+Texture2D<float4> Viewport__ParaboloidReflectionTexture__TexObj__ : register(t0);
+Texture2D<float4> WaterGridRendering__VectorMapTexture__TexObj__ : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float2 v0 : position0,
+  uint4 v1 : color1,
+  out float4 o0 : TEXCOORD0,
+  out float4 o1 : TEXCOORD1,
+  out float4 o2 : TEXCOORD2,
+  out float3 o3 : TEXCOORD3,
+  out float2 o4 : TEXCOORD4,
+  out float4 o6 : TEXCOORD5,
+  out float4 o5 : SV_Position0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.xy = v0.xy;
+  r0.zw = float2(1.000000e+000,1.000000e+000);
+  r1.x = dot(r0.xyz, _GridMatrix._m00_m10_m30);
+  r1.y = dot(r0.xyz, _GridMatrix._m01_m11_m31);
+  r0.x = dot(r0.xyz, _GridMatrix._m03_m13_m33);
+  r0.xy = r1.xy / r0.xx;
+  r0.xy = _WaterParams.yz + r0.xy;
+  r0.z = _WaterParams.x;
+  r1.xyzw = WaterGridRendering__VectorMapTexture__TexObj__.SampleLevel(WaterGridRendering__VectorMapTexture__SampObj___s, v0.xy, 0.000000000e+000).xyzw;
+  r2.xyz = r1.xyz + r0.xyz;
+  o3.xyz = r0.xyz;
+  r0.xyz = -_CameraPosition_MaxStaticReflectionMipIndex.xyz + r2.xyz;
+  r3.x = dot(r0.xyzw, _ViewRotProjectionMatrix._m00_m10_m20_m30);
+  r3.y = dot(r0.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
+  r3.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
+  r3.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
+  
+float4 stereo = StereoParams.Load(0);
+float4 r23 = r3;
+float4 r24 = r3;
+if(stereo.z < 0)
+{
+r24.x += 2*stereo.x*(r24.w - stereo.y);
+}
+r24.x -= stereo.x*(r24.w - stereo.y);
+
+
+r3.x += stereo.x*(r3.w - stereo.y);
+
+  o0.xyzw = r3.xyzw;
+  o5.xyz = r23.xyz;
+o6.xyzw = r24.xyzw;
+
+  r0.w = -6.000000000e+000 + r1.z;
+  r0.w = saturate(5.000000000e-001 * r0.w);
+  r1.z = r0.w * -2.000000000e+000 + 3.000000000e+000;
+  r0.w = r0.w * r0.w;
+  r0.w = r1.z * r0.w;
+  r1.x = dot(r1.xy, r1.xy);
+  r1.y = r1.w == 0.000000;
+  r1.y = r1.y ? -1.000000000e+004 : r3.w;
+  r1.x = sqrt(r1.x);
+  o1.w = r0.w * 1.000000000e+001 + r1.x;
+  o1.xyz = r2.xyz;
+  r3.z = max(r0.z, 0.000000000e+000);
+  r3.xy = r0.xy;
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xzw = r3.xyz * r0.www;
+  r0.w = r1.w * 2.000000000e+000 + 2.000000000e+000;
+  r1.xz = r1.zx / r0.ww;
+  r0.w = 5.000000000e-001 + -r1.x;
+  r3.y = saturate(5.000000000e-001 + r1.z);
+  r3.x = saturate(max(r0.w, 1.250000000e-001));
+  r3.z = r3.x * 5.000000000e-001 + 5.000000000e-001;
+  r1.xzw = Viewport__ParaboloidReflectionTexture__TexObj__.SampleLevel(Viewport__ParaboloidReflectionTexture__SampObj___s, r3.zy, 6.000000000e+000).xyz;
+  r3.xyz = Viewport__ParaboloidReflectionTexture__TexObj__.SampleLevel(Viewport__ParaboloidReflectionTexture__SampObj___s, float2(7.500000e-001,5.000000e-001), 6.000000000e+000).xyz;
+  r3.xyz = r3.xyz + -r1.xzw;
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.y = rsqrt(r0.x);
+  r0.x = sqrt(r0.x);
+  r0.xw = _WorldAmbientColorParams0.zw * r0.xx;
+  r0.y = r0.z * r0.y;
+  r1.xzw = abs(r0.yyy) * r3.xyz + r1.xzw;
+  r1.xzw = _WorldAmbientColorParams2.xyz * r1.xzw;
+  r4.xyz = _WorldAmbientColorParams1.www * r1.xzw;
+  r0.y = 0.000000000e+000 >= _UncompressDepthWeightsWS_ReflectionFadeTarget.w;
+  r0.y = r0.y ? -1.000000000e+001 : -1.000000000e+004;
+  r0.y = r2.z >= r0.y;
+  r1.x = abs(r2.x) < 1998;
+  r1.z = abs(r2.y) < 2510;
+  r1.x = r1.z ? r1.x : 0;
+  o5.w = r1.x ? r1.y : r3.w;
+  r1.xy = float2(1.000000e+000,-1.000000e+000) * r0.zz;
+  r0.z = 9.999999776e-003 < abs(r0.z);
+  r1.xy = _WorldAmbientColorParams1.xy * r1.xy;
+  r1.zw = float2(-1.442695e+000,-1.442695e+000) * r1.xy;
+  r1.zw = exp2(r1.zw);
+  r1.zw = float2(1.000000e+000,1.000000e+000) + -r1.zw;
+  r1.xy = r1.zw / r1.xy;
+  r1.xy = r1.xy * r0.xw;
+  r0.x = r0.z ? r1.x : r0.x;
+  r0.z = r0.z ? r1.y : r0.w;
+  r0.xz = -_WorldAmbientColorParams0.xy * r0.xz;
+  r0.xz = float2(1.442695e+000,1.442695e+000) * r0.xz;
+  r0.xz = exp2(r0.xz);
+  r0.xz = float2(1.000000e+000,1.000000e+000) + -r0.xz;
+  r0.x = max(r0.z, r0.x);
+  r0.x = log2(r0.x);
+  r0.x = _WorldAmbientColorParams2.w * r0.x;
+  r0.x = exp2(r0.x);
+  r4.w = min(r0.x, _WorldAmbientColorParams1.z);
+  r0.x = r0.y ? r4.x : 0;
+  r0.y = r0.y ? r4.y : 0;
+  r0.z = r0.y ? r4.z : 0;
+  r0.w = r0.y ? r4.w : 1;
+  r1.xyz = r0.xyz * r0.www;
+  r1.w = 1.000000000e+000 + -r0.w;
+  o2.xyzw = _ViewPoint_ExposureScale.wwww * r1.xyzw;
+  o4.xy = v0.xy;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer Viewport
+// {
+//
+//   float4x4 _ViewRotProjectionMatrix; // Offset:    0 Size:    64
+//   float4x4 _ViewProjectionMatrix;    // Offset:   64 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  128 Size:    64 [unused]
+//   float4x4 _InvProjectionMatrix;     // Offset:  192 Size:    64 [unused]
+//   float4x4 _InvProjectionMatrixDepth;// Offset:  256 Size:    64 [unused]
+//   float4x4 _DepthTextureTransform;   // Offset:  320 Size:    64 [unused]
+//   float4x3 _ViewMatrix;              // Offset:  384 Size:    48 [unused]
+//   float4x3 _InvViewMatrix;           // Offset:  432 Size:    48 [unused]
+//   float4x4 _PreviousViewProjectionMatrix;// Offset:  480 Size:    64 [unused]
+//   float4 _CameraDistances;           // Offset:  544 Size:    16 [unused]
+//   float4 _ViewportSize;              // Offset:  560 Size:    16 [unused]
+//   float4 _CameraPosition_MaxStaticReflectionMipIndex;// Offset:  576 Size:    16
+//   float4 _CameraDirection_MaxParaboloidReflectionMipIndex;// Offset:  592 Size:    16 [unused]
+//   float4 _ViewPoint_ExposureScale;   // Offset:  608 Size:    16
+//   float4 _FogColorVector_ExposedWhitePointOverExposureScale;// Offset:  624 Size:    16 [unused]
+//   float3 _SideFogColor;              // Offset:  640 Size:    12 [unused]
+//   float3 _SunFogColorDelta;          // Offset:  656 Size:    12 [unused]
+//   float3 _OppositeFogColorDelta;     // Offset:  672 Size:    12 [unused]
+//   float4 _FogValues0;                // Offset:  688 Size:    16 [unused]
+//   float4 _FogValues1;                // Offset:  704 Size:    16 [unused]
+//   float4 _CameraNearPlaneSize;       // Offset:  720 Size:    16 [unused]
+//   float4 _UncompressDepthWeights_ShadowProjDepthMinValue;// Offset:  736 Size:    16 [unused]
+//   float4 _UncompressDepthWeightsWS_ReflectionFadeTarget;// Offset:  752 Size:    16
+//   float4 _WorldAmbientColorParams0;  // Offset:  768 Size:    16
+//   float4 _WorldAmbientColorParams1;  // Offset:  784 Size:    16
+//   float4 _WorldAmbientColorParams2;  // Offset:  800 Size:    16
+//   float4 _GlobalWorldTextureParams;  // Offset:  816 Size:    16 [unused]
+//   float4 _CullingCameraPosition_OneOverAutoExposureScale;// Offset:  832 Size:    16 [unused]
+//   float4 _AmbientSkyColor_ReflectionScaleStrength;// Offset:  848 Size:    16 [unused]
+//   float4 _AmbientGroundColor_ReflectionScaleDistanceMul;// Offset:  864 Size:    16 [unused]
+//   float4 _FacettedShadowCastParams;  // Offset:  880 Size:    16 [unused]
+//   float4 _FSMClipPlanes;             // Offset:  896 Size:    16 [unused]
+//   float2 _ReflectionGIControl;       // Offset:  912 Size:     8 [unused]
+//
+// }
+//
+// cbuffer WaterGridRendering
+// {
+//
+//   float4x4 _GridMatrix;              // Offset:    0 Size:    64
+//   float4 _SizeParams;                // Offset:   64 Size:    16 [unused]
+//   float4 _WaterParams;               // Offset:   80 Size:    16
+//   float4 _WaterParams1;              // Offset:   96 Size:    16 [unused]
+//   float4 _WaterParams2;              // Offset:  112 Size:    16 [unused]
+//   float3 _SunColor;                  // Offset:  128 Size:    12 [unused]
+//   float3 _SunDirection;              // Offset:  144 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// Viewport__ParaboloidReflectionTexture__SampObj__    sampler      NA          NA    0        1
+// WaterGridRendering__VectorMapTexture__SampObj__    sampler      NA          NA    1        1
+// Viewport__ParaboloidReflectionTexture__TexObj__    texture  float4          2d    0        1
+// WaterGridRendering__VectorMapTexture__TexObj__    texture  float4          2d    1        1
+// Viewport                          cbuffer      NA          NA    0        1
+// WaterGridRendering                cbuffer      NA          NA    1        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// position                 0   xy          0     NONE   float   xy  
+// color                    1   xyzw        1     NONE    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 3   xyz         3     NONE   float   xyz 
+// TEXCOORD                 4   xy          4     NONE   float   xy  
+// SV_Position              0   xyzw        5      POS   float   xyzw
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[51], immediateIndexed
+dcl_constantbuffer cb1[6], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_input v0.xy
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyz
+dcl_output o4.xy
+dcl_output_siv o5.xyzw, position
+dcl_temps 5
+mov r0.xy, v0.xyxx
+mov r0.zw, l(0,0,1.000000,1.000000)
+dp3 r1.x, r0.xyzx, cb1[0].xywx
+dp3 r1.y, r0.xyzx, cb1[1].xywx
+dp3 r0.x, r0.xyzx, cb1[3].xywx
+div r0.xy, r1.xyxx, r0.xxxx
+add r0.xy, r0.xyxx, cb1[5].yzyy
+mov r0.z, cb1[5].x
+sample_l_indexable(texture2d)(float,float,float,float) r1.xyzw, v0.xyxx, t1.xyzw, s1, l(0.000000)
+add r2.xyz, r0.xyzx, r1.xyzx
+mov o3.xyz, r0.xyzx
+add r0.xyz, r2.xyzx, -cb0[36].xyzx
+dp4 r3.x, r0.xyzw, cb0[0].xyzw
+dp4 r3.y, r0.xyzw, cb0[1].xyzw
+dp4 r3.z, r0.xyzw, cb0[2].xyzw
+dp4 r3.w, r0.xyzw, cb0[3].xyzw
+mov o0.xyzw, r3.xyzw
+mov o5.xyz, r3.xyzx
+add r0.w, r1.z, l(-6.000000)
+mul_sat r0.w, r0.w, l(0.500000)
+mad r1.z, r0.w, l(-2.000000), l(3.000000)
+mul r0.w, r0.w, r0.w
+mul r0.w, r0.w, r1.z
+dp2 r1.x, r1.xyxx, r1.xyxx
+eq r1.y, r1.w, l(0.000000)
+movc r1.y, r1.y, l(-10000.000000), r3.w
+sqrt r1.x, r1.x
+mad o1.w, r0.w, l(10.000000), r1.x
+mov o1.xyz, r2.xyzx
+max r3.z, r0.z, l(0.000000)
+mov r3.xy, r0.xyxx
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r1.xzw, r0.wwww, r3.xxyz
+mad r0.w, r1.w, l(2.000000), l(2.000000)
+div r1.xz, r1.zzxz, r0.wwww
+add r0.w, -r1.x, l(0.500000)
+add_sat r3.y, r1.z, l(0.500000)
+max_sat r3.x, r0.w, l(0.125000)
+mad r3.z, r3.x, l(0.500000), l(0.500000)
+sample_l_indexable(texture2d)(float,float,float,float) r1.xzw, r3.zyzz, t0.xwyz, s0, l(6.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r3.xyz, l(0.750000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(6.000000)
+add r3.xyz, -r1.xzwx, r3.xyzx
+dp3 r0.x, r0.xyzx, r0.xyzx
+rsq r0.y, r0.x
+sqrt r0.x, r0.x
+mul r0.xw, r0.xxxx, cb0[48].zzzw
+mul r0.y, r0.y, r0.z
+mad r1.xzw, |r0.yyyy|, r3.xxyz, r1.xxzw
+mul r1.xzw, r1.xxzw, cb0[50].xxyz
+mul r4.xyz, r1.xzwx, cb0[49].wwww
+ge r0.y, l(0.000000), cb0[47].w
+movc r0.y, r0.y, l(-10.000000), l(-10000.000000)
+ge r0.y, r2.z, r0.y
+lt r1.xz, |r2.xxyx|, l(1998.000000, 0.000000, 2510.000000, 0.000000)
+and r1.x, r1.z, r1.x
+movc o5.w, r1.x, r1.y, r3.w
+mul r1.xy, r0.zzzz, l(1.000000, -1.000000, 0.000000, 0.000000)
+lt r0.z, l(0.010000), |r0.z|
+mul r1.xy, r1.xyxx, cb0[49].xyxx
+mul r1.zw, r1.xxxy, l(0.000000, 0.000000, -1.442695, -1.442695)
+exp r1.zw, r1.zzzw
+add r1.zw, -r1.zzzw, l(0.000000, 0.000000, 1.000000, 1.000000)
+div r1.xy, r1.zwzz, r1.xyxx
+mul r1.xy, r0.xwxx, r1.xyxx
+movc r0.xz, r0.zzzz, r1.xxyx, r0.xxwx
+mul r0.xz, r0.xxzx, -cb0[48].xxyx
+mul r0.xz, r0.xxzx, l(1.442695, 0.000000, 1.442695, 0.000000)
+exp r0.xz, r0.xxzx
+add r0.xz, -r0.xxzx, l(1.000000, 0.000000, 1.000000, 0.000000)
+max r0.x, r0.z, r0.x
+log r0.x, r0.x
+mul r0.x, r0.x, cb0[50].w
+exp r0.x, r0.x
+min r4.w, r0.x, cb0[49].z
+movc r0.xyzw, r0.yyyy, r4.xyzw, l(0,0,0,1.000000)
+mul r1.xyz, r0.wwww, r0.xyzx
+add r1.w, -r0.w, l(1.000000)
+mul o2.xyzw, r1.xyzw, cb0[38].wwww
+mov o4.xy, v0.xyxx
+ret 
+// Approximately 81 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
