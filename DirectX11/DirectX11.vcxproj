@@ -945,9 +945,25 @@ REM And, the d3dx.ini from game specific folder
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\D3DCompile*.DLL” “$(TargetDir)” /E /Y
+      <Command>echo
+
+cd "$(SolutionDir)"
+
+REM copy all 3Dmigoto specific DLLs, and dependent files into the Release directory.  
+REM These are any items that are not specifically built, but required for the tool to work.
+
+xcopy “$(WindowsSdkDir_80)Redist\D3D\x64\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
+
+REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
+
+del WatchDogs\3Dmigoto-WatchDogs-Ver.zip 
+
+REM Use 7zip command tool to create a full release that can be unzipped into game directory.
+REM On game specific builds, this also includes the ShaderFixes folder.
+REM And, the d3dx.ini from game specific folder
+
+7zip\7za a WatchDogs\3Dmigoto-WatchDogs-Ver.zip  .\x64\WatchDogs\*.dll  .\WatchDogs\d3dx.ini  .\WatchDogs\ShaderFixes\ .\x64\WatchDogs\uninstall.bat
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
