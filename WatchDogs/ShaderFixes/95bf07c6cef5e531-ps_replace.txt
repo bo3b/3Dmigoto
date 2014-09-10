@@ -149,10 +149,13 @@ r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;
   r2.x = saturate(r2.x / _LinearGridResCutoff);
   r2.x = _MaxLinearSliceIndex * r2.x;
   r2.z = 1.000000000e+000 + -_LinearGridResCutoff;
-  r2.y = r2.y / r2.z;
-  r2.y = log2(r2.y);
-  r2.y = _MiscDataToTidy.w * r2.y;
-  r2.y = exp2(r2.y);
+  
+  // r2.y = r2.y / r2.z;
+  // r2.y = log2(r2.y);
+  // r2.y = _MiscDataToTidy.w * r2.y;
+  // r2.y = exp2(r2.y);
+r2.y = 1.0;  
+  
   r3.xyzw = float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000) + _MiscDataToTidy.xxyz;
   r2.z = -_MaxLinearSliceIndex + r3.w;
   r2.y = r2.y * r2.z;
@@ -185,7 +188,9 @@ r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.y = saturate(r3.y);
   r0.y = r0.y / _MiscDataToTidy.z;
   r3.z = r0.y + r2.y;
-  r0.yw = LightProbes__FloorCeilingTexture__TexObj__.SampleLevel(LightProbes__FloorCeilingTexture__SampObj___s, r3.xz, 0.000000000e+000).xy;
+  // r0.yw = LightProbes__FloorCeilingTexture__TexObj__.SampleLevel(LightProbes__FloorCeilingTexture__SampObj___s, r3.xz, 0.000000000e+000).xy;
+r0.yw = float2(0.0,0.0);
+
   r2.z = r0.y / _MiscDataToTidy.z;
   r2.z = r2.y + r2.z;
   r1.w = -r2.z + r1.w;

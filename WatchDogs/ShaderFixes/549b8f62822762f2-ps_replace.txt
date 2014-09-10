@@ -1,4 +1,4 @@
-//Night Lighting
+//Night Lighting 
 cbuffer Viewport : register(b0)
 {
   float4x4 _ViewRotProjectionMatrix : packoffset(c0);
@@ -130,6 +130,7 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.x = r0.x * r0.z;
   r0.xyzw = _LightFrontColor.xyzz * r0.xxxx;
   r3.xyzw = DeferredLightingCommon__NormalTextureMS.Load(r2.xyw,v1.x).xyzw;
+ 
   r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r1.w = round(r3.w);
   r4.xy = float2(5.000000e-001,2.500000e-001) * r1.ww;
@@ -140,7 +141,7 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r3.y = r1.w ? 0 : r3.y;
   r3.z = r1.w ? 1 : r3.z;
  
- r1.w = dot(r3.xyz, r3.xyz);
+  r1.w = dot(r3.xyz, r3.xyz);
   r1.w = rsqrt(r1.w);
   r3.xyz = r3.xyz * r1.www;
   r1.x = dot(r3.xyz, r1.xyz);
@@ -148,7 +149,9 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r3.xyz = saturate(r1.yzw);
   r5.xyzw = r3.zzzz * r0.xyzw;
   r1.y = DeferredLightingCommon__OtherTextureMS.Load(r2.xyz,v1.x).w;
+
   r2.xyzw = DeferredLightingCommon__AlbedoTextureMS.Load(r2.xyw,v1.x).xyzw;
+  
   r2.xyzw = r2.xyzz * r2.wwww;
   r5.xyzw = r5.xyzw * r1.yyyy;
   r1.y = r4.x >= -r4.x;
@@ -176,16 +179,23 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   
   r4.xyzw = r3.xwww * r3.xwww;
   r4.xyzw = r4.xyzw * r4.xyzw;
-  // r1.x = saturate(r1.y ? r4.x : r3.x);
-  // r1.y = saturate(r1.y ? r4.y : r3.y);
-  // r1.z = saturate(r1.y ? r4.z : r3.z);
-  // r1.w = saturate(r1.y ? r4.w : r3.w);
+  
+  
+// float temp = r1.y;
+ 
+  // r1.x = saturate(temp ? r4.x : r3.x);
+  // r1.y = saturate(temp ? r4.y : r3.y);
+  // r1.z = saturate(temp ? r4.z : r3.z);
+  // r1.w = saturate(temp ? r4.w : r3.w);
   
 r1.xyzw = saturate(r1.yyyy ? r4.xyzw : r3.xyzw);
 
   r0.xyzw = r1.xyzw * r0.xyzw + r5.xyzw;
   r0.xyzw = r2.xyzw * r0.xyzw;
   o0.xyzw = _ViewPoint_ExposureScale.wwww * r0.xyzw;
+  
+  
+  // o0=0;
   return;
 }
 

@@ -183,6 +183,7 @@ r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;
   r1.yz = r4.yz / _MiscDataToTidy.xy;
   r6.xy = r1.yz * r0.xy;
   r2.x = saturate(r2.x);
+  
   r0.x = 0.000000000e+000 < _LinearGridResCutoff;
   r0.y = saturate(r2.x / _LinearGridResCutoff);
   r0.y = _MaxLinearSliceIndex * r0.y;
@@ -190,10 +191,15 @@ r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.y = _LinearGridResCutoff < 1.000000000e+000;
   r1.y = saturate(-_LinearGridResCutoff + r2.x);
   r1.z = 1.000000000e+000 + -_LinearGridResCutoff;
-  r1.y = r1.y / r1.z;
-  r1.y = log2(r1.y);
-  r1.y = _MiscDataToTidy.w * r1.y;
-  r1.y = exp2(r1.y);
+  
+  // r1.y = r1.y / r1.z;
+  // r1.y = log2(r1.y);
+  // r1.y = _MiscDataToTidy.w * r1.y;
+  // r1.y = exp2(r1.y);
+r1.y=1.0;  
+  
+  
+  
   r1.z = -_MaxLinearSliceIndex + r4.w;
   r1.y = r1.y * r1.z;
   r0.y = r0.y ? r1.y : 0;
@@ -207,7 +213,9 @@ r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;
   r1.y = saturate(r6.y);
   r1.y = r1.y / _MiscDataToTidy.z;
   r6.z = r1.y + r0.z;
-  r1.yz = LightProbes__FloorCeilingTexture__TexObj__.SampleLevel(LightProbes__FloorCeilingTexture__SampObj___s, r6.xz, 0.000000000e+000).xy;
+  // r1.yz = LightProbes__FloorCeilingTexture__TexObj__.SampleLevel(LightProbes__FloorCeilingTexture__SampObj___s, r6.xz, 0.000000000e+000).xy;
+r1.yz = float2(0.0,0.0);
+
   r2.xy = float2(1.000000e+000,1.000000e+000) + -r1.yz;
   r1.z = r2.y * 2.500000000e-001 + r1.z;
   r1.z = min(r1.z, r2.x);

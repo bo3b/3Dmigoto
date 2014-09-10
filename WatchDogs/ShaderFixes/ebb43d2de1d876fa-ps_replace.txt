@@ -210,7 +210,7 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   o0.xyzw = _ViewPoint_ExposureScale.wwww * r0.xyzw;
   
 
-  
+  // o0=0;
   
   return;
 }

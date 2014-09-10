@@ -185,10 +185,13 @@ r2.x -= stereo.x*(-r2.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.y = _LinearGridResCutoff < 1.000000000e+000;
   r1.y = saturate(-_LinearGridResCutoff + r2.x);
   r1.z = 1.000000000e+000 + -_LinearGridResCutoff;
-  r1.y = r1.y / r1.z;
-  r1.y = log2(r1.y);
-  r1.y = _MiscDataToTidy.w * r1.y;
-  r1.y = exp2(r1.y);
+  
+  // r1.y = r1.y / r1.z;
+  // r1.y = log2(r1.y);
+  // r1.y = _MiscDataToTidy.w * r1.y;
+  // r1.y = exp2(r1.y);
+r1.y = 1.0;  
+  
   r1.z = -_MaxLinearSliceIndex + r4.w;
   r1.y = r1.y * r1.z;
   r0.y = r0.y ? r1.y : 0;

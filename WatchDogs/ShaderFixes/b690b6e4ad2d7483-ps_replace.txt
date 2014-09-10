@@ -229,18 +229,22 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.z = r0.z ? r3.y : -r3.y;
   r0.x = r0.x == 0.500000;
   r0.z = r0.z >= 5.000000000e-001;
+  
   r4.x = r0.x ? r4.x : r0.y;
   r4.y = r0.x ? r4.y : r0.y;
   r4.z = r0.x ? r4.z : r0.y;
   r4.w = r0.x ? r4.w : r0.y;
+  
   r0.y = saturate(-r0.y);
   r7.xyzw = r0.yyyy * r1.xyww;
   r5.xyzw = r7.xyzw * r5.wwww;
   r0.x = (int)r0.z | (int)r0.x;
+  
   r3.x = r0.z ? r3.w : r4.x;
   r3.y = r0.z ? r3.w : r4.y;
   r3.z = r0.z ? r3.w : r4.z;
   r3.w = r0.z ? r3.w : r4.w;
+  
   r4.xyzw = r3.xwww * r3.xwww;
   r4.xyzw = r4.xyzw * r4.xyzw;
   // r0.x = saturate(r0.x ? r4.x : r3.x);

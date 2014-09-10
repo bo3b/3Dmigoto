@@ -111,7 +111,7 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
-//r0.x -= stereo.x*(r0.w - stereo.y);
+// r0.x -= stereo.x*(r0.w - stereo.y);
 
   r0.x = dot(r1.xyzw, _InvViewMatrix._m00_m10_m20_m30);
   r0.y = dot(r1.xyzw, _InvViewMatrix._m01_m11_m21_m31);
@@ -189,14 +189,18 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r1.x = r5.x >= -r5.x;
   r1.z = r5.z >= -r5.z;
   r3.xy = frac(abs(r5.xz));
+  
   r1.x = r1.x ? r3.x : -r3.x;
   r1.z = r1.z ? r3.y : -r3.y;
+  
   r1.x = r1.x == 0.500000;
   r1.z = r1.z >= 5.000000000e-001;
+  
   r4.x = r1.x ? r4.x : r1.y;
   r4.y = r1.x ? r4.y : r1.y;
   r4.z = r1.x ? r4.z : r1.y;
   r4.w = r1.x ? r4.w : r1.y;
+  
   r1.y = saturate(-r1.y);
   r7.xyzw = r1.yyyy * r0.xyww;
   r5.xyzw = r7.xyzw * r5.wwww;
