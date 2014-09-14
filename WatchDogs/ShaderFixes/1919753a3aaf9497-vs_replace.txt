@@ -77,7 +77,7 @@ void main(
   o2.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
   
  float4 stereo = StereoParams.Load(0);
-o2.x -= stereo.x*(1.0 - stereo.y);
+o2.x -= stereo.x*(0.9 - stereo.y);
 
   return;
 }

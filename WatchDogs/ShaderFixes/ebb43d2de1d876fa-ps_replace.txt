@@ -107,6 +107,9 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.xy = -_CameraPosition_MaxStaticReflectionMipIndex.xy + r0.xy;
   r0.x = dot(r0.xy, r0.xy);
   r0.x = saturate(_AmbientGroundColor_ReflectionScaleDistanceMul.w * r0.x);
+  
+
+
   r0.y = dot(r1.xyz, r1.xyz);
   r0.y = rsqrt(r0.y);
   r0.yzw = r1.xyz * r0.yyy;
@@ -178,6 +181,7 @@ r1.x -= stereo.x*(-r1.z - stereo.y)*_InvProjectionMatrix._m00;
   r0.xzw = r0.xzw * _AmbientSkyColor_ReflectionScaleStrength.www + r4.xyz;
   r1.x = r6.y * -_CameraPosition_MaxStaticReflectionMipIndex.w + _CameraPosition_MaxStaticReflectionMipIndex.w;
   r1.xyzw = DeferredLightingBase__DeferredReflectionTexture__TexObj__.SampleLevel(DeferredLightingBase__DeferredReflectionTexture__SampObj___s, r0.xzw, r1.x).xyzw;
+  
   r0.x = 1.000000000e+000 + -r1.w;
   r4.xyzw = r5.xyww * r0.xxxx;
   r4.xyzw = _UncompressDepthWeightsWS_ReflectionFadeTarget.wwww * r4.xyzw;

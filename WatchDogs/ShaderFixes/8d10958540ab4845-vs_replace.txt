@@ -73,7 +73,7 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 float4 iniParams = IniParams.Load(0);
-float Zf = 0.36*_ProjectionMatrix._m00 * _ProjectionMatrix._m22 * _ViewportSize.x /(_ProjectionMatrix._m22 - 1);  //Zf is the far plane. The factor 0.35 accounts for the map max zoom
+float Zf = 0.36*_ProjectionMatrix._m00 * _ProjectionMatrix._m22 * _ViewportSize.x /(_ProjectionMatrix._m22 - 1);  //Zf is the far plane. The factor 0.36 accounts for the map max zoom
 if (o2.z >= Zf)
 {
 o2.x -= stereo.x*((1.0-iniParams.x)*o2.w - stereo.y);
