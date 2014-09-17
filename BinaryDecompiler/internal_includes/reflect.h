@@ -29,6 +29,7 @@ typedef struct
     uint32_t* pui32Inputs11;
     uint32_t* pui32Outputs11;
 	uint32_t* pui32OutputsWithStreams;
+	uint32_t* pui32PatchConstants;
 } ReflectionChunks;
 
 void LoadShaderInfo(const uint32_t ui32MajorVersion,

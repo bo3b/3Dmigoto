@@ -15,6 +15,7 @@ enum {FOURCC_RDEF = FOURCC('R', 'D', 'E', 'F')}; //Resource definition (e.g. con
 enum {FOURCC_ISGN = FOURCC('I', 'S', 'G', 'N')}; //Input signature
 enum {FOURCC_IFCE = FOURCC('I', 'F', 'C', 'E')}; //Interface (for dynamic linking)
 enum {FOURCC_OSGN = FOURCC('O', 'S', 'G', 'N')}; //Output signature
+enum {FOURCC_PSGN = FOURCC('P', 'C', 'S', 'G')}; //Patch-constant signature
 
 enum {FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1')}; //Input signature with Stream and MinPrecision
 enum {FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1')}; //Output signature with Stream and MinPrecision
@@ -1530,6 +1531,7 @@ Shader* DecodeDXBC(uint32_t* data)
 	refChunks.pui32Inputs11 = NULL;
 	refChunks.pui32Outputs11 = NULL;
 	refChunks.pui32OutputsWithStreams = NULL;
+	refChunks.pui32PatchConstants = NULL;
 
 	chunkOffsets = (uint32_t*)(header + 1);
 
@@ -1584,6 +1586,11 @@ Shader* DecodeDXBC(uint32_t* data)
                 shaderChunk = (uint32_t*)(chunk + 1);
                 break;
             }
+			case FOURCC_PSGN:
+			{
+				refChunks.pui32PatchConstants = (uint32_t*)(chunk + 1);
+				break;
+			}
             default:
             {
                 break;

@@ -112,6 +112,58 @@ static void ReadOutputSignatures(const uint32_t* pui32Tokens,
     }
 }
 
+static void ReadPatchConstantSignatures(const uint32_t* pui32Tokens,
+                    ShaderInfo* psShaderInfo,
+					const int minPrec,
+					const int streams)
+{
+    uint32_t i;
+
+    InOutSignature* psSignatures;
+    const uint32_t* pui32FirstSignatureToken = pui32Tokens;
+    const uint32_t ui32ElementCount = *pui32Tokens++;
+    const uint32_t ui32Key = *pui32Tokens++;
+
+    psSignatures = new InOutSignature[ui32ElementCount];
+    psShaderInfo->psPatchConstantSignatures = psSignatures;
+    psShaderInfo->ui32NumPatchConstantSignatures = ui32ElementCount;
+
+    for(i=0; i<ui32ElementCount; ++i)
+    {
+        uint32_t ui32ComponentMasks;
+        InOutSignature* psCurrentSignature = psSignatures + i;
+        uint32_t ui32SemanticNameOffset;
+
+		psCurrentSignature->ui32Stream = 0;
+		psCurrentSignature->eMinPrec = MIN_PRECISION_DEFAULT;
+
+		if(streams)
+			psCurrentSignature->ui32Stream = *pui32Tokens++;
+
+		ui32SemanticNameOffset = *pui32Tokens++;
+        psCurrentSignature->ui32SemanticIndex = *pui32Tokens++;
+        psCurrentSignature->eSystemValueType = (SPECIAL_NAME)*pui32Tokens++;
+        psCurrentSignature->eComponentType = (INOUT_COMPONENT_TYPE) *pui32Tokens++;
+        psCurrentSignature->ui32Register = *pui32Tokens++;
+
+		// Massage some special inputs/outputs to match the types of GLSL counterparts
+		if (psCurrentSignature->eSystemValueType == NAME_RENDER_TARGET_ARRAY_INDEX)
+		{
+			psCurrentSignature->eComponentType = INOUT_COMPONENT_SINT32;
+		}
+
+        ui32ComponentMasks = *pui32Tokens++;
+        psCurrentSignature->ui32Mask = ui32ComponentMasks & 0x7F;
+        //Shows which components are NEVER written.
+        psCurrentSignature->ui32ReadWriteMask = (ui32ComponentMasks & 0x7F00) >> 8;
+
+		if(minPrec)
+			psCurrentSignature->eMinPrec = (MIN_PRECISION) *pui32Tokens++;
+
+        ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstSignatureToken+ui32SemanticNameOffset), psCurrentSignature->SemanticName);
+    }
+}
+
 static const uint32_t* ReadResourceBinding(const uint32_t* pui32FirstResourceToken, const uint32_t* pui32Tokens, ResourceBinding* psBinding)
 {
     uint32_t ui32NameOffset = *pui32Tokens++;
@@ -755,6 +807,7 @@ void LoadShaderInfo(const uint32_t ui32MajorVersion,
     const uint32_t* pui32Outputs = psChunks->pui32Outputs;
 	const uint32_t* pui32Outputs11 = psChunks->pui32Outputs11;
 	const uint32_t* pui32OutputsWithStreams = psChunks->pui32OutputsWithStreams;
+	const uint32_t* pui32PatchConstants = psChunks->pui32PatchConstants;
 
     psInfo->eTessOutPrim = TESSELLATOR_OUTPUT_UNDEFINED;
     psInfo->eTessPartitioning = TESSELLATOR_PARTITIONING_UNDEFINED;
@@ -777,6 +830,8 @@ void LoadShaderInfo(const uint32_t ui32MajorVersion,
         ReadOutputSignatures(pui32Outputs11, psInfo, 1, 1);
 	if(pui32OutputsWithStreams)
 		ReadOutputSignatures(pui32OutputsWithStreams, psInfo, 0, 1);
+	if(pui32PatchConstants)
+		ReadPatchConstantSignatures(pui32PatchConstants, psInfo, 0, 0);
 
     {
         uint32_t i;
@@ -800,6 +855,7 @@ void FreeShaderInfo(ShaderInfo* psShaderInfo)
     delete[] psShaderInfo->psClassTypes; psShaderInfo->psClassTypes = 0;
     delete[] psShaderInfo->psClassInstances; psShaderInfo->psClassInstances = 0;
     delete[] psShaderInfo->psOutputSignatures; psShaderInfo->psOutputSignatures = 0;
+    delete[] psShaderInfo->psPatchConstantSignatures; psShaderInfo->psPatchConstantSignatures = 0;
 
     psShaderInfo->ui32NumInputSignatures = 0;
     psShaderInfo->ui32NumResourceBindings = 0;
@@ -807,6 +863,7 @@ void FreeShaderInfo(ShaderInfo* psShaderInfo)
     psShaderInfo->ui32NumClassTypes = 0;
     psShaderInfo->ui32NumClassInstances = 0;
     psShaderInfo->ui32NumOutputSignatures = 0;
+	psShaderInfo->ui32NumPatchConstantSignatures = 0;
 }
 
 struct ConstantTableD3D9
