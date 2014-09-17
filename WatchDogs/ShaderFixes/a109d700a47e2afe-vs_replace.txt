@@ -74,9 +74,10 @@ void main(
   o2.y = dot(r0.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
   o2.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o2.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
-  
-float4 stereo = StereoParams.Load(0);
-o2.x -= stereo.x*(0.9 - stereo.y);
+ 
+// bo3b: removed this, because it damages all the activation icons too.
+// float4 stereo = StereoParams.Load(0);
+// o2.x -= stereo.x*(0.9 - stereo.y);
   
   return;
 }
