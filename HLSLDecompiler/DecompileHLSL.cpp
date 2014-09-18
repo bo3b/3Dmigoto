@@ -361,7 +361,7 @@ public:
 	{
 		string interpolation = "";
 
-		for each(Declaration declaration in shader->psDecl)
+		for each(Declaration declaration in shader->asPhase[MAIN_PHASE].ppsDecl[0])
 		{
 			if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
 			{
@@ -3676,9 +3676,9 @@ public:
 		unsigned int iNr = 0;
 		bool skip_shader = false;
 
-		while (pos < size && iNr < shader->psInst.size())
+		while (pos < size && iNr < shader->asPhase[MAIN_PHASE].ppsInst[0].size())
 		{
-			Instruction *instr = &shader->psInst[iNr];
+			Instruction *instr = &shader->asPhase[MAIN_PHASE].ppsInst[0][iNr];
 
 			// Now ignore '#line' or 'undecipherable' debug info (DefenseGrid2)
 			if (!strncmp(c + pos, "#line", 5) ||
