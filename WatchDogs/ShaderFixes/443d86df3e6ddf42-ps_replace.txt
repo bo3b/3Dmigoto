@@ -1,0 +1,331 @@
+//Water Issue - Disable
+cbuffer Viewport : register(b0)
+{
+  float4x4 _ViewRotProjectionMatrix : packoffset(c0);
+  float4x4 _ViewProjectionMatrix : packoffset(c4);
+  float4x4 _ProjectionMatrix : packoffset(c8);
+  float4x4 _InvProjectionMatrix : packoffset(c12);
+  float4x4 _InvProjectionMatrixDepth : packoffset(c16);
+  float4x4 _DepthTextureTransform : packoffset(c20);
+  float4x3 _ViewMatrix : packoffset(c24);
+  float4x3 _InvViewMatrix : packoffset(c27);
+  float4x4 _PreviousViewProjectionMatrix : packoffset(c30);
+  float4 _CameraDistances : packoffset(c34);
+  float4 _ViewportSize : packoffset(c35);
+  float4 _CameraPosition_MaxStaticReflectionMipIndex : packoffset(c36);
+  float4 _CameraDirection_MaxParaboloidReflectionMipIndex : packoffset(c37);
+  float4 _ViewPoint_ExposureScale : packoffset(c38);
+  float4 _FogColorVector_ExposedWhitePointOverExposureScale : packoffset(c39);
+  float3 _SideFogColor : packoffset(c40);
+  float3 _SunFogColorDelta : packoffset(c41);
+  float3 _OppositeFogColorDelta : packoffset(c42);
+  float4 _FogValues0 : packoffset(c43);
+  float4 _FogValues1 : packoffset(c44);
+  float4 _CameraNearPlaneSize : packoffset(c45);
+  float4 _UncompressDepthWeights_ShadowProjDepthMinValue : packoffset(c46);
+  float4 _UncompressDepthWeightsWS_ReflectionFadeTarget : packoffset(c47);
+  float4 _WorldAmbientColorParams0 : packoffset(c48);
+  float4 _WorldAmbientColorParams1 : packoffset(c49);
+  float4 _WorldAmbientColorParams2 : packoffset(c50);
+  float4 _GlobalWorldTextureParams : packoffset(c51);
+  float4 _CullingCameraPosition_OneOverAutoExposureScale : packoffset(c52);
+  float4 _AmbientSkyColor_ReflectionScaleStrength : packoffset(c53);
+  float4 _AmbientGroundColor_ReflectionScaleDistanceMul : packoffset(c54);
+  float4 _FacettedShadowCastParams : packoffset(c55);
+  float4 _FSMClipPlanes : packoffset(c56);
+  float2 _ReflectionGIControl : packoffset(c57);
+}
+
+cbuffer MaterialWaterFlow : register(b1)
+{
+  float4 _ExtraParams : packoffset(c0);
+  float4 _FlowParams : packoffset(c1);
+  float4 _FlowTextureSize : packoffset(c2);
+  float4 _FlowUVTiling : packoffset(c3);
+  float4 _MaskTextureSize : packoffset(c4);
+  float4 _MaskUVTiling : packoffset(c5);
+  float4 _MaterialPickingID : packoffset(c6);
+  float4 _NormalTexture1Size : packoffset(c7);
+  float4 _NormalUVTiling1 : packoffset(c8);
+  float4 _OverlayParams : packoffset(c9);
+  float4 _OverlayTextureSize : packoffset(c10);
+  float4 _OverlayUVTiling : packoffset(c11);
+  float4 _RaindropSplashesTextureSize : packoffset(c12);
+  float4 _SpecularPower : packoffset(c13);
+  float4 _WaterColor : packoffset(c14);
+  float3 _Reflectance : packoffset(c15);
+  float _ReflectionIntensity : packoffset(c15.w);
+  float3 _VertexParams : packoffset(c16);
+  int _ReflectionTextureSource : packoffset(c16.w);
+  float2 _NormalIntensity : packoffset(c17);
+  float2 _WaterDepth : packoffset(c17.z);
+}
+SamplerState Viewport__DepthVPSampler__SampObj___s : register(s0);
+SamplerState MaterialWaterFlow__FlowTexture__SampObj___s : register(s1);
+SamplerState MaterialWaterFlow__MaskTexture__SampObj___s : register(s2);
+SamplerState MaterialWaterFlow__NormalTexture1__SampObj___s : register(s3);
+SamplerState MaterialWaterFlow__OverlayTexture__SampObj___s : register(s4);
+SamplerState MaterialWaterFlow__RaindropSplashesTexture__SampObj___s : register(s5);
+Texture2D<float4> Viewport__DepthVPSampler__TexObj__ : register(t0);
+Texture2D<float4> MaterialWaterFlow__FlowTexture__TexObj__ : register(t1);
+Texture2D<float4> MaterialWaterFlow__MaskTexture__TexObj__ : register(t2);
+Texture2D<float4> MaterialWaterFlow__NormalTexture1__TexObj__ : register(t3);
+Texture2D<float4> MaterialWaterFlow__OverlayTexture__TexObj__ : register(t4);
+Texture2D<float4> MaterialWaterFlow__RaindropSplashesTexture__TexObj__ : register(t5);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float4 v1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  float4 v3 : TEXCOORD3,
+  float4 v4 : TEXCOORD4,
+  float2 v5 : TEXCOORD5,
+  float4 v6 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.xyz = v0.xyz / v0.www;
+  r0.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.x = Viewport__DepthVPSampler__TexObj__.Sample(Viewport__DepthVPSampler__SampObj___s, r0.xy).x;
+  r0.yw = float2(1.000000e+000,1.000000e+000);
+  
+  r1.x = dot(r0.xy, _InvProjectionMatrix._m22_m32);
+  r0.x = dot(r0.xy, _InvProjectionMatrix._m23_m33);
+  r0.x = -r1.x / r0.x;
+  r0.y = dot(r0.zw, _InvProjectionMatrix._m22_m32);
+  r0.z = dot(r0.zw, _InvProjectionMatrix._m23_m33);
+  r0.y = -r0.y / r0.z;
+  r0.x = r0.x + -r0.y;
+  r0.y = r0.x < 0.000000000e+000;
+  r0.x = saturate(_WaterDepth.x * r0.x);
+  r0.x = _WaterColor.w * r0.x;
+  r0.x = _ExtraParams.z * r0.x;
+   
+  if (r0.y != 0) discard;
+  r0.yz = MaterialWaterFlow__FlowTexture__TexObj__.Sample(MaterialWaterFlow__FlowTexture__SampObj___s, v4.zw).xy;
+  r1.xyzw = r0.yzyz * float4(-2.000000e+000,-2.000000e+000,-2.000000e+000,-2.000000e+000) + float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+  r2.xyzw = r1.zwzw * v1.xxyy + v3.xyxy;
+  
+  float4 stereoParams = StereoParams.Load(0);
+  //r2.x -= stereoParams.x * (-r2.z - stereoParams.y) * _InvProjectionMatrix._m00;
+  
+  r0.yz = MaterialWaterFlow__NormalTexture1__TexObj__.Sample(MaterialWaterFlow__NormalTexture1__SampObj___s, r2.zw).yw;
+  r2.xy = MaterialWaterFlow__NormalTexture1__TexObj__.Sample(MaterialWaterFlow__NormalTexture1__SampObj___s, r2.xy).yw;
+  r2.xy = r2.yx * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.yz = r0.zy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.yz = r0.yz + -r2.xy;
+  r0.yz = v5.xx * r0.yz + r2.xy;
+  r2.xy = float2(2.000000e-001,2.000000e-001) * v2.xy;
+  r2.xy = MaterialWaterFlow__RaindropSplashesTexture__TexObj__.Sample(MaterialWaterFlow__RaindropSplashesTexture__SampObj___s, r2.xy).xy;
+  r2.xy = v2.ww * r2.xy;
+  r0.yz = r0.yz * _NormalIntensity.xx + r2.xy;
+  r2.xy = r0.yz * _ExtraParams.yy + v4.xy;
+  o0.xy = r0.yz * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.yz = MaterialWaterFlow__MaskTexture__TexObj__.Sample(MaterialWaterFlow__MaskTexture__SampObj___s, r2.xy).xy;
+  r1.xyzw = r1.xyzw * r0.zzzz;
+  r1.xyzw = r1.xyzw * v1.zzww + v3.zwzw;
+   
+  
+  r0.z = MaterialWaterFlow__OverlayTexture__TexObj__.Sample(MaterialWaterFlow__OverlayTexture__SampObj___s, r1.zw).w;
+  r0.w = MaterialWaterFlow__OverlayTexture__TexObj__.Sample(MaterialWaterFlow__OverlayTexture__SampObj___s, r1.xy).w;
+  r0.z = r0.z + -r0.w;
+  r0.z = v5.y * r0.z + r0.w;
+  r0.y = saturate(-r0.z * r0.y + _ExtraParams.w);
+  
+  
+  
+  o0.z = r0.x * r0.y;
+  o0.w = 1.000000000e+000;
+  //Disable Effect
+  o0 = 0; 
+  
+  
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer Viewport
+// {
+//
+//   float4x4 _ViewRotProjectionMatrix; // Offset:    0 Size:    64 [unused]
+//   float4x4 _ViewProjectionMatrix;    // Offset:   64 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  128 Size:    64 [unused]
+//   float4x4 _InvProjectionMatrix;     // Offset:  192 Size:    64
+//   float4x4 _InvProjectionMatrixDepth;// Offset:  256 Size:    64 [unused]
+//   float4x4 _DepthTextureTransform;   // Offset:  320 Size:    64 [unused]
+//   float4x3 _ViewMatrix;              // Offset:  384 Size:    48 [unused]
+//   float4x3 _InvViewMatrix;           // Offset:  432 Size:    48 [unused]
+//   float4x4 _PreviousViewProjectionMatrix;// Offset:  480 Size:    64 [unused]
+//   float4 _CameraDistances;           // Offset:  544 Size:    16 [unused]
+//   float4 _ViewportSize;              // Offset:  560 Size:    16 [unused]
+//   float4 _CameraPosition_MaxStaticReflectionMipIndex;// Offset:  576 Size:    16 [unused]
+//   float4 _CameraDirection_MaxParaboloidReflectionMipIndex;// Offset:  592 Size:    16 [unused]
+//   float4 _ViewPoint_ExposureScale;   // Offset:  608 Size:    16 [unused]
+//   float4 _FogColorVector_ExposedWhitePointOverExposureScale;// Offset:  624 Size:    16 [unused]
+//   float3 _SideFogColor;              // Offset:  640 Size:    12 [unused]
+//   float3 _SunFogColorDelta;          // Offset:  656 Size:    12 [unused]
+//   float3 _OppositeFogColorDelta;     // Offset:  672 Size:    12 [unused]
+//   float4 _FogValues0;                // Offset:  688 Size:    16 [unused]
+//   float4 _FogValues1;                // Offset:  704 Size:    16 [unused]
+//   float4 _CameraNearPlaneSize;       // Offset:  720 Size:    16 [unused]
+//   float4 _UncompressDepthWeights_ShadowProjDepthMinValue;// Offset:  736 Size:    16 [unused]
+//   float4 _UncompressDepthWeightsWS_ReflectionFadeTarget;// Offset:  752 Size:    16 [unused]
+//   float4 _WorldAmbientColorParams0;  // Offset:  768 Size:    16 [unused]
+//   float4 _WorldAmbientColorParams1;  // Offset:  784 Size:    16 [unused]
+//   float4 _WorldAmbientColorParams2;  // Offset:  800 Size:    16 [unused]
+//   float4 _GlobalWorldTextureParams;  // Offset:  816 Size:    16 [unused]
+//   float4 _CullingCameraPosition_OneOverAutoExposureScale;// Offset:  832 Size:    16 [unused]
+//   float4 _AmbientSkyColor_ReflectionScaleStrength;// Offset:  848 Size:    16 [unused]
+//   float4 _AmbientGroundColor_ReflectionScaleDistanceMul;// Offset:  864 Size:    16 [unused]
+//   float4 _FacettedShadowCastParams;  // Offset:  880 Size:    16 [unused]
+//   float4 _FSMClipPlanes;             // Offset:  896 Size:    16 [unused]
+//   float2 _ReflectionGIControl;       // Offset:  912 Size:     8 [unused]
+//
+// }
+//
+// cbuffer MaterialWaterFlow
+// {
+//
+//   float4 _ExtraParams;               // Offset:    0 Size:    16
+//   float4 _FlowParams;                // Offset:   16 Size:    16 [unused]
+//   float4 _FlowTextureSize;           // Offset:   32 Size:    16 [unused]
+//   float4 _FlowUVTiling;              // Offset:   48 Size:    16 [unused]
+//   float4 _MaskTextureSize;           // Offset:   64 Size:    16 [unused]
+//   float4 _MaskUVTiling;              // Offset:   80 Size:    16 [unused]
+//   float4 _MaterialPickingID;         // Offset:   96 Size:    16 [unused]
+//   float4 _NormalTexture1Size;        // Offset:  112 Size:    16 [unused]
+//   float4 _NormalUVTiling1;           // Offset:  128 Size:    16 [unused]
+//   float4 _OverlayParams;             // Offset:  144 Size:    16 [unused]
+//   float4 _OverlayTextureSize;        // Offset:  160 Size:    16 [unused]
+//   float4 _OverlayUVTiling;           // Offset:  176 Size:    16 [unused]
+//   float4 _RaindropSplashesTextureSize;// Offset:  192 Size:    16 [unused]
+//   float4 _SpecularPower;             // Offset:  208 Size:    16 [unused]
+//   float4 _WaterColor;                // Offset:  224 Size:    16
+//   float3 _Reflectance;               // Offset:  240 Size:    12 [unused]
+//   float _ReflectionIntensity;        // Offset:  252 Size:     4 [unused]
+//   float3 _VertexParams;              // Offset:  256 Size:    12 [unused]
+//   int _ReflectionTextureSource;      // Offset:  268 Size:     4 [unused]
+//   float2 _NormalIntensity;           // Offset:  272 Size:     8
+//   float2 _WaterDepth;                // Offset:  280 Size:     8
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// Viewport__DepthVPSampler__SampObj__    sampler      NA          NA    0        1
+// MaterialWaterFlow__FlowTexture__SampObj__    sampler      NA          NA    1        1
+// MaterialWaterFlow__MaskTexture__SampObj__    sampler      NA          NA    2        1
+// MaterialWaterFlow__NormalTexture1__SampObj__    sampler      NA          NA    3        1
+// MaterialWaterFlow__OverlayTexture__SampObj__    sampler      NA          NA    4        1
+// MaterialWaterFlow__RaindropSplashesTexture__SampObj__    sampler      NA          NA    5        1
+// Viewport__DepthVPSampler__TexObj__    texture  float4          2d    0        1
+// MaterialWaterFlow__FlowTexture__TexObj__    texture  float4          2d    1        1
+// MaterialWaterFlow__MaskTexture__TexObj__    texture  float4          2d    2        1
+// MaterialWaterFlow__NormalTexture1__TexObj__    texture  float4          2d    3        1
+// MaterialWaterFlow__OverlayTexture__TexObj__    texture  float4          2d    4        1
+// MaterialWaterFlow__RaindropSplashesTexture__TexObj__    texture  float4          2d    5        1
+// Viewport                          cbuffer      NA          NA    0        1
+// MaterialWaterFlow                 cbuffer      NA          NA    1        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        2     NONE   float   xy w
+// TEXCOORD                 3   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 4   xyzw        4     NONE   float   xyzw
+// TEXCOORD                 5   xy          5     NONE   float   xy  
+// SV_Position              0   xyzw        6      POS   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[16], immediateIndexed
+dcl_constantbuffer cb1[18], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_input_ps linear v0.xyzw
+dcl_input_ps linear v1.xyzw
+dcl_input_ps linear v2.xyw
+dcl_input_ps linear v3.xyzw
+dcl_input_ps linear v4.xyzw
+dcl_input_ps linear v5.xy
+dcl_output o0.xyzw
+dcl_temps 3
+div r0.xyz, v0.xyzx, v0.wwww
+mad r0.xy, r0.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t0.xyzw, s0
+mov r0.yw, l(0,1.000000,0,1.000000)
+dp2 r1.x, r0.xyxx, cb0[14].zwzz
+dp2 r0.x, r0.xyxx, cb0[15].zwzz
+div r0.x, -r1.x, r0.x
+dp2 r0.y, r0.zwzz, cb0[14].zwzz
+dp2 r0.z, r0.zwzz, cb0[15].zwzz
+div r0.y, -r0.y, r0.z
+add r0.x, -r0.y, r0.x
+lt r0.y, r0.x, l(0.000000)
+mul_sat r0.x, r0.x, cb1[17].z
+mul r0.x, r0.x, cb1[14].w
+mul r0.x, r0.x, cb1[0].z
+discard_nz r0.y
+sample_indexable(texture2d)(float,float,float,float) r0.yz, v4.zwzz, t1.zxyw, s1
+mad r1.xyzw, r0.yzyz, l(-2.000000, -2.000000, -2.000000, -2.000000), l(1.000000, 1.000000, 1.000000, 1.000000)
+mad r2.xyzw, r1.zwzw, v1.xxyy, v3.xyxy
+sample_indexable(texture2d)(float,float,float,float) r0.yz, r2.zwzz, t3.xywz, s3
+sample_indexable(texture2d)(float,float,float,float) r2.xy, r2.xyxx, t3.ywxz, s3
+mad r2.xy, r2.yxyy, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mad r0.yz, r0.zzyz, l(0.000000, 2.000000, 2.000000, 0.000000), l(0.000000, -1.000000, -1.000000, 0.000000)
+add r0.yz, -r2.xxyx, r0.yyzy
+mad r0.yz, v5.xxxx, r0.yyzy, r2.xxyx
+mul r2.xy, v2.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r2.xy, r2.xyxx, t5.xyzw, s5
+mul r2.xy, r2.xyxx, v2.wwww
+mad r0.yz, r0.yyzy, cb1[17].xxxx, r2.xxyx
+mad r2.xy, r0.yzyy, cb1[0].yyyy, v4.xyxx
+mad o0.xy, r0.yzyy, l(0.500000, 0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.yz, r2.xyxx, t2.zxyw, s2
+mul r1.xyzw, r0.zzzz, r1.xyzw
+mad r1.xyzw, r1.xyzw, v1.zzww, v3.zwzw
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t4.xywz, s4
+sample_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t4.xyzw, s4
+add r0.z, -r0.w, r0.z
+mad r0.z, v5.y, r0.z, r0.w
+mad_sat r0.y, -r0.z, r0.y, cb1[0].w
+mul o0.z, r0.y, r0.x
+mov o0.w, l(1.000000)
+ret 
+// Approximately 42 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

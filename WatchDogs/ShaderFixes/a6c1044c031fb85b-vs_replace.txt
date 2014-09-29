@@ -110,10 +110,10 @@ void main(
   o1.w = dot(r1.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);
   
   float4 stereo = StereoParams.Load(0);
-  if (o1.w == 0)
-  {
+  //if (o1.w == 0)
+  //{
   o1.x += stereo.x * (o1.w - stereo.y); 
-  }
+  //}
   
   return;
 }
