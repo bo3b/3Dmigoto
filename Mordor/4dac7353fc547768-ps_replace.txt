@@ -17,8 +17,8 @@ cbuffer _Globals : register(b0)
     float4 m_Indices;
   } MaterialVertexDef_Skeletal : packoffset(c2);
 
-  bool bHalfPrecision : packoffset(c5) = bool(0.000000e+000);
-  bool bUsePS3CompilerArgs : packoffset(c5.y) = bool(-1.#QNAN0e+000);
+  bool bHalfPrecision : packoffset(c5) = false;
+  bool bUsePS3CompilerArgs : packoffset(c5.y) = true;
   float k_fSampleScale : packoffset(c5.z) = float(1.000000e+000);
   float4 k_vScreenBufferSize : packoffset(c6) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
   row_major float4x4 k_mPreviousMotionTransform : packoffset(c7);
@@ -81,8 +81,8 @@ void main(
   r0.xyzw = max(r0.xyzw, float4(-2.000000e+000,-2.000000e+000,-2.000000e+000,-2.000000e+000));
   r0.xyzw = min(r0.xyzw, float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000));
   r0.xyzw = k_vScreenBufferSize.zwzw * r0.xyzw;
-  r2.xyzw = r0.xyzw * float4(-5.000000e-001,-5.000000e-001,5.000000e-001,5.000000e-001) + w1.xyzw;
-  r0.xyzw = r0.zwzw * float4(-1.666667e-001,-1.666667e-001,1.666667e-001,1.666667e-001) + w1.xyzw;
+  r2.xyzw = r0.xyzw * float4(-5.000000e-001,-5.000000e-001,5.000000e-001,5.000000e-001) + w1.xyxy;
+  r0.xyzw = r0.zwzw * float4(-1.666667e-001,-1.666667e-001,1.666667e-001,1.666667e-001) + w1.xyxy;
   r3.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r2.xy).xyzw;
   r2.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r2.zw).xyzw;
   r2.xyzw = r3.xyzw + r2.xyzw;
