@@ -972,26 +972,47 @@ public:
 				for (int i = -1; i < structLevel; ++i) structSpacing += "  ";
 				if (!strncmp(c + pos, defaultid, strlen(defaultid)))
 				{
-					float v[4] = { 0, 0, 0, 0 };
-					numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
-					if (structLevel < 0)
+					// For bool values, the usual conversion by %e creates QNAN, so handle them specifically. (e.g. = 0xffffffff)
+					if (e.bt == DT_bool)
 					{
-						if (suboffset == 0)
-							sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s(", modifier.c_str(), type, name, packoffset, type);
+						unsigned int bHex = 0;
+						numRead = sscanf_s(c + pos, "// = 0x%lx", &bHex);
+						string bString = (bHex == 0) ? "false" : "true";
+						if (structLevel < 0)
+						{
+							if (suboffset == 0)
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s;\n", modifier.c_str(), type, name, packoffset, bString.c_str());
+							else
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s;\n", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], bString.c_str());
+						}
 						else
-							sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s(", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+							sprintf(buffer, "  %s%s%s %s = %s;\n", structSpacing.c_str(), modifier.c_str(), type, name, bString.c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					}
 					else
-						sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
-					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-					for (int i = 0; i < numRead - 1; ++i)
 					{
-						sprintf(buffer, "%e,", v[i]);
+						float v[4] = { 0, 0, 0, 0 };
+						numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+						if (structLevel < 0)
+						{
+							if (suboffset == 0)
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s(", modifier.c_str(), type, name, packoffset, type);
+							else
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s(", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+						}
+						else
+							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						for (int i = 0; i < numRead - 1; ++i)
+						{
+							sprintf(buffer, "%e,", v[i]);
+							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						}
+						sprintf(buffer, "%e);\n", v[numRead - 1]);
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					}
-					sprintf(buffer, "%e);\n", v[numRead - 1]);
-					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
 				}
 				else
 				{
