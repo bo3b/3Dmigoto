@@ -520,6 +520,13 @@ public:
 						sprintf(buffer, "Texture2DMS<%s>", format);
 					mTextureType[slot] = buffer;
 				}
+				// Two new ones for Mordor.
+				else if (!strcmp(dim, "buf"))
+					mTextureType[slot] = "Buffer<" + string(format) + ">";	
+				else if (!strcmp(dim, "r/o"))
+					mTextureType[slot] = "StructuredBuffer<" + string(name) + ">";
+				//else if (!strcmp(dim, "r/w"))
+				//	mTextureType[slot] = "RWStructuredBuffer<" + string(name) + ">";  // probable, not seen yet.
 				else
 					logDecompileError("Unknown texture dimension: " + string(dim));
 			}
@@ -1526,8 +1533,15 @@ public:
 		}
 	}
 
+	// TODO: why are there two of these routines?
+
+	// This routine was expecting only r0.xyz type input parameters, but we can also get float4(0,0,0,0) type
+	// inputs as constants to things like .Load().  If it's a constant of any form, leave it unchanged.
 	void truncateTextureLoadPos(char *op, const char *textype)
 	{
+		if (!strncmp(op, "float", 5)) 
+			return;
+
 		int pos = 5;
 		if (!strncmp(textype, "Texture2D", 9)) pos = 4;
 		else if (!strncmp(textype, "Texture3D", 9)) pos = 5;
@@ -3585,6 +3599,73 @@ public:
 						}
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						removeBoolean(op1);
+						break;
+					}
+
+						// New variant found in Mordor.  Example:
+						//   gInstanceBuffer                   texture  struct         r/o    0        1
+						//   dcl_resource_structured t0, 16 
+						//   ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t0.xyzw
+						// becomes:
+						//   StructuredBuffer<float4> gInstanceBuffer : register(t0);
+						//   ...
+						//	  float4 c0 = gInstanceBuffer[worldMatrixOffset];
+
+						// Example from Mordor, with bizarre struct offsets:
+						// struct BufferSrc
+						// {
+						//	float3 vposition;              // offset:    0
+						//	float3 vvelocity;              // offset:   12
+						//	float ftime;                   // offset:   24
+						//	float fuserdata;               // offset:   28
+						// };                        			// offset:    0 size:    32
+						//
+						// StructuredBuffer<BufferSrc> BufferSrc_SB : register(t0);
+						//
+						// Working fxc code (unrolled is necessary):
+						// ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
+						//  r3.x = BufferSrc_SB[v0.x].vvelocity.y;
+						//  r3.y = BufferSrc_SB[v0.x].vvelocity.z;
+						//  r3.z = BufferSrc_SB[v0.x].ftime.x;
+						//  r3.w = BufferSrc_SB[v0.x].fuserdata.x;
+
+						// Since this has no prior code, and the text based parser fails on this complicated command, we are switching
+						// to using the structure from the James-Jones decoder.
+						// http://msdn.microsoft.com/en-us/library/windows/desktop/hh447157(v=vs.85).aspx
+
+					case OPCODE_LD_STRUCTURED:
+					{
+						string dst0, srcAddress, srcByteOffset, src0;
+						string swiz = "x";
+						int reg;
+
+						dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
+						srcAddress = instr->asOperands[1].specialName;
+						srcByteOffset = instr->asOperands[2].specialName;
+						src0 = shader->sInfo->psResourceBindings->Name;
+
+						// Output one line for each swizzle in dst0.xyzw that is active.
+						for (size_t i = 0; i < 4; i++)
+						{
+							if (instr->asOperands[0].aui32Swizzle[i])
+							{
+								sprintf(buffer, "  %s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
+									src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
+								mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							}
+						}
+						break;
+					}
+						//	  gInstanceBuffer[worldMatrixOffset] = x.y;
+					case OPCODE_STORE_STRUCTURED:
+					{
+						remapTarget(op1);
+						applySwizzle(".xyzw", op2);	// srcAddress structure
+						applySwizzle(op1, op3);		// byteOffset in structure
+						int textureId;
+						sscanf_s(op4, "t%d.", &textureId);
+						sprintf(buffer, "  %s[%s].%s = %s;\n", mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op3).c_str(), writeTarget(op1));
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						break;
 					}
 
