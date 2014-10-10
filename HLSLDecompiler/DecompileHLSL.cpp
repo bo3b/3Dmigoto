@@ -3636,7 +3636,7 @@ public:
 					case OPCODE_LD_STRUCTURED:
 					{
 						string dst0, srcAddress, srcByteOffset, src0;
-						string swiz = "x";
+						string swiz;
 						int reg;
 
 						dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
@@ -3644,13 +3644,32 @@ public:
 						srcByteOffset = instr->asOperands[2].specialName;
 						src0 = shader->sInfo->psResourceBindings->Name;
 
+						sprintf(buffer, "// Known bad code for instruction:\n");
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, "// %s\n", line.c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
+						// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
+
 						// Output one line for each swizzle in dst0.xyzw that is active.
-						for (size_t i = 0; i < 4; i++)
+						for (int component = 0; component < 4; component++)
 						{
-							if (instr->asOperands[0].aui32Swizzle[i])
+							if (instr->asOperands[0].ui32CompMask & (1 << component))
 							{
-								sprintf(buffer, "  %s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
-									src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
+								switch (component)
+								{
+									case 3: swiz = "w"; break;
+									case 2: swiz = "z"; break;
+									case 1: swiz = "y"; break;
+									case 0:
+									default: swiz = "x"; break;
+								}
+								//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
+								//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
+								sprintf(buffer, "%s.%s = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;\n", dst0.c_str(), swiz.c_str());
 								mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 							}
 						}
