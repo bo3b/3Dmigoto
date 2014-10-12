@@ -218,7 +218,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateBuffer(THIS_
 	if (LogFile) fprintf(LogFile, "  InitialData = %p\n", pInitialData);
 	*/
 	HRESULT hr = GetD3D11Device()->CreateBuffer(pDesc, pInitialData, ppBuffer);
-	if (hr == S_OK && ppBuffer)
+	if (hr == S_OK && ppBuffer && G->hunting)
 	{
 		UINT64 hash = 0;
 		if (pInitialData && pInitialData->pSysMem)
