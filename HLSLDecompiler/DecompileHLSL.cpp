@@ -2619,6 +2619,11 @@ public:
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						removeBoolean(op1);
 						break;
+
+						// UDIV instruction also could damage the original register before finishing, giving wrong results. 
+						// e.g. udiv r0.x, r1.x, r0.x, r0.y
+						// To fix this, we are using a temp variable.  Suboptimal, because more than one udiv will cause a duplicate
+						// error, but that will be better than a silent damage to output.
 					case OPCODE_UDIV:
 					{
 						remapTarget(op1);
@@ -2626,20 +2631,29 @@ public:
 						char *maskOp = instr->asOperands[0].eType != OPERAND_TYPE_NULL ? op1 : op2;
 						applySwizzle(maskOp, fixImm(op3, instr->asOperands[2]), true);
 						applySwizzle(maskOp, fixImm(op4, instr->asOperands[3]), true);
+
+						char *pos = strrchr(maskOp, '.');
+						size_t usize = strlen(pos + 1);
+
+						sprintf(buffer, "  uint%d src0 = %s;\n", usize, ci(op3).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						sprintf(buffer, "  uint%d src1 = %s;\n", usize, ci(op4).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
 							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = %s / %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+								sprintf(buffer, "  %s = src0 / src1;\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
 							else
-								sprintf(buffer, "  %s = saturate(%s / %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+								sprintf(buffer, "  %s = saturate(src0 / src1);\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
 						if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
 						{
 							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = %s %% %s;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+								sprintf(buffer, "  %s = src0 %% src1;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
 							else
-								sprintf(buffer, "  %s = saturate(%s %% %s);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+								sprintf(buffer, "  %s = saturate(src0 %% src1);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
 						removeBoolean(op1);
