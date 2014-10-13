@@ -1119,8 +1119,6 @@ typedef int (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 
 
-extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
-
 static void InitD311()
 {
 	if (hD3D11) return;
@@ -1175,32 +1173,6 @@ static void InitD311()
 		return;
 	}
 
-	// This doesn't work for Watch Dogs, as this runtime is later than their load of
-	// the System32 version of nvapi64.dll.  That means the nvapi wrapper is not loaded and
-	// thus no call overrides worked.
-
-	//	// Load the NVAPI dll manually, so that we can get our local version for sure.
-	//	// Some games and drivers seem to bypass the local directory and go straight to system version.
-	//	WCHAR dllName[MAX_PATH];
-	//#if _WIN64
-	//	wcscat(dllName, L"nvapi64.dll");
-	//#else
-	//	wcscat(dllName, L"nvapi.dll");
-	//#endif
-	//	HMODULE nvdll = LoadLibrary(dllName);
-	//	if (LogFile)
-	//	{
-	//		if (nvdll == NULL)
-	//			fwprintf(LogFile, L"LoadLibrary on %s, failed: %d\n", dllName, GetLastError());
-	//		else
-	//		{
-	//			WCHAR path[MAX_PATH];
-	//			GetModuleFileName(nvdll, path, sizeof(path));
-	//			fwprintf(LogFile, L"LoadLibrary success on %s\n", path);
-	//		}
-	//	}
-
-
 	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
 	_OpenAdapter10 = (tOpenAdapter10)GetProcAddress(hD3D11, "OpenAdapter10");
 	_OpenAdapter10_2 = (tOpenAdapter10_2)GetProcAddress(hD3D11, "OpenAdapter10_2");
@@ -1214,13 +1186,6 @@ static void InitD311()
 	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc)GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
 	_D3DKMTOpenResource = (tD3DKMTOpenResource)GetProcAddress(hD3D11, "D3DKMTOpenResource");
 	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
-
-	// Getting the nvapi to load early, at load time, before any execution is the goal.
-	// This call to the dll api makes the linker force a dependency on that dll, and thus
-	// preload the dll, which should make it load at the same time as this d3d11.dll.
-	// This queries directly for the Initialize routine.
-	int* address = nvapi_QueryInterface(0x0150E828);
-
 }
 
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
