@@ -1,0 +1,501 @@
+
+cbuffer cbDefaultXSC : register(b0)
+{
+  float4x4 ViewProj : packoffset(c0);
+  float4x4 ViewMatrix : packoffset(c4);
+  float4x4 SecondaryProj : packoffset(c8);
+  float4x4 SecondaryViewProj : packoffset(c12);
+  float4x4 SecondaryInvViewProj : packoffset(c16);
+  float4 ConstantColour : packoffset(c20);
+  float4 Time : packoffset(c21);
+  float4 CameraPosition : packoffset(c22);
+  float4 InvProjectionParams : packoffset(c23);
+  float4 SecondaryInvProjectionParams : packoffset(c24);
+  float4 ShaderDebugParams : packoffset(c25);
+  float4 ToneMappingDebugParams : packoffset(c26);
+  float4 HDR_EncodeScale2 : packoffset(c27);
+  float4 EmissiveSurfaceMultiplier : packoffset(c28);
+  float4 AlphaLight_OffsetScale : packoffset(c29);
+  float4 TessellationScaleFactor : packoffset(c30);
+  float4 FogNearColour : packoffset(c31);
+  float4 FogFarColour : packoffset(c32);
+  float4 FogParams : packoffset(c33);
+  float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
+  float4 SMAA_RTMetrics : packoffset(c35);
+}
+
+cbuffer cbDefaultPSC : register(b2)
+{
+  float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
+  float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
+  float4x4 ProjectorMatrix : packoffset(c8);
+  float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
+  float4x4 MotionBlurPrevViewProjection : packoffset(c16);
+  float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
+  float4x4 Spotlight0_Transform : packoffset(c24);
+  float4 TextureAnimation : packoffset(c28);
+  float4 AmbientDiffuse : packoffset(c29);
+  float4 EnvironmentDebugParams : packoffset(c30);
+  float4 ShadowFilterESMWeights : packoffset(c31);
+  float4 LegacyDofParams : packoffset(c32);
+  float4 OnePixelStepForS0 : packoffset(c33);
+  float4 RenderTargetSize : packoffset(c34);
+  float4 ModelTrackerID : packoffset(c35);
+  float4 Sharpness_Bloom_Controls : packoffset(c36);
+  float4 Blur_Direction : packoffset(c37);
+  float4 LightMeterDebugParams : packoffset(c38);
+  float4 SourceResolution : packoffset(c39);
+  float4 HDR_EncodeScale : packoffset(c40);
+  float4 OutputGamma : packoffset(c41);
+  float4 AlphaLight_ScaleParams : packoffset(c42);
+  float4 WrinkleMapWeights[6] : packoffset(c43);
+  float4 RadiosityCubeMapIdx : packoffset(c49);
+  float4 HairShadingParams[8] : packoffset(c50);
+  float4 SkinShadingParams : packoffset(c58);
+  float4 HDR_EncodeScale3 : packoffset(c59);
+  float4 ScreenResolution[4] : packoffset(c60);
+  float4 VelocityParams : packoffset(c64);
+  float4 DeferredConstColor : packoffset(c65);
+  float4 Spotlight0_Shadow_Params : packoffset(c66);
+  float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
+  float4 ShadowFilterType : packoffset(c68);
+  float4 Spotlight0_ReverseZPerspective : packoffset(c69);
+  float4 SpacesuitVisorParams : packoffset(c70);
+  float4 Directional_Light_Colour : packoffset(c71);
+  float4 Directional_Light_Direction : packoffset(c72);
+  float4 EnvironmentMap_Params : packoffset(c73);
+  float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
+  float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
+  float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
+  float4 ScreenSpaceLightPosition : packoffset(c77);
+  float4 LensAndScreenCenter : packoffset(c78);
+  float4 ScaleAndScaleIn : packoffset(c79);
+  float4 HmdWarpParam : packoffset(c80);
+  float4 ChromAbParam : packoffset(c81);
+  float4 SMAA_SubsampleIndices : packoffset(c82);
+}
+SamplerState frameSamplerReg_SMP_s : register(s7);
+SamplerState depthSamplerReg_SMP_s : register(s8);
+SamplerState emissiveSamplerReg_SMP_s : register(s11);
+SamplerState normalSamplerReg_SMP_s : register(s12);
+SamplerState specularSamplerReg_SMP_s : register(s13);
+Texture2D<float4> frameSamplerReg_TEX : register(t7);
+Texture2D<float4> depthSamplerReg_TEX : register(t8);
+Texture2D<float4> emissiveSamplerReg_TEX : register(t11);
+Texture2D<float4> normalSamplerReg_TEX : register(t12);
+Texture2D<float4> specularSamplerReg_TEX : register(t13);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float4 v1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  float4 v3 : TEXCOORD3,
+  float4 v4 : TEXCOORD4,
+  float4 v5 : TEXCOORD5,
+  float4 v6 : TEXCOORD6,
+  float4 v7 : TEXCOORD7,
+  float4 v10 : TEXCOORD9,
+  float4 v11 : TEXCOORD10,
+  float4 v12 : TEXCOORD11,
+  float4 v13 : TEXCOORD12,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask;
+  o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,1.000000e+000);
+  r0.x = 1.000000e+000 / v3.w;
+  r0.yz = v4.xy * r0.xx;
+  r1.xyz = v2.yzw * r0.xxx;
+  r2.x = emissiveSamplerReg_TEX.Sample(emissiveSamplerReg_SMP_s, r0.yz).w;
+  r3.xyzw = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.yz).xyzw;
+  r2.y = r3.w;
+  r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r4.xyzw = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.yz).xyzw;
+  r2.z = r4.w;
+  r4.xyz = r4.xyz * r4.xyz;
+  r4.xyz = r4.xyz + r4.xyz;
+  r2.xyz = r2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.x = dot(r2.xyz, r2.xyz);
+  r0.w = sqrt(r0.x);
+  r0.x = -2.500000000e-001 + r0.x;
+  r0.x = max(r0.x, 0.000000000e+000);
+  r0.x = 1.333333373e+000 * r0.x;
+  r0.w = 1.000000e+000 / r0.w;
+  r2.xyz = r2.xyz * r0.www;
+  r0.w = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.yz).x;
+  r0.yz = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s, r0.yz).yz;
+  r1.w = -r0.w * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
+  r1.w = SecondaryInvProjectionParams.x / r1.w;
+  r1.w = max(r1.w, 0.000000000e+000);
+  r2.w = r0.w * InvProjectionParams.y + InvProjectionParams.z;
+  r0.w = r0.w < 0.000000000e+000;
+  r2.w = InvProjectionParams.x / r2.w;
+  r2.w = max(r2.w, 0.000000000e+000);
+  r0.w = r0.w ? r1.w : r2.w;
+
+  r1.xyz = r1.xyz * r0.www + CameraPosition.xyz;
+
+float4 stereo = StereoParams.Load(0);
+float4 r25;
+r1.w =1.0e+000;
+r25.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
+r25.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
+r25.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
+r25.w = dot(r1.xyzw, ViewProj._m03_m13_m23_m33);
+r25.x -= stereo.x * (r25.w - stereo.y);
+r1.x = dot(r25.xyzw, v10.xyzw);
+r1.y = dot(r25.xyzw, v11.xyzw);
+r1.z = dot(r25.xyzw, v12.xyzw);
+r1.w = dot(r25.xyzw, v13.xyzw);
+r1.xyzw /= r1.wwww;
+
+
+  r5.xyz = v0.xyz + -r1.xyz;
+  r0.w = dot(r5.xyz, r5.xyz);
+  r2.w = rsqrt(r0.w);
+  r0.w = sqrt(r0.w);
+  r0.w = -v0.w + r0.w;
+  r0.w = max(r0.w, 0.000000000e+000);
+  r6.xyz = r5.xyz * r2.www;
+  r7.xyz = r5.xyz * r2.www + float3(1.000000e+000,0.000000e+000,0.000000e+000);
+  r5.xyz = v6.yyy * v5.xyz + r5.xyz;
+  r2.w = dot(r5.xyz, r5.xyz);
+  r2.w = sqrt(r2.w);
+  r2.w = saturate(v6.x / r2.w);
+  r3.w = dot(r6.xyz, r7.xyz);
+  r3.w = -r3.w * 5.439260006e+000 + -1.719830036e+000;
+  r3.w = exp2(r3.w);
+  r4.w = dot(-r2.xyz, r6.xyz);
+  r2.x = dot(r2.xyz, r6.xyz);
+  r2.x = max(r2.x, 0.000000000e+000);
+  r2.x = -9.000000000e+000 * r2.x;
+  r2.x = exp2(r2.x);
+  r2.y = 4.499999881e-001 + r4.w;
+  r2.y = saturate(2.222222328e+000 * r2.y);
+  r2.z = r2.y * -2.000000000e+000 + 3.000000000e+000;
+  r2.y = r2.y * r2.y;
+  r2.y = r2.z * r2.y + -1.000000000e+000;
+  r0.z = r0.z * r2.y + 1.000000000e+000;
+  r2.y = dot(r3.xyz, r3.xyz);
+  r2.y = rsqrt(r2.y);
+  r3.xyz = r3.xyz * r2.yyy;
+  r2.y = dot(r6.xyz, r3.xyz);
+  r3.x = saturate(r3.x);
+  r2.z = 1.000000000e+000 + -r3.x;
+  r3.x = 1.000000000e+000 + -r2.y;
+  r3.y = 1.000000000e+000 + r2.w;
+  r3.x = r3.x / r3.y;
+  r2.w = saturate(r3.x * r2.w + r2.y);
+  r2.y = saturate(-r2.y * 5.000000000e-001 + 5.000000000e-001);
+  r2.x = r2.x * r2.y;
+  r0.x = r2.x * r0.x;
+  r0.z = r2.w * r0.z;
+  r2.x = max(r4.y, r4.x);
+  r2.y = max(r4.z, 9.999999747e-005);
+  r2.x = max(r2.y, r2.x);
+  r2.x = 1.000000e+000 / r2.x;
+  r2.xyw = r4.xyz * r2.xxx;
+  r3.x = saturate(-r0.y * 2.000000000e+000 + 1.000000000e+000);
+  r0.y = saturate(r0.y * 2.000000000e+000 + -1.000000000e+000);
+  r3.x = r3.x * r3.x;
+  r2.xyw = r0.yyy * r2.xyw + r3.xxx;
+  r3.xyz = float3(1.000000e-001,1.000000e-001,1.000000e-001) * r2.xyw;
+  r2.xyw = -r2.xyw * float3(1.000000e-001,1.000000e-001,1.000000e-001) + float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  r4.xyz = r3.www * r2.xyw + r3.xyz;
+  r4.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r4.xyz;
+  r4.xyz = r4.xyz * r0.zzz;
+  r0.xyz = r0.xxx * float3(3.580000e-001,4.000000e-003,1.000000e-005) + r4.xyz;
+  r3.w = r2.z * r2.z;
+  r3.w = r3.w * r3.w;
+  r2.z = r3.w * r2.z;
+  r2.z = 5.000000000e-001 * r2.z;
+  r2.xyz = r2.zzz * r2.xyw + r3.xyz;
+  r2.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r2.xyz;
+  r0.xyz = r2.xyz * r0.xyz;
+  r2.x = 1.000000e+000 / v1.w;
+  r2.x = saturate(r2.x * r0.w);
+  r0.w = r0.w * r0.w + v2.x;
+  r2.y = r2.x * -2.000000000e+000 + 3.000000000e+000;
+  r2.x = r2.x * r2.x;
+  r2.x = -r2.y * r2.x + 1.000000000e+000;
+  r0.w = r2.x / r0.w;
+  r2.xyz = v1.xyz * r0.www;
+  r0.xyz = r2.xyz * r0.xyz;
+  r1.w = 1.000000000e+000;
+  r0.w = dot(r1.xyzw, Spotlight0_Transform._m02_m12_m22_m32);
+  r0.w = r0.w >= 0.000000000e+000;
+  r0.w = r0.w ? 1.000000 : 0;
+  r0.xyz = r0.xyz * r0.www;
+  o1.xyz = HDR_EncodeScale.zzz * r0.xyz;
+  o1.w = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer cbDefaultXSC
+// {
+//
+//   float4x4 ViewProj;                 // Offset:    0 Size:    64 [unused]
+//   float4x4 ViewMatrix;               // Offset:   64 Size:    64 [unused]
+//   float4x4 SecondaryProj;            // Offset:  128 Size:    64 [unused]
+//   float4x4 SecondaryViewProj;        // Offset:  192 Size:    64 [unused]
+//   float4x4 SecondaryInvViewProj;     // Offset:  256 Size:    64 [unused]
+//   float4 ConstantColour;             // Offset:  320 Size:    16 [unused]
+//   float4 Time;                       // Offset:  336 Size:    16 [unused]
+//   float4 CameraPosition;             // Offset:  352 Size:    16
+//   float4 InvProjectionParams;        // Offset:  368 Size:    16
+//   float4 SecondaryInvProjectionParams;// Offset:  384 Size:    16
+//   float4 ShaderDebugParams;          // Offset:  400 Size:    16 [unused]
+//   float4 ToneMappingDebugParams;     // Offset:  416 Size:    16 [unused]
+//   float4 HDR_EncodeScale2;           // Offset:  432 Size:    16 [unused]
+//   float4 EmissiveSurfaceMultiplier;  // Offset:  448 Size:    16 [unused]
+//   float4 AlphaLight_OffsetScale;     // Offset:  464 Size:    16 [unused]
+//   float4 TessellationScaleFactor;    // Offset:  480 Size:    16 [unused]
+//   float4 FogNearColour;              // Offset:  496 Size:    16 [unused]
+//   float4 FogFarColour;               // Offset:  512 Size:    16 [unused]
+//   float4 FogParams;                  // Offset:  528 Size:    16 [unused]
+//   float4 AdvanceEnvironmentShaderDebugParams;// Offset:  544 Size:    16 [unused]
+//   float4 SMAA_RTMetrics;             // Offset:  560 Size:    16 [unused]
+//
+// }
+//
+// cbuffer cbDefaultPSC
+// {
+//
+//   float4x4 AlphaLight_WorldtoClipMatrix;// Offset:    0 Size:    64 [unused]
+//   float4x4 AlphaLight_CliptoWorldMatrix;// Offset:   64 Size:    64 [unused]
+//   float4x4 ProjectorMatrix;          // Offset:  128 Size:    64 [unused]
+//   float4x4 MotionBlurCurrInvViewProjection;// Offset:  192 Size:    64 [unused]
+//   float4x4 MotionBlurPrevViewProjection;// Offset:  256 Size:    64 [unused]
+//   float4x4 MotionBlurPrevSecViewProjection;// Offset:  320 Size:    64 [unused]
+//   float4x4 Spotlight0_Transform;     // Offset:  384 Size:    64
+//   float4 TextureAnimation;           // Offset:  448 Size:    16 [unused]
+//   float4 AmbientDiffuse;             // Offset:  464 Size:    16 [unused]
+//   float4 EnvironmentDebugParams;     // Offset:  480 Size:    16 [unused]
+//   float4 ShadowFilterESMWeights;     // Offset:  496 Size:    16 [unused]
+//   float4 LegacyDofParams;            // Offset:  512 Size:    16 [unused]
+//   float4 OnePixelStepForS0;          // Offset:  528 Size:    16 [unused]
+//   float4 RenderTargetSize;           // Offset:  544 Size:    16 [unused]
+//   float4 ModelTrackerID;             // Offset:  560 Size:    16 [unused]
+//   float4 Sharpness_Bloom_Controls;   // Offset:  576 Size:    16 [unused]
+//   float4 Blur_Direction;             // Offset:  592 Size:    16 [unused]
+//   float4 LightMeterDebugParams;      // Offset:  608 Size:    16 [unused]
+//   float4 SourceResolution;           // Offset:  624 Size:    16 [unused]
+//   float4 HDR_EncodeScale;            // Offset:  640 Size:    16
+//   float4 OutputGamma;                // Offset:  656 Size:    16 [unused]
+//   float4 AlphaLight_ScaleParams;     // Offset:  672 Size:    16 [unused]
+//   float4 WrinkleMapWeights[6];       // Offset:  688 Size:    96 [unused]
+//   float4 RadiosityCubeMapIdx;        // Offset:  784 Size:    16 [unused]
+//   float4 HairShadingParams[8];       // Offset:  800 Size:   128 [unused]
+//   float4 SkinShadingParams;          // Offset:  928 Size:    16 [unused]
+//   float4 HDR_EncodeScale3;           // Offset:  944 Size:    16 [unused]
+//   float4 ScreenResolution[4];        // Offset:  960 Size:    64 [unused]
+//   float4 VelocityParams;             // Offset: 1024 Size:    16 [unused]
+//   float4 DeferredConstColor;         // Offset: 1040 Size:    16 [unused]
+//   float4 Spotlight0_Shadow_Params;   // Offset: 1056 Size:    16 [unused]
+//   float4 Spotlight0_ShadowMapDimensions;// Offset: 1072 Size:    16 [unused]
+//   float4 ShadowFilterType;           // Offset: 1088 Size:    16 [unused]
+//   float4 Spotlight0_ReverseZPerspective;// Offset: 1104 Size:    16 [unused]
+//   float4 SpacesuitVisorParams;       // Offset: 1120 Size:    16 [unused]
+//   float4 Directional_Light_Colour;   // Offset: 1136 Size:    16 [unused]
+//   float4 Directional_Light_Direction;// Offset: 1152 Size:    16 [unused]
+//   float4 EnvironmentMap_Params;      // Offset: 1168 Size:    16 [unused]
+//   float4 Spotlight0_Shadow_Bias_GoboScale;// Offset: 1184 Size:    16 [unused]
+//   float4 ScreenSpaceLightShaftParams1;// Offset: 1200 Size:    16 [unused]
+//   float4 ScreenSpaceLightShaftParams2;// Offset: 1216 Size:    16 [unused]
+//   float4 ScreenSpaceLightPosition;   // Offset: 1232 Size:    16 [unused]
+//   float4 LensAndScreenCenter;        // Offset: 1248 Size:    16 [unused]
+//   float4 ScaleAndScaleIn;            // Offset: 1264 Size:    16 [unused]
+//   float4 HmdWarpParam;               // Offset: 1280 Size:    16 [unused]
+//   float4 ChromAbParam;               // Offset: 1296 Size:    16 [unused]
+//   float4 SMAA_SubsampleIndices;      // Offset: 1312 Size:    16 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// frameSamplerReg_SMP               sampler      NA          NA    7        1
+// depthSamplerReg_SMP               sampler      NA          NA    8        1
+// emissiveSamplerReg_SMP            sampler      NA          NA   11        1
+// normalSamplerReg_SMP              sampler      NA          NA   12        1
+// specularSamplerReg_SMP            sampler      NA          NA   13        1
+// frameSamplerReg_TEX               texture  float4          2d    7        1
+// depthSamplerReg_TEX               texture  float4          2d    8        1
+// emissiveSamplerReg_TEX            texture  float4          2d   11        1
+// normalSamplerReg_TEX              texture  float4          2d   12        1
+// specularSamplerReg_TEX            texture  float4          2d   13        1
+// cbDefaultXSC                      cbuffer      NA          NA    0        1
+// cbDefaultPSC                      cbuffer      NA          NA    2        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 3   xyzw        3     NONE   float      w
+// TEXCOORD                 4   xyzw        4     NONE   float   xy  
+// TEXCOORD                 5   xyzw        5     NONE   float   xyz 
+// TEXCOORD                 6   xyzw        6     NONE   float   xy  
+// TEXCOORD                 7   xyzw        7     NONE   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[25], immediateIndexed
+dcl_constantbuffer cb2[41], immediateIndexed
+dcl_sampler s7, mode_default
+dcl_sampler s8, mode_default
+dcl_sampler s11, mode_default
+dcl_sampler s12, mode_default
+dcl_sampler s13, mode_default
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_resource_texture2d (float,float,float,float) t8
+dcl_resource_texture2d (float,float,float,float) t11
+dcl_resource_texture2d (float,float,float,float) t12
+dcl_resource_texture2d (float,float,float,float) t13
+dcl_input_ps linear v0.xyzw
+dcl_input_ps linear v1.xyzw
+dcl_input_ps linear v2.xyzw
+dcl_input_ps linear v3.w
+dcl_input_ps linear v4.xy
+dcl_input_ps linear v5.xyz
+dcl_input_ps linear v6.xy
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_temps 8
+mov o0.xyzw, l(0,0,0,1.000000)
+div r0.x, l(1.000000, 1.000000, 1.000000, 1.000000), v3.w
+mul r0.yz, r0.xxxx, v4.xxyx
+mul r1.xyz, r0.xxxx, v2.yzwy
+sample_indexable(texture2d)(float,float,float,float) r2.x, r0.yzyy, t11.wxyz, s11
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.yzyy, t12.xyzw, s12
+mov r2.y, r3.w
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r0.yzyy, t7.xyzw, s7
+mov r2.z, r4.w
+mul r4.xyz, r4.xyzx, r4.xyzx
+add r4.xyz, r4.xyzx, r4.xyzx
+mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.x, r2.xyzx, r2.xyzx
+sqrt r0.w, r0.x
+add r0.x, r0.x, l(-0.250000)
+max r0.x, r0.x, l(0.000000)
+mul r0.x, r0.x, l(1.333333)
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+mul r2.xyz, r0.wwww, r2.xyzx
+sample_indexable(texture2d)(float,float,float,float) r0.w, r0.yzyy, t8.yzwx, s8
+sample_indexable(texture2d)(float,float,float,float) r0.yz, r0.yzyy, t13.xyzw, s13
+mad r1.w, -r0.w, cb0[24].y, cb0[24].z
+div r1.w, cb0[24].x, r1.w
+max r1.w, r1.w, l(0.000000)
+mad r2.w, r0.w, cb0[23].y, cb0[23].z
+lt r0.w, r0.w, l(0.000000)
+div r2.w, cb0[23].x, r2.w
+max r2.w, r2.w, l(0.000000)
+movc r0.w, r0.w, r1.w, r2.w
+mad r1.xyz, r1.xyzx, r0.wwww, cb0[22].xyzx
+add r5.xyz, -r1.xyzx, v0.xyzx
+dp3 r0.w, r5.xyzx, r5.xyzx
+rsq r2.w, r0.w
+sqrt r0.w, r0.w
+add r0.w, r0.w, -v0.w
+max r0.w, r0.w, l(0.000000)
+mul r6.xyz, r2.wwww, r5.xyzx
+mad r7.xyz, r5.xyzx, r2.wwww, l(1.000000, 0.000000, 0.000000, 0.000000)
+mad r5.xyz, v6.yyyy, v5.xyzx, r5.xyzx
+dp3 r2.w, r5.xyzx, r5.xyzx
+sqrt r2.w, r2.w
+div_sat r2.w, v6.x, r2.w
+dp3 r3.w, r6.xyzx, r7.xyzx
+mad r3.w, -r3.w, l(5.439260), l(-1.719830)
+exp r3.w, r3.w
+dp3 r4.w, -r2.xyzx, r6.xyzx
+dp3 r2.x, r2.xyzx, r6.xyzx
+max r2.x, r2.x, l(0.000000)
+mul r2.x, r2.x, l(-9.000000)
+exp r2.x, r2.x
+add r2.y, r4.w, l(0.450000)
+mul_sat r2.y, r2.y, l(2.222222)
+mad r2.z, r2.y, l(-2.000000), l(3.000000)
+mul r2.y, r2.y, r2.y
+mad r2.y, r2.z, r2.y, l(-1.000000)
+mad r0.z, r0.z, r2.y, l(1.000000)
+dp3 r2.y, r3.xyzx, r3.xyzx
+rsq r2.y, r2.y
+mul r3.xyz, r2.yyyy, r3.xyzx
+dp3 r2.y, r6.xyzx, r3.xyzx
+mov_sat r3.x, r3.x
+add r2.z, -r3.x, l(1.000000)
+add r3.x, -r2.y, l(1.000000)
+add r3.y, r2.w, l(1.000000)
+div r3.x, r3.x, r3.y
+mad_sat r2.w, r3.x, r2.w, r2.y
+mad_sat r2.y, -r2.y, l(0.500000), l(0.500000)
+mul r2.x, r2.y, r2.x
+mul r0.x, r0.x, r2.x
+mul r0.z, r0.z, r2.w
+max r2.x, r4.y, r4.x
+max r2.y, r4.z, l(0.000100)
+max r2.x, r2.y, r2.x
+div r2.x, l(1.000000, 1.000000, 1.000000, 1.000000), r2.x
+mul r2.xyw, r2.xxxx, r4.xyxz
+mad_sat r3.x, -r0.y, l(2.000000), l(1.000000)
+mad_sat r0.y, r0.y, l(2.000000), l(-1.000000)
+mul r3.x, r3.x, r3.x
+mad r2.xyw, r0.yyyy, r2.xyxw, r3.xxxx
+mul r3.xyz, r2.xywx, l(0.100000, 0.100000, 0.100000, 0.000000)
+mad r2.xyw, -r2.xyxw, l(0.100000, 0.100000, 0.000000, 0.100000), l(1.000000, 1.000000, 0.000000, 1.000000)
+mad r4.xyz, r3.wwww, r2.xywx, r3.xyzx
+add r4.xyz, -r4.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+mul r4.xyz, r0.zzzz, r4.xyzx
+mad r0.xyz, r0.xxxx, l(0.358000, 0.004000, 0.000010, 0.000000), r4.xyzx
+mul r3.w, r2.z, r2.z
+mul r3.w, r3.w, r3.w
+mul r2.z, r2.z, r3.w
+mul r2.z, r2.z, l(0.500000)
+mad r2.xyz, r2.zzzz, r2.xywx, r3.xyzx
+add r2.xyz, -r2.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+mul r0.xyz, r0.xyzx, r2.xyzx
+div r2.x, l(1.000000, 1.000000, 1.000000, 1.000000), v1.w
+mul_sat r2.x, r0.w, r2.x
+mad r0.w, r0.w, r0.w, v2.x
+mad r2.y, r2.x, l(-2.000000), l(3.000000)
+mul r2.x, r2.x, r2.x
+mad r2.x, -r2.y, r2.x, l(1.000000)
+div r0.w, r2.x, r0.w
+mul r2.xyz, r0.wwww, v1.xyzx
+mul r0.xyz, r0.xyzx, r2.xyzx
+mov r1.w, l(1.000000)
+dp4 r0.w, r1.xyzw, cb2[26].xyzw
+ge r0.w, r0.w, l(0.000000)
+and r0.w, r0.w, l(0x3f800000)
+mul r0.xyz, r0.wwww, r0.xyzx
+mul o1.xyz, r0.xyzx, cb2[40].zzzz
+mov o1.w, l(1.000000)
+ret 
+// Approximately 110 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
