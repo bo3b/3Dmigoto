@@ -2953,6 +2953,8 @@ public:
 						removeBoolean(op1);
 						break;
 					}
+
+						// Double checked this while looking at other round bugs.  Looks correct to use 'floor'.
 					case OPCODE_ROUND_NI:
 					{
 						remapTarget(op1);
@@ -2991,41 +2993,35 @@ public:
 						removeBoolean(op1);
 						break;
 					}
+
+						// Was previously doing a Round operation, but that is not correct because this needs to
+						// round toward zero, and Round can go larger.  Trunc(1.6)->1.0 Round(1.6)->2.0
+						// Also removed the unrolling, the instruction works with swizzle. e.g. r0.xy = trunc(r2.yz)
 					case OPCODE_ROUND_Z:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						int idx = 0;
-						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-						while (*++pop1)
-						{
-							sprintf(op3, "%s.%c", op1, *pop1);
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = round(%s);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(round(%s));\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-							++idx;
-						}
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = trunc(%s);\n", writeTarget(op1), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(trunc(%s));\n", writeTarget(op1), ci(op2).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						removeBoolean(op1);
 						break;
 					}
+
+						// Round_NE is Round Nearest Even, and using HLSL Round here is correct.
+						// But it previously used a *0.5*2 rounding which is unnecessary.
+						// The HLSL intrinsics of Round will already do that.
 					case OPCODE_ROUND_NE:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						int idx = 0;
-						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
-						while (*++pop1)
-						{
-							sprintf(op3, "%s.%c", op1, *pop1);
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = round(%s * 0.5) * 2;\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(round(%s * 0.5) * 2);\n", writeTarget(op3), ci(GetSuffix(op2, idx)).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-							++idx;
-						}
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = round(%s);\n", writeTarget(op1), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(round(%s));\n", writeTarget(op1), ci(op2).c_str());
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						removeBoolean(op1);
 						break;
 					}
