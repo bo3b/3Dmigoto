@@ -121,7 +121,7 @@ o13.xyzw = InvViewProj._m03_m13_m23_m33;
   r0.x = r0.x ? -r1.x : r1.x;
   r0.x = 7.068583488e+000 + r0.x;
   r0.x = 6.366197467e-001 * r0.x;
-  r0.x = round(r0.x);
+  r0.x = trunc(r0.x);
   r0.x = r0.x * 1.570796371e+000 + -7.853981853e-001;
   sincos(r0.x, r0.x, r1.x);
   r0.y = dot(r0.yzw, r0.yzw);
