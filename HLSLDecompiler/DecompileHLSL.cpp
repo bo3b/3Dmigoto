@@ -1696,24 +1696,72 @@ public:
 	// But it makes no sense that an 'and .. r0.zw' would have one component boolean, and one not,
 	// so rather than do them component by component, we'll use the whole operand.
 
+	// Well, another example is a n "and r0.xyzw, r0.yyyy, r2.xyzw" where r0.y is set early. 
+	// This requires at least single component entries in the mBooleanRegisters.
+
 	void addBoolean(char *arg)
 	{
 		string op = (arg[0] == '-') ? arg + 1 : arg;
-		mBooleanRegisters.insert(op);
+		size_t dotspot = op.find('.');
+		if (dotspot == string::npos)
+		{
+			mBooleanRegisters.insert(op);
+			return;
+		}
+
+		string reg = op.substr(0, dotspot);
+		for (size_t i = dotspot + 1; i < op.length(); i++)
+		{
+			mBooleanRegisters.insert(reg + '.' + op[i]);
+		}
 	}
 
 	bool isBoolean(char *arg)
 	{
+		if (mBooleanRegisters.empty())
+			return false;
+
 		string op = (arg[0] == '-') ? arg + 1 : arg;
-		set<string>::iterator i = mBooleanRegisters.find(op);
-		return i != mBooleanRegisters.end();
+		size_t dotspot = op.find('.');
+		string operand;
+
+		if (dotspot == string::npos)
+		{
+			set<string>::iterator i = mBooleanRegisters.find(op);
+			return i != mBooleanRegisters.end();
+		}
+
+		string reg = op.substr(0, dotspot);
+		for (size_t i = dotspot + 1; i < op.length(); i++)
+		{
+			set<string>::iterator j = mBooleanRegisters.find(reg + '.' + op[i]);
+			if (j != mBooleanRegisters.end())
+				return true;									// Any single component found qualifies
+		}
+
+		return false;
 	}
 
 	void removeBoolean(char *arg)
 	{
+		if (mBooleanRegisters.empty())
+			return;
+
 		string op = arg[0] == '-' ? arg + 1 : arg;
-		mBooleanRegisters.erase(op);
+		size_t dotspot = op.find('.');
+		if (dotspot == string::npos)
+		{
+			mBooleanRegisters.erase(op);
+			return;
+		}
+
+		string reg = op.substr(0, dotspot);
+		for (size_t i = dotspot + 1; i < op.length(); i++)
+		{
+			mBooleanRegisters.erase(reg + '.' + op[i]);
+		}
 	}
+
 
 	char *fixImm(char *op, Operand &o)
 	{
