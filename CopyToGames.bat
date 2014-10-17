@@ -1,5 +1,5 @@
 @echo off
-if "%username%" NEQ "Bo3b" exit
+if "%username%" NEQ "bo3b" exit
 
 if %2=="amd64" GOTO Copyx64
 
@@ -17,6 +17,8 @@ echo
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Saints Row the Third\" /F /Y
 echo 
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\F.E.A.R. 3\" /F /Y
+echo 
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Alien Isolation" /F /Y
 
 exit
 
@@ -26,3 +28,4 @@ exit
 echo 
 xcopy "%1*.*" "T:\Bootleg\Watch Dogs\bin\"  /F /Y
 xcopy "%1*.*" "C:\Games\Call of Duty - Ghosts\"  /F /Y
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64\" /F /Y
