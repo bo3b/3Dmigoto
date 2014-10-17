@@ -187,7 +187,7 @@ void main(
   r0.w = r0.w * r0.w;
   r0.w = -r1.y * r0.w + 1.000000000e+000;
   r0.w = r0.w / r1.x;
-  r0.w = (int)r0.w & (int)r1.z;
+  r0.w = r1.z ? r0.w : 0;
   r1.xyz = v1.xyz * r0.www;
   r0.xyz = r1.xyz * r0.xyz;
   o0.xyz = HDR_EncodeScale.zzz * r0.xyz;

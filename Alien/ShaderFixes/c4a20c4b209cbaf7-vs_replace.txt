@@ -130,12 +130,6 @@ void main(
   r0.xyz = ViewMatrix._m02_m12_m22 * r0.zzz + r1.xyz;
   o6.xyz = r0.xyz * r0.www;
   o6.w = 0.000000000e+000;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o4.x += separation * (o4.w - convergence);
   return;
 }
 

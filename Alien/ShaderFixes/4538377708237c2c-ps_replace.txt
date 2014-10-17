@@ -239,10 +239,8 @@ void main(
   r6.w = -r7.x * r6.w + 1.000000000e+000;
   r2.w = r2.w * r2.w + v2.x;
   r2.w = r6.w / r2.w;
-  r7.x = 1 < r6.x;
-  r7.y = 1 < r6.y;
-  r6.x = r6.x < -1;
-  r6.y = r6.y < -1;
+  r7.xy = float2(1.000000e+000,1.000000e+000) < r6.xy;
+  r6.xy = r6.xy < float2(-1.000000e+000,-1.000000e+000);
   r6.xy = (int2)r6.xy | (int2)r7.xy;
   r6.x = (int)r6.y | (int)r6.x;
   r2.w = r6.x ? 0.000000000e+000 : r2.w;

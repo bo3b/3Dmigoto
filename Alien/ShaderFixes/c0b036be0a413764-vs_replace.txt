@@ -120,12 +120,6 @@ void main(
   o4.z = RInstConstants[3].z;
   o4.w = RInstConstants[5].z;
   o5.w = RInstConstants[1].w;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o3.x += separation * (o3.w - convergence);
   return;
 }
 

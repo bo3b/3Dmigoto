@@ -112,12 +112,6 @@ void main(
   o3.y = WorldMatrix._m31;
   o3.z = WorldMatrix._m32;
   o3.w = 0.000000000e+000;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o1.x += separation * (o1.w - convergence);
   return;
 }
 

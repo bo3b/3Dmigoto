@@ -295,7 +295,7 @@ void main(
   r0.x = r0.x * r0.x;
   r0.x = -r1.w * r0.x + 1.000000000e+000;
   r0.x = r0.x / r0.w;
-  r0.x = (int)r0.x & (int)r0.z;
+  r0.x = r0.z ? r0.x : 0;
   r0.xzw = v1.xyz * r0.xxx;
   r1.xyz = r0.xzw * r1.xyz;
   r0.xzw = r0.xzw * r2.xyz;

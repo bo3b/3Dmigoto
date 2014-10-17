@@ -85,8 +85,7 @@ void main(
   uint4 bitmask;
   r0.x = 3.921568859e-003 * RadiosityCubeMapIdx.x;
   r0.yz = float2(2.559961e+002,2.559961e+002) * v1.zw;
-  r0.y = round(r0.y);
-  r0.z = round(r0.z);
+  r0.yz = trunc(r0.yz);
   r1.xy = v1.zw * float2(2.559961e+002,2.559961e+002) + -r0.yz;
   r2.zw = float2(3.921569e-003,3.921569e-003) * r0.yz;
   r2.xy = float2(1.003922e+000,1.003922e+000) * r1.xy;

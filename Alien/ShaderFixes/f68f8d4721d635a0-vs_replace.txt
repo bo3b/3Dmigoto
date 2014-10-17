@@ -111,7 +111,7 @@ void main(
   r0.x = r0.x ? -r1.x : r1.x;
   r0.x = 7.068583488e+000 + r0.x;
   r0.x = 6.366197467e-001 * r0.x;
-  r0.x = round(r0.x);
+  r0.x = trunc(r0.x);
   r0.x = r0.x * 1.570796371e+000 + -7.853981853e-001;
   sincos(r0.x, r0.x, r1.x);
   r0.y = dot(r0.yzw, r0.yzw);
@@ -196,12 +196,6 @@ void main(
   o5.z = WorldMatrix._m22;
   o5.w = RInstConstants[3].y;
   o6.w = 0.000000000e+000;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o3.x += separation * (o3.w - convergence);
   return;
 }
 

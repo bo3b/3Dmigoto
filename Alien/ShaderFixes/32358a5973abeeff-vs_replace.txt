@@ -31,20 +31,8 @@ cbuffer cbInstanceXSC : register(b10)
   float4 RInstConstants[6] : packoffset(c5);
   float4 RadiosityProbeTexcoordAndScale : packoffset(c11);
 }
-
-	// Manually added
-  struct GPUParticleRenderComputeData
-  {
-      
-      float4 posAndAge;              // Offset:    0
-      float4 velAndLife;             // Offset:   16
-      float3 misc;                   // Offset:   32
-      int type;                      // Offset:   44
-
-  } $Element;                        // Offset:    0 Size:    48
-
 SamplerState SamplerParameters_SMP_s : register(s4);
-StructuredBuffer<GPUParticleRenderComputeData> g_particles : register(t0);
+StructuredBuffer<g_particles> g_particles : register(t0);
 Texture2D<float4> SamplerParameters_TEX : register(t4);
 
 Texture2D<float4> StereoParams : register(t125);
@@ -84,7 +72,7 @@ r1.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
   r1.w = sqrt(r0.x);
   r0.x = rsqrt(r0.x);
   r2.xyz = r1.zxy * r0.xxx;
-  r0.x = (int)r0.y & (int)r1.w;
+  r0.x = r0.y ? r1.w : 0;
   r0.x = min(r0.x, 5.000000000e+000);
   r3.w = 1.000000000e+000;
 // Known bad code for instruction:

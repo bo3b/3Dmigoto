@@ -198,12 +198,6 @@ void main(
   o7.x = RInstConstants[5].z;
   o7.y = RInstConstants[0].w;
   o7.w = 0.000000000e+000;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o3.x += separation * (o3.w - convergence);
   return;
 }
 
