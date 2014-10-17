@@ -85,8 +85,7 @@ void main(
   uint4 bitmask;
   r0.x = 3.921568859e-003 * RadiosityCubeMapIdx.x;
   r0.yz = float2(2.559961e+002,2.559961e+002) * v1.zw;
-  r0.y = trunc(r0.y);
-  r0.z = trunc(r0.z);
+  r0.yz = trunc(r0.yz);
   r1.xy = v1.zw * float2(2.559961e+002,2.559961e+002) + -r0.yz;
   r2.zw = float2(3.921569e-003,3.921569e-003) * r0.yz;
   r2.xy = float2(1.003922e+000,1.003922e+000) * r1.xy;
@@ -115,7 +114,7 @@ void main(
   r0.x = r0.x * 5.000000000e-001 + 1.000000000e+000;
   
   r2.xyzw = rp_parameter_ps[0].yyww * v1.xyxy;
-  r3.xyz = DIFFUSE_MAP_SAMPLER_TEX.Sample(DIFFUSE_MAP_SAMPLER_SMP_s, r2.xy).xyz;  
+  r3.xyz = DIFFUSE_MAP_SAMPLER_TEX.Sample(DIFFUSE_MAP_SAMPLER_SMP_s, r2.xy).xyz;
   r2.xy = SPECULAR_MAP_SAMPLER_TEX.Sample(SPECULAR_MAP_SAMPLER_SMP_s, r2.zw).xy;
   
   r2.xy=float2(0.0,0.0);
