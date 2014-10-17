@@ -94,7 +94,6 @@ void main(
   o6.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
   o6.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
   o6.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
-  
   return;
 }
 

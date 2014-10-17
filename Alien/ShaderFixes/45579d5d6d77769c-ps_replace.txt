@@ -111,9 +111,6 @@ void main(
   r0.z = r0.w * r0.z;
   r2.xyzw = rp_parameter_ps[0].yyww * v1.xyxy;
   r2.zw = SPECULAR_MAP_SAMPLER_TEX.Sample(SPECULAR_MAP_SAMPLER_SMP_s, r2.zw).xy;
-  
-// r2.zw = float2(0.0,0.0);
-  
   r3.xyz = DIFFUSE_MAP_SAMPLER_TEX.Sample(DIFFUSE_MAP_SAMPLER_SMP_s, r2.xy).xyz;
   r3.xyz = r3.xyz * r3.xyz;
   r3.xyz = rp_parameter_ps[1].xyz * r3.xyz;
@@ -168,13 +165,13 @@ void main(
   o0.xyz = HDR_EncodeScale3.xxx * r0.xzw;
   r0.x = 3.921568859e-003 * RadiosityCubeMapIdx.x;
   r0.zw = float2(2.559961e+002,2.559961e+002) * v1.zw;
-  r0.z = trunc(r0.z);
-  r0.w = trunc(r0.w);
+  r0.z = round(r0.z);
+  r0.w = round(r0.w);
   r4.xy = v1.zw * float2(2.559961e+002,2.559961e+002) + -r0.zw;
   r5.zw = float2(3.921569e-003,3.921569e-003) * r0.zw;
   r5.xy = float2(1.003922e+000,1.003922e+000) * r4.xy;
   r0.z = 0.000000000e+000 < RadiosityCubeMapIdx.y;
-  o0.w = r0.z ? r0.x : r5.x;  
+  o0.w = r0.z ? r0.x : r5.x;
   r0.xzw = r0.zzz ? float3(0.000000e+000,0.000000e+000,0.000000e+000) : r5.yzw;
   o1.w = r0.x;
   r4.xyz = float3(-1.000000e+000,-1.000000e+000,-1.000000e+000) + v4.xyz;

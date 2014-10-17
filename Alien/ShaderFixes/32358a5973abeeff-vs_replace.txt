@@ -1,4 +1,4 @@
-//Fire Particles
+
 cbuffer cbDefaultXSC : register(b0)
 {
   float4x4 ViewProj : packoffset(c0);
@@ -41,7 +41,7 @@ cbuffer cbInstanceXSC : register(b10)
       float3 misc;                   // Offset:   32
       int type;                      // Offset:   44
 
-  };                        // Offset:    0 Size:    48
+  } $Element;                        // Offset:    0 Size:    48
 
 SamplerState SamplerParameters_SMP_s : register(s4);
 StructuredBuffer<GPUParticleRenderComputeData> g_particles : register(t0);
@@ -66,16 +66,19 @@ void main(
   x0[3].xy = float2(1.000000e+000,1.000000e+000);
   r0.x = v0.x;
   r0.xy = x0[r0.x+0].xy;
-  
+// Known bad code for instruction:
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.xy, v1.x, l(32), t0.xyxx
-r1.xy = g_particles[v1.x].misc.xy;
+r1.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r1.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
   r1.z = -r1.x;
   r0.z = dot(r0.yx, r1.yz);
   r0.w = dot(r0.yx, r1.xy);
   o1.xy = r0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
-  
+// Known bad code for instruction:
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.xyz, v1.x, l(16), t0.xyzx
-r1.xyz = g_particles[v1.x].velAndLife.xyz;
+r1.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r1.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r1.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
   r0.x = dot(r1.xyz, r1.xyz);
   r0.y = 1.000000047e-003 < r0.x;
   r1.w = sqrt(r0.x);
@@ -84,16 +87,19 @@ r1.xyz = g_particles[v1.x].velAndLife.xyz;
   r0.x = (int)r0.y & (int)r1.w;
   r0.x = min(r0.x, 5.000000000e+000);
   r3.w = 1.000000000e+000;
-
+// Known bad code for instruction:
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r4.xyzw, v1.x, l(0), t0.wxyz
-r4.xyzw = g_particles[v1.x].posAndAge.wxyz;
+r4.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r4.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r4.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r4.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
   r3.xyz = r1.xyz * RInstConstants[0].www + r4.yzw;
   r4.x = saturate(r4.x);
   r0.y = dot(ViewProj._m03_m13_m23_m33, r3.xyzw);
   r0.y = RInstConstants[1].z * r0.y;
-  
+// Known bad code for instruction:
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.x, v1.x, l(44), t0.xxxx
-r1.x = g_particles[v1.x].type.x;
+r1.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
   r1.x = r1.x;
   r1.x = r1.x * 4.000000000e+000 + 5.000000000e-001;
   r4.y = RInstConstants[3].w * r1.x;
@@ -303,5 +309,5 @@ mov_sat o2.w, r4.w
 mov o2.xyz, r4.xyzx
 ret 
 // Approximately 64 instruction slots used
- 
+ 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

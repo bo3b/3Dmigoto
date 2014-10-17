@@ -1,4 +1,4 @@
-//Star Background
+
 cbuffer cbDefaultXSC : register(b0)
 {
   float4x4 ViewProj : packoffset(c0);
@@ -83,10 +83,6 @@ void main(
   r0.zw = r3.xy / r0.zz;
   o2.xy = r1.xy * r0.xy + r0.zw;
   o2.zw = float2(1.000000e+000,1.000000e+000);
-  
-float4 stereo = StereoParams.Load(0);
-o2.x += stereo.x;
-
   return;
 }
 

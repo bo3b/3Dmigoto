@@ -1,4 +1,4 @@
-//Shadows/lights above wall terminals
+
 cbuffer cbDefaultXSC : register(b0)
 {
   float4x4 ViewProj : packoffset(c0);
@@ -74,11 +74,11 @@ cbuffer cbDefaultPSC : register(b2)
   float4 ChromAbParam : packoffset(c81);
   float4 SMAA_SubsampleIndices : packoffset(c82);
 }
-SamplerState frameSamplerReg_SMP_s_s : register(s7);
-SamplerState depthSamplerReg_SMP_s_s : register(s8);
-SamplerState normalSamplerReg_SMP_s_s : register(s12);
-SamplerState specularSamplerReg_SMP_s_s : register(s13);
-SamplerState spotlight0ProjectiveReg_SMP_s_s : register(s15);
+SamplerState frameSamplerReg_SMP_s : register(s7);
+SamplerState depthSamplerReg_SMP_s : register(s8);
+SamplerState normalSamplerReg_SMP_s : register(s12);
+SamplerState specularSamplerReg_SMP_s : register(s13);
+SamplerState spotlight0ProjectiveReg_SMP_s : register(s15);
 Texture2D<float4> frameSamplerReg_TEX : register(t7);
 Texture2D<float4> depthSamplerReg_TEX : register(t8);
 Texture2D<float4> normalSamplerReg_TEX : register(t12);
@@ -88,7 +88,7 @@ Texture2D<float4> spotlight0ProjectiveReg_TEX : register(t15);
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
-  float4 v0 : TEXCOORD0,		
+  float4 v0 : TEXCOORD0,
   float4 v1 : TEXCOORD1,
   float4 v2 : TEXCOORD2,
   float4 v3 : TEXCOORD3,
@@ -96,21 +96,16 @@ void main(
   float4 v5 : TEXCOORD5,
   float4 v6 : TEXCOORD6,
   float4 v7 : TEXCOORD7,
-  float4 v9 : TEXCOORD8,
-  float4 v10 : TEXCOORD9,
-  float4 v11 : TEXCOORD10,
-  float4 v12 : TEXCOORD11,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask;
-  
   r0.x = dot(v6.xyz, v6.xyz);
   r0.x = rsqrt(r0.x);
   r0.y = 1.000000e+000 / v3.w;
   r0.zw = v4.xy * r0.yy;
   r1.xyz = v2.yzw * r0.yyy;
-  r0.y = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s_s, r0.zw).x;
+  r0.y = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.zw).x;
   r1.w = -r0.y * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
   r1.w = SecondaryInvProjectionParams.x / r1.w;
   r1.w = max(r1.w, 0.000000000e+000);
@@ -119,28 +114,8 @@ void main(
   r2.x = InvProjectionParams.x / r2.x;
   r2.x = max(r2.x, 0.000000000e+000);
   r0.y = r0.y ? r1.w : r2.x;
-
   r1.xyz = r1.xyz * r0.yyy + CameraPosition.xyz;
-  
-float4 stereo = StereoParams.Load(0);
-float4 r25;
-r1.w =1.0;
-
-r25.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
-r25.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
-r25.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
-r25.w = dot(r1.xyzw, ViewProj._m03_m13_m23_m33);
-
-r25.x -= stereo.x * (r25.w - stereo.y);
-
-r1.x = dot(r25.xyzw, v9.xyzw);
-r1.y = dot(r25.xyzw, v10.xyzw);
-r1.z = dot(r25.xyzw, v11.xyzw);
-r1.w = dot(r25.xyzw, v12.xyzw); 
-r1.xyzw /= r1.wwww;
-  
   r2.xyz = v0.xyz + -r1.xyz;
-  
   r0.y = dot(r2.xyz, r2.xyz);
   r2.w = rsqrt(r0.y);
   r0.y = sqrt(r0.y);
@@ -149,36 +124,36 @@ r1.xyzw /= r1.wwww;
   r0.x = dot(r3.xyz, r3.xyz);
   r0.x = rsqrt(r0.x);
   r3.xyz = r3.xyz * r0.xxx;
-  r4.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s_s, r0.zw).xyz;
+  r4.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.zw).xyz;
   r4.xyz = r4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r0.x = dot(r4.xyz, r4.xyz);
   r0.x = rsqrt(r0.x);
   r4.xyz = r4.xyz * r0.xxx;
-  r3.x = dot(r4.xyz, r3.xyz);
-  r0.x = saturate(dot(r4.xyz, r2.xyz));
-  r2.xy = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s_s, r0.zw).xy;
-  r4.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s_s, r0.zw).xyz;
-  r4.xyz = r4.xyz * r4.xyz;
-  r4.xyz = r4.xyz + r4.xyz;
-  r0.z = v7.x * r2.x;
-  r3.y = r0.z * -7.500000000e-001 + 7.500000000e-001;
-  r0.zw = r3.xy * r3.xy;
-  r2.x = r3.y * r3.y + -1.000000000e+000;
-  r0.z = r0.z * r2.x + 1.000000000e+000;
+  r0.x = dot(r4.xyz, r3.xyz);
+  r2.x = saturate(dot(r4.xyz, r2.xyz));
+  r2.yz = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s, r0.zw).xy;
+  r3.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.zw).xyz;
+  r3.xyz = r3.xyz * r3.xyz;
+  r3.xyz = r3.xyz + r3.xyz;
+  r0.z = v7.x * r2.y;
+  r0.z = r0.z * -7.500000000e-001 + 7.500000000e-001;
+  r0.w = r0.z * r0.z + -1.000000000e+000;
+  r0.xz = r0.xz * r0.xz;
+  r0.x = r0.x * r0.w + 1.000000000e+000;
+  r0.x = r0.x * r0.x;
+  r0.x = r0.z / r0.x;
+  r0.z = max(r3.y, r3.x);
+  r0.w = max(r3.z, 9.999999747e-005);
+  r0.z = max(r0.w, r0.z);
+  r0.z = 1.000000e+000 / r0.z;
+  r4.xyz = r3.xyz * r0.zzz;
+  r3.xyz = r3.xyz * r2.xxx;
+  r0.z = saturate(-r2.z * 2.000000000e+000 + 1.000000000e+000);
+  r0.w = saturate(r2.z * 2.000000000e+000 + -1.000000000e+000);
   r0.z = r0.z * r0.z;
-  r0.z = r0.w / r0.z;
-  r0.w = max(r4.x, r4.y);
-  r2.x = max(r4.z, 9.999999747e-005);
-  r0.w = max(r0.w, r2.x);
-  r0.w = 1.000000e+000 / r0.w;
-  r2.xzw = r4.xyz * r0.www;
-  r3.xyz = r4.xyz * r0.xxx;
-  r0.w = saturate(r2.y * -2.000000000e+000 + 1.000000000e+000);
-  r2.y = saturate(r2.y * 2.000000000e+000 + -1.000000000e+000);
-  r0.w = r0.w * r0.w;
-  r2.xyz = r2.yyy * r2.xzw + r0.www;
-  r2.xyz = r2.xyz * r0.zzz;
-  r0.xzw = r2.xyz * r0.xxx;
+  r2.yzw = r0.www * r4.xyz + r0.zzz;
+  r0.xzw = r2.yzw * r0.xxx;
+  r0.xzw = r0.xzw * r2.xxx;
   r2.x = -v0.w + r0.y;
   r0.y = Spotlight0_ReverseZPerspective.w * r0.y + -1.000000000e+000;
   r2.x = max(r2.x, 0.000000000e+000);
@@ -203,7 +178,7 @@ r1.xyzw /= r1.wwww;
   r2.x = Spotlight0_Shadow_Bias_GoboScale.y * r1.y;
   r2.y = -5.000000000e-001 * r1.z;
   r1.yz = float2(5.000000e-001,5.000000e-001) + r2.xy;
-  r1.yzw = spotlight0ProjectiveReg_TEX.SampleLevel(spotlight0ProjectiveReg_SMP_s_s, r1.yz, r0.y).xyz;
+  r1.yzw = spotlight0ProjectiveReg_TEX.SampleLevel(spotlight0ProjectiveReg_SMP_s, r1.yz, r0.y).xyz;
   r2.xyz = r1.yyy + -r1.yzw;
   r1.yzw = Spotlight0_Shadow_Params.zzz * r2.xyz + r1.yzw;
   r1.yzw = r1.yzw * r1.yzw;
@@ -216,7 +191,7 @@ r1.xyzw /= r1.wwww;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
 //
 //
 // Buffer Definitions: 
@@ -306,11 +281,11 @@ r1.xyzw /= r1.wwww;
 //
 // Name                                 Type  Format         Dim Slot Elements
 // ------------------------------ ---------- ------- ----------- ---- --------
-// frameSamplerReg_SMP_s             sampler      NA          NA    7        1
-// depthSamplerReg_SMP_s             sampler      NA          NA    8        1
-// normalSamplerReg_SMP_s            sampler      NA          NA   12        1
-// specularSamplerReg_SMP_s          sampler      NA          NA   13        1
-// spotlight0ProjectiveReg_SMP_s     sampler      NA          NA   15        1
+// frameSamplerReg_SMP               sampler      NA          NA    7        1
+// depthSamplerReg_SMP               sampler      NA          NA    8        1
+// normalSamplerReg_SMP              sampler      NA          NA   12        1
+// specularSamplerReg_SMP            sampler      NA          NA   13        1
+// spotlight0ProjectiveReg_SMP       sampler      NA          NA   15        1
 // frameSamplerReg_TEX               texture  float4          2d    7        1
 // depthSamplerReg_TEX               texture  float4          2d    8        1
 // normalSamplerReg_TEX              texture  float4          2d   12        1
@@ -393,31 +368,31 @@ mad r4.xyz, r4.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.
 dp3 r0.x, r4.xyzx, r4.xyzx
 rsq r0.x, r0.x
 mul r4.xyz, r0.xxxx, r4.xyzx
-dp3 r3.x, r4.xyzx, r3.xyzx
-dp3_sat r0.x, r4.xyzx, r2.xyzx
-sample_indexable(texture2d)(float,float,float,float) r2.xy, r0.zwzz, t13.xyzw, s13
-sample_indexable(texture2d)(float,float,float,float) r4.xyz, r0.zwzz, t7.xyzw, s7
-mul r4.xyz, r4.xyzx, r4.xyzx
-add r4.xyz, r4.xyzx, r4.xyzx
-mul r0.z, r2.x, v7.x
-mad r3.y, r0.z, l(-0.750000), l(0.750000)
-mul r0.zw, r3.xxxy, r3.xxxy
-mad r2.x, r3.y, r3.y, l(-1.000000)
-mad r0.z, r0.z, r2.x, l(1.000000)
+dp3 r0.x, r4.xyzx, r3.xyzx
+dp3_sat r2.x, r4.xyzx, r2.xyzx
+sample_indexable(texture2d)(float,float,float,float) r2.yz, r0.zwzz, t13.zxyw, s13
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, r0.zwzz, t7.xyzw, s7
+mul r3.xyz, r3.xyzx, r3.xyzx
+add r3.xyz, r3.xyzx, r3.xyzx
+mul r0.z, r2.y, v7.x
+mad r0.z, r0.z, l(-0.750000), l(0.750000)
+mad r0.w, r0.z, r0.z, l(-1.000000)
+mul r0.xz, r0.xxzx, r0.xxzx
+mad r0.x, r0.x, r0.w, l(1.000000)
+mul r0.x, r0.x, r0.x
+div r0.x, r0.z, r0.x
+max r0.z, r3.y, r3.x
+max r0.w, r3.z, l(0.000100)
+max r0.z, r0.w, r0.z
+div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.z
+mul r4.xyz, r0.zzzz, r3.xyzx
+mul r3.xyz, r2.xxxx, r3.xyzx
+mad_sat r0.z, -r2.z, l(2.000000), l(1.000000)
+mad_sat r0.w, r2.z, l(2.000000), l(-1.000000)
 mul r0.z, r0.z, r0.z
-div r0.z, r0.w, r0.z
-max r0.w, r4.x, r4.y
-max r2.x, r4.z, l(0.000100)
-max r0.w, r0.w, r2.x
-div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
-mul r2.xzw, r0.wwww, r4.xxyz
-mul r3.xyz, r0.xxxx, r4.xyzx
-mad_sat r0.w, r2.y, l(-2.000000), l(1.000000)
-mad_sat r2.y, r2.y, l(2.000000), l(-1.000000)
-mul r0.w, r0.w, r0.w
-mad r2.xyz, r2.yyyy, r2.xzwx, r0.wwww
-mul r2.xyz, r0.zzzz, r2.xyzx
-mul r0.xzw, r0.xxxx, r2.xxyz
+mad r2.yzw, r0.wwww, r4.xxyz, r0.zzzz
+mul r0.xzw, r0.xxxx, r2.yyzw
+mul r0.xzw, r2.xxxx, r0.xxzw
 add r2.x, r0.y, -v0.w
 mad r0.y, cb2[69].w, r0.y, l(-1.000000)
 max r2.x, r2.x, l(0.000000)

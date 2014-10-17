@@ -72,20 +72,10 @@ void main(
   out float4 o2 : TEXCOORD2,
   out float4 o3 : TEXCOORD3,
   out float4 o4 : TEXCOORD4,
-  out float4 o10 : TEXCOORD9,
-  out float4 o11 : TEXCOORD10,
-  out float4 o12 : TEXCOORD11,
-  out float4 o13 : TEXCOORD12,
   out float4 o5 : SV_Position0)
 {
   float4 r0,r1,r2;
   uint4 bitmask;
-
-o10.xyzw = InvViewProj._m00_m10_m20_m30;
-o11.xyzw = InvViewProj._m01_m11_m21_m31;
-o12.xyzw = InvViewProj._m02_m12_m22_m32;
-o13.xyzw = InvViewProj._m03_m13_m23_m33;
-
   o0.x = WorldMatrix._m30;
   o0.y = WorldMatrix._m31;
   o0.z = WorldMatrix._m32;
@@ -108,17 +98,7 @@ o13.xyzw = InvViewProj._m03_m13_m23_m33;
   r2.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
   r2.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
   r2.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
-
-
-float4 stereo = StereoParams.Load(0);
-float4 r23;
-r23.xyzw = r2.xyzw;
-r2.x += stereo.x * (r2.w - stereo.y);
-
-
   r0.yzw = r2.xyz / r2.www;
-
-
   r0.y = -ProjMatrix._m20 * r0.w + r0.y;
   r0.y = r0.y / ProjMatrix._m00;
   r0.z = r0.z / ProjMatrix._m11;
@@ -128,9 +108,7 @@ r2.x += stereo.x * (r2.w - stereo.y);
   r0.yzw = ViewMatrix._m02_m12_m22 * r0.www + r1.xyz;
   o2.yzw = r0.yzw * r2.www;
   o3.xyzw = r2.xyzw;
-
-  o5.xyz = r23.xyz;
-
+  o5.xyz = r2.xyz;
   r0.yz = r2.xy / r0.xx;
   r0.yz = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r0.yz = r0.yz * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
@@ -139,6 +117,12 @@ r2.x += stereo.x * (r2.w - stereo.y);
   o2.x = RInstConstants[1].x;
   o4.z = RInstConstants[2].w;
   o4.w = RInstConstants[1].z;
+
+// Auto-fixed shader
+float4 stereo = StereoParams.Load(0);
+float separation = stereo.x;
+float convergence = stereo.y;
+o3.x += separation * (o3.w - convergence);
   return;
 }
 

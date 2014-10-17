@@ -67,22 +67,12 @@ Texture2D<float4> StereoParams : register(t125);
 
 void main(
   float3 v0 : POSITION0,
-  out float4 o10 : TEXCOORD9,
-  out float4 o11 : TEXCOORD10,
-  out float4 o12 : TEXCOORD11,
-  out float4 o13 : TEXCOORD12,
   out float4 o0 : SV_Position0,
   out float3 o1 : TEXCOORD0,
   out float3 o2 : TEXCOORD1)
 {
   float4 r0,r1;
   uint4 bitmask;
-
-o10.xyzw = InvViewProj._m00_m10_m20_m30;
-o11.xyzw = InvViewProj._m01_m11_m21_m31;
-o12.xyzw = InvViewProj._m02_m12_m22_m32;
-o13.xyzw = InvViewProj._m03_m13_m23_m33;
-
   r0.xyz = VertexScale.xxx * v0.xyz;
   r0.w = 1.000000000e+000;
   r1.x = dot(r0.xyzw, WorldMatrix._m00_m10_m20_m30);
