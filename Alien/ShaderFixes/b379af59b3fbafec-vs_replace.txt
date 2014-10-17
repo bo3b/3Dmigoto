@@ -74,10 +74,20 @@ void main(
   out float4 o4 : TEXCOORD4,
   out float4 o5 : TEXCOORD5,
   out float4 o6 : TEXCOORD6,
+  out float4 o10 : TEXCOORD9,
+  out float4 o11 : TEXCOORD10,
+  out float4 o12 : TEXCOORD11,
+  out float4 o13 : TEXCOORD12,
   out float4 o7 : SV_Position0)
 {
   float4 r0,r1,r2;
   uint4 bitmask;
+
+o10.xyzw = InvViewProj._m00_m10_m20_m30;
+o11.xyzw = InvViewProj._m01_m11_m21_m31;
+o12.xyzw = InvViewProj._m02_m12_m22_m32;
+o13.xyzw = InvViewProj._m03_m13_m23_m33;
+
   o0.x = WorldMatrix._m30;
   o0.y = WorldMatrix._m31;
   o0.z = WorldMatrix._m32;
@@ -151,7 +161,10 @@ void main(
   r0.z = rsqrt(r0.z);
   r0.zw = r0.xy * r0.zz;
   r2.x = r0.x == 0.000000;
-  r0.zw = r2.xx ? r0.xy : r0.zw;
+  //movc r0.zw, r2.xxxx, r0.xxxy, r0.zzzw
+r0.zw = r2.xxxx ? r0.xxxy : r0.zzzw;
+  // r0.z = r2.x ? r0.x : r0.z;
+  // r0.w = r2.x ? r0.y : r0.w;
   r1.xy = r0.zw * float2(5.000000e-002,5.000000e-002) + r0.xy;
   r1.x = RInstConstants[5].y * r1.x;
   r1.w = 1.000000000e+000;
@@ -167,7 +180,17 @@ void main(
   r0.y = r0.y ? -1.000000047e-003 : 1.000000047e-003;
   r0.z = abs(r0.x) < 1.000000047e-003;
   r1.w = r0.z ? r0.y : r0.x;
+
+
+float4 stereo = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r1.xyzw;
+r1.x += stereo.x * (r1.w - stereo.y);
+
+
   r0.yzw = r1.xyz / r1.www;
+
+
   r0.y = -ProjMatrix._m20 * r0.w + r0.y;
   r0.y = r0.y / ProjMatrix._m00;
   r0.z = r0.z / ProjMatrix._m11;
@@ -177,7 +200,9 @@ void main(
   r0.yzw = ViewMatrix._m02_m12_m22 * r0.www + r2.xyz;
   o2.yzw = r0.yzw * r1.www;
   o3.xyzw = r1.xyzw;
-  o7.xyz = r1.xyz;
+
+  o7.xyz = r23.xyz;
+
   r0.yz = r1.xy / r0.xx;
   r0.yz = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r0.yz = r0.yz * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
@@ -194,12 +219,6 @@ void main(
   o6.y = r0.x / r0.y;
   o6.x = RInstConstants[0].w;
   o6.zw = float2(0.000000e+000,0.000000e+000);
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o3.x += separation * (o3.w - convergence);
   return;
 }
 

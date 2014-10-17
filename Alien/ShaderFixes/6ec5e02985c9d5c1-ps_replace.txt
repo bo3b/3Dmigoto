@@ -106,8 +106,9 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6;
-  uint4 bitmask;
-  r0.xyzw = g_smp_gbuffer_rt1_TEX.Sample(g_smp_gbuffer_rt1_SMP_s, v0.xy).xwyz;
+  uint4 bitmask; 
+  
+  r0.xyzw = g_smp_gbuffer_rt1_TEX.Sample(g_smp_gbuffer_rt1_SMP_s, v0.xy).xwyz; //v0.xy).xwyz;
   r1.xyz = r0.xzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r0.z = dot(r1.xyz, r1.xyz);
   r0.z = rsqrt(r0.z);

@@ -75,10 +75,20 @@ void main(
   out float4 o5 : TEXCOORD5,
   out float4 o6 : TEXCOORD6,
   out float4 o7 : TEXCOORD7,
+  out float4 o10 : TEXCOORD9,
+  out float4 o11 : TEXCOORD10,
+  out float4 o12 : TEXCOORD11,
+  out float4 o13 : TEXCOORD12,
   out float4 o8 : SV_Position0)
 {
   float4 r0,r1,r2;
   uint4 bitmask;
+
+o10.xyzw = InvViewProj._m00_m10_m20_m30;
+o11.xyzw = InvViewProj._m01_m11_m21_m31;
+o12.xyzw = InvViewProj._m02_m12_m22_m32;
+o13.xyzw = InvViewProj._m03_m13_m23_m33;
+
   o0.x = WorldMatrix._m30;
   o0.y = WorldMatrix._m31;
   o0.z = WorldMatrix._m32;
@@ -112,7 +122,7 @@ void main(
   r0.x = r0.x ? -r1.x : r1.x;
   r0.x = 7.068583488e+000 + r0.x;
   r0.x = 6.366197467e-001 * r0.x;
-  r0.x = round(r0.x);
+  r0.x = trunc(r0.x);
   r0.x = r0.x * 1.570796371e+000 + -7.853981853e-001;
   sincos(r0.x, r0.x, r1.x);
   r0.y = dot(r0.yzw, r0.yzw);
@@ -157,7 +167,10 @@ void main(
   r0.w = dot(r0.yz, r0.yz);
   r0.w = rsqrt(r0.w);
   r2.xy = r0.yz * r0.ww;
-  r0.xw = r0.xx ? r0.yz : r2.xy;
+  //movc r0.xw, r0.xxxx, r0.yyyz, r2.xxxy
+r0.xw = r0.xxxx ? r0.yyyz : r2.xxxy;
+  // r0.x = r0.x ? r0.y : r2.x;
+  // r0.w = r0.x ? r0.z : r2.y;
   r1.xy = r0.xw * float2(5.000000e-002,5.000000e-002) + r0.yz;
   r1.x = RInstConstants[5].y * r1.x;
   r1.w = 1.000000000e+000;
@@ -174,7 +187,17 @@ void main(
   r0.x = r0.x ? -1.000000047e-003 : 1.000000047e-003;
   r0.y = abs(r0.w) < 1.000000047e-003;
   r1.w = r0.y ? r0.x : r0.w;
+
+
+float4 stereo = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r1.xyzw;
+r1.x += stereo.x * (r1.w - stereo.y);
+
+
   r0.xyz = r1.xyz / r1.www;
+
+
   r0.x = -ProjMatrix._m20 * r0.z + r0.x;
   r0.x = r0.x / ProjMatrix._m00;
   r0.y = r0.y / ProjMatrix._m11;
@@ -184,7 +207,9 @@ void main(
   r0.xyz = ViewMatrix._m02_m12_m22 * r0.zzz + r2.xyz;
   o2.yzw = r0.xyz * r1.www;
   o3.xyzw = r1.xyzw;
-  o8.xyz = r1.xyz;
+
+  o8.xyz = r23.xyz;
+
   r0.xy = r1.xy / r0.ww;
   r0.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r0.xy = r0.xy * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
@@ -203,12 +228,6 @@ void main(
   o7.x = RInstConstants[5].z;
   o7.y = RInstConstants[0].w;
   o7.w = 0.000000000e+000;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o3.x += separation * (o3.w - convergence);
   return;
 }
 

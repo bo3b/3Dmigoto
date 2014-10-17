@@ -89,6 +89,10 @@ void main(
   float4 v4 : TEXCOORD4,
   float4 v5 : TEXCOORD5,
   float4 v6 : TEXCOORD6,
+  float4 v10 : TEXCOORD9,
+  float4 v11 : TEXCOORD10,
+  float4 v12 : TEXCOORD11,
+  float4 v13 : TEXCOORD12,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
@@ -195,13 +199,46 @@ void main(
   r1.w = r0.w + -r0.x;
   r1.w = v6.z * r1.w;
   r1.w = 4.166666791e-002 * r1.w;
+
   r2.xyz = r1.xyz * r0.www + CameraPosition.xyz;
+
+float4 stereo = StereoParams.Load(0);
+float4 r25;
+r2.w =1.0e+000;
+r25.x = dot(r2.xyzw, ViewProj._m00_m10_m20_m30);
+r25.y = dot(r2.xyzw, ViewProj._m01_m11_m21_m31);
+r25.z = dot(r2.xyzw, ViewProj._m02_m12_m22_m32);
+r25.w = dot(r2.xyzw, ViewProj._m03_m13_m23_m33);
+r25.x -= stereo.x * (r25.w - stereo.y);
+r2.x = dot(r25.xyzw, v10.xyzw);
+r2.y = dot(r25.xyzw, v11.xyzw);
+r2.z = dot(r25.xyzw, v12.xyzw);
+r2.w = dot(r25.xyzw, v13.xyzw);
+r2.xyzw /= r2.wwww;
+
+
   r2.w = 1.000000000e+000;
   r3.x = dot(r2.xyzw, Spotlight0_Transform._m00_m10_m20_m30);
   r3.y = dot(r2.xyzw, Spotlight0_Transform._m01_m11_m21_m31);
   r3.z = dot(r2.xyzw, Spotlight0_Transform._m02_m12_m22_m32);
   r3.w = dot(r2.xyzw, Spotlight0_Transform._m03_m13_m23_m33);
+
   r4.xyz = r1.xyz * r0.xxx + CameraPosition.xyz;
+
+
+r4.w =1.0e+000;
+r25.x = dot(r4.xyzw, ViewProj._m00_m10_m20_m30);
+r25.y = dot(r4.xyzw, ViewProj._m01_m11_m21_m31);
+r25.z = dot(r4.xyzw, ViewProj._m02_m12_m22_m32);
+r25.w = dot(r4.xyzw, ViewProj._m03_m13_m23_m33);
+r25.x -= stereo.x * (r25.w - stereo.y);
+r4.x = dot(r25.xyzw, v10.xyzw);
+r4.y = dot(r25.xyzw, v11.xyzw);
+r4.z = dot(r25.xyzw, v12.xyzw);
+r4.w = dot(r25.xyzw, v13.xyzw);
+r4.xyzw /= r4.wwww;
+
+
   r4.w = 1.000000000e+000;
   r5.x = dot(r4.xyzw, Spotlight0_Transform._m00_m10_m20_m30);
   r5.y = dot(r4.xyzw, Spotlight0_Transform._m01_m11_m21_m31);
@@ -273,6 +310,10 @@ void main(
   }
   o0.xyz = HDR_EncodeScale.zzz * r4.xyz;
   o0.w = r4.w;
+  
+  
+  
+  // o0=0;
   return;
 }
 

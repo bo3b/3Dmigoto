@@ -1,3 +1,4 @@
+ //NO Fix
 
 cbuffer cbDefaultXSC : register(b0)
 {
@@ -105,7 +106,15 @@ void main(
   r0.xy = r0.xy / r0.zz;
   r0.xy = r0.xy * r3.ww;
   r3.xy = r0.xy * float2(1.000000e+001,1.000000e+001) + r2.xy;
-  o0.xyw = r3.xyw;
+  
+  
+float4 stereo = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r3.xyzw;
+// r3.x += stereo.x * (r3.w - stereo.y);
+
+  o0.xyw = r23.xyw; 
+  
   r0.xyz = float3(5.000000e-001,-5.000000e-001,5.000000e-001) * r3.xyw;
   o1.z = r3.w;
   o1.xy = r0.xy + r0.zz;

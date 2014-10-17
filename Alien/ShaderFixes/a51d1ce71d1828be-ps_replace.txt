@@ -101,6 +101,10 @@ void main(
   float4 v5 : TEXCOORD5,
   float4 v6 : TEXCOORD6,
   float4 v7 : TEXCOORD7,
+  float4 v10 : TEXCOORD9,
+  float4 v11 : TEXCOORD10,
+  float4 v12 : TEXCOORD11,
+  float4 v13 : TEXCOORD12,
   out float4 o0 : SV_Target0,
   out float4 o1 : SV_Target1)
 {
@@ -118,7 +122,24 @@ void main(
   r0.x = InvProjectionParams.x / r0.x;
   r0.x = max(r0.x, 0.000000000e+000);
   r0.x = r0.w ? r1.w : r0.x;
+
   r1.xyz = r1.xyz * r0.xxx + CameraPosition.xyz;
+
+float4 stereo = StereoParams.Load(0);
+float4 r25;
+r1.w =1.0e+000;
+r25.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
+r25.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
+r25.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
+r25.w = dot(r1.xyzw, ViewProj._m03_m13_m23_m33);
+r25.x -= stereo.x * (r25.w - stereo.y);
+r1.x = dot(r25.xyzw, v10.xyzw);
+r1.y = dot(r25.xyzw, v11.xyzw);
+r1.z = dot(r25.xyzw, v12.xyzw);
+r1.w = dot(r25.xyzw, v13.xyzw);
+r1.xyzw /= r1.wwww;
+
+
   r2.xyzw = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.yz).xyzw;
   r3.xyz = v0.xyz + -r1.xyz;
   r0.x = emissiveSamplerReg_TEX.Sample(emissiveSamplerReg_SMP_s, r0.yz).w;

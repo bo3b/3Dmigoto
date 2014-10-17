@@ -80,10 +80,20 @@ void main(
   out float4 o4 : TEXCOORD4,
   out float4 o5 : TEXCOORD5,
   out float4 o6 : TEXCOORD6,
+  out float4 o10 : TEXCOORD9,
+  out float4 o11 : TEXCOORD10,
+  out float4 o12 : TEXCOORD11,
+  out float4 o13 : TEXCOORD12,
   out float4 o7 : SV_Position0)
 {
   float4 r0,r1,r2;
   uint4 bitmask;
+
+o10.xyzw = InvViewProj._m00_m10_m20_m30;
+o11.xyzw = InvViewProj._m01_m11_m21_m31;
+o12.xyzw = InvViewProj._m02_m12_m22_m32;
+o13.xyzw = InvViewProj._m03_m13_m23_m33;
+
   r0.x = DecalParams.y + -Time.x;
   o0.w = saturate(r0.x / rp_parameter_vs[0].x);
   r0.xyz = VertexScale.xxx * v0.xyz;
@@ -96,7 +106,17 @@ void main(
   r0.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
   r0.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
   r0.w = dot(r1.xyzw, ViewProj._m03_m13_m23_m33);
+
+
+float4 stereo = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r0.xyzw;
+r0.x += stereo.x * (r0.w - stereo.y);
+
+
   r1.xyz = r0.xyz / r0.www;
+
+
   r1.y = r1.y / ProjMatrix._m11;
   r2.xyz = ViewMatrix._m01_m11_m21 * r1.yyy;
   r1.x = r1.x / ProjMatrix._m00;
@@ -105,7 +125,9 @@ void main(
   r1.xyz = ViewMatrix._m02_m12_m22 * r1.yyy + r1.xzw;
   o0.xyz = r1.xyz * r0.www;
   o1.xyzw = r0.xyzw;
-  o7.xyzw = r0.xyzw;
+
+  o7.xyzw = r23.xyzw;
+
   r0.xy = r0.xy / r0.ww;
   r0.xy = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r0.xy = r0.xy * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
@@ -136,12 +158,6 @@ void main(
   r0.w = rsqrt(r0.w);
   o6.xyz = r0.xyz * r0.www;
   o6.w = 0.000000000e+000;
-
-// Auto-fixed shader
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-o1.x += separation * (o1.w - convergence);
   return;
 }
 
