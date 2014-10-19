@@ -11,14 +11,15 @@
 #include "../HLSLDecompiler/DecompileHLSL.h"
 
 FILE *LogFile = 0;		// off by default.
+bool LogInput = false, LogDebug = false;
+
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gInitialized = false;
+
 const int MARKING_MODE_SKIP = 0;
 const int MARKING_MODE_MONO = 1;
 const int MARKING_MODE_ORIGINAL = 2;
 const int MARKING_MODE_ZERO = 3;
-bool LogInput = false, LogDebug = false;
-
 
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
@@ -120,7 +121,8 @@ struct Globals
 	bool next_indexbuffer, prev_indexbuffer, mark_indexbuffer;
 	bool next_rendertarget, prev_rendertarget, mark_rendertarget;
 
-	bool EXPORT_ALL, EXPORT_HLSL, EXPORT_BINARY, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
+	bool EXPORT_ALL, EXPORT_BINARY, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
@@ -243,7 +245,7 @@ struct Globals
 		mark_rendertarget(false),
 
 		EXPORT_ALL(false),
-		EXPORT_HLSL(false),
+		EXPORT_HLSL(0),
 		EXPORT_BINARY(false),
 		EXPORT_FIXED(false),
 		CACHE_SHADERS(false),
@@ -459,7 +461,7 @@ void InitializeDLL()
 
 		G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 		G->EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
-		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile) == 1;
+		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
 		G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, iniFile) == 1;
 		G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
@@ -478,7 +480,7 @@ void InitializeDLL()
 
 			if (G->EXPORT_FIXED) fprintf(LogFile, "  export_fixed=1\n");
 			if (G->EXPORT_ALL) fprintf(LogFile, "  export_shaders=1\n");
-			if (G->EXPORT_HLSL) fprintf(LogFile, "  export_hlsl=1\n");
+			if (G->EXPORT_HLSL != 0) fprintf(LogFile, "  export_hlsl=%d\n", G->EXPORT_HLSL);
 			if (G->EXPORT_BINARY) fprintf(LogFile, "  export_binary=1\n");
 			if (G->DumpUsage) fprintf(LogFile, "  dump_usage=1\n");
 		}

@@ -987,7 +987,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	}
 
 	// Shader hacking?
-	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0] && (G->EXPORT_HLSL || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
+	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
 	{
 		// Skip?
 		wsprintf(val, L"%ls\\%08lx%08lx-%ls_bad.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
@@ -1001,8 +1001,11 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		}
 		else
 		{
+			D3D11Base::ID3DBlob *disassembly = 0;
+			FILE *fw = 0;
+			string shaderModel = "";
+
 			// Disassemble old shader for fixing.
-			D3D11Base::ID3DBlob *disassembly;
 			HRESULT ret = D3D11Base::D3DDisassemble(pShaderBytecode, BytecodeLength,
 				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
 			if (ret != S_OK)
@@ -1015,7 +1018,6 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				if (LogFile) fprintf(LogFile, "    creating HLSL representation.\n");
 
 				bool patched = false;
-				string shaderModel;
 				bool errorOccurred = false;
 				ParseParameters p;
 				p.bytecode = pShaderBytecode;
@@ -1053,10 +1055,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					return 0;
 				}
 
-				if (!errorOccurred && (G->EXPORT_HLSL || (G->EXPORT_FIXED && patched)))
+				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
 				{
 					wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
-					FILE *fw;
 					_wfopen_s(&fw, val, L"wb");
 					if (LogFile)
 					{
@@ -1069,25 +1070,23 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					}
 					if (fw)
 					{
+						// Save decompiled HLSL code to new file.
 						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
 
 						// Now also write the ASM text to the shader file as a set of comments at the bottom.
 						// That will make the ASM code the master reference for fixing shaders, and should be more 
 						// convenient, especially in light of the numerous decompiler bugs we see.
-						fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-						fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), fw);
-						fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+						if (G->EXPORT_HLSL >= 2)
+						{
+							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), fw);
+							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
-						// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
-						FILETIME ftWrite;
-						GetFileTime(fw, NULL, NULL, &ftWrite);
-						foundShaderModel = shaderModel;
-						timeStamp = ftWrite;
+						}
 
-						fclose(fw);
+						if (disassembly) disassembly->Release(); disassembly = 0;
 					}
 				}
-				disassembly->Release();
 
 				// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
 				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
@@ -1107,7 +1106,6 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						pCodeSize = pCompiledOutput->GetBufferSize();
 						pCode = new char[pCodeSize];
 						memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
-						pCompiledOutput->Release(); pCompiledOutput = 0;
 					}
 
 					if (LogFile && pErrorMsgs)
@@ -1119,21 +1117,63 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						fprintf(LogFile, "------------------------------------------- HLSL code -------------------------------------------\n");
 						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
 						fprintf(LogFile, "\n---------------------------------------------- END ----------------------------------------------\n");
+
+						// And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
+						fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+						fwrite(errMsg, 1, errSize - 1, fw);
+						fprintf_s(fw, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
 						pErrorMsgs->Release();
 					}
-					// Write replacement.
-					if (G->CACHE_SHADERS && pCode)
+
+					// If requested by .ini, also write the newly re-compiled assembly code to the file.  This gives a direct
+					// comparison between original ASM, and recompiled ASM.
+					if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
 					{
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
-						FILE *fw;
-						_wfopen_s(&fw, val, L"wb");
-						if (fw)
+						HRESULT ret = D3D11Base::D3DDisassemble(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(),
+							D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
+						if (ret != S_OK)
 						{
-							fwrite(pCode, 1, pCodeSize, fw);
-							fclose(fw);
+							if (LogFile) fprintf(LogFile, "    disassembly of recompiled shader failed.\n");
+						}
+						else
+						{
+							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), fw);
+							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+							disassembly->Release(); disassembly = 0;
 						}
 					}
+	
+					if (pCompiledOutput)
+					{
+						pCompiledOutput->Release(); pCompiledOutput = 0;
+					}
 				}
+
+				// Write replacement.
+				if (G->CACHE_SHADERS && pCode)
+				{
+					wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
+					FILE *bin;
+					_wfopen_s(&bin, val, L"wb");
+					if (bin)
+					{
+						fwrite(pCode, 1, pCodeSize, bin);
+						fclose(bin);
+					}
+				}
+			}
+
+			if (fw)
+			{
+				// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
+				FILETIME ftWrite;
+				GetFileTime(fw, NULL, NULL, &ftWrite);
+				foundShaderModel = shaderModel;
+				timeStamp = ftWrite;
+
+				fclose(fw);
 			}
 		}
 	}
