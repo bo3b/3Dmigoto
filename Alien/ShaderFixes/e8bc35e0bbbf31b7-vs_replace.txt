@@ -78,10 +78,15 @@ void main(
   out float4 o11 : TEXCOORD10,
   out float4 o12 : TEXCOORD11,
   out float4 o13 : TEXCOORD12,
+  out float4 o8 : TEXCOORD13,
   out float4 o7 : SV_Position0)
 {
   float4 r0,r1,r2;
   uint4 bitmask;
+float4 stereo = StereoParams.Load(0);
+float4 r25, r23;
+
+o8.xyzw = ProjMatrix._m00_m10_m20_m30;
 
 o10.xyzw = InvViewProj._m00_m10_m20_m30;
 o11.xyzw = InvViewProj._m01_m11_m21_m31;
@@ -117,20 +122,37 @@ o13.xyzw = InvViewProj._m03_m13_m23_m33;
   r2.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
   r2.x = dot(r1.xyzw, ViewProj._m00_m10_m20_m30);
   r2.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
+
   o6.xyz = CameraPosition.xyz + -r1.xyz;
+  
+//Fix snapping spotlight reflection (but still renders above ground)
+r23.xyz = o6.xyz;
+r23.w = 1.0;
 
+r25.x = dot(r23.xyzw, ViewProj._m00_m10_m20_m30);
+r25.y = dot(r23.xyzw, ViewProj._m01_m11_m21_m31);
+r25.z = dot(r23.xyzw, ViewProj._m02_m12_m22_m32);
+r25.w = dot(r23.xyzw, ViewProj._m03_m13_m23_m33);
 
-float4 stereo = StereoParams.Load(0);
-float4 r23;
+// r25.x += stereo.x * (r25.w - stereo.y);
+
+r23.x = dot(r25.xyzw, InvViewProj._m00_m10_m20_m30);
+r23.y = dot(r25.xyzw, InvViewProj._m01_m11_m21_m31);
+r23.z = dot(r25.xyzw, InvViewProj._m02_m12_m22_m32);
+r23.w = dot(r25.xyzw, InvViewProj._m03_m13_m23_m33);    
+r23.xyzw /= r23.wwww;   
+
+o6.xyz = r23.xyz;
+
+//Fix position variable
 r23.xyzw = r2.xyzw;
 r2.x += stereo.x * (r2.w - stereo.y);
 
-
   r0.yzw = r2.xyz / r2.www;
-  
-  
 
-
+// r23.xyzw = r2.xyzw;
+// r23.x -= stereo.x * (r23.w - stereo.y);
+  
   r0.y = -ProjMatrix._m20 * r0.w + r0.y;
   r0.y = r0.y / ProjMatrix._m00;
   r0.z = r0.z / ProjMatrix._m11;
@@ -139,22 +161,29 @@ r2.x += stereo.x * (r2.w - stereo.y);
   r1.xyz = ViewMatrix._m00_m10_m20 * r0.yyy + r1.xyz;
   r0.yzw = ViewMatrix._m02_m12_m22 * r0.www + r1.xyz;
   o2.yzw = r0.yzw * r2.www;
+  
+  
   o3.xyzw = r2.xyzw;
-
-  o7.xyz = r23.xyz;
+  
+//Position - uncorrected
+o7.xyz = r23.xyz;
 
   r0.yz = r2.xy / r0.xx;
   r0.yz = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r0.yz = r0.yz * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
   o4.xy = r0.yz * r0.xx;
+  
+ 
   o7.w = r0.x;
   o4.z = RInstConstants[2].y;
-  o4.w = RInstConstants[3].z;
+  o4.w = RInstConstants[3].z;  
   o5.x = WorldMatrix._m00;
   o5.y = WorldMatrix._m01;
   o5.z = WorldMatrix._m02;
   o5.w = RInstConstants[3].y;
   o6.w = RInstConstants[5].z;
+  
+  // o6.w=0;
   return;
 }
 

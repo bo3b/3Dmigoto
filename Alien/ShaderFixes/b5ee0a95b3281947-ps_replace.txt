@@ -93,16 +93,17 @@ void main(
   float4 v4 : TEXCOORD4,
   float4 v5 : TEXCOORD5,
   float4 v6 : TEXCOORD6,
-  float4 v9 : TEXCOORD8,
-  float4 v10 : TEXCOORD9,
-  float4 v11 : TEXCOORD10,
-  float4 v12 : TEXCOORD11,
+  float4 v9 : TEXCOORD9,
+  float4 v10 : TEXCOORD10,
+  float4 v11 : TEXCOORD11,
+  float4 v12 : TEXCOORD12,
+  float4 v13 : TEXCOORD13,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6;
   uint4 bitmask;
 float4 stereo = StereoParams.Load(0);
-float4 r25;
+float4 r25, r20;
   r0.x = 1.000000e+000 / v3.w;
   r0.yz = v4.xy * r0.xx;
   r1.xyz = v2.yzw * r0.xxx;
@@ -138,9 +139,11 @@ r1.xyzw /= r1.wwww;
   r0.x = dot(v5.xyz, r2.xyz);
   r3.xyz = -v5.xyz * r0.xxx + r2.xyz;
   r0.w = dot(r3.xyz, r2.xyz);
+     
   r1.w = dot(v6.xyz, v6.xyz);
-  r1.w = rsqrt(r1.w);
+  r1.w = rsqrt(r1.w); 
   r2.xyz = v6.xyz * r1.www;
+  
   r4.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.yz).xyz;
   r4.xyz = r4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r2.w = dot(r4.xyz, r4.xyz);
@@ -153,7 +156,8 @@ r1.xyzw /= r1.wwww;
   r2.x = dot(r3.xyz, -r2.xyz);
   r0.w = r2.w * r0.w;
   r0.w = r0.w / r2.x;
-  r2.xy = r2.xw < float2(0.000000e+000,0.000000e+000);
+  r2.x = r2.x < 0;
+  r2.y = r2.w < 0;
   r0.x = r0.x + -r0.w;
   r3.xyz = v0.xyz + -r1.xyz;
   r5.xyz = v5.yzx * r3.xyz;
@@ -173,6 +177,7 @@ r1.xyzw /= r1.wwww;
   r3.y = dot(r4.xyz, r5.xyz);
   r2.w = r3.y * r3.x + r2.w;
   r2.w = r2.w / r3.y;
+  
   r2.w = max(r2.w, -v4.z);
   r2.w = min(r2.w, v4.z);
   r3.z = max(-r2.w, -v4.z);
@@ -187,21 +192,21 @@ r1.xyzw /= r1.wwww;
   r2.y = r2.y ? r3.z : r2.w;
   r0.x = r2.x ? r0.x : r2.y;
   r5.xyz = r0.xxx * v5.xyz + v0.xyz;
-  
-  
   r1.xyz = r5.xyz + -r1.xyz;
   r0.x = dot(r1.xyz, r1.xyz);
   r0.x = sqrt(r0.x);
   r0.x = max(r0.x, 1.000000047e-003);
   r1.xyz = r1.xyz / r0.xxx;
-  r5.xyz = v6.xyz * r1.www + r1.xyz;
+
+r5.xyz = v6.xyz * r1.www + r1.xyz;
+ 
   r0.x = saturate(dot(r4.xyz, r1.xyz));
   r1.x = dot(r5.xyz, r5.xyz);
   r1.x = rsqrt(r1.x);
   r1.xyz = r5.xyz * r1.xxx;
   r1.x = dot(r4.xyz, r1.xyz);
   r1.x = r1.x * r1.x;
-  r1.yz = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s, r0.yz).xy;
+  r1.yz = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s, r0.yz).xy; 
   r4.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.yz).xyz;
   r4.xyz = r4.xyz * r4.xyz;
   r4.xyz = r4.xyz + r4.xyz;
@@ -265,7 +270,10 @@ r1.xyzw /= r1.wwww;
   r0.w = r0.w * r0.w;
   r0.w = -r2.y * r0.w + 1.000000000e+000;
   r0.w = r0.w / r2.x;
-  r0.w = r1.y ? r0.w : 0;
+  //ASM: and r0.w, r0.w, r1.y
+  // r0.w = (int)r0.w & (int)r1.y;   //Causes problems for some reason
+ r0.w = r1.y ? r0.w : 0;
+ 
   r2.xyz = v1.xyz * r0.www;
   r1.xyz = r2.xyz * r1.xzw;
   r0.xyz = r2.xyz * r0.xyz + r1.xyz;

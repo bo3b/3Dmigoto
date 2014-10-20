@@ -211,6 +211,7 @@ r1.xyzw /= r1.wwww;
   r0.xyz = r1.xyz * r0.xzw;
   o0.xyz = HDR_EncodeScale.zzz * r0.xyz;
   o0.w = 1.000000000e+000;
+  
   return;
 }
 
