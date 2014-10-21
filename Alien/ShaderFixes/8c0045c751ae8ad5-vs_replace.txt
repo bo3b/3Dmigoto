@@ -1,3 +1,4 @@
+// Related to hair shader 4ed673385e377b79-ps_replace.txt
 
 cbuffer cbDefaultXSC : register(b0)
 {
