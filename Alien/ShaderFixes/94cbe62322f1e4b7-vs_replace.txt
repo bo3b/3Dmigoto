@@ -1,3 +1,10 @@
+// Shader was auto-fixed, but adding these outputs makes for the
+// darkened areas.  DHR found that disabling this fixes the problem.
+// Probably similar to Hair problem.
+
+// Tested unrelated to the skipscissorrect problem.
+// Since this uses cb1 for the matrix desired, Mike added that to the
+// pixel shader associated: ed4a5deab6af183e-ps_replace.txt
 
 cbuffer cbDefaultXSC : register(b0)
 {
@@ -82,20 +89,20 @@ void main(
   out float4 o3 : TEXCOORD3,
   out float4 o4 : TEXCOORD4,
   out float4 o5 : TEXCOORD5,
-  out float4 o9 : TEXCOORD9,
-  out float4 o10 : TEXCOORD10,
-  out float4 o11 : TEXCOORD11,
-  out float4 o12 : TEXCOORD12, 
+  //out float4 o9 : TEXCOORD9,
+  //out float4 o10 : TEXCOORD10,
+  //out float4 o11 : TEXCOORD11,
+  //out float4 o12 : TEXCOORD12, 
   out float4 o6 : COLOR0,
   out float4 o7 : SV_Position0)
 {
   float4 r0,r1,r2,r3;
   uint4 bitmask;
   
-o9.xyzw = InvViewProj._m00_m10_m20_m30;
-o10.xyzw = InvViewProj._m01_m11_m21_m31;
-o11.xyzw = InvViewProj._m02_m12_m22_m32;
-o12.xyzw = InvViewProj._m03_m13_m23_m33;
+//o9.xyzw = InvViewProj._m00_m10_m20_m30;
+//o10.xyzw = InvViewProj._m01_m11_m21_m31;
+//o11.xyzw = InvViewProj._m02_m12_m22_m32;
+//o12.xyzw = InvViewProj._m03_m13_m23_m33;
   
   
   o0.x = RInstConstants[2].x;
