@@ -1,4 +1,5 @@
 // Lens flare at first sevastopol landing.
+// w=0 to disable.
 
 cbuffer cbDefaultPSC : register(b2)
 {
@@ -149,7 +150,7 @@ void main(
 
 // Disable lens-flare if specified
 float4 iniParams = IniParams.Load(0);
-if (iniParams.z == 0)
+if (iniParams.w == 0)
 {
   o0=0;
 } 

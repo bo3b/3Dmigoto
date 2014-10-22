@@ -1,4 +1,4 @@
-//Lens flare - disable
+//Lens flare - disable if w is zero
 cbuffer cbDefaultPSC : register(b2)
 {
   float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
@@ -113,7 +113,7 @@ void main(
   
 // Disable lens-flare if specified
 float4 iniParams = IniParams.Load(0);
-if (iniParams.z == 0)
+if (iniParams.w == 0)
 {
   o0=0;
 } 
