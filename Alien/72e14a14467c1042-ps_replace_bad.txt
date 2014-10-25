@@ -1,0 +1,535 @@
+
+cbuffer cbDefaultPSC : register(b2)
+{
+  float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
+  float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
+  float4x4 ProjectorMatrix : packoffset(c8);
+  float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
+  float4x4 MotionBlurPrevViewProjection : packoffset(c16);
+  float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
+  float4x4 Spotlight0_Transform : packoffset(c24);
+  float4 TextureAnimation : packoffset(c28);
+  float4 AmbientDiffuse : packoffset(c29);
+  float4 EnvironmentDebugParams : packoffset(c30);
+  float4 ShadowFilterESMWeights : packoffset(c31);
+  float4 LegacyDofParams : packoffset(c32);
+  float4 OnePixelStepForS0 : packoffset(c33);
+  float4 RenderTargetSize : packoffset(c34);
+  float4 ModelTrackerID : packoffset(c35);
+  float4 Sharpness_Bloom_Controls : packoffset(c36);
+  float4 Blur_Direction : packoffset(c37);
+  float4 LightMeterDebugParams : packoffset(c38);
+  float4 SourceResolution : packoffset(c39);
+  float4 HDR_EncodeScale : packoffset(c40);
+  float4 OutputGamma : packoffset(c41);
+  float4 AlphaLight_ScaleParams : packoffset(c42);
+  float4 WrinkleMapWeights[6] : packoffset(c43);
+  float4 RadiosityCubeMapIdx : packoffset(c49);
+  float4 HairShadingParams[8] : packoffset(c50);
+  float4 SkinShadingParams : packoffset(c58);
+  float4 HDR_EncodeScale3 : packoffset(c59);
+  float4 ScreenResolution[4] : packoffset(c60);
+  float4 VelocityParams : packoffset(c64);
+  float4 DeferredConstColor : packoffset(c65);
+  float4 Spotlight0_Shadow_Params : packoffset(c66);
+  float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
+  float4 ShadowFilterType : packoffset(c68);
+  float4 Spotlight0_ReverseZPerspective : packoffset(c69);
+  float4 SpacesuitVisorParams : packoffset(c70);
+  float4 Directional_Light_Colour : packoffset(c71);
+  float4 Directional_Light_Direction : packoffset(c72);
+  float4 EnvironmentMap_Params : packoffset(c73);
+  float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
+  float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
+  float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
+  float4 ScreenSpaceLightPosition : packoffset(c77);
+  float4 LensAndScreenCenter : packoffset(c78);
+  float4 ScaleAndScaleIn : packoffset(c79);
+  float4 HmdWarpParam : packoffset(c80);
+  float4 ChromAbParam : packoffset(c81);
+  float4 SMAA_SubsampleIndices : packoffset(c82);
+}
+
+cbuffer cbUbershaderXSC : register(b5)
+{
+  float4 rp_parameter_vs[32] : packoffset(c0);
+  float4 rp_parameter_ps[32] : packoffset(c32);
+}
+
+cbuffer cbInstanceXSC : register(b10)
+{
+  float4x4 WorldMatrix : packoffset(c0);
+  float4 LightmapTransform : packoffset(c4);
+  float4 RInstConstants[6] : packoffset(c5);
+  float4 RadiosityProbeTexcoordAndScale : packoffset(c11);
+}
+SamplerState DIFFUSE_MAP_SAMPLER_SMP_s_s : register(s0);
+SamplerState NORMAL_MAP_SAMPLER_SMP_s_s : register(s1);
+SamplerState SPECULAR_MAP_SAMPLER_SMP_s_s : register(s2);
+SamplerState LOW_LOD_CHARACTER_MASK_TEX_SAMPLER_SMP_s_s : register(s3);
+SamplerState IRRADIANCE_CUBE_MAP_SAMPLER_SMP_s_s : register(s4);
+SamplerState ENVIRONMENT_MAP_SAMPLER_SMP_s_s : register(s5);
+SamplerState g_smp_fresnel_lut_SMP_s_s : register(s11);
+Texture2D<float4> DIFFUSE_MAP_SAMPLER_TEX : register(t0);
+Texture2D<float4> NORMAL_MAP_SAMPLER_TEX : register(t1);
+Texture2D<float4> SPECULAR_MAP_SAMPLER_TEX : register(t2);
+Texture2D<float4> LOW_LOD_CHARACTER_MASK_TEX_SAMPLER_TEX : register(t3);
+TextureCube<float4> IRRADIANCE_CUBE_MAP_SAMPLER_TEX : register(t4);
+TextureCube<float4> ENVIRONMENT_MAP_SAMPLER_TEX : register(t5);
+Texture3D<float4> g_smp_fresnel_lut_TEX : register(t11);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float4 v1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  float4 v3 : TEXCOORD3,
+  float4 v4 : TEXCOORD4,
+  float4 v5 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2,
+  out float4 o3 : SV_Target3)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xyzw = rp_parameter_ps[0].yyzz * v1.xyxy;
+  r0.zw = NORMAL_MAP_SAMPLER_TEX.Sample(NORMAL_MAP_SAMPLER_SMP_s_s, r0.zw).xy;
+  r1.xyz = DIFFUSE_MAP_SAMPLER_TEX.Sample(DIFFUSE_MAP_SAMPLER_SMP_s_s, r0.xy).xyz;
+  r1.xyz = r1.xyz * r1.xyz;
+  r1.xyz = rp_parameter_ps[1].xyz * r1.xyz;
+  r0.xy = r0.zw * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.z = -r0.x * r0.x + 1.000000000e+000;
+  r0.z = -r0.y * r0.y + r0.z;
+  r0.z = max(r0.z, 0.000000000e+000);
+  r0.z = sqrt(r0.z);
+  r2.xyz = v2.xyz * r0.yyy;
+  r0.xyw = r0.xxx * v3.xyz + r2.xyz;
+  r0.xyz = r0.zzz * v0.xyz + r0.xyw;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(v4.xyz, v4.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v4.xyz * r0.www;
+  r0.w = dot(r0.xyz, r2.xyz);
+  r1.w = min(abs(r0.w), 1.000000000e+000);
+  r3.xy = float2(1.000000e+000,6.000000e-001) + -r1.ww;
+  r1.w = 3.333333254e+000 * r3.x;
+  r1.w = min(r1.w, 1.000000000e+000);
+  r2.w = r1.w * -2.000000000e+000 + 3.000000000e+000;
+  r1.w = r1.w * r1.w;
+  r1.w = -r2.w * r1.w + 1.000000000e+000;
+  r1.w = rp_parameter_ps[2].z * r1.w;
+  r3.xz = rp_parameter_ps[2].xx * v1.xy;
+  r3.xzw = SPECULAR_MAP_SAMPLER_TEX.Sample(SPECULAR_MAP_SAMPLER_SMP_s_s, r3.xz).xyz;
+  r4.xy = rp_parameter_ps[2].yz * r3.zw;
+  r2.w = r4.y * -3.000000119e-001 + 6.000000238e-001;
+  r4.y = min(r4.x, 9.959999919e-001);
+  r2.w = 1.000000e+000 / r2.w;
+  r2.w = saturate(r3.y * r2.w);
+  r3.y = r2.w * -2.000000000e+000 + 3.000000000e+000;
+  r2.w = r2.w * r2.w;
+  r2.w = r3.y * r2.w;
+  r2.w = rp_parameter_ps[2].z * r2.w;
+  r2.w = dot(r2.ww, r3.ww);
+  r1.w = r1.w * r3.w + r2.w;
+  r4.z = rp_parameter_ps[0].w * r3.x;
+  r1.w = 1.000000000e+000 + r1.w;
+  r1.xyz = saturate(r1.xyz * r1.www);
+  r3.xyz = IRRADIANCE_CUBE_MAP_SAMPLER_TEX.SampleLevel(IRRADIANCE_CUBE_MAP_SAMPLER_SMP_s_s, r0.xyz, 0.000000000e+000).xyz;
+  r1.xyz = r3.xyz * r1.xyz;
+  r3.xyz = r1.xyz + r1.xyz;
+  r1.w = max(r3.x, r3.y);
+  r2.w = max(r3.z, 9.999999747e-005);
+  r1.w = max(r1.w, r2.w);
+  r1.w = 1.000000e+000 / r1.w;
+  r5.xyz = r3.xyz * r1.www + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r3.xyz = log2(r3.xyz);
+  r1.w = LOW_LOD_CHARACTER_MASK_TEX_SAMPLER_TEX.Sample(LOW_LOD_CHARACTER_MASK_TEX_SAMPLER_SMP_s_s, v1.xy).w;
+  r5.xyz = r1.www * r5.xyz + float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  r2.w = r0.w + r0.w;
+  r2.xyz = r0.xyz * -r2.www + r2.xyz;
+  o1.xyz = r0.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  r0.xyz = -r2.xyz;
+  r2.x = max(r4.y, 0.000000000e+000);
+  r2.x = 1.000000000e+000 + -r2.x;
+  r2.x = r2.x * 7.500000000e-001 + 1.562500000e-002;
+  r2.x = log2(r2.x);
+  r2.x = 5.666666508e+000 + r2.x;
+  r0.xyz = ENVIRONMENT_MAP_SAMPLER_TEX.SampleLevel(ENVIRONMENT_MAP_SAMPLER_SMP_s_s, r0.xyz, r2.x).xyz;
+  r0.xyz = r0.xyz * r0.xyz;
+  r0.xyz = rp_parameter_ps[3].yyy * r0.xyz;
+  r0.xyz = r0.xyz * r5.xyz;
+  r4.x = saturate(r0.w);
+  r0.w = -abs(-r0.w) * abs(r0.w) + 1.000000000e+000;
+  r0.w = max(r0.w, 0.000000000e+000);
+  r0.w = sqrt(r0.w);
+  r0.w = 6.666666865e-001 * r0.w;
+  r0.w = -r0.w * r0.w + 1.000000000e+000;
+  r0.w = sqrt(r0.w);
+  r0.w = 1.000000e+000 / r0.w;
+  r0.w = -1.000000000e+000 + r0.w;
+  r0.w = r0.w * 5.000000000e-001 + 1.000000000e+000;
+  r2.xyz = r3.xyz * r0.www;
+  r2.xyz = exp2(r2.xyz);
+  r3.xyz = g_smp_fresnel_lut_TEX.SampleLevel(g_smp_fresnel_lut_SMP_s_s, r4.xyz, 0.000000000e+000).xyz;
+  o3.x = r4.y;
+  r0.w = r3.z * r3.z + -r4.z;
+  r0.w = rp_parameter_ps[0].x * r0.w + r4.z;
+  r2.w = r3.x * r3.x;
+  r3.x = r3.y * r3.y + -r2.w;
+  r2.w = rp_parameter_ps[0].x * r3.x + r2.w;
+  r0.w = -r2.w + r0.w;
+  r0.w = saturate(r1.w * r0.w + r2.w);
+  r3.xy = float2(1.000000e-003,1.000000e-003) * v5.xy;
+  r3.zw = v5.xy * float2(1.000000e-003,1.000000e-003) + -v1.xx;
+  r2.w = dot(r3.zw, r3.xy);
+  r2.w = exp2(r2.w);
+  r2.w = 1.000000000e+004 * r2.w;
+  r2.w = frac(r2.w);
+  r2.w = 1.400000000e+003 * r2.w;
+  r2.w = frac(r2.w);
+  r0.w = r2.w * 2.499999944e-003 + r0.w;
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.xyz = r0.xyz * r0.www;
+  r0.xyz = EnvironmentMap_Params.xyz * r0.xyz;
+  r3.xyz = EnvironmentMap_Params.www * r0.xyz;
+  r3.xyz = rp_parameter_ps[3].xxx * r3.xyz;
+  o0.xyz = HDR_EncodeScale3.xxx * r3.xyz;
+  r2.w = RadiosityCubeMapIdx.x * 3.921568859e-003;
+  r3.xy = RadiosityProbeTexcoordAndScale.xy * float2(2.559961e+002,2.559961e+002);
+  r3.zw = trunc(r3.xy);
+  r3.xy = RadiosityProbeTexcoordAndScale.xy * float2(2.559961e+002,2.559961e+002) + -r3.zw;
+  r3.xyzw = float4(1.003922e+000,1.003922e+000,3.921569e-003,3.921569e-003) * r3.xyzw;
+  r4.x = 0.000000000e+000 < RadiosityCubeMapIdx.y;
+  o0.w = r4.x ? r2.w : r3.x;
+  r3.xy = r4.xx ? float2(0.000000e+000,0.000000e+000) : r3.yz;
+  o3.w = r4.x ? rp_parameter_ps[2].w : r3.w;
+  o1.w = r3.x;
+  o2.w = r3.y;
+  r1.xyz = r1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + -r2.xyz;
+  r1.xyz = r1.www * r1.xyz + r2.xyz;
+  r2.x = max(r1.x, r1.y);
+  r2.y = max(r1.z, 9.999999747e-005);
+  r2.x = max(r2.x, r2.y);
+  r2.x = 1.000000e+000 / r2.x;
+  r2.y = 1.000000000e+000 + -r0.w;
+  r2.x = r2.x * 3.125000000e-002 + -r2.y;
+  r2.z = r1.w * r1.w;
+  r2.z = r2.z * r2.z;
+  r2.x = r2.z * r2.x + r2.y;
+  r0.xyz = r1.xyz * r2.xxx + r0.xyz;
+  r0.xyz = float3(1.000000e-019,1.000000e-019,1.000000e-019) + r0.xyz;
+  r0.xyz = saturate(float3(5.000000e-001,5.000000e-001,5.000000e-001) * r0.xyz);
+  o2.xyz = sqrt(r0.xyz);
+  r0.x = r1.w < 4.000000060e-001;
+  r0.y = 3.000000119e-001 * r1.w;
+  r0.x = r0.x ? r0.y : 1.000000000e+000;
+  r0.y = r0.x * r0.w;
+  r0.x = r0.x * -r0.w + r0.w;
+  r0.x = sqrt(r0.x);
+  r0.x = r0.x * -5.000000000e-001 + 5.000000000e-001;
+  o3.y = r0.y * 5.000000000e-001 + r0.x;
+  o3.z = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer cbDefaultPSC
+// {
+//
+//   float4x4 AlphaLight_WorldtoClipMatrix;// Offset:    0 Size:    64 [unused]
+//   float4x4 AlphaLight_CliptoWorldMatrix;// Offset:   64 Size:    64 [unused]
+//   float4x4 ProjectorMatrix;          // Offset:  128 Size:    64 [unused]
+//   float4x4 MotionBlurCurrInvViewProjection;// Offset:  192 Size:    64 [unused]
+//   float4x4 MotionBlurPrevViewProjection;// Offset:  256 Size:    64 [unused]
+//   float4x4 MotionBlurPrevSecViewProjection;// Offset:  320 Size:    64 [unused]
+//   float4x4 Spotlight0_Transform;     // Offset:  384 Size:    64 [unused]
+//   float4 TextureAnimation;           // Offset:  448 Size:    16 [unused]
+//   float4 AmbientDiffuse;             // Offset:  464 Size:    16 [unused]
+//   float4 EnvironmentDebugParams;     // Offset:  480 Size:    16 [unused]
+//   float4 ShadowFilterESMWeights;     // Offset:  496 Size:    16 [unused]
+//   float4 LegacyDofParams;            // Offset:  512 Size:    16 [unused]
+//   float4 OnePixelStepForS0;          // Offset:  528 Size:    16 [unused]
+//   float4 RenderTargetSize;           // Offset:  544 Size:    16 [unused]
+//   float4 ModelTrackerID;             // Offset:  560 Size:    16 [unused]
+//   float4 Sharpness_Bloom_Controls;   // Offset:  576 Size:    16 [unused]
+//   float4 Blur_Direction;             // Offset:  592 Size:    16 [unused]
+//   float4 LightMeterDebugParams;      // Offset:  608 Size:    16 [unused]
+//   float4 SourceResolution;           // Offset:  624 Size:    16 [unused]
+//   float4 HDR_EncodeScale;            // Offset:  640 Size:    16 [unused]
+//   float4 OutputGamma;                // Offset:  656 Size:    16 [unused]
+//   float4 AlphaLight_ScaleParams;     // Offset:  672 Size:    16 [unused]
+//   float4 WrinkleMapWeights[6];       // Offset:  688 Size:    96 [unused]
+//   float4 RadiosityCubeMapIdx;        // Offset:  784 Size:    16
+//   float4 HairShadingParams[8];       // Offset:  800 Size:   128 [unused]
+//   float4 SkinShadingParams;          // Offset:  928 Size:    16 [unused]
+//   float4 HDR_EncodeScale3;           // Offset:  944 Size:    16
+//   float4 ScreenResolution[4];        // Offset:  960 Size:    64 [unused]
+//   float4 VelocityParams;             // Offset: 1024 Size:    16 [unused]
+//   float4 DeferredConstColor;         // Offset: 1040 Size:    16 [unused]
+//   float4 Spotlight0_Shadow_Params;   // Offset: 1056 Size:    16 [unused]
+//   float4 Spotlight0_ShadowMapDimensions;// Offset: 1072 Size:    16 [unused]
+//   float4 ShadowFilterType;           // Offset: 1088 Size:    16 [unused]
+//   float4 Spotlight0_ReverseZPerspective;// Offset: 1104 Size:    16 [unused]
+//   float4 SpacesuitVisorParams;       // Offset: 1120 Size:    16 [unused]
+//   float4 Directional_Light_Colour;   // Offset: 1136 Size:    16 [unused]
+//   float4 Directional_Light_Direction;// Offset: 1152 Size:    16 [unused]
+//   float4 EnvironmentMap_Params;      // Offset: 1168 Size:    16
+//   float4 Spotlight0_Shadow_Bias_GoboScale;// Offset: 1184 Size:    16 [unused]
+//   float4 ScreenSpaceLightShaftParams1;// Offset: 1200 Size:    16 [unused]
+//   float4 ScreenSpaceLightShaftParams2;// Offset: 1216 Size:    16 [unused]
+//   float4 ScreenSpaceLightPosition;   // Offset: 1232 Size:    16 [unused]
+//   float4 LensAndScreenCenter;        // Offset: 1248 Size:    16 [unused]
+//   float4 ScaleAndScaleIn;            // Offset: 1264 Size:    16 [unused]
+//   float4 HmdWarpParam;               // Offset: 1280 Size:    16 [unused]
+//   float4 ChromAbParam;               // Offset: 1296 Size:    16 [unused]
+//   float4 SMAA_SubsampleIndices;      // Offset: 1312 Size:    16 [unused]
+//
+// }
+//
+// cbuffer cbUbershaderXSC
+// {
+//
+//   float4 rp_parameter_vs[32];        // Offset:    0 Size:   512 [unused]
+//   float4 rp_parameter_ps[32];        // Offset:  512 Size:   512
+//
+// }
+//
+// cbuffer cbInstanceXSC
+// {
+//
+//   float4x4 WorldMatrix;              // Offset:    0 Size:    64 [unused]
+//   float4 LightmapTransform;          // Offset:   64 Size:    16 [unused]
+//   float4 RInstConstants[6];          // Offset:   80 Size:    96 [unused]
+//   float4 RadiosityProbeTexcoordAndScale;// Offset:  176 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// DIFFUSE_MAP_SAMPLER_SMP_s         sampler      NA          NA    0        1
+// NORMAL_MAP_SAMPLER_SMP_s          sampler      NA          NA    1        1
+// SPECULAR_MAP_SAMPLER_SMP_s        sampler      NA          NA    2        1
+// LOW_LOD_CHARACTER_MASK_TEX_SAMPLER_SMP_s    sampler      NA          NA    3        1
+// IRRADIANCE_CUBE_MAP_SAMPLER_SMP_s    sampler      NA          NA    4        1
+// ENVIRONMENT_MAP_SAMPLER_SMP_s     sampler      NA          NA    5        1
+// g_smp_fresnel_lut_SMP_s           sampler      NA          NA   11        1
+// DIFFUSE_MAP_SAMPLER_TEX           texture  float4          2d    0        1
+// NORMAL_MAP_SAMPLER_TEX            texture  float4          2d    1        1
+// SPECULAR_MAP_SAMPLER_TEX          texture  float4          2d    2        1
+// LOW_LOD_CHARACTER_MASK_TEX_SAMPLER_TEX    texture  float4          2d    3        1
+// IRRADIANCE_CUBE_MAP_SAMPLER_TEX    texture  float4        cube    4        1
+// ENVIRONMENT_MAP_SAMPLER_TEX       texture  float4        cube    5        1
+// g_smp_fresnel_lut_TEX             texture  float4          3d   11        1
+// cbDefaultPSC                      cbuffer      NA          NA    2        1
+// cbUbershaderXSC                   cbuffer      NA          NA    5        1
+// cbInstanceXSC                     cbuffer      NA          NA   10        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xyz 
+// TEXCOORD                 1   xyzw        1     NONE   float   xy  
+// TEXCOORD                 2   xyzw        2     NONE   float   xyz 
+// TEXCOORD                 3   xyzw        3     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        4     NONE   float   xyz 
+// SV_Position              0   xyzw        5      POS   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+// SV_Target                2   xyzw        2   TARGET   float   xyzw
+// SV_Target                3   xyzw        3   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb2[74], immediateIndexed
+dcl_constantbuffer cb5[36], immediateIndexed
+dcl_constantbuffer cb10[12], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s11, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texturecube (float,float,float,float) t4
+dcl_resource_texturecube (float,float,float,float) t5
+dcl_resource_texture3d (float,float,float,float) t11
+dcl_input_ps linear v0.xyz
+dcl_input_ps linear v1.xy
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyz
+dcl_input_ps_siv linear noperspective v5.xy, position
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyzw
+dcl_temps 6
+mul r0.xyzw, v1.xyxy, cb5[32].yyzz
+sample_indexable(texture2d)(float,float,float,float) r0.zw, r0.zwzz, t1.zwxy, s1
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, r0.xyxx, t0.xyzw, s0
+mul r1.xyz, r1.xyzx, r1.xyzx
+mul r1.xyz, r1.xyzx, cb5[33].xyzx
+mad r0.xy, r0.zwzz, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mad r0.z, -r0.x, r0.x, l(1.000000)
+mad r0.z, -r0.y, r0.y, r0.z
+max r0.z, r0.z, l(0.000000)
+sqrt r0.z, r0.z
+mul r2.xyz, r0.yyyy, v2.xyzx
+mad r0.xyw, r0.xxxx, v3.xyxz, r2.xyxz
+mad r0.xyz, r0.zzzz, v0.xyzx, r0.xywx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+dp3 r0.w, v4.xyzx, v4.xyzx
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, v4.xyzx
+dp3 r0.w, r0.xyzx, r2.xyzx
+min r1.w, |r0.w|, l(1.000000)
+add r3.xy, -r1.wwww, l(1.000000, 0.600000, 0.000000, 0.000000)
+mul r1.w, r3.x, l(3.333333)
+min r1.w, r1.w, l(1.000000)
+mad r2.w, r1.w, l(-2.000000), l(3.000000)
+mul r1.w, r1.w, r1.w
+mad r1.w, -r2.w, r1.w, l(1.000000)
+mul r1.w, r1.w, cb5[34].z
+mul r3.xz, v1.xxyx, cb5[34].xxxx
+sample_indexable(texture2d)(float,float,float,float) r3.xzw, r3.xzxx, t2.xwyz, s2
+mul r4.xy, r3.zwzz, cb5[34].yzyy
+mad r2.w, r4.y, l(-0.300000), l(0.600000)
+min r4.y, r4.x, l(0.996000)
+div r2.w, l(1.000000, 1.000000, 1.000000, 1.000000), r2.w
+mul_sat r2.w, r2.w, r3.y
+mad r3.y, r2.w, l(-2.000000), l(3.000000)
+mul r2.w, r2.w, r2.w
+mul r2.w, r2.w, r3.y
+mul r2.w, r2.w, cb5[34].z
+dp2 r2.w, r2.wwww, r3.wwww
+mad r1.w, r1.w, r3.w, r2.w
+mul r4.z, r3.x, cb5[32].w
+add r1.w, r1.w, l(1.000000)
+mul_sat r1.xyz, r1.wwww, r1.xyzx
+sample_l_indexable(texturecube)(float,float,float,float) r3.xyz, r0.xyzx, t4.xyzw, s4, l(0.000000)
+mul r1.xyz, r1.xyzx, r3.xyzx
+add r3.xyz, r1.xyzx, r1.xyzx
+max r1.w, r3.x, r3.y
+max r2.w, r3.z, l(0.000100)
+max r1.w, r1.w, r2.w
+div r1.w, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+mad r5.xyz, r3.xyzx, r1.wwww, l(-1.000000, -1.000000, -1.000000, 0.000000)
+log r3.xyz, r3.xyzx
+sample_indexable(texture2d)(float,float,float,float) r1.w, v1.xyxx, t3.xyzw, s3
+mad r5.xyz, r1.wwww, r5.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+add r2.w, r0.w, r0.w
+mad r2.xyz, r0.xyzx, -r2.wwww, r2.xyzx
+mad o1.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+mov r0.xyz, -r2.xyzx
+max r2.x, r4.y, l(0.000000)
+add r2.x, -r2.x, l(1.000000)
+mad r2.x, r2.x, l(0.750000), l(0.015625)
+log r2.x, r2.x
+add r2.x, r2.x, l(5.666667)
+sample_l_indexable(texturecube)(float,float,float,float) r0.xyz, r0.xyzx, t5.xyzw, s5, r2.x
+mul r0.xyz, r0.xyzx, r0.xyzx
+mul r0.xyz, r0.xyzx, cb5[35].yyyy
+mul r0.xyz, r5.xyzx, r0.xyzx
+mov_sat r4.x, r0.w
+mad r0.w, -|r0.w|, |r0.w|, l(1.000000)
+max r0.w, r0.w, l(0.000000)
+sqrt r0.w, r0.w
+mul r0.w, r0.w, l(0.666667)
+mad r0.w, -r0.w, r0.w, l(1.000000)
+sqrt r0.w, r0.w
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+add r0.w, r0.w, l(-1.000000)
+mad r0.w, r0.w, l(0.500000), l(1.000000)
+mul r2.xyz, r0.wwww, r3.xyzx
+exp r2.xyz, r2.xyzx
+sample_l_indexable(texture3d)(float,float,float,float) r3.xyz, r4.xyzx, t11.xyzw, s11, l(0.000000)
+mov o3.x, r4.y
+mad r0.w, r3.z, r3.z, -r4.z
+mad r0.w, cb5[32].x, r0.w, r4.z
+mul r2.w, r3.x, r3.x
+mad r3.x, r3.y, r3.y, -r2.w
+mad r2.w, cb5[32].x, r3.x, r2.w
+add r0.w, r0.w, -r2.w
+mad_sat r0.w, r1.w, r0.w, r2.w
+mul r3.xy, v5.xyxx, l(0.001000, 0.001000, 0.000000, 0.000000)
+mad r3.zw, v5.xxxy, l(0.000000, 0.000000, 0.001000, 0.001000), -v1.xxxx
+dp2 r2.w, r3.zwzz, r3.xyxx
+exp r2.w, r2.w
+mul r2.w, r2.w, l(10000.000000)
+frc r2.w, r2.w
+mul r2.w, r2.w, l(1400.000000)
+frc r2.w, r2.w
+mad r0.w, r2.w, l(0.002500), r0.w
+min r0.w, r0.w, l(1.000000)
+mul r0.xyz, r0.wwww, r0.xyzx
+mul r0.xyz, r0.xyzx, cb2[73].xyzx
+mul r3.xyz, r0.xyzx, cb2[73].wwww
+mul r3.xyz, r3.xyzx, cb5[35].xxxx
+mul o0.xyz, r3.xyzx, cb2[59].xxxx
+mul r2.w, l(0.003922), cb2[49].x
+mul r3.xy, l(255.996094, 255.996094, 0.000000, 0.000000), cb10[11].xyxx
+round_z r3.zw, r3.xxxy
+mad r3.xy, cb10[11].xyxx, l(255.996094, 255.996094, 0.000000, 0.000000), -r3.zwzz
+mul r3.xyzw, r3.xyzw, l(1.003922, 1.003922, 0.003922, 0.003922)
+lt r4.x, l(0.000000), cb2[49].y
+movc o0.w, r4.x, r2.w, r3.x
+movc r3.xy, r4.xxxx, l(0,0,0,0), r3.yzyy
+movc o3.w, r4.x, cb5[34].w, r3.w
+mov o1.w, r3.x
+mov o2.w, r3.y
+mad r1.xyz, r1.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), -r2.xyzx
+mad r1.xyz, r1.wwww, r1.xyzx, r2.xyzx
+max r2.x, r1.x, r1.y
+max r2.y, r1.z, l(0.000100)
+max r2.x, r2.x, r2.y
+div r2.x, l(1.000000, 1.000000, 1.000000, 1.000000), r2.x
+add r2.y, -r0.w, l(1.000000)
+mad r2.x, r2.x, l(0.031250), -r2.y
+mul r2.z, r1.w, r1.w
+mul r2.z, r2.z, r2.z
+mad r2.x, r2.z, r2.x, r2.y
+mad r0.xyz, r1.xyzx, r2.xxxx, r0.xyzx
+add r0.xyz, r0.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+mul_sat r0.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+sqrt o2.xyz, r0.xyzx
+lt r0.x, r1.w, l(0.400000)
+mul r0.y, r1.w, l(0.300000)
+movc r0.x, r0.x, r0.y, l(1.000000)
+mul r0.y, r0.w, r0.x
+mad r0.x, r0.x, -r0.w, r0.w
+sqrt r0.x, r0.x
+mad r0.x, r0.x, l(-0.500000), l(0.500000)
+mad o3.y, r0.y, l(0.500000), r0.x
+mov o3.z, l(1.000000)
+ret 
+// Approximately 140 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
