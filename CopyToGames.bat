@@ -18,7 +18,7 @@ xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Saints Row the Third\" /F /Y
 echo 
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\F.E.A.R. 3\" /F /Y
 echo 
-xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Alien Isolation" /F /Y
+xcopy "%1*.*" "C:\Program Files (x86)\Steam\SteamApps\common\Alien Isolation\" /F /Y
 
 exit
 
