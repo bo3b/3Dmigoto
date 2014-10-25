@@ -1,33 +1,59 @@
+//Fix by mike_ar69
+cbuffer cbDefaultVSC: register (b1)
+{
+  float4x4 ProjMatrix : packoffset(c0);
+  float4x4 TextureTransform : packoffset(c4);
+  float4x4 InvViewProj : packoffset(c8);
+  float4x4 PrevViewProj : packoffset(c12);
+  float4x4 PrevSecViewProj : packoffset(c16);
+  float4 TextureScaleBias : packoffset(c20);
+  float4 RenderTargetSizeVS : packoffset(c21);
+  float4 RenderTargetResolutionVS : packoffset(c22);
+  float4 MorphTargetParams : packoffset(c23);
+  float4 OnePixelStepForS0VS : packoffset(c24);
+  float4 ScreenRes[2] : packoffset(c25);
+  float4 ClearSurfaceColor : packoffset(c27);
+  float4 ClearSurfaceDepth : packoffset(c28);
+  float4 VertexDepthClamp : packoffset(c29);
+  float4 FlareScreenAspect : packoffset(c30);
+  float4 DecalParams : packoffset(c31);
+  float4 UserClipPlane0 : packoffset(c32);
+  float4 UserClipPlane1 : packoffset(c33);
+  float4 UserClipPlane2 : packoffset(c34);
+  float4 UserClipPlane3 : packoffset(c35);
+  float4 DecalScaleParams : packoffset(c36);
+  float4 MipLevel : packoffset(c37);
+}
 
 cbuffer cbDefaultXSC : register(b0)
 {
-  float4x4 ViewProj : packoffset(c0);
-  float4x4 ViewMatrix : packoffset(c4);
-  float4x4 SecondaryProj : packoffset(c8);
-  float4x4 SecondaryViewProj : packoffset(c12);
-  float4x4 SecondaryInvViewProj : packoffset(c16);
-  float4 ConstantColour : packoffset(c20);
-  float4 Time : packoffset(c21);
-  float4 CameraPosition : packoffset(c22);
-  float4 InvProjectionParams : packoffset(c23);
-  float4 SecondaryInvProjectionParams : packoffset(c24);
-  float4 ShaderDebugParams : packoffset(c25);
-  float4 ToneMappingDebugParams : packoffset(c26);
-  float4 HDR_EncodeScale2 : packoffset(c27);
-  float4 EmissiveSurfaceMultiplier : packoffset(c28);
-  float4 AlphaLight_OffsetScale : packoffset(c29);
-  float4 TessellationScaleFactor : packoffset(c30);
-  float4 FogNearColour : packoffset(c31);
-  float4 FogFarColour : packoffset(c32);
-  float4 FogParams : packoffset(c33);
-  float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
-  float4 SMAA_RTMetrics : packoffset(c35);
+float4x4 ViewProj : packoffset(c0);
+float4x4 ViewMatrix : packoffset(c4);
+float4x4 SecondaryProj : packoffset(c8);
+float4x4 SecondaryViewProj : packoffset(c12);
+float4x4 SecondaryInvViewProj : packoffset(c16);
+float4 ConstantColour : packoffset(c20);
+float4 Time : packoffset(c21);
+float4 CameraPosition : packoffset(c22);
+float4 InvProjectionParams : packoffset(c23);
+float4 SecondaryInvProjectionParams : packoffset(c24);
+float4 ShaderDebugParams : packoffset(c25);
+float4 ToneMappingDebugParams : packoffset(c26);
+float4 HDR_EncodeScale2 : packoffset(c27);
+float4 EmissiveSurfaceMultiplier : packoffset(c28);
+float4 AlphaLight_OffsetScale : packoffset(c29);
+float4 TessellationScaleFactor : packoffset(c30);
+float4 FogNearColour : packoffset(c31);
+float4 FogFarColour : packoffset(c32);
+float4 FogParams : packoffset(c33);
+float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
+float4 SMAA_RTMetrics : packoffset(c35);
 }
 
 cbuffer cbUbershaderXSC : register(b5)
 {
-  float4 rp_parameter_vs[32] : packoffset(c0);
-  float4 rp_parameter_ps[32] : packoffset(c32);
+float4 rp_parameter_vs[32] : packoffset(c0);
+float4 rp_parameter_ps[32] : packoffset(c32);
 }
 SamplerState CAUSTIC_TEXTURE_SAMPLER_SMP_s : register(s0);
 SamplerState depthSamplerReg_SMP_s : register(s8);
@@ -39,47 +65,43 @@ Texture2D<float4> normalSamplerReg_TEX : register(t12);
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
-  float4 v0 : TEXCOORD0,
-  float4 v1 : TEXCOORD1,
-  float4 v2 : TEXCOORD2,
-  float4 v3 : TEXCOORD3,
-  float4 v4 : TEXCOORD4,
-  float4 v5 : TEXCOORD5,
-  float4 v6 : TEXCOORD6,
-  float4 v9 : TEXCOORD9,
-  float4 v10 : TEXCOORD10,
-  float4 v11 : TEXCOORD11,
-  float4 v12 : TEXCOORD12,  
-  out float4 o0 : SV_Target0)
+float4 v0 : TEXCOORD0,
+float4 v1 : TEXCOORD1,
+float4 v2 : TEXCOORD2,
+float4 v3 : TEXCOORD3,
+float4 v4 : TEXCOORD4,
+float4 v5 : TEXCOORD5,
+float4 v6 : TEXCOORD6,
+out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2,r3,r4,r5;
-  uint4 bitmask;
-  r0.xy = v5.xy / v4.ww;
-  r1.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.xy).xyz;
-  r0.x = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.xy).x;
-  r0.yzw = r1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r1.x = dot(r0.yzw, r0.yzw);
-  r1.x = rsqrt(r1.x);
-  r0.yzw = r1.xxx * r0.yzw;
-  r1.xyz = float3(-2.000000e-001,-2.000000e-001,-2.000000e-001) + abs(r0.yzw);
-  r0.y = dot(r0.yzw, rp_parameter_ps[2].xyz);
-  r0.y = rp_parameter_ps[0].z + r0.y;
-  r1.xyz = float3(7.000000e+000,7.000000e+000,7.000000e+000) * r1.xyz;
-  r2.xyz = r1.xyz * r1.xyz;
-  r1.xyz = r2.xyz * r1.xyz;
-  r1.xyz = max(r1.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
-  r0.z = r1.x + r1.y;
-  r0.z = r0.z + r1.z;
-  r1.xyz = r1.xyz / r0.zzz;
-  r0.z = -r0.x * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
-  r0.z = SecondaryInvProjectionParams.x / r0.z;
-  r0.w = r0.x * InvProjectionParams.y + InvProjectionParams.z;
-  r0.x = r0.x < 0.000000000e+000;
-  r0.w = InvProjectionParams.x / r0.w;
-  r0.zw = max(r0.zw, float2(0.000000e+000,0.000000e+000));
-  r0.x = r0.x ? r0.z : r0.w;
-  r2.xyzw = v6.zyzx / v4.wwww;
-  
+float4 r0,r1,r2,r3,r4,r5;
+uint4 bitmask;
+r0.xy = v5.xy / v4.ww;
+r1.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.xy).xyz;
+r0.x = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.xy).x;
+r0.yzw = r1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+r1.x = dot(r0.yzw, r0.yzw);
+r1.x = rsqrt(r1.x);
+r0.yzw = r1.xxx * r0.yzw;
+r1.xyz = float3(-2.000000e-001,-2.000000e-001,-2.000000e-001) + abs(r0.yzw);
+r0.y = dot(r0.yzw, rp_parameter_ps[2].xyz);
+r0.y = rp_parameter_ps[0].z + r0.y;
+r1.xyz = float3(7.000000e+000,7.000000e+000,7.000000e+000) * r1.xyz;
+r2.xyz = r1.xyz * r1.xyz;
+r1.xyz = r2.xyz * r1.xyz;
+r1.xyz = max(r1.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+r0.z = r1.x + r1.y;
+r0.z = r0.z + r1.z;
+r1.xyz = r1.xyz / r0.zzz;
+r0.z = -r0.x * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
+r0.z = SecondaryInvProjectionParams.x / r0.z;
+r0.w = r0.x * InvProjectionParams.y + InvProjectionParams.z;
+r0.x = r0.x < 0.000000000e+000;
+r0.w = InvProjectionParams.x / r0.w;
+r0.zw = max(r0.zw, float2(0.000000e+000,0.000000e+000));
+r0.x = r0.x ? r0.z : r0.w;
+r2.xyzw = v6.zyzx / v4.wwww;
+
 float4 stereo = StereoParams.Load(0);
 float4 r25, r11;
 
@@ -93,51 +115,51 @@ r25.w = dot(r11.xyzw, ViewProj._m03_m13_m23_m33);
 
 r25.x -= stereo.x * (r25.w - stereo.y);
 
-r11.x = dot(r25.xyzw, v9.xyzw);
-r11.y = dot(r25.xyzw, v10.xyzw);
-r11.z = dot(r25.xyzw, v11.xyzw);
-r11.w = dot(r25.xyzw, v12.xyzw);    
-r11.xyzw /= r11.wwww;    
+r11.x = dot(r25.xyzw, InvViewProj._m00_m10_m20_m30);
+r11.y = dot(r25.xyzw, InvViewProj._m01_m11_m21_m31);
+r11.z = dot(r25.xyzw, InvViewProj._m02_m12_m22_m32);
+r11.w = dot(r25.xyzw, InvViewProj._m03_m13_m23_m33);
+r11.xyzw /= r11.wwww;
 
-r2.xyz = (r11.xyz - CameraPosition.xyz)/r0.xxx;    
-  
-  r2.xyzw = r2.xyzw * r0.xxxx + CameraPosition.zyzx;
-  
-  r3.xyzw = rp_parameter_ps[0].xxxx * r2.xyzw;
-  r4.xy = r3.zw;
-  r3.z = rp_parameter_ps[0].w * Time.x;
-  r4.z = r3.z;
-  r3.xyzw = CAUSTIC_TEXTURE_SAMPLER_TEX.Sample(CAUSTIC_TEXTURE_SAMPLER_SMP_s, r3.xyz).xyzw;
-  r5.xyzw = CAUSTIC_TEXTURE_SAMPLER_TEX.Sample(CAUSTIC_TEXTURE_SAMPLER_SMP_s, r4.xyz).xyzw;
-  r5.xyz = r5.xyz * r5.xyz;
-  r5.xyzw = r5.xyzw * r1.yyyy;
-  r3.xyz = r3.xyz * r3.xyz;
-  r3.xyzw = r3.xyzw * r1.xxxx + r5.xyzw;
-  r4.xy = rp_parameter_ps[0].xx * r2.wy;
-  r0.xzw = -v0.xyz + r2.wyz;
-  r2.xyzw = CAUSTIC_TEXTURE_SAMPLER_TEX.Sample(CAUSTIC_TEXTURE_SAMPLER_SMP_s, r4.xyz).xyzw;
-  r2.xyz = r2.xyz * r2.xyz;
-  r1.xyzw = r2.xyzw * r1.zzzz + r3.xyzw;
-  r2.x = dot(v1.xyz, r0.xzw);
-  r2.y = dot(v2.xyz, r0.xzw);
-  r2.z = dot(v3.xyz, r0.xzw);
-  r0.xzw = r2.xyz / rp_parameter_ps[1].xyz;
-  r0.xzw = min(abs(r0.xzw), float3(1.000000e+000,1.000000e+000,1.000000e+000));
-  r0.xzw = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r0.xzw;
-  r0.x = r0.x * r0.z;
-  r0.x = r0.x * r0.w;
-  r0.x = rp_parameter_ps[0].y * r0.x;
-  r0.z = 1.000000000e+000 + rp_parameter_ps[0].z;
-  r0.y = saturate(r0.y / r0.z);
-  r0.x = -r0.x * r0.y + 1.000000000e+000;
-  r0.x = saturate(r1.w + -r0.x);
-  r0.y = r0.x * -2.000000000e+000 + 3.000000000e+000;
-  r0.x = r0.x * r0.x;
-  r0.x = r0.y * r0.x;
-  r0.x = min(r0.x, 1.000000000e+000);
-  o0.xyz = r1.xyz * r0.xxx;
-  o0.w = 1.000000000e+000;
-  return;
+r2.xyz = (r11.xyz - CameraPosition.xyz)/r0.xxx;
+
+r2.xyzw = r2.xyzw * r0.xxxx + CameraPosition.zyzx;
+
+r3.xyzw = rp_parameter_ps[0].xxxx * r2.xyzw;
+r4.xy = r3.zw;
+r3.z = rp_parameter_ps[0].w * Time.x;
+r4.z = r3.z;
+r3.xyzw = CAUSTIC_TEXTURE_SAMPLER_TEX.Sample(CAUSTIC_TEXTURE_SAMPLER_SMP_s, r3.xyz).xyzw;
+r5.xyzw = CAUSTIC_TEXTURE_SAMPLER_TEX.Sample(CAUSTIC_TEXTURE_SAMPLER_SMP_s, r4.xyz).xyzw;
+r5.xyz = r5.xyz * r5.xyz;
+r5.xyzw = r5.xyzw * r1.yyyy;
+r3.xyz = r3.xyz * r3.xyz;
+r3.xyzw = r3.xyzw * r1.xxxx + r5.xyzw;
+r4.xy = rp_parameter_ps[0].xx * r2.wy;
+r0.xzw = -v0.xyz + r2.wyz;
+r2.xyzw = CAUSTIC_TEXTURE_SAMPLER_TEX.Sample(CAUSTIC_TEXTURE_SAMPLER_SMP_s, r4.xyz).xyzw;
+r2.xyz = r2.xyz * r2.xyz;
+r1.xyzw = r2.xyzw * r1.zzzz + r3.xyzw;
+r2.x = dot(v1.xyz, r0.xzw);
+r2.y = dot(v2.xyz, r0.xzw);
+r2.z = dot(v3.xyz, r0.xzw);
+r0.xzw = r2.xyz / rp_parameter_ps[1].xyz;
+r0.xzw = min(abs(r0.xzw), float3(1.000000e+000,1.000000e+000,1.000000e+000));
+r0.xzw = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r0.xzw;
+r0.x = r0.x * r0.z;
+r0.x = r0.x * r0.w;
+r0.x = rp_parameter_ps[0].y * r0.x;
+r0.z = 1.000000000e+000 + rp_parameter_ps[0].z;
+r0.y = saturate(r0.y / r0.z);
+r0.x = -r0.x * r0.y + 1.000000000e+000;
+r0.x = saturate(r1.w + -r0.x);
+r0.y = r0.x * -2.000000000e+000 + 3.000000000e+000;
+r0.x = r0.x * r0.x;
+r0.x = r0.y * r0.x;
+r0.x = min(r0.x, 1.000000000e+000);
+o0.xyz = r1.xyz * r0.xxx;
+o0.w = 1.000000000e+000;
+return;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -145,7 +167,7 @@ r2.xyz = (r11.xyz - CameraPosition.xyz)/r0.xxx;
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
 //
 //
-// Buffer Definitions: 
+// Buffer Definitions:
 //
 // cbuffer cbDefaultXSC
 // {
@@ -202,13 +224,13 @@ r2.xyz = (r11.xyz - CameraPosition.xyz)/r0.xxx;
 //
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
-// TEXCOORD                 0   xyzw        0     NONE   float   xyz 
-// TEXCOORD                 1   xyzw        1     NONE   float   xyz 
-// TEXCOORD                 2   xyzw        2     NONE   float   xyz 
-// TEXCOORD                 3   xyzw        3     NONE   float   xyz 
+// TEXCOORD                 0   xyzw        0     NONE   float   xyz
+// TEXCOORD                 1   xyzw        1     NONE   float   xyz
+// TEXCOORD                 2   xyzw        2     NONE   float   xyz
+// TEXCOORD                 3   xyzw        3     NONE   float   xyz
 // TEXCOORD                 4   xyzw        4     NONE   float      w
-// TEXCOORD                 5   xyzw        5     NONE   float   xy  
-// TEXCOORD                 6   xyzw        6     NONE   float   xyz 
+// TEXCOORD                 5   xyzw        5     NONE   float   xy
+// TEXCOORD                 6   xyzw        6     NONE   float   xyz
 //
 //
 // Output signature:
@@ -296,7 +318,7 @@ mul r0.x, r0.x, r0.y
 min r0.x, r0.x, l(1.000000)
 mul o0.xyz, r0.xxxx, r1.xyzx
 mov o0.w, l(1.000000)
-ret 
+ret
 // Approximately 61 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

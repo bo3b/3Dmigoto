@@ -1,78 +1,104 @@
+//Fix by mike_ar69
+cbuffer cbDefaultVSC: register (b1)
+{
+  float4x4 ProjMatrix : packoffset(c0);
+  float4x4 TextureTransform : packoffset(c4);
+  float4x4 InvViewProj : packoffset(c8);
+  float4x4 PrevViewProj : packoffset(c12);
+  float4x4 PrevSecViewProj : packoffset(c16);
+  float4 TextureScaleBias : packoffset(c20);
+  float4 RenderTargetSizeVS : packoffset(c21);
+  float4 RenderTargetResolutionVS : packoffset(c22);
+  float4 MorphTargetParams : packoffset(c23);
+  float4 OnePixelStepForS0VS : packoffset(c24);
+  float4 ScreenRes[2] : packoffset(c25);
+  float4 ClearSurfaceColor : packoffset(c27);
+  float4 ClearSurfaceDepth : packoffset(c28);
+  float4 VertexDepthClamp : packoffset(c29);
+  float4 FlareScreenAspect : packoffset(c30);
+  float4 DecalParams : packoffset(c31);
+  float4 UserClipPlane0 : packoffset(c32);
+  float4 UserClipPlane1 : packoffset(c33);
+  float4 UserClipPlane2 : packoffset(c34);
+  float4 UserClipPlane3 : packoffset(c35);
+  float4 DecalScaleParams : packoffset(c36);
+  float4 MipLevel : packoffset(c37);
+}
 
 cbuffer cbDefaultXSC : register(b0)
 {
-  float4x4 ViewProj : packoffset(c0);
-  float4x4 ViewMatrix : packoffset(c4);
-  float4x4 SecondaryProj : packoffset(c8);
-  float4x4 SecondaryViewProj : packoffset(c12);
-  float4x4 SecondaryInvViewProj : packoffset(c16);
-  float4 ConstantColour : packoffset(c20);
-  float4 Time : packoffset(c21);
-  float4 CameraPosition : packoffset(c22);
-  float4 InvProjectionParams : packoffset(c23);
-  float4 SecondaryInvProjectionParams : packoffset(c24);
-  float4 ShaderDebugParams : packoffset(c25);
-  float4 ToneMappingDebugParams : packoffset(c26);
-  float4 HDR_EncodeScale2 : packoffset(c27);
-  float4 EmissiveSurfaceMultiplier : packoffset(c28);
-  float4 AlphaLight_OffsetScale : packoffset(c29);
-  float4 TessellationScaleFactor : packoffset(c30);
-  float4 FogNearColour : packoffset(c31);
-  float4 FogFarColour : packoffset(c32);
-  float4 FogParams : packoffset(c33);
-  float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
-  float4 SMAA_RTMetrics : packoffset(c35);
+float4x4 ViewProj : packoffset(c0);
+float4x4 ViewMatrix : packoffset(c4);
+float4x4 SecondaryProj : packoffset(c8);
+float4x4 SecondaryViewProj : packoffset(c12);
+float4x4 SecondaryInvViewProj : packoffset(c16);
+float4 ConstantColour : packoffset(c20);
+float4 Time : packoffset(c21);
+float4 CameraPosition : packoffset(c22);
+float4 InvProjectionParams : packoffset(c23);
+float4 SecondaryInvProjectionParams : packoffset(c24);
+float4 ShaderDebugParams : packoffset(c25);
+float4 ToneMappingDebugParams : packoffset(c26);
+float4 HDR_EncodeScale2 : packoffset(c27);
+float4 EmissiveSurfaceMultiplier : packoffset(c28);
+float4 AlphaLight_OffsetScale : packoffset(c29);
+float4 TessellationScaleFactor : packoffset(c30);
+float4 FogNearColour : packoffset(c31);
+float4 FogFarColour : packoffset(c32);
+float4 FogParams : packoffset(c33);
+float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
+float4 SMAA_RTMetrics : packoffset(c35);
 }
 
 cbuffer cbDefaultPSC : register(b2)
 {
-  float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
-  float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
-  float4x4 ProjectorMatrix : packoffset(c8);
-  float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
-  float4x4 MotionBlurPrevViewProjection : packoffset(c16);
-  float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
-  float4x4 Spotlight0_Transform : packoffset(c24);
-  float4 TextureAnimation : packoffset(c28);
-  float4 AmbientDiffuse : packoffset(c29);
-  float4 EnvironmentDebugParams : packoffset(c30);
-  float4 ShadowFilterESMWeights : packoffset(c31);
-  float4 LegacyDofParams : packoffset(c32);
-  float4 OnePixelStepForS0 : packoffset(c33);
-  float4 RenderTargetSize : packoffset(c34);
-  float4 ModelTrackerID : packoffset(c35);
-  float4 Sharpness_Bloom_Controls : packoffset(c36);
-  float4 Blur_Direction : packoffset(c37);
-  float4 LightMeterDebugParams : packoffset(c38);
-  float4 SourceResolution : packoffset(c39);
-  float4 HDR_EncodeScale : packoffset(c40);
-  float4 OutputGamma : packoffset(c41);
-  float4 AlphaLight_ScaleParams : packoffset(c42);
-  float4 WrinkleMapWeights[6] : packoffset(c43);
-  float4 RadiosityCubeMapIdx : packoffset(c49);
-  float4 HairShadingParams[8] : packoffset(c50);
-  float4 SkinShadingParams : packoffset(c58);
-  float4 HDR_EncodeScale3 : packoffset(c59);
-  float4 ScreenResolution[4] : packoffset(c60);
-  float4 VelocityParams : packoffset(c64);
-  float4 DeferredConstColor : packoffset(c65);
-  float4 Spotlight0_Shadow_Params : packoffset(c66);
-  float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
-  float4 ShadowFilterType : packoffset(c68);
-  float4 Spotlight0_ReverseZPerspective : packoffset(c69);
-  float4 SpacesuitVisorParams : packoffset(c70);
-  float4 Directional_Light_Colour : packoffset(c71);
-  float4 Directional_Light_Direction : packoffset(c72);
-  float4 EnvironmentMap_Params : packoffset(c73);
-  float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
-  float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
-  float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
-  float4 ScreenSpaceLightPosition : packoffset(c77);
-  float4 LensAndScreenCenter : packoffset(c78);
-  float4 ScaleAndScaleIn : packoffset(c79);
-  float4 HmdWarpParam : packoffset(c80);
-  float4 ChromAbParam : packoffset(c81);
-  float4 SMAA_SubsampleIndices : packoffset(c82);
+float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
+float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
+float4x4 ProjectorMatrix : packoffset(c8);
+float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
+float4x4 MotionBlurPrevViewProjection : packoffset(c16);
+float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
+float4x4 Spotlight0_Transform : packoffset(c24);
+float4 TextureAnimation : packoffset(c28);
+float4 AmbientDiffuse : packoffset(c29);
+float4 EnvironmentDebugParams : packoffset(c30);
+float4 ShadowFilterESMWeights : packoffset(c31);
+float4 LegacyDofParams : packoffset(c32);
+float4 OnePixelStepForS0 : packoffset(c33);
+float4 RenderTargetSize : packoffset(c34);
+float4 ModelTrackerID : packoffset(c35);
+float4 Sharpness_Bloom_Controls : packoffset(c36);
+float4 Blur_Direction : packoffset(c37);
+float4 LightMeterDebugParams : packoffset(c38);
+float4 SourceResolution : packoffset(c39);
+float4 HDR_EncodeScale : packoffset(c40);
+float4 OutputGamma : packoffset(c41);
+float4 AlphaLight_ScaleParams : packoffset(c42);
+float4 WrinkleMapWeights[6] : packoffset(c43);
+float4 RadiosityCubeMapIdx : packoffset(c49);
+float4 HairShadingParams[8] : packoffset(c50);
+float4 SkinShadingParams : packoffset(c58);
+float4 HDR_EncodeScale3 : packoffset(c59);
+float4 ScreenResolution[4] : packoffset(c60);
+float4 VelocityParams : packoffset(c64);
+float4 DeferredConstColor : packoffset(c65);
+float4 Spotlight0_Shadow_Params : packoffset(c66);
+float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
+float4 ShadowFilterType : packoffset(c68);
+float4 Spotlight0_ReverseZPerspective : packoffset(c69);
+float4 SpacesuitVisorParams : packoffset(c70);
+float4 Directional_Light_Colour : packoffset(c71);
+float4 Directional_Light_Direction : packoffset(c72);
+float4 EnvironmentMap_Params : packoffset(c73);
+float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
+float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
+float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
+float4 ScreenSpaceLightPosition : packoffset(c77);
+float4 LensAndScreenCenter : packoffset(c78);
+float4 ScaleAndScaleIn : packoffset(c79);
+float4 HmdWarpParam : packoffset(c80);
+float4 ChromAbParam : packoffset(c81);
+float4 SMAA_SubsampleIndices : packoffset(c82);
 }
 SamplerState frameSamplerReg_SMP_s : register(s7);
 SamplerState depthSamplerReg_SMP_s : register(s8);
@@ -89,35 +115,31 @@ Texture2D<float4> spotlight0ProjectiveReg_TEX : register(t15);
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
-  float4 v0 : TEXCOORD0,
-  float4 v1 : TEXCOORD1,
-  float4 v2 : TEXCOORD2,
-  float4 v3 : TEXCOORD3,
-  float4 v4 : TEXCOORD4,
-  float4 v5 : TEXCOORD5,
-  float4 v6 : TEXCOORD6,
-  float4 v10 : TEXCOORD9,
-  float4 v11 : TEXCOORD10,
-  float4 v12 : TEXCOORD11,
-  float4 v13 : TEXCOORD12,
-  out float4 o0 : SV_Target0)
+float4 v0 : TEXCOORD0,
+float4 v1 : TEXCOORD1,
+float4 v2 : TEXCOORD2,
+float4 v3 : TEXCOORD3,
+float4 v4 : TEXCOORD4,
+float4 v5 : TEXCOORD5,
+float4 v6 : TEXCOORD6,
+out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
-  uint4 bitmask;
-  r0.x = 1.000000e+000 / v3.w;
-  r0.yz = v4.xy * r0.xx;
-  r1.xyz = v2.yzw * r0.xxx;
-  r0.x = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.yz).x;
-  r0.w = r0.x < 0.000000000e+000;
-  r1.w = -r0.x * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
-  r1.w = SecondaryInvProjectionParams.x / r1.w;
-  r1.w = max(r1.w, 0.000000000e+000);
-  r0.x = r0.x * InvProjectionParams.y + InvProjectionParams.z;
-  r0.x = InvProjectionParams.x / r0.x;
-  r0.x = max(r0.x, 0.000000000e+000);
-  r0.x = r0.w ? r1.w : r0.x;
+float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
+uint4 bitmask;
+r0.x = 1.000000e+000 / v3.w;
+r0.yz = v4.xy * r0.xx;
+r1.xyz = v2.yzw * r0.xxx;
+r0.x = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.yz).x;
+r0.w = r0.x < 0.000000000e+000;
+r1.w = -r0.x * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
+r1.w = SecondaryInvProjectionParams.x / r1.w;
+r1.w = max(r1.w, 0.000000000e+000);
+r0.x = r0.x * InvProjectionParams.y + InvProjectionParams.z;
+r0.x = InvProjectionParams.x / r0.x;
+r0.x = max(r0.x, 0.000000000e+000);
+r0.x = r0.w ? r1.w : r0.x;
 
-  r1.xyz = r1.xyz * r0.xxx + CameraPosition.xyz;
+r1.xyz = r1.xyz * r0.xxx + CameraPosition.xyz;
 
 float4 stereo = StereoParams.Load(0);
 float4 r25;
@@ -127,826 +149,826 @@ r25.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
 r25.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
 r25.w = dot(r1.xyzw, ViewProj._m03_m13_m23_m33);
 r25.x -= stereo.x * (r25.w - stereo.y);
-r1.x = dot(r25.xyzw, v10.xyzw);
-r1.y = dot(r25.xyzw, v11.xyzw);
-r1.z = dot(r25.xyzw, v12.xyzw);
-r1.w = dot(r25.xyzw, v13.xyzw);
+r1.x = dot(r25.xyzw, InvViewProj._m00_m10_m20_m30);
+r1.y = dot(r25.xyzw, InvViewProj._m01_m11_m21_m31);
+r1.z = dot(r25.xyzw, InvViewProj._m02_m12_m22_m32);
+r1.w = dot(r25.xyzw, InvViewProj._m03_m13_m23_m33);
 r1.xyzw /= r1.wwww;
 
 
-  r2.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.yz).xyz;
-  r2.xyz = r2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r0.x = dot(r2.xyz, r2.xyz);
-  r0.x = rsqrt(r0.x);
-  r2.xyz = r2.xyz * r0.xxx;
-  r3.xyz = v0.xyz + -r1.xyz;
-  r0.x = dot(r3.xyz, r3.xyz);
-  r0.w = rsqrt(r0.x);
-  r4.xyz = r3.xyz * r0.www;
-  r0.w = dot(r4.xyz, r2.xyz);
-  r2.xyz = v6.www * v5.xyz + r3.xyz;
-  r2.x = dot(r2.xyz, r2.xyz);
-  r2.x = sqrt(r2.x);
-  r2.x = saturate(v6.z / r2.x);
-  r2.y = 1.000000000e+000 + -r0.w;
-  r2.z = 1.000000000e+000 + r2.x;
-  r2.y = r2.y / r2.z;
-  r2.z = r2.y * r2.x;
-  r3.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.yz).xyz;
-  r3.xyz = r3.xyz * r3.xyz;
-  r3.xyz = r3.xyz + r3.xyz;
-  r0.x = sqrt(r0.x);
-  r0.y = -v0.w + r0.x;
-  r0.y = max(r0.y, 0.000000000e+000);
-  r0.z = 1.000000e+000 / v1.w;
-  r0.z = saturate(r0.y * r0.z);
-  r2.w = r0.z * -2.000000000e+000 + 3.000000000e+000;
-  r0.z = r0.z * r0.z;
-  r0.z = -r2.w * r0.z + 1.000000000e+000;
-  r0.y = r0.y * r0.y + v2.x;
-  r0.y = r0.z / r0.y;
-  r0.z = dot(r4.xyz, v5.xyz);
-  r0.z = saturate(-r0.z);
-  r2.w = v4.w + -v4.z;
-  r0.z = -v4.z + r0.z;
-  r2.w = 1.000000e+000 / r2.w;
-  r0.z = saturate(r2.w * r0.z);
-  r2.w = r0.z * -2.000000000e+000 + 3.000000000e+000;
-  r0.z = r0.z * r0.z;
-  r0.z = r2.w * r0.z;
-  r0.y = r0.y * r0.z;
-  r0.z = saturate(r2.y * r2.x + r0.w);
-  r2.xyw = r3.xyz * r0.zzz;
-  r0.yzw = v1.xyz * r0.yyy;
-  r0.yzw = r0.yzw * r2.xyw;
-  r1.w = 1.000000000e+000;
-  r3.x = dot(r1.xyzw, Spotlight0_Transform._m00_m10_m20_m30);
-  r3.y = dot(r1.xyzw, Spotlight0_Transform._m01_m11_m21_m31);
-  r3.z = dot(r1.xyzw, Spotlight0_Transform._m02_m12_m22_m32);
-  r1.x = dot(r1.xyzw, Spotlight0_Transform._m03_m13_m23_m33);
-  r1.yzw = r3.xyz / r1.xxx;
-  r4.xyw = float3(5.000000e-001,-5.000000e-001,-5.000000e-001) * r1.yzz;
-  r4.z = Spotlight0_Shadow_Bias_GoboScale.y * r1.y;
-  r4.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r4.xyzw;
-  r1.x = v6.y * r1.x + r3.z;
-  r1.x = r1.x >= 0.000000000e+000;
-  r1.x = r1.x ? 1.000000 : 0;
-  r1.y = (int)ShadowFilterType.x;
-  r1.z = r1.y == 4;
-  if (r1.z != 0) {
-  r1.z = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
-  r1.z = Spotlight0_ReverseZPerspective.x / r1.z;
-  r1.z = -Spotlight0_Shadow_Bias_GoboScale.x + r1.z;
-  r2.x = Spotlight0_ReverseZPerspective.y * r1.z;
-  r1.z = -r1.z * Spotlight0_ReverseZPerspective.z + Spotlight0_ReverseZPerspective.x;
-  r1.z = r1.z / r2.x;
-  r1.z = spotlight0ShadowSamplerReg_TEX.SampleCmpLevelZero(spotlight0ShadowSamplerReg_CMP_s, r4.xy, r1.z).x;
-  } else {
-  r2.x = r1.y == 1;
-  if (r2.x != 0) {
-  r2.x = (int)Spotlight0_Shadow_Params.y;
-  if (r2.x == 0) {
-  r1.z = 1.000000000e+000;
-  } else {
-  r2.y = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
-  r2.y = Spotlight0_ReverseZPerspective.x / r2.y;
-  r2.y = -Spotlight0_Shadow_Bias_GoboScale.x + r2.y;
-  r2.w = Spotlight0_ReverseZPerspective.y * r2.y;
-  r2.y = -r2.y * Spotlight0_ReverseZPerspective.z + Spotlight0_ReverseZPerspective.x;
-  r2.y = r2.y / r2.w;
-  r2.w = r2.x == 1;
-  if (r2.w != 0) {
-  r1.z = spotlight0ShadowSamplerReg_TEX.SampleCmpLevelZero(spotlight0ShadowSamplerReg_CMP_s, r4.xy, r2.y).x;
-  } else {
-  r2.w = 1.000000e+000 / Spotlight0_Shadow_Params.x;
-  r3.x = 5.000000000e-001 * r2.w;
-  r3.y = (int)r2.x + -1;
-  r3.y = r3.y;
-  r3.x = r3.x * r3.y;
-  r3.yz = float2(0.000000e+000,0.000000e+000);
-  while (true) {
-  r3.w = (int)r3.z >= (int)r2.x;
-  if (r3.w != 0) break;
-  r5.y = r3.z;
-  r3.w = r3.y;
-  r5.z = 0.000000000e+000;
-  while (true) {
-  r5.w = (int)r5.z >= (int)r2.x;
-  if (r5.w != 0) break;
-  r5.x = r5.z;
-  r5.xw = r5.xy * r2.ww + -r3.xx;
-  r5.xw = r5.xw + r4.xy;
-  r5.x = spotlight0ShadowSamplerReg_TEX.SampleCmpLevelZero(spotlight0ShadowSamplerReg_CMP_s, r5.xw, r2.y).x;
-  r3.w = r5.x + r3.w;
-  r5.z = (int)r5.z + 1;
-  }
-  r3.y = r3.w;
-  r3.z = (int)r3.z + 1;
-  }
-  r2.x = (int)r2.x * (int)r2.x;
-  r2.x = r2.x;
-  r1.z = r3.y / r2.x;
-  }
-  }
-  } else {
-  r2.x = r1.y == 2;
-  if (r2.x != 0) {
-  r2.x = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
-  r2.x = Spotlight0_ReverseZPerspective.x / r2.x;
-  r2.x = -Spotlight0_Shadow_Bias_GoboScale.x + r2.x;
-  r2.y = Spotlight0_ReverseZPerspective.y * r2.x;
-  r2.x = -r2.x * Spotlight0_ReverseZPerspective.z + Spotlight0_ReverseZPerspective.x;
-  r2.x = r2.x / r2.y;
-  r2.yw = Spotlight0_ShadowMapDimensions.xy * r4.xy + float2(5.000000e-001,5.000000e-001);
-  r3.xy = floor(r2.yw);
-  r2.yw = -r3.xy + r2.yw;
-  r3.xy = -r2.yw * Spotlight0_ShadowMapDimensions.zw + r4.xy;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, -5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r3.z = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.w = dot(r5.xyzw, r6.xyzw);
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, -5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, -5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, -5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, -5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, -5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, -3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, -3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, -3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, -3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, -3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, -3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, -1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, -1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, -1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, -1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, -1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, -1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, 1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, 1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, 1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, 1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, 1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, 1)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, 3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, 3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, 3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, 3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, 3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, 3)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, 5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, 5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, 5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, 5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, 5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, 5)).xyzw;
-  r6.xyzw = r5.xyzw >= r2.xxxx;
-  r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
-  r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.z = r7.x + r3.z;
-  r5.x = dot(r5.xyzw, r6.xyzw);
-  r3.w = r5.x + r3.w;
-  r5.x = 0.000000000e+000 < r3.z;
-  r3.z = r3.w / r3.z;
-  r3.w = -r3.z + r2.x;
-  r3.w = Spotlight0_ShadowMapDimensions.x * r3.w;
-  r3.w = 1.000000015e-001 * r3.w;
-  r3.z = saturate(r3.w / r3.z);
-  r3.z = r3.z * r3.z;
-  r3.z = r5.x ? r3.z : 0;
-  r3.w = r3.z * r3.z;
-  r5.x = r3.w * r3.z;
-  r5.y = 3.000000000e+000 * r3.w;
-  r5.z = 1.000000000e+000 + -r3.z;
-  r5.w = r5.y * r5.z;
-  r5.w = 2.000000030e-001 * r5.w;
-  r6.x = r3.w * r3.z + r5.w;
-  r6.y = 1.400000000e+001 * r5.x;
-  r6.y = r6.x * 1.000000000e+001 + r6.y;
-  r6.z = r5.z * r5.z;
-  r6.w = r6.z * r3.z;
-  r7.xy = float2(3.000000e+000,6.000000e-001) * r6.ww;
-  r7.xy = r3.ww * r3.zz + r7.xy;
-  r7.xy = r5.yy * r5.zz + r7.xy;
-  r6.y = r7.y * 7.000000000e+000 + r6.y;
-  r6.y = r6.y + r6.x;
-  r6.y = r5.x * 2.000000000e+000 + r6.y;
-  r6.y = r6.y + r6.x;
-  r6.y = r6.y + r7.y;
-  r6.y = r7.x * 5.000000000e+000 + r6.y;
-  r6.y = r6.y + r7.y;
-  r6.y = r6.y + r6.x;
-  r6.y = r5.x * 2.000000000e+000 + r6.y;
-  r6.y = r6.y + r6.x;
-  r6.y = r6.y + r7.y;
-  r6.y = r6.y + r7.x;
-  r7.z = r6.z * r5.z;
-  r7.z = r7.z * 8.000000119e-001 + r5.x;
-  r7.z = r6.w * 3.000000000e+000 + r7.z;
-  r7.z = r5.y * r5.z + r7.z;
-  r6.y = r7.z * 3.000000000e+000 + r6.y;
-  r6.y = r6.y + r7.x;
-  r6.y = r6.y + r7.y;
-  r6.y = r6.y + r6.x;
-  r6.y = r5.x * 2.000000000e+000 + r6.y;
-  r6.y = r6.y + r6.x;
-  r6.y = r6.y + r7.y;
-  r6.y = r6.y + r7.x;
-  r6.y = r6.y + r7.z;
-  r6.z = r6.z * r5.z + r5.x;
-  r6.z = r6.w * 3.000000000e+000 + r6.z;
-  r5.y = r5.y * r5.z + r6.z;
-  r5.z = r6.y + r5.y;
-  r5.z = r5.z + r7.z;
-  r5.z = r5.z + r7.x;
-  r5.z = r5.z + r7.y;
-  r5.z = r5.z + r6.x;
-  r5.z = r5.x * 2.000000000e+000 + r5.z;
-  r5.z = r5.z + r6.x;
-  r5.z = r5.z + r7.y;
-  r5.z = r5.z + r7.x;
-  r5.z = r7.z * 3.000000000e+000 + r5.z;
-  r5.z = r5.z + r7.x;
-  r5.z = r5.z + r7.y;
-  r5.z = r5.z + r6.x;
-  r5.z = r5.x * 2.000000000e+000 + r5.z;
-  r5.z = r5.z + r6.x;
-  r5.z = r5.z + r7.y;
-  r5.z = r7.x * 5.000000000e+000 + r5.z;
-  r5.z = r5.z + r7.y;
-  r5.z = r5.z + r6.x;
-  r5.z = r5.x * 2.000000000e+000 + r5.z;
-  r5.z = r5.z + r6.x;
-  r5.z = r7.y * 7.000000000e+000 + r5.z;
-  r5.z = r5.z + r6.x;
-  r5.z = r5.x * 2.000000000e+000 + r5.z;
-  r5.z = r6.x * 9.000000000e+000 + r5.z;
-  r5.z = r5.x * 1.200000000e+001 + r5.z;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,-5)).xyzw;
-  r6.y = 1.000000000e+000 + -r2.w;
-  r6.z = -r5.x * r2.y + r5.x;
-  r8.xw = r8.wx * r6.zz;
-  r8.xz = r8.zy * r5.xx + r8.xw;
-  r6.w = r8.z * r2.w;
-  r6.w = r6.y * r8.x + r6.w;
-  r9.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,-5)).xyzw;
-  r7.w = dot(r9.wz, r5.xx);
-  r6.w = r6.y * r7.w + r6.w;
-  r7.w = dot(r9.xy, r5.xx);
-  r6.w = r2.w * r7.w + r6.w;
-  r10.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,-5)).xyzw;
-  r7.w = dot(r10.wz, r5.xx);
-  r6.w = r6.y * r7.w + r6.w;
-  r7.w = dot(r10.xy, r5.xx);
-  r6.w = r2.w * r7.w + r6.w;
-  r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,-5)).xyzw;
-  r7.w = dot(r11.wz, r5.xx);
-  r6.w = r6.y * r7.w + r6.w;
-  r7.w = dot(r11.xy, r5.xx);
-  r6.w = r2.w * r7.w + r6.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,-5)).xyzw;
-  r7.w = dot(r12.wz, r5.xx);
-  r6.w = r6.y * r7.w + r6.w;
-  r7.w = dot(r12.xy, r5.xx);
-  r6.w = r2.w * r7.w + r6.w;
-  r13.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,-5)).xyzw;
-  r8.xz = r13.zy * r2.yy;
-  r8.xz = r8.xz * r5.xx;
-  r9.zw = r13.wx * r5.xx + r8.xz;
-  r6.w = r6.y * r9.z + r6.w;
-  r6.w = r2.w * r9.w + r6.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,-3)).xyzw;
-  r3.z = r3.w * r3.z + -r6.x;
-  r3.z = r2.y * r3.z + r6.x;
-  r9.zw = r14.yz * r3.zz;
-  r9.zw = r14.xw * r6.zz + r9.zw;
-  r3.w = r6.y * r9.w + r6.w;
-  r3.w = r2.w * r9.z + r3.w;
-  r6.w = r8.y * r3.z + r8.w;
-  r3.w = r6.y * r6.w + r3.w;
-  r3.w = r2.w * r9.w + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,-3)).xyzw;
-  r6.w = -r7.y + r6.x;
-  r6.w = r2.y * r6.w + r7.y;
-  r8.xy = r14.wx * r6.ww;
-  r8.xw = r14.zy * r7.yy + r8.xy;
-  r3.w = r6.y * r8.x + r3.w;
-  r3.w = r2.w * r8.w + r3.w;
-  r7.w = dot(r9.xy, r6.xx);
-  r3.w = r6.y * r7.w + r3.w;
-  r7.w = dot(r14.wz, r6.xx);
-  r3.w = r2.w * r7.w + r3.w;
-  r15.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,-3)).xyzw;
-  r7.w = dot(r15.wz, r7.yy);
-  r3.w = r6.y * r7.w + r3.w;
-  r7.w = dot(r15.xy, r7.yy);
-  r3.w = r2.w * r7.w + r3.w;
-  r7.w = dot(r10.xy, r6.xx);
-  r3.w = r6.y * r7.w + r3.w;
-  r7.w = dot(r15.wz, r6.xx);
-  r3.w = r2.w * r7.w + r3.w;
-  r10.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,-3)).xyzw;
-  r7.w = dot(r10.wz, r7.yy);
-  r3.w = r6.y * r7.w + r3.w;
-  r7.w = dot(r10.xy, r7.yy);
-  r3.w = r2.w * r7.w + r3.w;
-  r7.w = dot(r11.xy, r6.xx);
-  r3.w = r6.y * r7.w + r3.w;
-  r7.w = dot(r10.wz, r6.xx);
-  r3.w = r2.w * r7.w + r3.w;
-  r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,-3)).xyzw;
-  r7.w = r7.y + -r6.x;
-  r7.w = r2.y * r7.w + r6.x;
-  r8.xw = r11.zy * r7.ww;
-  r9.xy = r11.wx * r7.yy + r8.xw;
-  r3.w = r6.y * r9.x + r3.w;
-  r3.w = r2.w * r9.y + r3.w;
-  r8.x = dot(r12.xy, r6.xx);
-  r3.w = r6.y * r8.x + r3.w;
-  r8.x = dot(r11.wz, r6.xx);
-  r3.w = r2.w * r8.x + r3.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,-3)).xyzw;
-  r5.w = r2.y * r5.w + r5.x;
-  r9.xy = r12.yz * r2.yy;
-  r9.xy = r9.xy * r5.xx;
-  r9.xy = r12.xw * r5.ww + r9.xy;
-  r3.w = r6.y * r9.y + r3.w;
-  r3.w = r2.w * r9.x + r3.w;
-  r8.x = r13.x * r5.w + r8.z;
-  r3.w = r6.y * r8.x + r3.w;
-  r3.w = r2.w * r9.y + r3.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,-1)).xyzw;
-  r8.xz = r12.yz * r3.zz;
-  r8.xz = r12.xw * r6.zz + r8.xz;
-  r3.w = r6.y * r8.z + r3.w;
-  r3.w = r2.w * r8.x + r3.w;
-  r3.w = r6.y * r9.z + r3.w;
-  r3.w = r2.w * r8.z + r3.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,-1)).xyzw;
-  r9.yz = r7.yx + -r7.xy;
-  r9.yz = r2.yy * r9.yz + r7.xy;
-  r10.zw = r12.yz * r9.yy;
-  r10.zw = r12.xw * r6.ww + r10.zw;
-  r3.w = r6.y * r10.w + r3.w;
-  r3.w = r2.w * r10.z + r3.w;
-  r8.y = r14.y * r9.y + r8.y;
-  r3.w = r6.y * r8.y + r3.w;
-  r3.w = r2.w * r10.w + r3.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,-1)).xyzw;
-  r8.y = r7.x + -r7.z;
-  r8.y = r2.y * r8.y + r7.z;
-  r11.yz = r12.wx * r8.yy;
-  r11.yw = r12.zy * r7.zz + r11.yz;
-  r3.w = r6.y * r11.y + r3.w;
-  r3.w = r2.w * r11.w + r3.w;
-  r8.z = dot(r15.xy, r7.xx);
-  r3.w = r6.y * r8.z + r3.w;
-  r8.z = dot(r12.wz, r7.xx);
-  r3.w = r2.w * r8.z + r3.w;
-  r13.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,-1)).xyzw;
-  r8.z = r7.z + -r7.x;
-  r8.z = r2.y * r8.z + r7.x;
-  r11.yw = r13.zy * r8.zz;
-  r12.xz = r13.wx * r7.zz + r11.yw;
-  r3.w = r6.y * r12.x + r3.w;
-  r3.w = r2.w * r12.z + r3.w;
-  r9.w = dot(r10.xy, r7.xx);
-  r3.w = r6.y * r9.w + r3.w;
-  r9.w = dot(r13.wz, r7.xx);
-  r3.w = r2.w * r9.w + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,-1)).xyzw;
-  r10.xy = r14.yz * r7.ww;
-  r10.xy = r14.xw * r9.zz + r10.xy;
-  r3.w = r6.y * r10.y + r3.w;
-  r3.w = r2.w * r10.x + r3.w;
-  r8.w = r11.x * r9.z + r8.w;
-  r3.w = r6.y * r8.w + r3.w;
-  r3.w = r2.w * r10.y + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,-1)).xyzw;
-  r10.yw = r14.yz * r2.yy;
-  r10.yw = r10.yw * r5.xx;
-  r10.yw = r14.xw * r5.ww + r10.yw;
-  r3.w = r6.y * r10.w + r3.w;
-  r3.w = r2.w * r10.y + r3.w;
-  r3.w = r6.y * r9.x + r3.w;
-  r3.w = r2.w * r10.w + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,1)).xyzw;
-  r9.xw = r14.yz * r3.zz;
-  r9.xw = r14.xw * r6.zz + r9.xw;
-  r3.w = r6.y * r9.w + r3.w;
-  r3.w = r2.w * r9.x + r3.w;
-  r3.w = r6.y * r8.x + r3.w;
-  r3.w = r2.w * r9.w + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,1)).xyzw;
-  r8.xw = r14.yz * r9.yy;
-  r8.xw = r14.xw * r6.ww + r8.xw;
-  r3.w = r6.y * r8.w + r3.w;
-  r3.w = r2.w * r8.x + r3.w;
-  r3.w = r6.y * r10.z + r3.w;
-  r3.w = r2.w * r8.w + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,1)).xyzw;
-  r8.yw = r14.wx * r8.yy;
-  r10.zw = r14.zy * r7.zz + r8.yw;
-  r3.w = r6.y * r10.z + r3.w;
-  r3.w = r2.w * r10.w + r3.w;
-  r8.w = r7.z + -r5.y;
-  r8.w = r2.y * r8.w + r5.y;
-  r9.w = r12.y * r8.w + r11.z;
-  r3.w = r6.y * r9.w + r3.w;
-  r8.y = r14.z * r8.w + r8.y;
-  r3.w = r2.w * r8.y + r3.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,1)).xyzw;
-  r8.yz = r12.zy * r8.zz;
-  r8.zw = r12.wx * r7.zz + r8.yz;
-  r3.w = r6.y * r8.z + r3.w;
-  r3.w = r2.w * r8.w + r3.w;
-  r5.y = r5.y + -r7.z;
-  r5.y = r2.y * r5.y + r7.z;
-  r7.z = r13.x * r5.y + r11.w;
-  r3.w = r6.y * r7.z + r3.w;
-  r5.y = r12.w * r5.y + r8.y;
-  r3.w = r2.w * r5.y + r3.w;
-  r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,1)).xyzw;
-  r8.yz = r11.yz * r7.ww;
-  r8.yz = r11.xw * r9.zz + r8.yz;
-  r3.w = r6.y * r8.z + r3.w;
-  r3.w = r2.w * r8.y + r3.w;
-  r3.w = r6.y * r10.x + r3.w;
-  r3.w = r2.w * r8.z + r3.w;
-  r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,1)).xyzw;
-  r8.zw = r11.yz * r2.yy;
-  r8.zw = r8.zw * r5.xx;
-  r8.zw = r11.xw * r5.ww + r8.zw;
-  r3.w = r6.y * r8.w + r3.w;
-  r3.w = r2.w * r8.z + r3.w;
-  r3.w = r6.y * r10.y + r3.w;
-  r3.w = r2.w * r8.w + r3.w;
-  r10.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,3)).xyzw;
-  r10.yz = r10.yz * r3.zz;
-  r10.xy = r10.xw * r6.zz + r10.yz;
-  r3.w = r6.y * r10.y + r3.w;
-  r3.w = r2.w * r10.x + r3.w;
-  r3.w = r6.y * r9.x + r3.w;
-  r3.w = r2.w * r10.y + r3.w;
-  r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,3)).xyzw;
-  r9.xw = r11.wx * r6.ww;
-  r10.yz = r11.zy * r7.yy + r9.xw;
-  r3.w = r6.y * r10.y + r3.w;
-  r3.w = r2.w * r10.z + r3.w;
-  r3.w = r6.y * r8.x + r3.w;
-  r5.y = r11.z * r9.y + r9.x;
-  r3.w = r2.w * r5.y + r3.w;
-  r13.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,3)).xyzw;
-  r5.y = dot(r13.wz, r7.yy);
-  r3.w = r6.y * r5.y + r3.w;
-  r5.y = dot(r13.xy, r7.yy);
-  r3.w = r2.w * r5.y + r3.w;
-  r5.y = dot(r14.xy, r7.xx);
-  r3.w = r6.y * r5.y + r3.w;
-  r5.y = dot(r13.wz, r7.xx);
-  r3.w = r2.w * r5.y + r3.w;
-  r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,3)).xyzw;
-  r5.y = dot(r14.wz, r7.yy);
-  r3.w = r6.y * r5.y + r3.w;
-  r5.y = dot(r14.xy, r7.yy);
-  r3.w = r2.w * r5.y + r3.w;
-  r5.y = dot(r12.xy, r7.xx);
-  r3.w = r6.y * r5.y + r3.w;
-  r5.y = dot(r14.wz, r7.xx);
-  r3.w = r2.w * r5.y + r3.w;
-  r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,3)).xyzw;
-  r7.xz = r12.zy * r7.ww;
-  r7.yz = r12.wx * r7.yy + r7.xz;
-  r3.w = r6.y * r7.y + r3.w;
-  r3.w = r2.w * r7.z + r3.w;
-  r3.w = r6.y * r8.y + r3.w;
-  r5.y = r12.w * r9.z + r7.x;
-  r3.w = r2.w * r5.y + r3.w;
-  r7.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,3)).xyzw;
-  r7.yz = r7.yz * r2.yy;
-  r7.yz = r7.yz * r5.xx;
-  r7.xy = r7.xw * r5.ww + r7.yz;
-  r3.w = r6.y * r7.y + r3.w;
-  r3.w = r2.w * r7.x + r3.w;
-  r3.w = r6.y * r8.z + r3.w;
-  r3.w = r2.w * r7.y + r3.w;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,5)).xyzw;
-  r6.zw = r8.wx * r6.zz;
-  r7.yz = r8.zy * r5.xx + r6.zw;
-  r3.w = r6.y * r7.y + r3.w;
-  r3.w = r2.w * r7.z + r3.w;
-  r3.w = r6.y * r10.x + r3.w;
-  r3.z = r8.z * r3.z + r6.z;
-  r3.z = r2.w * r3.z + r3.w;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,5)).xyzw;
-  r3.w = dot(r8.wz, r5.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.xy, r5.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r3.w = dot(r11.xy, r6.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.wz, r6.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,5)).xyzw;
-  r3.w = dot(r8.wz, r5.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.xy, r5.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r3.w = dot(r13.xy, r6.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.wz, r6.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,5)).xyzw;
-  r3.w = dot(r8.wz, r5.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.xy, r5.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r3.w = dot(r14.xy, r6.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.wz, r6.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,5)).xyzw;
-  r3.w = dot(r8.wz, r5.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.xy, r5.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r3.w = dot(r12.xy, r6.xx);
-  r3.z = r6.y * r3.w + r3.z;
-  r3.w = dot(r8.wz, r6.xx);
-  r3.z = r2.w * r3.w + r3.z;
-  r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,5)).xyzw;
-  r2.xy = r8.zy * r2.yy;
-  r2.xy = r2.xy * r5.xx;
-  r3.xy = r8.wx * r5.xx + r2.xy;
-  r2.y = r6.y * r3.x + r3.z;
-  r2.y = r2.w * r3.y + r2.y;
-  r2.y = r6.y * r7.x + r2.y;
-  r2.x = r8.w * r5.w + r2.x;
-  r2.x = r2.w * r2.x + r2.y;
-  r1.z = r2.x / r5.z;
-  } else {
-  r1.y = r1.y == 3;
-  if (r1.y != 0) {
-  r1.y = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
-  r1.y = Spotlight0_ReverseZPerspective.x / r1.y;
-  r1.w = 1.000000e+000 / Spotlight0_Shadow_Params.x;
-  r1.w = 5.000000000e-001 * r1.w;
-  r2.xy = float2(-2.000000e+000,-2.000000e+000) + OnePixelStepForS0.zw;
-  r2.xy = r2.xy / OnePixelStepForS0.zw;
-  r3.xy = r2.xy * r1.ww;
-  r3.zw = -r3.xy;
-  r5.xyzw = r4.xyxy + r3.zyxy;
-  r2.w = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r5.xy).x;
-  r3.y = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r5.zw).x;
-  r3.xz = r4.xy + r3.xw;
-  r3.x = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r3.xz).x;
-  r2.xy = -r1.ww * r2.xy + r4.xy;
-  r1.w = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r2.xy).x;
-  r2.xy = r4.xy * OnePixelStepForS0.zw + float2(5.000000e-001,5.000000e-001);
-  r2.xy = frac(r2.xy);
-  r2.w = r2.w + -r1.w;
-  r1.w = r2.w * r2.y + r1.w;
-  r2.w = r3.y + -r3.x;
-  r2.y = r2.w * r2.y + r3.x;
-  r2.y = r2.y + -r1.w;
-  r1.w = r2.y * r2.x + r1.w;
-  r2.x = r1.y / Spotlight0_Shadow_Params.w;
-  r2.x = 1.000000000e+000 + -r2.x;
-  r2.x = -r2.x * r2.x + 1.000000000e+000;
-  r2.x = r2.x * -1.400000000e+001 + 1.600000000e+001;
-  r2.y = r1.y + -r1.w;
-  r2.y = saturate(2.500000000e+000 * r2.y);
-  r2.y = 1.000000000e+000 + -r2.y;
-  r2.y = dot(r2.yy, r2.zz);
-  r1.y = r1.w + -r1.y;
-  r1.y = r2.x * r1.y;
-  r1.y = 1.442695022e+000 * r1.y;
-  r1.y = exp2(r1.y);
-  r1.z = saturate(r1.y + r2.y);
-  } else {
-  r1.z = 1.000000000e+000;
-  }
-  }
-  }
-  }
-  r1.y = r1.z * v6.x + -v6.x;
-  r1.y = 1.000000000e+000 + r1.y;
-  r0.x = Spotlight0_ReverseZPerspective.w * r0.x + -1.000000000e+000;
-  r2.xyz = spotlight0ProjectiveReg_TEX.SampleLevel(spotlight0ProjectiveReg_SMP_s, r4.zw, r0.x).xyz;
-  r3.xyz = r2.xxx + -r2.xyz;
-  r2.xyz = Spotlight0_Shadow_Params.zzz * r3.xyz + r2.xyz;
-  r2.xyz = r2.xyz * r2.xyz;
-  r1.yzw = r2.xyz * r1.yyy;
-  r1.xyz = r1.yzw * r1.xxx;
-  r0.xyz = r1.xyz * r0.yzw;
-  o0.xyz = HDR_EncodeScale.zzz * r0.xyz;
-  o0.w = 1.000000000e+000;
-  return;
+r2.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.yz).xyz;
+r2.xyz = r2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+r0.x = dot(r2.xyz, r2.xyz);
+r0.x = rsqrt(r0.x);
+r2.xyz = r2.xyz * r0.xxx;
+r3.xyz = v0.xyz + -r1.xyz;
+r0.x = dot(r3.xyz, r3.xyz);
+r0.w = rsqrt(r0.x);
+r4.xyz = r3.xyz * r0.www;
+r0.w = dot(r4.xyz, r2.xyz);
+r2.xyz = v6.www * v5.xyz + r3.xyz;
+r2.x = dot(r2.xyz, r2.xyz);
+r2.x = sqrt(r2.x);
+r2.x = saturate(v6.z / r2.x);
+r2.y = 1.000000000e+000 + -r0.w;
+r2.z = 1.000000000e+000 + r2.x;
+r2.y = r2.y / r2.z;
+r2.z = r2.y * r2.x;
+r3.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.yz).xyz;
+r3.xyz = r3.xyz * r3.xyz;
+r3.xyz = r3.xyz + r3.xyz;
+r0.x = sqrt(r0.x);
+r0.y = -v0.w + r0.x;
+r0.y = max(r0.y, 0.000000000e+000);
+r0.z = 1.000000e+000 / v1.w;
+r0.z = saturate(r0.y * r0.z);
+r2.w = r0.z * -2.000000000e+000 + 3.000000000e+000;
+r0.z = r0.z * r0.z;
+r0.z = -r2.w * r0.z + 1.000000000e+000;
+r0.y = r0.y * r0.y + v2.x;
+r0.y = r0.z / r0.y;
+r0.z = dot(r4.xyz, v5.xyz);
+r0.z = saturate(-r0.z);
+r2.w = v4.w + -v4.z;
+r0.z = -v4.z + r0.z;
+r2.w = 1.000000e+000 / r2.w;
+r0.z = saturate(r2.w * r0.z);
+r2.w = r0.z * -2.000000000e+000 + 3.000000000e+000;
+r0.z = r0.z * r0.z;
+r0.z = r2.w * r0.z;
+r0.y = r0.y * r0.z;
+r0.z = saturate(r2.y * r2.x + r0.w);
+r2.xyw = r3.xyz * r0.zzz;
+r0.yzw = v1.xyz * r0.yyy;
+r0.yzw = r0.yzw * r2.xyw;
+r1.w = 1.000000000e+000;
+r3.x = dot(r1.xyzw, Spotlight0_Transform._m00_m10_m20_m30);
+r3.y = dot(r1.xyzw, Spotlight0_Transform._m01_m11_m21_m31);
+r3.z = dot(r1.xyzw, Spotlight0_Transform._m02_m12_m22_m32);
+r1.x = dot(r1.xyzw, Spotlight0_Transform._m03_m13_m23_m33);
+r1.yzw = r3.xyz / r1.xxx;
+r4.xyw = float3(5.000000e-001,-5.000000e-001,-5.000000e-001) * r1.yzz;
+r4.z = Spotlight0_Shadow_Bias_GoboScale.y * r1.y;
+r4.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r4.xyzw;
+r1.x = v6.y * r1.x + r3.z;
+r1.x = r1.x >= 0.000000000e+000;
+r1.x = r1.x ? 1.000000 : 0;
+r1.y = (int)ShadowFilterType.x;
+r1.z = r1.y == 4;
+if (r1.z != 0) {
+r1.z = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
+r1.z = Spotlight0_ReverseZPerspective.x / r1.z;
+r1.z = -Spotlight0_Shadow_Bias_GoboScale.x + r1.z;
+r2.x = Spotlight0_ReverseZPerspective.y * r1.z;
+r1.z = -r1.z * Spotlight0_ReverseZPerspective.z + Spotlight0_ReverseZPerspective.x;
+r1.z = r1.z / r2.x;
+r1.z = spotlight0ShadowSamplerReg_TEX.SampleCmpLevelZero(spotlight0ShadowSamplerReg_CMP_s, r4.xy, r1.z).x;
+} else {
+r2.x = r1.y == 1;
+if (r2.x != 0) {
+r2.x = (int)Spotlight0_Shadow_Params.y;
+if (r2.x == 0) {
+r1.z = 1.000000000e+000;
+} else {
+r2.y = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
+r2.y = Spotlight0_ReverseZPerspective.x / r2.y;
+r2.y = -Spotlight0_Shadow_Bias_GoboScale.x + r2.y;
+r2.w = Spotlight0_ReverseZPerspective.y * r2.y;
+r2.y = -r2.y * Spotlight0_ReverseZPerspective.z + Spotlight0_ReverseZPerspective.x;
+r2.y = r2.y / r2.w;
+r2.w = r2.x == 1;
+if (r2.w != 0) {
+r1.z = spotlight0ShadowSamplerReg_TEX.SampleCmpLevelZero(spotlight0ShadowSamplerReg_CMP_s, r4.xy, r2.y).x;
+} else {
+r2.w = 1.000000e+000 / Spotlight0_Shadow_Params.x;
+r3.x = 5.000000000e-001 * r2.w;
+r3.y = (int)r2.x + -1;
+r3.y = r3.y;
+r3.x = r3.x * r3.y;
+r3.yz = float2(0.000000e+000,0.000000e+000);
+while (true) {
+r3.w = (int)r3.z >= (int)r2.x;
+if (r3.w != 0) break;
+r5.y = r3.z;
+r3.w = r3.y;
+r5.z = 0.000000000e+000;
+while (true) {
+r5.w = (int)r5.z >= (int)r2.x;
+if (r5.w != 0) break;
+r5.x = r5.z;
+r5.xw = r5.xy * r2.ww + -r3.xx;
+r5.xw = r5.xw + r4.xy;
+r5.x = spotlight0ShadowSamplerReg_TEX.SampleCmpLevelZero(spotlight0ShadowSamplerReg_CMP_s, r5.xw, r2.y).x;
+r3.w = r5.x + r3.w;
+r5.z = (int)r5.z + 1;
+}
+r3.y = r3.w;
+r3.z = (int)r3.z + 1;
+}
+r2.x = (int)r2.x * (int)r2.x;
+r2.x = r2.x;
+r1.z = r3.y / r2.x;
+}
+}
+} else {
+r2.x = r1.y == 2;
+if (r2.x != 0) {
+r2.x = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
+r2.x = Spotlight0_ReverseZPerspective.x / r2.x;
+r2.x = -Spotlight0_Shadow_Bias_GoboScale.x + r2.x;
+r2.y = Spotlight0_ReverseZPerspective.y * r2.x;
+r2.x = -r2.x * Spotlight0_ReverseZPerspective.z + Spotlight0_ReverseZPerspective.x;
+r2.x = r2.x / r2.y;
+r2.yw = Spotlight0_ShadowMapDimensions.xy * r4.xy + float2(5.000000e-001,5.000000e-001);
+r3.xy = floor(r2.yw);
+r2.yw = -r3.xy + r2.yw;
+r3.xy = -r2.yw * Spotlight0_ShadowMapDimensions.zw + r4.xy;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, -5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r3.z = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.w = dot(r5.xyzw, r6.xyzw);
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, -5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, -5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, -5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, -5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, -5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, -3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, -3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, -3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, -3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, -3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, -3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, -1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, -1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, -1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, -1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, -1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, -1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, 1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, 1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, 1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, 1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, 1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, 1)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, 3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, 3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, 3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, 3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, 3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, 3)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-5, 5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-3, 5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(-1, 5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(1, 5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(3, 5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.xyzw = spotlight0ShadowSamplerReg_TEX.Gather(spotlight0ShadowSamplerReg_SMP_s, r3.xy, int2(5, 5)).xyzw;
+r6.xyzw = r5.xyzw >= r2.xxxx;
+r6.xyzw = r6.xyzw ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
+r7.x = dot(r6.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+r3.z = r7.x + r3.z;
+r5.x = dot(r5.xyzw, r6.xyzw);
+r3.w = r5.x + r3.w;
+r5.x = 0.000000000e+000 < r3.z;
+r3.z = r3.w / r3.z;
+r3.w = -r3.z + r2.x;
+r3.w = Spotlight0_ShadowMapDimensions.x * r3.w;
+r3.w = 1.000000015e-001 * r3.w;
+r3.z = saturate(r3.w / r3.z);
+r3.z = r3.z * r3.z;
+r3.z = r5.x ? r3.z : 0;
+r3.w = r3.z * r3.z;
+r5.x = r3.w * r3.z;
+r5.y = 3.000000000e+000 * r3.w;
+r5.z = 1.000000000e+000 + -r3.z;
+r5.w = r5.y * r5.z;
+r5.w = 2.000000030e-001 * r5.w;
+r6.x = r3.w * r3.z + r5.w;
+r6.y = 1.400000000e+001 * r5.x;
+r6.y = r6.x * 1.000000000e+001 + r6.y;
+r6.z = r5.z * r5.z;
+r6.w = r6.z * r3.z;
+r7.xy = float2(3.000000e+000,6.000000e-001) * r6.ww;
+r7.xy = r3.ww * r3.zz + r7.xy;
+r7.xy = r5.yy * r5.zz + r7.xy;
+r6.y = r7.y * 7.000000000e+000 + r6.y;
+r6.y = r6.y + r6.x;
+r6.y = r5.x * 2.000000000e+000 + r6.y;
+r6.y = r6.y + r6.x;
+r6.y = r6.y + r7.y;
+r6.y = r7.x * 5.000000000e+000 + r6.y;
+r6.y = r6.y + r7.y;
+r6.y = r6.y + r6.x;
+r6.y = r5.x * 2.000000000e+000 + r6.y;
+r6.y = r6.y + r6.x;
+r6.y = r6.y + r7.y;
+r6.y = r6.y + r7.x;
+r7.z = r6.z * r5.z;
+r7.z = r7.z * 8.000000119e-001 + r5.x;
+r7.z = r6.w * 3.000000000e+000 + r7.z;
+r7.z = r5.y * r5.z + r7.z;
+r6.y = r7.z * 3.000000000e+000 + r6.y;
+r6.y = r6.y + r7.x;
+r6.y = r6.y + r7.y;
+r6.y = r6.y + r6.x;
+r6.y = r5.x * 2.000000000e+000 + r6.y;
+r6.y = r6.y + r6.x;
+r6.y = r6.y + r7.y;
+r6.y = r6.y + r7.x;
+r6.y = r6.y + r7.z;
+r6.z = r6.z * r5.z + r5.x;
+r6.z = r6.w * 3.000000000e+000 + r6.z;
+r5.y = r5.y * r5.z + r6.z;
+r5.z = r6.y + r5.y;
+r5.z = r5.z + r7.z;
+r5.z = r5.z + r7.x;
+r5.z = r5.z + r7.y;
+r5.z = r5.z + r6.x;
+r5.z = r5.x * 2.000000000e+000 + r5.z;
+r5.z = r5.z + r6.x;
+r5.z = r5.z + r7.y;
+r5.z = r5.z + r7.x;
+r5.z = r7.z * 3.000000000e+000 + r5.z;
+r5.z = r5.z + r7.x;
+r5.z = r5.z + r7.y;
+r5.z = r5.z + r6.x;
+r5.z = r5.x * 2.000000000e+000 + r5.z;
+r5.z = r5.z + r6.x;
+r5.z = r5.z + r7.y;
+r5.z = r7.x * 5.000000000e+000 + r5.z;
+r5.z = r5.z + r7.y;
+r5.z = r5.z + r6.x;
+r5.z = r5.x * 2.000000000e+000 + r5.z;
+r5.z = r5.z + r6.x;
+r5.z = r7.y * 7.000000000e+000 + r5.z;
+r5.z = r5.z + r6.x;
+r5.z = r5.x * 2.000000000e+000 + r5.z;
+r5.z = r6.x * 9.000000000e+000 + r5.z;
+r5.z = r5.x * 1.200000000e+001 + r5.z;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,-5)).xyzw;
+r6.y = 1.000000000e+000 + -r2.w;
+r6.z = -r5.x * r2.y + r5.x;
+r8.xw = r8.wx * r6.zz;
+r8.xz = r8.zy * r5.xx + r8.xw;
+r6.w = r8.z * r2.w;
+r6.w = r6.y * r8.x + r6.w;
+r9.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,-5)).xyzw;
+r7.w = dot(r9.wz, r5.xx);
+r6.w = r6.y * r7.w + r6.w;
+r7.w = dot(r9.xy, r5.xx);
+r6.w = r2.w * r7.w + r6.w;
+r10.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,-5)).xyzw;
+r7.w = dot(r10.wz, r5.xx);
+r6.w = r6.y * r7.w + r6.w;
+r7.w = dot(r10.xy, r5.xx);
+r6.w = r2.w * r7.w + r6.w;
+r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,-5)).xyzw;
+r7.w = dot(r11.wz, r5.xx);
+r6.w = r6.y * r7.w + r6.w;
+r7.w = dot(r11.xy, r5.xx);
+r6.w = r2.w * r7.w + r6.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,-5)).xyzw;
+r7.w = dot(r12.wz, r5.xx);
+r6.w = r6.y * r7.w + r6.w;
+r7.w = dot(r12.xy, r5.xx);
+r6.w = r2.w * r7.w + r6.w;
+r13.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,-5)).xyzw;
+r8.xz = r13.zy * r2.yy;
+r8.xz = r8.xz * r5.xx;
+r9.zw = r13.wx * r5.xx + r8.xz;
+r6.w = r6.y * r9.z + r6.w;
+r6.w = r2.w * r9.w + r6.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,-3)).xyzw;
+r3.z = r3.w * r3.z + -r6.x;
+r3.z = r2.y * r3.z + r6.x;
+r9.zw = r14.yz * r3.zz;
+r9.zw = r14.xw * r6.zz + r9.zw;
+r3.w = r6.y * r9.w + r6.w;
+r3.w = r2.w * r9.z + r3.w;
+r6.w = r8.y * r3.z + r8.w;
+r3.w = r6.y * r6.w + r3.w;
+r3.w = r2.w * r9.w + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,-3)).xyzw;
+r6.w = -r7.y + r6.x;
+r6.w = r2.y * r6.w + r7.y;
+r8.xy = r14.wx * r6.ww;
+r8.xw = r14.zy * r7.yy + r8.xy;
+r3.w = r6.y * r8.x + r3.w;
+r3.w = r2.w * r8.w + r3.w;
+r7.w = dot(r9.xy, r6.xx);
+r3.w = r6.y * r7.w + r3.w;
+r7.w = dot(r14.wz, r6.xx);
+r3.w = r2.w * r7.w + r3.w;
+r15.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,-3)).xyzw;
+r7.w = dot(r15.wz, r7.yy);
+r3.w = r6.y * r7.w + r3.w;
+r7.w = dot(r15.xy, r7.yy);
+r3.w = r2.w * r7.w + r3.w;
+r7.w = dot(r10.xy, r6.xx);
+r3.w = r6.y * r7.w + r3.w;
+r7.w = dot(r15.wz, r6.xx);
+r3.w = r2.w * r7.w + r3.w;
+r10.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,-3)).xyzw;
+r7.w = dot(r10.wz, r7.yy);
+r3.w = r6.y * r7.w + r3.w;
+r7.w = dot(r10.xy, r7.yy);
+r3.w = r2.w * r7.w + r3.w;
+r7.w = dot(r11.xy, r6.xx);
+r3.w = r6.y * r7.w + r3.w;
+r7.w = dot(r10.wz, r6.xx);
+r3.w = r2.w * r7.w + r3.w;
+r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,-3)).xyzw;
+r7.w = r7.y + -r6.x;
+r7.w = r2.y * r7.w + r6.x;
+r8.xw = r11.zy * r7.ww;
+r9.xy = r11.wx * r7.yy + r8.xw;
+r3.w = r6.y * r9.x + r3.w;
+r3.w = r2.w * r9.y + r3.w;
+r8.x = dot(r12.xy, r6.xx);
+r3.w = r6.y * r8.x + r3.w;
+r8.x = dot(r11.wz, r6.xx);
+r3.w = r2.w * r8.x + r3.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,-3)).xyzw;
+r5.w = r2.y * r5.w + r5.x;
+r9.xy = r12.yz * r2.yy;
+r9.xy = r9.xy * r5.xx;
+r9.xy = r12.xw * r5.ww + r9.xy;
+r3.w = r6.y * r9.y + r3.w;
+r3.w = r2.w * r9.x + r3.w;
+r8.x = r13.x * r5.w + r8.z;
+r3.w = r6.y * r8.x + r3.w;
+r3.w = r2.w * r9.y + r3.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,-1)).xyzw;
+r8.xz = r12.yz * r3.zz;
+r8.xz = r12.xw * r6.zz + r8.xz;
+r3.w = r6.y * r8.z + r3.w;
+r3.w = r2.w * r8.x + r3.w;
+r3.w = r6.y * r9.z + r3.w;
+r3.w = r2.w * r8.z + r3.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,-1)).xyzw;
+r9.yz = r7.yx + -r7.xy;
+r9.yz = r2.yy * r9.yz + r7.xy;
+r10.zw = r12.yz * r9.yy;
+r10.zw = r12.xw * r6.ww + r10.zw;
+r3.w = r6.y * r10.w + r3.w;
+r3.w = r2.w * r10.z + r3.w;
+r8.y = r14.y * r9.y + r8.y;
+r3.w = r6.y * r8.y + r3.w;
+r3.w = r2.w * r10.w + r3.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,-1)).xyzw;
+r8.y = r7.x + -r7.z;
+r8.y = r2.y * r8.y + r7.z;
+r11.yz = r12.wx * r8.yy;
+r11.yw = r12.zy * r7.zz + r11.yz;
+r3.w = r6.y * r11.y + r3.w;
+r3.w = r2.w * r11.w + r3.w;
+r8.z = dot(r15.xy, r7.xx);
+r3.w = r6.y * r8.z + r3.w;
+r8.z = dot(r12.wz, r7.xx);
+r3.w = r2.w * r8.z + r3.w;
+r13.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,-1)).xyzw;
+r8.z = r7.z + -r7.x;
+r8.z = r2.y * r8.z + r7.x;
+r11.yw = r13.zy * r8.zz;
+r12.xz = r13.wx * r7.zz + r11.yw;
+r3.w = r6.y * r12.x + r3.w;
+r3.w = r2.w * r12.z + r3.w;
+r9.w = dot(r10.xy, r7.xx);
+r3.w = r6.y * r9.w + r3.w;
+r9.w = dot(r13.wz, r7.xx);
+r3.w = r2.w * r9.w + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,-1)).xyzw;
+r10.xy = r14.yz * r7.ww;
+r10.xy = r14.xw * r9.zz + r10.xy;
+r3.w = r6.y * r10.y + r3.w;
+r3.w = r2.w * r10.x + r3.w;
+r8.w = r11.x * r9.z + r8.w;
+r3.w = r6.y * r8.w + r3.w;
+r3.w = r2.w * r10.y + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,-1)).xyzw;
+r10.yw = r14.yz * r2.yy;
+r10.yw = r10.yw * r5.xx;
+r10.yw = r14.xw * r5.ww + r10.yw;
+r3.w = r6.y * r10.w + r3.w;
+r3.w = r2.w * r10.y + r3.w;
+r3.w = r6.y * r9.x + r3.w;
+r3.w = r2.w * r10.w + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,1)).xyzw;
+r9.xw = r14.yz * r3.zz;
+r9.xw = r14.xw * r6.zz + r9.xw;
+r3.w = r6.y * r9.w + r3.w;
+r3.w = r2.w * r9.x + r3.w;
+r3.w = r6.y * r8.x + r3.w;
+r3.w = r2.w * r9.w + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,1)).xyzw;
+r8.xw = r14.yz * r9.yy;
+r8.xw = r14.xw * r6.ww + r8.xw;
+r3.w = r6.y * r8.w + r3.w;
+r3.w = r2.w * r8.x + r3.w;
+r3.w = r6.y * r10.z + r3.w;
+r3.w = r2.w * r8.w + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,1)).xyzw;
+r8.yw = r14.wx * r8.yy;
+r10.zw = r14.zy * r7.zz + r8.yw;
+r3.w = r6.y * r10.z + r3.w;
+r3.w = r2.w * r10.w + r3.w;
+r8.w = r7.z + -r5.y;
+r8.w = r2.y * r8.w + r5.y;
+r9.w = r12.y * r8.w + r11.z;
+r3.w = r6.y * r9.w + r3.w;
+r8.y = r14.z * r8.w + r8.y;
+r3.w = r2.w * r8.y + r3.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,1)).xyzw;
+r8.yz = r12.zy * r8.zz;
+r8.zw = r12.wx * r7.zz + r8.yz;
+r3.w = r6.y * r8.z + r3.w;
+r3.w = r2.w * r8.w + r3.w;
+r5.y = r5.y + -r7.z;
+r5.y = r2.y * r5.y + r7.z;
+r7.z = r13.x * r5.y + r11.w;
+r3.w = r6.y * r7.z + r3.w;
+r5.y = r12.w * r5.y + r8.y;
+r3.w = r2.w * r5.y + r3.w;
+r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,1)).xyzw;
+r8.yz = r11.yz * r7.ww;
+r8.yz = r11.xw * r9.zz + r8.yz;
+r3.w = r6.y * r8.z + r3.w;
+r3.w = r2.w * r8.y + r3.w;
+r3.w = r6.y * r10.x + r3.w;
+r3.w = r2.w * r8.z + r3.w;
+r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,1)).xyzw;
+r8.zw = r11.yz * r2.yy;
+r8.zw = r8.zw * r5.xx;
+r8.zw = r11.xw * r5.ww + r8.zw;
+r3.w = r6.y * r8.w + r3.w;
+r3.w = r2.w * r8.z + r3.w;
+r3.w = r6.y * r10.y + r3.w;
+r3.w = r2.w * r8.w + r3.w;
+r10.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,3)).xyzw;
+r10.yz = r10.yz * r3.zz;
+r10.xy = r10.xw * r6.zz + r10.yz;
+r3.w = r6.y * r10.y + r3.w;
+r3.w = r2.w * r10.x + r3.w;
+r3.w = r6.y * r9.x + r3.w;
+r3.w = r2.w * r10.y + r3.w;
+r11.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,3)).xyzw;
+r9.xw = r11.wx * r6.ww;
+r10.yz = r11.zy * r7.yy + r9.xw;
+r3.w = r6.y * r10.y + r3.w;
+r3.w = r2.w * r10.z + r3.w;
+r3.w = r6.y * r8.x + r3.w;
+r5.y = r11.z * r9.y + r9.x;
+r3.w = r2.w * r5.y + r3.w;
+r13.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,3)).xyzw;
+r5.y = dot(r13.wz, r7.yy);
+r3.w = r6.y * r5.y + r3.w;
+r5.y = dot(r13.xy, r7.yy);
+r3.w = r2.w * r5.y + r3.w;
+r5.y = dot(r14.xy, r7.xx);
+r3.w = r6.y * r5.y + r3.w;
+r5.y = dot(r13.wz, r7.xx);
+r3.w = r2.w * r5.y + r3.w;
+r14.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,3)).xyzw;
+r5.y = dot(r14.wz, r7.yy);
+r3.w = r6.y * r5.y + r3.w;
+r5.y = dot(r14.xy, r7.yy);
+r3.w = r2.w * r5.y + r3.w;
+r5.y = dot(r12.xy, r7.xx);
+r3.w = r6.y * r5.y + r3.w;
+r5.y = dot(r14.wz, r7.xx);
+r3.w = r2.w * r5.y + r3.w;
+r12.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,3)).xyzw;
+r7.xz = r12.zy * r7.ww;
+r7.yz = r12.wx * r7.yy + r7.xz;
+r3.w = r6.y * r7.y + r3.w;
+r3.w = r2.w * r7.z + r3.w;
+r3.w = r6.y * r8.y + r3.w;
+r5.y = r12.w * r9.z + r7.x;
+r3.w = r2.w * r5.y + r3.w;
+r7.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,3)).xyzw;
+r7.yz = r7.yz * r2.yy;
+r7.yz = r7.yz * r5.xx;
+r7.xy = r7.xw * r5.ww + r7.yz;
+r3.w = r6.y * r7.y + r3.w;
+r3.w = r2.w * r7.x + r3.w;
+r3.w = r6.y * r8.z + r3.w;
+r3.w = r2.w * r7.y + r3.w;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-5,5)).xyzw;
+r6.zw = r8.wx * r6.zz;
+r7.yz = r8.zy * r5.xx + r6.zw;
+r3.w = r6.y * r7.y + r3.w;
+r3.w = r2.w * r7.z + r3.w;
+r3.w = r6.y * r10.x + r3.w;
+r3.z = r8.z * r3.z + r6.z;
+r3.z = r2.w * r3.z + r3.w;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-3,5)).xyzw;
+r3.w = dot(r8.wz, r5.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.xy, r5.xx);
+r3.z = r2.w * r3.w + r3.z;
+r3.w = dot(r11.xy, r6.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.wz, r6.xx);
+r3.z = r2.w * r3.w + r3.z;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(-1,5)).xyzw;
+r3.w = dot(r8.wz, r5.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.xy, r5.xx);
+r3.z = r2.w * r3.w + r3.z;
+r3.w = dot(r13.xy, r6.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.wz, r6.xx);
+r3.z = r2.w * r3.w + r3.z;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(1,5)).xyzw;
+r3.w = dot(r8.wz, r5.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.xy, r5.xx);
+r3.z = r2.w * r3.w + r3.z;
+r3.w = dot(r14.xy, r6.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.wz, r6.xx);
+r3.z = r2.w * r3.w + r3.z;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(3,5)).xyzw;
+r3.w = dot(r8.wz, r5.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.xy, r5.xx);
+r3.z = r2.w * r3.w + r3.z;
+r3.w = dot(r12.xy, r6.xx);
+r3.z = r6.y * r3.w + r3.z;
+r3.w = dot(r8.wz, r6.xx);
+r3.z = r2.w * r3.w + r3.z;
+r8.xyzw = spotlight0ShadowSamplerReg_TEX.GatherCmp(spotlight0ShadowSamplerReg_CMP_s, r3.xy, r2.x, int2(5,5)).xyzw;
+r2.xy = r8.zy * r2.yy;
+r2.xy = r2.xy * r5.xx;
+r3.xy = r8.wx * r5.xx + r2.xy;
+r2.y = r6.y * r3.x + r3.z;
+r2.y = r2.w * r3.y + r2.y;
+r2.y = r6.y * r7.x + r2.y;
+r2.x = r8.w * r5.w + r2.x;
+r2.x = r2.w * r2.x + r2.y;
+r1.z = r2.x / r5.z;
+} else {
+r1.y = r1.y == 3;
+if (r1.y != 0) {
+r1.y = r1.w * Spotlight0_ReverseZPerspective.y + Spotlight0_ReverseZPerspective.z;
+r1.y = Spotlight0_ReverseZPerspective.x / r1.y;
+r1.w = 1.000000e+000 / Spotlight0_Shadow_Params.x;
+r1.w = 5.000000000e-001 * r1.w;
+r2.xy = float2(-2.000000e+000,-2.000000e+000) + OnePixelStepForS0.zw;
+r2.xy = r2.xy / OnePixelStepForS0.zw;
+r3.xy = r2.xy * r1.ww;
+r3.zw = -r3.xy;
+r5.xyzw = r4.xyxy + r3.zyxy;
+r2.w = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r5.xy).x;
+r3.y = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r5.zw).x;
+r3.xz = r4.xy + r3.xw;
+r3.x = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r3.xz).x;
+r2.xy = -r1.ww * r2.xy + r4.xy;
+r1.w = spotlight0ShadowSamplerReg_TEX.Sample(spotlight0ShadowSamplerReg_SMP_s, r2.xy).x;
+r2.xy = r4.xy * OnePixelStepForS0.zw + float2(5.000000e-001,5.000000e-001);
+r2.xy = frac(r2.xy);
+r2.w = r2.w + -r1.w;
+r1.w = r2.w * r2.y + r1.w;
+r2.w = r3.y + -r3.x;
+r2.y = r2.w * r2.y + r3.x;
+r2.y = r2.y + -r1.w;
+r1.w = r2.y * r2.x + r1.w;
+r2.x = r1.y / Spotlight0_Shadow_Params.w;
+r2.x = 1.000000000e+000 + -r2.x;
+r2.x = -r2.x * r2.x + 1.000000000e+000;
+r2.x = r2.x * -1.400000000e+001 + 1.600000000e+001;
+r2.y = r1.y + -r1.w;
+r2.y = saturate(2.500000000e+000 * r2.y);
+r2.y = 1.000000000e+000 + -r2.y;
+r2.y = dot(r2.yy, r2.zz);
+r1.y = r1.w + -r1.y;
+r1.y = r2.x * r1.y;
+r1.y = 1.442695022e+000 * r1.y;
+r1.y = exp2(r1.y);
+r1.z = saturate(r1.y + r2.y);
+} else {
+r1.z = 1.000000000e+000;
+}
+}
+}
+}
+r1.y = r1.z * v6.x + -v6.x;
+r1.y = 1.000000000e+000 + r1.y;
+r0.x = Spotlight0_ReverseZPerspective.w * r0.x + -1.000000000e+000;
+r2.xyz = spotlight0ProjectiveReg_TEX.SampleLevel(spotlight0ProjectiveReg_SMP_s, r4.zw, r0.x).xyz;
+r3.xyz = r2.xxx + -r2.xyz;
+r2.xyz = Spotlight0_Shadow_Params.zzz * r3.xyz + r2.xyz;
+r2.xyz = r2.xyz * r2.xyz;
+r1.yzw = r2.xyz * r1.yyy;
+r1.xyz = r1.yzw * r1.xxx;
+r0.xyz = r1.xyz * r0.yzw;
+o0.xyz = HDR_EncodeScale.zzz * r0.xyz;
+o0.w = 1.000000000e+000;
+return;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -954,7 +976,7 @@ r1.xyzw /= r1.wwww;
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
 //
 //
-// Buffer Definitions: 
+// Buffer Definitions:
 //
 // cbuffer cbDefaultXSC
 // {
@@ -1066,7 +1088,7 @@ r1.xyzw /= r1.wwww;
 // TEXCOORD                 2   xyzw        2     NONE   float   xyzw
 // TEXCOORD                 3   xyzw        3     NONE   float      w
 // TEXCOORD                 4   xyzw        4     NONE   float   xyzw
-// TEXCOORD                 5   xyzw        5     NONE   float   xyz 
+// TEXCOORD                 5   xyzw        5     NONE   float   xyz
 // TEXCOORD                 6   xyzw        6     NONE   float   xyzw
 //
 //
@@ -1173,746 +1195,746 @@ and r1.x, r1.x, l(0x3f800000)
 ftoi r1.y, cb2[68].x
 ieq r1.z, r1.y, l(4)
 if_nz r1.z
-  mad r1.z, r1.w, cb2[69].y, cb2[69].z
-  div r1.z, cb2[69].x, r1.z
-  add r1.z, r1.z, -cb2[74].x
-  mul r2.x, r1.z, cb2[69].y
-  mad r1.z, -r1.z, cb2[69].z, cb2[69].x
-  div r1.z, r1.z, r2.x
-  sample_c_lz_indexable(texture2d)(float,float,float,float) r1.z, r4.xyxx, t14.xxxx, s6, r1.z
-else 
-  ieq r2.x, r1.y, l(1)
-  if_nz r2.x
-    ftoi r2.x, cb2[66].y
-    if_z r2.x
-      mov r1.z, l(1.000000)
-    else 
-      mad r2.y, r1.w, cb2[69].y, cb2[69].z
-      div r2.y, cb2[69].x, r2.y
-      add r2.y, r2.y, -cb2[74].x
-      mul r2.w, r2.y, cb2[69].y
-      mad r2.y, -r2.y, cb2[69].z, cb2[69].x
-      div r2.y, r2.y, r2.w
-      ieq r2.w, r2.x, l(1)
-      if_nz r2.w
-        sample_c_lz_indexable(texture2d)(float,float,float,float) r1.z, r4.xyxx, t14.xxxx, s6, r2.y
-      else 
-        div r2.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb2[66].x
-        mul r3.x, r2.w, l(0.500000)
-        iadd r3.y, r2.x, l(-1)
-        itof r3.y, r3.y
-        mul r3.x, r3.y, r3.x
-        mov r3.yz, l(0,0,0,0)
-        loop 
-          ige r3.w, r3.z, r2.x
-          breakc_nz r3.w
-          itof r5.y, r3.z
-          mov r3.w, r3.y
-          mov r5.z, l(0)
-          loop 
-            ige r5.w, r5.z, r2.x
-            breakc_nz r5.w
-            itof r5.x, r5.z
-            mad r5.xw, r5.xxxy, r2.wwww, -r3.xxxx
-            add r5.xw, r4.xxxy, r5.xxxw
-            sample_c_lz_indexable(texture2d)(float,float,float,float) r5.x, r5.xwxx, t14.xxxx, s6, r2.y
-            add r3.w, r3.w, r5.x
-            iadd r5.z, r5.z, l(1)
-          endloop 
-          mov r3.y, r3.w
-          iadd r3.z, r3.z, l(1)
-        endloop 
-        imul null, r2.x, r2.x, r2.x
-        itof r2.x, r2.x
-        div r1.z, r3.y, r2.x
-      endif 
-    endif 
-  else 
-    ieq r2.x, r1.y, l(2)
-    if_nz r2.x
-      mad r2.x, r1.w, cb2[69].y, cb2[69].z
-      div r2.x, cb2[69].x, r2.x
-      add r2.x, r2.x, -cb2[74].x
-      mul r2.y, r2.x, cb2[69].y
-      mad r2.x, -r2.x, cb2[69].z, cb2[69].x
-      div r2.x, r2.x, r2.y
-      mad r2.yw, cb2[67].xxxy, r4.xxxy, l(0.000000, 0.500000, 0.000000, 0.500000)
-      round_ni r3.xy, r2.ywyy
-      add r2.yw, r2.yyyw, -r3.xxxy
-      mad r3.xy, -r2.ywyy, cb2[67].zwzz, r4.xyxx
-      gather4_aoffimmi_indexable(-5,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r3.z, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      dp4 r3.w, r5.xyzw, r6.xyzw
-      gather4_aoffimmi_indexable(-3,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-1,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(1,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(3,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(5,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-5,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-3,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-1,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(1,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(3,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(5,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-5,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-3,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-1,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(1,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(3,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(5,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-5,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-3,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-1,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(1,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(3,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(5,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-5,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-3,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-1,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(1,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(3,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(5,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-5,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-3,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(-1,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(1,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(3,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      gather4_aoffimmi_indexable(5,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
-      ge r6.xyzw, r5.xyzw, r2.xxxx
-      movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
-      dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-      add r3.z, r3.z, r7.x
-      dp4 r5.x, r5.xyzw, r6.xyzw
-      add r3.w, r3.w, r5.x
-      lt r5.x, l(0.000000), r3.z
-      div r3.z, r3.w, r3.z
-      add r3.w, r2.x, -r3.z
-      mul r3.w, r3.w, cb2[67].x
-      mul r3.w, r3.w, l(0.100000)
-      div_sat r3.z, r3.w, r3.z
-      mul r3.z, r3.z, r3.z
-      and r3.z, r3.z, r5.x
-      mul r3.w, r3.z, r3.z
-      mul r5.x, r3.z, r3.w
-      mul r5.y, r3.w, l(3.000000)
-      add r5.z, -r3.z, l(1.000000)
-      mul r5.w, r5.z, r5.y
-      mul r5.w, r5.w, l(0.200000)
-      mad r6.x, r3.w, r3.z, r5.w
-      mul r6.y, r5.x, l(14.000000)
-      mad r6.y, r6.x, l(10.000000), r6.y
-      mul r6.z, r5.z, r5.z
-      mul r6.w, r3.z, r6.z
-      mul r7.xy, r6.wwww, l(3.000000, 0.600000, 0.000000, 0.000000)
-      mad r7.xy, r3.wwww, r3.zzzz, r7.xyxx
-      mad r7.xy, r5.yyyy, r5.zzzz, r7.xyxx
-      mad r6.y, r7.y, l(7.000000), r6.y
-      add r6.y, r6.x, r6.y
-      mad r6.y, r5.x, l(2.000000), r6.y
-      add r6.y, r6.x, r6.y
-      add r6.y, r7.y, r6.y
-      mad r6.y, r7.x, l(5.000000), r6.y
-      add r6.y, r7.y, r6.y
-      add r6.y, r6.x, r6.y
-      mad r6.y, r5.x, l(2.000000), r6.y
-      add r6.y, r6.x, r6.y
-      add r6.y, r7.y, r6.y
-      add r6.y, r7.x, r6.y
-      mul r7.z, r5.z, r6.z
-      mad r7.z, r7.z, l(0.800000), r5.x
-      mad r7.z, r6.w, l(3.000000), r7.z
-      mad r7.z, r5.y, r5.z, r7.z
-      mad r6.y, r7.z, l(3.000000), r6.y
-      add r6.y, r7.x, r6.y
-      add r6.y, r7.y, r6.y
-      add r6.y, r6.x, r6.y
-      mad r6.y, r5.x, l(2.000000), r6.y
-      add r6.y, r6.x, r6.y
-      add r6.y, r7.y, r6.y
-      add r6.y, r7.x, r6.y
-      add r6.y, r7.z, r6.y
-      mad r6.z, r6.z, r5.z, r5.x
-      mad r6.z, r6.w, l(3.000000), r6.z
-      mad r5.y, r5.y, r5.z, r6.z
-      add r5.z, r5.y, r6.y
-      add r5.z, r7.z, r5.z
-      add r5.z, r7.x, r5.z
-      add r5.z, r7.y, r5.z
-      add r5.z, r6.x, r5.z
-      mad r5.z, r5.x, l(2.000000), r5.z
-      add r5.z, r6.x, r5.z
-      add r5.z, r7.y, r5.z
-      add r5.z, r7.x, r5.z
-      mad r5.z, r7.z, l(3.000000), r5.z
-      add r5.z, r7.x, r5.z
-      add r5.z, r7.y, r5.z
-      add r5.z, r6.x, r5.z
-      mad r5.z, r5.x, l(2.000000), r5.z
-      add r5.z, r6.x, r5.z
-      add r5.z, r7.y, r5.z
-      mad r5.z, r7.x, l(5.000000), r5.z
-      add r5.z, r7.y, r5.z
-      add r5.z, r6.x, r5.z
-      mad r5.z, r5.x, l(2.000000), r5.z
-      add r5.z, r6.x, r5.z
-      mad r5.z, r7.y, l(7.000000), r5.z
-      add r5.z, r6.x, r5.z
-      mad r5.z, r5.x, l(2.000000), r5.z
-      mad r5.z, r6.x, l(9.000000), r5.z
-      mad r5.z, r5.x, l(12.000000), r5.z
-      gather4_c_aoffimmi_indexable(-5,-5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      add r6.y, -r2.w, l(1.000000)
-      mad r6.z, -r5.x, r2.y, r5.x
-      mul r8.xw, r6.zzzz, r8.wwwx
-      mad r8.xz, r8.zzyz, r5.xxxx, r8.xxwx
-      mul r6.w, r2.w, r8.z
-      mad r6.w, r6.y, r8.x, r6.w
-      gather4_c_aoffimmi_indexable(-3,-5,0)(texture2d)(float,float,float,float) r9.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r7.w, r9.wzww, r5.xxxx
-      mad r6.w, r6.y, r7.w, r6.w
-      dp2 r7.w, r9.xyxx, r5.xxxx
-      mad r6.w, r2.w, r7.w, r6.w
-      gather4_c_aoffimmi_indexable(-1,-5,0)(texture2d)(float,float,float,float) r10.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r7.w, r10.wzww, r5.xxxx
-      mad r6.w, r6.y, r7.w, r6.w
-      dp2 r7.w, r10.xyxx, r5.xxxx
-      mad r6.w, r2.w, r7.w, r6.w
-      gather4_c_aoffimmi_indexable(1,-5,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r7.w, r11.wzww, r5.xxxx
-      mad r6.w, r6.y, r7.w, r6.w
-      dp2 r7.w, r11.xyxx, r5.xxxx
-      mad r6.w, r2.w, r7.w, r6.w
-      gather4_c_aoffimmi_indexable(3,-5,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r7.w, r12.wzww, r5.xxxx
-      mad r6.w, r6.y, r7.w, r6.w
-      dp2 r7.w, r12.xyxx, r5.xxxx
-      mad r6.w, r2.w, r7.w, r6.w
-      gather4_c_aoffimmi_indexable(5,-5,0)(texture2d)(float,float,float,float) r13.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.xz, r2.yyyy, r13.zzyz
-      mul r8.xz, r5.xxxx, r8.xxzx
-      mad r9.zw, r13.wwwx, r5.xxxx, r8.xxxz
-      mad r6.w, r6.y, r9.z, r6.w
-      mad r6.w, r2.w, r9.w, r6.w
-      gather4_c_aoffimmi_indexable(-5,-3,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mad r3.z, r3.w, r3.z, -r6.x
-      mad r3.z, r2.y, r3.z, r6.x
-      mul r9.zw, r3.zzzz, r14.yyyz
-      mad r9.zw, r14.xxxw, r6.zzzz, r9.zzzw
-      mad r3.w, r6.y, r9.w, r6.w
-      mad r3.w, r2.w, r9.z, r3.w
-      mad r6.w, r8.y, r3.z, r8.w
-      mad r3.w, r6.y, r6.w, r3.w
-      mad r3.w, r2.w, r9.w, r3.w
-      gather4_c_aoffimmi_indexable(-3,-3,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      add r6.w, r6.x, -r7.y
-      mad r6.w, r2.y, r6.w, r7.y
-      mul r8.xy, r6.wwww, r14.wxww
-      mad r8.xw, r14.zzzy, r7.yyyy, r8.xxxy
-      mad r3.w, r6.y, r8.x, r3.w
-      mad r3.w, r2.w, r8.w, r3.w
-      dp2 r7.w, r9.xyxx, r6.xxxx
-      mad r3.w, r6.y, r7.w, r3.w
-      dp2 r7.w, r14.wzww, r6.xxxx
-      mad r3.w, r2.w, r7.w, r3.w
-      gather4_c_aoffimmi_indexable(-1,-3,0)(texture2d)(float,float,float,float) r15.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r7.w, r15.wzww, r7.yyyy
-      mad r3.w, r6.y, r7.w, r3.w
-      dp2 r7.w, r15.xyxx, r7.yyyy
-      mad r3.w, r2.w, r7.w, r3.w
-      dp2 r7.w, r10.xyxx, r6.xxxx
-      mad r3.w, r6.y, r7.w, r3.w
-      dp2 r7.w, r15.wzww, r6.xxxx
-      mad r3.w, r2.w, r7.w, r3.w
-      gather4_c_aoffimmi_indexable(1,-3,0)(texture2d)(float,float,float,float) r10.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r7.w, r10.wzww, r7.yyyy
-      mad r3.w, r6.y, r7.w, r3.w
-      dp2 r7.w, r10.xyxx, r7.yyyy
-      mad r3.w, r2.w, r7.w, r3.w
-      dp2 r7.w, r11.xyxx, r6.xxxx
-      mad r3.w, r6.y, r7.w, r3.w
-      dp2 r7.w, r10.wzww, r6.xxxx
-      mad r3.w, r2.w, r7.w, r3.w
-      gather4_c_aoffimmi_indexable(3,-3,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      add r7.w, -r6.x, r7.y
-      mad r7.w, r2.y, r7.w, r6.x
-      mul r8.xw, r7.wwww, r11.zzzy
-      mad r9.xy, r11.wxww, r7.yyyy, r8.xwxx
-      mad r3.w, r6.y, r9.x, r3.w
-      mad r3.w, r2.w, r9.y, r3.w
-      dp2 r8.x, r12.xyxx, r6.xxxx
-      mad r3.w, r6.y, r8.x, r3.w
-      dp2 r8.x, r11.wzww, r6.xxxx
-      mad r3.w, r2.w, r8.x, r3.w
-      gather4_c_aoffimmi_indexable(5,-3,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mad r5.w, r2.y, r5.w, r5.x
-      mul r9.xy, r2.yyyy, r12.yzyy
-      mul r9.xy, r5.xxxx, r9.xyxx
-      mad r9.xy, r12.xwxx, r5.wwww, r9.xyxx
-      mad r3.w, r6.y, r9.y, r3.w
-      mad r3.w, r2.w, r9.x, r3.w
-      mad r8.x, r13.x, r5.w, r8.z
-      mad r3.w, r6.y, r8.x, r3.w
-      mad r3.w, r2.w, r9.y, r3.w
-      gather4_c_aoffimmi_indexable(-5,-1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.xz, r3.zzzz, r12.yyzy
-      mad r8.xz, r12.xxwx, r6.zzzz, r8.xxzx
-      mad r3.w, r6.y, r8.z, r3.w
-      mad r3.w, r2.w, r8.x, r3.w
-      mad r3.w, r6.y, r9.z, r3.w
-      mad r3.w, r2.w, r8.z, r3.w
-      gather4_c_aoffimmi_indexable(-3,-1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      add r9.yz, -r7.xxyx, r7.yyxy
-      mad r9.yz, r2.yyyy, r9.yyzy, r7.xxyx
-      mul r10.zw, r9.yyyy, r12.yyyz
-      mad r10.zw, r12.xxxw, r6.wwww, r10.zzzw
-      mad r3.w, r6.y, r10.w, r3.w
-      mad r3.w, r2.w, r10.z, r3.w
-      mad r8.y, r14.y, r9.y, r8.y
-      mad r3.w, r6.y, r8.y, r3.w
-      mad r3.w, r2.w, r10.w, r3.w
-      gather4_c_aoffimmi_indexable(-1,-1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      add r8.y, -r7.z, r7.x
-      mad r8.y, r2.y, r8.y, r7.z
-      mul r11.yz, r8.yyyy, r12.wwxw
-      mad r11.yw, r12.zzzy, r7.zzzz, r11.yyyz
-      mad r3.w, r6.y, r11.y, r3.w
-      mad r3.w, r2.w, r11.w, r3.w
-      dp2 r8.z, r15.xyxx, r7.xxxx
-      mad r3.w, r6.y, r8.z, r3.w
-      dp2 r8.z, r12.wzww, r7.xxxx
-      mad r3.w, r2.w, r8.z, r3.w
-      gather4_c_aoffimmi_indexable(1,-1,0)(texture2d)(float,float,float,float) r13.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      add r8.z, -r7.x, r7.z
-      mad r8.z, r2.y, r8.z, r7.x
-      mul r11.yw, r8.zzzz, r13.zzzy
-      mad r12.xz, r13.wwxw, r7.zzzz, r11.yywy
-      mad r3.w, r6.y, r12.x, r3.w
-      mad r3.w, r2.w, r12.z, r3.w
-      dp2 r9.w, r10.xyxx, r7.xxxx
-      mad r3.w, r6.y, r9.w, r3.w
-      dp2 r9.w, r13.wzww, r7.xxxx
-      mad r3.w, r2.w, r9.w, r3.w
-      gather4_c_aoffimmi_indexable(3,-1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r10.xy, r7.wwww, r14.yzyy
-      mad r10.xy, r14.xwxx, r9.zzzz, r10.xyxx
-      mad r3.w, r6.y, r10.y, r3.w
-      mad r3.w, r2.w, r10.x, r3.w
-      mad r8.w, r11.x, r9.z, r8.w
-      mad r3.w, r6.y, r8.w, r3.w
-      mad r3.w, r2.w, r10.y, r3.w
-      gather4_c_aoffimmi_indexable(5,-1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r10.yw, r2.yyyy, r14.yyyz
-      mul r10.yw, r5.xxxx, r10.yyyw
-      mad r10.yw, r14.xxxw, r5.wwww, r10.yyyw
-      mad r3.w, r6.y, r10.w, r3.w
-      mad r3.w, r2.w, r10.y, r3.w
-      mad r3.w, r6.y, r9.x, r3.w
-      mad r3.w, r2.w, r10.w, r3.w
-      gather4_c_aoffimmi_indexable(-5,1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r9.xw, r3.zzzz, r14.yyyz
-      mad r9.xw, r14.xxxw, r6.zzzz, r9.xxxw
-      mad r3.w, r6.y, r9.w, r3.w
-      mad r3.w, r2.w, r9.x, r3.w
-      mad r3.w, r6.y, r8.x, r3.w
-      mad r3.w, r2.w, r9.w, r3.w
-      gather4_c_aoffimmi_indexable(-3,1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.xw, r9.yyyy, r14.yyyz
-      mad r8.xw, r14.xxxw, r6.wwww, r8.xxxw
-      mad r3.w, r6.y, r8.w, r3.w
-      mad r3.w, r2.w, r8.x, r3.w
-      mad r3.w, r6.y, r10.z, r3.w
-      mad r3.w, r2.w, r8.w, r3.w
-      gather4_c_aoffimmi_indexable(-1,1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.yw, r8.yyyy, r14.wwwx
-      mad r10.zw, r14.zzzy, r7.zzzz, r8.yyyw
-      mad r3.w, r6.y, r10.z, r3.w
-      mad r3.w, r2.w, r10.w, r3.w
-      add r8.w, -r5.y, r7.z
-      mad r8.w, r2.y, r8.w, r5.y
-      mad r9.w, r12.y, r8.w, r11.z
-      mad r3.w, r6.y, r9.w, r3.w
-      mad r8.y, r14.z, r8.w, r8.y
-      mad r3.w, r2.w, r8.y, r3.w
-      gather4_c_aoffimmi_indexable(1,1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.yz, r8.zzzz, r12.zzyz
-      mad r8.zw, r12.wwwx, r7.zzzz, r8.yyyz
-      mad r3.w, r6.y, r8.z, r3.w
-      mad r3.w, r2.w, r8.w, r3.w
-      add r5.y, -r7.z, r5.y
-      mad r5.y, r2.y, r5.y, r7.z
-      mad r7.z, r13.x, r5.y, r11.w
-      mad r3.w, r6.y, r7.z, r3.w
-      mad r5.y, r12.w, r5.y, r8.y
-      mad r3.w, r2.w, r5.y, r3.w
-      gather4_c_aoffimmi_indexable(3,1,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.yz, r7.wwww, r11.yyzy
-      mad r8.yz, r11.xxwx, r9.zzzz, r8.yyzy
-      mad r3.w, r6.y, r8.z, r3.w
-      mad r3.w, r2.w, r8.y, r3.w
-      mad r3.w, r6.y, r10.x, r3.w
-      mad r3.w, r2.w, r8.z, r3.w
-      gather4_c_aoffimmi_indexable(5,1,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r8.zw, r2.yyyy, r11.yyyz
-      mul r8.zw, r5.xxxx, r8.zzzw
-      mad r8.zw, r11.xxxw, r5.wwww, r8.zzzw
-      mad r3.w, r6.y, r8.w, r3.w
-      mad r3.w, r2.w, r8.z, r3.w
-      mad r3.w, r6.y, r10.y, r3.w
-      mad r3.w, r2.w, r8.w, r3.w
-      gather4_c_aoffimmi_indexable(-5,3,0)(texture2d)(float,float,float,float) r10.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r10.yz, r3.zzzz, r10.yyzy
-      mad r10.xy, r10.xwxx, r6.zzzz, r10.yzyy
-      mad r3.w, r6.y, r10.y, r3.w
-      mad r3.w, r2.w, r10.x, r3.w
-      mad r3.w, r6.y, r9.x, r3.w
-      mad r3.w, r2.w, r10.y, r3.w
-      gather4_c_aoffimmi_indexable(-3,3,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r9.xw, r6.wwww, r11.wwwx
-      mad r10.yz, r11.zzyz, r7.yyyy, r9.xxwx
-      mad r3.w, r6.y, r10.y, r3.w
-      mad r3.w, r2.w, r10.z, r3.w
-      mad r3.w, r6.y, r8.x, r3.w
-      mad r5.y, r11.z, r9.y, r9.x
-      mad r3.w, r2.w, r5.y, r3.w
-      gather4_c_aoffimmi_indexable(-1,3,0)(texture2d)(float,float,float,float) r13.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r5.y, r13.wzww, r7.yyyy
-      mad r3.w, r6.y, r5.y, r3.w
-      dp2 r5.y, r13.xyxx, r7.yyyy
-      mad r3.w, r2.w, r5.y, r3.w
-      dp2 r5.y, r14.xyxx, r7.xxxx
-      mad r3.w, r6.y, r5.y, r3.w
-      dp2 r5.y, r13.wzww, r7.xxxx
-      mad r3.w, r2.w, r5.y, r3.w
-      gather4_c_aoffimmi_indexable(1,3,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r5.y, r14.wzww, r7.yyyy
-      mad r3.w, r6.y, r5.y, r3.w
-      dp2 r5.y, r14.xyxx, r7.yyyy
-      mad r3.w, r2.w, r5.y, r3.w
-      dp2 r5.y, r12.xyxx, r7.xxxx
-      mad r3.w, r6.y, r5.y, r3.w
-      dp2 r5.y, r14.wzww, r7.xxxx
-      mad r3.w, r2.w, r5.y, r3.w
-      gather4_c_aoffimmi_indexable(3,3,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r7.xz, r7.wwww, r12.zzyz
-      mad r7.yz, r12.wwxw, r7.yyyy, r7.xxzx
-      mad r3.w, r6.y, r7.y, r3.w
-      mad r3.w, r2.w, r7.z, r3.w
-      mad r3.w, r6.y, r8.y, r3.w
-      mad r5.y, r12.w, r9.z, r7.x
-      mad r3.w, r2.w, r5.y, r3.w
-      gather4_c_aoffimmi_indexable(5,3,0)(texture2d)(float,float,float,float) r7.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r7.yz, r2.yyyy, r7.yyzy
-      mul r7.yz, r5.xxxx, r7.yyzy
-      mad r7.xy, r7.xwxx, r5.wwww, r7.yzyy
-      mad r3.w, r6.y, r7.y, r3.w
-      mad r3.w, r2.w, r7.x, r3.w
-      mad r3.w, r6.y, r8.z, r3.w
-      mad r3.w, r2.w, r7.y, r3.w
-      gather4_c_aoffimmi_indexable(-5,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r6.zw, r6.zzzz, r8.wwwx
-      mad r7.yz, r8.zzyz, r5.xxxx, r6.zzwz
-      mad r3.w, r6.y, r7.y, r3.w
-      mad r3.w, r2.w, r7.z, r3.w
-      mad r3.w, r6.y, r10.x, r3.w
-      mad r3.z, r8.z, r3.z, r6.z
-      mad r3.z, r2.w, r3.z, r3.w
-      gather4_c_aoffimmi_indexable(-3,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r3.w, r8.wzww, r5.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.xyxx, r5.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      dp2 r3.w, r11.xyxx, r6.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.wzww, r6.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      gather4_c_aoffimmi_indexable(-1,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r3.w, r8.wzww, r5.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.xyxx, r5.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      dp2 r3.w, r13.xyxx, r6.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.wzww, r6.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      gather4_c_aoffimmi_indexable(1,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r3.w, r8.wzww, r5.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.xyxx, r5.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      dp2 r3.w, r14.xyxx, r6.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.wzww, r6.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      gather4_c_aoffimmi_indexable(3,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      dp2 r3.w, r8.wzww, r5.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.xyxx, r5.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      dp2 r3.w, r12.xyxx, r6.xxxx
-      mad r3.z, r6.y, r3.w, r3.z
-      dp2 r3.w, r8.wzww, r6.xxxx
-      mad r3.z, r2.w, r3.w, r3.z
-      gather4_c_aoffimmi_indexable(5,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
-      mul r2.xy, r2.yyyy, r8.zyzz
-      mul r2.xy, r5.xxxx, r2.xyxx
-      mad r3.xy, r8.wxww, r5.xxxx, r2.xyxx
-      mad r2.y, r6.y, r3.x, r3.z
-      mad r2.y, r2.w, r3.y, r2.y
-      mad r2.y, r6.y, r7.x, r2.y
-      mad r2.x, r8.w, r5.w, r2.x
-      mad r2.x, r2.w, r2.x, r2.y
-      div r1.z, r2.x, r5.z
-    else 
-      ieq r1.y, r1.y, l(3)
-      if_nz r1.y
-        mad r1.y, r1.w, cb2[69].y, cb2[69].z
-        div r1.y, cb2[69].x, r1.y
-        div r1.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb2[66].x
-        mul r1.w, r1.w, l(0.500000)
-        add r2.xy, cb2[33].zwzz, l(-2.000000, -2.000000, 0.000000, 0.000000)
-        div r2.xy, r2.xyxx, cb2[33].zwzz
-        mul r3.xy, r1.wwww, r2.xyxx
-        mov r3.zw, -r3.xxxy
-        add r5.xyzw, r3.zyxy, r4.xyxy
-        sample_indexable(texture2d)(float,float,float,float) r2.w, r5.xyxx, t14.yzwx, s14
-        sample_indexable(texture2d)(float,float,float,float) r3.y, r5.zwzz, t14.yxzw, s14
-        add r3.xz, r3.xxwx, r4.xxyx
-        sample_indexable(texture2d)(float,float,float,float) r3.x, r3.xzxx, t14.xyzw, s14
-        mad r2.xy, -r1.wwww, r2.xyxx, r4.xyxx
-        sample_indexable(texture2d)(float,float,float,float) r1.w, r2.xyxx, t14.yzwx, s14
-        mad r2.xy, r4.xyxx, cb2[33].zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
-        frc r2.xy, r2.xyxx
-        add r2.w, -r1.w, r2.w
-        mad r1.w, r2.w, r2.y, r1.w
-        add r2.w, -r3.x, r3.y
-        mad r2.y, r2.w, r2.y, r3.x
-        add r2.y, -r1.w, r2.y
-        mad r1.w, r2.y, r2.x, r1.w
-        div r2.x, r1.y, cb2[66].w
-        add r2.x, -r2.x, l(1.000000)
-        mad r2.x, -r2.x, r2.x, l(1.000000)
-        mad r2.x, r2.x, l(-14.000000), l(16.000000)
-        add r2.y, -r1.w, r1.y
-        mul_sat r2.y, r2.y, l(2.500000)
-        add r2.y, -r2.y, l(1.000000)
-        dp2 r2.y, r2.yyyy, r2.zzzz
-        add r1.y, -r1.y, r1.w
-        mul r1.y, r1.y, r2.x
-        mul r1.y, r1.y, l(1.442695)
-        exp r1.y, r1.y
-        add_sat r1.z, r2.y, r1.y
-      else 
-        mov r1.z, l(1.000000)
-      endif 
-    endif 
-  endif 
-endif 
+mad r1.z, r1.w, cb2[69].y, cb2[69].z
+div r1.z, cb2[69].x, r1.z
+add r1.z, r1.z, -cb2[74].x
+mul r2.x, r1.z, cb2[69].y
+mad r1.z, -r1.z, cb2[69].z, cb2[69].x
+div r1.z, r1.z, r2.x
+sample_c_lz_indexable(texture2d)(float,float,float,float) r1.z, r4.xyxx, t14.xxxx, s6, r1.z
+else
+ieq r2.x, r1.y, l(1)
+if_nz r2.x
+ftoi r2.x, cb2[66].y
+if_z r2.x
+mov r1.z, l(1.000000)
+else
+mad r2.y, r1.w, cb2[69].y, cb2[69].z
+div r2.y, cb2[69].x, r2.y
+add r2.y, r2.y, -cb2[74].x
+mul r2.w, r2.y, cb2[69].y
+mad r2.y, -r2.y, cb2[69].z, cb2[69].x
+div r2.y, r2.y, r2.w
+ieq r2.w, r2.x, l(1)
+if_nz r2.w
+sample_c_lz_indexable(texture2d)(float,float,float,float) r1.z, r4.xyxx, t14.xxxx, s6, r2.y
+else
+div r2.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb2[66].x
+mul r3.x, r2.w, l(0.500000)
+iadd r3.y, r2.x, l(-1)
+itof r3.y, r3.y
+mul r3.x, r3.y, r3.x
+mov r3.yz, l(0,0,0,0)
+loop
+ige r3.w, r3.z, r2.x
+breakc_nz r3.w
+itof r5.y, r3.z
+mov r3.w, r3.y
+mov r5.z, l(0)
+loop
+ige r5.w, r5.z, r2.x
+breakc_nz r5.w
+itof r5.x, r5.z
+mad r5.xw, r5.xxxy, r2.wwww, -r3.xxxx
+add r5.xw, r4.xxxy, r5.xxxw
+sample_c_lz_indexable(texture2d)(float,float,float,float) r5.x, r5.xwxx, t14.xxxx, s6, r2.y
+add r3.w, r3.w, r5.x
+iadd r5.z, r5.z, l(1)
+endloop
+mov r3.y, r3.w
+iadd r3.z, r3.z, l(1)
+endloop
+imul null, r2.x, r2.x, r2.x
+itof r2.x, r2.x
+div r1.z, r3.y, r2.x
+endif
+endif
+else
+ieq r2.x, r1.y, l(2)
+if_nz r2.x
+mad r2.x, r1.w, cb2[69].y, cb2[69].z
+div r2.x, cb2[69].x, r2.x
+add r2.x, r2.x, -cb2[74].x
+mul r2.y, r2.x, cb2[69].y
+mad r2.x, -r2.x, cb2[69].z, cb2[69].x
+div r2.x, r2.x, r2.y
+mad r2.yw, cb2[67].xxxy, r4.xxxy, l(0.000000, 0.500000, 0.000000, 0.500000)
+round_ni r3.xy, r2.ywyy
+add r2.yw, r2.yyyw, -r3.xxxy
+mad r3.xy, -r2.ywyy, cb2[67].zwzz, r4.xyxx
+gather4_aoffimmi_indexable(-5,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r3.z, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+dp4 r3.w, r5.xyzw, r6.xyzw
+gather4_aoffimmi_indexable(-3,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-1,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(1,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(3,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(5,-5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-5,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-3,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-1,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(1,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(3,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(5,-3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-5,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-3,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-1,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(1,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(3,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(5,-1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-5,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-3,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-1,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(1,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(3,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(5,1,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-5,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-3,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-1,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(1,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(3,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(5,3,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-5,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-3,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(-1,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(1,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(3,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+gather4_aoffimmi_indexable(5,5,0)(texture2d)(float,float,float,float) r5.xyzw, r3.xyxx, t14.xyzw, s14.x
+ge r6.xyzw, r5.xyzw, r2.xxxx
+movc r6.xyzw, r6.xyzw, l(0,0,0,0), l(1.000000,1.000000,1.000000,1.000000)
+dp4 r7.x, r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.z, r3.z, r7.x
+dp4 r5.x, r5.xyzw, r6.xyzw
+add r3.w, r3.w, r5.x
+lt r5.x, l(0.000000), r3.z
+div r3.z, r3.w, r3.z
+add r3.w, r2.x, -r3.z
+mul r3.w, r3.w, cb2[67].x
+mul r3.w, r3.w, l(0.100000)
+div_sat r3.z, r3.w, r3.z
+mul r3.z, r3.z, r3.z
+and r3.z, r3.z, r5.x
+mul r3.w, r3.z, r3.z
+mul r5.x, r3.z, r3.w
+mul r5.y, r3.w, l(3.000000)
+add r5.z, -r3.z, l(1.000000)
+mul r5.w, r5.z, r5.y
+mul r5.w, r5.w, l(0.200000)
+mad r6.x, r3.w, r3.z, r5.w
+mul r6.y, r5.x, l(14.000000)
+mad r6.y, r6.x, l(10.000000), r6.y
+mul r6.z, r5.z, r5.z
+mul r6.w, r3.z, r6.z
+mul r7.xy, r6.wwww, l(3.000000, 0.600000, 0.000000, 0.000000)
+mad r7.xy, r3.wwww, r3.zzzz, r7.xyxx
+mad r7.xy, r5.yyyy, r5.zzzz, r7.xyxx
+mad r6.y, r7.y, l(7.000000), r6.y
+add r6.y, r6.x, r6.y
+mad r6.y, r5.x, l(2.000000), r6.y
+add r6.y, r6.x, r6.y
+add r6.y, r7.y, r6.y
+mad r6.y, r7.x, l(5.000000), r6.y
+add r6.y, r7.y, r6.y
+add r6.y, r6.x, r6.y
+mad r6.y, r5.x, l(2.000000), r6.y
+add r6.y, r6.x, r6.y
+add r6.y, r7.y, r6.y
+add r6.y, r7.x, r6.y
+mul r7.z, r5.z, r6.z
+mad r7.z, r7.z, l(0.800000), r5.x
+mad r7.z, r6.w, l(3.000000), r7.z
+mad r7.z, r5.y, r5.z, r7.z
+mad r6.y, r7.z, l(3.000000), r6.y
+add r6.y, r7.x, r6.y
+add r6.y, r7.y, r6.y
+add r6.y, r6.x, r6.y
+mad r6.y, r5.x, l(2.000000), r6.y
+add r6.y, r6.x, r6.y
+add r6.y, r7.y, r6.y
+add r6.y, r7.x, r6.y
+add r6.y, r7.z, r6.y
+mad r6.z, r6.z, r5.z, r5.x
+mad r6.z, r6.w, l(3.000000), r6.z
+mad r5.y, r5.y, r5.z, r6.z
+add r5.z, r5.y, r6.y
+add r5.z, r7.z, r5.z
+add r5.z, r7.x, r5.z
+add r5.z, r7.y, r5.z
+add r5.z, r6.x, r5.z
+mad r5.z, r5.x, l(2.000000), r5.z
+add r5.z, r6.x, r5.z
+add r5.z, r7.y, r5.z
+add r5.z, r7.x, r5.z
+mad r5.z, r7.z, l(3.000000), r5.z
+add r5.z, r7.x, r5.z
+add r5.z, r7.y, r5.z
+add r5.z, r6.x, r5.z
+mad r5.z, r5.x, l(2.000000), r5.z
+add r5.z, r6.x, r5.z
+add r5.z, r7.y, r5.z
+mad r5.z, r7.x, l(5.000000), r5.z
+add r5.z, r7.y, r5.z
+add r5.z, r6.x, r5.z
+mad r5.z, r5.x, l(2.000000), r5.z
+add r5.z, r6.x, r5.z
+mad r5.z, r7.y, l(7.000000), r5.z
+add r5.z, r6.x, r5.z
+mad r5.z, r5.x, l(2.000000), r5.z
+mad r5.z, r6.x, l(9.000000), r5.z
+mad r5.z, r5.x, l(12.000000), r5.z
+gather4_c_aoffimmi_indexable(-5,-5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+add r6.y, -r2.w, l(1.000000)
+mad r6.z, -r5.x, r2.y, r5.x
+mul r8.xw, r6.zzzz, r8.wwwx
+mad r8.xz, r8.zzyz, r5.xxxx, r8.xxwx
+mul r6.w, r2.w, r8.z
+mad r6.w, r6.y, r8.x, r6.w
+gather4_c_aoffimmi_indexable(-3,-5,0)(texture2d)(float,float,float,float) r9.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r7.w, r9.wzww, r5.xxxx
+mad r6.w, r6.y, r7.w, r6.w
+dp2 r7.w, r9.xyxx, r5.xxxx
+mad r6.w, r2.w, r7.w, r6.w
+gather4_c_aoffimmi_indexable(-1,-5,0)(texture2d)(float,float,float,float) r10.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r7.w, r10.wzww, r5.xxxx
+mad r6.w, r6.y, r7.w, r6.w
+dp2 r7.w, r10.xyxx, r5.xxxx
+mad r6.w, r2.w, r7.w, r6.w
+gather4_c_aoffimmi_indexable(1,-5,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r7.w, r11.wzww, r5.xxxx
+mad r6.w, r6.y, r7.w, r6.w
+dp2 r7.w, r11.xyxx, r5.xxxx
+mad r6.w, r2.w, r7.w, r6.w
+gather4_c_aoffimmi_indexable(3,-5,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r7.w, r12.wzww, r5.xxxx
+mad r6.w, r6.y, r7.w, r6.w
+dp2 r7.w, r12.xyxx, r5.xxxx
+mad r6.w, r2.w, r7.w, r6.w
+gather4_c_aoffimmi_indexable(5,-5,0)(texture2d)(float,float,float,float) r13.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.xz, r2.yyyy, r13.zzyz
+mul r8.xz, r5.xxxx, r8.xxzx
+mad r9.zw, r13.wwwx, r5.xxxx, r8.xxxz
+mad r6.w, r6.y, r9.z, r6.w
+mad r6.w, r2.w, r9.w, r6.w
+gather4_c_aoffimmi_indexable(-5,-3,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mad r3.z, r3.w, r3.z, -r6.x
+mad r3.z, r2.y, r3.z, r6.x
+mul r9.zw, r3.zzzz, r14.yyyz
+mad r9.zw, r14.xxxw, r6.zzzz, r9.zzzw
+mad r3.w, r6.y, r9.w, r6.w
+mad r3.w, r2.w, r9.z, r3.w
+mad r6.w, r8.y, r3.z, r8.w
+mad r3.w, r6.y, r6.w, r3.w
+mad r3.w, r2.w, r9.w, r3.w
+gather4_c_aoffimmi_indexable(-3,-3,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+add r6.w, r6.x, -r7.y
+mad r6.w, r2.y, r6.w, r7.y
+mul r8.xy, r6.wwww, r14.wxww
+mad r8.xw, r14.zzzy, r7.yyyy, r8.xxxy
+mad r3.w, r6.y, r8.x, r3.w
+mad r3.w, r2.w, r8.w, r3.w
+dp2 r7.w, r9.xyxx, r6.xxxx
+mad r3.w, r6.y, r7.w, r3.w
+dp2 r7.w, r14.wzww, r6.xxxx
+mad r3.w, r2.w, r7.w, r3.w
+gather4_c_aoffimmi_indexable(-1,-3,0)(texture2d)(float,float,float,float) r15.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r7.w, r15.wzww, r7.yyyy
+mad r3.w, r6.y, r7.w, r3.w
+dp2 r7.w, r15.xyxx, r7.yyyy
+mad r3.w, r2.w, r7.w, r3.w
+dp2 r7.w, r10.xyxx, r6.xxxx
+mad r3.w, r6.y, r7.w, r3.w
+dp2 r7.w, r15.wzww, r6.xxxx
+mad r3.w, r2.w, r7.w, r3.w
+gather4_c_aoffimmi_indexable(1,-3,0)(texture2d)(float,float,float,float) r10.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r7.w, r10.wzww, r7.yyyy
+mad r3.w, r6.y, r7.w, r3.w
+dp2 r7.w, r10.xyxx, r7.yyyy
+mad r3.w, r2.w, r7.w, r3.w
+dp2 r7.w, r11.xyxx, r6.xxxx
+mad r3.w, r6.y, r7.w, r3.w
+dp2 r7.w, r10.wzww, r6.xxxx
+mad r3.w, r2.w, r7.w, r3.w
+gather4_c_aoffimmi_indexable(3,-3,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+add r7.w, -r6.x, r7.y
+mad r7.w, r2.y, r7.w, r6.x
+mul r8.xw, r7.wwww, r11.zzzy
+mad r9.xy, r11.wxww, r7.yyyy, r8.xwxx
+mad r3.w, r6.y, r9.x, r3.w
+mad r3.w, r2.w, r9.y, r3.w
+dp2 r8.x, r12.xyxx, r6.xxxx
+mad r3.w, r6.y, r8.x, r3.w
+dp2 r8.x, r11.wzww, r6.xxxx
+mad r3.w, r2.w, r8.x, r3.w
+gather4_c_aoffimmi_indexable(5,-3,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mad r5.w, r2.y, r5.w, r5.x
+mul r9.xy, r2.yyyy, r12.yzyy
+mul r9.xy, r5.xxxx, r9.xyxx
+mad r9.xy, r12.xwxx, r5.wwww, r9.xyxx
+mad r3.w, r6.y, r9.y, r3.w
+mad r3.w, r2.w, r9.x, r3.w
+mad r8.x, r13.x, r5.w, r8.z
+mad r3.w, r6.y, r8.x, r3.w
+mad r3.w, r2.w, r9.y, r3.w
+gather4_c_aoffimmi_indexable(-5,-1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.xz, r3.zzzz, r12.yyzy
+mad r8.xz, r12.xxwx, r6.zzzz, r8.xxzx
+mad r3.w, r6.y, r8.z, r3.w
+mad r3.w, r2.w, r8.x, r3.w
+mad r3.w, r6.y, r9.z, r3.w
+mad r3.w, r2.w, r8.z, r3.w
+gather4_c_aoffimmi_indexable(-3,-1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+add r9.yz, -r7.xxyx, r7.yyxy
+mad r9.yz, r2.yyyy, r9.yyzy, r7.xxyx
+mul r10.zw, r9.yyyy, r12.yyyz
+mad r10.zw, r12.xxxw, r6.wwww, r10.zzzw
+mad r3.w, r6.y, r10.w, r3.w
+mad r3.w, r2.w, r10.z, r3.w
+mad r8.y, r14.y, r9.y, r8.y
+mad r3.w, r6.y, r8.y, r3.w
+mad r3.w, r2.w, r10.w, r3.w
+gather4_c_aoffimmi_indexable(-1,-1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+add r8.y, -r7.z, r7.x
+mad r8.y, r2.y, r8.y, r7.z
+mul r11.yz, r8.yyyy, r12.wwxw
+mad r11.yw, r12.zzzy, r7.zzzz, r11.yyyz
+mad r3.w, r6.y, r11.y, r3.w
+mad r3.w, r2.w, r11.w, r3.w
+dp2 r8.z, r15.xyxx, r7.xxxx
+mad r3.w, r6.y, r8.z, r3.w
+dp2 r8.z, r12.wzww, r7.xxxx
+mad r3.w, r2.w, r8.z, r3.w
+gather4_c_aoffimmi_indexable(1,-1,0)(texture2d)(float,float,float,float) r13.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+add r8.z, -r7.x, r7.z
+mad r8.z, r2.y, r8.z, r7.x
+mul r11.yw, r8.zzzz, r13.zzzy
+mad r12.xz, r13.wwxw, r7.zzzz, r11.yywy
+mad r3.w, r6.y, r12.x, r3.w
+mad r3.w, r2.w, r12.z, r3.w
+dp2 r9.w, r10.xyxx, r7.xxxx
+mad r3.w, r6.y, r9.w, r3.w
+dp2 r9.w, r13.wzww, r7.xxxx
+mad r3.w, r2.w, r9.w, r3.w
+gather4_c_aoffimmi_indexable(3,-1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r10.xy, r7.wwww, r14.yzyy
+mad r10.xy, r14.xwxx, r9.zzzz, r10.xyxx
+mad r3.w, r6.y, r10.y, r3.w
+mad r3.w, r2.w, r10.x, r3.w
+mad r8.w, r11.x, r9.z, r8.w
+mad r3.w, r6.y, r8.w, r3.w
+mad r3.w, r2.w, r10.y, r3.w
+gather4_c_aoffimmi_indexable(5,-1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r10.yw, r2.yyyy, r14.yyyz
+mul r10.yw, r5.xxxx, r10.yyyw
+mad r10.yw, r14.xxxw, r5.wwww, r10.yyyw
+mad r3.w, r6.y, r10.w, r3.w
+mad r3.w, r2.w, r10.y, r3.w
+mad r3.w, r6.y, r9.x, r3.w
+mad r3.w, r2.w, r10.w, r3.w
+gather4_c_aoffimmi_indexable(-5,1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r9.xw, r3.zzzz, r14.yyyz
+mad r9.xw, r14.xxxw, r6.zzzz, r9.xxxw
+mad r3.w, r6.y, r9.w, r3.w
+mad r3.w, r2.w, r9.x, r3.w
+mad r3.w, r6.y, r8.x, r3.w
+mad r3.w, r2.w, r9.w, r3.w
+gather4_c_aoffimmi_indexable(-3,1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.xw, r9.yyyy, r14.yyyz
+mad r8.xw, r14.xxxw, r6.wwww, r8.xxxw
+mad r3.w, r6.y, r8.w, r3.w
+mad r3.w, r2.w, r8.x, r3.w
+mad r3.w, r6.y, r10.z, r3.w
+mad r3.w, r2.w, r8.w, r3.w
+gather4_c_aoffimmi_indexable(-1,1,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.yw, r8.yyyy, r14.wwwx
+mad r10.zw, r14.zzzy, r7.zzzz, r8.yyyw
+mad r3.w, r6.y, r10.z, r3.w
+mad r3.w, r2.w, r10.w, r3.w
+add r8.w, -r5.y, r7.z
+mad r8.w, r2.y, r8.w, r5.y
+mad r9.w, r12.y, r8.w, r11.z
+mad r3.w, r6.y, r9.w, r3.w
+mad r8.y, r14.z, r8.w, r8.y
+mad r3.w, r2.w, r8.y, r3.w
+gather4_c_aoffimmi_indexable(1,1,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.yz, r8.zzzz, r12.zzyz
+mad r8.zw, r12.wwwx, r7.zzzz, r8.yyyz
+mad r3.w, r6.y, r8.z, r3.w
+mad r3.w, r2.w, r8.w, r3.w
+add r5.y, -r7.z, r5.y
+mad r5.y, r2.y, r5.y, r7.z
+mad r7.z, r13.x, r5.y, r11.w
+mad r3.w, r6.y, r7.z, r3.w
+mad r5.y, r12.w, r5.y, r8.y
+mad r3.w, r2.w, r5.y, r3.w
+gather4_c_aoffimmi_indexable(3,1,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.yz, r7.wwww, r11.yyzy
+mad r8.yz, r11.xxwx, r9.zzzz, r8.yyzy
+mad r3.w, r6.y, r8.z, r3.w
+mad r3.w, r2.w, r8.y, r3.w
+mad r3.w, r6.y, r10.x, r3.w
+mad r3.w, r2.w, r8.z, r3.w
+gather4_c_aoffimmi_indexable(5,1,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r8.zw, r2.yyyy, r11.yyyz
+mul r8.zw, r5.xxxx, r8.zzzw
+mad r8.zw, r11.xxxw, r5.wwww, r8.zzzw
+mad r3.w, r6.y, r8.w, r3.w
+mad r3.w, r2.w, r8.z, r3.w
+mad r3.w, r6.y, r10.y, r3.w
+mad r3.w, r2.w, r8.w, r3.w
+gather4_c_aoffimmi_indexable(-5,3,0)(texture2d)(float,float,float,float) r10.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r10.yz, r3.zzzz, r10.yyzy
+mad r10.xy, r10.xwxx, r6.zzzz, r10.yzyy
+mad r3.w, r6.y, r10.y, r3.w
+mad r3.w, r2.w, r10.x, r3.w
+mad r3.w, r6.y, r9.x, r3.w
+mad r3.w, r2.w, r10.y, r3.w
+gather4_c_aoffimmi_indexable(-3,3,0)(texture2d)(float,float,float,float) r11.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r9.xw, r6.wwww, r11.wwwx
+mad r10.yz, r11.zzyz, r7.yyyy, r9.xxwx
+mad r3.w, r6.y, r10.y, r3.w
+mad r3.w, r2.w, r10.z, r3.w
+mad r3.w, r6.y, r8.x, r3.w
+mad r5.y, r11.z, r9.y, r9.x
+mad r3.w, r2.w, r5.y, r3.w
+gather4_c_aoffimmi_indexable(-1,3,0)(texture2d)(float,float,float,float) r13.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r5.y, r13.wzww, r7.yyyy
+mad r3.w, r6.y, r5.y, r3.w
+dp2 r5.y, r13.xyxx, r7.yyyy
+mad r3.w, r2.w, r5.y, r3.w
+dp2 r5.y, r14.xyxx, r7.xxxx
+mad r3.w, r6.y, r5.y, r3.w
+dp2 r5.y, r13.wzww, r7.xxxx
+mad r3.w, r2.w, r5.y, r3.w
+gather4_c_aoffimmi_indexable(1,3,0)(texture2d)(float,float,float,float) r14.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r5.y, r14.wzww, r7.yyyy
+mad r3.w, r6.y, r5.y, r3.w
+dp2 r5.y, r14.xyxx, r7.yyyy
+mad r3.w, r2.w, r5.y, r3.w
+dp2 r5.y, r12.xyxx, r7.xxxx
+mad r3.w, r6.y, r5.y, r3.w
+dp2 r5.y, r14.wzww, r7.xxxx
+mad r3.w, r2.w, r5.y, r3.w
+gather4_c_aoffimmi_indexable(3,3,0)(texture2d)(float,float,float,float) r12.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r7.xz, r7.wwww, r12.zzyz
+mad r7.yz, r12.wwxw, r7.yyyy, r7.xxzx
+mad r3.w, r6.y, r7.y, r3.w
+mad r3.w, r2.w, r7.z, r3.w
+mad r3.w, r6.y, r8.y, r3.w
+mad r5.y, r12.w, r9.z, r7.x
+mad r3.w, r2.w, r5.y, r3.w
+gather4_c_aoffimmi_indexable(5,3,0)(texture2d)(float,float,float,float) r7.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r7.yz, r2.yyyy, r7.yyzy
+mul r7.yz, r5.xxxx, r7.yyzy
+mad r7.xy, r7.xwxx, r5.wwww, r7.yzyy
+mad r3.w, r6.y, r7.y, r3.w
+mad r3.w, r2.w, r7.x, r3.w
+mad r3.w, r6.y, r8.z, r3.w
+mad r3.w, r2.w, r7.y, r3.w
+gather4_c_aoffimmi_indexable(-5,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r6.zw, r6.zzzz, r8.wwwx
+mad r7.yz, r8.zzyz, r5.xxxx, r6.zzwz
+mad r3.w, r6.y, r7.y, r3.w
+mad r3.w, r2.w, r7.z, r3.w
+mad r3.w, r6.y, r10.x, r3.w
+mad r3.z, r8.z, r3.z, r6.z
+mad r3.z, r2.w, r3.z, r3.w
+gather4_c_aoffimmi_indexable(-3,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r3.w, r8.wzww, r5.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.xyxx, r5.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+dp2 r3.w, r11.xyxx, r6.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.wzww, r6.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+gather4_c_aoffimmi_indexable(-1,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r3.w, r8.wzww, r5.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.xyxx, r5.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+dp2 r3.w, r13.xyxx, r6.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.wzww, r6.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+gather4_c_aoffimmi_indexable(1,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r3.w, r8.wzww, r5.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.xyxx, r5.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+dp2 r3.w, r14.xyxx, r6.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.wzww, r6.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+gather4_c_aoffimmi_indexable(3,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+dp2 r3.w, r8.wzww, r5.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.xyxx, r5.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+dp2 r3.w, r12.xyxx, r6.xxxx
+mad r3.z, r6.y, r3.w, r3.z
+dp2 r3.w, r8.wzww, r6.xxxx
+mad r3.z, r2.w, r3.w, r3.z
+gather4_c_aoffimmi_indexable(5,5,0)(texture2d)(float,float,float,float) r8.xyzw, r3.xyxx, t14.xyzw, s6.x, r2.x
+mul r2.xy, r2.yyyy, r8.zyzz
+mul r2.xy, r5.xxxx, r2.xyxx
+mad r3.xy, r8.wxww, r5.xxxx, r2.xyxx
+mad r2.y, r6.y, r3.x, r3.z
+mad r2.y, r2.w, r3.y, r2.y
+mad r2.y, r6.y, r7.x, r2.y
+mad r2.x, r8.w, r5.w, r2.x
+mad r2.x, r2.w, r2.x, r2.y
+div r1.z, r2.x, r5.z
+else
+ieq r1.y, r1.y, l(3)
+if_nz r1.y
+mad r1.y, r1.w, cb2[69].y, cb2[69].z
+div r1.y, cb2[69].x, r1.y
+div r1.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb2[66].x
+mul r1.w, r1.w, l(0.500000)
+add r2.xy, cb2[33].zwzz, l(-2.000000, -2.000000, 0.000000, 0.000000)
+div r2.xy, r2.xyxx, cb2[33].zwzz
+mul r3.xy, r1.wwww, r2.xyxx
+mov r3.zw, -r3.xxxy
+add r5.xyzw, r3.zyxy, r4.xyxy
+sample_indexable(texture2d)(float,float,float,float) r2.w, r5.xyxx, t14.yzwx, s14
+sample_indexable(texture2d)(float,float,float,float) r3.y, r5.zwzz, t14.yxzw, s14
+add r3.xz, r3.xxwx, r4.xxyx
+sample_indexable(texture2d)(float,float,float,float) r3.x, r3.xzxx, t14.xyzw, s14
+mad r2.xy, -r1.wwww, r2.xyxx, r4.xyxx
+sample_indexable(texture2d)(float,float,float,float) r1.w, r2.xyxx, t14.yzwx, s14
+mad r2.xy, r4.xyxx, cb2[33].zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+frc r2.xy, r2.xyxx
+add r2.w, -r1.w, r2.w
+mad r1.w, r2.w, r2.y, r1.w
+add r2.w, -r3.x, r3.y
+mad r2.y, r2.w, r2.y, r3.x
+add r2.y, -r1.w, r2.y
+mad r1.w, r2.y, r2.x, r1.w
+div r2.x, r1.y, cb2[66].w
+add r2.x, -r2.x, l(1.000000)
+mad r2.x, -r2.x, r2.x, l(1.000000)
+mad r2.x, r2.x, l(-14.000000), l(16.000000)
+add r2.y, -r1.w, r1.y
+mul_sat r2.y, r2.y, l(2.500000)
+add r2.y, -r2.y, l(1.000000)
+dp2 r2.y, r2.yyyy, r2.zzzz
+add r1.y, -r1.y, r1.w
+mul r1.y, r1.y, r2.x
+mul r1.y, r1.y, l(1.442695)
+exp r1.y, r1.y
+add_sat r1.z, r2.y, r1.y
+else
+mov r1.z, l(1.000000)
+endif
+endif
+endif
+endif
 mad r1.y, r1.z, v6.x, -v6.x
 add r1.y, r1.y, l(1.000000)
 mad r0.x, cb2[69].w, r0.x, l(-1.000000)
@@ -1925,7 +1947,7 @@ mul r1.xyz, r1.xxxx, r1.yzwy
 mul r0.xyz, r0.yzwy, r1.xyzx
 mul o0.xyz, r0.xyzx, cb2[40].zzzz
 mov o0.w, l(1.000000)
-ret 
+ret
 // Approximately 826 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

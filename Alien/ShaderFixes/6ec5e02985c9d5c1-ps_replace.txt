@@ -107,7 +107,16 @@ void main(
 {
   float4 r0,r1,r2,r3,r4,r5,r6;
   uint4 bitmask;
+
+// float4 stereo = StereoParams.Load(0);
+// float4 r20;
+// r20.xyzw = v0.xyzw;
+// r20.x += stereo.x * (v1.z - stereo.y)*0.5;
+  
+  
   r0.xyzw = g_smp_gbuffer_rt1_TEX.Sample(g_smp_gbuffer_rt1_SMP_s, v0.xy).xwyz;
+  
+ 
   r1.xyz = r0.xzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r0.z = dot(r1.xyz, r1.xyz);
   r0.z = rsqrt(r0.z);
@@ -115,16 +124,46 @@ void main(
   r0.z = dot(v1.xyz, v1.xyz);
   r0.z = rsqrt(r0.z);
   r2.xyzw = g_smp_gbuffer_rt0_TEX.Sample(g_smp_gbuffer_rt0_SMP_s, v0.xy).xyzw;
+ 
+// r2=0; 
+  
+  
+
+  
   r0.x = r2.w;
   r0.xy = float2(3.891051e-003,3.891051e-003) * r0.xy;
   r3.xyzw = g_smp_gbuffer_rt2_TEX.Sample(g_smp_gbuffer_rt2_SMP_s, v0.xy).wxyz;
+
+// r3=0;
+
   r4.xyz = r3.yzw * r3.yzw;
   r4.xyz = r4.xyz + r4.xyz;
+  
+// r4=0;
+  
   r5.xyzw = g_smp_gbuffer_rt3_TEX.Sample(g_smp_gbuffer_rt3_SMP_s, v0.xy).xyzw;
+  
+ // r5=0; 
+  
+
+
+  
   r3.y = r5.w;
   r0.xy = r3.xy * float2(9.961089e-001,9.961089e-001) + r0.xy;
+  
+// r20.xy = r0.xy;
+// r20.x -= stereo.x * (v1.z - stereo.y);
+  
   r3.xyzw = g_smp_radiosity_direction_TEX.Sample(g_smp_radiosity_direction_SMP_s, r0.xy).xyzw;
+  
+// r3=0;
+  
+  
   r0.xyw = g_smp_radiosity_irradiance_TEX.Sample(g_smp_radiosity_irradiance_SMP_s, r0.xy).xyz;
+  
+// r0.xyw=float3(0,0,0);  
+  
+  
   r0.xyw = HDR_EncodeScale2.www * r0.xyw;
   r3.xyzw = r3.xyzw * float4(9.765625e-004,9.765625e-004,9.765625e-004,9.765625e-004) + float4(1.953125e-003,1.953125e-003,1.953125e-003,1.953125e-003);
   r1.w = dot(r3.xyz, r3.xyz);

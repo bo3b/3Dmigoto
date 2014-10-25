@@ -77,19 +77,10 @@ void main(
   out float4 o1 : TEXCOORD1,
   out float4 o2 : TEXCOORD2,
   out float4 o3 : TEXCOORD3,
-  out float4 o10 : TEXCOORD9,
-  out float4 o11 : TEXCOORD10,
-  out float4 o12 : TEXCOORD11,
-  out float4 o13 : TEXCOORD12,
   out float4 o4 : SV_Position0)
 {
   float4 r0,r1,r2;
   uint4 bitmask;
-
-o10.xyzw = InvViewProj._m00_m10_m20_m30;
-o11.xyzw = InvViewProj._m01_m11_m21_m31;
-o12.xyzw = InvViewProj._m02_m12_m22_m32;
-o13.xyzw = InvViewProj._m03_m13_m23_m33;
 
   r0.x = DecalParams.y + -Time.x;
   o0.w = saturate(r0.x / rp_parameter_vs[0].x);

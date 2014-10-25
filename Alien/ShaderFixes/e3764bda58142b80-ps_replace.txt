@@ -1,33 +1,59 @@
+//Fix by mike_ar69
+cbuffer cbDefaultVSC: register (b1)
+{
+  float4x4 ProjMatrix : packoffset(c0);
+  float4x4 TextureTransform : packoffset(c4);
+  float4x4 InvViewProj : packoffset(c8);
+  float4x4 PrevViewProj : packoffset(c12);
+  float4x4 PrevSecViewProj : packoffset(c16);
+  float4 TextureScaleBias : packoffset(c20);
+  float4 RenderTargetSizeVS : packoffset(c21);
+  float4 RenderTargetResolutionVS : packoffset(c22);
+  float4 MorphTargetParams : packoffset(c23);
+  float4 OnePixelStepForS0VS : packoffset(c24);
+  float4 ScreenRes[2] : packoffset(c25);
+  float4 ClearSurfaceColor : packoffset(c27);
+  float4 ClearSurfaceDepth : packoffset(c28);
+  float4 VertexDepthClamp : packoffset(c29);
+  float4 FlareScreenAspect : packoffset(c30);
+  float4 DecalParams : packoffset(c31);
+  float4 UserClipPlane0 : packoffset(c32);
+  float4 UserClipPlane1 : packoffset(c33);
+  float4 UserClipPlane2 : packoffset(c34);
+  float4 UserClipPlane3 : packoffset(c35);
+  float4 DecalScaleParams : packoffset(c36);
+  float4 MipLevel : packoffset(c37);
+}
 
 cbuffer cbDefaultXSC : register(b0)
 {
-  float4x4 ViewProj : packoffset(c0);
-  float4x4 ViewMatrix : packoffset(c4);
-  float4x4 SecondaryProj : packoffset(c8);
-  float4x4 SecondaryViewProj : packoffset(c12);
-  float4x4 SecondaryInvViewProj : packoffset(c16);
-  float4 ConstantColour : packoffset(c20);
-  float4 Time : packoffset(c21);
-  float4 CameraPosition : packoffset(c22);
-  float4 InvProjectionParams : packoffset(c23);
-  float4 SecondaryInvProjectionParams : packoffset(c24);
-  float4 ShaderDebugParams : packoffset(c25);
-  float4 ToneMappingDebugParams : packoffset(c26);
-  float4 HDR_EncodeScale2 : packoffset(c27);
-  float4 EmissiveSurfaceMultiplier : packoffset(c28);
-  float4 AlphaLight_OffsetScale : packoffset(c29);
-  float4 TessellationScaleFactor : packoffset(c30);
-  float4 FogNearColour : packoffset(c31);
-  float4 FogFarColour : packoffset(c32);
-  float4 FogParams : packoffset(c33);
-  float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
-  float4 SMAA_RTMetrics : packoffset(c35);
+float4x4 ViewProj : packoffset(c0);
+float4x4 ViewMatrix : packoffset(c4);
+float4x4 SecondaryProj : packoffset(c8);
+float4x4 SecondaryViewProj : packoffset(c12);
+float4x4 SecondaryInvViewProj : packoffset(c16);
+float4 ConstantColour : packoffset(c20);
+float4 Time : packoffset(c21);
+float4 CameraPosition : packoffset(c22);
+float4 InvProjectionParams : packoffset(c23);
+float4 SecondaryInvProjectionParams : packoffset(c24);
+float4 ShaderDebugParams : packoffset(c25);
+float4 ToneMappingDebugParams : packoffset(c26);
+float4 HDR_EncodeScale2 : packoffset(c27);
+float4 EmissiveSurfaceMultiplier : packoffset(c28);
+float4 AlphaLight_OffsetScale : packoffset(c29);
+float4 TessellationScaleFactor : packoffset(c30);
+float4 FogNearColour : packoffset(c31);
+float4 FogFarColour : packoffset(c32);
+float4 FogParams : packoffset(c33);
+float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
+float4 SMAA_RTMetrics : packoffset(c35);
 }
 
 cbuffer cbUbershaderXSC : register(b5)
 {
-  float4 rp_parameter_vs[32] : packoffset(c0);
-  float4 rp_parameter_ps[32] : packoffset(c32);
+float4 rp_parameter_vs[32] : packoffset(c0);
+float4 rp_parameter_ps[32] : packoffset(c32);
 }
 SamplerState TEXTURE_MAP_SAMPLER_SMP_s : register(s0);
 SamplerState SPARKLE_MAP_SAMPLER_SMP_s : register(s1);
@@ -41,36 +67,32 @@ Texture2D<float4> normalSamplerReg_TEX : register(t12);
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
-  float4 v0 : TEXCOORD0,
-  float4 v1 : TEXCOORD1,
-  float4 v2 : TEXCOORD2,
-  float4 v3 : TEXCOORD3,
-  float4 v4 : TEXCOORD4,
-  float4 v5 : TEXCOORD5,
-  float4 v6 : TEXCOORD6,
-  float4 v9 : TEXCOORD9,
-  float4 v10 : TEXCOORD10,
-  float4 v11 : TEXCOORD11,
-  float4 v12 : TEXCOORD12,  
-  out float4 o0 : SV_Target0,
-  out float4 o1 : SV_Target1,
-  out float4 o2 : SV_Target2,
-  out float4 o3 : SV_Target3)
+float4 v0 : TEXCOORD0,
+float4 v1 : TEXCOORD1,
+float4 v2 : TEXCOORD2,
+float4 v3 : TEXCOORD3,
+float4 v4 : TEXCOORD4,
+float4 v5 : TEXCOORD5,
+float4 v6 : TEXCOORD6,
+out float4 o0 : SV_Target0,
+out float4 o1 : SV_Target1,
+out float4 o2 : SV_Target2,
+out float4 o3 : SV_Target3)
 {
-  float4 r0,r1,r2,r3,r4,r5,r6;
-  uint4 bitmask;
-  r0.xy = v2.xy / v1.ww;
-  r0.z = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.xy).x;
-  r0.xyw = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.xy).xyz;
-  r0.xyw = r0.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r1.x = -r0.z * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
-  r1.x = SecondaryInvProjectionParams.x / r1.x;
-  r1.y = r0.z * InvProjectionParams.y + InvProjectionParams.z;
-  r0.z = r0.z < 0.000000000e+000;
-  r1.y = InvProjectionParams.x / r1.y;
-  r1.xy = max(r1.xy, float2(0.000000e+000,0.000000e+000));
-  r0.z = r0.z ? r1.x : r1.y;
-  r1.xyz = v0.xyz / v1.www;
+float4 r0,r1,r2,r3,r4,r5,r6;
+uint4 bitmask;
+r0.xy = v2.xy / v1.ww;
+r0.z = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.xy).x;
+r0.xyw = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.xy).xyz;
+r0.xyw = r0.xyw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+r1.x = -r0.z * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
+r1.x = SecondaryInvProjectionParams.x / r1.x;
+r1.y = r0.z * InvProjectionParams.y + InvProjectionParams.z;
+r0.z = r0.z < 0.000000000e+000;
+r1.y = InvProjectionParams.x / r1.y;
+r1.xy = max(r1.xy, float2(0.000000e+000,0.000000e+000));
+r0.z = r0.z ? r1.x : r1.y;
+r1.xyz = v0.xyz / v1.www;
 
 float4 stereo = StereoParams.Load(0);
 float4 r25, r11;
@@ -84,112 +106,112 @@ r25.w = dot(r11.xyzw, ViewProj._m03_m13_m23_m33);
 
 r25.x -= stereo.x * (r25.w - stereo.y);
 
-r11.x = dot(r25.xyzw, v9.xyzw);
-r11.y = dot(r25.xyzw, v10.xyzw);
-r11.z = dot(r25.xyzw, v11.xyzw);
-r11.w = dot(r25.xyzw, v12.xyzw);    
-r11.xyzw /= r11.wwww;    
+r11.x = dot(r25.xyzw, InvViewProj._m00_m10_m20_m30);
+r11.y = dot(r25.xyzw, InvViewProj._m01_m11_m21_m31);
+r11.z = dot(r25.xyzw, InvViewProj._m02_m12_m22_m32);
+r11.w = dot(r25.xyzw, InvViewProj._m03_m13_m23_m33);
+r11.xyzw /= r11.wwww;
 
 r1.xyz = (r11.xyz - CameraPosition.xyz)/r0.zzz;
 
-  
-  r2.xyzw = r1.zyzx * r0.zzzz + CameraPosition.zyzx;
-  
-  r1.xyz = r1.xyz * r0.zzz;
-  r0.z = dot(r1.xyz, r1.xyz);
-  r0.z = sqrt(r0.z);
-  r0.z = 2.000000030e-001 * r0.z;
-  r0.z = min(r0.z, 1.000000000e+000);
-  r0.z = 1.000000000e+000 + -r0.z;
-  r0.z = 5.000000000e-001 * r0.z;
-  r1.xyzw = rp_parameter_ps[3].yyzz * r2.xyzw;
-  r3.xyzw = TEXTURE_MAP_SAMPLER_TEX.Sample(TEXTURE_MAP_SAMPLER_SMP_s, r1.zw).xyzw;
-  r1.xyzw = TEXTURE_MAP_SAMPLER_TEX.Sample(TEXTURE_MAP_SAMPLER_SMP_s, r1.xy).xyzw;
-  r3.xyz = r3.xyz * r3.xyz;
-  r2.x = dot(r0.xyw, r0.xyw);
-  r2.x = rsqrt(r2.x);
-  r4.xyz = r2.xxx * r0.xyw;
-  r0.x = r0.y * r2.x + rp_parameter_ps[2].x;
-  r5.xyz = float3(-2.000000e-001,-2.000000e-001,-2.000000e-001) + abs(r4.xyz);
-  r5.xyz = float3(7.000000e+000,7.000000e+000,7.000000e+000) * r5.xyz;
-  r6.xyz = r5.xyz * r5.xyz;
-  r5.xyz = r6.xyz * r5.xyz;
-  r5.xyz = max(r5.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
-  r0.y = r5.x + r5.y;
-  r0.y = r0.y + r5.z;
-  r5.xyz = r5.xyz / r0.yyy;
-  r3.xyzw = r5.yyyy * r3.xyzw;
-  r1.xyz = r1.xyz * r1.xyz;
-  r1.xyzw = r1.xyzw * r5.xxxx + r3.xyzw;
-  r0.yw = rp_parameter_ps[3].ww * r2.wy;
-  r3.xyzw = TEXTURE_MAP_SAMPLER_TEX.Sample(TEXTURE_MAP_SAMPLER_SMP_s, r0.yw).xyzw;
-  r3.xyz = r3.xyz * r3.xyz;
-  r1.xyzw = r3.xyzw * r5.zzzz + r1.xyzw;
-  r3.xyz = -v3.xyz + r2.wyz;
-  r0.yw = r2.zy * float2(2.000000e+000,2.000000e+000) + r2.ww;
-  r0.yw = float2(1.000000e+001,1.000000e+001) * abs(r0.yw);
-  r2.xyz = SPARKLE_MAP_SAMPLER_TEX.Sample(SPARKLE_MAP_SAMPLER_SMP_s, r0.yw).xyz;
-  r5.x = dot(v4.xyz, r3.xyz);
-  r5.y = dot(v5.xyz, r3.xyz);
-  r5.z = dot(v6.xyz, r3.xyz);
-  r3.xyz = r5.xyz / rp_parameter_ps[5].xyz;
-  r3.xyz = min(abs(r3.xyz), float3(1.000000e+000,1.000000e+000,1.000000e+000));
-  r3.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r3.xyz;
-  r3.xyz = saturate(r3.xyz / rp_parameter_ps[4].yzw);
-  r0.y = r3.x * r3.y;
-  r0.y = r0.y * r3.z;
-  r0.y = rp_parameter_ps[0].w * r0.y;
-  r0.w = 1.000000000e+000 + rp_parameter_ps[2].x;
-  r0.x = saturate(r0.x / r0.w);
-  r0.w = -r0.y * r0.x + 1.000000000e+000;
-  r0.y = r0.y * r0.x;
-  r0.x = 1.000000000e+000 + -r0.x;
-  r0.x = -r0.x * r0.x + 1.000000000e+000;
-  r0.y = saturate(r0.y);
-  r0.w = saturate(r1.w + -r0.w);
-  r2.w = r0.w * -2.000000000e+000 + 3.000000000e+000;
-  r0.w = r0.w * r0.w;
-  r0.w = r2.w * r0.w;
-  r1.w = min(r0.w, 1.000000000e+000);
-  r3.xyzw = r1.xyzw * r0.xxxx;
-  r0.x = rp_parameter_ps[1].w * r3.w;
-  r0.x = v0.w * r0.x;
-  o0.w = r0.x;
-  o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-  r0.w = dot(r2.xyz, r4.xyz);
-  r0.w = abs(r0.w) >= 9.950000048e-001;
-  r0.w = r0.w ? 1.000000 : 0;
-  r0.z = r0.w * r0.z;
-  r0.z = r0.z * r1.w;
-  r0.zw = float2(1.000000e-001,5.000000e+000) * r0.zz;
-  r1.xyzw = r2.xxyz * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r0.z = r2.x * 4.000000060e-001 + r0.z;
-  r0.z = rp_parameter_ps[2].z * r0.z;
-  o3.x = -r0.z * 1.500000060e-001 + 1.000000000e+000;
-  r1.yzw = rp_parameter_ps[2].zzz * r1.yzw;
-  r1.yzw = r1.yzw * float3(2.500000e-001,2.500000e-001,2.500000e-001) + r4.xyz;
-  r0.z = dot(r1.yzw, r1.yzw);
-  r0.z = rsqrt(r0.z);
-  r1.yzw = r1.yzw * r0.zzz + -r4.xyz;
-  r1.yzw = r0.www * r1.yzw + r4.xyz;
-  o1.xyz = r1.yzw * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
-  o3.w = rp_parameter_ps[3].x * r0.x;
-  o1.w = r0.x;
-  o2.w = r0.x;
-  r0.xzw = -rp_parameter_ps[1].xyz + rp_parameter_ps[0].xyz;
-  r0.xyz = r0.yyy * r0.xzw + rp_parameter_ps[1].xyz;
-  r0.w = 2.000000030e-001 * rp_parameter_ps[2].y;
-  r0.w = saturate(r0.w * r1.x);
-  r0.xyz = r0.xyz * r3.xyz + r0.www;
-  r0.xyz = float3(1.000000e-019,1.000000e-019,1.000000e-019) + r0.xyz;
-  r0.xyz = saturate(float3(5.000000e-001,5.000000e-001,5.000000e-001) * r0.xyz);
-  o2.xyz = sqrt(r0.xyz);
-  r0.x = 1.000000000e+000 + -rp_parameter_ps[2].w;
-  r0.x = sqrt(r0.x);
-  r0.x = -r0.x * 5.000000000e-001 + 5.000000000e-001;
-  o3.y = rp_parameter_ps[2].w * 5.000000000e-001 + r0.x;
-  o3.z = 1.000000000e+000;
-  return;
+
+r2.xyzw = r1.zyzx * r0.zzzz + CameraPosition.zyzx;
+
+r1.xyz = r1.xyz * r0.zzz;
+r0.z = dot(r1.xyz, r1.xyz);
+r0.z = sqrt(r0.z);
+r0.z = 2.000000030e-001 * r0.z;
+r0.z = min(r0.z, 1.000000000e+000);
+r0.z = 1.000000000e+000 + -r0.z;
+r0.z = 5.000000000e-001 * r0.z;
+r1.xyzw = rp_parameter_ps[3].yyzz * r2.xyzw;
+r3.xyzw = TEXTURE_MAP_SAMPLER_TEX.Sample(TEXTURE_MAP_SAMPLER_SMP_s, r1.zw).xyzw;
+r1.xyzw = TEXTURE_MAP_SAMPLER_TEX.Sample(TEXTURE_MAP_SAMPLER_SMP_s, r1.xy).xyzw;
+r3.xyz = r3.xyz * r3.xyz;
+r2.x = dot(r0.xyw, r0.xyw);
+r2.x = rsqrt(r2.x);
+r4.xyz = r2.xxx * r0.xyw;
+r0.x = r0.y * r2.x + rp_parameter_ps[2].x;
+r5.xyz = float3(-2.000000e-001,-2.000000e-001,-2.000000e-001) + abs(r4.xyz);
+r5.xyz = float3(7.000000e+000,7.000000e+000,7.000000e+000) * r5.xyz;
+r6.xyz = r5.xyz * r5.xyz;
+r5.xyz = r6.xyz * r5.xyz;
+r5.xyz = max(r5.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+r0.y = r5.x + r5.y;
+r0.y = r0.y + r5.z;
+r5.xyz = r5.xyz / r0.yyy;
+r3.xyzw = r5.yyyy * r3.xyzw;
+r1.xyz = r1.xyz * r1.xyz;
+r1.xyzw = r1.xyzw * r5.xxxx + r3.xyzw;
+r0.yw = rp_parameter_ps[3].ww * r2.wy;
+r3.xyzw = TEXTURE_MAP_SAMPLER_TEX.Sample(TEXTURE_MAP_SAMPLER_SMP_s, r0.yw).xyzw;
+r3.xyz = r3.xyz * r3.xyz;
+r1.xyzw = r3.xyzw * r5.zzzz + r1.xyzw;
+r3.xyz = -v3.xyz + r2.wyz;
+r0.yw = r2.zy * float2(2.000000e+000,2.000000e+000) + r2.ww;
+r0.yw = float2(1.000000e+001,1.000000e+001) * abs(r0.yw);
+r2.xyz = SPARKLE_MAP_SAMPLER_TEX.Sample(SPARKLE_MAP_SAMPLER_SMP_s, r0.yw).xyz;
+r5.x = dot(v4.xyz, r3.xyz);
+r5.y = dot(v5.xyz, r3.xyz);
+r5.z = dot(v6.xyz, r3.xyz);
+r3.xyz = r5.xyz / rp_parameter_ps[5].xyz;
+r3.xyz = min(abs(r3.xyz), float3(1.000000e+000,1.000000e+000,1.000000e+000));
+r3.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r3.xyz;
+r3.xyz = saturate(r3.xyz / rp_parameter_ps[4].yzw);
+r0.y = r3.x * r3.y;
+r0.y = r0.y * r3.z;
+r0.y = rp_parameter_ps[0].w * r0.y;
+r0.w = 1.000000000e+000 + rp_parameter_ps[2].x;
+r0.x = saturate(r0.x / r0.w);
+r0.w = -r0.y * r0.x + 1.000000000e+000;
+r0.y = r0.y * r0.x;
+r0.x = 1.000000000e+000 + -r0.x;
+r0.x = -r0.x * r0.x + 1.000000000e+000;
+r0.y = saturate(r0.y);
+r0.w = saturate(r1.w + -r0.w);
+r2.w = r0.w * -2.000000000e+000 + 3.000000000e+000;
+r0.w = r0.w * r0.w;
+r0.w = r2.w * r0.w;
+r1.w = min(r0.w, 1.000000000e+000);
+r3.xyzw = r1.xyzw * r0.xxxx;
+r0.x = rp_parameter_ps[1].w * r3.w;
+r0.x = v0.w * r0.x;
+o0.w = r0.x;
+o0.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+r0.w = dot(r2.xyz, r4.xyz);
+r0.w = abs(r0.w) >= 9.950000048e-001;
+r0.w = r0.w ? 1.000000 : 0;
+r0.z = r0.w * r0.z;
+r0.z = r0.z * r1.w;
+r0.zw = float2(1.000000e-001,5.000000e+000) * r0.zz;
+r1.xyzw = r2.xxyz * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+r0.z = r2.x * 4.000000060e-001 + r0.z;
+r0.z = rp_parameter_ps[2].z * r0.z;
+o3.x = -r0.z * 1.500000060e-001 + 1.000000000e+000;
+r1.yzw = rp_parameter_ps[2].zzz * r1.yzw;
+r1.yzw = r1.yzw * float3(2.500000e-001,2.500000e-001,2.500000e-001) + r4.xyz;
+r0.z = dot(r1.yzw, r1.yzw);
+r0.z = rsqrt(r0.z);
+r1.yzw = r1.yzw * r0.zzz + -r4.xyz;
+r1.yzw = r0.www * r1.yzw + r4.xyz;
+o1.xyz = r1.yzw * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+o3.w = rp_parameter_ps[3].x * r0.x;
+o1.w = r0.x;
+o2.w = r0.x;
+r0.xzw = -rp_parameter_ps[1].xyz + rp_parameter_ps[0].xyz;
+r0.xyz = r0.yyy * r0.xzw + rp_parameter_ps[1].xyz;
+r0.w = 2.000000030e-001 * rp_parameter_ps[2].y;
+r0.w = saturate(r0.w * r1.x);
+r0.xyz = r0.xyz * r3.xyz + r0.www;
+r0.xyz = float3(1.000000e-019,1.000000e-019,1.000000e-019) + r0.xyz;
+r0.xyz = saturate(float3(5.000000e-001,5.000000e-001,5.000000e-001) * r0.xyz);
+o2.xyz = sqrt(r0.xyz);
+r0.x = 1.000000000e+000 + -rp_parameter_ps[2].w;
+r0.x = sqrt(r0.x);
+r0.x = -r0.x * 5.000000000e-001 + 5.000000000e-001;
+o3.y = rp_parameter_ps[2].w * 5.000000000e-001 + r0.x;
+o3.z = 1.000000000e+000;
+return;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -197,7 +219,7 @@ r1.xyz = (r11.xyz - CameraPosition.xyz)/r0.zzz;
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
 //
 //
-// Buffer Definitions: 
+// Buffer Definitions:
 //
 // cbuffer cbDefaultXSC
 // {
@@ -258,11 +280,11 @@ r1.xyz = (r11.xyz - CameraPosition.xyz)/r0.zzz;
 // -------------------- ----- ------ -------- -------- ------- ------
 // TEXCOORD                 0   xyzw        0     NONE   float   xyzw
 // TEXCOORD                 1   xyzw        1     NONE   float      w
-// TEXCOORD                 2   xyzw        2     NONE   float   xy  
-// TEXCOORD                 3   xyzw        3     NONE   float   xyz 
-// TEXCOORD                 4   xyzw        4     NONE   float   xyz 
-// TEXCOORD                 5   xyzw        5     NONE   float   xyz 
-// TEXCOORD                 6   xyzw        6     NONE   float   xyz 
+// TEXCOORD                 2   xyzw        2     NONE   float   xy
+// TEXCOORD                 3   xyzw        3     NONE   float   xyz
+// TEXCOORD                 4   xyzw        4     NONE   float   xyz
+// TEXCOORD                 5   xyzw        5     NONE   float   xyz
+// TEXCOORD                 6   xyzw        6     NONE   float   xyz
 //
 //
 // Output signature:
@@ -405,7 +427,7 @@ sqrt r0.x, r0.x
 mad r0.x, -r0.x, l(0.500000), l(0.500000)
 mad o3.y, cb5[34].w, l(0.500000), r0.x
 mov o3.z, l(1.000000)
-ret 
+ret
 // Approximately 108 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

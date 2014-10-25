@@ -1,78 +1,104 @@
+//Fix by mike_ar69
+cbuffer cbDefaultVSC: register (b1)
+{
+  float4x4 ProjMatrix : packoffset(c0);
+  float4x4 TextureTransform : packoffset(c4);
+  float4x4 InvViewProj : packoffset(c8);
+  float4x4 PrevViewProj : packoffset(c12);
+  float4x4 PrevSecViewProj : packoffset(c16);
+  float4 TextureScaleBias : packoffset(c20);
+  float4 RenderTargetSizeVS : packoffset(c21);
+  float4 RenderTargetResolutionVS : packoffset(c22);
+  float4 MorphTargetParams : packoffset(c23);
+  float4 OnePixelStepForS0VS : packoffset(c24);
+  float4 ScreenRes[2] : packoffset(c25);
+  float4 ClearSurfaceColor : packoffset(c27);
+  float4 ClearSurfaceDepth : packoffset(c28);
+  float4 VertexDepthClamp : packoffset(c29);
+  float4 FlareScreenAspect : packoffset(c30);
+  float4 DecalParams : packoffset(c31);
+  float4 UserClipPlane0 : packoffset(c32);
+  float4 UserClipPlane1 : packoffset(c33);
+  float4 UserClipPlane2 : packoffset(c34);
+  float4 UserClipPlane3 : packoffset(c35);
+  float4 DecalScaleParams : packoffset(c36);
+  float4 MipLevel : packoffset(c37);
+}
 
 cbuffer cbDefaultXSC : register(b0)
 {
-  float4x4 ViewProj : packoffset(c0);
-  float4x4 ViewMatrix : packoffset(c4);
-  float4x4 SecondaryProj : packoffset(c8);
-  float4x4 SecondaryViewProj : packoffset(c12);
-  float4x4 SecondaryInvViewProj : packoffset(c16);
-  float4 ConstantColour : packoffset(c20);
-  float4 Time : packoffset(c21);
-  float4 CameraPosition : packoffset(c22);
-  float4 InvProjectionParams : packoffset(c23);
-  float4 SecondaryInvProjectionParams : packoffset(c24);
-  float4 ShaderDebugParams : packoffset(c25);
-  float4 ToneMappingDebugParams : packoffset(c26);
-  float4 HDR_EncodeScale2 : packoffset(c27);
-  float4 EmissiveSurfaceMultiplier : packoffset(c28);
-  float4 AlphaLight_OffsetScale : packoffset(c29);
-  float4 TessellationScaleFactor : packoffset(c30);
-  float4 FogNearColour : packoffset(c31);
-  float4 FogFarColour : packoffset(c32);
-  float4 FogParams : packoffset(c33);
-  float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
-  float4 SMAA_RTMetrics : packoffset(c35);
+float4x4 ViewProj : packoffset(c0);
+float4x4 ViewMatrix : packoffset(c4);
+float4x4 SecondaryProj : packoffset(c8);
+float4x4 SecondaryViewProj : packoffset(c12);
+float4x4 SecondaryInvViewProj : packoffset(c16);
+float4 ConstantColour : packoffset(c20);
+float4 Time : packoffset(c21);
+float4 CameraPosition : packoffset(c22);
+float4 InvProjectionParams : packoffset(c23);
+float4 SecondaryInvProjectionParams : packoffset(c24);
+float4 ShaderDebugParams : packoffset(c25);
+float4 ToneMappingDebugParams : packoffset(c26);
+float4 HDR_EncodeScale2 : packoffset(c27);
+float4 EmissiveSurfaceMultiplier : packoffset(c28);
+float4 AlphaLight_OffsetScale : packoffset(c29);
+float4 TessellationScaleFactor : packoffset(c30);
+float4 FogNearColour : packoffset(c31);
+float4 FogFarColour : packoffset(c32);
+float4 FogParams : packoffset(c33);
+float4 AdvanceEnvironmentShaderDebugParams : packoffset(c34);
+float4 SMAA_RTMetrics : packoffset(c35);
 }
 
 cbuffer cbDefaultPSC : register(b2)
 {
-  float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
-  float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
-  float4x4 ProjectorMatrix : packoffset(c8);
-  float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
-  float4x4 MotionBlurPrevViewProjection : packoffset(c16);
-  float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
-  float4x4 Spotlight0_Transform : packoffset(c24);
-  float4 TextureAnimation : packoffset(c28);
-  float4 AmbientDiffuse : packoffset(c29);
-  float4 EnvironmentDebugParams : packoffset(c30);
-  float4 ShadowFilterESMWeights : packoffset(c31);
-  float4 LegacyDofParams : packoffset(c32);
-  float4 OnePixelStepForS0 : packoffset(c33);
-  float4 RenderTargetSize : packoffset(c34);
-  float4 ModelTrackerID : packoffset(c35);
-  float4 Sharpness_Bloom_Controls : packoffset(c36);
-  float4 Blur_Direction : packoffset(c37);
-  float4 LightMeterDebugParams : packoffset(c38);
-  float4 SourceResolution : packoffset(c39);
-  float4 HDR_EncodeScale : packoffset(c40);
-  float4 OutputGamma : packoffset(c41);
-  float4 AlphaLight_ScaleParams : packoffset(c42);
-  float4 WrinkleMapWeights[6] : packoffset(c43);
-  float4 RadiosityCubeMapIdx : packoffset(c49);
-  float4 HairShadingParams[8] : packoffset(c50);
-  float4 SkinShadingParams : packoffset(c58);
-  float4 HDR_EncodeScale3 : packoffset(c59);
-  float4 ScreenResolution[4] : packoffset(c60);
-  float4 VelocityParams : packoffset(c64);
-  float4 DeferredConstColor : packoffset(c65);
-  float4 Spotlight0_Shadow_Params : packoffset(c66);
-  float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
-  float4 ShadowFilterType : packoffset(c68);
-  float4 Spotlight0_ReverseZPerspective : packoffset(c69);
-  float4 SpacesuitVisorParams : packoffset(c70);
-  float4 Directional_Light_Colour : packoffset(c71);
-  float4 Directional_Light_Direction : packoffset(c72);
-  float4 EnvironmentMap_Params : packoffset(c73);
-  float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
-  float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
-  float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
-  float4 ScreenSpaceLightPosition : packoffset(c77);
-  float4 LensAndScreenCenter : packoffset(c78);
-  float4 ScaleAndScaleIn : packoffset(c79);
-  float4 HmdWarpParam : packoffset(c80);
-  float4 ChromAbParam : packoffset(c81);
-  float4 SMAA_SubsampleIndices : packoffset(c82);
+float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
+float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
+float4x4 ProjectorMatrix : packoffset(c8);
+float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
+float4x4 MotionBlurPrevViewProjection : packoffset(c16);
+float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
+float4x4 Spotlight0_Transform : packoffset(c24);
+float4 TextureAnimation : packoffset(c28);
+float4 AmbientDiffuse : packoffset(c29);
+float4 EnvironmentDebugParams : packoffset(c30);
+float4 ShadowFilterESMWeights : packoffset(c31);
+float4 LegacyDofParams : packoffset(c32);
+float4 OnePixelStepForS0 : packoffset(c33);
+float4 RenderTargetSize : packoffset(c34);
+float4 ModelTrackerID : packoffset(c35);
+float4 Sharpness_Bloom_Controls : packoffset(c36);
+float4 Blur_Direction : packoffset(c37);
+float4 LightMeterDebugParams : packoffset(c38);
+float4 SourceResolution : packoffset(c39);
+float4 HDR_EncodeScale : packoffset(c40);
+float4 OutputGamma : packoffset(c41);
+float4 AlphaLight_ScaleParams : packoffset(c42);
+float4 WrinkleMapWeights[6] : packoffset(c43);
+float4 RadiosityCubeMapIdx : packoffset(c49);
+float4 HairShadingParams[8] : packoffset(c50);
+float4 SkinShadingParams : packoffset(c58);
+float4 HDR_EncodeScale3 : packoffset(c59);
+float4 ScreenResolution[4] : packoffset(c60);
+float4 VelocityParams : packoffset(c64);
+float4 DeferredConstColor : packoffset(c65);
+float4 Spotlight0_Shadow_Params : packoffset(c66);
+float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
+float4 ShadowFilterType : packoffset(c68);
+float4 Spotlight0_ReverseZPerspective : packoffset(c69);
+float4 SpacesuitVisorParams : packoffset(c70);
+float4 Directional_Light_Colour : packoffset(c71);
+float4 Directional_Light_Direction : packoffset(c72);
+float4 EnvironmentMap_Params : packoffset(c73);
+float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
+float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
+float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
+float4 ScreenSpaceLightPosition : packoffset(c77);
+float4 LensAndScreenCenter : packoffset(c78);
+float4 ScaleAndScaleIn : packoffset(c79);
+float4 HmdWarpParam : packoffset(c80);
+float4 ChromAbParam : packoffset(c81);
+float4 SMAA_SubsampleIndices : packoffset(c82);
 }
 SamplerState frameSamplerReg_SMP_s : register(s7);
 SamplerState depthSamplerReg_SMP_s : register(s8);
@@ -86,38 +112,34 @@ Texture2D<float4> specularSamplerReg_TEX : register(t13);
 Texture2D<float4> StereoParams : register(t125);
 
 void main(
-  float4 v0 : TEXCOORD0,
-  float4 v1 : TEXCOORD1,
-  float4 v2 : TEXCOORD2,
-  float4 v3 : TEXCOORD3,
-  float4 v4 : TEXCOORD4,
-  float4 v5 : TEXCOORD5,
-  float4 v6 : TEXCOORD6,
-  float4 v7 : TEXCOORD7,
-  float4 v10 : TEXCOORD9,
-  float4 v11 : TEXCOORD10,
-  float4 v12 : TEXCOORD11,
-  float4 v13 : TEXCOORD12,
-  out float4 o0 : SV_Target0)
+float4 v0 : TEXCOORD0,
+float4 v1 : TEXCOORD1,
+float4 v2 : TEXCOORD2,
+float4 v3 : TEXCOORD3,
+float4 v4 : TEXCOORD4,
+float4 v5 : TEXCOORD5,
+float4 v6 : TEXCOORD6,
+float4 v7 : TEXCOORD7,
+out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2,r3,r4;
-  uint4 bitmask;
-  r0.x = dot(v6.xyz, v6.xyz);
-  r0.x = rsqrt(r0.x);
-  r0.y = 1.000000e+000 / v3.w;
-  r0.zw = v4.xy * r0.yy;
-  r1.xyz = v2.yzw * r0.yyy;
-  r0.y = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.zw).x;
-  r1.w = -r0.y * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
-  r1.w = SecondaryInvProjectionParams.x / r1.w;
-  r1.w = max(r1.w, 0.000000000e+000);
-  r2.x = r0.y * InvProjectionParams.y + InvProjectionParams.z;
-  r0.y = r0.y < 0.000000000e+000;
-  r2.x = InvProjectionParams.x / r2.x;
-  r2.x = max(r2.x, 0.000000000e+000);
-  r0.y = r0.y ? r1.w : r2.x;
+float4 r0,r1,r2,r3,r4;
+uint4 bitmask;
+r0.x = dot(v6.xyz, v6.xyz);
+r0.x = rsqrt(r0.x);
+r0.y = 1.000000e+000 / v3.w;
+r0.zw = v4.xy * r0.yy;
+r1.xyz = v2.yzw * r0.yyy;
+r0.y = depthSamplerReg_TEX.Sample(depthSamplerReg_SMP_s, r0.zw).x;
+r1.w = -r0.y * SecondaryInvProjectionParams.y + SecondaryInvProjectionParams.z;
+r1.w = SecondaryInvProjectionParams.x / r1.w;
+r1.w = max(r1.w, 0.000000000e+000);
+r2.x = r0.y * InvProjectionParams.y + InvProjectionParams.z;
+r0.y = r0.y < 0.000000000e+000;
+r2.x = InvProjectionParams.x / r2.x;
+r2.x = max(r2.x, 0.000000000e+000);
+r0.y = r0.y ? r1.w : r2.x;
 
-  r1.xyz = r1.xyz * r0.yyy + CameraPosition.xyz;
+r1.xyz = r1.xyz * r0.yyy + CameraPosition.xyz;
 
 float4 stereo = StereoParams.Load(0);
 float4 r25;
@@ -127,80 +149,80 @@ r25.y = dot(r1.xyzw, ViewProj._m01_m11_m21_m31);
 r25.z = dot(r1.xyzw, ViewProj._m02_m12_m22_m32);
 r25.w = dot(r1.xyzw, ViewProj._m03_m13_m23_m33);
 r25.x -= stereo.x * (r25.w - stereo.y);
-r1.x = dot(r25.xyzw, v10.xyzw);
-r1.y = dot(r25.xyzw, v11.xyzw);
-r1.z = dot(r25.xyzw, v12.xyzw);
-r1.w = dot(r25.xyzw, v13.xyzw);
+r1.x = dot(r25.xyzw, InvViewProj._m00_m10_m20_m30);
+r1.y = dot(r25.xyzw, InvViewProj._m01_m11_m21_m31);
+r1.z = dot(r25.xyzw, InvViewProj._m02_m12_m22_m32);
+r1.w = dot(r25.xyzw, InvViewProj._m03_m13_m23_m33);
 r1.xyzw /= r1.wwww;
 
 
-  r2.xyz = v0.xyz + -r1.xyz;
-  r0.y = dot(r2.xyz, r2.xyz);
-  r2.w = rsqrt(r0.y);
-  r0.y = sqrt(r0.y);
-  r0.y = -v0.w + r0.y;
-  r0.y = max(r0.y, 0.000000000e+000);
-  r3.xyz = r2.xyz * r2.www;
-  r2.xyz = v7.zzz * v5.xyz + r2.xyz;
-  r2.x = dot(r2.xyz, r2.xyz);
-  r2.x = sqrt(r2.x);
-  r2.x = saturate(v7.y / r2.x);
-  r2.yzw = v6.xyz * r0.xxx + r3.xyz;
-  r0.x = dot(r2.yzw, r2.yzw);
-  r0.x = rsqrt(r0.x);
-  r2.yzw = r2.yzw * r0.xxx;
-  r4.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.zw).xyz;
-  r4.xyz = r4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r0.x = dot(r4.xyz, r4.xyz);
-  r0.x = rsqrt(r0.x);
-  r4.xyz = r4.xyz * r0.xxx;
-  r0.x = dot(r4.xyz, r2.yzw);
-  r2.y = dot(r3.xyz, r4.xyz);
-  r2.zw = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s, r0.zw).xy;
-  r3.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.zw).xyz;
-  r3.xyz = r3.xyz * r3.xyz;
-  r3.xyz = r3.xyz + r3.xyz;
-  r0.z = v7.x * r2.z;
-  r0.z = r0.z * -7.500000000e-001 + 7.500000000e-001;
-  r0.w = r0.z * r0.z + -1.000000000e+000;
-  r0.xz = r0.xz * r0.xz;
-  r0.x = r0.x * r0.w + 1.000000000e+000;
-  r0.x = r0.x * r0.x;
-  r0.x = r0.z / r0.x;
-  r0.z = max(r3.y, r3.x);
-  r0.w = max(r3.z, 9.999999747e-005);
-  r0.z = max(r0.w, r0.z);
-  r0.z = 1.000000e+000 / r0.z;
-  r4.xyz = r3.xyz * r0.zzz;
-  r0.z = saturate(-r2.w * 2.000000000e+000 + 1.000000000e+000);
-  r0.w = saturate(r2.w * 2.000000000e+000 + -1.000000000e+000);
-  r0.z = r0.z * r0.z;
-  r4.xyz = r0.www * r4.xyz + r0.zzz;
-  r0.xzw = r4.xyz * r0.xxx;
-  r2.z = 1.000000000e+000 + -r2.y;
-  r2.w = 1.000000000e+000 + r2.x;
-  r2.z = r2.z / r2.w;
-  r2.x = saturate(r2.z * r2.x + r2.y);
-  r0.xzw = r2.xxx * r0.xzw;
-  r2.xyz = r3.xyz * r2.xxx;
-  r2.w = 1.000000e+000 / v1.w;
-  r2.w = saturate(r2.w * r0.y);
-  r0.y = r0.y * r0.y + v2.x;
-  r3.x = r2.w * -2.000000000e+000 + 3.000000000e+000;
-  r2.w = r2.w * r2.w;
-  r2.w = -r3.x * r2.w + 1.000000000e+000;
-  r0.y = r2.w / r0.y;
-  r3.xyz = v1.xyz * r0.yyy;
-  r2.xyz = r3.xyz * r2.xyz;
-  r0.xyz = r3.xyz * r0.xzw + r2.xyz;
-  r1.w = 1.000000000e+000;
-  r0.w = dot(r1.xyzw, Spotlight0_Transform._m02_m12_m22_m32);
-  r0.w = r0.w >= 0.000000000e+000;
-  r0.w = r0.w ? 1.000000 : 0;
-  r0.xyz = r0.xyz * r0.www;
-  o0.xyz = HDR_EncodeScale.zzz * r0.xyz;
-  o0.w = 1.000000000e+000;
-  return;
+r2.xyz = v0.xyz + -r1.xyz;
+r0.y = dot(r2.xyz, r2.xyz);
+r2.w = rsqrt(r0.y);
+r0.y = sqrt(r0.y);
+r0.y = -v0.w + r0.y;
+r0.y = max(r0.y, 0.000000000e+000);
+r3.xyz = r2.xyz * r2.www;
+r2.xyz = v7.zzz * v5.xyz + r2.xyz;
+r2.x = dot(r2.xyz, r2.xyz);
+r2.x = sqrt(r2.x);
+r2.x = saturate(v7.y / r2.x);
+r2.yzw = v6.xyz * r0.xxx + r3.xyz;
+r0.x = dot(r2.yzw, r2.yzw);
+r0.x = rsqrt(r0.x);
+r2.yzw = r2.yzw * r0.xxx;
+r4.xyz = normalSamplerReg_TEX.Sample(normalSamplerReg_SMP_s, r0.zw).xyz;
+r4.xyz = r4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+r0.x = dot(r4.xyz, r4.xyz);
+r0.x = rsqrt(r0.x);
+r4.xyz = r4.xyz * r0.xxx;
+r0.x = dot(r4.xyz, r2.yzw);
+r2.y = dot(r3.xyz, r4.xyz);
+r2.zw = specularSamplerReg_TEX.Sample(specularSamplerReg_SMP_s, r0.zw).xy;
+r3.xyz = frameSamplerReg_TEX.Sample(frameSamplerReg_SMP_s, r0.zw).xyz;
+r3.xyz = r3.xyz * r3.xyz;
+r3.xyz = r3.xyz + r3.xyz;
+r0.z = v7.x * r2.z;
+r0.z = r0.z * -7.500000000e-001 + 7.500000000e-001;
+r0.w = r0.z * r0.z + -1.000000000e+000;
+r0.xz = r0.xz * r0.xz;
+r0.x = r0.x * r0.w + 1.000000000e+000;
+r0.x = r0.x * r0.x;
+r0.x = r0.z / r0.x;
+r0.z = max(r3.y, r3.x);
+r0.w = max(r3.z, 9.999999747e-005);
+r0.z = max(r0.w, r0.z);
+r0.z = 1.000000e+000 / r0.z;
+r4.xyz = r3.xyz * r0.zzz;
+r0.z = saturate(-r2.w * 2.000000000e+000 + 1.000000000e+000);
+r0.w = saturate(r2.w * 2.000000000e+000 + -1.000000000e+000);
+r0.z = r0.z * r0.z;
+r4.xyz = r0.www * r4.xyz + r0.zzz;
+r0.xzw = r4.xyz * r0.xxx;
+r2.z = 1.000000000e+000 + -r2.y;
+r2.w = 1.000000000e+000 + r2.x;
+r2.z = r2.z / r2.w;
+r2.x = saturate(r2.z * r2.x + r2.y);
+r0.xzw = r2.xxx * r0.xzw;
+r2.xyz = r3.xyz * r2.xxx;
+r2.w = 1.000000e+000 / v1.w;
+r2.w = saturate(r2.w * r0.y);
+r0.y = r0.y * r0.y + v2.x;
+r3.x = r2.w * -2.000000000e+000 + 3.000000000e+000;
+r2.w = r2.w * r2.w;
+r2.w = -r3.x * r2.w + 1.000000000e+000;
+r0.y = r2.w / r0.y;
+r3.xyz = v1.xyz * r0.yyy;
+r2.xyz = r3.xyz * r2.xyz;
+r0.xyz = r3.xyz * r0.xzw + r2.xyz;
+r1.w = 1.000000000e+000;
+r0.w = dot(r1.xyzw, Spotlight0_Transform._m02_m12_m22_m32);
+r0.w = r0.w >= 0.000000000e+000;
+r0.w = r0.w ? 1.000000 : 0;
+r0.xyz = r0.xyz * r0.www;
+o0.xyz = HDR_EncodeScale.zzz * r0.xyz;
+o0.w = 1.000000000e+000;
+return;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -208,7 +230,7 @@ r1.xyzw /= r1.wwww;
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
 //
 //
-// Buffer Definitions: 
+// Buffer Definitions:
 //
 // cbuffer cbDefaultXSC
 // {
@@ -316,10 +338,10 @@ r1.xyzw /= r1.wwww;
 // TEXCOORD                 1   xyzw        1     NONE   float   xyzw
 // TEXCOORD                 2   xyzw        2     NONE   float   xyzw
 // TEXCOORD                 3   xyzw        3     NONE   float      w
-// TEXCOORD                 4   xyzw        4     NONE   float   xy  
-// TEXCOORD                 5   xyzw        5     NONE   float   xyz 
-// TEXCOORD                 6   xyzw        6     NONE   float   xyz 
-// TEXCOORD                 7   xyzw        7     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        4     NONE   float   xy
+// TEXCOORD                 5   xyzw        5     NONE   float   xyz
+// TEXCOORD                 6   xyzw        6     NONE   float   xyz
+// TEXCOORD                 7   xyzw        7     NONE   float   xyz
 //
 //
 // Output signature:
@@ -431,7 +453,7 @@ and r0.w, r0.w, l(0x3f800000)
 mul r0.xyz, r0.wwww, r0.xyzx
 mul o0.xyz, r0.xyzx, cb2[40].zzzz
 mov o0.w, l(1.000000)
-ret 
+ret
 // Approximately 82 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
