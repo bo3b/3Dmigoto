@@ -2392,11 +2392,33 @@ public:
 		}
 	}
 
+
+
+	char* indent = "  ";
+	size_t level;
+
+	// General output routine while decoding shader, to automatically apply indenting to HLSL code.
+	// When we see a '{' or '}' we'll increase or decrease the indent.
+	void appendOutput(char* line)
+	{
+		if (strchr(line, '}') != NULL)
+			level--;
+		for (size_t i = 0; i < level; i++)
+		{
+			mOutput.insert(mOutput.end(), indent, indent + strlen(indent));
+		}
+		if (strchr(line, '{') != NULL)
+			level++;
+
+		mOutput.insert(mOutput.end(), line, line + strlen(line));
+	}
+
 	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
 		mBooleanRegisters.clear();
 		mCodeStartPos = mOutput.size();
+		level = 0;		// indent level
 
 		char buffer[512];
 		size_t pos = 0;
@@ -2598,7 +2620,7 @@ public:
 							sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(%s);\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						if (op1[0] == 'o')
 						{
 							char *dotPos = strchr(op1, '.'); if (dotPos) *dotPos = 0;
@@ -2612,14 +2634,14 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ~%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_INEG:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						sprintf(buffer, "  %s = -%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2627,7 +2649,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = f32tof16(%s);\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2635,7 +2657,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = f16tof32(%s);\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2646,7 +2668,7 @@ public:
 							sprintf(buffer, "  %s = frac(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(frac(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2659,7 +2681,7 @@ public:
 							sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(%s * %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2669,7 +2691,7 @@ public:
 						applySwizzle(op2, op4, true);
 						mMulOperand = strncmp(op3, "int", 3) ? op3 : op4;
 						sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op2), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2681,7 +2703,7 @@ public:
 							sprintf(buffer, "  %s = %s / %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(%s / %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2701,9 +2723,9 @@ public:
 						size_t usize = strlen(pos + 1);
 
 						sprintf(buffer, "  uint%d src0 = %s;\n", usize, ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						sprintf(buffer, "  uint%d src1 = %s;\n", usize, ci(op4).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
@@ -2711,7 +2733,7 @@ public:
 								sprintf(buffer, "  %s = src0 / src1;\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
 							else
 								sprintf(buffer, "  %s = saturate(src0 / src1);\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 						}
 						if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
 						{
@@ -2719,7 +2741,7 @@ public:
 								sprintf(buffer, "  %s = src0 %% src1;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
 							else
 								sprintf(buffer, "  %s = saturate(src0 %% src1);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 						}
 						removeBoolean(op1);
 						break;
@@ -2733,7 +2755,7 @@ public:
 							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2749,7 +2771,7 @@ public:
 						}
 						else
 							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2778,12 +2800,12 @@ public:
 							char *cmp = isBoolean(op2) ? op12 : op13;
 							char *arg = isBoolean(op2) ? op13 : op12;
 							sprintf(buffer, "  %s = %s ? %s : 0;\n", writeTarget(op1), ci(cmp).c_str(), ci(arg).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 						}
 						else
 						{
 							sprintf(buffer, "  %s = %s & %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 						}
 						removeBoolean(op1);
 						break;
@@ -2793,7 +2815,7 @@ public:
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
 						sprintf(buffer, "  %s = %s | %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_XOR:
@@ -2801,7 +2823,7 @@ public:
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
 						sprintf(buffer, "  %s = %s ^ %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 						// Curiously enough, the documentation for ISHR and ISHL is wrong, and documents the parameters backwards.
@@ -2814,7 +2836,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2823,7 +2845,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2834,7 +2856,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2856,7 +2878,7 @@ public:
 								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5),
 								ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(),
 								writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 							++idx;
 						}
 						break;
@@ -2868,7 +2890,7 @@ public:
 							sprintf(buffer, "  %s = exp2(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(exp2(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2879,7 +2901,7 @@ public:
 							sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2897,7 +2919,7 @@ public:
 							sprintf(buffer, "  %s = sqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(sqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2909,7 +2931,7 @@ public:
 							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_MAX:
@@ -2920,7 +2942,7 @@ public:
 							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_IMIN:
@@ -2931,7 +2953,7 @@ public:
 							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_IMAX:
@@ -2942,7 +2964,7 @@ public:
 							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2962,7 +2984,7 @@ public:
 							sprintf(buffer, "  %s = %s * %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(%s * %s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2972,7 +2994,7 @@ public:
 						applySwizzle(op1, op3, true);
 						applySwizzle(op1, op4, true);
 						sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_UMAD:
@@ -2981,7 +3003,7 @@ public:
 						applySwizzle(op1, op3, true);
 						applySwizzle(op1, op4, true);
 						sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op4)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -2993,7 +3015,7 @@ public:
 							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -3005,7 +3027,7 @@ public:
 							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -3017,7 +3039,7 @@ public:
 							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -3029,7 +3051,7 @@ public:
 							sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(rsqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3043,7 +3065,7 @@ public:
 							sprintf(buffer, "  %s = floor(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(floor(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3055,7 +3077,7 @@ public:
 							sprintf(buffer, "  %s = ceil(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(ceil(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3071,7 +3093,7 @@ public:
 							sprintf(buffer, "  %s = trunc(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(trunc(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3087,7 +3109,7 @@ public:
 							sprintf(buffer, "  %s = round(%s);\n", writeTarget(op1), ci(op2).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(round(%s));\n", writeTarget(op1), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3095,7 +3117,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -3103,7 +3125,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -3120,7 +3142,7 @@ public:
 							sprintf(buffer, "  %s = sin(%s);\n", writeTarget(op1), ci(op3).c_str());
 						else
 							sprintf(buffer, "  sincos(%s, %s, %s);\n", ci(op3).c_str(), writeTarget(op1), writeTarget(op2));
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						removeBoolean(op2);
 						break;
@@ -3144,7 +3166,7 @@ public:
 							sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
 						else
 							sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 
 						//int idx = 0;
 						//char *pop1 = strrchr(op1, '.'); *pop1 = 0;
@@ -3157,7 +3179,7 @@ public:
 							//	sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
 							//else
 							//	sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-							//mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							//appendOutput(buffer);
 						//	++idx;
 						//}
 						removeBoolean(op1);
@@ -3174,7 +3196,7 @@ public:
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
 						sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3185,7 +3207,7 @@ public:
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
 						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3195,7 +3217,7 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3205,7 +3227,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = (int)%s < (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3215,7 +3237,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = (uint)%s < (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3225,7 +3247,7 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3235,7 +3257,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = (int)%s >= (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3245,7 +3267,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = (uint)%s >= (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						addBoolean(op1);
 						break;
 					}
@@ -3253,19 +3275,19 @@ public:
 						// Switch statement in HLSL was missing. Added because AC4 uses it.
 					case OPCODE_SWITCH:
 						sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_CASE:
 						sprintf(buffer, "  case %s :", ci(op1).substr(2, 1).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_ENDSWITCH:
 						sprintf(buffer, "  }\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_DEFAULT:
 						sprintf(buffer, "  default :\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_IF:
@@ -3274,24 +3296,24 @@ public:
 							sprintf(buffer, "  if (%s == 0) {\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_ELSE:
 						sprintf(buffer, "  } else {\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_ENDIF:
 						sprintf(buffer, "  }\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_LOOP:
 						sprintf(buffer, "  while (true) {\n", op1);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_BREAK:
 						sprintf(buffer, "  break;\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_BREAKC:
 						applySwizzle(".x", op1);
@@ -3299,11 +3321,11 @@ public:
 							sprintf(buffer, "  if (%s == 0) break;\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_ENDLOOP:
 						sprintf(buffer, "  }\n", op1);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_SWAPC:
@@ -3327,7 +3349,7 @@ public:
 							sprintf(buffer, "  %s = (int)%s ? %s : %s; %s = (int)%s ? %s : %s;\n",
 								writeTarget(op6), ci(op8).c_str(), ci(GetSuffix(op5, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str(),
 								writeTarget(op7), ci(op8).c_str(), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op5, idx)).c_str());
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 							++idx;
 						}
 						break;
@@ -3358,7 +3380,7 @@ public:
 								"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
 								*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(),
 								writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);
-							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+							appendOutput(buffer);
 							++idx;
 						}
 						break;
@@ -3376,7 +3398,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
 							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3403,7 +3425,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3428,7 +3450,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3454,7 +3476,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3479,7 +3501,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3504,7 +3526,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3518,7 +3540,7 @@ public:
 						sscanf_s(op2, "t%d.", &textureId);
 						sprintf(buffer, "  %s = %s.GetSamplePosition(%s);\n", writeTarget(op1),
 							mTextureNames[textureId].c_str(), ci(op3).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
@@ -3542,7 +3564,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3567,7 +3589,7 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3593,7 +3615,7 @@ public:
 							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
 								offsetU, offsetV, offsetW, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3614,7 +3636,7 @@ public:
 							sprintf(buffer, "  %s = %s.Load(%s, %s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(),
 								offsetU, offsetV, offsetW, strrchr(op3, '.'));
 						}
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -3662,12 +3684,12 @@ public:
 						src0 = shader->sInfo->psResourceBindings->Name;
 
 						sprintf(buffer, "// Known bad code for instruction:\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
 						std::string line(c + pos, len);
 						sprintf(buffer, "// %s\n", line.c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 
 						// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
 
@@ -3687,7 +3709,7 @@ public:
 								//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
 								//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
 								sprintf(buffer, "%s.%s = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;\n", dst0.c_str(), swiz.c_str());
-								mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+								appendOutput(buffer);
 							}
 						}
 						removeBoolean(op1);
@@ -3702,7 +3724,7 @@ public:
 						int textureId;
 						sscanf_s(op4, "t%d.", &textureId);
 						sprintf(buffer, "  %s[%s].%s = %s;\n", mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op3).c_str(), writeTarget(op1));
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					}
 
@@ -3712,7 +3734,7 @@ public:
 							sprintf(buffer, "  if (%s == 0) discard;\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) discard;\n", ci(op1).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_RESINFO:
@@ -3724,7 +3746,7 @@ public:
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
 						sprintf(buffer, "  %s.GetDimensions(%s, %s, %s);\n", mTextureNames[textureId].c_str(), ci(GetSuffix(op1, 0)).c_str(), ci(GetSuffix(op1, 1)).c_str(), ci(op2).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					}
 
@@ -3733,68 +3755,68 @@ public:
 						applySwizzle(op1, op2);
 						applySwizzle(".x", fixImm(op3, instr->asOperands[2]), true);
 						sprintf(buffer, "  %s = EvaluateAttributeAtSample(%s, %s);\n", writeTarget(op1), op2, op3);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_EVAL_CENTROID:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = EvaluateAttributeCentroid(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 					case OPCODE_EVAL_SNAPPED:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(".xy", fixImm(op3, instr->asOperands[2]), true);
 						sprintf(buffer, "  %s = EvaluateAttributeSnapped(%s, %s);\n", writeTarget(op1), op2, op3);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					case OPCODE_DERIV_RTX_COARSE:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ddx_coarse(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_DERIV_RTX_FINE:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ddx_fine(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_DERIV_RTY_COARSE:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ddy_coarse(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_DERIV_RTY_FINE:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ddy_fine(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_DERIV_RTX:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ddx(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_DERIV_RTY:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						sprintf(buffer, "  %s = ddy(%s);\n", writeTarget(op1), op2);
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
 					case OPCODE_RET:
 						sprintf(buffer, "  return;\n");
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 						// Missing opcode needed for WatchDogs. Used as "retc_nz r0.x"
@@ -3804,7 +3826,7 @@ public:
 							sprintf(buffer, "  if (%s == 0) return;\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) return;\n", ci(op1).c_str());
-						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						appendOutput(buffer);
 						break;
 
 					default:
