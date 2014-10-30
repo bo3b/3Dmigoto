@@ -89,8 +89,8 @@ void main(
   float4 r0,r1,r2,r3,r4,r5;
   uint4 bitmask;
 
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x; float convergence = stereo.y;
+// float4 stereo = StereoParams.Load(0);
+// float separation = stereo.x; float convergence = stereo.y;
 
   o0.w = DecalParams.x;
   r0.x = WorldMatrix._m20;
@@ -119,8 +119,16 @@ float separation = stereo.x; float convergence = stereo.y;
   r3.x = dot(r4.xyzw, ViewProj._m00_m10_m20_m30);
   r3.y = dot(r4.xyzw, ViewProj._m01_m11_m21_m31);
   r3.w = dot(r4.xyzw, ViewProj._m03_m13_m23_m33);
+  
+float4 stereo = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r3.xyzw;
+r3.x += stereo.x * (r3.w - stereo.y);
+  
   o3.xyzw = r3.xyzw;
-  o10.xyzw = r3.xyzw;
+o10.xyzw = r23.xyzw;
+  
+  
   r3.xy = r3.xy / r3.ww;
   r3.xy = r3.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r3.xy = r3.xy * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
@@ -178,8 +186,6 @@ float separation = stereo.x; float convergence = stereo.y;
   o9.z = WorldMatrix._m32;
   o9.w = 0.000000000e+000;
   
-// Disable blood decal
-o10 =0;
   return;
 }
 
@@ -413,5 +419,4 @@ mov o9.z, cb10[2].w
 mov o9.w, l(0)
 ret 
 // Approximately 86 instruction slots used
- 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

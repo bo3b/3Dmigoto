@@ -1,4 +1,4 @@
-// Blood pool on ground after Joe killed human
+// Damaged wall in freight area
 
 cbuffer cbDefaultXSC : register(b0)
 {
@@ -83,8 +83,7 @@ void main(
   out float4 o6 : TEXCOORD6,
   out float4 o7 : TEXCOORD7,
   out float4 o8 : TEXCOORD8,
-  out float4 o9 : TEXCOORD9,
-  out float4 o10 : SV_Position0)
+  out float4 o9 : SV_Position0)
 {
   float4 r0,r1,r2,r3,r4,r5;
   uint4 bitmask;
@@ -107,30 +106,26 @@ void main(
   r3.xyz = VertexScale.xxx * v0.xyz;
   r3.xyz = DecalScaleParams.xyz * r3.xyz;
   r3.w = 1.000000000e+000;
-  r4.z = dot(r3.xyzw, WorldMatrix._m02_m12_m22_m32);
   r4.x = dot(r3.xyzw, WorldMatrix._m00_m10_m20_m30);
   r4.y = dot(r3.xyzw, WorldMatrix._m01_m11_m21_m31);
+  r4.z = dot(r3.xyzw, WorldMatrix._m02_m12_m22_m32);
   r4.w = 1.000000000e+000;
   r3.z = dot(r4.xyzw, ViewProj._m02_m12_m22_m32);
   r3.x = dot(r4.xyzw, ViewProj._m00_m10_m20_m30);
   r3.y = dot(r4.xyzw, ViewProj._m01_m11_m21_m31);
   r3.w = dot(r4.xyzw, ViewProj._m03_m13_m23_m33);
+  o3.xyzw = r3.xyzw;
+  o9.xyzw = r3.xyzw;
   
+// Following textures were at wrong depth.  Using Mike's fix for blood pools.
 float4 stereo = StereoParams.Load(0);
-float4 r23;
-r23.xyzw = r3.xyzw;
 r3.x += stereo.x * (r3.w - stereo.y);
-  
-  o3.xyzw = r23.xyzw;
-o10.xyzw = r23.xyzw;
-  
+
   r3.xy = r3.xy / r3.ww;
   r3.xy = r3.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
   r3.xy = r3.xy * RenderTargetSizeVS.xy + RenderTargetSizeVS.zw;
   o4.xy = r3.xy * r3.ww;
-  r0.w = dot(r4.xy, r4.xy);
-  r0.w = rsqrt(r0.w);
-  o4.zw = r4.xy * r0.ww;
+  o4.zw = float2(0.000000e+000,0.000000e+000);
   r0.w = dot(r2.xyz, r2.xyz);
   r0.w = 1.000000e+000 / r0.w;
   r2.xyz = r2.xyz * r0.www;
@@ -178,13 +173,6 @@ o10.xyzw = r23.xyzw;
   o8.z = r0.w;
   o7.w = InvViewProj._m23;
   o8.w = InvViewProj._m33;
-  o9.x = WorldMatrix._m30;
-  o9.y = WorldMatrix._m31;
-  o9.z = WorldMatrix._m32;
-  o9.w = 0.000000000e+000;
-  
-//Disable blood decal
-// o10 =0;
   return;
 }
 
@@ -308,8 +296,7 @@ o10.xyzw = r23.xyzw;
 // TEXCOORD                 6   xyzw        6     NONE   float   xyzw
 // TEXCOORD                 7   xyzw        7     NONE   float   xyzw
 // TEXCOORD                 8   xyzw        8     NONE   float   xyzw
-// TEXCOORD                 9   xyzw        9     NONE   float   xyzw
-// SV_Position              0   xyzw       10      POS   float   xyzw
+// SV_Position              0   xyzw        9      POS   float   xyzw
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
@@ -328,8 +315,7 @@ dcl_output o5.xyzw
 dcl_output o6.xyzw
 dcl_output o7.xyzw
 dcl_output o8.xyzw
-dcl_output o9.xyzw
-dcl_output_siv o10.xyzw, position
+dcl_output_siv o9.xyzw, position
 dcl_temps 6
 mov o0.w, cb1[31].x
 mov r0.x, cb10[0].z
@@ -350,23 +336,21 @@ mul o2.xyz, r2.xyzx, cb1[36].xxxx
 mul r3.xyz, v0.xyzx, cb4[0].xxxx
 mul r3.xyz, r3.xyzx, cb1[36].xyzx
 mov r3.w, l(1.000000)
-dp4 r4.z, r3.xyzw, cb10[2].xyzw
 dp4 r4.x, r3.xyzw, cb10[0].xyzw
 dp4 r4.y, r3.xyzw, cb10[1].xyzw
+dp4 r4.z, r3.xyzw, cb10[2].xyzw
 mov r4.w, l(1.000000)
 dp4 r3.z, r4.xyzw, cb0[2].xyzw
 dp4 r3.x, r4.xyzw, cb0[0].xyzw
 dp4 r3.y, r4.xyzw, cb0[1].xyzw
 dp4 r3.w, r4.xyzw, cb0[3].xyzw
 mov o3.xyzw, r3.xyzw
-mov o10.xyzw, r3.xyzw
+mov o9.xyzw, r3.xyzw
 div r3.xy, r3.xyxx, r3.wwww
 mad r3.xy, r3.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
 mad r3.xy, r3.xyxx, cb1[21].xyxx, cb1[21].zwzz
 mul o4.xy, r3.wwww, r3.xyxx
-dp2 r0.w, r4.xyxx, r4.xyxx
-rsq r0.w, r0.w
-mul o4.zw, r0.wwww, r4.xxxy
+mov o4.zw, l(0,0,0,0)
 dp3 r0.w, r2.xyzx, r2.xyzx
 div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
 mul r2.xyz, r0.wwww, r2.xyzx
@@ -414,10 +398,7 @@ mov o7.z, r0.z
 mov o8.z, r0.w
 mov o7.w, cb1[11].z
 mov o8.w, cb1[11].w
-mov o9.x, cb10[0].w
-mov o9.y, cb10[1].w
-mov o9.z, cb10[2].w
-mov o9.w, l(0)
 ret 
-// Approximately 88 instruction slots used
+// Approximately 82 instruction slots used
+ 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
