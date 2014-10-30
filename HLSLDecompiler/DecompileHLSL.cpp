@@ -3683,7 +3683,7 @@ public:
 						srcByteOffset = instr->asOperands[2].specialName;
 						src0 = shader->sInfo->psResourceBindings->Name;
 
-						sprintf(buffer, "// Known bad code for instruction:\n");
+						sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
 						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
@@ -3724,6 +3724,24 @@ public:
 						int textureId;
 						sscanf_s(op4, "t%d.", &textureId);
 						sprintf(buffer, "  %s[%s].%s = %s;\n", mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op3).c_str(), writeTarget(op1));
+						appendOutput(buffer);
+						break;
+					}
+
+						// Missing opcodes for SM5.  Not implemetned yet, but we want to generate some sort of code, in case
+						// these are used in needed shaders.  That way we can hand edit the shader to make it usable, until 
+						// this is completed.
+					case OPCODE_STORE_UAV_TYPED:
+					case OPCODE_LD_UAV_TYPED:
+					case OPCODE_LD_RAW:
+					case OPCODE_STORE_RAW:
+					{
+						sprintf(buffer, "// No code for instruction (needs manual fix):\n");
+						appendOutput(buffer);
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, " %s\n", line.c_str());
 						appendOutput(buffer);
 						break;
 					}
