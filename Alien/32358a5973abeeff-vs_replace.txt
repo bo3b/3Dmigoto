@@ -1,4 +1,6 @@
+//Fire Particles
 // Hand fixed shader for ld_indexable fix.
+// Not used in for particles when we can set Ultra->High or not use SLI.
 
 cbuffer cbDefaultXSC : register(b0)
 {
@@ -82,7 +84,7 @@ r1.xyz = g_particles[v1.x].velAndLife.xyz;
   r1.w = sqrt(r0.x);
   r0.x = rsqrt(r0.x);
   r2.xyz = r1.zxy * r0.xxx;
-  r0.x = (int)r0.y & (int)r1.w;
+  r0.x = r0.y ? r1.w : 0;
   r0.x = min(r0.x, 5.000000000e+000);
   r3.w = 1.000000000e+000;
 
@@ -304,5 +306,5 @@ mov_sat o2.w, r4.w
 mov o2.xyz, r4.xyzx
 ret 
 // Approximately 64 instruction slots used
- 
+ 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
