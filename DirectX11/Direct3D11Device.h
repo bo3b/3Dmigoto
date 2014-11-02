@@ -1325,7 +1325,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		if (replaceShader)
 		{
 			// Create the new shader.
-			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %p\n", GetD3D11Device());
+			if (LogFile && LogDebug) fprintf(LogFile, "    D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %p\n", GetD3D11Device());
 
 			hr = GetD3D11Device()->CreateVertexShader(replaceShader, replaceShaderSize, pClassLinkage, ppVertexShader);
 			if (SUCCEEDED(hr))
@@ -1546,7 +1546,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		if (replaceShader)
 		{
 			// Create the new shader.
-			if (LogFile && LogDebug) fprintf(LogFile, "D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %p\n", GetD3D11Device());
+			if (LogFile && LogDebug) fprintf(LogFile, "    D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %p\n", GetD3D11Device());
 
 			hr = GetD3D11Device()->CreatePixelShader(replaceShader, replaceShaderSize, pClassLinkage, ppPixelShader);
 			if (SUCCEEDED(hr))

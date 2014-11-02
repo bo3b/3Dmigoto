@@ -352,13 +352,16 @@ void InitializeDLL()
 
 		// If specified in Logging section, wait for Attach to Debugger.
 		bool waitfordebugger = false;
-		if (GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile))
+		int debugger = GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile);
+		if (debugger > 0)
 		{
 			waitfordebugger = true;
 			do
 			{
 				Sleep(250);
 			} while (!IsDebuggerPresent());
+			if (debugger > 1)
+				__debugbreak();
 		}
 
 		if (LogFile)
@@ -2646,6 +2649,7 @@ HRESULT WINAPI D3D11CreateDevice(
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
 	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
+	Flags |= D3D11Base::D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
 #endif
 
 	D3D11Base::ID3D11Device *origDevice = 0;
@@ -2734,6 +2738,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
 	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
+	Flags |= D3D11Base::D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
 #endif
 
 	D3D11Base::ID3D11Device *origDevice = 0;
