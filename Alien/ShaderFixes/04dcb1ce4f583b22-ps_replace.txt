@@ -1,5 +1,6 @@
 // Lens flare at first sevastopol landing.
 // w=0 to disable.
+//  More likely to be bloom based on code.
 
 cbuffer cbDefaultPSC : register(b2)
 {
