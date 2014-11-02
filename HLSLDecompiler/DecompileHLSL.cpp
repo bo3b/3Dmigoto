@@ -121,9 +121,15 @@ public:
 	string MatrixPos_ID1, MatrixPos_MUL1;
 	int uuidVar;
 
+	// Auto-indent of generated code
+	const char* indent = "  ";
+	int nestCount;
+
+
 	Decompiler()
 		: mLastStatement(0),
-		uuidVar(0)
+		uuidVar(0),
+		nestCount(0)
 	{}
 
 	void logDecompileError(const string &err)
@@ -2392,23 +2398,22 @@ public:
 		}
 	}
 
-
-
-	char* indent = "  ";
-	size_t level;
-
+	
 	// General output routine while decoding shader, to automatically apply indenting to HLSL code.
 	// When we see a '{' or '}' we'll increase or decrease the indent.
 	void appendOutput(char* line)
 	{
-		if (strchr(line, '}') != NULL)
-			level--;
-		for (size_t i = 0; i < level; i++)
+		bool open = (strchr(line, '{') != NULL);
+		bool close = (strchr(line, '}') != NULL);
+
+		if (close)
+			nestCount--;
+		for (int i = 0; i < nestCount; i++)
 		{
 			mOutput.insert(mOutput.end(), indent, indent + strlen(indent));
 		}
-		if (strchr(line, '{') != NULL)
-			level++;
+		if (open)
+			nestCount++;
 
 		mOutput.insert(mOutput.end(), line, line + strlen(line));
 	}
@@ -2418,7 +2423,6 @@ public:
 		mOutputRegisterValues.clear();
 		mBooleanRegisters.clear();
 		mCodeStartPos = mOutput.size();
-		level = 0;		// indent level
 
 		char buffer[512];
 		size_t pos = 0;
@@ -2860,6 +2864,9 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Code generation for this weird instruction is tuned to indent the way we want, 
+						// and still look like a single instruction.  Still has weird indent in middle of instruction,
+						// but it seems more valuable to have it be a single line.
 					case OPCODE_UBFE:
 					{
 						remapTarget(op1);
@@ -2872,17 +2879,19 @@ public:
 						while (*++pop1)
 						{
 							sprintf(op5, "%s.%c", op1, *pop1);
-							sprintf(buffer, "  if (%s == 0) %s = 0;\n"
-								"  else if (%s+%s < 32) { %s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); }\n"
-								"  else %s = (uint)%s >> %s;\n",
-								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5),
-								ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(),
+							sprintf(buffer, "  if (%s == 0) %s = 0; else if (%s+%s < 32) { ", 
+								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
+							appendOutput(buffer);
+							sprintf(buffer, "%s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
+							appendOutput(buffer);
+							sprintf(buffer, " } else %s = (uint)%s >> %s;\n",
 								writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
 							++idx;
 						}
 						break;
 					}
+
 					case OPCODE_EXP:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
