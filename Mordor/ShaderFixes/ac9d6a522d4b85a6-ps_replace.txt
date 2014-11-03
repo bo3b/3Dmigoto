@@ -1,0 +1,292 @@
+
+cbuffer _Globals : register(b0)
+{
+  float k_fBlendSmoothness : packoffset(c0) = float(1.000000e-002);
+  float2 k_fHeightBias : packoffset(c0.y) = float2(1.000000e-003,1.000000e-003);
+  row_major float4x4 k_mObjectToClip : packoffset(c1);
+  row_major float3x4 k_mObjectToView : packoffset(c5);
+  row_major float3x4 k_mObjectToWorld : packoffset(c8);
+  float4 k_vObjectColor : packoffset(c11);
+  float3 k_vObjectSpaceEyePos : packoffset(c12);
+  row_major float4x4 k_mPrevObjectToClip : packoffset(c13);
+  row_major float3x4 k_mPrevObjectToView : packoffset(c17);
+  row_major float3x4 k_mPrevObjectToWorld : packoffset(c20);
+  float k_fScaleLayer0 : packoffset(c23) = float(1.000000e+000);
+  float k_fScaleLayer1 : packoffset(c23.y) = float(1.000000e+000);
+  float2 k_vSpecularPower2 : packoffset(c23.z) = float2(1.600000e+001,1.600000e+001);
+  float k_fRenderObjectID : packoffset(c24);
+  float k_fInvLightRadius : packoffset(c24.y);
+  row_major float3x4 k_mCubeProjector_LightTransform : packoffset(c25);
+  row_major float3x4 k_mDirectional_ObjectToTex : packoffset(c28);
+  row_major float4x4 k_mSpotProjector_LightTransform : packoffset(c31);
+  float4 k_vSpotProjector_TanXYRadiusZW : packoffset(c35);
+  row_major float3x4 k_mWorldToVolume : packoffset(c36);
+  float3 k_vDirectional_Dir : packoffset(c39);
+  float4 k_vObjectLightColor : packoffset(c40);
+  float3 k_vObjectSpaceLightPos : packoffset(c41);
+  float4 k_vSpecularColor : packoffset(c42);
+  float4 k_vSpotProjector_ClipFar : packoffset(c43);
+  float4 k_vSpotProjector_ClipNear : packoffset(c44);
+  float3 k_vHalfDims : packoffset(c45);
+  float4 k_vShadowMapParams : packoffset(c46);
+  float4 k_vShadowMapParams2 : packoffset(c47);
+  row_major float4x4 k_mShadowMapMatrix : packoffset(c48);
+  float4 k_vShadowCascadeOffsetX : packoffset(c52);
+  float4 k_vShadowCascadeOffsetZ : packoffset(c53);
+  float k_fStaticLightVolume_Mip : packoffset(c54);
+  float4 k_vShadowSplitDistSquared : packoffset(c55);
+  float4 k_vShadowSplitDistSelect : packoffset(c56);
+  float4 k_vShadowMoveX : packoffset(c57);
+  float4 k_vShadowMoveY : packoffset(c58);
+  float4 k_vShadowMoveZ : packoffset(c59);
+  float4 k_vShadowScaleXY : packoffset(c60);
+  float4 k_vShadowScaleX : packoffset(c61);
+  float4 k_vShadowScaleY : packoffset(c62);
+  float4 k_vShadowScaleZ : packoffset(c63);
+  float3 k_vLightBleed_Offset : packoffset(c64);
+  float4 k_vStaticLightVolume_PivotContrast : packoffset(c65);
+  float k_fLightLayer : packoffset(c66);
+  row_major float3x4 k_mViewToLight : packoffset(c67);
+}
+SamplerState sAniso4X_WRAPWRAPCLAMP_Sampler_s : register(s0);
+SamplerState sAniso8X_WRAPWRAPCLAMP_Sampler_s : register(s1);
+Texture2D<float4> tLayer_0_Specular : register(t0);
+Texture2D<float4> tLayer_1_Specular : register(t1);
+Texture2D<float4> tLayer_0_Diffuse : register(t2);
+Texture2D<float4> tLayer_1_Diffuse : register(t3);
+Texture2D<float4> tLayer_0_Normal : register(t4);
+Texture2D<float4> tLayer_1_Normal : register(t5);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD2,
+  float3 v3 : TEXCOORD3,
+  float3 v4 : TEXCOORD4,
+  float4 v5 : COLOR0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.xyzw = k_fScaleLayer0 * v1.xyxy;
+  r1.xy = tLayer_1_Normal.Sample(sAniso4X_WRAPWRAPCLAMP_Sampler_s, r0.zw).yw;
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.w = -r1.x * r1.x + 1.000000000e+000;
+  r1.w = -r1.y * r1.y + r1.w;
+  r1.z = sqrt(r1.w);
+  r2.xy = tLayer_0_Normal.Sample(sAniso4X_WRAPWRAPCLAMP_Sampler_s, r0.xy).yw;
+  r2.xy = r2.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.w = -r2.x * r2.x + 1.000000000e+000;
+  r1.w = -r2.y * r2.y + r1.w;
+  r2.z = sqrt(r1.w);
+  r1.xyz = -r2.xyz + r1.xyz;
+  r3.xyzw = tLayer_0_Specular.Sample(sAniso4X_WRAPWRAPCLAMP_Sampler_s, r0.xy).xyzw;
+  r4.x = r3.w;
+  r5.xyzw = tLayer_1_Specular.Sample(sAniso4X_WRAPWRAPCLAMP_Sampler_s, r0.zw).xyzw;
+  r4.y = r5.w;
+  r5.xyz = r5.xyz + -r3.xyz;
+  r4.xy = k_fHeightBias.xy + r4.xy;
+  r1.w = 1.000100017e+000 + -v5.x;
+  r2.w = r4.x * r1.w;
+  r2.w = r4.y * v5.x + -r2.w;
+  r4.x = saturate(k_fBlendSmoothness);
+  r1.w = r4.x * r1.w;
+  r1.w = saturate(r2.w / r1.w);
+  r1.xyz = r1.www * r1.xyz + r2.xyz;
+  r2.x = dot(v2.xyz, r1.xyz);
+  r2.y = dot(v3.xyz, r1.xyz);
+  r2.z = dot(v4.xyz, r1.xyz);
+  r1.x = dot(r2.xyz, r2.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = r2.xyz * r1.xxx;
+  o0.xyz = r1.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  o0.w = k_fRenderObjectID;
+  r2.xyzw = tLayer_1_Diffuse.Sample(sAniso8X_WRAPWRAPCLAMP_Sampler_s, r0.zw).xyzw;
+  r0.xyzw = tLayer_0_Diffuse.Sample(sAniso8X_WRAPWRAPCLAMP_Sampler_s, r0.xy).xyzw;
+  r2.xyzw = r2.xyzw + -r0.xyzw;
+  r0.xyzw = r1.wwww * r2.xyzw + r0.xyzw;
+  o1.xyz = v5.www * r0.xyz;
+  o1.w = r0.w;
+  r3.w = k_vSpecularPower2.x;
+  r5.w = k_vSpecularPower2.y + -r3.w;
+  r0.xyzw = r1.wwww * r5.xyzw + r3.xyzw;
+  o2.x = r0.z * r0.w;
+  o2.yz = r0.yx;
+  o2.w = 0.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float k_fBlendSmoothness;          // Offset:    0 Size:     4
+//      = 0x3c23d70a 
+//   float2 k_fHeightBias;              // Offset:    4 Size:     8
+//      = 0x3a83126f 0x3a83126f 
+//   row_major float4x4 k_mObjectToClip;// Offset:   16 Size:    64 [unused]
+//   row_major float3x4 k_mObjectToView;// Offset:   80 Size:    48 [unused]
+//   row_major float3x4 k_mObjectToWorld;// Offset:  128 Size:    48 [unused]
+//   float4 k_vObjectColor;             // Offset:  176 Size:    16 [unused]
+//   float3 k_vObjectSpaceEyePos;       // Offset:  192 Size:    12 [unused]
+//   row_major float4x4 k_mPrevObjectToClip;// Offset:  208 Size:    64 [unused]
+//   row_major float3x4 k_mPrevObjectToView;// Offset:  272 Size:    48 [unused]
+//   row_major float3x4 k_mPrevObjectToWorld;// Offset:  320 Size:    48 [unused]
+//   float k_fScaleLayer0;              // Offset:  368 Size:     4
+//      = 0x3f800000 
+//   float k_fScaleLayer1;              // Offset:  372 Size:     4
+//      = 0x3f800000 
+//   float2 k_vSpecularPower2;          // Offset:  376 Size:     8
+//      = 0x41800000 0x41800000 
+//   float k_fRenderObjectID;           // Offset:  384 Size:     4
+//   float k_fInvLightRadius;           // Offset:  388 Size:     4 [unused]
+//   row_major float3x4 k_mCubeProjector_LightTransform;// Offset:  400 Size:    48 [unused]
+//   row_major float3x4 k_mDirectional_ObjectToTex;// Offset:  448 Size:    48 [unused]
+//   row_major float4x4 k_mSpotProjector_LightTransform;// Offset:  496 Size:    64 [unused]
+//   float4 k_vSpotProjector_TanXYRadiusZW;// Offset:  560 Size:    16 [unused]
+//   row_major float3x4 k_mWorldToVolume;// Offset:  576 Size:    48 [unused]
+//   float3 k_vDirectional_Dir;         // Offset:  624 Size:    12 [unused]
+//   float4 k_vObjectLightColor;        // Offset:  640 Size:    16 [unused]
+//   float3 k_vObjectSpaceLightPos;     // Offset:  656 Size:    12 [unused]
+//   float4 k_vSpecularColor;           // Offset:  672 Size:    16 [unused]
+//   float4 k_vSpotProjector_ClipFar;   // Offset:  688 Size:    16 [unused]
+//   float4 k_vSpotProjector_ClipNear;  // Offset:  704 Size:    16 [unused]
+//   float3 k_vHalfDims;                // Offset:  720 Size:    12 [unused]
+//   float4 k_vShadowMapParams;         // Offset:  736 Size:    16 [unused]
+//   float4 k_vShadowMapParams2;        // Offset:  752 Size:    16 [unused]
+//   row_major float4x4 k_mShadowMapMatrix;// Offset:  768 Size:    64 [unused]
+//   float4 k_vShadowCascadeOffsetX;    // Offset:  832 Size:    16 [unused]
+//   float4 k_vShadowCascadeOffsetZ;    // Offset:  848 Size:    16 [unused]
+//   float k_fStaticLightVolume_Mip;    // Offset:  864 Size:     4 [unused]
+//   float4 k_vShadowSplitDistSquared;  // Offset:  880 Size:    16 [unused]
+//   float4 k_vShadowSplitDistSelect;   // Offset:  896 Size:    16 [unused]
+//   float4 k_vShadowMoveX;             // Offset:  912 Size:    16 [unused]
+//   float4 k_vShadowMoveY;             // Offset:  928 Size:    16 [unused]
+//   float4 k_vShadowMoveZ;             // Offset:  944 Size:    16 [unused]
+//   float4 k_vShadowScaleXY;           // Offset:  960 Size:    16 [unused]
+//   float4 k_vShadowScaleX;            // Offset:  976 Size:    16 [unused]
+//   float4 k_vShadowScaleY;            // Offset:  992 Size:    16 [unused]
+//   float4 k_vShadowScaleZ;            // Offset: 1008 Size:    16 [unused]
+//   float3 k_vLightBleed_Offset;       // Offset: 1024 Size:    12 [unused]
+//   float4 k_vStaticLightVolume_PivotContrast;// Offset: 1040 Size:    16 [unused]
+//   float k_fLightLayer;               // Offset: 1056 Size:     4 [unused]
+//   row_major float3x4 k_mViewToLight; // Offset: 1072 Size:    48 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sAniso4X_WRAPWRAPCLAMP_Sampler    sampler      NA          NA    0        1
+// sAniso8X_WRAPWRAPCLAMP_Sampler    sampler      NA          NA    1        1
+// tLayer_0_Specular                 texture  float4          2d    0        1
+// tLayer_1_Specular                 texture  float4          2d    1        1
+// tLayer_0_Diffuse                  texture  float4          2d    2        1
+// tLayer_1_Diffuse                  texture  float4          2d    3        1
+// tLayer_0_Normal                   texture  float4          2d    4        1
+// tLayer_1_Normal                   texture  float4          2d    5        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+// TEXCOORD                 2   xyz         2     NONE   float   xyz 
+// TEXCOORD                 3   xyz         3     NONE   float   xyz 
+// TEXCOORD                 4   xyz         4     NONE   float   xyz 
+// COLOR                    0   xyzw        5     NONE   float   x  w
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+// SV_Target                2   xyzw        2   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[25], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_input_ps linear v1.xy
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyz
+dcl_input_ps linear v5.xw
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_temps 6
+mul r0.xyzw, v1.xyxy, cb0[23].xxyy
+sample_indexable(texture2d)(float,float,float,float) r1.xy, r0.zwzz, t5.ywxz, s0
+mad r1.xy, r1.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mad r1.w, -r1.x, r1.x, l(1.000000)
+mad r1.w, -r1.y, r1.y, r1.w
+sqrt r1.z, r1.w
+sample_indexable(texture2d)(float,float,float,float) r2.xy, r0.xyxx, t4.ywxz, s0
+mad r2.xy, r2.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mad r1.w, -r2.x, r2.x, l(1.000000)
+mad r1.w, -r2.y, r2.y, r1.w
+sqrt r2.z, r1.w
+add r1.xyz, r1.xyzx, -r2.xyzx
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.xyxx, t0.xyzw, s0
+mov r4.x, r3.w
+sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r0.zwzz, t1.xyzw, s0
+mov r4.y, r5.w
+add r5.xyz, -r3.xyzx, r5.xyzx
+add r4.xy, r4.xyxx, cb0[0].yzyy
+add r1.w, -v5.x, l(1.000100)
+mul r2.w, r1.w, r4.x
+mad r2.w, r4.y, v5.x, -r2.w
+mov_sat r4.x, cb0[0].x
+mul r1.w, r1.w, r4.x
+div_sat r1.w, r2.w, r1.w
+mad r1.xyz, r1.wwww, r1.xyzx, r2.xyzx
+dp3 r2.x, v2.xyzx, r1.xyzx
+dp3 r2.y, v3.xyzx, r1.xyzx
+dp3 r2.z, v4.xyzx, r1.xyzx
+dp3 r1.x, r2.xyzx, r2.xyzx
+rsq r1.x, r1.x
+mul r1.xyz, r1.xxxx, r2.xyzx
+mad o0.xyz, r1.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+mov o0.w, cb0[24].x
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r0.zwzz, t3.xyzw, s1
+sample_indexable(texture2d)(float,float,float,float) r0.xyzw, r0.xyxx, t2.xyzw, s1
+add r2.xyzw, -r0.xyzw, r2.xyzw
+mad r0.xyzw, r1.wwww, r2.xyzw, r0.xyzw
+mul o1.xyz, r0.xyzx, v5.wwww
+mov o1.w, r0.w
+mov r3.w, cb0[23].z
+add r5.w, -r3.w, cb0[23].w
+mad r0.xyzw, r1.wwww, r5.xyzw, r3.xyzw
+mul o2.x, r0.w, r0.z
+mov o2.yz, r0.yyxy
+mov o2.w, l(0)
+ret 
+// Approximately 46 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

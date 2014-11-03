@@ -1,0 +1,379 @@
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = float(1.000000e+002);
+  float DefaultWidth : packoffset(c0.y) = float(1.000000e+002);
+
+  struct
+  {
+    float3 m_Position;
+    float4 m_Quaternion;
+    float3 m_Offset0;
+    float3 m_Offset1;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float3 m_Position;
+    float4 m_Quaternion;
+    float3 m_Offset0;
+    float3 m_Offset1;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c5);
+
+  float k_fConeAngle : packoffset(c11) = float(2.000000e+001);
+  float k_fConeOffset : packoffset(c11.y) = float(0.000000e+000);
+  float k_fDensity : packoffset(c11.z) = float(1.000000e+000);
+  float k_fHDRScale : packoffset(c11.w) = float(1.600000e+001);
+  float k_fTextureDimensionsX : packoffset(c12) = float(1.024000e+003);
+  float k_fTextureDimensionsY : packoffset(c12.y) = float(1.024000e+003);
+  row_major float4x4 k_mObjectToWorld_3DSMAX_ : packoffset(c13);
+  bool k_bOITFastVolumetricApprox : packoffset(c17);
+  row_major float4x4 k_mObjectToClip : packoffset(c18);
+  row_major float3x4 k_mObjectToWorld : packoffset(c22);
+  float4 k_vHDRLuminanceWeights : packoffset(c25);
+  float4 k_vObjectLightColor : packoffset(c26);
+  float3 k_vObjectSpaceEyePos : packoffset(c27);
+  float2 k_vScene_TexCoordScale : packoffset(c28);
+  float3 k_vScene_ZRange : packoffset(c29);
+  float3 k_vWorldSpaceCameraDir : packoffset(c30);
+}
+SamplerState sAttenuationTextureSampler_s : register(s0);
+SamplerState sProjectionTextureSampler_s : register(s1);
+SamplerState sDepthMapSampler_s : register(s2);
+SamplerState sOITAlphaSrcSampler_s : register(s3);
+SamplerState sOITDepthSrcSampler_s : register(s4);
+Texture2D<float4> tAttenuationTexture : register(t0);
+Texture2D<float4> tProjectionTexture : register(t1);
+Texture2D<float4> tDepthMap : register(t2);
+Texture2D<float4> tOITAlphaSrc : register(t3);
+Texture2D<float4> tOITDepthSrc : register(t4);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  float3 v4 : TEXCOORD3,
+  float3 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = dot(v3.xyz, v3.xyz);
+  r0.x = sqrt(r0.x);
+  r0.yzw = v3.xyz / r0.xxx;
+  r1.x = dot(r0.yzw, v2.xyz);
+  r1.x = 1.000000e+000 / r1.x;
+  r1.y = k_vScene_ZRange.x * r1.x;
+  r2.xyz = v4.xyz / r0.yzw;
+  r3.xyz = v5.xyz / r0.yzw;
+  r2.xyz = min(r2.xyz, r3.xyz);
+  r1.z = max(r2.z, r2.y);
+  r1.z = max(r1.z, r2.x);
+  r1.z = r1.z + r0.x;
+  r2.xy = v1.xy / v1.ww;
+  r1.w = tDepthMap.Sample(sDepthMapSampler_s, r2.xy).x;
+  r1.w = r1.w * r1.x;
+  r1.w = min(r0.x, r1.w);
+  r1.y = max(r1.y, r1.z);
+  r1.z = r1.w + -r1.y;
+  r1.z = max(r1.z, 0.000000000e+000);
+  r3.xyz = -v5.xyz + v4.xyz;
+  r2.z = dot(r3.xyz, r3.xyz);
+  r2.z = sqrt(r2.z);
+  r1.z = r1.z / r2.z;
+  r1.z = 1.000000000e+000 + -r1.z;
+  r1.z = log2(abs(r1.z));
+  r1.z = k_fDensity * r1.z;
+  r1.z = exp2(r1.z);
+  r1.z = 1.000000000e+000 + -r1.z;
+  r2.w = -r1.y + r0.x;
+  r3.xyz = -r0.yzw * r2.www + -v4.xyz;
+  r1.w = -r1.w + r0.x;
+  r0.yzw = -r0.yzw * r1.www + -v4.xyz;
+  r4.xyz = v5.xyz + -v4.xyz;
+  r4.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r4.xyz;
+  r3.xyz = r4.xyz * r3.xyz;
+  r4.xyz = r4.xyz * r0.yzw;
+  if (k_bOITFastVolumetricApprox != 0) {
+  r0.y = tOITAlphaSrc.SampleLevel(sOITAlphaSrcSampler_s, r2.xy, 0.000000000e+000).x;
+  r0.z = r0.y < 1.000000000e+000;
+  if (r0.z != 0) {
+  r0.z = tOITDepthSrc.SampleLevel(sOITDepthSrcSampler_s, r2.xy, 0.000000000e+000).x;
+  r0.z = r0.z * r1.x;
+  r0.x = min(r0.z, r0.x);
+  r0.x = r0.x + -r1.y;
+  r0.x = max(r0.x, 0.000000000e+000);
+  r0.x = r0.x / r2.z;
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = log2(abs(r0.x));
+  r0.x = k_fDensity * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.y = sqrt(r0.y);
+  r0.z = r1.z + -r0.x;
+  r1.z = r0.y * r0.z + r0.x;
+  }
+  }
+  r0.xy = sqrt(k_fTextureDimensionsX);
+  r2.xy = float2(1.000000e+000,1.000000e+000) / r0.xy;
+  r5.xyzw = float4(-1.000000e+000,-1.000000e+000,-1.100000e+000,-1.100000e+000) + r0.xyxy;
+  r3.w = r4.x;
+  r0.zw = r5.xy * r3.xw;
+  r0.zw = max(r0.zw, float2(0.000000e+000,0.000000e+000));
+  r0.zw = min(r5.zw, r0.zw);
+  r1.xy = frac(r0.zw);
+  r0.zw = -r1.xy + r0.zw;
+  r4.w = r3.z;
+  r3.xz = r5.xy * r4.wz;
+  r3.xz = r3.xz / k_fTextureDimensionsX;
+  r4.zw = float2(5.000000e-001,5.000000e-001) / k_fTextureDimensionsX;
+  r3.xz = r4.zw + r3.xz;
+  r0.xy = r0.zw / r0.xy;
+  r0.xy = r0.xy + r3.xz;
+  r2.z = 0.000000000e+000;
+  r5.xyzw = r0.xyxy + r2.xzzy;
+  r0.zw = r0.xy + r2.xy;
+  r2.xyz = tProjectionTexture.Sample(sProjectionTextureSampler_s, r0.xy).xyz;
+  r3.xzw = tProjectionTexture.Sample(sProjectionTextureSampler_s, r5.xy).xyz;
+  r5.xyz = tProjectionTexture.Sample(sProjectionTextureSampler_s, r5.zw).xyz;
+  r0.xyz = tProjectionTexture.Sample(sProjectionTextureSampler_s, r0.zw).xyz;
+  r3.xzw = r3.xzw + -r2.xyz;
+  r2.xyz = r1.xxx * r3.xzw + r2.xyz;
+  r0.xyz = r0.xyz + -r5.xyz;
+  r0.xyz = r1.xxx * r0.xyz + r5.xyz;
+  r0.xyz = r0.xyz + -r2.xyz;
+  r0.xyz = r1.yyy * r0.xyz + r2.xyz;
+  r4.x = r3.y;
+  r0.w = tAttenuationTexture.Sample(sAttenuationTextureSampler_s, r4.xy).y;
+  r0.w = r1.z * r0.w;
+  r0.xyzw = k_vObjectLightColor.xyzw * r0.xyzw;
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(r0.xyz, k_vHDRLuminanceWeights.xyz);
+  o0.w = k_fHDRScale * r0.w;
+  o0.xyz = r0.xyz;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float DefaultHeight;               // Offset:    0 Size:     4 [unused]
+//      = 0x42c80000 
+//   float DefaultWidth;                // Offset:    4 Size:     4 [unused]
+//      = 0x42c80000 
+//   
+//   struct MaterialVertex_Rigid
+//   {
+//       
+//       float3 m_Position;             // Offset:   16
+//       float4 m_Quaternion;           // Offset:   32
+//       float3 m_Offset0;              // Offset:   48
+//       float3 m_Offset1;              // Offset:   64
+//
+//   } MaterialVertexDef_Rigid;         // Offset:   16 Size:    60 [unused]
+//   
+//   struct MaterialVertex_Skeletal
+//   {
+//       
+//       float3 m_Position;             // Offset:   80
+//       float4 m_Quaternion;           // Offset:   96
+//       float3 m_Offset0;              // Offset:  112
+//       float3 m_Offset1;              // Offset:  128
+//       float4 m_Weights;              // Offset:  144
+//       float4 m_Indices;              // Offset:  160
+//
+//   } MaterialVertexDef_Skeletal;      // Offset:   80 Size:    96 [unused]
+//   float k_fConeAngle;                // Offset:  176 Size:     4 [unused]
+//      = 0x41a00000 
+//   float k_fConeOffset;               // Offset:  180 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fDensity;                  // Offset:  184 Size:     4
+//      = 0x3f800000 
+//   float k_fHDRScale;                 // Offset:  188 Size:     4
+//      = 0x41800000 
+//   float k_fTextureDimensionsX;       // Offset:  192 Size:     4
+//      = 0x44800000 
+//   float k_fTextureDimensionsY;       // Offset:  196 Size:     4
+//      = 0x44800000 
+//   row_major float4x4 k_mObjectToWorld_3DSMAX_;// Offset:  208 Size:    64 [unused]
+//   bool k_bOITFastVolumetricApprox;   // Offset:  272 Size:     4
+//   row_major float4x4 k_mObjectToClip;// Offset:  288 Size:    64 [unused]
+//   row_major float3x4 k_mObjectToWorld;// Offset:  352 Size:    48 [unused]
+//   float4 k_vHDRLuminanceWeights;     // Offset:  400 Size:    16
+//   float4 k_vObjectLightColor;        // Offset:  416 Size:    16
+//   float3 k_vObjectSpaceEyePos;       // Offset:  432 Size:    12 [unused]
+//   float2 k_vScene_TexCoordScale;     // Offset:  448 Size:     8 [unused]
+//   float3 k_vScene_ZRange;            // Offset:  464 Size:    12
+//   float3 k_vWorldSpaceCameraDir;     // Offset:  480 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sAttenuationTextureSampler        sampler      NA          NA    0        1
+// sProjectionTextureSampler         sampler      NA          NA    1        1
+// sDepthMapSampler                  sampler      NA          NA    2        1
+// sOITAlphaSrcSampler               sampler      NA          NA    3        1
+// sOITDepthSrcSampler               sampler      NA          NA    4        1
+// tAttenuationTexture               texture  float4          2d    0        1
+// tProjectionTexture                texture  float4          2d    1        1
+// tDepthMap                         texture  float4          2d    2        1
+// tOITAlphaSrc                      texture  float4          2d    3        1
+// tOITDepthSrc                      texture  float4          2d    4        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xy w
+// TEXCOORD                 1   xyz         2     NONE   float   xyz 
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyz         5     NONE   float   xyz 
+// TEXCOORD                 5   xyzw        6     NONE   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[30], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_input_ps linear v1.xyw
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyz
+dcl_input_ps linear v5.xyz
+dcl_output o0.xyzw
+dcl_temps 6
+dp3 r0.x, v3.xyzx, v3.xyzx
+sqrt r0.x, r0.x
+div r0.yzw, v3.xxyz, r0.xxxx
+dp3 r1.x, r0.yzwy, v2.xyzx
+div r1.x, l(1.000000, 1.000000, 1.000000, 1.000000), r1.x
+mul r1.y, r1.x, cb0[29].x
+div r2.xyz, v4.xyzx, r0.yzwy
+div r3.xyz, v5.xyzx, r0.yzwy
+min r2.xyz, r2.xyzx, r3.xyzx
+max r1.z, r2.z, r2.y
+max r1.z, r1.z, r2.x
+add r1.z, r0.x, r1.z
+div r2.xy, v1.xyxx, v1.wwww
+sample_indexable(texture2d)(float,float,float,float) r1.w, r2.xyxx, t2.yzwx, s2
+mul r1.w, r1.x, r1.w
+min r1.w, r0.x, r1.w
+max r1.y, r1.y, r1.z
+add r1.z, -r1.y, r1.w
+max r1.z, r1.z, l(0.000000)
+add r3.xyz, v4.xyzx, -v5.xyzx
+dp3 r2.z, r3.xyzx, r3.xyzx
+sqrt r2.z, r2.z
+div r1.z, r1.z, r2.z
+add r1.z, -r1.z, l(1.000000)
+log r1.z, |r1.z|
+mul r1.z, r1.z, cb0[11].z
+exp r1.z, r1.z
+add r1.z, -r1.z, l(1.000000)
+add r2.w, r0.x, -r1.y
+mad r3.xyz, -r0.yzwy, r2.wwww, -v4.xyzx
+add r1.w, r0.x, -r1.w
+mad r0.yzw, -r0.yyzw, r1.wwww, -v4.xxyz
+add r4.xyz, -v4.xyzx, v5.xyzx
+div r4.xyz, l(1.000000, 1.000000, 1.000000, 1.000000), r4.xyzx
+mul r3.xyz, r3.xyzx, r4.xyzx
+mul r4.xyz, r0.yzwy, r4.xyzx
+if_nz cb0[17].x
+  sample_l_indexable(texture2d)(float,float,float,float) r0.y, r2.xyxx, t3.yxzw, s3, l(0.000000)
+  lt r0.z, r0.y, l(1.000000)
+  if_nz r0.z
+    sample_l_indexable(texture2d)(float,float,float,float) r0.z, r2.xyxx, t4.yzxw, s4, l(0.000000)
+    mul r0.z, r1.x, r0.z
+    min r0.x, r0.z, r0.x
+    add r0.x, -r1.y, r0.x
+    max r0.x, r0.x, l(0.000000)
+    div r0.x, r0.x, r2.z
+    add r0.x, -r0.x, l(1.000000)
+    log r0.x, |r0.x|
+    mul r0.x, r0.x, cb0[11].z
+    exp r0.x, r0.x
+    add r0.x, -r0.x, l(1.000000)
+    sqrt r0.y, r0.y
+    add r0.z, -r0.x, r1.z
+    mad r1.z, r0.y, r0.z, r0.x
+  endif 
+endif 
+sqrt r0.xy, cb0[12].xyxx
+div r2.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r0.xyxx
+add r5.xyzw, r0.xyxy, l(-1.000000, -1.000000, -1.100000, -1.100000)
+mov r3.w, r4.x
+mul r0.zw, r3.xxxw, r5.xxxy
+max r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.000000, 0.000000)
+min r0.zw, r5.zzzw, r0.zzzw
+frc r1.xy, r0.zwzz
+add r0.zw, r0.zzzw, -r1.xxxy
+mov r4.w, r3.z
+mul r3.xz, r4.wwzw, r5.xxyx
+div r3.xz, r3.xxzx, cb0[12].xxyx
+div r4.zw, l(0.000000, 0.000000, 0.500000, 0.500000), cb0[12].xxxy
+add r3.xz, r3.xxzx, r4.zzwz
+div r0.xy, r0.zwzz, r0.xyxx
+add r0.xy, r3.xzxx, r0.xyxx
+mov r2.z, l(0)
+add r5.xyzw, r2.xzzy, r0.xyxy
+add r0.zw, r2.xxxy, r0.xxxy
+sample_indexable(texture2d)(float,float,float,float) r2.xyz, r0.xyxx, t1.xyzw, s1
+sample_indexable(texture2d)(float,float,float,float) r3.xzw, r5.xyxx, t1.xwyz, s1
+sample_indexable(texture2d)(float,float,float,float) r5.xyz, r5.zwzz, t1.xyzw, s1
+sample_indexable(texture2d)(float,float,float,float) r0.xyz, r0.zwzz, t1.xyzw, s1
+add r3.xzw, -r2.xxyz, r3.xxzw
+mad r2.xyz, r1.xxxx, r3.xzwx, r2.xyzx
+add r0.xyz, -r5.xyzx, r0.xyzx
+mad r0.xyz, r1.xxxx, r0.xyzx, r5.xyzx
+add r0.xyz, -r2.xyzx, r0.xyzx
+mad r0.xyz, r1.yyyy, r0.xyzx, r2.xyzx
+mov r4.x, r3.y
+sample_indexable(texture2d)(float,float,float,float) r0.w, r4.xyxx, t0.xzwy, s0
+mul r0.w, r0.w, r1.z
+mul r0.xyzw, r0.xyzw, cb0[26].xyzw
+mul r0.xyz, r0.wwww, r0.xyzx
+dp3 r0.w, r0.xyzx, cb0[25].xyzx
+mul o0.w, r0.w, cb0[11].w
+mov o0.xyz, r0.xyzx
+ret 
+// Approximately 94 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

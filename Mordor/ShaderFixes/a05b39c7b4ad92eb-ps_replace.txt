@@ -1,0 +1,374 @@
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = float(1.000000e+002);
+  float DefaultWidth : packoffset(c0.y) = float(1.000000e+002);
+
+  struct
+  {
+    float3 m_Position;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float3 m_Position;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c2);
+
+  float k_fOffsetNormalU : packoffset(c5) = float(0.000000e+000);
+  float k_fOffsetNormalV : packoffset(c5.y) = float(0.000000e+000);
+  float k_fPanNormalU : packoffset(c5.z) = float(0.000000e+000);
+  float k_fPanNormalV : packoffset(c5.w) = float(0.000000e+000);
+  float3 k_vDiffuseTile : packoffset(c6) = float3(1.000000e+000,1.000000e+000,0.000000e+000);
+  float3 k_vNormalTile : packoffset(c7) = float3(1.000000e+000,1.000000e+000,0.000000e+000);
+  float3 k_vRefractStrength : packoffset(c8) = float3(1.000000e-001,1.000000e-001,0.000000e+000);
+  float k_fTime : packoffset(c8.w);
+  row_major float3x4 k_mDirectional_ObjectToTex : packoffset(c9);
+  row_major float4x4 k_mObjectToClip : packoffset(c12);
+  row_major float3x4 k_mObjectToWorld : packoffset(c16);
+  row_major float4x4 k_mShadowMapMatrix : packoffset(c19);
+  float3 k_vDirectional_Dir : packoffset(c23);
+  float4 k_vFullViewPlane : packoffset(c24);
+  float4 k_vHDRLuminanceWeights : packoffset(c25);
+  float3 k_vHalfDims : packoffset(c26);
+  float4 k_vObjectColor : packoffset(c27);
+  float4 k_vObjectLightColor : packoffset(c28);
+  float3 k_vObjectSpaceEyePos : packoffset(c29);
+  float2 k_vPerspOrthoMask : packoffset(c30);
+  float2 k_vScene_TexCoordScale : packoffset(c30.z);
+  float4 k_vShadowCascadeOffsetZ : packoffset(c31);
+  float4 k_vShadowMapParams2 : packoffset(c32);
+  float4 k_vSpecularColor : packoffset(c33);
+}
+SamplerState sDeferredDiffuseSampler_s : register(s0);
+SamplerState sDeferredNormalsSampler_s : register(s1);
+SamplerState sDeferredSpecularSampler_s : register(s2);
+SamplerState sDepthMapSampler_s : register(s3);
+SamplerState sDirectional_AttenuationSampler_s : register(s4);
+SamplerState sDirectional_ProjectionSampler_s : register(s5);
+SamplerComparisonState sShadowMapLinearSampler_s : register(s6);
+Texture2D<float4> tDeferredDiffuse : register(t0);
+Texture2D<float4> tDeferredNormals : register(t1);
+Texture2D<float4> tDeferredSpecular : register(t2);
+Texture2D<float4> tDepthMap : register(t3);
+Texture2D<float4> tDirectional_Attenuation : register(t4);
+Texture2D<float4> tDirectional_Projection : register(t5);
+Texture2DArray<float4> tShadowMapLinear : register(t6);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float2 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = dot(v2.xyz, v2.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v2.xyz * r0.xxx + -k_vDirectional_Dir.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.xy = v1.xy / v1.ww;
+  r2.xyz = tDeferredNormals.Sample(sDeferredNormalsSampler_s, r1.xy).xyz;
+  r2.xyz = r2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r0.w = saturate(dot(r2.xyz, r0.xyz));
+  r0.x = saturate(dot(-k_vDirectional_Dir.xyz, r0.xyz));
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.y = saturate(dot(r2.xyz, -k_vDirectional_Dir.xyz));
+  r0.y = -1.000000000e+000 + r0.y;
+  r0.z = log2(r0.w);
+  r2.xyzw = tDeferredSpecular.Sample(sDeferredSpecularSampler_s, r1.xy).xyzw;
+  r0.w = r2.x * r2.x;
+  r1.zw = r0.ww * float2(4.096000e+003,4.096000e+003) + float2(4.000000e-003,2.004000e+000);
+  r0.z = r1.z * r0.z;
+  r0.w = 1.250000000e-001 * r1.w;
+  r0.z = exp2(r0.z);
+  r0.z = r0.w * r0.z;
+  r0.w = r0.x * r0.x;
+  r0.w = r0.w * r0.w;
+  r0.x = r0.x * r0.w;
+  r0.w = 1.000000000e+000 + -r2.z;
+  r0.x = r0.w * r0.x + r2.z;
+  r0.x = r0.z * r0.x;
+  r3.z = tDepthMap.Sample(sDepthMapSampler_s, r1.xy).x;
+  r1.xyzw = tDeferredDiffuse.Sample(sDeferredDiffuseSampler_s, r1.xy).xyzw;
+  r0.zw = v3.xy / v1.ww;
+  r3.w = 1.000000000e+000;
+  r2.x = dot(r3.zw, k_vPerspOrthoMask.xy);
+  r3.xy = r2.xx * r0.zw;
+  
+float4 stereo = StereoParams.Load(0);
+r3.x -= stereo.x * (r3.z - stereo.y)*k_vFullViewPlane.z/2; //*0.187; 
+
+  r4.x = saturate(dot(k_mDirectional_ObjectToTex._m00_m01_m02_m03, r3.xyzw));
+  r4.y = saturate(dot(k_mDirectional_ObjectToTex._m10_m11_m12_m13, r3.xyzw));
+  r5.xyz = tDirectional_Projection.Sample(sDirectional_ProjectionSampler_s, r4.xy).xyz;
+  r4.w = 0.000000000e+000;
+  r4.z = saturate(dot(k_mDirectional_ObjectToTex._m20_m21_m22_m23, r3.xyzw));
+  r4.xyz = tDirectional_Attenuation.Sample(sDirectional_AttenuationSampler_s, r4.wz).xyz;
+  r4.xyz = r5.xyz * r4.xyz;
+  r5.xyz = k_vObjectLightColor.xyz * r4.xyz;
+  r4.xyz = k_vSpecularColor.xyz * r4.xyz;
+  r2.xyz = r4.xyz * r2.yyy;
+  r1.xyz = r5.xyz * r1.xyz;
+  r0.xzw = r2.xyz * r0.xxx + r1.xyz;
+  r0.y = r1.w + r0.y;
+  r0.y = saturate(r0.y / r1.w);
+  r0.xyz = r0.xzw * r0.yyy;
+  r0.xyz = r1.xyz * r2.www + r0.xyz;
+  r1.x = dot(k_mShadowMapMatrix._m00_m01_m02_m03, r3.xyzw);
+  r1.y = dot(k_mShadowMapMatrix._m10_m11_m12_m13, r3.xyzw);
+  r1.z = dot(k_mShadowMapMatrix._m20_m21_m22_m23, r3.xyzw);
+  r0.w = dot(k_mShadowMapMatrix._m30_m31_m32_m33, r3.xyzw);
+  r1.xyz = r1.xyz / r0.www;
+  r0.w = 1.000000000e+000 + -r1.z;
+  r1.xyzw = r1.xyxy * float4(5.000000e-001,-5.000000e-001,5.000000e-001,-5.000000e-001) + float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001);
+  r2.xyzw = k_vShadowMapParams2.zwzw * float4(-5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r1.xyzw;
+  r1.xyzw = k_vShadowMapParams2.zwzw * float4(5.000000e-001,-5.000000e-001,-5.000000e-001,-5.000000e-001) + r1.zwzw;
+  r3.xy = r2.zw;
+  r3.z = k_vShadowCascadeOffsetZ.x;
+  r2.w = tShadowMapLinear.SampleCmpLevelZero(sShadowMapLinearSampler_s, r3.xyz, r0.w).x;
+  r2.w = 1.000000000e+000 + -r2.w;
+  r3.xy = r1.zw;
+  r3.z = k_vShadowCascadeOffsetZ.x;
+  r1.w = tShadowMapLinear.SampleCmpLevelZero(sShadowMapLinearSampler_s, r3.xyz, r0.w).x;
+  r1.z = k_vShadowCascadeOffsetZ.x;
+  r1.x = tShadowMapLinear.SampleCmpLevelZero(sShadowMapLinearSampler_s, r1.xyz, r0.w).x;
+  r1.xw = float2(1.000000e+000,1.000000e+000) + -r1.xw;
+  r1.x = r1.w + r1.x;
+  r2.z = k_vShadowCascadeOffsetZ.x;
+  r0.w = tShadowMapLinear.SampleCmpLevelZero(sShadowMapLinearSampler_s, r2.xyz, r0.w).x;
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.w = r1.x + r0.w;
+  r0.w = r0.w + r2.w;
+  r0.w = 2.500000000e-001 * r0.w;
+  r1.x = 1.000000000e+000 + -k_vObjectLightColor.w;
+  r0.w = r0.w * k_vObjectLightColor.w + r1.x;
+  r0.xyz = r0.xyz * r0.www;
+  o0.w = dot(r0.xyz, k_vHDRLuminanceWeights.xyz);
+  o0.xyz = r0.xyz;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float DefaultHeight;               // Offset:    0 Size:     4 [unused]
+//      = 0x42c80000 
+//   float DefaultWidth;                // Offset:    4 Size:     4 [unused]
+//      = 0x42c80000 
+//   
+//   struct MaterialVertex_Rigid
+//   {
+//       
+//       float3 m_Position;             // Offset:   16
+//
+//   } MaterialVertexDef_Rigid;         // Offset:   16 Size:    12 [unused]
+//   
+//   struct MaterialVertex_Skeletal
+//   {
+//       
+//       float3 m_Position;             // Offset:   32
+//       float4 m_Weights;              // Offset:   48
+//       float4 m_Indices;              // Offset:   64
+//
+//   } MaterialVertexDef_Skeletal;      // Offset:   32 Size:    48 [unused]
+//   float k_fOffsetNormalU;            // Offset:   80 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fOffsetNormalV;            // Offset:   84 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalU;               // Offset:   88 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalV;               // Offset:   92 Size:     4 [unused]
+//      = 0x00000000 
+//   float3 k_vDiffuseTile;             // Offset:   96 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x00000000 
+//   float3 k_vNormalTile;              // Offset:  112 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x00000000 
+//   float3 k_vRefractStrength;         // Offset:  128 Size:    12 [unused]
+//      = 0x3dcccccd 0x3dcccccd 0x00000000 
+//   float k_fTime;                     // Offset:  140 Size:     4 [unused]
+//   row_major float3x4 k_mDirectional_ObjectToTex;// Offset:  144 Size:    48
+//   row_major float4x4 k_mObjectToClip;// Offset:  192 Size:    64 [unused]
+//   row_major float3x4 k_mObjectToWorld;// Offset:  256 Size:    48 [unused]
+//   row_major float4x4 k_mShadowMapMatrix;// Offset:  304 Size:    64
+//   float3 k_vDirectional_Dir;         // Offset:  368 Size:    12
+//   float4 k_vFullViewPlane;           // Offset:  384 Size:    16 [unused]
+//   float4 k_vHDRLuminanceWeights;     // Offset:  400 Size:    16
+//   float3 k_vHalfDims;                // Offset:  416 Size:    12 [unused]
+//   float4 k_vObjectColor;             // Offset:  432 Size:    16 [unused]
+//   float4 k_vObjectLightColor;        // Offset:  448 Size:    16
+//   float3 k_vObjectSpaceEyePos;       // Offset:  464 Size:    12 [unused]
+//   float2 k_vPerspOrthoMask;          // Offset:  480 Size:     8
+//   float2 k_vScene_TexCoordScale;     // Offset:  488 Size:     8 [unused]
+//   float4 k_vShadowCascadeOffsetZ;    // Offset:  496 Size:    16
+//   float4 k_vShadowMapParams2;        // Offset:  512 Size:    16
+//   float4 k_vSpecularColor;           // Offset:  528 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sDeferredDiffuseSampler           sampler      NA          NA    0        1
+// sDeferredNormalsSampler           sampler      NA          NA    1        1
+// sDeferredSpecularSampler          sampler      NA          NA    2        1
+// sDepthMapSampler                  sampler      NA          NA    3        1
+// sDirectional_AttenuationSampler    sampler      NA          NA    4        1
+// sDirectional_ProjectionSampler    sampler      NA          NA    5        1
+// sShadowMapLinearSampler         sampler_c      NA          NA    6        1
+// tDeferredDiffuse                  texture  float4          2d    0        1
+// tDeferredNormals                  texture  float4          2d    1        1
+// tDeferredSpecular                 texture  float4          2d    2        1
+// tDepthMap                         texture  float4          2d    3        1
+// tDirectional_Attenuation          texture  float4          2d    4        1
+// tDirectional_Projection           texture  float4          2d    5        1
+// tShadowMapLinear                  texture  float4     2darray    6        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xy w
+// TEXCOORD                 1   xyz         2     NONE   float   xyz 
+// TEXCOORD                 2   xy          3     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[34], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_comparison
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2darray (float,float,float,float) t6
+dcl_input_ps linear v1.xyw
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xy
+dcl_output o0.xyzw
+dcl_temps 6
+dp3 r0.x, v2.xyzx, v2.xyzx
+rsq r0.x, r0.x
+mad r0.xyz, v2.xyzx, r0.xxxx, -cb0[23].xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+div r1.xy, v1.xyxx, v1.wwww
+sample_indexable(texture2d)(float,float,float,float) r2.xyz, r1.xyxx, t1.xyzw, s1
+mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.w, r2.xyzx, r2.xyzx
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, r2.xyzx
+dp3_sat r0.w, r2.xyzx, r0.xyzx
+dp3_sat r0.x, -cb0[23].xyzx, r0.xyzx
+add r0.x, -r0.x, l(1.000000)
+dp3_sat r0.y, r2.xyzx, -cb0[23].xyzx
+add r0.y, r0.y, l(-1.000000)
+log r0.z, r0.w
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r1.xyxx, t2.xyzw, s2
+mul r0.w, r2.x, r2.x
+mad r1.zw, r0.wwww, l(0.000000, 0.000000, 4096.000000, 4096.000000), l(0.000000, 0.000000, 0.004000, 2.004000)
+mul r0.z, r0.z, r1.z
+mul r0.w, r1.w, l(0.125000)
+exp r0.z, r0.z
+mul r0.z, r0.z, r0.w
+mul r0.w, r0.x, r0.x
+mul r0.w, r0.w, r0.w
+mul r0.x, r0.w, r0.x
+add r0.w, -r2.z, l(1.000000)
+mad r0.x, r0.w, r0.x, r2.z
+mul r0.x, r0.x, r0.z
+sample_indexable(texture2d)(float,float,float,float) r3.z, r1.xyxx, t3.yzxw, s3
+sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r1.xyxx, t0.xyzw, s0
+div r0.zw, v3.xxxy, v1.wwww
+mov r3.w, l(1.000000)
+dp2 r2.x, r3.zwzz, cb0[30].xyxx
+mul r3.xy, r0.zwzz, r2.xxxx
+dp4_sat r4.x, cb0[9].xyzw, r3.xyzw
+dp4_sat r4.y, cb0[10].xyzw, r3.xyzw
+sample_indexable(texture2d)(float,float,float,float) r5.xyz, r4.xyxx, t5.xyzw, s5
+mov r4.w, l(0)
+dp4_sat r4.z, cb0[11].xyzw, r3.xyzw
+sample_indexable(texture2d)(float,float,float,float) r4.xyz, r4.wzww, t4.xyzw, s4
+mul r4.xyz, r4.xyzx, r5.xyzx
+mul r5.xyz, r4.xyzx, cb0[28].xyzx
+mul r4.xyz, r4.xyzx, cb0[33].xyzx
+mul r2.xyz, r2.yyyy, r4.xyzx
+mul r1.xyz, r1.xyzx, r5.xyzx
+mad r0.xzw, r2.xxyz, r0.xxxx, r1.xxyz
+add r0.y, r0.y, r1.w
+div_sat r0.y, r0.y, r1.w
+mul r0.xyz, r0.yyyy, r0.xzwx
+mad r0.xyz, r1.xyzx, r2.wwww, r0.xyzx
+dp4 r1.x, cb0[19].xyzw, r3.xyzw
+dp4 r1.y, cb0[20].xyzw, r3.xyzw
+dp4 r1.z, cb0[21].xyzw, r3.xyzw
+dp4 r0.w, cb0[22].xyzw, r3.xyzw
+div r1.xyz, r1.xyzx, r0.wwww
+add r0.w, -r1.z, l(1.000000)
+mad r1.xyzw, r1.xyxy, l(0.500000, -0.500000, 0.500000, -0.500000), l(0.500000, 0.500000, 0.500000, 0.500000)
+mad r2.xyzw, cb0[32].zwzw, l(-0.500000, 0.500000, 0.500000, 0.500000), r1.xyzw
+mad r1.xyzw, cb0[32].zwzw, l(0.500000, -0.500000, -0.500000, -0.500000), r1.zwzw
+mov r3.xy, r2.zwzz
+mov r3.z, cb0[31].x
+sample_c_lz_indexable(texture2darray)(float,float,float,float) r2.w, r3.xyzx, t6.xxxx, s6, r0.w
+add r2.w, -r2.w, l(1.000000)
+mov r3.xy, r1.zwzz
+mov r3.z, cb0[31].x
+sample_c_lz_indexable(texture2darray)(float,float,float,float) r1.w, r3.xyzx, t6.xxxx, s6, r0.w
+mov r1.z, cb0[31].x
+sample_c_lz_indexable(texture2darray)(float,float,float,float) r1.x, r1.xyzx, t6.xxxx, s6, r0.w
+add r1.xw, -r1.xxxw, l(1.000000, 0.000000, 0.000000, 1.000000)
+add r1.x, r1.x, r1.w
+mov r2.z, cb0[31].x
+sample_c_lz_indexable(texture2darray)(float,float,float,float) r0.w, r2.xyzx, t6.xxxx, s6, r0.w
+add r0.w, -r0.w, l(1.000000)
+add r0.w, r0.w, r1.x
+add r0.w, r2.w, r0.w
+mul r0.w, r0.w, l(0.250000)
+add r1.x, -cb0[28].w, l(1.000000)
+mad r0.w, r0.w, cb0[28].w, r1.x
+mul r0.xyz, r0.wwww, r0.xyzx
+dp3 o0.w, r0.xyzx, cb0[25].xyzx
+mov o0.xyz, r0.xyzx
+ret 
+// Approximately 85 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

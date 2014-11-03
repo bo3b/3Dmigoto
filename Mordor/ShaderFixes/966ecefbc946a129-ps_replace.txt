@@ -1,0 +1,2414 @@
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = float(1.000000e+002);
+  float DefaultWidth : packoffset(c0.y) = float(1.000000e+002);
+
+  struct
+  {
+    float2 m_Position;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float2 m_Position;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c2);
+
+  bool bHalfPrecision : packoffset(c5) = bool(0.000000e+000);
+  row_major float4x4 k_mViewToClip : packoffset(c6);
+  row_major float3x4 k_mViewToWorld : packoffset(c10);
+  float4 k_vFullViewPlane : packoffset(c13);
+  float2 k_vPerspOrthoMask : packoffset(c14);
+  float2 k_vScene_ScreenRes : packoffset(c14.z);
+  float2 k_vScene_TexCoordScale : packoffset(c15);
+  float3 k_vScene_ZRange : packoffset(c16);
+}
+SamplerState sDownscaledDepthMapSampler_s : register(s0);
+SamplerState sSSAORandomVectorSampler_s : register(s1);
+SamplerState sDeferredNormalsSampler_s : register(s2);
+SamplerState sDepthMapSampler_s : register(s3);
+Texture2D<float4> tDownscaledDepthMap : register(t0);
+Texture2D<float4> tSSAORandomVector : register(t1);
+Texture2D<float4> tDeferredNormals : register(t2);
+Texture2D<float4> tDepthMap : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float2 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
+  uint4 bitmask;
+  float4 x0[40];  //x0[4];
+  r0.x = dot(v2.xyz, v2.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v2.xyz * r0.xxx;
+  r1.xy = tSSAORandomVector.Sample(sSSAORandomVectorSampler_s, v1.zw).xy;
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r1.xy, r1.xy);
+  r0.w = rsqrt(r0.w);
+  r1.xy = r1.xy * r0.ww;
+  r2.z = tDepthMap.Sample(sDepthMapSampler_s, v1.xy).x;
+  r2.w = 1.000000000e+000;
+  r0.w = dot(r2.zw, k_vPerspOrthoMask.xy);
+  r2.xy = v3.xy * r0.ww;
+  r3.xyz = tDeferredNormals.Sample(sDeferredNormalsSampler_s, v1.xy).xyz;
+  r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r4.xyz = k_mViewToWorld._m10_m11_m12 * r3.yyy;
+  r3.xyw = r3.xxx * k_mViewToWorld._m00_m01_m02 + r4.xyz;
+  r3.xyz = r3.zzz * k_mViewToWorld._m20_m21_m22 + r3.xyw;
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r0.w = dot(r0.xyz, r3.xyz);
+  r0.w = r0.w + r0.w;
+  r0.xyz = r3.xyz * -r0.www + r0.xyz;
+  x0[0].xyz = float3(1.000000e-001,1.000000e-001,5.000000e-001);
+  x0[1].xyz = float3(3.100000e-001,0.000000e+000,1.300000e+000);
+  x0[2].xyz = float3(-2.700000e-001,1.000000e-002,2.300000e+000);
+  x0[3].xyz = float3(-1.000000e-002,-3.100000e-001,3.200000e+000);
+  x0[4].xyz = float3(5.000000e-002,-3.800000e-001,4.100000e+000);
+  x0[5].xyz = float3(5.000000e-001,5.000000e-001,5.300000e+000);
+  x0[6].xyz = float3(-4.000000e-001,3.500000e-001,6.100000e+000);
+  x0[7].xyz = float3(-3.800000e-001,-5.000000e-001,7.700000e+000);
+  x0[8].xyz = float3(7.100000e-001,3.400000e-001,8.500000e+000);
+  x0[9].xyz = float3(1.000000e-001,-1.500000e-001,1.000000e+001);
+  x0[10].xyz = float3(-1.000000e-001,-1.000000e-001,5.000000e-001);
+  x0[11].xyz = float3(-3.100000e-001,-0.000000e+000,1.300000e+000);
+  x0[12].xyz = float3(2.700000e-001,-1.000000e-002,2.300000e+000);
+  x0[13].xyz = float3(1.000000e-002,3.100000e-001,3.200000e+000);
+  x0[14].xyz = float3(-5.000000e-002,3.800000e-001,4.100000e+000);
+  x0[15].xyz = float3(-5.000000e-001,-5.000000e-001,5.300000e+000);
+  x0[16].xyz = float3(4.000000e-001,-3.500000e-001,6.100000e+000);
+  x0[17].xyz = float3(3.800000e-001,5.000000e-001,7.700000e+000);
+  x0[18].xyz = float3(-7.100000e-001,-3.400000e-001,8.500000e+000);
+  x0[19].xyz = float3(-1.000000e-001,1.500000e-001,1.000000e+001);
+  x0[20].xyz = float3(2.000000e-001,2.000000e-001,5.500000e+000);
+  x0[21].xyz = float3(6.100000e-001,0.000000e+000,6.300000e+000);
+  x0[22].xyz = float3(-4.700000e-001,1.000000e-002,7.300000e+000);
+  x0[23].xyz = float3(-1.100000e-001,-6.100000e-001,8.200000e+000);
+  x0[24].xyz = float3(1.500000e-001,-6.800000e-001,9.100000e+000);
+  x0[25].xyz = float3(9.000000e-001,9.000000e-001,1.030000e+001);
+  x0[26].xyz = float3(-8.000000e-001,6.500000e-001,1.110000e+001);
+  x0[27].xyz = float3(-6.800000e-001,-9.000000e-001,1.270000e+001);
+  x0[28].xyz = float3(9.100000e-001,6.400000e-001,1.350000e+001);
+  x0[29].xyz = float3(2.000000e-001,-2.500000e-001,1.500000e+001);
+  x0[30].xyz = float3(-2.000000e-001,-2.000000e-001,5.500000e+000);
+  x0[31].xyz = float3(-6.100000e-001,-1.000000e-001,6.300000e+000);
+  x0[32].xyz = float3(4.700000e-001,-5.000000e-002,7.300000e+000);
+  x0[33].xyz = float3(1.000000e-002,6.100000e-001,8.200000e+000);
+  x0[34].xyz = float3(-5.000000e-002,6.800000e-001,9.100000e+000);
+  x0[35].xyz = float3(-7.000000e-001,-8.000000e-001,1.030000e+001);
+  x0[36].xyz = float3(8.000000e-001,-6.500000e-001,1.110000e+001);
+  x0[37].xyz = float3(6.800000e-001,9.500000e-001,1.270000e+001);
+  x0[38].xyz = float3(-9.700000e-001,-5.400000e-001,1.350000e+001);
+  x0[39].xyz = float3(-2.000000e-001,2.500000e-001,1.500000e+001);
+  r0.xyz = r0.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + r3.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r4.xyz = r0.zxy * r3.yzx;
+  r4.xyz = r0.yzx * r3.zxy + -r4.xyz;
+  r0.w = dot(r4.xyz, r4.xyz);
+  r0.w = rsqrt(r0.w);
+  r4.xyz = r4.xyz * r0.www;
+  r5.xyz = r4.yzx * r3.zxy;
+  r5.xyz = r3.yzx * r4.zxy + -r5.xyz;
+  r6.xyz = r4.zxy * r0.yzx;
+  r6.xyz = r4.yzx * r0.zxy + -r6.xyz;
+  r0.w = 6.666666828e-003 * r2.z;
+  r0.w = max(r0.w, 1.000000000e+000);
+  r2.w = 0.000000000e+000 < r0.z;
+  r1.zw = -r1.xx;
+  r7.w = 1.000000000e+000;
+  r3.w = 0.000000000e+000;
+  r4.w = 0.000000000e+000;
+  while (true) {
+  r5.w = (int)r4.w >= (int)40;
+  if (r5.w != 0) break;
+  r8.xy = x0[r4.w+0].xy;
+  r5.w = dot(r1.yx, r8.xy);
+  r6.w = dot(r1.zy, r8.xy);
+  r8.x = x0[r4.w+0].z;
+  r8.x = r8.x * r0.w;
+  r8.yzw = r6.xyz * r6.www + r0.xyz;
+  r8.yzw = r4.xyz * r5.www + r8.yzw;
+  r7.xyz = r8.yzw * r8.xxx + r2.xyz;
+  r9.x = dot(k_mViewToClip._m00_m01_m02_m03, r7.xyzw);
+  r9.y = dot(k_mViewToClip._m10_m11_m12_m13, r7.xyzw);
+  r5.w = dot(k_mViewToClip._m30_m31_m32_m33, r7.xyzw);
+  r7.xy = r9.xy / r5.ww;
+  r8.yz = r7.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r7.x = abs(r7.x) >= 1;
+  r7.y = abs(r7.y) >= 1;
+  r7.x = r7.x ? 1 : 0;
+  r7.y = r7.y ? 1 : 0;
+  r5.w = r7.x + r7.y;
+  r5.w = min(r5.w, 1.000000000e+000);
+  r6.w = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r8.yz).x;
+  r6.w = r7.z + -r6.w;
+  r7.x = r6.w < 0.000000000e+000;
+  r7.y = 5.000000000e-001 * r8.x;
+  r7.x = r7.x ? r7.y : r8.x;
+  r7.y = 0.000000000e+000 < r6.w;
+  r7.y = r2.w ? r7.y : 0;
+  r7.z = 5.000000000e-001 * r7.x;
+  r7.x = r7.y ? r7.z : r7.x;
+  r6.w = -r7.x + abs(r6.w);
+  r6.w = saturate(r6.w / r7.x);
+  r5.w = r5.w * 5.000000000e-001 + r6.w;
+  r5.w = min(r5.w, 1.000000000e+000);
+  r3.w = r5.w + r3.w;
+  r4.w = (int)r4.w + 1;
+  }
+  r0.x = dot(r1.yx, float2(1.000000e-001,1.000000e-001));
+  r0.y = dot(r1.wy, float2(1.000000e-001,1.000000e-001));
+  r6.xyzw = float4(5.000000e-001,2.500000e-001,1.300000e+000,6.500000e-001) * r0.wwww;
+  r7.xyz = r5.xyz * r0.yyy + r3.xyz;
+  r0.xyz = r4.xyz * r0.xxx + r7.xyz;
+  r7.xyz = r0.xyz * r6.xxx + r2.xyz;
+  r7.w = 1.000000000e+000;
+  r0.x = dot(k_mViewToClip._m00_m01_m02_m03, r7.xyzw);
+  r0.y = dot(k_mViewToClip._m10_m11_m12_m13, r7.xyzw);
+  r0.z = dot(k_mViewToClip._m30_m31_m32_m33, r7.xyzw);
+  r0.xy = r0.xy / r0.zz;
+  r1.zw = r0.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.x = abs(r0.x) >= 1;
+  r0.y = abs(r0.y) >= 1;
+  r0.x = r0.x ? 1 : 0;
+  r0.y = r0.y ? 1 : 0;
+  r0.x = r0.x + r0.y;
+  r0.x = min(r0.x, 1.000000000e+000);
+  r0.y = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.y = r7.z + -r0.y;
+  r0.z = r0.y < 0.000000000e+000;
+  r0.z = r0.z ? r6.y : r6.x;
+  r0.y = abs(r0.y) + -r0.z;
+  r0.y = saturate(r0.y / r0.z);
+  r0.x = r0.x * 2.500000000e-001 + r0.y;
+  r7.xyzw = float4(3.100000e-001,-3.100000e-001,-3.100000e-001,3.100000e-001) * r1.yxyx;
+  r8.xyz = r5.xyz * r7.yyy + r3.xyz;
+  r8.xyz = r4.xyz * r7.xxx + r8.xyz;
+  r8.xyz = r8.xyz * r6.zzz + r2.xyz;
+  r8.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r8.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r8.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r8.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.xy = min(r0.xy, float2(1.000000e+000,1.000000e+000));
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r8.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r6.w : r6.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-2.700000e-001,1.000000e-002));
+  r8.xyzw = float4(-1.000000e+000,1.000000e+000,6.100000e-001,-6.100000e-001) * r1.xyyx;
+  r0.z = dot(r8.xy, float2(-2.700000e-001,1.000000e-002));
+  r9.xyzw = float4(2.300000e+000,1.150000e+000,3.200000e+000,1.600000e+000) * r0.wwww;
+  r10.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r10.xyz = r4.xyz * r0.yyy + r10.xyz;
+  r10.xyz = r10.xyz * r9.xxx + r2.xyz;
+  r10.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r10.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r10.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r10.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r10.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r9.y : r9.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-1.000000e-002,-3.100000e-001));
+  r0.z = dot(r8.xy, float2(-1.000000e-002,-3.100000e-001));
+  r10.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r10.xyz = r4.xyz * r0.yyy + r10.xyz;
+  r10.xyz = r10.xyz * r9.zzz + r2.xyz;
+  r10.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r10.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r10.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r10.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r10.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r9.w : r9.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(5.000000e-002,-3.800000e-001));
+  r0.z = dot(r8.xy, float2(5.000000e-002,-3.800000e-001));
+  r10.xyzw = float4(4.100000e+000,2.050000e+000,5.300000e+000,2.650000e+000) * r0.wwww;
+  r11.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r11.xyz = r4.xyz * r0.yyy + r11.xyz;
+  r11.xyz = r11.xyz * r10.xxx + r2.xyz;
+  r11.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r11.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r11.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r11.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r11.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r10.y : r10.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(5.000000e-001,5.000000e-001));
+  r0.z = dot(r8.xy, float2(5.000000e-001,5.000000e-001));
+  r11.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r11.xyz = r4.xyz * r0.yyy + r11.xyz;
+  r11.xyz = r11.xyz * r10.zzz + r2.xyz;
+  r11.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r11.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r11.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r11.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r11.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r10.w : r10.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-4.000000e-001,3.500000e-001));
+  r0.z = dot(r8.xy, float2(-4.000000e-001,3.500000e-001));
+  r11.xyzw = float4(6.100000e+000,3.050000e+000,7.700000e+000,3.850000e+000) * r0.wwww;
+  r12.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r12.xyz = r4.xyz * r0.yyy + r12.xyz;
+  r12.xyz = r12.xyz * r11.xxx + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r11.y : r11.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-3.800000e-001,-5.000000e-001));
+  r0.z = dot(r8.xy, float2(-3.800000e-001,-5.000000e-001));
+  r12.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r12.xyz = r4.xyz * r0.yyy + r12.xyz;
+  r12.xyz = r12.xyz * r11.zzz + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r11.w : r11.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(7.100000e-001,3.400000e-001));
+  r0.z = dot(r8.xy, float2(7.100000e-001,3.400000e-001));
+  r12.xyzw = float4(8.500000e+000,4.250000e+000,1.000000e+001,5.000000e+000) * r0.wwww;
+  r13.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r13.xyz = r4.xyz * r0.yyy + r13.xyz;
+  r13.xyz = r13.xyz * r12.xxx + r2.xyz;
+  r13.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r13.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r13.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r13.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r13.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r12.y : r12.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(1.000000e-001,-1.500000e-001));
+  r0.z = dot(r8.xy, float2(1.000000e-001,-1.500000e-001));
+  r13.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r13.xyz = r4.xyz * r0.yyy + r13.xyz;
+  r13.xyz = r13.xyz * r12.zzz + r2.xyz;
+  r13.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r13.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r13.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r13.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r13.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r12.w : r12.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-1.000000e-001,-1.000000e-001));
+  r0.z = dot(r8.xy, float2(-1.000000e-001,-1.000000e-001));
+  r13.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r13.xyz = r4.xyz * r0.yyy + r13.xyz;
+  r13.xyz = r13.xyz * r6.xxx + r2.xyz;
+  r13.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r13.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r13.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r13.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r13.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r6.y : r6.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r7.xyw = r5.xyz * r7.www + r3.xyz;
+  r7.xyz = r4.xyz * r7.zzz + r7.xyw;
+  r7.xyz = r7.xyz * r6.zzz + r2.xyz;
+  r7.w = 1.000000000e+000;
+  r6.x = dot(k_mViewToClip._m00_m01_m02_m03, r7.xyzw);
+  r6.y = dot(k_mViewToClip._m10_m11_m12_m13, r7.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r7.xyzw);
+  r0.yz = r6.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r7.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r6.w : r6.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(2.700000e-001,-1.000000e-002));
+  r0.z = dot(r8.xy, float2(2.700000e-001,-1.000000e-002));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r9.xxx + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r9.y : r9.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(1.000000e-002,3.100000e-001));
+  r0.z = dot(r8.xy, float2(1.000000e-002,3.100000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r9.zzz + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r9.w : r9.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-5.000000e-002,3.800000e-001));
+  r0.z = dot(r8.xy, float2(-5.000000e-002,3.800000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r10.xxx + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r10.y : r10.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-5.000000e-001,-5.000000e-001));
+  r0.z = dot(r8.xy, float2(-5.000000e-001,-5.000000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r10.zzz + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r10.w : r10.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(4.000000e-001,-3.500000e-001));
+  r0.z = dot(r8.xy, float2(4.000000e-001,-3.500000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r11.xxx + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r11.y : r11.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(3.800000e-001,5.000000e-001));
+  r0.z = dot(r8.xy, float2(3.800000e-001,5.000000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r11.zzz + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r11.w : r11.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-7.100000e-001,-3.400000e-001));
+  r0.z = dot(r8.xy, float2(-7.100000e-001,-3.400000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r12.xxx + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r12.y : r12.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-1.000000e-001,1.500000e-001));
+  r0.z = dot(r8.xy, float2(-1.000000e-001,1.500000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r6.xyz = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r6.xyz * r12.zzz + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r12.w : r12.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(2.000000e-001,2.000000e-001));
+  r0.z = dot(r8.xy, float2(2.000000e-001,2.000000e-001));
+  r6.xyzw = float4(5.500000e+000,2.750000e+000,6.300000e+000,3.150000e+000) * r0.wwww;
+  r7.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r7.xyz = r4.xyz * r0.yyy + r7.xyz;
+  r7.xyz = r7.xyz * r6.xxx + r2.xyz;
+  r7.w = 1.000000000e+000;
+  r9.x = dot(k_mViewToClip._m00_m01_m02_m03, r7.xyzw);
+  r9.y = dot(k_mViewToClip._m10_m11_m12_m13, r7.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r7.xyzw);
+  r0.yz = r9.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r7.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r6.y : r6.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r7.xyz = r5.xyz * r8.www + r3.xyz;
+  r7.xyz = r4.xyz * r8.zzz + r7.xyz;
+  r7.xyz = r7.xyz * r6.zzz + r2.xyz;
+  r7.w = 1.000000000e+000;
+  r9.x = dot(k_mViewToClip._m00_m01_m02_m03, r7.xyzw);
+  r9.y = dot(k_mViewToClip._m10_m11_m12_m13, r7.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r7.xyzw);
+  r0.yz = r9.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r7.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r6.w : r6.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-4.700000e-001,1.000000e-002));
+  r0.z = dot(r8.xy, float2(-4.700000e-001,1.000000e-002));
+  r7.xyzw = float4(7.300000e+000,3.650000e+000,8.200000e+000,9.100000e+000) * r0.wwww;
+  r9.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r9.xyz = r4.xyz * r0.yyy + r9.xyz;
+  r9.xyz = r9.xyz * r7.xxx + r2.xyz;
+  r9.w = 1.000000000e+000;
+  r11.x = dot(k_mViewToClip._m00_m01_m02_m03, r9.xyzw);
+  r11.y = dot(k_mViewToClip._m10_m11_m12_m13, r9.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r9.xyzw);
+  r0.yz = r11.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r9.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r7.y : r7.x;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-1.100000e-001,-6.100000e-001));
+  r0.z = dot(r8.xy, float2(-1.100000e-001,-6.100000e-001));
+  r9.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r9.xyz = r4.xyz * r0.yyy + r9.xyz;
+  r9.xyz = r9.xyz * r7.zzz + r2.xyz;
+  r9.w = 1.000000000e+000;
+  r11.x = dot(k_mViewToClip._m00_m01_m02_m03, r9.xyzw);
+  r11.y = dot(k_mViewToClip._m10_m11_m12_m13, r9.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r9.xyzw);
+  r0.yz = r11.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r9.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r10.x : r7.z;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(1.500000e-001,-6.800000e-001));
+  r0.z = dot(r8.xy, float2(1.500000e-001,-6.800000e-001));
+  r9.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r9.xyz = r4.xyz * r0.yyy + r9.xyz;
+  r9.xyz = r9.xyz * r7.www + r2.xyz;
+  r9.w = 1.000000000e+000;
+  r11.x = dot(k_mViewToClip._m00_m01_m02_m03, r9.xyzw);
+  r11.y = dot(k_mViewToClip._m10_m11_m12_m13, r9.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r9.xyzw);
+  r0.yz = r11.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r9.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r9.xyzw = float4(4.550000e+000,1.030000e+001,5.150000e+000,1.110000e+001) * r0.wwww;
+  r1.z = r1.z ? r9.x : r7.w;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(9.000000e-001,9.000000e-001));
+  r0.z = dot(r8.xy, float2(9.000000e-001,9.000000e-001));
+  r10.yzw = r5.xyz * r0.zzz + r3.xyz;
+  r10.yzw = r4.xyz * r0.yyy + r10.yzw;
+  r11.xyz = r10.yzw * r9.yyy + r2.xyz;
+  r11.w = 1.000000000e+000;
+  r12.x = dot(k_mViewToClip._m00_m01_m02_m03, r11.xyzw);
+  r12.y = dot(k_mViewToClip._m10_m11_m12_m13, r11.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r11.xyzw);
+  r0.yz = r12.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r11.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r9.z : r9.y;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-8.000000e-001,6.500000e-001));
+  r0.z = dot(r8.xy, float2(-8.000000e-001,6.500000e-001));
+  r10.yzw = r5.xyz * r0.zzz + r3.xyz;
+  r10.yzw = r4.xyz * r0.yyy + r10.yzw;
+  r11.xyz = r10.yzw * r9.www + r2.xyz;
+  r11.w = 1.000000000e+000;
+  r12.x = dot(k_mViewToClip._m00_m01_m02_m03, r11.xyzw);
+  r12.y = dot(k_mViewToClip._m10_m11_m12_m13, r11.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r11.xyzw);
+  r0.yz = r12.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r11.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r11.xyzw = float4(5.550000e+000,1.270000e+001,6.350000e+000,1.350000e+001) * r0.wwww;
+  r1.z = r1.z ? r11.x : r9.w;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-6.800000e-001,-9.000000e-001));
+  r0.z = dot(r8.xy, float2(-6.800000e-001,-9.000000e-001));
+  r10.yzw = r5.xyz * r0.zzz + r3.xyz;
+  r10.yzw = r4.xyz * r0.yyy + r10.yzw;
+  r12.xyz = r10.yzw * r11.yyy + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r13.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r13.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r13.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r1.z = r1.z ? r11.z : r11.y;
+  r0.z = -r1.z + abs(r0.z);
+  r0.z = saturate(r0.z / r1.z);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(9.100000e-001,6.400000e-001));
+  r0.z = dot(r8.xy, float2(9.100000e-001,6.400000e-001));
+  r10.yzw = r5.xyz * r0.zzz + r3.xyz;
+  r10.yzw = r4.xyz * r0.yyy + r10.yzw;
+  r12.xyz = r10.yzw * r11.www + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r13.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r13.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r13.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r1.z = r0.z < 0.000000000e+000;
+  r10.yzw = float3(6.750000e+000,1.500000e+001,7.500000e+000) * r0.www;
+  r0.w = r1.z ? r10.y : r11.w;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(2.000000e-001,-2.500000e-001));
+  r0.z = dot(r8.xy, float2(2.000000e-001,-2.500000e-001));
+  r12.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r12.xyz;
+  r12.xyz = r0.yzw * r10.zzz + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r13.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r13.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r13.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r10.w : r10.z;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-2.000000e-001,-2.000000e-001));
+  r0.z = dot(r8.xy, float2(-2.000000e-001,-2.000000e-001));
+  r12.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r12.xyz;
+  r12.xyz = r0.yzw * r6.xxx + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r13.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r13.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r13.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r6.y : r6.x;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-6.100000e-001,-1.000000e-001));
+  r0.z = dot(r8.xy, float2(-6.100000e-001,-1.000000e-001));
+  r12.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r12.xyz;
+  r12.xyz = r0.yzw * r6.zzz + r2.xyz;
+  r12.w = 1.000000000e+000;
+  r6.x = dot(k_mViewToClip._m00_m01_m02_m03, r12.xyzw);
+  r6.y = dot(k_mViewToClip._m10_m11_m12_m13, r12.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r12.xyzw);
+  r0.yz = r6.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r12.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r6.w : r6.z;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(4.700000e-001,-5.000000e-002));
+  r0.z = dot(r8.xy, float2(4.700000e-001,-5.000000e-002));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r7.xxx + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r12.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r12.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r12.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r7.y : r7.x;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(1.000000e-002,6.100000e-001));
+  r0.z = dot(r8.xy, float2(1.000000e-002,6.100000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r7.zzz + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r10.x : r7.z;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-5.000000e-002,6.800000e-001));
+  r0.z = dot(r8.xy, float2(-5.000000e-002,6.800000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r7.www + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r9.x : r7.w;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-7.000000e-001,-8.000000e-001));
+  r0.z = dot(r8.xy, float2(-7.000000e-001,-8.000000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r9.yyy + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r9.z : r9.y;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(8.000000e-001,-6.500000e-001));
+  r0.z = dot(r8.xy, float2(8.000000e-001,-6.500000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r9.www + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r11.x : r9.w;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(6.800000e-001,9.500000e-001));
+  r0.z = dot(r8.xy, float2(6.800000e-001,9.500000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r11.yyy + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r11.z : r11.y;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-9.700000e-001,-5.400000e-001));
+  r0.z = dot(r8.xy, float2(-9.700000e-001,-5.400000e-001));
+  r6.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r6.xyz;
+  r6.xyz = r0.yzw * r11.www + r2.xyz;
+  r6.w = 1.000000000e+000;
+  r7.x = dot(k_mViewToClip._m00_m01_m02_m03, r6.xyzw);
+  r7.y = dot(k_mViewToClip._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r6.xyzw);
+  r0.yz = r7.xy / r0.yy;
+  r1.zw = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.zw).x;
+  r0.z = r6.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r10.y : r11.w;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = dot(r1.yx, float2(-2.000000e-001,2.500000e-001));
+  r0.z = dot(r8.xy, float2(-2.000000e-001,2.500000e-001));
+  r1.xyz = r5.xyz * r0.zzz + r3.xyz;
+  r0.yzw = r4.xyz * r0.yyy + r1.xyz;
+  r1.xyz = r0.yzw * r10.zzz + r2.xyz;
+  r1.w = 1.000000000e+000;
+  r2.x = dot(k_mViewToClip._m00_m01_m02_m03, r1.xyzw);
+  r2.y = dot(k_mViewToClip._m10_m11_m12_m13, r1.xyzw);
+  r0.y = dot(k_mViewToClip._m30_m31_m32_m33, r1.xyzw);
+  r0.yz = r2.xy / r0.yy;
+  r1.xy = r0.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.y = abs(r0.y) >= 1;
+  r0.z = abs(r0.z) >= 1;
+  r0.y = r0.y ? 1 : 0;
+  r0.z = r0.z ? 1 : 0;
+  r0.y = r0.y + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.z = tDownscaledDepthMap.Sample(sDownscaledDepthMapSampler_s, r1.xy).x;
+  r0.z = r1.z + -r0.z;
+  r0.w = r0.z < 0.000000000e+000;
+  r0.w = r0.w ? r10.w : r10.z;
+  r0.z = abs(r0.z) + -r0.w;
+  r0.z = saturate(r0.z / r0.w);
+  r0.y = r0.y * 2.500000000e-001 + r0.z;
+  r0.y = min(r0.y, 1.000000000e+000);
+  r0.x = r0.x + r0.y;
+  r0.y = 2.500000037e-002 * r3.w;
+  r0.x = 2.500000037e-002 * r0.x;
+  r0.xy = r0.xy * r0.xy;
+  o0.x = min(r0.x, r0.y);
+  o0.zw = float2(0.000000e+000,1.000000e+000);
+  o0.y = r0.x;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float DefaultHeight;               // Offset:    0 Size:     4 [unused]
+//      = 0x42c80000 
+//   float DefaultWidth;                // Offset:    4 Size:     4 [unused]
+//      = 0x42c80000 
+//   
+//   struct MaterialVertex_Rigid
+//   {
+//       
+//       float2 m_Position;             // Offset:   16
+//
+//   } MaterialVertexDef_Rigid;         // Offset:   16 Size:     8 [unused]
+//   
+//   struct MaterialVertex_Skeletal
+//   {
+//       
+//       float2 m_Position;             // Offset:   32
+//       float4 m_Weights;              // Offset:   48
+//       float4 m_Indices;              // Offset:   64
+//
+//   } MaterialVertexDef_Skeletal;      // Offset:   32 Size:    48 [unused]
+//   bool bHalfPrecision;               // Offset:   80 Size:     4 [unused]
+//      = 0x00000000 
+//   row_major float4x4 k_mViewToClip;  // Offset:   96 Size:    64
+//   row_major float3x4 k_mViewToWorld; // Offset:  160 Size:    48
+//   float4 k_vFullViewPlane;           // Offset:  208 Size:    16 [unused]
+//   float2 k_vPerspOrthoMask;          // Offset:  224 Size:     8
+//   float2 k_vScene_ScreenRes;         // Offset:  232 Size:     8 [unused]
+//   float2 k_vScene_TexCoordScale;     // Offset:  240 Size:     8 [unused]
+//   float3 k_vScene_ZRange;            // Offset:  256 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sDownscaledDepthMapSampler        sampler      NA          NA    0        1
+// sSSAORandomVectorSampler          sampler      NA          NA    1        1
+// sDeferredNormalsSampler           sampler      NA          NA    2        1
+// sDepthMapSampler                  sampler      NA          NA    3        1
+// tDownscaledDepthMap               texture  float4          2d    0        1
+// tSSAORandomVector                 texture  float4          2d    1        1
+// tDeferredNormals                  texture  float4          2d    2        1
+// tDepthMap                         texture  float4          2d    3        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyz         2     NONE   float   xyz 
+// TEXCOORD                 2   xy          3     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[15], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_input_ps linear v1.xyzw
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xy
+dcl_output o0.xyzw
+dcl_temps 14
+dcl_indexableTemp x0[40], 4
+dp3 r0.x, v2.xyzx, v2.xyzx
+rsq r0.x, r0.x
+mul r0.xyz, r0.xxxx, v2.xyzx
+sample_indexable(texture2d)(float,float,float,float) r1.xy, v1.zwzz, t1.xyzw, s1
+mad r1.xy, r1.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+dp2 r0.w, r1.xyxx, r1.xyxx
+rsq r0.w, r0.w
+mul r1.xy, r0.wwww, r1.xyxx
+sample_indexable(texture2d)(float,float,float,float) r2.z, v1.xyxx, t3.yzxw, s3
+mov r2.w, l(1.000000)
+dp2 r0.w, r2.zwzz, cb0[14].xyxx
+mul r2.xy, r0.wwww, v3.xyxx
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, v1.xyxx, t2.xyzw, s2
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r3.xyz, r0.wwww, r3.xyzx
+mul r4.xyz, r3.yyyy, cb0[11].xyzx
+mad r3.xyw, r3.xxxx, cb0[10].xyxz, r4.xyxz
+mad r3.xyz, r3.zzzz, cb0[12].xyzx, r3.xywx
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r3.xyz, r0.wwww, r3.xyzx
+dp3 r0.w, r0.xyzx, r3.xyzx
+add r0.w, r0.w, r0.w
+mad r0.xyz, r3.xyzx, -r0.wwww, r0.xyzx
+mov x0[0].xyz, l(0.100000,0.100000,0.500000,0)
+mov x0[1].xyz, l(0.310000,0,1.300000,0)
+mov x0[2].xyz, l(-0.270000,0.010000,2.300000,0)
+mov x0[3].xyz, l(-0.010000,-0.310000,3.200000,0)
+mov x0[4].xyz, l(0.050000,-0.380000,4.100000,0)
+mov x0[5].xyz, l(0.500000,0.500000,5.300000,0)
+mov x0[6].xyz, l(-0.400000,0.350000,6.100000,0)
+mov x0[7].xyz, l(-0.380000,-0.500000,7.700000,0)
+mov x0[8].xyz, l(0.710000,0.340000,8.500000,0)
+mov x0[9].xyz, l(0.100000,-0.150000,10.000000,0)
+mov x0[10].xyz, l(-0.100000,-0.100000,0.500000,0)
+mov x0[11].xyz, l(-0.310000,-0.000000,1.300000,0)
+mov x0[12].xyz, l(0.270000,-0.010000,2.300000,0)
+mov x0[13].xyz, l(0.010000,0.310000,3.200000,0)
+mov x0[14].xyz, l(-0.050000,0.380000,4.100000,0)
+mov x0[15].xyz, l(-0.500000,-0.500000,5.300000,0)
+mov x0[16].xyz, l(0.400000,-0.350000,6.100000,0)
+mov x0[17].xyz, l(0.380000,0.500000,7.700000,0)
+mov x0[18].xyz, l(-0.710000,-0.340000,8.500000,0)
+mov x0[19].xyz, l(-0.100000,0.150000,10.000000,0)
+mov x0[20].xyz, l(0.200000,0.200000,5.500000,0)
+mov x0[21].xyz, l(0.610000,0,6.300000,0)
+mov x0[22].xyz, l(-0.470000,0.010000,7.300000,0)
+mov x0[23].xyz, l(-0.110000,-0.610000,8.200000,0)
+mov x0[24].xyz, l(0.150000,-0.680000,9.100000,0)
+mov x0[25].xyz, l(0.900000,0.900000,10.300000,0)
+mov x0[26].xyz, l(-0.800000,0.650000,11.100000,0)
+mov x0[27].xyz, l(-0.680000,-0.900000,12.700000,0)
+mov x0[28].xyz, l(0.910000,0.640000,13.500000,0)
+mov x0[29].xyz, l(0.200000,-0.250000,15.000000,0)
+mov x0[30].xyz, l(-0.200000,-0.200000,5.500000,0)
+mov x0[31].xyz, l(-0.610000,-0.100000,6.300000,0)
+mov x0[32].xyz, l(0.470000,-0.050000,7.300000,0)
+mov x0[33].xyz, l(0.010000,0.610000,8.200000,0)
+mov x0[34].xyz, l(-0.050000,0.680000,9.100000,0)
+mov x0[35].xyz, l(-0.700000,-0.800000,10.300000,0)
+mov x0[36].xyz, l(0.800000,-0.650000,11.100000,0)
+mov x0[37].xyz, l(0.680000,0.950000,12.700000,0)
+mov x0[38].xyz, l(-0.970000,-0.540000,13.500000,0)
+mov x0[39].xyz, l(-0.200000,0.250000,15.000000,0)
+mad r0.xyz, r0.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), r3.xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+mul r4.xyz, r3.yzxy, r0.zxyz
+mad r4.xyz, r0.yzxy, r3.zxyz, -r4.xyzx
+dp3 r0.w, r4.xyzx, r4.xyzx
+rsq r0.w, r0.w
+mul r4.xyz, r0.wwww, r4.xyzx
+mul r5.xyz, r3.zxyz, r4.yzxy
+mad r5.xyz, r3.yzxy, r4.zxyz, -r5.xyzx
+mul r6.xyz, r0.yzxy, r4.zxyz
+mad r6.xyz, r4.yzxy, r0.zxyz, -r6.xyzx
+mul r0.w, r2.z, l(0.006667)
+max r0.w, r0.w, l(1.000000)
+lt r2.w, l(0.000000), r0.z
+mov r1.zw, -r1.xxxx
+mov r7.w, l(1.000000)
+mov r3.w, l(0)
+mov r4.w, l(0)
+loop 
+  ige r5.w, r4.w, l(40)
+  breakc_nz r5.w
+  mov r8.xy, x0[r4.w + 0].xyxx
+  dp2 r5.w, r1.yxyy, r8.xyxx
+  dp2 r6.w, r1.zyzz, r8.xyxx
+  mov r8.x, x0[r4.w + 0].z
+  mul r8.x, r0.w, r8.x
+  mad r8.yzw, r6.xxyz, r6.wwww, r0.xxyz
+  mad r8.yzw, r4.xxyz, r5.wwww, r8.yyzw
+  mad r7.xyz, r8.yzwy, r8.xxxx, r2.xyzx
+  dp4 r9.x, cb0[6].xyzw, r7.xyzw
+  dp4 r9.y, cb0[7].xyzw, r7.xyzw
+  dp4 r5.w, cb0[9].xyzw, r7.xyzw
+  div r7.xy, r9.xyxx, r5.wwww
+  mad r8.yz, r7.xxyx, l(0.000000, 0.500000, -0.500000, 0.000000), l(0.000000, 0.500000, 0.500000, 0.000000)
+  ge r7.xy, |r7.xyxx|, l(1.000000, 1.000000, 0.000000, 0.000000)
+  and r7.xy, r7.xyxx, l(0x3f800000, 0x3f800000, 0, 0)
+  add r5.w, r7.y, r7.x
+  min r5.w, r5.w, l(1.000000)
+  sample_indexable(texture2d)(float,float,float,float) r6.w, r8.yzyy, t0.yzwx, s0
+  add r6.w, -r6.w, r7.z
+  lt r7.x, r6.w, l(0.000000)
+  mul r7.y, r8.x, l(0.500000)
+  movc r7.x, r7.x, r7.y, r8.x
+  lt r7.y, l(0.000000), r6.w
+  and r7.y, r2.w, r7.y
+  mul r7.z, r7.x, l(0.500000)
+  movc r7.x, r7.y, r7.z, r7.x
+  add r6.w, |r6.w|, -r7.x
+  div_sat r6.w, r6.w, r7.x
+  mad r5.w, r5.w, l(0.500000), r6.w
+  min r5.w, r5.w, l(1.000000)
+  add r3.w, r3.w, r5.w
+  iadd r4.w, r4.w, l(1)
+endloop 
+dp2 r0.x, r1.yxyy, l(0.100000, 0.100000, 0.000000, 0.000000)
+dp2 r0.y, r1.wyww, l(0.100000, 0.100000, 0.000000, 0.000000)
+mul r6.xyzw, r0.wwww, l(0.500000, 0.250000, 1.300000, 0.650000)
+mad r7.xyz, r5.xyzx, r0.yyyy, r3.xyzx
+mad r0.xyz, r4.xyzx, r0.xxxx, r7.xyzx
+mad r7.xyz, r0.xyzx, r6.xxxx, r2.xyzx
+mov r7.w, l(1.000000)
+dp4 r0.x, cb0[6].xyzw, r7.xyzw
+dp4 r0.y, cb0[7].xyzw, r7.xyzw
+dp4 r0.z, cb0[9].xyzw, r7.xyzw
+div r0.xy, r0.xyxx, r0.zzzz
+mad r1.zw, r0.xxxy, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.xy, |r0.xyxx|, l(1.000000, 1.000000, 0.000000, 0.000000)
+and r0.xy, r0.xyxx, l(0x3f800000, 0x3f800000, 0, 0)
+add r0.x, r0.y, r0.x
+min r0.x, r0.x, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.y, r1.zwzz, t0.yxzw, s0
+add r0.y, -r0.y, r7.z
+lt r0.z, r0.y, l(0.000000)
+movc r0.z, r0.z, r6.y, r6.x
+add r0.y, -r0.z, |r0.y|
+div_sat r0.y, r0.y, r0.z
+mad r0.x, r0.x, l(0.250000), r0.y
+mul r7.xyzw, r1.yxyx, l(0.310000, -0.310000, -0.310000, 0.310000)
+mad r8.xyz, r5.xyzx, r7.yyyy, r3.xyzx
+mad r8.xyz, r4.xyzx, r7.xxxx, r8.xyzx
+mad r8.xyz, r8.xyzx, r6.zzzz, r2.xyzx
+mov r8.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r8.xyzw
+dp4 r7.y, cb0[7].xyzw, r8.xyzw
+dp4 r0.y, cb0[9].xyzw, r8.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.xy, r0.xyxx, l(1.000000, 1.000000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r8.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r6.w, r6.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.270000, 0.010000, 0.000000, 0.000000)
+mul r8.xyzw, r1.xyyx, l(-1.000000, 1.000000, 0.610000, -0.610000)
+dp2 r0.z, r8.xyxx, l(-0.270000, 0.010000, 0.000000, 0.000000)
+mul r9.xyzw, r0.wwww, l(2.300000, 1.150000, 3.200000, 1.600000)
+mad r10.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r10.xyz, r4.xyzx, r0.yyyy, r10.xyzx
+mad r10.xyz, r10.xyzx, r9.xxxx, r2.xyzx
+mov r10.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r10.xyzw
+dp4 r7.y, cb0[7].xyzw, r10.xyzw
+dp4 r0.y, cb0[9].xyzw, r10.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r10.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r9.y, r9.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.010000, -0.310000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.010000, -0.310000, 0.000000, 0.000000)
+mad r10.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r10.xyz, r4.xyzx, r0.yyyy, r10.xyzx
+mad r10.xyz, r10.xyzx, r9.zzzz, r2.xyzx
+mov r10.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r10.xyzw
+dp4 r7.y, cb0[7].xyzw, r10.xyzw
+dp4 r0.y, cb0[9].xyzw, r10.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r10.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r9.w, r9.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.050000, -0.380000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.050000, -0.380000, 0.000000, 0.000000)
+mul r10.xyzw, r0.wwww, l(4.100000, 2.050000, 5.300000, 2.650000)
+mad r11.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r11.xyz, r4.xyzx, r0.yyyy, r11.xyzx
+mad r11.xyz, r11.xyzx, r10.xxxx, r2.xyzx
+mov r11.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r11.xyzw
+dp4 r7.y, cb0[7].xyzw, r11.xyzw
+dp4 r0.y, cb0[9].xyzw, r11.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r11.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r10.y, r10.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.500000, 0.500000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+mad r11.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r11.xyz, r4.xyzx, r0.yyyy, r11.xyzx
+mad r11.xyz, r11.xyzx, r10.zzzz, r2.xyzx
+mov r11.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r11.xyzw
+dp4 r7.y, cb0[7].xyzw, r11.xyzw
+dp4 r0.y, cb0[9].xyzw, r11.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r11.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r10.w, r10.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.400000, 0.350000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.400000, 0.350000, 0.000000, 0.000000)
+mul r11.xyzw, r0.wwww, l(6.100000, 3.050000, 7.700000, 3.850000)
+mad r12.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r12.xyz, r4.xyzx, r0.yyyy, r12.xyzx
+mad r12.xyz, r12.xyzx, r11.xxxx, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r12.xyzw
+dp4 r7.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r11.y, r11.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.380000, -0.500000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.380000, -0.500000, 0.000000, 0.000000)
+mad r12.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r12.xyz, r4.xyzx, r0.yyyy, r12.xyzx
+mad r12.xyz, r12.xyzx, r11.zzzz, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r12.xyzw
+dp4 r7.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r11.w, r11.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.710000, 0.340000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.710000, 0.340000, 0.000000, 0.000000)
+mul r12.xyzw, r0.wwww, l(8.500000, 4.250000, 10.000000, 5.000000)
+mad r13.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r13.xyz, r4.xyzx, r0.yyyy, r13.xyzx
+mad r13.xyz, r13.xyzx, r12.xxxx, r2.xyzx
+mov r13.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r13.xyzw
+dp4 r7.y, cb0[7].xyzw, r13.xyzw
+dp4 r0.y, cb0[9].xyzw, r13.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r13.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r12.y, r12.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.100000, -0.150000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.100000, -0.150000, 0.000000, 0.000000)
+mad r13.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r13.xyz, r4.xyzx, r0.yyyy, r13.xyzx
+mad r13.xyz, r13.xyzx, r12.zzzz, r2.xyzx
+mov r13.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r13.xyzw
+dp4 r7.y, cb0[7].xyzw, r13.xyzw
+dp4 r0.y, cb0[9].xyzw, r13.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r13.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r12.w, r12.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.100000, -0.100000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.100000, -0.100000, 0.000000, 0.000000)
+mad r13.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r13.xyz, r4.xyzx, r0.yyyy, r13.xyzx
+mad r13.xyz, r13.xyzx, r6.xxxx, r2.xyzx
+mov r13.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r13.xyzw
+dp4 r7.y, cb0[7].xyzw, r13.xyzw
+dp4 r0.y, cb0[9].xyzw, r13.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r13.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r6.y, r6.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+mad r7.xyw, r5.xyxz, r7.wwww, r3.xyxz
+mad r7.xyz, r4.xyzx, r7.zzzz, r7.xywx
+mad r7.xyz, r7.xyzx, r6.zzzz, r2.xyzx
+mov r7.w, l(1.000000)
+dp4 r6.x, cb0[6].xyzw, r7.xyzw
+dp4 r6.y, cb0[7].xyzw, r7.xyzw
+dp4 r0.y, cb0[9].xyzw, r7.xyzw
+div r0.yz, r6.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r7.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r6.w, r6.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.270000, -0.010000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.270000, -0.010000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r9.xxxx, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r9.y, r9.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.010000, 0.310000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.010000, 0.310000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r9.zzzz, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r9.w, r9.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.050000, 0.380000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.050000, 0.380000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r10.xxxx, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r10.y, r10.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.500000, -0.500000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r10.zzzz, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r10.w, r10.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.400000, -0.350000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.400000, -0.350000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r11.xxxx, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r11.y, r11.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.380000, 0.500000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.380000, 0.500000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r11.zzzz, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r11.w, r11.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.710000, -0.340000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.710000, -0.340000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r12.xxxx, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r12.y, r12.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.100000, 0.150000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.100000, 0.150000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r6.xyz, r4.xyzx, r0.yyyy, r6.xyzx
+mad r6.xyz, r6.xyzx, r12.zzzz, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r12.w, r12.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.200000, 0.200000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000)
+mul r6.xyzw, r0.wwww, l(5.500000, 2.750000, 6.300000, 3.150000)
+mad r7.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r7.xyz, r4.xyzx, r0.yyyy, r7.xyzx
+mad r7.xyz, r7.xyzx, r6.xxxx, r2.xyzx
+mov r7.w, l(1.000000)
+dp4 r9.x, cb0[6].xyzw, r7.xyzw
+dp4 r9.y, cb0[7].xyzw, r7.xyzw
+dp4 r0.y, cb0[9].xyzw, r7.xyzw
+div r0.yz, r9.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r7.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r6.y, r6.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+mad r7.xyz, r5.xyzx, r8.wwww, r3.xyzx
+mad r7.xyz, r4.xyzx, r8.zzzz, r7.xyzx
+mad r7.xyz, r7.xyzx, r6.zzzz, r2.xyzx
+mov r7.w, l(1.000000)
+dp4 r9.x, cb0[6].xyzw, r7.xyzw
+dp4 r9.y, cb0[7].xyzw, r7.xyzw
+dp4 r0.y, cb0[9].xyzw, r7.xyzw
+div r0.yz, r9.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r7.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r6.w, r6.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.470000, 0.010000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.470000, 0.010000, 0.000000, 0.000000)
+mul r7.xyzw, r0.wwww, l(7.300000, 3.650000, 8.200000, 9.100000)
+mad r9.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r9.xyz, r4.xyzx, r0.yyyy, r9.xyzx
+mad r9.xyz, r9.xyzx, r7.xxxx, r2.xyzx
+mov r9.w, l(1.000000)
+dp4 r11.x, cb0[6].xyzw, r9.xyzw
+dp4 r11.y, cb0[7].xyzw, r9.xyzw
+dp4 r0.y, cb0[9].xyzw, r9.xyzw
+div r0.yz, r11.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r9.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r7.y, r7.x
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.110000, -0.610000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.110000, -0.610000, 0.000000, 0.000000)
+mad r9.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r9.xyz, r4.xyzx, r0.yyyy, r9.xyzx
+mad r9.xyz, r9.xyzx, r7.zzzz, r2.xyzx
+mov r9.w, l(1.000000)
+dp4 r11.x, cb0[6].xyzw, r9.xyzw
+dp4 r11.y, cb0[7].xyzw, r9.xyzw
+dp4 r0.y, cb0[9].xyzw, r9.xyzw
+div r0.yz, r11.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r9.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r10.x, r7.z
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.150000, -0.680000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.150000, -0.680000, 0.000000, 0.000000)
+mad r9.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r9.xyz, r4.xyzx, r0.yyyy, r9.xyzx
+mad r9.xyz, r9.xyzx, r7.wwww, r2.xyzx
+mov r9.w, l(1.000000)
+dp4 r11.x, cb0[6].xyzw, r9.xyzw
+dp4 r11.y, cb0[7].xyzw, r9.xyzw
+dp4 r0.y, cb0[9].xyzw, r9.xyzw
+div r0.yz, r11.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r9.z
+lt r1.z, r0.z, l(0.000000)
+mul r9.xyzw, r0.wwww, l(4.550000, 10.300000, 5.150000, 11.100000)
+movc r1.z, r1.z, r9.x, r7.w
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.900000, 0.900000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.900000, 0.900000, 0.000000, 0.000000)
+mad r10.yzw, r5.xxyz, r0.zzzz, r3.xxyz
+mad r10.yzw, r4.xxyz, r0.yyyy, r10.yyzw
+mad r11.xyz, r10.yzwy, r9.yyyy, r2.xyzx
+mov r11.w, l(1.000000)
+dp4 r12.x, cb0[6].xyzw, r11.xyzw
+dp4 r12.y, cb0[7].xyzw, r11.xyzw
+dp4 r0.y, cb0[9].xyzw, r11.xyzw
+div r0.yz, r12.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r11.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r9.z, r9.y
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.800000, 0.650000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.800000, 0.650000, 0.000000, 0.000000)
+mad r10.yzw, r5.xxyz, r0.zzzz, r3.xxyz
+mad r10.yzw, r4.xxyz, r0.yyyy, r10.yyzw
+mad r11.xyz, r10.yzwy, r9.wwww, r2.xyzx
+mov r11.w, l(1.000000)
+dp4 r12.x, cb0[6].xyzw, r11.xyzw
+dp4 r12.y, cb0[7].xyzw, r11.xyzw
+dp4 r0.y, cb0[9].xyzw, r11.xyzw
+div r0.yz, r12.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r11.z
+lt r1.z, r0.z, l(0.000000)
+mul r11.xyzw, r0.wwww, l(5.550000, 12.700000, 6.350000, 13.500000)
+movc r1.z, r1.z, r11.x, r9.w
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.680000, -0.900000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.680000, -0.900000, 0.000000, 0.000000)
+mad r10.yzw, r5.xxyz, r0.zzzz, r3.xxyz
+mad r10.yzw, r4.xxyz, r0.yyyy, r10.yyzw
+mad r12.xyz, r10.yzwy, r11.yyyy, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r13.x, cb0[6].xyzw, r12.xyzw
+dp4 r13.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r13.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r1.z, r0.z, l(0.000000)
+movc r1.z, r1.z, r11.z, r11.y
+add r0.z, |r0.z|, -r1.z
+div_sat r0.z, r0.z, r1.z
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.910000, 0.640000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.910000, 0.640000, 0.000000, 0.000000)
+mad r10.yzw, r5.xxyz, r0.zzzz, r3.xxyz
+mad r10.yzw, r4.xxyz, r0.yyyy, r10.yyzw
+mad r12.xyz, r10.yzwy, r11.wwww, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r13.x, cb0[6].xyzw, r12.xyzw
+dp4 r13.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r13.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r1.z, r0.z, l(0.000000)
+mul r10.yzw, r0.wwww, l(0.000000, 6.750000, 15.000000, 7.500000)
+movc r0.w, r1.z, r10.y, r11.w
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.200000, -0.250000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.200000, -0.250000, 0.000000, 0.000000)
+mad r12.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r12.xxyz
+mad r12.xyz, r0.yzwy, r10.zzzz, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r13.x, cb0[6].xyzw, r12.xyzw
+dp4 r13.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r13.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r10.w, r10.z
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.200000, -0.200000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.200000, -0.200000, 0.000000, 0.000000)
+mad r12.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r12.xxyz
+mad r12.xyz, r0.yzwy, r6.xxxx, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r13.x, cb0[6].xyzw, r12.xyzw
+dp4 r13.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r13.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r6.y, r6.x
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.610000, -0.100000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.610000, -0.100000, 0.000000, 0.000000)
+mad r12.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r12.xxyz
+mad r12.xyz, r0.yzwy, r6.zzzz, r2.xyzx
+mov r12.w, l(1.000000)
+dp4 r6.x, cb0[6].xyzw, r12.xyzw
+dp4 r6.y, cb0[7].xyzw, r12.xyzw
+dp4 r0.y, cb0[9].xyzw, r12.xyzw
+div r0.yz, r6.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r12.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r6.w, r6.z
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.470000, -0.050000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.470000, -0.050000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r7.xxxx, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r12.x, cb0[6].xyzw, r6.xyzw
+dp4 r12.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r12.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r7.y, r7.x
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.010000, 0.610000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.010000, 0.610000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r7.zzzz, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r10.x, r7.z
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.050000, 0.680000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.050000, 0.680000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r7.wwww, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r9.x, r7.w
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.700000, -0.800000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.700000, -0.800000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r9.yyyy, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r9.z, r9.y
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.800000, -0.650000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.800000, -0.650000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r9.wwww, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r11.x, r9.w
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(0.680000, 0.950000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(0.680000, 0.950000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r11.yyyy, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r11.z, r11.y
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.970000, -0.540000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.970000, -0.540000, 0.000000, 0.000000)
+mad r6.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r6.xxyz
+mad r6.xyz, r0.yzwy, r11.wwww, r2.xyzx
+mov r6.w, l(1.000000)
+dp4 r7.x, cb0[6].xyzw, r6.xyzw
+dp4 r7.y, cb0[7].xyzw, r6.xyzw
+dp4 r0.y, cb0[9].xyzw, r6.xyzw
+div r0.yz, r7.xxyx, r0.yyyy
+mad r1.zw, r0.yyyz, l(0.000000, 0.000000, 0.500000, -0.500000), l(0.000000, 0.000000, 0.500000, 0.500000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.zwzz, t0.yzxw, s0
+add r0.z, -r0.z, r6.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r10.y, r11.w
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+dp2 r0.y, r1.yxyy, l(-0.200000, 0.250000, 0.000000, 0.000000)
+dp2 r0.z, r8.xyxx, l(-0.200000, 0.250000, 0.000000, 0.000000)
+mad r1.xyz, r5.xyzx, r0.zzzz, r3.xyzx
+mad r0.yzw, r4.xxyz, r0.yyyy, r1.xxyz
+mad r1.xyz, r0.yzwy, r10.zzzz, r2.xyzx
+mov r1.w, l(1.000000)
+dp4 r2.x, cb0[6].xyzw, r1.xyzw
+dp4 r2.y, cb0[7].xyzw, r1.xyzw
+dp4 r0.y, cb0[9].xyzw, r1.xyzw
+div r0.yz, r2.xxyx, r0.yyyy
+mad r1.xy, r0.yzyy, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
+ge r0.yz, |r0.yyzy|, l(0.000000, 1.000000, 1.000000, 0.000000)
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+add r0.y, r0.z, r0.y
+min r0.y, r0.y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r0.z, r1.xyxx, t0.yzxw, s0
+add r0.z, -r0.z, r1.z
+lt r0.w, r0.z, l(0.000000)
+movc r0.w, r0.w, r10.w, r10.z
+add r0.z, -r0.w, |r0.z|
+div_sat r0.z, r0.z, r0.w
+mad r0.y, r0.y, l(0.250000), r0.z
+min r0.y, r0.y, l(1.000000)
+add r0.x, r0.y, r0.x
+mul r0.y, r3.w, l(0.025000)
+mul r0.x, r0.x, l(0.025000)
+mul r0.xy, r0.xyxx, r0.xyxx
+min o0.x, r0.x, r0.y
+mov o0.zw, l(0,0,0,1.000000)
+mov o0.y, r0.x
+ret 
+// Approximately 1093 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

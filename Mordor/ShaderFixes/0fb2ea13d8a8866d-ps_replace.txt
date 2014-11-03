@@ -1,0 +1,258 @@
+//Fix decompile errors for bool assignment.  Mike_ar69.
+
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = float(1.000000e+002);
+  float DefaultWidth : packoffset(c0.y) = float(1.000000e+002);
+
+  struct
+  {
+    float2 m_Position;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float2 m_Position;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c2);
+
+  bool bHalfPrecision : packoffset(c5) = bool(0.000000e+000);
+  bool bUsePS3CompilerArgs : packoffset(c5.y) = true; //mike_ar69 fix
+  float k_fSampleScale : packoffset(c5.z) = float(1.000000e+000);
+  float4 k_vScreenBufferSize : packoffset(c6) = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  row_major float4x4 k_mPreviousMotionTransform : packoffset(c7);
+  float3 k_vScene_ZRange : packoffset(c11);
+}
+SamplerState sCurFrameMapDiscardSampler_s : register(s0);
+SamplerState sDeferredNormalsSampler_s : register(s1);
+SamplerState sDepthMapSampler_s : register(s2);
+Texture2D<float4> tCurFrameMapDiscard : register(t0);
+Texture2D<float4> tDeferredNormals : register(t1);
+Texture2D<float4> tDepthMap : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  float2 w1 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11;
+  uint4 bitmask;
+  r0.x = tDepthMap.Sample(sDepthMapSampler_s, w1.xy).x;
+  r0.z = k_vScene_ZRange.x / r0.x;
+  r0.xy = v1.xy;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(k_mPreviousMotionTransform._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(k_mPreviousMotionTransform._m10_m11_m12_m13, r0.xyzw);
+  r0.x = dot(k_mPreviousMotionTransform._m30_m31_m32_m33, r0.xyzw);
+  r0.xy = r1.xy / r0.xx;
+  r0.xy = v1.xy + -r0.xy;
+  r0.xy = float2(-1.500000e-001,1.500000e-001) * r0.xy;
+  r0.xy = bHalfPrecision * r0.xy;
+  r0.xy = k_vScreenBufferSize.xy * r0.xy;
+  r0.z = dot(r0.xy, r0.xy);
+  r0.w = sqrt(r0.z);
+  r0.z = rsqrt(r0.z);
+  r0.xy = r0.xy * r0.zz;
+  r0.z = min(r0.w, 1.600000000e+001);
+  r0.xy = r0.xy * r0.zz;
+  r1.xy = k_vScreenBufferSize.zw * r0.xy;
+  r0.z = tDeferredNormals.Sample(sDeferredNormalsSampler_s, w1.xy).w;
+  r0.z = r0.z < 1.000000000e+000;
+  r0.w = 5.000000000e-001 < r0.w;
+  r0.z = r0.w ? r0.z : 0;
+  r0.xy = -r0.xy * k_vScreenBufferSize.zw + w1.xy;
+  r2.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r3.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r4.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r5.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r6.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r7.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r8.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r9.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r10.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r11.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  r0.xy = r1.xy * float2(2.000000e-001,2.000000e-001) + r0.xy;
+  r1.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, r0.xy).xyzw;
+  if (r0.z != 0) {
+  r0.xyzw = float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) * r3.xyzw;
+  r0.xyzw = r2.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r4.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r5.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r6.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r7.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r8.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r9.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r10.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  r0.xyzw = r11.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  o0.xyzw = r1.xyzw * float4(9.090909e-002,9.090909e-002,9.090909e-002,9.090909e-002) + r0.xyzw;
+  } else {
+  o0.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s, w1.xy).xyzw;
+  }
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float DefaultHeight;               // Offset:    0 Size:     4 [unused]
+//      = 0x42c80000 
+//   float DefaultWidth;                // Offset:    4 Size:     4 [unused]
+//      = 0x42c80000 
+//   
+//   struct MaterialVertex_Rigid
+//   {
+//       
+//       float2 m_Position;             // Offset:   16
+//
+//   } MaterialVertexDef_Rigid;         // Offset:   16 Size:     8 [unused]
+//   
+//   struct MaterialVertex_Skeletal
+//   {
+//       
+//       float2 m_Position;             // Offset:   32
+//       float4 m_Weights;              // Offset:   48
+//       float4 m_Indices;              // Offset:   64
+//
+//   } MaterialVertexDef_Skeletal;      // Offset:   32 Size:    48 [unused]
+//   bool bHalfPrecision;               // Offset:   80 Size:     4 [unused]
+//      = 0x00000000 
+//   bool bUsePS3CompilerArgs;          // Offset:   84 Size:     4 [unused]
+//      = 0xffffffff 
+//   float k_fSampleScale;              // Offset:   88 Size:     4
+//      = 0x3f800000 
+//   float4 k_vScreenBufferSize;        // Offset:   96 Size:    16
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   row_major float4x4 k_mPreviousMotionTransform;// Offset:  112 Size:    64
+//   float3 k_vScene_ZRange;            // Offset:  176 Size:    12
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sCurFrameMapDiscardSampler        sampler      NA          NA    0        1
+// sDeferredNormalsSampler           sampler      NA          NA    1        1
+// sDepthMapSampler                  sampler      NA          NA    2        1
+// tCurFrameMapDiscard               texture  float4          2d    0        1
+// tDeferredNormals                  texture  float4          2d    1        1
+// tDepthMap                         texture  float4          2d    2        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+// TEXCOORD                 1     zw        1     NONE   float     zw
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[12], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_input_ps linear v1.xy
+dcl_input_ps linear v1.zw
+dcl_output o0.xyzw
+dcl_temps 12
+sample_indexable(texture2d)(float,float,float,float) r0.x, v1.zwzz, t2.xyzw, s2
+div r0.z, cb0[11].x, r0.x
+mov r0.xy, v1.xyxx
+mov r0.w, l(1.000000)
+dp4 r1.x, cb0[7].xyzw, r0.xyzw
+dp4 r1.y, cb0[8].xyzw, r0.xyzw
+dp4 r0.x, cb0[10].xyzw, r0.xyzw
+div r0.xy, r1.xyxx, r0.xxxx
+add r0.xy, -r0.xyxx, v1.xyxx
+mul r0.xy, r0.xyxx, l(-0.150000, 0.150000, 0.000000, 0.000000)
+mul r0.xy, r0.xyxx, cb0[5].zzzz
+mul r0.xy, r0.xyxx, cb0[6].xyxx
+dp2 r0.z, r0.xyxx, r0.xyxx
+sqrt r0.w, r0.z
+rsq r0.z, r0.z
+mul r0.xy, r0.zzzz, r0.xyxx
+min r0.z, r0.w, l(16.000000)
+mul r0.xy, r0.zzzz, r0.xyxx
+mul r1.xy, r0.xyxx, cb0[6].zwzz
+sample_indexable(texture2d)(float,float,float,float) r0.z, v1.zwzz, t1.xywz, s1
+lt r0.z, r0.z, l(1.000000)
+lt r0.w, l(0.500000), r0.w
+and r0.z, r0.w, r0.z
+mad r0.xy, -r0.xyxx, cb0[6].zwzz, v1.zwzz
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r6.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r7.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r8.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r9.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r10.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r11.xyzw, r0.xyxx, t0.xyzw, s0
+mad r0.xy, r1.xyxx, l(0.200000, 0.200000, 0.000000, 0.000000), r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.xyxx, t0.xyzw, s0
+if_nz r0.z
+  mul r0.xyzw, r3.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909)
+  mad r0.xyzw, r2.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r4.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r5.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r6.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r7.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r8.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r9.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r10.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad r0.xyzw, r11.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+  mad o0.xyzw, r1.xyzw, l(0.090909, 0.090909, 0.090909, 0.090909), r0.xyzw
+else 
+  sample_indexable(texture2d)(float,float,float,float) o0.xyzw, v1.zwzz, t0.xyzw, s0
+endif 
+ret 
+// Approximately 61 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
