@@ -1047,7 +1047,11 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				p.InvTransforms = G->InvTransforms;
 				p.fixLightPosition = G->FIX_Light_Position;
 				p.ZeroOutput = false;
+			// Not sure why, but blocking the Decompiler from multi-threading prevents a crash.
+			// This is just a patch for now.
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				if (!decompiledCode.size())
 				{
 					if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
