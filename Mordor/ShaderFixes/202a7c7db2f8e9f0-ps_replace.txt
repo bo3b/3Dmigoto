@@ -89,7 +89,12 @@ void main(
   o0.w = k_fRenderObjectID;
   r0.xyzw = tTintMaskMap.Sample(sAniso8X_WRAPWRAPCLAMP_Sampler_s, v1.xy).xyzw;
   r0.x = k_fRTintAmount * r0.x;
-  r0.yzw = k_fGTintAmount * r0.yzw;
+// Decompile bug, doesn't handle independent vars here.
+// manual fix
+//r0.yzw = k_fGTintAmount * r0.yzw;
+r0.y = k_fGTintAmount * r0.y;
+r0.z = k_fBTintAmount * r0.z;
+r0.w = k_fATintAmount * r0.w;
   r1.xyzw = tDiffuseMap.Sample(sAniso8X_WRAPWRAPCLAMP_Sampler_s, v1.xy).xyzw;
   r2.xyz = k_cRTintColor.xyz * r1.xyz;
   r2.w = r1.w;
