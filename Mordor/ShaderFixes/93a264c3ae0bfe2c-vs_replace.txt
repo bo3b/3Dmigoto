@@ -1,0 +1,329 @@
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = float(1.000000e+002);
+  float DefaultWidth : packoffset(c0.y) = float(1.000000e+002);
+
+  struct
+  {
+    float3 m_Position;
+    float3 m_Normal;
+    float2 m_TexCoord;
+    float3 m_Tangent;
+    float3 m_Binormal;
+    float4 m_Color;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float3 m_Position;
+    float3 m_Normal;
+    float2 m_TexCoord;
+    float3 m_Tangent;
+    float3 m_Binormal;
+    float4 m_Color;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c7);
+
+  int WorldEdit_AlphaRef : packoffset(c15) = int(0.000000e+000);
+  int WorldEdit_RenderType : packoffset(c15.y) = int(1.401298e-045);
+  float3 k_cDeepSiltColor : packoffset(c16) = float3(0.000000e+000,5.000000e-002,1.000000e-001);
+  float3 k_cFogColor : packoffset(c17) = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  float3 k_cLightFilter : packoffset(c18) = float3(8.500000e-001,9.000000e-001,9.500000e-001);
+  float3 k_cShallowSiltColor : packoffset(c19) = float3(1.000000e-001,4.000000e-001,2.000000e-001);
+  float k_fClarity : packoffset(c19.w) = float(5.000000e+000);
+  float k_fFogStart : packoffset(c20) = float(0.000000e+000);
+  float k_fNormalMapFade : packoffset(c20.y) = float(0.000000e+000);
+  float k_fPanNormalMapU : packoffset(c20.z) = float(0.000000e+000);
+  float k_fPanNormalMapV : packoffset(c20.w) = float(0.000000e+000);
+  float k_fSiltBlend : packoffset(c21) = float(1.000000e+000);
+  float k_fTileNormalMapU : packoffset(c21.y) = float(1.000000e+000);
+  float k_fTileNormalMapV : packoffset(c21.z) = float(1.000000e+000);
+  row_major float4x4 k_mObjectToWorld_3DSMAX_ : packoffset(c22);
+  float3 k_vVertDisplace : packoffset(c26) = float3(0.000000e+000,1.000000e+000,1.000000e+002);
+  float k_fTime : packoffset(c26.w);
+  row_major float4x4 k_mObjectToClip : packoffset(c27);
+  row_major float3x4 k_mObjectToWorld : packoffset(c31);
+  float4 k_vHDRLuminanceWeights : packoffset(c34);
+  float3 k_vObjectSpaceEyePos : packoffset(c35);
+  float2 k_vScene_TexCoordScale : packoffset(c36);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : SV_POSITION0,
+  float3 v1 : NORMAL0,
+  float2 v2 : TEXCOORD0,
+  float3 v3 : TANGENT0,
+  float3 v4 : BINORMAL0,
+  float4 v5 : COLOR0,
+  out float4 o0 : SV_POSITION0,
+  out float4 o1 : COLOR0,
+  out float2 o2 : TEXCOORD0,
+  out float4 o3 : TEXCOORD1,
+  out float4 o4 : TEXCOORD2,
+  out float3 o5 : TEXCOORD3,
+  out float3 o6 : TEXCOORD4,
+  out float3 o7 : TEXCOORD5,
+  out float3 o8 : TEXCOORD6,
+  out float3 o9 : TEXCOORD7,
+  out float3 o10 : TEXCOORD8)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask;
+  r0.x = k_vVertDisplace.z * v0.z;
+  r0.x = frac(r0.x);
+  r0.y = k_fTime * k_vVertDisplace.y;
+  r0.x = r0.y * r0.x;
+  r0.x = sin(r0.x);
+  r0.y = k_vVertDisplace.x * r0.x + v0.y;
+  r0.w = 1.000000000e+000;
+  r0.xz = v0.xz;
+  r1.x = dot(k_mObjectToClip._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(k_mObjectToClip._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(k_mObjectToClip._m20_m21_m22_m23, r0.xyzw);
+  r1.w = dot(k_mObjectToClip._m30_m31_m32_m33, r0.xyzw);
+  r0.xyz = k_vObjectSpaceEyePos.xyz + -r0.xyz;
+  
+float4 stereo = StereoParams.Load(0);
+float4 r23;
+r23.xyzw = r1.xyzw;
+r1.x += stereo.x * (r1.w - stereo.y);  
+  
+  o0.xyzw = r23.xyzw;
+  r2.xy = k_vScene_TexCoordScale.xy * r1.ww;
+  o1.xyzw = v5.xyzw;
+  o2.xy = v2.xy;
+  r2.zw = float2(1.000000e+000,-1.000000e+000) * k_vScene_TexCoordScale.xy;
+  o3.xy = r1.xy * r2.zw + r2.xy;
+  o3.zw = r1.zw;
+  o4.w = r1.w;
+  o4.x = dot(k_mObjectToWorld._m00_m01_m02, r0.xyz);
+  o4.y = dot(k_mObjectToWorld._m10_m11_m12, r0.xyz);
+  o4.z = dot(k_mObjectToWorld._m20_m21_m22, r0.xyz);
+  r0.x = dot(v3.xyz, k_mObjectToClip._m00_m01_m02);
+  r0.y = dot(v4.xyz, k_mObjectToClip._m00_m01_m02);
+  r0.z = dot(v1.xyz, k_mObjectToClip._m00_m01_m02);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  o5.xyz = r0.xyz * r0.www;
+  r0.x = dot(v3.xyz, k_mObjectToClip._m10_m11_m12);
+  r0.y = dot(v4.xyz, k_mObjectToClip._m10_m11_m12);
+  r0.z = dot(v1.xyz, k_mObjectToClip._m10_m11_m12);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  o6.xyz = r0.xyz * r0.www;
+  r0.x = dot(v3.xyz, k_mObjectToClip._m20_m21_m22);
+  r0.y = dot(v4.xyz, k_mObjectToClip._m20_m21_m22);
+  r0.z = dot(v1.xyz, k_mObjectToClip._m20_m21_m22);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  o7.xyz = r0.xyz * r0.www;
+  o8.x = dot(k_mObjectToWorld._m00_m01_m02, v3.xyz);
+  o8.y = dot(k_mObjectToWorld._m00_m01_m02, v4.xyz);
+  o8.z = dot(k_mObjectToWorld._m00_m01_m02, v1.xyz);
+  o9.x = dot(k_mObjectToWorld._m10_m11_m12, v3.xyz);
+  o9.y = dot(k_mObjectToWorld._m10_m11_m12, v4.xyz);
+  o9.z = dot(k_mObjectToWorld._m10_m11_m12, v1.xyz);
+  o10.x = dot(k_mObjectToWorld._m20_m21_m22, v3.xyz);
+  o10.y = dot(k_mObjectToWorld._m20_m21_m22, v4.xyz);
+  o10.z = dot(k_mObjectToWorld._m20_m21_m22, v1.xyz);
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float DefaultHeight;               // Offset:    0 Size:     4 [unused]
+//      = 0x42c80000 
+//   float DefaultWidth;                // Offset:    4 Size:     4 [unused]
+//      = 0x42c80000 
+//   
+//   struct MaterialVertex_Rigid
+//   {
+//       
+//       float3 m_Position;             // Offset:   16
+//       float3 m_Normal;               // Offset:   32
+//       float2 m_TexCoord;             // Offset:   48
+//       float3 m_Tangent;              // Offset:   64
+//       float3 m_Binormal;             // Offset:   80
+//       float4 m_Color;                // Offset:   96
+//
+//   } MaterialVertexDef_Rigid;         // Offset:   16 Size:    96 [unused]
+//   
+//   struct MaterialVertex_Skeletal
+//   {
+//       
+//       float3 m_Position;             // Offset:  112
+//       float3 m_Normal;               // Offset:  128
+//       float2 m_TexCoord;             // Offset:  144
+//       float3 m_Tangent;              // Offset:  160
+//       float3 m_Binormal;             // Offset:  176
+//       float4 m_Color;                // Offset:  192
+//       float4 m_Weights;              // Offset:  208
+//       float4 m_Indices;              // Offset:  224
+//
+//   } MaterialVertexDef_Skeletal;      // Offset:  112 Size:   128 [unused]
+//   int WorldEdit_AlphaRef;            // Offset:  240 Size:     4 [unused]
+//      = 0x00000000 
+//   int WorldEdit_RenderType;          // Offset:  244 Size:     4 [unused]
+//      = 0x00000001 
+//   float3 k_cDeepSiltColor;           // Offset:  256 Size:    12 [unused]
+//      = 0x00000000 0x3d4ccccd 0x3dcccccd 
+//   float3 k_cFogColor;                // Offset:  272 Size:    12 [unused]
+//      = 0x00000000 0x00000000 0x00000000 
+//   float3 k_cLightFilter;             // Offset:  288 Size:    12 [unused]
+//      = 0x3f59999a 0x3f666666 0x3f733333 
+//   float3 k_cShallowSiltColor;        // Offset:  304 Size:    12 [unused]
+//      = 0x3dcccccd 0x3ecccccd 0x3e4ccccd 
+//   float k_fClarity;                  // Offset:  316 Size:     4 [unused]
+//      = 0x40a00000 
+//   float k_fFogStart;                 // Offset:  320 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fNormalMapFade;            // Offset:  324 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalMapU;            // Offset:  328 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalMapV;            // Offset:  332 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fSiltBlend;                // Offset:  336 Size:     4 [unused]
+//      = 0x3f800000 
+//   float k_fTileNormalMapU;           // Offset:  340 Size:     4 [unused]
+//      = 0x3f800000 
+//   float k_fTileNormalMapV;           // Offset:  344 Size:     4 [unused]
+//      = 0x3f800000 
+//   row_major float4x4 k_mObjectToWorld_3DSMAX_;// Offset:  352 Size:    64 [unused]
+//   float3 k_vVertDisplace;            // Offset:  416 Size:    12
+//      = 0x00000000 0x3f800000 0x42c80000 
+//   float k_fTime;                     // Offset:  428 Size:     4
+//   row_major float4x4 k_mObjectToClip;// Offset:  432 Size:    64
+//   row_major float3x4 k_mObjectToWorld;// Offset:  496 Size:    48
+//   float4 k_vHDRLuminanceWeights;     // Offset:  544 Size:    16 [unused]
+//   float3 k_vObjectSpaceEyePos;       // Offset:  560 Size:    12
+//   float2 k_vScene_TexCoordScale;     // Offset:  576 Size:     8
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyz         0     NONE   float   xyz 
+// NORMAL                   0   xyz         1     NONE   float   xyz 
+// TEXCOORD                 0   xy          2     NONE   float   xy  
+// TANGENT                  0   xyz         3     NONE   float   xyz 
+// BINORMAL                 0   xyz         4     NONE   float   xyz 
+// COLOR                    0   xyzw        5     NONE   float   xyzw
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float   xyzw
+// COLOR                    0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 0   xy          2     NONE   float   xy  
+// TEXCOORD                 1   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        4     NONE   float   xyzw
+// TEXCOORD                 3   xyz         5     NONE   float   xyz 
+// TEXCOORD                 4   xyz         6     NONE   float   xyz 
+// TEXCOORD                 5   xyz         7     NONE   float   xyz 
+// TEXCOORD                 6   xyz         8     NONE   float   xyz 
+// TEXCOORD                 7   xyz         9     NONE   float   xyz 
+// TEXCOORD                 8   xyz        10     NONE   float   xyz 
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[37], immediateIndexed
+dcl_input v0.xyz
+dcl_input v1.xyz
+dcl_input v2.xy
+dcl_input v3.xyz
+dcl_input v4.xyz
+dcl_input v5.xyzw
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyzw
+dcl_output o2.xy
+dcl_output o3.xyzw
+dcl_output o4.xyzw
+dcl_output o5.xyz
+dcl_output o6.xyz
+dcl_output o7.xyz
+dcl_output o8.xyz
+dcl_output o9.xyz
+dcl_output o10.xyz
+dcl_temps 3
+mul r0.x, v0.z, cb0[26].z
+frc r0.x, r0.x
+mul r0.y, cb0[26].y, cb0[26].w
+mul r0.x, r0.x, r0.y
+sincos r0.x, null, r0.x
+mad r0.y, cb0[26].x, r0.x, v0.y
+mov r0.w, l(1.000000)
+mov r0.xz, v0.xxzx
+dp4 r1.x, cb0[27].xyzw, r0.xyzw
+dp4 r1.y, cb0[28].xyzw, r0.xyzw
+dp4 r1.z, cb0[29].xyzw, r0.xyzw
+dp4 r1.w, cb0[30].xyzw, r0.xyzw
+add r0.xyz, -r0.xyzx, cb0[35].xyzx
+mov o0.xyzw, r1.xyzw
+mul r2.xy, r1.wwww, cb0[36].xyxx
+mov o1.xyzw, v5.xyzw
+mov o2.xy, v2.xyxx
+mul r2.zw, cb0[36].xxxy, l(0.000000, 0.000000, 1.000000, -1.000000)
+mad o3.xy, r1.xyxx, r2.zwzz, r2.xyxx
+mov o3.zw, r1.zzzw
+mov o4.w, r1.w
+dp3 o4.x, cb0[31].xyzx, r0.xyzx
+dp3 o4.y, cb0[32].xyzx, r0.xyzx
+dp3 o4.z, cb0[33].xyzx, r0.xyzx
+dp3 r0.x, v3.xyzx, cb0[27].xyzx
+dp3 r0.y, v4.xyzx, cb0[27].xyzx
+dp3 r0.z, v1.xyzx, cb0[27].xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul o5.xyz, r0.wwww, r0.xyzx
+dp3 r0.x, v3.xyzx, cb0[28].xyzx
+dp3 r0.y, v4.xyzx, cb0[28].xyzx
+dp3 r0.z, v1.xyzx, cb0[28].xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul o6.xyz, r0.wwww, r0.xyzx
+dp3 r0.x, v3.xyzx, cb0[29].xyzx
+dp3 r0.y, v4.xyzx, cb0[29].xyzx
+dp3 r0.z, v1.xyzx, cb0[29].xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul o7.xyz, r0.wwww, r0.xyzx
+dp3 o8.x, cb0[31].xyzx, v3.xyzx
+dp3 o8.y, cb0[31].xyzx, v4.xyzx
+dp3 o8.z, cb0[31].xyzx, v1.xyzx
+dp3 o9.x, cb0[32].xyzx, v3.xyzx
+dp3 o9.y, cb0[32].xyzx, v4.xyzx
+dp3 o9.z, cb0[32].xyzx, v1.xyzx
+dp3 o10.x, cb0[33].xyzx, v3.xyzx
+dp3 o10.y, cb0[33].xyzx, v4.xyzx
+dp3 o10.z, cb0[33].xyzx, v1.xyzx
+ret 
+// Approximately 52 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
