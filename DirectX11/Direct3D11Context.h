@@ -372,68 +372,68 @@ struct DrawContext
 static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 {
 	DrawContext data;
+	float separationValue;
 
 	// Skip?
 	data.override = false;
 	data.skip = G->mBlockingMode;
 
-	// If we are not hunting shaders, we can skip all of this shader management for a performance bump.
-	// ToDo: this also kills texture overrides (not used in AC3 fix)
-	if (!G->hunting)
-		return data;
-
-	float separationValue;
-	UINT selectedRenderTargetPos;
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	// Stats
-	if (G->mCurrentVertexShader && G->mCurrentPixelShader)
+	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
+	if (G->hunting)
 	{
-		G->mVertexShaderInfo[G->mCurrentVertexShader].PartnerShader.insert(G->mCurrentPixelShader);
-		G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
-	}
-	if (G->mCurrentPixelShader)
-		G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets = G->mCurrentRenderTargets;
-	// Selection
-	for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
-		if (G->mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
-	if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
-		G->mCurrentVertexShader == G->mSelectedVertexShader ||
-		G->mCurrentPixelShader == G->mSelectedPixelShader ||
-		selectedRenderTargetPos < G->mCurrentRenderTargets.size())
-	{
-		if (LogFile && LogDebug) fprintf(LogFile, "  Skipping selected operation. CurrentIndexBuffer = %08lx%08lx, CurrentVertexShader = %08lx%08lx, CurrentPixelShader = %08lx%08lx\n",
-			(UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer,
-			(UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader,
-			(UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
+		UINT selectedRenderTargetPos;
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		{
+			// Stats
+			if (G->mCurrentVertexShader && G->mCurrentPixelShader)
+			{
+				G->mVertexShaderInfo[G->mCurrentVertexShader].PartnerShader.insert(G->mCurrentPixelShader);
+				G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
+			}
+			if (G->mCurrentPixelShader)
+				G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets = G->mCurrentRenderTargets;
+			// Selection
+			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
+				if (G->mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
+			if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
+				G->mCurrentVertexShader == G->mSelectedVertexShader ||
+				G->mCurrentPixelShader == G->mSelectedPixelShader ||
+				selectedRenderTargetPos < G->mCurrentRenderTargets.size())
+			{
+				if (LogFile && LogDebug) fprintf(LogFile, "  Skipping selected operation. CurrentIndexBuffer = %08lx%08lx, CurrentVertexShader = %08lx%08lx, CurrentPixelShader = %08lx%08lx\n",
+					(UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer,
+					(UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader,
+					(UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
 
-		// Snapshot render target list.
-		if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
-		{
-			G->mSelectedRenderTargetSnapshotList.clear();
-			G->mSelectedRenderTargetSnapshot = G->mSelectedRenderTarget;
+				// Snapshot render target list.
+				if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
+				{
+					G->mSelectedRenderTargetSnapshotList.clear();
+					G->mSelectedRenderTargetSnapshot = G->mSelectedRenderTarget;
+				}
+				G->mSelectedRenderTargetSnapshotList.insert(G->mCurrentRenderTargets.begin(), G->mCurrentRenderTargets.end());
+				// Snapshot info.
+				if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer)
+				{
+					G->mSelectedIndexBuffer_VertexShader.insert(G->mCurrentVertexShader);
+					G->mSelectedIndexBuffer_PixelShader.insert(G->mCurrentPixelShader);
+				}
+				if (G->mCurrentVertexShader == G->mSelectedVertexShader)
+					G->mSelectedVertexShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
+				if (G->mCurrentPixelShader == G->mSelectedPixelShader)
+					G->mSelectedPixelShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
+				if (G->marking_mode == MARKING_MODE_MONO)
+				{
+					data.override = true;
+					separationValue = 0;
+				}
+				else if (G->marking_mode == MARKING_MODE_SKIP)
+				{
+					data.skip = true;
+				}
+			}
 		}
-		G->mSelectedRenderTargetSnapshotList.insert(G->mCurrentRenderTargets.begin(), G->mCurrentRenderTargets.end());
-		// Snapshot info.
-		if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer)
-		{
-			G->mSelectedIndexBuffer_VertexShader.insert(G->mCurrentVertexShader);
-			G->mSelectedIndexBuffer_PixelShader.insert(G->mCurrentPixelShader);
-		}
-		if (G->mCurrentVertexShader == G->mSelectedVertexShader)
-			G->mSelectedVertexShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
-		if (G->mCurrentPixelShader == G->mSelectedPixelShader)
-			G->mSelectedPixelShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
-		if (G->marking_mode == MARKING_MODE_MONO)
-		{
-			data.override = true;
-			separationValue = 0;
-		}
-		else if (G->marking_mode == MARKING_MODE_SKIP)
-		{
-			data.skip = true;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			return data;
-		}
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	// Override settings?
@@ -477,8 +477,8 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			for (vector<UINT64>::iterator l = k->second.begin(); l != k->second.end(); ++l)
 				if (G->mCurrentIndexBuffer == *l)
 				{
-				found = true;
-				break;
+					found = true;
+					break;
 				}
 			if (!found)
 			{
@@ -487,7 +487,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			}
 		}
 	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
 	if (data.override)
 	{
 		D3D11Wrapper::ID3D11Device *device;
