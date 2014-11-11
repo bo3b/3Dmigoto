@@ -7,7 +7,7 @@
 
 FILE *D3DWrapper::LogFile = 0;
 static bool gInitialized = false;
-static bool EXPORT_ALL = false;
+static bool EXPORT_SHADERS = false;
 static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
 
 using namespace std;
@@ -64,7 +64,7 @@ void InitializeDLL()
 			// Create directory?
 			CreateDirectory(SHADER_PATH, 0);
 		}
-		EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir) == 1;
+		EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir) == 1;
 	}
 
 	if (D3DWrapper::LogFile) fprintf(D3DWrapper::LogFile, "DLL initialized.\n");
@@ -470,7 +470,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 			mbstowcs(target, pTarget, MAX_PATH);
 			wsprintf(val, L"%ls\\%08lx%08lx-%ls_%08lx%08lx.txt", SHADER_PATH, 
 				(UINT32)(binaryHash >> 32), (UINT32)binaryHash, target, (UINT32)(sourceHash >> 32), (UINT32)sourceHash);
-			if (EXPORT_ALL)
+			if (EXPORT_SHADERS)
 			{
 				FILE *f;
 				_wfopen_s(&f, val, L"wb");

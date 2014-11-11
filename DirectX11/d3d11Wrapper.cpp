@@ -122,7 +122,7 @@ struct Globals
 	bool next_rendertarget, prev_rendertarget, mark_rendertarget;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
-	bool EXPORT_ALL, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	bool EXPORT_SHADERS, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
@@ -244,7 +244,7 @@ struct Globals
 		prev_rendertarget(false),
 		mark_rendertarget(false),
 
-		EXPORT_ALL(false),
+		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
 		EXPORT_FIXED(false),
 		CACHE_SHADERS(false),
@@ -462,7 +462,7 @@ void InitializeDLL()
 		G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, iniFile) == 1;
 
 		G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
-		G->EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
+		G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
 		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
 		G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
@@ -480,7 +480,7 @@ void InitializeDLL()
 			if (G->SCISSOR_DISABLE) fprintf(LogFile, "  rasterizer_disable_scissor=1\n");
 
 			if (G->EXPORT_FIXED) fprintf(LogFile, "  export_fixed=1\n");
-			if (G->EXPORT_ALL) fprintf(LogFile, "  export_shaders=1\n");
+			if (G->EXPORT_SHADERS) fprintf(LogFile, "  export_shaders=1\n");
 			if (G->EXPORT_HLSL != 0) fprintf(LogFile, "  export_hlsl=%d\n", G->EXPORT_HLSL);
 			if (G->DumpUsage) fprintf(LogFile, "  dump_usage=1\n");
 		}

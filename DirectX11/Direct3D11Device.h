@@ -742,7 +742,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 
 	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0])
 	{
-		if (G->EXPORT_ALL)
+		if (G->EXPORT_SHADERS)
 		{
 			D3D11Base::ID3DBlob *disassembly;
 			HRESULT r = D3D11Base::D3DDisassemble(pShaderBytecode, BytecodeLength,
