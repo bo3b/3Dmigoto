@@ -122,7 +122,7 @@ struct Globals
 	bool next_rendertarget, prev_rendertarget, mark_rendertarget;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
-	bool EXPORT_ALL, EXPORT_BINARY, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	bool EXPORT_ALL, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
@@ -246,7 +246,6 @@ struct Globals
 
 		EXPORT_ALL(false),
 		EXPORT_HLSL(0),
-		EXPORT_BINARY(false),
 		EXPORT_FIXED(false),
 		CACHE_SHADERS(false),
 		PRELOAD_SHADERS(false),
@@ -465,7 +464,6 @@ void InitializeDLL()
 		G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 		G->EXPORT_ALL = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
 		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
-		G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, iniFile) == 1;
 		G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
 		if (LogFile)
@@ -484,7 +482,6 @@ void InitializeDLL()
 			if (G->EXPORT_FIXED) fprintf(LogFile, "  export_fixed=1\n");
 			if (G->EXPORT_ALL) fprintf(LogFile, "  export_shaders=1\n");
 			if (G->EXPORT_HLSL != 0) fprintf(LogFile, "  export_hlsl=%d\n", G->EXPORT_HLSL);
-			if (G->EXPORT_BINARY) fprintf(LogFile, "  export_binary=1\n");
 			if (G->DumpUsage) fprintf(LogFile, "  dump_usage=1\n");
 		}
 
@@ -714,7 +711,6 @@ void InitializeDLL()
 				if (LogFile && LogDebug) fprintf(LogFile, " [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
 			}
 			read = GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile);
-			// bo3b: pretty sure this test is inverted and thus non-functional
 			if (read && !wcscmp(setting, L"skip"))
 				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
 			read = GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile);

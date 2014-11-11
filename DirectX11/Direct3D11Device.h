@@ -713,6 +713,18 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateInputLayout(THIS_
 		BytecodeLength, ppInputLayout);
 }
 
+// Fairly bold new strategy here for ReplaceShader. 
+// This is called at launch to replace any shaders that we might want patched to fix problems.
+// It would previously use both ShaderCache, and ShaderFixes both to fix shaders, but this is
+// problematic in that broken shaders dumped as part of universal cache could be buggy, and generated
+// visual anomolies.  Moreover, we don't really want every file to patched, just the ones we need.
+
+// I'm moving to a model where only stuff in ShaderFixes is active, and stuff in ShaderCache is for reference.
+// This will allow us to dump and use the ShaderCache for offline fixes, looking for similar fix patterns, and
+// also make them live by moving them to ShaderFixes.
+// For auto-fixed shaders- rather than leave them in ShaderCache, when they are fixed, we'll move them into 
+// ShaderFixes as being live.  
+
 // Only used in CreateVertexShader and CreatePixelShader
 
 static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
@@ -727,50 +739,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	*zeroShader = 0;
 	char *pCode = 0;
 	wchar_t val[MAX_PATH];
-	if (G->EXPORT_BINARY && SHADER_CACHE_PATH[0])
-	{
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		bool exists = false;
-		if (f != INVALID_HANDLE_VALUE)
-		{
-			int cnt = 0;
-			while (f != INVALID_HANDLE_VALUE)
-			{
-				// Check if same file.
-				DWORD dataSize = GetFileSize(f, 0);
-				char *buf = new char[dataSize];
-				DWORD readSize;
-				if (!ReadFile(f, buf, dataSize, &readSize, 0) || dataSize != readSize)
-					if (LogFile) fprintf(LogFile, "  Error reading file.\n");
-				CloseHandle(f);
-				if (dataSize == BytecodeLength && !memcmp(pShaderBytecode, buf, dataSize)) exists = true;
-				delete buf;
-				if (exists) break;
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType, ++cnt);
-				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			}
-		}
-		if (!exists)
-		{
-			FILE *fw;
-			_wfopen_s(&fw, val, L"wb");
-			if (LogFile)
-			{
-				char fileName[MAX_PATH];
-				wcstombs(fileName, val, MAX_PATH);
-				if (fw)
-					fprintf(LogFile, "    storing original binary shader to %s\n", fileName);
-				else
-					fprintf(LogFile, "    error storing original binary shader to %s\n", fileName);
-			}
-			if (fw)
-			{
-				fwrite(pShaderBytecode, 1, BytecodeLength, fw);
-				fclose(fw);
-			}
-		}
-	}
+
 	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0])
 	{
 		if (G->EXPORT_ALL)
