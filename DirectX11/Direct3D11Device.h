@@ -742,6 +742,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 
 	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0])
 	{
+		// Export every shader seen as an ASM file.
 		if (G->EXPORT_SHADERS)
 		{
 			D3D11Base::ID3DBlob *disassembly;
@@ -754,7 +755,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			}
 			else
 			{
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+				wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", SHADER_CACHE_PATH, hash, shaderType);
 				FILE *f = _wfsopen(val, L"rb", _SH_DENYNO);
 				bool exists = false;
 				if (f)
@@ -772,7 +773,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						if (dataSize == disassembly->GetBufferSize() && !memcmp(disassembly->GetBufferPointer(), buf, dataSize)) exists = true;
 						delete buf;
 						if (exists) break;
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType, ++cnt);
+						wsprintf(val, L"%ls\\%016llx-%ls_%d.txt", SHADER_CACHE_PATH, hash, shaderType, ++cnt);
 						f = _wfsopen(val, L"rb", _SH_DENYNO);
 					}
 				}
@@ -800,13 +801,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		}
 
 		// Read binary compiled shader.
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+		wsprintf(val, L"%ls\\%016llx-%ls_replace.bin", SHADER_PATH, hash, shaderType);
 		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (f == INVALID_HANDLE_VALUE)
-		{
-			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		}
 		if (f != INVALID_HANDLE_VALUE)
 		{
 			if (LogFile) fprintf(LogFile, "    Replacement binary shader found.\n");
@@ -844,18 +840,11 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			}
 		}
 
+		// Load previously created HLSL shaders, but only from ShaderFixes
 		if (!pCode)
 		{
-			// Read HLSL shader.
-			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+			wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", SHADER_PATH, hash, shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			wchar_t *shader_path = SHADER_PATH;
-			if (f == INVALID_HANDLE_VALUE)
-			{
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-				shader_path = SHADER_CACHE_PATH;
-			}
 			if (f != INVALID_HANDLE_VALUE)
 			{
 				if (LogFile) fprintf(LogFile, "    Replacement shader found. Loading replacement HLSL code.\n");
@@ -929,10 +918,10 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						pErrorMsgs->Release();
 					}
 
-					// Write replacement.
+					// Cache binary replacement.
 					if (G->CACHE_SHADERS && pCode)
 					{
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", shader_path, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+						wsprintf(val, L"%ls\\%016llx-%ls_replace.bin", SHADER_PATH, hash, shaderType);
 						FILE *fw;
 						_wfopen_s(&fw, val, L"wb");
 						if (LogFile)
@@ -959,7 +948,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
 	{
 		// Skip?
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_bad.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+		wsprintf(val, L"%ls\\%016llx-%ls_bad.txt", SHADER_PATH, hash, shaderType);
 		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
@@ -1030,7 +1019,11 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 
 				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
 				{
-					wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
+					// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
+					if (G->EXPORT_HLSL >= 1)
+						wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", SHADER_CACHE_PATH, hash, shaderType);
+					else	
+						wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", SHADER_PATH, hash, shaderType);
 					_wfopen_s(&fw, val, L"wb");
 					if (LogFile)
 					{
@@ -1043,7 +1036,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					}
 					if (fw)
 					{
-						// Save decompiled HLSL code to new file.
+						// Save decompiled HLSL code to that new file.
 						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
 
 						// Now also write the ASM text to the shader file as a set of comments at the bottom.
@@ -1065,7 +1058,6 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
 				if (!errorOccurred)
 				{
-					// Compile replacement.
 					if (LogFile) fprintf(LogFile, "    compiling fixed HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
 
 					D3D11Base::ID3DBlob *pErrorMsgs;
@@ -1073,13 +1065,6 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					ret = D3D11Base::D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
 						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 					if (LogFile) fprintf(LogFile, "    compile result of fixed HLSL shader: %x\n", ret);
-
-					if (pCompiledOutput)
-					{
-						pCodeSize = pCompiledOutput->GetBufferSize();
-						pCode = new char[pCodeSize];
-						memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
-					}
 
 					if (LogFile && pErrorMsgs)
 					{
@@ -1120,20 +1105,15 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	
 					if (pCompiledOutput)
 					{
+						// If the shader has been auto-fixed, return it as the live shader.  
+						// For just caching shaders, we return zero so it won't affect game visuals.
+						if (patched)
+						{
+							pCodeSize = pCompiledOutput->GetBufferSize();
+							pCode = new char[pCodeSize];
+							memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
+						}
 						pCompiledOutput->Release(); pCompiledOutput = 0;
-					}
-				}
-
-				// Write replacement.
-				if (G->CACHE_SHADERS && pCode)
-				{
-					wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
-					FILE *bin;
-					_wfopen_s(&bin, val, L"wb");
-					if (bin)
-					{
-						fwrite(pCode, 1, pCodeSize, bin);
-						fclose(bin);
 					}
 				}
 			}
