@@ -1149,7 +1149,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargetsAndUnor
 	/* [annotation] */
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
 
 	GetD3D11DeviceContext()->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
 		UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
@@ -1183,7 +1183,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::SOSetTargets(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumBuffers)  const UINT *pOffsets)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::SOSetTargets called with NumBuffers = %d\n", NumBuffers);
+	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::SOSetTargets called with NumBuffers = %d\n", NumBuffers);
 
 	GetD3D11DeviceContext()->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
