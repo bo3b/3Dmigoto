@@ -1,5 +1,15 @@
 // Fire particles during explosions.
 
+
+// Manually added struct for ld_structured_indexable use. Copied from ASM.
+struct BufferSrc
+{
+      float3 vPosition;              // Offset:    0
+      float3 vVelocity;              // Offset:   12
+      float fTime;                   // Offset:   24
+      float fUserData;               // Offset:   28
+};                                   // Offset:    0 Size:    32
+
 cbuffer _Globals : register(b0)
 {
   row_major float4x4 k_mObjectToClip : packoffset(c0);
@@ -54,14 +64,6 @@ cbuffer CBuffer_View : register(b12)
   float4 k_vMotionBlurParams : packoffset(c50);
 }
 
-// Manually added struct for ld_structured_indexable use. Copied from ASM.
-struct BufferSrc
-{
-      float3 vPosition;              // Offset:    0
-      float3 vVelocity;              // Offset:   12
-      float fTime;                   // Offset:   24
-      float fUserData;               // Offset:   28
-};                                   // Offset:    0 Size:    32
 
 // Manually changed to BufferSrc_SB for use in ld_structured_indexable
 StructuredBuffer<BufferSrc> BufferSrc_SB : register(t0);
@@ -77,7 +79,8 @@ void main(
   out float3 o4 : TEXCOORD3)
 {
   float4 r0,r1,r2,r3;
-  uint4 bitmask;
+  uint4 bitmask; 
+  
 // ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r0.xyzw, v0.x, l(0), t0.wxyz
 r0.x = BufferSrc_SB[v0.x].vVelocity.x;
 r0.y = BufferSrc_SB[v0.x].vPosition.x;
@@ -85,6 +88,7 @@ r0.z = BufferSrc_SB[v0.x].vPosition.y;
 r0.w = BufferSrc_SB[v0.x].vPosition.z;
   r1.xyz = r0.yzw;
   r1.w = 1.000000000e+000;
+    
   o0.x = dot(k_mObjectToView._m00_m01_m02_m03, r1.xyzw);
   o0.y = dot(k_mObjectToView._m10_m11_m12_m13, r1.xyzw);
   r2.x = dot(k_mObjectToView._m20_m21_m22_m23, r1.xyzw);
@@ -94,8 +98,10 @@ r0.w = BufferSrc_SB[v0.x].vPosition.z;
   
 //Mike_ar69 - Stereo Shift
 float4 stereo = StereoParams.Load(0);
-o0.x += stereo.x * (o0.z - stereo.y)*0.6; //*k_vFullViewPlane.z/2;    
-  
+// if(P00 < 0.0e+00)
+// {
+  o0.x += stereo.x * (o0.z - stereo.y)*0.645;    
+// }  
   
   r1.yzw = k_vObjectSpaceEyePos.xyz + -r0.yzw;
 // ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
@@ -108,11 +114,7 @@ r3.w = BufferSrc_SB[v0.x].fUserData.x;
   o1.x = dot(k_mObjectToView._m00_m01_m02, r0.xyz);
   o1.y = dot(k_mObjectToView._m10_m11_m12, r0.xyz);
   o1.z = dot(k_mObjectToView._m20_m21_m22, r0.xyz);
-  
-//Mike_ar69 - Stereo Shift
-// float4 stereo = StereoParams.Load(0);
-o1.x += stereo.x * (o1.z - stereo.y)*0.6; //*k_vFullViewPlane.z/2;    
-  
+   
   r0.x = dot(k_mObjectToWorld._m00_m01_m02, r1.yzw);
   r0.z = dot(k_mObjectToWorld._m20_m21_m22, r1.yzw);
   r0.y = dot(k_mObjectToWorld._m10_m11_m12, r1.yzw);
@@ -387,5 +389,4 @@ mad r0.xyz, r0.xyzx, r2.xyzx, l(0.060000, 0.060000, 0.060000, 0.000000)
 div o3.xyz, r1.xyzx, r0.xyzx
 ret 
 // Approximately 80 instruction slots used
- 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

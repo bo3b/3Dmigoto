@@ -1,0 +1,320 @@
+
+cbuffer _Globals : register(b0)
+{
+  float3 k_cEmissiveColor : packoffset(c0) = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  float k_fEmissiveBrightness : packoffset(c0.w) = float(1.000000e+000);
+  float4 k_vUVBB : packoffset(c1) = float4(0.000000e+000,0.000000e+000,1.000000e+000,1.000000e+000);
+  float k_fInvLightRadius : packoffset(c2);
+  row_major float3x4 k_mCubeProjector_LightTransform : packoffset(c3);
+  row_major float3x4 k_mDirectional_ObjectToTex : packoffset(c6);
+  row_major float4x4 k_mSpotProjector_LightTransform : packoffset(c9);
+  float4 k_vSpotProjector_TanXYRadiusZW : packoffset(c13);
+  row_major float3x4 k_mWorldToVolume : packoffset(c14);
+  float3 k_vDirectional_Dir : packoffset(c17);
+  float4 k_vObjectLightColor : packoffset(c18);
+  float3 k_vObjectSpaceLightPos : packoffset(c19);
+  float4 k_vSpecularColor : packoffset(c20);
+  float4 k_vSpotProjector_ClipFar : packoffset(c21);
+  float4 k_vSpotProjector_ClipNear : packoffset(c22);
+  float3 k_vHalfDims : packoffset(c23);
+  float4 k_vShadowMapParams : packoffset(c24);
+  float4 k_vShadowMapParams2 : packoffset(c25);
+  row_major float4x4 k_mShadowMapMatrix : packoffset(c26);
+  float4 k_vShadowCascadeOffsetX : packoffset(c30);
+  float4 k_vShadowCascadeOffsetZ : packoffset(c31);
+  float k_fStaticLightVolume_Mip : packoffset(c32);
+  float4 k_vShadowSplitDistSquared : packoffset(c33);
+  float4 k_vShadowSplitDistSelect : packoffset(c34);
+  float4 k_vShadowMoveX : packoffset(c35);
+  float4 k_vShadowMoveY : packoffset(c36);
+  float4 k_vShadowMoveZ : packoffset(c37);
+  float4 k_vShadowScaleXY : packoffset(c38);
+  float4 k_vShadowScaleX : packoffset(c39);
+  float4 k_vShadowScaleY : packoffset(c40);
+  float4 k_vShadowScaleZ : packoffset(c41);
+  float3 k_vLightBleed_Offset : packoffset(c42);
+  float4 k_vStaticLightVolume_PivotContrast : packoffset(c43);
+  float k_fLightLayer : packoffset(c44);
+  row_major float3x4 k_mViewToLight : packoffset(c45);
+  row_major float4x4 k_mObjectToClip : packoffset(c48);
+  row_major float3x4 k_mObjectToView : packoffset(c52);
+  row_major float3x4 k_mObjectToWorld : packoffset(c55);
+  float4 k_vObjectColor : packoffset(c58);
+  float3 k_vObjectSpaceEyePos : packoffset(c59);
+  row_major float4x4 k_mPrevObjectToClip : packoffset(c60);
+  row_major float3x4 k_mPrevObjectToView : packoffset(c64);
+  row_major float3x4 k_mPrevObjectToWorld : packoffset(c67);
+  float3 k_vNormalTile : packoffset(c70) = float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  float k_fPanNormalU : packoffset(c70.w) = float(0.000000e+000);
+  float k_fPanNormalV : packoffset(c71) = float(0.000000e+000);
+  float3 k_vRefractStrength : packoffset(c71.y) = float3(1.000000e-001,1.000000e-001,1.000000e-001);
+  float3 k_vNormalTile2 : packoffset(c72) = float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  float k_fPanNormalU2 : packoffset(c72.w) = float(0.000000e+000);
+  float k_fPanNormalV2 : packoffset(c73) = float(0.000000e+000);
+  float3 k_vRefractStrength2 : packoffset(c73.y) = float3(1.000000e-001,1.000000e-001,1.000000e-001);
+  float k_fFadeEmissive : packoffset(c74) = float(1.000000e+000);
+  float k_fDiffuseAlpha : packoffset(c74.y) = float(1.000000e+000);
+  float3 k_cDiffuseColor : packoffset(c75) = float3(1.000000e+000,1.000000e+000,1.000000e+000);
+  float k_fMaxSpecularPower : packoffset(c75.w) = float(6.400000e+001);
+  int k_bRendersEmissive : packoffset(c76) = int(1.401298e-045);
+}
+
+cbuffer CBuffer_View : register(b12)
+{
+  row_major float4x4 k_mWorldToClip : packoffset(c0);
+  row_major float3x4 k_mViewToWorld : packoffset(c4);
+  row_major float3x4 k_mWorldToView : packoffset(c7);
+  row_major float4x4 k_mDrawPrimToClip : packoffset(c10);
+  float4 k_vFogRayleigh : packoffset(c14);
+  float4 k_vFogMieA : packoffset(c15);
+  float4 k_vFogMieB : packoffset(c16);
+  float4 k_vFogMieC : packoffset(c17);
+  float4 k_vFogSky : packoffset(c18);
+  float4 k_vFogSunColor : packoffset(c19);
+  float3 k_vFogSunDir : packoffset(c20);
+  float4 k_vFullViewPlane : packoffset(c21);
+  float2 k_vPerspOrthoMask : packoffset(c22);
+  float2 k_vScene_ScreenRes : packoffset(c23);
+  float2 k_vScene_TexCoordScale : packoffset(c24);
+  float3 k_vScene_ZRange : packoffset(c25);
+  float3 k_vWorldSpaceCameraDir : packoffset(c26);
+  float4 k_vHDRLuminanceWeights : packoffset(c27);
+  float4 k_vHDRBloomParams : packoffset(c28);
+  float4 k_vHDRBloomParams2 : packoffset(c29);
+  float4 k_vWindDirection : packoffset(c30);
+  float4 k_vVegetationForce1 : packoffset(c31);
+  float4 k_vVegetationForce2 : packoffset(c32);
+  float4 k_vVegetationRadius : packoffset(c33);
+  row_major float4x4 k_mSkyShadowMapMatrix : packoffset(c34);
+  float4 k_vSkyShadowParams : packoffset(c38);
+  float4 k_vParaboloidShadowParams : packoffset(c39);
+  row_major float4x4 k_mPrevWorldToClip : packoffset(c40);
+  row_major float3x4 k_mPrevViewToWorld : packoffset(c44);
+  row_major float3x4 k_mPrevWorldToView : packoffset(c47);
+  float4 k_vMotionBlurParams : packoffset(c50);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : SV_POSITION0,
+  out float4 o0 : SV_POSITION0,
+  out float4 o1 : TEXCOORD0,
+  out float2 o2 : TEXCOORD1,
+  out float4 o4 : TEXCOORD3)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  
+o4.xyzw = k_vFullViewPlane.xyzw;
+
+
+  r0.xy = k_vHalfDims.xy * v0.xy;
+  r0.z = v0.z * k_vHalfDims.z + k_vHalfDims.z;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(k_mObjectToWorld._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(k_mObjectToWorld._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(k_mObjectToWorld._m20_m21_m22_m23, r0.xyzw);
+  r1.w = 1.000000000e+000;
+  r0.x = dot(k_mObjectToClip._m00_m01_m02_m03, r1.xyzw);
+  r0.y = dot(k_mObjectToClip._m10_m11_m12_m13, r1.xyzw);
+  r0.z = dot(k_mObjectToClip._m20_m21_m22_m23, r1.xyzw);
+  r0.w = dot(k_mObjectToClip._m30_m31_m32_m33, r1.xyzw);
+  
+float4 stereo = StereoParams.Load(0);
+float4 r23, r20;
+r23.xyzw = r0.xyzw;
+r0.x += stereo.x * (r0.w - stereo.y); 
+  
+  o0.xyzw = r23.xyzw;
+  
+  o1.zw = r0.zw;
+  r1.xy = k_vScene_TexCoordScale.xy * r0.ww;
+  r0.zw = k_vFullViewPlane.xy * r0.ww;
+  r1.zw = k_vScene_TexCoordScale.xy * float2(1.000000e+000,-1.000000e+000);
+  r0.xy = r0.xy * r1.zw + r1.xy;
+r20.xy = r23.xy * r1.zw + r1.xy;
+  o1.xy = r0.xy;
+  o2.xy = r20.xy * k_vFullViewPlane.zw + r0.zw;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float3 k_cEmissiveColor;           // Offset:    0 Size:    12 [unused]
+//      = 0x00000000 0x00000000 0x00000000 
+//   float k_fEmissiveBrightness;       // Offset:   12 Size:     4 [unused]
+//      = 0x3f800000 
+//   float4 k_vUVBB;                    // Offset:   16 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x3f800000 0x3f800000 
+//   float k_fInvLightRadius;           // Offset:   32 Size:     4 [unused]
+//   row_major float3x4 k_mCubeProjector_LightTransform;// Offset:   48 Size:    48 [unused]
+//   row_major float3x4 k_mDirectional_ObjectToTex;// Offset:   96 Size:    48 [unused]
+//   row_major float4x4 k_mSpotProjector_LightTransform;// Offset:  144 Size:    64 [unused]
+//   float4 k_vSpotProjector_TanXYRadiusZW;// Offset:  208 Size:    16 [unused]
+//   row_major float3x4 k_mWorldToVolume;// Offset:  224 Size:    48 [unused]
+//   float3 k_vDirectional_Dir;         // Offset:  272 Size:    12 [unused]
+//   float4 k_vObjectLightColor;        // Offset:  288 Size:    16 [unused]
+//   float3 k_vObjectSpaceLightPos;     // Offset:  304 Size:    12 [unused]
+//   float4 k_vSpecularColor;           // Offset:  320 Size:    16 [unused]
+//   float4 k_vSpotProjector_ClipFar;   // Offset:  336 Size:    16 [unused]
+//   float4 k_vSpotProjector_ClipNear;  // Offset:  352 Size:    16 [unused]
+//   float3 k_vHalfDims;                // Offset:  368 Size:    12
+//   float4 k_vShadowMapParams;         // Offset:  384 Size:    16 [unused]
+//   float4 k_vShadowMapParams2;        // Offset:  400 Size:    16 [unused]
+//   row_major float4x4 k_mShadowMapMatrix;// Offset:  416 Size:    64 [unused]
+//   float4 k_vShadowCascadeOffsetX;    // Offset:  480 Size:    16 [unused]
+//   float4 k_vShadowCascadeOffsetZ;    // Offset:  496 Size:    16 [unused]
+//   float k_fStaticLightVolume_Mip;    // Offset:  512 Size:     4 [unused]
+//   float4 k_vShadowSplitDistSquared;  // Offset:  528 Size:    16 [unused]
+//   float4 k_vShadowSplitDistSelect;   // Offset:  544 Size:    16 [unused]
+//   float4 k_vShadowMoveX;             // Offset:  560 Size:    16 [unused]
+//   float4 k_vShadowMoveY;             // Offset:  576 Size:    16 [unused]
+//   float4 k_vShadowMoveZ;             // Offset:  592 Size:    16 [unused]
+//   float4 k_vShadowScaleXY;           // Offset:  608 Size:    16 [unused]
+//   float4 k_vShadowScaleX;            // Offset:  624 Size:    16 [unused]
+//   float4 k_vShadowScaleY;            // Offset:  640 Size:    16 [unused]
+//   float4 k_vShadowScaleZ;            // Offset:  656 Size:    16 [unused]
+//   float3 k_vLightBleed_Offset;       // Offset:  672 Size:    12 [unused]
+//   float4 k_vStaticLightVolume_PivotContrast;// Offset:  688 Size:    16 [unused]
+//   float k_fLightLayer;               // Offset:  704 Size:     4 [unused]
+//   row_major float3x4 k_mViewToLight; // Offset:  720 Size:    48 [unused]
+//   row_major float4x4 k_mObjectToClip;// Offset:  768 Size:    64
+//   row_major float3x4 k_mObjectToView;// Offset:  832 Size:    48 [unused]
+//   row_major float3x4 k_mObjectToWorld;// Offset:  880 Size:    48
+//   float4 k_vObjectColor;             // Offset:  928 Size:    16 [unused]
+//   float3 k_vObjectSpaceEyePos;       // Offset:  944 Size:    12 [unused]
+//   row_major float4x4 k_mPrevObjectToClip;// Offset:  960 Size:    64 [unused]
+//   row_major float3x4 k_mPrevObjectToView;// Offset: 1024 Size:    48 [unused]
+//   row_major float3x4 k_mPrevObjectToWorld;// Offset: 1072 Size:    48 [unused]
+//   float3 k_vNormalTile;              // Offset: 1120 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 
+//   float k_fPanNormalU;               // Offset: 1132 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalV;               // Offset: 1136 Size:     4 [unused]
+//      = 0x00000000 
+//   float3 k_vRefractStrength;         // Offset: 1140 Size:    12 [unused]
+//      = 0x3dcccccd 0x3dcccccd 0x3dcccccd 
+//   float3 k_vNormalTile2;             // Offset: 1152 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 
+//   float k_fPanNormalU2;              // Offset: 1164 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalV2;              // Offset: 1168 Size:     4 [unused]
+//      = 0x00000000 
+//   float3 k_vRefractStrength2;        // Offset: 1172 Size:    12 [unused]
+//      = 0x3dcccccd 0x3dcccccd 0x3dcccccd 
+//   float k_fFadeEmissive;             // Offset: 1184 Size:     4 [unused]
+//      = 0x3f800000 
+//   float k_fDiffuseAlpha;             // Offset: 1188 Size:     4 [unused]
+//      = 0x3f800000 
+//   float3 k_cDiffuseColor;            // Offset: 1200 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 
+//   float k_fMaxSpecularPower;         // Offset: 1212 Size:     4 [unused]
+//      = 0x42800000 
+//   int k_bRendersEmissive;            // Offset: 1216 Size:     4 [unused]
+//      = 0x00000001 
+//
+// }
+//
+// cbuffer CBuffer_View
+// {
+//
+//   row_major float4x4 k_mWorldToClip; // Offset:    0 Size:    64 [unused]
+//   row_major float3x4 k_mViewToWorld; // Offset:   64 Size:    48 [unused]
+//   row_major float3x4 k_mWorldToView; // Offset:  112 Size:    48 [unused]
+//   row_major float4x4 k_mDrawPrimToClip;// Offset:  160 Size:    64 [unused]
+//   float4 k_vFogRayleigh;             // Offset:  224 Size:    16 [unused]
+//   float4 k_vFogMieA;                 // Offset:  240 Size:    16 [unused]
+//   float4 k_vFogMieB;                 // Offset:  256 Size:    16 [unused]
+//   float4 k_vFogMieC;                 // Offset:  272 Size:    16 [unused]
+//   float4 k_vFogSky;                  // Offset:  288 Size:    16 [unused]
+//   float4 k_vFogSunColor;             // Offset:  304 Size:    16 [unused]
+//   float3 k_vFogSunDir;               // Offset:  320 Size:    12 [unused]
+//   float4 k_vFullViewPlane;           // Offset:  336 Size:    16
+//   float2 k_vPerspOrthoMask;          // Offset:  352 Size:     8 [unused]
+//   float2 k_vScene_ScreenRes;         // Offset:  368 Size:     8 [unused]
+//   float2 k_vScene_TexCoordScale;     // Offset:  384 Size:     8
+//   float3 k_vScene_ZRange;            // Offset:  400 Size:    12 [unused]
+//   float3 k_vWorldSpaceCameraDir;     // Offset:  416 Size:    12 [unused]
+//   float4 k_vHDRLuminanceWeights;     // Offset:  432 Size:    16 [unused]
+//   float4 k_vHDRBloomParams;          // Offset:  448 Size:    16 [unused]
+//   float4 k_vHDRBloomParams2;         // Offset:  464 Size:    16 [unused]
+//   float4 k_vWindDirection;           // Offset:  480 Size:    16 [unused]
+//   float4 k_vVegetationForce1;        // Offset:  496 Size:    16 [unused]
+//   float4 k_vVegetationForce2;        // Offset:  512 Size:    16 [unused]
+//   float4 k_vVegetationRadius;        // Offset:  528 Size:    16 [unused]
+//   row_major float4x4 k_mSkyShadowMapMatrix;// Offset:  544 Size:    64 [unused]
+//   float4 k_vSkyShadowParams;         // Offset:  608 Size:    16 [unused]
+//   float4 k_vParaboloidShadowParams;  // Offset:  624 Size:    16 [unused]
+//   row_major float4x4 k_mPrevWorldToClip;// Offset:  640 Size:    64 [unused]
+//   row_major float3x4 k_mPrevViewToWorld;// Offset:  704 Size:    48 [unused]
+//   row_major float3x4 k_mPrevWorldToView;// Offset:  752 Size:    48 [unused]
+//   float4 k_vMotionBlurParams;        // Offset:  800 Size:    16 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// $Globals                          cbuffer      NA          NA    0        1
+// CBuffer_View                      cbuffer      NA          NA   12        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyz         0     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xy          2     NONE   float   xy  
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[58], immediateIndexed
+dcl_constantbuffer cb12[25], immediateIndexed
+dcl_input v0.xyz
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyzw
+dcl_output o2.xy
+dcl_temps 2
+mul r0.xy, v0.xyxx, cb0[23].xyxx
+mad r0.z, v0.z, cb0[23].z, cb0[23].z
+mov r0.w, l(1.000000)
+dp4 r1.x, cb0[55].xyzw, r0.xyzw
+dp4 r1.y, cb0[56].xyzw, r0.xyzw
+dp4 r1.z, cb0[57].xyzw, r0.xyzw
+mov r1.w, l(1.000000)
+dp4 r0.x, cb0[48].xyzw, r1.xyzw
+dp4 r0.y, cb0[49].xyzw, r1.xyzw
+dp4 r0.z, cb0[50].xyzw, r1.xyzw
+dp4 r0.w, cb0[51].xyzw, r1.xyzw
+mov o0.xyzw, r0.xyzw
+mov o1.zw, r0.zzzw
+mul r1.xy, r0.wwww, cb12[24].xyxx
+mul r0.zw, r0.wwww, cb12[21].xxxy
+mul r1.zw, l(0.000000, 0.000000, 1.000000, -1.000000), cb12[24].xxxy
+mad r0.xy, r0.xyxx, r1.zwzz, r1.xyxx
+mov o1.xy, r0.xyxx
+mad o2.xy, r0.xyxx, cb12[21].zwzz, r0.zwzz
+ret 
+// Approximately 20 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

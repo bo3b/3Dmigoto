@@ -1,0 +1,392 @@
+//Smoke
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = float(1.000000e+002);
+  float DefaultWidth : packoffset(c0.y) = float(1.000000e+002);
+
+  struct
+  {
+    float3 m_Position;
+    float3 m_Normal;
+    float2 m_TexCoord;
+    float3 m_Tangent;
+    float3 m_Binormal;
+    float4 m_Color;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float3 m_Position;
+    float3 m_Normal;
+    float2 m_TexCoord;
+    float3 m_Tangent;
+    float3 m_Binormal;
+    float4 m_Color;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c7);
+
+  int WorldEdit_AlphaRef : packoffset(c15) = int(0.000000e+000);
+  int WorldEdit_RenderType : packoffset(c15.y) = int(1.401298e-045);
+  float3 k_cLightAddColor : packoffset(c16) = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  float k_fDepthDistance : packoffset(c16.w) = float(1.500000e+001);
+  float k_fDepthPower : packoffset(c17) = float(2.000000e+000);
+  float k_fOffsetNormalU : packoffset(c17.y) = float(0.000000e+000);
+  float k_fOffsetNormalV : packoffset(c17.z) = float(0.000000e+000);
+  float k_fPanNormalU : packoffset(c17.w) = float(0.000000e+000);
+  float k_fPanNormalV : packoffset(c18) = float(0.000000e+000);
+  float3 k_vDiffuseTile : packoffset(c18.y) = float3(1.000000e+000,1.000000e+000,0.000000e+000);
+  float3 k_vNormalTile : packoffset(c19) = float3(1.000000e+000,1.000000e+000,0.000000e+000);
+  float3 k_vRefractStrength : packoffset(c20) = float3(1.000000e-001,1.000000e-001,0.000000e+000);
+  float k_fTime : packoffset(c20.w);
+  row_major float4x4 k_mObjectToClip : packoffset(c21);
+  row_major float3x4 k_mObjectToWorld : packoffset(c25);
+  float4 k_vFogMieA : packoffset(c28);
+  float4 k_vFogMieB : packoffset(c29);
+  float4 k_vFogMieC : packoffset(c30);
+  float4 k_vFogRayleigh : packoffset(c31);
+  float4 k_vFogSky : packoffset(c32);
+  float4 k_vFogSunColor : packoffset(c33);
+  float3 k_vFogSunDir : packoffset(c34);
+  float4 k_vObjectColor : packoffset(c35);
+  float4 k_vObjectLightColor : packoffset(c36);
+  float3 k_vObjectSpaceEyePos : packoffset(c37);
+  float2 k_vScene_TexCoordScale : packoffset(c38);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : SV_POSITION0,
+  float3 v1 : NORMAL0,
+  float2 v2 : TEXCOORD0,
+  float3 v3 : TANGENT0,
+  float3 v4 : BINORMAL0,
+  float4 v5 : COLOR0,
+  out float4 o0 : SV_POSITION0,
+  out float3 o1 : TEXCOORD0,
+  out float2 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float3 o6 : TEXCOORD5,
+  out float4 o7 : TEXCOORD6,
+  out float4 o8 : COLOR0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask;
+  r0.xyz = v0.xyz;
+  r0.w = 1.000000000e+000;
+  r1.x = dot(k_mObjectToClip._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(k_mObjectToClip._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(k_mObjectToClip._m20_m21_m22_m23, r0.xyzw);
+  r1.w = dot(k_mObjectToClip._m30_m31_m32_m33, r0.xyzw);
+  r0.x = dot(k_mObjectToWorld._m10_m11_m12_m13, r0.xyzw);
+  r0.x = k_vFogSky.w + r0.x;
+  
+float4 stereo = StereoParams.Load(0);
+float4 r23, r20;
+r23.xyzw = r1.xyzw;
+r1.x += stereo.x * (r1.w - stereo.y); 
+o0.xyzw = r23.xyzw;  
+  
+  
+  // o0.xyzw = r1.xyzw;
+  o1.xyz = v1.xyz;
+  o2.xy = v2.xy;
+  r0.yz = float2(1.000000e+000,-1.000000e+000) * k_vScene_TexCoordScale.xy;
+  r2.xy = k_vScene_TexCoordScale.xy * r1.ww;
+  o3.xy = r1.xy * r0.yz + r2.xy;
+  o6.xyz = r1.xyz;
+  o3.zw = r1.zw;
+  r0.yzw = k_vObjectSpaceEyePos.xyz + -v0.xyz;
+  o4.xyz = r0.yzw;
+  o5.xyz = saturate(k_vObjectLightColor.xyz * k_vObjectColor.xyz + k_cLightAddColor.xyz);
+  o5.w = k_vObjectColor.w;
+  r1.x = dot(k_mObjectToWorld._m00_m01_m02, r0.yzw);
+  r1.z = dot(k_mObjectToWorld._m20_m21_m22, r0.yzw);
+  r1.y = dot(k_mObjectToWorld._m10_m11_m12, r0.yzw);
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.y = rsqrt(r0.y);
+  r2.xyz = r1.xyz * r0.yyy;
+  r0.y = -r1.y * r0.y + -1.500000060e-001;
+  r0.y = saturate(1.000000000e+000 + -r0.y);
+  r0.y = r0.y * r0.y;
+  r0.z = dot(-r2.xyz, k_vFogSunDir.xyz);
+  r0.w = -k_vFogMieB.y * r0.z + k_vFogMieB.x;
+  r0.z = r0.z * r0.z + 1.000000000e+000;
+  r0.w = log2(abs(r0.w));
+  r0.zw = float2(5.968310e-002,-1.500000e+000) * r0.zw;
+  r0.w = exp2(r0.w);
+  r1.x = k_vFogMieB.z * r0.w + -k_vFogMieA.z;
+  r0.w = k_vFogMieB.z * r0.w;
+  r1.x = max(r1.x, 0.000000000e+000);
+  r1.y = 1.999999949e-005 * abs(r1.w);
+  r1.y = min(r1.y, 1.000000000e+000);
+  r1.y = 1.000000000e+000 + -r1.y;
+  r0.w = -r1.x * r1.y + r0.w;
+  r0.w = max(r0.w, k_vFogSunColor.w);
+  r1.x = -r0.x / k_vFogMieA.x;
+  r1.x = 1.442695022e+000 * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = k_vFogMieB.w + r1.x;
+  r1.x = k_vFogMieC.y * r1.x;
+  r1.x = 5.000000000e-001 * r1.x;
+  r0.y = r1.x * r0.y;
+  r0.y = min(r0.y, k_vFogMieA.w);
+  r0.y = max(r0.y, k_vFogMieC.x);
+  r0.w = r0.w * r0.y;
+  r1.x = -r0.x / k_vFogRayleigh.w;
+  r0.x = k_vFogSky.z + -r0.x;
+  r0.x = r0.x / k_vFogMieA.y;
+  r1.x = 1.442695022e+000 * r1.x;
+  r1.x = exp2(r1.x);
+  r2.xyz = k_vFogRayleigh.xyz * r1.xxx;
+  r1.xyz = k_vFogRayleigh.xyz * r1.xxx + r0.yyy;
+  r0.yzw = r2.xyz * r0.zzz + r0.www;
+  r0.yzw = r0.yzw / r1.xyz;
+  r2.xyz = -r1.xyz * r0.xxx;
+  r1.xyz = -r1.xyz * abs(r1.www);
+  r1.xyz = float3(1.442695e+000,1.442695e+000,1.442695e+000) * r1.xyz;
+  r1.xyz = exp2(r1.xyz);
+  r2.xyz = float3(1.442695e+000,1.442695e+000,1.442695e+000) * r2.xyz;
+  r2.xyz = exp2(r2.xyz);
+  r3.xyz = log2(k_vFogSunColor.xyz);
+  r3.xyz = float3(4.545455e-001,4.545455e-001,4.545455e-001) * r3.xyz;
+  r3.xyz = exp2(r3.xyz);
+  r2.xyz = r3.xyz * r2.xyz;
+  r0.xyz = r2.xyz * r0.yzw;
+  r1.yzw = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r1.xyz;
+  o7.w = r1.x;
+  r0.xyz = r0.xyz * r1.yzw + float3(-4.000000e-003,-4.000000e-003,-4.000000e-003);
+  r0.xyz = max(r0.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.xyz = r0.xyz * float3(6.200000e+000,6.200000e+000,6.200000e+000) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  r1.xyz = r1.xyz * r0.xyz;
+  r2.xyz = r0.xyz * float3(6.200000e+000,6.200000e+000,6.200000e+000) + float3(1.700000e+000,1.700000e+000,1.700000e+000);
+  r0.xyz = r0.xyz * r2.xyz + float3(6.000000e-002,6.000000e-002,6.000000e-002);
+  o7.xyz = r1.xyz / r0.xyz;
+  o8.xyzw = v5.xyzw;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float DefaultHeight;               // Offset:    0 Size:     4 [unused]
+//      = 0x42c80000 
+//   float DefaultWidth;                // Offset:    4 Size:     4 [unused]
+//      = 0x42c80000 
+//   
+//   struct MaterialVertex_Rigid
+//   {
+//       
+//       float3 m_Position;             // Offset:   16
+//       float3 m_Normal;               // Offset:   32
+//       float2 m_TexCoord;             // Offset:   48
+//       float3 m_Tangent;              // Offset:   64
+//       float3 m_Binormal;             // Offset:   80
+//       float4 m_Color;                // Offset:   96
+//
+//   } MaterialVertexDef_Rigid;         // Offset:   16 Size:    96 [unused]
+//   
+//   struct MaterialVertex_Skeletal
+//   {
+//       
+//       float3 m_Position;             // Offset:  112
+//       float3 m_Normal;               // Offset:  128
+//       float2 m_TexCoord;             // Offset:  144
+//       float3 m_Tangent;              // Offset:  160
+//       float3 m_Binormal;             // Offset:  176
+//       float4 m_Color;                // Offset:  192
+//       float4 m_Weights;              // Offset:  208
+//       float4 m_Indices;              // Offset:  224
+//
+//   } MaterialVertexDef_Skeletal;      // Offset:  112 Size:   128 [unused]
+//   int WorldEdit_AlphaRef;            // Offset:  240 Size:     4 [unused]
+//      = 0x00000000 
+//   int WorldEdit_RenderType;          // Offset:  244 Size:     4 [unused]
+//      = 0x00000001 
+//   float3 k_cLightAddColor;           // Offset:  256 Size:    12
+//      = 0x00000000 0x00000000 0x00000000 
+//   float k_fDepthDistance;            // Offset:  268 Size:     4 [unused]
+//      = 0x41700000 
+//   float k_fDepthPower;               // Offset:  272 Size:     4 [unused]
+//      = 0x40000000 
+//   float k_fOffsetNormalU;            // Offset:  276 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fOffsetNormalV;            // Offset:  280 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalU;               // Offset:  284 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fPanNormalV;               // Offset:  288 Size:     4 [unused]
+//      = 0x00000000 
+//   float3 k_vDiffuseTile;             // Offset:  292 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x00000000 
+//   float3 k_vNormalTile;              // Offset:  304 Size:    12 [unused]
+//      = 0x3f800000 0x3f800000 0x00000000 
+//   float3 k_vRefractStrength;         // Offset:  320 Size:    12 [unused]
+//      = 0x3dcccccd 0x3dcccccd 0x00000000 
+//   float k_fTime;                     // Offset:  332 Size:     4 [unused]
+//   row_major float4x4 k_mObjectToClip;// Offset:  336 Size:    64
+//   row_major float3x4 k_mObjectToWorld;// Offset:  400 Size:    48
+//   float4 k_vFogMieA;                 // Offset:  448 Size:    16
+//   float4 k_vFogMieB;                 // Offset:  464 Size:    16
+//   float4 k_vFogMieC;                 // Offset:  480 Size:    16
+//   float4 k_vFogRayleigh;             // Offset:  496 Size:    16
+//   float4 k_vFogSky;                  // Offset:  512 Size:    16
+//   float4 k_vFogSunColor;             // Offset:  528 Size:    16
+//   float3 k_vFogSunDir;               // Offset:  544 Size:    12
+//   float4 k_vObjectColor;             // Offset:  560 Size:    16
+//   float4 k_vObjectLightColor;        // Offset:  576 Size:    16
+//   float3 k_vObjectSpaceEyePos;       // Offset:  592 Size:    12
+//   float2 k_vScene_TexCoordScale;     // Offset:  608 Size:     8
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyz         0     NONE   float   xyz 
+// NORMAL                   0   xyz         1     NONE   float   xyz 
+// TEXCOORD                 0   xy          2     NONE   float   xy  
+// TANGENT                  0   xyz         3     NONE   float       
+// BINORMAL                 0   xyz         4     NONE   float       
+// COLOR                    0   xyzw        5     NONE   float   xyzw
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyz         1     NONE   float   xyz 
+// TEXCOORD                 1   xy          2     NONE   float   xy  
+// TEXCOORD                 2   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        5     NONE   float   xyzw
+// TEXCOORD                 5   xyz         6     NONE   float   xyz 
+// TEXCOORD                 6   xyzw        7     NONE   float   xyzw
+// COLOR                    0   xyzw        8     NONE   float   xyzw
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[39], immediateIndexed
+dcl_input v0.xyz
+dcl_input v1.xyz
+dcl_input v2.xy
+dcl_input v5.xyzw
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyz
+dcl_output o2.xy
+dcl_output o3.xyzw
+dcl_output o4.xyz
+dcl_output o5.xyzw
+dcl_output o6.xyz
+dcl_output o7.xyzw
+dcl_output o8.xyzw
+dcl_temps 4
+mov r0.xyz, v0.xyzx
+mov r0.w, l(1.000000)
+dp4 r1.x, cb0[21].xyzw, r0.xyzw
+dp4 r1.y, cb0[22].xyzw, r0.xyzw
+dp4 r1.z, cb0[23].xyzw, r0.xyzw
+dp4 r1.w, cb0[24].xyzw, r0.xyzw
+dp4 r0.x, cb0[26].xyzw, r0.xyzw
+add r0.x, r0.x, cb0[32].w
+mov o0.xyzw, r1.xyzw
+mov o1.xyz, v1.xyzx
+mov o2.xy, v2.xyxx
+mul r0.yz, cb0[38].xxyx, l(0.000000, 1.000000, -1.000000, 0.000000)
+mul r2.xy, r1.wwww, cb0[38].xyxx
+mad o3.xy, r1.xyxx, r0.yzyy, r2.xyxx
+mov o6.xyz, r1.xyzx
+mov o3.zw, r1.zzzw
+add r0.yzw, -v0.xxyz, cb0[37].xxyz
+mov o4.xyz, r0.yzwy
+mad_sat o5.xyz, cb0[36].xyzx, cb0[35].xyzx, cb0[16].xyzx
+mov o5.w, cb0[35].w
+dp3 r1.x, cb0[25].xyzx, r0.yzwy
+dp3 r1.z, cb0[27].xyzx, r0.yzwy
+dp3 r1.y, cb0[26].xyzx, r0.yzwy
+dp3 r0.y, r1.xyzx, r1.xyzx
+rsq r0.y, r0.y
+mul r2.xyz, r0.yyyy, r1.xyzx
+mad r0.y, -r1.y, r0.y, l(-0.150000)
+add_sat r0.y, -r0.y, l(1.000000)
+mul r0.y, r0.y, r0.y
+dp3 r0.z, -r2.xyzx, cb0[34].xyzx
+mad r0.w, -cb0[29].y, r0.z, cb0[29].x
+mad r0.z, r0.z, r0.z, l(1.000000)
+log r0.w, |r0.w|
+mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.059683, -1.500000)
+exp r0.w, r0.w
+mad r1.x, cb0[29].z, r0.w, -cb0[28].z
+mul r0.w, r0.w, cb0[29].z
+max r1.x, r1.x, l(0.000000)
+mul r1.y, |r1.w|, l(0.000020)
+min r1.y, r1.y, l(1.000000)
+add r1.y, -r1.y, l(1.000000)
+mad r0.w, -r1.x, r1.y, r0.w
+max r0.w, r0.w, cb0[33].w
+div r1.x, -r0.x, cb0[28].x
+mul r1.x, r1.x, l(1.442695)
+exp r1.x, r1.x
+add r1.x, r1.x, cb0[29].w
+mul r1.x, r1.x, cb0[30].y
+mul r1.x, r1.x, l(0.500000)
+mul r0.y, r0.y, r1.x
+min r0.y, r0.y, cb0[28].w
+max r0.y, r0.y, cb0[30].x
+mul r0.w, r0.y, r0.w
+div r1.x, -r0.x, cb0[31].w
+add r0.x, -r0.x, cb0[32].z
+div r0.x, r0.x, cb0[28].y
+mul r1.x, r1.x, l(1.442695)
+exp r1.x, r1.x
+mul r2.xyz, r1.xxxx, cb0[31].xyzx
+mad r1.xyz, cb0[31].xyzx, r1.xxxx, r0.yyyy
+mad r0.yzw, r2.xxyz, r0.zzzz, r0.wwww
+div r0.yzw, r0.yyzw, r1.xxyz
+mul r2.xyz, r0.xxxx, -r1.xyzx
+mul r1.xyz, |r1.wwww|, -r1.xyzx
+mul r1.xyz, r1.xyzx, l(1.442695, 1.442695, 1.442695, 0.000000)
+exp r1.xyz, r1.xyzx
+mul r2.xyz, r2.xyzx, l(1.442695, 1.442695, 1.442695, 0.000000)
+exp r2.xyz, r2.xyzx
+log r3.xyz, cb0[33].xyzx
+mul r3.xyz, r3.xyzx, l(0.454545, 0.454545, 0.454545, 0.000000)
+exp r3.xyz, r3.xyzx
+mul r2.xyz, r2.xyzx, r3.xyzx
+mul r0.xyz, r0.yzwy, r2.xyzx
+add r1.yzw, -r1.xxyz, l(0.000000, 1.000000, 1.000000, 1.000000)
+mov o7.w, r1.x
+mad r0.xyz, r0.xyzx, r1.yzwy, l(-0.004000, -0.004000, -0.004000, 0.000000)
+max r0.xyz, r0.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+mad r1.xyz, r0.xyzx, l(6.200000, 6.200000, 6.200000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+mul r1.xyz, r0.xyzx, r1.xyzx
+mad r2.xyz, r0.xyzx, l(6.200000, 6.200000, 6.200000, 0.000000), l(1.700000, 1.700000, 1.700000, 0.000000)
+mad r0.xyz, r0.xyzx, r2.xyzx, l(0.060000, 0.060000, 0.060000, 0.000000)
+div o7.xyz, r1.xyzx, r0.xyzx
+mov o8.xyzw, v5.xyzw
+ret 
+// Approximately 84 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

@@ -91,7 +91,7 @@ r0.z = BufferSrc_SB[v0.x].vPosition.z;
   
 //Mike_ar69 - Stereo Shift
 float4 stereo = StereoParams.Load(0);
-o0.x += stereo.x * (o0.z - stereo.y)*0.6; //*k_vFullViewPlane.z/2;    
+o0.x += stereo.x * (o0.z - stereo.y)*0.645; //*k_vFullViewPlane.z/2;    
   
   o1.x = r0.w;
   r0.xyz = k_vObjectSpaceEyePos.xyz + -r0.xyz;

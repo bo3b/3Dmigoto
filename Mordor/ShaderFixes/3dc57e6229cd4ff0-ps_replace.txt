@@ -1,4 +1,4 @@
-//Fire ring
+
 cbuffer _Globals : register(b0)
 {
   float DefaultHeight : packoffset(c0) = float(1.000000e+002);
@@ -39,10 +39,12 @@ SamplerState sAttenuationTextureSampler_s : register(s0);
 SamplerState sProjectedTextureSampler_s : register(s1);
 SamplerState sDeferredNormalsSampler_s : register(s2);
 SamplerState sDepthMapSampler_s : register(s3);
+SamplerState sShadowMaskSampler_s : register(s4);
 Texture2D<float4> tAttenuationTexture : register(t0);
 Texture2D<float4> tProjectedTexture : register(t1);
 Texture2D<float4> tDeferredNormals : register(t2);
 Texture2D<float4> tDepthMap : register(t3);
+Texture2D<float4> tShadowMask : register(t4);
 
 Texture2D<float4> StereoParams : register(t125);
 
@@ -54,46 +56,49 @@ void main(
   float4 v4 : TEXCOORD3,
   out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2;
+  float4 r0,r1,r2,r3;
   uint4 bitmask;
   r0.xy = v1.xy / v1.ww;
   r1.xyzw = tDeferredNormals.Sample(sDeferredNormalsSampler_s, r0.xy).xyzw;
-  r0.z = tDepthMap.Sample(sDepthMapSampler_s, r0.xy).x;
-  
-  r1.w = -5.019608140e-001 + r1.w;
+  r0.z = -5.019608140e-001 + r1.w;
   r1.xyz = r1.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-  r1.w = -r1.w < 0.000000000e+000;
-  if (r1.w != 0) discard;
-  r2.xy = v3.xy / v1.ww;
-  r0.w = 1.000000000e+000;
-  r1.w = dot(r0.zw, k_vPerspOrthoMask.xy);
-  r0.xy = r1.ww * r2.xy;
+  r0.z = -r0.z < 0.000000000e+000;
+  if (r0.z != 0) discard;
+  r2.z = tDepthMap.Sample(sDepthMapSampler_s, r0.xy).x;
+  r0.x = tShadowMask.Sample(sShadowMaskSampler_s, r0.xy).x;
+  r0.x = -k_vObjectLightColor.w + r0.x;
+  r0.x = saturate(1.000000000e+000 + r0.x);
+  r0.yz = v3.xy / v1.ww;
+  r2.w = 1.000000000e+000;
+  r0.w = dot(r2.zw, k_vPerspOrthoMask.xy);
+  r2.xy = r0.ww * r0.yz;
   
 float4 stereo = StereoParams.Load(0);
-r0.x -= stereo.x * (r0.z - stereo.y)*v4.z/2;    
-  
-  r2.x = saturate(dot(k_mDirectional_ObjectToTex._m00_m01_m02_m03, r0.xyzw));
-  r2.y = saturate(dot(k_mDirectional_ObjectToTex._m10_m11_m12_m13, r0.xyzw));
-  r2.z = saturate(dot(k_mDirectional_ObjectToTex._m20_m21_m22_m23, r0.xyzw));
-  r0.xyzw = tProjectedTexture.Sample(sProjectedTextureSampler_s, r2.xy).xyzw;
-  r2.w = 0.000000000e+000;
-  r2.xyzw = tAttenuationTexture.Sample(sAttenuationTextureSampler_s, r2.wz).xyzw;
-  r0.xyzw = r2.xyzw * r0.xyzw;
-  r0.xyz = k_vObjectColor.xyz * r0.xyz;
-  r0.xyz = k_vObjectColor.www * r0.xyz;
-  r0.xyz = r0.xyz * r0.www;
-  r0.xyz = k_fIntensityScale * r0.xyz;
-  r0.w = dot(r1.xyz, r1.xyz);
-  r0.w = rsqrt(r0.w);
-  r1.xyz = r1.xyz * r0.www;
+r2.x -= stereo.x * (r2.z - stereo.y)*v4.z/2; 
+
+  r3.x = saturate(dot(k_mDirectional_ObjectToTex._m00_m01_m02_m03, r2.xyzw));
+  r3.y = saturate(dot(k_mDirectional_ObjectToTex._m10_m11_m12_m13, r2.xyzw));
+  r3.z = saturate(dot(k_mDirectional_ObjectToTex._m20_m21_m22_m23, r2.xyzw));
+  r2.xyzw = tProjectedTexture.Sample(sProjectedTextureSampler_s, r3.xy).xyzw;
+  r3.w = 0.000000000e+000;
+  r3.xyzw = tAttenuationTexture.Sample(sAttenuationTextureSampler_s, r3.wz).xyzw;
+  r2.xyzw = r3.xyzw * r2.xyzw;
+  r0.yzw = k_vObjectColor.xyz * r2.xyz;
+  r0.yzw = k_vObjectColor.www * r0.yzw;
+  r0.yzw = r0.yzw * r2.www;
+  r0.yzw = k_fIntensityScale * r0.yzw;
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = rsqrt(r1.w);
+  r1.xyz = r1.xyz * r1.www;
   r2.x = dot(k_mObjectToWorld._m00_m01_m02, -k_vDirectional_Dir.xyz);
   r2.y = dot(k_mObjectToWorld._m10_m11_m12, -k_vDirectional_Dir.xyz);
   r2.z = dot(k_mObjectToWorld._m20_m21_m22, -k_vDirectional_Dir.xyz);
-  r0.w = dot(r2.xyz, r1.xyz);
-  r0.w = -k_vSlopeBlend.x + r0.w;
-  r1.x = k_vSlopeBlend.y + -k_vSlopeBlend.x;
-  r0.w = saturate(r0.w / r1.x);
-  r0.xyz = r0.xyz * r0.www;
+  r1.x = dot(r2.xyz, r1.xyz);
+  r1.x = -k_vSlopeBlend.x + r1.x;
+  r1.y = k_vSlopeBlend.y + -k_vSlopeBlend.x;
+  r1.x = saturate(r1.x / r1.y);
+  r0.yzw = r1.xxx * r0.yzw;
+  r0.xyz = r0.yzw * r0.xxx;
   o0.w = dot(r0.xyz, k_vHDRLuminanceWeights.xyz);
   o0.xyz = r0.xyz;
   return;
@@ -142,7 +147,7 @@ r0.x -= stereo.x * (r0.z - stereo.y)*v4.z/2;
 //   float4 k_vHDRLuminanceWeights;     // Offset:  352 Size:    16
 //   float3 k_vHalfDims;                // Offset:  368 Size:    12 [unused]
 //   float4 k_vObjectColor;             // Offset:  384 Size:    16
-//   float4 k_vObjectLightColor;        // Offset:  400 Size:    16 [unused]
+//   float4 k_vObjectLightColor;        // Offset:  400 Size:    16
 //   float3 k_vObjectSpaceEyePos;       // Offset:  416 Size:    12 [unused]
 //   float2 k_vPerspOrthoMask;          // Offset:  432 Size:     8
 //   float2 k_vScene_TexCoordScale;     // Offset:  440 Size:     8 [unused]
@@ -160,10 +165,12 @@ r0.x -= stereo.x * (r0.z - stereo.y)*v4.z/2;
 // sProjectedTextureSampler          sampler      NA          NA    1        1
 // sDeferredNormalsSampler           sampler      NA          NA    2        1
 // sDepthMapSampler                  sampler      NA          NA    3        1
+// sShadowMaskSampler                sampler      NA          NA    4        1
 // tAttenuationTexture               texture  float4          2d    0        1
 // tProjectedTexture                 texture  float4          2d    1        1
 // tDeferredNormals                  texture  float4          2d    2        1
 // tDepthMap                         texture  float4          2d    3        1
+// tShadowMask                       texture  float4          2d    4        1
 // $Globals                          cbuffer      NA          NA    0        1
 //
 //
@@ -191,51 +198,57 @@ dcl_sampler s0, mode_default
 dcl_sampler s1, mode_default
 dcl_sampler s2, mode_default
 dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
 dcl_input_ps linear v1.xyw
 dcl_input_ps linear v3.xy
 dcl_output o0.xyzw
-dcl_temps 3
+dcl_temps 4
 div r0.xy, v1.xyxx, v1.wwww
 sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.xyxx, t2.xyzw, s2
-sample_indexable(texture2d)(float,float,float,float) r0.z, r0.xyxx, t3.yzxw, s3
-add r1.w, r1.w, l(-0.501961)
+add r0.z, r1.w, l(-0.501961)
 mad r1.xyz, r1.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-lt r1.w, -r1.w, l(0.000000)
-discard_nz r1.w
-div r2.xy, v3.xyxx, v1.wwww
-mov r0.w, l(1.000000)
-dp2 r1.w, r0.zwzz, cb0[27].xyxx
-mul r0.xy, r2.xyxx, r1.wwww
-dp4_sat r2.x, cb0[6].xyzw, r0.xyzw
-dp4_sat r2.y, cb0[7].xyzw, r0.xyzw
-dp4_sat r2.z, cb0[8].xyzw, r0.xyzw
-sample_indexable(texture2d)(float,float,float,float) r0.xyzw, r2.xyxx, t1.xyzw, s1
-mov r2.w, l(0)
-sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.wzww, t0.xyzw, s0
-mul r0.xyzw, r0.xyzw, r2.xyzw
-mul r0.xyz, r0.xyzx, cb0[24].xyzx
-mul r0.xyz, r0.xyzx, cb0[24].wwww
-mul r0.xyz, r0.wwww, r0.xyzx
-mul r0.xyz, r0.xyzx, cb0[5].xxxx
-dp3 r0.w, r1.xyzx, r1.xyzx
-rsq r0.w, r0.w
-mul r1.xyz, r0.wwww, r1.xyzx
+lt r0.z, -r0.z, l(0.000000)
+discard_nz r0.z
+sample_indexable(texture2d)(float,float,float,float) r2.z, r0.xyxx, t3.yzxw, s3
+sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t4.xyzw, s4
+add r0.x, r0.x, -cb0[25].w
+add_sat r0.x, r0.x, l(1.000000)
+div r0.yz, v3.xxyx, v1.wwww
+mov r2.w, l(1.000000)
+dp2 r0.w, r2.zwzz, cb0[27].xyxx
+mul r2.xy, r0.yzyy, r0.wwww
+dp4_sat r3.x, cb0[6].xyzw, r2.xyzw
+dp4_sat r3.y, cb0[7].xyzw, r2.xyzw
+dp4_sat r3.z, cb0[8].xyzw, r2.xyzw
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.xyxx, t1.xyzw, s1
+mov r3.w, l(0)
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.wzww, t0.xyzw, s0
+mul r2.xyzw, r2.xyzw, r3.xyzw
+mul r0.yzw, r2.xxyz, cb0[24].xxyz
+mul r0.yzw, r0.yyzw, cb0[24].wwww
+mul r0.yzw, r2.wwww, r0.yyzw
+mul r0.yzw, r0.yyzw, cb0[5].xxxx
+dp3 r1.w, r1.xyzx, r1.xyzx
+rsq r1.w, r1.w
+mul r1.xyz, r1.wwww, r1.xyzx
 dp3 r2.x, cb0[13].xyzx, -cb0[20].xyzx
 dp3 r2.y, cb0[14].xyzx, -cb0[20].xyzx
 dp3 r2.z, cb0[15].xyzx, -cb0[20].xyzx
-dp3 r0.w, r2.xyzx, r1.xyzx
-add r0.w, r0.w, -cb0[5].y
-add r1.x, -cb0[5].y, cb0[5].z
-div_sat r0.w, r0.w, r1.x
-mul r0.xyz, r0.wwww, r0.xyzx
+dp3 r1.x, r2.xyzx, r1.xyzx
+add r1.x, r1.x, -cb0[5].y
+add r1.y, -cb0[5].y, cb0[5].z
+div_sat r1.x, r1.x, r1.y
+mul r0.yzw, r0.yyzw, r1.xxxx
+mul r0.xyz, r0.xxxx, r0.yzwy
 dp3 o0.w, r0.xyzx, cb0[22].xyzx
 mov o0.xyz, r0.xyzx
 ret 
-// Approximately 36 instruction slots used
+// Approximately 40 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -283,7 +296,7 @@ ret
 //   float4 k_vHDRLuminanceWeights;     // Offset:  352 Size:    16
 //   float3 k_vHalfDims;                // Offset:  368 Size:    12 [unused]
 //   float4 k_vObjectColor;             // Offset:  384 Size:    16
-//   float4 k_vObjectLightColor;        // Offset:  400 Size:    16 [unused]
+//   float4 k_vObjectLightColor;        // Offset:  400 Size:    16
 //   float3 k_vObjectSpaceEyePos;       // Offset:  416 Size:    12 [unused]
 //   float2 k_vPerspOrthoMask;          // Offset:  432 Size:     8
 //   float2 k_vScene_TexCoordScale;     // Offset:  440 Size:     8 [unused]
@@ -301,10 +314,12 @@ ret
 // sProjectedTextureSampler_s        sampler      NA          NA    1        1
 // sDeferredNormalsSampler_s         sampler      NA          NA    2        1
 // sDepthMapSampler_s                sampler      NA          NA    3        1
+// sShadowMaskSampler_s              sampler      NA          NA    4        1
 // tAttenuationTexture               texture  float4          2d    0        1
 // tProjectedTexture                 texture  float4          2d    1        1
 // tDeferredNormals                  texture  float4          2d    2        1
 // tDepthMap                         texture  float4          2d    3        1
+// tShadowMask                       texture  float4          2d    4        1
 // _Globals                          cbuffer      NA          NA    0        1
 //
 //
@@ -332,50 +347,56 @@ dcl_sampler s0, mode_default
 dcl_sampler s1, mode_default
 dcl_sampler s2, mode_default
 dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
 dcl_input_ps linear v1.xyw
 dcl_input_ps linear v3.xy
 dcl_output o0.xyzw
-dcl_temps 3
+dcl_temps 4
 div r0.xy, v1.xyxx, v1.wwww
 sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.xyxx, t2.xyzw, s2
 add r0.z, r1.w, l(-0.501961)
 lt r0.z, -r0.z, l(0.000000)
 discard_nz r0.z
-sample_indexable(texture2d)(float,float,float,float) r0.z, r0.xyxx, t3.yzxw, s3
 mad r1.xyz, r1.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-div r2.xy, v3.xyxx, v1.wwww
-mov r0.w, l(1.000000)
-dp2 r1.w, r0.zwzz, cb0[27].xyxx
-mul r0.xy, r2.xyxx, r1.wwww
-dp4_sat r2.x, cb0[6].xyzw, r0.xyzw
-dp4_sat r2.y, cb0[7].xyzw, r0.xyzw
-dp4_sat r0.y, cb0[8].xyzw, r0.xyzw
-sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.xyxx, t1.xyzw, s1
-mov r0.x, l(0)
-sample_indexable(texture2d)(float,float,float,float) r0.xyzw, r0.xyxx, t0.xyzw, s0
-mul r0.xyzw, r2.xyzw, r0.xyzw
-mul r0.xyz, r0.xyzx, cb0[24].xyzx
-mul r0.xyz, r0.xyzx, cb0[24].wwww
-mul r0.xyz, r0.wwww, r0.xyzx
-mul r0.xyz, r0.xyzx, cb0[5].xxxx
-dp3 r0.w, r1.xyzx, r1.xyzx
-rsq r0.w, r0.w
-mul r1.xyz, r0.wwww, r1.xyzx
+sample_indexable(texture2d)(float,float,float,float) r2.z, r0.xyxx, t3.yzxw, s3
+sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t4.xyzw, s4
+add r0.x, r0.x, -cb0[25].w
+add_sat r0.x, r0.x, l(1.000000)
+div r0.yz, v3.xxyx, v1.wwww
+mov r2.w, l(1.000000)
+dp2 r0.w, r2.zwzz, cb0[27].xyxx
+mul r2.xy, r0.yzyy, r0.wwww
+dp4_sat r3.x, cb0[6].xyzw, r2.xyzw
+dp4_sat r3.y, cb0[7].xyzw, r2.xyzw
+dp4_sat r2.y, cb0[8].xyzw, r2.xyzw
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.xyxx, t1.xyzw, s1
+mov r2.x, l(0)
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.xyxx, t0.xyzw, s0
+mul r2.xyzw, r3.xyzw, r2.xyzw
+mul r0.yzw, r2.xxyz, cb0[24].xxyz
+mul r0.yzw, r0.yyzw, cb0[24].wwww
+mul r0.yzw, r2.wwww, r0.yyzw
+mul r0.yzw, r0.yyzw, cb0[5].xxxx
+dp3 r1.w, r1.xyzx, r1.xyzx
+rsq r1.w, r1.w
+mul r1.xyz, r1.wwww, r1.xyzx
 dp3 r2.x, cb0[13].xyzx, -cb0[20].xyzx
 dp3 r2.y, cb0[14].xyzx, -cb0[20].xyzx
 dp3 r2.z, cb0[15].xyzx, -cb0[20].xyzx
-dp3 r0.w, r2.xyzx, r1.xyzx
-add r0.w, r0.w, -cb0[5].y
-add r1.x, -cb0[5].y, cb0[5].z
-div_sat r0.w, r0.w, r1.x
-mul r0.xyz, r0.wwww, r0.xyzx
+dp3 r1.x, r2.xyzx, r1.xyzx
+add r1.x, r1.x, -cb0[5].y
+add r1.y, -cb0[5].y, cb0[5].z
+div_sat r1.x, r1.x, r1.y
+mul r0.yzw, r0.yyzw, r1.xxxx
+mul r0.xyz, r0.xxxx, r0.yzwy
 dp3 o0.w, r0.xyzx, cb0[22].xyzx
 mov o0.xyz, r0.xyzx
 ret 
-// Approximately 36 instruction slots used
+// Approximately 40 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

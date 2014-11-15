@@ -93,10 +93,11 @@ r0.w = BufferSrc_SB[v0.x].vPosition.z;
   
 //Mike_ar69 - Stereo Shift
 float4 stereo = StereoParams.Load(0);
-o0.x += stereo.x * (o0.z - stereo.y)*0.6; //*k_vFullViewPlane.z/2;    
-  
+o0.x += stereo.x * (o0.z - stereo.y)*0.645; //k_vFullViewPlane.z/2;    
+ 
   
   r1.yzw = k_vObjectSpaceEyePos.xyz + -r0.yzw;
+  
 // Manual fix for now of complicated struct usage
 // ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
 r3.x = BufferSrc_SB[v0.x].vVelocity.y;
@@ -111,7 +112,7 @@ r3.w = BufferSrc_SB[v0.x].fUserData.x;
   
 //Mike_ar69 - Stereo Shift
 // float4 stereo = StereoParams.Load(0);
-o1.x += stereo.x * (o1.z - stereo.y)*0.6; //*k_vFullViewPlane.z/2;    
+o1.x += stereo.x * (o1.z - stereo.y)*0.645; //k_vFullViewPlane.y/2;    
   
   r0.x = dot(k_mObjectToWorld._m00_m01_m02, r1.yzw);
   r0.z = dot(k_mObjectToWorld._m20_m21_m22, r1.yzw);

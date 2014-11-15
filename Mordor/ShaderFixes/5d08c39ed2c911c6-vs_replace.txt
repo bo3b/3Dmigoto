@@ -100,7 +100,7 @@ r2.z = BufferSrc_SB[v0.x].vPosition.z;
   
 //Mike_ar69 - Stereo Shift
 float4 stereo = StereoParams.Load(0);
-r1.x += stereo.x * (r1.z - stereo.y)*0.6; //*k_vFullViewPlane.z/2;  
+r1.x += stereo.x * (r1.z - stereo.y)*0.645; //*k_vFullViewPlane.z/2;  
   
   o0.xyz = r1.xyz;
   o1.x = r2.w;

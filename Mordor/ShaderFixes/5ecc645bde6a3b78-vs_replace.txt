@@ -67,11 +67,16 @@ void main(
   out float2 o1 : TEXCOORD0,
   out float4 o2 : TEXCOORD2,
   out float4 o3 : TEXCOORD1,
+  out float4 o5 : TEXCOORD3,
   out float4 o4 : COLOR0)
 {
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask;
   r0.xyz = v0.xyz;
+  
+o5.xyzw = k_vFullViewPlane.xyzw;
+
+
   r0.w = 1.000000000e+000;
   r1.x = dot(k_mObjectToClip._m20_m21_m22_m23, r0.xyzw);
   r1.z = k_fDepthAdjust * r1.x;

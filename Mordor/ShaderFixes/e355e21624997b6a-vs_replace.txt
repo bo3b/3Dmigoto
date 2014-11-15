@@ -1,4 +1,4 @@
-//Haloing
+//decals
 cbuffer _Globals : register(b0)
 {
   float k_fInvLightRadius : packoffset(c0);
@@ -41,6 +41,13 @@ cbuffer _Globals : register(b0)
   row_major float4x4 k_mPrevObjectToClip : packoffset(c58);
   row_major float3x4 k_mPrevObjectToView : packoffset(c62);
   row_major float3x4 k_mPrevObjectToWorld : packoffset(c65);
+  float k_fDiffuseAlpha : packoffset(c68) = float(1.000000e+000);
+  float k_fFalloffStrength : packoffset(c68.y) = float(2.000000e+000);
+  float k_fSlopeCull : packoffset(c68.z) = float(0.000000e+000);
+  float k_fMaxSpecularPower : packoffset(c68.w) = float(6.400000e+001);
+  float k_fSpecularScale : packoffset(c69) = float(1.000000e+000);
+  float k_fFresnelTerm : packoffset(c69.y) = float(1.000000e+000);
+  int k_bRendersEmissive : packoffset(c69.z) = int(1.401298e-045);
 }
 
 cbuffer CBuffer_View : register(b12)
@@ -85,13 +92,11 @@ void main(
   out float4 o0 : SV_POSITION0,
   out float4 o1 : TEXCOORD0,
   out float2 o2 : TEXCOORD1,
-  out float3 o3 : TEXCOORD2,
-  out float4 o4 : TEXCOORD3
-  )
+  out float4 o4 : TEXCOORD3)
 {
   float4 r0,r1;
-  uint4 bitmask; 
-  
+  uint4 bitmask;
+
 o4.xyzw = k_vFullViewPlane.xyzw;
 
   r0.xy = k_vHalfDims.xy * v0.xy;
@@ -105,26 +110,21 @@ o4.xyzw = k_vFullViewPlane.xyzw;
   r0.y = dot(k_mObjectToClip._m10_m11_m12_m13, r1.xyzw);
   r0.z = dot(k_mObjectToClip._m20_m21_m22_m23, r1.xyzw);
   r0.w = dot(k_mObjectToClip._m30_m31_m32_m33, r1.xyzw);
-  o3.xyz = k_vObjectSpaceEyePos.xyz + -r1.xyz;
   
 float4 stereo = StereoParams.Load(0);
 float4 r23, r20;
 r23.xyzw = r0.xyzw;
-r0.x += stereo.x * (r0.w - stereo.y);  
+r0.x += stereo.x * (r0.w - stereo.y); 
+o0.xyzw = r23.xyzw; 
   
-  o0.xyzw = r23.xyzw;
+  // o0.xyzw = r0.xyzw;
   o1.zw = r0.zw;
   r1.xy = k_vScene_TexCoordScale.xy * r0.ww;
   r0.zw = k_vFullViewPlane.xy * r0.ww;
   r1.zw = k_vScene_TexCoordScale.xy * float2(1.000000e+000,-1.000000e+000);
-  
   r0.xy = r0.xy * r1.zw + r1.xy;
-r20.xy = r23.xy * r1.zw + r1.xy;  
   o1.xy = r0.xy;
-o2.xy = r0.xy * k_vFullViewPlane.zw + r0.zw;
-  
-  
-  // o0=0;
+  o2.xy = r0.xy * k_vFullViewPlane.zw + r0.zw;
   return;
 }
 
@@ -174,10 +174,24 @@ o2.xy = r0.xy * k_vFullViewPlane.zw + r0.zw;
 //   row_major float3x4 k_mObjectToView;// Offset:  800 Size:    48 [unused]
 //   row_major float3x4 k_mObjectToWorld;// Offset:  848 Size:    48
 //   float4 k_vObjectColor;             // Offset:  896 Size:    16 [unused]
-//   float3 k_vObjectSpaceEyePos;       // Offset:  912 Size:    12
+//   float3 k_vObjectSpaceEyePos;       // Offset:  912 Size:    12 [unused]
 //   row_major float4x4 k_mPrevObjectToClip;// Offset:  928 Size:    64 [unused]
 //   row_major float3x4 k_mPrevObjectToView;// Offset:  992 Size:    48 [unused]
 //   row_major float3x4 k_mPrevObjectToWorld;// Offset: 1040 Size:    48 [unused]
+//   float k_fDiffuseAlpha;             // Offset: 1088 Size:     4 [unused]
+//      = 0x3f800000 
+//   float k_fFalloffStrength;          // Offset: 1092 Size:     4 [unused]
+//      = 0x40000000 
+//   float k_fSlopeCull;                // Offset: 1096 Size:     4 [unused]
+//      = 0x00000000 
+//   float k_fMaxSpecularPower;         // Offset: 1100 Size:     4 [unused]
+//      = 0x42800000 
+//   float k_fSpecularScale;            // Offset: 1104 Size:     4 [unused]
+//      = 0x3f800000 
+//   float k_fFresnelTerm;              // Offset: 1108 Size:     4 [unused]
+//      = 0x3f800000 
+//   int k_bRendersEmissive;            // Offset: 1112 Size:     4 [unused]
+//      = 0x00000001 
 //
 // }
 //
@@ -242,17 +256,15 @@ o2.xy = r0.xy * k_vFullViewPlane.zw + r0.zw;
 // SV_POSITION              0   xyzw        0      POS   float   xyzw
 // TEXCOORD                 0   xyzw        1     NONE   float   xyzw
 // TEXCOORD                 1   xy          2     NONE   float   xy  
-// TEXCOORD                 2   xyz         3     NONE   float   xyz 
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[58], immediateIndexed
+dcl_constantbuffer cb0[56], immediateIndexed
 dcl_constantbuffer cb12[25], immediateIndexed
 dcl_input v0.xyz
 dcl_output_siv o0.xyzw, position
 dcl_output o1.xyzw
 dcl_output o2.xy
-dcl_output o3.xyz
 dcl_temps 2
 mul r0.xy, v0.xyxx, cb0[21].xyxx
 mad r0.z, v0.z, cb0[21].z, cb0[21].z
@@ -265,7 +277,6 @@ dp4 r0.x, cb0[46].xyzw, r1.xyzw
 dp4 r0.y, cb0[47].xyzw, r1.xyzw
 dp4 r0.z, cb0[48].xyzw, r1.xyzw
 dp4 r0.w, cb0[49].xyzw, r1.xyzw
-add o3.xyz, -r1.xyzx, cb0[57].xyzx
 mov o0.xyzw, r0.xyzw
 mov o1.zw, r0.zzzw
 mul r1.xy, r0.wwww, cb12[24].xyxx
@@ -275,6 +286,6 @@ mad r0.xy, r0.xyxx, r1.zwzz, r1.xyxx
 mov o1.xy, r0.xyxx
 mad o2.xy, r0.xyxx, cb12[21].zwzz, r0.zwzz
 ret 
-// Approximately 21 instruction slots used
+// Approximately 20 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
