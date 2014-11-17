@@ -1127,7 +1127,7 @@ cd "$(SolutionDir)"
 REM copy all 3Dmigoto specific DLLs, and dependent files into the Release directory.  
 REM These are any items that are not specifically built, but required for the tool to work.
 
-xcopy “$(WindowsSdkDir_80)Redist\D3D\x64\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
+REM xcopy “$(WindowsSdkDir_80)Redist\D3D\x64\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
 
 REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
@@ -1138,7 +1138,7 @@ REM Use 7zip command tool to create a full release that can be unzipped into gam
 REM On game specific builds, this also includes the ShaderFixes folder.
 REM And, the d3dx.ini from game specific folder
 
-7zip\7za a Mordor\3Dmigoto-Mordor-Ver.zip  .\x64\Mordor\*.dll  .\Mordor\d3dx.ini  .\Mordor\ShaderFixes\ .\x64\Mordor\uninstall.bat
+7zip\7za a Mordor\3Dmigoto-Mordor-Ver.zip  .\x64\Mordor\*.dll  .\Mordor\d3dx.ini  .\Mordor\ShaderFixes\ .\Mordor\uninstall.bat
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
