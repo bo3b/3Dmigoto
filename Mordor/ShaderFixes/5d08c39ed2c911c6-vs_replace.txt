@@ -85,10 +85,10 @@ void main(
   r1.w = 1.000000000e+000;
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r2.xyzw, v0.x, l(0), t0.xyzw
-r2.w = BufferSrc_SB[v0.x].vVelocity.x;
 r2.x = BufferSrc_SB[v0.x].vPosition.x;
 r2.y = BufferSrc_SB[v0.x].vPosition.y;
 r2.z = BufferSrc_SB[v0.x].vPosition.z;
+r2.w = BufferSrc_SB[v0.x].vVelocity.x;
   r1.xyz = r2.xyz;
   r0.x = dot(k_mObjectToWorld._m00_m01_m02_m03, r1.xyzw);
   r0.z = dot(k_mObjectToWorld._m20_m21_m22_m23, r1.xyzw);
