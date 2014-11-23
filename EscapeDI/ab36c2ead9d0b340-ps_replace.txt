@@ -1,0 +1,416 @@
+//Shadows
+cbuffer global_viewport : register(b0)
+{
+  float3 camera_unprojection : packoffset(c0);
+  float3 camera_pos : packoffset(c1);
+  float4x4 camera_view : packoffset(c2);
+  float4x4 camera_inv_view : packoffset(c6);
+  float4x4 camera_projection : packoffset(c10);
+  float4x4 camera_inv_projection : packoffset(c14);
+  float4x4 camera_world : packoffset(c18);
+  float time : packoffset(c22);
+  float delta_time : packoffset(c22.y);
+  float2 back_buffer_size : packoffset(c22.z);
+  float g_tessellation : packoffset(c23);
+  float g_tessellation_tri_size : packoffset(c23.y);
+  float g_tessellation_detail : packoffset(c23.z);
+}
+
+cbuffer c0 : register(b1)
+{
+  float4x4 world : packoffset(c0);
+  float4x4 world_view_proj : packoffset(c4);
+}
+
+cbuffer Light : register(b2)
+{
+  float3 light_position : packoffset(c0);
+  float3 light_color : packoffset(c1);
+  float3 light_falloff : packoffset(c2);
+  float3 light_proxy_scale : packoffset(c3);
+  float light_cutoff : packoffset(c3.w);
+  float3 light_spot_falloff : packoffset(c4);
+  float4x4 world_to_shadow_map : packoffset(c5);
+}
+SamplerComparisonState shadow_map_sampler_s : register(s0);
+Texture2D<float4> albedo : register(t0);
+Texture2D<float4> normal : register(t1);
+Texture2D<float4> depth : register(t2);
+Texture2D<float4> mask : register(t3);
+Texture2D<float> shadow_map : register(t4);
+Texture2D<float> cel_target : register(t5);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : TEXCOORD1,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask;
+  r0.xy = (int2)v0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r1.xyzw = depth.Load(r0.xyw).xyzw;
+  r1.yzw = v1.xyz / v1.www;
+  r2.x = camera_inv_view._m30;
+  r2.y = camera_inv_view._m31;
+  r2.z = camera_inv_view._m32;
+  r3.xyz = r1.yzw * r1.xxx + r2.xyz;
+  r4.x = world._m10;
+  r4.y = world._m11;
+  r4.z = world._m12;
+  r2.w = dot(r4.xyz, r4.xyz);
+  r2.w = rsqrt(r2.w);
+  r5.xyz = r4.xyz * r2.www;
+  r6.xyz = -light_position.xyz + r3.xyz;
+  r2.w = dot(r5.xyz, r6.xyz);
+  r2.w = -light_cutoff + r2.w;
+  r2.w = r2.w < 0.000000000e+000;
+  if (r2.w != 0) discard;
+  r5.xyz = light_position.xyz + -r3.xyz;
+  r2.w = dot(r5.xyz, r5.xyz);
+  r2.w = sqrt(r2.w);
+  r2.w = 9.999999747e-006 + r2.w;
+  r3.w = light_falloff.x < r2.w;
+  r4.w = -light_falloff.x + r2.w;
+  r4.w = saturate(light_falloff.y * r4.w);
+  r4.w = 1.000000000e+000 + -r4.w;
+  r4.w = log2(r4.w);
+  r4.w = light_falloff.z * r4.w;
+  r4.w = exp2(r4.w);
+  r3.w = r3.w ? r4.w : 1.000000000e+000;
+  r4.w = r3.w == 0.000000;
+  if (r4.w != 0) {
+    o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+    return;
+  }
+  r2.w = 1.000000e+000 / r2.w;
+  r5.xyz = r5.xyz * r2.www;
+  r2.w = dot(r5.xyz, -r4.xyz);
+  r2.w = 1.000000000e+000 + -r2.w;
+  r4.x = light_spot_falloff.x < r2.w;
+  r2.w = -light_spot_falloff.x + r2.w;
+  r2.w = saturate(light_spot_falloff.y * r2.w);
+  r2.w = 1.000000000e+000 + -r2.w;
+  r2.w = r4.x ? r2.w : 1.000000000e+000;
+  r2.w = r3.w * r2.w;
+  r3.w = r2.w == 0.000000;
+  if (r3.w != 0) {
+    o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+    return;
+  }
+  r3.w = saturate(1.999999955e-002 * r1.x);
+  r3.w = r3.w * 1.899999976e-001 + 9.999999776e-003;
+  r1.x = -r3.w + r1.x;
+  r1.xyz = r1.yzw * r1.xxx + r2.xyz;
+  r1.w = 1.000000000e+000;
+  r2.x = dot(r1.xyzw, world_to_shadow_map._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, world_to_shadow_map._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, world_to_shadow_map._m02_m12_m22_m32);
+  r1.x = dot(r1.xyzw, world_to_shadow_map._m03_m13_m23_m33);
+  r1.xyz = r2.xyz / r1.xxx;
+
+// resinfo r4.xyzw, l(0), t4.xyzw
+shadow_map.GetDimensions(r4.x, r4.y);
+
+  r4.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000) / r4.xyxy;
+  r2.xy = r4.zw * float2(-5.000000e-001,-5.000000e-001) + r1.xy;
+  r1.w = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s, r2.xy, r1.z).x;
+  r2.xy = r4.zw * float2(-5.000000e-001,5.000000e-001) + r1.xy;
+  r2.x = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s, r2.xy, r1.z).x;
+  r1.w = r2.x + r1.w;
+  r2.xy = r4.xy * float2(5.000000e-001,-5.000000e-001) + r1.xy;
+  r2.x = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s, r2.xy, r1.z).x;
+  r1.w = r2.x + r1.w;
+  r1.xy = r4.zw * float2(5.000000e-001,5.000000e-001) + r1.xy;
+  r1.x = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s, r1.xy, r1.z).x;
+  r1.x = r1.w + r1.x;
+  r1.x = 2.500000000e-001 * r1.x;
+  r1.x = max(r1.x, 5.000000075e-002);
+  r1.x = r2.w * r1.x;
+  r1.y = r1.x == 0.000000;
+  if (r1.y != 0) {
+    o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+    return;
+  }
+  r2.x = camera_world._m30 + -r3.x;
+  r2.y = camera_world._m31 + -r3.y;
+  r2.z = camera_world._m32 + -r3.z;
+  r1.y = dot(r2.xyz, r2.xyz);
+  r1.y = rsqrt(r1.y);
+  r3.xyzw = albedo.Load(r0.xyw).xyzw;
+  r4.xyzw = normal.Load(r0.xyw).xyzw;
+  r0.xyzw = mask.Load(r0.xyz).xyzw;
+  r4.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r4.xyz;
+  r4.xyz = r4.xyz + r4.xyz;
+  r0.x = dot(r4.xyz, r4.xyz);
+  r0.x = rsqrt(r0.x);
+  r4.xyz = r4.xyz * r0.xxx;
+  r0.x = 5.000000000e+002 * r4.w;
+  r0.w = r0.y == 0.003922;
+  r1.z = r0.z + r0.z;
+  r0.w = r0.w ? r1.z : 1.000000000e+000;
+  r1.z = r0.y >= 2.352941222e-002;
+  r6.xy = r0.yz * r0.yz;
+  r6.z = r3.w;
+  r6.xyz = r1.zzz ? r6.xyz : r3.www;
+  r0.y = dot(r4.xyz, r5.xyz);
+  r0.z = saturate(r0.y);
+  r0.z = r0.z * r1.x;
+  r0.w = saturate(r0.z * r0.w);
+  r1.xzw = light_color.xyz * r0.www;
+  r2.xyz = r2.xyz * r1.yyy + r5.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r0.w = r4.w * 5.000000000e+002 + 8.000000000e+000;
+  r0.yw = float2(1.024000e+003,3.978877e-002) * r0.yw;
+  r1.y = saturate(dot(r2.xyz, r4.xyz));
+  r1.y = log2(r1.y);
+  r0.x = r1.y * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = r0.w * r0.x;
+  r2.xyz = light_color.xyz * r0.zzz;
+  r0.xzw = r2.xyz * r0.xxx;
+  r0.xzw = r0.xzw * r6.xyz;
+  r0.xzw = r1.xzw * r3.xyz + r0.xzw;
+  r1.x = (int)r0.y;
+  r1.yzw = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+
+// Hand fix from .xyzw to .x because it's a single float texture2D. 
+r1.x = cel_target.Load(r1.xyz).x;
+
+  r1.x = saturate(r1.x);
+  o0.xyz = r1.xxx * r0.xzw;
+  o0.w = 0.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.27.952.3022
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer global_viewport
+// {
+//
+//   float3 camera_unprojection;        // Offset:    0 Size:    12 [unused]
+//   float3 camera_pos;                 // Offset:   16 Size:    12 [unused]
+//   float4x4 camera_view;              // Offset:   32 Size:    64 [unused]
+//   float4x4 camera_inv_view;          // Offset:   96 Size:    64
+//   float4x4 camera_projection;        // Offset:  160 Size:    64 [unused]
+//   float4x4 camera_inv_projection;    // Offset:  224 Size:    64 [unused]
+//   float4x4 camera_world;             // Offset:  288 Size:    64
+//   float time;                        // Offset:  352 Size:     4 [unused]
+//   float delta_time;                  // Offset:  356 Size:     4 [unused]
+//   float2 back_buffer_size;           // Offset:  360 Size:     8 [unused]
+//   float g_tessellation;              // Offset:  368 Size:     4 [unused]
+//   float g_tessellation_tri_size;     // Offset:  372 Size:     4 [unused]
+//   float g_tessellation_detail;       // Offset:  376 Size:     4 [unused]
+//
+// }
+//
+// cbuffer c0
+// {
+//
+//   float4x4 world;                    // Offset:    0 Size:    64
+//   float4x4 world_view_proj;          // Offset:   64 Size:    64 [unused]
+//
+// }
+//
+// cbuffer Light
+// {
+//
+//   float3 light_position;             // Offset:    0 Size:    12
+//   float3 light_color;                // Offset:   16 Size:    12
+//   float3 light_falloff;              // Offset:   32 Size:    12
+//   float3 light_proxy_scale;          // Offset:   48 Size:    12 [unused]
+//   float light_cutoff;                // Offset:   60 Size:     4
+//   float3 light_spot_falloff;         // Offset:   64 Size:    12
+//   float4x4 world_to_shadow_map;      // Offset:   80 Size:    64
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// shadow_map_sampler              sampler_c      NA          NA    0        1
+// albedo                            texture  float4          2d    0        1
+// normal                            texture  float4          2d    1        1
+// depth                             texture  float4          2d    2        1
+// mask                              texture  float4          2d    3        1
+// shadow_map                        texture   float          2d    4        1
+// cel_target                        texture   float          2d    5        1
+// global_viewport                   cbuffer      NA          NA    0        1
+// c0                                cbuffer      NA          NA    1        1
+// Light                             cbuffer      NA          NA    2        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 1   xyzw        1     NONE   float   xyzw
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_TARGET                0   xyzw        0   TARGET   float   xyzw
+//
+ps_4_0
+dcl_constantbuffer cb0[21], immediateIndexed
+dcl_constantbuffer cb1[3], immediateIndexed
+dcl_constantbuffer cb2[9], immediateIndexed
+dcl_sampler s0, mode_comparison
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xyzw
+dcl_output o0.xyzw
+dcl_temps 7
+ftoi r0.xy, v0.xyxx
+mov r0.zw, l(0,0,0,0)
+ld r1.xyzw, r0.xyww, t2.xyzw
+div r1.yzw, v1.xxyz, v1.wwww
+mov r2.x, cb0[6].w
+mov r2.y, cb0[7].w
+mov r2.z, cb0[8].w
+mad r3.xyz, r1.yzwy, r1.xxxx, r2.xyzx
+mov r4.x, cb1[0].y
+mov r4.y, cb1[1].y
+mov r4.z, cb1[2].y
+dp3 r2.w, r4.xyzx, r4.xyzx
+rsq r2.w, r2.w
+mul r5.xyz, r2.wwww, r4.xyzx
+add r6.xyz, r3.xyzx, -cb2[0].xyzx
+dp3 r2.w, r5.xyzx, r6.xyzx
+add r2.w, r2.w, -cb2[3].w
+lt r2.w, r2.w, l(0.000000)
+discard_nz r2.w
+add r5.xyz, -r3.xyzx, cb2[0].xyzx
+dp3 r2.w, r5.xyzx, r5.xyzx
+sqrt r2.w, r2.w
+add r2.w, r2.w, l(0.000010)
+lt r3.w, cb2[2].x, r2.w
+add r4.w, r2.w, -cb2[2].x
+mul_sat r4.w, r4.w, cb2[2].y
+add r4.w, -r4.w, l(1.000000)
+log r4.w, r4.w
+mul r4.w, r4.w, cb2[2].z
+exp r4.w, r4.w
+movc r3.w, r3.w, r4.w, l(1.000000)
+eq r4.w, r3.w, l(0.000000)
+if_nz r4.w
+  mov o0.xyzw, l(0,0,0,0)
+  ret 
+endif 
+div r2.w, l(1.000000, 1.000000, 1.000000, 1.000000), r2.w
+mul r5.xyz, r2.wwww, r5.xyzx
+dp3 r2.w, r5.xyzx, -r4.xyzx
+add r2.w, -r2.w, l(1.000000)
+lt r4.x, cb2[4].x, r2.w
+add r2.w, r2.w, -cb2[4].x
+mul_sat r2.w, r2.w, cb2[4].y
+add r2.w, -r2.w, l(1.000000)
+movc r2.w, r4.x, r2.w, l(1.000000)
+mul r2.w, r2.w, r3.w
+eq r3.w, r2.w, l(0.000000)
+if_nz r3.w
+  mov o0.xyzw, l(0,0,0,0)
+  ret 
+endif 
+mul_sat r3.w, r1.x, l(0.020000)
+mad r3.w, r3.w, l(0.190000), l(0.010000)
+add r1.x, r1.x, -r3.w
+mad r1.xyz, r1.yzwy, r1.xxxx, r2.xyzx
+mov r1.w, l(1.000000)
+dp4 r2.x, r1.xyzw, cb2[5].xyzw
+dp4 r2.y, r1.xyzw, cb2[6].xyzw
+dp4 r2.z, r1.xyzw, cb2[7].xyzw
+dp4 r1.x, r1.xyzw, cb2[8].xyzw
+div r1.xyz, r2.xyzx, r1.xxxx
+resinfo r4.xyzw, l(0), t4.xyzw
+div r4.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000), r4.xyxy
+mad r2.xy, r4.zwzz, l(-0.500000, -0.500000, 0.000000, 0.000000), r1.xyxx
+sample_c_lz r1.w, r2.xyxx, t4.xxxx, s0, r1.z
+mad r2.xy, r4.zwzz, l(-0.500000, 0.500000, 0.000000, 0.000000), r1.xyxx
+sample_c_lz r2.x, r2.xyxx, t4.xxxx, s0, r1.z
+add r1.w, r1.w, r2.x
+mad r2.xy, r4.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), r1.xyxx
+sample_c_lz r2.x, r2.xyxx, t4.xxxx, s0, r1.z
+add r1.w, r1.w, r2.x
+mad r1.xy, r4.zwzz, l(0.500000, 0.500000, 0.000000, 0.000000), r1.xyxx
+sample_c_lz r1.x, r1.xyxx, t4.xxxx, s0, r1.z
+add r1.x, r1.x, r1.w
+mul r1.x, r1.x, l(0.250000)
+max r1.x, r1.x, l(0.050000)
+mul r1.x, r1.x, r2.w
+eq r1.y, r1.x, l(0.000000)
+if_nz r1.y
+  mov o0.xyzw, l(0,0,0,0)
+  ret 
+endif 
+add r2.x, -r3.x, cb0[18].w
+add r2.y, -r3.y, cb0[19].w
+add r2.z, -r3.z, cb0[20].w
+dp3 r1.y, r2.xyzx, r2.xyzx
+rsq r1.y, r1.y
+ld r3.xyzw, r0.xyww, t0.xyzw
+ld r4.xyzw, r0.xyww, t1.xyzw
+ld r0.xyzw, r0.xyzw, t3.xyzw
+add r4.xyz, r4.xyzx, l(-0.500000, -0.500000, -0.500000, 0.000000)
+add r4.xyz, r4.xyzx, r4.xyzx
+dp3 r0.x, r4.xyzx, r4.xyzx
+rsq r0.x, r0.x
+mul r4.xyz, r0.xxxx, r4.xyzx
+mul r0.x, r4.w, l(500.000000)
+eq r0.w, r0.y, l(0.003922)
+add r1.z, r0.z, r0.z
+movc r0.w, r0.w, r1.z, l(1.000000)
+ge r1.z, r0.y, l(0.023529)
+mul r6.xy, r0.yzyy, r0.yzyy
+mov r6.z, r3.w
+movc r6.xyz, r1.zzzz, r6.xyzx, r3.wwww
+dp3 r0.y, r4.xyzx, r5.xyzx
+mov_sat r0.z, r0.y
+mul r0.z, r1.x, r0.z
+mul_sat r0.w, r0.w, r0.z
+mul r1.xzw, r0.wwww, cb2[1].xxyz
+mad r2.xyz, r2.xyzx, r1.yyyy, r5.xyzx
+dp3 r0.w, r2.xyzx, r2.xyzx
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, r2.xyzx
+mad r0.w, r4.w, l(500.000000), l(8.000000)
+mul r0.yw, r0.yyyw, l(0.000000, 1024.000000, 0.000000, 0.039789)
+dp3_sat r1.y, r2.xyzx, r4.xyzx
+log r1.y, r1.y
+mul r0.x, r0.x, r1.y
+exp r0.x, r0.x
+mul r0.x, r0.x, r0.w
+mul r2.xyz, r0.zzzz, cb2[1].xyzx
+mul r0.xzw, r0.xxxx, r2.xxyz
+mul r0.xzw, r6.xxyz, r0.xxzw
+mad r0.xzw, r1.xxzw, r3.xxyz, r0.xxzw
+ftoi r1.x, r0.y
+mov r1.yzw, l(0,0,0,0)
+ld r1.xyzw, r1.xyzw, t5.xyzw
+mov_sat r1.x, r1.x
+mul o0.xyz, r0.xzwx, r1.xxxx
+mov o0.w, l(0)
+ret 
+// Approximately 130 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
