@@ -1,3 +1,10 @@
+// Gigantic 1000 line shader for shadows.
+
+// Compile now after manual fixes, but does not generate code for the ld_structured_indexable sections,
+// the compiler deems those as never reached and stripped.
+// unknown how to fix at moment.
+
+// In current state, seems to introduce squares where some shadows should be.
 
 cbuffer cb_g_Frame : register(b1)
 {
@@ -2161,5 +2168,4 @@ mul o0.w, r0.y, cb2[35].x
 mov o1.w, l(1.000000)
 ret 
 // Approximately 689 instruction slots used
- 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
