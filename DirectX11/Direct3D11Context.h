@@ -535,13 +535,10 @@ static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *cont
 	// where we are absolutely certain that everyone is set up correctly.  And where we can
 	// get the original ID3D11Device.  This used to be done through the DXGI Present interface,
 	// but that had a number of problems.
-	if (G->hunting)
-	{
-		D3D11Wrapper::ID3D11Device *device;
-		context->GetDevice(&device);
-
-		RunFrameActions((D3D11Base::ID3D11Device *)device->m_pUnk);
-	}
+	D3D11Wrapper::ID3D11Device *device;
+	context->GetDevice(&device);
+	RunFrameActions((D3D11Base::ID3D11Device *)device->m_pUnk);
+	device->Release();
 }
 
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_

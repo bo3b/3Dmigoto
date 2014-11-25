@@ -1872,6 +1872,7 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 	}
 }
 
+extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
 // Called indirectly through the QueryInterface for every vertical blanking, based on calls to
 // IDXGISwapChain1::Present1 and/or IDXGISwapChain::Present in the dxgi interface wrapper.
@@ -1903,6 +1904,12 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
+
+	// Send the secret callback to the nvapi.dll to give time to aiming override.
+	// This is done here because this will be called at first game Draw call, and thus very
+	// late from the init standpoint, which fixes DirectInput failures.  And avoids
+	// crashes when we use a secondary thread to give time to aiming override.
+	nvapi_QueryInterface(0xb03bb03b);
 
 	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
 	if (!G->hunting)

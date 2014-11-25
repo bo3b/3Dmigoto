@@ -49,6 +49,10 @@ HRESULT InitDirectInput()
 {
 	HRESULT hr;
 
+	// If we've already done init, we need to skip out. This is expected to be called often.
+	if (g_pJoystick != NULL)
+		return S_OK;
+
 	// Log XInput devices.
 	if (LogInput)
 	{
@@ -133,11 +137,15 @@ HRESULT InitDirectInput()
 			return hr;
 	}
 
+	// Seemed to be missing early Aquire, and relying upon retries in UpdateInput.
+	// But might interfere with other uses/be blocked from input.
+	if (FAILED(hr = g_pJoystick->Acquire()))
+		return hr;
+
 	// Enumerate the joystick objects. The callback function enabled user
 	// interface elements for objects that are found, and sets the min/max
 	// values property for discovered axes.
-	if (FAILED(hr = g_pJoystick->EnumObjects(EnumObjectsCallback,
-		0, DIDFT_ALL)))
+	if (FAILED(hr = g_pJoystick->EnumObjects(EnumObjectsCallback, 0, DIDFT_BUTTON)))
 		return hr;
 
 	if (ActionButton == 0xffffffff)
@@ -425,6 +433,12 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 void UpdateInputState()
 {
 	HRESULT hr;
+
+	// This is late binding init, right when we want to start using it.  The reason to do this late
+	// init is because there is some glitch with DirectInput that will prevent this from ever seeing
+	// any changes in the keyboard or mouse status if we init 'too early.' It seems somehow locked out
+	// by games, sometimes, not always.  This late-binding technique seems to always work.
+	InitDirectInput();
 
 	// Reading XInput device.
 	if (XInputDeviceId >= 0)
