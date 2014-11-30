@@ -666,29 +666,31 @@ void InitializeDLL()
 		if (LogFile)
 		{
 			fprintf(LogFile, "[Hunting]\n");
-			if (G->hunting)	fprintf(LogFile, "  hunting=1\n");
-			if (InputDevice) fwprintf(LogFile, L"  Input=%s\n", InputDevice);
-			if (G->marking_mode != -1) fwprintf(LogFile, L"  marking_mode=%d\n", G->marking_mode);
+			if (G->hunting)
+			{
+				fprintf(LogFile, "  hunting=1\n");
+				if (InputDevice) fwprintf(LogFile, L"  Input=%s\n", InputDevice);
+				if (G->marking_mode != -1) fwprintf(LogFile, L"  marking_mode=%d\n", G->marking_mode);
 
-			if (InputAction[0][0]) fwprintf(LogFile, L"  next_pixelshader=%s\n", InputAction[0]);
-			if (InputAction[1][0]) fwprintf(LogFile, L"  previous_pixelshader=%s\n", InputAction[1]);
-			if (InputAction[2][0]) fwprintf(LogFile, L"  mark_pixelshader=%s\n", InputAction[2]);
+				if (InputAction[0][0]) fwprintf(LogFile, L"  next_pixelshader=%s\n", InputAction[0]);
+				if (InputAction[1][0]) fwprintf(LogFile, L"  previous_pixelshader=%s\n", InputAction[1]);
+				if (InputAction[2][0]) fwprintf(LogFile, L"  mark_pixelshader=%s\n", InputAction[2]);
 
-			if (InputAction[7][0]) fwprintf(LogFile, L"  next_vertexshader=%s\n", InputAction[7]);
-			if (InputAction[8][0]) fwprintf(LogFile, L"  previous_vertexshader=%s\n", InputAction[8]);
-			if (InputAction[9][0]) fwprintf(LogFile, L"  mark_vertexshader=%s\n", InputAction[9]);
+				if (InputAction[7][0]) fwprintf(LogFile, L"  next_vertexshader=%s\n", InputAction[7]);
+				if (InputAction[8][0]) fwprintf(LogFile, L"  previous_vertexshader=%s\n", InputAction[8]);
+				if (InputAction[9][0]) fwprintf(LogFile, L"  mark_vertexshader=%s\n", InputAction[9]);
 
-			if (InputAction[4][0]) fwprintf(LogFile, L"  next_indexbuffer=%s\n", InputAction[4]);
-			if (InputAction[5][0]) fwprintf(LogFile, L"  previous_indexbuffer=%s\n", InputAction[5]);
-			if (InputAction[6][0]) fwprintf(LogFile, L"  mark_indexbuffer=%s\n", InputAction[6]);
+				if (InputAction[4][0]) fwprintf(LogFile, L"  next_indexbuffer=%s\n", InputAction[4]);
+				if (InputAction[5][0]) fwprintf(LogFile, L"  previous_indexbuffer=%s\n", InputAction[5]);
+				if (InputAction[6][0]) fwprintf(LogFile, L"  mark_indexbuffer=%s\n", InputAction[6]);
 
-			if (InputAction[12][0]) fwprintf(LogFile, L"  next_rendertarget=%s\n", InputAction[12]);
-			if (InputAction[13][0]) fwprintf(LogFile, L"  previous_rendertarget=%s\n", InputAction[13]);
-			if (InputAction[14][0]) fwprintf(LogFile, L"  mark_rendertarget=%s\n", InputAction[14]);
+				if (InputAction[12][0]) fwprintf(LogFile, L"  next_rendertarget=%s\n", InputAction[12]);
+				if (InputAction[13][0]) fwprintf(LogFile, L"  previous_rendertarget=%s\n", InputAction[13]);
+				if (InputAction[14][0]) fwprintf(LogFile, L"  mark_rendertarget=%s\n", InputAction[14]);
 
-			if (InputAction[3][0]) fwprintf(LogFile, L"  take_screenshot=%s\n", InputAction[3]);
-			if (InputAction[21][0]) fwprintf(LogFile, L"  reload_fixes=%s\n", InputAction[21]);
-
+				if (InputAction[3][0]) fwprintf(LogFile, L"  take_screenshot=%s\n", InputAction[3]);
+				if (InputAction[21][0]) fwprintf(LogFile, L"  reload_fixes=%s\n", InputAction[21]);
+			}
 			fprintf(LogFile, "  ... missing tuning ini section\n");
 		}
 
@@ -1909,7 +1911,7 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// This is done here because this will be called at first game Draw call, and thus very
 	// late from the init standpoint, which fixes DirectInput failures.  And avoids
 	// crashes when we use a secondary thread to give time to aiming override.
-	nvapi_QueryInterface(0xb03bb03b);
+	//nvapi_QueryInterface(0xb03bb03b);
 
 	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
 	if (!G->hunting)
