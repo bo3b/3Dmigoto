@@ -308,9 +308,11 @@ static void loadDll()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		//wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
+		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction, MAX_PATH, sysDir);
-		//end = InputAction[0] + wcslen(InputAction[0]) - 1; while (end > InputAction[0] && iswspace(*end)) end--; *(end + 1) = 0;
+		end = InputAction + wcslen(InputAction) - 1; while (end > InputAction && iswspace(*end)) end--; *(end + 1) = 0;
+		GetPrivateProfileString(L"OverrideSettings", L"Toggle", 0, ToggleAction, MAX_PATH, sysDir);
+		end = ToggleAction + wcslen(ToggleAction) - 1; while (end > ToggleAction && iswspace(*end)) end--; *(end + 1) = 0;
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
 			swscanf_s(valueString, L"%e", &ActionConvergence);
@@ -865,6 +867,29 @@ DWORD WINAPI AimOverride(LPVOID empty)
 
 		UpdateInputState();
 
+		// Toggle mode is on/off for each click, not click/release.
+		if (Toggle == offUp && (UserSeparation == -1))
+		{
+			_NvAPI_Stereo_GetSeparation = (tNvAPI_Stereo_GetSeparation)(*nvapi_QueryInterfacePtr)(0x451f2134);
+			(*_NvAPI_Stereo_GetSeparation)(lastStereoHandle, &UserSeparation);
+
+			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
+			(*_NvAPI_Stereo_SetSeparation)(lastStereoHandle, ActionSeparation);
+
+			if (LogInput) fprintf(LogFile, "%s - User separation input: %#x  Set separation: %f from %f\n", LogTime(), ActionButton, ActionSeparation, UserSeparation);
+		}
+		if (Toggle == onUp && (UserSeparation != -1))
+		{
+			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
+			(*_NvAPI_Stereo_SetSeparation)(lastStereoHandle, UserSeparation);
+
+			if (LogInput) fprintf(LogFile, "%s - User separation input: %#x  Set separation: %f \n", LogTime(), ActionButton, UserSeparation);
+
+			// Marks it as inactive, to avoid unneded calls to SetSeparation.
+			UserSeparation = -1;
+		}
+
+		/**
 		// ----Separation----
 		// Action key activated, not already active, and user specified override?
 		if (Action && (UserSeparation == -1) && (ActionSeparation != -1))
@@ -908,6 +933,7 @@ DWORD WINAPI AimOverride(LPVOID empty)
 			// Marks it as inactive, to avoid unneded calls to Set or GetConvergence
 			UserConvergence = -1;
 		}
+		**/
 	}
 	return 0;
 }

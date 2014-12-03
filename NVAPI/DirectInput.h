@@ -12,10 +12,18 @@
 #include <ctime>
 #include <XInput.h>
 
-extern wchar_t InputDevice[MAX_PATH], InputAction[MAX_PATH];
+extern wchar_t InputDevice[MAX_PATH], InputAction[MAX_PATH], ToggleAction[MAX_PATH];
 extern int InputDeviceId;
 extern DWORD ActionButton;
 extern bool Action;
+
+// Four states of toggle, with key presses.  
+enum tState
+{
+	offDown, offUp, onDown, onUp
+};
+extern tState Toggle;
+
 extern int XInputDeviceId;
 
 extern FILE *LogFile;

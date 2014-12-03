@@ -2,10 +2,11 @@
 
 using namespace std;
 
-wchar_t InputDevice[MAX_PATH], InputAction[MAX_PATH];
+wchar_t InputDevice[MAX_PATH], InputAction[MAX_PATH], ToggleAction[MAX_PATH];
 int InputDeviceId = 0;
 DWORD ActionButton = 0xffffffff;
 bool Action = false;
+tState Toggle = offUp;
 int XInputDeviceId = -1;
 
 HRESULT InitDirectInput();
@@ -422,6 +423,11 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 		if (LogInput) fprintf(LogFile, "Using input item %s at data offset 0x0%x for action.\n", obj, pdidoi->dwOfs);
 		ActionButton = pdidoi->dwOfs;
 	}
+	if (wcscmp(pdidoi->tszName, ToggleAction) == 0)
+	{
+		if (LogInput) fprintf(LogFile, "Using input item %s at data offset 0x0%x for toggle.\n", obj, pdidoi->dwOfs);
+		ActionButton = pdidoi->dwOfs;
+	}
 
 	return DIENUM_CONTINUE;
 }
@@ -507,6 +513,19 @@ void UpdateInputState()
 	else if (!FAILED(hr = g_pJoystick->GetDeviceState(sizeof(KeyboardState), KeyboardState)))
 	{
 		Action = KeyboardState[ActionButton] != 0;
+
+		// Must cycle through different states based solely on user input.
+		switch (Toggle)	
+		{
+			case offUp:		if (Action) Toggle = onDown;
+				break;
+			case onDown:	if (!Action) Toggle = onUp;
+				break;
+			case onUp:		if (Action) Toggle = offDown;
+				break;
+			case offDown:	if (!Action) Toggle = offUp;
+				break;
+		}
 	}
 	else if (LogInput) fprintf(LogFile, "GetDeviceState failed hr=%x\n", hr);
 }
