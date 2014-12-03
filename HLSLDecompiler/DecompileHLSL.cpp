@@ -3909,11 +3909,15 @@ public:
 	}
 
 	// The StereoParams are nearly always useful, but the depth buffer texture is rarely used.
+	// Adding .ini declaration, since declaring it doesn't cost anything and saves typing them in later.
 	void WriteAddOnDeclarations()
 	{
 		const char *StereoTextureCode = "\n"
 			"Texture2D<float4> StereoParams : register(t125);\n";
 		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode + strlen(StereoTextureCode));
+		const char *IniTextureCode = 
+			"Texture1D<float4> IniParams : register(t120);\n";
+		mOutput.insert(mOutput.end(), IniTextureCode, IniTextureCode + strlen(IniTextureCode));
 
 		if (mZRepair_DepthBuffer)
 		{
