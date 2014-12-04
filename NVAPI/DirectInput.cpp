@@ -6,7 +6,7 @@ wchar_t InputDevice[MAX_PATH], InputAction[MAX_PATH], ToggleAction[MAX_PATH];
 int InputDeviceId = 0;
 DWORD ActionButton = 0xffffffff;
 bool Action = false;
-tState Toggle = offUp;
+tState Toggle = onUp;
 int XInputDeviceId = -1;
 
 HRESULT InitDirectInput();
