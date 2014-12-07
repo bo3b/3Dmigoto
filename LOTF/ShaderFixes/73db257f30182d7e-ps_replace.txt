@@ -1,0 +1,375 @@
+
+cbuffer PER_MATERIAL : register(b0)
+{
+  float4 material_parameters : packoffset(c0);
+  float4 material_mipmap_parameters : packoffset(c1);
+  float4 material_lighting_parameters : packoffset(c2);
+  float4 textureblending_parameters0 : packoffset(c3);
+  float4 textureblending_parameters1 : packoffset(c4);
+  float4 textureblending_parameters2 : packoffset(c5);
+  float4 textureblending_parameters3 : packoffset(c6);
+  float4 textureblending_parameters4 : packoffset(c7);
+}
+
+cbuffer PER_STAGE : register(b1)
+{
+  float3 camera_upvector : packoffset(c0);
+  float4 camera_clip_distances : packoffset(c1);
+}
+
+cbuffer PER_FRAME : register(b2)
+{
+  float4 backbuffer_size : packoffset(c0);
+  float4 time_parameters : packoffset(c1);
+}
+
+cbuffer PER_INSTANCE : register(b3)
+{
+  float4 enlighten_parameters : packoffset(c0);
+  float4 enlighten_lightmap_uvlineartransform : packoffset(c1);
+  float4 enlighten_lightmap_uvtranslation : packoffset(c2);
+  float4 enlighten_sh_coeffs[3] : packoffset(c3);
+  float4 alpha_parameters : packoffset(c6);
+}
+SamplerState sampler_bilinear_wrap_s : register(s2);
+SamplerState sampler_anisotropic_wrap_s : register(s5);
+SamplerState sampler_qualityPlaceholder_wrap_s : register(s14);
+Texture2D<float4> normalSampler : register(t0);
+Texture2D<float4> specularSampler : register(t1);
+Texture2D<float4> diffuseSampler : register(t2);
+Texture2D<float4> blendDiffuseLayer0Sampler : register(t3);
+Texture2D<float4> blendNormalLayer0Sampler : register(t4);
+Texture2D<float4> blendSpecularLayer0Sampler : register(t5);
+Texture2D<float4> enlightenRadiositySampler : register(t6);
+Texture2D<float4> enlightenDirectionSampler : register(t7);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  float3 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float3 v7 : TEXCOORD7,
+  float4 v8 : TEXCOORD8,
+  uint v9 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.x = dot(v2.xyz, camera_upvector.xyz);
+  r0.x = -textureblending_parameters0.z + r0.x;
+  r0.y = textureblending_parameters0.w + -textureblending_parameters0.z;
+  r0.y = 1.000000e+000 / r0.y;
+  r0.x = saturate(r0.x * r0.y);
+  r0.y = r0.x * -2.000000000e+000 + 3.000000000e+000;
+  r0.x = r0.x * r0.x;
+  r0.x = r0.y * r0.x;
+  r0.x = saturate(textureblending_parameters3.z * r0.x);
+  r0.yz = textureblending_parameters1.zz * v6.xy;
+  r1.xyz = -material_mipmap_parameters.yxz;
+  r2.xy = blendNormalLayer0Sampler.SampleBias(sampler_qualityPlaceholder_wrap_s, r0.yz, r1.x).yw;
+  r2.xy = float2(-5.000000e-001,-5.000000e-001) + r2.yx;
+  r2.xy = r2.xy + r2.xy;
+  r0.w = -r2.x * r2.x + 1.000000000e+000;
+  r0.w = -r2.y * r2.y + r0.w;
+  r1.w = 0.000000000e+000 >= r0.w;
+  r0.w = sqrt(r0.w);
+  r0.w = r1.w ? 0.000000000e+000 : r0.w;
+  r2.zw = textureblending_parameters4.zz * v1.xy;
+  r1.xw = normalSampler.SampleBias(sampler_qualityPlaceholder_wrap_s, r2.zw, r1.x).yw;
+  r1.xw = float2(-5.000000e-001,-5.000000e-001) + r1.wx;
+  r3.xy = r1.xw + r1.xw;
+  r4.xy = r1.xw * float2(2.000000e+000,2.000000e+000) + r2.xy;
+  r1.x = -r3.x * r3.x + 1.000000000e+000;
+  r1.x = -r3.y * r3.y + r1.x;
+  r1.w = 0.000000000e+000 >= r1.x;
+  r1.x = sqrt(r1.x);
+  r3.z = r1.w ? 0.000000000e+000 : r1.x;
+  r4.z = r3.z * r0.w;
+  r0.w = dot(r4.xyz, r4.xyz);
+  r0.w = rsqrt(r0.w);
+  r4.xyz = r4.xyz * r0.www + -r3.xyz;
+  r3.xyz = r0.xxx * r4.xyz + r3.xyz;
+  r3.xy = textureblending_parameters4.ww * r3.xy;
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r0.w = v9.x ? 1.000000000e+000 : -1.000000000e+000;
+  r3.xyz = r3.xyz * r0.www;
+  r4.xyz = v4.xyz * r3.yyy;
+  r3.xyw = r3.xxx * v3.xyz + r4.xyz;
+  r3.xyz = r3.zzz * v2.xyz + r3.xyw;
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r0.w = r3.z * 8.000000000e+000 + 8.000000000e+000;
+  r0.w = sqrt(r0.w);
+  r1.xw = r3.xy / r0.ww;
+  o0.xy = float2(5.000000e-001,5.000000e-001) + r1.xw;
+  r3.xyzw = blendSpecularLayer0Sampler.SampleBias(sampler_qualityPlaceholder_wrap_s, r0.yz, r1.z).xyzw;
+  r0.yzw = blendDiffuseLayer0Sampler.SampleBias(sampler_anisotropic_wrap_s, r0.yz, r1.y).xyz;
+  r4.xyzw = specularSampler.SampleBias(sampler_qualityPlaceholder_wrap_s, r2.zw, r1.z).xyzw;
+  r1.xyz = diffuseSampler.SampleBias(sampler_anisotropic_wrap_s, r2.zw, r1.y).xyz;
+  r2.xyzw = -r4.xyzw + r3.xyzw;
+  r2.xyzw = r0.xxxx * r2.xyzw + r4.xyzw;
+  r1.w = r2.x * 5.000000000e-001 + 5.000000000e-001;
+  r1.w = -r2.z * 5.000000000e-001 + r1.w;
+  r3.x = dot(r2.xzy, float3(-2.500000e-001,-2.500000e-001,5.000000e-001));
+  r3.x = 5.000000000e-001 + r3.x;
+  r3.y = backbuffer_size.z * v0.x;
+  r3.y = backbuffer_size.x * r3.y;
+  r3.y = (int)r3.y;
+  r3.y = (int)r3.y & 1;
+  o0.z = r3.y ? r1.w : r3.x;
+  o0.w = material_lighting_parameters.y * r2.w;
+  o1.w = dot(r2.xzy, float3(2.500000e-001,2.500000e-001,5.000000e-001));
+  r0.yzw = -r1.xyz + r0.yzw;
+  r0.xyz = r0.xxx * r0.yzw + r1.xyz;
+  r0.xyz = sqrt(r0.xyz);
+  r0.w = r0.x * 5.000000000e-001 + 5.000000000e-001;
+  r0.w = -r0.z * 5.000000000e-001 + r0.w;
+  r1.x = dot(r0.xzy, float3(-2.500000e-001,-2.500000e-001,5.000000e-001));
+  o1.y = dot(r0.xzy, float3(2.500000e-001,2.500000e-001,5.000000e-001));
+  r0.x = 5.000000000e-001 + r1.x;
+  o1.z = r3.y ? r0.w : r0.x;
+  o1.x = material_parameters.x;
+  r0.xyz = v7.xyz;
+  r0.w = 1.000000000e+000;
+  r0.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) * r0.xyzw;
+  r1.w = 1.000000000e+000;
+  r2.xyzw = enlightenDirectionSampler.Sample(sampler_bilinear_wrap_s, v1.zw).xyzw;
+  r1.xyz = r2.xyz;
+  r0.x = dot(r0.xyzw, r1.xyzw);
+  r0.yzw = enlightenRadiositySampler.Sample(sampler_bilinear_wrap_s, v1.zw).xyz;
+  r0.xyz = r0.yzw * r0.xxx;
+  r0.xyz = r0.xyz / r2.www;
+  o2.xyz = enlighten_parameters.xxx * r0.xyz;
+  o2.w = 0.000000000e+000;
+  
+  // o2=0;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20499
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_MATERIAL
+// {
+//
+//   float4 material_parameters;        // Offset:    0 Size:    16
+//   float4 material_mipmap_parameters; // Offset:   16 Size:    16
+//   float4 material_lighting_parameters;// Offset:   32 Size:    16
+//   float4 textureblending_parameters0;// Offset:   48 Size:    16
+//   float4 textureblending_parameters1;// Offset:   64 Size:    16
+//   float4 textureblending_parameters2;// Offset:   80 Size:    16 [unused]
+//   float4 textureblending_parameters3;// Offset:   96 Size:    16
+//   float4 textureblending_parameters4;// Offset:  112 Size:    16
+//
+// }
+//
+// cbuffer PER_STAGE
+// {
+//
+//   float3 camera_upvector;            // Offset:    0 Size:    12
+//   float4 camera_clip_distances;      // Offset:   16 Size:    16 [unused]
+//
+// }
+//
+// cbuffer PER_FRAME
+// {
+//
+//   float4 backbuffer_size;            // Offset:    0 Size:    16
+//   float4 time_parameters;            // Offset:   16 Size:    16 [unused]
+//
+// }
+//
+// cbuffer PER_INSTANCE
+// {
+//
+//   float4 enlighten_parameters;       // Offset:    0 Size:    16
+//   float4 enlighten_lightmap_uvlineartransform;// Offset:   16 Size:    16 [unused]
+//   float4 enlighten_lightmap_uvtranslation;// Offset:   32 Size:    16 [unused]
+//   float4 enlighten_sh_coeffs[3];     // Offset:   48 Size:    48 [unused]
+//   float4 alpha_parameters;           // Offset:   96 Size:    16 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sampler_bilinear_wrap             sampler      NA          NA    2        1
+// sampler_anisotropic_wrap          sampler      NA          NA    5        1
+// sampler_qualityPlaceholder_wrap    sampler      NA          NA   14        1
+// normalSampler                     texture  float4          2d    0        1
+// specularSampler                   texture  float4          2d    1        1
+// diffuseSampler                    texture  float4          2d    2        1
+// blendDiffuseLayer0Sampler         texture  float4          2d    3        1
+// blendNormalLayer0Sampler          texture  float4          2d    4        1
+// blendSpecularLayer0Sampler        texture  float4          2d    5        1
+// enlightenRadiositySampler         texture  float4          2d    6        1
+// enlightenDirectionSampler         texture  float4          2d    7        1
+// PER_MATERIAL                      cbuffer      NA          NA    0        1
+// PER_STAGE                         cbuffer      NA          NA    1        1
+// PER_FRAME                         cbuffer      NA          NA    2        1
+// PER_INSTANCE                      cbuffer      NA          NA    3        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   x   
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyz         2     NONE   float   xyz 
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        5     NONE   float       
+// TEXCOORD                 5   xyzw        6     NONE   float   xy  
+// TEXCOORD                 7   xyz         7     NONE   float   xyz 
+// TEXCOORD                 8   xyzw        8     NONE   float       
+// SV_IsFrontFace           0   x           9    FFACE    uint   x   
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+// SV_Target                2   xyzw        2   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[8], immediateIndexed
+dcl_constantbuffer cb1[1], immediateIndexed
+dcl_constantbuffer cb2[1], immediateIndexed
+dcl_constantbuffer cb3[1], immediateIndexed
+dcl_sampler s2, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s14, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_input_ps_siv linear noperspective v0.x, position
+dcl_input_ps linear v1.xyzw
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyz
+dcl_input_ps linear v6.xy
+dcl_input_ps linear v7.xyz
+dcl_input_ps_sgv v9.x, is_front_face
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_temps 5
+dp3 r0.x, v2.xyzx, cb1[0].xyzx
+add r0.x, r0.x, -cb0[3].z
+add r0.y, -cb0[3].z, cb0[3].w
+div r0.y, l(1.000000, 1.000000, 1.000000, 1.000000), r0.y
+mul_sat r0.x, r0.y, r0.x
+mad r0.y, r0.x, l(-2.000000), l(3.000000)
+mul r0.x, r0.x, r0.x
+mul r0.x, r0.x, r0.y
+mul_sat r0.x, r0.x, cb0[6].z
+mul r0.yz, v6.xxyx, cb0[4].zzzz
+mov r1.xyz, -cb0[1].yxzy
+sample_b_indexable(texture2d)(float,float,float,float) r2.xy, r0.yzyy, t4.ywxz, s14, r1.x
+add r2.xy, r2.yxyy, l(-0.500000, -0.500000, 0.000000, 0.000000)
+add r2.xy, r2.xyxx, r2.xyxx
+mad r0.w, -r2.x, r2.x, l(1.000000)
+mad r0.w, -r2.y, r2.y, r0.w
+ge r1.w, l(0.000000), r0.w
+sqrt r0.w, r0.w
+movc r0.w, r1.w, l(0), r0.w
+mul r2.zw, v1.xxxy, cb0[7].zzzz
+sample_b_indexable(texture2d)(float,float,float,float) r1.xw, r2.zwzz, t0.yxzw, s14, r1.x
+add r1.xw, r1.wwwx, l(-0.500000, 0.000000, 0.000000, -0.500000)
+add r3.xy, r1.xwxx, r1.xwxx
+mad r4.xy, r1.xwxx, l(2.000000, 2.000000, 0.000000, 0.000000), r2.xyxx
+mad r1.x, -r3.x, r3.x, l(1.000000)
+mad r1.x, -r3.y, r3.y, r1.x
+ge r1.w, l(0.000000), r1.x
+sqrt r1.x, r1.x
+movc r3.z, r1.w, l(0), r1.x
+mul r4.z, r0.w, r3.z
+dp3 r0.w, r4.xyzx, r4.xyzx
+rsq r0.w, r0.w
+mad r4.xyz, r4.xyzx, r0.wwww, -r3.xyzx
+mad r3.xyz, r0.xxxx, r4.xyzx, r3.xyzx
+mul r3.xy, r3.xyxx, cb0[7].wwww
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r3.xyz, r0.wwww, r3.xyzx
+movc r0.w, v9.x, l(1.000000), l(-1.000000)
+mul r3.xyz, r0.wwww, r3.xyzx
+mul r4.xyz, r3.yyyy, v4.xyzx
+mad r3.xyw, r3.xxxx, v3.xyxz, r4.xyxz
+mad r3.xyz, r3.zzzz, v2.xyzx, r3.xywx
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r3.xyz, r0.wwww, r3.xyzx
+mad r0.w, r3.z, l(8.000000), l(8.000000)
+sqrt r0.w, r0.w
+div r1.xw, r3.xxxy, r0.wwww
+add o0.xy, r1.xwxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+sample_b_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.yzyy, t5.xyzw, s14, r1.z
+sample_b_indexable(texture2d)(float,float,float,float) r0.yzw, r0.yzyy, t3.wxyz, s5, r1.y
+sample_b_indexable(texture2d)(float,float,float,float) r4.xyzw, r2.zwzz, t1.xyzw, s14, r1.z
+sample_b_indexable(texture2d)(float,float,float,float) r1.xyz, r2.zwzz, t2.xyzw, s5, r1.y
+add r2.xyzw, r3.xyzw, -r4.xyzw
+mad r2.xyzw, r0.xxxx, r2.xyzw, r4.xyzw
+mad r1.w, r2.x, l(0.500000), l(0.500000)
+mad r1.w, -r2.z, l(0.500000), r1.w
+dp3 r3.x, r2.xzyx, l(-0.250000, -0.250000, 0.500000, 0.000000)
+add r3.x, r3.x, l(0.500000)
+mul r3.y, v0.x, cb2[0].z
+mul r3.y, r3.y, cb2[0].x
+ftoi r3.y, r3.y
+and r3.y, r3.y, l(1)
+movc o0.z, r3.y, r1.w, r3.x
+mul o0.w, r2.w, cb0[2].y
+dp3 o1.w, r2.xzyx, l(0.250000, 0.250000, 0.500000, 0.000000)
+add r0.yzw, r0.yyzw, -r1.xxyz
+mad r0.xyz, r0.xxxx, r0.yzwy, r1.xyzx
+sqrt r0.xyz, r0.xyzx
+mad r0.w, r0.x, l(0.500000), l(0.500000)
+mad r0.w, -r0.z, l(0.500000), r0.w
+dp3 r1.x, r0.xzyx, l(-0.250000, -0.250000, 0.500000, 0.000000)
+dp3 o1.y, r0.xzyx, l(0.250000, 0.250000, 0.500000, 0.000000)
+add r0.x, r1.x, l(0.500000)
+movc o1.z, r3.y, r0.w, r0.x
+mov o1.x, cb0[0].x
+mov r0.xyz, v7.xyzx
+mov r0.w, l(1.000000)
+mul r0.xyzw, r0.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
+mov r1.w, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, v1.zwzz, t7.xyzw, s2
+mov r1.xyz, r2.xyzx
+dp4 r0.x, r0.xyzw, r1.xyzw
+sample_indexable(texture2d)(float,float,float,float) r0.yzw, v1.zwzz, t6.wxyz, s2
+mul r0.xyz, r0.xxxx, r0.yzwy
+div r0.xyz, r0.xyzx, r2.wwww
+mul o2.xyz, r0.xyzx, cb3[0].xxxx
+mov o2.w, l(0)
+ret 
+// Approximately 90 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

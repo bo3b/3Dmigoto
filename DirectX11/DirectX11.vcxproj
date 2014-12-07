@@ -57,6 +57,14 @@
       <Configuration>Ghosts</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="LOTF|Win32">
+      <Configuration>LOTF</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="LOTF|x64">
+      <Configuration>LOTF</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Mordor|Win32">
       <Configuration>Mordor</Configuration>
       <Platform>Win32</Platform>
@@ -266,6 +274,11 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|x64'" Label="Configuration">
+    <PlatformToolset>v120</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mordor|x64'" Label="Configuration">
     <PlatformToolset>v120</PlatformToolset>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -276,6 +289,10 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DragonAge|Win32'" Label="Configuration">
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|Win32'" Label="Configuration">
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -462,6 +479,12 @@
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DragonAge|x64'">
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(IncludePath)</IncludePath>
+    <TargetName>d3d11</TargetName>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|x64'">
     <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(IncludePath)</IncludePath>
     <TargetName>d3d11</TargetName>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
@@ -1165,6 +1188,44 @@ REM And, the d3dx.ini from game specific folder
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|x64'">
+    <ClCompile>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>HOOK_SYSTEM32=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+    <PostBuildEvent>
+      <Command>echo
+
+cd "$(SolutionDir)"
+
+REM copy all 3Dmigoto specific DLLs, and dependent files into the Release directory.  
+REM These are any items that are not specifically built, but required for the tool to work.
+
+xcopy “$(WindowsSdkDir_80)Redist\D3D\x64\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
+xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
+
+REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
+
+del $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip 
+
+REM Use 7zip command tool to create a full release that can be unzipped into game directory.
+REM On game specific builds, this also includes the ShaderFixes folder.
+REM And, the d3dx.ini from game specific folder
+
+7zip\7za a $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip   .\$(ConfigurationName)\d3dx.ini  .\$(ConfigurationName)\ShaderFixes\ $(TargetDir)*.dll $(TargetDir)uninstall.bat
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Mordor|x64'">
     <ClCompile>
       <ExceptionHandling>Async</ExceptionHandling>
@@ -1210,6 +1271,12 @@ REM And, the d3dx.ini from game specific folder
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DragonAge|Win32'">
+    <ClCompile>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|Win32'">
     <ClCompile>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>

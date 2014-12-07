@@ -1,0 +1,326 @@
+//decals
+cbuffer PER_INSTANCE : register(b0)
+{
+  float4x4 view_matrix_worldspace : packoffset(c0);
+  float4 decal_parameters : packoffset(c4);
+  float4 decal_parameters1 : packoffset(c5);
+  float4 decal_mapping_range : packoffset(c6);
+  float4 decal_ambient_color : packoffset(c7);
+  float4 decal_position_viewspace : packoffset(c8);
+  float4 decal_direction_viewspace : packoffset(c9);
+  float4x4 decal_view_matrix_viewspace : packoffset(c10);
+  float4x4 decal_viewprojection_matrix_viewspace : packoffset(c14);
+}
+
+cbuffer PER_FRAME : register(b1)
+{
+  float4 time_parameters : packoffset(c0);
+  float4 backbuffer_size : packoffset(c1);
+}
+
+cbuffer PER_STAGE : register(b2)
+{
+  float4 camera_clip_distances : packoffset(c0);
+  float3 camera_position_worldspace : packoffset(c1);
+}
+SamplerState sampler_point_clamp_s : register(s1);
+SamplerState sampler_bilinear_borderBorderWrap_transparent_s : register(s6);
+SamplerState sampler_anisotropic_borderBorderWrap_transparent_s : register(s7);
+Texture2D<float4> depthSampler : register(t0);
+Texture2D<float4> gbuffer0Sampler : register(t1);
+Texture2D<float4> decalImageSampler : register(t2);
+Texture2D<float4> normalSampler : register(t3);
+Texture2D<float4> specularSampler : register(t4);
+Texture2D<float4> dissolveSampler : register(t5);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : Texcoord0,
+  float3 v2 : Texcoord1,
+  float4 v3 : Texcoord3,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+  r0.x = camera_clip_distances.y / v1.z;
+  r0.xyz = v1.xyz * r0.xxx;
+  r0.xyz = r0.xyz / camera_clip_distances.yyy;
+  r1.xy = backbuffer_size.zw * v0.xy;
+  r0.w = depthSampler.SampleLevel(sampler_point_clamp_s, r1.xy, 0.000000000e+000).x;
+  r1.xyzw = gbuffer0Sampler.Sample(sampler_point_clamp_s, r1.xy).xyzw;
+  r0.w = -camera_clip_distances.z + r0.w;
+  r0.w = camera_clip_distances.w / r0.w;
+  
+float4 stereo = StereoParams.Load(0);
+float4 r25;
+r25.xyz = r0.www * r0.xyz;
+r25.x -= stereo.x*(-r25.z - stereo.y)/v3.x; ;
+r0.xyz = r25.xyz;  
+  // r0.xyz = r0.www * r0.xyz;
+  r2.xyz = ddx_coarse(r0.zxy);
+  r3.xyz = ddy_coarse(r0.yzx);
+  r4.xyz = r3.xyz * r2.xyz;
+  r2.xyz = r2.zxy * r3.yzx + -r4.xyz;
+  r2.w = dot(r2.xyz, r2.xyz);
+  r2.w = rsqrt(r2.w);
+  r2.xyz = r2.xyz * r2.www;
+  r0.w = 1.000000000e+000;
+  r0.w = dot(r0.xyzw, decal_view_matrix_viewspace._m02_m12_m22_m32);
+  r0.w = decal_parameters.y + r0.w;
+  r2.xyz = r2.xyz * r0.www;
+  r2.xyz = -r2.xyz * float3(5.000000e-001,5.000000e-001,5.000000e-001) + r0.xyz;
+  r0.w = 0.000000e+000 != decal_parameters1.w;
+  r0.xyz = r0.www ? r2.xyz : r0.xyz;
+  r0.w = 1.000000000e+000;
+  r2.x = dot(r0.xyzw, decal_viewprojection_matrix_viewspace._m00_m10_m20_m30);
+  r2.y = dot(r0.xyzw, decal_viewprojection_matrix_viewspace._m01_m11_m21_m31);
+  r2.z = dot(r0.xyzw, decal_viewprojection_matrix_viewspace._m02_m12_m22_m32);
+  r0.w = dot(r0.xyzw, decal_viewprojection_matrix_viewspace._m03_m13_m23_m33);
+  r2.xyz = r2.xyz / r0.www;
+  r0.w = r2.z < 0.000000000e+000;
+  r2.z = 1.000000000e+000 < r2.z;
+  r0.w = (int)r0.w | (int)r2.z;
+  if (r0.w != 0) discard;
+  r3.xyzw = r2.xyxy * float4(1.000000e+000,1.000000e+000,-1.000000e+000,-1.000000e+000) + decal_mapping_range.xyzw;
+  r3.x = r3.x < 0;
+  r3.y = r3.y < 0;
+  r3.z = r3.z < 0;
+  r3.w = r3.w < 0;
+  r2.zw = (int2)r3.zw | (int2)r3.xy;
+  r0.w = (int)r2.w | (int)r2.z;
+  if (r0.w != 0) discard;
+  r2.zw = decal_parameters.ww * r2.xy;
+  r0.w = dissolveSampler.Sample(sampler_bilinear_borderBorderWrap_transparent_s, r2.zw).x;
+  r2.z = decalImageSampler.Sample(sampler_anisotropic_borderBorderWrap_transparent_s, r2.xy).w;
+  r2.w = r2.z * r0.w + -decal_parameters.z;
+  r0.w = r2.z * r0.w;
+  r2.z = r2.w < 0.000000000e+000;
+  if (r2.z != 0) discard;
+  r3.xyzw = normalSampler.Sample(sampler_bilinear_borderBorderWrap_transparent_s, r2.xy).xyzw;
+  r2.x = specularSampler.SampleBias(sampler_bilinear_borderBorderWrap_transparent_s, r2.xy, -0.000000000e+000).w;
+  r2.x = r2.x + -r1.w;
+  o0.w = r0.w * r2.x + r1.w;
+  r1.w = dot(r3.xyz, r3.xyz);
+  r2.xy = r3.wy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.w = r1.w != 0.000000;
+  if (r1.w == 0) discard;
+  r3.xyz = ddx_coarse(r0.zxy);
+  r0.xyz = ddy_coarse(r0.yzx);
+  r1.w = dot(r3.xyz, r3.xyz);
+  r1.w = rsqrt(r1.w);
+  r3.xyz = r3.xyz * r1.www;
+  r1.w = dot(r0.xyz, r0.xyz);
+  r1.w = rsqrt(r1.w);
+  r0.xyz = r1.www * r0.xyz;
+  r4.xyz = r3.xyz * r0.xyz;
+  r0.xyz = r3.zxy * r0.yzx + -r4.xyz;
+  r3.xyz = v2.zxy * -r0.yzx;
+  r3.xyz = v2.yzx * -r0.zxy + -r3.xyz;
+  r1.w = dot(r3.xyz, r3.xyz);
+  r1.w = rsqrt(r1.w);
+  r3.xyz = r3.xyz * r1.www;
+  r3.xyz = r3.xyz * r2.yyy;
+  r3.xyz = r2.xxx * v2.xyz + r3.xyz;
+  r1.w = -r2.x * r2.x + 1.000000000e+000;
+  r1.w = -r2.y * r2.y + r1.w;
+  r2.x = 0.000000000e+000 >= r1.w;
+  r1.w = sqrt(r1.w);
+  r1.w = r2.x ? 0.000000000e+000 : r1.w;
+  r0.xyz = r1.www * -r0.xyz + r3.xyz;
+  r1.w = dot(r0.xyz, r0.xyz);
+  r1.w = rsqrt(r1.w);
+  r0.xyz = r1.www * r0.xyz;
+  r0.z = r0.z * 8.000000000e+000 + 8.000000000e+000;
+  r0.z = sqrt(r0.z);
+  r0.xy = r0.xy / r0.zz;
+  r0.xy = float2(5.000000e-001,5.000000e-001) + r0.xy;
+  r0.xy = r0.xy + -r1.xy;
+  o0.xy = r0.ww * r0.xy + r1.xy;
+  o0.z = r1.z;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20499
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_INSTANCE
+// {
+//
+//   float4x4 view_matrix_worldspace;   // Offset:    0 Size:    64 [unused]
+//   float4 decal_parameters;           // Offset:   64 Size:    16
+//   float4 decal_parameters1;          // Offset:   80 Size:    16
+//   float4 decal_mapping_range;        // Offset:   96 Size:    16
+//   float4 decal_ambient_color;        // Offset:  112 Size:    16 [unused]
+//   float4 decal_position_viewspace;   // Offset:  128 Size:    16 [unused]
+//   float4 decal_direction_viewspace;  // Offset:  144 Size:    16 [unused]
+//   float4x4 decal_view_matrix_viewspace;// Offset:  160 Size:    64
+//   float4x4 decal_viewprojection_matrix_viewspace;// Offset:  224 Size:    64
+//
+// }
+//
+// cbuffer PER_FRAME
+// {
+//
+//   float4 time_parameters;            // Offset:    0 Size:    16 [unused]
+//   float4 backbuffer_size;            // Offset:   16 Size:    16
+//
+// }
+//
+// cbuffer PER_STAGE
+// {
+//
+//   float4 camera_clip_distances;      // Offset:    0 Size:    16
+//   float3 camera_position_worldspace; // Offset:   16 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sampler_point_clamp               sampler      NA          NA    1        1
+// sampler_bilinear_borderBorderWrap_transparent    sampler      NA          NA    6        1
+// sampler_anisotropic_borderBorderWrap_transparent    sampler      NA          NA    7        1
+// depthSampler                      texture  float4          2d    0        1
+// gbuffer0Sampler                   texture  float4          2d    1        1
+// decalImageSampler                 texture  float4          2d    2        1
+// normalSampler                     texture  float4          2d    3        1
+// specularSampler                   texture  float4          2d    4        1
+// dissolveSampler                   texture  float4          2d    5        1
+// PER_INSTANCE                      cbuffer      NA          NA    0        1
+// PER_FRAME                         cbuffer      NA          NA    1        1
+// PER_STAGE                         cbuffer      NA          NA    2        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// Texcoord                 0   xyz         1     NONE   float   xyz 
+// Texcoord                 1   xyz         2     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[18], immediateIndexed
+dcl_constantbuffer cb1[2], immediateIndexed
+dcl_constantbuffer cb2[1], immediateIndexed
+dcl_sampler s1, mode_default
+dcl_sampler s6, mode_default
+dcl_sampler s7, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xyz
+dcl_input_ps linear v2.xyz
+dcl_output o0.xyzw
+dcl_temps 5
+div r0.x, cb2[0].y, v1.z
+mul r0.xyz, r0.xxxx, v1.xyzx
+div r0.xyz, r0.xyzx, cb2[0].yyyy
+mul r1.xy, v0.xyxx, cb1[1].zwzz
+sample_l_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t0.yzwx, s1, l(0.000000)
+sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r1.xyxx, t1.xyzw, s1
+add r0.w, r0.w, -cb2[0].z
+div r0.w, cb2[0].w, r0.w
+mul r0.xyz, r0.xyzx, r0.wwww
+deriv_rtx_coarse r2.xyz, r0.zxyz
+deriv_rty_coarse r3.xyz, r0.yzxy
+mul r4.xyz, r2.xyzx, r3.xyzx
+mad r2.xyz, r2.zxyz, r3.yzxy, -r4.xyzx
+dp3 r2.w, r2.xyzx, r2.xyzx
+rsq r2.w, r2.w
+mul r2.xyz, r2.wwww, r2.xyzx
+mov r0.w, l(1.000000)
+dp4 r0.w, r0.xyzw, cb0[12].xyzw
+add r0.w, r0.w, cb0[4].y
+mul r2.xyz, r0.wwww, r2.xyzx
+mad r2.xyz, -r2.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), r0.xyzx
+ne r0.w, l(0.000000, 0.000000, 0.000000, 0.000000), cb0[5].w
+movc r0.xyz, r0.wwww, r2.xyzx, r0.xyzx
+mov r0.w, l(1.000000)
+dp4 r2.x, r0.xyzw, cb0[14].xyzw
+dp4 r2.y, r0.xyzw, cb0[15].xyzw
+dp4 r2.z, r0.xyzw, cb0[16].xyzw
+dp4 r0.w, r0.xyzw, cb0[17].xyzw
+div r2.xyz, r2.xyzx, r0.wwww
+lt r0.w, r2.z, l(0.000000)
+lt r2.z, l(1.000000), r2.z
+or r0.w, r0.w, r2.z
+discard_nz r0.w
+mad r3.xyzw, r2.xyxy, l(1.000000, 1.000000, -1.000000, -1.000000), cb0[6].xyzw
+lt r3.xyzw, r3.xyzw, l(0.000000, 0.000000, 0.000000, 0.000000)
+or r2.zw, r3.zzzw, r3.xxxy
+or r0.w, r2.w, r2.z
+discard_nz r0.w
+mul r2.zw, r2.xxxy, cb0[4].wwww
+sample_indexable(texture2d)(float,float,float,float) r0.w, r2.zwzz, t5.yzwx, s6
+sample_indexable(texture2d)(float,float,float,float) r2.z, r2.xyxx, t2.xywz, s7
+mad r2.w, r2.z, r0.w, -cb0[4].z
+mul r0.w, r0.w, r2.z
+lt r2.z, r2.w, l(0.000000)
+discard_nz r2.z
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r2.xyxx, t3.xyzw, s6
+sample_b_indexable(texture2d)(float,float,float,float) r2.x, r2.xyxx, t4.wxyz, s6, l(-0.000000)
+add r2.x, -r1.w, r2.x
+mad o0.w, r0.w, r2.x, r1.w
+dp3 r1.w, r3.xyzx, r3.xyzx
+mad r2.xy, r3.wyww, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+ne r1.w, r1.w, l(0.000000)
+discard_z r1.w
+deriv_rtx_coarse r3.xyz, r0.zxyz
+deriv_rty_coarse r0.xyz, r0.yzxy
+dp3 r1.w, r3.xyzx, r3.xyzx
+rsq r1.w, r1.w
+mul r3.xyz, r1.wwww, r3.xyzx
+dp3 r1.w, r0.xyzx, r0.xyzx
+rsq r1.w, r1.w
+mul r0.xyz, r0.xyzx, r1.wwww
+mul r4.xyz, r0.xyzx, r3.xyzx
+mad r0.xyz, r3.zxyz, r0.yzxy, -r4.xyzx
+mul r3.xyz, -r0.yzxy, v2.zxyz
+mad r3.xyz, v2.yzxy, -r0.zxyz, -r3.xyzx
+dp3 r1.w, r3.xyzx, r3.xyzx
+rsq r1.w, r1.w
+mul r3.xyz, r1.wwww, r3.xyzx
+mul r3.xyz, r2.yyyy, r3.xyzx
+mad r3.xyz, r2.xxxx, v2.xyzx, r3.xyzx
+mad r1.w, -r2.x, r2.x, l(1.000000)
+mad r1.w, -r2.y, r2.y, r1.w
+ge r2.x, l(0.000000), r1.w
+sqrt r1.w, r1.w
+movc r1.w, r2.x, l(0), r1.w
+mad r0.xyz, r1.wwww, -r0.xyzx, r3.xyzx
+dp3 r1.w, r0.xyzx, r0.xyzx
+rsq r1.w, r1.w
+mul r0.xyz, r0.xyzx, r1.wwww
+mad r0.z, r0.z, l(8.000000), l(8.000000)
+sqrt r0.z, r0.z
+div r0.xy, r0.xyxx, r0.zzzz
+add r0.xy, r0.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+add r0.xy, -r1.xyxx, r0.xyxx
+mad o0.xy, r0.wwww, r0.xyxx, r1.xyxx
+mov o0.z, r1.z
+ret 
+// Approximately 87 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

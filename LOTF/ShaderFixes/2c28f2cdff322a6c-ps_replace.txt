@@ -1,0 +1,295 @@
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[1];
+}
+
+
+cbuffer PER_STAGE : register(b1)
+{
+  float4 camera_clip_distances : packoffset(c0);
+  float4 camera_frustum_corner_array_worldspace[4] : packoffset(c1);
+}
+
+cbuffer PER_STAGE : register(b1)
+{
+  float4x4 viewprojection_matrix : packoffset(c0);
+  float4x4 previous_viewprojection_matrix : packoffset(c4);
+  float4 camera_position_worldspace : packoffset(c8);
+}
+
+cbuffer PER_FRAME : register(b2)
+{
+  float4 motionblur_parameters : packoffset(c0);
+}
+SamplerState sampler_point_clamp_s : register(s1);
+SamplerState sampler_bilinear_clamp_s : register(s3);
+Texture2D<float4> sceneSampler : register(t0);
+Texture2D<float4> velocitySampler : register(t1);
+Texture2D<float4> depthSampler : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : Texcoord0,
+  float2 v2 : Texcoord1,
+  float4 v3 : Texcoord3,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+
+//...Original Matrix
+a1 = viewprojection_matrix._m00_m10_m20_m30;
+a2 = viewprojection_matrix._m01_m11_m21_m31;
+a3 = viewprojection_matrix._m02_m12_m22_m32;
+a4 = viewprojection_matrix._m03_m13_m23_m33;
+
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+
+//...Inverse Matrix Elemets
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+
+  r0.xyz = sceneSampler.Sample(sampler_bilinear_clamp_s, v2.xy).xyz;
+  r1.xy = velocitySampler.Sample(sampler_bilinear_clamp_s, v2.xy).xy;
+  r0.w = depthSampler.SampleLevel(sampler_point_clamp_s, v2.xy, 0.000000000e+000).x;
+  r0.w = -cb0[0].z + r0.w;
+  r0.w = cb0[0].w / r0.w;
+  r0.w = r0.w / cb0[0].y;
+  r2.xyz = r0.www * v1.xyz + camera_position_worldspace.xyz;
+  r2.w = 1.000000000e+000;
+  
+float4 stereo = StereoParams.Load(0);
+float4 r26;
+r26.x = dot(r2.xyzw, a1.xyzw);
+r26.y = dot(r2.xyzw, a2.xyzw);
+r26.z = dot(r2.xyzw, a3.xyzw);
+r26.w = dot(r2.xyzw, a4.xyzw);  
+  
+r26.x -= stereo.x*(r26.w - stereo.y);
+
+r2.x = dot(r26.xyzw, b1.xyzw);
+r2.y = dot(r26.xyzw, b2.xyzw);
+r2.z = dot(r26.xyzw, b3.xyzw);
+r2.w = dot(r26.xyzw, b4.xyzw); 
+  
+  r3.x = dot(r2.xyzw, viewprojection_matrix._m00_m10_m20_m30);
+  r3.y = dot(r2.xyzw, viewprojection_matrix._m01_m11_m21_m31);
+  r1.z = dot(r2.xyzw, viewprojection_matrix._m03_m13_m23_m33);
+  r4.x = dot(r2.xyzw, previous_viewprojection_matrix._m00_m10_m20_m30);
+  r4.y = dot(r2.xyzw, previous_viewprojection_matrix._m01_m11_m21_m31);
+  r1.w = dot(r2.xyzw, previous_viewprojection_matrix._m03_m13_m23_m33);
+  r2.xy = r3.xy / r1.zz;
+  r1.zw = r4.xy / r1.ww;
+  r1.zw = r2.xy + -r1.zw;
+  r1.zw = motionblur_parameters.ww * r1.zw;
+  r2.xy = motionblur_parameters.yy * r1.zw;
+  r1.xy = r1.zw * motionblur_parameters.yy + r1.xy;
+  r1.z = -r1.y;
+  r1.xy = max(r1.xz, float2(-5.000000e-002,-5.000000e-002));
+  r1.z = dot(r2.xy, r2.xy);
+  r1.z = sqrt(r1.z);
+  r1.xyz = min(r1.xyz, float3(5.000000e-002,5.000000e-002,1.000000e+000));
+  r1.z = 1.000000000e+001 * r1.z;
+  r3.xy = v2.xy;
+  r1.w = r1.z;
+  r2.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  while (true) {
+  r3.z = r2.w >= 8.000000000e+000;
+  if (r3.z != 0) break;
+  r3.xy = r1.xy * float2(1.250000e-001,1.250000e-001) + r3.xy;
+  r4.xyz = sceneSampler.Sample(sampler_bilinear_clamp_s, r3.xy).xyz;
+  r3.z = depthSampler.SampleLevel(sampler_point_clamp_s, r3.xy, 0.000000000e+000).x;
+  r3.z = -cb0[0].z + r3.z;
+  r3.z = cb0[0].w / r3.z;
+  r3.z = r3.z / cb0[0].y;
+  r5.xy = velocitySampler.Sample(sampler_bilinear_clamp_s, r3.xy).xy;
+  r5.xy = max(r5.xy, float2(-5.000000e-002,-5.000000e-002));
+  r5.xy = min(r5.xy, float2(5.000000e-002,5.000000e-002));
+  r5.z = -r5.y;
+  r3.w = dot(r5.xz, r5.xz);
+  r3.w = sqrt(r3.w);
+  r3.z = 1.000000047e-003 + r3.z;
+  r3.z = r3.z < r0.w;
+  r4.xyz = r3.zzz ? r0.xyz : r4.xyz;
+  r2.xyz = r4.xyz + r2.xyz;
+  r1.w = r3.w * 1.000000000e+001 + r1.w;
+  r2.w = 1.000000000e+000 + r2.w;
+  }
+  o0.w = r1.w;
+  o0.xyz = float3(1.250000e-001,1.250000e-001,1.250000e-001) * r2.xyz;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20499
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_STAGE
+// {
+//
+//   float4 camera_clip_distances;      // Offset:    0 Size:    16
+//   float4 camera_frustum_corner_array_worldspace[4];// Offset:   16 Size:    64 [unused]
+//
+// }
+//
+// cbuffer PER_STAGE
+// {
+//
+//   float4x4 viewprojection_matrix;    // Offset:    0 Size:    64
+//   float4x4 previous_viewprojection_matrix;// Offset:   64 Size:    64
+//   float4 camera_position_worldspace; // Offset:  128 Size:    16
+//
+// }
+//
+// cbuffer PER_FRAME
+// {
+//
+//   float4 motionblur_parameters;      // Offset:    0 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sampler_point_clamp               sampler      NA          NA    1        1
+// sampler_bilinear_clamp            sampler      NA          NA    3        1
+// sceneSampler                      texture  float4          2d    0        1
+// velocitySampler                   texture  float4          2d    1        1
+// depthSampler                      texture  float4          2d    2        1
+// PER_STAGE                         cbuffer      NA          NA    0        1
+// PER_STAGE                         cbuffer      NA          NA    1        1
+// PER_FRAME                         cbuffer      NA          NA    2        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// Texcoord                 0   xyzw        1     NONE   float   xyz 
+// Texcoord                 1   xy          2     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[1], immediateIndexed
+dcl_constantbuffer cb1[9], immediateIndexed
+dcl_constantbuffer cb2[1], immediateIndexed
+dcl_sampler s1, mode_default
+dcl_sampler s3, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_input_ps linear v1.xyz
+dcl_input_ps linear v2.xy
+dcl_output o0.xyzw
+dcl_temps 6
+sample_indexable(texture2d)(float,float,float,float) r0.xyz, v2.xyxx, t0.xyzw, s3
+sample_indexable(texture2d)(float,float,float,float) r1.xy, v2.xyxx, t1.xyzw, s3
+sample_l_indexable(texture2d)(float,float,float,float) r0.w, v2.xyxx, t2.yzwx, s1, l(0.000000)
+add r0.w, r0.w, -cb0[0].z
+div r0.w, cb0[0].w, r0.w
+div r0.w, r0.w, cb0[0].y
+mad r2.xyz, r0.wwww, v1.xyzx, cb1[8].xyzx
+mov r2.w, l(1.000000)
+dp4 r3.x, r2.xyzw, cb1[0].xyzw
+dp4 r3.y, r2.xyzw, cb1[1].xyzw
+dp4 r1.z, r2.xyzw, cb1[3].xyzw
+dp4 r4.x, r2.xyzw, cb1[4].xyzw
+dp4 r4.y, r2.xyzw, cb1[5].xyzw
+dp4 r1.w, r2.xyzw, cb1[7].xyzw
+div r2.xy, r3.xyxx, r1.zzzz
+div r1.zw, r4.xxxy, r1.wwww
+add r1.zw, -r1.zzzw, r2.xxxy
+mul r1.zw, r1.zzzw, cb2[0].wwww
+mul r2.xy, r1.zwzz, cb2[0].yyyy
+mad r1.xy, r1.zwzz, cb2[0].yyyy, r1.xyxx
+mov r1.z, -r1.y
+max r1.xy, r1.xzxx, l(-0.050000, -0.050000, 0.000000, 0.000000)
+dp2 r1.z, r2.xyxx, r2.xyxx
+sqrt r1.z, r1.z
+min r1.xyz, r1.xyzx, l(0.050000, 0.050000, 1.000000, 0.000000)
+mul r1.z, r1.z, l(10.000000)
+mov r3.xy, v2.xyxx
+mov r1.w, r1.z
+mov r2.xyzw, l(0,0,0,0)
+loop 
+  ge r3.z, r2.w, l(8.000000)
+  breakc_nz r3.z
+  mad r3.xy, r1.xyxx, l(0.125000, 0.125000, 0.000000, 0.000000), r3.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyz, r3.xyxx, t0.xyzw, s3
+  sample_l_indexable(texture2d)(float,float,float,float) r3.z, r3.xyxx, t2.yzxw, s1, l(0.000000)
+  add r3.z, r3.z, -cb0[0].z
+  div r3.z, cb0[0].w, r3.z
+  div r3.z, r3.z, cb0[0].y
+  sample_indexable(texture2d)(float,float,float,float) r5.xy, r3.xyxx, t1.xyzw, s3
+  max r5.xy, r5.xyxx, l(-0.050000, -0.050000, 0.000000, 0.000000)
+  min r5.xy, r5.xyxx, l(0.050000, 0.050000, 0.000000, 0.000000)
+  mov r5.z, -r5.y
+  dp2 r3.w, r5.xzxx, r5.xzxx
+  sqrt r3.w, r3.w
+  add r3.z, r3.z, l(0.001000)
+  lt r3.z, r3.z, r0.w
+  movc r4.xyz, r3.zzzz, r0.xyzx, r4.xyzx
+  add r2.xyz, r2.xyzx, r4.xyzx
+  mad r1.w, r3.w, l(10.000000), r1.w
+  add r2.w, r2.w, l(1.000000)
+endloop 
+mov o0.w, r1.w
+mul o0.xyz, r2.xyzx, l(0.125000, 0.125000, 0.125000, 0.000000)
+ret 
+// Approximately 54 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

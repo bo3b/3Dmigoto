@@ -57,6 +57,14 @@
       <Configuration>Ghosts</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="LOTF|Win32">
+      <Configuration>LOTF</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="LOTF|x64">
+      <Configuration>LOTF</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Mordor|Win32">
       <Configuration>Mordor</Configuration>
       <Platform>Win32</Platform>
@@ -246,6 +254,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DragonAge|x64'" Label="Configuration">
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|x64'" Label="Configuration">
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mordor|x64'" Label="Configuration">
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
@@ -253,6 +264,9 @@
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DragonAge|Win32'" Label="Configuration">
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|Win32'" Label="Configuration">
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mordor|Win32'" Label="Configuration">

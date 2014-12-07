@@ -1,0 +1,330 @@
+
+cbuffer PER_INSTANCE : register(b0)
+{
+  float4x4 world_matrix : packoffset(c0);
+  float4x4 worldviewproj_matrix : packoffset(c4);
+  float4x4 worldview_matrix : packoffset(c8);
+  float4x4 inverse_world_matrix : packoffset(c12);
+  float4 enlighten_parameters : packoffset(c16);
+  float4 enlighten_lightmap_uvlineartransform : packoffset(c17);
+  float4 enlighten_lightmap_uvtranslation : packoffset(c18);
+}
+
+cbuffer PER_MATERIAL : register(b1)
+{
+  float4 waterflow_parameters : packoffset(c0);
+  float4 textureblending_parameters1 : packoffset(c1);
+  float4 vegetation_animation_parameters0 : packoffset(c2);
+  float4 vegetation_animation_parameters1 : packoffset(c3);
+}
+
+cbuffer PER_INSTANCED_INSTANCE : register(b9)
+{
+  uint4 perInstancedInstanceData : packoffset(c0);
+}
+Buffer<float4> GlobalInstancingBuffer : register(t0);
+Buffer<float4> VegetationSimulationBuffer : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  float4 v3 : TANGENT0,
+  float2 v4 : TEXCOORD1,
+  uint v5 : SV_InstanceID0,
+  uint v6 : SV_VertexID0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float3 o2 : TEXCOORD1,
+  out float3 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4,
+  out float3 o6 : TEXCOORD7,
+  out float4 o7 : COLOR1)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = (int)v5.x + (int)perInstancedInstanceData.x;
+  r0.y = (int)r0.x * 6;
+  r0.yzw = GlobalInstancingBuffer.Load(r0.yyyy).xyz;
+  r1.x = mad((int)r0.x, 6, 1);
+  r1.xyz = GlobalInstancingBuffer.Load(r1.xxxx).xyz;
+  r2.xyz = mad((int3)r0.xxx, int3(6,6,6), int3(2,3,4));
+  r3.xyz = GlobalInstancingBuffer.Load(r2.xxxx).xyz;
+  r2.xyw = GlobalInstancingBuffer.Load(r2.yyyy).xyz;
+  r4.xyz = v0.yyy * r3.xyz;
+  r4.xyz = v0.xxx * r1.xyz + r4.xyz;
+  r4.xyz = v0.zzz * r2.xyw + r4.xyz;
+  r0.xyz = r4.xyz + r0.yzw;
+  r4.xyz = v2.yyy * r3.xyz;
+  r4.xyz = v2.xxx * r1.xyz + r4.xyz;
+  r4.xyz = v2.zzz * r2.xyw + r4.xyz;
+  r3.xyz = v3.yyy * r3.xyz;
+  r1.xyz = v3.xxx * r1.xyz + r3.xyz;
+  r1.xyz = v3.zzz * r2.xyw + r1.xyz;
+  r2.xyw = vegetation_animation_parameters0.xyz;
+  r0.w = 0.000000000e+000;
+  while (true) {
+  r1.w = (uint)r0.w >= (uint)perInstancedInstanceData.y;
+  if (r1.w != 0) break;
+  r1.w = (uint)r0.w << 1;
+  r3.xyzw = VegetationSimulationBuffer.Load(r1.wwww).xyzw;
+  bitmask.w = ((~(-1 << 31)) << 1) & 0xffffffff;
+  r1.w = (((uint)r0.w << 1) & bitmask.w) | ((uint)1 & ~bitmask.w);
+  r1.w = VegetationSimulationBuffer.Load(r1.wwww).x;
+  r5.xyz = -r3.xyz + r0.xyz;
+  r3.x = max(r5.y, -1.000000000e+000);
+  r5.w = min(r3.x, 0.000000000e+000);
+  r3.x = dot(r5.xzw, r5.xzw);
+  r3.x = sqrt(r3.x);
+  r5.xyz = r5.xwz / r3.xxx;
+  r3.x = saturate(r3.x / r3.w);
+  r3.x = 1.000000000e+000 + -r3.x;
+  r1.w = r3.x * r1.w;
+  r2.xyw = r5.xyz * r1.www + r2.xyw;
+  r0.w = (int)r0.w + 1;
+  }
+  r3.xy = float2(1.000000e+000,2.000000e+000) + -v4.yy;
+  r0.w = r3.y * r3.y;
+  r0.w = r0.w * r0.w + -r0.w;
+  r1.w = v4.x * r3.x;
+  r1.w = vegetation_animation_parameters1.x * r1.w;
+  r3.xyz = vegetation_animation_parameters1.yyy + r0.xyz;
+  r3.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) + r3.xyz;
+  r3.xyz = frac(r3.xyz);
+  r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r5.xyz = abs(r3.xyz) * abs(r3.xyz);
+  r3.xyz = -abs(-r3.xyz) * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(3.000000e+000,3.000000e+000,3.000000e+000);
+  r3.xyz = r5.xyz * r3.xyz;
+  r0.xyz = r2.xyw * r0.www + r0.xyz;
+  r0.xyz = r1.www * r3.xyz + r0.xyz;
+  r0.w = 1.000000000e+000;
+  r3.x = dot(r0.xyzw, inverse_world_matrix._m00_m10_m20_m30);
+  r3.y = dot(r0.xyzw, inverse_world_matrix._m01_m11_m21_m31);
+  r3.z = dot(r0.xyzw, inverse_world_matrix._m02_m12_m22_m32);
+  r3.w = 1.000000000e+000;
+  o0.x = dot(r3.xyzw, worldviewproj_matrix._m00_m10_m20_m30);
+  o0.y = dot(r3.xyzw, worldviewproj_matrix._m01_m11_m21_m31);
+  o0.z = dot(r3.xyzw, worldviewproj_matrix._m02_m12_m22_m32);
+  o0.w = dot(r3.xyzw, worldviewproj_matrix._m03_m13_m23_m33);
+  o5.x = dot(r3.xyzw, worldview_matrix._m00_m10_m20_m30);
+  o5.y = dot(r3.xyzw, worldview_matrix._m01_m11_m21_m31);
+  o5.z = dot(r3.xyzw, worldview_matrix._m02_m12_m22_m32);
+  o5.w = dot(r3.xyzw, worldview_matrix._m03_m13_m23_m33);
+  r0.x = dot(r4.xyz, worldview_matrix._m00_m10_m20);
+  r0.y = dot(r4.xyz, worldview_matrix._m01_m11_m21);
+  r0.z = dot(r4.xyz, worldview_matrix._m02_m12_m22);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r3.x = dot(r1.xyz, worldview_matrix._m00_m10_m20);
+  r3.y = dot(r1.xyz, worldview_matrix._m01_m11_m21);
+  r3.z = dot(r1.xyz, worldview_matrix._m02_m12_m22);
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r3.xyz * r0.www;
+  r2.xyw = r1.zxy * r0.yzx;
+  r2.xyw = r1.yzx * r0.zxy + -r2.xyw;
+  o4.xyz = v3.www * r2.xyw;
+  o6.x = dot(r4.xyz, world_matrix._m00_m10_m20);
+  o6.y = dot(r4.xyz, world_matrix._m01_m11_m21);
+  o6.z = dot(r4.xyz, world_matrix._m02_m12_m22);
+  o7.xyzw = GlobalInstancingBuffer.Load(r2.zzzz).xyzw;
+  o1.xyzw = v1.xyxy;
+  o2.xyz = r0.xyz;
+  o3.xyz = r1.xyz;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20499
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_INSTANCE
+// {
+//
+//   float4x4 world_matrix;             // Offset:    0 Size:    64
+//   float4x4 worldviewproj_matrix;     // Offset:   64 Size:    64
+//   float4x4 worldview_matrix;         // Offset:  128 Size:    64
+//   float4x4 inverse_world_matrix;     // Offset:  192 Size:    64
+//   float4 enlighten_parameters;       // Offset:  256 Size:    16 [unused]
+//   float4 enlighten_lightmap_uvlineartransform;// Offset:  272 Size:    16 [unused]
+//   float4 enlighten_lightmap_uvtranslation;// Offset:  288 Size:    16 [unused]
+//
+// }
+//
+// cbuffer PER_MATERIAL
+// {
+//
+//   float4 waterflow_parameters;       // Offset:    0 Size:    16 [unused]
+//   float4 textureblending_parameters1;// Offset:   16 Size:    16 [unused]
+//   float4 vegetation_animation_parameters0;// Offset:   32 Size:    16
+//   float4 vegetation_animation_parameters1;// Offset:   48 Size:    16
+//
+// }
+//
+// cbuffer PER_INSTANCED_INSTANCE
+// {
+//
+//   uint4 perInstancedInstanceData;    // Offset:    0 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// GlobalInstancingBuffer            texture  float4         buf    0        1
+// VegetationSimulationBuffer        texture  float4         buf    1        1
+// PER_INSTANCE                      cbuffer      NA          NA    0        1
+// PER_MATERIAL                      cbuffer      NA          NA    1        1
+// PER_INSTANCED_INSTANCE            cbuffer      NA          NA    9        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyz         0     NONE   float   xyz 
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+// NORMAL                   0   xyz         2     NONE   float   xyz 
+// TANGENT                  0   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 1   xy          4     NONE   float   xy  
+// SV_InstanceID            0   x           5   INSTID    uint   x   
+// SV_VertexID              0   x           6   VERTID    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyz         2     NONE   float   xyz 
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        5     NONE   float   xyzw
+// TEXCOORD                 7   xyz         6     NONE   float   xyz 
+// COLOR                    1   xyzw        7     NONE   float   xyzw
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[15], immediateIndexed
+dcl_constantbuffer cb1[4], immediateIndexed
+dcl_constantbuffer cb9[1], immediateIndexed
+dcl_resource_buffer (float,float,float,float) t0
+dcl_resource_buffer (float,float,float,float) t1
+dcl_input v0.xyz
+dcl_input v1.xy
+dcl_input v2.xyz
+dcl_input v3.xyzw
+dcl_input v4.xy
+dcl_input_sgv v5.x, instance_id
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyzw
+dcl_output o2.xyz
+dcl_output o3.xyz
+dcl_output o4.xyz
+dcl_output o5.xyzw
+dcl_output o6.xyz
+dcl_output o7.xyzw
+dcl_temps 6
+iadd r0.x, v5.x, cb9[0].x
+imul null, r0.y, r0.x, l(6)
+ld_indexable(buffer)(float,float,float,float) r0.yzw, r0.yyyy, t0.wxyz
+imad r1.x, r0.x, l(6), l(1)
+ld_indexable(buffer)(float,float,float,float) r1.xyz, r1.xxxx, t0.xyzw
+imad r2.xyz, r0.xxxx, l(6, 6, 6, 0), l(2, 3, 4, 0)
+ld_indexable(buffer)(float,float,float,float) r3.xyz, r2.xxxx, t0.xyzw
+ld_indexable(buffer)(float,float,float,float) r2.xyw, r2.yyyy, t0.xywz
+mul r4.xyz, r3.xyzx, v0.yyyy
+mad r4.xyz, v0.xxxx, r1.xyzx, r4.xyzx
+mad r4.xyz, v0.zzzz, r2.xywx, r4.xyzx
+add r0.xyz, r0.yzwy, r4.xyzx
+mul r4.xyz, r3.xyzx, v2.yyyy
+mad r4.xyz, v2.xxxx, r1.xyzx, r4.xyzx
+mad r4.xyz, v2.zzzz, r2.xywx, r4.xyzx
+mul r3.xyz, r3.xyzx, v3.yyyy
+mad r1.xyz, v3.xxxx, r1.xyzx, r3.xyzx
+mad r1.xyz, v3.zzzz, r2.xywx, r1.xyzx
+mov r2.xyw, cb1[2].xyxz
+mov r0.w, l(0)
+loop 
+  uge r1.w, r0.w, cb9[0].y
+  breakc_nz r1.w
+  ishl r1.w, r0.w, l(1)
+  ld_indexable(buffer)(float,float,float,float) r3.xyzw, r1.wwww, t1.xyzw
+  bfi r1.w, l(31), l(1), r0.w, l(1)
+  ld_indexable(buffer)(float,float,float,float) r1.w, r1.wwww, t1.yzwx
+  add r5.xyz, r0.xyzx, -r3.xyzx
+  max r3.x, r5.y, l(-1.000000)
+  min r5.w, r3.x, l(0.000000)
+  dp3 r3.x, r5.xzwx, r5.xzwx
+  sqrt r3.x, r3.x
+  div r5.xyz, r5.xwzx, r3.xxxx
+  div_sat r3.x, r3.x, r3.w
+  add r3.x, -r3.x, l(1.000000)
+  mul r1.w, r1.w, r3.x
+  mad r2.xyw, r5.xyxz, r1.wwww, r2.xyxw
+  iadd r0.w, r0.w, l(1)
+endloop 
+add r3.xy, -v4.yyyy, l(1.000000, 2.000000, 0.000000, 0.000000)
+mul r0.w, r3.y, r3.y
+mad r0.w, r0.w, r0.w, -r0.w
+mul r1.w, r3.x, v4.x
+mul r1.w, r1.w, cb1[3].x
+add r3.xyz, r0.xyzx, cb1[3].yyyy
+add r3.xyz, r3.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+frc r3.xyz, r3.xyzx
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mul r5.xyz, |r3.xyzx|, |r3.xyzx|
+mad r3.xyz, -|r3.xyzx|, l(2.000000, 2.000000, 2.000000, 0.000000), l(3.000000, 3.000000, 3.000000, 0.000000)
+mul r3.xyz, r3.xyzx, r5.xyzx
+mad r0.xyz, r2.xywx, r0.wwww, r0.xyzx
+mad r0.xyz, r1.wwww, r3.xyzx, r0.xyzx
+mov r0.w, l(1.000000)
+dp4 r3.x, r0.xyzw, cb0[12].xyzw
+dp4 r3.y, r0.xyzw, cb0[13].xyzw
+dp4 r3.z, r0.xyzw, cb0[14].xyzw
+mov r3.w, l(1.000000)
+dp4 o0.x, r3.xyzw, cb0[4].xyzw
+dp4 o0.y, r3.xyzw, cb0[5].xyzw
+dp4 o0.z, r3.xyzw, cb0[6].xyzw
+dp4 o0.w, r3.xyzw, cb0[7].xyzw
+dp4 o5.x, r3.xyzw, cb0[8].xyzw
+dp4 o5.y, r3.xyzw, cb0[9].xyzw
+dp4 o5.z, r3.xyzw, cb0[10].xyzw
+dp4 o5.w, r3.xyzw, cb0[11].xyzw
+dp3 r0.x, r4.xyzx, cb0[8].xyzx
+dp3 r0.y, r4.xyzx, cb0[9].xyzx
+dp3 r0.z, r4.xyzx, cb0[10].xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+dp3 r3.x, r1.xyzx, cb0[8].xyzx
+dp3 r3.y, r1.xyzx, cb0[9].xyzx
+dp3 r3.z, r1.xyzx, cb0[10].xyzx
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r1.xyz, r0.wwww, r3.xyzx
+mul r2.xyw, r0.yzyx, r1.zxzy
+mad r2.xyw, r1.yzyx, r0.zxzy, -r2.xyxw
+mul o4.xyz, r2.xywx, v3.wwww
+dp3 o6.x, r4.xyzx, cb0[0].xyzx
+dp3 o6.y, r4.xyzx, cb0[1].xyzx
+dp3 o6.z, r4.xyzx, cb0[2].xyzx
+ld_indexable(buffer)(float,float,float,float) o7.xyzw, r2.zzzz, t0.xyzw
+mov o1.xyzw, v1.xyxy
+mov o2.xyz, r0.xyzx
+mov o3.xyz, r1.xyzx
+ret 
+// Approximately 89 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

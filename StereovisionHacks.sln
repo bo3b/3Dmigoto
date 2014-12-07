@@ -3670,6 +3670,67 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes"
 		Mordor\ShaderFixes\ffeac64d2cc337eb-ps_replace.txt = Mordor\ShaderFixes\ffeac64d2cc337eb-ps_replace.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "LOTF", "LOTF", "{7C1981AF-4A10-4035-AA29-DF6556000AEE}"
+	ProjectSection(SolutionItems) = preProject
+		LOTF\d3dx.ini = LOTF\d3dx.ini
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{E375F279-4DFD-4040-B37F-03F0F49E5200}"
+	ProjectSection(SolutionItems) = preProject
+		LOTF\ShaderFixes\014d350f49fdc34b-ps_replace.txt = LOTF\ShaderFixes\014d350f49fdc34b-ps_replace.txt
+		LOTF\ShaderFixes\066a36405b4c8328-ps_replace.txt = LOTF\ShaderFixes\066a36405b4c8328-ps_replace.txt
+		LOTF\ShaderFixes\0713edf23a2e6c83-ps_replace.txt = LOTF\ShaderFixes\0713edf23a2e6c83-ps_replace.txt
+		LOTF\ShaderFixes\1110980182a98412-ps_replace.txt = LOTF\ShaderFixes\1110980182a98412-ps_replace.txt
+		LOTF\ShaderFixes\1318e13ff2549a76-ps_replace.txt = LOTF\ShaderFixes\1318e13ff2549a76-ps_replace.txt
+		LOTF\ShaderFixes\18e093395b080f88-ps_replace.txt = LOTF\ShaderFixes\18e093395b080f88-ps_replace.txt
+		LOTF\ShaderFixes\1ad1591f462e2cc1-ps_replace.txt = LOTF\ShaderFixes\1ad1591f462e2cc1-ps_replace.txt
+		LOTF\ShaderFixes\1d522164f16c9e74-ps_replace.txt = LOTF\ShaderFixes\1d522164f16c9e74-ps_replace.txt
+		LOTF\ShaderFixes\275bce6fe636a3f9-ps_replace.txt = LOTF\ShaderFixes\275bce6fe636a3f9-ps_replace.txt
+		LOTF\ShaderFixes\2854f63af6a61aab-ps_replace.txt = LOTF\ShaderFixes\2854f63af6a61aab-ps_replace.txt
+		LOTF\ShaderFixes\2a3a8eb245cb25ed-ps_replace.txt = LOTF\ShaderFixes\2a3a8eb245cb25ed-ps_replace.txt
+		LOTF\ShaderFixes\2c28f2cdff322a6c-ps_replace.txt = LOTF\ShaderFixes\2c28f2cdff322a6c-ps_replace.txt
+		LOTF\ShaderFixes\2d0c57ee553596a3-vs_replace.txt = LOTF\ShaderFixes\2d0c57ee553596a3-vs_replace.txt
+		LOTF\ShaderFixes\3a8cd180568161c3-vs_replace.txt = LOTF\ShaderFixes\3a8cd180568161c3-vs_replace.txt
+		LOTF\ShaderFixes\3b1b6e6da03d2d3d-ps_replace.txt = LOTF\ShaderFixes\3b1b6e6da03d2d3d-ps_replace.txt
+		LOTF\ShaderFixes\3d89d7ab62279ad9-ps_replace.txt = LOTF\ShaderFixes\3d89d7ab62279ad9-ps_replace.txt
+		LOTF\ShaderFixes\3e534d5327044fc5-ps_replace.txt = LOTF\ShaderFixes\3e534d5327044fc5-ps_replace.txt
+		LOTF\ShaderFixes\3e63945509b14070-ps_replace.txt = LOTF\ShaderFixes\3e63945509b14070-ps_replace.txt
+		LOTF\ShaderFixes\3fcf4f3477847abe-ps_replace.txt = LOTF\ShaderFixes\3fcf4f3477847abe-ps_replace.txt
+		LOTF\ShaderFixes\450646d5a0e0800f-vs_replace.txt = LOTF\ShaderFixes\450646d5a0e0800f-vs_replace.txt
+		LOTF\ShaderFixes\4eaac11e9a29d5bf-ps_replace.txt = LOTF\ShaderFixes\4eaac11e9a29d5bf-ps_replace.txt
+		LOTF\ShaderFixes\5b64238e6bf3552c-ps_replace.txt = LOTF\ShaderFixes\5b64238e6bf3552c-ps_replace.txt
+		LOTF\ShaderFixes\5cdbedf7b4fb3e0c-ps_replace.txt = LOTF\ShaderFixes\5cdbedf7b4fb3e0c-ps_replace.txt
+		LOTF\ShaderFixes\5d44cf5f4d5fab69-ps_replace.txt = LOTF\ShaderFixes\5d44cf5f4d5fab69-ps_replace.txt
+		LOTF\ShaderFixes\5ed1d850cd60855d-ps_replace.txt = LOTF\ShaderFixes\5ed1d850cd60855d-ps_replace.txt
+		LOTF\ShaderFixes\60de0e96a4d17783-ps_replace.txt = LOTF\ShaderFixes\60de0e96a4d17783-ps_replace.txt
+		LOTF\ShaderFixes\6d402da86d54003d-ps_replace.txt = LOTF\ShaderFixes\6d402da86d54003d-ps_replace.txt
+		LOTF\ShaderFixes\6e03625975345459-ps_replace.txt = LOTF\ShaderFixes\6e03625975345459-ps_replace.txt
+		LOTF\ShaderFixes\717ab08a382fdcbd-vs_replace.txt = LOTF\ShaderFixes\717ab08a382fdcbd-vs_replace.txt
+		LOTF\ShaderFixes\718a1dea0dc44f7f-vs_replace.txt = LOTF\ShaderFixes\718a1dea0dc44f7f-vs_replace.txt
+		LOTF\ShaderFixes\73db257f30182d7e-ps_replace.txt = LOTF\ShaderFixes\73db257f30182d7e-ps_replace.txt
+		LOTF\ShaderFixes\764eee3f799a89c8-vs_replace.txt = LOTF\ShaderFixes\764eee3f799a89c8-vs_replace.txt
+		LOTF\ShaderFixes\77167bd0e650c34b-ps_replace.txt = LOTF\ShaderFixes\77167bd0e650c34b-ps_replace.txt
+		LOTF\ShaderFixes\78c09f1094d7db88-ps_replace.txt = LOTF\ShaderFixes\78c09f1094d7db88-ps_replace.txt
+		LOTF\ShaderFixes\7bde4f5315c83646-ps_replace.txt = LOTF\ShaderFixes\7bde4f5315c83646-ps_replace.txt
+		LOTF\ShaderFixes\86558106e2fd4cc8-ps_replace.txt = LOTF\ShaderFixes\86558106e2fd4cc8-ps_replace.txt
+		LOTF\ShaderFixes\8b8d6ed32cef7d24-ps_replace.txt = LOTF\ShaderFixes\8b8d6ed32cef7d24-ps_replace.txt
+		LOTF\ShaderFixes\a290d0d09a4cccdb-ps_replace.txt = LOTF\ShaderFixes\a290d0d09a4cccdb-ps_replace.txt
+		LOTF\ShaderFixes\a7d11e5420b5bb60-ps_replace.txt = LOTF\ShaderFixes\a7d11e5420b5bb60-ps_replace.txt
+		LOTF\ShaderFixes\aaba80111641cebc-ps_replace.txt = LOTF\ShaderFixes\aaba80111641cebc-ps_replace.txt
+		LOTF\ShaderFixes\ac5086caa0e82fcf-ps_replace.txt = LOTF\ShaderFixes\ac5086caa0e82fcf-ps_replace.txt
+		LOTF\ShaderFixes\bd80a5812b6a8037-ps_replace.txt = LOTF\ShaderFixes\bd80a5812b6a8037-ps_replace.txt
+		LOTF\ShaderFixes\c03f536510799b0e-vs_replace.txt = LOTF\ShaderFixes\c03f536510799b0e-vs_replace.txt
+		LOTF\ShaderFixes\c0e62a58a1afeb4f-ps_replace.txt = LOTF\ShaderFixes\c0e62a58a1afeb4f-ps_replace.txt
+		LOTF\ShaderFixes\c84db54acee27d93-ps_replace.txt = LOTF\ShaderFixes\c84db54acee27d93-ps_replace.txt
+		LOTF\ShaderFixes\cc5dc1c3f202d8ee-ps_replace.txt = LOTF\ShaderFixes\cc5dc1c3f202d8ee-ps_replace.txt
+		LOTF\ShaderFixes\d70d7aebba7565da-vs_replace.txt = LOTF\ShaderFixes\d70d7aebba7565da-vs_replace.txt
+		LOTF\ShaderFixes\e2657832af9ab8b0-vs_replace.txt = LOTF\ShaderFixes\e2657832af9ab8b0-vs_replace.txt
+		LOTF\ShaderFixes\ec20f2cb3f669819-ps_replace.txt = LOTF\ShaderFixes\ec20f2cb3f669819-ps_replace.txt
+		LOTF\ShaderFixes\ed7ad715c23e2e05-ps_replace.txt = LOTF\ShaderFixes\ed7ad715c23e2e05-ps_replace.txt
+		LOTF\ShaderFixes\ee3a69066c9335c4-ps_replace.txt = LOTF\ShaderFixes\ee3a69066c9335c4-ps_replace.txt
+		LOTF\ShaderFixes\fc13052b69bc1d93-vs_replace.txt = LOTF\ShaderFixes\fc13052b69bc1d93-vs_replace.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		AC3|Win32 = AC3|Win32
@@ -3686,6 +3747,8 @@ Global
 		DragonAge|x64 = DragonAge|x64
 		Ghosts|Win32 = Ghosts|Win32
 		Ghosts|x64 = Ghosts|x64
+		LOTF|Win32 = LOTF|Win32
+		LOTF|x64 = LOTF|x64
 		Mordor|Win32 = Mordor|Win32
 		Mordor|x64 = Mordor|x64
 		Release|Win32 = Release|Win32
@@ -3717,6 +3780,8 @@ Global
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.LOTF|x64.ActiveCfg = LOTF|x64
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Mordor|x64.ActiveCfg = Mordor|x64
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Release|Win32.ActiveCfg = Release|Win32
@@ -3749,6 +3814,8 @@ Global
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.LOTF|x64.ActiveCfg = LOTF|x64
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Mordor|x64.ActiveCfg = Mordor|x64
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Release|Win32.ActiveCfg = Release|Win32
@@ -3790,6 +3857,10 @@ Global
 		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.Ghosts|Win32.Build.0 = Ghosts|Win32
 		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.Ghosts|x64.ActiveCfg = Ghosts|x64
 		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.Ghosts|x64.Build.0 = Ghosts|x64
+		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.LOTF|Win32.Build.0 = LOTF|Win32
+		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.LOTF|x64.ActiveCfg = LOTF|x64
+		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.LOTF|x64.Build.0 = LOTF|x64
 		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.Mordor|Win32.Build.0 = Mordor|Win32
 		{92A679C7-A67F-4B16-B055-7A2F4C23DD80}.Mordor|x64.ActiveCfg = Mordor|x64
@@ -3829,6 +3900,8 @@ Global
 		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.LOTF|x64.ActiveCfg = LOTF|x64
 		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.Mordor|x64.ActiveCfg = Mordor|x64
 		{16459E48-9CD1-49FE-8703-D8B275CFCE1E}.Release|Win32.ActiveCfg = Release|Win32
@@ -3870,6 +3943,10 @@ Global
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.Ghosts|Win32.Build.0 = Ghosts|Win32
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.Ghosts|x64.ActiveCfg = Ghosts|x64
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.Ghosts|x64.Build.0 = Ghosts|x64
+		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.LOTF|Win32.Build.0 = LOTF|Win32
+		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.LOTF|x64.ActiveCfg = LOTF|x64
+		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.LOTF|x64.Build.0 = LOTF|x64
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.Mordor|Win32.Build.0 = Mordor|Win32
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86}.Mordor|x64.ActiveCfg = Mordor|x64
@@ -3909,6 +3986,8 @@ Global
 		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.LOTF|x64.ActiveCfg = LOTF|x64
 		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.Mordor|x64.ActiveCfg = Mordor|x64
 		{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}.Release|Win32.ActiveCfg = Release|Win32
@@ -3941,6 +4020,8 @@ Global
 		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.LOTF|x64.ActiveCfg = LOTF|x64
 		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.Mordor|x64.ActiveCfg = Mordor|x64
 		{D831CD64-E2AF-4CEB-97BB-5946F829A40B}.Release|Win32.ActiveCfg = Release|Win32
@@ -3973,6 +4054,8 @@ Global
 		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.LOTF|x64.ActiveCfg = LOTF|x64
 		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.Mordor|x64.ActiveCfg = Mordor|x64
 		{0783CE5A-6B8F-4E16-A26F-04F9F21AD078}.Release|Win32.ActiveCfg = Release|Win32
@@ -4005,6 +4088,8 @@ Global
 		{3D750839-C456-4374-9C21-BF596576D8FF}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{3D750839-C456-4374-9C21-BF596576D8FF}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{3D750839-C456-4374-9C21-BF596576D8FF}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{3D750839-C456-4374-9C21-BF596576D8FF}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{3D750839-C456-4374-9C21-BF596576D8FF}.LOTF|x64.ActiveCfg = LOTF|x64
 		{3D750839-C456-4374-9C21-BF596576D8FF}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{3D750839-C456-4374-9C21-BF596576D8FF}.Mordor|x64.ActiveCfg = Mordor|x64
 		{3D750839-C456-4374-9C21-BF596576D8FF}.Release|Win32.ActiveCfg = Release|Win32
@@ -4037,6 +4122,8 @@ Global
 		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.LOTF|x64.ActiveCfg = LOTF|x64
 		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.Mordor|x64.ActiveCfg = Mordor|x64
 		{EB4987CD-CFEE-455A-B678-6D398F0DA30A}.Release|Win32.ActiveCfg = Release|Win32
@@ -4078,6 +4165,10 @@ Global
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Ghosts|Win32.Build.0 = Ghosts|Win32
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Ghosts|x64.ActiveCfg = Ghosts|x64
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Ghosts|x64.Build.0 = Ghosts|x64
+		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.LOTF|Win32.Build.0 = LOTF|Win32
+		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.LOTF|x64.ActiveCfg = LOTF|x64
+		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.LOTF|x64.Build.0 = LOTF|x64
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Mordor|Win32.Build.0 = Mordor|Win32
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Mordor|x64.ActiveCfg = Mordor|x64
@@ -4115,6 +4206,8 @@ Global
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.DragonAge|x64.ActiveCfg = DragonAge|x64
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Ghosts|Win32.ActiveCfg = Ghosts|Win32
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Ghosts|x64.ActiveCfg = Ghosts|x64
+		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.LOTF|Win32.ActiveCfg = LOTF|Win32
+		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.LOTF|x64.ActiveCfg = LOTF|x64
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Mordor|Win32.ActiveCfg = Mordor|Win32
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Mordor|x64.ActiveCfg = Mordor|x64
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Release|Win32.ActiveCfg = Release|Win32
@@ -4152,5 +4245,7 @@ Global
 		{3237EB69-0AE0-4206-B565-C59DB150F16E} = {CC346BD7-D60B-45E5-A6D0-4AEF00A747FA}
 		{8A254EE6-EDCC-4462-A9DE-A8530A5AF204} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{C4150F2C-3294-4B28-8B8F-56D4AF114D09} = {8A254EE6-EDCC-4462-A9DE-A8530A5AF204}
+		{7C1981AF-4A10-4035-AA29-DF6556000AEE} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{E375F279-4DFD-4040-B37F-03F0F49E5200} = {7C1981AF-4A10-4035-AA29-DF6556000AEE}
 	EndGlobalSection
 EndGlobal

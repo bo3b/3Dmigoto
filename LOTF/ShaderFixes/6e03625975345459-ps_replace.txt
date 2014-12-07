@@ -1,0 +1,649 @@
+//Specular lighting
+cbuffer PER_STAGE : register(b0)
+{
+  float4x4 inverse_view_matrix : packoffset(c0);
+  float4 camera_clip_distances : packoffset(c4);
+  float4 camera_position_worldspace : packoffset(c5);
+}
+
+cbuffer PER_FRAME : register(b1)
+{
+  float4x4 envmap_world_to_local0 : packoffset(c0);
+  float4 envmap_box_parameters0 : packoffset(c4);
+  float4 envmap_position_parameters0 : packoffset(c5);
+  float4x4 envmap_world_to_local1 : packoffset(c6);
+  float4 envmap_box_parameters1 : packoffset(c10);
+  float4 envmap_position_parameters1 : packoffset(c11);
+  float4x4 envmap_world_to_local2 : packoffset(c12);
+  float4 envmap_box_parameters2 : packoffset(c16);
+  float4 envmap_position_parameters2 : packoffset(c17);
+  float4x4 envmap_world_to_local3 : packoffset(c18);
+  float4 envmap_box_parameters3 : packoffset(c22);
+  float4 envmap_position_parameters3 : packoffset(c23);
+}
+SamplerState sampler_point_clamp_s : register(s1);
+SamplerState sampler_trilinear_wrap_s : register(s4);
+Texture2D<float4> depthSampler : register(t0);
+Texture2D<float4> gbuffer0Sampler : register(t1);
+Texture2D<float4> gbuffer1Sampler : register(t2);
+TextureCube<float4> envMapGlobalSampler : register(t3);
+TextureCube<float4> envMapLocal0Sampler : register(t4);
+TextureCube<float4> envMapLocal1Sampler : register(t5);
+TextureCube<float4> envMapLocal2Sampler : register(t6);
+TextureCube<float4> envMapLocal3Sampler : register(t7);
+Buffer<float4> MaterialParametersBuffer : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : Texcoord0,
+  float2 v2 : Texcoord1,
+  float4 v3 : Texcoord3,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask;
+  
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+
+//...Original Matrix
+a1 = inverse_view_matrix._m00_m10_m20_m30;
+a2 = inverse_view_matrix._m01_m11_m21_m31;
+a3 = inverse_view_matrix._m02_m12_m22_m32;
+a4 = inverse_view_matrix._m03_m13_m23_m33;
+
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+
+//...Inverse Matrix Elemets
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+  
+  r0.xy = gbuffer0Sampler.Sample(sampler_point_clamp_s, v2.xy).xy;
+  r0.z = gbuffer1Sampler.Sample(sampler_point_clamp_s, v2.xy).x;
+  r0.w = depthSampler.SampleLevel(sampler_point_clamp_s, v2.xy, 0.000000000e+000).x;
+  r0.w = -camera_clip_distances.z + r0.w;
+  r0.w = camera_clip_distances.w / r0.w;
+  
+float4 stereo = StereoParams.Load(0);
+float4 r26;
+
+  r1.xyz = v1.xyz * r0.www;
+  r2.xyz = r0.www * v1.xyz + camera_position_worldspace.xyz;
+  
+r2.w = 1.0;
+r26.x = dot(r2.xyzw, b1.xyzw);
+r26.y = dot(r2.xyzw, b2.xyzw);
+r26.z = dot(r2.xyzw, b3.xyzw);
+r26.w = dot(r2.xyzw, b4.xyzw);  
+  
+r26.x -= stereo.x*(-r26.z - stereo.y)*0.82; ///v3.x;  // /v3.x; ;
+
+r2.x = dot(r26.xyzw, a1.xyzw);
+r2.y = dot(r26.xyzw, a2.xyzw);
+r2.z = dot(r26.xyzw, a3.xyzw);
+r2.w = dot(r26.xyzw, a4.xyzw);  
+
+r1.xyz = r2.xyz - camera_position_worldspace.xyz;
+  
+  
+  // r1.xyz = v1.xyz * r0.www;
+  // r2.xyz = r0.www * v1.xyz + camera_position_worldspace.xyz;
+  r0.xy = r0.xy * float2(4.000000e+000,4.000000e+000) + float2(-2.000000e+000,-2.000000e+000);
+  r0.w = dot(r0.xy, r0.xy);
+  r3.zw = -r0.ww * float2(2.500000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+  r0.w = 0.000000000e+000 >= r3.z;
+  r1.w = sqrt(r3.z);
+  r0.w = r0.w ? 0.000000000e+000 : r1.w;
+  r3.xy = r0.xy * r0.ww;
+    
+  r4.x = dot(r3.xyw, inverse_view_matrix._m00_m10_m20);
+  r4.y = dot(r3.xyw, inverse_view_matrix._m01_m11_m21);
+  r4.z = dot(r3.xyw, inverse_view_matrix._m02_m12_m22);
+  r0.x = dot(r1.xyz, r4.xyz);
+  r0.x = r0.x + r0.x;
+  r3.xyz = r4.xyz * -r0.xxx + r1.xyz;
+  r0.x = 2.550000000e+002 * r0.z;
+  r0.x = (uint)r0.x;
+  bitmask.x = ((~(-1 << 7)) << 2) & 0xffffffff;
+  r0.x = (((uint)r0.x << 2) & bitmask.x) | ((uint)0 & ~bitmask.x);
+  r0.xy = (int2)r0.xx + int2(2,3);
+  r0.xzw = MaterialParametersBuffer.Load(r0.xxxx).xyw;
+  r0.y = MaterialParametersBuffer.Load(r0.yyyy).x;
+  r0.y = 8.000000000e+000 * r0.y;
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = rsqrt(r1.w);
+  r1.xyz = r1.xyz * r1.www;
+  r1.x = saturate(dot(-r1.xyz, r4.xyz));
+  r1.y = 1.000000000e+000 + -r0.x;
+  r1.x = 1.000000000e+000 + -r1.x;
+  r1.x = log2(r1.x);
+  r0.z = r1.x * r0.z;
+  r0.z = exp2(r0.z);
+  r0.x = saturate(r1.y * r0.z + r0.x);
+  r0.x = r0.w * r0.x;
+  r2.w = 1.000000000e+000;
+  r1.x = dot(r2.xyzw, envmap_world_to_local0._m00_m10_m20_m30);
+  r1.y = dot(r2.xyzw, envmap_world_to_local0._m01_m11_m21_m31);
+  r1.z = dot(r2.xyzw, envmap_world_to_local0._m02_m12_m22_m32);
+  r4.x = -envmap_box_parameters0.x < r1.x;
+  r4.y = -envmap_box_parameters0.y < r1.y;
+  r4.z = -envmap_box_parameters0.z < r1.z;
+  r0.z = r4.y ? r4.x : 0;
+  r0.z = r4.z ? r0.z : 0;
+  r4.x = r1.x < envmap_box_parameters0.x;
+  r4.y = r1.y < envmap_box_parameters0.y;
+  r4.z = r1.z < envmap_box_parameters0.z;
+  r0.w = r4.y ? r4.x : 0;
+  r0.w = r4.z ? r0.w : 0;
+  r0.z = (int)r0.w & (int)r0.z;
+  if (r0.z != 0) {
+  r0.z = envmap_box_parameters0.w < 5.000000000e-001;
+  r4.x = dot(r3.xyz, envmap_world_to_local0._m00_m10_m20);
+  r4.y = dot(r3.xyz, envmap_world_to_local0._m01_m11_m21);
+  r4.z = dot(r3.xyz, envmap_world_to_local0._m02_m12_m22);
+  r5.xyz = envmap_box_parameters0.xyz + -r1.xyz;
+  r5.xyz = r5.xyz / r4.xyz;
+  r6.xyz = -envmap_box_parameters0.xyz + -r1.xyz;
+  r4.xyz = r6.xyz / r4.xyz;
+  r4.xyz = max(r4.xyz, r5.xyz);
+  r0.w = min(r4.y, r4.x);
+  r0.w = min(r4.z, r0.w);
+  r4.xyz = r3.xyz * r0.www + r2.xyz;
+  r4.xyz = -envmap_position_parameters0.xyz + r4.xyz;
+  r3.w = -r3.z;
+  r4.w = -r4.z;
+  r4.xyz = r0.zzz ? r3.xyw : r4.xyw;
+  r4.xyz = envMapLocal0Sampler.SampleLevel(sampler_trilinear_wrap_s, r4.xyz, r0.y).xyz;
+  r0.zw = float2(-1.000000e+002,-1.000000e+002) + envmap_box_parameters0.xz;
+  r1.xy = abs(r1.xz) + -r0.zw;
+  r0.zw = envmap_box_parameters0.xz + -r0.zw;
+  r0.zw = r1.xy / r0.zw;
+  r0.z = max(r0.w, r0.z);
+  r0.z = 1.000000000e+000 + -r0.z;
+  r0.z = saturate(envmap_position_parameters0.w * r0.z);
+  r1.xyz = r4.xyz * r0.zzz;
+  } else {
+  r1.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r0.z = 0.000000000e+000;
+  }
+  r4.x = dot(r2.xyzw, envmap_world_to_local1._m00_m10_m20_m30);
+  r4.y = dot(r2.xyzw, envmap_world_to_local1._m01_m11_m21_m31);
+  r4.z = dot(r2.xyzw, envmap_world_to_local1._m02_m12_m22_m32);
+  r5.x = -envmap_box_parameters1.x < r4.x;
+  r5.y = -envmap_box_parameters1.y < r4.y;
+  r5.z = -envmap_box_parameters1.z < r4.z;
+  r0.w = r5.y ? r5.x : 0;
+  r0.w = r5.z ? r0.w : 0;
+  r5.x = r4.x < envmap_box_parameters1.x;
+  r5.y = r4.y < envmap_box_parameters1.y;
+  r5.z = r4.z < envmap_box_parameters1.z;
+  r1.w = r5.y ? r5.x : 0;
+  r1.w = r5.z ? r1.w : 0;
+  r0.w = (int)r0.w & (int)r1.w;
+  r1.w = r0.z < 1.000000000e+000;
+  r0.w = r1.w ? r0.w : 0;
+  if (r0.w != 0) {
+  r0.w = envmap_box_parameters1.w < 5.000000000e-001;
+  r5.x = dot(r3.xyz, envmap_world_to_local1._m00_m10_m20);
+  r5.y = dot(r3.xyz, envmap_world_to_local1._m01_m11_m21);
+  r5.z = dot(r3.xyz, envmap_world_to_local1._m02_m12_m22);
+  r6.xyz = envmap_box_parameters1.xyz + -r4.xyz;
+  r6.xyz = r6.xyz / r5.xyz;
+  r7.xyz = -envmap_box_parameters1.xyz + -r4.xyz;
+  r5.xyz = r7.xyz / r5.xyz;
+  r5.xyz = max(r5.xyz, r6.xyz);
+  r1.w = min(r5.y, r5.x);
+  r1.w = min(r5.z, r1.w);
+  r5.xyz = r3.xyz * r1.www + r2.xyz;
+  r5.xyz = -envmap_position_parameters1.xyz + r5.xyz;
+  r6.xyz = float3(1.000000e+000,1.000000e+000,-1.000000e+000) * r3.xyz;
+  r5.w = -r5.z;
+  r5.xyz = r0.www ? r6.xyz : r5.xyw;
+  r5.xyz = envMapLocal1Sampler.SampleLevel(sampler_trilinear_wrap_s, r5.xyz, r0.y).xyz;
+  r4.yw = float2(-1.000000e+002,-1.000000e+002) + envmap_box_parameters1.xz;
+  r4.xz = abs(r4.xz) + -r4.yw;
+  r4.yw = envmap_box_parameters1.xz + -r4.yw;
+  r4.xy = r4.xz / r4.yw;
+  r0.w = max(r4.y, r4.x);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.w = saturate(envmap_position_parameters1.w * r0.w);
+  r0.z = r0.z + r0.w;
+  r1.xyz = r5.xyz * r0.www + r1.xyz;
+  }
+  r4.x = dot(r2.xyzw, envmap_world_to_local2._m00_m10_m20_m30);
+  r4.y = dot(r2.xyzw, envmap_world_to_local2._m01_m11_m21_m31);
+  r4.z = dot(r2.xyzw, envmap_world_to_local2._m02_m12_m22_m32);
+  r5.x = -envmap_box_parameters2.x < r4.x;
+  r5.y = -envmap_box_parameters2.y < r4.y;
+  r5.z = -envmap_box_parameters2.z < r4.z;
+  r0.w = r5.y ? r5.x : 0;
+  r0.w = r5.z ? r0.w : 0;
+  r5.x = r4.x < envmap_box_parameters2.x;
+  r5.y = r4.y < envmap_box_parameters2.y;
+  r5.z = r4.z < envmap_box_parameters2.z;
+  r1.w = r5.y ? r5.x : 0;
+  r1.w = r5.z ? r1.w : 0;
+  r0.w = (int)r0.w & (int)r1.w;
+  r1.w = r0.z < 1.000000000e+000;
+  r0.w = r1.w ? r0.w : 0;
+  if (r0.w != 0) {
+  r0.w = envmap_box_parameters2.w < 5.000000000e-001;
+  r5.x = dot(r3.xyz, envmap_world_to_local2._m00_m10_m20);
+  r5.y = dot(r3.xyz, envmap_world_to_local2._m01_m11_m21);
+  r5.z = dot(r3.xyz, envmap_world_to_local2._m02_m12_m22);
+  r6.xyz = envmap_box_parameters2.xyz + -r4.xyz;
+  r6.xyz = r6.xyz / r5.xyz;
+  r7.xyz = -envmap_box_parameters2.xyz + -r4.xyz;
+  r5.xyz = r7.xyz / r5.xyz;
+  r5.xyz = max(r5.xyz, r6.xyz);
+  r1.w = min(r5.y, r5.x);
+  r1.w = min(r5.z, r1.w);
+  r5.xyz = r3.xyz * r1.www + r2.xyz;
+  r5.xyz = -envmap_position_parameters2.xyz + r5.xyz;
+  r6.xyz = float3(1.000000e+000,1.000000e+000,-1.000000e+000) * r3.xyz;
+  r5.w = -r5.z;
+  r5.xyz = r0.www ? r6.xyz : r5.xyw;
+  r5.xyz = envMapLocal2Sampler.SampleLevel(sampler_trilinear_wrap_s, r5.xyz, r0.y).xyz;
+  r4.yw = float2(-1.000000e+002,-1.000000e+002) + envmap_box_parameters2.xz;
+  r4.xz = abs(r4.xz) + -r4.yw;
+  r4.yw = envmap_box_parameters2.xz + -r4.yw;
+  r4.xy = r4.xz / r4.yw;
+  r0.w = max(r4.y, r4.x);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.w = saturate(envmap_position_parameters2.w * r0.w);
+  r0.z = r0.z + r0.w;
+  r1.xyz = r5.xyz * r0.www + r1.xyz;
+  }
+  r4.x = dot(r2.xyzw, envmap_world_to_local3._m00_m10_m20_m30);
+  r4.y = dot(r2.xyzw, envmap_world_to_local3._m01_m11_m21_m31);
+  r4.z = dot(r2.xyzw, envmap_world_to_local3._m02_m12_m22_m32);
+  r5.x = -envmap_box_parameters3.x < r4.x;
+  r5.y = -envmap_box_parameters3.y < r4.y;
+  r5.z = -envmap_box_parameters3.z < r4.z;
+  r0.w = r5.y ? r5.x : 0;
+  r0.w = r5.z ? r0.w : 0;
+  r5.x = r4.x < envmap_box_parameters3.x;
+  r5.y = r4.y < envmap_box_parameters3.y;
+  r5.z = r4.z < envmap_box_parameters3.z;
+  r1.w = r5.y ? r5.x : 0;
+  r1.w = r5.z ? r1.w : 0;
+  r0.w = (int)r0.w & (int)r1.w;
+  r1.w = r0.z < 1.000000000e+000;
+  r0.w = r1.w ? r0.w : 0;
+  if (r0.w != 0) {
+  r0.w = envmap_box_parameters3.w < 5.000000000e-001;
+  r5.x = dot(r3.xyz, envmap_world_to_local3._m00_m10_m20);
+  r5.y = dot(r3.xyz, envmap_world_to_local3._m01_m11_m21);
+  r5.z = dot(r3.xyz, envmap_world_to_local3._m02_m12_m22);
+  r6.xyz = envmap_box_parameters3.xyz + -r4.xyz;
+  r6.xyz = r6.xyz / r5.xyz;
+  r7.xyz = -envmap_box_parameters3.xyz + -r4.xyz;
+  r5.xyz = r7.xyz / r5.xyz;
+  r5.xyz = max(r5.xyz, r6.xyz);
+  r1.w = min(r5.y, r5.x);
+  r1.w = min(r5.z, r1.w);
+  r2.xyz = r3.xyz * r1.www + r2.xyz;
+  r2.xyz = -envmap_position_parameters3.xyz + r2.xyz;
+  r5.xyz = float3(1.000000e+000,1.000000e+000,-1.000000e+000) * r3.xyz;
+  r2.w = -r2.z;
+  r2.xyz = r0.www ? r5.xyz : r2.xyw;
+  r2.xyz = envMapLocal3Sampler.SampleLevel(sampler_trilinear_wrap_s, r2.xyz, r0.y).xyz;
+  r4.yw = float2(-1.000000e+002,-1.000000e+002) + envmap_box_parameters3.xz;
+  r4.xz = abs(r4.xz) + -r4.yw;
+  r4.yw = envmap_box_parameters3.xz + -r4.yw;
+  r4.xy = r4.xz / r4.yw;
+  r0.w = max(r4.y, r4.x);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r0.w = saturate(envmap_position_parameters3.w * r0.w);
+  r0.z = r0.z + r0.w;
+  r1.xyz = r2.xyz * r0.www + r1.xyz;
+  }
+  r0.w = r0.z < 1.000000000e+000;
+  if (r0.w != 0) {
+  r2.xyz = float3(1.000000e+000,1.000000e+000,-1.000000e+000) * r3.xyz;
+  r2.xyz = envMapGlobalSampler.SampleLevel(sampler_trilinear_wrap_s, r2.xyz, r0.y).xyz;
+  r0.y = 1.000000000e+000 + -r0.z;
+  r1.xyz = r2.xyz * r0.yyy + r1.xyz;
+  }
+  o0.xyz = r1.xyz * r0.xxx;
+  o0.w = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20499
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_STAGE
+// {
+//
+//   float4x4 inverse_view_matrix;      // Offset:    0 Size:    64
+//   float4 camera_clip_distances;      // Offset:   64 Size:    16
+//   float4 camera_position_worldspace; // Offset:   80 Size:    16
+//
+// }
+//
+// cbuffer PER_FRAME
+// {
+//
+//   float4x4 envmap_world_to_local0;   // Offset:    0 Size:    64
+//   float4 envmap_box_parameters0;     // Offset:   64 Size:    16
+//   float4 envmap_position_parameters0;// Offset:   80 Size:    16
+//   float4x4 envmap_world_to_local1;   // Offset:   96 Size:    64
+//   float4 envmap_box_parameters1;     // Offset:  160 Size:    16
+//   float4 envmap_position_parameters1;// Offset:  176 Size:    16
+//   float4x4 envmap_world_to_local2;   // Offset:  192 Size:    64
+//   float4 envmap_box_parameters2;     // Offset:  256 Size:    16
+//   float4 envmap_position_parameters2;// Offset:  272 Size:    16
+//   float4x4 envmap_world_to_local3;   // Offset:  288 Size:    64
+//   float4 envmap_box_parameters3;     // Offset:  352 Size:    16
+//   float4 envmap_position_parameters3;// Offset:  368 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sampler_point_clamp               sampler      NA          NA    1        1
+// sampler_trilinear_wrap            sampler      NA          NA    4        1
+// depthSampler                      texture  float4          2d    0        1
+// gbuffer0Sampler                   texture  float4          2d    1        1
+// gbuffer1Sampler                   texture  float4          2d    2        1
+// envMapGlobalSampler               texture  float4        cube    3        1
+// envMapLocal0Sampler               texture  float4        cube    4        1
+// envMapLocal1Sampler               texture  float4        cube    5        1
+// envMapLocal2Sampler               texture  float4        cube    6        1
+// envMapLocal3Sampler               texture  float4        cube    7        1
+// MaterialParametersBuffer          texture  float4         buf    8        1
+// PER_STAGE                         cbuffer      NA          NA    0        1
+// PER_FRAME                         cbuffer      NA          NA    1        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// Texcoord                 0   xyzw        1     NONE   float   xyz 
+// Texcoord                 1   xy          2     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[6], immediateIndexed
+dcl_constantbuffer cb1[24], immediateIndexed
+dcl_sampler s1, mode_default
+dcl_sampler s4, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texturecube (float,float,float,float) t3
+dcl_resource_texturecube (float,float,float,float) t4
+dcl_resource_texturecube (float,float,float,float) t5
+dcl_resource_texturecube (float,float,float,float) t6
+dcl_resource_texturecube (float,float,float,float) t7
+dcl_resource_buffer (float,float,float,float) t8
+dcl_input_ps linear v1.xyz
+dcl_input_ps linear v2.xy
+dcl_output o0.xyzw
+dcl_temps 8
+sample_indexable(texture2d)(float,float,float,float) r0.xy, v2.xyxx, t1.xyzw, s1
+sample_indexable(texture2d)(float,float,float,float) r0.z, v2.xyxx, t2.yzxw, s1
+sample_l_indexable(texture2d)(float,float,float,float) r0.w, v2.xyxx, t0.yzwx, s1, l(0.000000)
+add r0.w, r0.w, -cb0[4].z
+div r0.w, cb0[4].w, r0.w
+mul r1.xyz, r0.wwww, v1.xyzx
+mad r2.xyz, r0.wwww, v1.xyzx, cb0[5].xyzx
+mad r0.xy, r0.xyxx, l(4.000000, 4.000000, 0.000000, 0.000000), l(-2.000000, -2.000000, 0.000000, 0.000000)
+dp2 r0.w, r0.xyxx, r0.xyxx
+mad r3.zw, -r0.wwww, l(0.000000, 0.000000, 0.250000, 0.500000), l(0.000000, 0.000000, 1.000000, 1.000000)
+ge r0.w, l(0.000000), r3.z
+sqrt r1.w, r3.z
+movc r0.w, r0.w, l(0), r1.w
+mul r3.xy, r0.wwww, r0.xyxx
+dp3 r4.x, r3.xywx, cb0[0].xyzx
+dp3 r4.y, r3.xywx, cb0[1].xyzx
+dp3 r4.z, r3.xywx, cb0[2].xyzx
+dp3 r0.x, r1.xyzx, r4.xyzx
+add r0.x, r0.x, r0.x
+mad r3.xyz, r4.xyzx, -r0.xxxx, r1.xyzx
+mul r0.x, r0.z, l(255.000000)
+ftou r0.x, r0.x
+bfi r0.x, l(7), l(2), r0.x, l(0)
+iadd r0.xy, r0.xxxx, l(2, 3, 0, 0)
+ld_indexable(buffer)(float,float,float,float) r0.xzw, r0.xxxx, t8.xzyw
+ld_indexable(buffer)(float,float,float,float) r0.y, r0.yyyy, t8.yxzw
+mul r0.y, r0.y, l(8.000000)
+dp3 r1.w, r1.xyzx, r1.xyzx
+rsq r1.w, r1.w
+mul r1.xyz, r1.wwww, r1.xyzx
+dp3_sat r1.x, -r1.xyzx, r4.xyzx
+add r1.y, -r0.x, l(1.000000)
+add r1.x, -r1.x, l(1.000000)
+log r1.x, r1.x
+mul r0.z, r0.z, r1.x
+exp r0.z, r0.z
+mad_sat r0.x, r1.y, r0.z, r0.x
+mul r0.x, r0.x, r0.w
+mov r2.w, l(1.000000)
+dp4 r1.x, r2.xyzw, cb1[0].xyzw
+dp4 r1.y, r2.xyzw, cb1[1].xyzw
+dp4 r1.z, r2.xyzw, cb1[2].xyzw
+lt r4.xyz, -cb1[4].xyzx, r1.xyzx
+and r0.z, r4.y, r4.x
+and r0.z, r4.z, r0.z
+lt r4.xyz, r1.xyzx, cb1[4].xyzx
+and r0.w, r4.y, r4.x
+and r0.w, r4.z, r0.w
+and r0.z, r0.w, r0.z
+if_nz r0.z
+  lt r0.z, cb1[4].w, l(0.500000)
+  dp3 r4.x, r3.xyzx, cb1[0].xyzx
+  dp3 r4.y, r3.xyzx, cb1[1].xyzx
+  dp3 r4.z, r3.xyzx, cb1[2].xyzx
+  add r5.xyz, -r1.xyzx, cb1[4].xyzx
+  div r5.xyz, r5.xyzx, r4.xyzx
+  add r6.xyz, -r1.xyzx, -cb1[4].xyzx
+  div r4.xyz, r6.xyzx, r4.xyzx
+  max r4.xyz, r4.xyzx, r5.xyzx
+  min r0.w, r4.y, r4.x
+  min r0.w, r4.z, r0.w
+  mad r4.xyz, r3.xyzx, r0.wwww, r2.xyzx
+  add r4.xyz, r4.xyzx, -cb1[5].xyzx
+  mov r3.w, -r3.z
+  mov r4.w, -r4.z
+  movc r4.xyz, r0.zzzz, r3.xywx, r4.xywx
+  sample_l_indexable(texturecube)(float,float,float,float) r4.xyz, r4.xyzx, t4.xyzw, s4, r0.y
+  add r0.zw, cb1[4].xxxz, l(0.000000, 0.000000, -100.000000, -100.000000)
+  add r1.xy, -r0.zwzz, |r1.xzxx|
+  add r0.zw, -r0.zzzw, cb1[4].xxxz
+  div r0.zw, r1.xxxy, r0.zzzw
+  max r0.z, r0.w, r0.z
+  add r0.z, -r0.z, l(1.000000)
+  mul_sat r0.z, r0.z, cb1[5].w
+  mul r1.xyz, r0.zzzz, r4.xyzx
+else 
+  mov r1.xyz, l(0,0,0,0)
+  mov r0.z, l(0)
+endif 
+dp4 r4.x, r2.xyzw, cb1[6].xyzw
+dp4 r4.y, r2.xyzw, cb1[7].xyzw
+dp4 r4.z, r2.xyzw, cb1[8].xyzw
+lt r5.xyz, -cb1[10].xyzx, r4.xyzx
+and r0.w, r5.y, r5.x
+and r0.w, r5.z, r0.w
+lt r5.xyz, r4.xyzx, cb1[10].xyzx
+and r1.w, r5.y, r5.x
+and r1.w, r5.z, r1.w
+and r0.w, r0.w, r1.w
+lt r1.w, r0.z, l(1.000000)
+and r0.w, r0.w, r1.w
+if_nz r0.w
+  lt r0.w, cb1[10].w, l(0.500000)
+  dp3 r5.x, r3.xyzx, cb1[6].xyzx
+  dp3 r5.y, r3.xyzx, cb1[7].xyzx
+  dp3 r5.z, r3.xyzx, cb1[8].xyzx
+  add r6.xyz, -r4.xyzx, cb1[10].xyzx
+  div r6.xyz, r6.xyzx, r5.xyzx
+  add r7.xyz, -r4.xyzx, -cb1[10].xyzx
+  div r5.xyz, r7.xyzx, r5.xyzx
+  max r5.xyz, r5.xyzx, r6.xyzx
+  min r1.w, r5.y, r5.x
+  min r1.w, r5.z, r1.w
+  mad r5.xyz, r3.xyzx, r1.wwww, r2.xyzx
+  add r5.xyz, r5.xyzx, -cb1[11].xyzx
+  mul r6.xyz, r3.xyzx, l(1.000000, 1.000000, -1.000000, 0.000000)
+  mov r5.w, -r5.z
+  movc r5.xyz, r0.wwww, r6.xyzx, r5.xywx
+  sample_l_indexable(texturecube)(float,float,float,float) r5.xyz, r5.xyzx, t5.xyzw, s4, r0.y
+  add r4.yw, cb1[10].xxxz, l(0.000000, -100.000000, 0.000000, -100.000000)
+  add r4.xz, -r4.yywy, |r4.xxzx|
+  add r4.yw, -r4.yyyw, cb1[10].xxxz
+  div r4.xy, r4.xzxx, r4.ywyy
+  max r0.w, r4.y, r4.x
+  add r0.w, -r0.w, l(1.000000)
+  mul_sat r0.w, r0.w, cb1[11].w
+  add r0.z, r0.w, r0.z
+  mad r1.xyz, r5.xyzx, r0.wwww, r1.xyzx
+endif 
+dp4 r4.x, r2.xyzw, cb1[12].xyzw
+dp4 r4.y, r2.xyzw, cb1[13].xyzw
+dp4 r4.z, r2.xyzw, cb1[14].xyzw
+lt r5.xyz, -cb1[16].xyzx, r4.xyzx
+and r0.w, r5.y, r5.x
+and r0.w, r5.z, r0.w
+lt r5.xyz, r4.xyzx, cb1[16].xyzx
+and r1.w, r5.y, r5.x
+and r1.w, r5.z, r1.w
+and r0.w, r0.w, r1.w
+lt r1.w, r0.z, l(1.000000)
+and r0.w, r0.w, r1.w
+if_nz r0.w
+  lt r0.w, cb1[16].w, l(0.500000)
+  dp3 r5.x, r3.xyzx, cb1[12].xyzx
+  dp3 r5.y, r3.xyzx, cb1[13].xyzx
+  dp3 r5.z, r3.xyzx, cb1[14].xyzx
+  add r6.xyz, -r4.xyzx, cb1[16].xyzx
+  div r6.xyz, r6.xyzx, r5.xyzx
+  add r7.xyz, -r4.xyzx, -cb1[16].xyzx
+  div r5.xyz, r7.xyzx, r5.xyzx
+  max r5.xyz, r5.xyzx, r6.xyzx
+  min r1.w, r5.y, r5.x
+  min r1.w, r5.z, r1.w
+  mad r5.xyz, r3.xyzx, r1.wwww, r2.xyzx
+  add r5.xyz, r5.xyzx, -cb1[17].xyzx
+  mul r6.xyz, r3.xyzx, l(1.000000, 1.000000, -1.000000, 0.000000)
+  mov r5.w, -r5.z
+  movc r5.xyz, r0.wwww, r6.xyzx, r5.xywx
+  sample_l_indexable(texturecube)(float,float,float,float) r5.xyz, r5.xyzx, t6.xyzw, s4, r0.y
+  add r4.yw, cb1[16].xxxz, l(0.000000, -100.000000, 0.000000, -100.000000)
+  add r4.xz, -r4.yywy, |r4.xxzx|
+  add r4.yw, -r4.yyyw, cb1[16].xxxz
+  div r4.xy, r4.xzxx, r4.ywyy
+  max r0.w, r4.y, r4.x
+  add r0.w, -r0.w, l(1.000000)
+  mul_sat r0.w, r0.w, cb1[17].w
+  add r0.z, r0.w, r0.z
+  mad r1.xyz, r5.xyzx, r0.wwww, r1.xyzx
+endif 
+dp4 r4.x, r2.xyzw, cb1[18].xyzw
+dp4 r4.y, r2.xyzw, cb1[19].xyzw
+dp4 r4.z, r2.xyzw, cb1[20].xyzw
+lt r5.xyz, -cb1[22].xyzx, r4.xyzx
+and r0.w, r5.y, r5.x
+and r0.w, r5.z, r0.w
+lt r5.xyz, r4.xyzx, cb1[22].xyzx
+and r1.w, r5.y, r5.x
+and r1.w, r5.z, r1.w
+and r0.w, r0.w, r1.w
+lt r1.w, r0.z, l(1.000000)
+and r0.w, r0.w, r1.w
+if_nz r0.w
+  lt r0.w, cb1[22].w, l(0.500000)
+  dp3 r5.x, r3.xyzx, cb1[18].xyzx
+  dp3 r5.y, r3.xyzx, cb1[19].xyzx
+  dp3 r5.z, r3.xyzx, cb1[20].xyzx
+  add r6.xyz, -r4.xyzx, cb1[22].xyzx
+  div r6.xyz, r6.xyzx, r5.xyzx
+  add r7.xyz, -r4.xyzx, -cb1[22].xyzx
+  div r5.xyz, r7.xyzx, r5.xyzx
+  max r5.xyz, r5.xyzx, r6.xyzx
+  min r1.w, r5.y, r5.x
+  min r1.w, r5.z, r1.w
+  mad r2.xyz, r3.xyzx, r1.wwww, r2.xyzx
+  add r2.xyz, r2.xyzx, -cb1[23].xyzx
+  mul r5.xyz, r3.xyzx, l(1.000000, 1.000000, -1.000000, 0.000000)
+  mov r2.w, -r2.z
+  movc r2.xyz, r0.wwww, r5.xyzx, r2.xywx
+  sample_l_indexable(texturecube)(float,float,float,float) r2.xyz, r2.xyzx, t7.xyzw, s4, r0.y
+  add r4.yw, cb1[22].xxxz, l(0.000000, -100.000000, 0.000000, -100.000000)
+  add r4.xz, -r4.yywy, |r4.xxzx|
+  add r4.yw, -r4.yyyw, cb1[22].xxxz
+  div r4.xy, r4.xzxx, r4.ywyy
+  max r0.w, r4.y, r4.x
+  add r0.w, -r0.w, l(1.000000)
+  mul_sat r0.w, r0.w, cb1[23].w
+  add r0.z, r0.w, r0.z
+  mad r1.xyz, r2.xyzx, r0.wwww, r1.xyzx
+endif 
+lt r0.w, r0.z, l(1.000000)
+if_nz r0.w
+  mul r2.xyz, r3.xyzx, l(1.000000, 1.000000, -1.000000, 0.000000)
+  sample_l_indexable(texturecube)(float,float,float,float) r2.xyz, r2.xyzx, t3.xyzw, s4, r0.y
+  add r0.y, -r0.z, l(1.000000)
+  mad r1.xyz, r2.xyzx, r0.yyyy, r1.xyzx
+endif 
+mul o0.xyz, r0.xxxx, r1.xyzx
+mov o0.w, l(1.000000)
+ret 
+// Approximately 209 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
