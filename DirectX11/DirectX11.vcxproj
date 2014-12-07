@@ -1155,13 +1155,13 @@ xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
 
 REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
 
-del DragonAge\3Dmigoto-DragonAge-Ver.zip 
+del $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip 
 
 REM Use 7zip command tool to create a full release that can be unzipped into game directory.
 REM On game specific builds, this also includes the ShaderFixes folder.
 REM And, the d3dx.ini from game specific folder
 
-7zip\7za a DragonAge\3Dmigoto-DragonAge-Ver.zip  .\x64\DragonAge\*.dll  .\DragonAge\d3dx.ini  .\DragonAge\ShaderFixes\ .\x64\DragonAge\uninstall.bat
+7zip\7za a $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip   .\$(ConfigurationName)\d3dx.ini  .\$(ConfigurationName)\ShaderFixes\ $(TargetDir)*.dll $(TargetDir)uninstall.bat
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
