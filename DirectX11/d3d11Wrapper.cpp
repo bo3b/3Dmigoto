@@ -1419,9 +1419,13 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 	{
-		if (LogFile) fwprintf(LogFile, L"    error storing marked shader, file already exists: %s\n", fullName);
+		if (LogFile) fwprintf(LogFile, L"    marked shader file already exists: %s\n", fullName);
 		fclose(fw);
-		return false;
+		_wfopen_s(&fw, fullName, L"ab");
+		fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
+		fclose(fw);
+		Beep(1800, 100);					// Short High beep for for double beep that it's already there.
+		return true;
 	}
 
 	_wfopen_s(&fw, fullName, L"wb");
@@ -2458,7 +2462,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		return 0x13bc7e31;
 	}
 
-	if (LogFile) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
+	if (LogFile && LogDebug) fprintf(LogFile, "QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 
 	bool d3d10device = riid.Data1 == 0x9b7e4c0f && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 &&
@@ -2479,11 +2483,11 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e &&
 		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 &&
 		riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
-	if (LogFile && d3d10device) fprintf(LogFile, "  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = ID3D10Device\n");
-	if (LogFile && d3d10multithread) fprintf(LogFile, "  9b7e4e00-342c-4106-a19f-4f2704f689f0 = ID3D10Multithread\n");
-	if (LogFile && dxgidevice) fprintf(LogFile, "  54ec77fa-1377-44e6-8c32-88fd5f44c84c = IDXGIDevice\n");
-	if (LogFile && dxgidevice1) fprintf(LogFile, "  77db970f-6276-48ba-ba28-070143b4392c = IDXGIDevice1\n");
-	if (LogFile && dxgidevice2) fprintf(LogFile, "  05008617-fbfd-4051-a790-144884b4f6a9 = IDXGIDevice2\n");
+	if (LogFile && LogDebug && d3d10device) fprintf(LogFile, "  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = ID3D10Device\n");
+	if (LogFile && LogDebug && d3d10multithread) fprintf(LogFile, "  9b7e4e00-342c-4106-a19f-4f2704f689f0 = ID3D10Multithread\n");
+	if (LogFile && LogDebug && dxgidevice) fprintf(LogFile, "  54ec77fa-1377-44e6-8c32-88fd5f44c84c = IDXGIDevice\n");
+	if (LogFile && LogDebug && dxgidevice1) fprintf(LogFile, "  77db970f-6276-48ba-ba28-070143b4392c = IDXGIDevice1\n");
+	if (LogFile && LogDebug && dxgidevice2) fprintf(LogFile, "  05008617-fbfd-4051-a790-144884b4f6a9 = IDXGIDevice2\n");
 	/*
 	if (LogFile && unknown1) fprintf(LogFile, "  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
 	if (unknown1)
@@ -2502,7 +2506,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
 			*ppvObj = p1;
 			unsigned long cnt2 = p1->AddRef();
-			if (LogFile) fprintf(LogFile, "  interface replaced with ID3D11Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p1->m_ulRef, cnt2);
+			if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with ID3D11Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p1->m_ulRef, cnt2);
 		}
 		D3D11Wrapper::ID3D11DeviceContext *p2 = (D3D11Wrapper::ID3D11DeviceContext*) D3D11Wrapper::ID3D11DeviceContext::m_List.GetDataPtr(*ppvObj);
 		if (p2)
@@ -2510,7 +2514,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
 			*ppvObj = p2;
 			unsigned long cnt2 = p2->AddRef();
-			if (LogFile) fprintf(LogFile, "  interface replaced with ID3D11DeviceContext wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p2->m_ulRef, cnt2);
+			if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with ID3D11DeviceContext wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p2->m_ulRef, cnt2);
 		}
 		D3D11Wrapper::IDXGIDevice2 *p3 = (D3D11Wrapper::IDXGIDevice2*) D3D11Wrapper::IDXGIDevice2::m_List.GetDataPtr(*ppvObj);
 		if (p3)
@@ -2518,7 +2522,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
 			*ppvObj = p3;
 			unsigned long cnt2 = p3->AddRef();
-			if (LogFile) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p3->m_ulRef, cnt2);
+			if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p3->m_ulRef, cnt2);
 		}
 		D3D11Wrapper::ID3D10Device *p4 = (D3D11Wrapper::ID3D10Device*) D3D11Wrapper::ID3D10Device::m_List.GetDataPtr(*ppvObj);
 		if (p4)
@@ -2526,7 +2530,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
 			*ppvObj = p4;
 			unsigned long cnt2 = p4->AddRef();
-			if (LogFile) fprintf(LogFile, "  interface replaced with ID3D10Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p4->m_ulRef, cnt2);
+			if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with ID3D10Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p4->m_ulRef, cnt2);
 		}
 		D3D11Wrapper::ID3D10Multithread *p5 = (D3D11Wrapper::ID3D10Multithread*) D3D11Wrapper::ID3D10Multithread::m_List.GetDataPtr(*ppvObj);
 		if (p5)
@@ -2534,7 +2538,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
 			*ppvObj = p5;
 			unsigned long cnt2 = p5->AddRef();
-			if (LogFile) fprintf(LogFile, "  interface replaced with ID3D10Multithread wrapper. Interface counter=%d, wrapper counter=%d\n", cnt, p5->m_ulRef);
+			if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with ID3D10Multithread wrapper. Interface counter=%d, wrapper counter=%d\n", cnt, p5->m_ulRef);
 		}
 		if (!p1 && !p2 && !p3 && !p4 && !p5)
 		{
@@ -2543,7 +2547,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			{
 				// Cast again, but always use IDXGIDevice2 interface.
 				D3D11Base::IDXGIDevice *oldDevice = (D3D11Base::IDXGIDevice *)*ppvObj;
-				if (LogFile) fprintf(LogFile, "  releasing received IDXGIDevice, handle=%p. Querying IDXGIDevice2 interface.\n", *ppvObj);
+				if (LogFile && LogDebug) fprintf(LogFile, "  releasing received IDXGIDevice, handle=%p. Querying IDXGIDevice2 interface.\n", *ppvObj);
 
 				oldDevice->Release();
 				const IID IID_IGreet = { 0x7A5E6E81, 0x3DF8, 0x11D3, { 0x90, 0x3D, 0x00, 0x10, 0x5A, 0xA4, 0x5B, 0xDC } };
@@ -2579,7 +2583,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 					return E_OUTOFMEMORY;
 				}
 				*ppvObj = wrapper;
-				if (LogFile) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper, original device handle=%p. Wrapper counter=%d\n",
+				if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with IDXGIDevice2 wrapper, original device handle=%p. Wrapper counter=%d\n",
 					origDevice, wrapper->m_ulRef);
 			}
 			// Check for DirectX10 cast.
@@ -2595,7 +2599,7 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 					return E_OUTOFMEMORY;
 				}
 				*ppvObj = wrapper;
-				if (LogFile) fprintf(LogFile, "  interface replaced with ID3D10Device wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
+				if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with ID3D10Device wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
 			}
 			if (d3d10multithread)
 			{
@@ -2609,11 +2613,11 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 					return E_OUTOFMEMORY;
 				}
 				*ppvObj = wrapper;
-				if (LogFile) fprintf(LogFile, "  interface replaced with ID3D10Multithread wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
+				if (LogFile && LogDebug) fprintf(LogFile, "  interface replaced with ID3D10Multithread wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
 			}
 		}
 	}
-	if (LogFile) fprintf(LogFile, "  result = %x, handle = %p\n", hr, *ppvObj);
+	if (LogFile && LogDebug) fprintf(LogFile, "  result = %x, handle = %p\n", hr, *ppvObj);
 
 	return hr;
 }

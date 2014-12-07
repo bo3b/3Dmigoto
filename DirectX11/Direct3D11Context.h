@@ -23,16 +23,16 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11DeviceContext::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11DeviceContext::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11DeviceContext::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+ 	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11DeviceContext::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
 
 	--m_ulRef;
 
 	if (ulRef <= 0)
 	{
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		if (LogFile && LogDebug) fprintf(LogFile, "  deleting self\n");
 
 		if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
 		delete this;
