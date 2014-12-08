@@ -26,6 +26,6 @@ exit
 :Copyx64
 @echo on
 echo 
-xcopy "%1*.*" "T:\Bootleg\Watch Dogs\bin\"  /F /Y
-xcopy "%1*.*" "C:\Games\Call of Duty - Ghosts\"  /F /Y
-xcopy "%1*.*" "T:\Bootleg\Middle Earth - Shadow of Mordor\x64\" /F /Y
+xcopy "%1*.*" "T:\Games\Watch_Dogs\bin"  /F /Y
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Call of Duty Ghosts\"  /F /Y
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64" /F /Y
