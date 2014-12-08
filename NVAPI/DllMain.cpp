@@ -861,6 +861,7 @@ static int __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice, __in D3D
 DWORD WINAPI AimOverride(LPVOID empty)
 {
 	//while (true)
+	if (InputDevice[0])	// If not defined, no overrides.
 	{
 		// Idle time between user key presses. This is 3x 1/60 second.
 		//Sleep(50);
