@@ -148,6 +148,7 @@ public:
 		if (!strcmp(name, "float3x3")) return DT_float3x3;
 		if (!strcmp(name, "float3")) return DT_float3;
 		if (!strcmp(name, "float2")) return DT_float2;
+		if (!strcmp(name, "float1")) return DT_float;
 		if (!strcmp(name, "float")) return DT_float;
 		if (!strcmp(name, "bool")) return DT_bool;
 		if (!strcmp(name, "uint4")) return DT_uint4;
