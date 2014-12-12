@@ -2634,6 +2634,16 @@ public:
 						removeBoolean(op1);
 						break;
 
+					case OPCODE_RCP:
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = rcp(%s);\n", writeTarget(op1), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(rcp(%s));\n", writeTarget(op1), ci(op2).c_str());
+						appendOutput(buffer);
+						break;
+
 					case OPCODE_NOT:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
@@ -3330,6 +3340,18 @@ public:
 							sprintf(buffer, "  if (%s == 0) break;\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
+						appendOutput(buffer);
+						break;
+					case OPCODE_CONTINUE:
+						sprintf(buffer, "  continue;\n");
+						appendOutput(buffer);
+						break;
+					case OPCODE_CONTINUEC:
+						applySwizzle(".x", op1);
+						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
+							sprintf(buffer, "  if (%s == 0) continue;\n", ci(op1).c_str());
+						else
+							sprintf(buffer, "  if (%s != 0) continue;\n", ci(op1).c_str());
 						appendOutput(buffer);
 						break;
 					case OPCODE_ENDLOOP:
