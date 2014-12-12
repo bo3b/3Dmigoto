@@ -510,6 +510,8 @@ public:
 					mTextureType[slot] = "Texture3D<" + string(format) + ">";
 				else if (!strcmp(dim, "cube"))
 					mTextureType[slot] = "TextureCube<" + string(format) + ">";
+				else if (!strcmp(dim, "cubearray"))
+					mTextureType[slot] = "TextureCubeArray<" + string(format) + ">";
 				else if (!strncmp(dim, "2dMS", 4))
 				{
 					// The documentation says it's not legal, but we see Texture 2DMS with no ending size in WatchDogs. 
