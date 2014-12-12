@@ -1878,6 +1878,60 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 	}
 }
 
+
+// Todo: I'm just hacking this in here at the moment, because I'm not positive it will work.
+//	Once it's clearly a good path, we can move it out.
+
+// Using the wrapped Device, we want to change the iniParams associated with the device.
+
+void SetIniParams(D3D11Base::ID3D11Device *device)
+{
+	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+
+}
+
+// Check for keys being sent from the user to change behavior as a hotkey.  This will update
+// the iniParams live, so that the shaders can use that keypress to change behavior.
+
+// Four states of toggle, with key presses.  
+enum TState
+{
+	offDown, offUp, onDown, onUp
+};
+TState toggleState = offUp;
+
+void CheckForKeys(D3D11Base::ID3D11Device *device)
+{
+	bool escKey = (GetAsyncKeyState(VK_ESCAPE) < 0);
+	TState lastState = toggleState;
+
+	// Must cycle through different states based solely on user input.
+	switch (toggleState)
+	{
+		case offUp:		if (escKey) toggleState = onDown;
+			break;
+		case onDown:	if (!escKey) toggleState = onUp;
+			break;
+		case onUp:		if (escKey) toggleState = offDown;
+			break;
+		case offDown:	if (!escKey) toggleState = offUp;
+			break;
+	}
+
+	// Only operate on state changes, since this gets called multiple times per frame.
+	if ((toggleState != lastState) && (toggleState == onUp))
+	{
+		if (LogFile) fprintf(LogFile, "ESC key activated.\n");
+		SetIniParams(device);
+	}
+	if ((toggleState != lastState) && (toggleState == offUp))
+	{
+		if (LogFile) fprintf(LogFile, "ESC key deactivated.\n");
+		SetIniParams(device);
+	}
+}
+
+
 extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
 // Called indirectly through the QueryInterface for every vertical blanking, based on calls to
@@ -1916,6 +1970,9 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// late from the init standpoint, which fixes DirectInput failures.  And avoids
 	// crashes when we use a secondary thread to give time to aiming override.
 	nvapi_QueryInterface(0xb03bb03b);
+
+	// Give time to our keyboard handling for hot keys that can change iniParams.
+	CheckForKeys(device);
 
 	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
 	if (!G->hunting)

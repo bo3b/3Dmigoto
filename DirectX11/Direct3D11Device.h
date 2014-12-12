@@ -84,9 +84,9 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		desc.MipLevels = 1;
 		desc.ArraySize = 1;
 		desc.Format = D3D11Base::DXGI_FORMAT_R32G32B32A32_FLOAT;	// float4
-		desc.Usage = D3D11Base::D3D11_USAGE_DEFAULT;				// Read/Write access from GPU
+		desc.Usage = D3D11Base::D3D11_USAGE_DYNAMIC;				// Read/Write access from GPU and CPU
 		desc.BindFlags = D3D11Base::D3D11_BIND_SHADER_RESOURCE;		// As resource view, access via t120
-		desc.CPUAccessFlags = 0;									// no CPU access after init
+		desc.CPUAccessFlags = D3D11Base::D3D11_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
 		desc.MiscFlags = 0;
 		HRESULT ret = pDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
 		if (FAILED(ret))
