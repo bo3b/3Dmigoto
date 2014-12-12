@@ -502,6 +502,8 @@ public:
 					sprintf(name, "%s[%d]", baseName.c_str(), i);
 					mTextureNames[slot + i] = name;
 					}
+				if (!strcmp(dim, "1d"))
+					mTextureType[slot] = "Texture1D<" + string(format) + ">";
 				if (!strcmp(dim, "2d"))
 					mTextureType[slot] = "Texture2D<" + string(format) + ">";
 				else if (!strcmp(dim, "2darray"))
