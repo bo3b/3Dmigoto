@@ -225,7 +225,7 @@ Texture2D<float4> t_SpecularReflectance : register(t3);
 Texture2D<float4> t_SSAO : register(t4);
 
   // Manual fix TextureCubeArray here
-  TextureCubeArray t_LocalCubeMaps : register(t5);
+  TextureCubeArray<float4> t_LocalCubeMaps : register(t5);
 
 Texture2D<float4> t_Emissive : register(t12);
 TextureCube<float4> t_g_SkyLightingCubeTexture : register(t13);
@@ -238,15 +238,11 @@ Texture3D<float4> t_g_WorldGIVolume3 : register(t23);
 Texture3D<uint> g_WorldGIIndirection : register(t24);
 TextureCube<float4> t_GlobalEnvMap : register(t25);
 
-  // Manually fix structured buffer to add _SB and missing struct
-  struct g_IndoorGIVolumes
-  {
-    float4x4 _Element;                 // Offset:    0 Size:    64
-  };
-  StructuredBuffer<g_IndoorGIVolumes> g_IndoorGIVolumes_SB : register(t26);
+  // Manually fix structured buffer to add missing struct
+  StructuredBuffer<float4x4> g_IndoorGIVolumes : register(t26);
 
-  // Manually fix structured buffer to add _SB and missing struct
-  struct g_WorldGICells   // GIIndirectionCell
+  // Manually fix structured buffer to add missing struct
+  struct GIIndirectionCell   
   {
       float3 WSToUnitScale;          // Offset:    0
       float3 WSToUnitBias;           // Offset:   12
@@ -254,21 +250,21 @@ TextureCube<float4> t_GlobalEnvMap : register(t25);
       float3 UnitToVolumeBias;       // Offset:   36
       float NormalBiasScale;         // Offset:   48
   };                                 // Offset:    0 Size:    52
-  StructuredBuffer<g_WorldGICells> g_WorldGICells_SB : register(t28);
+  StructuredBuffer<GIIndirectionCell> g_WorldGICells : register(t28);
 
 Texture2D<uint> g_VolumeIndex : register(t29);
 Buffer<float4> g_GILocalCubeMapsSRV : register(t48);
 Texture3D<float4> t_g_CloudShadowTexture : register(t54);
 Texture2D<float4> t_BRDFLUT : register(t55);
 
-  // Manually fix structured buffer to add _SB and missing struct
-  struct g_SkySHConstants  // SkyLightingSH
+  // Manually fix structured buffer to add missing struct
+struct SkyLightingSH
   {
       float4 Values[7];              // Offset:    0
       float4 SkyLightingUp;          // Offset:  112
       float4 SkyLightingScale;       // Offset:  128
   };                                 // Offset:    0 Size:   144
-  StructuredBuffer<g_SkySHConstants> g_SkySHConstants_SB : register(t56);
+StructuredBuffer<SkyLightingSH> g_SkySHConstants : register(t56);
 
 Texture2D<float4> StereoParams : register(t125);
 
@@ -703,25 +699,25 @@ int4 v1 : TEXCOORD0,
       r3.z = (int)r3.x + -1;
 // Known bad code for instruction (needs manual fix):
 //     ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r13.xyzw, r3.z, l(0), t28.xyzw
-r13.x = g_WorldGICells_SB[r3.z].WSToUnitScale.x;
-r13.y = g_WorldGICells_SB[r3.z].WSToUnitScale.y;
-r13.z = g_WorldGICells_SB[r3.z].WSToUnitScale.z;
-r13.w = g_WorldGICells_SB[r3.z].WSToUnitBias.x;
+r13.x = g_WorldGICells[r3.z].WSToUnitScale.x;
+r13.y = g_WorldGICells[r3.z].WSToUnitScale.y;
+r13.z = g_WorldGICells[r3.z].WSToUnitScale.z;
+r13.w = g_WorldGICells[r3.z].WSToUnitBias.x;
 // Known bad code for instruction (needs manual fix):
 //     ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r14.xyzw, r3.z, l(16), t28.zwxy
-r14.x = g_WorldGICells_SB[r3.z].WSToUnitBias.y;
-r14.y = g_WorldGICells_SB[r3.z].WSToUnitBias.z;
-r14.z = g_WorldGICells_SB[r3.z].UnitToVolumeScale.x;
-r14.w = g_WorldGICells_SB[r3.z].UnitToVolumeScale.y;
+r14.x = g_WorldGICells[r3.z].WSToUnitBias.y;
+r14.y = g_WorldGICells[r3.z].WSToUnitBias.z;
+r14.z = g_WorldGICells[r3.z].UnitToVolumeScale.x;
+r14.w = g_WorldGICells[r3.z].UnitToVolumeScale.y;
 // Known bad code for instruction (needs manual fix):
 //     ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r15.xyzw, r3.z, l(32), t28.xyzw
-r15.x = g_WorldGICells_SB[r3.z].UnitToVolumeScale.z;
-r15.y = g_WorldGICells_SB[r3.z].UnitToVolumeBias.x;
-r15.z = g_WorldGICells_SB[r3.z].UnitToVolumeBias.y;
-r15.w = g_WorldGICells_SB[r3.z].UnitToVolumeBias.z;
+r15.x = g_WorldGICells[r3.z].UnitToVolumeScale.z;
+r15.y = g_WorldGICells[r3.z].UnitToVolumeBias.x;
+r15.z = g_WorldGICells[r3.z].UnitToVolumeBias.y;
+r15.w = g_WorldGICells[r3.z].UnitToVolumeBias.z;
 // Known bad code for instruction (needs manual fix):
 //     ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r3.z, r3.z, l(48), t28.xxxx
-r3.z = g_WorldGICells_SB[r3.z].NormalBiasScale.x;
+r3.z = g_WorldGICells[r3.z].NormalBiasScale.x;
       r16.x = r13.w;
       r16.yz = r14.zw;
       r13.xyz = r12.xyz * r13.xyz + r16.xyz;
@@ -739,22 +735,22 @@ r3.z = g_WorldGICells_SB[r3.z].NormalBiasScale.x;
         r3.z = (int)r3.z + -1;
 // Known bad code for instruction (needs manual fix):
 //       ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r17.xyzw, r3.z, l(0), t26.xyzw
-r17.x = g_IndoorGIVolumes_SB[r3.z]._Element._m00;
-r17.y = g_IndoorGIVolumes_SB[r3.z]._Element._m01;
-r17.z = g_IndoorGIVolumes_SB[r3.z]._Element._m02;
-r17.w = g_IndoorGIVolumes_SB[r3.z]._Element._m03;
+r17.x = g_IndoorGIVolumes[r3.z]._m00;
+r17.y = g_IndoorGIVolumes[r3.z]._m01;
+r17.z = g_IndoorGIVolumes[r3.z]._m02;
+r17.w = g_IndoorGIVolumes[r3.z]._m03;
 // Known bad code for instruction (needs manual fix):
 //       ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r18.xyzw, r3.z, l(16), t26.xyzw
-r18.x = g_IndoorGIVolumes_SB[r3.z]._Element._m10;
-r18.y = g_IndoorGIVolumes_SB[r3.z]._Element._m11;
-r18.z = g_IndoorGIVolumes_SB[r3.z]._Element._m12;
-r18.w = g_IndoorGIVolumes_SB[r3.z]._Element._m13;
+r18.x = g_IndoorGIVolumes[r3.z]._m10;
+r18.y = g_IndoorGIVolumes[r3.z]._m11;
+r18.z = g_IndoorGIVolumes[r3.z]._m12;
+r18.w = g_IndoorGIVolumes[r3.z]._m13;
 // Known bad code for instruction (needs manual fix):
 //       ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r19.xyzw, r3.z, l(32), t26.xyzw
-r19.x = g_IndoorGIVolumes_SB[r3.z]._Element._m20;
-r19.y = g_IndoorGIVolumes_SB[r3.z]._Element._m21;
-r19.z = g_IndoorGIVolumes_SB[r3.z]._Element._m22;
-r19.w = g_IndoorGIVolumes_SB[r3.z]._Element._m23;
+r19.x = g_IndoorGIVolumes[r3.z]._m20;
+r19.y = g_IndoorGIVolumes[r3.z]._m21;
+r19.z = g_IndoorGIVolumes[r3.z]._m22;
+r19.w = g_IndoorGIVolumes[r3.z]._m23;
         r12.w = 1.000000000e+000;
         r17.x = dot(r12.xyzw, r17.xyzw);
         r17.y = dot(r12.xyzw, r18.xyzw);
@@ -783,22 +779,22 @@ r19.w = g_IndoorGIVolumes_SB[r3.z]._Element._m23;
         r3.y = (int)r3.y + -1;
 // Known bad code for instruction (needs manual fix):
 //       ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r17.xyzw, r3.y, l(0), t26.xyzw
-r17.x = g_IndoorGIVolumes_SB[r3.y]._Element._m00;
-r17.y = g_IndoorGIVolumes_SB[r3.y]._Element._m01;
-r17.z = g_IndoorGIVolumes_SB[r3.y]._Element._m02;
-r17.w = g_IndoorGIVolumes_SB[r3.y]._Element._m03;
+r17.x = g_IndoorGIVolumes[r3.y]._m00;
+r17.y = g_IndoorGIVolumes[r3.y]._m01;
+r17.z = g_IndoorGIVolumes[r3.y]._m02;
+r17.w = g_IndoorGIVolumes[r3.y]._m03;
 // Known bad code for instruction (needs manual fix):
 //       ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r18.xyzw, r3.y, l(16), t26.xyzw
-r18.x = g_IndoorGIVolumes_SB[r3.y]._Element._m10;
-r18.y = g_IndoorGIVolumes_SB[r3.y]._Element._m11;
-r18.z = g_IndoorGIVolumes_SB[r3.y]._Element._m12;
-r18.w = g_IndoorGIVolumes_SB[r3.y]._Element._m13;
+r18.x = g_IndoorGIVolumes[r3.y]._m10;
+r18.y = g_IndoorGIVolumes[r3.y]._m11;
+r18.z = g_IndoorGIVolumes[r3.y]._m12;
+r18.w = g_IndoorGIVolumes[r3.y]._m13;
 // Known bad code for instruction (needs manual fix):
 //       ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r19.xyzw, r3.y, l(32), t26.xyzw
-r19.x = g_IndoorGIVolumes_SB[r3.y]._Element._m20;
-r19.y = g_IndoorGIVolumes_SB[r3.y]._Element._m21;
-r19.z = g_IndoorGIVolumes_SB[r3.y]._Element._m22;
-r19.w = g_IndoorGIVolumes_SB[r3.y]._Element._m23;
+r19.x = g_IndoorGIVolumes[r3.y]._m20;
+r19.y = g_IndoorGIVolumes[r3.y]._m21;
+r19.z = g_IndoorGIVolumes[r3.y]._m22;
+r19.w = g_IndoorGIVolumes[r3.y]._m23;
         r12.w = 1.000000000e+000;
         r17.x = dot(r12.xyzw, r17.xyzw);
         r17.y = dot(r12.xyzw, r18.xyzw);
@@ -831,45 +827,45 @@ r19.w = g_IndoorGIVolumes_SB[r3.y]._Element._m23;
       r16.z = dot(r15.xyzw, r6.xyzw);
 // // Known bad code for instruction (needs manual fix):
 // //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r17.xyzw, l(0), l(0), t56.xyzw
-r17.x = g_SkySHConstants_SB[0].Values[0].x;
-r17.y = g_SkySHConstants_SB[0].Values[0].y;
-r17.z = g_SkySHConstants_SB[0].Values[0].z;
-r17.w = g_SkySHConstants_SB[0].Values[0].w;
+r17.x = g_SkySHConstants[0].Values[0].x;
+r17.y = g_SkySHConstants[0].Values[0].y;
+r17.z = g_SkySHConstants[0].Values[0].z;
+r17.w = g_SkySHConstants[0].Values[0].w;
 // // Known bad code for instruction (needs manual fix):
 // //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r18.xyzw, l(0), l(16), t56.xyzw
-r18.x = g_SkySHConstants_SB[0].Values[1].x;
-r18.y = g_SkySHConstants_SB[0].Values[1].y;
-r18.z = g_SkySHConstants_SB[0].Values[1].z;
-r18.w = g_SkySHConstants_SB[0].Values[1].w;
+r18.x = g_SkySHConstants[0].Values[1].x;
+r18.y = g_SkySHConstants[0].Values[1].y;
+r18.z = g_SkySHConstants[0].Values[1].z;
+r18.w = g_SkySHConstants[0].Values[1].w;
 // // Known bad code for instruction (needs manual fix):
 // //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r19.xyzw, l(0), l(32), t56.xyzw
-r19.x = g_SkySHConstants_SB[0].Values[2].x;
-r19.y = g_SkySHConstants_SB[0].Values[2].y;
-r19.z = g_SkySHConstants_SB[0].Values[2].z;
-r19.w = g_SkySHConstants_SB[0].Values[2].w;
+r19.x = g_SkySHConstants[0].Values[2].x;
+r19.y = g_SkySHConstants[0].Values[2].y;
+r19.z = g_SkySHConstants[0].Values[2].z;
+r19.w = g_SkySHConstants[0].Values[2].w;
 // // Known bad code for instruction (needs manual fix):
 // //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r20.xyzw, l(0), l(48), t56.xyzw
-r20.x = g_SkySHConstants_SB[0].Values[3].x;
-r20.y = g_SkySHConstants_SB[0].Values[3].y;
-r20.z = g_SkySHConstants_SB[0].Values[3].z;
-r20.w = g_SkySHConstants_SB[0].Values[3].w;
+r20.x = g_SkySHConstants[0].Values[3].x;
+r20.y = g_SkySHConstants[0].Values[3].y;
+r20.z = g_SkySHConstants[0].Values[3].z;
+r20.w = g_SkySHConstants[0].Values[3].w;
 // // Known bad code for instruction (needs manual fix):
 // //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r21.xyzw, l(0), l(64), t56.xyzw
-r21.x = g_SkySHConstants_SB[0].Values[4].x;
-r21.y = g_SkySHConstants_SB[0].Values[4].y;
-r21.z = g_SkySHConstants_SB[0].Values[4].z;
-r21.w = g_SkySHConstants_SB[0].Values[4].w;
+r21.x = g_SkySHConstants[0].Values[4].x;
+r21.y = g_SkySHConstants[0].Values[4].y;
+r21.z = g_SkySHConstants[0].Values[4].z;
+r21.w = g_SkySHConstants[0].Values[4].w;
 // // Known bad code for instruction (needs manual fix):
 // //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r22.xyzw, l(0), l(80), t56.xyzw
-r22.x = g_SkySHConstants_SB[0].Values[5].x;
-r22.y = g_SkySHConstants_SB[0].Values[5].y;
-r22.z = g_SkySHConstants_SB[0].Values[5].z;
-r22.w = g_SkySHConstants_SB[0].Values[5].w;
+r22.x = g_SkySHConstants[0].Values[5].x;
+r22.y = g_SkySHConstants[0].Values[5].y;
+r22.z = g_SkySHConstants[0].Values[5].z;
+r22.w = g_SkySHConstants[0].Values[5].w;
 // Known bad code for instruction (needs manual fix):
 //     ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r5.yzw, l(0), l(96), t56.xxyz
-r5.y = g_SkySHConstants_SB[0].Values[6].x;
-r5.z = g_SkySHConstants_SB[0].Values[6].y;
-r5.w = g_SkySHConstants_SB[0].Values[6].z;
+r5.y = g_SkySHConstants[0].Values[6].x;
+r5.z = g_SkySHConstants[0].Values[6].y;
+r5.w = g_SkySHConstants[0].Values[6].z;
       r23.x = dot(r17.xyzw, r6.xyzw);
       r23.y = dot(r18.xyzw, r6.xyzw);
       r23.z = dot(r19.xyzw, r6.xyzw);
