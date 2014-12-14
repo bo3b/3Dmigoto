@@ -2958,6 +2958,17 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+
+						// Missing opcode for UMin, used in Dragon Age
+					case OPCODE_UMIN:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+						sprintf(buffer, "  %s = min(asuint(%s), asuint(%s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 					case OPCODE_MAX:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));

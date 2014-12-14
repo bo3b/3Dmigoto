@@ -890,6 +890,7 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
         //Instructions with three operands go here
         case OPCODE_SINCOS:
 		case OPCODE_MIN:
+		case OPCODE_UMIN:		// missing opcode
 		case OPCODE_IMAX:
 		case OPCODE_IMIN:
 		case OPCODE_MAX:
