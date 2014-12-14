@@ -3591,7 +3591,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Gather(%s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
@@ -3616,7 +3616,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
@@ -3625,6 +3625,44 @@ public:
 								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(),
 								offsetx, offsety, strrchr(op3, '.'));
 						}
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					}
+
+					// Add the Gather4_PO opcodes for Dragon Age.  Copied from Gather4.
+					//   gather4_po dest[.mask], srcAddress[.swizzle], srcOffset[.swizzle], srcResource[.swizzle], srcSampler[.select_component]
+					//   output.color	= texture2d.Gather(samplerState, input.texcoord, int2(0,0));
+					case OPCODE_GATHER4_PO:
+					{
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
+						applySwizzle(op1, op4);
+						int textureId, samplerId;
+						sscanf_s(op4, "t%d.", &textureId);
+						sscanf_s(op5, "s%d", &samplerId);
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						sprintf(buffer, "  %s = %s.Gather(%s, %s, %s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), 
+							mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op3).c_str(), strrchr(op4, '.'));
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					}
+
+					// gather4_po_c dest[.mask], srcAddress[.swizzle], srcOffset[.swizzle], srcResource[.swizzle], srcSampler[.R], srcReferenceValue
+					case OPCODE_GATHER4_PO_C:
+					{
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
+						applySwizzle(op1, op4);
+						int textureId, samplerId;
+						sscanf_s(op4, "t%d.", &textureId);
+						sscanf_s(op5, "s%d", &samplerId);
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						sprintf(buffer, "  %s = %s.GatherCmp(%s, %s, %s, %s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), 
+							mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op6).c_str(), ci(op3).c_str(), strrchr(op4, '.'));
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
