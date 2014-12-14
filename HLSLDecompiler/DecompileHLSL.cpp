@@ -504,7 +504,7 @@ public:
 					}
 				if (!strcmp(dim, "1d"))
 					mTextureType[slot] = "Texture1D<" + string(format) + ">";
-				if (!strcmp(dim, "2d"))
+				else if(!strcmp(dim, "2d"))
 					mTextureType[slot] = "Texture2D<" + string(format) + ">";
 				else if (!strcmp(dim, "2darray"))
 					mTextureType[slot] = "Texture2DArray<" + string(format) + ">";
