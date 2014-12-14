@@ -1011,7 +1011,15 @@ public:
 					else
 					{
 						float v[4] = { 0, 0, 0, 0 };
-						numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+						int in[4] = { 0, 0, 0, 0 };
+						bool useInt = (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4);
+
+						// For int case, also converts to float badly, creating #QNAN instead. 
+						if (useInt)
+							numRead = sscanf_s(c + pos, "// = %i %i %i %i", in + 0, in + 1, in + 2, in + 3);
+						else
+							numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+
 						if (structLevel < 0)
 						{
 							if (suboffset == 0)
@@ -1022,12 +1030,20 @@ public:
 						else
 							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
 						for (int i = 0; i < numRead - 1; ++i)
 						{
-							sprintf(buffer, "%e,", v[i]);
+							if (useInt)
+								sprintf(buffer, "%i,", in[i]);
+							else
+								sprintf(buffer, "%e,", v[i]);
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
-						sprintf(buffer, "%e);\n", v[numRead - 1]);
+						if (useInt)
+							sprintf(buffer, "%i);\n", in[numRead - 1]);
+						else
+							sprintf(buffer, "%e);\n", v[numRead - 1]);
+
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					}
