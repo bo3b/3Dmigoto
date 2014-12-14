@@ -2588,10 +2588,12 @@ public:
 			}
 			else if (!strcmp(statement, "dcl_indexableTemp"))
 			{
+				// Always returned 4, not actual index.  ToDo: likely not always float4.
+				// format as: dcl_indexableTemp x0[40], 4
 				int numIndex = 0;
-				*strchr(op1, '[') = 0;
-				sscanf_s(op2, "%d", &numIndex);
-				sprintf(buffer, "  float4 %s[%d];\n", op1, numIndex);
+				char varName[opcodeSize];
+				sscanf_s(op1, "%[^[][%d]", &varName, opcodeSize, &numIndex);
+				sprintf(buffer, "  float4 %s[%d];\n", varName, numIndex);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
 			else if (!strcmp(statement, "dcl_temps"))
