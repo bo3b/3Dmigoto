@@ -767,7 +767,7 @@ public:
 					numRead = sscanf_s(c + pos, "// Offset: %d", &offset);
 					if (numRead != 1)
 					{
-						logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
+						logDecompileError("6 Error parsing buffer offset: " + string(c + pos, 80));
 						return;
 					}
 					if (!structLevel)
@@ -855,7 +855,7 @@ public:
 				numRead = sscanf_s(c + pos, "// Offset: %d", &offset);
 				if (numRead != 1)
 				{
-					logDecompileError("Error parsing buffer offset: " + string(c + pos, 80));
+					logDecompileError("7 Error parsing buffer offset: " + string(c + pos, 80));
 					return;
 				}
 				e.Name = name;
@@ -1081,7 +1081,11 @@ public:
 			strcpy_s(strchr(right, '|'), strlen(right), strchr(right, '|') + 1);	// Shrinking string, can never overflow.
 			*strchr(right, '|') = 0;
 		}
-		const char *strPos = strchr(left, '.') + 1;
+
+		// Fairly bold change here- this fetches the source swizzle from 'left', and it previously would
+		// find the first dot in the string.  That's not right for left side array indices, so I changed it
+		// to look for the far right dot instead.  Should be correct, but this is used everywhere.
+		const char *strPos = strrchr(left, '.') + 1;
 		char idx[4] = { -1, -1, -1, -1 };
 		char map[4] = { 3, 0, 1, 2 };
 		size_t pos = 0;							// Used as index into string buffer
@@ -1089,6 +1093,7 @@ public:
 			strPos = "x";
 		while (*strPos && pos < 4)
 			idx[pos++] = map[*strPos++ - 'w'];
+
 		// literal?
 		if (right[0] == 'l')
 		{
@@ -1161,7 +1166,7 @@ public:
 				int bufIndex = 0;
 				if (strstr(right2, "icb"))
 				{
-					bufIndex = -1;
+					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 				}
 				else
 				{
@@ -1174,7 +1179,7 @@ public:
 				strPos = strchr(right2, '[');
 				if (!strPos)
 				{
-					logDecompileError("Error parsing buffer offset: " + string(right2));
+					logDecompileError("1 Error parsing buffer offset: " + string(right2));
 					return;
 				}
 				int bufOffset = 0;
@@ -1188,9 +1193,26 @@ public:
 				}
 				if (sscanf_s(strPos + 1, "%d", &bufOffset) != 1)
 				{
-					logDecompileError("Error parsing buffer offset: " + string(right2));
+					logDecompileError("2 Error parsing buffer offset: " + string(right2));
 					return;
 				}
+				// Missing mCBufferData name for this buffer entry.  In the icb case, that's
+				// expected, because entries are not named. Just build the CBufferData to use.
+				// Bit of a hack workaround, but icb doesn't really fit here.
+				// output will be like: icb[r6.z + 10]
+				if (bufIndex == -1)
+				{
+					BufferEntry immediateEntry;
+					string full = right2;
+					size_t dotspot = full.rfind('.');
+					immediateEntry.Name = full.substr(0, dotspot);
+					immediateEntry.matrixRow = 0;
+					immediateEntry.isRowMajor = false;
+					immediateEntry.bt = DT_float4;
+					mCBufferData[(bufIndex << 16) + bufOffset * 16] = immediateEntry;
+					indexRegister[0] = 0;
+				}
+
 				CBufferData::iterator i = mCBufferData.find((bufIndex << 16) + bufOffset * 16);
 				if (i == mCBufferData.end() && strrchr(right2, '.')[1] == 'y')
 					i = mCBufferData.find((bufIndex << 16) + bufOffset * 16 + 4);
@@ -1200,7 +1222,12 @@ public:
 					i = mCBufferData.find((bufIndex << 16) + bufOffset * 16 + 12);
 				if (i == mCBufferData.end())
 				{
-					logDecompileError("Error parsing buffer offset: " + string(right2));
+					logDecompileError("3 Error parsing buffer offset: " + string(right2));
+					if (LogFile) fprintf(LogFile, "   bufIndex: %d  bufOffset: %d\n", bufIndex, bufOffset);
+					if (LogFile) fprintf(LogFile, "   strPos: %s\n", string(strPos));
+					//error parsing shader> 3 Error parsing buffer offset : icb[r6.z + 10].w
+					//bufIndex : -1  bufOffset : 10
+					//strPos : +10].w
 					return;
 				}
 				if ((i->second.bt == DT_float || i->second.bt == DT_uint || i->second.bt == DT_int) ||
@@ -1242,7 +1269,7 @@ public:
 				strPos = strchr(strPos, ']');
 				if (!strPos)
 				{
-					logDecompileError("Error parsing buffer offset: " + string(right2));
+					logDecompileError("4 Error parsing buffer offset: " + string(right2));
 					return;
 				}
 				if (indexRegister[0])
@@ -2497,7 +2524,7 @@ public:
 					strPos = strchr(op1, '[');
 					if (!strPos)
 					{
-						logDecompileError("Error parsing buffer offset: " + string(op1));
+						logDecompileError("5 Error parsing buffer offset: " + string(op1));
 						return;
 					}
 					int bufSize = 0;
