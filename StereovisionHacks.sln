@@ -3754,6 +3754,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cmd_Decompiler", "HLSLDecompiler\cmd_Decompiler\cmd_Decompiler.vcxproj", "{25E1F732-DCF5-428E-928D-D39C499CC95F}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DragonAge", "DragonAge", "{F655151C-79C9-4A90-9C7B-E97C1F512E2A}"
+	ProjectSection(SolutionItems) = preProject
+		DragonAge\d3dx.ini = DragonAge\d3dx.ini
+		DragonAge\uninstall.bat = DragonAge\uninstall.bat
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		AC3|Win32 = AC3|Win32
@@ -4309,5 +4315,6 @@ Global
 		{C4150F2C-3294-4B28-8B8F-56D4AF114D09} = {8A254EE6-EDCC-4462-A9DE-A8530A5AF204}
 		{7C1981AF-4A10-4035-AA29-DF6556000AEE} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{E375F279-4DFD-4040-B37F-03F0F49E5200} = {7C1981AF-4A10-4035-AA29-DF6556000AEE}
+		{F655151C-79C9-4A90-9C7B-E97C1F512E2A} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 	EndGlobalSection
 EndGlobal
