@@ -97,6 +97,9 @@ del BinaryDecompiler.lib
 
 del ShaderUsage.txt
 
+REM delete this file too, we added it, we should delete it.
+del User.cfg
+
 rmdir /s /q ShaderFixes
 rmdir /s /q ShaderCache
 rmdir /s /q ShaderFromGame

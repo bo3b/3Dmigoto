@@ -3756,8 +3756,85 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cmd_Decompiler", "HLSLDecom
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DragonAge", "DragonAge", "{F655151C-79C9-4A90-9C7B-E97C1F512E2A}"
 	ProjectSection(SolutionItems) = preProject
+		DragonAge\cc79d4a79b16b59c-vs.txt = DragonAge\cc79d4a79b16b59c-vs.txt
+		DragonAge\cc79d4a79b16b59c-vs_replace.txt = DragonAge\cc79d4a79b16b59c-vs_replace.txt
 		DragonAge\d3dx.ini = DragonAge\d3dx.ini
+		DragonAge\f49fd0ca330167c6-vs.txt = DragonAge\f49fd0ca330167c6-vs.txt
+		DragonAge\f49fd0ca330167c6-vs_replace.txt = DragonAge\f49fd0ca330167c6-vs_replace.txt
 		DragonAge\uninstall.bat = DragonAge\uninstall.bat
+		DragonAge\User.cfg = DragonAge\User.cfg
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{A76D7245-7953-4D16-9FCD-9296BCD763A6}"
+	ProjectSection(SolutionItems) = preProject
+		DragonAge\ShaderFixes\002d3a9aead314ab-ps_replace.txt = DragonAge\ShaderFixes\002d3a9aead314ab-ps_replace.txt
+		DragonAge\ShaderFixes\0096e678e7e3bf7f-ps_replace.txt = DragonAge\ShaderFixes\0096e678e7e3bf7f-ps_replace.txt
+		DragonAge\ShaderFixes\0ae7ea6f76da0f5e-ps_replace.txt = DragonAge\ShaderFixes\0ae7ea6f76da0f5e-ps_replace.txt
+		DragonAge\ShaderFixes\0ec8666e559d7139-ps_replace.txt = DragonAge\ShaderFixes\0ec8666e559d7139-ps_replace.txt
+		DragonAge\ShaderFixes\12b273239f0ed83b-ps_replace.txt = DragonAge\ShaderFixes\12b273239f0ed83b-ps_replace.txt
+		DragonAge\ShaderFixes\1522c6879ac263f0-ps_replace.txt = DragonAge\ShaderFixes\1522c6879ac263f0-ps_replace.txt
+		DragonAge\ShaderFixes\16f31f3d379beb8a-vs_replace.txt = DragonAge\ShaderFixes\16f31f3d379beb8a-vs_replace.txt
+		DragonAge\ShaderFixes\19a0a417eb510de1-ps_replace.txt = DragonAge\ShaderFixes\19a0a417eb510de1-ps_replace.txt
+		DragonAge\ShaderFixes\202009901078a530-ps_replace.txt = DragonAge\ShaderFixes\202009901078a530-ps_replace.txt
+		DragonAge\ShaderFixes\20b03277c097870c-ps_replace.txt = DragonAge\ShaderFixes\20b03277c097870c-ps_replace.txt
+		DragonAge\ShaderFixes\210275c5b1f99145-ps_replace.txt = DragonAge\ShaderFixes\210275c5b1f99145-ps_replace.txt
+		DragonAge\ShaderFixes\21ab670e4799dcb3-vs_replace.txt = DragonAge\ShaderFixes\21ab670e4799dcb3-vs_replace.txt
+		DragonAge\ShaderFixes\26fd17c8da889234-ps_replace.txt = DragonAge\ShaderFixes\26fd17c8da889234-ps_replace.txt
+		DragonAge\ShaderFixes\30e03c5b3d15d370-ps_replace.txt = DragonAge\ShaderFixes\30e03c5b3d15d370-ps_replace.txt
+		DragonAge\ShaderFixes\32d691e0eaa8a49f-ps_replace.txt = DragonAge\ShaderFixes\32d691e0eaa8a49f-ps_replace.txt
+		DragonAge\ShaderFixes\361a6d40093a56f5-ps_replace.txt = DragonAge\ShaderFixes\361a6d40093a56f5-ps_replace.txt
+		DragonAge\ShaderFixes\370812edcce93f60-ps_replace.txt = DragonAge\ShaderFixes\370812edcce93f60-ps_replace.txt
+		DragonAge\ShaderFixes\39542e3b836539c5-vs_replace.txt = DragonAge\ShaderFixes\39542e3b836539c5-vs_replace.txt
+		DragonAge\ShaderFixes\3a204b3af89fd2ac-ps_replace.txt = DragonAge\ShaderFixes\3a204b3af89fd2ac-ps_replace.txt
+		DragonAge\ShaderFixes\3abc0ddd6df9b9d0-ps_replace.txt = DragonAge\ShaderFixes\3abc0ddd6df9b9d0-ps_replace.txt
+		DragonAge\ShaderFixes\3b458242e755a369-ps_replace.txt = DragonAge\ShaderFixes\3b458242e755a369-ps_replace.txt
+		DragonAge\ShaderFixes\3b92477c509a6f64-ps_replace.txt = DragonAge\ShaderFixes\3b92477c509a6f64-ps_replace.txt
+		DragonAge\ShaderFixes\3ca56f966335ea42-ps_replace.txt = DragonAge\ShaderFixes\3ca56f966335ea42-ps_replace.txt
+		DragonAge\ShaderFixes\49535b6271e2ef87-ps_replace.txt = DragonAge\ShaderFixes\49535b6271e2ef87-ps_replace.txt
+		DragonAge\ShaderFixes\4d7f94580ccefe87-ps_replace.txt = DragonAge\ShaderFixes\4d7f94580ccefe87-ps_replace.txt
+		DragonAge\ShaderFixes\4dc97c4fb5b65981-ps_replace.txt = DragonAge\ShaderFixes\4dc97c4fb5b65981-ps_replace.txt
+		DragonAge\ShaderFixes\54cb5a3967a3f56e-ps_replace.txt = DragonAge\ShaderFixes\54cb5a3967a3f56e-ps_replace.txt
+		DragonAge\ShaderFixes\58086923b2ca4243-ps_replace.txt = DragonAge\ShaderFixes\58086923b2ca4243-ps_replace.txt
+		DragonAge\ShaderFixes\5ce84d37f8b551f2-ps_replace.txt = DragonAge\ShaderFixes\5ce84d37f8b551f2-ps_replace.txt
+		DragonAge\ShaderFixes\62835f61cd7ed9ad-ps_replace.txt = DragonAge\ShaderFixes\62835f61cd7ed9ad-ps_replace.txt
+		DragonAge\ShaderFixes\64722f854716a0dc-ps_replace.txt = DragonAge\ShaderFixes\64722f854716a0dc-ps_replace.txt
+		DragonAge\ShaderFixes\65382378c671ad08-vs_replace.txt = DragonAge\ShaderFixes\65382378c671ad08-vs_replace.txt
+		DragonAge\ShaderFixes\6c8e9a125ef34e74-ps_replace.txt = DragonAge\ShaderFixes\6c8e9a125ef34e74-ps_replace.txt
+		DragonAge\ShaderFixes\6d05dad1162469cf-ps_replace.txt = DragonAge\ShaderFixes\6d05dad1162469cf-ps_replace.txt
+		DragonAge\ShaderFixes\71537c80f74ee50b-ps_replace.txt = DragonAge\ShaderFixes\71537c80f74ee50b-ps_replace.txt
+		DragonAge\ShaderFixes\73948454663078ed-ps_replace.txt = DragonAge\ShaderFixes\73948454663078ed-ps_replace.txt
+		DragonAge\ShaderFixes\768c9434abe74c8f-ps_replace.txt = DragonAge\ShaderFixes\768c9434abe74c8f-ps_replace.txt
+		DragonAge\ShaderFixes\799e5548087efdef-ps_replace.txt = DragonAge\ShaderFixes\799e5548087efdef-ps_replace.txt
+		DragonAge\ShaderFixes\84ba87e2df5ed4bc-ps_replace.txt = DragonAge\ShaderFixes\84ba87e2df5ed4bc-ps_replace.txt
+		DragonAge\ShaderFixes\84be68e361a62cee-ps_replace.txt = DragonAge\ShaderFixes\84be68e361a62cee-ps_replace.txt
+		DragonAge\ShaderFixes\8dc3c14ea75b25c1-vs_replace.txt = DragonAge\ShaderFixes\8dc3c14ea75b25c1-vs_replace.txt
+		DragonAge\ShaderFixes\90b19c0bf2c21f1e-ps_replace.txt = DragonAge\ShaderFixes\90b19c0bf2c21f1e-ps_replace.txt
+		DragonAge\ShaderFixes\9705e8ec0d4078b2-ps_replace.txt = DragonAge\ShaderFixes\9705e8ec0d4078b2-ps_replace.txt
+		DragonAge\ShaderFixes\98e9515c5ec8ea5c-ps_replace.txt = DragonAge\ShaderFixes\98e9515c5ec8ea5c-ps_replace.txt
+		DragonAge\ShaderFixes\a13db999dd2dd05f-vs_replace.txt = DragonAge\ShaderFixes\a13db999dd2dd05f-vs_replace.txt
+		DragonAge\ShaderFixes\a18e53c08a3bccb9-ps_replace.txt = DragonAge\ShaderFixes\a18e53c08a3bccb9-ps_replace.txt
+		DragonAge\ShaderFixes\aed7d685bda29aa9-vs_replace.txt = DragonAge\ShaderFixes\aed7d685bda29aa9-vs_replace.txt
+		DragonAge\ShaderFixes\b270906713966d35-ps_replace.txt = DragonAge\ShaderFixes\b270906713966d35-ps_replace.txt
+		DragonAge\ShaderFixes\b7d3c93610449f86-ps_replace.txt = DragonAge\ShaderFixes\b7d3c93610449f86-ps_replace.txt
+		DragonAge\ShaderFixes\b8759b1e0daa4ef5-ps_replace.txt = DragonAge\ShaderFixes\b8759b1e0daa4ef5-ps_replace.txt
+		DragonAge\ShaderFixes\ba8b1adb0dd5adcf-ps_replace.txt = DragonAge\ShaderFixes\ba8b1adb0dd5adcf-ps_replace.txt
+		DragonAge\ShaderFixes\c128a53ea0dd455f-ps_replace.txt = DragonAge\ShaderFixes\c128a53ea0dd455f-ps_replace.txt
+		DragonAge\ShaderFixes\c340fcbe39883883-ps_replace.txt = DragonAge\ShaderFixes\c340fcbe39883883-ps_replace.txt
+		DragonAge\ShaderFixes\c4fc1fd41669b895-ps_replace.txt = DragonAge\ShaderFixes\c4fc1fd41669b895-ps_replace.txt
+		DragonAge\ShaderFixes\c8f7765a3685d0a5-ps_replace.txt = DragonAge\ShaderFixes\c8f7765a3685d0a5-ps_replace.txt
+		DragonAge\ShaderFixes\c991a8f34dbbcc09-ps_replace.txt = DragonAge\ShaderFixes\c991a8f34dbbcc09-ps_replace.txt
+		DragonAge\ShaderFixes\c9c281359983ed8e-ps_replace.txt = DragonAge\ShaderFixes\c9c281359983ed8e-ps_replace.txt
+		DragonAge\ShaderFixes\cc180edf8062ac82-ps_replace.txt = DragonAge\ShaderFixes\cc180edf8062ac82-ps_replace.txt
+		DragonAge\ShaderFixes\cc79d4a79b16b59c-vs_replace.txt = DragonAge\ShaderFixes\cc79d4a79b16b59c-vs_replace.txt
+		DragonAge\ShaderFixes\ce128fb3a102ee37-ps_replace.txt = DragonAge\ShaderFixes\ce128fb3a102ee37-ps_replace.txt
+		DragonAge\ShaderFixes\d001c59bb6ea953f-vs_replace.txt = DragonAge\ShaderFixes\d001c59bb6ea953f-vs_replace.txt
+		DragonAge\ShaderFixes\d3ae8c1a436885d0-ps_replace.txt = DragonAge\ShaderFixes\d3ae8c1a436885d0-ps_replace.txt
+		DragonAge\ShaderFixes\d4bebd350201d00d-ps_replace.txt = DragonAge\ShaderFixes\d4bebd350201d00d-ps_replace.txt
+		DragonAge\ShaderFixes\df682774de7b526c-ps_replace.txt = DragonAge\ShaderFixes\df682774de7b526c-ps_replace.txt
+		DragonAge\ShaderFixes\f07e4ed1a99a0f06-ps_replace.txt = DragonAge\ShaderFixes\f07e4ed1a99a0f06-ps_replace.txt
+		DragonAge\ShaderFixes\f1fbe4a862dbbf70-vs_replace.txt = DragonAge\ShaderFixes\f1fbe4a862dbbf70-vs_replace.txt
+		DragonAge\ShaderFixes\f49fd0ca330167c6-vs_replace.txt = DragonAge\ShaderFixes\f49fd0ca330167c6-vs_replace.txt
+		DragonAge\ShaderFixes\fdc688ab845de7dc-vs_replace.txt = DragonAge\ShaderFixes\fdc688ab845de7dc-vs_replace.txt
 	EndProjectSection
 EndProject
 Global
@@ -4315,5 +4392,6 @@ Global
 		{7C1981AF-4A10-4035-AA29-DF6556000AEE} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{E375F279-4DFD-4040-B37F-03F0F49E5200} = {7C1981AF-4A10-4035-AA29-DF6556000AEE}
 		{F655151C-79C9-4A90-9C7B-E97C1F512E2A} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{A76D7245-7953-4D16-9FCD-9296BCD763A6} = {F655151C-79C9-4A90-9C7B-E97C1F512E2A}
 	EndGlobalSection
 EndGlobal

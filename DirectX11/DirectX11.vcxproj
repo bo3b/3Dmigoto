@@ -1184,7 +1184,7 @@ REM Use 7zip command tool to create a full release that can be unzipped into gam
 REM On game specific builds, this also includes the ShaderFixes folder.
 REM And, the d3dx.ini from game specific folder
 
-7zip\7za a $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip   .\$(ConfigurationName)\d3dx.ini  .\$(ConfigurationName)\ShaderFixes\ $(TargetDir)*.dll .\$(ConfigurationName)\uninstall.bat
+7zip\7za a $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip   $(TargetDir)*.dll  .\$(ConfigurationName)\d3dx.ini  .\$(ConfigurationName)\ShaderFixes\  .\$(ConfigurationName)\uninstall.bat  .\$(ConfigurationName)\User.cfg
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
