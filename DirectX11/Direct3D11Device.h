@@ -1019,11 +1019,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				p.InvTransforms = G->InvTransforms;
 				p.fixLightPosition = G->FIX_Light_Position;
 				p.ZeroOutput = false;
-			// Not sure why, but blocking the Decompiler from multi-threading prevents a crash.
-			// This is just a patch for now.
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				if (!decompiledCode.size())
 				{
 					if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
@@ -1111,7 +1107,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 							disassembly->Release(); disassembly = 0;
 						}
 					}
-	
+
 					if (pCompiledOutput)
 					{
 						// If the shader has been auto-fixed, return it as the live shader.  
@@ -1282,8 +1278,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	if (hr != S_OK && ppVertexShader && pShaderBytecode)
 	{
 		D3D11Base::ID3D11VertexShader *zeroShader = 0;
+		// Not sure why, but blocking the Decompiler from multi-threading prevents a crash.
+		// This is just a patch for now.
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1503,8 +1503,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	}
 	if (hr != S_OK && ppPixelShader && pShaderBytecode)
 	{
+		// TODO: shouldn't require critical section
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (replaceShader)
 		{
 			// Create the new shader.
