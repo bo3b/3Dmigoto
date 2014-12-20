@@ -47,6 +47,7 @@ cbuffer _Globals : register(b0)
 }
 
 Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
 
 void main(
   float3 v0 : SV_POSITION0,
@@ -77,12 +78,16 @@ void main(
   r0.x = k_vFogSky.w + r0.x;
   
 float4 stereo = StereoParams.Load(0);
+float4 iniParams = IniParams.Load(0);
 float4 r23;
 r23.xyzw = r1.xyzw;
 if(r23.w==0) //needed for fire
 {
  r23.x -= stereo.x * (r23.w - stereo.y); 
+} else {
+   r23.x += stereo.x * iniParams.x;
 }
+
   o0.xyzw = r23.xyzw;
   o1.xyz = v1.xyz;
   o2.xy = v2.xy;
