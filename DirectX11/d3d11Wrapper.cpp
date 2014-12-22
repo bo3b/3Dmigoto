@@ -1884,10 +1884,17 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 
 // Using the wrapped Device, we want to change the iniParams associated with the device.
 
-void SetIniParams(D3D11Base::ID3D11Device *device)
+void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
 {
 	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
 
+	if (on)
+	{
+		//wrapped->mIniTexture.Map();
+	}
+	else
+	{
+	}
 }
 
 // Check for keys being sent from the user to change behavior as a hotkey.  This will update
@@ -1922,12 +1929,12 @@ void CheckForKeys(D3D11Base::ID3D11Device *device)
 	if ((toggleState != lastState) && (toggleState == onUp))
 	{
 		if (LogFile) fprintf(LogFile, "ESC key activated.\n");
-		SetIniParams(device);
+		SetIniParams(device, true);
 	}
 	if ((toggleState != lastState) && (toggleState == offUp))
 	{
 		if (LogFile) fprintf(LogFile, "ESC key deactivated.\n");
-		SetIniParams(device);
+		SetIniParams(device, false);
 	}
 }
 
