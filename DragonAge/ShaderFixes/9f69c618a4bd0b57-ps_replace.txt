@@ -1,0 +1,362 @@
+
+cbuffer _Globals : register(b0)
+{
+  float3 g_cameraPos : packoffset(c0);
+  float2 g_invScreenSize : packoffset(c1);
+  float4x4 g_invViewProjMatrix : packoffset(c2);
+  float3 g_lightDir : packoffset(c6);
+  float3 g_hemisphereDir : packoffset(c7);
+  float3 g_topColor : packoffset(c8);
+  float3 g_bottomColor : packoffset(c9);
+  float4 g_keyColor : packoffset(c10);
+  float2 g_lightAngularRadius : packoffset(c11);
+  float4 g_keyTranslucencyParams : packoffset(c12);
+  float4 g_subParams : packoffset(c13);
+  float4 g_envmapParams : packoffset(c14);
+  float g_skyEnvmap8BitTexInvScale : packoffset(c15);
+  float4 g_exposureMultipliers : packoffset(c16);
+  float4 g_envmapsMipmapCount : packoffset(c17);
+  int g_drawReference : packoffset(c18);
+  float g_skyEnvmapMipmapCount : packoffset(c18.y);
+}
+SamplerState g_skyEnvmapSampler_s : register(s0);
+SamplerState g_diffuseOcclusionSampler_s : register(s1);
+TextureCube<float4> g_skyEnvmap : register(t0);
+Texture2D<float4> g_diffuseOcclusionTexture : register(t1);
+Texture2DMS<float4,2> g_depthTexture : register(t2);
+Texture2DMS<float4,2> g_gbufferTexture0 : register(t3);
+Texture2DMS<float4,2> g_gbufferTexture1 : register(t4);
+Texture2DMS<float4,2> g_gbufferTexture2 : register(t5);
+Texture2DMS<float4,2> g_gbufferTexture3 : register(t6);
+Texture2D<float> g_msaaClassifyTexture : register(t7);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  const float4 icb[] = { { 0.250000, 0, 0, 0},
+                              { -0.250000, 0, 0, 0} };
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11;
+  uint4 bitmask;
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+
+  r0.xy = g_invScreenSize.xy * v0.xy;
+  r1.xy = (int2)v0.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r0.z = g_msaaClassifyTexture.Load(r1.xyw).x;
+  r0.z = 0.000000000e+000 < r0.z;
+  r0.zw = r0.zz ? float2(2.802597e-045,5.000000e-001) : float2(1.401298e-045,1.000000e+000);
+  r2.xyz = -g_bottomColor.xyz + g_topColor.xyz;
+  r2.w = (int)g_envmapsMipmapCount.x;
+  r3.x = round(g_envmapsMipmapCount.x);
+  r2.w = (int)r2.w + -1;
+  r2.w = r2.w;
+  r4.w = 1.000000000e+000;
+  r3.yzw = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r5.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  while (true) {
+  r6.x = (int)r5.w >= (int)r0.z;
+  if (r6.x != 0) break;
+  r6.xy = icb[r5.w].xx * g_invScreenSize.xy + r0.xy;
+  r7.xyzw = g_gbufferTexture0.Load(r1.xyw,r5.w).xyzw;
+  r8.xyzw = g_gbufferTexture1.Load(r1.xyw,r5.w).xyzw;
+  r6.z = g_gbufferTexture2.Load(r1.xyw,r5.w).w;
+  r9.xyz = g_gbufferTexture3.Load(r1.xyw,r5.w).xyz;
+  r4.z = g_depthTexture.Load(r1.xyz,r5.w).x;
+  r7.xyz = r7.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r6.w = dot(r7.xyz, r7.xyz);
+  r6.w = rsqrt(r6.w);
+  r7.xyz = r7.xyz * r6.www;
+  r6.z = 2.550000000e+002 * r6.z;
+  r6.z = round(r6.z * 0.5) * 2;
+  r6.z = (int)r6.z;
+  r8.xyzw = r8.xyzw * r8.xyzw;
+  r10.x = r6.z == 5;
+  r10.y = r6.z == 2;
+  if (r10.x != 0) {
+  r10.xzw = r8.xyz * r8.www;
+  r11.xyz = r8.xyz;
+  } else {
+  r6.z = r6.z == 1;
+  if (r6.z != 0) {
+  r11.xyz = r8.www * r8.xyz;
+  } else {
+  r11.xyz = r8.www;
+  }
+  r10.xzw = r8.xyz;
+  }
+  r6.z = 0.000000000e+000 < r11.x;
+  r6.z = r6.z ? r7.w : 0;
+  r6.xy = r6.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r4.xy = float2(1.000000e+000,-1.000000e+000) * r6.xy;
+  r8.x = dot(r4.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+  r8.y = dot(r4.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+  r8.z = dot(r4.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+  r4.x = dot(r4.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+  r4.x = 1.000000e+000 / r4.x;
+
+
+float4 r28, r26, r27;
+r26.xyz = r8.xyz * r4.xxx;
+r26.w = 1.0;
+r28.x = dot(r26.xyzw, b1.xyzw);
+r28.y = dot(r26.xyzw, b2.xyzw);
+r28.z = dot(r26.xyzw, b3.xyzw);
+r28.w = dot(r26.xyzw, b4.xyzw);
+float4 stereo = StereoParams.Load(0);
+r28.x -= stereo.x * (r28.w - stereo.y); 
+r26.x = dot(r28.xyzw, a1.xyzw);
+r26.y = dot(r28.xyzw, a2.xyzw);
+r26.z = dot(r28.xyzw, a3.xyzw);
+r26.w = dot(r28.xyzw, a4.xyzw);
+r8.xyz = r26.xyz / r4.xxx;
+
+  r4.xyz = r8.xyz * r4.xxx;
+
+
+  r6.x = dot(r4.xyz, r4.xyz);
+  r6.x = rsqrt(r6.x);
+  r4.xyz = r6.xxx * r4.xyz;
+  r6.x = dot(r7.xyz, g_hemisphereDir.xyz);
+  r6.x = r6.x * 5.000000000e-001 + 5.000000000e-001;
+  r6.xyw = r6.xxx * r2.xyz + g_bottomColor.xyz;
+  r6.xyw = r9.xyz * g_exposureMultipliers.yyy + r6.xyw;
+  r7.w = dot(r4.xyz, r7.xyz);
+  r7.w = r7.w + r7.w;
+  r4.xyz = r7.xyz * -r7.www + r4.xyz;
+  r6.z = -r6.z * 1.500000000e+001 + r3.x;
+  r6.z = 5.000000000e+000 + r6.z;
+  r6.z = max(r6.z, 0.000000000e+000);
+  r6.z = min(r2.w, r6.z);
+  r4.xyz = g_skyEnvmap.SampleLevel(g_skyEnvmapSampler_s, r4.xyz, r6.z).xyz;
+  r4.xyz = g_skyEnvmap8BitTexInvScale * r4.xyz;
+  r7.xyz = r4.xyz * r11.xyz;
+  r6.z = r10.y ? 0.000000000e+000 : 1.000000000e+000;
+  r7.xyz = r7.xyz * r6.zzz;
+  r6.xyz = r6.xyw * r10.xzw + r7.xyz;
+  r5.xyz = r6.xyz + r5.xyz;
+  r3.yzw = r4.xyz * r11.xyz + r3.yzw;
+  r5.w = (int)r5.w + 1;
+  }
+  r1.xyzw = g_diffuseOcclusionTexture.Gather(g_diffuseOcclusionSampler_s, r0.xy).xyzw;
+  r0.x = min(r1.y, r1.x);
+  r0.x = min(r1.z, r0.x);
+  o0.w = min(r1.w, r0.x);
+  o0.xyz = r5.xyz * r0.www;
+  o1.xyz = r3.yzw * r0.www;
+  o1.w = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float3 g_cameraPos;                // Offset:    0 Size:    12 [unused]
+//   float2 g_invScreenSize;            // Offset:   16 Size:     8
+//   float4x4 g_invViewProjMatrix;      // Offset:   32 Size:    64
+//   float3 g_lightDir;                 // Offset:   96 Size:    12 [unused]
+//   float3 g_hemisphereDir;            // Offset:  112 Size:    12
+//   float3 g_topColor;                 // Offset:  128 Size:    12
+//   float3 g_bottomColor;              // Offset:  144 Size:    12
+//   float4 g_keyColor;                 // Offset:  160 Size:    16 [unused]
+//   float2 g_lightAngularRadius;       // Offset:  176 Size:     8 [unused]
+//   float4 g_keyTranslucencyParams;    // Offset:  192 Size:    16 [unused]
+//   float4 g_subParams;                // Offset:  208 Size:    16 [unused]
+//   float4 g_envmapParams;             // Offset:  224 Size:    16 [unused]
+//   float g_skyEnvmap8BitTexInvScale;  // Offset:  240 Size:     4
+//   float4 g_exposureMultipliers;      // Offset:  256 Size:    16
+//   float4 g_envmapsMipmapCount;       // Offset:  272 Size:    16
+//   int g_drawReference;               // Offset:  288 Size:     4 [unused]
+//   float g_skyEnvmapMipmapCount;      // Offset:  292 Size:     4 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// g_skyEnvmapSampler                sampler      NA          NA    0        1
+// g_diffuseOcclusionSampler         sampler      NA          NA    1        1
+// g_skyEnvmap                       texture  float4        cube    0        1
+// g_diffuseOcclusionTexture         texture  float4          2d    1        1
+// g_depthTexture                    texture  float4       2dMS2    2        1
+// g_gbufferTexture0                 texture  float4       2dMS2    3        1
+// g_gbufferTexture1                 texture  float4       2dMS2    4        1
+// g_gbufferTexture2                 texture  float4       2dMS2    5        1
+// g_gbufferTexture3                 texture  float4       2dMS2    6        1
+// g_msaaClassifyTexture             texture   float          2d    7        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_immediateConstantBuffer { { 0.250000, 0, 0, 0},
+                              { -0.250000, 0, 0, 0} }
+dcl_constantbuffer cb0[18], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_resource_texturecube (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2dms(2) (float,float,float,float) t2
+dcl_resource_texture2dms(2) (float,float,float,float) t3
+dcl_resource_texture2dms(2) (float,float,float,float) t4
+dcl_resource_texture2dms(2) (float,float,float,float) t5
+dcl_resource_texture2dms(2) (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_temps 12
+mul r0.xy, v0.xyxx, cb0[1].xyxx
+ftoi r1.xy, v0.xyxx
+mov r1.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r0.z, r1.xyww, t7.yzxw
+lt r0.z, l(0.000000), r0.z
+movc r0.zw, r0.zzzz, l(0,0,2,0.500000), l(0,0,1,1.000000)
+add r2.xyz, cb0[8].xyzx, -cb0[9].xyzx
+ftoi r2.w, cb0[17].x
+round_z r3.x, cb0[17].x
+iadd r2.w, r2.w, l(-1)
+itof r2.w, r2.w
+mov r4.w, l(1.000000)
+mov r3.yzw, l(0,0,0,0)
+mov r5.xyzw, l(0,0,0,0)
+loop 
+  ige r6.x, r5.w, r0.z
+  breakc_nz r6.x
+  mad r6.xy, icb[r5.w + 0].xxxx, cb0[1].xyxx, r0.xyxx
+  ldms_indexable(texture2dms)(float,float,float,float) r7.xyzw, r1.xyww, t3.xyzw, r5.w
+  ldms_indexable(texture2dms)(float,float,float,float) r8.xyzw, r1.xyww, t4.xyzw, r5.w
+  ldms_indexable(texture2dms)(float,float,float,float) r6.z, r1.xyww, t5.xywz, r5.w
+  ldms_indexable(texture2dms)(float,float,float,float) r9.xyz, r1.xyww, t6.xyzw, r5.w
+  ldms_indexable(texture2dms)(float,float,float,float) r4.z, r1.xyzw, t2.yzxw, r5.w
+  mad r7.xyz, r7.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+  dp3 r6.w, r7.xyzx, r7.xyzx
+  rsq r6.w, r6.w
+  mul r7.xyz, r6.wwww, r7.xyzx
+  mul r6.z, r6.z, l(255.000000)
+  round_ne r6.z, r6.z
+  ftoi r6.z, r6.z
+  mul r8.xyzw, r8.xyzw, r8.xyzw
+  ieq r10.xy, r6.zzzz, l(5, 2, 0, 0)
+  if_nz r10.x
+    mul r10.xzw, r8.wwww, r8.xxyz
+    mov r11.xyz, r8.xyzx
+  else 
+    ieq r6.z, r6.z, l(1)
+    if_nz r6.z
+      mul r11.xyz, r8.xyzx, r8.wwww
+    else 
+      mov r11.xyz, r8.wwww
+    endif 
+    mov r10.xzw, r8.xxyz
+  endif 
+  lt r6.z, l(0.000000), r11.x
+  and r6.z, r7.w, r6.z
+  mad r6.xy, r6.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+  mul r4.xy, r6.xyxx, l(1.000000, -1.000000, 0.000000, 0.000000)
+  dp4 r8.x, r4.xyzw, cb0[2].xyzw
+  dp4 r8.y, r4.xyzw, cb0[3].xyzw
+  dp4 r8.z, r4.xyzw, cb0[4].xyzw
+  dp4 r4.x, r4.xyzw, cb0[5].xyzw
+  div r4.x, l(1.000000, 1.000000, 1.000000, 1.000000), r4.x
+  mul r4.xyz, r4.xxxx, r8.xyzx
+  dp3 r6.x, r4.xyzx, r4.xyzx
+  rsq r6.x, r6.x
+  mul r4.xyz, r4.xyzx, r6.xxxx
+  dp3 r6.x, r7.xyzx, cb0[7].xyzx
+  mad r6.x, r6.x, l(0.500000), l(0.500000)
+  mad r6.xyw, r6.xxxx, r2.xyxz, cb0[9].xyxz
+  mad r6.xyw, r9.xyxz, cb0[16].yyyy, r6.xyxw
+  dp3 r7.w, r4.xyzx, r7.xyzx
+  add r7.w, r7.w, r7.w
+  mad r4.xyz, r7.xyzx, -r7.wwww, r4.xyzx
+  mad r6.z, -r6.z, l(15.000000), r3.x
+  add r6.z, r6.z, l(5.000000)
+  max r6.z, r6.z, l(0.000000)
+  min r6.z, r2.w, r6.z
+  sample_l_indexable(texturecube)(float,float,float,float) r4.xyz, r4.xyzx, t0.xyzw, s0, r6.z
+  mul r4.xyz, r4.xyzx, cb0[15].xxxx
+  mul r7.xyz, r11.xyzx, r4.xyzx
+  movc r6.z, r10.y, l(0), l(1.000000)
+  mul r7.xyz, r6.zzzz, r7.xyzx
+  mad r6.xyz, r6.xywx, r10.xzwx, r7.xyzx
+  add r5.xyz, r5.xyzx, r6.xyzx
+  mad r3.yzw, r4.xxyz, r11.xxyz, r3.yyzw
+  iadd r5.w, r5.w, l(1)
+endloop 
+gather4_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.xyxx, t1.xyzw, s1.x
+min r0.x, r1.y, r1.x
+min r0.x, r1.z, r0.x
+min o0.w, r1.w, r0.x
+mul o0.xyz, r0.wwww, r5.xyzx
+mul o1.xyz, r0.wwww, r3.yzwy
+mov o1.w, l(1.000000)
+ret 
+// Approximately 86 instruction slots used
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

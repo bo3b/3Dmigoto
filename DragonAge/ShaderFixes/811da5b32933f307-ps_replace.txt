@@ -1,0 +1,254 @@
+
+cbuffer _Globals : register(b0)
+{
+  float g_skyGradientBlendFactor : packoffset(c0);
+  float g_panoramicBlendRotation : packoffset(c0.y);
+  float4 g_sunColorAndSize : packoffset(c1);
+  float4 g_sunDirAndSkyGradientScale : packoffset(c2);
+  float g_panoramicRotation : packoffset(c3);
+  float4 g_panoramicUVRanges : packoffset(c4);
+  float g_panoramicTileFactor : packoffset(c5);
+  float4 g_cloudLayerSunColor : packoffset(c6);
+  float4 g_cloudLayerLightingParams0 : packoffset(c7);
+  float4 g_cloudLayerLightingParams1 : packoffset(c8);
+  float4 g_cloudLayer0Color : packoffset(c9);
+  float4 g_cloudLayerParams : packoffset(c10);
+  float4 g_cloudLayer0UVTransform0 : packoffset(c11);
+  float4 g_cloudLayer0UVTransform1 : packoffset(c12);
+  float4 g_cloudLayer1UVTransform0 : packoffset(c13);
+  float4 g_cloudLayer1UVTransform1 : packoffset(c14);
+  float4 g_cloudLayer1Color : packoffset(c15);
+  float4 g_fogParams : packoffset(c16);
+  float2 g_forwardScatteringParams : packoffset(c17);
+  float4 g_forwardScatteringColorPresence : packoffset(c18);
+  float4 g_fogCoefficients : packoffset(c19);
+  float4 g_fogColorCoefficients : packoffset(c20);
+  float4 g_fogColor : packoffset(c21);
+  float g_fogStartDistance : packoffset(c22);
+  float4 g_heightFogCoefficients : packoffset(c23);
+  float4x4 g_invViewProjMatrix : packoffset(c24);
+  float3 g_camPos : packoffset(c28);
+  float2 g_screenSizeInv : packoffset(c29);
+  float g_hdrExposureMultiplier : packoffset(c29.z);
+  float g_drawEnvmap : packoffset(c29.w);
+  float g_drawThetaPhiEnvmap : packoffset(c30);
+  float4 g_alphaSelector : packoffset(c31);
+  float g_hdriRotationAngle : packoffset(c32);
+  float g_hdriCosRotation : packoffset(c32.y);
+  float g_hdriSinRotation : packoffset(c32.z);
+}
+SamplerState g_skyGradientSampler_s : register(s0);
+SamplerState g_acosLUTSampler_s : register(s1);
+SamplerState g_skyGradientBlendSampler_s : register(s2);
+SamplerState g_panoramicSampler_s : register(s3);
+SamplerState g_panoramicAlphaSampler_s : register(s4);
+SamplerState g_cloudLayer0Sampler_s : register(s5);
+SamplerState g_cloudLayer1Sampler_s : register(s6);
+SamplerState g_cloudLayerMaskSampler_s : register(s7);
+SamplerState g_panoramicBlendSampler_s : register(s8);
+SamplerState g_panoramicAlphaBlendSampler_s : register(s9);
+SamplerState g_forwardScatteringTextureSampler_s : register(s12);
+Texture2D<float4> g_skyGradientTexture : register(t0);
+Texture2D<float4> g_acosLUTTexture : register(t1);
+Texture2D<float4> g_skyGradientBlendTexture : register(t2);
+Texture2D<float3> g_panoramicTexture : register(t3);
+Texture2D<float> g_panoramicAlphaTexture : register(t4);
+Texture2D<float> g_cloudLayer0Texture : register(t5);
+Texture2D<float> g_cloudLayer1Texture : register(t6);
+Texture2D<float> g_cloudLayerMaskTexture : register(t7);
+Texture2D<float3> g_panoramicBlendTexture : register(t8);
+Texture2D<float> g_panoramicAlphaBlendTexture : register(t9);
+Texture2D<float4> g_depthTexture : register(t10);
+Texture2D<float4> g_forwardScatteringTexture : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask;
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+
+  r0.x = dot(v1.xyz, v1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v1.xyz * r0.xxx;
+  r1.xy = (int2)v0.xy;
+  r2.xy = g_screenSizeInv.xy * v0.xy;
+  r0.w = abs(r0.z) < abs(r0.x);
+  if (r0.w != 0) {
+    r0.w = r0.z;
+    r2.z = r0.x;
+    r2.w = 1.000000000e+000;
+  } else {
+    r0.w = r0.x;
+    r2.z = r0.z;
+    r2.w = 3.000000000e+000;
+  }
+  r3.x = dot(r0.xz, float2(1.000000e+000,-1.000000e+000));
+  r3.x = 0.000000000e+000 < r3.x;
+  if (r3.x != 0) {
+    r2.w = 4.000000000e+000 + r2.w;
+    r3.x = -1.000000000e+000;
+  } else {
+    r3.x = 1.000000000e+000;
+  }
+  r0.w = r0.w / abs(r2.z);
+  r2.z = r0.w * r0.w;
+  r2.z = r2.z * 2.000000030e-001 + 8.000000119e-001;
+  r0.w = r0.w / r2.z;
+  r0.w = r0.w * r3.x + r2.w;
+  r0.w = r0.w * 1.250000000e-001 + 1.250000000e-001;
+  r0.w = frac(r0.w);
+  r3.x = 1.000000000e+000 + -r0.w;
+  r0.w = r0.y * 4.990234375e-001 + 5.009765625e-001;
+  r4.x = frac(r0.w);
+  r4.yw = float2(5.000000e-001,1.000000e+000);
+  r0.w = g_acosLUTTexture.SampleLevel(g_acosLUTSampler_s, r4.xy, 0.000000000e+000).x;
+  r3.y = -r0.w;
+  r4.z = g_panoramicRotation;
+  r2.zw = r4.zw + r3.xy;
+  r4.xyzw = g_skyGradientTexture.SampleLevel(g_skyGradientSampler_s, r2.zw, 0.000000000e+000).xyzw;
+  r5.x = g_panoramicBlendRotation;
+  r5.y = 1.000000000e+000;
+  r2.zw = r5.xy + r3.xy;
+  r5.xyzw = g_skyGradientBlendTexture.SampleLevel(g_skyGradientBlendSampler_s, r2.zw, 0.000000000e+000).xyzw;
+  r3.z = 1.000000000e+000 + r3.y;
+  r3.zw = saturate(r3.xz * g_panoramicUVRanges.xy + g_panoramicUVRanges.zw);
+  r0.w = g_panoramicRotation + r3.z;
+  r3.y = g_panoramicTileFactor * r0.w;
+  r6.xyz = g_panoramicTexture.SampleLevel(g_panoramicSampler_s, r3.yw, 0.000000000e+000).xyz;
+  r0.w = g_panoramicAlphaTexture.SampleLevel(g_panoramicAlphaSampler_s, r3.yw, 0.000000000e+000).x;
+  r7.z = g_cloudLayerMaskTexture.SampleLevel(g_cloudLayerMaskSampler_s, r3.yw, 0.000000000e+000).x;
+  r2.z = g_panoramicBlendRotation + r3.z;
+  r3.x = g_panoramicTileFactor * r2.z;
+  r8.xyz = g_panoramicBlendTexture.SampleLevel(g_panoramicBlendSampler_s, r3.xw, 0.000000000e+000).xyz;
+  r2.z = g_panoramicAlphaBlendTexture.SampleLevel(g_panoramicAlphaBlendSampler_s, r3.xw, 0.000000000e+000).x;
+  r2.w = dot(g_sunDirAndSkyGradientScale.xyz, r0.xyz);
+  r3.x = 0.000000000e+000 >= r0.y;
+  if (r3.x != 0) {
+    r3.xyzw = float4(1.274200e+007,1.274200e+007,1.274200e+007,1.274200e+007) + g_cloudLayerParams.xxyy;
+    r3.xyzw = -g_cloudLayerParams.xxyy * r3.xyzw;
+    r6.w = 6.371000000e+006 * r0.y;
+    r3.xyzw = r6.wwww * r6.wwww + -r3.xyzw;
+    r3.xyzw = sqrt(r3.xyzw);
+    r3.xyzw = r0.yyyy * float4(6.371000e+006,6.371000e+006,6.371000e+006,6.371000e+006) + r3.xyzw;
+    r3.xyzw = -abs(-r3.zwxy) * r0.xzxz;
+    r0.xy = r3.zw;
+    r0.z = 1.000000000e+000;
+    r9.x = dot(r0.xyz, g_cloudLayer0UVTransform0.xyz);
+    r9.y = dot(r0.xyz, g_cloudLayer0UVTransform1.xyz);
+    r3.z = 1.000000000e+000;
+    r0.x = dot(r3.xyz, g_cloudLayer1UVTransform0.xyz);
+    r0.y = dot(r3.xyz, g_cloudLayer1UVTransform1.xyz);
+  } else {
+    r9.xy = float2(0.000000e+000,0.000000e+000);
+    r0.xy = float2(0.000000e+000,0.000000e+000);
+  }
+  r0.z = g_cloudLayer0Texture.Sample(g_cloudLayer0Sampler_s, r9.xy).x;
+  r0.x = g_cloudLayer1Texture.Sample(g_cloudLayer1Sampler_s, r0.xy).x;
+  r0.xy = saturate(g_cloudLayerParams.wz * r0.xz);
+  r0.z = -r5.w + r4.w;
+  r0.z = g_skyGradientBlendFactor * r0.z + r5.w;
+  r0.xy = float2(1.000000e+000,1.000000e+000) + -r0.xy;
+  r7.y = r0.y * r0.x;
+  r7.w = r7.y * r7.z;
+  r7.x = 1.000000000e+000;
+  r3.w = dot(r7.xyzw, g_alphaSelector.xyzw);
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r1.z = g_depthTexture.Load(r1.xyz).x;
+  r0.xy = r2.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.xy = float2(1.000000e+000,-1.000000e+000) * r0.xy;
+  r1.w = 1.000000000e+000;
+  r7.x = dot(r1.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+  r7.y = dot(r1.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+  r7.z = dot(r1.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+  r0.x = dot(r1.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+  r1.xyz = r7.xyz / r0.xxx;
+
+float4 r28, r26, r27;
+r26.xyz = r1.xyz;
+r26.w = 1.0;
+r28.x = dot(r26.xyzw, b1.xyzw);
+r28.y = dot(r26.xyzw, b2.xyzw);
+r28.z = dot(r26.xyzw, b3.xyzw);
+r28.w = dot(r26.xyzw, b4.xyzw);
+float4 stereo = StereoParams.Load(0);
+r28.x -= stereo.x * (r28.w - stereo.y); 
+r26.x = dot(r28.xyzw, a1.xyzw);
+r26.y = dot(r28.xyzw, a2.xyzw);
+r26.z = dot(r28.xyzw, a3.xyzw);
+r26.w = dot(r28.xyzw, a4.xyzw);
+r1.xyz = r26.xyz;
+
+
+  r1.xyz = g_camPos.xyz + -r1.xyz;
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = sqrt(r0.x);
+  r0.y = g_fogParams.z / r0.z;
+  r1.z = saturate(r0.x * r0.y + g_fogParams.x);
+  r1.y = r1.z * r1.z;
+  r1.x = r1.z * r1.y;
+  r1.w = 1.000000000e+000;
+  r0.x = saturate(dot(r1.xyzw, g_fogCoefficients.xyzw));
+  r0.y = g_forwardScatteringParams.x * r2.w + 1.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = g_forwardScatteringParams.y / r0.y;
+  r1.xyz = g_forwardScatteringColorPresence.xyz * r0.yyy;
+  r7.xyz = r1.xyz * r0.xxx;
+  r2.xyw = g_forwardScatteringTexture.SampleLevel(g_forwardScatteringTextureSampler_s, r2.xy, 0.000000000e+000).xyz;
+  r0.xyz = -r1.xyz * r0.xxx + r2.xyw;
+  r1.xyz = g_forwardScatteringColorPresence.www * r0.xyz + r7.xyz;
+  r0.xyz = r6.xyz + -r4.xyz;
+  r0.xyz = r0.www * r0.xyz + r4.xyz;
+  r2.xyw = r8.xyz + -r5.xyz;
+  r2.xyz = r2.zzz * r2.xyw + r5.xyz;
+  r0.xyz = -r2.xyz + r0.xyz;
+  r0.xyz = g_skyGradientBlendFactor * r0.xyz + r2.xyz;
+  r3.xyz = g_sunDirAndSkyGradientScale.www * r0.xyz;
+  r1.w = 0.000000000e+000;
+  r0.xyzw = r3.xyzw + r1.xyzw;
+  o0.xyz = g_hdrExposureMultiplier * r0.xyz;
+  o0.w = r0.w;
+  return;
+}

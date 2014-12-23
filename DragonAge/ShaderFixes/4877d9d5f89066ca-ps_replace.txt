@@ -1,0 +1,355 @@
+
+cbuffer _Globals : register(b0)
+{
+  float3 g_cameraPos : packoffset(c0);
+  float2 g_invScreenSize : packoffset(c1);
+  float4x4 g_invViewProjMatrix : packoffset(c2);
+  float4 g_cloudOffsetAndScale : packoffset(c6);
+  float4 g_cloudCoverageExponentAndFade : packoffset(c7);
+  float3 g_lightDir : packoffset(c8);
+  float4 g_keyColor : packoffset(c9);
+  float2 g_lightAngularRadius : packoffset(c10);
+  float4 g_keyTranslucencyParams : packoffset(c11);
+  float4 g_subParams : packoffset(c12);
+  float4 g_envmapParams : packoffset(c13);
+  float g_skyEnvmap8BitTexInvScale : packoffset(c14);
+  float4 g_exposureMultipliers : packoffset(c15);
+  float4 g_envmapsMipmapCount : packoffset(c16);
+  int g_drawReference : packoffset(c17);
+  float g_skyEnvmapMipmapCount : packoffset(c17.y);
+}
+SamplerState g_cloudShadowSampler_s : register(s0);
+SamplerState g_skyEnvmapSampler_s : register(s1);
+SamplerState g_customSampler_s : register(s2);
+SamplerState g_diffuseOcclusionSampler_s : register(s3);
+SamplerState g_dynamicEnvmapSampler_s : register(s4);
+Texture2D<float4> g_cloudShadowTexture : register(t0);
+TextureCube<float4> g_skyEnvmap : register(t1);
+TextureCube<float4> g_customEnvmap : register(t2);
+Texture2D<float4> g_diffuseOcclusionTexture : register(t3);
+TextureCube<float4> g_dynamicEnvmap : register(t4);
+Texture2DMS<float4,2> g_depthTexture : register(t5);
+Texture2DMS<float4,2> g_gbufferTexture0 : register(t6);
+Texture2DMS<float4,2> g_gbufferTexture1 : register(t7);
+Texture2DMS<float4,2> g_gbufferTexture2 : register(t8);
+Texture2DMS<float4,2> g_gbufferTexture3 : register(t9);
+Texture2DMS<float4,2> g_gbufferTexture4 : register(t10);
+Texture2DMS<float4> g_shadowAccumTexture : register(t11);
+Texture2D<float> g_msaaClassifyTexture : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  const float4 icb[] = { { 0.250000, 0, 0, 0},
+                              { -0.250000, 0, 0, 0} };
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20;
+  uint4 bitmask;
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+
+  r0.xy = g_invScreenSize.xy * v0.xy;
+  r1.xy = (int2)v0.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r0.z = g_msaaClassifyTexture.Load(r1.xyw).x;
+  r0.z = 0.000000000e+000 < r0.z;
+  r0.zw = r0.zz ? float2(2.802597e-045,5.000000e-001) : float2(1.401298e-045,1.000000e+000);
+  r2.x = 1.000000000e+000 + -g_envmapParams.w;
+  r2.yzw = (int3)g_envmapsMipmapCount.zxy;
+  r2.yzw = (int3)r2.yzw + int3(-1,-1,-1);
+  r3.xyz = trunc(g_envmapsMipmapCount.zxy);
+  r2.yzw = r2.yzw;
+  r4.w = 1.000000000e+000;
+  r5.y = 0.000000000e+000;
+  r6.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r7.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r3.w = 0.000000000e+000;
+  while (true) {
+    r5.z = (int)r3.w >= (int)r0.z;
+    if (r5.z != 0) break;
+    r5.zw = icb[r3.w].xx * g_invScreenSize.xy + r0.xy;
+    r8.xyzw = g_gbufferTexture0.Load(r1.xyw,r3.w).xyzw;
+    r9.xyzw = g_gbufferTexture1.Load(r1.xyw,r3.w).xyzw;
+    r10.xyz = g_gbufferTexture2.Load(r1.xyw,r3.w).xzw;
+    r11.xyz = g_gbufferTexture3.Load(r1.xyw,r3.w).xyz;
+    r4.z = g_depthTexture.Load(r1.xyw,r3.w).x;
+    r6.w = 2.550000000e+002 * r10.z;
+    r6.w = round(r6.w);
+    r6.w = (int)r6.w;
+    r12.xyz = r6.www == float3(4.000000e+000,3.000000e+000,2.000000e+000);
+    if (r12.x != 0) {
+      r13.xyzw = g_gbufferTexture4.Load(r1.xyw,r3.w).xyzw;
+      r14.xyzw = r8.xyzw * float4(4.000000e+000,4.000000e+000,4.000000e+000,4.000000e+000) + float4(-2.000000e+000,-2.000000e+000,-2.000000e+000,-2.000000e+000);
+      r7.w = dot(r14.xy, r14.xy);
+      r15.zw = -r7.ww * float2(2.500000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+      r7.w = max(r15.z, 0.000000000e+000);
+      r7.w = sqrt(r7.w);
+      r15.xy = r14.xy * r7.ww;
+      r7.w = dot(r15.xyw, r15.xyw);
+      r7.w = rsqrt(r7.w);
+      r15.xyz = r15.xyw * r7.www;
+      r7.w = dot(r14.zw, r14.zw);
+      r16.zw = -r7.ww * float2(2.500000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+      r7.w = max(r16.z, 0.000000000e+000);
+      r7.w = sqrt(r7.w);
+      r16.xy = r14.zw * r7.ww;
+      r7.w = dot(r16.xyw, r16.xyw);
+      r7.w = rsqrt(r7.w);
+      r14.xyz = r16.xyw * r7.www;
+      r7.w = dot(r13.xy, float2(6.528000e+004,2.550000e+002));
+      r7.w = round(r7.w);
+      r10.z = 3.125000000e-002 * r7.w;
+      r10.z = trunc(r10.z);
+      r16.z = r7.w * 3.125000000e-002 + -r10.z;
+      r7.w = 1.562500000e-002 * r10.z;
+      r16.x = trunc(r7.w);
+      r16.y = r10.z * 1.562500000e-002 + -r16.x;
+      r16.xyz = float3(3.225806e-002,1.015873e+000,1.032258e+000) * r16.xyz;
+      r10.zw = float2(2.550000e+002,2.550000e+002) * r13.zw;
+      r10.zw = round(r10.zw);
+      r13.xy = float2(6.250000e-002,6.250000e-002) * r10.zw;
+      r13.xy = trunc(r13.xy);
+      r13.zw = r10.zw * float2(6.250000e-002,6.250000e-002) + -r13.xy;
+      r17.xw = float2(6.666667e-002,1.066667e+000) * r13.yw;
+      r10.zw = r13.xz * float2(8.000001e-001,1.280000e+001) + float2(1.000000e+000,1.000000e+000);
+      r10.zw = exp2(r10.zw);
+      r10.zw = r10.zw * float2(1.443000e+000,1.443000e+000) + float2(1.443000e+000,1.443000e+000);
+      r13.xyzw = r9.xyzw * r9.xyzw;
+      r18.xyz = r13.www;
+      r7.w = 0.000000000e+000;
+    } else {
+      r8.xyz = r8.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+      r11.w = dot(r8.xyz, r8.xyz);
+      r11.w = rsqrt(r11.w);
+      r15.xyz = r11.www * r8.xyz;
+      r9.xyzw = r9.xyzw * r9.xyzw;
+      r8.x = r6.w == 5;
+      if (r8.x != 0) {
+        r13.xyz = r9.xyz * r9.www;
+        r18.xyz = r9.xyz;
+      } else {
+        r8.x = r6.w == 1;
+        if (r8.x != 0) {
+          r18.xyz = r9.www * r9.xyz;
+        } else {
+          r18.xyz = r9.www;
+        }
+        r13.xyz = r9.xyz;
+      }
+      r8.x = 0.000000000e+000 < r18.x;
+      r7.w = r8.x ? r8.w : 0;
+      r8.x = r7.w * 1.200000000e+001 + 1.000000000e+000;
+      r8.x = exp2(r8.x);
+      r5.x = r8.x * 1.442999959e+000 + 1.442999959e+000;
+      r10.zw = r5.xy;
+      r16.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r14.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r17.xw = float2(0.000000e+000,0.000000e+000);
+    }
+    r5.xz = r5.zw * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+    r4.xy = float2(1.000000e+000,-1.000000e+000) * r5.xz;
+    r8.x = dot(r4.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+    r8.y = dot(r4.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+    r8.z = dot(r4.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+    r4.x = dot(r4.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+    r4.x = 1.000000e+000 / r4.x;
+
+
+float4 r28, r26, r27;
+r26.xyz = r8.xyz * r4.xxx;
+r26.w = 1.0;
+r28.x = dot(r26.xyzw, b1.xyzw);
+r28.y = dot(r26.xyzw, b2.xyzw);
+r28.z = dot(r26.xyzw, b3.xyzw);
+r28.w = dot(r26.xyzw, b4.xyzw);
+float4 stereo = StereoParams.Load(0);
+r28.x -= stereo.x * (r28.w - stereo.y); 
+r26.x = dot(r28.xyzw, a1.xyzw);
+r26.y = dot(r28.xyzw, a2.xyzw);
+r26.z = dot(r28.xyzw, a3.xyzw);
+r26.w = dot(r28.xyzw, a4.xyzw);
+r8.xyz = r26.xyz / r4.xxx;
+
+    r5.xzw = r8.xzy * r4.xxx;
+
+
+    r4.y = dot(r5.xzw, r5.xzw);
+    r4.z = rsqrt(r4.y);
+    r8.xzw = r5.xwz * r4.zzz;
+    r9.x = g_shadowAccumTexture.Load(r1.xyz,r3.w).x;
+    r4.x = r8.y * r4.x + g_cameraPos.y;
+    r9.yz = g_lightDir.xz * r4.xx;
+    r9.yz = r9.yz * g_cloudOffsetAndScale.ww + r5.xz;
+    r9.yz = r9.yz * g_cloudOffsetAndScale.zz + g_cloudOffsetAndScale.xy;
+    r4.x = g_cloudShadowTexture.SampleLevel(g_cloudShadowSampler_s, r9.yz, 0.000000000e+000).x;
+    r4.x = saturate(g_cloudCoverageExponentAndFade.x + r4.x);
+    r4.x = log2(r4.x);
+    r4.x = g_cloudCoverageExponentAndFade.y * r4.x;
+    r4.x = exp2(r4.x);
+    r4.y = sqrt(r4.y);
+    r4.y = -g_cloudCoverageExponentAndFade.z + r4.y;
+    r4.y = saturate(g_cloudCoverageExponentAndFade.w * r4.y);
+    r4.y = r4.y * r4.y;
+    r8.y = 1.000000000e+000 + -r4.x;
+    r4.x = r4.y * r8.y + r4.x;
+    r4.x = r9.x * r4.x;
+    r4.y = dot(r15.xyz, g_lightDir.xyz);
+    r8.y = saturate(r4.y);
+    r9.xyz = g_keyColor.xyz * r8.yyy;
+    r9.xyz = r9.xyz * r4.xxx;
+    if (r12.x != 0) {
+      r17.w = saturate(r17.w);
+      r4.y = r17.w * 5.000000000e-001 + r4.y;
+      r8.y = r17.w * 5.000000000e-001 + 1.000000000e+000;
+      r4.y = saturate(r4.y / r8.y);
+      r17.yzw = g_keyColor.xyz * r4.yyy;
+      r17.yzw = r17.yzw * r4.xxx;
+      r19.xyz = -r15.xyz * r17.xxx + r14.xyz;
+      r4.y = dot(r19.xyz, r19.xyz);
+      r4.y = rsqrt(r4.y);
+      r19.xyz = r19.xyz * r4.yyy;
+      r20.xyz = -r5.xwz * r4.zzz + g_lightDir.xyz;
+      r4.y = dot(r20.xyz, r20.xyz);
+      r4.y = rsqrt(r4.y);
+      r20.xyz = r20.xyz * r4.yyy;
+      r4.y = dot(r14.xyz, r20.xyz);
+      r4.y = -r4.y * r4.y + 1.000000000e+000;
+      r4.y = max(r4.y, 0.000000000e+000);
+      r4.y = sqrt(r4.y);
+      r4.y = log2(r4.y);
+      r4.y = r10.z * r4.y;
+      r4.y = exp2(r4.y);
+      r8.y = dot(r19.xyz, r20.xyz);
+      r8.y = -r8.y * r8.y + 1.000000000e+000;
+      r8.y = max(r8.y, 0.000000000e+000);
+      r8.y = sqrt(r8.y);
+      r8.y = log2(r8.y);
+      r8.y = r10.w * r8.y;
+      r8.y = exp2(r8.y);
+      r14.xyz = r8.yyy * r16.xyz;
+      r14.xyz = r4.yyy * r18.xxx + r14.xyz;
+      r14.xyz = float3(1.500000e-001,1.500000e-001,1.500000e-001) * r14.xyz;
+      r14.xyz = r14.xyz * r9.xyz;
+      r14.xyz = g_keyColor.www * r14.xyz;
+      r9.xyz = r17.yzw;
+    } else {
+      r5.xzw = -r5.xwz * r4.zzz + g_lightDir.xyz;
+      r4.y = dot(r5.xzw, r5.xzw);
+      r4.y = rsqrt(r4.y);
+      r5.xzw = r5.xzw * r4.yyy;
+      r4.y = saturate(dot(r15.xyz, r5.xzw));
+      r4.z = r10.z * 8.662509918e-002 + 8.750000000e-001;
+      r4.y = r4.y * r10.z + -r10.z;
+      r4.y = exp2(r4.y);
+      r4.y = r4.z * r4.y;
+      r5.xzw = r9.xyz * r4.yyy;
+      r14.xyz = g_keyColor.www * r5.xzw;
+    }
+    r5.xzw = r11.xyz * g_exposureMultipliers.yyy + r9.xyz;
+    r4.y = dot(r8.xzw, r15.xyz);
+    r4.y = r4.y + r4.y;
+    r8.xyz = r15.xyz * -r4.yyy + r8.xzw;
+    if (r12.y != 0) {
+      r4.y = -r7.w * 1.500000000e+001 + r3.x;
+      r4.y = 5.000000000e+000 + r4.y;
+      r4.y = max(r4.y, 0.000000000e+000);
+      r4.y = min(r2.y, r4.y);
+      r9.xyz = g_dynamicEnvmap.SampleLevel(g_dynamicEnvmapSampler_s, r8.xyz, r4.y).xyz;
+      r9.xyz = r14.xyz + r9.xyz;
+    } else {
+      r4.y = log2(abs(r10.x));
+      r4.y = g_envmapParams.z * r4.y;
+      r4.y = exp2(r4.y);
+      r4.z = r6.w != 4;
+      if (r4.z != 0) {
+        r10.xyzw = r10.yyyy == float4(0.000000e+000,3.922000e-003,7.843000e-003,1.176500e-002);
+        r10.xyzw = r10.xyzw ? g_envmapParams.xxxx : 0;
+        r4.x = r4.x * r2.x + g_envmapParams.w;
+        r4.x = r4.x * r4.y;
+        r12.yw = -r7.ww * float2(1.500000e+001,1.500000e+001) + r3.yz;
+        r12.yw = float2(5.000000e+000,5.000000e+000) + r12.yw;
+        r12.yw = max(r12.yw, float2(0.000000e+000,0.000000e+000));
+        r12.yw = min(r2.zw, r12.yw);
+        r15.xyzw = g_customEnvmap.SampleLevel(g_customSampler_s, r8.xyz, r12.w).xyzw;
+        r4.z = dot(r10.xyzw, r15.xyzw);
+        r8.xyz = g_skyEnvmap.SampleLevel(g_skyEnvmapSampler_s, r8.xyz, r12.y).xyz;
+        r8.xyz = r8.xyz * r4.xxx;
+        r14.xyz = r8.xyz * g_skyEnvmap8BitTexInvScale + r14.xyz;
+      } else {
+        r4.z = 0.000000000e+000;
+      }
+      r8.xyz = r11.xyz * g_exposureMultipliers.yyy + g_envmapParams.yyy;
+      r8.xyz = r8.xyz * r4.zzz;
+      r4.x = 1.000000000e+000 + -r4.y;
+      r9.xyz = r8.xyz * r4.xxx + r14.xyz;
+    }
+    if (r12.x == 0) {
+      r9.xyz = r9.xyz * r18.xyz;
+    }
+    r4.x = r12.z ? 0.000000000e+000 : 1.000000000e+000;
+    r4.xyz = r9.xyz * r4.xxx;
+    r4.xyz = r5.xzw * r13.xyz + r4.xyz;
+    r7.xyz = r7.xyz + r4.xyz;
+    r6.xyz = r9.xyz + r6.xyz;
+    r3.w = (int)r3.w + 1;
+  }
+  r1.xyzw = g_diffuseOcclusionTexture.Gather(g_diffuseOcclusionSampler_s, r0.xy).xyzw;
+  r0.x = min(r1.y, r1.x);
+  r0.x = min(r1.z, r0.x);
+  o0.w = min(r1.w, r0.x);
+  o0.xyz = r7.xyz * r0.www;
+  o1.xyz = r6.xyz * r0.www;
+  o1.w = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(71,15-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(72,15-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(73,15-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(74,15-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(75,12-43): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(81,18-52): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(160,12-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(67,3-14): warning X3557: loop only executes for 0 iteration(s), forcing loop to unroll
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
