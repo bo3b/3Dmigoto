@@ -108,6 +108,6 @@ rmdir /s /q ShaderFromGame
 REM Dragon Age: Inquistion specific...  We added them, we should delete them.
 rmdir /s /q FWS
 del User.cfg
-del "Launch FWS"
+del "Launch FWS.lnk"
 
 del uninstall.bat
