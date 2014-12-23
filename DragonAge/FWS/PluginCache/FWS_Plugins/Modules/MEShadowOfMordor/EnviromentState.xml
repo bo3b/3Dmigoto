@@ -1,0 +1,32 @@
+<StepState Schema="1.0" NameSpace="MEShadowOfMordor">
+	<StepStates>
+		<StepState Step="1">
+			<ControlState>
+				<Control Type="CheckBox" ID="CKRemoveLetterbox_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+				<Control Type="TrackBar" ID="FOVSlider">
+					<TrackBarProperties Position="100"/>
+				</Control>
+				<Control Type="CheckBox" ID="CKGameFOVFix_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+				<Control Type="CheckBox" ID="CKHUDFix_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+				<Control Type="ComboBox" ID="VersionCombo">
+					<ComboBoxProperties SelectedIndex="0"/>
+				</Control>
+				<Control Type="CheckBox" ID="CKMenuFOVFix_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+				<Control Type="CheckBox" ID="CheckBox_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+			</ControlState>
+			<ViewportState SBVertPos="0"/>
+		</StepState>
+		<ViewportState LastStep="1"/>
+	</StepStates>
+</StepState>
+

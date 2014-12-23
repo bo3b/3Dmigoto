@@ -1,0 +1,120 @@
+//Decals
+cbuffer viewConstants : register(b2)
+{
+  float1 time : packoffset(c0);
+  float3 vc_pad0_ : packoffset(c0.y);
+  float4 screenSize : packoffset(c1);
+  float3 debugNonFiniteColor : packoffset(c2);
+  float1 vc_pad2_ : packoffset(c2.w);
+  float4x4 viewMatrix : packoffset(c3);
+  float4x4 projMatrix : packoffset(c7);
+  float4x4 viewProjMatrix : packoffset(c11);
+  float4x4 crViewProjMatrix : packoffset(c15);
+  float4 projectionKxKyKzKw : packoffset(c19);
+  float3 cameraPos : packoffset(c20);
+  float1 vc_pad8_ : packoffset(c20.w);
+  float3 transparentStartAndSlopeAndClamp : packoffset(c21);
+  float1 vc_pad9_ : packoffset(c21.w);
+  float4 transparentCurve : packoffset(c22);
+  float4 exposureMultipliers : packoffset(c23);
+  float4 fogParams : packoffset(c24);
+  float4 fogForwardScatteringParamsGradientScaleFogEnable : packoffset(c25);
+  float4 fogForwardScatteringColorPresence : packoffset(c26);
+  float4 fogCoefficients : packoffset(c27);
+  float4 fogColorCoefficients : packoffset(c28);
+  float4 fogColor : packoffset(c29);
+  float4 fogStartDistance : packoffset(c30);
+  float4 fogHeightFogCoefficients : packoffset(c31);
+  float4 fogMiscParam : packoffset(c32);
+  float2 fogEnabledMode : packoffset(c33);
+  float2 vc_pad10_ : packoffset(c33.z);
+}
+
+cbuffer externalConstants : register(b1)
+{
+  float3 external_Tint : packoffset(c0);
+  float1 vc_pad0 : packoffset(c0.w);
+  float2 external_Offset : packoffset(c1);
+  float2 vc_pad1 : packoffset(c1.z);
+  float2 external_Atlas_RowsColumns : packoffset(c2);
+  float2 vc_pad2 : packoffset(c2.z);
+  float4 external_viewMatrix1 : packoffset(c3);
+  float4 external_viewMatrix2 : packoffset(c4);
+  float4 external_viewMatrix3 : packoffset(c5);
+  float4 external_viewMatrix4 : packoffset(c6);
+  float2 external_Tile : packoffset(c7);
+  float2 vc_pad7 : packoffset(c7.z);
+}
+SamplerState sampler0_s : register(s0);
+SamplerState sampler1_s : register(s1);
+Texture2D<float4> texture_depthBufferTexture : register(t1);
+Texture2D<float4> texture_Texture : register(t2);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.xyz = external_viewMatrix2.xyz * v6.yyy;
+  r0.xyz = external_viewMatrix1.xyz * v6.xxx + r0.xyz;
+  r0.xyz = external_viewMatrix3.xyz * v6.zzz + r0.xyz;
+  r0.xyz = external_viewMatrix4.xyz + r0.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.xyz = r0.xyz / -r0.zzz;
+  r1.xy = screenSize.zw * v0.xy;
+  r0.w = texture_depthBufferTexture.Sample(sampler0_s, r1.xy).x;
+  
+float4 r26;
+r26.xyz = r0.xyz * r0.www;
+r26.w = 1.0;
+
+float4 stereo = StereoParams.Load(0);
+r26.x -= stereo.x * (-r26.z - stereo.y)/projMatrix._m00; 
+
+  r0.xyz = r26.xyz + -external_viewMatrix4.xyz; // r0.xyz = r0.xyz * r0.www + -external_viewMatrix4.xyz;
+ 
+  r1.x = dot(external_viewMatrix1.xyz, r0.xyz);
+  r1.y = dot(external_viewMatrix2.xyz, r0.xyz);
+  r1.z = dot(external_viewMatrix3.xyz, r0.xyz);
+  r1.w = 1.000000000e+000;
+  r0.x = dot(r1.xyzw, v1.xyzw);
+  r0.y = dot(r1.xyzw, v2.xyzw);
+  r0.z = dot(r1.xyzw, v3.xyzw);
+  r0.w = dot(r1.xyzw, v5.xyzw);
+  r0.xyz = r0.xyz / r0.www;
+  r1.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) + -abs(-r0.xyz);
+  r0.xy = float2(5.000000e-001,5.000000e-001) + r0.xz;
+  r0.xy = v4.zy + r0.xy;
+  r0.xy = r0.xy / external_Atlas_RowsColumns.yx;
+  r0.xy = external_Offset.xy + r0.xy;
+  r0.xy = external_Tile.xy * r0.xy;
+  r0.x = texture_Texture.Sample(sampler1_s, r0.xy).w;
+  r0.x = v4.x * r0.x;
+  r0.yzw = r1.xyz < float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r0.y = (int)r0.z | (int)r0.y;
+  r0.y = (int)r0.w | (int)r0.y;
+  if (r0.y != 0) discard;
+  r0.y = dot(v2.xyz, v2.xyz);
+  r0.y = rsqrt(r0.y);
+  r0.yzw = v2.xyz * r0.yyy;
+  r0.yzw = r0.yzw * float3(5.000000e-001,5.000000e-001,5.000000e-001) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  o0.xyz = r0.yzw * r0.xxx;
+  o0.w = r0.x;
+  r0.yzw = sqrt(external_Tint.xyz);
+  o1.xyz = r0.yzw * r0.xxx;
+  o1.w = r0.x;
+  return;
+}

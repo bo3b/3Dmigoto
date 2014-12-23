@@ -1168,12 +1168,14 @@ REM And, the d3dx.ini from game specific folder
     <PostBuildEvent>
       <Command>echo
 
+REM  *** Dragon Age: Inquisition specific ***
+REM   special files copied as part of fix.
+
 cd "$(SolutionDir)"
 
 REM copy all 3Dmigoto specific DLLs, and dependent files into the Release directory.  
 REM These are any items that are not specifically built, but required for the tool to work.
 
-REM xcopy “$(WindowsSdkDir_80)Redist\D3D\x64\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
 
 REM remove the previous zip file if any, because we can only 'add' to a zip, and we don't want random leftovers.
@@ -1184,8 +1186,7 @@ REM Use 7zip command tool to create a full release that can be unzipped into gam
 REM On game specific builds, this also includes the ShaderFixes folder.
 REM And, the d3dx.ini from game specific folder
 
-7zip\7za a $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip   $(TargetDir)*.dll  .\$(ConfigurationName)\d3dx.ini  .\$(ConfigurationName)\ShaderFixes\  .\$(ConfigurationName)\uninstall.bat  .\$(ConfigurationName)\User.cfg
-</Command>
+7zip\7za a $(ConfigurationName)\3Dmigoto-$(ConfigurationName)-Ver.zip   $(TargetDir)*.dll  .\$(ConfigurationName)\d3dx.ini  .\$(ConfigurationName)\ShaderFixes\  .\$(ConfigurationName)\uninstall.bat  .\$(ConfigurationName)\User.cfg   .\$(ConfigurationName)\FWS\  .\$(ConfigurationName)\Launch*</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='LOTF|x64'">

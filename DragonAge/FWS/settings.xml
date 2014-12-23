@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Configuration Schema="1.0">
+	<StartupSettings>
+		<StartupPosition Position_X="361" Position_Y="206" RememberPosition="false"/>
+		<StartupState FirstUse="false" 1010_FirstUse="false" LicenceAgreed="true" StartMinimized="false" StartWithWindows="false" StartUpdateCheck="true"/>
+	</StartupSettings>
+	<Steam_Origin_Detection Steam_Path="\steam\;\steamapps\" Origin_Path="\origin games\;\origin\"/>
+	<AppState CompactMode="false">
+		<OpenViewports>
+			<Viewport PluginNameSpace="FWS_Plugins" ModuleNameSpace="DragonAgeInquisition" Focus="true"/>
+		</OpenViewports>
+	</AppState>
+	<DisplayDetectionSettings>
+		<HardwareOptions NVIDIADetection="true" AMDDetection="true" GenericDetection="true" SoftTHDetection="true"/>
+		<AssumptionSettings Enabled="true" BCEnabled="false" Width="2561" Height="1000" DisplaysX="3" DisplaysY="1" SafeZoneX="5" SafeZoneY="0"/>
+		<CustomSettings Enabled="false" Width="5760" Height="1080" DisplaysX="3" DisplaysY="1" HUDWidth="1920" HUDHeight="1080" HUDX="1920" HUDY="0"/>
+	</DisplayDetectionSettings>
+	<UpdateSettings>
+		<CoreUpdate AutoCheck_Updates="true" AutoInstall_Updates="true" BETAOptIn="false" LastUpdateCore="1419325543" UpdateCoreFreq="1"/>
+		<PluginUpdate AutoCheck_PluginUpdates="true" AutoInstall_PluginUpdates="true" AutoInstall_MissingDeps="true" LastUpdatePlugins="1419325543" UpdatePluginsFreq="2"/>
+		<RepositoryUpdate AutoCheck_NewPlugins="true" AutoInstall_NewPlugins="false" LastUpdateRepo="1419325543" UpdateRepoFreq="1"/>
+		<Repositorys/>
+	</UpdateSettings>
+	<HotkeySettings EnableToggle="1626" IncreaseFOV="107" DecreaseFOV="109"/>
+</Configuration>
+

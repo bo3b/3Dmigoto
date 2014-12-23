@@ -1,0 +1,371 @@
+
+cbuffer _Globals : register(b0)
+{
+  float2 g_invScreenSize : packoffset(c0);
+  float4x4 g_invViewProjMatrix : packoffset(c1);
+  float4 g_shadowmapHalfSizeAndInvHalfSize : packoffset(c5);
+  float g_subRolloff : packoffset(c6);
+  float4 g_exposureMultipliers : packoffset(c7);
+  uint4 g_shadowmapDimensions : packoffset(c8);
+}
+SamplerComparisonState g_shadowmapSampler_s : register(s0);
+Texture2D<float4> g_shadowmapTexture : register(t0);
+Texture2DMS<float4,4> g_depthTexture : register(t1);
+Texture2DMS<float4,4> g_gbufferTexture0 : register(t2);
+Texture2DMS<float4,4> g_gbufferTexture1 : register(t3);
+Texture2DMS<float4,4> g_gbufferTexture2 : register(t4);
+Texture2D<float> g_msaaClassifyTexture : register(t5);
+Texture2DMS<float4,4> g_gbufferTexture4 : register(t6);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  float4 v9 : TEXCOORD8,
+  float4 v10 : TEXCOORD9,
+  out float4 o0 : SV_Target0)
+{
+  const float4 icb[] = { { -0.125000, -0.375000, 0, 0},
+                              { 0.375000, -0.125000, 0, 0},
+                              { -0.375000, 0.125000, 0, 0},
+                              { 0.125000, 0.375000, 0, 0} };
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22;
+  uint4 bitmask;
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+
+  r0.xy = (int2)v0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r1.x = g_msaaClassifyTexture.Load(r0.xyw).x;
+  r1.x = 0.000000000e+000 < r1.x;
+  r1.xy = r1.xx ? float2(4.000000e+000,2.500000e-001) : float2(1.000000e+000,1.000000e+000);
+  r1.z = g_shadowmapDimensions.x;
+  r1.w = 1.000000e+000 / r1.z;
+  r2.w = 1.000000000e+000;
+  r3.y = 0.000000000e+000;
+  r4.w = 1.000000000e+000;
+  r5.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r3.z = 0.000000000e+000;
+  while (true) {
+    r3.w = (int)r3.z >= (int)r1.x;
+    if (r3.w != 0) break;
+    r6.xy = icb[r3.z].xy * g_invScreenSize.xy;
+    r6.xy = v0.xy * g_invScreenSize.xy + r6.xy;
+    r7.xyzw = g_gbufferTexture0.Load(r0.xyw,r3.z).xyzw;
+    r8.xyzw = g_gbufferTexture1.Load(r0.xyw,r3.z).xyzw;
+    r3.w = g_gbufferTexture2.Load(r0.xyw,r3.z).w;
+    r2.z = g_depthTexture.Load(r0.xyw,r3.z).x;
+    r3.w = 2.550000000e+002 * r3.w;
+    r3.w = round(r3.w);
+    r3.w = (int)r3.w;
+    r5.w = r3.w == 4;
+    if (r5.w != 0) {
+      r9.xyzw = g_gbufferTexture4.Load(r0.xyz,r3.z).xyzw;
+      r10.xyzw = r7.xyzw * float4(4.000000e+000,4.000000e+000,4.000000e+000,4.000000e+000) + float4(-2.000000e+000,-2.000000e+000,-2.000000e+000,-2.000000e+000);
+      r6.z = dot(r10.xy, r10.xy);
+      r11.zw = -r6.zz * float2(2.500000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+      r6.z = max(r11.z, 0.000000000e+000);
+      r6.z = sqrt(r6.z);
+      r11.xy = r10.xy * r6.zz;
+      r6.z = dot(r11.xyw, r11.xyw);
+      r6.z = rsqrt(r6.z);
+      r11.xyz = r11.xyw * r6.zzz;
+      r6.z = dot(r10.zw, r10.zw);
+      r12.zw = -r6.zz * float2(2.500000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+      r6.z = max(r12.z, 0.000000000e+000);
+      r6.z = sqrt(r6.z);
+      r12.xy = r10.zw * r6.zz;
+      r6.z = dot(r12.xyw, r12.xyw);
+      r6.z = rsqrt(r6.z);
+      r10.xyz = r12.xyw * r6.zzz;
+      r6.z = dot(r9.xy, float2(6.528000e+004,2.550000e+002));
+      r6.z = round(r6.z);
+      r6.w = 3.125000000e-002 * r6.z;
+      r6.w = trunc(r6.w);
+      r12.z = r6.z * 3.125000000e-002 + -r6.w;
+      r6.z = 1.562500000e-002 * r6.w;
+      r12.x = trunc(r6.z);
+      r12.y = r6.w * 1.562500000e-002 + -r12.x;
+      r12.xyz = float3(3.225806e-002,1.015873e+000,1.032258e+000) * r12.xyz;
+      r6.zw = float2(2.550000e+002,2.550000e+002) * r9.zw;
+      r6.zw = round(r6.zw);
+      r9.xy = float2(6.250000e-002,6.250000e-002) * r6.zw;
+      r9.xy = trunc(r9.xy);
+      r9.zw = r6.zw * float2(6.250000e-002,6.250000e-002) + -r9.xy;
+      r13.xw = float2(1.066667e+000,6.666667e-002) * r9.wy;
+      r6.zw = r9.xz * float2(8.000001e-001,1.280000e+001) + float2(1.000000e+000,1.000000e+000);
+      r6.zw = exp2(r6.zw);
+      r6.zw = r6.zw * float2(1.443000e+000,1.443000e+000) + float2(1.443000e+000,1.443000e+000);
+      r9.xyzw = r8.xyzw * r8.xyzw;
+      r14.xyz = r9.www;
+    } else {
+      r7.xyz = r7.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+      r9.w = dot(r7.xyz, r7.xyz);
+      r9.w = rsqrt(r9.w);
+      r11.xyz = r9.www * r7.xyz;
+      r8.xyzw = r8.xyzw * r8.xyzw;
+      r7.x = r3.w == 5;
+      if (r7.x != 0) {
+        r9.xyz = r8.xyz * r8.www;
+        r14.xyz = r8.xyz;
+      } else {
+        r3.w = r3.w == 1;
+        if (r3.w != 0) {
+          r14.xyz = r8.www * r8.xyz;
+        } else {
+          r14.xyz = r8.www;
+        }
+        r9.xyz = r8.xyz;
+      }
+      r3.w = 0.000000000e+000 < r14.x;
+      r3.w = r3.w ? r7.w : 0;
+      r3.w = r3.w * 1.200000000e+001 + 1.000000000e+000;
+      r3.w = exp2(r3.w);
+      r3.x = r3.w * 1.442999959e+000 + 1.442999959e+000;
+      r10.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r6.zw = r3.xy;
+      r13.xw = float2(0.000000e+000,0.000000e+000);
+      r12.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+    }
+    r3.xw = r6.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+    r2.xy = float2(1.000000e+000,-1.000000e+000) * r3.xw;
+    r7.x = dot(r2.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+    r7.y = dot(r2.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+    r7.z = dot(r2.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+    r2.x = dot(r2.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+    r2.x = 1.000000e+000 / r2.x;
+
+
+float4 r28, r26, r27;
+r26.xyz = r7.xyz * r2.xxx;
+r26.w = 1.0;
+r28.x = dot(r26.xyzw, b1.xyzw);
+r28.y = dot(r26.xyzw, b2.xyzw);
+r28.z = dot(r26.xyzw, b3.xyzw);
+r28.w = dot(r26.xyzw, b4.xyzw);
+float4 stereo = StereoParams.Load(0);
+r28.x -= stereo.x * (r28.w - stereo.y); 
+r26.x = dot(r28.xyzw, a1.xyzw);
+r26.y = dot(r28.xyzw, a2.xyzw);
+r26.z = dot(r28.xyzw, a3.xyzw);
+r26.w = dot(r28.xyzw, a4.xyzw);
+r7.xyz = r26.xyz / r2.xxx;
+
+    r4.xyz = r7.xyz * r2.xxx;
+
+
+    r2.y = dot(r4.xyz, r4.xyz);
+    r2.y = rsqrt(r2.y);
+    r8.xyz = r4.xyz * r2.yyy;
+    r2.xyz = -r7.xyz * r2.xxx + v1.xyz;
+    r3.x = dot(r2.xyz, r2.xyz);
+    r3.w = rsqrt(r3.x);
+    r7.xyz = r3.www * r2.xyz;
+    r3.x = v3.w + r3.x;
+    r3.x = 1.000000e+000 / r3.x;
+    r3.x = v1.w + r3.x;
+    r3.x = max(r3.x, 0.000000000e+000);
+    r6.x = dot(v6.xyz, r7.xyz);
+    r6.x = saturate(r6.x * v5.x + v5.y);
+    r6.x = 1.000000000e+000 + -r6.x;
+    r3.x = r6.x * r3.x;
+    r6.x = dot(r4.xyzw, v7.xyzw);
+    r6.y = dot(r4.xyzw, v8.xyzw);
+    r7.w = dot(r4.xyzw, v9.xyzw);
+    r4.x = dot(r4.xyzw, v10.xyzw);
+    r4.x = 1.000000e+000 / r4.x;
+    r4.yz = r6.xy * r4.xx;
+    r4.x = r7.w * r4.x;
+    r6.x = max(abs(r4.z), abs(r4.y));
+    r6.x = 1.000000000e+000 + -r6.x;
+    r6.x = min(r6.x, r7.w);
+    r6.x = r6.x < 0.000000000e+000;
+    if (r6.x != 0) discard;
+    r4.yz = r4.yz * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+    r4.yz = r1.zz * r4.yz + float2(5.000000e-001,5.000000e-001);
+    r6.xy = floor(r4.yz);
+    r4.yz = -r6.xy + r4.yz;
+    r6.xy = r6.xy * r1.ww;
+    r15.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(-2,-2)).xyzw;
+    r16.xyzw = float4(1.000000e+000,2.000000e+000,3.000000e+000,5.000000e+000) + -r4.yyyy;
+    r17.xyzw = r16.xyxy * r15.wzxy;
+    r13.yz = r17.xz + r17.yw;
+    r17.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(0,-2)).xyzw;
+    r13.yz = r17.zy * float2(2.000000e+000,2.000000e+000) + r13.yz;
+    r13.yz = r17.wx * float2(2.000000e+000,2.000000e+000) + r13.yz;
+    r18.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(2,-2)).xyzw;
+    r19.xyzw = float4(1.000000e+000,4.000000e+000,3.000000e+000,2.000000e+000) + r4.yyyy;
+    r7.w = r18.y * r4.y;
+    r13.yz = r18.zy * r4.yy + r13.yz;
+    r13.yz = r18.wx * r19.xx + r13.yz;
+    r20.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(-2,0)).xyzw;
+    r8.w = -r4.y * 2.000000000e+000 + 2.000000000e+000;
+    r15.zw = r20.wx * r8.ww;
+    r9.w = r4.y * -2.000000000e+000 + 4.000000000e+000;
+    r15.zw = r20.zy * r9.ww + r15.zw;
+    r9.w = r15.y * r16.z + r15.z;
+    r9.w = r15.x * r8.w + r9.w;
+    r10.w = r20.z * r16.z + r15.w;
+    r10.w = r20.w * r8.w + r10.w;
+    r15.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(0,0)).xyzw;
+    r9.w = r15.z * r19.y + r9.w;
+    r9.w = r15.w * r16.w + r9.w;
+    r10.w = r15.y * r19.y + r10.w;
+    r10.w = r15.x * r16.w + r10.w;
+    r17.zw = float2(4.000000e+000,1.000000e+000) + -r4.yz;
+    r9.w = r17.y * r19.z + r9.w;
+    r9.w = r17.x * r17.z + r9.w;
+    r10.w = r15.z * r19.z + r10.w;
+    r10.w = r15.w * r17.z + r10.w;
+    r21.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(2,0)).xyzw;
+    r11.w = r4.y * 2.000000000e+000 + 2.000000000e+000;
+    r12.w = dot(r21.zz, r4.yy);
+    r9.w = r12.w + r9.w;
+    r9.w = r21.w * r11.w + r9.w;
+    r14.w = dot(r21.yy, r4.yy);
+    r10.w = r14.w + r10.w;
+    r10.w = r21.x * r11.w + r10.w;
+    r7.w = r7.w * 2.000000000e+000 + r9.w;
+    r17.x = r18.x * r19.w + r7.w;
+    r7.w = r12.w + r10.w;
+    r17.y = r21.w * r19.w + r7.w;
+    r13.yz = r17.xy + r13.yz;
+    r18.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(-2,2)).xyzw;
+    r22.xyzw = r18.wzxy * r16.xyxy;
+    r15.zw = r22.xz + r22.yw;
+    r7.w = r20.y * r16.z + r15.z;
+    r7.w = r20.x * r8.w + r7.w;
+    r9.w = r18.z * r16.z + r15.w;
+    r8.w = r18.w * r8.w + r9.w;
+    r16.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(0,2)).xyzw;
+    r7.w = r16.z * 2.000000000e+000 + r7.w;
+    r7.w = r16.w * 2.000000000e+000 + r7.w;
+    r8.w = r16.y * 2.000000000e+000 + r8.w;
+    r8.w = r16.x * 2.000000000e+000 + r8.w;
+    r7.w = r15.y * r19.z + r7.w;
+    r7.w = r15.x * r17.z + r7.w;
+    r8.w = r16.z * r19.z + r8.w;
+    r8.w = r16.w * r17.z + r8.w;
+    r15.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s, r6.xy, r4.x, int2(2,2)).xyzw;
+    r4.x = r15.z * r4.y;
+    r6.x = r15.z * r4.y + r7.w;
+    r6.x = r15.w * r19.x + r6.x;
+    r4.y = r15.y * r4.y + r8.w;
+    r4.y = r15.x * r19.x + r4.y;
+    r6.x = r14.w + r6.x;
+    r6.x = r21.x * r19.w + r6.x;
+    r4.x = r4.x * 2.000000000e+000 + r4.y;
+    r6.y = r15.w * r19.w + r4.x;
+    r4.xy = r13.yz + r6.xy;
+    r4.y = r4.y * r4.z;
+    r4.x = r4.x * r17.w + r4.y;
+    r4.x = 1.694915257e-002 * r4.x;
+    r3.x = r4.x * r3.x;
+    r4.x = dot(r11.xyz, r7.xyz);
+    r4.y = saturate(r4.x);
+    r7.xyz = v2.xyz * r4.yyy;
+    r7.xyz = r7.xyz * r3.xxx;
+    if (r5.w != 0) {
+      r13.x = saturate(r13.x);
+      r4.x = r13.x * 5.000000000e-001 + r4.x;
+      r4.y = r13.x * 5.000000000e-001 + 1.000000000e+000;
+      r4.x = saturate(r4.x / r4.y);
+      r4.xyz = v2.xyz * r4.xxx;
+      r4.xyz = r4.xyz * r3.xxx;
+      r13.xyz = -r11.xyz * r13.www + r10.xyz;
+      r3.x = dot(r13.xyz, r13.xyz);
+      r3.x = rsqrt(r3.x);
+      r13.xyz = r13.xyz * r3.xxx;
+      r15.xyz = r2.xyz * r3.www + -r8.xyz;
+      r3.x = dot(r15.xyz, r15.xyz);
+      r3.x = rsqrt(r3.x);
+      r15.xyz = r15.xyz * r3.xxx;
+      r3.x = dot(r10.xyz, r15.xyz);
+      r3.x = -r3.x * r3.x + 1.000000000e+000;
+      r3.x = max(r3.x, 0.000000000e+000);
+      r3.x = sqrt(r3.x);
+      r3.x = log2(r3.x);
+      r3.x = r6.z * r3.x;
+      r3.x = exp2(r3.x);
+      r6.x = dot(r13.xyz, r15.xyz);
+      r6.x = -r6.x * r6.x + 1.000000000e+000;
+      r6.x = max(r6.x, 0.000000000e+000);
+      r6.x = sqrt(r6.x);
+      r6.x = log2(r6.x);
+      r6.x = r6.w * r6.x;
+      r6.x = exp2(r6.x);
+      r6.xyw = r6.xxx * r12.xyz;
+      r6.xyw = r3.xxx * r14.xxx + r6.xyw;
+      r6.xyw = r7.xyz * r6.xyw;
+      r6.xyw = v2.www * r6.xyw;
+      r6.xyw = float3(1.500000e-001,1.500000e-001,1.500000e-001) * r6.xyw;
+      r7.xyz = r4.xyz;
+    } else {
+      r2.xyz = r2.xyz * r3.www + -r8.xyz;
+      r3.x = dot(r2.xyz, r2.xyz);
+      r3.x = rsqrt(r3.x);
+      r2.xyz = r3.xxx * r2.xyz;
+      r2.x = saturate(dot(r11.xyz, r2.xyz));
+      r2.y = r6.z * 8.662509918e-002 + 8.750000000e-001;
+      r2.x = r2.x * r6.z + -r6.z;
+      r2.x = exp2(r2.x);
+      r2.x = r2.y * r2.x;
+      r2.xyz = r7.xyz * r2.xxx;
+      r6.xyw = v2.www * r2.xyz;
+    }
+    if (r5.w == 0) {
+      r6.xyw = r6.xyw * r14.xyz;
+    }
+    r2.xyz = r7.xyz * r9.xyz + r6.xyw;
+    r5.xyz = r5.xyz + r2.xyz;
+    r3.z = (int)r3.z + 1;
+  }
+  o0.xyz = r5.xyz * r1.yyy;
+  o0.w = 0.000000000e+000;
+  return;
+}

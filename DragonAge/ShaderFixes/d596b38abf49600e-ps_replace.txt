@@ -1,0 +1,198 @@
+
+cbuffer _Globals : register(b0)
+{
+  float4 g_sunColorAndSize : packoffset(c0);
+  float4 g_sunDirAndSkyGradientScale : packoffset(c1);
+  float g_panoramicRotation : packoffset(c2);
+  float4 g_panoramicUVRanges : packoffset(c3);
+  float g_panoramicTileFactor : packoffset(c4);
+  float4 g_cloudLayerSunColor : packoffset(c5);
+  float4 g_cloudLayerLightingParams0 : packoffset(c6);
+  float4 g_cloudLayerLightingParams1 : packoffset(c7);
+  float4 g_cloudLayer0Color : packoffset(c8);
+  float4 g_cloudLayerParams : packoffset(c9);
+  float4 g_cloudLayer0UVTransform0 : packoffset(c10);
+  float4 g_cloudLayer0UVTransform1 : packoffset(c11);
+  float4 g_cloudLayer1UVTransform0 : packoffset(c12);
+  float4 g_cloudLayer1UVTransform1 : packoffset(c13);
+  float4 g_cloudLayer1Color : packoffset(c14);
+  float4 g_fogParams : packoffset(c15);
+  float2 g_forwardScatteringParams : packoffset(c16);
+  float4 g_forwardScatteringColorPresence : packoffset(c17);
+  float4 g_fogCoefficients : packoffset(c18);
+  float4 g_fogColorCoefficients : packoffset(c19);
+  float4 g_fogColor : packoffset(c20);
+  float g_fogStartDistance : packoffset(c21);
+  float4 g_heightFogCoefficients : packoffset(c22);
+  float4x4 g_invViewProjMatrix : packoffset(c23);
+  float3 g_camPos : packoffset(c27);
+  float2 g_screenSizeInv : packoffset(c28);
+  float g_hdrExposureMultiplier : packoffset(c28.z);
+  float g_drawEnvmap : packoffset(c28.w);
+  float g_drawThetaPhiEnvmap : packoffset(c29);
+  float4 g_alphaSelector : packoffset(c30);
+  float g_hdriRotationAngle : packoffset(c31);
+  float g_hdriCosRotation : packoffset(c31.y);
+  float g_hdriSinRotation : packoffset(c31.z);
+}
+SamplerState g_skyGradientSampler_s : register(s0);
+SamplerState g_acosLUTSampler_s : register(s1);
+Texture2D<float4> g_skyGradientTexture : register(t0);
+Texture2D<float4> g_acosLUTTexture : register(t1);
+Texture2D<float4> g_depthTexture : register(t10);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float3 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask;
+
+//Work out Inverse
+//...Variables
+// float4 a1, a2, a3, a4;
+// float4 b1, b2, b3, b4;
+// float det;
+//...Original Matrix
+// a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+// a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+// a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+// a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+// det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+// det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+// det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+// det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+// b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+// b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+// b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+// b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+// b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+// b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+// b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+// b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+// b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+// b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+// b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+// b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+// b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+// b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+// b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+// b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+// b1.xyzw /= det;
+// b2.xyzw /= det;
+// b3.xyzw /= det;
+// b4.xyzw /= det;
+//End Inverse
+
+
+  r0.x = dot(v1.xyz, v1.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v1.xyz * r0.xxx;
+  r1.xy = (int2)v0.xy;
+  r2.xy = g_screenSizeInv.xy * v0.xy;
+  r0.w = abs(r0.z) < abs(r0.x);
+  if (r0.w != 0) {
+    r0.w = r0.z;
+    r2.z = r0.x;
+    r2.w = 1.000000000e+000;
+  } else {
+    r0.w = r0.x;
+    r2.z = r0.z;
+    r2.w = 3.000000000e+000;
+  }
+  r0.x = dot(r0.xz, float2(1.000000e+000,-1.000000e+000));
+  r0.x = 0.000000000e+000 < r0.x;
+  if (r0.x != 0) {
+    r2.w = 4.000000000e+000 + r2.w;
+    r0.x = -1.000000000e+000;
+  } else {
+    r0.x = 1.000000000e+000;
+  }
+  r0.z = r0.w / abs(r2.z);
+  r0.w = r0.z * r0.z;
+  r0.w = r0.w * 2.000000030e-001 + 8.000000119e-001;
+  r0.z = r0.z / r0.w;
+  r0.x = r0.z * r0.x + r2.w;
+  r0.x = r0.x * 1.250000000e-001 + 1.250000000e-001;
+  r0.x = frac(r0.x);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.y = r0.y * 4.990234375e-001 + 5.009765625e-001;
+  r3.x = frac(r0.y);
+  r3.y = 5.000000000e-001;
+  r0.y = g_acosLUTTexture.SampleLevel(g_acosLUTSampler_s, r3.xy, 0.000000000e+000).x;
+  r3.x = g_panoramicRotation + r0.x;
+  r3.y = 1.000000000e+000 + -r0.y;
+  r0.xyzw = g_skyGradientTexture.SampleLevel(g_skyGradientSampler_s, r3.xy, 0.000000000e+000).xyzw;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r1.z = g_depthTexture.Load(r1.xyz).x;
+  r2.xy = r2.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r1.xy = float2(1.000000e+000,-1.000000e+000) * r2.xy;
+  r1.w = 1.000000000e+000;
+  r2.x = dot(r1.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+  r1.x = dot(r1.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+  r1.xyz = r2.xyz / r1.xxx;
+
+// float4 r28, r26, r27;
+// r26.xyz = r1.xyz;
+// r26.w = 1.0;
+// r28.x = dot(r26.xyzw, b1.xyzw);
+// r28.y = dot(r26.xyzw, b2.xyzw);
+// r28.z = dot(r26.xyzw, b3.xyzw);
+// r28.w = dot(r26.xyzw, b4.xyzw);
+// float4 stereo = StereoParams.Load(0);
+// r28.x -= stereo.x * (r28.w - stereo.y); 
+// r26.x = dot(r28.xyzw, a1.xyzw);
+// r26.y = dot(r28.xyzw, a2.xyzw);
+// r26.z = dot(r28.xyzw, a3.xyzw);
+// r26.w = dot(r28.xyzw, a4.xyzw);
+// r1.xyz = r26.xyz;
+
+
+  r1.xzw = g_camPos.xyz + -r1.xyz;
+  r1.x = dot(r1.xzw, r1.xzw);
+  r1.x = sqrt(r1.x);
+  r1.zw = g_fogParams.zw / r0.ww;
+  r2.xz = saturate(r1.xx * r1.zw + g_fogParams.xy);
+  r1.zw = r2.xz * r2.xz;
+  r3.xy = r2.xz * r1.zw;
+  r4.x = r3.x;
+  r4.y = r1.z;
+  r4.z = r2.x;
+  r4.w = 1.000000000e+000;
+  r0.w = saturate(dot(r4.xyzw, g_fogCoefficients.xyzw));
+  r2.x = r3.y;
+  r2.y = r1.w;
+  r2.w = 1.000000000e+000;
+  r1.z = saturate(dot(r2.xyzw, g_fogColorCoefficients.xyzw));
+  r1.y = -g_camPos.y + r1.y;
+  r1.w = abs(r1.y) < 9.999999776e-003;
+  r1.y = r1.w ? 9.999999776e-003 : r1.y;
+  r1.w = r1.y * g_heightFogCoefficients.x + g_heightFogCoefficients.y;
+  r1.w = exp2(r1.w);
+  r1.w = 1.000000000e+000 + r1.w;
+  r1.w = g_heightFogCoefficients.z / r1.w;
+  r1.w = -g_heightFogCoefficients.w + r1.w;
+  r1.y = r1.w / r1.y;
+  r1.x = -g_fogStartDistance + r1.x;
+  r1.x = max(r1.x, 0.000000000e+000);
+  r1.x = r1.y * r1.x;
+  r1.x = exp2(-abs(-r1.x));
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = max(r0.w, r1.x);
+  r1.x = max(r1.x, r1.z);
+  r1.yzw = g_fogColor.xyz * r1.xxx;
+  r0.xyz = r0.xyz * g_sunDirAndSkyGradientScale.www + -r1.yzw;
+  r0.xyz = r0.www * r0.xyz + r1.yzw;
+  r1.y = 1.000000000e+000 + -r0.w;
+  o0.w = r1.y * r1.x + r0.w;
+  o0.xyz = g_hdrExposureMultiplier * r0.xyz;
+  return;
+}
+ 

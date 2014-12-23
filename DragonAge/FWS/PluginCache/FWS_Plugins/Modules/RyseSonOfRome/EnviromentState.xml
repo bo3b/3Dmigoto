@@ -1,0 +1,20 @@
+<StepState Schema="1.0" NameSpace="TheVanishingOfEthanCarter">
+	<StepStates>
+		<StepState Step="1">
+			<ControlState>
+				<Control Type="ComboBox" ID="VersionCombo">
+					<ComboBoxProperties SelectedIndex="0"/>
+				</Control>
+				<Control Type="CheckBox" ID="HUDFix_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+				<Control Type="CheckBox" ID="CheckBox_Enable">
+					<CheckBoxProperties CheckState="1"/>
+				</Control>
+			</ControlState>
+			<ViewportState SBVertPos="0"/>
+		</StepState>
+		<ViewportState LastStep="1"/>
+	</StepStates>
+</StepState>
+

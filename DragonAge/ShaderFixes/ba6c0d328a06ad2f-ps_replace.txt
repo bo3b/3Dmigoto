@@ -1,0 +1,231 @@
+
+cbuffer _Globals : register(b0)
+{
+  float3 g_cameraPos : packoffset(c0);
+  float2 g_invScreenSize : packoffset(c1);
+  float4x4 g_invViewProjMatrix : packoffset(c2);
+  float3 g_lightDir : packoffset(c6);
+  float4 g_keyColor : packoffset(c7);
+  float2 g_lightAngularRadius : packoffset(c8);
+  float4 g_keyTranslucencyParams : packoffset(c9);
+  float4 g_subParams : packoffset(c10);
+  float4 g_envmapParams : packoffset(c11);
+  float g_skyEnvmap8BitTexInvScale : packoffset(c12);
+  float4 g_exposureMultipliers : packoffset(c13);
+  float4 g_envmapsMipmapCount : packoffset(c14);
+  int g_drawReference : packoffset(c15);
+  float g_skyEnvmapMipmapCount : packoffset(c15.y);
+}
+SamplerState g_skyEnvmapSampler_s : register(s0);
+SamplerState g_customSampler_s : register(s1);
+SamplerState g_diffuseOcclusionSampler_s : register(s2);
+TextureCube<float4> g_skyEnvmap : register(t0);
+TextureCube<float4> g_customEnvmap : register(t1);
+Texture2D<float4> g_diffuseOcclusionTexture : register(t2);
+Texture2DMS<float4,4> g_depthTexture : register(t3);
+Texture2DMS<float4,4> g_gbufferTexture0 : register(t4);
+Texture2DMS<float4,4> g_gbufferTexture1 : register(t5);
+Texture2DMS<float4,4> g_gbufferTexture2 : register(t6);
+Texture2DMS<float4,4> g_gbufferTexture3 : register(t7);
+Texture2D<float> g_msaaClassifyTexture : register(t8);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  const float4 icb[] = { { -0.125000, -0.375000, 0, 0},
+                              { 0.375000, -0.125000, 0, 0},
+                              { -0.375000, 0.125000, 0, 0},
+                              { 0.125000, 0.375000, 0, 0} };
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
+  uint4 bitmask;
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+
+  r0.xy = g_invScreenSize.xy * v0.xy;
+  r1.xy = (int2)v0.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r0.z = g_msaaClassifyTexture.Load(r1.xyw).x;
+  r0.z = 0.000000000e+000 < r0.z;
+  r0.zw = r0.zz ? float2(5.605194e-045,2.500000e-001) : float2(1.401298e-045,1.000000e+000);
+  r2.xy = (int2)g_envmapsMipmapCount.xy;
+  r2.xy = (int2)r2.xy + int2(-1,-1);
+  r2.zw = trunc(g_envmapsMipmapCount.xy);
+  r2.xy = r2.xy;
+  r3.w = 1.000000000e+000;
+  r5.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  r4.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  while (true) {
+    r5.w = (int)r4.w >= (int)r0.z;
+    if (r5.w != 0) break;
+    r6.xyzw = g_gbufferTexture0.Load(r1.xyw,r4.w).xyzw;
+    r7.xyzw = g_gbufferTexture1.Load(r1.xyw,r4.w).xyzw;
+    r8.xyz = g_gbufferTexture2.Load(r1.xyw,r4.w).xzw;
+    r9.xyz = g_gbufferTexture3.Load(r1.xyw,r4.w).xyz;
+    r5.w = 2.550000000e+002 * r8.z;
+    r5.w = round(r5.w);
+    r5.w = (int)r5.w;
+    r8.zw = r5.ww == float2(4.000000e+000,2.000000e+000);
+    if (r8.z != 0) {
+      r10.xy = r6.xy * float2(4.000000e+000,4.000000e+000) + float2(-2.000000e+000,-2.000000e+000);
+      r9.w = dot(r10.xy, r10.xy);
+      r11.zw = -r9.ww * float2(2.500000e-001,5.000000e-001) + float2(1.000000e+000,1.000000e+000);
+      r9.w = max(r11.z, 0.000000000e+000);
+      r9.w = sqrt(r9.w);
+      r11.xy = r10.xy * r9.ww;
+      r9.w = dot(r11.xyw, r11.xyw);
+      r9.w = rsqrt(r9.w);
+      r10.xyz = r11.xyw * r9.www;
+      r11.xyzw = r7.xyzw * r7.xyzw;
+      r12.xyz = r11.www;
+      r9.w = 0.000000000e+000;
+    } else {
+      r6.xyz = r6.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+      r10.w = dot(r6.xyz, r6.xyz);
+      r10.w = rsqrt(r10.w);
+      r10.xyz = r10.www * r6.xyz;
+      r7.xyzw = r7.xyzw * r7.xyzw;
+      r6.x = r5.w == 5;
+      if (r6.x != 0) {
+        r11.xyz = r7.xyz * r7.www;
+        r12.xyz = r7.xyz;
+      } else {
+        r6.x = r5.w == 1;
+        if (r6.x != 0) {
+          r12.xyz = r7.www * r7.xyz;
+        } else {
+          r12.xyz = r7.www;
+        }
+        r11.xyz = r7.xyz;
+      }
+      r6.x = 0.000000000e+000 < r12.x;
+      r9.w = r6.x ? r6.w : 0;
+    }
+    r6.xyz = g_exposureMultipliers.yyy * r9.xyz;
+    r6.w = log2(abs(r8.x));
+    r6.w = g_envmapParams.z * r6.w;
+    r6.w = exp2(r6.w);
+    r5.w = r5.w != 4;
+    if (r5.w != 0) {
+      r7.xy = icb[r4.w].xy * g_invScreenSize.xy + r0.xy;
+      r3.z = g_depthTexture.Load(r1.xyz,r4.w).x;
+      r7.xy = r7.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+      r3.xy = float2(1.000000e+000,-1.000000e+000) * r7.xy;
+      r7.x = dot(r3.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+      r7.y = dot(r3.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+      r7.z = dot(r3.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+      r3.x = dot(r3.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+      r3.x = 1.000000e+000 / r3.x;
+
+
+float4 r28, r26, r27;
+r26.xyz = r7.xyz * r3.xxx;
+r26.w = 1.0;
+r28.x = dot(r26.xyzw, b1.xyzw);
+r28.y = dot(r26.xyzw, b2.xyzw);
+r28.z = dot(r26.xyzw, b3.xyzw);
+r28.w = dot(r26.xyzw, b4.xyzw);
+float4 stereo = StereoParams.Load(0);
+r28.x -= stereo.x * (r28.w - stereo.y); 
+r26.x = dot(r28.xyzw, a1.xyzw);
+r26.y = dot(r28.xyzw, a2.xyzw);
+r26.z = dot(r28.xyzw, a3.xyzw);
+r26.w = dot(r28.xyzw, a4.xyzw);
+r7.xyz = r26.xyz / r3.xxx;
+
+      r3.xyz = r7.xyz * r3.xxx;
+
+
+      r5.w = dot(r3.xyz, r3.xyz);
+      r5.w = rsqrt(r5.w);
+      r3.xyz = r5.www * r3.xyz;
+      r5.w = dot(r3.xyz, r10.xyz);
+      r5.w = r5.w + r5.w;
+      r3.xyz = r10.xyz * -r5.www + r3.xyz;
+      r7.xyzw = r8.yyyy == float4(0.000000e+000,3.922000e-003,7.843000e-003,1.176500e-002);
+      r7.xyzw = r7.xyzw ? g_envmapParams.xxxx : 0;
+      r8.xy = -r9.ww * float2(1.500000e+001,1.500000e+001) + r2.zw;
+      r8.xy = float2(5.000000e+000,5.000000e+000) + r8.xy;
+      r8.xy = max(r8.xy, float2(0.000000e+000,0.000000e+000));
+      r8.xy = min(r2.xy, r8.xy);
+      r10.xyzw = g_customEnvmap.SampleLevel(g_customSampler_s, r3.xyz, r8.y).xyzw;
+      r5.w = dot(r7.xyzw, r10.xyzw);
+      r3.xyz = g_skyEnvmap.SampleLevel(g_skyEnvmapSampler_s, r3.xyz, r8.x).xyz;
+      r3.xyz = r3.xyz * r6.www;
+      r3.xyz = g_skyEnvmap8BitTexInvScale * r3.xyz;
+    } else {
+      r3.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r5.w = 0.000000000e+000;
+    }
+    r7.xyz = r9.xyz * g_exposureMultipliers.yyy + g_envmapParams.yyy;
+    r7.xyz = r7.xyz * r5.www;
+    r5.w = 1.000000000e+000 + -r6.w;
+    r3.xyz = r7.xyz * r5.www + r3.xyz;
+    if (r8.z == 0) {
+      r3.xyz = r3.xyz * r12.xyz;
+    }
+    r5.w = r8.w ? 0.000000000e+000 : 1.000000000e+000;
+    r7.xyz = r5.www * r3.xyz;
+    r6.xyz = r6.xyz * r11.xyz + r7.xyz;
+    r5.xyz = r6.xyz + r5.xyz;
+    r4.xyz = r4.xyz + r3.xyz;
+    r4.w = (int)r4.w + 1;
+  }
+  r1.xyzw = g_diffuseOcclusionTexture.Gather(g_diffuseOcclusionSampler_s, r0.xy).xyzw;
+  r0.x = min(r1.y, r1.x);
+  r0.x = min(r1.z, r0.x);
+  o0.w = min(r1.w, r0.x);
+  o0.xyz = r5.xyz * r0.www;
+  o1.xyz = r4.xyz * r0.www;
+  o1.w = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(61,15-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(62,15-49): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(63,14-48): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(64,14-48): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(111,14-45): warning X3206: 'Load': implicit truncation of vector type
+E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(58,3-14): warning X3557: loop only executes for 0 iteration(s), forcing loop to unroll
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

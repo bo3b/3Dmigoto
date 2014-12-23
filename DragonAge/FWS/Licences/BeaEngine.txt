@@ -1,0 +1,4 @@
+This library is released under LGPL license. That means you can use it in your projects even if they are under free or proprietary licenses. You don't have to modify your license (if there is one) and you don't have to publish your source code. But, if you improve BeaEngine, you have to publish the modified library under one of the following license : LGPL or GPL
+
+Contributors have done a very useful job to improve and to fix bugs on BeaEngine. Thanks to them, BeaEngine is stable and efficient. List below :
+andrewl, Ange Albertini, bax, William Pomian, Pyrae, Vincent Roy, Kharneth, Eedy, Neitsa, KumaT, Rafal Cyran, 29a metal, sessiondiy, Tim, vince, ouadji, Helle, Baboon, Jan Garcia, ap0x, stm122, kao, Nam, CPA.

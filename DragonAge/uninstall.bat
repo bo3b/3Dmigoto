@@ -1,3 +1,7 @@
+REM ***
+REM Special Uninstall.bat for Dragon Age, as there are numerous added files.
+REM ***
+
 REM Delete everything that could be in the target folder, including debug items.
 REM If something is not there, the DEL skips without error.
 REM Also deletes the ShaderCache, ShaderFixes, ShaderFromGame folders
@@ -97,11 +101,13 @@ del BinaryDecompiler.lib
 
 del ShaderUsage.txt
 
-REM delete this file too, we added it, we should delete it.
-del User.cfg
-
 rmdir /s /q ShaderFixes
 rmdir /s /q ShaderCache
 rmdir /s /q ShaderFromGame
+
+REM Dragon Age: Inquistion specific...  We added them, we should delete them.
+rmdir /s /q FWS
+del User.cfg
+del "Launch FWS"
 
 del uninstall.bat
