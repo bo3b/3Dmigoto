@@ -40,25 +40,33 @@ static struct
 // in the current process, not system wide.
 //
 // Looking for: nvapi64.dll	LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//
+// Cleanly fetch system directory, as drive may not be C:, and it doesn't have to be 
+// "C:\Windows\system32", although that will be the path for both 32 bit and 64 bit OS.
 
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
+	WCHAR systemPath[MAX_PATH];
+	GetSystemDirectoryW(systemPath, sizeof(systemPath));
+	wcscat_s(systemPath, MAX_PATH, L"\\d3d11.dll");
+
 	// This is late enough that we can look for standard logging.
 	if (LogFile) fwprintf(LogFile, L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
 
 	// Bypass the known expected call from our wrapped d3d11, where it needs to call to the system to get APIs.
-	// This is a bit of a hack, but if the string comes in as original_d3d11, that's from us, and needs to switch to the real one.
-	if (_wcsicmp(lpLibFileName, L"C:\\Windows\\system32\\original_d3d11.DLL") == 0)
+	// This is a bit of a hack, but if the string comes in as original_d3d11, that's from us, and needs to switch 
+	// to the real one. This doesn't need to be case insensitive, because we create the original string, all lower case.
+	if (wcsstr(lpLibFileName, L"original_d3d11.dll") != NULL)
 	{
 		if (LogFile) fwprintf(LogFile, L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n", 
-			lpLibFileName, L"C:\\Windows\\system32\\d3d11.dll");
+			lpLibFileName, systemPath);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(L"C:\\Windows\\system32\\d3d11.dll", hFile, dwFlags);
+		return sLoadLibraryExW_Hook.fnLoadLibraryExW(systemPath, hFile, dwFlags);
 	}
 
 	// This is to be case insenstive as we don't know if NVidia will change that and otherwise break it
-	// it with a driver upgrade.
-	if (_wcsicmp(lpLibFileName, L"C:\\Windows\\system32\\d3d11.dll") == 0)
+	// it with a driver upgrade.  Any direct access to system32\d3d11.dll needs to be reset to us.
+	if (_wcsicmp(lpLibFileName, systemPath) == 0)
 	{
 		if (LogFile) fwprintf(LogFile, L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, L"d3d11.dll");
 
