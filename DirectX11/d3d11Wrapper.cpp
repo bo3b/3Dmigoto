@@ -1156,7 +1156,9 @@ static void InitD311()
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 #if (_WIN64 && HOOK_SYSTEM32)
-		wcscat(sysDir, L"\\original_d3d11.dll");	// We'll look for this in MainHook to avoid callback to self.
+		// We'll look for this in MainHook to avoid callback to self.		
+		// Must remain all lower case to be matched in MainHook.
+		wcscat(sysDir, L"\\original_d3d11.dll");
 #else
 		wcscat(sysDir, L"\\d3d11.dll");
 #endif
@@ -1887,13 +1889,25 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
 {
 	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
+	memset(&mappedResource, 0, sizeof(D3D11Base::D3D11_MAPPED_SUBRESOURCE));
 
 	if (on)
 	{
-		//wrapped->mIniTexture.Map();
+		DirectX::XMFLOAT4 zeroed = {0, 0, 0, 0};
+
+		//	Disable GPU access to the texture ini data so we can rewrite it.
+		realContext->Map(wrapped->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, &zeroed, sizeof(zeroed));
+		realContext->Unmap(wrapped->mIniTexture, 0);
 	}
 	else
 	{
+		// Restore texture ini data to original values from d3dx.ini
+		realContext->Map(wrapped->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+		realContext->Unmap(wrapped->mIniTexture, 0);
 	}
 }
 
@@ -1976,10 +1990,10 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// This is done here because this will be called at first game Draw call, and thus very
 	// late from the init standpoint, which fixes DirectInput failures.  And avoids
 	// crashes when we use a secondary thread to give time to aiming override.
-	nvapi_QueryInterface(0xb03bb03b);
+	//nvapi_QueryInterface(0xb03bb03b);
 
 	// Give time to our keyboard handling for hot keys that can change iniParams.
-	CheckForKeys(device);
+	//CheckForKeys(device);
 
 	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
 	if (!G->hunting)
