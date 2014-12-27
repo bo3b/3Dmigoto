@@ -1923,7 +1923,7 @@ TState toggleState = offUp;
 
 void CheckForKeys(D3D11Base::ID3D11Device *device)
 {
-	bool escKey = (GetAsyncKeyState(VK_ESCAPE) < 0);
+	bool escKey = (GetAsyncKeyState(VK_F2) < 0);
 	TState lastState = toggleState;
 
 	// Must cycle through different states based solely on user input.
@@ -1993,7 +1993,7 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	//nvapi_QueryInterface(0xb03bb03b);
 
 	// Give time to our keyboard handling for hot keys that can change iniParams.
-	//CheckForKeys(device);
+	CheckForKeys(device);
 
 	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
 	if (!G->hunting)
