@@ -178,6 +178,13 @@ void main(
   r2.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
   o0.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o0.xyw = r2.xyw;
+
+// Fix halo on water surface
+float4 stereo = StereoParams.Load(0);
+float separation = stereo.x; float convergence = stereo.y;
+
+r2.x += separation * (r2.w - convergence);
+
   r3.xyzw = _DepthTextureScaleOffset.xyzw * r2.xyww;
   o6.z = r2.w;
   o6.xy = r3.xy + r3.zw;
