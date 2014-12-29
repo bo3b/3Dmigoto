@@ -11,3 +11,4 @@ Installation
 
 5. Set shadow quality to High or lower, I haven't fixed the higher quality shaders yet
 6. Disable anti-aliasing. SMAA may create artefacts while moving, other options have totally broken shadows.
+7. Set Ambient Occlusion to HBAO+ (or off). All other options have issues in 3D, and HBAO+ is the best anyway.
