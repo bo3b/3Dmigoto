@@ -1,4 +1,4 @@
-// HUD - Sniper scope (M-700), red dot (warrior)
+// HUD - Sniper scope (M-700), red dot (warrior). Also affects halo on water
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -172,6 +172,9 @@ void main(
   r2.y = r1.x * r2.x + r0.w;
   o5.xy = r3.ww ? r2.xy : r0.xy;
 
+// !!! THIS CREATES AN ADDITIONAL HALO ON THE WATER !!!
+// I'll probably have to use a whitelist
+
 // Push the scope into the screen.
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
@@ -179,7 +182,7 @@ float hud_depth = IniParams.Load(0).x;
 
 // Had to multiply the adjustment by output w to position it correctly - seems
 // is already drawn at some depth, but the driver isn't stereoising it.
-o0.x += separation * hud_depth * o0.w;
+//o0.x += separation * hud_depth * o0.w;
 
 // may be better for red dot sight:
 //o0.x += separation * (o0.w - convergence);
