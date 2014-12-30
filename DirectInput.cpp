@@ -1,4 +1,5 @@
 #include "DirectInput.h"
+#include "util.h"
 
 using namespace std;
 
@@ -362,7 +363,7 @@ BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance,
 	wchar_t winstance[MAX_PATH];
 	char instance[MAX_PATH];
 	wcscpy(winstance, deviceInfo.tszInstanceName);
-	wchar_t *end = winstance + wcslen(winstance) - 1; while (end > winstance && iswspace(*end)) end--; *(end + 1) = 0;
+	wrstrip(winstance);
 	wcstombs(instance, winstance, MAX_PATH);
 	DIPROPDWORD prop;
 	prop.diph.dwSize = sizeof(DIPROPDWORD);
@@ -427,7 +428,7 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 	}
 	WCHAR tszName[260];
 	wcscpy(tszName, pdidoi->tszName);
-	wchar_t *end = tszName + wcslen(tszName) - 1; while (end > tszName && iswspace(*end)) end--; *(end + 1) = 0;
+	wrstrip(tszName);
 	for (int i = 0; i < NUM_ACTIONS; ++i)
 	{
 		if (wcscmp(tszName, InputAction[i]) == 0)

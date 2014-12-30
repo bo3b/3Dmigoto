@@ -9,6 +9,7 @@ namespace D3D9Base
 
 #include <XInput.h>
 #include "DirectInput.h"
+#include "../util.h"
 
 using namespace std;
 
@@ -308,11 +309,11 @@ static void loadDll()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
+		wrstrip(InputDevice);
 		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction, MAX_PATH, sysDir);
-		end = InputAction + wcslen(InputAction) - 1; while (end > InputAction && iswspace(*end)) end--; *(end + 1) = 0;
+		wrstrip(InputAction);
 		GetPrivateProfileString(L"OverrideSettings", L"Toggle", 0, ToggleAction, MAX_PATH, sysDir);
-		end = ToggleAction + wcslen(ToggleAction) - 1; while (end > ToggleAction && iswspace(*end)) end--; *(end + 1) = 0;
+		wrstrip(ToggleAction);
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
 			swscanf_s(valueString, L"%e", &ActionConvergence);
