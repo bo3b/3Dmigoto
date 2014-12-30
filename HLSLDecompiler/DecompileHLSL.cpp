@@ -3641,6 +3641,9 @@ public:
 						// Missing opcode, used in FC4.  Similar to 'sample'
 						// lod dest[.mask], srcAddress[.swizzle], srcResource[.swizzle], srcSampler
 						// ret Object.CalculateLevelOfDetail(sampler_state S, float x);
+						// "lod r0.x, r0.xyzx, t2.y, s2" -> "r0.x = t2.CalculateLevelOfDetailUnclamped(s2, r0.xyz);"
+						// CalculateLevelOfDetailUnclamped compiles to t2.y, 
+						// CalculateLevelOfDetail compiles to t2.x
 					case OPCODE_LOD:
 					{
 						remapTarget(op1);
@@ -3650,8 +3653,13 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
-						sprintf(buffer, "  %s = %s.CalculateLevelOfDetail(%s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						char *clamped = strrchr(op3, '.') + 1;
+						if (*clamped == 'x')
+							sprintf(buffer, "  %s = %s.CalculateLevelOfDetail(%s, %s);\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = %s.CalculateLevelOfDetailUnclamped(%s, %s);\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
