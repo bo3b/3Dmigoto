@@ -62,14 +62,14 @@ void InitializeDLL()
 		}
 
 		wchar_t val[MAX_PATH];
-		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
-		if (read) swscanf_s(val, L"%d", &SCREEN_WIDTH);
-		read = GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir);
-		if (read) swscanf_s(val, L"%d", &SCREEN_HEIGHT);
-		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir);
-		if (read) swscanf_s(val, L"%d", &SCREEN_REFRESH);
-		read = GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir);
-		if (read) swscanf_s(val, L"%d", &SCREEN_FULLSCREEN);
+		if (GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir))
+			swscanf_s(val, L"%d", &SCREEN_WIDTH);
+		if (GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir))
+			swscanf_s(val, L"%d", &SCREEN_HEIGHT);
+		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir))
+			swscanf_s(val, L"%d", &SCREEN_REFRESH);
+		if (GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir))
+			swscanf_s(val, L"%d", &SCREEN_FULLSCREEN);
 		gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, dir) == 1;
 		gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, dir) == 1;
 

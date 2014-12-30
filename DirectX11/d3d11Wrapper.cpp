@@ -311,7 +311,6 @@ void InitializeDLL()
 	{
 		wchar_t iniFile[MAX_PATH];
 		wchar_t setting[MAX_PATH];
-		int read;
 
 		gInitialized = true;
 
@@ -375,8 +374,7 @@ void InitializeDLL()
 		}
 
 		// [System]
-		read = GetPrivateProfileString(L"System", L"proxy_d3d11", 0, DLL_PATH, MAX_PATH, iniFile);
-
+		GetPrivateProfileString(L"System", L"proxy_d3d11", 0, DLL_PATH, MAX_PATH, iniFile);
 		if (LogFile)
 		{
 			fprintf(LogFile, "[System]\n");
@@ -386,13 +384,13 @@ void InitializeDLL()
 		// [Device]
 		wchar_t refresh[MAX_PATH] = { 0 };
 
-		read = GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile);
-		if (read) swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
-		read = GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile);
-		if (read) swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
-		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile);
-		if (read) swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
-		read = GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	 // in DXGI dll
+		if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
+			swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
+		if (GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile))
+			swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
+		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile))
+			swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
+		GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	 // in DXGI dll
 		G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile);
 		G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
 		bool allowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1; // in DXGI dll
@@ -425,7 +423,7 @@ void InitializeDLL()
 		}
 
 		// [Rendering]
-		read = GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
+		GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
 		if (SHADER_PATH[0])
 		{
 			while (SHADER_PATH[wcslen(SHADER_PATH) - 1] == L' ')
@@ -440,7 +438,7 @@ void InitializeDLL()
 			// Create directory?
 			CreateDirectory(SHADER_PATH, 0);
 		}
-		read = GetPrivateProfileString(L"Rendering", L"cache_directory", 0, SHADER_CACHE_PATH, MAX_PATH, iniFile);
+		GetPrivateProfileString(L"Rendering", L"cache_directory", 0, SHADER_CACHE_PATH, MAX_PATH, iniFile);
 		if (SHADER_CACHE_PATH[0])
 		{
 			while (SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] == L' ')
@@ -490,8 +488,7 @@ void InitializeDLL()
 		G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, iniFile) == 1;
 		G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, iniFile) == 1;
 		G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, iniFile) == 1;
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH, iniFile);
-		if (read)
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH, iniFile))
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
@@ -500,8 +497,7 @@ void InitializeDLL()
 			char *start = buf; while (isspace(*start)) start++;
 			G->ZRepair_DepthTexture1 = start;
 		}
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH, iniFile);
-		if (read)
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH, iniFile))
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
@@ -510,16 +506,15 @@ void InitializeDLL()
 			char *start = buf; while (isspace(*start)) start++;
 			G->ZRepair_DepthTexture2 = start;
 		}
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ZRepair_ZPosCalc1 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ZRepair_ZPosCalc2 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ZRepair_PositionTexture = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ZRepair_WorldPosCalc = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH, iniFile);
-		if (read)
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH, iniFile))
+			G->ZRepair_ZPosCalc1 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH, iniFile))
+			G->ZRepair_ZPosCalc2 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH, iniFile))
+			G->ZRepair_PositionTexture = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH, iniFile))
+			G->ZRepair_WorldPosCalc = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH, iniFile))
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
@@ -531,8 +526,7 @@ void InitializeDLL()
 				start = end; if (*start == ',') ++start;
 			}
 		}
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies2", 0, setting, MAX_PATH, iniFile);
-		if (read)
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies2", 0, setting, MAX_PATH, iniFile))
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
@@ -544,8 +538,7 @@ void InitializeDLL()
 				start = end; if (*start == ',') ++start;
 			}
 		}
-		read = GetPrivateProfileString(L"Rendering", L"fix_InvTransform", 0, setting, MAX_PATH, iniFile);
-		if (read)
+		if (GetPrivateProfileString(L"Rendering", L"fix_InvTransform", 0, setting, MAX_PATH, iniFile))
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
@@ -557,29 +550,28 @@ void InitializeDLL()
 				start = end; if (*start == ',') ++start;
 			}
 		}
-		read = GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH, iniFile);
-		if (read)
+		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH, iniFile))
 		{
 			unsigned long hashHi, hashLo;
 			swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
 			G->ZBufferHashToInject = (UINT64(hashHi) << 32) | UINT64(hashLo);
 		}
-		read = GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH, iniFile);
-		if (read) G->BackProject_Vector1 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH, iniFile);
-		if (read) G->BackProject_Vector2 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ObjectPos_ID1 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ObjectPos_ID2 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ObjectPos_MUL1 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH, iniFile);
-		if (read) G->ObjectPos_MUL2 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH, iniFile);
-		if (read) G->MatrixPos_ID1 = readStringParameter(setting);
-		read = GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH, iniFile);
-		if (read) G->MatrixPos_MUL1 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH, iniFile))
+			G->BackProject_Vector1 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH, iniFile))
+			G->BackProject_Vector2 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH, iniFile))
+			G->ObjectPos_ID1 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH, iniFile))
+			G->ObjectPos_ID2 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH, iniFile))
+			G->ObjectPos_MUL1 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH, iniFile))
+			G->ObjectPos_MUL2 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH, iniFile))
+			G->MatrixPos_ID1 = readStringParameter(setting);
+		if (GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH, iniFile))
+			G->MatrixPos_MUL1 = readStringParameter(setting);
 
 		// Todo: finish logging all these settings
 		if (LogFile) fprintf(LogFile, "  ... missing automatic ini section\n");
@@ -593,11 +585,12 @@ void InitializeDLL()
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
 		wchar_t *end = InputDevice + wcslen(InputDevice) - 1; while (end > InputDevice && iswspace(*end)) end--; *(end + 1) = 0;
 
-		read = GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile);
-		if (read && !wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
-		if (read && !wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
-		if (read && !wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
-		if (read && !wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
+		if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
+			if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
+			if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
+			if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
+			if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
+		}
 
 		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, iniFile);
 		// Todo: This deviceNr is in wrong section- actually found in NVapi dll
@@ -659,8 +652,8 @@ void InitializeDLL()
 
 		// Todo: Not sure this is best spot.
 		G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
-		read = GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile);
-		if (read) swscanf_s(setting, L"%f", &G->gTuneStep);
+		if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
+			swscanf_s(setting, L"%f", &G->gTuneStep);
 
 
 		if (LogFile)
@@ -700,23 +693,22 @@ void InitializeDLL()
 			if (LogFile && LogDebug) fprintf(LogFile, "Find [ShaderOverride] i=%i\n", i);
 			wchar_t id[] = L"ShaderOverridexxx";
 			_itow_s(i, id + 14, 3, 10);
-			read = GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile);
-			if (!read) break;
+			if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+				break;
 			unsigned long hashHi, hashLo;
 			swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-			read = GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile);
-			if (read)
+			if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
 			{
 				float separation;
 				swscanf_s(setting, L"%e", &separation);
 				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
 				if (LogFile && LogDebug) fprintf(LogFile, " [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
 			}
-			read = GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile);
-			if (read && !wcscmp(setting, L"skip"))
-				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
-			read = GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile);
-			if (read)
+			if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
+				if (!wcscmp(setting, L"skip"))
+					G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
+			}
+			if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 			{
 				int iteration;
 				std::vector<int> iterations;
@@ -725,8 +717,7 @@ void InitializeDLL()
 				iterations.push_back(iteration);
 				G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
 			}
-			read = GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile);
-			if (read)
+			if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
 			{
 				unsigned long hashHi2, hashLo2;
 				swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
@@ -742,8 +733,8 @@ void InitializeDLL()
 		{
 			wchar_t id[] = L"TextureOverridexxx";
 			_itow_s(i, id + 15, 3, 10);
-			read = GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile);
-			if (!read) break;
+			if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+				break;
 			unsigned long hashHi, hashLo;
 			swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
 			int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
@@ -758,8 +749,7 @@ void InitializeDLL()
 				G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
 				if (LogFile && LogDebug) fprintf(LogFile, "[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
 			}
-			read = GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile);
-			if (read)
+			if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 			{
 				std::vector<int> iterations;
 				iterations.push_back(0);
@@ -785,14 +775,14 @@ void InitializeDLL()
 		if (LogFile) fprintf(LogFile, "-----------------------------------------\n");
 
 		// Read in any constants defined in the ini, for use as shader parameters
-		read = GetPrivateProfileString(L"Constants", L"x", 0, setting, MAX_PATH, iniFile);
-		if (read) G->iniParams.x = stof(setting);
-		read = GetPrivateProfileString(L"Constants", L"y", 0, setting, MAX_PATH, iniFile);
-		if (read) G->iniParams.y = stof(setting);
-		read = GetPrivateProfileString(L"Constants", L"z", 0, setting, MAX_PATH, iniFile);
-		if (read) G->iniParams.z = stof(setting);
-		read = GetPrivateProfileString(L"Constants", L"w", 0, setting, MAX_PATH, iniFile);
-		if (read) G->iniParams.w = stof(setting);
+		if (GetPrivateProfileString(L"Constants", L"x", 0, setting, MAX_PATH, iniFile))
+			G->iniParams.x = stof(setting);
+		if (GetPrivateProfileString(L"Constants", L"y", 0, setting, MAX_PATH, iniFile))
+			G->iniParams.y = stof(setting);
+		if (GetPrivateProfileString(L"Constants", L"z", 0, setting, MAX_PATH, iniFile))
+			G->iniParams.z = stof(setting);
+		if (GetPrivateProfileString(L"Constants", L"w", 0, setting, MAX_PATH, iniFile))
+			G->iniParams.w = stof(setting);
 
 		if (LogFile && G->iniParams.x != -1.0f)
 		{

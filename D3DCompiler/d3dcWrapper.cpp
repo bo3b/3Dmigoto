@@ -54,7 +54,7 @@ void InitializeDLL()
 		}
 		
 		wchar_t val[MAX_PATH];
-		int read = GetPrivateProfileString(L"Rendering", L"storage_directory", 0, SHADER_PATH, MAX_PATH, dir);
+		GetPrivateProfileString(L"Rendering", L"storage_directory", 0, SHADER_PATH, MAX_PATH, dir);
 		if (SHADER_PATH[0])
 		{
 			GetModuleFileName(0, val, MAX_PATH);

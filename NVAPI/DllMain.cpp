@@ -253,8 +253,8 @@ static void loadDll()
 		{
 			wchar_t id[] = L"Mapxxx", val[MAX_PATH];
 			_itow_s(i, id + 3, 3, 10);
-			int read = GetPrivateProfileString(L"ConvergenceMap", id, 0, val, MAX_PATH, sysDir);
-			if (!read) break;
+			if (!GetPrivateProfileString(L"ConvergenceMap", id, 0, val, MAX_PATH, sysDir))
+				break;
 			unsigned int fromHx;
 			float from, to;
 			swscanf_s(val, L"from %x to %e", &fromHx, &to);
@@ -289,14 +289,14 @@ static void loadDll()
 
 		// Device
 		wchar_t valueString[MAX_PATH];
-		int read = GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf_s(valueString, L"%d", &SCREEN_WIDTH);
-		read = GetPrivateProfileString(L"Device", L"height", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf_s(valueString, L"%d", &SCREEN_HEIGHT);
-		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf_s(valueString, L"%d", &SCREEN_REFRESH);
-		read = GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, sysDir);
-		if (read) swscanf_s(valueString, L"%d", &SCREEN_FULLSCREEN);
+		if (GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, sysDir))
+			swscanf_s(valueString, L"%d", &SCREEN_WIDTH);
+		if (GetPrivateProfileString(L"Device", L"height", 0, valueString, MAX_PATH, sysDir))
+			swscanf_s(valueString, L"%d", &SCREEN_HEIGHT);
+		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, valueString, MAX_PATH, sysDir))
+			swscanf_s(valueString, L"%d", &SCREEN_REFRESH);
+		if (GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, sysDir))
+			swscanf_s(valueString, L"%d", &SCREEN_FULLSCREEN);
 
 		// Stereo
 		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, sysDir) == 1;
