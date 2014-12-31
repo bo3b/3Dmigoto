@@ -2939,7 +2939,7 @@ public:
 						while (*++pop1)
 						{
 							sprintf(op5, "%s.%c", op1, *pop1);
-							sprintf(buffer, "  if (%s == 0) %s = 0; else if (%s+%s < 32) { ", 
+							sprintf(buffer, "  if (%s == 0) %s = 0; else if (%s+%s < 32) { ",
 								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
 							sprintf(buffer, "%s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
@@ -3136,7 +3136,7 @@ public:
 						break;
 					}
 
-						// Double checked this while looking at other round bugs.  Looks correct to use 'floor'.
+					// Double checked this while looking at other round bugs.  Looks correct to use 'floor'.
 					case OPCODE_ROUND_NI:
 					{
 						remapTarget(op1);
@@ -3162,9 +3162,9 @@ public:
 						break;
 					}
 
-						// Was previously doing a Round operation, but that is not correct because this needs to
-						// round toward zero, and Round can go larger.  Trunc(1.6)->1.0 Round(1.6)->2.0
-						// Also removed the unrolling, the instruction works with swizzle. e.g. r0.xy = trunc(r2.yz)
+					// Was previously doing a Round operation, but that is not correct because this needs to
+					// round toward zero, and Round can go larger.  Trunc(1.6)->1.0 Round(1.6)->2.0
+					// Also removed the unrolling, the instruction works with swizzle. e.g. r0.xy = trunc(r2.yz)
 					case OPCODE_ROUND_Z:
 					{
 						remapTarget(op1);
@@ -3178,9 +3178,9 @@ public:
 						break;
 					}
 
-						// Round_NE is Round Nearest Even, and using HLSL Round here is correct.
-						// But it previously used a *0.5*2 rounding which is unnecessary.
-						// The HLSL intrinsics of Round will already do that.
+					// Round_NE is Round Nearest Even, and using HLSL Round here is correct.
+					// But it previously used a *0.5*2 rounding which is unnecessary.
+					// The HLSL intrinsics of Round will already do that.
 					case OPCODE_ROUND_NE:
 					{
 						remapTarget(op1);
@@ -3253,22 +3253,22 @@ public:
 						//char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
 						//while (*++pop1)
 						//{
-							//if (pop1) sprintf(op5, "%s.%c", op1, *pop1); else sprintf(op5, "%s", op1);
-							//if (pop2) sprintf(op6, "%s.%c", op2, *++pop2); else sprintf(op6, "%s", op2);
-							//if (!instr->bSaturate)
-							//	sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-							//else
-							//	sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
-							//appendOutput(buffer);
+						//if (pop1) sprintf(op5, "%s.%c", op1, *pop1); else sprintf(op5, "%s", op1);
+						//if (pop2) sprintf(op6, "%s.%c", op2, *++pop2); else sprintf(op6, "%s", op2);
+						//if (!instr->bSaturate)
+						//	sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
+						//else
+						//	sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op5), ci(op6).c_str(), ci(GetSuffix(op3, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str());
+						//appendOutput(buffer);
 						//	++idx;
 						//}
 						removeBoolean(op1);
 						break;
 					}
 
-						// Big change to all these boolean test opcodes.  All were unrolled and generated a code line per component.
-						// To make the boolean tests work correctly for AND, these were rolled back into one, and added to the boolean
-						// set list as a complete operand, like 'r0.xyw'.
+					// Big change to all these boolean test opcodes.  All were unrolled and generated a code line per component.
+					// To make the boolean tests work correctly for AND, these were rolled back into one, and added to the boolean
+					// set list as a complete operand, like 'r0.xyw'.
 					case OPCODE_NE:
 					case OPCODE_INE:
 					{
@@ -3352,7 +3352,7 @@ public:
 						break;
 					}
 
-						// Switch statement in HLSL was missing. Added because AC4 uses it.
+					// Switch statement in HLSL was missing. Added because AC4 uses it.
 					case OPCODE_SWITCH:
 						sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
 						appendOutput(buffer);
@@ -3447,11 +3447,11 @@ public:
 						break;
 					}
 
-						// This generated code needed to change because the fxc compiler generates bad code when
-						// using the sample that they specify in the documentation at:
-						// http://msdn.microsoft.com/en-us/library/windows/desktop/hh446837(v=vs.85).aspx
-						// I worked out the alternate technique that works for all, and does not tickle
-						// the bug that treats 0x80000000 as "-0" as a uint, where it should not exist.
+					// This generated code needed to change because the fxc compiler generates bad code when
+					// using the sample that they specify in the documentation at:
+					// http://msdn.microsoft.com/en-us/library/windows/desktop/hh446837(v=vs.85).aspx
+					// I worked out the alternate technique that works for all, and does not tickle
+					// the bug that treats 0x80000000 as "-0" as a uint, where it should not exist.
 					case OPCODE_BFI:
 					{
 						remapTarget(op1);
@@ -3495,7 +3495,7 @@ public:
 						break;
 					}
 
-						// Missing opcode for WatchDogs.  Very similar to SAMPLE_L, so copied from there.
+					// Missing opcode for WatchDogs.  Very similar to SAMPLE_L, so copied from there.
 					case OPCODE_SAMPLE_B:
 					{
 						remapTarget(op1);
@@ -3622,9 +3622,10 @@ public:
 						removeBoolean(op1);
 						break;
 					}
-						// This opcode was missing, and used in WatchDogs. 
-						// expected code "samplepos r0.xy, t1.xyxx, v1.x" -> "r0.xy = t1.GetSamplePosition(v1.x);"
+					// This opcode was missing, and used in WatchDogs. 
+					// expected code "samplepos r0.xy, t1.xyxx, v1.x" -> "r0.xy = t1.GetSamplePosition(v1.x);"
 					case OPCODE_SAMPLE_POS:
+					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
@@ -3635,6 +3636,34 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
+
+						// Missing opcode, used in FC4.  Similar to 'sample'
+						// lod dest[.mask], srcAddress[.swizzle], srcResource[.swizzle], srcSampler
+						// ret Object.CalculateLevelOfDetail(sampler_state S, float x);
+						// "lod r0.x, r0.xyzx, t2.y, s2" -> "r0.x = t2.CalculateLevelOfDetailUnclamped(s2, r0.xyz);"
+						// CalculateLevelOfDetailUnclamped compiles to t2.y, 
+						// CalculateLevelOfDetail compiles to t2.x
+					case OPCODE_LOD:
+					{
+						remapTarget(op1);
+						applySwizzle(".xyzw", op2);
+						applySwizzle(op1, op3);
+						int textureId, samplerId;
+						sscanf_s(op3, "t%d.", &textureId);
+						sscanf_s(op4, "s%d", &samplerId);
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						char *clamped = strrchr(op3, '.') + 1;
+						if (*clamped == 'x')
+							sprintf(buffer, "  %s = %s.CalculateLevelOfDetail(%s, %s);\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = %s.CalculateLevelOfDetailUnclamped(%s, %s);\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					}
 
 					case OPCODE_GATHER4:
 					{
