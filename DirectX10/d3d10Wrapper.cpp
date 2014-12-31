@@ -80,26 +80,28 @@ void InitializeDLL()
 		wrstrip(InputDevice);
 		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, dir);
 		// Actions
-		GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, dir);
-		wrstrip(InputAction[0]);
-		GetPrivateProfileString(L"Hunting", L"previous_pixelshader", 0, InputAction[1], MAX_PATH, dir);
-		wrstrip(InputAction[1]);
-		GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, dir);
-		wrstrip(InputAction[2]);
-		GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, dir);
-		wrstrip(InputAction[3]);
-		GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, dir);
-		wrstrip(InputAction[4]);
-		GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, dir);
-		wrstrip(InputAction[5]);
-		GetPrivateProfileString(L"Hunting", L"mark_indexbuffer", 0, InputAction[6], MAX_PATH, dir);
-		wrstrip(InputAction[6]);
-		GetPrivateProfileString(L"Hunting", L"next_vertexshader", 0, InputAction[7], MAX_PATH, dir);
-		wrstrip(InputAction[7]);
-		GetPrivateProfileString(L"Hunting", L"previous_vertexshader", 0, InputAction[8], MAX_PATH, dir);
-		wrstrip(InputAction[8]);
-		GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, dir);
-		wrstrip(InputAction[9]);
+		// XXX: This needs to be updated to work with the new input infrastructure
+		// Besides which, I can't see any evidence that these are actually used in the DX10 project
+		//GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, dir);
+		//wrstrip(InputAction[0]);
+		//GetPrivateProfileString(L"Hunting", L"previous_pixelshader", 0, InputAction[1], MAX_PATH, dir);
+		//wrstrip(InputAction[1]);
+		//GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, dir);
+		//wrstrip(InputAction[2]);
+		//GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, dir);
+		//wrstrip(InputAction[3]);
+		//GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, dir);
+		//wrstrip(InputAction[4]);
+		//GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, dir);
+		//wrstrip(InputAction[5]);
+		//GetPrivateProfileString(L"Hunting", L"mark_indexbuffer", 0, InputAction[6], MAX_PATH, dir);
+		//wrstrip(InputAction[6]);
+		//GetPrivateProfileString(L"Hunting", L"next_vertexshader", 0, InputAction[7], MAX_PATH, dir);
+		//wrstrip(InputAction[7]);
+		//GetPrivateProfileString(L"Hunting", L"previous_vertexshader", 0, InputAction[8], MAX_PATH, dir);
+		//wrstrip(InputAction[8]);
+		//GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, dir);
+		//wrstrip(InputAction[9]);
 		InitDirectInput();
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, dir);		
