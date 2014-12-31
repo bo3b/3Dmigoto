@@ -2223,6 +2223,41 @@ static void tune_down(void *_device, void *private_data)
 	if (LogFile) fprintf(LogFile, "> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
 }
 
+// Start with a fresh set of shaders in the scene - either called explicitly
+// via keypress, or after no hunting for 1 minute (see comment in RunFrameActions)
+// Caller must have taken G->mCriticalSection (if enabled)
+static void timeout_hunting_buffers()
+{
+	G->mVisitedIndexBuffers.clear();
+	G->mVisitedVertexShaders.clear();
+	G->mVisitedPixelShaders.clear();
+	G->mSelectedPixelShader_IndexBuffer.clear();
+	G->mSelectedVertexShader_IndexBuffer.clear();
+	G->mSelectedIndexBuffer_PixelShader.clear();
+	G->mSelectedIndexBuffer_VertexShader.clear();
+	for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
+		i->second[0] = 0;
+}
+
+// User has requested all shaders be re-enabled
+static void done_hunting(void *_device, void *private_data)
+{
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+	timeout_hunting_buffers();
+
+	G->mSelectedRenderTargetPos = 0;
+	G->mSelectedRenderTarget = ((void *)1),
+	G->mSelectedPixelShader = 1;
+	G->mSelectedPixelShaderPos = 0;
+	G->mSelectedVertexShader = 1;
+	G->mSelectedVertexShaderPos = 0;
+	G->mSelectedIndexBuffer = 1;
+	G->mSelectedIndexBufferPos = 0;
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
 void register_hunting_key_bindings(wchar_t *iniFile)
 {
 	int i;
@@ -2245,6 +2280,8 @@ void register_hunting_key_bindings(wchar_t *iniFile)
 	register_ini_key_binding(L"Hunting", L"next_rendertarget", iniFile, next_rendertarget, NULL, NULL, LogFile);
 	register_ini_key_binding(L"Hunting", L"previous_rendertarget", iniFile, prev_rendertarget, NULL, NULL, LogFile);
 	register_ini_key_binding(L"Hunting", L"mark_rendertarget", iniFile, mark_rendertarget, NULL, NULL, LogFile);
+
+	register_ini_key_binding(L"Hunting", L"done_hunting", iniFile, done_hunting, NULL, NULL, LogFile);
 
 	register_ini_key_binding(L"Hunting", L"reload_fixes", iniFile, reload_fixes, NULL, NULL, LogFile);
 
@@ -2366,18 +2403,9 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// The arrays will be continually filled by the SetShader sections, but should 
 	// rapidly converge upon all active shaders.
 
-	if (difftime(time(NULL), G->huntTime) > 60)
-	{
+	if (difftime(time(NULL), G->huntTime) > 60) {
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mVisitedIndexBuffers.clear();
-		G->mVisitedVertexShaders.clear();
-		G->mVisitedPixelShaders.clear();
-		G->mSelectedPixelShader_IndexBuffer.clear();
-		G->mSelectedVertexShader_IndexBuffer.clear();
-		G->mSelectedIndexBuffer_PixelShader.clear();
-		G->mSelectedIndexBuffer_VertexShader.clear();
-		for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
-			i->second[0] = 0;
+		timeout_hunting_buffers();
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 }
