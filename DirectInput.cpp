@@ -1,24 +1,20 @@
 #include "DirectInput.h"
 #include "util.h"
+#include <vector>
 
 using namespace std;
 
 wchar_t InputDevice[MAX_PATH];
 int InputDeviceId = 0;
-wchar_t InputAction[NUM_ACTIONS][MAX_PATH];
-DWORD ActionButton[NUM_ACTIONS] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-0xffffffff };
-bool Action[NUM_ACTIONS] = { false, false, false, false,
-false, false, false, false,
-false, false, false, false,
-false, false, false, false,
-false, false, false, false,
-false };
 int XInputDeviceId = -1;
+std::vector<struct Action *> actions;
+static int num_actions;
+
+#define for_each_action(action) \
+	std::vector<struct Action *>::iterator __action_iterator##__LINE__; \
+	for (__action_iterator##__LINE__ = actions.begin(), action = *__action_iterator##__LINE__; \
+			__action_iterator##__LINE__ != actions.end(); \
+			++__action_iterator##__LINE__, action = *__action_iterator##__LINE__)
 
 HRESULT InitDirectInput();
 VOID FreeDirectInput();
@@ -52,6 +48,68 @@ struct DI_ENUM_CONTEXT
 static XINPUT_DEVICE_NODE*     g_pXInputDeviceList = NULL;
 static LPDIRECTINPUT8          g_pDI = 0;
 static LPDIRECTINPUTDEVICE8    g_pJoystick = 0;
+
+
+struct Action {
+	wchar_t input_name[MAX_PATH];
+	DWORD button;
+	bool state;
+	bool last_state;
+	input_callback down_cb;
+	input_callback up_cb;
+	void *private_data;
+
+	Action(wchar_t *input_name,
+			input_callback down_cb,
+			input_callback up_cb,
+			void *private_data) :
+		button(0xffffffff),
+		state(false),
+		last_state(false),
+		down_cb(down_cb),
+		up_cb(up_cb),
+		private_data(private_data)
+	{
+		lstrcpynW(this->input_name, input_name, MAX_PATH);
+	}
+};
+
+void register_ini_key_binding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
+		input_callback down_cb, input_callback up_cb,
+		void *private_data, FILE *log_file)
+{
+	struct Action *action;
+	wchar_t buf[MAX_PATH];
+
+	if (!GetPrivateProfileString(app, key, 0, buf, MAX_PATH, ini))
+		return;
+
+	wrstrip(buf);
+	action = new Action(buf, down_cb, up_cb, private_data);
+	actions.push_back(action);
+
+	if (log_file)
+		fwprintf(log_file, L"  %s=%s %p %p\n", key, action->input_name, down_cb, action->down_cb);
+}
+
+void dispatch_input_events(void *device)
+{
+	struct Action *action;
+
+	for_each_action(action) {
+		if (action->state == action->last_state)
+			continue;
+
+		if (action->state) {
+			if (action->down_cb)
+				action->down_cb(device, action->private_data);
+		} else {
+			if (action->up_cb)
+				action->up_cb(device, action->private_data);
+		}
+		action->last_state = action->state;
+	}
+}
 
 //-----------------------------------------------------------------------------
 // Name: InitDirectInput()
@@ -152,19 +210,21 @@ HRESULT InitDirectInput()
 		0, DIDFT_ALL)))
 		return hr;
 
-	for (int i = 0; i < NUM_ACTIONS; ++i)
-	{
-		if (ActionButton[i] == 0xffffffff)
+	int i = 0;
+	struct Action *action;
+	for_each_action(action) {
+		if (action->button == 0xffffffff)
 		{
 			if (LogInput) fprintf(LogFile, "DirectInput action #%d not found. Checking for ButtonXX syntax.\n", i);
-			int ret = swscanf_s(InputAction[i], L"Button%d", &ActionButton[i]);
+			int ret = swscanf_s(action->input_name, L"Button%d", &action->button);
 			if (ret > 0)
 			{
 				if (LogInput) fprintf(LogFile, "Using input button #%d for action #%d at offset 0x%x.\n",
-					ActionButton[i], i, ActionButton[i] + offsetof(DIJOYSTATE2, rgbButtons));
-				ActionButton[i] += offsetof(DIJOYSTATE2, rgbButtons);
+					action->button, i, action->button + offsetof(DIJOYSTATE2, rgbButtons));
+				action->button += offsetof(DIJOYSTATE2, rgbButtons);
 			}
 		}
+		i++;
 	}
 
 	return S_OK;
@@ -429,9 +489,10 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 	WCHAR tszName[260];
 	wcscpy(tszName, pdidoi->tszName);
 	wrstrip(tszName);
-	for (int i = 0; i < NUM_ACTIONS; ++i)
-	{
-		if (wcscmp(tszName, InputAction[i]) == 0)
+	int i = 0;
+	struct Action *action;
+	for_each_action(action) {
+		if (wcscmp(tszName, action->input_name) == 0)
 		{
 			if (LogInput)
 			{
@@ -439,8 +500,9 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 				wcstombs(obj, pdidoi->tszName, MAX_PATH);
 				fprintf(LogFile, "  using input item \"%s\" at data offset 0x0%x for action #%d.\n", obj, pdidoi->dwOfs, i);
 			}
-			ActionButton[i] = pdidoi->dwOfs;
+			action->button = pdidoi->dwOfs;
 		}
+		i++;
 	}
 
 	return DIENUM_CONTINUE;
@@ -468,26 +530,26 @@ bool UpdateInputState()
 
 		if (dwResult == ERROR_SUCCESS)
 		{
-			for (int i = 0; i < NUM_ACTIONS; ++i)
-			{
-				if (wcscmp(L"LeftTrigger", InputAction[i]) == 0) Action[i] = state.Gamepad.bLeftTrigger != 0;
-				else if (wcscmp(L"RightTrigger", InputAction[i]) == 0) Action[i] = state.Gamepad.bRightTrigger != 0;
-				else if (wcscmp(L"DPAD_UP", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0;
-				else if (wcscmp(L"DPAD_DOWN", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) != 0;
-				else if (wcscmp(L"DPAD_LEFT", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) != 0;
-				else if (wcscmp(L"DPAD_RIGHT", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0;
-				else if (wcscmp(L"START", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_START) != 0;
-				else if (wcscmp(L"BACK", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) != 0;
-				else if (wcscmp(L"LEFT_THUMB", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB) != 0;
-				else if (wcscmp(L"RIGHT_THUMB", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
-				else if (wcscmp(L"LEFT_SHOULDER", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
-				else if (wcscmp(L"RIGHT_SHOULDER", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0;
-				else if (wcscmp(L"A", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) != 0;
-				else if (wcscmp(L"B", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0;
-				else if (wcscmp(L"X", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) != 0;
-				else if (wcscmp(L"Y", InputAction[i]) == 0) Action[i] = (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) != 0;
+			struct Action *action;
+			for_each_action(action) {
+				if (wcscmp(L"LeftTrigger", action->input_name) == 0) action->state = state.Gamepad.bLeftTrigger != 0;
+				else if (wcscmp(L"RightTrigger", action->input_name) == 0) action->state = state.Gamepad.bRightTrigger != 0;
+				else if (wcscmp(L"DPAD_UP", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0;
+				else if (wcscmp(L"DPAD_DOWN", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) != 0;
+				else if (wcscmp(L"DPAD_LEFT", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) != 0;
+				else if (wcscmp(L"DPAD_RIGHT", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0;
+				else if (wcscmp(L"START", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_START) != 0;
+				else if (wcscmp(L"BACK", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) != 0;
+				else if (wcscmp(L"LEFT_THUMB", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB) != 0;
+				else if (wcscmp(L"RIGHT_THUMB", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
+				else if (wcscmp(L"LEFT_SHOULDER", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
+				else if (wcscmp(L"RIGHT_SHOULDER", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0;
+				else if (wcscmp(L"A", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) != 0;
+				else if (wcscmp(L"B", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0;
+				else if (wcscmp(L"X", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) != 0;
+				else if (wcscmp(L"Y", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) != 0;
 
-				if (Action[i]) newEvent = true;
+				if (action->state) newEvent = true;
 			}
 		}
 		return newEvent;
@@ -516,28 +578,29 @@ bool UpdateInputState()
 		return newEvent;
 	}
 
+	struct Action *action;
 	// Get the input's device state
 	if (!FAILED(hr = g_pJoystick->GetDeviceState(sizeof(DIJOYSTATE2), &JoystickState)))
 	{
 		char *data = (char *)&JoystickState;
-		for (int i = 0; i < NUM_ACTIONS; ++i)
-			Action[i] = ActionButton[i] == 0xffffffff ? false : data[ActionButton[i]] != 0;
+		for_each_action(action)
+			action->state = action->button == 0xffffffff ? false : data[action->button] != 0;
 	}
 	else if (!FAILED(hr = g_pJoystick->GetDeviceState(sizeof(DIMOUSESTATE2), &MouseState)))
 	{
 		char *data = (char *)&MouseState;
-		for (int i = 0; i < NUM_ACTIONS; ++i)
-			Action[i] = ActionButton[i] == 0xffffffff ? false : data[ActionButton[i]] != 0;
+		for_each_action(action)
+			action->state = action->button == 0xffffffff ? false : data[action->button] != 0;
 	}
 	else if (!FAILED(hr = g_pJoystick->GetDeviceState(256, KeyboardState)))
 	{
-		for (int i = 0; i < NUM_ACTIONS; ++i)
-			Action[i] = ActionButton[i] == 0xffffffff ? false : KeyboardState[ActionButton[i]] != 0;
+		for_each_action(action)
+			action->state = action->button == 0xffffffff ? false : KeyboardState[action->button] != 0;
 	}
 	else if (LogInput) fprintf(LogFile, "GetDeviceState failed hr=%x\n", hr);
 
-	for (int i = 0; i < NUM_ACTIONS; ++i)
-		if (Action[i]) newEvent = true;
+	for_each_action(action)
+		if (action->state) newEvent = true;
 
 	return newEvent;
 }

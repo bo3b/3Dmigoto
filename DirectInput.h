@@ -12,12 +12,16 @@
 #include <ctime>
 #include <XInput.h>
 
-const int NUM_ACTIONS = 22;
+typedef void (*input_callback)(void *device, void *private_data);
+
+void register_ini_key_binding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
+		input_callback down_cb, input_callback up_cb,
+		void *private_data, FILE *log_file);
+void dispatch_input_events(void *device);
+
+
 extern wchar_t InputDevice[MAX_PATH];
-extern wchar_t InputAction[NUM_ACTIONS][MAX_PATH];
 extern int InputDeviceId;
-extern DWORD ActionButton[NUM_ACTIONS];
-extern bool Action[NUM_ACTIONS];
 extern int XInputDeviceId;
 
 extern FILE *LogFile;

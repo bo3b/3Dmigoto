@@ -125,12 +125,6 @@ struct Globals
 
 	bool hunting;
 	time_t huntTime;
-	bool take_screenshot;
-	bool reload_fixes;
-	bool next_pixelshader, prev_pixelshader, mark_pixelshader;
-	bool next_vertexshader, prev_vertexshader, mark_vertexshader;
-	bool next_indexbuffer, prev_indexbuffer, mark_indexbuffer;
-	bool next_rendertarget, prev_rendertarget, mark_rendertarget;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
@@ -240,20 +234,6 @@ struct Globals
 
 		hunting(false),
 		huntTime(0),
-		take_screenshot(false),
-		reload_fixes(false),
-		next_pixelshader(false),
-		prev_pixelshader(false),
-		mark_pixelshader(false),
-		next_vertexshader(false),
-		prev_vertexshader(false),
-		mark_vertexshader(false),
-		next_indexbuffer(false),
-		prev_indexbuffer(false),
-		mark_indexbuffer(false),
-		next_rendertarget(false),
-		prev_rendertarget(false),
-		mark_rendertarget(false),
 
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
@@ -314,6 +294,9 @@ static char *readStringParameter(wchar_t *val)
 	char *start = buf; while (isspace(*start)) start++;
 	return start;
 }
+
+// TODO: Reorder functions in this file to remove the need for this prototype:
+void register_hunting_key_bindings(wchar_t *iniFile);
 
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
@@ -591,75 +574,31 @@ void InitializeDLL()
 
 
 		// [Hunting]
+		log_printf("[Hunting]\n");
 		G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
+		if (G->hunting)
+			log_printf("  hunting=1\n");
 
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
 		wrstrip(InputDevice);
+		log_wprintf(L"  Input=%s\n", InputDevice);
 
 		if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
 			if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
 			if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
 			if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
 			if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
+			log_wprintf(L"  marking_mode=%d\n", G->marking_mode);
 		}
 
 		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, iniFile);
 		// Todo: This deviceNr is in wrong section- actually found in NVapi dll
 
-		// Actions
-		GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, iniFile);
-		wrstrip(InputAction[0]);
-		GetPrivateProfileString(L"Hunting", L"previous_pixelshader", 0, InputAction[1], MAX_PATH, iniFile);
-		wrstrip(InputAction[1]);
-		GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, iniFile);
-		wrstrip(InputAction[2]);
+		if (G->hunting)
+			register_hunting_key_bindings(iniFile);
 
-		GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, iniFile);
-		wrstrip(InputAction[3]);
-
-		GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, iniFile);
-		wrstrip(InputAction[4]);
-		GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, iniFile);
-		wrstrip(InputAction[5]);
-		GetPrivateProfileString(L"Hunting", L"mark_indexbuffer", 0, InputAction[6], MAX_PATH, iniFile);
-		wrstrip(InputAction[6]);
-
-		GetPrivateProfileString(L"Hunting", L"next_vertexshader", 0, InputAction[7], MAX_PATH, iniFile);
-		wrstrip(InputAction[7]);
-		GetPrivateProfileString(L"Hunting", L"previous_vertexshader", 0, InputAction[8], MAX_PATH, iniFile);
-		wrstrip(InputAction[8]);
-		GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, iniFile);
-		wrstrip(InputAction[9]);
-
-		GetPrivateProfileString(L"Hunting", L"tune1_up", 0, InputAction[10], MAX_PATH, iniFile);
-		wrstrip(InputAction[10]);
-		GetPrivateProfileString(L"Hunting", L"tune1_down", 0, InputAction[11], MAX_PATH, iniFile);
-		wrstrip(InputAction[11]);
-
-		GetPrivateProfileString(L"Hunting", L"next_rendertarget", 0, InputAction[12], MAX_PATH, iniFile);
-		wrstrip(InputAction[12]);
-		GetPrivateProfileString(L"Hunting", L"previous_rendertarget", 0, InputAction[13], MAX_PATH, iniFile);
-		wrstrip(InputAction[13]);
-		GetPrivateProfileString(L"Hunting", L"mark_rendertarget", 0, InputAction[14], MAX_PATH, iniFile);
-		wrstrip(InputAction[14]);
-
-		GetPrivateProfileString(L"Hunting", L"tune2_up", 0, InputAction[15], MAX_PATH, iniFile);
-		wrstrip(InputAction[15]);
-		GetPrivateProfileString(L"Hunting", L"tune2_down", 0, InputAction[16], MAX_PATH, iniFile);
-		wrstrip(InputAction[16]);
-		GetPrivateProfileString(L"Hunting", L"tune3_up", 0, InputAction[17], MAX_PATH, iniFile);
-		wrstrip(InputAction[17]);
-		GetPrivateProfileString(L"Hunting", L"tune3_down", 0, InputAction[18], MAX_PATH, iniFile);
-		wrstrip(InputAction[18]);
-		GetPrivateProfileString(L"Hunting", L"tune4_up", 0, InputAction[19], MAX_PATH, iniFile);
-		wrstrip(InputAction[19]);
-		GetPrivateProfileString(L"Hunting", L"tune4_down", 0, InputAction[20], MAX_PATH, iniFile);
-		wrstrip(InputAction[20]);
-
-		GetPrivateProfileString(L"Hunting", L"reload_fixes", 0, InputAction[21], MAX_PATH, iniFile);
-		wrstrip(InputAction[21]);
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, iniFile);
 
@@ -668,37 +607,6 @@ void InitializeDLL()
 		if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
 			swscanf_s(setting, L"%f", &G->gTuneStep);
 
-
-		if (LogFile)
-		{
-			fprintf(LogFile, "[Hunting]\n");
-			if (G->hunting)
-			{
-				fprintf(LogFile, "  hunting=1\n");
-				if (InputDevice) fwprintf(LogFile, L"  Input=%s\n", InputDevice);
-				if (G->marking_mode != -1) fwprintf(LogFile, L"  marking_mode=%d\n", G->marking_mode);
-
-				if (InputAction[0][0]) fwprintf(LogFile, L"  next_pixelshader=%s\n", InputAction[0]);
-				if (InputAction[1][0]) fwprintf(LogFile, L"  previous_pixelshader=%s\n", InputAction[1]);
-				if (InputAction[2][0]) fwprintf(LogFile, L"  mark_pixelshader=%s\n", InputAction[2]);
-
-				if (InputAction[7][0]) fwprintf(LogFile, L"  next_vertexshader=%s\n", InputAction[7]);
-				if (InputAction[8][0]) fwprintf(LogFile, L"  previous_vertexshader=%s\n", InputAction[8]);
-				if (InputAction[9][0]) fwprintf(LogFile, L"  mark_vertexshader=%s\n", InputAction[9]);
-
-				if (InputAction[4][0]) fwprintf(LogFile, L"  next_indexbuffer=%s\n", InputAction[4]);
-				if (InputAction[5][0]) fwprintf(LogFile, L"  previous_indexbuffer=%s\n", InputAction[5]);
-				if (InputAction[6][0]) fwprintf(LogFile, L"  mark_indexbuffer=%s\n", InputAction[6]);
-
-				if (InputAction[12][0]) fwprintf(LogFile, L"  next_rendertarget=%s\n", InputAction[12]);
-				if (InputAction[13][0]) fwprintf(LogFile, L"  previous_rendertarget=%s\n", InputAction[13]);
-				if (InputAction[14][0]) fwprintf(LogFile, L"  mark_rendertarget=%s\n", InputAction[14]);
-
-				if (InputAction[3][0]) fwprintf(LogFile, L"  take_screenshot=%s\n", InputAction[3]);
-				if (InputAction[21][0]) fwprintf(LogFile, L"  reload_fixes=%s\n", InputAction[21]);
-			}
-			fprintf(LogFile, "  ... missing tuning ini section\n");
-		}
 
 		// Shader separation overrides.
 		for (int i = 1;; ++i)
@@ -1916,8 +1824,10 @@ void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
 
 
 // Key binding callbacks
-static void take_screenshot(D3D11Base::ID3D11Device *device, void *private_data)
+static void take_screenshot(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (LogFile) fprintf(LogFile, "> capturing screenshot\n");
 
 	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
@@ -1933,8 +1843,10 @@ static void take_screenshot(D3D11Base::ID3D11Device *device, void *private_data)
 	}
 }
 
-static void reload_fixes(D3D11Base::ID3D11Device *device, void *private_data)
+static void reload_fixes(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (LogFile) fprintf(LogFile, "> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (SHADER_PATH[0])
@@ -1969,8 +1881,10 @@ static void reload_fixes(D3D11Base::ID3D11Device *device, void *private_data)
 	}
 }
 
-static void next_indexbuffer(D3D11Base::ID3D11Device *device, void *private_data)
+static void next_indexbuffer(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
 	if (i != G->mVisitedIndexBuffers.end() && ++i != G->mVisitedIndexBuffers.end())
@@ -1996,8 +1910,10 @@ static void next_indexbuffer(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_indexbuffer(D3D11Base::ID3D11Device *device, void *private_data)
+static void prev_indexbuffer(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
 	if (i != G->mVisitedIndexBuffers.end() && i != G->mVisitedIndexBuffers.begin())
@@ -2024,8 +1940,9 @@ static void prev_indexbuffer(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_indexbuffer(D3D11Base::ID3D11Device *device, void *private_data)
+static void mark_indexbuffer(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	if (LogFile)
 	{
 		fprintf(LogFile, ">>>> Index buffer marked: index buffer hash = %08lx%08lx\n", (UINT32)(G->mSelectedIndexBuffer >> 32), (UINT32)G->mSelectedIndexBuffer);
@@ -2037,8 +1954,10 @@ static void mark_indexbuffer(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void next_pixelshader(D3D11Base::ID3D11Device *device, void *private_data)
+static void next_pixelshader(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::const_iterator i = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
 	if (i != G->mVisitedPixelShaders.end() && ++i != G->mVisitedPixelShaders.end())
@@ -2064,8 +1983,10 @@ static void next_pixelshader(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_pixelshader(D3D11Base::ID3D11Device *device, void *private_data)
+static void prev_pixelshader(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
 	if (i != G->mVisitedPixelShaders.end() && i != G->mVisitedPixelShaders.begin())
@@ -2092,8 +2013,10 @@ static void prev_pixelshader(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_pixelshader(D3D11Base::ID3D11Device *device, void *private_data)
+static void mark_pixelshader(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -2119,8 +2042,10 @@ static void mark_pixelshader(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void next_vertexshader(D3D11Base::ID3D11Device *device, void *private_data)
+static void next_vertexshader(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
 	if (i != G->mVisitedVertexShaders.end() && ++i != G->mVisitedVertexShaders.end())
@@ -2146,8 +2071,10 @@ static void next_vertexshader(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_vertexshader(D3D11Base::ID3D11Device *device, void *private_data)
+static void prev_vertexshader(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
 	if (i != G->mVisitedVertexShaders.end() && i != G->mVisitedVertexShaders.begin())
@@ -2174,8 +2101,10 @@ static void prev_vertexshader(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_vertexshader(D3D11Base::ID3D11Device *device, void *private_data)
+static void mark_vertexshader(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -2197,8 +2126,10 @@ static void mark_vertexshader(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void next_rendertarget(D3D11Base::ID3D11Device *device, void *private_data)
+static void next_rendertarget(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
 	if (i != G->mVisitedRenderTargets.end() && ++i != G->mVisitedRenderTargets.end())
@@ -2224,8 +2155,10 @@ static void next_rendertarget(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_rendertarget(D3D11Base::ID3D11Device *device, void *private_data)
+static void prev_rendertarget(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
 	if (i != G->mVisitedRenderTargets.end() && i != G->mVisitedRenderTargets.begin())
@@ -2252,8 +2185,10 @@ static void prev_rendertarget(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_rendertarget(D3D11Base::ID3D11Device *device, void *private_data)
+static void mark_rendertarget(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -2270,22 +2205,57 @@ static void mark_rendertarget(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void tune_up(D3D11Base::ID3D11Device *device, void *private_data)
+static void tune_up(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	int index = (int)private_data;
 
 	G->gTuneValue[index] += G->gTuneStep;
 	if (LogFile) fprintf(LogFile, "> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
 }
 
-static void tune_down(D3D11Base::ID3D11Device *device, void *private_data)
+static void tune_down(void *_device, void *private_data)
 {
+	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	int index = (int)private_data;
 
 	G->gTuneValue[index] -= G->gTuneStep;
 	if (LogFile) fprintf(LogFile, "> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
 }
 
+void register_hunting_key_bindings(wchar_t *iniFile)
+{
+	int i;
+	wchar_t buf[16];
+
+	register_ini_key_binding(L"Hunting", L"next_pixelshader", iniFile, next_pixelshader, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"previous_pixelshader", iniFile, prev_pixelshader, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"mark_pixelshader", iniFile, mark_pixelshader, NULL, NULL, LogFile);
+
+	register_ini_key_binding(L"Hunting", L"take_screenshot", iniFile, take_screenshot, NULL, NULL, LogFile);
+
+	register_ini_key_binding(L"Hunting", L"next_indexbuffer", iniFile, next_indexbuffer, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"previous_indexbuffer", iniFile, prev_indexbuffer, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"mark_indexbuffer", iniFile, mark_indexbuffer, NULL, NULL, LogFile);
+
+	register_ini_key_binding(L"Hunting", L"next_vertexshader", iniFile, next_vertexshader, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"previous_vertexshader", iniFile, prev_vertexshader, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"mark_vertexshader", iniFile, mark_vertexshader, NULL, NULL, LogFile);
+
+	register_ini_key_binding(L"Hunting", L"next_rendertarget", iniFile, next_rendertarget, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"previous_rendertarget", iniFile, prev_rendertarget, NULL, NULL, LogFile);
+	register_ini_key_binding(L"Hunting", L"mark_rendertarget", iniFile, mark_rendertarget, NULL, NULL, LogFile);
+
+	register_ini_key_binding(L"Hunting", L"reload_fixes", iniFile, reload_fixes, NULL, NULL, LogFile);
+
+	for (i = 0; i < 4; i++) {
+		_snwprintf(buf, 16, L"tune%i_up", i + 1);
+		register_ini_key_binding(L"Hunting", buf, iniFile, tune_up, NULL, (void*)i, LogFile);
+
+		_snwprintf(buf, 16, L"tune%i_down", i + 1);
+		register_ini_key_binding(L"Hunting", buf, iniFile, tune_down, NULL, (void*)i, LogFile);
+	}
+}
 
 
 
@@ -2373,122 +2343,18 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// Give time to our keyboard handling for hot keys that can change iniParams.
 	CheckForKeys(device);
 
-	// Optimize for game play by skipping all shader hunting, screenshots, reload shaders.
+	// TODO: Replace DirectInput processing with GetAsyncKeyState:
+	bool newEvent = UpdateInputState();
+	dispatch_input_events(device);
+
+	// When not hunting most keybindings won't have been registered, but
+	// still skip the below logic that only applies while hunting.
 	if (!G->hunting)
 		return;
-
-	bool newEvent = UpdateInputState();
 
 	// Update the huntTime whenever we get fresh user input.
 	if (newEvent)
 		G->huntTime = time(NULL);
-
-
-	// Screenshot?
-	if (Action[3] && !G->take_screenshot) {
-		G->take_screenshot = true;
-		take_screenshot(device, NULL);
-	}
-	if (!Action[3]) G->take_screenshot = false;
-
-	// Reload all fixes from ShaderFixes?
-	if (Action[21] && !G->reload_fixes) {
-		G->reload_fixes = true;
-		reload_fixes(device, NULL);
-	}
-	if (!Action[21]) G->reload_fixes = false;
-
-	// Traverse index buffers?
-	if (Action[4] && !G->next_indexbuffer)
-	{
-		G->next_indexbuffer = true;
-		next_indexbuffer(device, NULL);
-	}
-	if (!Action[4]) G->next_indexbuffer = false;
-	if (Action[5] && !G->prev_indexbuffer)
-	{
-		G->prev_indexbuffer = true;
-		prev_indexbuffer(device, NULL);
-	}
-	if (!Action[5]) G->prev_indexbuffer = false;
-	if (Action[6] && !G->mark_indexbuffer)
-	{
-		G->mark_indexbuffer = true;
-		mark_indexbuffer(device, NULL);
-	}
-	if (!Action[6]) G->mark_indexbuffer = false;
-
-	// Traverse pixel shaders?
-	if (Action[0] && !G->next_pixelshader)
-	{
-		G->next_pixelshader = true;
-		next_pixelshader(device, NULL);
-	}
-	if (!Action[0]) G->next_pixelshader = false;
-	if (Action[1] && !G->prev_pixelshader)
-	{
-		G->prev_pixelshader = true;
-		prev_pixelshader(device, NULL);
-	}
-	if (!Action[1]) G->prev_pixelshader = false;
-	if (Action[2] && !G->mark_pixelshader)
-	{
-		G->mark_pixelshader = true;
-		mark_pixelshader(device, NULL);
-	}
-	if (!Action[2]) G->mark_pixelshader = false;
-
-	// Traverse vertex shaders?
-	if (Action[7] && !G->next_vertexshader)
-	{
-		G->next_vertexshader = true;
-		next_vertexshader(device, NULL);
-	}
-	if (!Action[7]) G->next_vertexshader = false;
-	if (Action[8] && !G->prev_vertexshader)
-	{
-		G->prev_vertexshader = true;
-		prev_vertexshader(device, NULL);
-	}
-	if (!Action[8]) G->prev_vertexshader = false;
-	if (Action[9] && !G->mark_vertexshader)
-	{
-		G->mark_vertexshader = true;
-		mark_vertexshader(device, NULL);
-	}
-	if (!Action[9]) G->mark_vertexshader = false;
-
-	// Traverse render targets?
-	if (Action[12] && !G->next_rendertarget)
-	{
-		G->next_rendertarget = true;
-		next_rendertarget(device, NULL);
-	}
-	if (!Action[12]) G->next_rendertarget = false;
-	if (Action[13] && !G->prev_rendertarget)
-	{
-		G->prev_rendertarget = true;
-		prev_rendertarget(device, NULL);
-	}
-	if (!Action[13]) G->prev_rendertarget = false;
-	if (Action[14] && !G->mark_rendertarget)
-	{
-		G->mark_rendertarget = true;
-		mark_rendertarget(device, NULL);
-	}
-	if (!Action[14]) G->mark_rendertarget = false;
-
-	// Tune value?
-	if (Action[10]) // These out of order numbers will become irrelevant shortly
-		tune_up(device, (void *)0);
-	if (Action[11]) // These out of order numbers will become irrelevant shortly
-		tune_down(device, (void *)0);
-	for (int i = 1; i < 4; i++) {
-		if (Action[13 + 2*i]) // starting at 13+2*1=15, will be irrelevant shortly
-			tune_up(device, (void *)i);
-		if (Action[14 + 2*i]) // starting at 14+2*1=16, will be irrelevant shortly
-			tune_down(device, (void *)i);
-	}
 
 	// Clear buffers after some user idle time.  This allows the buffers to be
 	// stable during a hunt, and cleared after one minute of idle time.  The idea
