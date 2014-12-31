@@ -1350,10 +1350,10 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::ClearRenderTargetView(THI
 		if (G->ENABLE_TUNE)
 		{
 			//device->mParamTextureManager.mSeparationModifier = gTuneValue;
-			device->mParamTextureManager.mTuneVariable1 = G->gTuneValue1;
-			device->mParamTextureManager.mTuneVariable2 = G->gTuneValue2;
-			device->mParamTextureManager.mTuneVariable3 = G->gTuneValue3;
-			device->mParamTextureManager.mTuneVariable4 = G->gTuneValue4;
+			device->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
+			device->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
+			device->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
+			device->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
 			static int counter = 0;
 			if (counter-- < 0)
 			{

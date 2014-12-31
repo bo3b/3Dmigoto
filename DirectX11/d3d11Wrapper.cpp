@@ -139,7 +139,7 @@ struct Globals
 	bool FIX_Recompile_VS;
 	bool DumpUsage;
 	bool ENABLE_TUNE;
-	float gTuneValue1, gTuneValue2, gTuneValue3, gTuneValue4, gTuneStep;
+	float gTuneValue[4], gTuneStep;
 
 	DirectX::XMFLOAT4 iniParams;
 
@@ -255,7 +255,6 @@ struct Globals
 		FIX_Recompile_VS(false),
 		DumpUsage(false),
 		ENABLE_TUNE(false),
-		gTuneValue1(1.0f), gTuneValue2(1.0f), gTuneValue3(1.0f), gTuneValue4(1.0f),
 		gTuneStep(0.001f),
 
 		iniParams{ -1.0f, -1.0f, -1.0f, -1.0f },
@@ -275,6 +274,9 @@ struct Globals
 	{
 		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;
+
+		for (int i = 0; i < 4; i++)
+			gTuneValue[i] = 1.0f;
 	}
 };
 static Globals *G;
@@ -2258,7 +2260,21 @@ static void mark_rendertarget(D3D11Base::ID3D11Device *device, void *private_dat
 	if (G->DumpUsage) DumpUsage();
 }
 
+static void tune_up(D3D11Base::ID3D11Device *device, void *private_data)
+{
+	int index = (int)private_data;
 
+	G->gTuneValue[index] += G->gTuneStep;
+	if (LogFile) fprintf(LogFile, "> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
+}
+
+static void tune_down(D3D11Base::ID3D11Device *device, void *private_data)
+{
+	int index = (int)private_data;
+
+	G->gTuneValue[index] -= G->gTuneStep;
+	if (LogFile) fprintf(LogFile, "> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
+}
 
 
 
@@ -2453,45 +2469,15 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	if (!Action[14]) G->mark_rendertarget = false;
 
 	// Tune value?
-	if (Action[10])
-	{
-		G->gTuneValue1 += G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 1 tuned to %f\n", G->gTuneValue1);
-	}
-	if (Action[11])
-	{
-		G->gTuneValue1 -= G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 1 tuned to %f\n", G->gTuneValue1);
-	}
-	if (Action[15])
-	{
-		G->gTuneValue2 += G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 2 tuned to %f\n", G->gTuneValue2);
-	}
-	if (Action[16])
-	{
-		G->gTuneValue2 -= G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 2 tuned to %f\n", G->gTuneValue2);
-	}
-	if (Action[17])
-	{
-		G->gTuneValue3 += G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 3 tuned to %f\n", G->gTuneValue3);
-	}
-	if (Action[18])
-	{
-		G->gTuneValue3 -= G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 3 tuned to %f\n", G->gTuneValue3);
-	}
-	if (Action[19])
-	{
-		G->gTuneValue4 += G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 4 tuned to %f\n", G->gTuneValue4);
-	}
-	if (Action[20])
-	{
-		G->gTuneValue4 -= G->gTuneStep;
-		if (LogFile) fprintf(LogFile, "> Value 4 tuned to %f\n", G->gTuneValue4);
+	if (Action[10]) // These out of order numbers will become irrelevant shortly
+		tune_up(device, (void *)0);
+	if (Action[11]) // These out of order numbers will become irrelevant shortly
+		tune_down(device, (void *)0);
+	for (int i = 1; i < 4; i++) {
+		if (Action[13 + 2*i]) // starting at 13+2*1=15, will be irrelevant shortly
+			tune_up(device, (void *)i);
+		if (Action[14 + 2*i]) // starting at 14+2*1=16, will be irrelevant shortly
+			tune_down(device, (void *)i);
 	}
 
 	// Clear buffers after some user idle time.  This allows the buffers to be
