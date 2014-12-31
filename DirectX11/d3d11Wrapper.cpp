@@ -14,6 +14,16 @@
 FILE *LogFile = 0;		// off by default.
 bool LogInput = false, LogDebug = false;
 
+#define log_printf(fmt, ...) \
+	{ if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); }
+#define log_wprintf(fmt, ...) \
+	{ if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__); }
+
+#define debug_printf(fmt, ...) \
+	{ if (LogDebug) log_printf(fmt, __VA_ARGS__); }
+#define debug_wprintf(fmt, ...) \
+	{ if (LogDebug) log_wprintf(fmt, __VA_ARGS__); }
+
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gInitialized = false;
 
