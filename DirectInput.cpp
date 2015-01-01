@@ -13,8 +13,8 @@ static int num_actions;
 #define for_each_action(action) \
 	std::vector<struct Action *>::iterator __action_iterator##__LINE__; \
 	for (__action_iterator##__LINE__ = actions.begin(), action = *__action_iterator##__LINE__; \
-			__action_iterator##__LINE__ != actions.end(); \
-			++__action_iterator##__LINE__, action = *__action_iterator##__LINE__)
+			__action_iterator##__LINE__ != actions.end() && (action = *__action_iterator##__LINE__); \
+			++__action_iterator##__LINE__)
 
 HRESULT InitDirectInput();
 VOID FreeDirectInput();
