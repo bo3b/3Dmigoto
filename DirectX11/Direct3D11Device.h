@@ -770,7 +770,12 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						char *buf = new char[dataSize];
 						fread(buf, 1, dataSize, f);
 						fclose(f);
-						if (dataSize == disassembly->GetBufferSize() && !memcmp(disassembly->GetBufferPointer(), buf, dataSize)) exists = true;
+						// Considder same file regardless of whether it has a NULL terminator or not
+						// to avoid creating identical asm files if an older version of 3Dmigoto has
+						// previously dumped out the asm file with a NULL terminator.
+						if ((dataSize == disassembly->GetBufferSize() || dataSize == (disassembly->GetBufferSize() - 1))
+								&& !memcmp(disassembly->GetBufferPointer(), buf, disassembly->GetBufferSize() - 1))
+							exists = true;
 						delete buf;
 						if (exists) break;
 						wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType, ++cnt);
@@ -792,7 +797,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					}
 					if (f)
 					{
-						fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), f);
+						// Size - 1 to strip NULL terminator
+						fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), f);
 						fclose(f);
 					}
 				}
@@ -1050,7 +1056,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						if (G->EXPORT_HLSL >= 2)
 						{
 							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), fw);
+							// Size - 1 to strip NULL terminator
+							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
 							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
 						}
@@ -1102,7 +1109,8 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						else
 						{
 							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize(), fw);
+							// Size - 1 to strip NULL terminator
+							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
 							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 							disassembly->Release(); disassembly = 0;
 						}

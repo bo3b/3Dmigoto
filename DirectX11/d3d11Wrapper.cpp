@@ -1353,7 +1353,8 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
 
 	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), fw);
+	// Size - 1 to strip NULL terminator
+	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize() - 1, fw);
 	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
 	fclose(fw);
@@ -1455,7 +1456,8 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 		return false;
 	}
 
-	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize(), f);
+	// Size - 1 to strip NULL terminator
+	fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize() - 1, f);
 	fclose(f);
 	if (LogFile) fwprintf(LogFile, L"    storing disassembly to %s\n", fullName);
 
