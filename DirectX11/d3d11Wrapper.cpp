@@ -111,6 +111,25 @@ struct SwapChainInfo
 	int width, height;
 };
 
+struct ResourceInfo
+{
+	D3D11Base::D3D11_RESOURCE_DIMENSION type;
+	union {
+		D3D11Base::D3D11_TEXTURE2D_DESC tex2d_desc;
+		D3D11Base::D3D11_TEXTURE3D_DESC tex3d_desc;
+	};
+
+	ResourceInfo() {}
+	ResourceInfo(D3D11Base::D3D11_TEXTURE2D_DESC desc) :
+		type(D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D),
+		tex2d_desc(desc)
+	{}
+	ResourceInfo(D3D11Base::D3D11_TEXTURE3D_DESC desc) :
+		type(D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D),
+		tex3d_desc(desc)
+	{}
+};
+
 struct Globals
 {
 	int SCREEN_WIDTH;
@@ -202,6 +221,7 @@ struct Globals
 
 	// Statistics
 	std::map<void *, UINT64> mRenderTargets;
+	std::map<void *, struct ResourceInfo> mRenderTargetInfo;
 	std::set<void *> mVisitedRenderTargets;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
@@ -2187,6 +2207,50 @@ static void prev_rendertarget(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+static void log_rendertarget_2d(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
+{
+	log_printf("type=Texture2D, Width=%u, Height=%u, MipLevels=%u, "
+			"ArraySize=%u, Format=%u, SampleDesc.Count=%u, "
+			"SampleDesc.Quality=%u, Usage=%u, BindFlags=%u, "
+			"CPUAccessFlags=%u, MiscFlags=%u\n",
+			desc->Width, desc->Height, desc->MipLevels,
+			desc->ArraySize, desc->Format, desc->SampleDesc.Count,
+			desc->SampleDesc.Quality, desc->Usage, desc->BindFlags,
+			desc->CPUAccessFlags, desc->MiscFlags);
+}
+
+static void log_rendertarget_3d(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
+{
+
+	log_printf("type=Texture3D, Width=%u, Height=%u, Depth=%u, "
+			"MipLevels=%u, Format=%u, Usage=%u, BindFlags=%u, "
+			"CPUAccessFlags=%u, MiscFlags=%u\n",
+			desc->Width, desc->Height, desc->Depth,
+			desc->MipLevels, desc->Format, desc->Usage,
+			desc->BindFlags, desc->CPUAccessFlags,
+			desc->MiscFlags);
+}
+
+static void log_rendertarget(void *target, char *log_prefix)
+{
+	if (!target || target == (void *)1) {
+		log_printf("No render target selected for marking\n");
+		return;
+	}
+
+	log_printf("%srender target handle = %p, hash = %.16llx, ", log_prefix, target, G->mRenderTargets[target]);
+
+	struct ResourceInfo &info = G->mRenderTargetInfo[target];
+	switch(info.type) {
+		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			return log_rendertarget_2d(&info.tex2d_desc);
+		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			return log_rendertarget_3d(&info.tex3d_desc);
+		default:
+			log_printf("type=%i\n", info.type);
+	}
+}
+
 static void mark_rendertarget(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
@@ -2194,12 +2258,10 @@ static void mark_rendertarget(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
-		UINT64 id = G->mRenderTargets[G->mSelectedRenderTarget];
-		fprintf(LogFile, ">>>> Render target marked: render target handle = %p, hash = %08lx%08lx\n", G->mSelectedRenderTarget, (UINT32)(id >> 32), (UINT32)id);
+		log_rendertarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
 		for (std::set<void *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
 		{
-			id = G->mRenderTargets[*i];
-			fprintf(LogFile, "       render target handle = %p, hash = %08lx%08lx\n", *i, (UINT32)(id >> 32), (UINT32)id);
+			log_rendertarget(*i, "       ");
 		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);

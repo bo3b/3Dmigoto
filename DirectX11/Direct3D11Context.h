@@ -1084,6 +1084,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 				G->mRenderTargets[targetTexture] = hash;
 				G->mCurrentRenderTargets.push_back(targetTexture);
 				G->mVisitedRenderTargets.insert(targetTexture);
+				G->mRenderTargetInfo[targetTexture] = struct ResourceInfo(texDesc);
 				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 			}
 			else if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE3D == desc.ViewDimension)
@@ -1122,6 +1123,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 				G->mRenderTargets[targetTexture] = hash;
 				G->mCurrentRenderTargets.push_back(targetTexture);
 				G->mVisitedRenderTargets.insert(targetTexture);
+				G->mRenderTargetInfo[targetTexture] = struct ResourceInfo(texDesc);
 				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 			}
 		}
