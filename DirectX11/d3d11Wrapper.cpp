@@ -2210,11 +2210,12 @@ static void prev_rendertarget(void *_device, void *private_data)
 static void log_rendertarget_2d(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
 {
 	log_printf("type=Texture2D, Width=%u, Height=%u, MipLevels=%u, "
-			"ArraySize=%u, Format=%u, SampleDesc.Count=%u, "
+			"ArraySize=%u, Format=%u \"%s\", SampleDesc.Count=%u, "
 			"SampleDesc.Quality=%u, Usage=%u, BindFlags=%u, "
 			"CPUAccessFlags=%u, MiscFlags=%u\n",
 			desc->Width, desc->Height, desc->MipLevels,
-			desc->ArraySize, desc->Format, desc->SampleDesc.Count,
+			desc->ArraySize, desc->Format,
+			format_str(desc->Format), desc->SampleDesc.Count,
 			desc->SampleDesc.Quality, desc->Usage, desc->BindFlags,
 			desc->CPUAccessFlags, desc->MiscFlags);
 }
@@ -2223,12 +2224,12 @@ static void log_rendertarget_3d(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
 {
 
 	log_printf("type=Texture3D, Width=%u, Height=%u, Depth=%u, "
-			"MipLevels=%u, Format=%u, Usage=%u, BindFlags=%u, "
+			"MipLevels=%u, Format=%u \"%s\", Usage=%u, BindFlags=%u, "
 			"CPUAccessFlags=%u, MiscFlags=%u\n",
 			desc->Width, desc->Height, desc->Depth,
-			desc->MipLevels, desc->Format, desc->Usage,
-			desc->BindFlags, desc->CPUAccessFlags,
-			desc->MiscFlags);
+			desc->MipLevels, desc->Format,
+			format_str(desc->Format), desc->Usage, desc->BindFlags,
+			desc->CPUAccessFlags, desc->MiscFlags);
 }
 
 static void log_rendertarget(void *target, char *log_prefix)
