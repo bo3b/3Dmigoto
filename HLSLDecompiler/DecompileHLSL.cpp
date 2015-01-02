@@ -1643,23 +1643,36 @@ public:
 	// to use reinterpret_cast from uint to float, but that appears to be unnecessary, as the %x assigned directly
 	// to a float seems to work properly (but is not documented.)
 
+	// 1/1/15: New variant of l(-1) as an int, but used after a boolean state, so it's a comparison, not a bitand.
+	//  This would generate a QNAN as float. Made the hex comparison more strict with 0x%x, and thus that will fail
+	//  if it's an int type, and allow for converting that variant.
+
 	void convertHexToFloat(char *target)
 	{
 		char convert[opcodeSize];
 		int count;
 		float lit[4];
+		int ilit[4];
 		int printed;
 
 		if (target[0] == 'l')
 		{
-			count = sscanf_s(target, "l(%x,%x,%x,%x)", &lit[0], &lit[1], &lit[2], &lit[3]);
-			assert(count != 0);
-
 			printed = sprintf_s(convert, sizeof(convert), "l(");
-			for (int i = 0; i < count; i++)
+
+			count = sscanf_s(target, "l(0x%x,0x%x,0x%x,0x%x)", &lit[0], &lit[1], &lit[2], &lit[3]);
+			if (count != 0)
 			{
-				printed += sprintf_s(&convert[printed], sizeof(convert) - printed, "%f,", lit[i]);
+				for (int i = 0; i < count; i++)
+					printed += sprintf_s(&convert[printed], sizeof(convert) - printed, "%f,", lit[i]);
 			}
+			else 
+			{
+				count = sscanf_s(target, "l(%i,%i,%i,%i)", &ilit[0], &ilit[1], &ilit[2], &ilit[3]);
+				assert(count != 0);
+				for (int i = 0; i < count; i++)
+					printed += sprintf_s(&convert[printed], sizeof(convert) - printed, "%i,", ilit[i]);
+			}
+
 
 			// Overwrite trailing comma to be closing paren, no matter how many literals were converted.
 			convert[printed - 1] = ')';
