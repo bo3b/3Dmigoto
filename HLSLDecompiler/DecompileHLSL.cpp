@@ -2617,7 +2617,7 @@ public:
 					}
 				}
 			}
-			else if (!strcmp(statement, "dcl_resource_texture2darray"))
+			else if (!strcmp(statement, "dcl_resource_texture2darray"))	// dcl_resource_texture2darray (float,float,float,float) t0
 			{
 				if (op2[0] == 't')
 				{
@@ -2634,6 +2634,37 @@ public:
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
 						sprintf(buffer, "Texture2DArray<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
+					}
+				}
+			}
+			else if (!strncmp(statement, "dcl_resource_texture2dms", strlen("dcl_resource_texture2dms")))	// dcl_resource_texture2dms(8) (float,float,float,float) t4
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing dcl_resource_texture2dms register index: " + string(op2));
+						return;
+					}
+					int dim = 0;
+					if (sscanf_s(statement, "dcl_resource_texture2dms(%d)", &dim) != 1)
+					{
+						logDecompileError("Error parsing dcl_resource_texture2dms array dimension: " + string(statement));
+						return;
+					}
+					// Create if not existing.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						sprintf(buffer, "t%d", bufIndex);
+						mTextureNames[bufIndex] = buffer;
+						if (dim == 0)
+							sprintf(buffer, "Texture2DMS<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						else
+							sprintf(buffer, "Texture2DMS<float4,%d> t%d : register(t%d);\n\n", dim, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
