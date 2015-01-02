@@ -1,5 +1,5 @@
-
-cbuffer CViewportShaderParameterProvider : register(b0)
+//Lights
+cbuffer CViewportShaderParameterProvider : register(b0) 
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
   float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
@@ -70,6 +70,17 @@ cbuffer CCommonDeferredAmbientProvider : register(b3)
   float3 _SnappedCameraC2 : packoffset(c10);
   float3 _UVScale : packoffset(c11);
 }
+
+struct SkyParamBufferS
+{
+  float r[9];                    // Offset:    0
+  float g[9];                    // Offset:   36
+  float b[9];                    // Offset:   72
+  float3 sunColor;               // Offset:  108
+  float3 moonColor;              // Offset:  120
+};                        // Offset:    0 Size:   132
+
+
 SamplerState SectorOcclusion_HeightTexture__SampObj___s : register(s0);
 SamplerState SectorOcclusion_OcclusionTexture__SampObj___s : register(s1);
 SamplerState SectorOcclusion_NoiseTexture__SampObj___s : register(s2);
@@ -84,7 +95,7 @@ Texture3D<float4> SHTextureG : register(t4);
 Texture3D<float4> SHTextureB : register(t5);
 Texture2D<float4> DownsampledDepthTexture__TexObj__ : register(t6);
 Texture2D<float4> NormalWSTexture_Point__TexObj__ : register(t7);
-StructuredBuffer<SkyParamBuffer> SkyParamBuffer : register(t8);
+StructuredBuffer<SkyParamBufferS> SkyParamBuffer : register(t8);
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -135,6 +146,31 @@ void main(
   r0.w = dot(r1.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r1.xyz = r2.yzw / r0.www;
   r2.xyz = _CameraPosition_DistanceScale.xyz + r1.zxy;
+  
+float4 r35, r32, r33, r34;
+r35.xyz = r2.xyz;
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x -= stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r2.xyz = r34.xyz; 
+
+  
   r3.xy = r2.yx * _SectorOcclusion_OffsetScale.yx + _SectorOcclusion_OffsetScale.wz;
   r4.xyzw = SectorOcclusion_HeightTexture__TexObj__.Sample(SectorOcclusion_HeightTexture__SampObj___s, r3.xy).xyzw;
   r3.xyzw = SectorOcclusion_OcclusionTexture__TexObj__.Sample(SectorOcclusion_OcclusionTexture__SampObj___s, r3.xy).xyzw;
@@ -227,67 +263,67 @@ void main(
   r4.w = 2.477079630e-001 * r4.w;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r9.xyzw, l(0), l(32), t8.xyzw
-r9.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r9.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r9.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r9.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r9.x = SkyParamBuffer[0].r[8];
+r9.y = SkyParamBuffer[0].g[0];
+r9.z = SkyParamBuffer[0].g[1];
+r9.w = SkyParamBuffer[0].g[2];
   r10.xy = r9.yz * r8.xy;
   r7.z = r10.x + r10.y;
   r7.z = r9.w * r8.z + r7.z;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r10.xyzw, l(0), l(48), t8.xyzw
-r10.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r10.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r10.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r10.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r10.x = SkyParamBuffer[0].g[3];
+r10.y = SkyParamBuffer[0].g[4];
+r10.z = SkyParamBuffer[0].g[5];
+r10.w = SkyParamBuffer[0].g[6];
   r7.z = r10.x * r8.w + r7.z;
   r7.z = r10.y * r7.x + r7.z;
   r7.z = r10.z * r7.y + r7.z;
   r7.z = r10.w * r4.w + r7.z;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r11.xyzw, l(0), l(64), t8.xyzw
-r11.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r11.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r11.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r11.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r11.x = SkyParamBuffer[0].g[7];
+r11.y = SkyParamBuffer[0].g[8];
+r11.z = SkyParamBuffer[0].b[0];
+r11.w = SkyParamBuffer[0].b[1];
   r7.z = r11.x * r7.w + r7.z;
   r12.y = r11.y * r1.w + r7.z;
   r13.xy = r11.zw * r8.xy;
   r7.z = r13.x + r13.y;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r14.xyzw, l(0), l(80), t8.xyzw
-r14.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r14.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r14.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r14.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r14.x = SkyParamBuffer[0].b[2];
+r14.y = SkyParamBuffer[0].b[3];
+r14.z = SkyParamBuffer[0].b[4];
+r14.w = SkyParamBuffer[0].b[5]; 
   r7.z = r14.x * r8.z + r7.z;
   r7.z = r14.y * r8.w + r7.z;
   r7.z = r14.z * r7.x + r7.z;
   r7.z = r14.w * r7.y + r7.z;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r15.xyz, l(0), l(96), t8.xyzx
-r15.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r15.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r15.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r15.x = SkyParamBuffer[0].b[6];
+r15.y = SkyParamBuffer[0].b[7];
+r15.z = SkyParamBuffer[0].b[8];
   r7.z = r15.x * r4.w + r7.z;
   r7.z = r15.y * r7.w + r7.z;
   r12.z = r15.z * r1.w + r7.z;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r16.xyzw, l(0), l(0), t8.xyzw
-r16.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r16.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r16.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r16.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r16.x = SkyParamBuffer[0].r[0];
+r16.y = SkyParamBuffer[0].r[1];
+r16.z = SkyParamBuffer[0].r[2];
+r16.w = SkyParamBuffer[0].r[3];
   r13.yz = r16.xy * r8.xy;
   r7.z = r13.y + r13.z;
   r7.z = r16.z * r8.z + r7.z;
   r7.z = r16.w * r8.w + r7.z;
 // Known bad code for instruction (needs manual fix):
 // ld_structured r17.xyzw, l(0), l(16), t8.xyzw
-r17.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r17.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r17.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
-r17.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r17.x = SkyParamBuffer[0].r[4];
+r17.y = SkyParamBuffer[0].r[5];
+r17.z = SkyParamBuffer[0].r[6];
+r17.w = SkyParamBuffer[0].r[7];
   r7.x = r17.x * r7.x + r7.z;
   r7.x = r17.y * r7.y + r7.x;
   r4.w = r17.z * r4.w + r7.x;
@@ -751,3 +787,9 @@ ret
 // Approximately 220 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(87,18-31): error X3000: syntax error: unexpected token 'SkyParamBuffer'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  

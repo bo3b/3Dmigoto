@@ -108,7 +108,16 @@ void main(
   r0.xyz = -_CameraPosition_DistanceScale.xyz + r0.xyz;
   r0.x = dot(_CameraDirection_FOVDeg.xyz, r0.xyz);
   o1.w = _CameraDistances.w * r0.x;
-  o0.xyw = r1.xyw;
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereo = StereoParams.Load(0);
+r21.xyw = r1.xyw;
+r1.x += stereo.x * (r1.w - stereo.y);
+o0.xyw = r21.xyw;
+
+
   r0.xyzw = _DepthTextureScaleOffset.xyzw * r1.xyww;
   o1.z = r1.w;
   o1.xy = r0.xy + r0.zw;
@@ -271,4 +280,9 @@ mov o2.xyzw, l(0,0,0,0)
 ret 
 // Approximately 25 instruction slots used
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(115,3-9): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

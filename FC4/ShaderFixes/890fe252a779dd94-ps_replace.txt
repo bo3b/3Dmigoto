@@ -1,4 +1,4 @@
-
+//Shadow/Light UNTESTED
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -134,6 +134,31 @@ void main(
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
   r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+  
+float4 r35, r32, r33, r34;
+r35.xyz = r0.xyz;
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x -= stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r0.xyz = r34.xyz; 
+
+
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
@@ -268,7 +293,8 @@ void main(
     }
     r2.w = r4.y;
   }
-  r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
+  r1.xyzw = SSToksvig.Load(r1.xyz);
+  // r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
   r1.y = exp2(r2.y);
   r1.z = 1.000000000e+000 + -r1.x;
   r1.y = r1.y * r1.z + r1.x;
@@ -314,10 +340,10 @@ void main(
     while (true) {
       r12.w = (int)r11.w >= (int)_PointLightCount;
       if (r12.w != 0) break;
-      r20.xyz = _PointLightPos[r11.].xyz + -r0.xyz;
+      r20.xyz = _PointLightPos[r11.w].xyz + -r0.xyz;
       r12.w = dot(r20.xyz, r20.xyz);
-      r13.w = _PointLightAttenuation[r11.].x / r12.w;
-      r13.w = saturate(_PointLightAttenuation[r11.].y + r13.w);
+      r13.w = _PointLightAttenuation[r11.w].x / r12.w;
+      r13.w = saturate(_PointLightAttenuation[r11.w].y + r13.w);
       r14.w = r13.w == 0.000000;
       if (r14.w != 0) {
         r11.w = (int)r11.w + 1;
@@ -345,7 +371,7 @@ void main(
       r14.w = max(r14.w, 9.999999776e-003);
       r14.w = 1.000000e+000 / r14.w;
       r14.w = _BRDFHighQuality ? r14.w : 1.000000000e+000;
-      r23.xyz = _PointLightColor[r11.].xyz * r13.www;
+      r23.xyz = _PointLightColor[r11.w].xyz * r13.www;
       r13.w = saturate(dot(r15.xyz, r21.xyz));
       r18.xyz = r13.www * r23.xyz + r18.xyz;
       r21.xyz = r22.xyz * r12.www;
@@ -384,14 +410,14 @@ void main(
     while (true) {
       r13.w = (int)r12.w >= (int)_SpotLightCount;
       if (r13.w != 0) break;
-      r22.xyz = _SpotLightPos[r12.].xyz + -r0.xyz;
+      r22.xyz = _SpotLightPos[r12.w].xyz + -r0.xyz;
       r13.w = dot(r22.xyz, r22.xyz);
       r14.w = rsqrt(r13.w);
       r23.xyz = r22.xyz * r14.www;
-      r13.w = _SpotLightAttenuation[r12.].x / r13.w;
-      r13.w = saturate(_SpotLightAttenuation[r12.].y + r13.w);
-      r15.w = dot(r23.xyz, _SpotLightDirection[r12.].xyz);
-      r15.w = saturate(r15.w * _SpotLightColor[r12.].w + _SpotLightDirection[r12.].w);
+      r13.w = _SpotLightAttenuation[r12.w].x / r13.w;
+      r13.w = saturate(_SpotLightAttenuation[r12.w].y + r13.w);
+      r15.w = dot(r23.xyz, _SpotLightDirection[r12.w].xyz);
+      r15.w = saturate(r15.w * _SpotLightColor[r12.w].w + _SpotLightDirection[r12.w].w);
       r15.w = r15.w * r15.w;
       r24.xyz = r15.www * r13.www;
       r13.w = r24.z == 0.000000;
@@ -400,14 +426,14 @@ void main(
         continue;
       }
       r13.w = (uint)r12.w << 2;
-      r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m00_m10_m20_m30);
-      r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m01_m11_m21_m31);
-      r15.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m03_m13_m23_m33);
+      r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m00_m10_m20_m30);
+      r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m01_m11_m21_m31);
+      r15.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m03_m13_m23_m33);
       r15.w = max(r15.w, 9.999999747e-006);
       r16.xz = r25.xy / r15.ww;
       r15.w = (int)r12.w < (int)1;
       if (r15.w != 0) {
-        r13.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m02_m12_m22_m32);
+        r13.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m02_m12_m22_m32);
         r19.xw = r16.xz * _SpotShadowMapSize.xy + float2(5.000000e-001,5.000000e-001);
         r25.xy = floor(r19.xw);
         r19.xw = -r25.xy + r19.xw;
@@ -438,7 +464,7 @@ void main(
       } else {
         r13.w = (int)r12.w < (int)r11.w;
         if (r13.w != 0) {
-          r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.].xy + _SpotScaleOffsetUVS[r12.].zw;
+          r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
           r13.w = r12.w == 1;
           if (r12.w == 0) {
             r25.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
@@ -471,7 +497,7 @@ void main(
       r14.w = max(r14.w, 9.999999776e-003);
       r14.w = 1.000000e+000 / r14.w;
       r14.w = _BRDFHighQuality ? r14.w : 1.000000000e+000;
-      r24.xyz = _SpotLightColor[r12.].xyz * r24.xyz;
+      r24.xyz = _SpotLightColor[r12.w].xyz * r24.xyz;
       r15.w = saturate(dot(r15.xyz, r23.xyz));
       r20.xyz = r15.www * r24.xyz + r20.xyz;
       r23.xyz = r25.xyz * r13.www;
@@ -522,10 +548,10 @@ void main(
       while (true) {
         r12.w = (int)r11.w >= (int)_PointLightCount;
         if (r12.w != 0) break;
-        r24.xyz = _PointLightPos[r11.].xyz + -r0.xyz;
+        r24.xyz = _PointLightPos[r11.w].xyz + -r0.xyz;
         r12.w = dot(r24.xyz, r24.xyz);
-        r13.w = _PointLightAttenuation[r11.].x / r12.w;
-        r13.w = saturate(_PointLightAttenuation[r11.].y + r13.w);
+        r13.w = _PointLightAttenuation[r11.w].x / r12.w;
+        r13.w = saturate(_PointLightAttenuation[r11.w].y + r13.w);
         r14.w = r13.w == 0.000000;
         if (r14.w != 0) {
           r11.w = (int)r11.w + 1;
@@ -566,7 +592,7 @@ void main(
         r10.x = r16.z * 5.000000000e-001 + 5.000000000e-001;
         r16.xz = r10.xy * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
         r28.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
-        r25.yzw = _PointLightColor[r11.].xyz * r13.www;
+        r25.yzw = _PointLightColor[r11.w].xyz * r13.www;
         r28.x = r25.x;
         r28.y = r27.y;
         r22.xyz = r25.yzw * r28.xyz + r22.xyz;
@@ -599,14 +625,14 @@ void main(
       while (true) {
         r13.w = (int)r12.w >= (int)_SpotLightCount;
         if (r13.w != 0) break;
-        r25.xyz = _SpotLightPos[r12.].xyz + -r0.xyz;
+        r25.xyz = _SpotLightPos[r12.w].xyz + -r0.xyz;
         r13.w = dot(r25.xyz, r25.xyz);
         r14.w = rsqrt(r13.w);
         r26.xyz = r25.xyz * r14.www;
-        r13.w = _SpotLightAttenuation[r12.].x / r13.w;
-        r13.w = saturate(_SpotLightAttenuation[r12.].y + r13.w);
-        r15.w = dot(r26.xyz, _SpotLightDirection[r12.].xyz);
-        r15.w = saturate(r15.w * _SpotLightColor[r12.].w + _SpotLightDirection[r12.].w);
+        r13.w = _SpotLightAttenuation[r12.w].x / r13.w;
+        r13.w = saturate(_SpotLightAttenuation[r12.w].y + r13.w);
+        r15.w = dot(r26.xyz, _SpotLightDirection[r12.w].xyz);
+        r15.w = saturate(r15.w * _SpotLightColor[r12.w].w + _SpotLightDirection[r12.w].w);
         r15.w = r15.w * r15.w;
         r27.xyz = r15.www * r13.www;
         r13.w = r27.z == 0.000000;
@@ -615,14 +641,14 @@ void main(
           continue;
         }
         r13.w = (uint)r12.w << 2;
-        r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m00_m10_m20_m30);
-        r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m01_m11_m21_m31);
-        r15.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m03_m13_m23_m33);
+        r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m00_m10_m20_m30);
+        r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m01_m11_m21_m31);
+        r15.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m03_m13_m23_m33);
         r15.w = max(r15.w, 9.999999747e-006);
         r16.xz = r28.xy / r15.ww;
         r15.w = (int)r12.w < (int)1;
         if (r15.w != 0) {
-          r13.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m02_m12_m22_m32);
+          r13.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m02_m12_m22_m32);
           r23.xw = r16.xz * _SpotShadowMapSize.xy + float2(5.000000e-001,5.000000e-001);
           r28.xy = floor(r23.xw);
           r23.xw = -r28.xy + r23.xw;
@@ -653,7 +679,7 @@ void main(
         } else {
           r13.w = (int)r12.w < (int)r11.w;
           if (r13.w != 0) {
-            r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.].xy + _SpotScaleOffsetUVS[r12.].zw;
+            r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
             r13.w = r12.w == 1;
             if (r12.w == 0) {
               r28.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
@@ -699,7 +725,7 @@ void main(
         r10.x = r16.z * 5.000000000e-001 + 5.000000000e-001;
         r16.xz = r10.xy * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
         r30.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
-        r26.yzw = _SpotLightColor[r12.].xyz * r27.xyz;
+        r26.yzw = _SpotLightColor[r12.w].xyz * r27.xyz;
         r30.x = r26.x;
         r30.y = r29.y;
         r20.xyz = r26.yzw * r30.xyz + r20.xyz;
@@ -760,10 +786,10 @@ void main(
         while (true) {
           r13.w = (int)r12.w >= (int)_PointLightCount;
           if (r13.w != 0) break;
-          r23.xyz = _PointLightPos[r12.].xyz + -r0.xyz;
+          r23.xyz = _PointLightPos[r12.w].xyz + -r0.xyz;
           r13.w = dot(r23.xyz, r23.xyz);
-          r14.w = _PointLightAttenuation[r12.].x / r13.w;
-          r14.w = saturate(_PointLightAttenuation[r12.].y + r14.w);
+          r14.w = _PointLightAttenuation[r12.w].x / r13.w;
+          r14.w = saturate(_PointLightAttenuation[r12.w].y + r14.w);
           r15.w = r14.w == 0.000000;
           if (r15.w != 0) {
             r12.w = (int)r12.w + 1;
@@ -792,7 +818,7 @@ void main(
           r16.x = r16.x + r15.w;
           r16.x = 1.000000e+000 / r16.x;
           r16.x = _BRDFHighQuality ? r16.x : 1.000000000e+000;
-          r27.xyz = _PointLightColor[r12.].xyz * r14.www;
+          r27.xyz = _PointLightColor[r12.w].xyz * r14.www;
           r14.w = saturate(dot(r15.xyz, r24.xyz));
           r19.xyz = r14.www * r27.xyz + r19.xyz;
           if (_BRDFHighQuality != 0) {
@@ -871,14 +897,14 @@ void main(
         while (true) {
           r14.w = (int)r13.w >= (int)_SpotLightCount;
           if (r14.w != 0) break;
-          r24.xyz = _SpotLightPos[r13.].xyz + -r0.xyz;
+          r24.xyz = _SpotLightPos[r13.w].xyz + -r0.xyz;
           r14.w = dot(r24.xyz, r24.xyz);
           r15.w = rsqrt(r14.w);
           r25.xyz = r24.xyz * r15.www;
-          r14.w = _SpotLightAttenuation[r13.].x / r14.w;
-          r14.w = saturate(_SpotLightAttenuation[r13.].y + r14.w);
-          r16.x = dot(r25.xyz, _SpotLightDirection[r13.].xyz);
-          r16.x = saturate(r16.x * _SpotLightColor[r13.].w + _SpotLightDirection[r13.].w);
+          r14.w = _SpotLightAttenuation[r13.w].x / r14.w;
+          r14.w = saturate(_SpotLightAttenuation[r13.w].y + r14.w);
+          r16.x = dot(r25.xyz, _SpotLightDirection[r13.w].xyz);
+          r16.x = saturate(r16.x * _SpotLightColor[r13.w].w + _SpotLightDirection[r13.w].w);
           r16.x = r16.x * r16.x;
           r26.xyz = r16.xxx * r14.www;
           r14.w = r26.z == 0.000000;
@@ -887,14 +913,14 @@ void main(
             continue;
           }
           r14.w = (uint)r13.w << 2;
-          r27.x = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14./4]._m00_m10_m20_m30);
-          r27.y = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14./4]._m01_m11_m21_m31);
-          r16.x = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14./4]._m03_m13_m23_m33);
+          r27.x = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m00_m10_m20_m30);
+          r27.y = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m01_m11_m21_m31);
+          r16.x = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m03_m13_m23_m33);
           r16.x = max(r16.x, 9.999999747e-006);
           r16.xz = r27.xy / r16.xx;
           r17.w = (int)r13.w < (int)1;
           if (r17.w != 0) {
-            r14.w = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14./4]._m02_m12_m22_m32);
+            r14.w = dot(r23.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m02_m12_m22_m32);
             r22.xw = r16.xz * _SpotShadowMapSize.xy + float2(5.000000e-001,5.000000e-001);
             r27.xy = floor(r22.xw);
             r22.xw = -r27.xy + r22.xw;
@@ -925,7 +951,7 @@ void main(
           } else {
             r14.w = (int)r13.w < (int)r12.w;
             if (r14.w != 0) {
-              r16.xz = r16.xz * _SpotScaleOffsetUVS[r13.].xy + _SpotScaleOffsetUVS[r13.].zw;
+              r16.xz = r16.xz * _SpotScaleOffsetUVS[r13.w].xy + _SpotScaleOffsetUVS[r13.w].zw;
               r14.w = r13.w == 1;
               if (r13.w == 0) {
                 r27.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
@@ -959,7 +985,7 @@ void main(
           r16.x = r16.x + r14.w;
           r16.x = 1.000000e+000 / r16.x;
           r16.x = _BRDFHighQuality ? r16.x : 1.000000000e+000;
-          r26.xyz = _SpotLightColor[r13.].xyz * r26.xyz;
+          r26.xyz = _SpotLightColor[r13.w].xyz * r26.xyz;
           r16.z = saturate(dot(r15.xyz, r25.xyz));
           r20.xyz = r16.zzz * r26.xyz + r20.xyz;
           if (_BRDFHighQuality != 0) {
@@ -1303,14 +1329,14 @@ void main(
               continue;
             }
             r10.x = (uint)r8.w << 2;
-            r19.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10./4]._m00_m10_m20_m30);
-            r19.y = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10./4]._m01_m11_m21_m31);
-            r11.w = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10./4]._m03_m13_m23_m33);
+            r19.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m00_m10_m20_m30);
+            r19.y = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m01_m11_m21_m31);
+            r11.w = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m03_m13_m23_m33);
             r11.w = max(r11.w, 9.999999747e-006);
             r16.xz = r19.xy / r11.ww;
             r11.w = (int)r8.w < (int)1;
             if (r11.w != 0) {
-              r10.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10./4]._m02_m12_m22_m32);
+              r10.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m02_m12_m22_m32);
               r19.xy = r16.xz * _SpotShadowMapSize.xy + float2(5.000000e-001,5.000000e-001);
               r19.zw = floor(r19.xy);
               r19.xy = r19.xy + -r19.zw;
@@ -2993,4 +3019,9 @@ mov o0.w, l(1.000000)
 ret 
 // Approximately 1349 instruction slots used
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(271,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

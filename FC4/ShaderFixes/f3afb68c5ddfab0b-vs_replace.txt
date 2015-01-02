@@ -99,7 +99,16 @@ void main(
   r2.y = dot(r1.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
   r2.w = dot(r1.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
   o0.z = dot(r1.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
-  o0.xyw = r2.xyw;
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereo = StereoParams.Load(0);
+r21.xyw = r2.xyw;
+r2.x += stereo.x * (r2.w - stereo.y);
+o0.xyw = r21.xyw;
+
+
   r1.xyzw = _DepthTextureScaleOffset.xyzw * r2.xyww;
   o4.z = r2.w;
   o4.xy = r1.xy + r1.zw;

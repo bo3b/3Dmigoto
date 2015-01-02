@@ -165,7 +165,16 @@ void main(
   r1.y = dot(r0.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
   r1.z = dot(r0.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);
   o0.z = dot(r0.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-  o0.xyw = r1.xyz;
+
+
+//Mike_ar69 - Stereo Shift
+float4 r21;
+float4 stereo = StereoParams.Load(0);
+r21.xyw = r1.xyw;
+r1.x += stereo.x * (r1.w - stereo.y);
+o0.xyw = r21.xyw;
+
+
   r2.xyz = -_CameraPosition_DistanceScale.yzx + r0.yzx;
   r0.w = dot(r2.xyz, r2.xyz);
   r0.w = rsqrt(r0.w);

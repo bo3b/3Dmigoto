@@ -1,4 +1,4 @@
-
+//Shadow/Light UNTESTED
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -132,6 +132,31 @@ void main(
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
   r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+  
+float4 r35, r32, r33, r34;
+r35.xyz = r0.xyz;
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x -= stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r0.xyz = r34.xyz; 
+
+
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
@@ -269,7 +294,8 @@ void main(
     }
     r2.w = r4.y;
   }
-  r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
+  r1.xyzw = SSToksvig.Load(r1.xyz);
+  // r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
   r1.y = exp2(r2.y);
   r1.z = 1.000000000e+000 + -r1.x;
   r1.y = r1.y * r1.z + r1.x;
@@ -321,19 +347,19 @@ void main(
     while (true) {
       r12.w = (int)r10.w >= (int)_PointLightCount;
       if (r12.w != 0) break;
-      r20.xyz = _PointLightPos[r10.].xyz + -r0.xyz;
+      r20.xyz = _PointLightPos[r10.w].xyz + -r0.xyz;
       r12.w = dot(r20.xyz, r20.xyz);
-      r13.w = _PointLightAttenuation[r10.].x / r12.w;
-      r13.w = saturate(_PointLightAttenuation[r10.].y + r13.w);
-      r14.w = (int)_PointLightClippingInfo[r10.].x;
-      r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
-      r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+      r13.w = _PointLightAttenuation[r10.w].x / r12.w;
+      r13.w = saturate(_PointLightAttenuation[r10.w].y + r13.w);
+      r14.w = (int)_PointLightClippingInfo[r10.w].x;
+      r15.w = dot(_LightClippingPlanes[r14.w].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _PointLightClippingInfo[r10.w].z + _LightClippingPlanes[r14.w].w);
       r16.yw = int2(1,2) + (int2)r14.ww;
-      r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-      r14.w = saturate(r14.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r14.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+      r14.w = saturate(r14.w * _PointLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
       r14.w = r15.w * r14.w;
-      r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-      r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r15.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _PointLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
       r14.w = r15.w * r14.w;
       r15.w = r14.w * r14.w;
       r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
@@ -366,7 +392,7 @@ void main(
       r14.w = max(r14.w, 9.999999776e-003);
       r14.w = 1.000000e+000 / r14.w;
       r14.w = _BRDFHighQuality ? r14.w : 1.000000000e+000;
-      r23.xyz = _PointLightColor[r10.].xyz * r13.www;
+      r23.xyz = _PointLightColor[r10.w].xyz * r13.www;
       r13.w = saturate(dot(r15.xyz, r21.xyz));
       r18.xyz = r13.www * r23.xyz + r18.xyz;
       r21.xyz = r22.xyz * r12.www;
@@ -404,25 +430,25 @@ void main(
     while (true) {
       r12.w = (int)r10.w >= (int)_SpotLightCount;
       if (r12.w != 0) break;
-      r22.xyz = _SpotLightPos[r10.].xyz + -r0.xyz;
+      r22.xyz = _SpotLightPos[r10.w].xyz + -r0.xyz;
       r12.w = dot(r22.xyz, r22.xyz);
       r13.w = rsqrt(r12.w);
       r23.xyz = r22.xyz * r13.www;
-      r12.w = _SpotLightAttenuation[r10.].x / r12.w;
-      r12.w = saturate(_SpotLightAttenuation[r10.].y + r12.w);
-      r14.w = dot(r23.xyz, _SpotLightDirection[r10.].xyz);
-      r14.w = saturate(r14.w * _SpotLightColor[r10.].w + _SpotLightDirection[r10.].w);
+      r12.w = _SpotLightAttenuation[r10.w].x / r12.w;
+      r12.w = saturate(_SpotLightAttenuation[r10.w].y + r12.w);
+      r14.w = dot(r23.xyz, _SpotLightDirection[r10.w].xyz);
+      r14.w = saturate(r14.w * _SpotLightColor[r10.w].w + _SpotLightDirection[r10.w].w);
       r14.w = r14.w * r14.w;
       r12.w = r14.w * r12.w;
-      r14.w = (int)_SpotLightClippingInfo[r10.].x;
-      r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
-      r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+      r14.w = (int)_SpotLightClippingInfo[r10.w].x;
+      r15.w = dot(_LightClippingPlanes[r14.w].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.w].z + _LightClippingPlanes[r14.w].w);
       r16.yw = int2(1,2) + (int2)r14.ww;
-      r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-      r14.w = saturate(r14.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r14.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+      r14.w = saturate(r14.w * _SpotLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
       r14.w = r15.w * r14.w;
-      r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-      r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r15.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
       r14.w = r15.w * r14.w;
       r15.w = r14.w * r14.w;
       r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
@@ -438,12 +464,12 @@ void main(
         r12.w = (int)r10.w < (int)_SpotLightGoboCount;
         if (r12.w != 0) {
           r12.w = (uint)r10.w << 2;
-          r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12./4]._m00_m10_m20_m30);
-          r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12./4]._m01_m11_m21_m31);
-          r12.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12./4]._m03_m13_m23_m33);
+          r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m00_m10_m20_m30);
+          r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m01_m11_m21_m31);
+          r12.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m03_m13_m23_m33);
           r12.w = max(r12.w, 9.999999747e-006);
           r16.yw = r25.xy / r12.ww;
-          r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.].xy + _SpotScaleOffsetUVS[r10.].zw;
+          r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.w].xy + _SpotScaleOffsetUVS[r10.w].zw;
           r12.w = r10.w == 1;
           if (r10.w == 0) {
             r25.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
@@ -478,7 +504,7 @@ void main(
       r13.w = max(r13.w, 9.999999776e-003);
       r13.w = 1.000000e+000 / r13.w;
       r13.w = _BRDFHighQuality ? r13.w : 1.000000000e+000;
-      r24.xyz = _SpotLightColor[r10.].xyz * r24.xyz;
+      r24.xyz = _SpotLightColor[r10.w].xyz * r24.xyz;
       r14.w = saturate(dot(r15.xyz, r23.xyz));
       r20.xyz = r14.www * r24.xyz + r20.xyz;
       r23.xyz = r25.xyz * r12.www;
@@ -529,19 +555,19 @@ void main(
       while (true) {
         r12.w = (int)r10.w >= (int)_PointLightCount;
         if (r12.w != 0) break;
-        r24.xyz = _PointLightPos[r10.].xyz + -r0.xyz;
+        r24.xyz = _PointLightPos[r10.w].xyz + -r0.xyz;
         r12.w = dot(r24.xyz, r24.xyz);
-        r13.w = _PointLightAttenuation[r10.].x / r12.w;
-        r13.w = saturate(_PointLightAttenuation[r10.].y + r13.w);
-        r14.w = (int)_PointLightClippingInfo[r10.].x;
-        r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
-        r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+        r13.w = _PointLightAttenuation[r10.w].x / r12.w;
+        r13.w = saturate(_PointLightAttenuation[r10.w].y + r13.w);
+        r14.w = (int)_PointLightClippingInfo[r10.w].x;
+        r15.w = dot(_LightClippingPlanes[r14.w].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _PointLightClippingInfo[r10.w].z + _LightClippingPlanes[r14.w].w);
         r16.yw = int2(1,2) + (int2)r14.ww;
-        r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-        r14.w = saturate(r14.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r14.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+        r14.w = saturate(r14.w * _PointLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
         r14.w = r15.w * r14.w;
-        r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-        r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r15.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _PointLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
         r14.w = r15.w * r14.w;
         r15.w = r14.w * r14.w;
         r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
@@ -587,7 +613,7 @@ void main(
         r11.x = r16.w * 5.000000000e-001 + 5.000000000e-001;
         r16.yw = r11.xw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
         r28.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
-        r25.yzw = _PointLightColor[r10.].xyz * r13.www;
+        r25.yzw = _PointLightColor[r10.w].xyz * r13.www;
         r28.x = r25.x;
         r28.y = r27.y;
         r22.xyz = r25.yzw * r28.xyz + r22.xyz;
@@ -619,25 +645,25 @@ void main(
       while (true) {
         r12.w = (int)r10.w >= (int)_SpotLightCount;
         if (r12.w != 0) break;
-        r25.xyz = _SpotLightPos[r10.].xyz + -r0.xyz;
+        r25.xyz = _SpotLightPos[r10.w].xyz + -r0.xyz;
         r12.w = dot(r25.xyz, r25.xyz);
         r13.w = rsqrt(r12.w);
         r26.xyz = r25.xyz * r13.www;
-        r12.w = _SpotLightAttenuation[r10.].x / r12.w;
-        r12.w = saturate(_SpotLightAttenuation[r10.].y + r12.w);
-        r14.w = dot(r26.xyz, _SpotLightDirection[r10.].xyz);
-        r14.w = saturate(r14.w * _SpotLightColor[r10.].w + _SpotLightDirection[r10.].w);
+        r12.w = _SpotLightAttenuation[r10.w].x / r12.w;
+        r12.w = saturate(_SpotLightAttenuation[r10.w].y + r12.w);
+        r14.w = dot(r26.xyz, _SpotLightDirection[r10.w].xyz);
+        r14.w = saturate(r14.w * _SpotLightColor[r10.w].w + _SpotLightDirection[r10.w].w);
         r14.w = r14.w * r14.w;
         r12.w = r14.w * r12.w;
-        r14.w = (int)_SpotLightClippingInfo[r10.].x;
-        r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
-        r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+        r14.w = (int)_SpotLightClippingInfo[r10.w].x;
+        r15.w = dot(_LightClippingPlanes[r14.w].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.w].z + _LightClippingPlanes[r14.w].w);
         r16.yw = int2(1,2) + (int2)r14.ww;
-        r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-        r14.w = saturate(r14.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r14.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+        r14.w = saturate(r14.w * _SpotLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
         r14.w = r15.w * r14.w;
-        r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-        r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r15.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.w].z + _LightClippingPlanes[r16.w].w);
         r14.w = r15.w * r14.w;
         r15.w = r14.w * r14.w;
         r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
@@ -653,12 +679,12 @@ void main(
           r12.w = (int)r10.w < (int)_SpotLightGoboCount;
           if (r12.w != 0) {
             r12.w = (uint)r10.w << 2;
-            r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12./4]._m00_m10_m20_m30);
-            r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12./4]._m01_m11_m21_m31);
-            r12.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12./4]._m03_m13_m23_m33);
+            r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m00_m10_m20_m30);
+            r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m01_m11_m21_m31);
+            r12.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m03_m13_m23_m33);
             r12.w = max(r12.w, 9.999999747e-006);
             r16.yw = r28.xy / r12.ww;
-            r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.].xy + _SpotScaleOffsetUVS[r10.].zw;
+            r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.w].xy + _SpotScaleOffsetUVS[r10.w].zw;
             r12.w = r10.w == 1;
             if (r10.w == 0) {
               r28.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
@@ -706,7 +732,7 @@ void main(
         r11.x = r16.y * 5.000000000e-001 + 5.000000000e-001;
         r11.yz = r11.xw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
         r30.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r11.yz, 0.000000000e+000).xyzw;
-        r26.yzw = _SpotLightColor[r10.].xyz * r27.xyz;
+        r26.yzw = _SpotLightColor[r10.w].xyz * r27.xyz;
         r30.x = r26.x;
         r30.y = r29.y;
         r20.xyz = r26.yzw * r30.xyz + r20.xyz;
@@ -767,19 +793,19 @@ void main(
         while (true) {
           r19.x = (int)r15.w >= (int)_PointLightCount;
           if (r19.x != 0) break;
-          r19.xyz = _PointLightPos[r15.].xyz + -r0.xyz;
+          r19.xyz = _PointLightPos[r15.w].xyz + -r0.xyz;
           r19.w = dot(r19.xyz, r19.xyz);
-          r20.w = _PointLightAttenuation[r15.].x / r19.w;
-          r20.w = saturate(_PointLightAttenuation[r15.].y + r20.w);
-          r21.w = (int)_PointLightClippingInfo[r15.].x;
-          r22.x = dot(_LightClippingPlanes[r21.].xyz, r0.xyz);
-          r22.x = saturate(r22.x * _PointLightClippingInfo[r15.].z + _LightClippingPlanes[r21.].w);
+          r20.w = _PointLightAttenuation[r15.w].x / r19.w;
+          r20.w = saturate(_PointLightAttenuation[r15.w].y + r20.w);
+          r21.w = (int)_PointLightClippingInfo[r15.w].x;
+          r22.x = dot(_LightClippingPlanes[r21.w].xyz, r0.xyz);
+          r22.x = saturate(r22.x * _PointLightClippingInfo[r15.w].z + _LightClippingPlanes[r21.w].w);
           r22.yz = int2(1,2) + (int2)r21.ww;
-          r21.w = dot(_LightClippingPlanes[r22.].xyz, r0.xyz);
-          r21.w = saturate(r21.w * _PointLightClippingInfo[r15.].z + _LightClippingPlanes[r22.].w);
+          r21.w = dot(_LightClippingPlanes[r22.w].xyz, r0.xyz);
+          r21.w = saturate(r21.w * _PointLightClippingInfo[r15.w].z + _LightClippingPlanes[r22.w].w);
           r21.w = r22.x * r21.w;
-          r22.x = dot(_LightClippingPlanes[r22.].xyz, r0.xyz);
-          r22.x = saturate(r22.x * _PointLightClippingInfo[r15.].z + _LightClippingPlanes[r22.].w);
+          r22.x = dot(_LightClippingPlanes[r22.w].xyz, r0.xyz);
+          r22.x = saturate(r22.x * _PointLightClippingInfo[r15.w].z + _LightClippingPlanes[r22.w].w);
           r21.w = r22.x * r21.w;
           r22.x = r21.w * r21.w;
           r21.w = -r21.w * 2.000000000e+000 + 3.000000000e+000;
@@ -813,7 +839,7 @@ void main(
           r22.w = r22.w + r21.w;
           r22.w = 1.000000e+000 / r22.w;
           r22.w = _BRDFHighQuality ? r22.w : 1.000000000e+000;
-          r25.xyz = _PointLightColor[r15.].xyz * r20.www;
+          r25.xyz = _PointLightColor[r15.w].xyz * r20.www;
           r20.w = saturate(dot(r15.xyz, r22.xyz));
           r18.xyz = r20.www * r25.xyz + r18.xyz;
           if (_BRDFHighQuality != 0) {
@@ -891,25 +917,25 @@ void main(
         while (true) {
           r17.x = (int)r15.w >= (int)_SpotLightCount;
           if (r17.x != 0) break;
-          r22.xyz = _SpotLightPos[r15.].xyz + -r0.xyz;
+          r22.xyz = _SpotLightPos[r15.w].xyz + -r0.xyz;
           r17.x = dot(r22.xyz, r22.xyz);
           r20.w = rsqrt(r17.x);
           r23.xyz = r22.xyz * r20.www;
-          r17.x = _SpotLightAttenuation[r15.].x / r17.x;
-          r17.x = saturate(_SpotLightAttenuation[r15.].y + r17.x);
-          r21.w = dot(r23.xyz, _SpotLightDirection[r15.].xyz);
-          r21.w = saturate(r21.w * _SpotLightColor[r15.].w + _SpotLightDirection[r15.].w);
+          r17.x = _SpotLightAttenuation[r15.w].x / r17.x;
+          r17.x = saturate(_SpotLightAttenuation[r15.w].y + r17.x);
+          r21.w = dot(r23.xyz, _SpotLightDirection[r15.w].xyz);
+          r21.w = saturate(r21.w * _SpotLightColor[r15.w].w + _SpotLightDirection[r15.w].w);
           r21.w = r21.w * r21.w;
           r17.x = r21.w * r17.x;
-          r21.w = (int)_SpotLightClippingInfo[r15.].x;
-          r22.w = dot(_LightClippingPlanes[r21.].xyz, r0.xyz);
-          r22.w = saturate(r22.w * _SpotLightClippingInfo[r15.].z + _LightClippingPlanes[r21.].w);
+          r21.w = (int)_SpotLightClippingInfo[r15.w].x;
+          r22.w = dot(_LightClippingPlanes[r21.w].xyz, r0.xyz);
+          r22.w = saturate(r22.w * _SpotLightClippingInfo[r15.w].z + _LightClippingPlanes[r21.w].w);
           r24.xy = int2(1,2) + (int2)r21.ww;
-          r21.w = dot(_LightClippingPlanes[r24.].xyz, r0.xyz);
-          r21.w = saturate(r21.w * _SpotLightClippingInfo[r15.].z + _LightClippingPlanes[r24.].w);
+          r21.w = dot(_LightClippingPlanes[r24.w].xyz, r0.xyz);
+          r21.w = saturate(r21.w * _SpotLightClippingInfo[r15.w].z + _LightClippingPlanes[r24.w].w);
           r21.w = r22.w * r21.w;
-          r22.w = dot(_LightClippingPlanes[r24.].xyz, r0.xyz);
-          r22.w = saturate(r22.w * _SpotLightClippingInfo[r15.].z + _LightClippingPlanes[r24.].w);
+          r22.w = dot(_LightClippingPlanes[r24.w].xyz, r0.xyz);
+          r22.w = saturate(r22.w * _SpotLightClippingInfo[r15.w].z + _LightClippingPlanes[r24.w].w);
           r21.w = r22.w * r21.w;
           r22.w = r21.w * r21.w;
           r21.w = -r21.w * 2.000000000e+000 + 3.000000000e+000;
@@ -925,12 +951,12 @@ void main(
             r17.x = (int)r15.w < (int)_SpotLightGoboCount;
             if (r17.x != 0) {
               r17.x = (uint)r15.w << 2;
-              r25.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17./4]._m00_m10_m20_m30);
-              r25.y = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17./4]._m01_m11_m21_m31);
-              r17.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17./4]._m03_m13_m23_m33);
+              r25.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.w/4]._m00_m10_m20_m30);
+              r25.y = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.w/4]._m01_m11_m21_m31);
+              r17.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.w/4]._m03_m13_m23_m33);
               r17.x = max(r17.x, 9.999999747e-006);
               r25.xy = r25.xy / r17.xx;
-              r25.xy = r25.xy * _SpotScaleOffsetUVS[r15.].xy + _SpotScaleOffsetUVS[r15.].zw;
+              r25.xy = r25.xy * _SpotScaleOffsetUVS[r15.w].xy + _SpotScaleOffsetUVS[r15.w].zw;
               r17.x = r15.w == 1;
               if (r15.w == 0) {
                 r26.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r25.xy, 0.000000000e+000).xyzw;
@@ -966,7 +992,7 @@ void main(
           r21.w = r21.w + r17.x;
           r21.w = 1.000000e+000 / r21.w;
           r21.w = _BRDFHighQuality ? r21.w : 1.000000000e+000;
-          r24.xyz = _SpotLightColor[r15.].xyz * r24.xyz;
+          r24.xyz = _SpotLightColor[r15.w].xyz * r24.xyz;
           r22.w = saturate(dot(r15.xyz, r23.xyz));
           r20.xyz = r22.www * r24.xyz + r20.xyz;
           if (_BRDFHighQuality != 0) {
@@ -1045,11 +1071,11 @@ void main(
             r10.w = dot(_LightClippingPlanes[r9.x].xyz, r0.xyz);
             r10.w = saturate(r10.w * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r9.x].w);
             r16.xy = int2(1,2) + (int2)r9.xx;
-            r9.x = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-            r9.x = saturate(r9.x * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r16.].w);
+            r9.x = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+            r9.x = saturate(r9.x * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r16.w].w);
             r9.x = r10.w * r9.x;
-            r10.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
-            r10.w = saturate(r10.w * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r16.].w);
+            r10.w = dot(_LightClippingPlanes[r16.w].xyz, r0.xyz);
+            r10.w = saturate(r10.w * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r16.w].w);
             r9.x = r10.w * r9.x;
             r10.w = r9.x * r9.x;
             r9.x = -r9.x * 2.000000000e+000 + 3.000000000e+000;
@@ -1125,11 +1151,11 @@ void main(
             r10.w = dot(_LightClippingPlanes[r9.x].xyz, r0.xyz);
             r10.w = saturate(r10.w * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r9.x].w);
             r12.xw = int2(1,2) + (int2)r9.xx;
-            r9.x = dot(_LightClippingPlanes[r12.].xyz, r0.xyz);
-            r9.x = saturate(r9.x * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r12.].w);
+            r9.x = dot(_LightClippingPlanes[r12.w].xyz, r0.xyz);
+            r9.x = saturate(r9.x * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r12.w].w);
             r9.x = r10.w * r9.x;
-            r10.w = dot(_LightClippingPlanes[r12.].xyz, r0.xyz);
-            r10.w = saturate(r10.w * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r12.].w);
+            r10.w = dot(_LightClippingPlanes[r12.w].xyz, r0.xyz);
+            r10.w = saturate(r10.w * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r12.w].w);
             r9.x = r10.w * r9.x;
             r10.w = r9.x * r9.x;
             r9.x = -r9.x * 2.000000000e+000 + 3.000000000e+000;
@@ -1221,14 +1247,14 @@ void main(
             r10.w = _PointLightAttenuation[r8.w].x / r9.x;
             r10.w = saturate(_PointLightAttenuation[r8.w].y + r10.w);
             r11.w = (int)_PointLightClippingInfo[r8.w].x;
-            r12.w = dot(_LightClippingPlanes[r11.].xyz, r0.xyz);
-            r12.w = saturate(r12.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r11.].w);
+            r12.w = dot(_LightClippingPlanes[r11.w].xyz, r0.xyz);
+            r12.w = saturate(r12.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r11.w].w);
             r14.xy = int2(1,2) + (int2)r11.ww;
-            r11.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
-            r11.w = saturate(r11.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r14.].w);
+            r11.w = dot(_LightClippingPlanes[r14.w].xyz, r0.xyz);
+            r11.w = saturate(r11.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r14.w].w);
             r11.w = r12.w * r11.w;
-            r12.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
-            r12.w = saturate(r12.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r14.].w);
+            r12.w = dot(_LightClippingPlanes[r14.w].xyz, r0.xyz);
+            r12.w = saturate(r12.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r14.w].w);
             r11.w = r12.w * r11.w;
             r12.w = r11.w * r11.w;
             r11.w = -r11.w * 2.000000000e+000 + 3.000000000e+000;
@@ -1318,14 +1344,14 @@ void main(
             r11.x = r11.x * r11.x;
             r9.x = r11.x * r9.x;
             r11.x = (int)_SpotLightClippingInfo[r8.w].x;
-            r11.w = dot(_LightClippingPlanes[r11.].xyz, r0.xyz);
-            r11.w = saturate(r11.w * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r11.].w);
+            r11.w = dot(_LightClippingPlanes[r11.w].xyz, r0.xyz);
+            r11.w = saturate(r11.w * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r11.w].w);
             r17.xy = int2(1,2) + (int2)r11.xx;
-            r11.x = dot(_LightClippingPlanes[r17.].xyz, r0.xyz);
-            r11.x = saturate(r11.x * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r17.].w);
+            r11.x = dot(_LightClippingPlanes[r17.w].xyz, r0.xyz);
+            r11.x = saturate(r11.x * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r17.w].w);
             r11.x = r11.w * r11.x;
-            r11.w = dot(_LightClippingPlanes[r17.].xyz, r0.xyz);
-            r11.w = saturate(r11.w * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r17.].w);
+            r11.w = dot(_LightClippingPlanes[r17.w].xyz, r0.xyz);
+            r11.w = saturate(r11.w * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r17.w].w);
             r11.x = r11.x * r11.w;
             r11.w = r11.x * r11.x;
             r11.x = -r11.x * 2.000000000e+000 + 3.000000000e+000;
@@ -3005,4 +3031,9 @@ mov o0.w, l(1.000000)
 ret 
 // Approximately 1358 instruction slots used
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(272,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

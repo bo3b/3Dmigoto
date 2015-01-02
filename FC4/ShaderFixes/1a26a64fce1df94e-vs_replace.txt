@@ -1,5 +1,4 @@
-// White fog in distance
-
+//Fog
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -140,14 +139,14 @@ void main(
   r2.y = dot(r1.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
   r2.w = dot(r1.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
   o0.z = dot(r1.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
-  o0.xyw = r2.xyw;
-
-// Fix halo on white fog:
+  
 float4 stereo = StereoParams.Load(0);
-float separation = stereo.x; float convergence = stereo.y;
-
-r2.x += separation * (r2.w - convergence);
-
+float4 r10;
+r10.xyzw = r2.xyzw;
+r2.x += stereo.x*(r2.w - stereo.y);  
+  
+  o0.xyw = r10.xyw; //r2.xyw;  
+  
   r3.xyzw = _DepthTextureScaleOffset.xyzw * r2.xyww;
   o6.z = r2.w;
   o6.xy = r3.xy + r3.zw;
