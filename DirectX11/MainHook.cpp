@@ -79,15 +79,16 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 
 // Function to be called whenever real IsDebuggerPresent is called, so that we can force it to false.
 
-static BOOL WINAPI Hooked_IsDebuggerPresent()
-{
-	return sIsDebuggerPresent_Hook.fnIsDebuggerPresent();
-}
+//static BOOL WINAPI Hooked_IsDebuggerPresent()
+//{
+//	return sIsDebuggerPresent_Hook.fnIsDebuggerPresent();
+//}
 
 static bool InstallHooks()
 {
 	HINSTANCE hKernel32;
-	LPVOID fnOrigLoadLibrary, fnOrigIsDebuggerPresent;
+	LPVOID fnOrigLoadLibrary;
+	//LPVOID fnOrigIsDebuggerPresent;
 	DWORD dwOsErr;
 
 	if (bLog) NktHookLibHelpers::DebugPrint("Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
@@ -118,15 +119,15 @@ static bool InstallHooks()
 
 
 	// Next hook IsDebuggerPresent to force it false. Same Kernel32.dll
-	fnOrigIsDebuggerPresent = NktHookLibHelpers::GetProcedureAddress(hKernel32, "IsDebuggerPresent");
-	if (fnOrigIsDebuggerPresent == NULL)
-	{
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of IsDebuggerPresent for hook.\n");
-		return false;
-	}
+	//fnOrigIsDebuggerPresent = NktHookLibHelpers::GetProcedureAddress(hKernel32, "IsDebuggerPresent");
+	//if (fnOrigIsDebuggerPresent == NULL)
+	//{
+	//	if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of IsDebuggerPresent for hook.\n");
+	//	return false;
+	//}
 
-	dwOsErr = cHookMgr.Hook(&(sIsDebuggerPresent_Hook.nHookId), (LPVOID*)&(sIsDebuggerPresent_Hook.fnIsDebuggerPresent),
-		fnOrigIsDebuggerPresent, Hooked_IsDebuggerPresent);
+	//dwOsErr = cHookMgr.Hook(&(sIsDebuggerPresent_Hook.nHookId), (LPVOID*)&(sIsDebuggerPresent_Hook.fnIsDebuggerPresent),
+	//	fnOrigIsDebuggerPresent, Hooked_IsDebuggerPresent);
 
 	if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for IsDebuggerPresent using Deviare in-proc: %x\n", dwOsErr);
 
