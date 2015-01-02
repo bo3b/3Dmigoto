@@ -1,0 +1,435 @@
+
+cbuffer CPostFxHDRBloomEffectsParameterProvider : register(b0)
+{
+  float4 _BloomSmoothingParams : packoffset(c0);
+  float4 _BokehParams : packoffset(c1);
+  float4 _ColorAdjustment : packoffset(c2);
+  float4 _ColorBurnColorNormalized : packoffset(c3);
+  float4 _ColorBurnParameters : packoffset(c4);
+  float4 _ColorMaskAlphaOffset : packoffset(c5);
+  float4 _ColorMaskColor : packoffset(c6);
+  float4 _ColorMaskUVScaleBias : packoffset(c7);
+  float4 _ColorSeparationOpacity : packoffset(c8);
+  float4 _ColorSeparationUVScaleBias0 : packoffset(c9);
+  float4 _ColorSeparationUVScaleBias1 : packoffset(c10);
+  float4 _ColorSeparationUVScaleBias2 : packoffset(c11);
+  float4 _CombineSettings : packoffset(c12);
+  float4 _DistortionSharpnessAndFactor : packoffset(c13);
+  float4 _FocusDistances : packoffset(c14);
+  float4 _LoResTextureSize : packoffset(c15);
+  float4 _LuminanceParams : packoffset(c16);
+  float4 _OverlayColor : packoffset(c17);
+  float4 _SourceDistortionTextureScaleBias : packoffset(c18);
+  float4 _VignetteNoiseParams : packoffset(c19);
+  float2 _ExposureZoom : packoffset(c20);
+  float3 _ColorBurnColor : packoffset(c21);
+  float _FocusPlane : packoffset(c21.w);
+}
+SamplerState LinearTextureSampler_s : register(s0);
+Texture2D<float4> HistoryColorSampler : register(t0);
+Texture2D<float2> MotionVectorSampler : register(t1);
+Texture2D<float4> ColorSampler : register(t2);
+Texture2D<float4> BloomResponseSampler : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  uint v2 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11;
+  uint4 bitmask;
+  r0.y = 5.000000000e-001;
+  r1.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(-2, -2)).xyz;
+  r2.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(0, -2)).xyz;
+  r3.xyz = r2.xyz + r1.xyz;
+  r4.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(2, -2)).xyz;
+  r3.xyz = r4.xyz + r3.xyz;
+  r5.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(-2, 0)).xyz;
+  r3.xyz = r5.xyz + r3.xyz;
+  r6.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(0, 0)).xyz;
+  r3.xyz = r6.xyz + r3.xyz;
+  r7.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(2, 0)).xyz;
+  r3.xyz = r7.xyz + r3.xyz;
+  r8.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(-2, 2)).xyz;
+  r3.xyz = r8.xyz + r3.xyz;
+  r9.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(0, 2)).xyz;
+  r3.xyz = r9.xyz + r3.xyz;
+  r10.xyz = ColorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000, int2(2, 2)).xyz;
+  r3.xyz = r10.xyz + r3.xyz;
+  r3.xyz = float3(1.111111e-001,1.111111e-001,1.111111e-001) * r3.xyz;
+  r0.z = dot(r3.xyz, float3(2.989000e-001,5.870000e-001,1.140000e-001));
+  r0.z = max(r0.z, 9.999999975e-007);
+  r0.w = 6.250000000e-002 * r0.z;
+  r0.z = _LuminanceParams.z * r0.z;
+  r0.z = log2(r0.z);
+  r0.z = 6.931471825e-001 * r0.z;
+  r0.x = min(r0.w, 1.000000000e+000);
+  r0.y = BloomResponseSampler.SampleLevel(LinearTextureSampler_s, r0.xy, 0.000000000e+000).x;
+  r0.x = rcp(r0.x);
+  r0.y = 6.250000000e-002 * r0.y;
+  r0.x = r0.y * r0.x;
+  r11.xyz = min(r1.xyz, r2.xyz);
+  r1.xyz = max(r1.xyz, r2.xyz);
+  r1.xyz = max(r4.xyz, r1.xyz);
+  r2.xyz = min(r4.xyz, r11.xyz);
+  r2.xyz = min(r5.xyz, r2.xyz);
+  r1.xyz = max(r5.xyz, r1.xyz);
+  r1.xyz = max(r6.xyz, r1.xyz);
+  r2.xyz = min(r6.xyz, r2.xyz);
+  r2.xyz = min(r7.xyz, r2.xyz);
+  r1.xyz = max(r7.xyz, r1.xyz);
+  r1.xyz = max(r8.xyz, r1.xyz);
+  r2.xyz = min(r8.xyz, r2.xyz);
+  r2.xyz = min(r9.xyz, r2.xyz);
+  r1.xyz = max(r9.xyz, r1.xyz);
+  r1.xyz = max(r10.xyz, r1.xyz);
+  r2.xyz = min(r10.xyz, r2.xyz);
+  r2.xyz = r2.xyz * r0.xxx;
+  r1.xyz = r1.xyz * r0.xxx + -r2.xyz;
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.y = sqrt(r0.y);
+  r0.y = saturate(_BloomSmoothingParams.z * r0.y);
+  r0.y = _BloomSmoothingParams.y * r0.y + _BloomSmoothingParams.x;
+  r1.xy = MotionVectorSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000).xy;
+  r1.xy = v1.xy + r1.xy;
+  r1.xyz = HistoryColorSampler.SampleLevel(LinearTextureSampler_s, r1.xy, 0.000000000e+000).xyz;
+  r1.xyz = max(r1.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  r1.xyz = min(r1.xyz, float3(1.024000e+003,1.024000e+003,1.024000e+003));
+  r1.xyz = -r3.xyz * r0.xxx + r1.xyz;
+  r2.xyz = r3.xyz * r0.xxx;
+  o0.xyz = r0.yyy * r1.xyz + r2.xyz;
+  o0.w = 0.000000000e+000;
+  r0.x = r0.z >= _LuminanceParams.x;
+  r0.y = _LuminanceParams.y >= r0.z;
+  r0.xy = r0.xy ? float2(1.000000e+000,1.000000e+000) : 0;
+  r0.x = r0.x * r0.y;
+  r0.yz = v1.xy >= _ExposureZoom.xx;
+  r0.yz = r0.yz ? float2(1.000000e+000,1.000000e+000) : 0;
+  r0.x = r0.x * r0.y;
+  r0.yw = _ExposureZoom.yy >= v1.xy;
+  r0.yw = r0.yw ? float2(1.000000e+000,1.000000e+000) : 0;
+  r0.x = r0.x * r0.y;
+  r0.x = r0.x * r0.z;
+  o1.xyzw = r0.xxxx * r0.wwww;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer CPostFxHDRBloomEffectsParameterProvider
+// {
+//
+//   float4 _BloomSmoothingParams;      // Offset:    0 Size:    16
+//   float4 _BokehParams;               // Offset:   16 Size:    16 [unused]
+//   float4 _ColorAdjustment;           // Offset:   32 Size:    16 [unused]
+//   float4 _ColorBurnColorNormalized;  // Offset:   48 Size:    16 [unused]
+//   float4 _ColorBurnParameters;       // Offset:   64 Size:    16 [unused]
+//   float4 _ColorMaskAlphaOffset;      // Offset:   80 Size:    16 [unused]
+//   float4 _ColorMaskColor;            // Offset:   96 Size:    16 [unused]
+//   float4 _ColorMaskUVScaleBias;      // Offset:  112 Size:    16 [unused]
+//   float4 _ColorSeparationOpacity;    // Offset:  128 Size:    16 [unused]
+//   float4 _ColorSeparationUVScaleBias0;// Offset:  144 Size:    16 [unused]
+//   float4 _ColorSeparationUVScaleBias1;// Offset:  160 Size:    16 [unused]
+//   float4 _ColorSeparationUVScaleBias2;// Offset:  176 Size:    16 [unused]
+//   float4 _CombineSettings;           // Offset:  192 Size:    16 [unused]
+//   float4 _DistortionSharpnessAndFactor;// Offset:  208 Size:    16 [unused]
+//   float4 _FocusDistances;            // Offset:  224 Size:    16 [unused]
+//   float4 _LoResTextureSize;          // Offset:  240 Size:    16 [unused]
+//   float4 _LuminanceParams;           // Offset:  256 Size:    16
+//   float4 _OverlayColor;              // Offset:  272 Size:    16 [unused]
+//   float4 _SourceDistortionTextureScaleBias;// Offset:  288 Size:    16 [unused]
+//   float4 _VignetteNoiseParams;       // Offset:  304 Size:    16 [unused]
+//   float2 _ExposureZoom;              // Offset:  320 Size:     8
+//   float3 _ColorBurnColor;            // Offset:  336 Size:    12 [unused]
+//   float _FocusPlane;                 // Offset:  348 Size:     4 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// LinearTextureSampler              sampler      NA          NA    0        1
+// HistoryColorSampler               texture  float4          2d    0        1
+// MotionVectorSampler               texture  float2          2d    1        1
+// ColorSampler                      texture  float4          2d    2        1
+// BloomResponseSampler              texture  float4          2d    3        1
+// CPostFxHDRBloomEffectsParameterProvider    cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+// SV_IsFrontFace           0   x           2    FFACE    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[21], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_temps 12
+mov r0.y, l(0.500000)
+sample_l_aoffimmi_indexable(-2,-2,0)(texture2d)(float,float,float,float) r1.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+sample_l_aoffimmi_indexable(0,-2,0)(texture2d)(float,float,float,float) r2.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r1.xyzx, r2.xyzx
+sample_l_aoffimmi_indexable(2,-2,0)(texture2d)(float,float,float,float) r4.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r4.xyzx
+sample_l_aoffimmi_indexable(-2,0,0)(texture2d)(float,float,float,float) r5.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r5.xyzx
+sample_l_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r6.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r6.xyzx
+sample_l_aoffimmi_indexable(2,0,0)(texture2d)(float,float,float,float) r7.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r7.xyzx
+sample_l_aoffimmi_indexable(-2,2,0)(texture2d)(float,float,float,float) r8.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r8.xyzx
+sample_l_aoffimmi_indexable(0,2,0)(texture2d)(float,float,float,float) r9.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r9.xyzx
+sample_l_aoffimmi_indexable(2,2,0)(texture2d)(float,float,float,float) r10.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r10.xyzx
+mul r3.xyz, r3.xyzx, l(0.111111, 0.111111, 0.111111, 0.000000)
+dp3 r0.z, r3.xyzx, l(0.298900, 0.587000, 0.114000, 0.000000)
+max r0.z, r0.z, l(0.000001)
+mul r0.w, r0.z, l(0.062500)
+mul r0.z, r0.z, cb0[16].z
+log r0.z, r0.z
+mul r0.z, r0.z, l(0.693147)
+min r0.x, r0.w, l(1.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r0.y, r0.xyxx, t3.yxzw, s0, l(0.000000)
+rcp r0.x, r0.x
+mul r0.y, r0.y, l(0.062500)
+mul r0.x, r0.x, r0.y
+min r11.xyz, r1.xyzx, r2.xyzx
+max r1.xyz, r1.xyzx, r2.xyzx
+max r1.xyz, r4.xyzx, r1.xyzx
+min r2.xyz, r4.xyzx, r11.xyzx
+min r2.xyz, r5.xyzx, r2.xyzx
+max r1.xyz, r5.xyzx, r1.xyzx
+max r1.xyz, r6.xyzx, r1.xyzx
+min r2.xyz, r6.xyzx, r2.xyzx
+min r2.xyz, r7.xyzx, r2.xyzx
+max r1.xyz, r7.xyzx, r1.xyzx
+max r1.xyz, r8.xyzx, r1.xyzx
+min r2.xyz, r8.xyzx, r2.xyzx
+min r2.xyz, r9.xyzx, r2.xyzx
+max r1.xyz, r9.xyzx, r1.xyzx
+max r1.xyz, r10.xyzx, r1.xyzx
+min r2.xyz, r10.xyzx, r2.xyzx
+mul r2.xyz, r0.xxxx, r2.xyzx
+mad r1.xyz, r1.xyzx, r0.xxxx, -r2.xyzx
+dp3 r0.y, r1.xyzx, r1.xyzx
+sqrt r0.y, r0.y
+mul_sat r0.y, r0.y, cb0[0].z
+mad r0.y, cb0[0].y, r0.y, cb0[0].x
+sample_l_indexable(texture2d)(float,float,float,float) r1.xy, v1.xyxx, t1.xyzw, s0, l(0.000000)
+add r1.xy, r1.xyxx, v1.xyxx
+sample_l_indexable(texture2d)(float,float,float,float) r1.xyz, r1.xyxx, t0.xyzw, s0, l(0.000000)
+max r1.xyz, r1.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+min r1.xyz, r1.xyzx, l(1024.000000, 1024.000000, 1024.000000, 0.000000)
+mad r1.xyz, -r3.xyzx, r0.xxxx, r1.xyzx
+mul r2.xyz, r0.xxxx, r3.xyzx
+mad o0.xyz, r0.yyyy, r1.xyzx, r2.xyzx
+mov o0.w, l(0)
+ge r0.x, r0.z, cb0[16].x
+ge r0.y, cb0[16].y, r0.z
+and r0.xy, r0.xyxx, l(0x3f800000, 0x3f800000, 0, 0)
+mul r0.x, r0.y, r0.x
+ge r0.yz, v1.xxyx, cb0[20].xxxx
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+mul r0.x, r0.y, r0.x
+ge r0.yw, cb0[20].yyyy, v1.xxxy
+and r0.yw, r0.yyyw, l(0, 0x3f800000, 0, 0x3f800000)
+mul r0.x, r0.y, r0.x
+mul r0.x, r0.z, r0.x
+mul o1.xyzw, r0.wwww, r0.xxxx
+ret 
+// Approximately 74 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer CPostFxHDRBloomEffectsParameterProvider
+// {
+//
+//   float4 _BloomSmoothingParams;      // Offset:    0 Size:    16
+//   float4 _BokehParams;               // Offset:   16 Size:    16 [unused]
+//   float4 _ColorAdjustment;           // Offset:   32 Size:    16 [unused]
+//   float4 _ColorBurnColorNormalized;  // Offset:   48 Size:    16 [unused]
+//   float4 _ColorBurnParameters;       // Offset:   64 Size:    16 [unused]
+//   float4 _ColorMaskAlphaOffset;      // Offset:   80 Size:    16 [unused]
+//   float4 _ColorMaskColor;            // Offset:   96 Size:    16 [unused]
+//   float4 _ColorMaskUVScaleBias;      // Offset:  112 Size:    16 [unused]
+//   float4 _ColorSeparationOpacity;    // Offset:  128 Size:    16 [unused]
+//   float4 _ColorSeparationUVScaleBias0;// Offset:  144 Size:    16 [unused]
+//   float4 _ColorSeparationUVScaleBias1;// Offset:  160 Size:    16 [unused]
+//   float4 _ColorSeparationUVScaleBias2;// Offset:  176 Size:    16 [unused]
+//   float4 _CombineSettings;           // Offset:  192 Size:    16 [unused]
+//   float4 _DistortionSharpnessAndFactor;// Offset:  208 Size:    16 [unused]
+//   float4 _FocusDistances;            // Offset:  224 Size:    16 [unused]
+//   float4 _LoResTextureSize;          // Offset:  240 Size:    16 [unused]
+//   float4 _LuminanceParams;           // Offset:  256 Size:    16
+//   float4 _OverlayColor;              // Offset:  272 Size:    16 [unused]
+//   float4 _SourceDistortionTextureScaleBias;// Offset:  288 Size:    16 [unused]
+//   float4 _VignetteNoiseParams;       // Offset:  304 Size:    16 [unused]
+//   float2 _ExposureZoom;              // Offset:  320 Size:     8
+//   float3 _ColorBurnColor;            // Offset:  336 Size:    12 [unused]
+//   float _FocusPlane;                 // Offset:  348 Size:     4 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// LinearTextureSampler_s            sampler      NA          NA    0        1
+// HistoryColorSampler               texture  float4          2d    0        1
+// MotionVectorSampler               texture  float2          2d    1        1
+// ColorSampler                      texture  float4          2d    2        1
+// BloomResponseSampler              texture  float4          2d    3        1
+// CPostFxHDRBloomEffectsParameterProvider    cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+// SV_IsFrontFace           0   x           2    FFACE    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[21], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_temps 12
+mov r0.y, l(0.500000)
+sample_l_aoffimmi_indexable(-2,-2,0)(texture2d)(float,float,float,float) r1.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+sample_l_aoffimmi_indexable(0,-2,0)(texture2d)(float,float,float,float) r2.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r1.xyzx, r2.xyzx
+sample_l_aoffimmi_indexable(2,-2,0)(texture2d)(float,float,float,float) r4.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r4.xyzx
+sample_l_aoffimmi_indexable(-2,0,0)(texture2d)(float,float,float,float) r5.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r5.xyzx
+sample_l_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r6.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r6.xyzx
+sample_l_aoffimmi_indexable(2,0,0)(texture2d)(float,float,float,float) r7.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r7.xyzx
+sample_l_aoffimmi_indexable(-2,2,0)(texture2d)(float,float,float,float) r8.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r8.xyzx
+sample_l_aoffimmi_indexable(0,2,0)(texture2d)(float,float,float,float) r9.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r9.xyzx
+sample_l_aoffimmi_indexable(2,2,0)(texture2d)(float,float,float,float) r10.xyz, v1.xyxx, t2.xyzw, s0, l(0.000000)
+add r3.xyz, r3.xyzx, r10.xyzx
+mul r3.xyz, r3.xyzx, l(0.111111, 0.111111, 0.111111, 0.000000)
+dp3 r0.z, r3.xyzx, l(0.298900, 0.587000, 0.114000, 0.000000)
+max r0.z, r0.z, l(0.000001)
+mul r0.w, r0.z, l(0.062500)
+mul r0.z, r0.z, cb0[16].z
+log r0.z, r0.z
+mul r0.z, r0.z, l(0.693147)
+min r0.x, r0.w, l(1.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r0.y, r0.xyxx, t3.yxzw, s0, l(0.000000)
+rcp r0.x, r0.x
+mul r0.x, r0.y, r0.x
+mul r0.x, r0.x, l(0.062500)
+min r11.xyz, r1.xyzx, r2.xyzx
+max r1.xyz, r1.xyzx, r2.xyzx
+max r1.xyz, r1.xyzx, r4.xyzx
+min r2.xyz, r4.xyzx, r11.xyzx
+min r2.xyz, r2.xyzx, r5.xyzx
+max r1.xyz, r1.xyzx, r5.xyzx
+max r1.xyz, r1.xyzx, r6.xyzx
+min r2.xyz, r2.xyzx, r6.xyzx
+min r2.xyz, r2.xyzx, r7.xyzx
+max r1.xyz, r1.xyzx, r7.xyzx
+max r1.xyz, r1.xyzx, r8.xyzx
+min r2.xyz, r2.xyzx, r8.xyzx
+min r2.xyz, r2.xyzx, r9.xyzx
+max r1.xyz, r1.xyzx, r9.xyzx
+max r1.xyz, r1.xyzx, r10.xyzx
+min r2.xyz, r2.xyzx, r10.xyzx
+mul r2.xyz, r0.xxxx, r2.xyzx
+mad r1.xyz, r1.xyzx, r0.xxxx, -r2.xyzx
+dp3 r0.y, r1.xyzx, r1.xyzx
+sqrt r0.y, r0.y
+mul_sat r0.y, r0.y, cb0[0].z
+mad r0.y, cb0[0].y, r0.y, cb0[0].x
+sample_l_indexable(texture2d)(float,float,float,float) r1.xy, v1.xyxx, t1.xyzw, s0, l(0.000000)
+add r1.xy, r1.xyxx, v1.xyxx
+sample_l_indexable(texture2d)(float,float,float,float) r1.xyz, r1.xyxx, t0.xyzw, s0, l(0.000000)
+max r1.xyz, r1.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+min r1.xyz, r1.xyzx, l(1024.000000, 1024.000000, 1024.000000, 0.000000)
+mad r1.xyz, -r3.xyzx, r0.xxxx, r1.xyzx
+mul r2.xyz, r0.xxxx, r3.xyzx
+mad o0.xyz, r0.yyyy, r1.xyzx, r2.xyzx
+mov o0.w, l(0)
+ge r0.x, r0.z, cb0[16].x
+ge r0.y, cb0[16].y, r0.z
+and r0.xy, r0.xyxx, l(0x3f800000, 0x3f800000, 0, 0)
+ne r1.xy, l(0.000000, 0.000000, 0.000000, 0.000000), r0.xyxx
+and r0.xy, r1.xyxx, l(0x3f800000, 0x3f800000, 0, 0)
+mul r0.x, r0.y, r0.x
+ge r0.yz, v1.xxyx, cb0[20].xxxx
+and r0.yz, r0.yyzy, l(0, 0x3f800000, 0x3f800000, 0)
+mul r0.x, r0.y, r0.x
+ge r0.yw, cb0[20].yyyy, v1.xxxy
+and r0.yw, r0.yyyw, l(0, 0x3f800000, 0, 0x3f800000)
+mul r0.x, r0.y, r0.x
+mul r0.x, r0.z, r0.x
+mul o1.xyzw, r0.wwww, r0.xxxx
+ret 
+// Approximately 76 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

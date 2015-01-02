@@ -1,0 +1,3008 @@
+
+cbuffer CViewportShaderParameterProvider : register(b0)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
+cbuffer CGlobalShaderParameterProvider : register(b1)
+{
+  float4 _BurnColor : packoffset(c0);
+  float4 _BurnParams : packoffset(c1);
+  float4 _BurnParams2 : packoffset(c2);
+  float4 _BurnParams3 : packoffset(c3);
+  float4 _CascadedShadowScaleOffsetTile0 : packoffset(c4);
+  float4 _CascadedShadowScaleOffsetTile1 : packoffset(c5);
+  float4 _GlobalScalars : packoffset(c6);
+  float4 _SSS_MiscParams : packoffset(c7);
+  float4 _WindSimParamsX : packoffset(c8);
+  float4 _WindSimParamsY : packoffset(c9);
+  float2 _RangeDepthCompression : packoffset(c10);
+  float3 _SSS_Color : packoffset(c11);
+  int _BRDFHighQuality : packoffset(c11.w);
+}
+
+cbuffer CDeferredLightingParameterProvider : register(b2)
+{
+  float4 _DistanceBoostParameters : packoffset(c0);
+  float4 _ForceAlbedoOnlyDisableShadows : packoffset(c1);
+  float4x4 _InvViewRotProjectionMatrix : packoffset(c2);
+  float4 _LightClippingPlanes[24] : packoffset(c6);
+  float4 _PointLightAttenuation[4] : packoffset(c30);
+  float4 _PointLightClippingInfo[4] : packoffset(c34);
+  float4 _PointLightColor[4] : packoffset(c38);
+  float4 _PointLightMinMaxDepth[4] : packoffset(c42);
+  float4 _PointLightPos[4] : packoffset(c46);
+  float4 _QuadParams : packoffset(c50);
+  float4 _SpotLightAttenuation[4] : packoffset(c51);
+  float4 _SpotLightClippingInfo[4] : packoffset(c55);
+  float4 _SpotLightColor[4] : packoffset(c59);
+  float4 _SpotLightDirection[4] : packoffset(c63);
+  float4 _SpotLightMinMaxDepth[4] : packoffset(c67);
+  float4 _SpotLightPos[4] : packoffset(c71);
+  float4 _SpotScaleOffsetUVS[4] : packoffset(c75);
+  float4 _SpotShadowMapSize : packoffset(c79);
+  float4x4 _SpotShadowProjectionMatrix[4] : packoffset(c80);
+  float4 _SunColor : packoffset(c96);
+  float4 _SunDirection : packoffset(c97);
+  float3 _CamVectorOffset : packoffset(c98);
+  float3 _CamVectorScaleX : packoffset(c99);
+  float3 _CamVectorScaleY : packoffset(c100);
+  float _AmbientRange : packoffset(c100.w);
+  float _DebugLightComplexityBias : packoffset(c101);
+  float _DirectLightOcclusion : packoffset(c101.y);
+  float _SSAOPerMaterialIntensity : packoffset(c101.z);
+  int _PointLightCount : packoffset(c101.w);
+  int _SpotLightCount : packoffset(c102);
+  int _SpotLightGoboCount : packoffset(c102.y);
+}
+SamplerState DepthVPSampler__SampObj___s : register(s0);
+SamplerState DeferredAmbientTexture_s : register(s1);
+SamplerState SpotGobo0__SampObj___s : register(s2);
+SamplerState SpotGobo1__SampObj___s : register(s3);
+SamplerState ColorPointClamp_s : register(s4);
+SamplerState SkinDiffusePreIntegrated__SampObj___s : register(s5);
+Texture2D<float4> DepthVPSampler__TexObj__ : register(t0);
+Texture2D<float4> DeferredAmbientTexture_TextureObject : register(t1);
+Texture2D<float4> SpotGobo0__TexObj__ : register(t2);
+Texture2D<float4> SpotGobo1__TexObj__ : register(t3);
+Texture2D<float> SSToksvig : register(t4);
+Texture2D<float4> GBufferT0 : register(t5);
+Texture2D<float4> GBufferT1 : register(t6);
+Texture2D<float4> GBufferT2 : register(t7);
+Texture2D<float4> GBufferT3 : register(t8);
+Texture2D<float4> SkinDiffusePreIntegrated__TexObj__ : register(t9);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  uint v2 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30;
+  uint4 bitmask;
+  r0.xyzw = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).xyzw;
+  r0.x = _DepthScale.y * r0.x + _DepthScale.x;
+  r0.x = 1.000000e+000 / r0.x;
+  r0.y = _CameraDistances.x * _CameraDistances.y;
+  r0.x = _CameraDistances.z * r0.x;
+  r0.x = r0.y / r0.x;
+  r0.x = _CameraDistances.y + -r0.x;
+  r0.z = -r0.x * _CameraDistances.w + 1.000000000e+000;
+  r0.xy = v1.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
+  r0.w = 1.000000000e+000;
+  r1.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
+  r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
+  r0.xyz = r1.xyz / r0.xxx;
+  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+  r1.xy = (int2)v0.xy;
+  r1.zw = float2(0.000000e+000,0.000000e+000);
+  r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
+  r3.xyzw = GBufferT1.Load(r1.xyw).xyzw;
+  r4.xyzw = GBufferT2.Load(r1.xyw).xyzw;
+  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xzwy;
+  r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
+  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
+  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
+  r9.x = r8.x;
+  r9.y = r7.x;
+  r9.z = r6.x;
+  r9.w = r5.x;
+  r9.xyzw = r9.xyzw + -r2.xxxx;
+  r9.xyzw = abs(r9.xyzw) * float4(1.000000e+001,1.000000e+001,1.000000e+001,1.000000e+001) + float4(1.000000e-001,1.000000e-001,1.000000e-001,1.000000e-001);
+  r9.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000) / r9.xyzw;
+  r6.x = dot(r9.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+  r6.x = 1.000000e+000 / r6.x;
+  r9.xyzw = r9.xyzw * r6.xxxx;
+  r5.x = r8.y;
+  r5.y = r7.y;
+  r5.z = r6.y;
+  r5.y = dot(r5.xyzw, r9.xyzw);
+  r5.xw = (int2)r1.xy & int2(1,1);
+  r5.x = r5.x != r5.w;
+  r5.z = r2.y;
+  r5.yz = r5.xx ? r5.yz : r5.zy;
+  r5.x = r2.x * r2.x;
+  r5.xyz = float3(-0.000000e+000,-4.980392e-001,-4.980392e-001) + r5.xyz;
+  r6.yw = r5.xx + r5.zy;
+  r6.x = r6.w + -r5.z;
+  r2.x = r5.x + -r5.y;
+  r6.z = r2.x + -r5.z;
+  r6.xyz = saturate(r6.xyz);
+  r2.xy = float2(2.550000e+002,1.300000e+001) * r2.wz;
+  r2.x = (uint)r2.x;
+  r2.x = (int)r2.x & 7;
+  r2.w = 3.000000000e+000 * r3.w;
+  r2.w = (uint)r2.w;
+  r3.xyz = r3.xyz * float3(1.414214e+000,1.414214e+000,1.414214e+000) + float3(-7.071068e-001,-7.071068e-001,-7.071068e-001);
+  r3.w = dot(r3.xyz, r3.xyz);
+  r3.w = min(r3.w, 1.000000000e+000);
+  r3.w = 1.000000000e+000 + -r3.w;
+  r3.w = sqrt(r3.w);
+  r5.w = r2.w ? r3.x : r3.w;
+  r7.xy = r2.ww == float2(1.000000e+000,2.000000e+000);
+  r5.xy = r7.xy ? r3.ww : r3.yz;
+  r2.w = r2.w ? r3.w : r3.x;
+  r2.w = r7.x ? r3.y : r2.w;
+  r5.z = r7.y ? r3.z : r2.w;
+  r3.xyz = float3(-2.000000e+000,2.000000e+000,2.000000e+000) * r5.xxx;
+  r7.xyz = float3(2.000000e+000,-2.000000e+000,-2.000000e+000) * r5.www;
+  r8.xyz = r7.xxz * r5.yzw + float3(0.000000e+000,0.000000e+000,1.000000e+000);
+  r8.xyz = r3.xzx * r5.zyx + r8.xyz;
+  r9.xyzw = r2.xxxx == float4(1.000000e+000,5.000000e+000,6.000000e+000,3.000000e+000);
+  if (r9.x != 0) {
+    r2.w = 2.550000000e+002 * r4.y;
+    r2.w = (uint)r2.w;
+    r2.w = (uint)r2.w >> 2;
+    r2.w = r2.w;
+    r2.w = 1.587301679e-002 * r2.w;
+    r3.w = 1.500000060e-001;
+    r10.x = 0.000000000e+000;
+    r11.xw = float2(0.000000e+000,0.000000e+000);
+    r12.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+    r14.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+    r15.xyz = r8.xyz;
+    r13.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+    r16.x = 0.000000000e+000;
+  } else {
+    r17.xyzw = GBufferT3.Load(r1.xyw).xyzw;
+    r4.x = 2.550000000e+002 * r4.x;
+    r4.x = (uint)r4.x;
+    r6.w = (uint)r4.x >> 4;
+    r6.w = r6.w;
+    r10.x = 6.666667014e-002 * r6.w;
+    r4.x = (int)r4.x & 15;
+    r4.x = r4.x;
+    r3.w = 6.666667014e-002 * r4.x;
+    r4.x = r2.x == 3;
+    if (r4.x != 0) {
+      r18.xyz = r17.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+      r4.x = dot(r18.xyz, r18.xyz);
+      r4.x = rsqrt(r4.x);
+      r15.xyz = r18.xyz * r4.xxx;
+      r12.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r14.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r11.xw = float2(0.000000e+000,0.000000e+000);
+      r13.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r16.x = r4.w;
+    } else {
+      r18.xyz = r17.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+      r4.x = dot(r18.xyz, r18.xyz);
+      r4.x = rsqrt(r4.x);
+      r18.xyz = r18.xyz * r4.xxx;
+      r19.xyz = r2.xxx == float3(4.000000e+000,5.000000e+000,6.000000e+000);
+      r20.xyz = r17.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+      r4.x = dot(r20.xyz, r20.xyz);
+      r4.x = rsqrt(r4.x);
+      r20.xyz = r20.xyz * r4.xxx;
+      r4.x = 2.550000000e+002 * r17.w;
+      r4.x = (uint)r4.x;
+      r6.w = (uint)r4.x >> 4;
+      r6.w = r6.w;
+      r21.x = 6.666667014e-002 * r6.w;
+      r4.x = (int)r4.x & 15;
+      r4.x = r4.x;
+      r21.y = 6.666667014e-002 * r4.x;
+      r22.xyz = float3(2.550000e+002,2.550000e+002,2.550000e+002) * r4.wyz;
+      r4.x = (uint)r22.x;
+      r4.z = (uint)r4.x >> 4;
+      r4.z = r4.z;
+      r21.w = 6.666667014e-002 * r4.z;
+      r4.x = (int)r4.x & 15;
+      r4.x = r4.x;
+      r22.w = 6.666667014e-002 * r4.x;
+      r21.z = r22.y;
+      r21.xyzw = r19.zzzz ? r21.xyzw : 0;
+      r20.xyz = r19.zzz ? r20.xyz : 0;
+      r22.zw = r19.zz ? r22.zw : 0;
+      r23.xzw = float3(1.000000e+000,0.000000e+000,0.000000e+000);
+      r23.y = r4.w;
+      r22.xy = r23.yw;
+      r23.xyzw = r19.yyyy ? r23.xyzw : r22.xyzw;
+      r4.x = (int)r19.x | (int)r19.y;
+      r13.xyzw = r4.xxxx ? float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000) : r21.wxyz;
+      r14.xyz = r4.xxx ? float3(0.000000e+000,0.000000e+000,0.000000e+000) : r20.xyz;
+      r15.xyz = r19.xxx ? r18.xyz : r8.xyz;
+      r17.yz = float2(0.000000e+000,0.000000e+000);
+      r17.w = r23.y;
+      r11.xw = r19.xx ? r17.yx : r17.wz;
+      r16.xyz = r19.xxx ? r22.xyy : r23.xzw;
+      r12.xyz = r13.yzw;
+      r13.yz = r16.yz;
+    }
+    r2.w = r4.y;
+  }
+  r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
+  r1.y = exp2(r2.y);
+  r1.z = 1.000000000e+000 + -r1.x;
+  r1.y = r1.y * r1.z + r1.x;
+  r1.x = r1.x / r1.y;
+  r1.x = log2(abs(r1.x));
+  r1.x = 1.109765396e-001 * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = r2.z * r1.x;
+  r1.y = 5.699999928e-001 * r1.x;
+  r1.y = _BRDFHighQuality ? r1.x : r1.y;
+  r1.x = r9.y ? r1.y : r1.x;
+  r13.w = 0.000000000e+000;
+  r10.y = 0.000000000e+000;
+  r4.xyzw = r9.zzzz ? r13.wxyz : r10.xyyy;
+  r1.yzw = _CameraPosition_DistanceScale.xyz + -r0.xyz;
+  r2.y = dot(r1.yzw, r1.yzw);
+  r2.y = sqrt(r2.y);
+  r1.yzw = r1.yzw / r2.yyy;
+  r2.z = dot(r8.xyz, r1.yzw);
+  r6.w = 1.300000000e+001 * r1.x;
+  r7.w = r1.x * -2.554450035e-001 + 1.401520014e+000;
+  r7.w = r7.w * r1.x + -1.946949959e+000;
+  r7.w = r7.w * r1.x + 8.165000081e-001;
+  r6.w = exp2(r6.w);
+  r6.w = _BRDFHighQuality ? r7.w : r6.w;
+  r3.w = r3.w * 8.200000226e-002 + 1.799999923e-002;
+  r10.xyz = r6.xyz + -r3.www;
+  r10.xyz = r4.xxx * r10.xyz + r3.www;
+  r4.x = 1.000000000e+000 + -r4.x;
+  r13.xyz = r6.xyz * r4.xxx;
+  r4.x = r2.x;
+  r7.w = r4.x >= 9.998999834e-001;
+  r7.w = r7.w ? 1.000000 : 0;
+  r4.x = 1.000100017e+000 >= r4.x;
+  r4.x = r4.x ? 1.000000 : 0;
+  r4.x = r7.w * r4.x;
+  r17.xyzw = DeferredAmbientTexture_TextureObject.Sample(DeferredAmbientTexture_s, v1.xy).xyzw;
+  r16.yz = r2.xx == float2(2.000000e+000,4.000000e+000);
+  if (r16.y != 0) {
+    r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r10.xyz;
+    r7.w = r6.w * r6.w;
+    r7.w = r7.w * 4.000000000e+000 + 1.000000000e+000;
+    r7.w = 1.000000e+000 / r7.w;
+    r8.w = r6.w * r6.w + 9.999999975e-007;
+    r9.x = r6.w * 1.250000000e-001 + 2.500000000e-001;
+    r18.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+    r19.yz = float2(0.000000e+000,0.000000e+000);
+    r10.w = 0.000000000e+000;
+    while (true) {
+      r12.w = (int)r10.w >= (int)_PointLightCount;
+      if (r12.w != 0) break;
+      r20.xyz = _PointLightPos[r10.].xyz + -r0.xyz;
+      r12.w = dot(r20.xyz, r20.xyz);
+      r13.w = _PointLightAttenuation[r10.].x / r12.w;
+      r13.w = saturate(_PointLightAttenuation[r10.].y + r13.w);
+      r14.w = (int)_PointLightClippingInfo[r10.].x;
+      r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+      r16.yw = int2(1,2) + (int2)r14.ww;
+      r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+      r14.w = saturate(r14.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r14.w = r15.w * r14.w;
+      r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r14.w = r15.w * r14.w;
+      r15.w = r14.w * r14.w;
+      r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
+      r14.w = r15.w * r14.w;
+      r13.w = r14.w * r13.w;
+      r14.w = r13.w == 0.000000;
+      if (r14.w != 0) {
+        r10.w = (int)r10.w + 1;
+        continue;
+      }
+      r12.w = rsqrt(r12.w);
+      r21.xyz = r20.xyz * r12.www;
+      r20.xyz = r20.xyz * r12.www + r1.yzw;
+      r12.w = dot(r20.xyz, r20.xyz);
+      r12.w = rsqrt(r12.w);
+      r20.xyz = r20.xyz * r12.www;
+      r12.w = dot(r20.xyz, r1.yzw);
+      r14.w = 1.000000000e+000 + -r12.w;
+      r15.w = r14.w * r14.w;
+      r15.w = r15.w * r15.w;
+      r14.w = r15.w * r14.w;
+      r22.xyz = r17.xyz * r14.www + r10.xyz;
+      r12.w = -8.656169891e+000 * r12.w;
+      r12.w = exp2(r12.w);
+      r23.xyz = r17.xyz * r12.www + r10.xyz;
+      r22.xyz = _BRDFHighQuality ? r22.xyz : r23.xyz;
+      r12.w = saturate(dot(r8.xyz, r21.xyz));
+      r14.w = r12.w + r2.z;
+      r14.w = -r12.w * r2.z + r14.w;
+      r14.w = max(r14.w, 9.999999776e-003);
+      r14.w = 1.000000e+000 / r14.w;
+      r14.w = _BRDFHighQuality ? r14.w : 1.000000000e+000;
+      r23.xyz = _PointLightColor[r10.].xyz * r13.www;
+      r13.w = saturate(dot(r15.xyz, r21.xyz));
+      r18.xyz = r13.www * r23.xyz + r18.xyz;
+      r21.xyz = r22.xyz * r12.www;
+      r21.xyz = r21.xyz * r14.www;
+      r12.w = saturate(dot(r20.xyz, r8.xyz));
+      r13.w = r12.w * r12.w;
+      r13.w = min(r13.w, 9.999989867e-001);
+      r14.w = 1.000000000e+000 + -r13.w;
+      r13.w = r13.w / r14.w;
+      r14.w = r14.w * r14.w;
+      r13.w = -r13.w / r8.w;
+      r13.w = 1.442695022e+000 * r13.w;
+      r13.w = exp2(r13.w);
+      r13.w = 4.000000000e+000 * r13.w;
+      r13.w = r13.w / r14.w;
+      r13.w = 1.000000000e+000 + r13.w;
+      r13.w = r13.w * r7.w;
+      r20.xyz = r23.xyz * r13.www;
+      r12.w = log2(r12.w);
+      r12.w = r12.w * r6.w;
+      r12.w = exp2(r12.w);
+      r12.w = r12.w * r9.x;
+      r22.xyz = r23.xyz * r12.www;
+      r20.xyz = _BRDFHighQuality ? r20.xyz : r22.xyz;
+      r19.x = r18.w;
+      r19.xyz = r21.xyz * r20.xyz + r19.xyz;
+      r10.w = (int)r10.w + 1;
+      r18.w = r19.x;
+    }
+    r0.w = 1.000000000e+000;
+    r20.xyz = r18.xyz;
+    r21.x = r18.w;
+    r21.yz = r19.yz;
+    r10.w = 0.000000000e+000;
+    while (true) {
+      r12.w = (int)r10.w >= (int)_SpotLightCount;
+      if (r12.w != 0) break;
+      r22.xyz = _SpotLightPos[r10.].xyz + -r0.xyz;
+      r12.w = dot(r22.xyz, r22.xyz);
+      r13.w = rsqrt(r12.w);
+      r23.xyz = r22.xyz * r13.www;
+      r12.w = _SpotLightAttenuation[r10.].x / r12.w;
+      r12.w = saturate(_SpotLightAttenuation[r10.].y + r12.w);
+      r14.w = dot(r23.xyz, _SpotLightDirection[r10.].xyz);
+      r14.w = saturate(r14.w * _SpotLightColor[r10.].w + _SpotLightDirection[r10.].w);
+      r14.w = r14.w * r14.w;
+      r12.w = r14.w * r12.w;
+      r14.w = (int)_SpotLightClippingInfo[r10.].x;
+      r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+      r16.yw = int2(1,2) + (int2)r14.ww;
+      r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+      r14.w = saturate(r14.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r14.w = r15.w * r14.w;
+      r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+      r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+      r14.w = r15.w * r14.w;
+      r15.w = r14.w * r14.w;
+      r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
+      r14.w = r15.w * r14.w;
+      r24.xyz = r14.www * r12.www;
+      r12.w = r24.z == 0.000000;
+      if (r12.w != 0) {
+        r10.w = (int)r10.w + 1;
+        continue;
+      }
+      r12.w = (int)r10.w < (int)0;
+      if (r12.w == 0) {
+        r12.w = (int)r10.w < (int)_SpotLightGoboCount;
+        if (r12.w != 0) {
+          r12.w = (uint)r10.w << 2;
+          r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12./4]._m00_m10_m20_m30);
+          r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12./4]._m01_m11_m21_m31);
+          r12.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12./4]._m03_m13_m23_m33);
+          r12.w = max(r12.w, 9.999999747e-006);
+          r16.yw = r25.xy / r12.ww;
+          r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.].xy + _SpotScaleOffsetUVS[r10.].zw;
+          r12.w = r10.w == 1;
+          if (r10.w == 0) {
+            r25.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
+          } else {
+            r25.xyz = float3(1.000000e+000,0.000000e+000,1.000000e+000);
+          }
+          if (r12.w != 0) {
+            r25.xyzw = SpotGobo1__TexObj__.SampleLevel(SpotGobo1__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
+          }
+          r24.xyz = r25.xyz * r24.zzz;
+        } else {
+          r24.xyz = r24.zzz;
+        }
+      }
+      r22.xyz = r22.xyz * r13.www + r1.yzw;
+      r12.w = dot(r22.xyz, r22.xyz);
+      r12.w = rsqrt(r12.w);
+      r22.xyz = r22.xyz * r12.www;
+      r12.w = dot(r22.xyz, r1.yzw);
+      r13.w = 1.000000000e+000 + -r12.w;
+      r14.w = r13.w * r13.w;
+      r14.w = r14.w * r14.w;
+      r13.w = r14.w * r13.w;
+      r25.xyz = r17.xyz * r13.www + r10.xyz;
+      r12.w = -8.656169891e+000 * r12.w;
+      r12.w = exp2(r12.w);
+      r26.xyz = r17.xyz * r12.www + r10.xyz;
+      r25.xyz = _BRDFHighQuality ? r25.xyz : r26.xyz;
+      r12.w = saturate(dot(r8.xyz, r23.xyz));
+      r13.w = r12.w + r2.z;
+      r13.w = -r12.w * r2.z + r13.w;
+      r13.w = max(r13.w, 9.999999776e-003);
+      r13.w = 1.000000e+000 / r13.w;
+      r13.w = _BRDFHighQuality ? r13.w : 1.000000000e+000;
+      r24.xyz = _SpotLightColor[r10.].xyz * r24.xyz;
+      r14.w = saturate(dot(r15.xyz, r23.xyz));
+      r20.xyz = r14.www * r24.xyz + r20.xyz;
+      r23.xyz = r25.xyz * r12.www;
+      r23.xyz = r23.xyz * r13.www;
+      r12.w = saturate(dot(r22.xyz, r8.xyz));
+      r13.w = r12.w * r12.w;
+      r13.w = min(r13.w, 9.999989867e-001);
+      r14.w = 1.000000000e+000 + -r13.w;
+      r13.w = r13.w / r14.w;
+      r14.w = r14.w * r14.w;
+      r13.w = -r13.w / r8.w;
+      r13.w = 1.442695022e+000 * r13.w;
+      r13.w = exp2(r13.w);
+      r13.w = 4.000000000e+000 * r13.w;
+      r13.w = r13.w / r14.w;
+      r13.w = 1.000000000e+000 + r13.w;
+      r13.w = r13.w * r7.w;
+      r22.xyz = r24.xyz * r13.www;
+      r12.w = log2(r12.w);
+      r12.w = r12.w * r6.w;
+      r12.w = exp2(r12.w);
+      r12.w = r12.w * r9.x;
+      r24.xyz = r24.xyz * r12.www;
+      r22.xyz = _BRDFHighQuality ? r22.xyz : r24.xyz;
+      r21.xyz = r23.xyz * r22.xyz + r21.xyz;
+      r10.w = (int)r10.w + 1;
+    }
+  } else {
+    r0.w = r2.x == 4;
+    if (r0.w != 0) {
+      r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r10.xyz;
+      r0.w = r6.w * r6.w;
+      r7.w = -r6.w * r6.w + 1.000000000e+000;
+      r18.xyz = r15.xyz + -r8.xyz;
+      r19.xyz = r18.xyz * float3(1.000000e-001,1.000000e-001,1.000000e-001) + r8.xyz;
+      r8.w = dot(r19.xyz, r19.xyz);
+      r8.w = rsqrt(r8.w);
+      r19.xyz = r19.xyz * r8.www;
+      r18.xyz = r18.xyz * float3(3.000000e-001,3.000000e-001,3.000000e-001) + r8.xyz;
+      r8.w = dot(r18.xyz, r18.xyz);
+      r8.w = rsqrt(r8.w);
+      r18.xyz = r18.xyz * r8.www;
+      r8.w = r6.w * r6.w + -1.000000000e+000;
+      r9.x = r6.w * 1.250000000e-001 + 2.500000000e-001;
+      r22.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+      r23.yz = float2(0.000000e+000,0.000000e+000);
+      r10.w = 0.000000000e+000;
+      while (true) {
+        r12.w = (int)r10.w >= (int)_PointLightCount;
+        if (r12.w != 0) break;
+        r24.xyz = _PointLightPos[r10.].xyz + -r0.xyz;
+        r12.w = dot(r24.xyz, r24.xyz);
+        r13.w = _PointLightAttenuation[r10.].x / r12.w;
+        r13.w = saturate(_PointLightAttenuation[r10.].y + r13.w);
+        r14.w = (int)_PointLightClippingInfo[r10.].x;
+        r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+        r16.yw = int2(1,2) + (int2)r14.ww;
+        r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+        r14.w = saturate(r14.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r14.w = r15.w * r14.w;
+        r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _PointLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r14.w = r15.w * r14.w;
+        r15.w = r14.w * r14.w;
+        r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
+        r14.w = r15.w * r14.w;
+        r13.w = r14.w * r13.w;
+        r14.w = r13.w == 0.000000;
+        if (r14.w != 0) {
+          r10.w = (int)r10.w + 1;
+          continue;
+        }
+        r12.w = rsqrt(r12.w);
+        r25.xyz = r24.xyz * r12.www;
+        r24.xyz = r24.xyz * r12.www + r1.yzw;
+        r12.w = dot(r24.xyz, r24.xyz);
+        r12.w = rsqrt(r12.w);
+        r24.xyz = r24.xyz * r12.www;
+        r12.w = dot(r24.xyz, r1.yzw);
+        r14.w = 1.000000000e+000 + -r12.w;
+        r15.w = r14.w * r14.w;
+        r15.w = r15.w * r15.w;
+        r14.w = r15.w * r14.w;
+        r26.xyz = r17.xyz * r14.www + r10.xyz;
+        r12.w = -8.656169891e+000 * r12.w;
+        r12.w = exp2(r12.w);
+        r27.xyz = r17.xyz * r12.www + r10.xyz;
+        r26.xyz = _BRDFHighQuality ? r26.xyz : r27.xyz;
+        r12.w = saturate(dot(r15.xyz, r25.xyz));
+        r14.w = r12.w * r12.w;
+        r14.w = r14.w * r7.w + r0.w;
+        r14.w = sqrt(r14.w);
+        r14.w = r14.w + r12.w;
+        r14.w = 1.000000e+000 / r14.w;
+        r14.w = _BRDFHighQuality ? r14.w : 1.000000000e+000;
+        r15.w = dot(r8.xyz, r25.xyz);
+        r16.y = dot(r19.xyz, r25.xyz);
+        r16.w = dot(r18.xyz, r25.xyz);
+        r11.z = r15.w * 5.000000000e-001 + 5.000000000e-001;
+        r25.xy = r11.zw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
+        r25.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r25.xy, 0.000000000e+000).xyzw;
+        r11.y = r16.y * 5.000000000e-001 + 5.000000000e-001;
+        r25.yz = r11.yw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
+        r27.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r25.yz, 0.000000000e+000).xyzw;
+        r11.x = r16.w * 5.000000000e-001 + 5.000000000e-001;
+        r16.yw = r11.xw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
+        r28.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
+        r25.yzw = _PointLightColor[r10.].xyz * r13.www;
+        r28.x = r25.x;
+        r28.y = r27.y;
+        r22.xyz = r25.yzw * r28.xyz + r22.xyz;
+        r26.xyz = r26.xyz * r14.www;
+        r26.xyz = r26.xyz * r12.www;
+        r12.w = saturate(dot(r24.xyz, r15.xyz));
+        r13.w = r12.w * r12.w;
+        r13.w = r13.w * r8.w + 1.000000000e+000;
+        r13.w = r6.w / r13.w;
+        r13.w = r13.w * r13.w;
+        r24.xyz = r25.yzw * r13.www;
+        r12.w = log2(r12.w);
+        r12.w = r12.w * r6.w;
+        r12.w = exp2(r12.w);
+        r12.w = r12.w * r9.x;
+        r25.xyz = r25.yzw * r12.www;
+        r24.xyz = _BRDFHighQuality ? r24.xyz : r25.xyz;
+        r23.x = r22.w;
+        r23.xyz = r26.xyz * r24.xyz + r23.xyz;
+        r10.w = (int)r10.w + 1;
+        r22.w = r23.x;
+      }
+      r24.xyz = r0.xyz;
+      r24.w = 1.000000000e+000;
+      r20.xyz = r22.xyz;
+      r21.x = r22.w;
+      r21.yz = r23.yz;
+      r10.w = 0.000000000e+000;
+      while (true) {
+        r12.w = (int)r10.w >= (int)_SpotLightCount;
+        if (r12.w != 0) break;
+        r25.xyz = _SpotLightPos[r10.].xyz + -r0.xyz;
+        r12.w = dot(r25.xyz, r25.xyz);
+        r13.w = rsqrt(r12.w);
+        r26.xyz = r25.xyz * r13.www;
+        r12.w = _SpotLightAttenuation[r10.].x / r12.w;
+        r12.w = saturate(_SpotLightAttenuation[r10.].y + r12.w);
+        r14.w = dot(r26.xyz, _SpotLightDirection[r10.].xyz);
+        r14.w = saturate(r14.w * _SpotLightColor[r10.].w + _SpotLightDirection[r10.].w);
+        r14.w = r14.w * r14.w;
+        r12.w = r14.w * r12.w;
+        r14.w = (int)_SpotLightClippingInfo[r10.].x;
+        r15.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r14.].w);
+        r16.yw = int2(1,2) + (int2)r14.ww;
+        r14.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+        r14.w = saturate(r14.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r14.w = r15.w * r14.w;
+        r15.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+        r15.w = saturate(r15.w * _SpotLightClippingInfo[r10.].z + _LightClippingPlanes[r16.].w);
+        r14.w = r15.w * r14.w;
+        r15.w = r14.w * r14.w;
+        r14.w = -r14.w * 2.000000000e+000 + 3.000000000e+000;
+        r14.w = r15.w * r14.w;
+        r27.xyz = r14.www * r12.www;
+        r12.w = r27.z == 0.000000;
+        if (r12.w != 0) {
+          r10.w = (int)r10.w + 1;
+          continue;
+        }
+        r12.w = (int)r10.w < (int)0;
+        if (r12.w == 0) {
+          r12.w = (int)r10.w < (int)_SpotLightGoboCount;
+          if (r12.w != 0) {
+            r12.w = (uint)r10.w << 2;
+            r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12./4]._m00_m10_m20_m30);
+            r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12./4]._m01_m11_m21_m31);
+            r12.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r12./4]._m03_m13_m23_m33);
+            r12.w = max(r12.w, 9.999999747e-006);
+            r16.yw = r28.xy / r12.ww;
+            r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.].xy + _SpotScaleOffsetUVS[r10.].zw;
+            r12.w = r10.w == 1;
+            if (r10.w == 0) {
+              r28.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
+            } else {
+              r28.xyz = float3(1.000000e+000,0.000000e+000,1.000000e+000);
+            }
+            if (r12.w != 0) {
+              r28.xyzw = SpotGobo1__TexObj__.SampleLevel(SpotGobo1__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
+            }
+            r27.xyz = r28.xyz * r27.zzz;
+          } else {
+            r27.xyz = r27.zzz;
+          }
+        }
+        r25.xyz = r25.xyz * r13.www + r1.yzw;
+        r12.w = dot(r25.xyz, r25.xyz);
+        r12.w = rsqrt(r12.w);
+        r25.xyz = r25.xyz * r12.www;
+        r12.w = dot(r25.xyz, r1.yzw);
+        r13.w = 1.000000000e+000 + -r12.w;
+        r14.w = r13.w * r13.w;
+        r14.w = r14.w * r14.w;
+        r13.w = r14.w * r13.w;
+        r28.xyz = r17.xyz * r13.www + r10.xyz;
+        r12.w = -8.656169891e+000 * r12.w;
+        r12.w = exp2(r12.w);
+        r29.xyz = r17.xyz * r12.www + r10.xyz;
+        r28.xyz = _BRDFHighQuality ? r28.xyz : r29.xyz;
+        r12.w = saturate(dot(r15.xyz, r26.xyz));
+        r13.w = r12.w * r12.w;
+        r13.w = r13.w * r7.w + r0.w;
+        r13.w = sqrt(r13.w);
+        r13.w = r13.w + r12.w;
+        r13.w = 1.000000e+000 / r13.w;
+        r13.w = _BRDFHighQuality ? r13.w : 1.000000000e+000;
+        r14.w = dot(r8.xyz, r26.xyz);
+        r15.w = dot(r19.xyz, r26.xyz);
+        r16.y = dot(r18.xyz, r26.xyz);
+        r11.z = r14.w * 5.000000000e-001 + 5.000000000e-001;
+        r23.xw = r11.zw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
+        r26.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r23.xw, 0.000000000e+000).xyzw;
+        r11.y = r15.w * 5.000000000e-001 + 5.000000000e-001;
+        r11.yz = r11.yw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
+        r29.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r11.yz, 0.000000000e+000).xyzw;
+        r11.x = r16.y * 5.000000000e-001 + 5.000000000e-001;
+        r11.yz = r11.xw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
+        r30.xyzw = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r11.yz, 0.000000000e+000).xyzw;
+        r26.yzw = _SpotLightColor[r10.].xyz * r27.xyz;
+        r30.x = r26.x;
+        r30.y = r29.y;
+        r20.xyz = r26.yzw * r30.xyz + r20.xyz;
+        r27.xyz = r28.xyz * r13.www;
+        r27.xyz = r27.xyz * r12.www;
+        r11.y = saturate(dot(r25.xyz, r15.xyz));
+        r11.z = r11.y * r11.y;
+        r11.z = r11.z * r8.w + 1.000000000e+000;
+        r11.z = r6.w / r11.z;
+        r11.z = r11.z * r11.z;
+        r25.xyz = r26.yzw * r11.zzz;
+        r11.y = log2(r11.y);
+        r11.y = r11.y * r6.w;
+        r11.y = exp2(r11.y);
+        r11.y = r11.y * r9.x;
+        r26.xyz = r26.yzw * r11.yyy;
+        r25.xyz = _BRDFHighQuality ? r25.xyz : r26.xyz;
+        r21.xyz = r27.xyz * r25.xyz + r21.xyz;
+        r10.w = (int)r10.w + 1;
+      }
+    } else {
+      r3.xyz = r3.xyz * r5.xwz + float3(1.000000e+000,0.000000e+000,0.000000e+000);
+      r11.yzw = float3(2.000000e+000,-2.000000e+000,2.000000e+000) * r5.yyy;
+      r3.xyz = r11.zzw * r5.yzw + r3.xyz;
+      r11.yzw = r11.yzw * r5.zyx + float3(0.000000e+000,1.000000e+000,0.000000e+000);
+      r5.xyz = r7.xyz * r5.xwz + r11.yzw;
+      r7.xy = r2.xx == float2(0.000000e+000,5.000000e+000);
+      r0.w = (int)r9.w | (int)r7.x;
+      r0.w = (int)r9.y | (int)r0.w;
+      r5.w = r9.z ? 1.000000000e+000 : r16.x;
+      r1.x = -r1.x * r5.w + r1.x;
+      r5.w = 1.300000000e+001 * r1.x;
+      r7.x = r1.x * -2.554450035e-001 + 1.401520014e+000;
+      r7.x = r7.x * r1.x + -1.946949959e+000;
+      r1.x = r7.x * r1.x + 8.165000081e-001;
+      r5.w = exp2(r5.w);
+      r1.x = _BRDFHighQuality ? r1.x : r5.w;
+      r0.w = r0.w ? r6.w : r1.x;
+      if (r7.y != 0) {
+        r5.w = r11.x + r11.x;
+        r7.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r10.xyz;
+        r7.w = r6.w * r6.w;
+        r8.w = -r6.w * r6.w + 1.000000000e+000;
+        r9.x = r1.x * r1.x;
+        r10.w = r0.w * r0.w;
+        r11.x = r1.x * r0.w;
+        r11.yzw = r5.xyz * r5.www;
+        r16.xyw = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r6.xyz;
+        r5.w = r1.x + r1.x;
+        r12.w = r0.w + r0.w;
+        r13.w = r5.w * r5.w;
+        r14.w = r12.w * r12.w;
+        r5.w = r12.w * r5.w;
+        r12.w = r6.w * 1.250000000e-001 + 2.500000000e-001;
+        r18.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+        r17.yz = float2(0.000000e+000,0.000000e+000);
+        r15.w = 0.000000000e+000;
+        while (true) {
+          r19.x = (int)r15.w >= (int)_PointLightCount;
+          if (r19.x != 0) break;
+          r19.xyz = _PointLightPos[r15.].xyz + -r0.xyz;
+          r19.w = dot(r19.xyz, r19.xyz);
+          r20.w = _PointLightAttenuation[r15.].x / r19.w;
+          r20.w = saturate(_PointLightAttenuation[r15.].y + r20.w);
+          r21.w = (int)_PointLightClippingInfo[r15.].x;
+          r22.x = dot(_LightClippingPlanes[r21.].xyz, r0.xyz);
+          r22.x = saturate(r22.x * _PointLightClippingInfo[r15.].z + _LightClippingPlanes[r21.].w);
+          r22.yz = int2(1,2) + (int2)r21.ww;
+          r21.w = dot(_LightClippingPlanes[r22.].xyz, r0.xyz);
+          r21.w = saturate(r21.w * _PointLightClippingInfo[r15.].z + _LightClippingPlanes[r22.].w);
+          r21.w = r22.x * r21.w;
+          r22.x = dot(_LightClippingPlanes[r22.].xyz, r0.xyz);
+          r22.x = saturate(r22.x * _PointLightClippingInfo[r15.].z + _LightClippingPlanes[r22.].w);
+          r21.w = r22.x * r21.w;
+          r22.x = r21.w * r21.w;
+          r21.w = -r21.w * 2.000000000e+000 + 3.000000000e+000;
+          r21.w = r22.x * r21.w;
+          r20.w = r21.w * r20.w;
+          r21.w = r20.w == 0.000000;
+          if (r21.w != 0) {
+            r15.w = (int)r15.w + 1;
+            continue;
+          }
+          r19.w = rsqrt(r19.w);
+          r22.xyz = r19.xyz * r19.www;
+          r23.xyz = r19.xyz * r19.www + r1.yzw;
+          r21.w = dot(r23.xyz, r23.xyz);
+          r21.w = rsqrt(r21.w);
+          r23.xyz = r23.xyz * r21.www;
+          r21.w = dot(r23.xyz, r1.yzw);
+          r22.w = 1.000000000e+000 + -r21.w;
+          r23.w = r22.w * r22.w;
+          r23.w = r23.w * r23.w;
+          r22.w = r23.w * r22.w;
+          r24.xyz = r7.xyz * r22.www + r10.xyz;
+          r21.w = -8.656169891e+000 * r21.w;
+          r21.w = exp2(r21.w);
+          r25.xyz = r7.xyz * r21.www + r10.xyz;
+          r24.xyz = _BRDFHighQuality ? r24.xyz : r25.xyz;
+          r21.w = saturate(dot(r8.xyz, r22.xyz));
+          r22.w = r21.w * r21.w;
+          r22.w = r22.w * r8.w + r7.w;
+          r22.w = sqrt(r22.w);
+          r22.w = r22.w + r21.w;
+          r22.w = 1.000000e+000 / r22.w;
+          r22.w = _BRDFHighQuality ? r22.w : 1.000000000e+000;
+          r25.xyz = _PointLightColor[r15.].xyz * r20.www;
+          r20.w = saturate(dot(r15.xyz, r22.xyz));
+          r18.xyz = r20.www * r25.xyz + r18.xyz;
+          if (_BRDFHighQuality != 0) {
+            r22.xyz = r24.xyz * r22.www;
+            r22.xyz = r22.xyz * r21.www;
+            r26.x = dot(r23.xyz, r3.xyz);
+            r26.y = dot(r23.xyz, r5.xyz);
+            r20.w = dot(r23.xyz, r8.xyz);
+            r26.xy = r26.xy * r26.xy;
+            r23.w = r26.x / r9.x;
+            r20.w = r20.w * r20.w + r23.w;
+            r23.w = r26.y / r10.w;
+            r20.w = r23.w + r20.w;
+            r20.w = r20.w * r20.w;
+            r20.w = r20.w * r11.x;
+            r20.w = 1.000000e+000 / r20.w;
+            r26.xyz = r25.xyz * r20.www;
+            r22.xyz = r26.xyz * r22.xyz;
+            r19.xyz = r19.xyz * r19.www + r11.yzw;
+            r19.w = dot(r19.xyz, r19.xyz);
+            r19.w = rsqrt(r19.w);
+            r19.xyz = r19.xyz * r19.www + r1.yzw;
+            r19.w = dot(r19.xyz, r19.xyz);
+            r19.w = rsqrt(r19.w);
+            r19.xyz = r19.xyz * r19.www;
+            r19.w = dot(r19.xyz, r1.yzw);
+            r19.w = 1.000000000e+000 + -r19.w;
+            r20.w = r19.w * r19.w;
+            r20.w = r20.w * r20.w;
+            r19.w = r20.w * r19.w;
+            r26.xyz = r16.xyw * r19.www + r6.xyz;
+            r27.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r26.xyz;
+            r26.xyz = r26.xyz * r22.www;
+            r26.xyz = r26.xyz * r21.www;
+            r28.x = dot(r19.xyz, r3.xyz);
+            r28.y = dot(r19.xyz, r5.xyz);
+            r19.x = dot(r19.xyz, r8.xyz);
+            r19.yz = r28.xy * r28.xy;
+            r19.y = r19.y / r13.w;
+            r19.x = r19.x * r19.x + r19.y;
+            r19.y = r19.z / r14.w;
+            r19.x = r19.x + r19.y;
+            r19.x = r19.x * r19.x;
+            r19.x = r19.x * r5.w;
+            r19.x = 1.000000e+000 / r19.x;
+            r19.xyz = r25.xyz * r19.xxx;
+            r19.xyz = r26.xyz * r19.xyz;
+            r19.xyz = r22.xyz * r27.xyz + r19.xyz;
+            r17.x = r18.w;
+            r17.xyz = r17.xyz + r19.xyz;
+            r18.w = r17.x;
+          } else {
+            r19.xyz = r24.xyz * r22.www;
+            r19.xyz = r19.xyz * r21.www;
+            r19.w = saturate(dot(r8.xyz, r23.xyz));
+            r19.w = r21.w + -r19.w;
+            r19.w = 1.000000000e+000 + -abs(-r19.w);
+            r19.w = log2(r19.w);
+            r19.w = r19.w * r6.w;
+            r19.w = exp2(r19.w);
+            r22.xyz = r25.xyz * r19.www;
+            r22.xyz = r22.xyz * r12.www;
+            r17.x = r18.w;
+            r17.xyz = r19.xyz * r22.xyz + r17.xyz;
+            r18.w = r17.x;
+          }
+          r15.w = (int)r15.w + 1;
+        }
+        r19.xyz = r0.xyz;
+        r19.w = 1.000000000e+000;
+        r20.xyz = r18.xyz;
+        r21.x = r18.w;
+        r21.yz = r17.yz;
+        r15.w = 0.000000000e+000;
+        while (true) {
+          r17.x = (int)r15.w >= (int)_SpotLightCount;
+          if (r17.x != 0) break;
+          r22.xyz = _SpotLightPos[r15.].xyz + -r0.xyz;
+          r17.x = dot(r22.xyz, r22.xyz);
+          r20.w = rsqrt(r17.x);
+          r23.xyz = r22.xyz * r20.www;
+          r17.x = _SpotLightAttenuation[r15.].x / r17.x;
+          r17.x = saturate(_SpotLightAttenuation[r15.].y + r17.x);
+          r21.w = dot(r23.xyz, _SpotLightDirection[r15.].xyz);
+          r21.w = saturate(r21.w * _SpotLightColor[r15.].w + _SpotLightDirection[r15.].w);
+          r21.w = r21.w * r21.w;
+          r17.x = r21.w * r17.x;
+          r21.w = (int)_SpotLightClippingInfo[r15.].x;
+          r22.w = dot(_LightClippingPlanes[r21.].xyz, r0.xyz);
+          r22.w = saturate(r22.w * _SpotLightClippingInfo[r15.].z + _LightClippingPlanes[r21.].w);
+          r24.xy = int2(1,2) + (int2)r21.ww;
+          r21.w = dot(_LightClippingPlanes[r24.].xyz, r0.xyz);
+          r21.w = saturate(r21.w * _SpotLightClippingInfo[r15.].z + _LightClippingPlanes[r24.].w);
+          r21.w = r22.w * r21.w;
+          r22.w = dot(_LightClippingPlanes[r24.].xyz, r0.xyz);
+          r22.w = saturate(r22.w * _SpotLightClippingInfo[r15.].z + _LightClippingPlanes[r24.].w);
+          r21.w = r22.w * r21.w;
+          r22.w = r21.w * r21.w;
+          r21.w = -r21.w * 2.000000000e+000 + 3.000000000e+000;
+          r21.w = r22.w * r21.w;
+          r24.xyz = r21.www * r17.xxx;
+          r17.x = r24.z == 0.000000;
+          if (r17.x != 0) {
+            r15.w = (int)r15.w + 1;
+            continue;
+          }
+          r17.x = (int)r15.w < (int)0;
+          if (r17.x == 0) {
+            r17.x = (int)r15.w < (int)_SpotLightGoboCount;
+            if (r17.x != 0) {
+              r17.x = (uint)r15.w << 2;
+              r25.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17./4]._m00_m10_m20_m30);
+              r25.y = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17./4]._m01_m11_m21_m31);
+              r17.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17./4]._m03_m13_m23_m33);
+              r17.x = max(r17.x, 9.999999747e-006);
+              r25.xy = r25.xy / r17.xx;
+              r25.xy = r25.xy * _SpotScaleOffsetUVS[r15.].xy + _SpotScaleOffsetUVS[r15.].zw;
+              r17.x = r15.w == 1;
+              if (r15.w == 0) {
+                r26.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r25.xy, 0.000000000e+000).xyzw;
+              } else {
+                r26.xyz = float3(1.000000e+000,0.000000e+000,1.000000e+000);
+              }
+              if (r17.x != 0) {
+                r26.xyzw = SpotGobo1__TexObj__.SampleLevel(SpotGobo1__SampObj___s, r25.xy, 0.000000000e+000).xyzw;
+              }
+              r24.xyz = r26.xyz * r24.zzz;
+            } else {
+              r24.xyz = r24.zzz;
+            }
+          }
+          r25.xyz = r22.xyz * r20.www + r1.yzw;
+          r17.x = dot(r25.xyz, r25.xyz);
+          r17.x = rsqrt(r17.x);
+          r25.xyz = r25.xyz * r17.xxx;
+          r17.x = dot(r25.xyz, r1.yzw);
+          r21.w = 1.000000000e+000 + -r17.x;
+          r22.w = r21.w * r21.w;
+          r22.w = r22.w * r22.w;
+          r21.w = r22.w * r21.w;
+          r26.xyz = r7.xyz * r21.www + r10.xyz;
+          r17.x = -8.656169891e+000 * r17.x;
+          r17.x = exp2(r17.x);
+          r27.xyz = r7.xyz * r17.xxx + r10.xyz;
+          r26.xyz = _BRDFHighQuality ? r26.xyz : r27.xyz;
+          r17.x = saturate(dot(r8.xyz, r23.xyz));
+          r21.w = r17.x * r17.x;
+          r21.w = r21.w * r8.w + r7.w;
+          r21.w = sqrt(r21.w);
+          r21.w = r21.w + r17.x;
+          r21.w = 1.000000e+000 / r21.w;
+          r21.w = _BRDFHighQuality ? r21.w : 1.000000000e+000;
+          r24.xyz = _SpotLightColor[r15.].xyz * r24.xyz;
+          r22.w = saturate(dot(r15.xyz, r23.xyz));
+          r20.xyz = r22.www * r24.xyz + r20.xyz;
+          if (_BRDFHighQuality != 0) {
+            r23.xyz = r26.xyz * r21.www;
+            r23.xyz = r23.xyz * r17.xxx;
+            r27.x = dot(r25.xyz, r3.xyz);
+            r27.y = dot(r25.xyz, r5.xyz);
+            r22.w = dot(r25.xyz, r8.xyz);
+            r27.xy = r27.xy * r27.xy;
+            r23.w = r27.x / r9.x;
+            r23.w = r22.w * r22.w + r23.w;
+            r24.w = r27.y / r10.w;
+            r23.w = r24.w + r23.w;
+            r23.w = r23.w * r23.w;
+            r23.w = r23.w * r11.x;
+            r23.w = 1.000000e+000 / r23.w;
+            r28.xyz = r24.xyz * r23.www;
+            r23.xyz = r28.xyz * r23.xyz;
+            r22.xyz = r22.xyz * r20.www + r11.yzw;
+            r20.w = dot(r22.xyz, r22.xyz);
+            r20.w = rsqrt(r20.w);
+            r22.xyz = r22.xyz * r20.www + r1.yzw;
+            r20.w = dot(r22.xyz, r22.xyz);
+            r20.w = rsqrt(r20.w);
+            r22.xyz = r22.xyz * r20.www;
+            r20.w = dot(r22.xyz, r1.yzw);
+            r20.w = 1.000000000e+000 + -r20.w;
+            r22.x = r20.w * r20.w;
+            r22.x = r22.x * r22.x;
+            r20.w = r22.x * r20.w;
+            r22.xyz = r16.xyw * r20.www + r6.xyz;
+            r28.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r22.xyz;
+            r22.xyz = r22.xyz * r21.www;
+            r22.xyz = r22.xyz * r17.xxx;
+            r20.w = r27.x / r13.w;
+            r20.w = r22.w * r22.w + r20.w;
+            r22.w = r27.y / r14.w;
+            r20.w = r22.w + r20.w;
+            r20.w = r20.w * r20.w;
+            r20.w = r20.w * r5.w;
+            r20.w = 1.000000e+000 / r20.w;
+            r27.xyz = r24.xyz * r20.www;
+            r22.xyz = r27.xyz * r22.xyz;
+            r22.xyz = r23.xyz * r28.xyz + r22.xyz;
+            r21.xyz = r22.xyz + r21.xyz;
+          } else {
+            r22.xyz = r26.xyz * r21.www;
+            r22.xyz = r22.xyz * r17.xxx;
+            r20.w = saturate(dot(r8.xyz, r25.xyz));
+            r17.x = -r20.w + r17.x;
+            r17.x = 1.000000000e+000 + -abs(-r17.x);
+            r17.x = log2(r17.x);
+            r17.x = r17.x * r6.w;
+            r17.x = exp2(r17.x);
+            r23.xyz = r24.xyz * r17.xxx;
+            r23.xyz = r23.xyz * r12.www;
+            r21.xyz = r22.xyz * r23.xyz + r21.xyz;
+          }
+          r15.w = (int)r15.w + 1;
+        }
+      } else {
+        if (r9.z != 0) {
+          r6.xyz = r9.zzz ? r14.xyz : 0;
+          r7.xyz = r9.zzz ? r12.xyz : 0;
+          r11.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+          r12.yz = float2(0.000000e+000,0.000000e+000);
+          r5.w = 0.000000000e+000;
+          while (true) {
+            r7.w = (int)r5.w >= (int)_PointLightCount;
+            if (r7.w != 0) break;
+            r14.xyz = _PointLightPos[r5.w].xyz + -r0.xyz;
+            r7.w = dot(r14.xyz, r14.xyz);
+            r8.w = _PointLightAttenuation[r5.w].x / r7.w;
+            r8.w = saturate(_PointLightAttenuation[r5.w].y + r8.w);
+            r9.x = (int)_PointLightClippingInfo[r5.w].x;
+            r10.w = dot(_LightClippingPlanes[r9.x].xyz, r0.xyz);
+            r10.w = saturate(r10.w * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r9.x].w);
+            r16.xy = int2(1,2) + (int2)r9.xx;
+            r9.x = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+            r9.x = saturate(r9.x * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r16.].w);
+            r9.x = r10.w * r9.x;
+            r10.w = dot(_LightClippingPlanes[r16.].xyz, r0.xyz);
+            r10.w = saturate(r10.w * _PointLightClippingInfo[r5.w].z + _LightClippingPlanes[r16.].w);
+            r9.x = r10.w * r9.x;
+            r10.w = r9.x * r9.x;
+            r9.x = -r9.x * 2.000000000e+000 + 3.000000000e+000;
+            r9.x = r10.w * r9.x;
+            r8.w = r9.x * r8.w;
+            r9.x = r8.w == 0.000000;
+            if (r9.x != 0) {
+              r5.w = (int)r5.w + 1;
+              continue;
+            }
+            r7.w = rsqrt(r7.w);
+            r16.xyw = r14.xyz * r7.www;
+            r14.xyz = r14.xyz * r7.www + r1.yzw;
+            r7.w = dot(r14.xyz, r14.xyz);
+            r7.w = rsqrt(r7.w);
+            r14.xyz = r14.xyz * r7.www;
+            r7.w = dot(r6.xyz, r16.xyw);
+            r7.w = max(r7.w, -1.000000000e+000);
+            r7.w = min(r7.w, 1.000000000e+000);
+            r9.x = dot(r6.xyz, r14.xyz);
+            r9.x = max(r9.x, -1.000000000e+000);
+            r9.x = min(r9.x, 1.000000000e+000);
+            r10.w = dot(r8.xyz, r16.xyw);
+            r10.w = max(r10.w, 0.000000000e+000);
+            r12.w = min(r10.w, 1.000000000e+000);
+            r14.xyz = _PointLightColor[r5.w].xyz * r12.www;
+            r14.xyz = r14.xyz * r8.www;
+            r7.w = -r7.w * r7.w + 1.000000000e+000;
+            r7.w = sqrt(r7.w);
+            r8.w = r10.w + -r7.w;
+            r7.w = r7.x * r8.w + r7.w;
+            r11.xyz = r14.xyz * r7.www + r11.xyz;
+            r7.w = -r9.x * r9.x + 1.000000000e+000;
+            r7.w = sqrt(r7.w);
+            r7.w = log2(r7.w);
+            r7.w = r7.z * r7.w;
+            r7.w = exp2(r7.w);
+            r8.w = r9.x + r7.y;
+            r8.w = min(r8.w, 1.000000000e+000);
+            r8.w = -r8.w * r8.w + 1.000000000e+000;
+            r8.w = sqrt(r8.w);
+            r8.w = log2(r8.w);
+            r8.w = r8.w * r4.z;
+            r8.w = exp2(r8.w);
+            r14.xyz = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r14.xyz;
+            r8.w = r8.w * r4.w;
+            r7.w = r4.y * r7.w + r8.w;
+            r12.x = r11.w;
+            r12.xyz = r14.xyz * r7.www + r12.xyz;
+            r5.w = (int)r5.w + 1;
+            r11.w = r12.x;
+          }
+          r14.xyz = r0.xyz;
+          r14.w = 1.000000000e+000;
+          r20.xyz = r11.xyz;
+          r21.x = r11.w;
+          r21.yz = r12.yz;
+          r5.w = 0.000000000e+000;
+          while (true) {
+            r7.w = (int)r5.w >= (int)_SpotLightCount;
+            if (r7.w != 0) break;
+            r16.xyw = _SpotLightPos[r5.w].xyz + -r0.xyz;
+            r7.w = dot(r16.xyw, r16.xyw);
+            r8.w = rsqrt(r7.w);
+            r17.xyz = r16.xyw * r8.www;
+            r7.w = _SpotLightAttenuation[r5.w].x / r7.w;
+            r7.w = saturate(_SpotLightAttenuation[r5.w].y + r7.w);
+            r9.x = dot(r17.xyz, _SpotLightDirection[r5.w].xyz);
+            r9.x = saturate(r9.x * _SpotLightColor[r5.w].w + _SpotLightDirection[r5.w].w);
+            r9.x = r9.x * r9.x;
+            r7.w = r9.x * r7.w;
+            r9.x = (int)_SpotLightClippingInfo[r5.w].x;
+            r10.w = dot(_LightClippingPlanes[r9.x].xyz, r0.xyz);
+            r10.w = saturate(r10.w * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r9.x].w);
+            r12.xw = int2(1,2) + (int2)r9.xx;
+            r9.x = dot(_LightClippingPlanes[r12.].xyz, r0.xyz);
+            r9.x = saturate(r9.x * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r12.].w);
+            r9.x = r10.w * r9.x;
+            r10.w = dot(_LightClippingPlanes[r12.].xyz, r0.xyz);
+            r10.w = saturate(r10.w * _SpotLightClippingInfo[r5.w].z + _LightClippingPlanes[r12.].w);
+            r9.x = r10.w * r9.x;
+            r10.w = r9.x * r9.x;
+            r9.x = -r9.x * 2.000000000e+000 + 3.000000000e+000;
+            r9.x = r10.w * r9.x;
+            r18.xyz = r9.xxx * r7.www;
+            r7.w = r18.z == 0.000000;
+            if (r7.w != 0) {
+              r5.w = (int)r5.w + 1;
+              continue;
+            }
+            r7.w = (int)r5.w < (int)0;
+            if (r7.w == 0) {
+              r7.w = (int)r5.w < (int)_SpotLightGoboCount;
+              if (r7.w != 0) {
+                r7.w = (uint)r5.w << 2;
+                r19.x = dot(r14.xyzw, _SpotShadowProjectionMatrix[r7.w/4]._m00_m10_m20_m30);
+                r19.y = dot(r14.xyzw, _SpotShadowProjectionMatrix[r7.w/4]._m01_m11_m21_m31);
+                r7.w = dot(r14.xyzw, _SpotShadowProjectionMatrix[r7.w/4]._m03_m13_m23_m33);
+                r12.xw = r19.xy / r7.ww;
+                r12.xw = r12.xw * _SpotScaleOffsetUVS[r5.w].xy + _SpotScaleOffsetUVS[r5.w].zw;
+                r7.w = r5.w == 1;
+                if (r5.w == 0) {
+                  r19.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r12.xw, 0.000000000e+000).xyzw;
+                } else {
+                  r19.xyz = float3(1.000000e+000,0.000000e+000,1.000000e+000);
+                }
+                if (r7.w != 0) {
+                  r19.xyzw = SpotGobo1__TexObj__.SampleLevel(SpotGobo1__SampObj___s, r12.xw, 0.000000000e+000).xyzw;
+                }
+                r18.xyz = r19.xyz * r18.zzz;
+              } else {
+                r18.xyz = r18.zzz;
+              }
+            }
+            r16.xyw = r16.xyw * r8.www + r1.yzw;
+            r7.w = dot(r16.xyw, r16.xyw);
+            r7.w = rsqrt(r7.w);
+            r16.xyw = r16.xyw * r7.www;
+            r7.w = dot(r6.xyz, r17.xyz);
+            r7.w = max(r7.w, -1.000000000e+000);
+            r7.w = min(r7.w, 1.000000000e+000);
+            r8.w = dot(r6.xyz, r16.xyw);
+            r8.w = max(r8.w, -1.000000000e+000);
+            r8.w = min(r8.w, 1.000000000e+000);
+            r9.x = dot(r8.xyz, r17.xyz);
+            r9.x = max(r9.x, 0.000000000e+000);
+            r10.w = min(r9.x, 1.000000000e+000);
+            r16.xyw = _SpotLightColor[r5.w].xyz * r10.www;
+            r16.xyw = r16.xyw * r18.xyz;
+            r7.w = -r7.w * r7.w + 1.000000000e+000;
+            r7.w = sqrt(r7.w);
+            r9.x = r9.x + -r7.w;
+            r7.w = r7.x * r9.x + r7.w;
+            r20.xyz = r16.xyw * r7.www + r20.xyz;
+            r7.w = -r8.w * r8.w + 1.000000000e+000;
+            r7.w = sqrt(r7.w);
+            r7.w = log2(r7.w);
+            r7.w = r7.z * r7.w;
+            r7.w = exp2(r7.w);
+            r8.w = r8.w + r7.y;
+            r8.w = min(r8.w, 1.000000000e+000);
+            r8.w = -r8.w * r8.w + 1.000000000e+000;
+            r8.w = sqrt(r8.w);
+            r8.w = log2(r8.w);
+            r8.w = r8.w * r4.z;
+            r8.w = exp2(r8.w);
+            r16.xyw = float3(5.000000e-001,5.000000e-001,5.000000e-001) * r16.xyw;
+            r8.w = r8.w * r4.w;
+            r7.w = r4.y * r7.w + r8.w;
+            r21.xyz = r16.xyw * r7.www + r21.xyz;
+            r5.w = (int)r5.w + 1;
+          }
+        } else {
+          r4.yzw = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r10.xyz;
+          r5.w = r6.w * r6.w;
+          r6.x = -r6.w * r6.w + 1.000000000e+000;
+          r6.y = r1.x * r1.x;
+          r6.z = r0.w * r0.w;
+          r0.w = r1.x * r0.w;
+          r1.x = r6.w * 1.250000000e-001 + 2.500000000e-001;
+          r7.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+          r11.yz = float2(0.000000e+000,0.000000e+000);
+          r8.w = 0.000000000e+000;
+          while (true) {
+            r9.x = (int)r8.w >= (int)_PointLightCount;
+            if (r9.x != 0) break;
+            r12.xyz = _PointLightPos[r8.w].xyz + -r0.xyz;
+            r9.x = dot(r12.xyz, r12.xyz);
+            r10.w = _PointLightAttenuation[r8.w].x / r9.x;
+            r10.w = saturate(_PointLightAttenuation[r8.w].y + r10.w);
+            r11.w = (int)_PointLightClippingInfo[r8.w].x;
+            r12.w = dot(_LightClippingPlanes[r11.].xyz, r0.xyz);
+            r12.w = saturate(r12.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r11.].w);
+            r14.xy = int2(1,2) + (int2)r11.ww;
+            r11.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
+            r11.w = saturate(r11.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r14.].w);
+            r11.w = r12.w * r11.w;
+            r12.w = dot(_LightClippingPlanes[r14.].xyz, r0.xyz);
+            r12.w = saturate(r12.w * _PointLightClippingInfo[r8.w].z + _LightClippingPlanes[r14.].w);
+            r11.w = r12.w * r11.w;
+            r12.w = r11.w * r11.w;
+            r11.w = -r11.w * 2.000000000e+000 + 3.000000000e+000;
+            r11.w = r12.w * r11.w;
+            r10.w = r11.w * r10.w;
+            r11.w = r10.w == 0.000000;
+            if (r11.w != 0) {
+              r8.w = (int)r8.w + 1;
+              continue;
+            }
+            r9.x = rsqrt(r9.x);
+            r14.xyz = r12.xyz * r9.xxx;
+            r12.xyz = r12.xyz * r9.xxx + r1.yzw;
+            r9.x = dot(r12.xyz, r12.xyz);
+            r9.x = rsqrt(r9.x);
+            r12.xyz = r12.xyz * r9.xxx;
+            r9.x = dot(r12.xyz, r1.yzw);
+            r11.w = 1.000000000e+000 + -r9.x;
+            r12.w = r11.w * r11.w;
+            r12.w = r12.w * r12.w;
+            r11.w = r12.w * r11.w;
+            r16.xyw = r4.yzw * r11.www + r10.xyz;
+            r9.x = -8.656169891e+000 * r9.x;
+            r9.x = exp2(r9.x);
+            r17.xyz = r4.yzw * r9.xxx + r10.xyz;
+            r16.xyw = _BRDFHighQuality ? r16.xyw : r17.xyz;
+            r9.x = saturate(dot(r8.xyz, r14.xyz));
+            r11.w = r9.x * r9.x;
+            r11.w = r11.w * r6.x + r5.w;
+            r11.w = sqrt(r11.w);
+            r11.w = r11.w + r9.x;
+            r11.w = 1.000000e+000 / r11.w;
+            r11.w = _BRDFHighQuality ? r11.w : 1.000000000e+000;
+            r17.xyz = _PointLightColor[r8.w].xyz * r10.www;
+            r10.w = saturate(dot(r15.xyz, r14.xyz));
+            r7.xyz = r10.www * r17.xyz + r7.xyz;
+            if (_BRDFHighQuality != 0) {
+              r14.xyz = r16.xyw * r11.www;
+              r14.xyz = r14.xyz * r9.xxx;
+              r18.x = dot(r12.xyz, r3.xyz);
+              r18.y = dot(r12.xyz, r5.xyz);
+              r10.w = dot(r12.xyz, r8.xyz);
+              r18.xy = r18.xy * r18.xy;
+              r12.w = r18.x / r6.y;
+              r10.w = r10.w * r10.w + r12.w;
+              r12.w = r18.y / r6.z;
+              r10.w = r12.w + r10.w;
+              r10.w = r10.w * r10.w;
+              r10.w = r10.w * r0.w;
+              r10.w = 1.000000e+000 / r10.w;
+              r18.xyz = r17.xyz * r10.www;
+              r11.x = r7.w;
+              r11.xyz = r14.xyz * r18.xyz + r11.xyz;
+              r7.w = r11.x;
+            } else {
+              r14.xyz = r16.xyw * r11.www;
+              r14.xyz = r14.xyz * r9.xxx;
+              r9.x = saturate(dot(r12.xyz, r8.xyz));
+              r9.x = log2(r9.x);
+              r9.x = r9.x * r6.w;
+              r9.x = exp2(r9.x);
+              r9.x = r9.x * r1.x;
+              r12.xyz = r17.xyz * r9.xxx;
+              r11.x = r7.w;
+              r11.xyz = r14.xyz * r12.xyz + r11.xyz;
+              r7.w = r11.x;
+            }
+            r8.w = (int)r8.w + 1;
+          }
+          r12.xyz = r0.xyz;
+          r12.w = 1.000000000e+000;
+          r20.xyz = r7.xyz;
+          r21.x = r7.w;
+          r21.yz = r11.yz;
+          r8.w = 0.000000000e+000;
+          while (true) {
+            r9.x = (int)r8.w >= (int)_SpotLightCount;
+            if (r9.x != 0) break;
+            r14.xyz = _SpotLightPos[r8.w].xyz + -r0.xyz;
+            r9.x = dot(r14.xyz, r14.xyz);
+            r10.w = rsqrt(r9.x);
+            r16.xyw = r14.xyz * r10.www;
+            r9.x = _SpotLightAttenuation[r8.w].x / r9.x;
+            r9.x = saturate(_SpotLightAttenuation[r8.w].y + r9.x);
+            r11.x = dot(r16.xyw, _SpotLightDirection[r8.w].xyz);
+            r11.x = saturate(r11.x * _SpotLightColor[r8.w].w + _SpotLightDirection[r8.w].w);
+            r11.x = r11.x * r11.x;
+            r9.x = r11.x * r9.x;
+            r11.x = (int)_SpotLightClippingInfo[r8.w].x;
+            r11.w = dot(_LightClippingPlanes[r11.].xyz, r0.xyz);
+            r11.w = saturate(r11.w * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r11.].w);
+            r17.xy = int2(1,2) + (int2)r11.xx;
+            r11.x = dot(_LightClippingPlanes[r17.].xyz, r0.xyz);
+            r11.x = saturate(r11.x * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r17.].w);
+            r11.x = r11.w * r11.x;
+            r11.w = dot(_LightClippingPlanes[r17.].xyz, r0.xyz);
+            r11.w = saturate(r11.w * _SpotLightClippingInfo[r8.w].z + _LightClippingPlanes[r17.].w);
+            r11.x = r11.x * r11.w;
+            r11.w = r11.x * r11.x;
+            r11.x = -r11.x * 2.000000000e+000 + 3.000000000e+000;
+            r11.x = r11.w * r11.x;
+            r17.xyz = r11.xxx * r9.xxx;
+            r9.x = r17.z == 0.000000;
+            if (r9.x != 0) {
+              r8.w = (int)r8.w + 1;
+              continue;
+            }
+            r9.x = (int)r8.w < (int)0;
+            if (r9.x == 0) {
+              r9.x = (int)r8.w < (int)_SpotLightGoboCount;
+              if (r9.x != 0) {
+                r9.x = (uint)r8.w << 2;
+                r18.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r9.x/4]._m00_m10_m20_m30);
+                r18.y = dot(r12.xyzw, _SpotShadowProjectionMatrix[r9.x/4]._m01_m11_m21_m31);
+                r9.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r9.x/4]._m03_m13_m23_m33);
+                r9.x = max(r9.x, 9.999999747e-006);
+                r11.xw = r18.xy / r9.xx;
+                r11.xw = r11.xw * _SpotScaleOffsetUVS[r8.w].xy + _SpotScaleOffsetUVS[r8.w].zw;
+                r9.x = r8.w == 1;
+                if (r8.w == 0) {
+                  r18.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r11.xw, 0.000000000e+000).xyzw;
+                } else {
+                  r18.xyz = float3(1.000000e+000,0.000000e+000,1.000000e+000);
+                }
+                if (r9.x != 0) {
+                  r18.xyzw = SpotGobo1__TexObj__.SampleLevel(SpotGobo1__SampObj___s, r11.xw, 0.000000000e+000).xyzw;
+                }
+                r17.xyz = r18.xyz * r17.zzz;
+              } else {
+                r17.xyz = r17.zzz;
+              }
+            }
+            r14.xyz = r14.xyz * r10.www + r1.yzw;
+            r9.x = dot(r14.xyz, r14.xyz);
+            r9.x = rsqrt(r9.x);
+            r14.xyz = r14.xyz * r9.xxx;
+            r9.x = dot(r14.xyz, r1.yzw);
+            r10.w = 1.000000000e+000 + -r9.x;
+            r11.x = r10.w * r10.w;
+            r11.x = r11.x * r11.x;
+            r10.w = r11.x * r10.w;
+            r18.xyz = r4.yzw * r10.www + r10.xyz;
+            r9.x = -8.656169891e+000 * r9.x;
+            r9.x = exp2(r9.x);
+            r19.xyz = r4.yzw * r9.xxx + r10.xyz;
+            r18.xyz = _BRDFHighQuality ? r18.xyz : r19.xyz;
+            r9.x = saturate(dot(r8.xyz, r16.xyw));
+            r10.w = r9.x * r9.x;
+            r10.w = r10.w * r6.x + r5.w;
+            r10.w = sqrt(r10.w);
+            r10.w = r10.w + r9.x;
+            r10.w = 1.000000e+000 / r10.w;
+            r10.w = _BRDFHighQuality ? r10.w : 1.000000000e+000;
+            r17.xyz = _SpotLightColor[r8.w].xyz * r17.xyz;
+            r11.x = saturate(dot(r15.xyz, r16.xyw));
+            r20.xyz = r11.xxx * r17.xyz + r20.xyz;
+            if (_BRDFHighQuality != 0) {
+              r16.xyw = r18.xyz * r10.www;
+              r16.xyw = r16.xyw * r9.xxx;
+              r19.x = dot(r14.xyz, r3.xyz);
+              r19.y = dot(r14.xyz, r5.xyz);
+              r11.x = dot(r14.xyz, r8.xyz);
+              r19.xy = r19.xy * r19.xy;
+              r11.w = r19.x / r6.y;
+              r11.x = r11.x * r11.x + r11.w;
+              r11.w = r19.y / r6.z;
+              r11.x = r11.x + r11.w;
+              r11.x = r11.x * r11.x;
+              r11.x = r11.x * r0.w;
+              r11.x = 1.000000e+000 / r11.x;
+              r19.xyz = r17.xyz * r11.xxx;
+              r21.xyz = r16.xyw * r19.xyz + r21.xyz;
+            } else {
+              r16.xyw = r18.xyz * r10.www;
+              r16.xyw = r16.xyw * r9.xxx;
+              r9.x = saturate(dot(r14.xyz, r8.xyz));
+              r9.x = log2(r9.x);
+              r9.x = r9.x * r6.w;
+              r9.x = exp2(r9.x);
+              r9.x = r9.x * r1.x;
+              r14.xyz = r17.xyz * r9.xxx;
+              r21.xyz = r16.xyw * r14.xyz + r21.xyz;
+            }
+            r8.w = (int)r8.w + 1;
+          }
+        }
+      }
+    }
+  }
+  r0.x = (int)r9.w | (int)r16.z;
+  r0.x = (int)r0.x & 0x3f800000;
+  r0.x = _SSAOPerMaterialIntensity * r0.x;
+  r0.y = 1.000000000e+000 + -r17.w;
+  r0.x = r0.x * r0.y + r17.w;
+  r0.y = 5.000000000e-001 * r4.x;
+  r0.z = -r1.w * r2.y;
+  r0.w = saturate(r2.y * _FogParams.y + _FogParams.x);
+  r0.z = _HeightFogParams.y * r0.z;
+  r0.z = max(r0.z, -1.250000000e+002);
+  r1.x = 9.999999975e-007 < abs(r0.z);
+  r1.y = exp2(-r0.z);
+  r1.y = 1.000000000e+000 + -r1.y;
+  r0.z = r1.y / r0.z;
+  r0.z = r1.x ? r0.z : 1.000000000e+000;
+  r0.z = r0.z * _HeightFogParams.x + _FogParams.w;
+  r0.z = r0.w * r0.z;
+  r0.z = -_FogParams.z * r0.z;
+  r0.z = exp2(r0.z);
+  r0.w = abs(r2.z) * abs(r2.z);
+  r1.x = r6.w * r6.w;
+  r1.y = -r6.w * r6.w + 1.000000000e+000;
+  r0.w = r0.w * r1.y + r1.x;
+  r0.w = sqrt(r0.w);
+  r0.w = abs(r2.z) + r0.w;
+  r0.w = 1.000000e+000 / r0.w;
+  r0.w = _BRDFHighQuality ? r0.w : 1.000000000e+000;
+  r3.xyz = r21.xyz * r0.www;
+  r0.w = r2.x != 2;
+  r2.z = saturate(r2.z);
+  r1.z = r2.z * r2.z;
+  r1.x = r1.z * r1.y + r1.x;
+  r1.x = sqrt(r1.x);
+  r1.x = r2.z + r1.x;
+  r1.x = 1.000000e+000 / r1.x;
+  r1.x = _BRDFHighQuality ? r1.x : 1.000000000e+000;
+  r1.xyz = r21.xyz * r1.xxx;
+  r1.xyz = r0.www ? r1.xyz : r21.xyz;
+  r1.xyz = r9.yyy ? r3.xyz : r1.xyz;
+  r0.w = -r4.x * 5.000000000e-001 + 1.000000000e+000;
+  r0.x = saturate(r0.x * r0.w + r0.y);
+  r0.x = -1.000000000e+000 + r0.x;
+  r0.x = saturate(_DirectLightOcclusion * r0.x + 1.000000000e+000);
+  r2.xyz = r20.xyz * r0.xxx;
+  r0.y = r9.z ? 1.000000000e+000 : r2.w;
+  r1.xyz = r1.xyz * r0.yyy;
+  r0.xyw = r1.xyz * r0.xxx;
+  r1.x = 1.000000000e+000 + -r3.w;
+  r1.yzw = r13.xyz * r2.xyz;
+  r0.xyw = r1.yzw * r1.xxx + r0.xyw;
+  r0.xyz = r0.xyw * r0.zzz;
+  r0.xyz = _BloomAdaptationFactor.zzz * r0.xyz;
+  r0.w = 5.000000000e-001 < _ForceAlbedoOnlyDisableShadows.x;
+  o0.xyz = r0.www ? r13.xyz : r0.xyz;
+  o0.w = 1.000000000e+000;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer CViewportShaderParameterProvider
+// {
+//
+//   float4 _AmbientColorMultiplier;    // Offset:    0 Size:    16 [unused]
+//   float4 _AmbientOcclusionRanges_SunOcclusionFactor;// Offset:   16 Size:    16 [unused]
+//   float4 _BloomAdaptationFactor;     // Offset:   32 Size:    16
+//   float4 _CameraDirection_FOVDeg;    // Offset:   48 Size:    16 [unused]
+//   float4 _CameraDistances;           // Offset:   64 Size:    16
+//   float4 _CameraNearPlaneSize;       // Offset:   80 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS;// Offset:   96 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS_Previous;// Offset:  112 Size:    16 [unused]
+//   float4 _CameraPosition_DistanceScale;// Offset:  128 Size:    16
+//   float4 _CameraPosition_DistanceScale_Previous;// Offset:  144 Size:    16 [unused]
+//   float4x4 _CullingViewProjectionMatrix;// Offset:  160 Size:    64 [unused]
+//   float4 _DepthScale;                // Offset:  224 Size:    16
+//   float4 _DepthTextureRcpSize;       // Offset:  240 Size:    16 [unused]
+//   float4 _DepthTextureScaleOffset;   // Offset:  256 Size:    16 [unused]
+//   float4 _FogParams;                 // Offset:  272 Size:    16
+//   float4 _FogSHB;                    // Offset:  288 Size:    16 [unused]
+//   float4 _FogSHG;                    // Offset:  304 Size:    16 [unused]
+//   float4 _FogSHR;                    // Offset:  320 Size:    16 [unused]
+//   float4 _HeightFogParams;           // Offset:  336 Size:    16
+//   float4x4 _InvProjectionMatrix;     // Offset:  352 Size:    64 [unused]
+//   float4x4 _InvViewMatrix;           // Offset:  416 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  480 Size:    64 [unused]
+//   float4 _TempSunDirection;          // Offset:  544 Size:    16 [unused]
+//   float4x4 _ViewMatrix;              // Offset:  560 Size:    64 [unused]
+//   float4 _ViewPoint_ShadowProjDepthMin;// Offset:  624 Size:    16 [unused]
+//   float4x4 _ViewProjectionMatrix;    // Offset:  640 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix; // Offset:  704 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix_Previous;// Offset:  768 Size:    64 [unused]
+//   float4 _ViewportSize;              // Offset:  832 Size:    16 [unused]
+//   float2 _MotionVectorOffsets;       // Offset:  848 Size:     8 [unused]
+//   float3 _CameraRight;               // Offset:  864 Size:    12 [unused]
+//   float3 _CameraUp;                  // Offset:  880 Size:    12 [unused]
+//   float3 _EnvironmentMapColorOffset; // Offset:  896 Size:    12 [unused]
+//   float3 _EnvironmentMapColorScale;  // Offset:  912 Size:    12 [unused]
+//
+// }
+//
+// cbuffer CGlobalShaderParameterProvider
+// {
+//
+//   float4 _BurnColor;                 // Offset:    0 Size:    16 [unused]
+//   float4 _BurnParams;                // Offset:   16 Size:    16 [unused]
+//   float4 _BurnParams2;               // Offset:   32 Size:    16 [unused]
+//   float4 _BurnParams3;               // Offset:   48 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile0;// Offset:   64 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile1;// Offset:   80 Size:    16 [unused]
+//   float4 _GlobalScalars;             // Offset:   96 Size:    16 [unused]
+//   float4 _SSS_MiscParams;            // Offset:  112 Size:    16 [unused]
+//   float4 _WindSimParamsX;            // Offset:  128 Size:    16 [unused]
+//   float4 _WindSimParamsY;            // Offset:  144 Size:    16 [unused]
+//   float2 _RangeDepthCompression;     // Offset:  160 Size:     8 [unused]
+//   float3 _SSS_Color;                 // Offset:  176 Size:    12 [unused]
+//   int _BRDFHighQuality;              // Offset:  188 Size:     4
+//
+// }
+//
+// cbuffer CDeferredLightingParameterProvider
+// {
+//
+//   float4 _DistanceBoostParameters;   // Offset:    0 Size:    16 [unused]
+//   float4 _ForceAlbedoOnlyDisableShadows;// Offset:   16 Size:    16
+//   float4x4 _InvViewRotProjectionMatrix;// Offset:   32 Size:    64
+//   float4 _LightClippingPlanes[24];   // Offset:   96 Size:   384
+//   float4 _PointLightAttenuation[4];  // Offset:  480 Size:    64
+//   float4 _PointLightClippingInfo[4]; // Offset:  544 Size:    64
+//   float4 _PointLightColor[4];        // Offset:  608 Size:    64
+//   float4 _PointLightMinMaxDepth[4];  // Offset:  672 Size:    64 [unused]
+//   float4 _PointLightPos[4];          // Offset:  736 Size:    64
+//   float4 _QuadParams;                // Offset:  800 Size:    16 [unused]
+//   float4 _SpotLightAttenuation[4];   // Offset:  816 Size:    64
+//   float4 _SpotLightClippingInfo[4];  // Offset:  880 Size:    64
+//   float4 _SpotLightColor[4];         // Offset:  944 Size:    64
+//   float4 _SpotLightDirection[4];     // Offset: 1008 Size:    64
+//   float4 _SpotLightMinMaxDepth[4];   // Offset: 1072 Size:    64 [unused]
+//   float4 _SpotLightPos[4];           // Offset: 1136 Size:    64
+//   float4 _SpotScaleOffsetUVS[4];     // Offset: 1200 Size:    64
+//   float4 _SpotShadowMapSize;         // Offset: 1264 Size:    16 [unused]
+//   float4x4 _SpotShadowProjectionMatrix[4];// Offset: 1280 Size:   256
+//   float4 _SunColor;                  // Offset: 1536 Size:    16 [unused]
+//   float4 _SunDirection;              // Offset: 1552 Size:    16 [unused]
+//   float3 _CamVectorOffset;           // Offset: 1568 Size:    12 [unused]
+//   float3 _CamVectorScaleX;           // Offset: 1584 Size:    12 [unused]
+//   float3 _CamVectorScaleY;           // Offset: 1600 Size:    12 [unused]
+//   float _AmbientRange;               // Offset: 1612 Size:     4 [unused]
+//   float _DebugLightComplexityBias;   // Offset: 1616 Size:     4 [unused]
+//   float _DirectLightOcclusion;       // Offset: 1620 Size:     4
+//   float _SSAOPerMaterialIntensity;   // Offset: 1624 Size:     4
+//   int _PointLightCount;              // Offset: 1628 Size:     4
+//   int _SpotLightCount;               // Offset: 1632 Size:     4
+//   int _SpotLightGoboCount;           // Offset: 1636 Size:     4
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// DepthVPSampler__SampObj__         sampler      NA          NA    0        1
+// DeferredAmbientTexture            sampler      NA          NA    1        1
+// SpotGobo0__SampObj__              sampler      NA          NA    2        1
+// SpotGobo1__SampObj__              sampler      NA          NA    3        1
+// ColorPointClamp                   sampler      NA          NA    4        1
+// SkinDiffusePreIntegrated__SampObj__    sampler      NA          NA    5        1
+// DepthVPSampler__TexObj__          texture  float4          2d    0        1
+// DeferredAmbientTexture_TextureObject    texture  float4          2d    1        1
+// SpotGobo0__TexObj__               texture  float4          2d    2        1
+// SpotGobo1__TexObj__               texture  float4          2d    3        1
+// SSToksvig                         texture   float          2d    4        1
+// GBufferT0                         texture  float4          2d    5        1
+// GBufferT1                         texture  float4          2d    6        1
+// GBufferT2                         texture  float4          2d    7        1
+// GBufferT3                         texture  float4          2d    8        1
+// SkinDiffusePreIntegrated__TexObj__    texture  float4          2d    9        1
+// CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
+// CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
+// CDeferredLightingParameterProvider    cbuffer      NA          NA    2        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xyzw        1     NONE   float   xy  
+// SV_IsFrontFace           0   x           2    FFACE    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_4_0
+dcl_constantbuffer cb0[22], immediateIndexed
+dcl_constantbuffer cb1[12], immediateIndexed
+dcl_constantbuffer cb2[103], dynamicIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_resource_texture2d (float,float,float,float) t8
+dcl_resource_texture2d (float,float,float,float) t9
+dcl_input_ps_siv linear noperspective centroid v0.xy, position
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 31
+sample_l r0.xyzw, v1.xyxx, t0.xyzw, s0, l(0.000000)
+mad r0.x, cb0[14].y, r0.x, cb0[14].x
+div r0.x, l(1.000000, 1.000000, 1.000000, 1.000000), r0.x
+mul r0.y, cb0[4].y, cb0[4].x
+mul r0.x, r0.x, cb0[4].z
+div r0.x, r0.y, r0.x
+add r0.x, -r0.x, cb0[4].y
+mad r0.z, -r0.x, cb0[4].w, l(1.000000)
+mad r0.xy, v1.xyxx, l(2.000000, -2.000000, 0.000000, 0.000000), l(-1.000000, 1.000000, 0.000000, 0.000000)
+mov r0.w, l(1.000000)
+dp4 r1.x, r0.xyzw, cb2[2].xyzw
+dp4 r1.y, r0.xyzw, cb2[3].xyzw
+dp4 r1.z, r0.xyzw, cb2[4].xyzw
+dp4 r0.x, r0.xyzw, cb2[5].xyzw
+div r0.xyz, r1.xyzx, r0.xxxx
+add r0.xyz, r0.xyzx, cb0[8].xyzx
+ftoi r1.xy, v0.xyxx
+mov r1.zw, l(0,0,0,0)
+ld r2.xyzw, r1.xyww, t5.xyzw
+ld r3.xyzw, r1.xyww, t6.xyzw
+ld r4.xyzw, r1.xyww, t7.xyzw
+sample_aoffimmi(1,0,0) r5.xyzw, v1.xyxx, t5.xzwy, s4
+sample_aoffimmi(-1,0,0) r6.xyzw, v1.xyxx, t5.xyzw, s4
+sample_aoffimmi(0,1,0) r7.xyzw, v1.xyxx, t5.xyzw, s4
+sample_aoffimmi(0,-1,0) r8.xyzw, v1.xyxx, t5.xyzw, s4
+mov r9.x, r8.x
+mov r9.y, r7.x
+mov r9.z, r6.x
+mov r9.w, r5.x
+add r9.xyzw, -r2.xxxx, r9.xyzw
+mad r9.xyzw, |r9.xyzw|, l(10.000000, 10.000000, 10.000000, 10.000000), l(0.100000, 0.100000, 0.100000, 0.100000)
+div r9.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000), r9.xyzw
+dp4 r6.x, r9.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+div r6.x, l(1.000000, 1.000000, 1.000000, 1.000000), r6.x
+mul r9.xyzw, r6.xxxx, r9.xyzw
+mov r5.x, r8.y
+mov r5.y, r7.y
+mov r5.z, r6.y
+dp4 r5.y, r5.xyzw, r9.xyzw
+and r5.xw, r1.xxxy, l(1, 0, 0, 1)
+ine r5.x, r5.x, r5.w
+mov r5.z, r2.y
+movc r5.yz, r5.xxxx, r5.yyzy, r5.zzyz
+mul r5.x, r2.x, r2.x
+add r5.xyz, r5.xyzx, l(-0.000000, -0.498039, -0.498039, 0.000000)
+add r6.yw, r5.zzzy, r5.xxxx
+add r6.x, -r5.z, r6.w
+add r2.x, -r5.y, r5.x
+add r6.z, -r5.z, r2.x
+mov_sat r6.xyz, r6.xyzx
+mul r2.xy, r2.wzww, l(255.000000, 13.000000, 0.000000, 0.000000)
+ftou r2.x, r2.x
+and r2.x, r2.x, l(7)
+mul r2.w, r3.w, l(3.000000)
+ftou r2.w, r2.w
+mad r3.xyz, r3.xyzx, l(1.414214, 1.414214, 1.414214, 0.000000), l(-0.707107, -0.707107, -0.707107, 0.000000)
+dp3 r3.w, r3.xyzx, r3.xyzx
+min r3.w, r3.w, l(1.000000)
+add r3.w, -r3.w, l(1.000000)
+sqrt r3.w, r3.w
+movc r5.w, r2.w, r3.x, r3.w
+ieq r7.xy, r2.wwww, l(1, 2, 0, 0)
+movc r5.xy, r7.xyxx, r3.wwww, r3.yzyy
+movc r2.w, r2.w, r3.w, r3.x
+movc r2.w, r7.x, r3.y, r2.w
+movc r5.z, r7.y, r3.z, r2.w
+mul r3.xyz, r5.xxxx, l(-2.000000, 2.000000, 2.000000, 0.000000)
+mul r7.xyz, r5.wwww, l(2.000000, -2.000000, -2.000000, 0.000000)
+mad r8.xyz, r7.xxzx, r5.yzwy, l(0.000000, 0.000000, 1.000000, 0.000000)
+mad r8.xyz, r3.xzxx, r5.zyxz, r8.xyzx
+ieq r9.xyzw, r2.xxxx, l(1, 5, 6, 3)
+if_nz r9.x
+  mul r2.w, r4.y, l(255.000000)
+  ftou r2.w, r2.w
+  ushr r2.w, r2.w, l(2)
+  utof r2.w, r2.w
+  mul r2.w, r2.w, l(0.015873)
+  mov r3.w, l(0.150000)
+  mov r10.x, l(0)
+  mov r11.xw, l(0,0,0,0)
+  mov r12.xyz, l(0,0,0,0)
+  mov r14.xyz, l(0,0,0,0)
+  mov r15.xyz, r8.xyzx
+  mov r13.xyz, l(0,0,0,0)
+  mov r16.x, l(0)
+else 
+  ld r17.xyzw, r1.xyww, t8.xyzw
+  mul r4.x, r4.x, l(255.000000)
+  ftou r4.x, r4.x
+  ushr r6.w, r4.x, l(4)
+  utof r6.w, r6.w
+  mul r10.x, r6.w, l(0.066667)
+  and r4.x, r4.x, l(15)
+  utof r4.x, r4.x
+  mul r3.w, r4.x, l(0.066667)
+  ieq r4.x, r2.x, l(3)
+  if_nz r4.x
+    mad r18.xyz, r17.yzwy, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+    dp3 r4.x, r18.xyzx, r18.xyzx
+    rsq r4.x, r4.x
+    mul r15.xyz, r4.xxxx, r18.xyzx
+    mov r12.xyz, l(0,0,0,0)
+    mov r14.xyz, l(0,0,0,0)
+    mov r11.xw, l(0,0,0,0)
+    mov r13.xyz, l(0,0,0,0)
+    mov r16.x, r4.w
+  else 
+    mad r18.xyz, r17.yzwy, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+    dp3 r4.x, r18.xyzx, r18.xyzx
+    rsq r4.x, r4.x
+    mul r18.xyz, r4.xxxx, r18.xyzx
+    ieq r19.xyz, r2.xxxx, l(4, 5, 6, 0)
+    mad r20.xyz, r17.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+    dp3 r4.x, r20.xyzx, r20.xyzx
+    rsq r4.x, r4.x
+    mul r20.xyz, r4.xxxx, r20.xyzx
+    mul r4.x, r17.w, l(255.000000)
+    ftou r4.x, r4.x
+    ushr r6.w, r4.x, l(4)
+    utof r6.w, r6.w
+    mul r21.x, r6.w, l(0.066667)
+    and r4.x, r4.x, l(15)
+    utof r4.x, r4.x
+    mul r21.y, r4.x, l(0.066667)
+    mul r22.xyz, r4.wyzw, l(255.000000, 255.000000, 255.000000, 0.000000)
+    ftou r4.x, r22.x
+    ushr r4.z, r4.x, l(4)
+    utof r4.z, r4.z
+    mul r21.w, r4.z, l(0.066667)
+    and r4.x, r4.x, l(15)
+    utof r4.x, r4.x
+    mul r22.w, r4.x, l(0.066667)
+    mov r21.z, r22.y
+    and r21.xyzw, r19.zzzz, r21.xyzw
+    and r20.xyz, r19.zzzz, r20.xyzx
+    and r22.zw, r19.zzzz, r22.zzzw
+    mov r23.xzw, l(1.000000,0,0,0)
+    mov r23.y, r4.w
+    mov r22.xy, r23.ywyy
+    movc r23.xyzw, r19.yyyy, r23.xyzw, r22.xyzw
+    or r4.x, r19.x, r19.y
+    movc r13.xyzw, r4.xxxx, l(0,0,0,0), r21.wxyz
+    movc r14.xyz, r4.xxxx, l(0,0,0,0), r20.xyzx
+    movc r15.xyz, r19.xxxx, r18.xyzx, r8.xyzx
+    mov r17.yz, l(0,0,0,0)
+    mov r17.w, r23.y
+    movc r11.xw, r19.xxxx, r17.yyyx, r17.wwwz
+    movc r16.xyz, r19.xxxx, r22.xyyx, r23.xzwx
+    mov r12.xyz, r13.yzwy
+    mov r13.yz, r16.yyzy
+  endif 
+  mov r2.w, r4.y
+endif 
+ld r1.xyzw, r1.xyzw, t4.xyzw
+exp r1.y, r2.y
+add r1.z, -r1.x, l(1.000000)
+mad r1.y, r1.y, r1.z, r1.x
+div r1.x, r1.x, r1.y
+log r1.x, |r1.x|
+mul r1.x, r1.x, l(0.110977)
+exp r1.x, r1.x
+mul r1.x, r1.x, r2.z
+mul r1.y, r1.x, l(0.570000)
+movc r1.y, cb1[11].w, r1.x, r1.y
+movc r1.x, r9.y, r1.y, r1.x
+mov r13.w, l(0)
+mov r10.y, l(0)
+movc r4.xyzw, r9.zzzz, r13.wxyz, r10.xyyy
+add r1.yzw, -r0.xxyz, cb0[8].xxyz
+dp3 r2.y, r1.yzwy, r1.yzwy
+sqrt r2.y, r2.y
+div r1.yzw, r1.yyzw, r2.yyyy
+dp3 r2.z, r8.xyzx, r1.yzwy
+mul r6.w, r1.x, l(13.000000)
+mad r7.w, r1.x, l(-0.255445), l(1.401520)
+mad r7.w, r7.w, r1.x, l(-1.946950)
+mad r7.w, r7.w, r1.x, l(0.816500)
+exp r6.w, r6.w
+movc r6.w, cb1[11].w, r7.w, r6.w
+mad r3.w, r3.w, l(0.082000), l(0.018000)
+add r10.xyz, -r3.wwww, r6.xyzx
+mad r10.xyz, r4.xxxx, r10.xyzx, r3.wwww
+add r4.x, -r4.x, l(1.000000)
+mul r13.xyz, r4.xxxx, r6.xyzx
+utof r4.x, r2.x
+ge r7.w, r4.x, l(0.999900)
+and r7.w, r7.w, l(0x3f800000)
+ge r4.x, l(1.000100), r4.x
+and r4.x, r4.x, l(0x3f800000)
+mul r4.x, r4.x, r7.w
+sample r17.xyzw, v1.xyxx, t1.xyzw, s1
+ieq r16.yz, r2.xxxx, l(0, 2, 4, 0)
+if_nz r16.y
+  add r17.xyz, -r10.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+  mul r7.w, r6.w, r6.w
+  mad r7.w, r7.w, l(4.000000), l(1.000000)
+  div r7.w, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+  mad r8.w, r6.w, r6.w, l(0.000001)
+  mad r9.x, r6.w, l(0.125000), l(0.250000)
+  mov r18.xyzw, l(0,0,0,0)
+  mov r19.yz, l(0,0,0,0)
+  mov r10.w, l(0)
+  loop 
+    ige r12.w, r10.w, cb2[101].w
+    breakc_nz r12.w
+    add r20.xyz, -r0.xyzx, cb2[r10.w + 46].xyzx
+    dp3 r12.w, r20.xyzx, r20.xyzx
+    div r13.w, cb2[r10.w + 30].x, r12.w
+    add_sat r13.w, r13.w, cb2[r10.w + 30].y
+    ftoi r14.w, cb2[r10.w + 34].x
+    dp3 r15.w, cb2[r14.w + 6].xyzx, r0.xyzx
+    mad_sat r15.w, r15.w, cb2[r10.w + 34].z, -cb2[r14.w + 6].w
+    iadd r16.yw, l(0, 1, 0, 2), r14.wwww
+    dp3 r14.w, cb2[r16.y + 6].xyzx, r0.xyzx
+    mad_sat r14.w, r14.w, cb2[r10.w + 34].z, -cb2[r16.y + 6].w
+    mul r14.w, r14.w, r15.w
+    dp3 r15.w, cb2[r16.w + 6].xyzx, r0.xyzx
+    mad_sat r15.w, r15.w, cb2[r10.w + 34].z, -cb2[r16.w + 6].w
+    mul r14.w, r14.w, r15.w
+    mul r15.w, r14.w, r14.w
+    mad r14.w, -r14.w, l(2.000000), l(3.000000)
+    mul r14.w, r14.w, r15.w
+    mul r13.w, r13.w, r14.w
+    eq r14.w, r13.w, l(0.000000)
+    if_nz r14.w
+      iadd r10.w, r10.w, l(1)
+      continue 
+    endif 
+    rsq r12.w, r12.w
+    mul r21.xyz, r12.wwww, r20.xyzx
+    mad r20.xyz, r20.xyzx, r12.wwww, r1.yzwy
+    dp3 r12.w, r20.xyzx, r20.xyzx
+    rsq r12.w, r12.w
+    mul r20.xyz, r12.wwww, r20.xyzx
+    dp3 r12.w, r20.xyzx, r1.yzwy
+    add r14.w, -r12.w, l(1.000000)
+    mul r15.w, r14.w, r14.w
+    mul r15.w, r15.w, r15.w
+    mul r14.w, r14.w, r15.w
+    mad r22.xyz, r17.xyzx, r14.wwww, r10.xyzx
+    mul r12.w, r12.w, l(-8.656170)
+    exp r12.w, r12.w
+    mad r23.xyz, r17.xyzx, r12.wwww, r10.xyzx
+    movc r22.xyz, cb1[11].wwww, r22.xyzx, r23.xyzx
+    dp3_sat r12.w, r8.xyzx, r21.xyzx
+    add r14.w, r2.z, r12.w
+    mad r14.w, -r12.w, r2.z, r14.w
+    max r14.w, r14.w, l(0.010000)
+    div r14.w, l(1.000000, 1.000000, 1.000000, 1.000000), r14.w
+    movc r14.w, cb1[11].w, r14.w, l(1.000000)
+    mul r23.xyz, r13.wwww, cb2[r10.w + 38].xyzx
+    dp3_sat r13.w, r15.xyzx, r21.xyzx
+    mad r18.xyz, r13.wwww, r23.xyzx, r18.xyzx
+    mul r21.xyz, r12.wwww, r22.xyzx
+    mul r21.xyz, r14.wwww, r21.xyzx
+    dp3_sat r12.w, r20.xyzx, r8.xyzx
+    mul r13.w, r12.w, r12.w
+    min r13.w, r13.w, l(0.999999)
+    add r14.w, -r13.w, l(1.000000)
+    div r13.w, r13.w, r14.w
+    mul r14.w, r14.w, r14.w
+    div r13.w, -r13.w, r8.w
+    mul r13.w, r13.w, l(1.442695)
+    exp r13.w, r13.w
+    mul r13.w, r13.w, l(4.000000)
+    div r13.w, r13.w, r14.w
+    add r13.w, r13.w, l(1.000000)
+    mul r13.w, r7.w, r13.w
+    mul r20.xyz, r13.wwww, r23.xyzx
+    log r12.w, r12.w
+    mul r12.w, r6.w, r12.w
+    exp r12.w, r12.w
+    mul r12.w, r9.x, r12.w
+    mul r22.xyz, r12.wwww, r23.xyzx
+    movc r20.xyz, cb1[11].wwww, r20.xyzx, r22.xyzx
+    mov r19.x, r18.w
+    mad r19.xyz, r21.xyzx, r20.xyzx, r19.xyzx
+    iadd r10.w, r10.w, l(1)
+    mov r18.w, r19.x
+  endloop 
+  mov r0.w, l(1.000000)
+  mov r20.xyz, r18.xyzx
+  mov r21.x, r18.w
+  mov r21.yz, r19.yyzy
+  mov r10.w, l(0)
+  loop 
+    ige r12.w, r10.w, cb2[102].x
+    breakc_nz r12.w
+    add r22.xyz, -r0.xyzx, cb2[r10.w + 71].xyzx
+    dp3 r12.w, r22.xyzx, r22.xyzx
+    rsq r13.w, r12.w
+    mul r23.xyz, r13.wwww, r22.xyzx
+    div r12.w, cb2[r10.w + 51].x, r12.w
+    add_sat r12.w, r12.w, cb2[r10.w + 51].y
+    dp3 r14.w, r23.xyzx, -cb2[r10.w + 63].xyzx
+    mad_sat r14.w, r14.w, cb2[r10.w + 59].w, cb2[r10.w + 63].w
+    mul r14.w, r14.w, r14.w
+    mul r12.w, r12.w, r14.w
+    ftoi r14.w, cb2[r10.w + 55].x
+    dp3 r15.w, cb2[r14.w + 6].xyzx, r0.xyzx
+    mad_sat r15.w, r15.w, cb2[r10.w + 55].z, -cb2[r14.w + 6].w
+    iadd r16.yw, l(0, 1, 0, 2), r14.wwww
+    dp3 r14.w, cb2[r16.y + 6].xyzx, r0.xyzx
+    mad_sat r14.w, r14.w, cb2[r10.w + 55].z, -cb2[r16.y + 6].w
+    mul r14.w, r14.w, r15.w
+    dp3 r15.w, cb2[r16.w + 6].xyzx, r0.xyzx
+    mad_sat r15.w, r15.w, cb2[r10.w + 55].z, -cb2[r16.w + 6].w
+    mul r14.w, r14.w, r15.w
+    mul r15.w, r14.w, r14.w
+    mad r14.w, -r14.w, l(2.000000), l(3.000000)
+    mul r14.w, r14.w, r15.w
+    mul r24.xyz, r12.wwww, r14.wwww
+    eq r12.w, r24.z, l(0.000000)
+    if_nz r12.w
+      iadd r10.w, r10.w, l(1)
+      continue 
+    endif 
+    ilt r12.w, r10.w, l(0)
+    if_z r12.w
+      ilt r12.w, r10.w, cb2[102].y
+      if_nz r12.w
+        ishl r12.w, r10.w, l(2)
+        dp4 r25.x, r0.xyzw, cb2[r12.w + 80].xyzw
+        dp4 r25.y, r0.xyzw, cb2[r12.w + 81].xyzw
+        dp4 r12.w, r0.xyzw, cb2[r12.w + 83].xyzw
+        max r12.w, r12.w, l(0.000010)
+        div r16.yw, r25.xxxy, r12.wwww
+        mad r16.yw, r16.yyyw, cb2[r10.w + 75].xxxy, cb2[r10.w + 75].zzzw
+        ieq r12.w, r10.w, l(1)
+        if_z r10.w
+          sample_l r25.xyzw, r16.ywyy, t2.xyzw, s2, l(0.000000)
+        else 
+          mov r25.xyz, l(1.000000,0,1.000000,0)
+        endif 
+        if_nz r12.w
+          sample_l r25.xyzw, r16.ywyy, t3.xyzw, s3, l(0.000000)
+        endif 
+        mul r24.xyz, r24.zzzz, r25.xyzx
+      else 
+        mov r24.xyz, r24.zzzz
+      endif 
+    endif 
+    mad r22.xyz, r22.xyzx, r13.wwww, r1.yzwy
+    dp3 r12.w, r22.xyzx, r22.xyzx
+    rsq r12.w, r12.w
+    mul r22.xyz, r12.wwww, r22.xyzx
+    dp3 r12.w, r22.xyzx, r1.yzwy
+    add r13.w, -r12.w, l(1.000000)
+    mul r14.w, r13.w, r13.w
+    mul r14.w, r14.w, r14.w
+    mul r13.w, r13.w, r14.w
+    mad r25.xyz, r17.xyzx, r13.wwww, r10.xyzx
+    mul r12.w, r12.w, l(-8.656170)
+    exp r12.w, r12.w
+    mad r26.xyz, r17.xyzx, r12.wwww, r10.xyzx
+    movc r25.xyz, cb1[11].wwww, r25.xyzx, r26.xyzx
+    dp3_sat r12.w, r8.xyzx, r23.xyzx
+    add r13.w, r2.z, r12.w
+    mad r13.w, -r12.w, r2.z, r13.w
+    max r13.w, r13.w, l(0.010000)
+    div r13.w, l(1.000000, 1.000000, 1.000000, 1.000000), r13.w
+    movc r13.w, cb1[11].w, r13.w, l(1.000000)
+    mul r24.xyz, r24.xyzx, cb2[r10.w + 59].xyzx
+    dp3_sat r14.w, r15.xyzx, r23.xyzx
+    mad r20.xyz, r14.wwww, r24.xyzx, r20.xyzx
+    mul r23.xyz, r12.wwww, r25.xyzx
+    mul r23.xyz, r13.wwww, r23.xyzx
+    dp3_sat r12.w, r22.xyzx, r8.xyzx
+    mul r13.w, r12.w, r12.w
+    min r13.w, r13.w, l(0.999999)
+    add r14.w, -r13.w, l(1.000000)
+    div r13.w, r13.w, r14.w
+    mul r14.w, r14.w, r14.w
+    div r13.w, -r13.w, r8.w
+    mul r13.w, r13.w, l(1.442695)
+    exp r13.w, r13.w
+    mul r13.w, r13.w, l(4.000000)
+    div r13.w, r13.w, r14.w
+    add r13.w, r13.w, l(1.000000)
+    mul r13.w, r7.w, r13.w
+    mul r22.xyz, r13.wwww, r24.xyzx
+    log r12.w, r12.w
+    mul r12.w, r6.w, r12.w
+    exp r12.w, r12.w
+    mul r12.w, r9.x, r12.w
+    mul r24.xyz, r12.wwww, r24.xyzx
+    movc r22.xyz, cb1[11].wwww, r22.xyzx, r24.xyzx
+    mad r21.xyz, r23.xyzx, r22.xyzx, r21.xyzx
+    iadd r10.w, r10.w, l(1)
+  endloop 
+else 
+  ieq r0.w, r2.x, l(4)
+  if_nz r0.w
+    add r17.xyz, -r10.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    mul r0.w, r6.w, r6.w
+    mad r7.w, -r6.w, r6.w, l(1.000000)
+    add r18.xyz, -r8.xyzx, r15.xyzx
+    mad r19.xyz, r18.xyzx, l(0.100000, 0.100000, 0.100000, 0.000000), r8.xyzx
+    dp3 r8.w, r19.xyzx, r19.xyzx
+    rsq r8.w, r8.w
+    mul r19.xyz, r8.wwww, r19.xyzx
+    mad r18.xyz, r18.xyzx, l(0.300000, 0.300000, 0.300000, 0.000000), r8.xyzx
+    dp3 r8.w, r18.xyzx, r18.xyzx
+    rsq r8.w, r8.w
+    mul r18.xyz, r8.wwww, r18.xyzx
+    mad r8.w, r6.w, r6.w, l(-1.000000)
+    mad r9.x, r6.w, l(0.125000), l(0.250000)
+    mov r22.xyzw, l(0,0,0,0)
+    mov r23.yz, l(0,0,0,0)
+    mov r10.w, l(0)
+    loop 
+      ige r12.w, r10.w, cb2[101].w
+      breakc_nz r12.w
+      add r24.xyz, -r0.xyzx, cb2[r10.w + 46].xyzx
+      dp3 r12.w, r24.xyzx, r24.xyzx
+      div r13.w, cb2[r10.w + 30].x, r12.w
+      add_sat r13.w, r13.w, cb2[r10.w + 30].y
+      ftoi r14.w, cb2[r10.w + 34].x
+      dp3 r15.w, cb2[r14.w + 6].xyzx, r0.xyzx
+      mad_sat r15.w, r15.w, cb2[r10.w + 34].z, -cb2[r14.w + 6].w
+      iadd r16.yw, l(0, 1, 0, 2), r14.wwww
+      dp3 r14.w, cb2[r16.y + 6].xyzx, r0.xyzx
+      mad_sat r14.w, r14.w, cb2[r10.w + 34].z, -cb2[r16.y + 6].w
+      mul r14.w, r14.w, r15.w
+      dp3 r15.w, cb2[r16.w + 6].xyzx, r0.xyzx
+      mad_sat r15.w, r15.w, cb2[r10.w + 34].z, -cb2[r16.w + 6].w
+      mul r14.w, r14.w, r15.w
+      mul r15.w, r14.w, r14.w
+      mad r14.w, -r14.w, l(2.000000), l(3.000000)
+      mul r14.w, r14.w, r15.w
+      mul r13.w, r13.w, r14.w
+      eq r14.w, r13.w, l(0.000000)
+      if_nz r14.w
+        iadd r10.w, r10.w, l(1)
+        continue 
+      endif 
+      rsq r12.w, r12.w
+      mul r25.xyz, r12.wwww, r24.xyzx
+      mad r24.xyz, r24.xyzx, r12.wwww, r1.yzwy
+      dp3 r12.w, r24.xyzx, r24.xyzx
+      rsq r12.w, r12.w
+      mul r24.xyz, r12.wwww, r24.xyzx
+      dp3 r12.w, r24.xyzx, r1.yzwy
+      add r14.w, -r12.w, l(1.000000)
+      mul r15.w, r14.w, r14.w
+      mul r15.w, r15.w, r15.w
+      mul r14.w, r14.w, r15.w
+      mad r26.xyz, r17.xyzx, r14.wwww, r10.xyzx
+      mul r12.w, r12.w, l(-8.656170)
+      exp r12.w, r12.w
+      mad r27.xyz, r17.xyzx, r12.wwww, r10.xyzx
+      movc r26.xyz, cb1[11].wwww, r26.xyzx, r27.xyzx
+      dp3_sat r12.w, r15.xyzx, r25.xyzx
+      mul r14.w, r12.w, r12.w
+      mad r14.w, r14.w, r7.w, r0.w
+      sqrt r14.w, r14.w
+      add r14.w, r12.w, r14.w
+      div r14.w, l(1.000000, 1.000000, 1.000000, 1.000000), r14.w
+      movc r14.w, cb1[11].w, r14.w, l(1.000000)
+      dp3 r15.w, r8.xyzx, r25.xyzx
+      dp3 r16.y, r19.xyzx, r25.xyzx
+      dp3 r16.w, r18.xyzx, r25.xyzx
+      mad r11.z, r15.w, l(0.500000), l(0.500000)
+      mad r25.xy, r11.zwzz, l(0.984375, 0.984375, 0.000000, 0.000000), l(0.007813, 0.007813, 0.000000, 0.000000)
+      sample_l r25.xyzw, r25.xyxx, t9.xyzw, s5, l(0.000000)
+      mad r11.y, r16.y, l(0.500000), l(0.500000)
+      mad r25.yz, r11.yywy, l(0.000000, 0.984375, 0.984375, 0.000000), l(0.000000, 0.007813, 0.007813, 0.000000)
+      sample_l r27.xyzw, r25.yzyy, t9.xyzw, s5, l(0.000000)
+      mad r11.x, r16.w, l(0.500000), l(0.500000)
+      mad r16.yw, r11.xxxw, l(0.000000, 0.984375, 0.000000, 0.984375), l(0.000000, 0.007813, 0.000000, 0.007813)
+      sample_l r28.xyzw, r16.ywyy, t9.xyzw, s5, l(0.000000)
+      mul r25.yzw, r13.wwww, cb2[r10.w + 38].xxyz
+      mov r28.x, r25.x
+      mov r28.y, r27.y
+      mad r22.xyz, r25.yzwy, r28.xyzx, r22.xyzx
+      mul r26.xyz, r14.wwww, r26.xyzx
+      mul r26.xyz, r12.wwww, r26.xyzx
+      dp3_sat r12.w, r24.xyzx, r15.xyzx
+      mul r13.w, r12.w, r12.w
+      mad r13.w, r13.w, r8.w, l(1.000000)
+      div r13.w, r6.w, r13.w
+      mul r13.w, r13.w, r13.w
+      mul r24.xyz, r13.wwww, r25.yzwy
+      log r12.w, r12.w
+      mul r12.w, r6.w, r12.w
+      exp r12.w, r12.w
+      mul r12.w, r9.x, r12.w
+      mul r25.xyz, r12.wwww, r25.yzwy
+      movc r24.xyz, cb1[11].wwww, r24.xyzx, r25.xyzx
+      mov r23.x, r22.w
+      mad r23.xyz, r26.xyzx, r24.xyzx, r23.xyzx
+      iadd r10.w, r10.w, l(1)
+      mov r22.w, r23.x
+    endloop 
+    mov r24.xyz, r0.xyzx
+    mov r24.w, l(1.000000)
+    mov r20.xyz, r22.xyzx
+    mov r21.x, r22.w
+    mov r21.yz, r23.yyzy
+    mov r10.w, l(0)
+    loop 
+      ige r12.w, r10.w, cb2[102].x
+      breakc_nz r12.w
+      add r25.xyz, -r0.xyzx, cb2[r10.w + 71].xyzx
+      dp3 r12.w, r25.xyzx, r25.xyzx
+      rsq r13.w, r12.w
+      mul r26.xyz, r13.wwww, r25.xyzx
+      div r12.w, cb2[r10.w + 51].x, r12.w
+      add_sat r12.w, r12.w, cb2[r10.w + 51].y
+      dp3 r14.w, r26.xyzx, -cb2[r10.w + 63].xyzx
+      mad_sat r14.w, r14.w, cb2[r10.w + 59].w, cb2[r10.w + 63].w
+      mul r14.w, r14.w, r14.w
+      mul r12.w, r12.w, r14.w
+      ftoi r14.w, cb2[r10.w + 55].x
+      dp3 r15.w, cb2[r14.w + 6].xyzx, r0.xyzx
+      mad_sat r15.w, r15.w, cb2[r10.w + 55].z, -cb2[r14.w + 6].w
+      iadd r16.yw, l(0, 1, 0, 2), r14.wwww
+      dp3 r14.w, cb2[r16.y + 6].xyzx, r0.xyzx
+      mad_sat r14.w, r14.w, cb2[r10.w + 55].z, -cb2[r16.y + 6].w
+      mul r14.w, r14.w, r15.w
+      dp3 r15.w, cb2[r16.w + 6].xyzx, r0.xyzx
+      mad_sat r15.w, r15.w, cb2[r10.w + 55].z, -cb2[r16.w + 6].w
+      mul r14.w, r14.w, r15.w
+      mul r15.w, r14.w, r14.w
+      mad r14.w, -r14.w, l(2.000000), l(3.000000)
+      mul r14.w, r14.w, r15.w
+      mul r27.xyz, r12.wwww, r14.wwww
+      eq r12.w, r27.z, l(0.000000)
+      if_nz r12.w
+        iadd r10.w, r10.w, l(1)
+        continue 
+      endif 
+      ilt r12.w, r10.w, l(0)
+      if_z r12.w
+        ilt r12.w, r10.w, cb2[102].y
+        if_nz r12.w
+          ishl r12.w, r10.w, l(2)
+          dp4 r28.x, r24.xyzw, cb2[r12.w + 80].xyzw
+          dp4 r28.y, r24.xyzw, cb2[r12.w + 81].xyzw
+          dp4 r12.w, r24.xyzw, cb2[r12.w + 83].xyzw
+          max r12.w, r12.w, l(0.000010)
+          div r16.yw, r28.xxxy, r12.wwww
+          mad r16.yw, r16.yyyw, cb2[r10.w + 75].xxxy, cb2[r10.w + 75].zzzw
+          ieq r12.w, r10.w, l(1)
+          if_z r10.w
+            sample_l r28.xyzw, r16.ywyy, t2.xyzw, s2, l(0.000000)
+          else 
+            mov r28.xyz, l(1.000000,0,1.000000,0)
+          endif 
+          if_nz r12.w
+            sample_l r28.xyzw, r16.ywyy, t3.xyzw, s3, l(0.000000)
+          endif 
+          mul r27.xyz, r27.zzzz, r28.xyzx
+        else 
+          mov r27.xyz, r27.zzzz
+        endif 
+      endif 
+      mad r25.xyz, r25.xyzx, r13.wwww, r1.yzwy
+      dp3 r12.w, r25.xyzx, r25.xyzx
+      rsq r12.w, r12.w
+      mul r25.xyz, r12.wwww, r25.xyzx
+      dp3 r12.w, r25.xyzx, r1.yzwy
+      add r13.w, -r12.w, l(1.000000)
+      mul r14.w, r13.w, r13.w
+      mul r14.w, r14.w, r14.w
+      mul r13.w, r13.w, r14.w
+      mad r28.xyz, r17.xyzx, r13.wwww, r10.xyzx
+      mul r12.w, r12.w, l(-8.656170)
+      exp r12.w, r12.w
+      mad r29.xyz, r17.xyzx, r12.wwww, r10.xyzx
+      movc r28.xyz, cb1[11].wwww, r28.xyzx, r29.xyzx
+      dp3_sat r12.w, r15.xyzx, r26.xyzx
+      mul r13.w, r12.w, r12.w
+      mad r13.w, r13.w, r7.w, r0.w
+      sqrt r13.w, r13.w
+      add r13.w, r12.w, r13.w
+      div r13.w, l(1.000000, 1.000000, 1.000000, 1.000000), r13.w
+      movc r13.w, cb1[11].w, r13.w, l(1.000000)
+      dp3 r14.w, r8.xyzx, r26.xyzx
+      dp3 r15.w, r19.xyzx, r26.xyzx
+      dp3 r16.y, r18.xyzx, r26.xyzx
+      mad r11.z, r14.w, l(0.500000), l(0.500000)
+      mad r23.xw, r11.zzzw, l(0.984375, 0.000000, 0.000000, 0.984375), l(0.007813, 0.000000, 0.000000, 0.007813)
+      sample_l r26.xyzw, r23.xwxx, t9.xyzw, s5, l(0.000000)
+      mad r11.y, r15.w, l(0.500000), l(0.500000)
+      mad r11.yz, r11.yywy, l(0.000000, 0.984375, 0.984375, 0.000000), l(0.000000, 0.007813, 0.007813, 0.000000)
+      sample_l r29.xyzw, r11.yzyy, t9.xyzw, s5, l(0.000000)
+      mad r11.x, r16.y, l(0.500000), l(0.500000)
+      mad r11.yz, r11.xxwx, l(0.000000, 0.984375, 0.984375, 0.000000), l(0.000000, 0.007813, 0.007813, 0.000000)
+      sample_l r30.xyzw, r11.yzyy, t9.xyzw, s5, l(0.000000)
+      mul r26.yzw, r27.xxyz, cb2[r10.w + 59].xxyz
+      mov r30.x, r26.x
+      mov r30.y, r29.y
+      mad r20.xyz, r26.yzwy, r30.xyzx, r20.xyzx
+      mul r27.xyz, r13.wwww, r28.xyzx
+      mul r27.xyz, r12.wwww, r27.xyzx
+      dp3_sat r11.y, r25.xyzx, r15.xyzx
+      mul r11.z, r11.y, r11.y
+      mad r11.z, r11.z, r8.w, l(1.000000)
+      div r11.z, r6.w, r11.z
+      mul r11.z, r11.z, r11.z
+      mul r25.xyz, r11.zzzz, r26.yzwy
+      log r11.y, r11.y
+      mul r11.y, r6.w, r11.y
+      exp r11.y, r11.y
+      mul r11.y, r9.x, r11.y
+      mul r26.xyz, r11.yyyy, r26.yzwy
+      movc r25.xyz, cb1[11].wwww, r25.xyzx, r26.xyzx
+      mad r21.xyz, r27.xyzx, r25.xyzx, r21.xyzx
+      iadd r10.w, r10.w, l(1)
+    endloop 
+  else 
+    mad r3.xyz, r3.xyzx, r5.xwzx, l(1.000000, 0.000000, 0.000000, 0.000000)
+    mul r11.yzw, r5.yyyy, l(0.000000, 2.000000, -2.000000, 2.000000)
+    mad r3.xyz, r11.zzwz, r5.yzwy, r3.xyzx
+    mad r11.yzw, r11.yyzw, r5.zzyx, l(0.000000, 0.000000, 1.000000, 0.000000)
+    mad r5.xyz, r7.xyzx, r5.xwzx, r11.yzwy
+    ieq r7.xy, r2.xxxx, l(0, 5, 0, 0)
+    or r0.w, r9.w, r7.x
+    or r0.w, r9.y, r0.w
+    movc r5.w, r9.z, l(1.000000), r16.x
+    mad r1.x, -r1.x, r5.w, r1.x
+    mul r5.w, r1.x, l(13.000000)
+    mad r7.x, r1.x, l(-0.255445), l(1.401520)
+    mad r7.x, r7.x, r1.x, l(-1.946950)
+    mad r1.x, r7.x, r1.x, l(0.816500)
+    exp r5.w, r5.w
+    movc r1.x, cb1[11].w, r1.x, r5.w
+    movc r0.w, r0.w, r6.w, r1.x
+    if_nz r7.y
+      add r5.w, r11.x, r11.x
+      add r7.xyz, -r10.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+      mul r7.w, r6.w, r6.w
+      mad r8.w, -r6.w, r6.w, l(1.000000)
+      mul r9.x, r1.x, r1.x
+      mul r10.w, r0.w, r0.w
+      mul r11.x, r0.w, r1.x
+      mul r11.yzw, r5.wwww, r5.xxyz
+      add r16.xyw, -r6.xyxz, l(1.000000, 1.000000, 0.000000, 1.000000)
+      add r5.w, r1.x, r1.x
+      add r12.w, r0.w, r0.w
+      mul r13.w, r5.w, r5.w
+      mul r14.w, r12.w, r12.w
+      mul r5.w, r5.w, r12.w
+      mad r12.w, r6.w, l(0.125000), l(0.250000)
+      mov r18.xyzw, l(0,0,0,0)
+      mov r17.yz, l(0,0,0,0)
+      mov r15.w, l(0)
+      loop 
+        ige r19.x, r15.w, cb2[101].w
+        breakc_nz r19.x
+        add r19.xyz, -r0.xyzx, cb2[r15.w + 46].xyzx
+        dp3 r19.w, r19.xyzx, r19.xyzx
+        div r20.w, cb2[r15.w + 30].x, r19.w
+        add_sat r20.w, r20.w, cb2[r15.w + 30].y
+        ftoi r21.w, cb2[r15.w + 34].x
+        dp3 r22.x, cb2[r21.w + 6].xyzx, r0.xyzx
+        mad_sat r22.x, r22.x, cb2[r15.w + 34].z, -cb2[r21.w + 6].w
+        iadd r22.yz, l(0, 1, 2, 0), r21.wwww
+        dp3 r21.w, cb2[r22.y + 6].xyzx, r0.xyzx
+        mad_sat r21.w, r21.w, cb2[r15.w + 34].z, -cb2[r22.y + 6].w
+        mul r21.w, r21.w, r22.x
+        dp3 r22.x, cb2[r22.z + 6].xyzx, r0.xyzx
+        mad_sat r22.x, r22.x, cb2[r15.w + 34].z, -cb2[r22.z + 6].w
+        mul r21.w, r21.w, r22.x
+        mul r22.x, r21.w, r21.w
+        mad r21.w, -r21.w, l(2.000000), l(3.000000)
+        mul r21.w, r21.w, r22.x
+        mul r20.w, r20.w, r21.w
+        eq r21.w, r20.w, l(0.000000)
+        if_nz r21.w
+          iadd r15.w, r15.w, l(1)
+          continue 
+        endif 
+        rsq r19.w, r19.w
+        mul r22.xyz, r19.wwww, r19.xyzx
+        mad r23.xyz, r19.xyzx, r19.wwww, r1.yzwy
+        dp3 r21.w, r23.xyzx, r23.xyzx
+        rsq r21.w, r21.w
+        mul r23.xyz, r21.wwww, r23.xyzx
+        dp3 r21.w, r23.xyzx, r1.yzwy
+        add r22.w, -r21.w, l(1.000000)
+        mul r23.w, r22.w, r22.w
+        mul r23.w, r23.w, r23.w
+        mul r22.w, r22.w, r23.w
+        mad r24.xyz, r7.xyzx, r22.wwww, r10.xyzx
+        mul r21.w, r21.w, l(-8.656170)
+        exp r21.w, r21.w
+        mad r25.xyz, r7.xyzx, r21.wwww, r10.xyzx
+        movc r24.xyz, cb1[11].wwww, r24.xyzx, r25.xyzx
+        dp3_sat r21.w, r8.xyzx, r22.xyzx
+        mul r22.w, r21.w, r21.w
+        mad r22.w, r22.w, r8.w, r7.w
+        sqrt r22.w, r22.w
+        add r22.w, r21.w, r22.w
+        div r22.w, l(1.000000, 1.000000, 1.000000, 1.000000), r22.w
+        movc r22.w, cb1[11].w, r22.w, l(1.000000)
+        mul r25.xyz, r20.wwww, cb2[r15.w + 38].xyzx
+        dp3_sat r20.w, r15.xyzx, r22.xyzx
+        mad r18.xyz, r20.wwww, r25.xyzx, r18.xyzx
+        if_nz cb1[11].w
+          mul r22.xyz, r22.wwww, r24.xyzx
+          mul r22.xyz, r21.wwww, r22.xyzx
+          dp3 r26.x, r23.xyzx, r3.xyzx
+          dp3 r26.y, r23.xyzx, r5.xyzx
+          dp3 r20.w, r23.xyzx, r8.xyzx
+          mul r26.xy, r26.xyxx, r26.xyxx
+          div r23.w, r26.x, r9.x
+          mad r20.w, r20.w, r20.w, r23.w
+          div r23.w, r26.y, r10.w
+          add r20.w, r20.w, r23.w
+          mul r20.w, r20.w, r20.w
+          mul r20.w, r11.x, r20.w
+          div r20.w, l(1.000000, 1.000000, 1.000000, 1.000000), r20.w
+          mul r26.xyz, r20.wwww, r25.xyzx
+          mul r22.xyz, r22.xyzx, r26.xyzx
+          mad r19.xyz, r19.xyzx, r19.wwww, r11.yzwy
+          dp3 r19.w, r19.xyzx, r19.xyzx
+          rsq r19.w, r19.w
+          mad r19.xyz, r19.xyzx, r19.wwww, r1.yzwy
+          dp3 r19.w, r19.xyzx, r19.xyzx
+          rsq r19.w, r19.w
+          mul r19.xyz, r19.wwww, r19.xyzx
+          dp3 r19.w, r19.xyzx, r1.yzwy
+          add r19.w, -r19.w, l(1.000000)
+          mul r20.w, r19.w, r19.w
+          mul r20.w, r20.w, r20.w
+          mul r19.w, r19.w, r20.w
+          mad r26.xyz, r16.xywx, r19.wwww, r6.xyzx
+          add r27.xyz, -r26.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+          mul r26.xyz, r22.wwww, r26.xyzx
+          mul r26.xyz, r21.wwww, r26.xyzx
+          dp3 r28.x, r19.xyzx, r3.xyzx
+          dp3 r28.y, r19.xyzx, r5.xyzx
+          dp3 r19.x, r19.xyzx, r8.xyzx
+          mul r19.yz, r28.xxyx, r28.xxyx
+          div r19.y, r19.y, r13.w
+          mad r19.x, r19.x, r19.x, r19.y
+          div r19.y, r19.z, r14.w
+          add r19.x, r19.y, r19.x
+          mul r19.x, r19.x, r19.x
+          mul r19.x, r5.w, r19.x
+          div r19.x, l(1.000000, 1.000000, 1.000000, 1.000000), r19.x
+          mul r19.xyz, r19.xxxx, r25.xyzx
+          mul r19.xyz, r19.xyzx, r26.xyzx
+          mad r19.xyz, r22.xyzx, r27.xyzx, r19.xyzx
+          mov r17.x, r18.w
+          add r17.xyz, r19.xyzx, r17.xyzx
+          mov r18.w, r17.x
+        else 
+          mul r19.xyz, r22.wwww, r24.xyzx
+          mul r19.xyz, r21.wwww, r19.xyzx
+          dp3_sat r19.w, r8.xyzx, r23.xyzx
+          add r19.w, -r19.w, r21.w
+          add r19.w, -|r19.w|, l(1.000000)
+          log r19.w, r19.w
+          mul r19.w, r6.w, r19.w
+          exp r19.w, r19.w
+          mul r22.xyz, r19.wwww, r25.xyzx
+          mul r22.xyz, r12.wwww, r22.xyzx
+          mov r17.x, r18.w
+          mad r17.xyz, r19.xyzx, r22.xyzx, r17.xyzx
+          mov r18.w, r17.x
+        endif 
+        iadd r15.w, r15.w, l(1)
+      endloop 
+      mov r19.xyz, r0.xyzx
+      mov r19.w, l(1.000000)
+      mov r20.xyz, r18.xyzx
+      mov r21.x, r18.w
+      mov r21.yz, r17.yyzy
+      mov r15.w, l(0)
+      loop 
+        ige r17.x, r15.w, cb2[102].x
+        breakc_nz r17.x
+        add r22.xyz, -r0.xyzx, cb2[r15.w + 71].xyzx
+        dp3 r17.x, r22.xyzx, r22.xyzx
+        rsq r20.w, r17.x
+        mul r23.xyz, r20.wwww, r22.xyzx
+        div r17.x, cb2[r15.w + 51].x, r17.x
+        add_sat r17.x, r17.x, cb2[r15.w + 51].y
+        dp3 r21.w, r23.xyzx, -cb2[r15.w + 63].xyzx
+        mad_sat r21.w, r21.w, cb2[r15.w + 59].w, cb2[r15.w + 63].w
+        mul r21.w, r21.w, r21.w
+        mul r17.x, r17.x, r21.w
+        ftoi r21.w, cb2[r15.w + 55].x
+        dp3 r22.w, cb2[r21.w + 6].xyzx, r0.xyzx
+        mad_sat r22.w, r22.w, cb2[r15.w + 55].z, -cb2[r21.w + 6].w
+        iadd r24.xy, l(1, 2, 0, 0), r21.wwww
+        dp3 r21.w, cb2[r24.x + 6].xyzx, r0.xyzx
+        mad_sat r21.w, r21.w, cb2[r15.w + 55].z, -cb2[r24.x + 6].w
+        mul r21.w, r21.w, r22.w
+        dp3 r22.w, cb2[r24.y + 6].xyzx, r0.xyzx
+        mad_sat r22.w, r22.w, cb2[r15.w + 55].z, -cb2[r24.y + 6].w
+        mul r21.w, r21.w, r22.w
+        mul r22.w, r21.w, r21.w
+        mad r21.w, -r21.w, l(2.000000), l(3.000000)
+        mul r21.w, r21.w, r22.w
+        mul r24.xyz, r17.xxxx, r21.wwww
+        eq r17.x, r24.z, l(0.000000)
+        if_nz r17.x
+          iadd r15.w, r15.w, l(1)
+          continue 
+        endif 
+        ilt r17.x, r15.w, l(0)
+        if_z r17.x
+          ilt r17.x, r15.w, cb2[102].y
+          if_nz r17.x
+            ishl r17.x, r15.w, l(2)
+            dp4 r25.x, r19.xyzw, cb2[r17.x + 80].xyzw
+            dp4 r25.y, r19.xyzw, cb2[r17.x + 81].xyzw
+            dp4 r17.x, r19.xyzw, cb2[r17.x + 83].xyzw
+            max r17.x, r17.x, l(0.000010)
+            div r25.xy, r25.xyxx, r17.xxxx
+            mad r25.xy, r25.xyxx, cb2[r15.w + 75].xyxx, cb2[r15.w + 75].zwzz
+            ieq r17.x, r15.w, l(1)
+            if_z r15.w
+              sample_l r26.xyzw, r25.xyxx, t2.xyzw, s2, l(0.000000)
+            else 
+              mov r26.xyz, l(1.000000,0,1.000000,0)
+            endif 
+            if_nz r17.x
+              sample_l r26.xyzw, r25.xyxx, t3.xyzw, s3, l(0.000000)
+            endif 
+            mul r24.xyz, r24.zzzz, r26.xyzx
+          else 
+            mov r24.xyz, r24.zzzz
+          endif 
+        endif 
+        mad r25.xyz, r22.xyzx, r20.wwww, r1.yzwy
+        dp3 r17.x, r25.xyzx, r25.xyzx
+        rsq r17.x, r17.x
+        mul r25.xyz, r17.xxxx, r25.xyzx
+        dp3 r17.x, r25.xyzx, r1.yzwy
+        add r21.w, -r17.x, l(1.000000)
+        mul r22.w, r21.w, r21.w
+        mul r22.w, r22.w, r22.w
+        mul r21.w, r21.w, r22.w
+        mad r26.xyz, r7.xyzx, r21.wwww, r10.xyzx
+        mul r17.x, r17.x, l(-8.656170)
+        exp r17.x, r17.x
+        mad r27.xyz, r7.xyzx, r17.xxxx, r10.xyzx
+        movc r26.xyz, cb1[11].wwww, r26.xyzx, r27.xyzx
+        dp3_sat r17.x, r8.xyzx, r23.xyzx
+        mul r21.w, r17.x, r17.x
+        mad r21.w, r21.w, r8.w, r7.w
+        sqrt r21.w, r21.w
+        add r21.w, r17.x, r21.w
+        div r21.w, l(1.000000, 1.000000, 1.000000, 1.000000), r21.w
+        movc r21.w, cb1[11].w, r21.w, l(1.000000)
+        mul r24.xyz, r24.xyzx, cb2[r15.w + 59].xyzx
+        dp3_sat r22.w, r15.xyzx, r23.xyzx
+        mad r20.xyz, r22.wwww, r24.xyzx, r20.xyzx
+        if_nz cb1[11].w
+          mul r23.xyz, r21.wwww, r26.xyzx
+          mul r23.xyz, r17.xxxx, r23.xyzx
+          dp3 r27.x, r25.xyzx, r3.xyzx
+          dp3 r27.y, r25.xyzx, r5.xyzx
+          dp3 r22.w, r25.xyzx, r8.xyzx
+          mul r27.xy, r27.xyxx, r27.xyxx
+          div r23.w, r27.x, r9.x
+          mad r23.w, r22.w, r22.w, r23.w
+          div r24.w, r27.y, r10.w
+          add r23.w, r23.w, r24.w
+          mul r23.w, r23.w, r23.w
+          mul r23.w, r11.x, r23.w
+          div r23.w, l(1.000000, 1.000000, 1.000000, 1.000000), r23.w
+          mul r28.xyz, r23.wwww, r24.xyzx
+          mul r23.xyz, r23.xyzx, r28.xyzx
+          mad r22.xyz, r22.xyzx, r20.wwww, r11.yzwy
+          dp3 r20.w, r22.xyzx, r22.xyzx
+          rsq r20.w, r20.w
+          mad r22.xyz, r22.xyzx, r20.wwww, r1.yzwy
+          dp3 r20.w, r22.xyzx, r22.xyzx
+          rsq r20.w, r20.w
+          mul r22.xyz, r20.wwww, r22.xyzx
+          dp3 r20.w, r22.xyzx, r1.yzwy
+          add r20.w, -r20.w, l(1.000000)
+          mul r22.x, r20.w, r20.w
+          mul r22.x, r22.x, r22.x
+          mul r20.w, r20.w, r22.x
+          mad r22.xyz, r16.xywx, r20.wwww, r6.xyzx
+          add r28.xyz, -r22.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+          mul r22.xyz, r21.wwww, r22.xyzx
+          mul r22.xyz, r17.xxxx, r22.xyzx
+          div r20.w, r27.x, r13.w
+          mad r20.w, r22.w, r22.w, r20.w
+          div r22.w, r27.y, r14.w
+          add r20.w, r20.w, r22.w
+          mul r20.w, r20.w, r20.w
+          mul r20.w, r5.w, r20.w
+          div r20.w, l(1.000000, 1.000000, 1.000000, 1.000000), r20.w
+          mul r27.xyz, r20.wwww, r24.xyzx
+          mul r22.xyz, r22.xyzx, r27.xyzx
+          mad r22.xyz, r23.xyzx, r28.xyzx, r22.xyzx
+          add r21.xyz, r21.xyzx, r22.xyzx
+        else 
+          mul r22.xyz, r21.wwww, r26.xyzx
+          mul r22.xyz, r17.xxxx, r22.xyzx
+          dp3_sat r20.w, r8.xyzx, r25.xyzx
+          add r17.x, r17.x, -r20.w
+          add r17.x, -|r17.x|, l(1.000000)
+          log r17.x, r17.x
+          mul r17.x, r6.w, r17.x
+          exp r17.x, r17.x
+          mul r23.xyz, r17.xxxx, r24.xyzx
+          mul r23.xyz, r12.wwww, r23.xyzx
+          mad r21.xyz, r22.xyzx, r23.xyzx, r21.xyzx
+        endif 
+        iadd r15.w, r15.w, l(1)
+      endloop 
+    else 
+      if_nz r9.z
+        and r6.xyz, r9.zzzz, r14.xyzx
+        and r7.xyz, r9.zzzz, r12.xyzx
+        mov r11.xyzw, l(0,0,0,0)
+        mov r12.yz, l(0,0,0,0)
+        mov r5.w, l(0)
+        loop 
+          ige r7.w, r5.w, cb2[101].w
+          breakc_nz r7.w
+          add r14.xyz, -r0.xyzx, cb2[r5.w + 46].xyzx
+          dp3 r7.w, r14.xyzx, r14.xyzx
+          div r8.w, cb2[r5.w + 30].x, r7.w
+          add_sat r8.w, r8.w, cb2[r5.w + 30].y
+          ftoi r9.x, cb2[r5.w + 34].x
+          dp3 r10.w, cb2[r9.x + 6].xyzx, r0.xyzx
+          mad_sat r10.w, r10.w, cb2[r5.w + 34].z, -cb2[r9.x + 6].w
+          iadd r16.xy, l(1, 2, 0, 0), r9.xxxx
+          dp3 r9.x, cb2[r16.x + 6].xyzx, r0.xyzx
+          mad_sat r9.x, r9.x, cb2[r5.w + 34].z, -cb2[r16.x + 6].w
+          mul r9.x, r9.x, r10.w
+          dp3 r10.w, cb2[r16.y + 6].xyzx, r0.xyzx
+          mad_sat r10.w, r10.w, cb2[r5.w + 34].z, -cb2[r16.y + 6].w
+          mul r9.x, r9.x, r10.w
+          mul r10.w, r9.x, r9.x
+          mad r9.x, -r9.x, l(2.000000), l(3.000000)
+          mul r9.x, r9.x, r10.w
+          mul r8.w, r8.w, r9.x
+          eq r9.x, r8.w, l(0.000000)
+          if_nz r9.x
+            iadd r5.w, r5.w, l(1)
+            continue 
+          endif 
+          rsq r7.w, r7.w
+          mul r16.xyw, r7.wwww, r14.xyxz
+          mad r14.xyz, r14.xyzx, r7.wwww, r1.yzwy
+          dp3 r7.w, r14.xyzx, r14.xyzx
+          rsq r7.w, r7.w
+          mul r14.xyz, r7.wwww, r14.xyzx
+          dp3 r7.w, r6.xyzx, r16.xywx
+          max r7.w, r7.w, l(-1.000000)
+          min r7.w, r7.w, l(1.000000)
+          dp3 r9.x, r6.xyzx, r14.xyzx
+          max r9.x, r9.x, l(-1.000000)
+          min r9.x, r9.x, l(1.000000)
+          dp3 r10.w, r8.xyzx, r16.xywx
+          max r10.w, r10.w, l(0.000000)
+          min r12.w, r10.w, l(1.000000)
+          mul r14.xyz, r12.wwww, cb2[r5.w + 38].xyzx
+          mul r14.xyz, r8.wwww, r14.xyzx
+          mad r7.w, -r7.w, r7.w, l(1.000000)
+          sqrt r7.w, r7.w
+          add r8.w, -r7.w, r10.w
+          mad r7.w, r7.x, r8.w, r7.w
+          mad r11.xyz, r14.xyzx, r7.wwww, r11.xyzx
+          mad r7.w, -r9.x, r9.x, l(1.000000)
+          sqrt r7.w, r7.w
+          log r7.w, r7.w
+          mul r7.w, r7.w, r7.z
+          exp r7.w, r7.w
+          add r8.w, r7.y, r9.x
+          min r8.w, r8.w, l(1.000000)
+          mad r8.w, -r8.w, r8.w, l(1.000000)
+          sqrt r8.w, r8.w
+          log r8.w, r8.w
+          mul r8.w, r4.z, r8.w
+          exp r8.w, r8.w
+          mul r14.xyz, r14.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+          mul r8.w, r4.w, r8.w
+          mad r7.w, r4.y, r7.w, r8.w
+          mov r12.x, r11.w
+          mad r12.xyz, r14.xyzx, r7.wwww, r12.xyzx
+          iadd r5.w, r5.w, l(1)
+          mov r11.w, r12.x
+        endloop 
+        mov r14.xyz, r0.xyzx
+        mov r14.w, l(1.000000)
+        mov r20.xyz, r11.xyzx
+        mov r21.x, r11.w
+        mov r21.yz, r12.yyzy
+        mov r5.w, l(0)
+        loop 
+          ige r7.w, r5.w, cb2[102].x
+          breakc_nz r7.w
+          add r16.xyw, -r0.xyxz, cb2[r5.w + 71].xyxz
+          dp3 r7.w, r16.xywx, r16.xywx
+          rsq r8.w, r7.w
+          mul r17.xyz, r8.wwww, r16.xywx
+          div r7.w, cb2[r5.w + 51].x, r7.w
+          add_sat r7.w, r7.w, cb2[r5.w + 51].y
+          dp3 r9.x, r17.xyzx, -cb2[r5.w + 63].xyzx
+          mad_sat r9.x, r9.x, cb2[r5.w + 59].w, cb2[r5.w + 63].w
+          mul r9.x, r9.x, r9.x
+          mul r7.w, r7.w, r9.x
+          ftoi r9.x, cb2[r5.w + 55].x
+          dp3 r10.w, cb2[r9.x + 6].xyzx, r0.xyzx
+          mad_sat r10.w, r10.w, cb2[r5.w + 55].z, -cb2[r9.x + 6].w
+          iadd r12.xw, l(1, 0, 0, 2), r9.xxxx
+          dp3 r9.x, cb2[r12.x + 6].xyzx, r0.xyzx
+          mad_sat r9.x, r9.x, cb2[r5.w + 55].z, -cb2[r12.x + 6].w
+          mul r9.x, r9.x, r10.w
+          dp3 r10.w, cb2[r12.w + 6].xyzx, r0.xyzx
+          mad_sat r10.w, r10.w, cb2[r5.w + 55].z, -cb2[r12.w + 6].w
+          mul r9.x, r9.x, r10.w
+          mul r10.w, r9.x, r9.x
+          mad r9.x, -r9.x, l(2.000000), l(3.000000)
+          mul r9.x, r9.x, r10.w
+          mul r18.xyz, r7.wwww, r9.xxxx
+          eq r7.w, r18.z, l(0.000000)
+          if_nz r7.w
+            iadd r5.w, r5.w, l(1)
+            continue 
+          endif 
+          ilt r7.w, r5.w, l(0)
+          if_z r7.w
+            ilt r7.w, r5.w, cb2[102].y
+            if_nz r7.w
+              ishl r7.w, r5.w, l(2)
+              dp4 r19.x, r14.xyzw, cb2[r7.w + 80].xyzw
+              dp4 r19.y, r14.xyzw, cb2[r7.w + 81].xyzw
+              dp4 r7.w, r14.xyzw, cb2[r7.w + 83].xyzw
+              div r12.xw, r19.xxxy, r7.wwww
+              mad r12.xw, r12.xxxw, cb2[r5.w + 75].xxxy, cb2[r5.w + 75].zzzw
+              ieq r7.w, r5.w, l(1)
+              if_z r5.w
+                sample_l r19.xyzw, r12.xwxx, t2.xyzw, s2, l(0.000000)
+              else 
+                mov r19.xyz, l(1.000000,0,1.000000,0)
+              endif 
+              if_nz r7.w
+                sample_l r19.xyzw, r12.xwxx, t3.xyzw, s3, l(0.000000)
+              endif 
+              mul r18.xyz, r18.zzzz, r19.xyzx
+            else 
+              mov r18.xyz, r18.zzzz
+            endif 
+          endif 
+          mad r16.xyw, r16.xyxw, r8.wwww, r1.yzyw
+          dp3 r7.w, r16.xywx, r16.xywx
+          rsq r7.w, r7.w
+          mul r16.xyw, r7.wwww, r16.xyxw
+          dp3 r7.w, r6.xyzx, r17.xyzx
+          max r7.w, r7.w, l(-1.000000)
+          min r7.w, r7.w, l(1.000000)
+          dp3 r8.w, r6.xyzx, r16.xywx
+          max r8.w, r8.w, l(-1.000000)
+          min r8.w, r8.w, l(1.000000)
+          dp3 r9.x, r8.xyzx, r17.xyzx
+          max r9.x, r9.x, l(0.000000)
+          min r10.w, r9.x, l(1.000000)
+          mul r16.xyw, r10.wwww, cb2[r5.w + 59].xyxz
+          mul r16.xyw, r18.xyxz, r16.xyxw
+          mad r7.w, -r7.w, r7.w, l(1.000000)
+          sqrt r7.w, r7.w
+          add r9.x, -r7.w, r9.x
+          mad r7.w, r7.x, r9.x, r7.w
+          mad r20.xyz, r16.xywx, r7.wwww, r20.xyzx
+          mad r7.w, -r8.w, r8.w, l(1.000000)
+          sqrt r7.w, r7.w
+          log r7.w, r7.w
+          mul r7.w, r7.w, r7.z
+          exp r7.w, r7.w
+          add r8.w, r7.y, r8.w
+          min r8.w, r8.w, l(1.000000)
+          mad r8.w, -r8.w, r8.w, l(1.000000)
+          sqrt r8.w, r8.w
+          log r8.w, r8.w
+          mul r8.w, r4.z, r8.w
+          exp r8.w, r8.w
+          mul r16.xyw, r16.xyxw, l(0.500000, 0.500000, 0.000000, 0.500000)
+          mul r8.w, r4.w, r8.w
+          mad r7.w, r4.y, r7.w, r8.w
+          mad r21.xyz, r16.xywx, r7.wwww, r21.xyzx
+          iadd r5.w, r5.w, l(1)
+        endloop 
+      else 
+        add r4.yzw, -r10.xxyz, l(0.000000, 1.000000, 1.000000, 1.000000)
+        mul r5.w, r6.w, r6.w
+        mad r6.x, -r6.w, r6.w, l(1.000000)
+        mul r6.y, r1.x, r1.x
+        mul r6.z, r0.w, r0.w
+        mul r0.w, r0.w, r1.x
+        mad r1.x, r6.w, l(0.125000), l(0.250000)
+        mov r7.xyzw, l(0,0,0,0)
+        mov r11.yz, l(0,0,0,0)
+        mov r8.w, l(0)
+        loop 
+          ige r9.x, r8.w, cb2[101].w
+          breakc_nz r9.x
+          add r12.xyz, -r0.xyzx, cb2[r8.w + 46].xyzx
+          dp3 r9.x, r12.xyzx, r12.xyzx
+          div r10.w, cb2[r8.w + 30].x, r9.x
+          add_sat r10.w, r10.w, cb2[r8.w + 30].y
+          ftoi r11.w, cb2[r8.w + 34].x
+          dp3 r12.w, cb2[r11.w + 6].xyzx, r0.xyzx
+          mad_sat r12.w, r12.w, cb2[r8.w + 34].z, -cb2[r11.w + 6].w
+          iadd r14.xy, l(1, 2, 0, 0), r11.wwww
+          dp3 r11.w, cb2[r14.x + 6].xyzx, r0.xyzx
+          mad_sat r11.w, r11.w, cb2[r8.w + 34].z, -cb2[r14.x + 6].w
+          mul r11.w, r11.w, r12.w
+          dp3 r12.w, cb2[r14.y + 6].xyzx, r0.xyzx
+          mad_sat r12.w, r12.w, cb2[r8.w + 34].z, -cb2[r14.y + 6].w
+          mul r11.w, r11.w, r12.w
+          mul r12.w, r11.w, r11.w
+          mad r11.w, -r11.w, l(2.000000), l(3.000000)
+          mul r11.w, r11.w, r12.w
+          mul r10.w, r10.w, r11.w
+          eq r11.w, r10.w, l(0.000000)
+          if_nz r11.w
+            iadd r8.w, r8.w, l(1)
+            continue 
+          endif 
+          rsq r9.x, r9.x
+          mul r14.xyz, r9.xxxx, r12.xyzx
+          mad r12.xyz, r12.xyzx, r9.xxxx, r1.yzwy
+          dp3 r9.x, r12.xyzx, r12.xyzx
+          rsq r9.x, r9.x
+          mul r12.xyz, r9.xxxx, r12.xyzx
+          dp3 r9.x, r12.xyzx, r1.yzwy
+          add r11.w, -r9.x, l(1.000000)
+          mul r12.w, r11.w, r11.w
+          mul r12.w, r12.w, r12.w
+          mul r11.w, r11.w, r12.w
+          mad r16.xyw, r4.yzyw, r11.wwww, r10.xyxz
+          mul r9.x, r9.x, l(-8.656170)
+          exp r9.x, r9.x
+          mad r17.xyz, r4.yzwy, r9.xxxx, r10.xyzx
+          movc r16.xyw, cb1[11].wwww, r16.xyxw, r17.xyxz
+          dp3_sat r9.x, r8.xyzx, r14.xyzx
+          mul r11.w, r9.x, r9.x
+          mad r11.w, r11.w, r6.x, r5.w
+          sqrt r11.w, r11.w
+          add r11.w, r9.x, r11.w
+          div r11.w, l(1.000000, 1.000000, 1.000000, 1.000000), r11.w
+          movc r11.w, cb1[11].w, r11.w, l(1.000000)
+          mul r17.xyz, r10.wwww, cb2[r8.w + 38].xyzx
+          dp3_sat r10.w, r15.xyzx, r14.xyzx
+          mad r7.xyz, r10.wwww, r17.xyzx, r7.xyzx
+          if_nz cb1[11].w
+            mul r14.xyz, r11.wwww, r16.xywx
+            mul r14.xyz, r9.xxxx, r14.xyzx
+            dp3 r18.x, r12.xyzx, r3.xyzx
+            dp3 r18.y, r12.xyzx, r5.xyzx
+            dp3 r10.w, r12.xyzx, r8.xyzx
+            mul r18.xy, r18.xyxx, r18.xyxx
+            div r12.w, r18.x, r6.y
+            mad r10.w, r10.w, r10.w, r12.w
+            div r12.w, r18.y, r6.z
+            add r10.w, r10.w, r12.w
+            mul r10.w, r10.w, r10.w
+            mul r10.w, r0.w, r10.w
+            div r10.w, l(1.000000, 1.000000, 1.000000, 1.000000), r10.w
+            mul r18.xyz, r10.wwww, r17.xyzx
+            mov r11.x, r7.w
+            mad r11.xyz, r14.xyzx, r18.xyzx, r11.xyzx
+            mov r7.w, r11.x
+          else 
+            mul r14.xyz, r11.wwww, r16.xywx
+            mul r14.xyz, r9.xxxx, r14.xyzx
+            dp3_sat r9.x, r12.xyzx, r8.xyzx
+            log r9.x, r9.x
+            mul r9.x, r6.w, r9.x
+            exp r9.x, r9.x
+            mul r9.x, r1.x, r9.x
+            mul r12.xyz, r9.xxxx, r17.xyzx
+            mov r11.x, r7.w
+            mad r11.xyz, r14.xyzx, r12.xyzx, r11.xyzx
+            mov r7.w, r11.x
+          endif 
+          iadd r8.w, r8.w, l(1)
+        endloop 
+        mov r12.xyz, r0.xyzx
+        mov r12.w, l(1.000000)
+        mov r20.xyz, r7.xyzx
+        mov r21.x, r7.w
+        mov r21.yz, r11.yyzy
+        mov r8.w, l(0)
+        loop 
+          ige r9.x, r8.w, cb2[102].x
+          breakc_nz r9.x
+          add r14.xyz, -r0.xyzx, cb2[r8.w + 71].xyzx
+          dp3 r9.x, r14.xyzx, r14.xyzx
+          rsq r10.w, r9.x
+          mul r16.xyw, r10.wwww, r14.xyxz
+          div r9.x, cb2[r8.w + 51].x, r9.x
+          add_sat r9.x, r9.x, cb2[r8.w + 51].y
+          dp3 r11.x, r16.xywx, -cb2[r8.w + 63].xyzx
+          mad_sat r11.x, r11.x, cb2[r8.w + 59].w, cb2[r8.w + 63].w
+          mul r11.x, r11.x, r11.x
+          mul r9.x, r9.x, r11.x
+          ftoi r11.x, cb2[r8.w + 55].x
+          dp3 r11.w, cb2[r11.x + 6].xyzx, r0.xyzx
+          mad_sat r11.w, r11.w, cb2[r8.w + 55].z, -cb2[r11.x + 6].w
+          iadd r17.xy, l(1, 2, 0, 0), r11.xxxx
+          dp3 r11.x, cb2[r17.x + 6].xyzx, r0.xyzx
+          mad_sat r11.x, r11.x, cb2[r8.w + 55].z, -cb2[r17.x + 6].w
+          mul r11.x, r11.x, r11.w
+          dp3 r11.w, cb2[r17.y + 6].xyzx, r0.xyzx
+          mad_sat r11.w, r11.w, cb2[r8.w + 55].z, -cb2[r17.y + 6].w
+          mul r11.x, r11.w, r11.x
+          mul r11.w, r11.x, r11.x
+          mad r11.x, -r11.x, l(2.000000), l(3.000000)
+          mul r11.x, r11.x, r11.w
+          mul r17.xyz, r9.xxxx, r11.xxxx
+          eq r9.x, r17.z, l(0.000000)
+          if_nz r9.x
+            iadd r8.w, r8.w, l(1)
+            continue 
+          endif 
+          ilt r9.x, r8.w, l(0)
+          if_z r9.x
+            ilt r9.x, r8.w, cb2[102].y
+            if_nz r9.x
+              ishl r9.x, r8.w, l(2)
+              dp4 r18.x, r12.xyzw, cb2[r9.x + 80].xyzw
+              dp4 r18.y, r12.xyzw, cb2[r9.x + 81].xyzw
+              dp4 r9.x, r12.xyzw, cb2[r9.x + 83].xyzw
+              max r9.x, r9.x, l(0.000010)
+              div r11.xw, r18.xxxy, r9.xxxx
+              mad r11.xw, r11.xxxw, cb2[r8.w + 75].xxxy, cb2[r8.w + 75].zzzw
+              ieq r9.x, r8.w, l(1)
+              if_z r8.w
+                sample_l r18.xyzw, r11.xwxx, t2.xyzw, s2, l(0.000000)
+              else 
+                mov r18.xyz, l(1.000000,0,1.000000,0)
+              endif 
+              if_nz r9.x
+                sample_l r18.xyzw, r11.xwxx, t3.xyzw, s3, l(0.000000)
+              endif 
+              mul r17.xyz, r17.zzzz, r18.xyzx
+            else 
+              mov r17.xyz, r17.zzzz
+            endif 
+          endif 
+          mad r14.xyz, r14.xyzx, r10.wwww, r1.yzwy
+          dp3 r9.x, r14.xyzx, r14.xyzx
+          rsq r9.x, r9.x
+          mul r14.xyz, r9.xxxx, r14.xyzx
+          dp3 r9.x, r14.xyzx, r1.yzwy
+          add r10.w, -r9.x, l(1.000000)
+          mul r11.x, r10.w, r10.w
+          mul r11.x, r11.x, r11.x
+          mul r10.w, r10.w, r11.x
+          mad r18.xyz, r4.yzwy, r10.wwww, r10.xyzx
+          mul r9.x, r9.x, l(-8.656170)
+          exp r9.x, r9.x
+          mad r19.xyz, r4.yzwy, r9.xxxx, r10.xyzx
+          movc r18.xyz, cb1[11].wwww, r18.xyzx, r19.xyzx
+          dp3_sat r9.x, r8.xyzx, r16.xywx
+          mul r10.w, r9.x, r9.x
+          mad r10.w, r10.w, r6.x, r5.w
+          sqrt r10.w, r10.w
+          add r10.w, r9.x, r10.w
+          div r10.w, l(1.000000, 1.000000, 1.000000, 1.000000), r10.w
+          movc r10.w, cb1[11].w, r10.w, l(1.000000)
+          mul r17.xyz, r17.xyzx, cb2[r8.w + 59].xyzx
+          dp3_sat r11.x, r15.xyzx, r16.xywx
+          mad r20.xyz, r11.xxxx, r17.xyzx, r20.xyzx
+          if_nz cb1[11].w
+            mul r16.xyw, r10.wwww, r18.xyxz
+            mul r16.xyw, r9.xxxx, r16.xyxw
+            dp3 r19.x, r14.xyzx, r3.xyzx
+            dp3 r19.y, r14.xyzx, r5.xyzx
+            dp3 r11.x, r14.xyzx, r8.xyzx
+            mul r19.xy, r19.xyxx, r19.xyxx
+            div r11.w, r19.x, r6.y
+            mad r11.x, r11.x, r11.x, r11.w
+            div r11.w, r19.y, r6.z
+            add r11.x, r11.w, r11.x
+            mul r11.x, r11.x, r11.x
+            mul r11.x, r0.w, r11.x
+            div r11.x, l(1.000000, 1.000000, 1.000000, 1.000000), r11.x
+            mul r19.xyz, r11.xxxx, r17.xyzx
+            mad r21.xyz, r16.xywx, r19.xyzx, r21.xyzx
+          else 
+            mul r16.xyw, r10.wwww, r18.xyxz
+            mul r16.xyw, r9.xxxx, r16.xyxw
+            dp3_sat r9.x, r14.xyzx, r8.xyzx
+            log r9.x, r9.x
+            mul r9.x, r6.w, r9.x
+            exp r9.x, r9.x
+            mul r9.x, r1.x, r9.x
+            mul r14.xyz, r9.xxxx, r17.xyzx
+            mad r21.xyz, r16.xywx, r14.xyzx, r21.xyzx
+          endif 
+          iadd r8.w, r8.w, l(1)
+        endloop 
+      endif 
+    endif 
+  endif 
+endif 
+or r0.x, r9.w, r16.z
+and r0.x, r0.x, l(0x3f800000)
+mul r0.x, r0.x, cb2[101].z
+add r0.y, -r17.w, l(1.000000)
+mad r0.x, r0.x, r0.y, r17.w
+mul r0.y, r4.x, l(0.500000)
+mul r0.z, r2.y, -r1.w
+mad_sat r0.w, r2.y, cb0[17].y, cb0[17].x
+mul r0.z, r0.z, cb0[21].y
+max r0.z, r0.z, l(-125.000000)
+lt r1.x, l(0.000001), |r0.z|
+exp r1.y, -r0.z
+add r1.y, -r1.y, l(1.000000)
+div r0.z, r1.y, r0.z
+movc r0.z, r1.x, r0.z, l(1.000000)
+mad r0.z, r0.z, cb0[21].x, cb0[17].w
+mul r0.z, r0.z, r0.w
+mul r0.z, r0.z, -cb0[17].z
+exp r0.z, r0.z
+mul r0.w, |r2.z|, |r2.z|
+mul r1.x, r6.w, r6.w
+mad r1.y, -r6.w, r6.w, l(1.000000)
+mad r0.w, r0.w, r1.y, r1.x
+sqrt r0.w, r0.w
+add r0.w, r0.w, |r2.z|
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+movc r0.w, cb1[11].w, r0.w, l(1.000000)
+mul r3.xyz, r0.wwww, r21.xyzx
+ine r0.w, r2.x, l(2)
+mov_sat r2.z, r2.z
+mul r1.z, r2.z, r2.z
+mad r1.x, r1.z, r1.y, r1.x
+sqrt r1.x, r1.x
+add r1.x, r1.x, r2.z
+div r1.x, l(1.000000, 1.000000, 1.000000, 1.000000), r1.x
+movc r1.x, cb1[11].w, r1.x, l(1.000000)
+mul r1.xyz, r1.xxxx, r21.xyzx
+movc r1.xyz, r0.wwww, r1.xyzx, r21.xyzx
+movc r1.xyz, r9.yyyy, r3.xyzx, r1.xyzx
+mad r0.w, -r4.x, l(0.500000), l(1.000000)
+mad_sat r0.x, r0.x, r0.w, r0.y
+add r0.x, r0.x, l(-1.000000)
+mad_sat r0.x, cb2[101].y, r0.x, l(1.000000)
+mul r2.xyz, r0.xxxx, r20.xyzx
+movc r0.y, r9.z, l(1.000000), r2.w
+mul r1.xyz, r0.yyyy, r1.xyzx
+mul r0.xyw, r0.xxxx, r1.xyxz
+add r1.x, -r3.w, l(1.000000)
+mul r1.yzw, r2.xxyz, r13.xxyz
+mad r0.xyw, r1.yzyw, r1.xxxx, r0.xyxw
+mul r0.xyz, r0.zzzz, r0.xywx
+mul r0.xyz, r0.xyzx, cb0[2].zzzz
+lt r0.w, l(0.500000), cb2[1].x
+movc o0.xyz, r0.wwww, r13.xyzx, r0.xyzx
+mov o0.w, l(1.000000)
+ret 
+// Approximately 1358 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
