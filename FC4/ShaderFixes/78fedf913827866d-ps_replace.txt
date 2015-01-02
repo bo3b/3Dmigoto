@@ -119,19 +119,6 @@ void main(
   r0.z = -r0.x * _CameraDistances.w + 1.000000000e+000;
   r0.xy = v1.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
   r0.w = 1.000000000e+000;
-
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x; float convergence = stereo.y;
-
-//r0.x += separation * (r0.z - convergence) * _InvProjectionMatrix._m00; // Nope
-
-// Fix directional shadow alignment cast from sun
-
-// Why this constant? I haven't a clue.
-// It works with any FOV, so this will have to do :)
-
-r0.x += separation * (r0.z - convergence) * 3.085; // works with convergence 3.234737e-001
-
   r1.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m00_m10_m20_m30);
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m01_m11_m21_m31);
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
@@ -139,6 +126,30 @@ r0.x += separation * (r0.z - convergence) * 3.085; // works with convergence 3.2
   r0.xyz = r1.xyz / r0.xxx;
   r1.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
   r1.w = 1.000000000e+000;
+
+// Mike's shadow fix:
+float4 r21, r22, r23, r24;
+r21.xyzw = r1.xyzw;
+r22.x = dot(r21.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r22.y = dot(r21.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r22.z = dot(r21.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r22.w = dot(r21.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);
+
+float4 stereo = StereoParams.Load(0);
+r22.x -= stereo.x * (r22.w - stereo.y);
+
+r23.x = dot(r22.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r23.y = dot(r22.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r23.z = dot(r22.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r23.w = dot(r22.xyzw, _InvProjectionMatrix._m03_m13_m23_m33);
+
+r24.x = dot(r23.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r24.y = dot(r23.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r24.z = dot(r23.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r24.w = dot(r23.xyzw, _InvViewMatrix._m03_m13_m23_m33);
+
+r1.xyzw = r24.xyzw;
+
   r2.x = dot(r1.xyzw, _CSMSlice2_0.xyzw);
   r2.y = dot(r1.xyzw, _CSMSlice2_1.xyzw);
   r2.z = dot(r1.xyzw, _CSMSlice2_2.xyzw);

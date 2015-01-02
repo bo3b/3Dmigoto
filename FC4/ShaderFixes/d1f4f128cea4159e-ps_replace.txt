@@ -134,17 +134,38 @@ float wpos = 1.0 / zpos;
   r0.z = -r0.x * _CameraDistances.w + 1.000000000e+000;
   r0.xy = v1.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
   r0.w = 1.000000000e+000;
-
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x; float convergence = stereo.y;
-r0.x += separation * (r0.z - convergence) * 3.085;
-
   r1.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m00_m10_m20_m30);
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m01_m11_m21_m31);
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
   r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+
+  r0.w = 1.000000000e+000; // moved up
+
+// Mike's shadow fix:
+float4 tmp21, tmp22, tmp23, tmp24;
+tmp21.xyzw = r1.xyzw;
+tmp22.x = dot(tmp21.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+tmp22.y = dot(tmp21.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+tmp22.z = dot(tmp21.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+tmp22.w = dot(tmp21.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);
+
+float4 stereo = StereoParams.Load(0);
+tmp22.x -= stereo.x * (tmp22.w - stereo.y);
+
+tmp23.x = dot(tmp22.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+tmp23.y = dot(tmp22.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+tmp23.z = dot(tmp22.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+tmp23.w = dot(tmp22.xyzw, _InvProjectionMatrix._m03_m13_m23_m33);
+
+tmp24.x = dot(tmp23.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+tmp24.y = dot(tmp23.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+tmp24.z = dot(tmp23.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+tmp24.w = dot(tmp23.xyzw, _InvViewMatrix._m03_m13_m23_m33);
+
+r1.xyzw = tmp24.xyzw;
+
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw,0.000000000e+000).xyzw;
@@ -400,7 +421,6 @@ r0.x += separation * (r0.z - convergence) * 3.085;
       r12.w = (int)r12.w + 1;
       r18.w = r19.x;
     }
-    r0.w = 1.000000000e+000;
     r20.xyz = r18.xyz;
     r21.x = r18.w;
     r21.yz = r19.yz;
