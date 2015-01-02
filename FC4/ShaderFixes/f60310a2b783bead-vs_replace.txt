@@ -548,5 +548,5 @@ dp3 o8.y, r2.xyzx, r0.xyzx
 dp3 o8.z, r4.xyzx, r0.xyzx
 ret 
 // Approximately 72 instruction slots used
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

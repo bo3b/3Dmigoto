@@ -201,5 +201,5 @@ dp3 o3.y, r0.xyzx, cb0[27].xyzx
 dp3 o3.z, r0.xyzx, cb0[28].xyzx
 ret 
 // Approximately 18 instruction slots used
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

@@ -387,6 +387,6 @@ mul o3.w, v1.w, v3.w
 mov o6.xy, v2.xyxx
 ret 
 // Approximately 67 instruction slots used
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  

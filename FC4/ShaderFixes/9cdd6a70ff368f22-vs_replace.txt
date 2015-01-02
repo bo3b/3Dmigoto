@@ -201,5 +201,5 @@ mad o2.xyz, r1.xyzx, cb0[6].wwww, r0.xyzx
 mov o3.xy, v2.xyxx
 ret 
 // Approximately 28 instruction slots used
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

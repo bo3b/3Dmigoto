@@ -206,5 +206,5 @@ mov o2.xy, v0.xyxx
 mov o2.zw, v2.xxxy
 ret 
 // Approximately 18 instruction slots used
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

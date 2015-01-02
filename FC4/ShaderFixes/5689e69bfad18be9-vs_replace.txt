@@ -494,5 +494,5 @@ mov o9.xy, v2.xyxx
 mov o9.zw, v3.xxxy
 ret 
 // Approximately 107 instruction slots used
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
