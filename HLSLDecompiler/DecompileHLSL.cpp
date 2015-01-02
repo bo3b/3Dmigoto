@@ -2604,6 +2604,28 @@ public:
 					}
 				}
 			}
+			else if (!strcmp(statement, "dcl_resource_texture2darray"))
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture2darray register index: " + string(op2));
+						return;
+					}
+					// Create if not existing.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						sprintf(buffer, "t%d", bufIndex);
+						mTextureNames[bufIndex] = buffer;
+						sprintf(buffer, "Texture2DArray<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
+					}
+				}
+			}
 			else if (!strcmp(statement, "{"))
 			{
 				// Declaration from 
