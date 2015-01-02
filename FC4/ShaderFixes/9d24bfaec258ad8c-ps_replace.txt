@@ -1,3 +1,4 @@
+// nvidia god rays (stage ?)
 
 cbuffer cb0 : register(b0)
 {
@@ -36,6 +37,28 @@ void main(
   float4 r0,r1;
   uint4 bitmask, uiDest;
   float4 fDest;
+
+// Related shaders:
+// VS 4809501df9cb5567 PS 9d24bfaec258ad8c <-- this one, removed halo here
+// VS 6f9b30f90b4f45bc PS 928e51837769f738 <-- alternatively can move to infinity here
+// VS 6f9b30f90b4f45bc PS 8974b39534db1a47 <-- final copy to screen, adjusted to infinity here
+
+float4 stereo = StereoParams.Load(0);
+float separation = stereo.x; float convergence = stereo.y;
+
+// FIXME: Screen dimensions from 3Dmigoto are -1 x -1
+float2 resolution = StereoParams.Load(int3(2,0,0));
+
+// Hard code 1920x1080 for now, but only until 3Dmigoto is fixed:
+if (resolution.x == -1) {
+	resolution = float2(1920, 1080);
+	//resolution = float2(1280, 720);
+}
+
+// Remove halo from nvidia god rays resulting from stereo adjustment in other
+// shader. Note that this is in pixels, so we need to use the screen size to
+// calculate the correct adjustment.
+v0.x += separation * resolution.x / 8;
 
   r0.xy = g_fResMultiplier * v0.xy;
   r0.y = g_fBufferHeightInv * r0.y;
