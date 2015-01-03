@@ -291,6 +291,25 @@ static void *record_resource_view_stats(D3D11Base::ID3D11ShaderResourceView *vie
 	return resource;
 }
 
+static void record_shader_resource_usage(D3D11Wrapper::ID3D11DeviceContext *context)
+{
+	D3D11Base::ID3D11ShaderResourceView *ps_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	D3D11Base::ID3D11ShaderResourceView *vs_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	void *resource;
+	int i;
+
+	context->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
+	context->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
+
+	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+		resource = record_resource_view_stats(ps_views[i]);
+		G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[i] = resource;
+
+		resource = record_resource_view_stats(vs_views[i]);
+		G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[i] = resource;
+	}
+}
+
 static void record_render_target_info(D3D11Base::ID3D11RenderTargetView *target, UINT view_num)
 {
 	D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
@@ -351,6 +370,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 	GetD3D11DeviceContext()->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 
 	// Resolve resource from resource view.
+	// This is possibly no longer required as we collect stats on draw calls
 	if (G->hunting && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -533,6 +553,11 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			}
 			if (G->mCurrentPixelShader)
 				G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets = G->mCurrentRenderTargets;
+
+			// Maybe make this optional if it turns out to have a
+			// significant performance impact:
+			record_shader_resource_usage(context);
+
 			// Selection
 			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
 				if (G->mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
@@ -988,6 +1013,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 	GetD3D11DeviceContext()->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 
 	// Resolve resource from resource view.
+	// This is possibly no longer required as we collect stats on draw calls
 	if (G->hunting && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
