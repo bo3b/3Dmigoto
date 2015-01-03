@@ -264,26 +264,24 @@ static void *record_resource_view_stats(D3D11Base::ID3D11ShaderResourceView *vie
 	if (!view)
 		return NULL;
 
+	view->GetResource(&resource);
+	if (!resource)
+		return NULL;
+
 	view->GetDesc(&desc);
 
 	switch (desc.ViewDimension) {
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2D:
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMS:
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-			view->GetResource(&resource);
-			if (!resource)
-				return NULL;
 			hash = get_texture2d_hash((D3D11Base::ID3D11Texture2D *)resource, false, NULL);
-			resource->Release();
 			break;
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE3D:
-			view->GetResource(&resource);
-			if (!resource)
-				return NULL;
 			hash = get_texture3d_hash((D3D11Base::ID3D11Texture3D *)resource, false, NULL);
-			resource->Release();
 			break;
 	}
+
+	resource->Release();
 
 	if (hash)
 		G->mRenderTargets[resource] = hash;
