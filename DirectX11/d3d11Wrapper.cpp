@@ -229,7 +229,7 @@ struct Globals
 
 	// Statistics
 	std::map<void *, UINT64> mRenderTargets;
-	std::map<void *, struct ResourceInfo> mRenderTargetInfo;
+	std::map<UINT64, struct ResourceInfo> mRenderTargetInfo;
 	std::set<void *> mVisitedRenderTargets;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
@@ -2247,9 +2247,11 @@ static void log_rendertarget(void *target, char *log_prefix)
 		return;
 	}
 
-	log_printf("%srender target handle = %p, hash = %.16llx, ", log_prefix, target, G->mRenderTargets[target]);
+	UINT64 hash = G->mRenderTargets[target];
 
-	struct ResourceInfo &info = G->mRenderTargetInfo[target];
+	log_printf("%srender target handle = %p, hash = %.16llx, ", log_prefix, target, hash);
+
+	struct ResourceInfo &info = G->mRenderTargetInfo[hash];
 	switch(info.type) {
 		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			return log_rendertarget_2d(&info.tex2d_desc);

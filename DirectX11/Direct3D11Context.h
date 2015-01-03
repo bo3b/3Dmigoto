@@ -333,7 +333,7 @@ static void record_render_target_info(D3D11Base::ID3D11RenderTargetView *target,
 	G->mRenderTargets[resource] = hash;
 	G->mCurrentRenderTargets.push_back(resource);
 	G->mVisitedRenderTargets.insert(resource);
-	G->mRenderTargetInfo[resource] = resource_info;
+	G->mRenderTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
