@@ -1273,4 +1273,10 @@ public:
             _In_  HANDLE hEvent);
 };
 
+
+UINT64 calc_texture2d_desc_hash(const D3D11Base::D3D11_TEXTURE2D_DESC *desc,
+		UINT64 initial_hash, int override_width, int override_height);
+UINT64 calc_texture3d_desc_hash(const D3D11Base::D3D11_TEXTURE3D_DESC *desc,
+		UINT64 initial_hash, int override_width, int override_height);
+
 #include "../DirectX10/d3d10WrapperDevice.h"

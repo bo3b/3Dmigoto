@@ -481,8 +481,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 	}
 
 	// Get screen resolution.
-	int hashWidth = 0; if (pDesc) hashWidth = pDesc->Width;
-	int hashHeight = 0; if (pDesc) hashHeight = pDesc->Height;
+	int hashWidth = 0;
+	int hashHeight = 0;
 	if (hashWidth == G->mSwapChainInfo.width && hashHeight == G->mSwapChainInfo.height)
 	{
 		hashWidth = 1386492276;
@@ -494,17 +494,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 	if (pInitialData && pInitialData->pSysMem && pDesc)
 		hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->ArraySize);
 	if (pDesc)
-	{
-		hash ^= hashWidth; hash *= FNV_64_PRIME;
-		hash ^= hashHeight; hash *= FNV_64_PRIME;
-		hash ^= pDesc->MipLevels; hash *= FNV_64_PRIME;
-		hash ^= pDesc->ArraySize; hash *= FNV_64_PRIME;
-		hash ^= pDesc->Format; hash *= FNV_64_PRIME;
-		hash ^= pDesc->Usage; hash *= FNV_64_PRIME;
-		hash ^= pDesc->BindFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->MiscFlags;
-	}
+		hash = calc_texture2d_desc_hash(pDesc, hash, hashWidth, hashHeight);
 	if (LogFile && LogDebug) fprintf(LogFile, "  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 
 	// Override custom settings?
@@ -598,8 +588,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
 	// Get screen resolution.
-	int hashWidth = 0; if (pDesc) hashWidth = pDesc->Width;
-	int hashHeight = 0; if (pDesc) hashHeight = pDesc->Height;
+	int hashWidth = 0;
+	int hashHeight = 0;
 	if (hashWidth == G->mSwapChainInfo.width && hashHeight == G->mSwapChainInfo.height)
 	{
 		hashWidth = 1386492276;
@@ -611,17 +601,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
 	if (pInitialData && pInitialData->pSysMem)
 		hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->Depth);
 	if (pDesc)
-	{
-		hash ^= hashWidth; hash *= FNV_64_PRIME;
-		hash ^= hashHeight; hash *= FNV_64_PRIME;
-		hash ^= pDesc->Height; hash *= FNV_64_PRIME;
-		hash ^= pDesc->MipLevels; hash *= FNV_64_PRIME;
-		hash ^= pDesc->Format; hash *= FNV_64_PRIME;
-		hash ^= pDesc->Usage; hash *= FNV_64_PRIME;
-		hash ^= pDesc->BindFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->MiscFlags;
-	}
+		hash = calc_texture3d_desc_hash(pDesc, hash, hashWidth, hashHeight);
 	if (LogFile) fprintf(LogFile, "  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 
 	HRESULT hr = GetD3D11Device()->CreateTexture3D(pDesc, pInitialData, ppTexture3D);

@@ -126,13 +126,80 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetConstantBuffers(THIS
 	GetD3D11DeviceContext()->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
 
+UINT64 D3D11Wrapper::calc_texture2d_desc_hash(const D3D11Base::D3D11_TEXTURE2D_DESC *desc,
+		UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// It concerns me that CreateTextureND can use an override if it
+	// matches screen resolution, but when we record render target / shader
+	// resource stats we don't use the same override.
+	//
+	// For textures made with CreateTextureND and later used as a render
+	// target it's probably fine since the hash will still be stored, but
+	// it could be a problem if we need the hash of a render target not
+	// created directly with that. I don't know enough about the DX11 API
+	// to know if this is an issue, but it might be worth using the screen
+	// resolution override in all cases. -DarkStarSword
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
+UINT64 D3D11Wrapper::calc_texture3d_desc_hash(const D3D11Base::D3D11_TEXTURE3D_DESC *desc,
+		UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// Same comment as in calc_texture2d_desc_hash above - concerned about
+	// inconsistent use of these resolution overrides
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->Depth; hash *= FNV_64_PRIME;
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
 static UINT64 get_texture2d_hash(D3D11Base::ID3D11Texture2D *texture,
 		bool log_new, struct ResourceInfo *resource_info)
 {
 
 	D3D11Base::D3D11_TEXTURE2D_DESC desc;
 	std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator j;
-	UINT64 hash = 0;
 
 	texture->GetDesc(&desc);
 
@@ -152,17 +219,7 @@ static UINT64 get_texture2d_hash(D3D11Base::ID3D11Texture2D *texture,
 				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
-	hash ^= desc.Width; hash *= FNV_64_PRIME;
-	hash ^= desc.Height; hash *= FNV_64_PRIME;
-	hash ^= desc.MipLevels; hash *= FNV_64_PRIME;
-	hash ^= desc.ArraySize; hash *= FNV_64_PRIME;
-	hash ^= desc.Format; hash *= FNV_64_PRIME;
-	hash ^= desc.Usage; hash *= FNV_64_PRIME;
-	hash ^= desc.BindFlags; hash *= FNV_64_PRIME;
-	hash ^= desc.CPUAccessFlags; hash *= FNV_64_PRIME;
-	hash ^= desc.MiscFlags;
-
-	return hash;
+	return D3D11Wrapper::calc_texture2d_desc_hash(&desc, 0, 0, 0);
 }
 
 static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
@@ -171,7 +228,6 @@ static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
 
 	D3D11Base::D3D11_TEXTURE3D_DESC desc;
 	std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator j;
-	UINT64 hash = 0;
 
 	texture->GetDesc(&desc);
 
@@ -191,17 +247,7 @@ static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
 				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
-	hash ^= desc.Width; hash *= FNV_64_PRIME;
-	hash ^= desc.Height; hash *= FNV_64_PRIME;
-	hash ^= desc.Depth; hash *= FNV_64_PRIME;
-	hash ^= desc.MipLevels; hash *= FNV_64_PRIME;
-	hash ^= desc.Format; hash *= FNV_64_PRIME;
-	hash ^= desc.Usage; hash *= FNV_64_PRIME;
-	hash ^= desc.BindFlags; hash *= FNV_64_PRIME;
-	hash ^= desc.CPUAccessFlags; hash *= FNV_64_PRIME;
-	hash ^= desc.MiscFlags;
-
-	return hash;
+	return D3D11Wrapper::calc_texture3d_desc_hash(&desc, 0, 0, 0);
 }
 
 // Records the hash of this shader resource view for later lookup. Returns the
