@@ -156,6 +156,8 @@ UINT64 D3D11Wrapper::calc_texture2d_desc_hash(const D3D11Base::D3D11_TEXTURE2D_D
 	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
 	hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
 	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->SampleDesc.Count;
+	hash ^= desc->SampleDesc.Quality;
 	hash ^= desc->Usage; hash *= FNV_64_PRIME;
 	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
 	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
