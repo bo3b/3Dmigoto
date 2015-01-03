@@ -119,15 +119,23 @@ struct ResourceInfo
 		D3D11Base::D3D11_TEXTURE3D_DESC tex3d_desc;
 	};
 
-	ResourceInfo() {}
-	ResourceInfo(D3D11Base::D3D11_TEXTURE2D_DESC desc) :
-		type(D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D),
-		tex2d_desc(desc)
+	ResourceInfo() :
+		type(D3D11Base::D3D11_RESOURCE_DIMENSION_UNKNOWN)
 	{}
-	ResourceInfo(D3D11Base::D3D11_TEXTURE3D_DESC desc) :
-		type(D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D),
-		tex3d_desc(desc)
-	{}
+
+	struct ResourceInfo & operator= (D3D11Base::D3D11_TEXTURE2D_DESC desc)
+	{
+		type = D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+		tex2d_desc = desc;
+		return *this;
+	}
+
+	struct ResourceInfo & operator= (D3D11Base::D3D11_TEXTURE3D_DESC desc)
+	{
+		type = D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+		tex3d_desc = desc;
+		return *this;
+	}
 };
 
 struct Globals

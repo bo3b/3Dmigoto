@@ -126,6 +126,169 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetConstantBuffers(THIS
 	GetD3D11DeviceContext()->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
 
+static UINT64 get_texture2d_hash(D3D11Base::ID3D11Texture2D *texture,
+		bool log_new, struct ResourceInfo *resource_info)
+{
+
+	D3D11Base::D3D11_TEXTURE2D_DESC desc;
+	std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator j;
+	UINT64 hash = 0;
+
+	texture->GetDesc(&desc);
+
+	if (resource_info)
+		*resource_info = desc;
+
+	j = G->mTexture2D_ID.find(texture);
+	if (j != G->mTexture2D_ID.end())
+		return j->second;
+
+	if (log_new) {
+		// TODO: Refactor with log_rendertarget()
+		debug_printf("    Unknown render target:\n");
+		debug_printf("    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+				desc.Width, desc.Height, desc.MipLevels, desc.ArraySize);
+		debug_printf("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
+	}
+
+	hash ^= desc.Width; hash *= FNV_64_PRIME;
+	hash ^= desc.Height; hash *= FNV_64_PRIME;
+	hash ^= desc.MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc.ArraySize; hash *= FNV_64_PRIME;
+	hash ^= desc.Format; hash *= FNV_64_PRIME;
+	hash ^= desc.Usage; hash *= FNV_64_PRIME;
+	hash ^= desc.BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc.CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc.MiscFlags;
+
+	return hash;
+}
+
+static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
+		bool log_new, struct ResourceInfo *resource_info)
+{
+
+	D3D11Base::D3D11_TEXTURE3D_DESC desc;
+	std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator j;
+	UINT64 hash = 0;
+
+	texture->GetDesc(&desc);
+
+	if (resource_info)
+		*resource_info = desc;
+
+	j = G->mTexture3D_ID.find(texture);
+	if (j != G->mTexture3D_ID.end())
+		return j->second;
+
+	if (log_new) {
+		// TODO: Refactor with log_rendertarget()
+		debug_printf("    Unknown 3D render target:\n");
+		debug_printf("    Width = %d, Height = %d, MipLevels = %d\n",
+				desc.Width, desc.Height, desc.MipLevels);
+		debug_printf("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
+	}
+
+	hash ^= desc.Width; hash *= FNV_64_PRIME;
+	hash ^= desc.Height; hash *= FNV_64_PRIME;
+	hash ^= desc.Depth; hash *= FNV_64_PRIME;
+	hash ^= desc.MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc.Format; hash *= FNV_64_PRIME;
+	hash ^= desc.Usage; hash *= FNV_64_PRIME;
+	hash ^= desc.BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc.CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc.MiscFlags;
+
+	return hash;
+}
+
+// Records the hash of this shader resource view for later lookup. Returns the
+// handle to the resource, but be aware that it no longer has a reference and
+// should only be used for map lookups.
+static void *record_resource_view_stats(D3D11Base::ID3D11ShaderResourceView *view)
+{
+	D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+	D3D11Base::ID3D11Resource *resource = NULL;
+	UINT64 hash = 0;
+
+	if (!view)
+		return NULL;
+
+	view->GetDesc(&desc);
+
+	switch (desc.ViewDimension) {
+		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2D:
+		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMS:
+		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
+			view->GetResource(&resource);
+			if (!resource)
+				return NULL;
+			hash = get_texture2d_hash((D3D11Base::ID3D11Texture2D *)resource, false, NULL);
+			resource->Release();
+			break;
+		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE3D:
+			view->GetResource(&resource);
+			if (!resource)
+				return NULL;
+			hash = get_texture3d_hash((D3D11Base::ID3D11Texture3D *)resource, false, NULL);
+			resource->Release();
+			break;
+	}
+
+	if (hash)
+		G->mRenderTargets[resource] = hash;
+
+	return resource;
+}
+
+static void record_render_target_info(D3D11Base::ID3D11RenderTargetView *target, UINT view_num)
+{
+	D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
+	D3D11Base::ID3D11Resource *resource = NULL;
+	struct ResourceInfo resource_info;
+	UINT64 hash = 0;
+
+	if (!target)
+		return;
+
+	target->GetDesc(&desc);
+
+	debug_printf("  View #%d, Format = %d, Is2D = %d\n",
+			view_num, desc.Format, D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
+
+	switch(desc.ViewDimension) {
+		case D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D:
+		case D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2DMS:
+			target->GetResource(&resource);
+			if (!resource)
+				return;
+			hash = get_texture2d_hash((D3D11Base::ID3D11Texture2D *)resource,
+					LogDebug, &resource_info);
+			resource->Release();
+			break;
+		case D3D11Base::D3D11_RTV_DIMENSION_TEXTURE3D:
+			target->GetResource(&resource);
+			if (!resource)
+				return;
+			hash = get_texture3d_hash((D3D11Base::ID3D11Texture3D *)resource,
+					LogDebug, &resource_info);
+			resource->Release();
+			break;
+	}
+
+	if (!resource)
+		return;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	G->mRenderTargets[resource] = hash;
+	G->mCurrentRenderTargets.push_back(resource);
+	G->mVisitedRenderTargets.insert(resource);
+	G->mRenderTargetInfo[resource] = resource_info;
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
@@ -145,82 +308,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (UINT i = 0; i < NumViews; ++i)
 		{
+			void *pResource;
 			int pos = StartSlot + i;
-			if (!ppShaderResourceViews[i])
-			{
-				G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = 0;
-				continue;
-			}
-			D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC desc;
-			ppShaderResourceViews[i]->GetDesc(&desc);
-			if (desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2D ||
-				desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMS ||
-				desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY)
-			{
-				D3D11Base::ID3D11Resource *pResource = 0;
-				ppShaderResourceViews[i]->GetResource(&pResource);
-				if (pResource)
-				{
-					D3D11Base::ID3D11Texture2D *texture = (D3D11Base::ID3D11Texture2D *)pResource;
-					D3D11Base::D3D11_TEXTURE2D_DESC texDesc;
-					texture->GetDesc(&texDesc);
-					pResource->Release();
-					std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator j = G->mTexture2D_ID.find(texture);
-					UINT64 hash = 0;
-					if (j == G->mTexture2D_ID.end())
-					{
-						// Create hash again.
-						hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-						hash ^= texDesc.ArraySize; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-						hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MiscFlags;
-					}
-					else
-					{
-						hash = j->second;
-					}
-					G->mRenderTargets[texture] = hash;
-					G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = texture;
-				}
-			}
-			else if (desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE3D)
-			{
-				D3D11Base::ID3D11Resource *pResource = 0;
-				ppShaderResourceViews[i]->GetResource(&pResource);
-				if (pResource)
-				{
-					D3D11Base::ID3D11Texture3D *texture = (D3D11Base::ID3D11Texture3D *)pResource;
-					D3D11Base::D3D11_TEXTURE3D_DESC texDesc;
-					texture->GetDesc(&texDesc);
-					pResource->Release();
-					std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator j = G->mTexture3D_ID.find(texture);
-					UINT64 hash = 0;
-					if (j == G->mTexture3D_ID.end())
-					{
-						// Create hash again.
-						hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Depth; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-						hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MiscFlags;
-					}
-					else
-					{
-						hash = j->second;
-					}
-					G->mRenderTargets[texture] = hash;
-					G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = texture;
-				}
-			}
+
+			pResource = record_resource_view_stats(ppShaderResourceViews[i]);
+			G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = pResource;
+
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -852,82 +945,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (UINT i = 0; i < NumViews; ++i)
 		{
+			void *pResource;
 			int pos = StartSlot + i;
-			if (!ppShaderResourceViews[i])
-			{
-				G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = 0;
-				continue;
-			}
-			D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC desc;
-			ppShaderResourceViews[i]->GetDesc(&desc);
-			if (desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2D ||
-				desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMS ||
-				desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY)
-			{
-				D3D11Base::ID3D11Resource *pResource = 0;
-				ppShaderResourceViews[i]->GetResource(&pResource);
-				if (pResource)
-				{
-					D3D11Base::ID3D11Texture2D *texture = (D3D11Base::ID3D11Texture2D *)pResource;
-					D3D11Base::D3D11_TEXTURE2D_DESC texDesc;
-					texture->GetDesc(&texDesc);
-					pResource->Release();
-					std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator j = G->mTexture2D_ID.find(texture);
-					UINT64 hash = 0;
-					if (j == G->mTexture2D_ID.end())
-					{
-						// Create hash again.
-						hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-						hash ^= texDesc.ArraySize; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-						hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MiscFlags;
-					}
-					else
-					{
-						hash = j->second;
-					}
-					G->mRenderTargets[texture] = hash;
-					G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = texture;
-				}
-			}
-			else if (desc.ViewDimension == D3D11Base::D3D11_SRV_DIMENSION_TEXTURE3D)
-			{
-				D3D11Base::ID3D11Resource *pResource = 0;
-				ppShaderResourceViews[i]->GetResource(&pResource);
-				if (pResource)
-				{
-					D3D11Base::ID3D11Texture3D *texture = (D3D11Base::ID3D11Texture3D *)pResource;
-					D3D11Base::D3D11_TEXTURE3D_DESC texDesc;
-					texture->GetDesc(&texDesc);
-					pResource->Release();
-					std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator j = G->mTexture3D_ID.find(texture);
-					UINT64 hash = 0;
-					if (j == G->mTexture3D_ID.end())
-					{
-						// Create hash again.
-						hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Depth; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-						hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-						hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-						hash ^= texDesc.MiscFlags;
-					}
-					else
-					{
-						hash = j->second;
-					}
-					G->mRenderTargets[texture] = hash;
-					G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = texture;
-				}
-			}
+
+			pResource = record_resource_view_stats(ppShaderResourceViews[i]);
+			G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = pResource;
+
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1039,94 +1062,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mCurrentRenderTargets.clear();
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
 		for (UINT i = 0; i < NumViews; ++i)
-		{
-			if (ppRenderTargetViews[i] == 0) continue;
-			D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
-			ppRenderTargetViews[i]->GetDesc(&desc);
-			if (LogFile && LogDebug) fprintf(LogFile, "  View #%d, Format = %d, Is2D = %d\n", i, desc.Format, D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
-			D3D11Base::ID3D11Resource *pResource;
-			if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension ||
-				D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2DMS == desc.ViewDimension)
-			{
-				ppRenderTargetViews[i]->GetResource(&pResource);
-				D3D11Base::ID3D11Texture2D *targetTexture = (D3D11Base::ID3D11Texture2D *)pResource;
-				D3D11Base::D3D11_TEXTURE2D_DESC texDesc;
-				targetTexture->GetDesc(&texDesc);
-				pResource->Release();
-
-				// Registered?
-				std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator tex = G->mTexture2D_ID.find(targetTexture);
-				UINT64 hash = 0;
-				if (tex == G->mTexture2D_ID.end())
-				{
-					if (LogFile && LogDebug) fprintf(LogFile, "    Unknown render target:\n");
-					if (LogFile && LogDebug) fprintf(LogFile, "    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n", texDesc.Width, texDesc.Height,
-						texDesc.MipLevels, texDesc.ArraySize);
-					if (LogFile && LogDebug) fprintf(LogFile, "    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n", texDesc.Format,
-						texDesc.Usage, texDesc.BindFlags, texDesc.CPUAccessFlags, texDesc.MiscFlags);
-					// Register current and visited targets.
-					hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-					hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-					hash ^= texDesc.ArraySize; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-					hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-					hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-					hash ^= texDesc.MiscFlags;
-				}
-				else
-				{
-					hash = tex->second;
-				}
-				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-				G->mRenderTargets[targetTexture] = hash;
-				G->mCurrentRenderTargets.push_back(targetTexture);
-				G->mVisitedRenderTargets.insert(targetTexture);
-				G->mRenderTargetInfo[targetTexture] = struct ResourceInfo(texDesc);
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			}
-			else if (D3D11Base::D3D11_RTV_DIMENSION_TEXTURE3D == desc.ViewDimension)
-			{
-				ppRenderTargetViews[i]->GetResource(&pResource);
-				D3D11Base::ID3D11Texture3D *targetTexture = (D3D11Base::ID3D11Texture3D *)pResource;
-				D3D11Base::D3D11_TEXTURE3D_DESC texDesc;
-				targetTexture->GetDesc(&texDesc);
-				pResource->Release();
-
-				// Registered?
-				std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator tex = G->mTexture3D_ID.find(targetTexture);
-				UINT64 hash = 0;
-				if (tex == G->mTexture3D_ID.end())
-				{
-					if (LogFile && LogDebug) fprintf(LogFile, "    Unknown 3D render target:\n");
-					if (LogFile && LogDebug) fprintf(LogFile, "    Width = %d, Height = %d, MipLevels = %d\n", texDesc.Width, texDesc.Height, texDesc.MipLevels);
-					if (LogFile && LogDebug) fprintf(LogFile, "    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n", texDesc.Format,
-						texDesc.Usage, texDesc.BindFlags, texDesc.CPUAccessFlags, texDesc.MiscFlags);
-					// Register current and visited targets.
-					hash ^= texDesc.Width; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Height; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Depth; hash *= FNV_64_PRIME;
-					hash ^= texDesc.MipLevels; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Format; hash *= FNV_64_PRIME;
-					hash ^= texDesc.Usage; hash *= FNV_64_PRIME;
-					hash ^= texDesc.BindFlags; hash *= FNV_64_PRIME;
-					hash ^= texDesc.CPUAccessFlags; hash *= FNV_64_PRIME;
-					hash ^= texDesc.MiscFlags;
-				}
-				else
-				{
-					hash = tex->second;
-				}
-				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-				G->mRenderTargets[targetTexture] = hash;
-				G->mCurrentRenderTargets.push_back(targetTexture);
-				G->mVisitedRenderTargets.insert(targetTexture);
-				G->mRenderTargetInfo[targetTexture] = struct ResourceInfo(texDesc);
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			}
-		}
+			record_render_target_info(ppRenderTargetViews[i], i);
 	}
 
 	GetD3D11DeviceContext()->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
