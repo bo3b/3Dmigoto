@@ -301,10 +301,20 @@ static void record_shader_resource_usage(D3D11Wrapper::ID3D11DeviceContext *cont
 
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		resource = record_resource_view_stats(ps_views[i]);
-		G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[i] = resource;
+		if (resource) {
+			// FIXME: Don't clobber these - it would be useful to
+			// collect a set of all seen resources, e.g. for
+			// matching all textures used by a shader.
+			G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[i] = resource;
+		}
 
 		resource = record_resource_view_stats(vs_views[i]);
-		G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[i] = resource;
+		if (resource) {
+			// FIXME: Don't clobber these - it would be useful to
+			// collect a set of all seen resources, e.g. for
+			// matching all textures used by a shader.
+			G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[i] = resource;
+		}
 	}
 }
 
@@ -378,7 +388,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 			int pos = StartSlot + i;
 
 			pResource = record_resource_view_stats(ppShaderResourceViews[i]);
-			G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = pResource;
+			if (pResource) {
+				// FIXME: Don't clobber these - it would be useful to
+				// collect a set of all seen resources, e.g. for
+				// matching all textures used by a shader.
+				G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = pResource;
+			}
 
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1021,7 +1036,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 			int pos = StartSlot + i;
 
 			pResource = record_resource_view_stats(ppShaderResourceViews[i]);
-			G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = pResource;
+			if (pResource) {
+				// FIXME: Don't clobber these - it would be useful to
+				// collect a set of all seen resources, e.g. for
+				// matching all textures used by a shader.
+				G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = pResource;
+			}
 
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
