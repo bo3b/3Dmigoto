@@ -10,7 +10,8 @@ int XInputDeviceId = -1;
 std::vector<struct Action *> actions;
 static int num_actions;
 
-#define for_each_action(action) \
+// TODO: Kill this macro, it's ugly, but for now debugged
+#define ForEachAction(action) \
 	std::vector<struct Action *>::iterator __action_iterator##__LINE__; \
 	for (__action_iterator##__LINE__ = actions.begin(), action = *__action_iterator##__LINE__; \
 			__action_iterator##__LINE__ != actions.end() && (action = *__action_iterator##__LINE__); \
@@ -55,13 +56,13 @@ struct Action {
 	DWORD button;
 	bool state;
 	bool last_state;
-	input_callback down_cb;
-	input_callback up_cb;
+	InputCallback down_cb;
+	InputCallback up_cb;
 	void *private_data;
 
 	Action(wchar_t *input_name,
-			input_callback down_cb,
-			input_callback up_cb,
+			InputCallback down_cb,
+			InputCallback up_cb,
 			void *private_data) :
 		button(0xffffffff),
 		state(false),
@@ -74,8 +75,8 @@ struct Action {
 	}
 };
 
-void register_ini_key_binding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
-		input_callback down_cb, input_callback up_cb,
+void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
+		InputCallback down_cb, InputCallback up_cb,
 		void *private_data, FILE *log_file)
 {
 	struct Action *action;
@@ -84,7 +85,7 @@ void register_ini_key_binding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 	if (!GetPrivateProfileString(app, key, 0, buf, MAX_PATH, ini))
 		return;
 
-	wrstrip(buf);
+	RightStripW(buf);
 	action = new Action(buf, down_cb, up_cb, private_data);
 	actions.push_back(action);
 
@@ -92,11 +93,12 @@ void register_ini_key_binding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 		fwprintf(log_file, L"  %s=%s %p %p\n", key, action->input_name, down_cb, action->down_cb);
 }
 
-void dispatch_input_events(void *device)
+// TODO: Move this into DX11 project and use DX11 types
+void DispatchInputEvents(void *device)
 {
 	struct Action *action;
 
-	for_each_action(action) {
+	ForEachAction(action) {
 		if (action->state == action->last_state)
 			continue;
 
@@ -212,7 +214,7 @@ HRESULT InitDirectInput()
 
 	int i = 0;
 	struct Action *action;
-	for_each_action(action) {
+	ForEachAction(action) {
 		if (action->button == 0xffffffff)
 		{
 			if (LogInput) fprintf(LogFile, "DirectInput action #%d not found. Checking for ButtonXX syntax.\n", i);
@@ -423,7 +425,7 @@ BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance,
 	wchar_t winstance[MAX_PATH];
 	char instance[MAX_PATH];
 	wcscpy(winstance, deviceInfo.tszInstanceName);
-	wrstrip(winstance);
+	RightStripW(winstance);
 	wcstombs(instance, winstance, MAX_PATH);
 	DIPROPDWORD prop;
 	prop.diph.dwSize = sizeof(DIPROPDWORD);
@@ -488,10 +490,10 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 	}
 	WCHAR tszName[260];
 	wcscpy(tszName, pdidoi->tszName);
-	wrstrip(tszName);
+	RightStripW(tszName);
 	int i = 0;
 	struct Action *action;
-	for_each_action(action) {
+	ForEachAction(action) {
 		if (wcscmp(tszName, action->input_name) == 0)
 		{
 			if (LogInput)
@@ -531,7 +533,7 @@ bool UpdateInputState()
 		if (dwResult == ERROR_SUCCESS)
 		{
 			struct Action *action;
-			for_each_action(action) {
+			ForEachAction(action) {
 				if (wcscmp(L"LeftTrigger", action->input_name) == 0) action->state = state.Gamepad.bLeftTrigger != 0;
 				else if (wcscmp(L"RightTrigger", action->input_name) == 0) action->state = state.Gamepad.bRightTrigger != 0;
 				else if (wcscmp(L"DPAD_UP", action->input_name) == 0) action->state = (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0;
@@ -583,23 +585,23 @@ bool UpdateInputState()
 	if (!FAILED(hr = g_pJoystick->GetDeviceState(sizeof(DIJOYSTATE2), &JoystickState)))
 	{
 		char *data = (char *)&JoystickState;
-		for_each_action(action)
+		ForEachAction(action)
 			action->state = action->button == 0xffffffff ? false : data[action->button] != 0;
 	}
 	else if (!FAILED(hr = g_pJoystick->GetDeviceState(sizeof(DIMOUSESTATE2), &MouseState)))
 	{
 		char *data = (char *)&MouseState;
-		for_each_action(action)
+		ForEachAction(action)
 			action->state = action->button == 0xffffffff ? false : data[action->button] != 0;
 	}
 	else if (!FAILED(hr = g_pJoystick->GetDeviceState(256, KeyboardState)))
 	{
-		for_each_action(action)
+		ForEachAction(action)
 			action->state = action->button == 0xffffffff ? false : KeyboardState[action->button] != 0;
 	}
 	else if (LogInput) fprintf(LogFile, "GetDeviceState failed hr=%x\n", hr);
 
-	for_each_action(action)
+	ForEachAction(action)
 		if (action->state) newEvent = true;
 
 	return newEvent;

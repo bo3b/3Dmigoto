@@ -12,12 +12,12 @@
 #include <ctime>
 #include <XInput.h>
 
-typedef void (*input_callback)(void *device, void *private_data);
+typedef void (*InputCallback)(void *device, void *private_data);
 
-void register_ini_key_binding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
-		input_callback down_cb, input_callback up_cb,
+void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
+		InputCallback down_cb, InputCallback up_cb,
 		void *private_data, FILE *log_file);
-void dispatch_input_events(void *device);
+void DispatchInputEvents(void *device);
 
 
 extern wchar_t InputDevice[MAX_PATH];

@@ -309,11 +309,11 @@ static void loadDll()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		wrstrip(InputDevice);
+		RightStripW(InputDevice);
 		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction, MAX_PATH, sysDir);
-		wrstrip(InputAction);
+		RightStripW(InputAction);
 		GetPrivateProfileString(L"OverrideSettings", L"Toggle", 0, ToggleAction, MAX_PATH, sysDir);
-		wrstrip(ToggleAction);
+		RightStripW(ToggleAction);
 		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
 		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
 			swscanf_s(valueString, L"%e", &ActionConvergence);

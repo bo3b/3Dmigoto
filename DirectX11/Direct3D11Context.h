@@ -126,7 +126,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetConstantBuffers(THIS
 	GetD3D11DeviceContext()->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-UINT64 D3D11Wrapper::calc_texture2d_desc_hash(const D3D11Base::D3D11_TEXTURE2D_DESC *desc,
+UINT64 D3D11Wrapper::CalcTexture2DDescHash(const D3D11Base::D3D11_TEXTURE2D_DESC *desc,
 		UINT64 initial_hash, int override_width, int override_height)
 {
 	UINT64 hash = initial_hash;
@@ -166,12 +166,12 @@ UINT64 D3D11Wrapper::calc_texture2d_desc_hash(const D3D11Base::D3D11_TEXTURE2D_D
 	return hash;
 }
 
-UINT64 D3D11Wrapper::calc_texture3d_desc_hash(const D3D11Base::D3D11_TEXTURE3D_DESC *desc,
+UINT64 D3D11Wrapper::CalcTexture3DDescHash(const D3D11Base::D3D11_TEXTURE3D_DESC *desc,
 		UINT64 initial_hash, int override_width, int override_height)
 {
 	UINT64 hash = initial_hash;
 
-	// Same comment as in calc_texture2d_desc_hash above - concerned about
+	// Same comment as in CalcTexture2DDescHash above - concerned about
 	// inconsistent use of these resolution overrides
 	if (override_width)
 		hash ^= override_width;
@@ -196,7 +196,7 @@ UINT64 D3D11Wrapper::calc_texture3d_desc_hash(const D3D11Base::D3D11_TEXTURE3D_D
 	return hash;
 }
 
-static UINT64 get_texture2d_hash(D3D11Base::ID3D11Texture2D *texture,
+static UINT64 GetTexture2DHash(D3D11Base::ID3D11Texture2D *texture,
 		bool log_new, struct ResourceInfo *resource_info)
 {
 
@@ -213,7 +213,7 @@ static UINT64 get_texture2d_hash(D3D11Base::ID3D11Texture2D *texture,
 		return j->second;
 
 	if (log_new) {
-		// TODO: Refactor with log_rendertarget()
+		// TODO: Refactor with LogRenderTarget()
 		debug_printf("    Unknown render target:\n");
 		debug_printf("    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 				desc.Width, desc.Height, desc.MipLevels, desc.ArraySize);
@@ -221,10 +221,10 @@ static UINT64 get_texture2d_hash(D3D11Base::ID3D11Texture2D *texture,
 				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
-	return D3D11Wrapper::calc_texture2d_desc_hash(&desc, 0, 0, 0);
+	return D3D11Wrapper::CalcTexture2DDescHash(&desc, 0, 0, 0);
 }
 
-static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
+static UINT64 GetTexture3DHash(D3D11Base::ID3D11Texture3D *texture,
 		bool log_new, struct ResourceInfo *resource_info)
 {
 
@@ -241,7 +241,7 @@ static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
 		return j->second;
 
 	if (log_new) {
-		// TODO: Refactor with log_rendertarget()
+		// TODO: Refactor with LogRenderTarget()
 		debug_printf("    Unknown 3D render target:\n");
 		debug_printf("    Width = %d, Height = %d, MipLevels = %d\n",
 				desc.Width, desc.Height, desc.MipLevels);
@@ -249,13 +249,13 @@ static UINT64 get_texture3d_hash(D3D11Base::ID3D11Texture3D *texture,
 				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
-	return D3D11Wrapper::calc_texture3d_desc_hash(&desc, 0, 0, 0);
+	return D3D11Wrapper::CalcTexture3DDescHash(&desc, 0, 0, 0);
 }
 
 // Records the hash of this shader resource view for later lookup. Returns the
 // handle to the resource, but be aware that it no longer has a reference and
 // should only be used for map lookups.
-static void *record_resource_view_stats(D3D11Base::ID3D11ShaderResourceView *view)
+static void *RecordResourceViewStats(D3D11Base::ID3D11ShaderResourceView *view)
 {
 	D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 	D3D11Base::ID3D11Resource *resource = NULL;
@@ -274,10 +274,10 @@ static void *record_resource_view_stats(D3D11Base::ID3D11ShaderResourceView *vie
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2D:
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMS:
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-			hash = get_texture2d_hash((D3D11Base::ID3D11Texture2D *)resource, false, NULL);
+			hash = GetTexture2DHash((D3D11Base::ID3D11Texture2D *)resource, false, NULL);
 			break;
 		case D3D11Base::D3D11_SRV_DIMENSION_TEXTURE3D:
-			hash = get_texture3d_hash((D3D11Base::ID3D11Texture3D *)resource, false, NULL);
+			hash = GetTexture3DHash((D3D11Base::ID3D11Texture3D *)resource, false, NULL);
 			break;
 	}
 
@@ -289,7 +289,7 @@ static void *record_resource_view_stats(D3D11Base::ID3D11ShaderResourceView *vie
 	return resource;
 }
 
-static void record_shader_resource_usage(D3D11Wrapper::ID3D11DeviceContext *context)
+static void RecordShaderResourceUsage(D3D11Wrapper::ID3D11DeviceContext *context)
 {
 	D3D11Base::ID3D11ShaderResourceView *ps_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	D3D11Base::ID3D11ShaderResourceView *vs_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
@@ -300,7 +300,7 @@ static void record_shader_resource_usage(D3D11Wrapper::ID3D11DeviceContext *cont
 	context->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
 
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-		resource = record_resource_view_stats(ps_views[i]);
+		resource = RecordResourceViewStats(ps_views[i]);
 		if (resource) {
 			// FIXME: Don't clobber these - it would be useful to
 			// collect a set of all seen resources, e.g. for
@@ -308,7 +308,7 @@ static void record_shader_resource_usage(D3D11Wrapper::ID3D11DeviceContext *cont
 			G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[i] = resource;
 		}
 
-		resource = record_resource_view_stats(vs_views[i]);
+		resource = RecordResourceViewStats(vs_views[i]);
 		if (resource) {
 			// FIXME: Don't clobber these - it would be useful to
 			// collect a set of all seen resources, e.g. for
@@ -318,7 +318,7 @@ static void record_shader_resource_usage(D3D11Wrapper::ID3D11DeviceContext *cont
 	}
 }
 
-static void record_render_target_info(D3D11Base::ID3D11RenderTargetView *target, UINT view_num)
+static void RecordRenderTargetInfo(D3D11Base::ID3D11RenderTargetView *target, UINT view_num)
 {
 	D3D11Base::D3D11_RENDER_TARGET_VIEW_DESC desc;
 	D3D11Base::ID3D11Resource *resource = NULL;
@@ -339,7 +339,7 @@ static void record_render_target_info(D3D11Base::ID3D11RenderTargetView *target,
 			target->GetResource(&resource);
 			if (!resource)
 				return;
-			hash = get_texture2d_hash((D3D11Base::ID3D11Texture2D *)resource,
+			hash = GetTexture2DHash((D3D11Base::ID3D11Texture2D *)resource,
 					LogDebug, &resource_info);
 			resource->Release();
 			break;
@@ -347,7 +347,7 @@ static void record_render_target_info(D3D11Base::ID3D11RenderTargetView *target,
 			target->GetResource(&resource);
 			if (!resource)
 				return;
-			hash = get_texture3d_hash((D3D11Base::ID3D11Texture3D *)resource,
+			hash = GetTexture3DHash((D3D11Base::ID3D11Texture3D *)resource,
 					LogDebug, &resource_info);
 			resource->Release();
 			break;
@@ -387,7 +387,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS
 			void *pResource;
 			int pos = StartSlot + i;
 
-			pResource = record_resource_view_stats(ppShaderResourceViews[i]);
+			pResource = RecordResourceViewStats(ppShaderResourceViews[i]);
 			if (pResource) {
 				// FIXME: Don't clobber these - it would be useful to
 				// collect a set of all seen resources, e.g. for
@@ -569,7 +569,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 
 			// Maybe make this optional if it turns out to have a
 			// significant performance impact:
-			record_shader_resource_usage(context);
+			RecordShaderResourceUsage(context);
 
 			// Selection
 			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
@@ -1035,7 +1035,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShaderResources(THIS
 			void *pResource;
 			int pos = StartSlot + i;
 
-			pResource = record_resource_view_stats(ppShaderResourceViews[i]);
+			pResource = RecordResourceViewStats(ppShaderResourceViews[i]);
 			if (pResource) {
 				// FIXME: Don't clobber these - it would be useful to
 				// collect a set of all seen resources, e.g. for
@@ -1156,7 +1156,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		for (UINT i = 0; i < NumViews; ++i)
-			record_render_target_info(ppRenderTargetViews[i], i);
+			RecordRenderTargetInfo(ppRenderTargetViews[i], i);
 	}
 
 	GetD3D11DeviceContext()->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);

@@ -318,13 +318,13 @@ static char *readStringParameter(wchar_t *val)
 {
 	static char buf[MAX_PATH];
 	wcstombs(buf, val, MAX_PATH);
-	arstrip(buf);
+	RightStripA(buf);
 	char *start = buf; while (isspace(*start)) start++;
 	return start;
 }
 
 // TODO: Reorder functions in this file to remove the need for this prototype:
-void register_hunting_key_bindings(wchar_t *iniFile);
+void RegisterHuntingKeyBindings(wchar_t *iniFile);
 
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
@@ -516,7 +516,7 @@ void InitializeDLL()
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
-			char *end = arstrip(buf);
+			char *end = RightStripA(buf);
 			G->ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
 			char *start = buf; while (isspace(*start)) start++;
 			G->ZRepair_DepthTexture1 = start;
@@ -525,7 +525,7 @@ void InitializeDLL()
 		{
 			char buf[MAX_PATH];
 			wcstombs(buf, setting, MAX_PATH);
-			char *end = arstrip(buf);
+			char *end = RightStripA(buf);
 			G->ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
 			char *start = buf; while (isspace(*start)) start++;
 			G->ZRepair_DepthTexture2 = start;
@@ -610,7 +610,7 @@ void InitializeDLL()
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
-		wrstrip(InputDevice);
+		RightStripW(InputDevice);
 		log_wprintf(L"  Input=%s\n", InputDevice);
 
 		if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
@@ -625,7 +625,7 @@ void InitializeDLL()
 		// Todo: This deviceNr is in wrong section- actually found in NVapi dll
 
 		if (G->hunting)
-			register_hunting_key_bindings(iniFile);
+			RegisterHuntingKeyBindings(iniFile);
 
 		// XInput
 		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, iniFile);
@@ -1854,7 +1854,7 @@ void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
 
 
 // Key binding callbacks
-static void take_screenshot(void *_device, void *private_data)
+static void TakeScreenShot(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -1873,7 +1873,7 @@ static void take_screenshot(void *_device, void *private_data)
 	}
 }
 
-static void reload_fixes(void *_device, void *private_data)
+static void ReloadFixes(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -1911,7 +1911,7 @@ static void reload_fixes(void *_device, void *private_data)
 	}
 }
 
-static void next_indexbuffer(void *_device, void *private_data)
+static void NextIndexBuffer(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -1940,7 +1940,7 @@ static void next_indexbuffer(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_indexbuffer(void *_device, void *private_data)
+static void PrevIndexBuffer(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -1970,7 +1970,7 @@ static void prev_indexbuffer(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_indexbuffer(void *_device, void *private_data)
+static void MarkIndexBuffer(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	if (LogFile)
@@ -1984,7 +1984,7 @@ static void mark_indexbuffer(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void next_pixelshader(void *_device, void *private_data)
+static void NextPixelShader(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2013,7 +2013,7 @@ static void next_pixelshader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_pixelshader(void *_device, void *private_data)
+static void PrevPixelShader(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2043,7 +2043,7 @@ static void prev_pixelshader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_pixelshader(void *_device, void *private_data)
+static void MarkPixelShader(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2072,7 +2072,7 @@ static void mark_pixelshader(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void next_vertexshader(void *_device, void *private_data)
+static void NextVertexShader(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2101,7 +2101,7 @@ static void next_vertexshader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_vertexshader(void *_device, void *private_data)
+static void PrevVertexShader(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2131,7 +2131,7 @@ static void prev_vertexshader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void mark_vertexshader(void *_device, void *private_data)
+static void MarkVertexShader(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2156,7 +2156,7 @@ static void mark_vertexshader(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void next_rendertarget(void *_device, void *private_data)
+static void NextRenderTarget(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2185,7 +2185,7 @@ static void next_rendertarget(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void prev_rendertarget(void *_device, void *private_data)
+static void PrevRenderTarget(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
@@ -2215,7 +2215,7 @@ static void prev_rendertarget(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void log_rendertarget_2d(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
+static void LogRenderTarget2D(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
 {
 	log_printf("type=Texture2D, Width=%u, Height=%u, MipLevels=%u, "
 			"ArraySize=%u, Format=%u \"%s\", SampleDesc.Count=%u, "
@@ -2223,12 +2223,12 @@ static void log_rendertarget_2d(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
 			"CPUAccessFlags=%u, MiscFlags=%u\n",
 			desc->Width, desc->Height, desc->MipLevels,
 			desc->ArraySize, desc->Format,
-			format_str(desc->Format), desc->SampleDesc.Count,
+			TexFormatStr(desc->Format), desc->SampleDesc.Count,
 			desc->SampleDesc.Quality, desc->Usage, desc->BindFlags,
 			desc->CPUAccessFlags, desc->MiscFlags);
 }
 
-static void log_rendertarget_3d(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
+static void LogRenderTarget3D(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
 {
 
 	log_printf("type=Texture3D, Width=%u, Height=%u, Depth=%u, "
@@ -2236,11 +2236,11 @@ static void log_rendertarget_3d(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
 			"CPUAccessFlags=%u, MiscFlags=%u\n",
 			desc->Width, desc->Height, desc->Depth,
 			desc->MipLevels, desc->Format,
-			format_str(desc->Format), desc->Usage, desc->BindFlags,
+			TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
 			desc->CPUAccessFlags, desc->MiscFlags);
 }
 
-static void log_rendertarget(void *target, char *log_prefix)
+static void LogRenderTarget(void *target, char *log_prefix)
 {
 	if (!target || target == (void *)1) {
 		log_printf("No render target selected for marking\n");
@@ -2254,25 +2254,25 @@ static void log_rendertarget(void *target, char *log_prefix)
 	struct ResourceInfo &info = G->mRenderTargetInfo[hash];
 	switch(info.type) {
 		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			return log_rendertarget_2d(&info.tex2d_desc);
+			return LogRenderTarget2D(&info.tex2d_desc);
 		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			return log_rendertarget_3d(&info.tex3d_desc);
+			return LogRenderTarget3D(&info.tex3d_desc);
 		default:
 			log_printf("type=%i\n", info.type);
 	}
 }
 
-static void mark_rendertarget(void *_device, void *private_data)
+static void MarkRenderTarget(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
-		log_rendertarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
+		LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
 		for (std::set<void *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
 		{
-			log_rendertarget(*i, "       ");
+			LogRenderTarget(*i, "       ");
 		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -2280,7 +2280,7 @@ static void mark_rendertarget(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void tune_up(void *_device, void *private_data)
+static void TuneUp(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	int index = (int)private_data;
@@ -2289,7 +2289,7 @@ static void tune_up(void *_device, void *private_data)
 	if (LogFile) fprintf(LogFile, "> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
 }
 
-static void tune_down(void *_device, void *private_data)
+static void TuneDown(void *_device, void *private_data)
 {
 	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	int index = (int)private_data;
@@ -2301,7 +2301,7 @@ static void tune_down(void *_device, void *private_data)
 // Start with a fresh set of shaders in the scene - either called explicitly
 // via keypress, or after no hunting for 1 minute (see comment in RunFrameActions)
 // Caller must have taken G->mCriticalSection (if enabled)
-static void timeout_hunting_buffers()
+static void TimeoutHuntingBuffers()
 {
 	G->mVisitedIndexBuffers.clear();
 	G->mVisitedVertexShaders.clear();
@@ -2315,11 +2315,11 @@ static void timeout_hunting_buffers()
 }
 
 // User has requested all shaders be re-enabled
-static void done_hunting(void *_device, void *private_data)
+static void DoneHunting(void *_device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-	timeout_hunting_buffers();
+	TimeoutHuntingBuffers();
 
 	G->mSelectedRenderTargetPos = 0;
 	G->mSelectedRenderTarget = ((void *)1),
@@ -2333,39 +2333,39 @@ static void done_hunting(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void register_hunting_key_bindings(wchar_t *iniFile)
+static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 {
 	int i;
 	wchar_t buf[16];
 
-	register_ini_key_binding(L"Hunting", L"next_pixelshader", iniFile, next_pixelshader, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"previous_pixelshader", iniFile, prev_pixelshader, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"mark_pixelshader", iniFile, mark_pixelshader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", iniFile, PrevPixelShader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", iniFile, MarkPixelShader, NULL, NULL, LogFile);
 
-	register_ini_key_binding(L"Hunting", L"take_screenshot", iniFile, take_screenshot, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", iniFile, TakeScreenShot, NULL, NULL, LogFile);
 
-	register_ini_key_binding(L"Hunting", L"next_indexbuffer", iniFile, next_indexbuffer, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"previous_indexbuffer", iniFile, prev_indexbuffer, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"mark_indexbuffer", iniFile, mark_indexbuffer, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", iniFile, NextIndexBuffer, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", iniFile, PrevIndexBuffer, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", iniFile, MarkIndexBuffer, NULL, NULL, LogFile);
 
-	register_ini_key_binding(L"Hunting", L"next_vertexshader", iniFile, next_vertexshader, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"previous_vertexshader", iniFile, prev_vertexshader, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"mark_vertexshader", iniFile, mark_vertexshader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", iniFile, NextVertexShader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", iniFile, PrevVertexShader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", iniFile, MarkVertexShader, NULL, NULL, LogFile);
 
-	register_ini_key_binding(L"Hunting", L"next_rendertarget", iniFile, next_rendertarget, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"previous_rendertarget", iniFile, prev_rendertarget, NULL, NULL, LogFile);
-	register_ini_key_binding(L"Hunting", L"mark_rendertarget", iniFile, mark_rendertarget, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, NULL, LogFile);
 
-	register_ini_key_binding(L"Hunting", L"done_hunting", iniFile, done_hunting, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"done_hunting", iniFile, DoneHunting, NULL, NULL, LogFile);
 
-	register_ini_key_binding(L"Hunting", L"reload_fixes", iniFile, reload_fixes, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, NULL, LogFile);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);
-		register_ini_key_binding(L"Hunting", buf, iniFile, tune_up, NULL, (void*)i, LogFile);
+		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, (void*)i, LogFile);
 
 		_snwprintf(buf, 16, L"tune%i_down", i + 1);
-		register_ini_key_binding(L"Hunting", buf, iniFile, tune_down, NULL, (void*)i, LogFile);
+		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, (void*)i, LogFile);
 	}
 }
 
@@ -2457,7 +2457,7 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 
 	// TODO: Replace DirectInput processing with GetAsyncKeyState:
 	bool newEvent = UpdateInputState();
-	dispatch_input_events(device);
+	DispatchInputEvents(device);
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.
@@ -2480,7 +2480,7 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 
 	if (difftime(time(NULL), G->huntTime) > 60) {
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		timeout_hunting_buffers();
+		TimeoutHuntingBuffers();
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 }

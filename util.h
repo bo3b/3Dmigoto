@@ -6,7 +6,7 @@
 
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
-static char *arstrip(char *buf)
+static char *RightStripA(char *buf)
 {
 	char *end = buf + strlen(buf) - 1;
 	while (end > buf && isspace(*end))
@@ -14,7 +14,7 @@ static char *arstrip(char *buf)
 	*(end + 1) = 0;
 	return end;
 }
-static wchar_t *wrstrip(wchar_t *buf)
+static wchar_t *RightStripW(wchar_t *buf)
 {
 	wchar_t *end = buf + wcslen(buf) - 1;
 	while (end > buf && iswspace(*end))
@@ -24,7 +24,7 @@ static wchar_t *wrstrip(wchar_t *buf)
 }
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
-static char *dxgi_formats[] = {
+static char *DXGIFormats[] = {
 	"UNKNOWN",
 	"R32G32B32A32_TYPELESS",
 	"R32G32B32A32_FLOAT",
@@ -143,9 +143,9 @@ static char *dxgi_formats[] = {
 	"B4G4R4A4_UNORM"
 };
 
-static char *format_str(unsigned int format)
+static char *TexFormatStr(unsigned int format)
 {
-	if (format < sizeof(dxgi_formats) / sizeof(dxgi_formats[0]))
-		return dxgi_formats[format];
+	if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
+		return DXGIFormats[format];
 	return "UNKNOWN";
 }
