@@ -214,10 +214,10 @@ static UINT64 GetTexture2DHash(D3D11Base::ID3D11Texture2D *texture,
 
 	if (log_new) {
 		// TODO: Refactor with LogRenderTarget()
-		debug_printf("    Unknown render target:\n");
-		debug_printf("    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+		LogDebug("    Unknown render target:\n");
+		LogDebug("    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 				desc.Width, desc.Height, desc.MipLevels, desc.ArraySize);
-		debug_printf("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+		LogDebug("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
@@ -242,10 +242,10 @@ static UINT64 GetTexture3DHash(D3D11Base::ID3D11Texture3D *texture,
 
 	if (log_new) {
 		// TODO: Refactor with LogRenderTarget()
-		debug_printf("    Unknown 3D render target:\n");
-		debug_printf("    Width = %d, Height = %d, MipLevels = %d\n",
+		LogDebug("    Unknown 3D render target:\n");
+		LogDebug("    Width = %d, Height = %d, MipLevels = %d\n",
 				desc.Width, desc.Height, desc.MipLevels);
-		debug_printf("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+		LogDebug("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 				desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
@@ -330,7 +330,7 @@ static void RecordRenderTargetInfo(D3D11Base::ID3D11RenderTargetView *target, UI
 
 	target->GetDesc(&desc);
 
-	debug_printf("  View #%d, Format = %d, Is2D = %d\n",
+	LogDebug("  View #%d, Format = %d, Is2D = %d\n",
 			view_num, desc.Format, D3D11Base::D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
 
 	switch(desc.ViewDimension) {

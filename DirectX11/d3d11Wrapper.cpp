@@ -593,23 +593,23 @@ void InitializeDLL()
 
 
 		// [Hunting]
-		log_printf("[Hunting]\n");
+		LogInfo("[Hunting]\n");
 		G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
 		if (G->hunting)
-			log_printf("  hunting=1\n");
+			LogInfo("  hunting=1\n");
 
 		// DirectInput
 		InputDevice[0] = 0;
 		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
 		RightStripW(InputDevice);
-		log_wprintf(L"  Input=%s\n", InputDevice);
+		LogInfoW(L"  Input=%s\n", InputDevice);
 
 		if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
 			if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
 			if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
 			if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
 			if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
-			log_wprintf(L"  marking_mode=%d\n", G->marking_mode);
+			LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
 		}
 
 		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, iniFile);
@@ -2208,7 +2208,7 @@ static void PrevRenderTarget(void *_device, void *private_data)
 
 static void LogRenderTarget2D(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
 {
-	log_printf("type=Texture2D, Width=%u, Height=%u, MipLevels=%u, "
+	LogInfo("type=Texture2D, Width=%u, Height=%u, MipLevels=%u, "
 			"ArraySize=%u, Format=%u \"%s\", SampleDesc.Count=%u, "
 			"SampleDesc.Quality=%u, Usage=%u, BindFlags=%u, "
 			"CPUAccessFlags=%u, MiscFlags=%u\n",
@@ -2222,7 +2222,7 @@ static void LogRenderTarget2D(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
 static void LogRenderTarget3D(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
 {
 
-	log_printf("type=Texture3D, Width=%u, Height=%u, Depth=%u, "
+	LogInfo("type=Texture3D, Width=%u, Height=%u, Depth=%u, "
 			"MipLevels=%u, Format=%u \"%s\", Usage=%u, BindFlags=%u, "
 			"CPUAccessFlags=%u, MiscFlags=%u\n",
 			desc->Width, desc->Height, desc->Depth,
@@ -2234,13 +2234,13 @@ static void LogRenderTarget3D(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
 static void LogRenderTarget(void *target, char *log_prefix)
 {
 	if (!target || target == (void *)1) {
-		log_printf("No render target selected for marking\n");
+		LogInfo("No render target selected for marking\n");
 		return;
 	}
 
 	UINT64 hash = G->mRenderTargets[target];
 
-	log_printf("%srender target handle = %p, hash = %.16llx, ", log_prefix, target, hash);
+	LogInfo("%srender target handle = %p, hash = %.16llx, ", log_prefix, target, hash);
 
 	struct ResourceInfo &info = G->mRenderTargetInfo[hash];
 	switch(info.type) {
@@ -2249,7 +2249,7 @@ static void LogRenderTarget(void *target, char *log_prefix)
 		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			return LogRenderTarget3D(&info.tex3d_desc);
 		default:
-			log_printf("type=%i\n", info.type);
+			LogInfo("type=%i\n", info.type);
 	}
 }
 

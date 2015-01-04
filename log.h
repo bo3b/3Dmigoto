@@ -8,12 +8,12 @@
 // probably not worth doing so unless we were switching to use a central
 // logging framework.
 
-#define log_printf(fmt, ...) \
+#define LogInfo(fmt, ...) \
 	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__)
-#define log_wprintf(fmt, ...) \
+#define LogInfoW(fmt, ...) \
 	if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__)
 
-#define debug_printf(fmt, ...) \
-	if (LogDebug) log_printf(fmt, __VA_ARGS__)
-#define debug_wprintf(fmt, ...) \
-	if (LogDebug) log_wprintf(fmt, __VA_ARGS__)
+#define LogDebug(fmt, ...) \
+	if (LogDebug) LogInfo(fmt, __VA_ARGS__)
+#define LogDebugW(fmt, ...) \
+	if (LogDebug) LogInfoW(fmt, __VA_ARGS__)
