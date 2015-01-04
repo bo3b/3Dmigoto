@@ -26,17 +26,17 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexBuffer9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexBuffer9::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DVertexBuffer9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	LogDebug("  internal counter = %d\n", ulRef);
 	
 	--m_ulRef;
 
     if (ulRef == 0)
     {
-		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		if (!LogDebug) LogInfo("IDirect3DVertexBuffer9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		LogInfo("  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); 
 		m_pUnk = 0;
@@ -48,14 +48,14 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexBuffer9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetDevice(THIS_ IDirect3DDevice9** ppDevice)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetDevice called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetDevice called\n");
 	
 	CheckVertexBuffer9(this);
 	D3D9Base::IDirect3DDevice9 *origDevice;
 	HRESULT hr = GetD3DVertexBuffer9()->GetDevice(&origDevice);
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed with hr = %x\n", hr);
+		LogInfo("  failed with hr = %x\n", hr);
 		
 		return hr;
 	}
@@ -65,7 +65,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetDevice(THIS_ IDirect3DDevic
 	origDevice->Release();
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
+		LogInfo("  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
 		
 		return hr;
 	}
@@ -75,7 +75,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetDevice(THIS_ IDirect3DDevic
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::SetPrivateData(THIS_ REFGUID refguid,CONST void* pData,DWORD SizeOfData,DWORD Flags)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::SetPrivateData called\n");
+	LogDebug("IDirect3DVertexBuffer9::SetPrivateData called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
@@ -83,7 +83,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::SetPrivateData(THIS_ REFGUID r
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetPrivateData(THIS_ REFGUID refguid,void* pData,DWORD* pSizeOfData)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetPrivateData called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetPrivateData called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->GetPrivateData(refguid, pData, pSizeOfData);
@@ -91,7 +91,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetPrivateData(THIS_ REFGUID r
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::FreePrivateData(THIS_ REFGUID refguid)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetPrivateData called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetPrivateData called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->FreePrivateData(refguid);
@@ -99,7 +99,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::FreePrivateData(THIS_ REFGUID 
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DVertexBuffer9::SetPriority(THIS_ DWORD PriorityNew)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::SetPriority called\n");
+	LogDebug("IDirect3DVertexBuffer9::SetPriority called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->SetPriority(PriorityNew);
@@ -107,7 +107,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DVertexBuffer9::SetPriority(THIS_ DWOR
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DVertexBuffer9::GetPriority(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetPriority called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetPriority called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->GetPriority();
@@ -115,7 +115,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DVertexBuffer9::GetPriority(THIS)
 
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DVertexBuffer9::PreLoad(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetPriority called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetPriority called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->PreLoad();
@@ -123,24 +123,24 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DVertexBuffer9::PreLoad(THIS)
 
 STDMETHODIMP_(D3D9Base::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DVertexBuffer9::GetType(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetType called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetType called\n");
 	
 	CheckVertexBuffer9(this);
 	D3D9Base::D3DRESOURCETYPE hr = GetD3DVertexBuffer9()->GetType();
-	if (LogFile && LogDebug) fprintf(LogFile, "  returns ResourceType=%x\n", hr);
+	LogDebug("  returns ResourceType=%x\n", hr);
 	
 	return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::Lock(THIS_ UINT OffsetToLock,UINT SizeToLock,void** ppbData,DWORD Flags)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::Lock called with OffsetToLock=%d, SizeToLock=%d, Flags=%x\n", OffsetToLock, SizeToLock, Flags);
+	LogDebug("IDirect3DVertexBuffer9::Lock called with OffsetToLock=%d, SizeToLock=%d, Flags=%x\n", OffsetToLock, SizeToLock, Flags);
 	
 
 	if (!GetD3DVertexBuffer9())
 	{
-		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::Lock called\n");
-		if (LogFile) fprintf(LogFile, "  postponing call because vertex buffer was not created yet.\n");
+		if (!LogDebug) LogInfo("IDirect3DVertexBuffer9::Lock called\n");
+		LogInfo("  postponing call because vertex buffer was not created yet.\n");
 		
 		if (!pendingLockUnlock)
 		{
@@ -153,34 +153,34 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::Lock(THIS_ UINT OffsetToLock,U
 	}
 
 	HRESULT hr = GetD3DVertexBuffer9()->Lock(OffsetToLock, SizeToLock, ppbData, Flags);
-	if (LogFile && LogDebug) fprintf(LogFile, "  returns result=%x\n", hr);
+	LogDebug("  returns result=%x\n", hr);
 	
 	return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::Unlock(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::Unlock called\n");
+	LogDebug("IDirect3DVertexBuffer9::Unlock called\n");
 	
 
 	if (!GetD3DVertexBuffer9())
 	{
-		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::Unlock called\n");
-		if (LogFile) fprintf(LogFile, "  postponing call because vertex buffer was not created yet.\n");
+		if (!LogDebug) LogInfo("IDirect3DVertexBuffer9::Unlock called\n");
+		LogInfo("  postponing call because vertex buffer was not created yet.\n");
 		
 		return S_OK;
 	}
 
 	CheckVertexBuffer9(this);
 	HRESULT hr = GetD3DVertexBuffer9()->Unlock();
-	if (LogFile && LogDebug) fprintf(LogFile, "  returns result=%x\n", hr);
+	LogDebug("  returns result=%x\n", hr);
 	
 	return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetDesc(THIS_ D3D9Base::D3DVERTEXBUFFER_DESC *pDesc)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexBuffer9::GetDesc called\n");
+	LogDebug("IDirect3DVertexBuffer9::GetDesc called\n");
 	
 	CheckVertexBuffer9(this);
 	return GetD3DVertexBuffer9()->GetDesc(pDesc);

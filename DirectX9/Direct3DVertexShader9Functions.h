@@ -24,17 +24,17 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexShader9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexShader9::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexShader9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DVertexShader9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	LogDebug("  internal counter = %d\n", ulRef);
 	
 	--m_ulRef;
 
     if (ulRef == 0)
     {
-		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DVertexShader9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		if (!LogDebug) LogInfo("IDirect3DVertexShader9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		LogInfo("  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); 
 		m_pUnk = 0;
@@ -46,13 +46,13 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexShader9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexShader9::GetDevice(THIS_ IDirect3DDevice9** ppDevice)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexShader9::GetDevice called\n");
+	LogDebug("IDirect3DVertexShader9::GetDevice called\n");
 	
 	D3D9Base::IDirect3DDevice9 *origDevice;
 	HRESULT hr = GetD3DVertexShader9()->GetDevice(&origDevice);
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed with hr = %x\n", hr);
+		LogInfo("  failed with hr = %x\n", hr);
 		
 		return hr;
 	}
@@ -62,7 +62,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexShader9::GetDevice(THIS_ IDirect3DDevic
 	origDevice->Release();
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
+		LogInfo("  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
 		
 		return hr;
 	}
@@ -72,10 +72,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexShader9::GetDevice(THIS_ IDirect3DDevic
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexShader9::GetFunction(THIS_ void *data,UINT* pSizeOfData)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexShader9::GetFunction called\n");
+	LogDebug("IDirect3DVertexShader9::GetFunction called\n");
 	
 	HRESULT hr = GetD3DVertexShader9()->GetFunction(data, pSizeOfData);
-	if (LogFile && LogDebug) fprintf(LogFile, "  returns result=%x\n", hr);
+	LogDebug("  returns result=%x\n", hr);
 	
 	return hr;
 }

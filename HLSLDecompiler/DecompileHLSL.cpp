@@ -136,7 +136,7 @@ public:
 	void logDecompileError(const string &err)
 	{
 		mErrorOccurred = true;
-		if (LogFile) fprintf(LogFile, "    error parsing shader> %s\n", err.c_str());
+		LogInfo("    error parsing shader> %s\n", err.c_str());
 	}
 
 	DataType TranslateType(const char *name)
@@ -521,7 +521,7 @@ public:
 					// Instead of "2dMS4", it's just "2dMS". If we set that to Texture2DMS<float4>, with no size, 
 					// it generates the same code as the ASM.	 sscanf returns -1 as an error.
 					//
-					// if (LogFile) fprintf(LogFile, "--> Texture %s: sprintf=%d as %s\n", dim, error, buffer);
+					// LogInfo("--> Texture %s: sprintf=%d as %s\n", dim, error, buffer);
 					int msnumber;
 					int scanned;
 					char buffer[256];
@@ -1224,8 +1224,8 @@ public:
 				if (i == mCBufferData.end())
 				{
 					logDecompileError("3 Error parsing buffer offset: " + string(right2));
-					if (LogFile) fprintf(LogFile, "   bufIndex: %d  bufOffset: %d\n", bufIndex, bufOffset);
-					if (LogFile) fprintf(LogFile, "   strPos: %s\n", string(strPos));
+					LogInfo("   bufIndex: %d  bufOffset: %d\n", bufIndex, bufOffset);
+					LogInfo("   strPos: %s\n", string(strPos));
 					//error parsing shader> 3 Error parsing buffer offset : icb[r6.z + 10].w
 					//bufIndex : -1  bufOffset : 10
 					//strPos : +10].w
@@ -2505,7 +2505,7 @@ public:
 				logDecompileError("Error parsing statement: " + string(c + pos, 80));
 				return;
 			}
-			//if (LogFile && LogDebug) fprintf(LogFile, "parsing statement %s with args %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", statement,
+			//LogDebug("parsing statement %s with args %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", statement,
 			//	op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
 			//
 
@@ -4214,7 +4214,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	catch (...)
 	{
 		// Fatal error, but catch it and mark it as bad.
-		if (LogFile) fprintf(LogFile, "   ******* Exception caught while decompiling shader ******\n");
+		LogInfo("   ******* Exception caught while decompiling shader ******\n");
 
 		errorOccurred = true;
 		return string();

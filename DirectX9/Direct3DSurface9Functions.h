@@ -25,17 +25,17 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DSurface9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
 	
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	LogDebug("  internal counter = %d\n", ulRef);
 	
 	--m_ulRef;
 
     if (ulRef == 0)
     {
-		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DSurface9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		if (!LogDebug) LogInfo("IDirect3DSurface9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		LogInfo("  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); 
 		m_pUnk = 0;
@@ -47,14 +47,14 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDevice(THIS_ IDirect3DDevice9** ppDevice)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetDevice called\n");
+	LogDebug("IDirect3DSurface9::GetDevice called\n");
 	
 	CheckSurface9(this);
 	D3D9Base::IDirect3DDevice9 *origDevice;
 	HRESULT hr = GetD3DSurface9()->GetDevice(&origDevice);
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed with hr = %x\n", hr);
+		LogInfo("  failed with hr = %x\n", hr);
 		
 		if (ppDevice) *ppDevice = 0;
 		return hr;
@@ -65,7 +65,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDevice(THIS_ IDirect3DDevice9** 
 	origDevice->Release();
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
+		LogInfo("  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
 		
 		if (ppDevice) *ppDevice = 0;
 		return hr;
@@ -76,7 +76,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDevice(THIS_ IDirect3DDevice9** 
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::SetPrivateData(THIS_ REFGUID refguid,CONST void* pData,DWORD SizeOfData,DWORD Flags)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::SetPrivateData called\n");
+	LogDebug("IDirect3DSurface9::SetPrivateData called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
@@ -84,7 +84,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::SetPrivateData(THIS_ REFGUID refgui
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetPrivateData(THIS_ REFGUID refguid,void* pData,DWORD* pSizeOfData)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetPrivateData called\n");
+	LogDebug("IDirect3DSurface9::GetPrivateData called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->GetPrivateData(refguid, pData, pSizeOfData);
@@ -92,7 +92,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetPrivateData(THIS_ REFGUID refgui
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::FreePrivateData(THIS_ REFGUID refguid)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetPrivateData called\n");
+	LogDebug("IDirect3DSurface9::GetPrivateData called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->FreePrivateData(refguid);
@@ -100,7 +100,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::FreePrivateData(THIS_ REFGUID refgu
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::SetPriority(THIS_ DWORD PriorityNew)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::SetPriority called\n");
+	LogDebug("IDirect3DSurface9::SetPriority called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->SetPriority(PriorityNew);
@@ -108,7 +108,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::SetPriority(THIS_ DWORD Pri
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::GetPriority(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetPriority called\n");
+	LogDebug("IDirect3DSurface9::GetPriority called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->GetPriority();
@@ -116,7 +116,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::GetPriority(THIS)
 
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DSurface9::PreLoad(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetPriority called\n");
+	LogDebug("IDirect3DSurface9::GetPriority called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->PreLoad();
@@ -124,7 +124,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DSurface9::PreLoad(THIS)
 
 STDMETHODIMP_(D3D9Base::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DSurface9::GetType(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetType called\n");
+	LogDebug("IDirect3DSurface9::GetType called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->GetType();
@@ -132,7 +132,7 @@ STDMETHODIMP_(D3D9Base::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DSurface9::GetType
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetContainer(THIS_ REFIID riid,void** ppContainer)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetContainer called\n");
+	LogDebug("IDirect3DSurface9::GetContainer called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->GetContainer(riid, ppContainer);
@@ -140,7 +140,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetContainer(THIS_ REFIID riid,void
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ D3D9Base::D3DSURFACE_DESC *pDesc)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetDesc called\n");
+	LogDebug("IDirect3DSurface9::GetDesc called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->GetDesc(pDesc);
@@ -148,7 +148,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ D3D9Base::D3DSURFACE_
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ D3D9Base::D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::LockRect called\n");
+	LogDebug("IDirect3DSurface9::LockRect called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->LockRect(pLockedRect, pRect, Flags);
@@ -156,7 +156,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ D3D9Base::D3DLOCKED_
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::UnlockRect called\n");
+	LogDebug("IDirect3DSurface9::UnlockRect called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->UnlockRect();
@@ -164,7 +164,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDC(THIS_ HDC *phdc)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::GetDC called\n");
+	LogDebug("IDirect3DSurface9::GetDC called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->GetDC(phdc);
@@ -172,7 +172,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDC(THIS_ HDC *phdc)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::ReleaseDC(THIS_ HDC hdc)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DSurface9::ReleaseDC called\n");
+	LogDebug("IDirect3DSurface9::ReleaseDC called\n");
 	
 	CheckSurface9(this);
 	return GetD3DSurface9()->ReleaseDC(hdc);

@@ -23,16 +23,16 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIDevice2::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIDevice2::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDXGIDevice2::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDXGIDevice2::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	LogDebug("  internal counter = %d\n", ulRef);
 
 	--m_ulRef;
 
 	if (ulRef == 0)
 	{
-		if (LogFile && LogDebug) fprintf(LogFile, "  deleting self\n");
+		LogDebug("  deleting self\n");
 
 		if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
 		delete this;
@@ -69,7 +69,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	if (LogFile) fprintf(LogFile, "IDXGIDevice2::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+	LogInfo("IDXGIDevice2::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
@@ -82,7 +82,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::GetParent(THIS_
 	/* [annotation][retval][out] */
 	__out  void **ppParent)
 {
-	if (LogFile) fprintf(LogFile, "IDXGIDevice2::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+	LogInfo("IDXGIDevice2::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
 
 	HRESULT hr = GetDevice2()->GetParent(riid, ppParent);
@@ -90,7 +90,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::GetParent(THIS_
 	{
 		// Create Wrapper. We assume, the wrapper was already created using directX DLL wrapper.
 	}
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppParent);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppParent);
 
 	return hr;
 }
@@ -99,7 +99,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::GetAdapter(THIS_
 	/* [annotation][out] */
 	_Out_  D3D11Base::IDXGIAdapter **pAdapter)
 {
-	if (LogFile) fprintf(LogFile, "IDXGIDevice2::GetAdapter called.\n");
+	LogInfo("IDXGIDevice2::GetAdapter called.\n");
 
 	HRESULT hr = GetDevice2()->GetAdapter(pAdapter);
 	if (hr == S_OK)
@@ -107,13 +107,13 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::GetAdapter(THIS_
 		D3D11Base::IDXGIAdapter *wrapper = (D3D11Base::IDXGIAdapter *) G->m_AdapterList.GetDataPtr(*pAdapter);
 		if (wrapper)
 		{
-			if (LogFile) fprintf(LogFile, "  adapter replaced by wrapper. Original IDXGIAdapter = %p.\n", *pAdapter);
+			LogInfo("  adapter replaced by wrapper. Original IDXGIAdapter = %p.\n", *pAdapter);
 
 			*pAdapter = wrapper;
 			wrapper->AddRef();
 		}
 	}
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *pAdapter);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *pAdapter);
 
 	return hr;
 }
@@ -128,10 +128,10 @@ STDMETHODIMP D3D11Wrapper::IDXGIDevice2::CreateSurface(THIS_
 	/* [annotation][out] */
 	_Out_  D3D11Base::IDXGISurface **ppSurface)
 {
-	if (LogFile) fprintf(LogFile, "IDXGIDevice2::CreateSurface called.\n");
+	LogInfo("IDXGIDevice2::CreateSurface called.\n");
 
 	HRESULT hr = GetDevice2()->CreateSurface(pDesc, NumSurfaces, Usage, pSharedResource, ppSurface);
-	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogInfo("  returns result = %x\n", hr);
 
 	return hr;
 }

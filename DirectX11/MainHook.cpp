@@ -51,14 +51,14 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 	wcscat_s(systemPath, MAX_PATH, L"\\d3d11.dll");
 
 	// This is late enough that we can look for standard logging.
-	if (LogFile) fwprintf(LogFile, L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
+	LogInfoW(L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
 
 	// Bypass the known expected call from our wrapped d3d11, where it needs to call to the system to get APIs.
 	// This is a bit of a hack, but if the string comes in as original_d3d11, that's from us, and needs to switch 
 	// to the real one. This doesn't need to be case insensitive, because we create the original string, all lower case.
 	if (wcsstr(lpLibFileName, L"original_d3d11.dll") != NULL)
 	{
-		if (LogFile) fwprintf(LogFile, L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n", 
+		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n", 
 			lpLibFileName, systemPath);
 
 		return sLoadLibraryExW_Hook.fnLoadLibraryExW(systemPath, hFile, dwFlags);
@@ -68,7 +68,7 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 	// it with a driver upgrade.  Any direct access to system32\d3d11.dll needs to be reset to us.
 	if (_wcsicmp(lpLibFileName, systemPath) == 0)
 	{
-		if (LogFile) fwprintf(LogFile, L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, L"d3d11.dll");
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, L"d3d11.dll");
 
 		return sLoadLibraryExW_Hook.fnLoadLibraryExW(L"d3d11.dll", hFile, dwFlags);
 	}

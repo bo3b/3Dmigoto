@@ -68,7 +68,7 @@ HRESULT InitDirectInput()
 			DWORD dwResult = XInputGetState(i, &state);
 			if (dwResult == ERROR_SUCCESS && LogInput)
 			{
-				fprintf(LogFile, "Detected XInput device #%d\n", i);
+				LogInfo("Detected XInput device #%d\n", i);
 			}
 		}
 	}
@@ -107,7 +107,7 @@ HRESULT InitDirectInput()
 	// Make sure we got a joystick
 	if (NULL == g_pJoystick)
 	{
-		if (LogInput) fprintf(LogFile, "No DirectInput device used.\n");
+		if (LogInput) LogInfo("No DirectInput device used.\n");
 		return S_OK;
 	}
 
@@ -122,19 +122,19 @@ HRESULT InitDirectInput()
 	// passing a DIJOYSTATE2 structure to IDirectInputDevice::GetDeviceState().
 	if (DeviceType == DI8DEVTYPE_MOUSE)
 	{
-		if (LogInput) fprintf(LogFile, "Using mouse data format.\n");
+		if (LogInput) LogInfo("Using mouse data format.\n");
 		if (FAILED(hr = g_pJoystick->SetDataFormat(&c_dfDIMouse2)))
 			return hr;
 	}
 	else if (DeviceType == DI8DEVTYPE_KEYBOARD)
 	{
-		if (LogInput) fprintf(LogFile, "Using keyboard data format.\n");
+		if (LogInput) LogInfo("Using keyboard data format.\n");
 		if (FAILED(hr = g_pJoystick->SetDataFormat(&c_dfDIKeyboard)))
 			return hr;
 	}
 	else
 	{
-		if (LogInput) fprintf(LogFile, "Using joystick data format for device type %x.\n", DeviceType);
+		if (LogInput) LogInfo("Using joystick data format for device type %x.\n", DeviceType);
 		if (FAILED(hr = g_pJoystick->SetDataFormat(&c_dfDIJoystick2)))
 			return hr;
 	}
@@ -152,12 +152,12 @@ HRESULT InitDirectInput()
 
 	if (ActionButton == 0xffffffff)
 	{
-		if (LogInput) fprintf(LogFile, "DirectInput action not found. Checking for ButtonXX syntax.\n");
+		if (LogInput) LogInfo("DirectInput action not found. Checking for ButtonXX syntax.\n");
 		ActionButton = 0;
 		int ret = swscanf_s(InputAction, L"Button%d", &ActionButton);
 		if (ret > 0)
 		{
-			if (LogInput) fprintf(LogFile, "Using input button #%d for action at offset 0x%x.\n",
+			if (LogInput) LogInfo("Using input button #%d for action at offset 0x%x.\n",
 				ActionButton, ActionButton + offsetof(DIJOYSTATE2, rgbButtons));
 			ActionButton += offsetof(DIJOYSTATE2, rgbButtons);
 		}
@@ -368,7 +368,7 @@ BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance,
 	prop.diph.dwObj = 0;
 	prop.dwData = 0;
 	pDevice->GetProperty(DIPROP_JOYSTICKID, &prop.diph);
-	if (LogInput) fprintf(LogFile, "Detected DirectInput device: instance = %s, id = %d\n", instance, prop.dwData);
+	if (LogInput) LogInfo("Detected DirectInput device: instance = %s, id = %d\n", instance, prop.dwData);
 
 	// Did we found our device?
 	if (wcscmp(winstance, InputDevice) == 0)
@@ -377,7 +377,7 @@ BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance,
 		{
 			DeviceType = deviceInfo.dwDevType & 0xff;
 			g_pJoystick = pDevice;
-			if (LogInput) fprintf(LogFile, "Using DirectInput device: instance = %s, id = %d\n", instance, prop.dwData);
+			if (LogInput) LogInfo("Using DirectInput device: instance = %s, id = %d\n", instance, prop.dwData);
 			return DIENUM_STOP;
 		}
 	}
@@ -418,15 +418,15 @@ BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi,
 
 	char obj[MAX_PATH];
 	wcstombs(obj, pdidoi->tszName, MAX_PATH);
-	if (LogInput) fprintf(LogFile, "Found input item %s\n", obj);
+	if (LogInput) LogInfo("Found input item %s\n", obj);
 	if (wcscmp(pdidoi->tszName, InputAction) == 0)
 	{
-		if (LogInput) fprintf(LogFile, "Using input item %s at data offset 0x0%x for action.\n", obj, pdidoi->dwOfs);
+		if (LogInput) LogInfo("Using input item %s at data offset 0x0%x for action.\n", obj, pdidoi->dwOfs);
 		ActionButton = pdidoi->dwOfs;
 	}
 	if (wcscmp(pdidoi->tszName, ToggleAction) == 0)
 	{
-		if (LogInput) fprintf(LogFile, "Using input item %s at data offset 0x0%x for toggle.\n", obj, pdidoi->dwOfs);
+		if (LogInput) LogInfo("Using input item %s at data offset 0x0%x for toggle.\n", obj, pdidoi->dwOfs);
 		ActionButton = pdidoi->dwOfs;
 	}
 
@@ -484,7 +484,7 @@ void UpdateInputState()
 	hr = g_pJoystick->Poll();
 	if (FAILED(hr))
 	{
-		if (LogInput) fprintf(LogFile, "DirectInput poll failed hr=%x\n", hr);
+		if (LogInput) LogInfo("DirectInput poll failed hr=%x\n", hr);
 
 		// DInput is telling us that the input stream has been
 		// interrupted. We aren't tracking any state between polls, so
@@ -528,7 +528,7 @@ void UpdateInputState()
 				break;
 		}
 	}
-	else if (LogInput) fprintf(LogFile, "GetDeviceState failed hr=%x\n", hr);
+	else if (LogInput) LogInfo("GetDeviceState failed hr=%x\n", hr);
 }
 
 //-----------------------------------------------------------------------------

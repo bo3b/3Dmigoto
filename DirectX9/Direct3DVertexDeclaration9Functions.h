@@ -25,17 +25,17 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexDeclaration9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexDeclaration9::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexDeclaration9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DVertexDeclaration9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	LogDebug("  internal counter = %d\n", ulRef);
 
 	--m_ulRef;
 
     if (ulRef == 0)
     {
-		if (LogFile && !LogDebug) fprintf(LogFile, "IDirect3DVertexDeclaration9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		if (!LogDebug) LogInfo("IDirect3DVertexDeclaration9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		LogInfo("  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); 
 		m_pUnk = 0;
@@ -47,14 +47,14 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexDeclaration9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDevice(THIS_ IDirect3DDevice9** ppDevice)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexDeclaration9::GetDevice called\n");
+	LogDebug("IDirect3DVertexDeclaration9::GetDevice called\n");
 
 	CheckVertexDeclaration9(this);
 	D3D9Base::IDirect3DDevice9 *origDevice;
 	HRESULT hr = GetD3DVertexDeclaration9()->GetDevice(&origDevice);
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed with hr = %x\n", hr);
+		LogInfo("  failed with hr = %x\n", hr);
 		
 		return hr;
 	}
@@ -64,7 +64,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDevice(THIS_ IDirect3D
 	origDevice->Release();
 	if (hr != S_OK)
 	{
-		if (LogFile) fprintf(LogFile, "  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
+		LogInfo("  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
 		
 		return hr;
 	}
@@ -74,7 +74,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDevice(THIS_ IDirect3D
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDeclaration(THIS_ D3D9Base::D3DVERTEXELEMENT9* pElement,UINT* pNumElements)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "IDirect3DVertexDeclaration9::GetDeclaration called\n");
+	LogDebug("IDirect3DVertexDeclaration9::GetDeclaration called\n");
 
 	CheckVertexDeclaration9(this);
 	return GetD3DVertexDeclaration9()->GetDeclaration(pElement, pNumElements);

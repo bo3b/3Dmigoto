@@ -27,8 +27,8 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "Release handle=%x, counter=%d\n", m_pUnk, m_ulRef);
-	//if (LogFile) fprintf(LogFile, "  ignoring call\n");
+	LogInfo("Release handle=%x, counter=%d\n", m_pUnk, m_ulRef);
+	//LogInfo("  ignoring call\n");
 	if (LogFile) fflush(LogFile);
     m_pUnk->Release();
 
@@ -36,7 +36,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 
     if(ulRef <= 0)
     {
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		LogInfo("  deleting self\n");
 		if (LogFile) fflush(LogFile);
         m_List.DeleteMember(GetD3D11Device());
         delete this;

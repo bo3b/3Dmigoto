@@ -24,7 +24,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Device::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Device::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
+	LogInfo("ID3D10Device::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
 	
     m_pUnk->Release();
 
@@ -32,7 +32,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Device::Release(THIS)
 
     if(ulRef <= 0)
     {
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		LogInfo("  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
         delete this;
@@ -45,7 +45,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Device::Release(THIS)
 STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GetDevice(THIS_
             __out  D3D11Wrapper::ID3D10Device **ppDevice)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetDevice called\n");
+	LogInfo("ID3D10Device::GetDevice called\n");
 	
 	*ppDevice = this;
 	AddRef();
@@ -60,12 +60,12 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::GetPrivateData(THIS_
             /* [annotation] */ 
             __out_bcount_opt(*pDataSize)  void *pData)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("ID3D10Device::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], 
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 	
 	HRESULT hr = m_pDevice->GetPrivateData(guid, pDataSize, pData);
-	if (LogFile) fprintf(LogFile, "  returns result = %x, DataSize = %d\n", hr, *pDataSize);
+	LogInfo("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
 	
 	return hr;
 }
@@ -78,13 +78,13 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::SetPrivateData(THIS_
             /* [annotation] */ 
             __in_bcount_opt(DataSize)  const void *pData)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("ID3D10Device::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], 
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
-	if (LogFile) fprintf(LogFile, "  DataSize = %d\n", DataSize);
+	LogInfo("  DataSize = %d\n", DataSize);
 	
 	HRESULT hr = m_pDevice->SetPrivateData(guid, DataSize, pData);
-	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogInfo("  returns result = %x\n", hr);
 	
 	return hr;
 }
@@ -95,12 +95,12 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::SetPrivateDataInterface(THIS_
             /* [annotation] */ 
             __in_opt  const IUnknown *pData)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("ID3D10Device::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], 
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 	
 	HRESULT hr = m_pDevice->SetPrivateDataInterface(guid, pData);
-	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogInfo("  returns result = %x\n", hr);
 	
 	return hr;
 }
@@ -113,7 +113,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSSetConstantBuffers(THIS_
             /* [annotation] */ 
             __in_ecount(NumBuffers)  D3D11Base::ID3D10Buffer *const *ppConstantBuffers)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::VSSetConstantBuffers called with StartSlot = %d, NumBuffers = %d\n", StartSlot, NumBuffers);
+	//LogInfo("ID3D10Device::VSSetConstantBuffers called with StartSlot = %d, NumBuffers = %d\n", StartSlot, NumBuffers);
 	//
 	m_pDevice->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -126,7 +126,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSSetShaderResources(THIS_
             /* [annotation] */ 
             __in_ecount(NumViews)  D3D11Base::ID3D10ShaderResourceView *const *ppShaderResourceViews)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::PSSetShaderResources called\n");
+	//LogInfo("ID3D10Device::PSSetShaderResources called\n");
 	//
 	m_pDevice->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -136,7 +136,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSSetShader(THIS_
             __in_opt  D3D11Base::ID3D10PixelShader *pPixelShader)
 {
 	// :todo: intercept here
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::PSSetShader called\n");
+	//LogInfo("ID3D10Device::PSSetShader called\n");
 	//
 	m_pDevice->PSSetShader(pPixelShader);
 }
@@ -149,7 +149,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSSetSamplers(THIS_
             /* [annotation] */ 
             __in_ecount(NumSamplers)  D3D11Base::ID3D10SamplerState *const *ppSamplers)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::PSSetSamplers called\n");
+	//LogInfo("ID3D10Device::PSSetSamplers called\n");
 	//
 	m_pDevice->PSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
@@ -159,7 +159,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSSetShader(THIS_
             __in_opt  D3D11Base::ID3D10VertexShader *pVertexShader)
 {
 	// :todo: intercept here
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::VSSetShader called\n");
+	//LogInfo("ID3D10Device::VSSetShader called\n");
 	//
 	m_pDevice->VSSetShader(pVertexShader);
 }
@@ -172,7 +172,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::DrawIndexed(THIS_
             /* [annotation] */ 
             __in  INT BaseVertexLocation)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n",
+	LogInfo("ID3D10Device::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n",
 		IndexCount, StartIndexLocation, BaseVertexLocation);
 	
 	m_pDevice->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
@@ -184,7 +184,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::Draw(THIS_
             /* [annotation] */ 
             __in  UINT StartVertexLocation)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::Draw called with VertexCount = %d, StartVertexLocation = %d\n", 
+	LogInfo("ID3D10Device::Draw called with VertexCount = %d, StartVertexLocation = %d\n", 
 		VertexCount, StartVertexLocation);
 	
 	m_pDevice->Draw(VertexCount, StartVertexLocation);
@@ -198,7 +198,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSSetConstantBuffers(THIS_
             /* [annotation] */ 
             __in_ecount(NumBuffers)  D3D11Base::ID3D10Buffer *const *ppConstantBuffers)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::PSSetConstantBuffers called\n");
+	//LogInfo("ID3D10Device::PSSetConstantBuffers called\n");
 	//
 	m_pDevice->PSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -207,7 +207,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IASetInputLayout(THIS_
             /* [annotation] */ 
             __in_opt  D3D11Base::ID3D10InputLayout *pInputLayout)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::IASetInputLayout called\n");
+	//LogInfo("ID3D10Device::IASetInputLayout called\n");
 	//
 	m_pDevice->IASetInputLayout(pInputLayout);
 }
@@ -224,7 +224,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IASetVertexBuffers(THIS_
             /* [annotation] */ 
             __in_ecount(NumBuffers)  const UINT *pOffsets)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::IASetVertexBuffers called\n");
+	//LogInfo("ID3D10Device::IASetVertexBuffers called\n");
 	//
 	m_pDevice->IASetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
@@ -237,7 +237,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IASetIndexBuffer(THIS_
             /* [annotation] */ 
             __in  UINT Offset)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::IASetIndexBuffer called\n");
+	//LogInfo("ID3D10Device::IASetIndexBuffer called\n");
 	//
 	m_pDevice->IASetIndexBuffer(pIndexBuffer, Format, Offset);
 }
@@ -254,7 +254,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::DrawIndexedInstanced(THIS_
             /* [annotation] */ 
             __in  UINT StartInstanceLocation)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::DrawIndexedInstanced called\n");
+	LogInfo("ID3D10Device::DrawIndexedInstanced called\n");
 	
 	m_pDevice->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, 
 		BaseVertexLocation, StartInstanceLocation);
@@ -270,7 +270,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::DrawInstanced(THIS_
             /* [annotation] */ 
             __in  UINT StartInstanceLocation)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::DrawInstanced called\n");
+	LogInfo("ID3D10Device::DrawInstanced called\n");
 	
 	m_pDevice->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation,
 		StartInstanceLocation);
@@ -284,7 +284,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSSetConstantBuffers(THIS_
             /* [annotation] */ 
             __in_ecount(NumBuffers)  D3D11Base::ID3D10Buffer *const *ppConstantBuffers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSSetConstantBuffers called\n");
+	LogInfo("ID3D10Device::GSSetConstantBuffers called\n");
 	
 	m_pDevice->GSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -293,7 +293,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSSetShader(THIS_
             /* [annotation] */ 
             __in_opt  D3D11Base::ID3D10GeometryShader *pShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSSetShader called\n");
+	LogInfo("ID3D10Device::GSSetShader called\n");
 	
 	m_pDevice->GSSetShader(pShader);
 }
@@ -302,7 +302,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IASetPrimitiveTopology(THIS_
             /* [annotation] */ 
             __in  D3D11Base::D3D10_PRIMITIVE_TOPOLOGY Topology)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::IASetPrimitiveTopology called\n");
+	LogInfo("ID3D10Device::IASetPrimitiveTopology called\n");
 	
 	m_pDevice->IASetPrimitiveTopology(Topology);
 }
@@ -315,7 +315,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSSetShaderResources(THIS_
             /* [annotation] */ 
             __in_ecount(NumViews)  D3D11Base::ID3D10ShaderResourceView *const *ppShaderResourceViews)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::VSSetShaderResources called with StartSlot = %d, NumViews = %d\n",
+	//LogInfo("ID3D10Device::VSSetShaderResources called with StartSlot = %d, NumViews = %d\n",
 	//	StartSlot, NumViews);
 	//
 	m_pDevice->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
@@ -329,7 +329,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSSetSamplers(THIS_
             /* [annotation] */ 
             __in_ecount(NumSamplers)  D3D11Base::ID3D10SamplerState *const *ppSamplers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::VSSetSamplers called with StartSlot = %d, NumSamplers = %d\n",
+	LogInfo("ID3D10Device::VSSetSamplers called with StartSlot = %d, NumSamplers = %d\n",
 		StartSlot, NumSamplers);
 	
 	m_pDevice->VSSetSamplers(StartSlot, NumSamplers, ppSamplers);
@@ -341,7 +341,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::SetPredication(THIS_
             /* [annotation] */ 
             __in  BOOL PredicateValue)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SetPredication called\n");
+	LogInfo("ID3D10Device::SetPredication called\n");
 	
 	m_pDevice->SetPredication(pPredicate, PredicateValue);
 }
@@ -354,7 +354,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSSetShaderResources(THIS_
             /* [annotation] */ 
             __in_ecount(NumViews)  D3D11Base::ID3D10ShaderResourceView *const *ppShaderResourceViews)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSSetShaderResources called\n");
+	LogInfo("ID3D10Device::GSSetShaderResources called\n");
 	
 	m_pDevice->GSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -367,7 +367,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSSetSamplers(THIS_
             /* [annotation] */ 
             __in_ecount(NumSamplers)  D3D11Base::ID3D10SamplerState *const *ppSamplers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSSetSamplers called with StartSlod = %d, NumSamplers = %d\n",
+	LogInfo("ID3D10Device::GSSetSamplers called with StartSlod = %d, NumSamplers = %d\n",
 		StartSlot, NumSamplers);
 	
 	m_pDevice->GSSetSamplers(StartSlot, NumSamplers, ppSamplers);
@@ -381,7 +381,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::OMSetRenderTargets(THIS_
             /* [annotation] */ 
             __in_opt  D3D11Base::ID3D10DepthStencilView *pDepthStencilView)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::OMSetRenderTargets called with NumViews = %d\n", NumViews);
+	//LogInfo("ID3D10Device::OMSetRenderTargets called with NumViews = %d\n", NumViews);
 	//
 	m_pDevice->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
 }
@@ -394,7 +394,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::OMSetBlendState(THIS_
             /* [annotation] */ 
             __in  UINT SampleMask)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::OMSetBlendState called\n");
+	//LogInfo("ID3D10Device::OMSetBlendState called\n");
 	//
 	m_pDevice->OMSetBlendState(pBlendState, BlendFactor, SampleMask);
 }
@@ -405,7 +405,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::OMSetDepthStencilState(THIS_
             /* [annotation] */ 
             __in  UINT StencilRef)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::OMSetDepthStencilState called\n");
+	LogInfo("ID3D10Device::OMSetDepthStencilState called\n");
 	
 	m_pDevice->OMSetDepthStencilState(pDepthStencilState, StencilRef);
 }
@@ -418,14 +418,14 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::SOSetTargets(THIS_
             /* [annotation] */ 
             __in_ecount_opt(NumBuffers)  const UINT *pOffsets)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SOSetTargets called\n");
+	LogInfo("ID3D10Device::SOSetTargets called\n");
 	
 	m_pDevice->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::DrawAuto(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::DrawAuto called\n");
+	LogInfo("ID3D10Device::DrawAuto called\n");
 	
 	m_pDevice->DrawAuto();
 }
@@ -434,7 +434,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSSetState(THIS_
             /* [annotation] */ 
             __in_opt  D3D11Base::ID3D10RasterizerState *pRasterizerState)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::RSSetState called\n");
+	LogInfo("ID3D10Device::RSSetState called\n");
 	
 	m_pDevice->RSSetState(pRasterizerState);
 }
@@ -445,7 +445,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSSetViewports(THIS_
             /* [annotation] */ 
             __in_ecount_opt(NumViewports)  const D3D11Base::D3D10_VIEWPORT *pViewports)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::RSSetViewports called with NumViewports = %d\n", NumViewports);
+	LogInfo("ID3D10Device::RSSetViewports called with NumViewports = %d\n", NumViewports);
 	
 	m_pDevice->RSSetViewports(NumViewports, pViewports);
 	if (LogFile)
@@ -454,7 +454,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSSetViewports(THIS_
 		{
 			for (UINT i = 0; i < NumViewports; ++i)
 			{
-				fprintf(LogFile, "  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n",
+				LogInfo("  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n",
 					pViewports[i].TopLeftX, pViewports[i].TopLeftY, pViewports[i].Width,
 					pViewports[i].Height, pViewports[i].MinDepth, pViewports[i].MaxDepth);
 			}
@@ -468,7 +468,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSSetScissorRects(THIS_
             /* [annotation] */ 
             __in_ecount_opt(NumRects)  const D3D11Base::D3D10_RECT *pRects)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::RSSetScissorRects called\n");
+	LogInfo("ID3D10Device::RSSetScissorRects called\n");
 	
 	m_pDevice->RSSetScissorRects(NumRects, pRects);
 }
@@ -491,7 +491,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::CopySubresourceRegion(THIS_
             /* [annotation] */ 
             __in_opt  const D3D11Base::D3D10_BOX *pSrcBox)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CopySubresourceRegion called\n");
+	LogInfo("ID3D10Device::CopySubresourceRegion called\n");
 	
 	m_pDevice->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
 		pSrcResource, SrcSubresource, pSrcBox);
@@ -503,7 +503,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::CopyResource(THIS_
             /* [annotation] */ 
             __in  D3D11Base::ID3D10Resource *pSrcResource)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CopyResource called\n");
+	LogInfo("ID3D10Device::CopyResource called\n");
 	
 	m_pDevice->CopyResource(pDstResource, pSrcResource);
 }
@@ -522,7 +522,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::UpdateSubresource(THIS_
             /* [annotation] */ 
             __in  UINT SrcDepthPitch)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::UpdateSubresource called\n");
+	//LogInfo("ID3D10Device::UpdateSubresource called\n");
 	//
 	m_pDevice->UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
@@ -533,7 +533,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::ClearRenderTargetView(THIS_
             /* [annotation] */ 
             __in  const FLOAT ColorRGBA[ 4 ])
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::ClearRenderTargetView called with handle %p, color=(rgba)(%f,%f,%f,%f)\n", 
+	LogInfo("ID3D10Device::ClearRenderTargetView called with handle %p, color=(rgba)(%f,%f,%f,%f)\n", 
 		pRenderTargetView, ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 	
 	m_pDevice->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
@@ -549,7 +549,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::ClearDepthStencilView(THIS_
             /* [annotation] */ 
             __in  UINT8 Stencil)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::ClearDepthStencilView called\n");
+	LogInfo("ID3D10Device::ClearDepthStencilView called\n");
 	
 	m_pDevice->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
 }
@@ -558,7 +558,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GenerateMips(THIS_
             /* [annotation] */ 
             __in  D3D11Base::ID3D10ShaderResourceView *pShaderResourceView)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GenerateMips called\n");
+	LogInfo("ID3D10Device::GenerateMips called\n");
 	
 	m_pDevice->GenerateMips(pShaderResourceView);
 }
@@ -575,7 +575,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::ResolveSubresource(THIS_
             /* [annotation] */ 
             __in  D3D11Base::DXGI_FORMAT Format)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::ResolveSubresource called\n");
+	LogInfo("ID3D10Device::ResolveSubresource called\n");
 	
 	m_pDevice->ResolveSubresource(pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
 }
@@ -588,7 +588,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSGetConstantBuffers(THIS_
             /* [annotation] */ 
             __out_ecount(NumBuffers)  D3D11Base::ID3D10Buffer **ppConstantBuffers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::VSGetConstantBuffers called\n");
+	LogInfo("ID3D10Device::VSGetConstantBuffers called\n");
 	
 	m_pDevice->VSGetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -601,7 +601,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSGetShaderResources(THIS_
             /* [annotation] */ 
             __out_ecount(NumViews)  D3D11Base::ID3D10ShaderResourceView **ppShaderResourceViews)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::PSGetShaderResources called\n");
+	LogInfo("ID3D10Device::PSGetShaderResources called\n");
 	
 	m_pDevice->PSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -610,7 +610,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSGetShader(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10PixelShader **ppPixelShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::PSGetShader called\n");
+	LogInfo("ID3D10Device::PSGetShader called\n");
 	
 	m_pDevice->PSGetShader(ppPixelShader);
 }
@@ -623,7 +623,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSGetSamplers(THIS_
             /* [annotation] */ 
             __out_ecount(NumSamplers)  D3D11Base::ID3D10SamplerState **ppSamplers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::PSGetSamplers called\n");
+	LogInfo("ID3D10Device::PSGetSamplers called\n");
 	
 	m_pDevice->PSGetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
@@ -632,7 +632,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSGetShader(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10VertexShader **ppVertexShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::VSGetShader called\n");
+	LogInfo("ID3D10Device::VSGetShader called\n");
 	
 	m_pDevice->VSGetShader(ppVertexShader);
 }
@@ -645,7 +645,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::PSGetConstantBuffers(THIS_
             /* [annotation] */ 
             __out_ecount(NumBuffers)  D3D11Base::ID3D10Buffer **ppConstantBuffers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::PSGetConstantBuffers called\n");
+	LogInfo("ID3D10Device::PSGetConstantBuffers called\n");
 	
 	m_pDevice->PSGetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -654,7 +654,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IAGetInputLayout(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10InputLayout **ppInputLayout)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::IAGetInputLayout called\n");
+	LogInfo("ID3D10Device::IAGetInputLayout called\n");
 	
 	m_pDevice->IAGetInputLayout(ppInputLayout);
 }
@@ -671,7 +671,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IAGetVertexBuffers(THIS_
             /* [annotation] */ 
             __out_ecount_opt(NumBuffers)  UINT *pOffsets)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::IAGetVertexBuffers called\n");
+	LogInfo("ID3D10Device::IAGetVertexBuffers called\n");
 	
 	m_pDevice->IAGetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
@@ -684,7 +684,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IAGetIndexBuffer(THIS_
             /* [annotation] */ 
             __out_opt  UINT *Offset)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::IAGetIndexBuffer called\n");
+	LogInfo("ID3D10Device::IAGetIndexBuffer called\n");
 	
 	m_pDevice->IAGetIndexBuffer(pIndexBuffer, Format, Offset);
 }
@@ -697,7 +697,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSGetConstantBuffers(THIS_
             /* [annotation] */ 
             __out_ecount(NumBuffers)  D3D11Base::ID3D10Buffer **ppConstantBuffers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSGetConstantBuffers called\n");
+	LogInfo("ID3D10Device::GSGetConstantBuffers called\n");
 	
 	m_pDevice->GSGetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -706,7 +706,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSGetShader(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10GeometryShader **ppGeometryShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSGetShader called\n");
+	LogInfo("ID3D10Device::GSGetShader called\n");
 	
 	m_pDevice->GSGetShader(ppGeometryShader);
 }
@@ -715,7 +715,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::IAGetPrimitiveTopology(THIS_
             /* [annotation] */ 
             __out  D3D11Base::D3D10_PRIMITIVE_TOPOLOGY *pTopology)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::IAGetPrimitiveTopology called\n");
+	LogInfo("ID3D10Device::IAGetPrimitiveTopology called\n");
 	
 	m_pDevice->IAGetPrimitiveTopology(pTopology);
 }
@@ -728,7 +728,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSGetShaderResources(THIS_
             /* [annotation] */ 
             __out_ecount(NumViews)  D3D11Base::ID3D10ShaderResourceView **ppShaderResourceViews)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::VSGetShaderResources called\n");
+	LogInfo("ID3D10Device::VSGetShaderResources called\n");
 	
 	m_pDevice->VSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -741,7 +741,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::VSGetSamplers(THIS_
             /* [annotation] */ 
             __out_ecount(NumSamplers)  D3D11Base::ID3D10SamplerState **ppSamplers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::VSGetSamplers called\n");
+	LogInfo("ID3D10Device::VSGetSamplers called\n");
 	
 	m_pDevice->VSGetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
@@ -752,7 +752,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GetPredication(THIS_
             /* [annotation] */ 
             __out_opt  BOOL *pPredicateValue)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetPredication called\n");
+	LogInfo("ID3D10Device::GetPredication called\n");
 	
 	m_pDevice->GetPredication(ppPredicate, pPredicateValue);
 }
@@ -765,7 +765,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSGetShaderResources(THIS_
             /* [annotation] */ 
             __out_ecount(NumViews)  D3D11Base::ID3D10ShaderResourceView **ppShaderResourceViews)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSGetShaderResources called\n");
+	LogInfo("ID3D10Device::GSGetShaderResources called\n");
 	
 	m_pDevice->GSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -778,7 +778,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GSGetSamplers(THIS_
             /* [annotation] */ 
             __out_ecount(NumSamplers)  D3D11Base::ID3D10SamplerState **ppSamplers)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GSGetSamplers called\n");
+	LogInfo("ID3D10Device::GSGetSamplers called\n");
 	
 	m_pDevice->GSGetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
@@ -791,7 +791,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::OMGetRenderTargets(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10DepthStencilView **ppDepthStencilView)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::OMGetRenderTargets called\n");
+	LogInfo("ID3D10Device::OMGetRenderTargets called\n");
 	
 	m_pDevice->OMGetRenderTargets(NumViews, ppRenderTargetViews, ppDepthStencilView);
 }
@@ -804,7 +804,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::OMGetBlendState(THIS_
             /* [annotation] */ 
             __out_opt  UINT *pSampleMask)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::OMGetBlendState called\n");
+	LogInfo("ID3D10Device::OMGetBlendState called\n");
 	
 	m_pDevice->OMGetBlendState(ppBlendState, BlendFactor, pSampleMask);
 }
@@ -815,7 +815,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::OMGetDepthStencilState(THIS_
             /* [annotation] */ 
             __out_opt  UINT *pStencilRef)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::OMGetDepthStencilState called\n");
+	LogInfo("ID3D10Device::OMGetDepthStencilState called\n");
 	
 	m_pDevice->OMGetDepthStencilState(ppDepthStencilState, pStencilRef);
 }
@@ -828,7 +828,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::SOGetTargets(THIS_
             /* [annotation] */ 
             __out_ecount_opt(NumBuffers)  UINT *pOffsets)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SOGetTargets called\n");
+	LogInfo("ID3D10Device::SOGetTargets called\n");
 	
 	m_pDevice->SOGetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
@@ -837,7 +837,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSGetState(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10RasterizerState **ppRasterizerState)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::RSGetState called\n");
+	LogInfo("ID3D10Device::RSGetState called\n");
 	
 	m_pDevice->RSGetState(ppRasterizerState);
 }
@@ -848,7 +848,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSGetViewports(THIS_
             /* [annotation] */ 
             __out_ecount_opt(*NumViewports)  D3D11Base::D3D10_VIEWPORT *pViewports)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::RSGetViewports called\n");
+	LogInfo("ID3D10Device::RSGetViewports called\n");
 	
 	m_pDevice->RSGetViewports(NumViewports, pViewports);
 	if (LogFile)
@@ -857,12 +857,12 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSGetViewports(THIS_
 		{
 			for (UINT i = 0; i < *NumViewports; ++i)
 			{
-				fprintf(LogFile, "  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n",
+				LogInfo("  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n",
 					pViewports[i].TopLeftX, pViewports[i].TopLeftY, pViewports[i].Width,
 					pViewports[i].Height, pViewports[i].MinDepth, pViewports[i].MaxDepth);
 			}
 		}
-		fprintf(LogFile, "  returns NumViewports = %d\n", *NumViewports);
+		LogInfo("  returns NumViewports = %d\n", *NumViewports);
 	}
 }
         
@@ -872,17 +872,17 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSGetScissorRects(THIS_
             /* [annotation] */ 
             __out_ecount_opt(*NumRects)  D3D11Base::D3D10_RECT *pRects)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::RSGetScissorRects called\n");
+	LogInfo("ID3D10Device::RSGetScissorRects called\n");
 	
 	m_pDevice->RSGetScissorRects(NumRects, pRects);
 }
         
 STDMETHODIMP D3D11Wrapper::ID3D10Device::GetDeviceRemovedReason(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetDeviceRemovedReason called\n");
+	LogInfo("ID3D10Device::GetDeviceRemovedReason called\n");
 	
 	HRESULT hr = m_pDevice->GetDeviceRemovedReason();
-	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogInfo("  returns result = %x\n", hr);
 	
 	return hr;
 }
@@ -890,28 +890,28 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::GetDeviceRemovedReason(THIS)
 STDMETHODIMP D3D11Wrapper::ID3D10Device::SetExceptionMode(THIS_
             UINT RaiseFlags)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SetExceptionMode called with RaiseFlags=%x\n", RaiseFlags);
+	LogInfo("ID3D10Device::SetExceptionMode called with RaiseFlags=%x\n", RaiseFlags);
 	
 	return m_pDevice->SetExceptionMode(RaiseFlags);
 }
         
 STDMETHODIMP_(UINT) D3D11Wrapper::ID3D10Device::GetExceptionMode(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetExceptionMode called\n");
+	LogInfo("ID3D10Device::GetExceptionMode called\n");
 	
 	return m_pDevice->GetExceptionMode();
 }
                 
 STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::ClearState(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::ClearState called\n");
+	LogInfo("ID3D10Device::ClearState called\n");
 	
 	m_pDevice->ClearState();
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::Flush(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::Flush called\n");
+	LogInfo("ID3D10Device::Flush called\n");
 	
 	m_pDevice->Flush();
 }
@@ -924,7 +924,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateBuffer(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10Buffer **ppBuffer)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateBuffer called\n");
+	LogInfo("ID3D10Device::CreateBuffer called\n");
 	
 	return m_pDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
 }
@@ -937,10 +937,10 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateTexture1D(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10Texture1D **ppTexture1D)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateTexture1D called with\n");
-	if (LogFile && pDesc) fprintf(LogFile, "  Width = %d\n", pDesc->Width);
-	if (LogFile && pDesc) fprintf(LogFile, "  MipLevels = %d, ArraySize = %d\n", pDesc->MipLevels, pDesc->ArraySize);
-	if (LogFile && pDesc) fprintf(LogFile, "  Format = %x\n", pDesc->Format);
+	LogInfo("ID3D10Device::CreateTexture1D called with\n");
+	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
+	if (pDesc) LogInfo("  MipLevels = %d, ArraySize = %d\n", pDesc->MipLevels, pDesc->ArraySize);
+	if (pDesc) LogInfo("  Format = %x\n", pDesc->Format);
 	
 	return m_pDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
@@ -953,10 +953,10 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateTexture2D(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10Texture2D **ppTexture2D)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateTexture2D called with\n");
-	if (LogFile) fprintf(LogFile, "  Width = %d, Height = %d\n", pDesc->Width, pDesc->Height);
-	if (LogFile) fprintf(LogFile, "  MipLevels = %d, ArraySize = %d\n", pDesc->MipLevels, pDesc->ArraySize);
-	if (LogFile) fprintf(LogFile, "  Format = %x, SampleDesc = %x\n", pDesc->Format, pDesc->SampleDesc);
+	LogInfo("ID3D10Device::CreateTexture2D called with\n");
+	LogInfo("  Width = %d, Height = %d\n", pDesc->Width, pDesc->Height);
+	LogInfo("  MipLevels = %d, ArraySize = %d\n", pDesc->MipLevels, pDesc->ArraySize);
+	LogInfo("  Format = %x, SampleDesc = %x\n", pDesc->Format, pDesc->SampleDesc);
 	
 	return m_pDevice->CreateTexture2D(pDesc, pInitialData, ppTexture2D);
 }
@@ -969,7 +969,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateTexture3D(THIS_
             /* [annotation] */ 
             __out  D3D11Base::ID3D10Texture3D **ppTexture3D)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateTexture3D called\n");
+	LogInfo("ID3D10Device::CreateTexture3D called\n");
 	
 	return m_pDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
 }
@@ -982,7 +982,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateShaderResourceView(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10ShaderResourceView **ppSRView)
 {
-	//if (LogFile) fprintf(LogFile, "ID3D10Device::CreateShaderResourceView called\n");
+	//LogInfo("ID3D10Device::CreateShaderResourceView called\n");
 	//
 	return m_pDevice->CreateShaderResourceView(pResource, pDesc, ppSRView);
 }
@@ -995,7 +995,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateRenderTargetView(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10RenderTargetView **ppRTView)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateRenderTargetView called\n");
+	LogInfo("ID3D10Device::CreateRenderTargetView called\n");
 	
 	return m_pDevice->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
@@ -1008,7 +1008,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateDepthStencilView(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10DepthStencilView **ppDepthStencilView)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateDepthStencilView called\n");
+	LogInfo("ID3D10Device::CreateDepthStencilView called\n");
 	
 	return m_pDevice->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
 }
@@ -1025,7 +1025,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateInputLayout(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10InputLayout **ppInputLayout)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateInputLayout called\n");
+	LogInfo("ID3D10Device::CreateInputLayout called\n");
 	
 	return m_pDevice->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
 		BytecodeLength, ppInputLayout);
@@ -1039,7 +1039,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateVertexShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10VertexShader **ppVertexShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateVertexShader called.\n");
+	LogInfo("ID3D11Device::CreateVertexShader called.\n");
 	
 	return m_pDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, ppVertexShader);
 }
@@ -1052,7 +1052,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateGeometryShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10GeometryShader **ppGeometryShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateGeometryShader called.\n");
+	LogInfo("ID3D11Device::CreateGeometryShader called.\n");
 	
 	return m_pDevice->CreateGeometryShader(pShaderBytecode, BytecodeLength, ppGeometryShader);
 }
@@ -1071,7 +1071,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateGeometryShaderWithStreamOutput(TH
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10GeometryShader **ppGeometryShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateGeometryShaderWithStreamOutput called\n");
+	LogInfo("ID3D10Device::CreateGeometryShaderWithStreamOutput called\n");
 	
 	return m_pDevice->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
 		NumEntries, OutputStreamStride, ppGeometryShader);
@@ -1085,7 +1085,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreatePixelShader(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10PixelShader **ppPixelShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreatePixelShader called.\n");
+	LogInfo("ID3D11Device::CreatePixelShader called.\n");
 	
 	return m_pDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, ppPixelShader);
 }
@@ -1096,7 +1096,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateBlendState(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10BlendState **ppBlendState)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateBlendState called\n");
+	LogInfo("ID3D10Device::CreateBlendState called\n");
 	
 	return m_pDevice->CreateBlendState(pBlendStateDesc, ppBlendState);
 }
@@ -1107,7 +1107,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateDepthStencilState(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10DepthStencilState **ppDepthStencilState)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateDepthStencilState called\n");
+	LogInfo("ID3D10Device::CreateDepthStencilState called\n");
 	
 	return m_pDevice->CreateDepthStencilState(pDepthStencilDesc, ppDepthStencilState);
 }
@@ -1118,7 +1118,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateRasterizerState(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10RasterizerState **ppRasterizerState)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateRasterizerState called\n");
+	LogInfo("ID3D10Device::CreateRasterizerState called\n");
 	
 	return m_pDevice->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
 }
@@ -1129,7 +1129,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateSamplerState(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10SamplerState **ppSamplerState)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateSamplerState called\n");
+	LogInfo("ID3D10Device::CreateSamplerState called\n");
 	
 	return m_pDevice->CreateSamplerState(pSamplerDesc, ppSamplerState);
 }
@@ -1142,23 +1142,23 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateQuery(THIS_
 {
 	if (LogFile) 
 	{
-		fprintf(LogFile, "ID3D10Device::CreateQuery called with parameters\n");
+		LogInfo("ID3D10Device::CreateQuery called with parameters\n");
 		switch (pQueryDesc->Query)
 		{
-			case D3D11Base::D3D10_QUERY_EVENT: fprintf(LogFile, "  query = Event\n"); break;
-			case D3D11Base::D3D10_QUERY_OCCLUSION: fprintf(LogFile, "  query = Occlusion\n"); break;
-			case D3D11Base::D3D10_QUERY_TIMESTAMP: fprintf(LogFile, "  query = Timestamp\n"); break;
-			case D3D11Base::D3D10_QUERY_TIMESTAMP_DISJOINT: fprintf(LogFile, "  query = Timestamp disjoint\n"); break;
-			case D3D11Base::D3D10_QUERY_PIPELINE_STATISTICS: fprintf(LogFile, "  query = Pipeline statistics\n"); break;
-			case D3D11Base::D3D10_QUERY_OCCLUSION_PREDICATE: fprintf(LogFile, "  query = Occlusion predicate\n"); break;
-			case D3D11Base::D3D10_QUERY_SO_STATISTICS: fprintf(LogFile, "  query = Streaming output statistics\n"); break;
-			case D3D11Base::D3D10_QUERY_SO_OVERFLOW_PREDICATE: fprintf(LogFile, "  query = Streaming output overflow predicate\n"); break;
-			default: fprintf(LogFile, "  query = unknown/invalid\n"); break;
+			case D3D11Base::D3D10_QUERY_EVENT: LogInfo("  query = Event\n"); break;
+			case D3D11Base::D3D10_QUERY_OCCLUSION: LogInfo("  query = Occlusion\n"); break;
+			case D3D11Base::D3D10_QUERY_TIMESTAMP: LogInfo("  query = Timestamp\n"); break;
+			case D3D11Base::D3D10_QUERY_TIMESTAMP_DISJOINT: LogInfo("  query = Timestamp disjoint\n"); break;
+			case D3D11Base::D3D10_QUERY_PIPELINE_STATISTICS: LogInfo("  query = Pipeline statistics\n"); break;
+			case D3D11Base::D3D10_QUERY_OCCLUSION_PREDICATE: LogInfo("  query = Occlusion predicate\n"); break;
+			case D3D11Base::D3D10_QUERY_SO_STATISTICS: LogInfo("  query = Streaming output statistics\n"); break;
+			case D3D11Base::D3D10_QUERY_SO_OVERFLOW_PREDICATE: LogInfo("  query = Streaming output overflow predicate\n"); break;
+			default: LogInfo("  query = unknown/invalid\n"); break;
 		}
-		fprintf(LogFile, "  Flags = %x\n", pQueryDesc->MiscFlags);
+		LogInfo("  Flags = %x\n", pQueryDesc->MiscFlags);
 	}
 	HRESULT ret = m_pDevice->CreateQuery(pQueryDesc, ppQuery);
-	if (LogFile) fprintf(LogFile, "  returned result = %x\n", ret);
+	LogInfo("  returned result = %x\n", ret);
 	
 	return ret;
 }
@@ -1169,7 +1169,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreatePredicate(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10Predicate **ppPredicate)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreatePredicate called\n");
+	LogInfo("ID3D10Device::CreatePredicate called\n");
 	
 	return m_pDevice->CreatePredicate(pPredicateDesc, ppPredicate);
 }
@@ -1180,7 +1180,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateCounter(THIS_
             /* [annotation] */ 
             __out_opt  D3D11Base::ID3D10Counter **ppCounter)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CreateCounter called\n");
+	LogInfo("ID3D10Device::CreateCounter called\n");
 	
 	return m_pDevice->CreateCounter(pCounterDesc, ppCounter);
 }
@@ -1191,7 +1191,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CheckFormatSupport(THIS_
             /* [annotation] */ 
             __out  UINT *pFormatSupport)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CheckFormatSupport called\n");
+	LogInfo("ID3D10Device::CheckFormatSupport called\n");
 	
 	return m_pDevice->CheckFormatSupport(Format, pFormatSupport);
 }
@@ -1204,10 +1204,10 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CheckMultisampleQualityLevels(THIS_
             /* [annotation] */ 
             __out  UINT *pNumQualityLevels)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CheckMultisampleQualityLevels called with Format = %d, SampleCount = %d\n", Format, SampleCount);
+	LogInfo("ID3D10Device::CheckMultisampleQualityLevels called with Format = %d, SampleCount = %d\n", Format, SampleCount);
 	
 	HRESULT hr = m_pDevice->CheckMultisampleQualityLevels(Format, SampleCount, pNumQualityLevels);
-	if (LogFile) fprintf(LogFile, "  returns result = %x, NumQualityLevels = %d\n", hr, *pNumQualityLevels);
+	LogInfo("  returns result = %x, NumQualityLevels = %d\n", hr, *pNumQualityLevels);
 	
 	return hr;
 }
@@ -1216,7 +1216,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::CheckCounterInfo(THIS_
             /* [annotation] */ 
             __out  D3D11Base::D3D10_COUNTER_INFO *pCounterInfo)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CheckCounterInfo called\n");
+	LogInfo("ID3D10Device::CheckCounterInfo called\n");
 	
 	m_pDevice->CheckCounterInfo(pCounterInfo);
 }
@@ -1241,7 +1241,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CheckCounter(THIS_
             /* [annotation] */ 
             __inout_opt  UINT *pDescriptionLength)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::CheckCounter called\n");
+	LogInfo("ID3D10Device::CheckCounter called\n");
 	
 	return m_pDevice->CheckCounter(pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength,
 		szDescription, pDescriptionLength);
@@ -1249,10 +1249,10 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CheckCounter(THIS_
         
 STDMETHODIMP_(UINT) D3D11Wrapper::ID3D10Device::GetCreationFlags(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetCreationFlags called\n");
+	LogInfo("ID3D10Device::GetCreationFlags called\n");
 	
 	UINT ret = m_pDevice->GetCreationFlags();
-	if (LogFile) fprintf(LogFile, "  returns Flags = %x\n", ret);
+	LogInfo("  returns Flags = %x\n", ret);
 	
 	return ret;
 }
@@ -1265,7 +1265,7 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::OpenSharedResource(THIS_
             /* [annotation] */ 
             __out_opt  void **ppResource)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::OpenSharedResource called\n");
+	LogInfo("ID3D10Device::OpenSharedResource called\n");
 	
 	return m_pDevice->OpenSharedResource(hResource, ReturnedInterface, ppResource);
 }
@@ -1276,7 +1276,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::SetTextFilterSize(THIS_
             /* [annotation] */ 
             __in  UINT Height)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::SetTextFilterSize called\n");
+	LogInfo("ID3D10Device::SetTextFilterSize called\n");
 	
 	m_pDevice->SetTextFilterSize(Width, Height);
 }
@@ -1287,7 +1287,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::GetTextFilterSize(THIS_
             /* [annotation] */ 
             __out_opt  UINT *pHeight)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Device::GetTextFilterSize called\n");
+	LogInfo("ID3D10Device::GetTextFilterSize called\n");
 	
 	m_pDevice->GetTextFilterSize(pWidth, pHeight);
 }
@@ -1317,7 +1317,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Multithread::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Multithread::Release(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Multithread::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
+	LogInfo("ID3D10Multithread::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
 	
     m_pUnk->Release();
 
@@ -1325,7 +1325,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Multithread::Release(THIS)
 
     if(ulRef <= 0)
     {
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		LogInfo("  deleting self\n");
 		
         if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
         delete this;
@@ -1336,14 +1336,14 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D10Multithread::Release(THIS)
 
 STDMETHODIMP_(void) D3D11Wrapper::ID3D10Multithread::Enter(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Multithread::Enter called\n");
+	LogInfo("ID3D10Multithread::Enter called\n");
 	
 	m_pDevice->Enter(); 
 }
         
 STDMETHODIMP_(void) D3D11Wrapper::ID3D10Multithread::Leave(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Multithread::Leave called\n");
+	LogInfo("ID3D10Multithread::Leave called\n");
 	
 	m_pDevice->Leave(); 
 }
@@ -1352,20 +1352,20 @@ STDMETHODIMP_(BOOL) D3D11Wrapper::ID3D10Multithread::SetMultithreadProtected(THI
             /* [annotation] */ 
             __in  BOOL bMTProtect)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Multithread::SetMultithreadProtected called with bMTProtect = %d\n", bMTProtect);
+	LogInfo("ID3D10Multithread::SetMultithreadProtected called with bMTProtect = %d\n", bMTProtect);
 	
 	BOOL ret = m_pDevice->SetMultithreadProtected(bMTProtect); 
-	if (LogFile) fprintf(LogFile, "  returns %d\n", ret);
+	LogInfo("  returns %d\n", ret);
 	
 	return ret;
 }
         
 STDMETHODIMP_(BOOL) D3D11Wrapper::ID3D10Multithread::GetMultithreadProtected(THIS)
 {
-	if (LogFile) fprintf(LogFile, "ID3D10Multithread::GetMultithreadProtected called\n");
+	LogInfo("ID3D10Multithread::GetMultithreadProtected called\n");
 	
 	BOOL ret = m_pDevice->GetMultithreadProtected(); 
-	if (LogFile) fprintf(LogFile, "  returns %d\n", ret);
+	LogInfo("  returns %d\n", ret);
 	
 	return ret;
 }

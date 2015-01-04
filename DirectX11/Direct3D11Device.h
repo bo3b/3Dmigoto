@@ -6,24 +6,24 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 	if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_CreateHandleFromIUnknown(pDevice, &mStereoHandle))
 		mStereoHandle = 0;
 	mParamTextureManager.mStereoHandle = mStereoHandle;
-	if (LogFile) fprintf(LogFile, "  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
+	LogInfo("  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
 
 	// Override custom settings.
 	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
 	{
 		NvAPIOverride();
-		if (LogFile) fprintf(LogFile, "  setting custom surface creation mode.\n");
+		LogInfo("  setting custom surface creation mode.\n");
 
 		if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 			(D3D11Base::NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceCreateMode))
 		{
-			if (LogFile) fprintf(LogFile, "    call failed.\n");
+			LogInfo("    call failed.\n");
 		}
 	}
 	// Create stereo parameter texture.
 	if (mStereoHandle)
 	{
-		if (LogFile) fprintf(LogFile, "  creating stereo parameter texture.\n");
+		LogInfo("  creating stereo parameter texture.\n");
 
 		D3D11Base::D3D11_TEXTURE2D_DESC desc;
 		memset(&desc, 0, sizeof(D3D11Base::D3D11_TEXTURE2D_DESC));
@@ -41,12 +41,12 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		HRESULT ret = pDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
 		if (FAILED(ret))
 		{
-			if (LogFile) fprintf(LogFile, "    call failed with result = %x.\n", ret);
+			LogInfo("    call failed with result = %x.\n", ret);
 		}
 		else
 		{
-			if (LogFile) fprintf(LogFile, "    stereo texture created, handle = %p\n", mStereoTexture);
-			if (LogFile) fprintf(LogFile, "  creating stereo parameter resource view.\n");
+			LogInfo("    stereo texture created, handle = %p\n", mStereoTexture);
+			LogInfo("  creating stereo parameter resource view.\n");
 
 			// Since we need to bind the texture to a shader input, we also need a resource view.
 			D3D11Base::D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
@@ -58,9 +58,9 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 			ret = pDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
 			if (FAILED(ret))
 			{
-				if (LogFile) fprintf(LogFile, "    call failed with result = %x.\n", ret);
+				LogInfo("    call failed with result = %x.\n", ret);
 			}
-			if (LogFile) fprintf(LogFile, "    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
+			LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
 		}
 	}
 
@@ -73,7 +73,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		memset(&desc, 0, sizeof(D3D11Base::D3D11_TEXTURE1D_DESC));
 		D3D11Base::D3D11_SUBRESOURCE_DATA initialData;
 
-		if (LogFile) fprintf(LogFile, "  creating .ini constant parameter texture.\n");
+		LogInfo("  creating .ini constant parameter texture.\n");
 
 		// Stuff the constants read from the .ini file into the subresource data structure, so 
 		// we can init the texture with them.
@@ -91,12 +91,12 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 		HRESULT ret = pDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
 		if (FAILED(ret))
 		{
-			if (LogFile) fprintf(LogFile, "    CreateTexture1D call failed with result = %x.\n", ret);
+			LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
 		}
 		else
 		{
-			if (LogFile) fprintf(LogFile, "    IniParam texture created, handle = %p\n", mIniTexture);
-			if (LogFile) fprintf(LogFile, "  creating IniParam resource view.\n");
+			LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
+			LogInfo("  creating IniParam resource view.\n");
 
 			// Since we need to bind the texture to a shader input, we also need a resource view.
 			// The pDesc is set to NULL so that it will simply use the desc format above.
@@ -106,10 +106,10 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 			ret = pDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
 			if (FAILED(ret))
 			{
-				if (LogFile) fprintf(LogFile, "   CreateShaderResourceView call failed with result = %x.\n", ret);
+				LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
 			}
 
-			if (LogFile) fprintf(LogFile, "    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+			LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
 		}
 	}
 
@@ -134,52 +134,52 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11Device::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+	LogDebug("ID3D11Device::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	if (LogFile && LogDebug) fprintf(LogFile, "  internal counter = %d\n", ulRef);
+	LogDebug("  internal counter = %d\n", ulRef);
 
 	--m_ulRef;
 
 	if (ulRef == 0)
 	{
-		if (LogFile && !LogDebug) fprintf(LogFile, "ID3D11Device::Release handle=%p, counter=%d, internal counter = %d, this=%p\n", m_pUnk, m_ulRef, ulRef, this);
-		if (LogFile) fprintf(LogFile, "  deleting self\n");
+		if (!LogDebug) LogInfo("ID3D11Device::Release handle=%p, counter=%d, internal counter = %d, this=%p\n", m_pUnk, m_ulRef, ulRef, this);
+		LogInfo("  deleting self\n");
 
 		if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
 		if (mStereoHandle)
 		{
 			int result = D3D11Base::NvAPI_Stereo_DestroyHandle(mStereoHandle);
 			mStereoHandle = 0;
-			if (LogFile) fprintf(LogFile, "  releasing NVAPI stereo handle, result = %d\n", result);
+			LogInfo("  releasing NVAPI stereo handle, result = %d\n", result);
 		}
 		if (mStereoResourceView)
 		{
 			long result = mStereoResourceView->Release();
 			mStereoResourceView = 0;
-			if (LogFile) fprintf(LogFile, "  releasing stereo parameters resource view, result = %d\n", result);
+			LogInfo("  releasing stereo parameters resource view, result = %d\n", result);
 		}
 		if (mStereoTexture)
 		{
 			long result = mStereoTexture->Release();
 			mStereoTexture = 0;
-			if (LogFile) fprintf(LogFile, "  releasing stereo texture, result = %d\n", result);
+			LogInfo("  releasing stereo texture, result = %d\n", result);
 		}
 		if (mIniResourceView)
 		{
 			long result = mIniResourceView->Release();
 			mIniResourceView = 0;
-			if (LogFile) fprintf(LogFile, "  releasing ini parameters resource view, result = %d\n", result);
+			LogInfo("  releasing ini parameters resource view, result = %d\n", result);
 		}
 		if (mIniTexture)
 		{
 			long result = mIniTexture->Release();
 			mIniTexture = 0;
-			if (LogFile) fprintf(LogFile, "  releasing iniparams texture, result = %d\n", result);
+			LogInfo("  releasing iniparams texture, result = %d\n", result);
 		}
 		if (!G->mPreloadedPixelShaders.empty())
 		{
-			if (LogFile) fprintf(LogFile, "  releasing preloaded pixel shaders\n");
+			LogInfo("  releasing preloaded pixel shaders\n");
 
 			for (PreloadPixelShaderMap::iterator i = G->mPreloadedPixelShaders.begin(); i != G->mPreloadedPixelShaders.end(); ++i)
 				i->second->Release();
@@ -187,7 +187,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 		}
 		if (!G->mPreloadedVertexShaders.empty())
 		{
-			if (LogFile) fprintf(LogFile, "  releasing preloaded vertex shaders\n");
+			LogInfo("  releasing preloaded vertex shaders\n");
 
 			for (PreloadVertexShaderMap::iterator i = G->mPreloadedVertexShaders.begin(); i != G->mPreloadedVertexShaders.end(); ++i)
 				i->second->Release();
@@ -208,14 +208,14 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateBuffer(THIS_
 	__out_opt  D3D11Base::ID3D11Buffer **ppBuffer)
 {
 	/*
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateBuffer called\n");
-	if (LogFile) fprintf(LogFile, "  ByteWidth = %d\n", pDesc->ByteWidth);
-	if (LogFile) fprintf(LogFile, "  Usage = %d\n", pDesc->Usage);
-	if (LogFile) fprintf(LogFile, "  BindFlags = %x\n", pDesc->BindFlags);
-	if (LogFile) fprintf(LogFile, "  CPUAccessFlags = %x\n", pDesc->CPUAccessFlags);
-	if (LogFile) fprintf(LogFile, "  MiscFlags = %x\n", pDesc->MiscFlags);
-	if (LogFile) fprintf(LogFile, "  StructureByteStride = %d\n", pDesc->StructureByteStride);
-	if (LogFile) fprintf(LogFile, "  InitialData = %p\n", pInitialData);
+	LogInfo("ID3D11Device::CreateBuffer called\n");
+	LogInfo("  ByteWidth = %d\n", pDesc->ByteWidth);
+	LogInfo("  Usage = %d\n", pDesc->Usage);
+	LogInfo("  BindFlags = %x\n", pDesc->BindFlags);
+	LogInfo("  CPUAccessFlags = %x\n", pDesc->CPUAccessFlags);
+	LogInfo("  MiscFlags = %x\n", pDesc->MiscFlags);
+	LogInfo("  StructureByteStride = %d\n", pDesc->StructureByteStride);
+	LogInfo("  InitialData = %p\n", pInitialData);
 	*/
 	HRESULT hr = GetD3D11Device()->CreateBuffer(pDesc, pInitialData, ppBuffer);
 	if (hr == S_OK && ppBuffer && G->hunting)
@@ -230,7 +230,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateBuffer(THIS_
 		hash ^= pDesc->MiscFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->StructureByteStride;
 		G->mDataBuffers[*ppBuffer] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Buffer registered: handle = %p, hash = %08lx%08lx\n", *ppBuffer, (UINT32)(hash >> 32), (UINT32)hash);
+		LogDebug("    Buffer registered: handle = %p, hash = %08lx%08lx\n", *ppBuffer, (UINT32)(hash >> 32), (UINT32)hash);
 	}
 	return hr;
 }
@@ -255,7 +255,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture1D(THIS_
 static void RegisterForReload(D3D11Base::ID3D11DeviceChild* ppShader,
 	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage, D3D11Base::ID3DBlob* byteCode, FILETIME timeStamp)
 {
-	if (LogFile) fprintf(LogFile, "    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
+	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
 
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
@@ -276,7 +276,7 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
 	{
-		if (LogFile) fprintf(LogFile, "  error reading binary vertex shader %s.\n", cFileName);
+		LogInfo("  error reading binary vertex shader %s.\n", cFileName);
 		return;
 	}
 	DWORD bytecodeLength = GetFileSize(f, 0);
@@ -287,13 +287,13 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 		|| !GetFileTime(f, NULL, NULL, &ftWrite)
 		|| bytecodeLength != readSize)
 	{
-		if (LogFile) fprintf(LogFile, "  Error reading binary vertex shader %s.\n", cFileName);
+		LogInfo("  Error reading binary vertex shader %s.\n", cFileName);
 		CloseHandle(f);
 		return;
 	}
 	CloseHandle(f);
 
-	if (LogFile) fprintf(LogFile, "  preloading vertex shader %s\n", cFileName);
+	LogInfo("  preloading vertex shader %s\n", cFileName);
 
 	UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
 	UINT64 keyHash = 0;
@@ -302,7 +302,7 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 		UINT64 digit = findFileData.cFileName[i] > L'9' ? towupper(findFileData.cFileName[i]) - L'A' + 10 : findFileData.cFileName[i] - L'0';
 		keyHash += digit << (60 - i * 4);
 	}
-	if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n",
+	LogInfo("    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n",
 		(UINT32)(keyHash >> 32), (UINT32)(keyHash),
 		(UINT32)(hash >> 32), (UINT32)(hash));
 
@@ -311,7 +311,7 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	HRESULT hr = m_pDevice->CreateVertexShader(pShaderBytecode, bytecodeLength, 0, &pVertexShader);
 	if (FAILED(hr))
 	{
-		if (LogFile) fprintf(LogFile, "    error creating shader.\n");
+		LogInfo("    error creating shader.\n");
 
 		delete pShaderBytecode; pShaderBytecode = 0;
 		return;
@@ -340,7 +340,7 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
 	{
-		if (LogFile) fprintf(LogFile, "  error reading binary pixel shader %s.\n", cFileName);
+		LogInfo("  error reading binary pixel shader %s.\n", cFileName);
 		return;
 	}
 	DWORD bytecodeLength = GetFileSize(f, 0);
@@ -351,13 +351,13 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 		|| !GetFileTime(f, NULL, NULL, &ftWrite)
 		|| bytecodeLength != readSize)
 	{
-		if (LogFile) fprintf(LogFile, "  Error reading binary pixel shader %s.\n", cFileName);
+		LogInfo("  Error reading binary pixel shader %s.\n", cFileName);
 		CloseHandle(f);
 		return;
 	}
 	CloseHandle(f);
 
-	if (LogFile) fprintf(LogFile, "  preloading pixel shader %s\n", cFileName);
+	LogInfo("  preloading pixel shader %s\n", cFileName);
 
 	UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
 	UINT64 keyHash = 0;
@@ -366,7 +366,7 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 		UINT64 digit = findFileData.cFileName[i] > L'9' ? towupper(findFileData.cFileName[i]) - L'A' + 10 : findFileData.cFileName[i] - L'0';
 		keyHash += digit << (60 - i * 4);
 	}
-	if (LogFile) fprintf(LogFile, "    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n",
+	LogInfo("    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n",
 		(UINT32)(keyHash >> 32), (UINT32)(keyHash),
 		(UINT32)(hash >> 32), (UINT32)(hash));
 
@@ -375,7 +375,7 @@ static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileDa
 	HRESULT hr = m_pDevice->CreatePixelShader(pShaderBytecode, bytecodeLength, 0, &pPixelShader);
 	if (FAILED(hr))
 	{
-		if (LogFile) fprintf(LogFile, "    error creating shader.\n");
+		LogInfo("    error creating shader.\n");
 
 		delete pShaderBytecode; pShaderBytecode = 0;
 		return;
@@ -402,16 +402,16 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11Texture2D **ppTexture2D)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11Device::CreateTexture2D called with parameters\n");
-	if (pDesc && LogFile && LogDebug) fprintf(LogFile, "  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+	LogDebug("ID3D11Device::CreateTexture2D called with parameters\n");
+	if (pDesc) LogDebug("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
-	if (pDesc && LogFile && LogDebug) fprintf(LogFile, "  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+	if (pDesc) LogDebug("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
 	// Preload shaders?
 	if (G->PRELOAD_SHADERS && G->mPreloadedVertexShaders.empty() && G->mPreloadedPixelShaders.empty())
 	{
-		if (LogFile) fprintf(LogFile, "  preloading custom shaders.\n");
+		LogInfo("  preloading custom shaders.\n");
 
 		wchar_t fileName[MAX_PATH];
 		if (SHADER_PATH[0])
@@ -495,7 +495,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->ArraySize);
 	if (pDesc)
 		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
-	if (LogFile && LogDebug) fprintf(LogFile, "  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	LogDebug("  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 
 	// Override custom settings?
 	bool override = false;
@@ -514,7 +514,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		{
 			std::vector<int>::iterator k = j->second.begin();
 			int currentIteration = j->second[0] = j->second[0] + 1;
-			if (LogFile) fprintf(LogFile, "  current iteration = %d\n", currentIteration);
+			LogInfo("  current iteration = %d\n", currentIteration);
 
 			override = false;
 			while (++k != j->second.end())
@@ -527,7 +527,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 			}
 			if (!override)
 			{
-				if (LogFile) fprintf(LogFile, "  override skipped\n");
+				LogInfo("  override skipped\n");
 			}
 		}
 	}
@@ -542,16 +542,16 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		{
 			D3D11Base::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &oldMode);
 			NvAPIOverride();
-			if (LogFile) fprintf(LogFile, "  setting custom surface creation mode.\n");
+			LogInfo("  setting custom surface creation mode.\n");
 
 			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
 			{
-				if (LogFile) fprintf(LogFile, "    call failed.\n");
+				LogInfo("    call failed.\n");
 			}
 		}
 		if (itype != G->mTextureTypeMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  setting custom format to %d\n", itype->second);
+			LogInfo("  setting custom format to %d\n", itype->second);
 
 			newDesc.Format = (D3D11Base::DXGI_FORMAT) itype->second;
 		}
@@ -561,10 +561,10 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 	{
 		if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
 		{
-			if (LogFile) fprintf(LogFile, "    restore call failed.\n");
+			LogInfo("    restore call failed.\n");
 		}
 	}
-	if (LogFile && LogDebug && ppTexture2D) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppTexture2D);
+	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture.
 	if (ppTexture2D)
@@ -581,10 +581,10 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11Texture3D **ppTexture3D)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateTexture3D called with parameters\n");
-	if (pDesc && LogFile) fprintf(LogFile, "  Width = %d, Height = %d, Depth = %d, MipLevels = %d, InitialData = %p\n",
+	LogInfo("ID3D11Device::CreateTexture3D called with parameters\n");
+	if (pDesc) LogInfo("  Width = %d, Height = %d, Depth = %d, MipLevels = %d, InitialData = %p\n",
 		pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->MipLevels, pInitialData);
-	if (pDesc && LogFile) fprintf(LogFile, "  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
 	// Get screen resolution.
@@ -602,7 +602,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
 		hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->Depth);
 	if (pDesc)
 		hash = CalcTexture3DDescHash(pDesc, hash, hashWidth, hashHeight);
-	if (LogFile) fprintf(LogFile, "  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	LogInfo("  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 
 	HRESULT hr = GetD3D11Device()->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
 
@@ -610,7 +610,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture3D(THIS_
 	if (hr == S_OK && ppTexture3D)
 		G->mTexture3D_ID[*ppTexture3D] = hash;
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogInfo("  returns result = %x\n", hr);
 
 	return hr;
 }
@@ -623,7 +623,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateShaderResourceView(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11ShaderResourceView **ppSRView)
 {
-	if (LogFile && LogDebug) fprintf(LogFile, "ID3D11Device::CreateShaderResourceView called\n");
+	LogDebug("ID3D11Device::CreateShaderResourceView called\n");
 
 	HRESULT hr = GetD3D11Device()->CreateShaderResourceView(pResource, pDesc, ppSRView);
 
@@ -633,13 +633,13 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateShaderResourceView(THIS_
 		map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator i = G->mTexture2D_ID.find((D3D11Base::ID3D11Texture2D *) pResource);
 		if (i != G->mTexture2D_ID.end() && i->second == G->ZBufferHashToInject)
 		{
-			if (LogFile) fprintf(LogFile, "  resource view of z buffer found: handle = %p, hash = %08lx%08lx\n", *ppSRView, (UINT32)(i->second >> 32), (UINT32)i->second);
+			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx%08lx\n", *ppSRView, (UINT32)(i->second >> 32), (UINT32)i->second);
 
 			mZBufferResourceView = *ppSRView;
 		}
 	}
 
-	if (LogFile && LogDebug) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogDebug("  returns result = %x\n", hr);
 
 	return hr;
 }
@@ -731,7 +731,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				0, &disassembly);
 			if (r != S_OK)
 			{
-				if (LogFile) fprintf(LogFile, "  disassembly failed.\n");
+				LogInfo("  disassembly failed.\n");
 			}
 			else
 			{
@@ -771,9 +771,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						char fileName[MAX_PATH];
 						wcstombs(fileName, val, MAX_PATH);
 						if (f)
-							fprintf(LogFile, "    storing disassembly to %s\n", fileName);
+							LogInfo("    storing disassembly to %s\n", fileName);
 						else
-							fprintf(LogFile, "    error storing disassembly to %s\n", fileName);
+							LogInfo("    error storing disassembly to %s\n", fileName);
 					}
 					if (f)
 					{
@@ -791,7 +791,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (f != INVALID_HANDLE_VALUE)
 		{
-			if (LogFile) fprintf(LogFile, "    Replacement binary shader found.\n");
+			LogInfo("    Replacement binary shader found.\n");
 
 			DWORD codeSize = GetFileSize(f, 0);
 			pCode = new char[codeSize];
@@ -801,14 +801,14 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				|| !GetFileTime(f, NULL, NULL, &ftWrite)
 				|| codeSize != readSize)
 			{
-				if (LogFile) fprintf(LogFile, "    Error reading file.\n");
+				LogInfo("    Error reading file.\n");
 				delete pCode; pCode = 0;
 				CloseHandle(f);
 			}
 			else
 			{
 				pCodeSize = codeSize;
-				if (LogFile) fprintf(LogFile, "    Bytecode loaded. Size = %d\n", pCodeSize);
+				LogInfo("    Bytecode loaded. Size = %d\n", pCodeSize);
 				CloseHandle(f);
 
 				foundShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
@@ -833,7 +833,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (f != INVALID_HANDLE_VALUE)
 			{
-				if (LogFile) fprintf(LogFile, "    Replacement shader found. Loading replacement HLSL code.\n");
+				LogInfo("    Replacement shader found. Loading replacement HLSL code.\n");
 
 				DWORD srcDataSize = GetFileSize(f, 0);
 				char *srcData = new char[srcDataSize];
@@ -842,9 +842,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				if (!ReadFile(f, srcData, srcDataSize, &readSize, 0)
 					|| !GetFileTime(f, NULL, NULL, &ftWrite)
 					|| srcDataSize != readSize)
-					if (LogFile) fprintf(LogFile, "    Error reading file.\n");
+					LogInfo("    Error reading file.\n");
 				CloseHandle(f);
-				if (LogFile) fprintf(LogFile, "    Source code loaded. Size = %d\n", srcDataSize);
+				LogInfo("    Source code loaded. Size = %d\n", srcDataSize);
 
 				// Disassemble old shader to get shader model.
 				D3D11Base::ID3DBlob *disassembly;
@@ -852,7 +852,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
 				if (ret != S_OK)
 				{
-					if (LogFile) fprintf(LogFile, "    disassembly of original shader failed.\n");
+					LogInfo("    disassembly of original shader failed.\n");
 
 					delete srcData;
 				}
@@ -876,7 +876,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					timeStamp = ftWrite;
 
 					// Compile replacement.
-					if (LogFile) fprintf(LogFile, "    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
+					LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
 
 					D3D11Base::ID3DBlob *pErrorMsgs;
 					D3D11Base::ID3DBlob *pCompiledOutput = 0;
@@ -892,15 +892,15 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						pCompiledOutput->Release(); pCompiledOutput = 0;
 					}
 
-					if (LogFile) fprintf(LogFile, "    compile result of replacement HLSL shader: %x\n", ret);
+					LogInfo("    compile result of replacement HLSL shader: %x\n", ret);
 
 					if (LogFile && pErrorMsgs)
 					{
 						LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 						SIZE_T errSize = pErrorMsgs->GetBufferSize();
-						fprintf(LogFile, "--------------------------------------------- BEGIN ---------------------------------------------\n");
+						LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
 						fwrite(errMsg, 1, errSize - 1, LogFile);
-						fprintf(LogFile, "---------------------------------------------- END ----------------------------------------------\n");
+						LogInfo("---------------------------------------------- END ----------------------------------------------\n");
 						pErrorMsgs->Release();
 					}
 
@@ -915,9 +915,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 							char fileName[MAX_PATH];
 							wcstombs(fileName, val, MAX_PATH);
 							if (fw)
-								fprintf(LogFile, "    storing compiled shader to %s\n", fileName);
+								LogInfo("    storing compiled shader to %s\n", fileName);
 							else
-								fprintf(LogFile, "    error writing compiled shader to %s\n", fileName);
+								LogInfo("    error writing compiled shader to %s\n", fileName);
 						}
 						if (fw)
 						{
@@ -940,7 +940,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		{
 			char fileName[MAX_PATH];
 			wcstombs(fileName, val, MAX_PATH);
-			if (LogFile) fprintf(LogFile, "    skipping shader marked bad. %s\n", fileName);
+			LogInfo("    skipping shader marked bad. %s\n", fileName);
 			CloseHandle(hFind);
 		}
 		else
@@ -968,12 +968,12 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
 			if (ret != S_OK)
 			{
-				if (LogFile) fprintf(LogFile, "    disassembly of original shader failed.\n");
+				LogInfo("    disassembly of original shader failed.\n");
 			}
 			else
 			{
 				// Decompile code.
-				if (LogFile) fprintf(LogFile, "    creating HLSL representation.\n");
+				LogInfo("    creating HLSL representation.\n");
 
 				bool patched = false;
 				bool errorOccurred = false;
@@ -1008,7 +1008,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 				if (!decompiledCode.size())
 				{
-					if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
+					LogInfo("    error while decompiling.\n");
 
 					return 0;
 				}
@@ -1021,9 +1021,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 						char fileName[MAX_PATH];
 						wcstombs(fileName, val, MAX_PATH);
 						if (fw)
-							fprintf(LogFile, "    storing patched shader to %s\n", fileName);
+							LogInfo("    storing patched shader to %s\n", fileName);
 						else
-							fprintf(LogFile, "    error storing patched shader to %s\n", fileName);
+							LogInfo("    error storing patched shader to %s\n", fileName);
 					}
 					if (fw)
 					{
@@ -1050,23 +1050,23 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
 				if (!errorOccurred)
 				{
-					if (LogFile) fprintf(LogFile, "    compiling fixed HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
+					LogInfo("    compiling fixed HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
 
 					D3D11Base::ID3DBlob *pErrorMsgs;
 					D3D11Base::ID3DBlob *pCompiledOutput = 0;
 					ret = D3D11Base::D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
 						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-					if (LogFile) fprintf(LogFile, "    compile result of fixed HLSL shader: %x\n", ret);
+					LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
 
 					if (LogFile && pErrorMsgs)
 					{
 						LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 						SIZE_T errSize = pErrorMsgs->GetBufferSize();
-						fprintf(LogFile, "--------------------------------------------- BEGIN ---------------------------------------------\n");
+						LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
 						fwrite(errMsg, 1, errSize - 1, LogFile);
-						fprintf(LogFile, "------------------------------------------- HLSL code -------------------------------------------\n");
+						LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
 						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
-						fprintf(LogFile, "\n---------------------------------------------- END ----------------------------------------------\n");
+						LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
 
 						// And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
 						fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
@@ -1084,7 +1084,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 							D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
 						if (ret != S_OK)
 						{
-							if (LogFile) fprintf(LogFile, "    disassembly of recompiled shader failed.\n");
+							LogInfo("    disassembly of recompiled shader failed.\n");
 						}
 						else
 						{
@@ -1133,12 +1133,12 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
 		if (ret != S_OK)
 		{
-			if (LogFile) fprintf(LogFile, "    disassembly of original shader failed.\n");
+			LogInfo("    disassembly of original shader failed.\n");
 		}
 		else
 		{
 			// Decompile code.
-			if (LogFile) fprintf(LogFile, "    creating HLSL representation of zero output shader.\n");
+			LogInfo("    creating HLSL representation of zero output shader.\n");
 
 			bool patched = false;
 			string shaderModel;
@@ -1154,20 +1154,20 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			disassembly->Release();
 			if (!decompiledCode.size())
 			{
-				if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
+				LogInfo("    error while decompiling.\n");
 
 				return 0;
 			}
 			if (!errorOccurred)
 			{
 				// Compile replacement.
-				if (LogFile) fprintf(LogFile, "    compiling zero HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
+				LogInfo("    compiling zero HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
 
 				D3D11Base::ID3DBlob *pErrorMsgs;
 				D3D11Base::ID3DBlob *pCompiledOutput = 0;
 				ret = D3D11Base::D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
 					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-				if (LogFile) fprintf(LogFile, "    compile result of zero HLSL shader: %x\n", ret);
+				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
 
 				if (pCompiledOutput)
 				{
@@ -1196,11 +1196,11 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				{
 					LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 					SIZE_T errSize = pErrorMsgs->GetBufferSize();
-					fprintf(LogFile, "--------------------------------------------- BEGIN ---------------------------------------------\n");
+					LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
 					fwrite(errMsg, 1, errSize - 1, LogFile);
-					fprintf(LogFile, "------------------------------------------- HLSL code -------------------------------------------\n");
+					LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
 					fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
-					fprintf(LogFile, "\n---------------------------------------------- END ----------------------------------------------\n");
+					LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
 					pErrorMsgs->Release();
 				}
 			}
@@ -1220,7 +1220,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11VertexShader **ppVertexShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateVertexShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+	LogInfo("ID3D11Device::CreateVertexShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1233,8 +1233,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %016llx\n", hash);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %016llx\n", hash);
+		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 
 		// Preloaded shader? (Can't use preloaded shaders with class linkage).
 		if (!pClassLinkage)
@@ -1245,7 +1245,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 				*ppVertexShader = i->second;
 				ULONG cnt = (*ppVertexShader)->AddRef();
 				hr = S_OK;
-				if (LogFile) fprintf(LogFile, "    shader assigned by preloaded version. ref counter = %d\n", cnt);
+				LogInfo("    shader assigned by preloaded version. ref counter = %d\n", cnt);
 
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
@@ -1275,12 +1275,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		if (replaceShader)
 		{
 			// Create the new shader.
-			if (LogFile && LogDebug) fprintf(LogFile, "    D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %p\n", GetD3D11Device());
+			LogDebug("    D3D11Wrapper::ID3D11Device::CreateVertexShader.  Device: %p\n", GetD3D11Device());
 
 			hr = GetD3D11Device()->CreateVertexShader(replaceShader, replaceShaderSize, pClassLinkage, ppVertexShader);
 			if (SUCCEEDED(hr))
 			{
-				if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
+				LogInfo("    shader successfully replaced.\n");
 
 				if (G->hunting)
 				{
@@ -1301,7 +1301,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 			}
 			else
 			{
-				if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
+				LogInfo("    error replacing shader.\n");
 			}
 			delete replaceShader; replaceShader = 0;
 		}
@@ -1324,7 +1324,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mVertexShaders[*ppVertexShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Vertex shader registered: handle = %p, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
+		LogDebug("    Vertex shader registered: handle = %p, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
 		{
@@ -1334,12 +1334,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppVertexShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppVertexShader);
 
 	return hr;
 }
@@ -1354,7 +1354,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11GeometryShader **ppGeometryShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateGeometryShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateGeometryShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1362,7 +1362,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 
 		// :todo: Geometry shader
 		/*
@@ -1375,11 +1375,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 		replaceShader->Release();
 		if (hr == S_OK)
 		{
-		if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
+		LogInfo("    shader successfully replaced.\n");
 		}
 		else
 		{
-		if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
+		LogInfo("    error replacing shader.\n");
 		}
 		}
 		*/
@@ -1392,18 +1392,18 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mGeometryShaders[*ppGeometryShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Geometry shader registered: handle = %p, hash = %08lx%08lx\n",
+		LogDebug("    Geometry shader registered: handle = %p, hash = %08lx%08lx\n",
 			*ppGeometryShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
 
 	return hr;
 }
@@ -1428,11 +1428,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShaderWithStreamOutput(TH
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11GeometryShader **ppGeometryShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateGeometryShaderWithStreamOutput called.\n");
+	LogInfo("ID3D11Device::CreateGeometryShaderWithStreamOutput called.\n");
 
 	HRESULT hr = GetD3D11Device()->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
 		NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
 
 	return hr;
 }
@@ -1447,7 +1447,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11PixelShader **ppPixelShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreatePixelShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+	LogInfo("ID3D11Device::CreatePixelShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1460,7 +1460,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 
 		// Preloaded shader? (Can't use preloaded shaders with class linkage).
 		if (!pClassLinkage)
@@ -1471,7 +1471,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 				*ppPixelShader = i->second;
 				ULONG cnt = (*ppPixelShader)->AddRef();
 				hr = S_OK;
-				if (LogFile) fprintf(LogFile, "    shader assigned by preloaded version. ref counter = %d\n", cnt);
+				LogInfo("    shader assigned by preloaded version. ref counter = %d\n", cnt);
 
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
@@ -1499,12 +1499,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		if (replaceShader)
 		{
 			// Create the new shader.
-			if (LogFile && LogDebug) fprintf(LogFile, "    D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %p\n", GetD3D11Device());
+			LogDebug("    D3D11Wrapper::ID3D11Device::CreatePixelShader.  Device: %p\n", GetD3D11Device());
 
 			hr = GetD3D11Device()->CreatePixelShader(replaceShader, replaceShaderSize, pClassLinkage, ppPixelShader);
 			if (SUCCEEDED(hr))
 			{
-				if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
+				LogInfo("    shader successfully replaced.\n");
 
 				if (G->hunting)
 				{
@@ -1525,7 +1525,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 			}
 			else
 			{
-				if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
+				LogInfo("    error replacing shader.\n");
 			}
 			delete replaceShader; replaceShader = 0;
 		}
@@ -1548,7 +1548,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mPixelShaders[*ppPixelShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Pixel shader: handle = %p, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
+		LogDebug("    Pixel shader: handle = %p, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
 		{
@@ -1558,12 +1558,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppPixelShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppPixelShader);
 
 	return hr;
 }
@@ -1578,7 +1578,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11HullShader **ppHullShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateHullShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateHullShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1586,7 +1586,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 
 		// :todo: Hull Shader
 		/*
@@ -1599,11 +1599,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 		replaceShader->Release();
 		if (hr == S_OK)
 		{
-		if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
+		LogInfo("    shader successfully replaced.\n");
 		}
 		else
 		{
-		if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
+		LogInfo("    error replacing shader.\n");
 		}
 		}
 		*/
@@ -1616,18 +1616,18 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mHullShaders[*ppHullShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Hull shader: handle = %p, hash = %08lx%08lx\n",
+		LogDebug("    Hull shader: handle = %p, hash = %08lx%08lx\n",
 			*ppHullShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppHullShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppHullShader);
 
 	return hr;
 }
@@ -1642,7 +1642,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11DomainShader **ppDomainShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateDomainShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateDomainShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1650,7 +1650,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 
 		// :todo: create domain shader
 		/*
@@ -1663,11 +1663,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 		replaceShader->Release();
 		if (hr == S_OK)
 		{
-		if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
+		LogInfo("    shader successfully replaced.\n");
 		}
 		else
 		{
-		if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
+		LogInfo("    error replacing shader.\n");
 		}
 		}
 		*/
@@ -1680,18 +1680,18 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mDomainShaders[*ppDomainShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Domain shader: handle = %p, hash = %08lx%08lx\n",
+		LogDebug("    Domain shader: handle = %p, hash = %08lx%08lx\n",
 			*ppDomainShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppDomainShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppDomainShader);
 
 	return hr;
 }
@@ -1706,7 +1706,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11ComputeShader **ppComputeShader)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateComputeShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateComputeShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1714,7 +1714,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		if (LogFile) fprintf(LogFile, "  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
 
 		// :todo: Compute shader
 		/*
@@ -1727,11 +1727,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 		replaceShader->Release();
 		if (hr == S_OK)
 		{
-		if (LogFile) fprintf(LogFile, "    shader successfully replaced.\n");
+		LogInfo("    shader successfully replaced.\n");
 		}
 		else
 		{
-		if (LogFile) fprintf(LogFile, "    error replacing shader.\n");
+		LogInfo("    error replacing shader.\n");
 		}
 		}
 		*/
@@ -1744,18 +1744,18 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mComputeShaders[*ppComputeShader] = hash;
-		if (LogFile && LogDebug) fprintf(LogFile, "    Compute shader: handle = %p, hash = %08lx%08lx\n",
+		LogDebug("    Compute shader: handle = %p, hash = %08lx%08lx\n",
 			*ppComputeShader, (UINT32)(hash >> 32), (UINT32)hash);
 
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			if (LogFile) fprintf(LogFile, "  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p\n", hr, *ppComputeShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppComputeShader);
 
 	return hr;
 }
@@ -1791,7 +1791,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateRasterizerState(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11RasterizerState **ppRasterizerState)
 {
-	if (LogFile && LogDebug && pRasterizerDesc) fprintf(LogFile, "ID3D11Device::CreateRasterizerState called with \n"
+	if (pRasterizerDesc) LogDebug("ID3D11Device::CreateRasterizerState called with \n"
 		"  FillMode = %d, CullMode = %d, DepthBias = %d, DepthBiasClamp = %f, SlopeScaledDepthBias = %f,\n"
 		"  DepthClipEnable = %d, ScissorEnable = %d, MultisampleEnable = %d, AntialiasedLineEnable = %d\n",
 		pRasterizerDesc->FillMode, pRasterizerDesc->CullMode, pRasterizerDesc->DepthBias, pRasterizerDesc->DepthBiasClamp,
@@ -1800,12 +1800,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateRasterizerState(THIS_
 
 	if (G->SCISSOR_DISABLE && pRasterizerDesc && pRasterizerDesc->ScissorEnable)
 	{
-		if (LogFile && LogDebug) fprintf(LogFile, "  disabling scissor mode.\n");
+		LogDebug("  disabling scissor mode.\n");
 
 		pRasterizerDesc->ScissorEnable = FALSE;
 	}
 	HRESULT hr = GetD3D11Device()->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
-	if (LogFile && LogDebug) fprintf(LogFile, "  returns result = %x\n", hr);
+	LogDebug("  returns result = %x\n", hr);
 
 	return hr;
 }
@@ -1851,7 +1851,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDeferredContext(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Wrapper::ID3D11DeviceContext **ppDeferredContext)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::CreateDeferredContext called with flags = %x\n", ContextFlags);
+	LogInfo("ID3D11Device::CreateDeferredContext called with flags = %x\n", ContextFlags);
 
 	D3D11Base::ID3D11DeviceContext *origContext = 0;
 	HRESULT ret = GetD3D11Device()->CreateDeferredContext(ContextFlags, &origContext);
@@ -1859,14 +1859,14 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDeferredContext(THIS_
 	D3D11Wrapper::ID3D11DeviceContext *wrapper = D3D11Wrapper::ID3D11DeviceContext::GetDirect3DDeviceContext(origContext);
 	if (wrapper == NULL)
 	{
-		if (LogFile) fprintf(LogFile, "  error allocating wrapper.\n");
+		LogInfo("  error allocating wrapper.\n");
 
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
 	*ppDeferredContext = wrapper;
 
-	if (LogFile) fprintf(LogFile, "  returns result = %x, handle = %p, wrapper = %p\n", ret, origContext, wrapper);
+	LogInfo("  returns result = %x, handle = %p, wrapper = %p\n", ret, origContext, wrapper);
 
 	return ret;
 }
@@ -1970,7 +1970,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	if (LogFile) fprintf(LogFile, "ID3D11Device::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+	LogInfo("ID3D11Device::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
 		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
@@ -2003,22 +2003,22 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11Device::GetImmediateContext(THIS_
 	if (wrapper)
 	{
 		*ppImmediateContext = wrapper;
-		if (LogFile && LogDebug) fprintf(LogFile, "  returns handle = %p, wrapper = %p\n", origContext, wrapper);
+		LogDebug("  returns handle = %p, wrapper = %p\n", origContext, wrapper);
 
 		return;
 	}
-	if (LogFile) fprintf(LogFile, "ID3D11Device::GetImmediateContext called.\n");
+	LogInfo("ID3D11Device::GetImmediateContext called.\n");
 
 	// Create wrapper.
 	wrapper = D3D11Wrapper::ID3D11DeviceContext::GetDirect3DDeviceContext(origContext);
 	if (wrapper == NULL)
 	{
-		if (LogFile) fprintf(LogFile, "  error allocating wrapper.\n");
+		LogInfo("  error allocating wrapper.\n");
 
 		origContext->Release();
 	}
 	*ppImmediateContext = wrapper;
-	if (LogFile) fprintf(LogFile, "  returns handle = %p, wrapper = %p\n", origContext, wrapper);
+	LogInfo("  returns handle = %p, wrapper = %p\n", origContext, wrapper);
 
 }
 

@@ -164,7 +164,7 @@ namespace nv
 				HRESULT ret = pDevice->CreateTexture2D(&desc, &sysData, &staging);
 				if (ret != S_OK)
 				{
-					if (LogFile) fprintf(LogFile, "    error during creation of stereo staging texture. result = %x.\n", ret);
+					LogInfo("    error during creation of stereo staging texture. result = %x.\n", ret);
 				}
 				delete sysData.pSysMem;
 				return staging;
@@ -249,7 +249,7 @@ namespace nv
 				mDeviceLost = deviceLost;
 
 				if (updateRequired) {
-					if (LogFile) fprintf(LogFile, "  updating stereo texture with eyeSeparation = %e, separation = %e, convergence = %e, active = %d\n",
+					LogInfo("  updating stereo texture with eyeSeparation = %e, separation = %e, convergence = %e, active = %d\n",
 						eyeSep, sep, conv, active ? 1 : 0);
 
 					mEyeSeparation = eyeSep;

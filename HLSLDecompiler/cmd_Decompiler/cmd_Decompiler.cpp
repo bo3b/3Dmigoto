@@ -46,7 +46,7 @@ std::string Decompile(_TCHAR* asmFileName)
 
 	if (!decompiledCode.size())
 	{
-		if (LogFile) fprintf(LogFile, "    error while decompiling.\n");
+		LogInfo("    error while decompiling.\n");
 	}
 
 	return decompiledCode;
