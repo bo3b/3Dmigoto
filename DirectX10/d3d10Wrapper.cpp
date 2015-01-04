@@ -3,6 +3,7 @@
 #include <Winuser.h>
 #include "../DirectInput.h"
 #include "../util.h"
+#include "../log.h"
 
 FILE *LogFile = 0;
 static bool gInitialized = false;

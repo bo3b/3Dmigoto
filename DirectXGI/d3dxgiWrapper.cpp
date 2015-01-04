@@ -1,6 +1,7 @@
 #include "Main.h"
 #include <Shlobj.h>
 #include <ctime>
+#include "../log.h"
 
 ThreadSafePointerSet D3D11Wrapper::IDXGIFactory::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIAdapter::m_List;

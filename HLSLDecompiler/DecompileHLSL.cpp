@@ -33,6 +33,7 @@
 #include <excpt.h>
 
 #include "assert.h"
+#include "../log.h"
 
 using namespace std;
 

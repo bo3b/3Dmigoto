@@ -10,6 +10,7 @@ namespace D3D9Base
 #include <XInput.h>
 #include "DirectInput.h"
 #include "../util.h"
+#include "../log.h"
 
 using namespace std;
 

@@ -6,6 +6,7 @@
 #include <iostream>     // console output 
 
 #include "..\DecompileHLSL.h"
+#include "..\..\log.h"
 
 //----------------------------------------------------------------------------- 
 // Print help lines on errors. 

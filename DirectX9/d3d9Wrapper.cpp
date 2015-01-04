@@ -1,6 +1,7 @@
 #include "Main.h"
 #include <Shlobj.h>
 #include <ctime>
+#include "../log.h"
 
 ThreadSafePointerSet D3D9Wrapper::IDirect3DSwapChain9::m_List;
 ThreadSafePointerSet D3D9Wrapper::IDirect3DDevice9::m_List;

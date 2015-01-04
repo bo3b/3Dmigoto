@@ -46,6 +46,7 @@
 
 //#include "nvapi.h"
 #include <D3D11.h>
+#include "log.h"
 
 namespace nv
 {

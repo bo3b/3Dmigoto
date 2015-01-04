@@ -1,6 +1,7 @@
 #include "DirectInput.h"
 #include "util.h"
 #include <vector>
+#include "log.h"
 
 using namespace std;
 
