@@ -2938,7 +2938,6 @@ public:
 							sprintf(buffer, "  %s = %s & %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 							appendOutput(buffer);
 						}
-						removeBoolean(op1);
 						break;
 
 					case OPCODE_OR:
