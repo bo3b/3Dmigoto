@@ -599,8 +599,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 				G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
 			}
 			if (G->mCurrentPixelShader) {
-				// FIXME: Don't clobber this - a shader may be used with different render targets at different times
-				G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets = G->mCurrentRenderTargets;
+				G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets.insert(G->mCurrentRenderTargets);
 				if (G->mCurrentDepthTarget)
 					G->mPixelShaderInfo[G->mCurrentPixelShader].DepthTargets.insert(G->mCurrentDepthTarget);
 			}
