@@ -96,6 +96,7 @@ struct ShaderInfoData
 	std::map<int, void *> ResourceRegisters;
 	std::set<UINT64> PartnerShader;
 	std::vector<void *> RenderTargets;
+	std::set<void *> DepthTargets;
 };
 struct SwapChainInfo
 {
@@ -225,6 +226,7 @@ struct Globals
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
 	unsigned int mSelectedRenderTargetPos;
+	void *mCurrentDepthTarget;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
 	std::set<void *> mSelectedRenderTargetSnapshotList;
@@ -241,6 +243,7 @@ struct Globals
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(0),
 		mSelectedRenderTarget((void *)1),
+		mCurrentDepthTarget(0),
 		mCurrentPixelShader(0),
 		mSelectedPixelShader(1),
 		mSelectedPixelShaderPos(0),
@@ -1308,6 +1311,12 @@ static void DumpUsage()
 				sprintf(buf, "  <RenderTarget id=%d handle=%p>%016llx</RenderTarget>\n", pos, *m, id);
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 				++pos;
+			}
+			std::set<void *>::iterator n;
+			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
+				UINT64 id = G->mRenderTargets[*n];
+				sprintf(buf, "  <DepthTarget handle=%p>%016llx</DepthTarget>\n", *n, id);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
