@@ -95,7 +95,7 @@ struct ShaderInfoData
 {
 	std::map<int, void *> ResourceRegisters;
 	std::set<UINT64> PartnerShader;
-	std::set<std::vector<void *>> RenderTargets;
+	std::vector<std::set<void *>> RenderTargets;
 	std::set<void *> DepthTargets;
 };
 struct SwapChainInfo
@@ -1303,11 +1303,11 @@ static void DumpUsage()
 				sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
-			std::set<std::vector<void *>>::iterator m;
-			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++) {
-				std::vector<void *>::const_iterator o;
-				int pos = 0;
-				for (o = (*m).begin(); o != (*m).end(); o++, pos++) {
+			std::vector<std::set<void *>>::iterator m;
+			int pos = 0;
+			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
+				std::set<void *>::const_iterator o;
+				for (o = (*m).begin(); o != (*m).end(); o++) {
 					UINT64 id = G->mRenderTargets[*o];
 					sprintf(buf, "  <RenderTarget id=%d handle=%p>%016llx</RenderTarget>\n", pos, *o, id);
 					WriteFile(f, buf, castStrLen(buf), &written, 0);

@@ -599,7 +599,14 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 				G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
 			}
 			if (G->mCurrentPixelShader) {
-				G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets.insert(G->mCurrentRenderTargets);
+				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+					std::vector<std::set<void *>> &targets = G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets;
+
+					if (selectedRenderTargetPos >= targets.size())
+						targets.push_back(std::set<void *>());
+
+					targets[selectedRenderTargetPos].insert(G->mCurrentRenderTargets[selectedRenderTargetPos]);
+				}
 				if (G->mCurrentDepthTarget)
 					G->mPixelShaderInfo[G->mCurrentPixelShader].DepthTargets.insert(G->mCurrentDepthTarget);
 			}
