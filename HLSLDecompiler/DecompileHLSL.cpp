@@ -3336,7 +3336,6 @@ public:
 					// To make the boolean tests work correctly for AND, these were rolled back into one, and added to the boolean
 					// set list as a complete operand, like 'r0.xyw'.
 					case OPCODE_NE:
-					case OPCODE_INE:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
@@ -3346,13 +3345,32 @@ public:
 						addBoolean(op1);
 						break;
 					}
+					case OPCODE_INE:
+					{
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
+						sprintf(buffer, "  %s = (int)%s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
+						appendOutput(buffer);
+						addBoolean(op1);
+						break;
+					}
 					case OPCODE_EQ:
-					case OPCODE_IEQ:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
 						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						appendOutput(buffer);
+						addBoolean(op1);
+						break;
+					}
+					case OPCODE_IEQ: 
+					{
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
+						sprintf(buffer, "  %s = (int)%s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3544,6 +3562,7 @@ public:
 						break;
 					}
 
+					// Was missing the sample_aoffimmi variant. Added as matching sample_b type. Used in FC4.
 					case OPCODE_SAMPLE:
 					{
 						//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
@@ -3554,8 +3573,17 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
-						sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						if (!instr->bAddressOffset)
+							sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						else
+						{
+							int offsetx = 0, offsety = 0, offsetz = 0;
+							sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
+							sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
+								offsetx, offsety, strrchr(op3, '.'));
+						}
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3574,7 +3602,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleBias(%s, %s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
@@ -3599,7 +3627,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
@@ -3625,7 +3653,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
@@ -3650,7 +3678,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
@@ -3675,7 +3703,7 @@ public:
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s)%s;\n", writeTarget(op1),
-							mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
+								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
 						else
 						{
 							int offsetx = 0, offsety = 0, offsetz = 0;
