@@ -95,7 +95,8 @@ struct ShaderInfoData
 {
 	std::map<int, void *> ResourceRegisters;
 	std::set<UINT64> PartnerShader;
-	std::vector<void *> RenderTargets;
+	std::vector<std::set<void *>> RenderTargets;
+	std::set<void *> DepthTargets;
 };
 struct SwapChainInfo
 {
@@ -225,6 +226,7 @@ struct Globals
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
 	unsigned int mSelectedRenderTargetPos;
+	void *mCurrentDepthTarget;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
 	std::set<void *> mSelectedRenderTargetSnapshotList;
@@ -241,6 +243,7 @@ struct Globals
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(0),
 		mSelectedRenderTarget((void *)1),
+		mCurrentDepthTarget(0),
 		mCurrentPixelShader(0),
 		mSelectedPixelShader(1),
 		mSelectedPixelShaderPos(0),
@@ -1300,14 +1303,21 @@ static void DumpUsage()
 				sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
-			std::vector<void *>::iterator m;
+			std::vector<std::set<void *>>::iterator m;
 			int pos = 0;
-			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); ++m)
-			{
-				UINT64 id = G->mRenderTargets[*m];
-				sprintf(buf, "  <RenderTarget id=%d handle=%p>%016llx</RenderTarget>\n", pos, *m, id);
+			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
+				std::set<void *>::const_iterator o;
+				for (o = (*m).begin(); o != (*m).end(); o++) {
+					UINT64 id = G->mRenderTargets[*o];
+					sprintf(buf, "  <RenderTarget id=%d handle=%p>%016llx</RenderTarget>\n", pos, *o, id);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				}
+			}
+			std::set<void *>::iterator n;
+			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
+				UINT64 id = G->mRenderTargets[*n];
+				sprintf(buf, "  <DepthTarget handle=%p>%016llx</DepthTarget>\n", *n, id);
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
-				++pos;
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);

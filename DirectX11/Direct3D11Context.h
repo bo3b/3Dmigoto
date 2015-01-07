@@ -364,6 +364,40 @@ static void RecordRenderTargetInfo(D3D11Base::ID3D11RenderTargetView *target, UI
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+static void RecordDepthStencil(D3D11Base::ID3D11DepthStencilView *target)
+{
+	D3D11Base::D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+	D3D11Base::ID3D11Resource *resource = NULL;
+	UINT64 hash = 0;
+
+	if (!target)
+		return;
+
+	target->GetResource(&resource);
+	if (!resource)
+		return;
+
+	target->GetDesc(&desc);
+
+	switch(desc.ViewDimension) {
+		// TODO: Is it worth recording the type of 2D texture view?
+		// TODO: Maybe for array variants, record all resources in array?
+		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2D:
+		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
+		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2DMS:
+		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
+			hash = GetTexture2DHash((D3D11Base::ID3D11Texture2D *)resource, false, NULL);
+			break;
+	}
+
+	resource->Release();
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	G->mRenderTargets[resource] = hash;
+	G->mCurrentDepthTarget = resource;
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
 STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
@@ -564,8 +598,18 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 				G->mVertexShaderInfo[G->mCurrentVertexShader].PartnerShader.insert(G->mCurrentPixelShader);
 				G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
 			}
-			if (G->mCurrentPixelShader)
-				G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets = G->mCurrentRenderTargets;
+			if (G->mCurrentPixelShader) {
+				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+					std::vector<std::set<void *>> &targets = G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets;
+
+					if (selectedRenderTargetPos >= targets.size())
+						targets.push_back(std::set<void *>());
+
+					targets[selectedRenderTargetPos].insert(G->mCurrentRenderTargets[selectedRenderTargetPos]);
+				}
+				if (G->mCurrentDepthTarget)
+					G->mPixelShaderInfo[G->mCurrentPixelShader].DepthTargets.insert(G->mCurrentDepthTarget);
+			}
 
 			// Maybe make this optional if it turns out to have a
 			// significant performance impact:
@@ -1157,6 +1201,8 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 
 		for (UINT i = 0; i < NumViews; ++i)
 			RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+
+		RecordDepthStencil(pDepthStencilView);
 	}
 
 	GetD3D11DeviceContext()->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
