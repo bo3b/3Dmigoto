@@ -1073,14 +1073,20 @@ public:
 	{
 		char right2[128];
 		if (right[strlen(right) - 1] == ',') right[strlen(right) - 1] = 0;
+
+		// Strip sign and absolute, so they can be re-added at the end.
 		bool absolute = false, negative = false;
 		if (right[0] == '-')
+		{
 			negative = true;
-		if (right[0] == '|' || right[1] == '|')
+			strcpy_s(right2, sizeof(right2), &right[1]);
+			strcpy_s(right, opcodeSize, right2);
+		}
+		if (right[0] == '|')
 		{
 			absolute = true;
-			strcpy_s(strchr(right, '|'), strlen(right), strchr(right, '|') + 1);	// Shrinking string, can never overflow.
-			*strchr(right, '|') = 0;
+			strncpy_s(right2, sizeof(right2), &right[1], strlen(right) - 2);
+			strcpy_s(right, opcodeSize, right2);
 		}
 
 		// Fairly bold change here- this fetches the source swizzle from 'left', and it previously would
@@ -1160,43 +1166,74 @@ public:
 					right2[pos++] = strPos[idx[i]];
 				right2[pos] = 0;
 			}
-			// Buffer reference?
+
+			// Buffer reference?  
+			//  This section was doing some char-by-char indexing into the search string 'right2', and has been
+			//  changed to just use sscanf_s as a more reliable way of parsing, although it's a risky change.
 			strPos = strstr(right2, "cb");
 			if (strPos)
 			{
 				int bufIndex = 0;
-				if (strstr(right2, "icb"))
+				int bufOffset;
+				char regAndSwiz[10];
+				
+				// By scanning these in this order, we are sure to cover every variant, without mismatches.
+				// We use the unusual format of [^+] for the string lookup because ReadStatement has already 
+				// crushed the spaces out of the input.
+
+				// Like: -cb2[r12.w+63].xyzx  as : -cb(bufIndex)[(regAndSwiz)+(bufOffset)]
+				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, &regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 3)
+				{
+					// Some constant buffers no longer have variable names, giving us generic names like cb0[23].
+					// The syntax doesn't work to use those names, so in this scenario, we want to just use the strPos name, unchanged.
+					CBufferData::iterator it = mCBufferData.find((bufIndex << 16) + bufOffset * 16);
+					if (it == mCBufferData.end())
+					{
+						logDecompileError("Missing constant buffer name: " + string(right2));
+						return;
+					}
+
+					if (strncmp(strPos, it->second.Name.c_str(), 4) == 0)
+					{
+						string full = strPos;
+						size_t dotspot = full.rfind('.');
+						it->second.Name = full.substr(0, dotspot);
+						regAndSwiz[0] = 0;
+					}
+				}
+				// Like: cb1[29].xyzx  Most common variant.  If a register, %d will fail.
+				else if (sscanf_s(strPos, "cb%d[%d]", &bufIndex, &bufOffset) == 2)
+				{
+					regAndSwiz[0] = 0;
+				}
+				// Like: cb0[r0.w].xy
+				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, &regAndSwiz, sizeof(regAndSwiz)) == 2)
+				{
+					bufOffset = 0;
+				}
+				// Like: icb[r0.w+0].xyzw
+				else if (sscanf_s(strPos, "cb[%[^+]+%d]", &regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 2)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 				}
+				// Like: icb[22].w  doesn't seem to exist, but here for completeness.
+				else if (sscanf_s(strPos, "cb[%d]", &bufOffset) == 1)
+				{
+					bufIndex = -1;		// -1 is used as 'index' for icb entries.
+					regAndSwiz[0] = 0;
+				}
+				// Like: icb[r1.z].xy
+				else if (sscanf_s(strPos, "cb[%s]", &regAndSwiz, sizeof(regAndSwiz)) == 1)
+				{
+					bufIndex = -1;		// -1 is used as 'index' for icb entries.
+					bufOffset = 0;
+				}
 				else
 				{
-					if (sscanf_s(strPos + 2, "%d", &bufIndex) != 1)
-					{
-						logDecompileError("Error parsing buffer register index: " + string(right2));
-						return;
-					}
-				}
-				strPos = strchr(right2, '[');
-				if (!strPos)
-				{
-					logDecompileError("1 Error parsing buffer offset: " + string(right2));
+					logDecompileError("Error parsing buffer register, unknown variant: " + string(right2));
 					return;
 				}
-				int bufOffset = 0;
-				char indexRegister[5]; indexRegister[0] = 0;
-				// Indexed by register? "r1.y+"
-				if (strPos[1] == 'r')
-				{
-					strncpy(indexRegister, strPos + 1, 4);
-					indexRegister[4] = 0;
-					strPos += 5;
-				}
-				if (sscanf_s(strPos + 1, "%d", &bufOffset) != 1)
-				{
-					logDecompileError("2 Error parsing buffer offset: " + string(right2));
-					return;
-				}
+
 				// Missing mCBufferData name for this buffer entry.  In the icb case, that's
 				// expected, because entries are not named. Just build the CBufferData to use.
 				// Bit of a hack workaround, but icb doesn't really fit here.
@@ -1211,9 +1248,11 @@ public:
 					immediateEntry.isRowMajor = false;
 					immediateEntry.bt = DT_float4;
 					mCBufferData[(bufIndex << 16) + bufOffset * 16] = immediateEntry;
-					indexRegister[0] = 0;
+					regAndSwiz[0] = 0;
 				}
 
+				// mCBufferData includes the actual named variable, as the way to convert numeric offsets
+				// back into proper names.  -cb2[r12.w + 63].xyzx -> _SpotLightDirection[r12.w].xyz
 				CBufferData::iterator i = mCBufferData.find((bufIndex << 16) + bufOffset * 16);
 				if (i == mCBufferData.end() && strrchr(right2, '.')[1] == 'y')
 					i = mCBufferData.find((bufIndex << 16) + bufOffset * 16 + 4);
@@ -1264,8 +1303,6 @@ public:
 					}
 				}
 				char right3[128]; right3[0] = 0;
-				if (right2[0] == '-')
-					strcpy(right3, "-");
 				strcat(right3, i->second.Name.c_str());
 				strPos = strchr(strPos, ']');
 				if (!strPos)
@@ -1273,33 +1310,33 @@ public:
 					logDecompileError("4 Error parsing buffer offset: " + string(right2));
 					return;
 				}
-				if (indexRegister[0])
+				if (regAndSwiz[0])
 				{
 					// Remove existing index.
 					char *indexPos = strchr(right3, '[');
 					if (indexPos) *indexPos = 0;
-					string indexRegisterName(indexRegister, strchr(indexRegister, '.'));
+					string indexRegisterName(regAndSwiz, strchr(regAndSwiz, '.'));
 					StringStringMap::iterator isCorrected = mCorrectedIndexRegisters.find(indexRegisterName);
 					if (isCorrected != mCorrectedIndexRegisters.end())
 					{
 						char newOperand[32]; strcpy(newOperand, isCorrected->second.c_str());
-						applySwizzle(indexRegister, newOperand, true);
+						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 					}
 					else if (mLastStatement && mLastStatement->eOpcode == OPCODE_IMUL &&
 						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
 					{
 						char newOperand[32]; strcpy(newOperand, mMulOperand.c_str());
-						applySwizzle(indexRegister, newOperand, true);
+						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 						mCorrectedIndexRegisters[indexRegisterName] = mMulOperand;
 					}
 					else if (i->second.bt == DT_float4x2)
-						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/2]", indexRegister);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/2]", regAndSwiz);
 					else if (i->second.bt == DT_float4x3 || i->second.bt == DT_float3x4)
-						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/3]", indexRegister);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/3]", regAndSwiz);
 					else if (i->second.bt == DT_float4x4)
-						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/4]", indexRegister);
+						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/4]", regAndSwiz);
 					else
 					{
 						// Most common case, like: g_AmbientCube[r3.w]
@@ -1313,7 +1350,7 @@ public:
 						string base = i->second.Name;
 						size_t left = base.find('[') + 1;
 						size_t length = base.find(']') - left;
-						base.replace(left, length, indexRegister);
+						base.replace(left, length, regAndSwiz);
 						strcpy(right3, base.c_str());
 					}
 				}
@@ -1356,6 +1393,8 @@ public:
 			sprintf_s(right, opcodeSize, "-abs(%s)", right2);
 		else if (absolute)
 			sprintf_s(right, opcodeSize, "abs(%s)", right2);
+		else if (negative)
+			sprintf_s(right, opcodeSize, "-%s", right2);
 		else
 			strcpy_s(right, opcodeSize, right2);		// All input params are 128 char arrays, like op1, op2, op3
 	}
@@ -2547,7 +2586,7 @@ public:
 						logDecompileError("Error parsing buffer size: " + string(op1));
 						return;
 					}
-					CBufferData::iterator i = mCBufferData.find(bufIndex << 16);
+					CBufferData::iterator i = mCBufferData.find((bufIndex << 16) + 0 * 16);
 					// Create if not existing.
 					if (i == mCBufferData.end())
 					{
