@@ -82,10 +82,12 @@ public:
 
 	// Resources.
 	map<string, int> mCBufferNames;
+	
 	map<int, string> mSamplerNames;
 	map<int, int>    mSamplerNamesArraySize;
 	map<int, string> mSamplerComparisonNames;
 	map<int, int>    mSamplerComparisonNamesArraySize;
+	
 	map<int, string> mTextureNames;
 	map<int, int>    mTextureNamesArraySize;
 	map<int, string> mTextureType;
@@ -2759,7 +2761,7 @@ public:
 				mOutput.pop_back();
 				mOutput.push_back(';');
 				mOutput.push_back('\n');
-				const char *helperDecl = "  uint4 bitmask;\n";
+				const char *helperDecl = "  uint4 bitmask, src0, src1, dst0;\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
 			else if (!strncmp(statement, "dcl_", 4))
@@ -2879,41 +2881,45 @@ public:
 
 						// UDIV instruction also could damage the original register before finishing, giving wrong results. 
 						// e.g. udiv r0.x, r1.x, r0.x, r0.y
-						// To fix this, we are using a temp variable.  Suboptimal, because more than one udiv will cause a duplicate
-						// error, but that will be better than a silent damage to output.
+						// e.g. udiv null, r1.xy, r3.zwzz, r2.zwzz
+						// To fix this, we are using the temp variables declared at the top. 
+						// This will swizzle based on either op1 or op2, as long as it's not null.  It's not clear whether
+						// the swizzle is allowed to vary for each half of the instruction, like xy for /, zw for %.  
+						// To allow for that, we'll set the temp registers with full swizzle, then only use the specific
+						// parts required for each half, as the safest approach.  Might not generate udiv though.
+						// Also removed saturate code, because udiv does not specify that.
 					case OPCODE_UDIV:
 					{
 						remapTarget(op1);
 						remapTarget(op2);
-						char *maskOp = instr->asOperands[0].eType != OPERAND_TYPE_NULL ? op1 : op2;
-						applySwizzle(maskOp, fixImm(op3, instr->asOperands[2]), true);
-						applySwizzle(maskOp, fixImm(op4, instr->asOperands[3]), true);
+						char *divSwiz = op1;
+						char *remSwiz = op2;
+						applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]), true);
+						applySwizzle(".xyzw", fixImm(op4, instr->asOperands[3]), true);
 
-						char *pos = strrchr(maskOp, '.');
-						size_t usize = strlen(pos + 1);
-
-						sprintf(buffer, "  uint%d src0 = %s;\n", usize, ci(op3).c_str());
+						sprintf(buffer, "  src0 = %s;\n", ci(op3).c_str());
 						appendOutput(buffer);
-						sprintf(buffer, "  uint%d src1 = %s;\n", usize, ci(op4).c_str());
+						sprintf(buffer, "  src1 = %s;\n", ci(op4).c_str());
 						appendOutput(buffer);
 
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = src0 / src1;\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(src0 / src1);\n", writeTarget(op1), ci(op3).c_str(), ci(op4).c_str());
+							applySwizzle(divSwiz, fixImm(op3, instr->asOperands[2]), true);
+							applySwizzle(divSwiz, fixImm(op4, instr->asOperands[3]), true);
+
+							sprintf(buffer, "  %s = src0%s / src1%s;\n", writeTarget(op1), strrchr(op3, '.'), strrchr(op4, '.'));
 							appendOutput(buffer);
 						}
 						if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
 						{
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = src0 %% src1;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(src0 %% src1);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), true);
+							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), true);
+
+							sprintf(buffer, "  %s = src0%s %% src1%s;\n", writeTarget(op2), strrchr(op3, '.'), strrchr(op4, '.'));
 							appendOutput(buffer);
 						}
 						removeBoolean(op1);
+						removeBoolean(op2);
 						break;
 					}
 
@@ -3891,6 +3897,11 @@ public:
 						// This fix follows the form of the _Gather opcode above, but should maybe use the
 						// instr-> parameters after they are fixed.
 						// Fixed both _LD and LD_MS
+					
+						// No longer adds op3 swizzle, as that generated errors for Texture2D<float>. Looks like the
+						// texture swizzle is not required, because texture dimension is known.
+						// Left LD_MS with the swizzle, as that will generate an error if it is wrong.  Changing it 
+						// without knowing could generate bad code.
 					case OPCODE_LD:
 					{
 						remapTarget(op1);
@@ -3900,12 +3911,12 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+							sprintf(buffer, "  %s = %s.Load(%s);\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str());
 						else {
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
-							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
-								offsetU, offsetV, offsetW, strrchr(op3, '.'));
+							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d));\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
+								offsetU, offsetV, offsetW);
 						}
 						appendOutput(buffer);
 						removeBoolean(op1);
