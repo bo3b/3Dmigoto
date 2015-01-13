@@ -2761,7 +2761,7 @@ public:
 				mOutput.pop_back();
 				mOutput.push_back(';');
 				mOutput.push_back('\n');
-				const char *helperDecl = "  uint4 bitmask, src0, src1, dst0;\n";
+				const char *helperDecl = "  uint4 bitmask, src0, src1, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
 			else if (!strncmp(statement, "dcl_", 4))
@@ -4058,16 +4058,119 @@ public:
 						appendOutput(buffer);
 						break;
 
+						// The GetDimensions can also see a 4 parameter version in the immediate case. 
+						// resinfo[_uint|_rcpFloat] dest[.mask], srcMipLevel.select_component, srcResource[.swizzle]
+						// In different variants based on input texture, becomes:
+						// void Object.GetDimensions(UINT MipLevel, typeX Width, typeX Height, typeX Elements, typeX Depth, typeX NumberOfLevels, typeX NumberOfSamples);
+						// 
+						// We only see the immediate version l(0) in use, like:
+						//
+						//  resinfo_indexable(texture2d)(uint, uint, uint, uint)_uint r2.zw, l(0), t5.zwxy  
+						//   Becomes 2 param version:   SectorAtlasTexture_UINT_TextureObject.GetDimensions(r2.z, r2.w);
+						//
+						//  resinfo_indexable(texture2dms)(float, float, float, float)_uint r0.xy, l(0), t0.xyzw 
+						//   Becomes 3 param version:   DepthVPSampler_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
+						// 
+						//  resinfo_indexable(texture2darray)(float, float, float, float) r0.xy, l(0), t0.xyzw
+						//
+						// So, we'll only handle that immediate for now, and generate syntax errors if we see any other variant.
+						// We don't want to knowingly generate code that compiles, but has errors.  Includes _rcpFloat as unknown.
+						//
+						// This also added new ResInfo parsing that was not in our older BinaryCompiler.
 					case OPCODE_RESINFO:
 					{
 						remapTarget(op1);
-						applySwizzle(".x", fixImm(op2, instr->asOperands[1]), true);
-						if (instr->asOperands[1].eType == OPERAND_TYPE_IMMEDIATE32)
-							strcpy(op2, "bitmask.x");
-						int textureId;
-						sscanf_s(op3, "t%d.", &textureId);
-						sprintf(buffer, "  %s.GetDimensions(%s, %s, %s);\n", mTextureNames[textureId].c_str(), ci(GetSuffix(op1, 0)).c_str(), ci(GetSuffix(op1, 1)).c_str(), ci(op2).c_str());
-						appendOutput(buffer);
+
+						bool unknownVariant = true;
+						Operand output = instr->asOperands[0];
+						Operand constZero = instr->asOperands[1];
+						Operand texture = instr->asOperands[2];
+						RESINFO_RETURN_TYPE returnType = instr->eResInfoReturnType;
+						int texReg = texture.ui32RegisterNumber;
+						ResourceBinding *bindInfo;
+
+						// We only presently handle the float and _uint return types, and the const 0 mode. 
+						// And the texture2d and textures2dms types. That's all we've seen so far.
+						if ((constZero.eType == OPERAND_TYPE_IMMEDIATE32) && (constZero.afImmediates[0] == 0)
+							&& (returnType == RESINFO_INSTRUCTION_RETURN_UINT || returnType == RESINFO_INSTRUCTION_RETURN_FLOAT)
+							&& GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfo)
+							&& texture.eType == OPERAND_TYPE_RESOURCE)
+						{
+							//string out1, out2, out3;
+
+							// return results into uint variables forces compiler to generate _uint variant.
+							//if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
+							//{
+							//	out1 = "dst0.x";
+							//	out2 = "dst0.y";
+							//	out3 = "dst0.w";
+							//}
+							//else
+							//{
+							//	out1 = ci(GetSuffix(op1, 0));
+							//	out2 = ci(GetSuffix(op1, 1));
+							//	out3 = "fDst0.x";
+							//}
+
+							if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2D)
+							{
+								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
+									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n", bindInfo->Name.c_str());
+								else
+									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z);\n", bindInfo->Name.c_str());
+								appendOutput(buffer);
+								unknownVariant = false;
+							}
+							else if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS)
+							{
+								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
+									sprintf(buffer, "  %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfo->Name.c_str());
+								else
+									sprintf(buffer, "  %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfo->Name.c_str());
+								appendOutput(buffer);
+								unknownVariant = false;
+							}
+							else if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY)
+							{
+								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
+									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z, uiDest.w);\n", bindInfo->Name.c_str());
+								else
+									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z, fDest.w);\n", bindInfo->Name.c_str());
+								appendOutput(buffer);
+								unknownVariant = false;
+							}
+
+							// For the output, we saw a r3.xyzw which makes no sense for this instruction. 
+							// Not sure this is fully correct, but the goal here is to apply the swizzle from the op3, which is the texture
+							// register, as the pieces that are valid to copy to the op1 output.  
+							// The op3 texture swizzle can determine which components to use, and what order.  
+							// The op1 output determines which ones are valid for output.
+							if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
+							{
+								char dest[opcodeSize] = "uiDest.xyzw";
+								applySwizzle(op3, dest);
+								applySwizzle(op1, dest);
+								sprintf(buffer, "  %s = %s;\n", op1, dest);
+								appendOutput(buffer);
+							}
+							else
+							{
+								char dest[opcodeSize] = "fDest.xyzw";
+								applySwizzle(op3, dest);
+								applySwizzle(op1, dest);
+								sprintf(buffer, "  %s = %s;\n", op1, dest);
+								appendOutput(buffer);
+							}
+						}
+						if (unknownVariant)
+						{
+							string line = string(c + pos);
+							line = line.substr(0, line.find('\n'));
+							sprintf(buffer, "  Unknown use of GetDimensions for _resinfo: %s\n", line.c_str());
+							appendOutput(buffer);
+
+							logDecompileError("Unknown _resinfo variant: " + line);
+						}
 						break;
 					}
 

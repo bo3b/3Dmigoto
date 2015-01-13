@@ -935,7 +935,6 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
         case OPCODE_DLT:
         case OPCODE_DNE:
         case OPCODE_DDIV:
-		case OPCODE_RESINFO:
 		case OPCODE_XOR:
 		case OPCODE_SAMPLE_POS:		// bo3b: added for WatchDogs
         {
@@ -1075,7 +1074,20 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[3]);
             break;
         }
-        case OPCODE_MSAD:
+		// Added to decode ResInfo variants. 
+		// TODO: update to newest version of CrossCompiler.
+		case OPCODE_RESINFO:
+		{
+			psInst->ui32NumOperands = 3;
+
+			psInst->eResInfoReturnType = DecodeResInfoReturnType(pui32Token[0]);
+
+			ui32OperandOffset += DecodeOperand(pui32Token + ui32OperandOffset, &psInst->asOperands[0]);
+			ui32OperandOffset += DecodeOperand(pui32Token + ui32OperandOffset, &psInst->asOperands[1]);
+			ui32OperandOffset += DecodeOperand(pui32Token + ui32OperandOffset, &psInst->asOperands[2]);
+			break;
+		}
+		case OPCODE_MSAD:
         default:
         {
 			ASSERT(0);

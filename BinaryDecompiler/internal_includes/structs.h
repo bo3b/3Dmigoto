@@ -63,6 +63,8 @@ struct Instruction
     uint32_t bSaturate;
     uint32_t ui32FuncIndexWithinInterface;
 
+	RESINFO_RETURN_TYPE eResInfoReturnType;		// added for ResInfo parse
+
     int bAddressOffset;
     int iUAddrOffset;
     int iVAddrOffset;
