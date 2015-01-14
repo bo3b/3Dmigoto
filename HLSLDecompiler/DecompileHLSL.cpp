@@ -1073,7 +1073,7 @@ public:
 
 	void applySwizzle(const char *left, char *right, bool useInt = false)
 	{
-		char right2[128];
+		char right2[opcodeSize];
 		if (right[strlen(right) - 1] == ',') right[strlen(right) - 1] = 0;
 
 		// Strip sign and absolute, so they can be re-added at the end.
@@ -1177,7 +1177,7 @@ public:
 			{
 				int bufIndex = 0;
 				int bufOffset;
-				char regAndSwiz[10];
+				char regAndSwiz[opcodeSize];
 				
 				// By scanning these in this order, we are sure to cover every variant, without mismatches.
 				// We use the unusual format of [^+] for the string lookup because ReadStatement has already 
@@ -1304,7 +1304,7 @@ public:
 						}
 					}
 				}
-				char right3[128]; right3[0] = 0;
+				char right3[opcodeSize]; right3[0] = 0;
 				strcat(right3, i->second.Name.c_str());
 				strPos = strchr(strPos, ']');
 				if (!strPos)
@@ -1321,14 +1321,14 @@ public:
 					StringStringMap::iterator isCorrected = mCorrectedIndexRegisters.find(indexRegisterName);
 					if (isCorrected != mCorrectedIndexRegisters.end())
 					{
-						char newOperand[32]; strcpy(newOperand, isCorrected->second.c_str());
+						char newOperand[opcodeSize]; strcpy(newOperand, isCorrected->second.c_str());
 						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 					}
 					else if (mLastStatement && mLastStatement->eOpcode == OPCODE_IMUL &&
 						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
 					{
-						char newOperand[32]; strcpy(newOperand, mMulOperand.c_str());
+						char newOperand[opcodeSize]; strcpy(newOperand, mMulOperand.c_str());
 						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 						mCorrectedIndexRegisters[indexRegisterName] = mMulOperand;
@@ -2888,34 +2888,40 @@ public:
 						// To allow for that, we'll set the temp registers with full swizzle, then only use the specific
 						// parts required for each half, as the safest approach.  Might not generate udiv though.
 						// Also removed saturate code, because udiv does not specify that.
+						// Need to applySwizzle to unchanged operands, as constant l values are otherwise damaged.
 					case OPCODE_UDIV:
 					{
 						remapTarget(op1);
 						remapTarget(op2);
 						char *divSwiz = op1;
 						char *remSwiz = op2;
-						applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]), true);
-						applySwizzle(".xyzw", fixImm(op4, instr->asOperands[3]), true);
-
-						sprintf(buffer, "  src0 = %s;\n", ci(op3).c_str());
-						appendOutput(buffer);
-						sprintf(buffer, "  src1 = %s;\n", ci(op4).c_str());
-						appendOutput(buffer);
+						strcpy_s(op13, opcodeSize, op3);
+						strcpy_s(op14, opcodeSize, op4);
 
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
-							applySwizzle(divSwiz, fixImm(op3, instr->asOperands[2]), true);
-							applySwizzle(divSwiz, fixImm(op4, instr->asOperands[3]), true);
+							applySwizzle(divSwiz, fixImm(op13, instr->asOperands[2]), false);
+							applySwizzle(divSwiz, fixImm(op14, instr->asOperands[3]), false);
 
-							sprintf(buffer, "  %s = src0%s / src1%s;\n", writeTarget(op1), strrchr(op3, '.'), strrchr(op4, '.'));
+							sprintf(buffer, "  src0 = %s;\n", ci(op13).c_str());
+							appendOutput(buffer);
+							sprintf(buffer, "  src1 = %s;\n", ci(op14).c_str());
+							appendOutput(buffer);
+
+							sprintf(buffer, "  %s = src0 / src1;\n", writeTarget(op1));
 							appendOutput(buffer);
 						}
 						if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
 						{
-							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), true);
-							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), true);
+							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), false);
+							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), false);
 
-							sprintf(buffer, "  %s = src0%s %% src1%s;\n", writeTarget(op2), strrchr(op3, '.'), strrchr(op4, '.'));
+							sprintf(buffer, "  src0 = %s;\n", ci(op3).c_str());
+							appendOutput(buffer);
+							sprintf(buffer, "  src1 = %s;\n", ci(op4).c_str());
+							appendOutput(buffer);
+
+							sprintf(buffer, "  %s = src0 %% src1;\n", writeTarget(op2));
 							appendOutput(buffer);
 						}
 						removeBoolean(op1);
