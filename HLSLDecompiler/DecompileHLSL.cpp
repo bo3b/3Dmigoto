@@ -2761,7 +2761,7 @@ public:
 				mOutput.pop_back();
 				mOutput.push_back(';');
 				mOutput.push_back('\n');
-				const char *helperDecl = "  uint4 bitmask, src0, src1, uiDest;\n  float4 fDest;\n\n";
+				const char *helperDecl = "  uint4 bitmask, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
 			else if (!strncmp(statement, "dcl_", 4))
@@ -2881,18 +2881,24 @@ public:
 
 						// UDIV instruction also could damage the original register before finishing, giving wrong results. 
 						// e.g. udiv r0.x, r1.x, r0.x, r0.y
-						// e.g. udiv null, r1.xy, r3.zwzz, r2.zwzz
+						// variant: udiv null, r1.xy, r3.zwzz, r2.zwzz
 						// To fix this, we are using the temp variables declared at the top. 
+						// expected output:
+						//   uiDest.x = (uint)r0.x / (uint)r0.y;
+						//   r1.x = (uint)r0.x % (uint)r0.y;
+						//   r0.x = uiDest.x;
+						//
 						// This will swizzle based on either op1 or op2, as long as it's not null.  It's not clear whether
 						// the swizzle is allowed to vary for each half of the instruction, like xy for /, zw for %.  
 						// To allow for that, we'll set the temp registers with full swizzle, then only use the specific
 						// parts required for each half, as the safest approach.  Might not generate udiv though.
 						// Also removed saturate code, because udiv does not specify that.
-						// Need to applySwizzle to unchanged operands, as constant l values are otherwise damaged.
+						// Creates operand copies to applySwizzle to unchanged operands, as constant l values are otherwise damaged.
 					case OPCODE_UDIV:
 					{
 						remapTarget(op1);
 						remapTarget(op2);
+						char divOut[opcodeSize] = "uiDest.xyzw";
 						char *divSwiz = op1;
 						char *remSwiz = op2;
 						strcpy_s(op13, opcodeSize, op3);
@@ -2900,28 +2906,28 @@ public:
 
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
-							applySwizzle(divSwiz, fixImm(op13, instr->asOperands[2]), false);
-							applySwizzle(divSwiz, fixImm(op14, instr->asOperands[3]), false);
+							applySwizzle(divSwiz, divOut, true);
+							applySwizzle(divSwiz, fixImm(op13, instr->asOperands[2]), true);
+							applySwizzle(divSwiz, fixImm(op14, instr->asOperands[3]), true);
+							convertToUInt(op13);
+							convertToUInt(op14);
 
-							sprintf(buffer, "  src0 = %s;\n", ci(op13).c_str());
-							appendOutput(buffer);
-							sprintf(buffer, "  src1 = %s;\n", ci(op14).c_str());
-							appendOutput(buffer);
-
-							sprintf(buffer, "  %s = src0 / src1;\n", writeTarget(op1));
+							sprintf(buffer, "  %s = %s / %s;\n", divOut, ci(op13).c_str(), ci(op14).c_str());
 							appendOutput(buffer);
 						}
 						if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
 						{
-							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), false);
-							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), false);
+							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), true);
+							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), true);
+							convertToUInt(op3);
+							convertToUInt(op4);
 
-							sprintf(buffer, "  src0 = %s;\n", ci(op3).c_str());
+							sprintf(buffer, "  %s = %s %% %s;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
 							appendOutput(buffer);
-							sprintf(buffer, "  src1 = %s;\n", ci(op4).c_str());
-							appendOutput(buffer);
-
-							sprintf(buffer, "  %s = src0 %% src1;\n", writeTarget(op2));
+						}
+						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
+						{
+							sprintf(buffer, "  %s = %s;\n", writeTarget(op1), divOut);
 							appendOutput(buffer);
 						}
 						removeBoolean(op1);
