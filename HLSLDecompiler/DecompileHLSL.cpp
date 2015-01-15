@@ -3898,11 +3898,6 @@ public:
 						// This fix follows the form of the _Gather opcode above, but should maybe use the
 						// instr-> parameters after they are fixed.
 						// Fixed both _LD and LD_MS
-					
-						// No longer adds op3 swizzle, as that generated errors for Texture2D<float>. Looks like the
-						// texture swizzle is not required, because texture dimension is known.
-						// Left LD_MS with the swizzle, as that will generate an error if it is wrong.  Changing it 
-						// without knowing could generate bad code.
 					case OPCODE_LD:
 					{
 						remapTarget(op1);
@@ -3912,12 +3907,12 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s);\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 						else {
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
-							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d));\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
-								offsetU, offsetV, offsetW);
+							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
+								offsetU, offsetV, offsetW, strrchr(op3, '.'));
 						}
 						appendOutput(buffer);
 						removeBoolean(op1);
