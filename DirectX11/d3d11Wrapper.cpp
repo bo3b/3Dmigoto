@@ -222,6 +222,7 @@ struct Globals
 	// Statistics
 	std::map<void *, UINT64> mRenderTargets;
 	std::map<UINT64, struct ResourceInfo> mRenderTargetInfo;
+	std::map<UINT64, struct ResourceInfo> mDepthTargetInfo;
 	std::set<void *> mVisitedRenderTargets;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
@@ -1366,6 +1367,14 @@ static void DumpUsage()
 			StrRenderTarget(buf, 256, j->second);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			const char *FOOTER = "></RenderTarget>\n";
+			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
+		}
+		for (j = G->mDepthTargetInfo.begin(); j != G->mDepthTargetInfo.end(); j++) {
+			_snprintf_s(buf, 256, 256, "<DepthTarget hash=%016llx ", j->first);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			StrRenderTarget(buf, 256, j->second);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			const char *FOOTER = "></DepthTarget>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
