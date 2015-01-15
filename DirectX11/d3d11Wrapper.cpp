@@ -1237,6 +1237,43 @@ static void EnableStereo()
 	}
 }
 
+static int StrRenderTarget2D(char *buf, size_t size, D3D11Base::D3D11_TEXTURE2D_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Texture2D Width=%u Height=%u MipLevels=%u "
+			"ArraySize=%u RawFormat=%u Format=\"%s\" SampleDesc.Count=%u "
+			"SampleDesc.Quality=%u Usage=%u BindFlags=%u "
+			"CPUAccessFlags=%u MiscFlags=%u",
+			desc->Width, desc->Height, desc->MipLevels,
+			desc->ArraySize, desc->Format,
+			TexFormatStr(desc->Format), desc->SampleDesc.Count,
+			desc->SampleDesc.Quality, desc->Usage, desc->BindFlags,
+			desc->CPUAccessFlags, desc->MiscFlags);
+}
+
+static int StrRenderTarget3D(char *buf, size_t size, D3D11Base::D3D11_TEXTURE3D_DESC *desc)
+{
+
+	return _snprintf_s(buf, size, size, "type=Texture3D Width=%u Height=%u Depth=%u "
+			"MipLevels=%u RawFormat=%u Format=\"%s\" Usage=%u BindFlags=%u "
+			"CPUAccessFlags=%u MiscFlags=%u",
+			desc->Width, desc->Height, desc->Depth,
+			desc->MipLevels, desc->Format,
+			TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
+			desc->CPUAccessFlags, desc->MiscFlags);
+}
+
+static int StrRenderTarget(char *buf, size_t size, struct ResourceInfo &info)
+{
+	switch(info.type) {
+		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			return StrRenderTarget2D(buf, size, &info.tex2d_desc);
+		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			return StrRenderTarget3D(buf, size, &info.tex3d_desc);
+		default:
+			return _snprintf_s(buf, size, size, "type=%i\n", info.type);
+	}
+}
+
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
 //  will lose data, so rather than do anything heroic here, I'm just doing type casts on the strlen function.
@@ -1320,6 +1357,15 @@ static void DumpUsage()
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
 			const char *FOOTER = "</PixelShader>\n";
+			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
+		}
+		std::map<UINT64, struct ResourceInfo>::iterator j;
+		for (j = G->mRenderTargetInfo.begin(); j != G->mRenderTargetInfo.end(); j++) {
+			_snprintf_s(buf, 256, 256, "<RenderTarget hash=%016llx ", j->first);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			StrRenderTarget(buf, 256, j->second);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			const char *FOOTER = "></RenderTarget>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -2216,51 +2262,20 @@ static void PrevRenderTarget(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void LogRenderTarget2D(D3D11Base::D3D11_TEXTURE2D_DESC *desc)
-{
-	LogInfo("type=Texture2D, Width=%u, Height=%u, MipLevels=%u, "
-			"ArraySize=%u, Format=%u \"%s\", SampleDesc.Count=%u, "
-			"SampleDesc.Quality=%u, Usage=%u, BindFlags=%u, "
-			"CPUAccessFlags=%u, MiscFlags=%u\n",
-			desc->Width, desc->Height, desc->MipLevels,
-			desc->ArraySize, desc->Format,
-			TexFormatStr(desc->Format), desc->SampleDesc.Count,
-			desc->SampleDesc.Quality, desc->Usage, desc->BindFlags,
-			desc->CPUAccessFlags, desc->MiscFlags);
-}
-
-static void LogRenderTarget3D(D3D11Base::D3D11_TEXTURE3D_DESC *desc)
-{
-
-	LogInfo("type=Texture3D, Width=%u, Height=%u, Depth=%u, "
-			"MipLevels=%u, Format=%u \"%s\", Usage=%u, BindFlags=%u, "
-			"CPUAccessFlags=%u, MiscFlags=%u\n",
-			desc->Width, desc->Height, desc->Depth,
-			desc->MipLevels, desc->Format,
-			TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
-			desc->CPUAccessFlags, desc->MiscFlags);
-}
-
 static void LogRenderTarget(void *target, char *log_prefix)
 {
+	char buf[256];
+
 	if (!target || target == (void *)1) {
 		LogInfo("No render target selected for marking\n");
 		return;
 	}
 
 	UINT64 hash = G->mRenderTargets[target];
-
-	LogInfo("%srender target handle = %p, hash = %.16llx, ", log_prefix, target, hash);
-
 	struct ResourceInfo &info = G->mRenderTargetInfo[hash];
-	switch(info.type) {
-		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			return LogRenderTarget2D(&info.tex2d_desc);
-		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			return LogRenderTarget3D(&info.tex3d_desc);
-		default:
-			LogInfo("type=%i\n", info.type);
-	}
+	StrRenderTarget(buf, 256, info);
+	LogInfo("%srender target handle = %p, hash = %.16llx, %s\n",
+			log_prefix, target, hash, buf);
 }
 
 static void MarkRenderTarget(void *_device, void *private_data)
