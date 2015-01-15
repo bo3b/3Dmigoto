@@ -1620,30 +1620,16 @@ public:
 		{
 			// Normal variant like r1.xyxx
 			int pos = 5;
-			if (!strncmp(textype, "Texture2DArray", 14)) pos = 4;
-			else if (!strncmp(textype, "Texture2D", 9)) pos = 3;
+			if (!strncmp(textype, "Texture1D", 9)) pos = 2;				// float
+			else if (!strncmp(textype, "Texture2D", 9)) pos = 3;		// float2
+			else if (!strncmp(textype, "Texture1DArray", 14)) pos = 3;
+			else if (!strncmp(textype, "Texture2DArray", 14)) pos = 4;	// float3
 			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
 			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
+			// float4 TextureCubeArray pos = 5
 			cpos = strrchr(op, '.');
 			cpos[pos] = 0;
 		}
-	}
-
-	// TODO: why are there two of these routines?
-
-	// This routine was expecting only r0.xyz type input parameters, but we can also get float4(0,0,0,0) type
-	// inputs as constants to things like .Load().  If it's a constant of any form, leave it unchanged.
-	void truncateTextureLoadPos(char *op, const char *textype)
-	{
-		if (!strncmp(op, "float", 5)) 
-			return;
-
-		int pos = 5;
-		if (!strncmp(textype, "Texture2D", 9)) pos = 4;
-		else if (!strncmp(textype, "Texture3D", 9)) pos = 5;
-		else if (!strncmp(textype, "TextureCube", 11)) pos = 5;
-		char *cpos = strrchr(op, '.');
-		cpos[pos] = 0;
 	}
 
 	void remapTarget(char *target)
@@ -2647,12 +2633,13 @@ public:
 						logDecompileError("Error parsing texture register index: " + string(op2));
 						return;
 					}
-					// Create if not existing.
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "Texture2D<float4>";
 						sprintf(buffer, "Texture2D<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
@@ -2669,12 +2656,13 @@ public:
 						logDecompileError("Error parsing texture2darray register index: " + string(op2));
 						return;
 					}
-					// Create if not existing.
+					// Create if not existing.   e.g. if no ResourceBinding section in ASM.
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "Texture2DArray<float4>";
 						sprintf(buffer, "Texture2DArray<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
@@ -2697,12 +2685,13 @@ public:
 						logDecompileError("Error parsing dcl_resource_texture2dms array dimension: " + string(statement));
 						return;
 					}
-					// Create if not existing.
+					// Create if not existing.   e.g. if no ResourceBinding section in ASM.  Might need <f,x> variant for texturetype.
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "Texture2DMS<float4>";
 						if (dim == 0)
 							sprintf(buffer, "Texture2DMS<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
 						else
@@ -3921,7 +3910,7 @@ public:
 						applySwizzle(op1, op3);
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
-						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Load(%s);\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str());
 						else {
@@ -3942,7 +3931,7 @@ public:
 						applySwizzle(".x", fixImm(op4, instr->asOperands[3]), true);
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
-						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
 						else{
