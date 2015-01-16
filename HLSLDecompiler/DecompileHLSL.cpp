@@ -1620,16 +1620,43 @@ public:
 		{
 			// Normal variant like r1.xyxx
 			int pos = 5;
-			if (!strncmp(textype, "Texture1D", 9)) pos = 2;				// float
-			else if (!strncmp(textype, "Texture2D", 9)) pos = 3;		// float2
-			else if (!strncmp(textype, "Texture1DArray", 14)) pos = 3;
-			else if (!strncmp(textype, "Texture2DArray", 14)) pos = 4;	// float3
-			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
-			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
-			// float4 TextureCubeArray pos = 5
+			if (!strncmp(textype, "Texture1D<", strlen("Texture1D<"))) pos = 2;						// float .x
+			else if (!strncmp(textype, "Texture2DMS<", strlen("Texture2DMS<"))) pos = 3;			// float2 .xy
+			else if (!strncmp(textype, "Texture1DArray<", strlen("Texture1DArray<"))) pos = 3;
+			else if (!strncmp(textype, "Texture2D<", strlen("Texture2D<"))) pos = 3;
+			else if (!strncmp(textype, "Texture2DMSArray<", strlen("Texture2DMSArray<"))) pos = 3;
+			else if (!strncmp(textype, "Texture2DArray<", strlen("Texture2DArray<"))) pos = 4;		// float3 .xyz
+			else if (!strncmp(textype, "Texture3D<", strlen("Texture3D<"))) pos = 4;
+			else if (!strncmp(textype, "TextureCube<", strlen("TextureCube<"))) pos = 4;
+			else if (!strncmp(textype, "TextureCubeArray<", strlen("TextureCubeArray<"))) pos = 5;	// float4 .xyzw
+			else logDecompileError("  unknown texture type for truncation: " + string(textype));
 			cpos = strrchr(op, '.');
 			cpos[pos] = 0;
 		}
+	}
+
+
+	// This routine was expecting only r0.xyz type input parameters, but we can also get float4(0,0,0,0) type
+	// inputs as constants to things like .Load().  If it's a constant of any form, leave it unchanged.
+	// The reason there is a second version of this .xyzw truncator, is because this version is for the _LD
+	// operands, and for that version it's one parameter larger.  Texture2D is 3 components, not 2 for this one.
+	// The extra bracket for comparison is to avoid early mismatch like Texture1D instead of Texture1DArray.
+	void truncateTextureLoadPos(char *op, const char *textype)
+	{
+		if (!strncmp(op, "float", 5))
+			return;
+
+		int pos = 5;																		// Might need 'Buffer' for int
+		if (!strncmp(textype, "Texture1D<", strlen("Texture1D<"))) pos = 3;					// int2 .xy
+		else if (!strncmp(textype, "Texture2DMS<", strlen("Texture2DMS<"))) pos = 3;
+		else if (!strncmp(textype, "Texture1DArray<", strlen("Texture1DArray<"))) pos = 4;	// int3 .xyz
+		else if (!strncmp(textype, "Texture2D<", strlen("Texture2D<"))) pos = 4;
+		else if (!strncmp(textype, "Texture2DMSArray<", strlen("Texture2DMSArray<"))) pos = 4;
+		else if (!strncmp(textype, "Texture2DArray<", strlen("Texture2DArray<"))) pos = 5;	// int4 .xyzw
+		else if (!strncmp(textype, "Texture3D<", strlen("Texture3D<"))) pos = 5;
+		else logDecompileError("  unknown texture type for truncation: " + string(textype));
+		char *cpos = strrchr(op, '.');
+		cpos[pos] = 0;
 	}
 
 	void remapTarget(char *target)
@@ -3905,7 +3932,7 @@ public:
 						applySwizzle(op1, op3);
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
-						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 						else {
@@ -3926,9 +3953,9 @@ public:
 						applySwizzle(".x", fixImm(op4, instr->asOperands[3]), true);
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
-						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
+							sprintf(buffer, "  %s = %s.Load(%s, %s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
 						else{
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
