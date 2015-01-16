@@ -367,7 +367,10 @@ static void RecordRenderTargetInfo(D3D11Base::ID3D11RenderTargetView *target, UI
 static void RecordDepthStencil(D3D11Base::ID3D11DepthStencilView *target)
 {
 	D3D11Base::D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+	D3D11Base::D3D11_TEXTURE2D_DESC tex_desc;
 	D3D11Base::ID3D11Resource *resource = NULL;
+	D3D11Base::ID3D11Texture2D *texture;
+	struct ResourceInfo resource_info;
 	UINT64 hash = 0;
 
 	if (!target)
@@ -386,7 +389,10 @@ static void RecordDepthStencil(D3D11Base::ID3D11DepthStencilView *target)
 		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
 		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2DMS:
 		case D3D11Base::D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
-			hash = GetTexture2DHash((D3D11Base::ID3D11Texture2D *)resource, false, NULL);
+			texture = (D3D11Base::ID3D11Texture2D *)resource;
+			hash = GetTexture2DHash(texture, false, NULL);
+			texture->GetDesc(&tex_desc);
+			resource_info = tex_desc;
 			break;
 	}
 
@@ -395,6 +401,7 @@ static void RecordDepthStencil(D3D11Base::ID3D11DepthStencilView *target)
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	G->mRenderTargets[resource] = hash;
 	G->mCurrentDepthTarget = resource;
+	G->mDepthTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -1197,6 +1204,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mCurrentRenderTargets.clear();
+		G->mCurrentDepthTarget = NULL;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		for (UINT i = 0; i < NumViews; ++i)
