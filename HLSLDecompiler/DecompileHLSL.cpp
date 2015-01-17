@@ -1073,7 +1073,7 @@ public:
 
 	void applySwizzle(const char *left, char *right, bool useInt = false)
 	{
-		char right2[128];
+		char right2[opcodeSize];
 		if (right[strlen(right) - 1] == ',') right[strlen(right) - 1] = 0;
 
 		// Strip sign and absolute, so they can be re-added at the end.
@@ -1177,7 +1177,7 @@ public:
 			{
 				int bufIndex = 0;
 				int bufOffset;
-				char regAndSwiz[10];
+				char regAndSwiz[opcodeSize];
 				
 				// By scanning these in this order, we are sure to cover every variant, without mismatches.
 				// We use the unusual format of [^+] for the string lookup because ReadStatement has already 
@@ -1304,7 +1304,7 @@ public:
 						}
 					}
 				}
-				char right3[128]; right3[0] = 0;
+				char right3[opcodeSize]; right3[0] = 0;
 				strcat(right3, i->second.Name.c_str());
 				strPos = strchr(strPos, ']');
 				if (!strPos)
@@ -1321,14 +1321,14 @@ public:
 					StringStringMap::iterator isCorrected = mCorrectedIndexRegisters.find(indexRegisterName);
 					if (isCorrected != mCorrectedIndexRegisters.end())
 					{
-						char newOperand[32]; strcpy(newOperand, isCorrected->second.c_str());
+						char newOperand[opcodeSize]; strcpy(newOperand, isCorrected->second.c_str());
 						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 					}
 					else if (mLastStatement && mLastStatement->eOpcode == OPCODE_IMUL &&
 						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
 					{
-						char newOperand[32]; strcpy(newOperand, mMulOperand.c_str());
+						char newOperand[opcodeSize]; strcpy(newOperand, mMulOperand.c_str());
 						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 						mCorrectedIndexRegisters[indexRegisterName] = mMulOperand;
@@ -1620,28 +1620,41 @@ public:
 		{
 			// Normal variant like r1.xyxx
 			int pos = 5;
-			if (!strncmp(textype, "Texture2DArray", 14)) pos = 4;
-			else if (!strncmp(textype, "Texture2D", 9)) pos = 3;
-			else if (!strncmp(textype, "Texture3D", 9)) pos = 4;
-			else if (!strncmp(textype, "TextureCube", 11)) pos = 4;
+			if (!strncmp(textype, "Texture1D<", strlen("Texture1D<"))) pos = 2;						// float .x
+			else if (!strncmp(textype, "Texture2DMS<", strlen("Texture2DMS<"))) pos = 3;			// float2 .xy
+			else if (!strncmp(textype, "Texture1DArray<", strlen("Texture1DArray<"))) pos = 3;
+			else if (!strncmp(textype, "Texture2D<", strlen("Texture2D<"))) pos = 3;
+			else if (!strncmp(textype, "Texture2DMSArray<", strlen("Texture2DMSArray<"))) pos = 3;
+			else if (!strncmp(textype, "Texture2DArray<", strlen("Texture2DArray<"))) pos = 4;		// float3 .xyz
+			else if (!strncmp(textype, "Texture3D<", strlen("Texture3D<"))) pos = 4;
+			else if (!strncmp(textype, "TextureCube<", strlen("TextureCube<"))) pos = 4;
+			else if (!strncmp(textype, "TextureCubeArray<", strlen("TextureCubeArray<"))) pos = 5;	// float4 .xyzw
+			else logDecompileError("  unknown texture type for truncation: " + string(textype));
 			cpos = strrchr(op, '.');
 			cpos[pos] = 0;
 		}
 	}
 
-	// TODO: why are there two of these routines?
 
 	// This routine was expecting only r0.xyz type input parameters, but we can also get float4(0,0,0,0) type
 	// inputs as constants to things like .Load().  If it's a constant of any form, leave it unchanged.
+	// The reason there is a second version of this .xyzw truncator, is because this version is for the _LD
+	// operands, and for that version it's one parameter larger.  Texture2D is 3 components, not 2 for this one.
+	// The extra bracket for comparison is to avoid early mismatch like Texture1D instead of Texture1DArray.
 	void truncateTextureLoadPos(char *op, const char *textype)
 	{
-		if (!strncmp(op, "float", 5)) 
+		if (!strncmp(op, "float", 5))
 			return;
 
-		int pos = 5;
-		if (!strncmp(textype, "Texture2D", 9)) pos = 4;
-		else if (!strncmp(textype, "Texture3D", 9)) pos = 5;
-		else if (!strncmp(textype, "TextureCube", 11)) pos = 5;
+		int pos = 5;																		// Might need 'Buffer' for int
+		if (!strncmp(textype, "Texture1D<", strlen("Texture1D<"))) pos = 3;					// int2 .xy
+		else if (!strncmp(textype, "Texture2DMS<", strlen("Texture2DMS<"))) pos = 3;
+		else if (!strncmp(textype, "Texture1DArray<", strlen("Texture1DArray<"))) pos = 4;	// int3 .xyz
+		else if (!strncmp(textype, "Texture2D<", strlen("Texture2D<"))) pos = 4;
+		else if (!strncmp(textype, "Texture2DMSArray<", strlen("Texture2DMSArray<"))) pos = 4;
+		else if (!strncmp(textype, "Texture2DArray<", strlen("Texture2DArray<"))) pos = 5;	// int4 .xyzw
+		else if (!strncmp(textype, "Texture3D<", strlen("Texture3D<"))) pos = 5;
+		else logDecompileError("  unknown texture type for truncation: " + string(textype));
 		char *cpos = strrchr(op, '.');
 		cpos[pos] = 0;
 	}
@@ -2647,12 +2660,13 @@ public:
 						logDecompileError("Error parsing texture register index: " + string(op2));
 						return;
 					}
-					// Create if not existing.
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "Texture2D<float4>";
 						sprintf(buffer, "Texture2D<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
@@ -2669,12 +2683,13 @@ public:
 						logDecompileError("Error parsing texture2darray register index: " + string(op2));
 						return;
 					}
-					// Create if not existing.
+					// Create if not existing.   e.g. if no ResourceBinding section in ASM.
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "Texture2DArray<float4>";
 						sprintf(buffer, "Texture2DArray<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
@@ -2697,12 +2712,13 @@ public:
 						logDecompileError("Error parsing dcl_resource_texture2dms array dimension: " + string(statement));
 						return;
 					}
-					// Create if not existing.
+					// Create if not existing.   e.g. if no ResourceBinding section in ASM.  Might need <f,x> variant for texturetype.
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "Texture2DMS<float4>";
 						if (dim == 0)
 							sprintf(buffer, "Texture2DMS<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
 						else
@@ -2761,7 +2777,7 @@ public:
 				mOutput.pop_back();
 				mOutput.push_back(';');
 				mOutput.push_back('\n');
-				const char *helperDecl = "  uint4 bitmask, src0, src1, uiDest;\n  float4 fDest;\n\n";
+				const char *helperDecl = "  uint4 bitmask, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
 			else if (!strncmp(statement, "dcl_", 4))
@@ -2881,41 +2897,53 @@ public:
 
 						// UDIV instruction also could damage the original register before finishing, giving wrong results. 
 						// e.g. udiv r0.x, r1.x, r0.x, r0.y
-						// e.g. udiv null, r1.xy, r3.zwzz, r2.zwzz
+						// variant: udiv null, r1.xy, r3.zwzz, r2.zwzz
 						// To fix this, we are using the temp variables declared at the top. 
+						// expected output:
+						//   uiDest.x = (uint)r0.x / (uint)r0.y;
+						//   r1.x = (uint)r0.x % (uint)r0.y;
+						//   r0.x = uiDest.x;
+						//
 						// This will swizzle based on either op1 or op2, as long as it's not null.  It's not clear whether
 						// the swizzle is allowed to vary for each half of the instruction, like xy for /, zw for %.  
 						// To allow for that, we'll set the temp registers with full swizzle, then only use the specific
 						// parts required for each half, as the safest approach.  Might not generate udiv though.
 						// Also removed saturate code, because udiv does not specify that.
+						// Creates operand copies to applySwizzle to unchanged operands, as constant l values are otherwise damaged.
 					case OPCODE_UDIV:
 					{
 						remapTarget(op1);
 						remapTarget(op2);
+						char divOut[opcodeSize] = "uiDest.xyzw";
 						char *divSwiz = op1;
 						char *remSwiz = op2;
-						applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]), true);
-						applySwizzle(".xyzw", fixImm(op4, instr->asOperands[3]), true);
-
-						sprintf(buffer, "  src0 = %s;\n", ci(op3).c_str());
-						appendOutput(buffer);
-						sprintf(buffer, "  src1 = %s;\n", ci(op4).c_str());
-						appendOutput(buffer);
+						strcpy_s(op13, opcodeSize, op3);
+						strcpy_s(op14, opcodeSize, op4);
 
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
-							applySwizzle(divSwiz, fixImm(op3, instr->asOperands[2]), true);
-							applySwizzle(divSwiz, fixImm(op4, instr->asOperands[3]), true);
+							applySwizzle(divSwiz, divOut, true);
+							applySwizzle(divSwiz, fixImm(op13, instr->asOperands[2]), true);
+							applySwizzle(divSwiz, fixImm(op14, instr->asOperands[3]), true);
+							convertToUInt(op13);
+							convertToUInt(op14);
 
-							sprintf(buffer, "  %s = src0%s / src1%s;\n", writeTarget(op1), strrchr(op3, '.'), strrchr(op4, '.'));
+							sprintf(buffer, "  %s = %s / %s;\n", divOut, ci(op13).c_str(), ci(op14).c_str());
 							appendOutput(buffer);
 						}
 						if (instr->asOperands[1].eType != OPERAND_TYPE_NULL)
 						{
 							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), true);
 							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), true);
+							convertToUInt(op3);
+							convertToUInt(op4);
 
-							sprintf(buffer, "  %s = src0%s %% src1%s;\n", writeTarget(op2), strrchr(op3, '.'), strrchr(op4, '.'));
+							sprintf(buffer, "  %s = %s %% %s;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+							appendOutput(buffer);
+						}
+						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
+						{
+							sprintf(buffer, "  %s = %s;\n", writeTarget(op1), divOut);
 							appendOutput(buffer);
 						}
 						removeBoolean(op1);
@@ -3897,11 +3925,6 @@ public:
 						// This fix follows the form of the _Gather opcode above, but should maybe use the
 						// instr-> parameters after they are fixed.
 						// Fixed both _LD and LD_MS
-					
-						// No longer adds op3 swizzle, as that generated errors for Texture2D<float>. Looks like the
-						// texture swizzle is not required, because texture dimension is known.
-						// Left LD_MS with the swizzle, as that will generate an error if it is wrong.  Changing it 
-						// without knowing could generate bad code.
 					case OPCODE_LD:
 					{
 						remapTarget(op1);
@@ -3911,12 +3934,12 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s);\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 						else {
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
-							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d));\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
-								offsetU, offsetV, offsetW);
+							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
+								offsetU, offsetV, offsetW, strrchr(op3, '.'));
 						}
 						appendOutput(buffer);
 						removeBoolean(op1);
@@ -3932,7 +3955,7 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s,%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
+							sprintf(buffer, "  %s = %s.Load(%s, %s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
 						else{
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
