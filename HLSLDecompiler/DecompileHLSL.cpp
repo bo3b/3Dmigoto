@@ -2624,29 +2624,46 @@ public:
 					}
 				}
 			}
+			// Create new map entries if there aren't any for dcl_sampler.  This can happen if
+			// there is no Resource Binding section in the shader.  TODO: probably needs to handle arrays too.
 			else if (!strcmp(statement, "dcl_sampler"))
 			{
 				if (op1[0] == 's')
 				{
 					int bufIndex = 0;
-					if (sscanf_s(op1 + 1, "%d", &bufIndex) != 1)
+					if (sscanf_s(op1, "s%d", &bufIndex) != 1)
 					{
 						logDecompileError("Error parsing sampler register index: " + string(op1));
 						return;
 					}
-					// Create if not existing.
-					map<int, string>::iterator i = mSamplerNames.find(bufIndex);
-					if (i == mSamplerNames.end())
+					if (!strcmp(op2, "mode_default"))
 					{
-						i = mSamplerComparisonNames.find(bufIndex);
-						if (i == mSamplerComparisonNames.end())
+						map<int, string>::iterator i = mSamplerNames.find(bufIndex);
+						if (i == mSamplerNames.end())
 						{
-							sprintf(buffer, "s%d", bufIndex);
+							sprintf(buffer, "s%d_s", bufIndex);
 							mSamplerNames[bufIndex] = buffer;
-							sprintf(buffer, "SamplerState s%d : register(s%d);\n\n", bufIndex, bufIndex);
+							sprintf(buffer, "SamplerState %s : register(s%d);\n\n", mSamplerNames[bufIndex], bufIndex);
 							mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 							mCodeStartPos += strlen(buffer);
 						}
+					}
+					else if (!strcmp(op2, "mode_comparison"))
+					{
+						map<int, string>::iterator i = mSamplerComparisonNames.find(bufIndex);
+						if (i == mSamplerComparisonNames.end())
+						{
+							sprintf(buffer, "s%d_s", bufIndex);
+							mSamplerComparisonNames[bufIndex] = buffer;
+							sprintf(buffer, "SamplerComparisonState %s : register(s%d);\n\n", mSamplerComparisonNames[bufIndex], bufIndex);
+							mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+							mCodeStartPos += strlen(buffer);
+						}
+					}
+					else
+					{
+						logDecompileError("Error parsing dcl_sampler type: " + string(op2));
+						return;
 					}
 				}
 			}
@@ -3764,6 +3781,7 @@ public:
 						removeBoolean(op1);
 						break;
 					}
+					//   sample_c_lz_indexable(texture2d)(float,float,float,float) r1.y, r3.zwzz, t0.xxxx, s1, r1.z
 					case OPCODE_SAMPLE_C_LZ:
 					{
 						remapTarget(op1);
