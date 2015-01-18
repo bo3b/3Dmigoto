@@ -121,7 +121,7 @@ o0.xyw = r21.xyw;
   r0.xyzw = _DepthTextureScaleOffset.xyzw * r1.xyww;
   o1.z = r1.w;
   o1.xy = r0.xy + r0.zw;
-  o2.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  o2 = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
   return;
 }
 
