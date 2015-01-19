@@ -1,7 +1,7 @@
 #include "Main.h"
 #include <Shlobj.h>
 #include <Winuser.h>
-#include "../DirectInput.h"
+#include "DirectInput.h"
 #include <map>
 #include <vector>
 #include <set>

@@ -2,9 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="d3d11Wrapper.cpp" />
-    <ClCompile Include="..\DirectInput.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="MainHook.cpp" />
+    <ClCompile Include="DirectInput.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -12,13 +12,13 @@
   <ItemGroup>
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Main.h" />
-    <ClInclude Include="..\DirectInput.h" />
     <ClInclude Include="Direct3D11Device.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="DirectDXGIDevice.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\IDirect3DUnknown.h" />
+    <ClInclude Include="DirectInput.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

@@ -107,7 +107,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\DirectInput.cpp" />
+    <ClCompile Include="DirectInput.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="d3d11Wrapper.cpp" />
     <ClCompile Include="MainHook.cpp" />
@@ -116,7 +116,7 @@
     <None Include="d3d11Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\DirectInput.h" />
+    <ClInclude Include="DirectInput.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="d3d11Wrapper.h" />
