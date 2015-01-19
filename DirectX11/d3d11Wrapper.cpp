@@ -1,7 +1,8 @@
 #include "Main.h"
 #include <Shlobj.h>
 #include <Winuser.h>
-#include "DirectInput.h"
+#include "input.h"
+#include <ctime>
 #include <map>
 #include <vector>
 #include <set>
@@ -602,12 +603,6 @@ void InitializeDLL()
 		if (G->hunting)
 			LogInfo("  hunting=1\n");
 
-		// DirectInput
-		InputDevice[0] = 0;
-		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, iniFile);
-		RightStripW(InputDevice);
-		LogInfoW(L"  Input=%s\n", InputDevice);
-
 		if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
 			if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
 			if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
@@ -616,14 +611,9 @@ void InitializeDLL()
 			LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
 		}
 
-		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, iniFile);
-		// Todo: This deviceNr is in wrong section- actually found in NVapi dll
-
 		if (G->hunting)
 			RegisterHuntingKeyBindings(iniFile);
 
-		// XInput
-		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, iniFile);
 
 		// Todo: Not sure this is best spot.
 		G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
@@ -737,9 +727,6 @@ void InitializeDLL()
 			LogInfo("  w=%f\n", G->iniParams.w);
 		}
 
-		// Fire up the keyboards and controllers
-		InitDirectInput();
-
 		// NVAPI
 		D3D11Base::NvAPI_Initialize();
 
@@ -764,7 +751,6 @@ void InitializeDLL()
 		//}
 
 		LogInfo("D3D11 DLL initialized.\n");
-		LogDebug("[Rendering] XInputDevice = %d\n", XInputDeviceId);
 	}
 }
 
@@ -1910,10 +1896,8 @@ void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
 
 
 // Key binding callbacks
-static void TakeScreenShot(void *_device, void *private_data)
+static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	LogInfo("> capturing screenshot\n");
 
 	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
@@ -1929,10 +1913,8 @@ static void TakeScreenShot(void *_device, void *private_data)
 	}
 }
 
-static void ReloadFixes(void *_device, void *private_data)
+static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (SHADER_PATH[0])
@@ -1967,10 +1949,8 @@ static void ReloadFixes(void *_device, void *private_data)
 	}
 }
 
-static void NextIndexBuffer(void *_device, void *private_data)
+static void NextIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
 	if (i != G->mVisitedIndexBuffers.end() && ++i != G->mVisitedIndexBuffers.end())
@@ -1996,10 +1976,8 @@ static void NextIndexBuffer(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevIndexBuffer(void *_device, void *private_data)
+static void PrevIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
 	if (i != G->mVisitedIndexBuffers.end() && i != G->mVisitedIndexBuffers.begin())
@@ -2026,9 +2004,8 @@ static void PrevIndexBuffer(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void MarkIndexBuffer(void *_device, void *private_data)
+static void MarkIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	if (LogFile)
 	{
 		LogInfo(">>>> Index buffer marked: index buffer hash = %08lx%08lx\n", (UINT32)(G->mSelectedIndexBuffer >> 32), (UINT32)G->mSelectedIndexBuffer);
@@ -2040,10 +2017,8 @@ static void MarkIndexBuffer(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextPixelShader(void *_device, void *private_data)
+static void NextPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::const_iterator i = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
 	if (i != G->mVisitedPixelShaders.end() && ++i != G->mVisitedPixelShaders.end())
@@ -2069,10 +2044,8 @@ static void NextPixelShader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevPixelShader(void *_device, void *private_data)
+static void PrevPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
 	if (i != G->mVisitedPixelShaders.end() && i != G->mVisitedPixelShaders.begin())
@@ -2099,10 +2072,8 @@ static void PrevPixelShader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void MarkPixelShader(void *_device, void *private_data)
+static void MarkPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -2128,10 +2099,8 @@ static void MarkPixelShader(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextVertexShader(void *_device, void *private_data)
+static void NextVertexShader(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
 	if (i != G->mVisitedVertexShaders.end() && ++i != G->mVisitedVertexShaders.end())
@@ -2157,10 +2126,8 @@ static void NextVertexShader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevVertexShader(void *_device, void *private_data)
+static void PrevVertexShader(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
 	if (i != G->mVisitedVertexShaders.end() && i != G->mVisitedVertexShaders.begin())
@@ -2187,10 +2154,8 @@ static void PrevVertexShader(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void MarkVertexShader(void *_device, void *private_data)
+static void MarkVertexShader(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -2212,10 +2177,8 @@ static void MarkVertexShader(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextRenderTarget(void *_device, void *private_data)
+static void NextRenderTarget(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
 	if (i != G->mVisitedRenderTargets.end() && ++i != G->mVisitedRenderTargets.end())
@@ -2241,10 +2204,8 @@ static void NextRenderTarget(void *_device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevRenderTarget(void *_device, void *private_data)
+static void PrevRenderTarget(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
 	if (i != G->mVisitedRenderTargets.end() && i != G->mVisitedRenderTargets.begin())
@@ -2287,10 +2248,8 @@ static void LogRenderTarget(void *target, char *log_prefix)
 			log_prefix, target, hash, buf);
 }
 
-static void MarkRenderTarget(void *_device, void *private_data)
+static void MarkRenderTarget(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -2305,18 +2264,16 @@ static void MarkRenderTarget(void *_device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void TuneUp(void *_device, void *private_data)
+static void TuneUp(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	int index = (int)private_data;
 
 	G->gTuneValue[index] += G->gTuneStep;
 	LogInfo("> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
 }
 
-static void TuneDown(void *_device, void *private_data)
+static void TuneDown(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	D3D11Base::ID3D11Device *device = (D3D11Base::ID3D11Device *)_device;
 	int index = (int)private_data;
 
 	G->gTuneValue[index] -= G->gTuneStep;
@@ -2340,10 +2297,8 @@ static void TimeoutHuntingBuffers()
 }
 
 // User has requested all shaders be re-enabled
-static void DoneHunting(void *_device, void *private_data)
+static void DoneHunting(D3D11Base::ID3D11Device *device, void *private_data)
 {
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-
 	TimeoutHuntingBuffers();
 
 	G->mSelectedRenderTargetPos = 0;
@@ -2480,9 +2435,7 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// Give time to our keyboard handling for hot keys that can change iniParams.
 	CheckForKeys(device);
 
-	// TODO: Replace DirectInput processing with GetAsyncKeyState:
-	bool newEvent = UpdateInputState();
-	DispatchInputEvents(device);
+	bool newEvent = DispatchInputEvents(device);
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.
