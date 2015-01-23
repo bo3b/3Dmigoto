@@ -363,7 +363,7 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 				down_cb = &preset->ToggleCallBack;
 				LogInfo("  type=toggle\n");
 			} else {
-				LogInfo("  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
+				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
 			}
 		}
 
