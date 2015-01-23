@@ -2934,7 +2934,7 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
 	return hval;
 }
 
-static void NvAPIOverride()
+void D3D11Wrapper::NvAPIOverride()
 {
 	// Override custom settings.
 	const D3D11Base::StereoHandle id1 = (D3D11Base::StereoHandle)0x77aa8ebc;

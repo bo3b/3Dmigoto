@@ -111,6 +111,7 @@
     <ClCompile Include="d3d11Wrapper.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="MainHook.cpp" />
+    <ClCompile Include="Override.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -124,6 +125,7 @@
     <ClInclude Include="DirectDXGIDevice.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="Main.h" />
+    <ClInclude Include="Override.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="vkeys.h" />
   </ItemGroup>

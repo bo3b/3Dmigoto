@@ -5,6 +5,7 @@
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="MainHook.cpp" />
     <ClCompile Include="input.cpp" />
+    <ClCompile Include="Override.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -20,6 +21,7 @@
     <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="vkeys.h" />
+    <ClInclude Include="Override.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

@@ -730,7 +730,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 			{
 				LogDebug("    Stereo_GetSeparation failed.\n");
 			}
-			NvAPIOverride();
+			D3D11Wrapper::NvAPIOverride();
 			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
 			{
 				LogDebug("    Stereo_SetSeparation failed.\n");
@@ -751,7 +751,7 @@ static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *cont
 		context->GetDevice(&device);
 		if (device->mStereoHandle)
 		{
-			NvAPIOverride();
+			D3D11Wrapper::NvAPIOverride();
 			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, data.oldSeparation))
 			{
 				LogDebug("    Stereo_SetSeparation failed.\n");
