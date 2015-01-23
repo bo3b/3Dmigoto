@@ -77,27 +77,34 @@ public:
 
 static std::vector<class InputAction *> actions;
 
-void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
-		InputCallback down_cb, InputCallback up_cb,
-		void *private_data, FILE *log_file)
+void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName, InputCallback
+		down_cb, InputCallback up_cb, void *private_data)
 {
 	class InputAction *action;
-	wchar_t buf[MAX_PATH];
 	int vkey;
 
-	if (!GetPrivateProfileString(app, key, 0, buf, MAX_PATH, ini))
-		return;
-
-	RightStripW(buf);
-	vkey = ParseVKey(buf);
+	RightStripW(keyName);
+	vkey = ParseVKey(keyName);
 	if (vkey < 0) {
-		LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", key, buf);
+		LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", iniKey, keyName);
 		return;
 	}
 	action = new VKInputAction(vkey, down_cb, up_cb, private_data);
 	actions.push_back(action);
 
-	LogInfoW(L"  %s=%s\n", key, buf);
+	LogInfoW(L"  %s=%s\n", iniKey, keyName);
+}
+
+void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
+		InputCallback down_cb, InputCallback up_cb,
+		void *private_data)
+{
+	wchar_t buf[MAX_PATH];
+
+	if (!GetPrivateProfileString(app, key, 0, buf, MAX_PATH, ini))
+		return;
+
+	return RegisterKeyBinding(key, buf, down_cb, up_cb, private_data);
 }
 
 bool DispatchInputEvents(D3D11Base::ID3D11Device *device)

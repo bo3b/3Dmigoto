@@ -12,6 +12,7 @@
 #include "../HLSLDecompiler/DecompileHLSL.h"
 #include "../util.h"
 #include "../log.h"
+#include "Override.h"
 
 FILE *LogFile = 0;		// off by default.
 bool LogInput = false, LogDebug = false;
@@ -319,6 +320,65 @@ static char *readStringParameter(wchar_t *val)
 	return start;
 }
 
+void RegisterPresetKeyBindings(LPCWSTR iniFile)
+{
+	InputCallback down_cb = NULL, up_cb = NULL;
+	wchar_t key[MAX_PATH];
+	wchar_t buf[MAX_PATH];
+	Override *preset;
+	int i;
+
+	// TODO: Use GetPrivateProfileSectionNames() to enumerate all [Key*]
+	// sections, rather than requiring them to start at 1 and increment
+	// consecutively. Same thing also applies to [ShaderOverride*] and
+	// [TextureOverride*] sections. Also, I'm considering dropping the
+	// requirement for these to end in a number - after all, these are not
+	// referenced by anything and the only real reason there is a number
+	// here at all is to work around the limitation that they must be
+	// unique names since we are using a .ini file to store configuration.
+
+	for (i = 1;; i++) {
+		LogDebug("Find [Key] i=%i\n", i);
+		wchar_t id[] = L"Keyxxx";
+		_itow_s(i, id + 3, 3, 10);
+		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
+			break;
+
+		LogInfoW(L"[%s]\n", id);
+
+		// FIXME: We never free this (not a huge deal for now)
+		preset = new Override();
+
+		down_cb = preset->ActivateCallBack;
+		up_cb = NULL;
+
+		if (GetPrivateProfileString(id, L"type", 0, buf, MAX_PATH, iniFile)) {
+			// XXX: hold & toggle types will restore the previous
+			// settings on release - there's possibly also another
+			// use case for setting a specific profile instead.
+			if (!wcscmp(buf, L"hold")) {
+				up_cb = &preset->DeactivateCallBack;
+				LogInfo("  type=hold\n");
+			} else if (!wcscmp(buf, L"toggle")) {
+				down_cb = &preset->ToggleCallBack;
+				LogInfo("  type=toggle\n");
+			} else {
+				LogInfo("  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
+			}
+		}
+
+		// TODO: Alternatively allow the [Key] section to contain a
+		// reference to other preset sections, to allow a single key to
+		// be used to cycle between several presets. In this case we
+		// would use that list of presets rather than the settings
+		// directly in the Key section.
+
+		preset->ParseIniSection(id, iniFile);
+
+		RegisterKeyBinding(L"Key", key, down_cb, up_cb, preset);
+	}
+}
+
 // TODO: Reorder functions in this file to remove the need for this prototype:
 void RegisterHuntingKeyBindings(wchar_t *iniFile);
 
@@ -613,6 +673,8 @@ void InitializeDLL()
 
 		if (G->hunting)
 			RegisterHuntingKeyBindings(iniFile);
+
+		RegisterPresetKeyBindings(iniFile);
 
 
 		// Todo: Not sure this is best spot.
@@ -2318,34 +2380,34 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	int i;
 	wchar_t buf[16];
 
-	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", iniFile, PrevPixelShader, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", iniFile, MarkPixelShader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", iniFile, PrevPixelShader, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", iniFile, MarkPixelShader, NULL, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", iniFile, TakeScreenShot, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", iniFile, TakeScreenShot, NULL, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", iniFile, NextIndexBuffer, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", iniFile, PrevIndexBuffer, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", iniFile, MarkIndexBuffer, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", iniFile, NextIndexBuffer, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", iniFile, PrevIndexBuffer, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", iniFile, MarkIndexBuffer, NULL, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", iniFile, NextVertexShader, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", iniFile, PrevVertexShader, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", iniFile, MarkVertexShader, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", iniFile, NextVertexShader, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", iniFile, PrevVertexShader, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", iniFile, MarkVertexShader, NULL, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, NULL, LogFile);
-	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"done_hunting", iniFile, DoneHunting, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"done_hunting", iniFile, DoneHunting, NULL, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, NULL, LogFile);
+	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, NULL);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);
-		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, (void*)i, LogFile);
+		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, (void*)i);
 
 		_snwprintf(buf, 16, L"tune%i_down", i + 1);
-		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, (void*)i, LogFile);
+		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, (void*)i);
 	}
 }
 

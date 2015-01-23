@@ -395,6 +395,13 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 		LogInfo("%s - Request SetConvergence to %e, hex=%x\n", LogTime(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
 	}
 
+	if (gDirectXOverride)
+	{
+		if (CallsLogging()) LogDebug("%s - Stereo_SetConvergence called from DirectX wrapper: ignoring user overrides.\n", LogTime());
+		gDirectXOverride = false;
+		return (*_NvAPI_Stereo_SetConvergence)(stereoHandle, newConvergence);
+	}
+
 	// Save current user convergence value.
 	float currentConvergence;
 	_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)(*nvapi_QueryInterfacePtr)(0x4ab00934);
