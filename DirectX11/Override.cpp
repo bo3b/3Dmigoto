@@ -7,19 +7,19 @@ Override::Override()
 {
 	// It's important for us to know if any are actively in use or not, so setting them
 	// to infinity by default allows us to know when they are valid.
-	mOverrideParams.x = INFINITY;
-	mOverrideParams.y = INFINITY;
-	mOverrideParams.z = INFINITY;
-	mOverrideParams.w = INFINITY;
-	mOverrideSeparation = INFINITY;
-	mOverrideConvergence = INFINITY;
+	mOverrideParams.x = FLT_MAX;
+	mOverrideParams.y = FLT_MAX;
+	mOverrideParams.z = FLT_MAX;
+	mOverrideParams.w = FLT_MAX;
+	mOverrideSeparation = FLT_MAX;
+	mOverrideConvergence = FLT_MAX;
 
-	mSavedParams.x = INFINITY;
-	mSavedParams.y = INFINITY;
-	mSavedParams.z = INFINITY;
-	mSavedParams.w = INFINITY;
-	mUserSeparation = INFINITY;
-	mUserConvergence = INFINITY;
+	mSavedParams.x = FLT_MAX;
+	mSavedParams.y = FLT_MAX;
+	mSavedParams.z = FLT_MAX;
+	mSavedParams.w = FLT_MAX;
+	mUserSeparation = FLT_MAX;
+	mUserConvergence = FLT_MAX;
 
 	active = false;
 }
@@ -66,21 +66,21 @@ static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
 	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
 
-	if (params->x == INFINITY && params->y == INFINITY &&
-	    params->z == INFINITY && params->w == INFINITY) {
+	if (params->x == FLT_MAX && params->y == FLT_MAX &&
+	    params->z == FLT_MAX && params->w == FLT_MAX) {
 		return;
 	}
 
 	if (save)
 		memcpy(save, &G->iniParams, sizeof(G->iniParams));
 
-	if (params->x != INFINITY)
+	if (params->x != FLT_MAX)
 		G->iniParams.x = params->x;
-	if (params->y != INFINITY)
+	if (params->y != FLT_MAX)
 		G->iniParams.y = params->y;
-	if (params->z != INFINITY)
+	if (params->z != FLT_MAX)
 		G->iniParams.z = params->z;
-	if (params->w != INFINITY)
+	if (params->w != FLT_MAX)
 		G->iniParams.w = params->w;
 
 	realContext->Map(wrapper->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -100,7 +100,7 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 	if (!wrapper)
 		return;
 
-	if (mOverrideSeparation != INFINITY) {
+	if (mOverrideSeparation != FLT_MAX) {
 		err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &mUserSeparation);
 		if (err != NVAPI_OK) {
 			LogDebug("    Stereo_GetSeparation failed: %d\n", err);
@@ -114,7 +114,7 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 			LogDebug("    Stereo_SetSeparation failed: %d\n", err);
 		}
 	}
-	if (mOverrideConvergence != INFINITY) {
+	if (mOverrideConvergence != FLT_MAX) {
 		err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &mUserConvergence);
 		if (err != NVAPI_OK) {
 			LogDebug("    Stereo_GetConvergence failed: %d\n", err);
@@ -145,21 +145,21 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 	if (!wrapper)
 		return;
 
-	if (mUserSeparation != INFINITY) {
+	if (mUserSeparation != FLT_MAX) {
 		D3D11Wrapper::NvAPIOverride();
 		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, mUserSeparation);
 		if (err != NVAPI_OK) {
 			LogDebug("    Stereo_SetSeparation failed: %d\n", err);
 		}
-		mUserSeparation = INFINITY;
+		mUserSeparation = FLT_MAX;
 	}
-	if (mUserConvergence != INFINITY) {
+	if (mUserConvergence != FLT_MAX) {
 		D3D11Wrapper::NvAPIOverride();
 		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, mUserConvergence);
 		if (err != NVAPI_OK) {
 			LogDebug("    Stereo_SetConvergence failed: %d\n", err);
 		}
-		mUserConvergence = INFINITY;
+		mUserConvergence = FLT_MAX;
 	}
 
 	UpdateIniParams(device, wrapper, &mSavedParams, NULL);
