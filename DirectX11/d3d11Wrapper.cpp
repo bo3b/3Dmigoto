@@ -2160,38 +2160,6 @@ enum TState
 };
 TState toggleState = offUp;
 
-void CheckForKeys(D3D11Base::ID3D11Device *device)
-{
-	bool escKey = (GetAsyncKeyState(VK_F2) < 0);
-	TState lastState = toggleState;
-
-	// Must cycle through different states based solely on user input.
-	switch (toggleState)
-	{
-		case offUp:		if (escKey) toggleState = onDown;
-			break;
-		case onDown:	if (!escKey) toggleState = onUp;
-			break;
-		case onUp:		if (escKey) toggleState = offDown;
-			break;
-		case offDown:	if (!escKey) toggleState = offUp;
-			break;
-	}
-
-	// Only operate on state changes, since this gets called multiple times per frame.
-	if ((toggleState != lastState) && (toggleState == onUp))
-	{
-		LogInfo("ESC key activated.\n");
-		SetIniParams(device, true);
-	}
-	if ((toggleState != lastState) && (toggleState == offUp))
-	{
-		LogInfo("ESC key deactivated.\n");
-		SetIniParams(device, false);
-	}
-}
-
-
 extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
 // Called indirectly through the QueryInterface for every vertical blanking, based on calls to
@@ -2230,9 +2198,6 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// late from the init standpoint, which fixes DirectInput failures.  And avoids
 	// crashes when we use a secondary thread to give time to aiming override.
 	//nvapi_QueryInterface(0xb03bb03b);
-
-	// Give time to our keyboard handling for hot keys that can change iniParams.
-	CheckForKeys(device);
 
 	bool newEvent = DispatchInputEvents(device);
 
