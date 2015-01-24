@@ -22,6 +22,7 @@
     <ClInclude Include="input.h" />
     <ClInclude Include="vkeys.h" />
     <ClInclude Include="Override.h" />
+    <ClInclude Include="globals.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
