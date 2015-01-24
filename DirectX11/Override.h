@@ -11,6 +11,7 @@ private:
 	float mOverrideSeparation;
 	float mOverrideConvergence;
 
+	DirectX::XMFLOAT4 mSavedParams;
 	float mUserSeparation;
 	float mUserConvergence;
 

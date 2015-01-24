@@ -1,6 +1,7 @@
 #include "Override.h"
 
 #include "Main.h"
+#include "globals.h"
 
 Override::Override()
 {
@@ -13,6 +14,10 @@ Override::Override()
 	mOverrideSeparation = INFINITY;
 	mOverrideConvergence = INFINITY;
 
+	mSavedParams.x = INFINITY;
+	mSavedParams.y = INFINITY;
+	mSavedParams.z = INFINITY;
+	mSavedParams.w = INFINITY;
 	mUserSeparation = INFINITY;
 	mUserConvergence = INFINITY;
 
@@ -52,6 +57,35 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		swscanf_s(buf, L"%f", &mOverrideParams.w);
 		LogInfo("  w=%f\n", mOverrideParams.w);
 	}
+}
+
+static void UpdateIniParams(D3D11Base::ID3D11Device *device,
+		D3D11Wrapper::ID3D11Device* wrapper,
+		DirectX::XMFLOAT4 *params, DirectX::XMFLOAT4 *save)
+{
+	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
+
+	if (params->x == INFINITY && params->y == INFINITY &&
+	    params->z == INFINITY && params->w == INFINITY) {
+		return;
+	}
+
+	if (save)
+		memcpy(save, &G->iniParams, sizeof(G->iniParams));
+
+	if (params->x != INFINITY)
+		G->iniParams.x = params->x;
+	if (params->y != INFINITY)
+		G->iniParams.y = params->y;
+	if (params->z != INFINITY)
+		G->iniParams.z = params->z;
+	if (params->w != INFINITY)
+		G->iniParams.w = params->w;
+
+	realContext->Map(wrapper->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+	realContext->Unmap(wrapper->mIniTexture, 0);
 }
 
 void Override::Activate(D3D11Base::ID3D11Device *device)
@@ -95,6 +129,8 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 		}
 	}
 
+	UpdateIniParams(device, wrapper, &mOverrideParams, &mSavedParams);
+
 	active = true;
 }
 
@@ -125,6 +161,8 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 		}
 		mUserConvergence = INFINITY;
 	}
+
+	UpdateIniParams(device, wrapper, &mSavedParams, NULL);
 
 	active = false;
 }
