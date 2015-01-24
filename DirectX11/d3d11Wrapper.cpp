@@ -322,10 +322,10 @@ static char *readStringParameter(wchar_t *val)
 
 void RegisterPresetKeyBindings(LPCWSTR iniFile)
 {
-	InputCallback down_cb = NULL, up_cb = NULL;
+	enum KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
-	Override *preset;
+	KeyOverride *preset;
 	int i;
 
 	// TODO: Use GetPrivateProfileSectionNames() to enumerate all [Key*]
@@ -346,21 +346,17 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 
 		LogInfoW(L"[%s]\n", id);
 
-		// FIXME: We never free this (not a huge deal for now)
-		preset = new Override();
-
-		down_cb = preset->ActivateCallBack;
-		up_cb = NULL;
+		type = KeyOverrideType::ACTIVATE;
 
 		if (GetPrivateProfileString(id, L"type", 0, buf, MAX_PATH, iniFile)) {
 			// XXX: hold & toggle types will restore the previous
 			// settings on release - there's possibly also another
 			// use case for setting a specific profile instead.
 			if (!wcscmp(buf, L"hold")) {
-				up_cb = &preset->DeactivateCallBack;
+				type = KeyOverrideType::HOLD;
 				LogInfo("  type=hold\n");
 			} else if (!wcscmp(buf, L"toggle")) {
-				down_cb = &preset->ToggleCallBack;
+				type = KeyOverrideType::TOGGLE;
 				LogInfo("  type=toggle\n");
 			} else {
 				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
@@ -373,9 +369,10 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 		// would use that list of presets rather than the settings
 		// directly in the Key section.
 
+		preset = new KeyOverride(type);
 		preset->ParseIniSection(id, iniFile);
 
-		RegisterKeyBinding(L"Key", key, down_cb, up_cb, preset);
+		RegisterKeyBinding(L"Key", key, (InputListener*)preset);
 	}
 }
 

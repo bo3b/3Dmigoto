@@ -6,6 +6,33 @@
 #include <vector>
 #include "vkeys.h"
 
+class InputCallbacks : public InputListener {
+private:
+	InputCallback down_cb;
+	InputCallback up_cb;
+	void *private_data;
+
+public:
+	InputCallbacks(InputCallback down_cb, InputCallback up_cb,
+			void *private_data) :
+		down_cb(down_cb),
+		up_cb(up_cb),
+		private_data(private_data)
+	{}
+
+	void DownEvent(D3D11Base::ID3D11Device *device)
+	{
+		if (down_cb)
+			return down_cb(device, private_data);
+	}
+
+	void UpEvent(D3D11Base::ID3D11Device *device)
+	{
+		if (up_cb)
+			return up_cb(device, private_data);
+	}
+};
+
 // I'm using inheritance here because if we wanted to add another input backend
 // in the future this is where I see the logical split between common code and
 // input backend specific code (we would still need to add an abstraction of
@@ -18,18 +45,17 @@
 class InputAction {
 public:
 	bool last_state;
-	InputCallback down_cb;
-	InputCallback up_cb;
-	void *private_data;
+	InputListener *listener;
 
-	InputAction(InputCallback down_cb,
-			InputCallback up_cb,
-			void *private_data) :
+	InputAction(InputListener *listener) :
 		last_state(false),
-		down_cb(down_cb),
-		up_cb(up_cb),
-		private_data(private_data)
+		listener(listener)
 	{}
+
+	~InputAction()
+	{
+		delete listener;
+	}
 
 	virtual bool CheckState()
 	{
@@ -43,13 +69,10 @@ public:
 		if (state == last_state)
 			return false;
 
-		if (state) {
-			if (down_cb)
-				down_cb(device, private_data);
-		} else {
-			if (up_cb)
-				up_cb(device, private_data);
-		}
+		if (state)
+			listener->DownEvent(device);
+		else
+			listener->UpEvent(device);
 
 		last_state = state;
 
@@ -61,24 +84,21 @@ class VKInputAction : public InputAction {
 public:
 	int vkey;
 
-	VKInputAction(int vkey,
-			InputCallback down_cb,
-			InputCallback up_cb,
-			void *private_data) :
-		InputAction(down_cb, up_cb, private_data),
+	VKInputAction(int vkey, InputListener *listener) :
+		InputAction(listener),
 		vkey(vkey)
 	{}
 
 	bool CheckState()
 	{
-		return (!!GetAsyncKeyState(vkey));
+		return (GetAsyncKeyState(vkey) < 0);
 	}
 };
 
 static std::vector<class InputAction *> actions;
 
-void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName, InputCallback
-		down_cb, InputCallback up_cb, void *private_data)
+void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
+		InputListener *listener)
 {
 	class InputAction *action;
 	int vkey;
@@ -89,7 +109,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName, InputCallback
 		LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", iniKey, keyName);
 		return;
 	}
-	action = new VKInputAction(vkey, down_cb, up_cb, private_data);
+	action = new VKInputAction(vkey, listener);
 	actions.push_back(action);
 
 	LogInfoW(L"  %s=%s\n", iniKey, keyName);
@@ -99,12 +119,13 @@ void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 		InputCallback down_cb, InputCallback up_cb,
 		void *private_data)
 {
+	InputCallbacks *callbacks = new InputCallbacks(down_cb, up_cb, private_data);
 	wchar_t buf[MAX_PATH];
 
 	if (!GetPrivateProfileString(app, key, 0, buf, MAX_PATH, ini))
 		return;
 
-	return RegisterKeyBinding(key, buf, down_cb, up_cb, private_data);
+	return RegisterKeyBinding(key, buf, callbacks);
 }
 
 bool DispatchInputEvents(D3D11Base::ID3D11Device *device)

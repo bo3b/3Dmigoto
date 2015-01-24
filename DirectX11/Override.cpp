@@ -136,30 +136,15 @@ void Override::Toggle(D3D11Base::ID3D11Device *device)
 	return Activate(device);
 }
 
-// C++ is stuck somewhere between the simplicity of C and the power of Python,
-// yet managed to wind up with using a instance method as a callback being more
-// complicated than it is in either of those languages. I can't simply call the
-// above functions directly and just pass them their instance ("this" pointer)
-// directly like I would in C, nor does a bound instance method know which
-// instance it was bound to like Python. That said, there's probably a better
-// way to do this that would fit better in C++.  One such option would be to
-// turn all consumers of the input subsystem into objects implementing a well
-// defined interface for down and up events, doing away with these callbacks
-// altogether - I might play with that design after I get this working.
-void Override::ActivateCallBack(D3D11Base::ID3D11Device *device, void *private_data)
+void KeyOverride::DownEvent(D3D11Base::ID3D11Device *device)
 {
-	Override *instance = (Override *)private_data;
-	return instance->Activate(device);
+	if (type == KeyOverrideType::TOGGLE)
+		return Toggle(device);
+	return Activate(device);
 }
 
-void Override::DeactivateCallBack(D3D11Base::ID3D11Device *device, void *private_data)
+void KeyOverride::UpEvent(D3D11Base::ID3D11Device *device)
 {
-	Override *instance = (Override *)private_data;
-	return instance->Deactivate(device);
-}
-
-void Override::ToggleCallBack(D3D11Base::ID3D11Device *device, void *private_data)
-{
-	Override *instance = (Override *)private_data;
-	return instance->Toggle(device);
+	if (type == KeyOverrideType::HOLD)
+		return Deactivate(device);
 }
