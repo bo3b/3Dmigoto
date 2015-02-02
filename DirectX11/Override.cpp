@@ -6,7 +6,8 @@
 Override::Override()
 {
 	// It's important for us to know if any are actively in use or not, so setting them
-	// to infinity by default allows us to know when they are valid.
+	// to FloatMax by default allows us to know when they are unused or invalid.
+	// We are using FloatMax now instead of infinity, to avoid compiler warnings.
 	mOverrideParams.x = FLT_MAX;
 	mOverrideParams.y = FLT_MAX;
 	mOverrideParams.z = FLT_MAX;
@@ -59,6 +60,11 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	}
 }
 
+// In order to change the iniParams, we need to map them back to system memory so that the CPU
+// can change the values, then remap them back to the GPU where they can be accessed by shader code.
+// This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.
+// This map operation can also cause the GPU to stall, so this should be done as rarely as possible.
+
 static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 		D3D11Wrapper::ID3D11Device* wrapper,
 		DirectX::XMFLOAT4 *params, DirectX::XMFLOAT4 *save)
@@ -86,6 +92,8 @@ static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 	realContext->Map(wrapper->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(wrapper->mIniTexture, 0);
+
+	LogInfo("    IniParams remapped to %.2f, %.2f, %.2f, %.2f", params->x, params->y, params->z, params->w);
 }
 
 void Override::Activate(D3D11Base::ID3D11Device *device)
