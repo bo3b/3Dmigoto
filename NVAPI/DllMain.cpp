@@ -225,21 +225,23 @@ static char *LogTime()
 }
 #pragma warning( default : 4996 )
 
+#if _WIN64
+#if HOOK_SYSTEM32
+#define REAL_NVAPI_DLL L"\\original_nvapi64.dll"
+#else /* HOOK_SYSTEM32 */
+#define REAL_NVAPI_DLL L"\\nvapi64.dll"
+#endif /* HOOK_SYSTEM32 */
+#else /* _WIN64 */
+#define REAL_NVAPI_DLL L"\\nvapi.dll"
+#endif /* _WIN64 */
+
 static void loadDll()
 {
 	if (!nvDLL)
 	{
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
-#if _WIN64
-		//	#if (_WIN64 && HOOK_SYSTEM32)
-		//			wcscat(sysDir, L"\\original_nvapi64.dll");
-		//	#else
-		wcscat(sysDir, L"\\nvapi64.dll");
-		//	#endif
-#else
-		wcscat(sysDir, L"\\nvapi.dll");
-#endif
+		wcscat(sysDir, REAL_NVAPI_DLL);
 		nvDLL = LoadLibrary(sysDir);
 
 		DllCanUnloadNowPtr = (DllCanUnloadNowType)GetProcAddress(nvDLL, "DllCanUnloadNow");
