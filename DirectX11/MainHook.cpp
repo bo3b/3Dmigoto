@@ -34,31 +34,23 @@ static struct
 	lpfnIsDebuggerPresent fnIsDebuggerPresent;
 } sIsDebuggerPresent_Hook = { 0, NULL };
 
-
-// Function called for every LoadLibraryExW call once we have hooked it.  
-// We want to look for overrides to System32 that we can circumvent.  This only happens
-// in the current process, not system wide.
-//
-// Looking for: nvapi64.dll	LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
-//
-// Cleanly fetch system directory, as drive may not be C:, and it doesn't have to be 
-// "C:\Windows\system32", although that will be the path for both 32 bit and 64 bit OS.
-
-static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
+		DWORD dwFlags, LPCWSTR magic_name, LPCWSTR library)
 {
 	WCHAR systemPath[MAX_PATH];
 	GetSystemDirectoryW(systemPath, sizeof(systemPath));
-	wcscat_s(systemPath, MAX_PATH, L"\\d3d11.dll");
+	wcscat_s(systemPath, MAX_PATH, L"\\");
+	wcscat_s(systemPath, MAX_PATH, library);
 
 	// This is late enough that we can look for standard logging.
 	LogInfoW(L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
 
-	// Bypass the known expected call from our wrapped d3d11, where it needs to call to the system to get APIs.
-	// This is a bit of a hack, but if the string comes in as original_d3d11, that's from us, and needs to switch 
+	// Bypass the known expected call from our wrapped d3d11 & nvapi64, where it needs to call to the system to get APIs.
+	// This is a bit of a hack, but if the string comes in as original_d3d11/nvapi64, that's from us, and needs to switch
 	// to the real one. This doesn't need to be case insensitive, because we create the original string, all lower case.
-	if (wcsstr(lpLibFileName, L"original_d3d11.dll") != NULL)
+	if (wcsstr(lpLibFileName, magic_name) != NULL)
 	{
-		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n", 
+		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
 			lpLibFileName, systemPath);
 
 		return sLoadLibraryExW_Hook.fnLoadLibraryExW(systemPath, hFile, dwFlags);
@@ -68,10 +60,34 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 	// it with a driver upgrade.  Any direct access to system32\d3d11.dll needs to be reset to us.
 	if (_wcsicmp(lpLibFileName, systemPath) == 0)
 	{
-		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, L"d3d11.dll");
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(L"d3d11.dll", hFile, dwFlags);
+		return sLoadLibraryExW_Hook.fnLoadLibraryExW(library, hFile, dwFlags);
 	}
+
+	return NULL;
+}
+
+// Function called for every LoadLibraryExW call once we have hooked it.
+// We want to look for overrides to System32 that we can circumvent.  This only happens
+// in the current process, not system wide.
+//
+// Looking for: nvapi64.dll	LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//
+// Cleanly fetch system directory, as drive may not be C:, and it doesn't have to be
+// "C:\Windows\system32", although that will be the path for both 32 bit and 64 bit OS.
+
+static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+{
+	HMODULE module;
+
+	module = _Hooked_LoadLibraryExW(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+	if (module)
+		return module;
+
+	module = _Hooked_LoadLibraryExW(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+	if (module)
+		return module;
 
 	// Normal unchanged case.
 	return sLoadLibraryExW_Hook.fnLoadLibraryExW(lpLibFileName, hFile, dwFlags);
