@@ -92,10 +92,10 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 			// XXX: hold & toggle types will restore the previous
 			// settings on release - there's possibly also another
 			// use case for setting a specific profile instead.
-			if (!wcscmp(buf, L"hold")) {
+			if (!_wcsicmp(buf, L"hold")) {
 				type = KeyOverrideType::HOLD;
 				LogInfo("  type=hold\n");
-			} else if (!wcscmp(buf, L"toggle")) {
+			} else if (!_wcsicmp(buf, L"toggle")) {
 				type = KeyOverrideType::TOGGLE;
 				LogInfo("  type=toggle\n");
 			} else {
