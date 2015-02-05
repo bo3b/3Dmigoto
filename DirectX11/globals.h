@@ -245,7 +245,7 @@ struct Globals
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
 
-		iniParams{ -1.0f, -1.0f, -1.0f, -1.0f },
+		iniParams{ FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX },
 
 		ENABLE_CRITICAL_SECTION(false),
 		SCREEN_WIDTH(-1),

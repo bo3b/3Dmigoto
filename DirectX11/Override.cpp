@@ -31,32 +31,32 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 
 	if (GetPrivateProfileString(section, L"separation", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideSeparation);
-		LogInfo("  separation=%f\n", mOverrideSeparation);
+		LogInfo("  separation=%#.2f\n", mOverrideSeparation);
 	}
 
 	if (GetPrivateProfileString(section, L"convergence", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideConvergence);
-		LogInfo("  convergence=%f\n", mOverrideConvergence);
+		LogInfo("  convergence=%#.2f\n", mOverrideConvergence);
 	}
 
 	if (GetPrivateProfileString(section, L"x", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideParams.x);
-		LogInfo("  x=%f\n", mOverrideParams.x);
+		LogInfo("  x=%#.2g\n", mOverrideParams.x);
 	}
 
 	if (GetPrivateProfileString(section, L"y", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideParams.y);
-		LogInfo("  y=%f\n", mOverrideParams.y);
+		LogInfo("  y=%#.2g\n", mOverrideParams.y);
 	}
 
 	if (GetPrivateProfileString(section, L"z", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideParams.z);
-		LogInfo("  z=%f\n", mOverrideParams.z);
+		LogInfo("  z=%#.2g\n", mOverrideParams.z);
 	}
 
 	if (GetPrivateProfileString(section, L"w", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideParams.w);
-		LogInfo("  w=%f\n", mOverrideParams.w);
+		LogInfo("  w=%#.2g\n", mOverrideParams.w);
 	}
 }
 
@@ -93,7 +93,7 @@ static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(wrapper->mIniTexture, 0);
 
-	LogInfo("    IniParams remapped to %.2f, %.2f, %.2f, %.2f", params->x, params->y, params->z, params->w);
+	LogInfo(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
 }
 
 void Override::Activate(D3D11Base::ID3D11Device *device)
@@ -103,6 +103,8 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 
 	NvAPI_Status err;
 
+	LogInfo("User key activation -->\n");
+
 	D3D11Wrapper::ID3D11Device* wrapper =
 		(D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
 	if (!wrapper)
@@ -111,29 +113,29 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 	if (mOverrideSeparation != FLT_MAX) {
 		err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &mUserSeparation);
 		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_GetSeparation failed: %d\n", err);
+			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
 		}
 
-		LogInfo("Changing separation from %f to %f\n", mUserSeparation, mOverrideSeparation);
+		LogInfo(" Changing separation from %#.2f to %#.2f\n", mUserSeparation, mOverrideSeparation);
 
 		D3D11Wrapper::NvAPIOverride();
 		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, mOverrideSeparation);
 		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_SetSeparation failed: %d\n", err);
+			LogDebug("    Stereo_SetSeparation failed: %#.2f\n", err);
 		}
 	}
 	if (mOverrideConvergence != FLT_MAX) {
 		err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &mUserConvergence);
 		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_GetConvergence failed: %d\n", err);
+			LogDebug("    Stereo_GetConvergence failed: %#.2f\n", err);
 		}
 
-		LogInfo("Changing convergence from %f to %f\n", mUserConvergence, mOverrideConvergence);
+		LogInfo(" Changing convergence from %#.2f to %#.2f\n", mUserConvergence, mOverrideConvergence);
 
 		D3D11Wrapper::NvAPIOverride();
 		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, mOverrideConvergence);
 		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_SetConvergence failed: %d\n", err);
+			LogDebug("    Stereo_SetConvergence failed: %#.2f\n", err);
 		}
 	}
 
@@ -148,12 +150,16 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 
 	NvAPI_Status err;
 
+	LogInfo("User key deactivation <--\n");
+
 	D3D11Wrapper::ID3D11Device* wrapper =
 		(D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
 	if (!wrapper)
 		return;
 
 	if (mUserSeparation != FLT_MAX) {
+		LogInfo(" Changing separation from %#.2f to %#.2f\n", mOverrideSeparation, mUserSeparation);
+
 		D3D11Wrapper::NvAPIOverride();
 		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, mUserSeparation);
 		if (err != NVAPI_OK) {
@@ -162,6 +168,8 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 		mUserSeparation = FLT_MAX;
 	}
 	if (mUserConvergence != FLT_MAX) {
+		LogInfo(" Changing convergence from %#.2f to %#.2f\n", mOverrideConvergence, mUserConvergence);
+
 		D3D11Wrapper::NvAPIOverride();
 		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, mUserConvergence);
 		if (err != NVAPI_OK) {

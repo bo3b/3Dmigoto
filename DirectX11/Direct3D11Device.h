@@ -67,7 +67,7 @@ D3D11Wrapper::ID3D11Device::ID3D11Device(D3D11Base::ID3D11Device *pDevice)
 	// If constants are specified in the .ini file that need to be sent to shaders, we need to create
 	// the resource view in order to deliver them via SetShaderResources.
 	// Check for depth buffer view.
-	if (G->iniParams.x != -1.0f)
+	if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
 	{
 		D3D11Base::D3D11_TEXTURE1D_DESC desc;
 		memset(&desc, 0, sizeof(D3D11Base::D3D11_TEXTURE1D_DESC));

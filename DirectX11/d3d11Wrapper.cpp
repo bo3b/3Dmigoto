@@ -508,22 +508,39 @@ void InitializeDLL()
 		LogInfo("-----------------------------------------\n");
 
 		// Read in any constants defined in the ini, for use as shader parameters
-		if (GetPrivateProfileString(L"Constants", L"x", 0, setting, MAX_PATH, iniFile))
-			G->iniParams.x = stof(setting);
-		if (GetPrivateProfileString(L"Constants", L"y", 0, setting, MAX_PATH, iniFile))
-			G->iniParams.y = stof(setting);
-		if (GetPrivateProfileString(L"Constants", L"z", 0, setting, MAX_PATH, iniFile))
-			G->iniParams.z = stof(setting);
-		if (GetPrivateProfileString(L"Constants", L"w", 0, setting, MAX_PATH, iniFile))
-			G->iniParams.w = stof(setting);
+		// Any result of the default FLT_MAX means the parameter is not in use.
+		// stof will crash if passed FLT_MAX, hence the extra check.
+		// We use FLT_MAX instead of the more logical INFINITY, because Microsoft *always* generates 
+		// warnings, even for simple comparisons. And NaN comparisons are similarly broken.
+		if (GetPrivateProfileString(L"Constants", L"x", L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0)
+				G->iniParams.x = stof(setting);
+		}
+		if (GetPrivateProfileString(L"Constants", L"y", L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0)
+				G->iniParams.y = stof(setting);
+		}
+		if (GetPrivateProfileString(L"Constants", L"z", L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0)
+				G->iniParams.z = stof(setting);
+		}
+		if (GetPrivateProfileString(L"Constants", L"w", L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0)
+				G->iniParams.w = stof(setting);
+		}
 
-		if (LogFile && G->iniParams.x != -1.0f)
+		if (LogFile && 
+			(G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
 		{
 			LogInfo("[Constants]\n");
-			LogInfo("  x=%f\n", G->iniParams.x);
-			LogInfo("  y=%f\n", G->iniParams.y);
-			LogInfo("  z=%f\n", G->iniParams.z);
-			LogInfo("  w=%f\n", G->iniParams.w);
+			LogInfo("  x=%#.2g\n", G->iniParams.x);
+			LogInfo("  y=%#.2g\n", G->iniParams.y);
+			LogInfo("  z=%#.2g\n", G->iniParams.z);
+			LogInfo("  w=%#.2g\n", G->iniParams.w);
 		}
 
 		// NVAPI
