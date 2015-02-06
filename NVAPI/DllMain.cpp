@@ -128,6 +128,7 @@ static bool ForceAutomaticStereo = 0;
 static map<float, float> GameConvergenceMap, GameConvergenceMapInv;
 static bool gDirectXOverride = false;
 static int gSurfaceCreateMode = -1;
+static bool UnlockSeparation = false;
 
 // Used for aiming override, as last seen handle for SetConvergence.
 // This may not be the one created by the wrapper, but it doesn't seem
@@ -308,6 +309,7 @@ static void loadDll()
 		if (CallsLogging()) LogInfo("[Stereo]\n");
 		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir) == 1;
 		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, sysDir);
+		UnlockSeparation = GetPrivateProfileInt(L"Stereo", L"unlock_separation", 0, sysDir) == 1;
 
 		// DirectInput
 		InputDevice[0] = 0;
@@ -450,6 +452,9 @@ static int __cdecl NvAPI_Stereo_SetSeparation(D3D9Base::StereoHandle stereoHandl
 		gDirectXOverride = false;
 		return (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	}
+
+	if (UnlockSeparation)
+		return D3D9Base::NVAPI_OK;
 
 	int ret = (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	if (SeparationLogging() && SetSeparation != newSeparationPercentage)
