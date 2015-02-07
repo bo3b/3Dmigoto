@@ -148,21 +148,6 @@ static bool LogDebug = false;
 FILE *LogFile = 0;
 
 
-// ToDo: Probably remove all this thread code.
-//  When using this thread technique, it makes the code more sensible, but seems to crash randomly.
-//  Not sure why it would crash, but generally they were in nvapi, so it's possible that calling
-//  SetConvergence or SetSeparation at essentially random times is not OK.  
-//  When I pipe in cpu time from the Draw hook in d3d11, to call this same sequence, it works fine,
-//  with no crashes.  Suggesting that there is a problem with multi-threading in general somehow.
-//
-//  Given that case, it's not clear if this code belongs here.  If we are going to get CPU time from
-//  the Draw hook, then this aiming override might as well be in d3d11 as more direct, and remove
-//  the need to have nvapi as a proxy dll.
-//  We might keep this for the screen resolution forcing, and texture mode forcing, although I'm not
-//  sure either of those work.
-//  In any case, we should move out the DirectInput use here, and use the one in d3d11.
-
-
 static bool CallsLogging()
 {
 	if (!LogCalls) return false;
