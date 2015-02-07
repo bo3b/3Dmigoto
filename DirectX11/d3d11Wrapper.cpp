@@ -138,7 +138,8 @@ static void LoadConfigFile()
 	// [Logging]
 	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
 	{
-		LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
+		if (!LogFile)
+			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
 		LogInfo("\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
