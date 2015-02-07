@@ -7,8 +7,6 @@ namespace D3D9Base
 #include "../nvapi.h"
 }
 
-#include <XInput.h>
-#include "DirectInput.h"
 #include "../util.h"
 #include "../log.h"
 
@@ -128,15 +126,10 @@ static bool ForceAutomaticStereo = 0;
 static map<float, float> GameConvergenceMap, GameConvergenceMapInv;
 static bool gDirectXOverride = false;
 static int gSurfaceCreateMode = -1;
-
-// Used for aiming override, as last seen handle for SetConvergence.
-// This may not be the one created by the wrapper, but it doesn't seem
-// like that will really matter, as we want to change convergence regardless.
-static D3D9Base::StereoHandle lastStereoHandle = 0;
+static bool UnlockSeparation = false;
 
 static float UserConvergence = -1, SetConvergence = -1, GetConvergence = -1;
 static float UserSeparation = -1, SetSeparation = -1, GetSeparation = -1;
-static float ActionConvergence = -1, ActionSeparation = -1;
 
 static int SCREEN_WIDTH = -1;
 static int SCREEN_HEIGHT = -1;
@@ -147,50 +140,8 @@ static bool LogConvergence = false;
 static bool LogSeparation = false;
 static bool LogCalls = false;
 static bool LogDebug = false;
-bool LogInput = false;
 FILE *LogFile = 0;
 
-
-// ToDo: Probably remove all this thread code.
-//  When using this thread technique, it makes the code more sensible, but seems to crash randomly.
-//  Not sure why it would crash, but generally they were in nvapi, so it's possible that calling
-//  SetConvergence or SetSeparation at essentially random times is not OK.  
-//  When I pipe in cpu time from the Draw hook in d3d11, to call this same sequence, it works fine,
-//  with no crashes.  Suggesting that there is a problem with multi-threading in general somehow.
-//
-//  Given that case, it's not clear if this code belongs here.  If we are going to get CPU time from
-//  the Draw hook, then this aiming override might as well be in d3d11 as more direct, and remove
-//  the need to have nvapi as a proxy dll.
-//  We might keep this for the screen resolution forcing, and texture mode forcing, although I'm not
-//  sure either of those work.
-//  In any case, we should move out the DirectInput use here, and use the one in d3d11.
-
-
-// Thread to watch for aim mode changes.
-HANDLE AimingThread;
-
-// Prototype so we can make it a thread.
-DWORD WINAPI AimOverride(LPVOID empty);
-
-static void AimingThreadInit()
-{
-	// Everything set up, let's make another thread for watching the keyboard for shader hunting.
-	// It's all multi-threaded rendering now anyway, so it has to be ready for that.
-	AimingThread = CreateThread(
-		NULL,                   // default security attributes
-		0,                      // use default stack size  
-		AimOverride,			// thread function name
-		0,						// argument to thread function 
-		CREATE_SUSPENDED,		// Run late, to avoid window conflicts in DInput
-		NULL);					// returns the thread identifier 
-
-	// If we can't init, just log it, not a fatal error.
-	if (AimingThread == NULL)
-	{
-		DWORD dw = GetLastError();
-		if (LogCalls) LogInfo("Error while creating aiming thread: %x\n", dw);
-	}
-}
 
 static bool CallsLogging()
 {
@@ -268,7 +219,6 @@ static void loadDll()
 		}
 		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir) == 1;
 		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir) == 1;
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, sysDir) == 1;
 		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir) == 1;
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
 
@@ -308,23 +258,7 @@ static void loadDll()
 		if (CallsLogging()) LogInfo("[Stereo]\n");
 		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir) == 1;
 		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, sysDir);
-
-		// DirectInput
-		InputDevice[0] = 0;
-		GetPrivateProfileString(L"OverrideSettings", L"Input", 0, InputDevice, MAX_PATH, sysDir);
-		RightStripW(InputDevice);
-		GetPrivateProfileString(L"OverrideSettings", L"Action", 0, InputAction, MAX_PATH, sysDir);
-		RightStripW(InputAction);
-		GetPrivateProfileString(L"OverrideSettings", L"Toggle", 0, ToggleAction, MAX_PATH, sysDir);
-		RightStripW(ToggleAction);
-		InputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"DeviceNr", -1, sysDir);
-		if (GetPrivateProfileString(L"OverrideSettings", L"Convergence", 0, valueString, MAX_PATH, sysDir))
-			swscanf_s(valueString, L"%e", &ActionConvergence);
-		if (GetPrivateProfileString(L"OverrideSettings", L"Separation", 0, valueString, MAX_PATH, sysDir))
-			swscanf_s(valueString, L"%e", &ActionSeparation);
-
-		// XInput
-		XInputDeviceId = GetPrivateProfileInt(L"OverrideSettings", L"XInputDevice", -1, sysDir);
+		UnlockSeparation = GetPrivateProfileInt(L"Stereo", L"unlock_separation", 0, sysDir) == 1;
 	}
 }
 
@@ -370,8 +304,6 @@ STDAPI DllUnregisterServer(void)
 
 static int __cdecl NvAPI_Stereo_GetConvergence(D3D9Base::StereoHandle stereoHandle, float *pConvergence)
 {
-	lastStereoHandle = stereoHandle;
-
 	// Callback from DX wrapper?
 	if ((unsigned int)stereoHandle == 0x77aa8ebc && *pConvergence == 1.23f)
 	{
@@ -390,8 +322,6 @@ static int __cdecl NvAPI_Stereo_GetConvergence(D3D9Base::StereoHandle stereoHand
 
 static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHandle, float newConvergence)
 {
-	lastStereoHandle = stereoHandle;
-
 	if (ConvergenceLogging() && SetConvergence != newConvergence)
 	{
 		LogInfo("%s - Request SetConvergence to %e, hex=%x\n", LogTime(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
@@ -409,7 +339,7 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 	_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)(*nvapi_QueryInterfacePtr)(0x4ab00934);
 	(*_NvAPI_Stereo_GetConvergence)(stereoHandle, &currentConvergence);
 
-	if (GameConvergenceMapInv.find(currentConvergence) == GameConvergenceMapInv.end() && currentConvergence != ActionConvergence)
+	if (GameConvergenceMapInv.find(currentConvergence) == GameConvergenceMapInv.end())
 		UserConvergence = currentConvergence;
 	// Map special convergence value?
 	map<float, float>::iterator i = GameConvergenceMap.find(newConvergence);
@@ -431,8 +361,6 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 
 static int __cdecl NvAPI_Stereo_GetSeparation(D3D9Base::StereoHandle stereoHandle, float *pSeparationPercentage)
 {
-	lastStereoHandle = stereoHandle;
-
 	int ret = (*_NvAPI_Stereo_GetSeparation)(stereoHandle, pSeparationPercentage);
 	if (SeparationLogging() && GetSeparation != *pSeparationPercentage)
 	{
@@ -442,14 +370,15 @@ static int __cdecl NvAPI_Stereo_GetSeparation(D3D9Base::StereoHandle stereoHandl
 }
 static int __cdecl NvAPI_Stereo_SetSeparation(D3D9Base::StereoHandle stereoHandle, float newSeparationPercentage)
 {
-	lastStereoHandle = stereoHandle;
-
 	if (gDirectXOverride)
 	{
 		if (CallsLogging()) LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime());
 		gDirectXOverride = false;
 		return (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	}
+
+	if (UnlockSeparation)
+		return D3D9Base::NVAPI_OK;
 
 	int ret = (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	if (SeparationLogging() && SetSeparation != newSeparationPercentage)
@@ -866,91 +795,6 @@ static int __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice, __in D3D
 }
 
 
-// Thread for allowing aiming, getting time to check for key input that matches aiming.
-// Infinite loop.  It will be killed at exit, so this routine does not have return.
-
-DWORD WINAPI AimOverride(LPVOID empty)
-{
-	//while (true)
-	if (InputDevice[0])	// If not defined, no overrides.
-	{
-		// Idle time between user key presses. This is 3x 1/60 second.
-		//Sleep(50);
-
-		UpdateInputState();
-
-		// Toggle mode is on/off for each click, not click/release.
-		if (Toggle == offUp && (UserSeparation == -1))
-		{
-			_NvAPI_Stereo_GetSeparation = (tNvAPI_Stereo_GetSeparation)(*nvapi_QueryInterfacePtr)(0x451f2134);
-			(*_NvAPI_Stereo_GetSeparation)(lastStereoHandle, &UserSeparation);
-
-			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
-			(*_NvAPI_Stereo_SetSeparation)(lastStereoHandle, ActionSeparation);
-
-			if (LogInput) LogInfo("%s - User separation input: %#x  Set separation: %f from %f\n", LogTime(), ActionButton, ActionSeparation, UserSeparation);
-		}
-		if (Toggle == onUp && (UserSeparation != -1))
-		{
-			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
-			(*_NvAPI_Stereo_SetSeparation)(lastStereoHandle, UserSeparation);
-
-			if (LogInput) LogInfo("%s - User separation input: %#x  Set separation: %f \n", LogTime(), ActionButton, UserSeparation);
-
-			// Marks it as inactive, to avoid unneded calls to SetSeparation.
-			UserSeparation = -1;
-		}
-
-		/**
-		// ----Separation----
-		// Action key activated, not already active, and user specified override?
-		if (Action && (UserSeparation == -1) && (ActionSeparation != -1))
-		{
-			_NvAPI_Stereo_GetSeparation = (tNvAPI_Stereo_GetSeparation)(*nvapi_QueryInterfacePtr)(0x451f2134);
-			(*_NvAPI_Stereo_GetSeparation)(lastStereoHandle, &UserSeparation);
-
-			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
-			(*_NvAPI_Stereo_SetSeparation)(lastStereoHandle, ActionSeparation);
-
-			if (LogInput) LogInfo("%s - User separation input: %#x  Set separation: %f from %f\n", LogTime(), ActionButton, ActionSeparation, UserSeparation);
-		}
-		// Action key deactivated, but still actively displayed, toggle off.
-		else if (!Action && UserSeparation != -1)
-		{
-			_NvAPI_Stereo_SetSeparation = (tNvAPI_Stereo_SetSeparation)(*nvapi_QueryInterfacePtr)(0x5c069fa3);
-			(*_NvAPI_Stereo_SetSeparation)(lastStereoHandle, UserSeparation);
-
-			// Marks it as inactive, to avoid unneded calls to SetSeparation.
-			UserSeparation = -1;
-		}
-
-		// ----Convergence----
-		// Action key activated, not already active, and user specified override?
-		if (Action && (UserConvergence == -1) && (ActionConvergence != -1))
-		{
-			_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)(*nvapi_QueryInterfacePtr)(0x4ab00934);
-			(*_NvAPI_Stereo_GetConvergence)(lastStereoHandle, &UserConvergence);
-
-			_NvAPI_Stereo_SetConvergence = (tNvAPI_Stereo_SetConvergence)(*nvapi_QueryInterfacePtr)(0x3dd6b54b);
-			(*_NvAPI_Stereo_SetConvergence)(lastStereoHandle, ActionConvergence);
-
-			if (LogInput) LogInfo("%s - User convergence input: %#x  Set convergence: %f from %f\n", LogTime(), ActionButton, ActionConvergence, UserConvergence);
-		}
-		// Action key deactivated, but still actively displayed, toggle off.
-		else if (!Action && UserConvergence != -1)
-		{
-			_NvAPI_Stereo_SetConvergence = (tNvAPI_Stereo_SetConvergence)(*nvapi_QueryInterfacePtr)(0x3dd6b54b);
-			(*_NvAPI_Stereo_SetConvergence)(lastStereoHandle, UserConvergence);
-
-			// Marks it as inactive, to avoid unneded calls to Set or GetConvergence
-			UserConvergence = -1;
-		}
-		**/
-	}
-	return 0;
-}
-
-
 // __declspec(dllexport)
 // Removed this declare spec, because we are using the .def file for declarations.
 // This fixes a warning from x64 compiles.
@@ -961,14 +805,6 @@ extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset)
 	int *ptr = (*nvapi_QueryInterfacePtr)(offset);
 	switch (offset)
 	{
-		case 0xb03bb03b:
-			//if (CallsLogging) LogInfo("%s - Starting aiming thread.\n", LogTime());
-			//InitDirectInput();
-			//AimingThreadInit();
-			//ResumeThread(AimingThread);
-			AimOverride(NULL);
-			break;
-
 		case 0x4ab00934:
 			_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)ptr;
 			ptr = (int *)NvAPI_Stereo_GetConvergence;
