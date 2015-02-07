@@ -2210,12 +2210,6 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
 
-	// Send the secret callback to the nvapi.dll to give time to aiming override.
-	// This is done here because this will be called at first game Draw call, and thus very
-	// late from the init standpoint, which fixes DirectInput failures.  And avoids
-	// crashes when we use a secondary thread to give time to aiming override.
-	//nvapi_QueryInterface(0xb03bb03b);
-
 	bool newEvent = DispatchInputEvents(device);
 
 	// When not hunting most keybindings won't have been registered, but
