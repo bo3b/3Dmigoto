@@ -34,6 +34,8 @@ ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
 static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
 static wchar_t SHADER_CACHE_PATH[MAX_PATH] = { 0 };
 
+static bool ReloadConfigPending = false;
+
 Globals *G;
 
 
@@ -119,6 +121,473 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 // TODO: Reorder functions in this file to remove the need for this prototype:
 void RegisterHuntingKeyBindings(wchar_t *iniFile);
 
+static void LoadConfigFile()
+{
+	wchar_t iniFile[MAX_PATH];
+	wchar_t setting[MAX_PATH];
+
+	gInitialized = true;
+
+	GetModuleFileName(0, iniFile, MAX_PATH);
+	wcsrchr(iniFile, L'\\')[1] = 0;
+	wcscat(iniFile, L"d3dx.ini");
+
+	// Log all settings that are _enabled_, in order, 
+	// so that there is no question what settings we are using.
+
+	// [Logging]
+	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
+	{
+		if (!LogFile)
+			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
+		LogInfo("\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
+		LogInfo("----------- d3dx.ini settings -----------\n");
+	}
+
+	LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
+	LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
+
+	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+	// to open active files.
+	int unbuffered = -1;
+	if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
+	{
+		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+	}
+
+	// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
+	BOOL affinity = -1;
+	if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, iniFile))
+	{
+		DWORD one = 0x01;
+		affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
+	}
+
+	// If specified in Logging section, wait for Attach to Debugger.
+	bool waitfordebugger = false;
+	int debugger = GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile);
+	if (debugger > 0)
+	{
+		waitfordebugger = true;
+		do
+		{
+			Sleep(250);
+		} while (!IsDebuggerPresent());
+		if (debugger > 1)
+			__debugbreak();
+	}
+
+	if (LogFile)
+	{
+		LogInfo("[Logging]\n");
+		LogInfo("  calls=1\n");
+		if (LogInput) LogInfo("  input=1\n");
+		LogDebug("  debug=1\n");
+		if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
+		if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
+		if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
+	}
+
+	// [System]
+	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, DLL_PATH, MAX_PATH, iniFile);
+	if (LogFile)
+	{
+		LogInfo("[System]\n");
+		if (!DLL_PATH) LogInfo("  proxy_d3d11=%s\n", DLL_PATH);
+	}
+
+	// [Device]
+	wchar_t refresh[MAX_PATH] = { 0 };
+
+	if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
+		swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
+	if (GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile))
+		swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
+	if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile))
+		swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
+	GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	 // in DXGI dll
+	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile);
+	G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
+	bool allowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1; // in DXGI dll
+
+	if (LogFile)
+	{
+		LogInfo("[Device]\n");
+		if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
+		if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
+		if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
+		if (refresh[0]) LogInfoW(L"  filter_refresh_rate=%s\n", refresh);
+		if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
+		if (G->gForceStereo) LogInfo("  force_stereo=1\n");
+		if (allowWindowCommands) LogInfo("  allow_windowcommands=1\n");
+	}
+
+	// [Stereo]
+	bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll
+	G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;
+	G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
+	G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
+
+	if (LogFile)
+	{
+		LogInfo("[Stereo]\n");
+		if (automaticMode) LogInfo("  automatic_mode=1\n");
+		if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
+		if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
+		if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
+	}
+
+	// [Rendering]
+	GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
+	if (SHADER_PATH[0])
+	{
+		while (SHADER_PATH[wcslen(SHADER_PATH) - 1] == L' ')
+			SHADER_PATH[wcslen(SHADER_PATH) - 1] = 0;
+		if (SHADER_PATH[1] != ':' && SHADER_PATH[0] != '\\')
+		{
+			GetModuleFileName(0, setting, MAX_PATH);
+			wcsrchr(setting, L'\\')[1] = 0;
+			wcscat(setting, SHADER_PATH);
+			wcscpy(SHADER_PATH, setting);
+		}
+		// Create directory?
+		CreateDirectory(SHADER_PATH, 0);
+	}
+	GetPrivateProfileString(L"Rendering", L"cache_directory", 0, SHADER_CACHE_PATH, MAX_PATH, iniFile);
+	if (SHADER_CACHE_PATH[0])
+	{
+		while (SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] == L' ')
+			SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] = 0;
+		if (SHADER_CACHE_PATH[1] != ':' && SHADER_CACHE_PATH[0] != '\\')
+		{
+			GetModuleFileName(0, setting, MAX_PATH);
+			wcsrchr(setting, L'\\')[1] = 0;
+			wcscat(setting, SHADER_CACHE_PATH);
+			wcscpy(SHADER_CACHE_PATH, setting);
+		}
+		// Create directory?
+		CreateDirectory(SHADER_CACHE_PATH, 0);
+	}
+
+	G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, iniFile) == 1;
+	G->PRELOAD_SHADERS = GetPrivateProfileInt(L"Rendering", L"preload_shaders", 0, iniFile) == 1;
+	G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, iniFile) == 1;
+	G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, iniFile) == 1;
+
+	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
+	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
+	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
+	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
+
+	if (LogFile)
+	{
+		LogInfo("[Rendering]\n");
+		if (SHADER_PATH[0])
+			LogInfoW(L"  override_directory=%s\n", SHADER_PATH);
+		if (SHADER_CACHE_PATH[0])
+			LogInfoW(L"  cache_directory=%s\n", SHADER_CACHE_PATH);
+
+		if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
+		if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
+		if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
+		if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
+
+		if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
+		if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
+		if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
+		if (G->DumpUsage) LogInfo("  dump_usage=1\n");
+	}
+
+
+	// Automatic section 
+	G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, iniFile) == 1;
+	G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, iniFile) == 1;
+	G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, iniFile) == 1;
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH, iniFile))
+	{
+		char buf[MAX_PATH];
+		wcstombs(buf, setting, MAX_PATH);
+		char *end = RightStripA(buf);
+		G->ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
+		char *start = buf; while (isspace(*start)) start++;
+		G->ZRepair_DepthTexture1 = start;
+	}
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH, iniFile))
+	{
+		char buf[MAX_PATH];
+		wcstombs(buf, setting, MAX_PATH);
+		char *end = RightStripA(buf);
+		G->ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
+		char *start = buf; while (isspace(*start)) start++;
+		G->ZRepair_DepthTexture2 = start;
+	}
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH, iniFile))
+		G->ZRepair_ZPosCalc1 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH, iniFile))
+		G->ZRepair_ZPosCalc2 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH, iniFile))
+		G->ZRepair_PositionTexture = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH, iniFile))
+		G->ZRepair_WorldPosCalc = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH, iniFile))
+	{
+		char buf[MAX_PATH];
+		wcstombs(buf, setting, MAX_PATH);
+		char *start = buf; while (isspace(*start)) ++start;
+		while (*start)
+		{
+			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
+			G->ZRepair_Dependencies1.push_back(string(start, end));
+			start = end; if (*start == ',') ++start;
+		}
+	}
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies2", 0, setting, MAX_PATH, iniFile))
+	{
+		char buf[MAX_PATH];
+		wcstombs(buf, setting, MAX_PATH);
+		char *start = buf; while (isspace(*start)) ++start;
+		while (*start)
+		{
+			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
+			G->ZRepair_Dependencies2.push_back(string(start, end));
+			start = end; if (*start == ',') ++start;
+		}
+	}
+	if (GetPrivateProfileString(L"Rendering", L"fix_InvTransform", 0, setting, MAX_PATH, iniFile))
+	{
+		char buf[MAX_PATH];
+		wcstombs(buf, setting, MAX_PATH);
+		char *start = buf; while (isspace(*start)) ++start;
+		while (*start)
+		{
+			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
+			G->InvTransforms.push_back(string(start, end));
+			start = end; if (*start == ',') ++start;
+		}
+	}
+	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH, iniFile))
+	{
+		unsigned long hashHi, hashLo;
+		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		G->ZBufferHashToInject = (UINT64(hashHi) << 32) | UINT64(hashLo);
+	}
+	if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH, iniFile))
+		G->BackProject_Vector1 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH, iniFile))
+		G->BackProject_Vector2 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH, iniFile))
+		G->ObjectPos_ID1 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH, iniFile))
+		G->ObjectPos_ID2 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH, iniFile))
+		G->ObjectPos_MUL1 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH, iniFile))
+		G->ObjectPos_MUL2 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH, iniFile))
+		G->MatrixPos_ID1 = readStringParameter(setting);
+	if (GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH, iniFile))
+		G->MatrixPos_MUL1 = readStringParameter(setting);
+
+	// Todo: finish logging all these settings
+	LogInfo("  ... missing automatic ini section\n");
+
+
+	// [Hunting]
+	LogInfo("[Hunting]\n");
+	G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
+	if (G->hunting)
+		LogInfo("  hunting=1\n");
+
+	G->marking_mode = MARKING_MODE_SKIP;
+	if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
+		if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
+		if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
+		if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
+		if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
+		LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
+	}
+
+	RegisterHuntingKeyBindings(iniFile);
+
+	RegisterPresetKeyBindings(iniFile);
+
+
+	// Todo: Not sure this is best spot.
+	G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
+	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
+		swscanf_s(setting, L"%f", &G->gTuneStep);
+
+
+	// Shader separation overrides.
+	G->mShaderSeparationMap.clear();
+	G->mShaderIterationMap.clear();
+	G->mShaderIndexBufferFilter.clear();
+	for (int i = 1;; ++i)
+	{
+		LogDebug("Find [ShaderOverride] i=%i\n", i);
+		wchar_t id[] = L"ShaderOverridexxx";
+		_itow_s(i, id + 14, 3, 10);
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+			break;
+		unsigned long hashHi, hashLo;
+		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
+		{
+			float separation;
+			swscanf_s(setting, L"%e", &separation);
+			G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
+			LogDebug(" [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
+		}
+		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
+			if (!wcscmp(setting, L"skip"))
+				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
+		}
+		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
+		{
+			int iteration;
+			std::vector<int> iterations;
+			iterations.push_back(0);
+			swscanf_s(setting, L"%d", &iteration);
+			iterations.push_back(iteration);
+			G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
+		}
+		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
+		{
+			unsigned long hashHi2, hashLo2;
+			swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
+			G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
+		}
+	}
+
+	// Todo: finish logging all input parameters.
+	LogInfo("  ... missing shader override ini section\n");
+
+	// Texture overrides.
+	G->mTextureStereoMap.clear();
+	G->mTextureTypeMap.clear();
+	G->mTextureIterationMap.clear();
+	for (int i = 1;; ++i)
+	{
+		wchar_t id[] = L"TextureOverridexxx";
+		_itow_s(i, id + 15, 3, 10);
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+			break;
+		unsigned long hashHi, hashLo;
+		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
+		if (stereoMode >= 0)
+		{
+			G->mTextureStereoMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = stereoMode;
+			LogDebug("[TextureOverride] Texture = %08lx%08lx, stereo mode = %d\n", hashHi, hashLo, stereoMode);
+		}
+		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
+		if (texFormat >= 0)
+		{
+			G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
+			LogDebug("[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
+		}
+		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
+		{
+			std::vector<int> iterations;
+			iterations.push_back(0);
+			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
+			for (int j = 0; j < 10; ++j)
+			{
+				if (id[j] <= 0) break;
+				iterations.push_back(id[j]);
+			}
+			G->mTextureIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
+			LogDebug("[TextureOverride] Texture = %08lx%08lx, iterations = %d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", hashHi, hashLo,
+				id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9]);
+		}
+	}
+
+	// Todo: finish logging all input parameters.
+	LogInfo("  ... missing texture override ini section\n");
+
+	// Todo: finish logging all input parameters.
+	LogInfo("  ... missing mouse OverrideSettings ini section\n");
+	LogInfo("  ... missing convergence map ini section\n");
+	LogInfo("-----------------------------------------\n");
+
+	// Read in any constants defined in the ini, for use as shader parameters
+	// Any result of the default FLT_MAX means the parameter is not in use.
+	// stof will crash if passed FLT_MAX, hence the extra check.
+	// We use FLT_MAX instead of the more logical INFINITY, because Microsoft *always* generates 
+	// warnings, even for simple comparisons. And NaN comparisons are similarly broken.
+	G->iniParams.x = 0;
+	G->iniParams.y = 0;
+	G->iniParams.z = 0;
+	G->iniParams.w = 0;
+	if (GetPrivateProfileString(L"Constants", L"x", L"FLT_MAX", setting, MAX_PATH, iniFile))
+	{
+		if (wcscmp(setting, L"FLT_MAX") != 0)
+			G->iniParams.x = stof(setting);
+	}
+	if (GetPrivateProfileString(L"Constants", L"y", L"FLT_MAX", setting, MAX_PATH, iniFile))
+	{
+		if (wcscmp(setting, L"FLT_MAX") != 0)
+			G->iniParams.y = stof(setting);
+	}
+	if (GetPrivateProfileString(L"Constants", L"z", L"FLT_MAX", setting, MAX_PATH, iniFile))
+	{
+		if (wcscmp(setting, L"FLT_MAX") != 0)
+			G->iniParams.z = stof(setting);
+	}
+	if (GetPrivateProfileString(L"Constants", L"w", L"FLT_MAX", setting, MAX_PATH, iniFile))
+	{
+		if (wcscmp(setting, L"FLT_MAX") != 0)
+			G->iniParams.w = stof(setting);
+	}
+
+	if (LogFile && 
+		(G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
+	{
+		LogInfo("[Constants]\n");
+		LogInfo("  x=%#.2g\n", G->iniParams.x);
+		LogInfo("  y=%#.2g\n", G->iniParams.y);
+		LogInfo("  z=%#.2g\n", G->iniParams.z);
+		LogInfo("  w=%#.2g\n", G->iniParams.w);
+	}
+}
+
+static void ReloadConfig(D3D11Base::ID3D11Device *device)
+{
+	D3D11Wrapper::ID3D11Device* wrapper = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
+
+	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
+
+	ReloadConfigPending = false;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+	// Clear the key bindings. There may be other things that need to be
+	// cleared as well, but for the sake of clarity I'd rather clear as
+	// many as possible inside LoadConfigFile() where they are set.
+	ClearKeyBindings();
+
+	LoadConfigFile();
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+	// Update the iniParams resource from the config file:
+	realContext->Map(wrapper->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+	realContext->Unmap(wrapper->mIniTexture, 0);
+}
+
+static void FlagConfigReload(D3D11Base::ID3D11Device *device, void *private_data)
+{
+	// When we reload the configuration, we are going to clear the existing
+	// key bindings and reassign them. Naturally this is not a safe thing
+	// to do from inside a key binding callback, so we just set a flag and
+	// do this after the input subsystem has finished dispatching calls.
+	ReloadConfigPending = true;
+}
+
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
 
@@ -126,422 +595,7 @@ void InitializeDLL()
 {
 	if (!gInitialized)
 	{
-		wchar_t iniFile[MAX_PATH];
-		wchar_t setting[MAX_PATH];
-
-		gInitialized = true;
-
-		GetModuleFileName(0, iniFile, MAX_PATH);
-		wcsrchr(iniFile, L'\\')[1] = 0;
-		wcscat(iniFile, L"d3dx.ini");
-
-		// Log all settings that are _enabled_, in order, 
-		// so that there is no question what settings we are using.
-
-		// [Logging]
-		if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
-		{
-			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
-			LogInfo("\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
-			LogInfo("----------- d3dx.ini settings -----------\n");
-		}
-
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
-
-		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
-		// to open active files.
-		int unbuffered = -1;
-		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
-		{
-			unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
-		}
-
-		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
-		BOOL affinity = -1;
-		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, iniFile))
-		{
-			DWORD one = 0x01;
-			affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
-		}
-
-		// If specified in Logging section, wait for Attach to Debugger.
-		bool waitfordebugger = false;
-		int debugger = GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile);
-		if (debugger > 0)
-		{
-			waitfordebugger = true;
-			do
-			{
-				Sleep(250);
-			} while (!IsDebuggerPresent());
-			if (debugger > 1)
-				__debugbreak();
-		}
-
-		if (LogFile)
-		{
-			LogInfo("[Logging]\n");
-			LogInfo("  calls=1\n");
-			if (LogInput) LogInfo("  input=1\n");
-			LogDebug("  debug=1\n");
-			if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-			if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
-			if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
-		}
-
-		// [System]
-		GetPrivateProfileString(L"System", L"proxy_d3d11", 0, DLL_PATH, MAX_PATH, iniFile);
-		if (LogFile)
-		{
-			LogInfo("[System]\n");
-			if (!DLL_PATH) LogInfo("  proxy_d3d11=%s\n", DLL_PATH);
-		}
-
-		// [Device]
-		wchar_t refresh[MAX_PATH] = { 0 };
-
-		if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
-			swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
-		if (GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile))
-			swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
-		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile))
-			swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
-		GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	 // in DXGI dll
-		G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile);
-		G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
-		bool allowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1; // in DXGI dll
-
-		if (LogFile)
-		{
-			LogInfo("[Device]\n");
-			if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
-			if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
-			if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-			if (refresh[0]) LogInfoW(L"  filter_refresh_rate=%s\n", refresh);
-			if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
-			if (G->gForceStereo) LogInfo("  force_stereo=1\n");
-			if (allowWindowCommands) LogInfo("  allow_windowcommands=1\n");
-		}
-
-		// [Stereo]
-		bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll
-		G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;
-		G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
-		G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
-
-		if (LogFile)
-		{
-			LogInfo("[Stereo]\n");
-			if (automaticMode) LogInfo("  automatic_mode=1\n");
-			if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
-			if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
-			if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
-		}
-
-		// [Rendering]
-		GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
-		if (SHADER_PATH[0])
-		{
-			while (SHADER_PATH[wcslen(SHADER_PATH) - 1] == L' ')
-				SHADER_PATH[wcslen(SHADER_PATH) - 1] = 0;
-			if (SHADER_PATH[1] != ':' && SHADER_PATH[0] != '\\')
-			{
-				GetModuleFileName(0, setting, MAX_PATH);
-				wcsrchr(setting, L'\\')[1] = 0;
-				wcscat(setting, SHADER_PATH);
-				wcscpy(SHADER_PATH, setting);
-			}
-			// Create directory?
-			CreateDirectory(SHADER_PATH, 0);
-		}
-		GetPrivateProfileString(L"Rendering", L"cache_directory", 0, SHADER_CACHE_PATH, MAX_PATH, iniFile);
-		if (SHADER_CACHE_PATH[0])
-		{
-			while (SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] == L' ')
-				SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] = 0;
-			if (SHADER_CACHE_PATH[1] != ':' && SHADER_CACHE_PATH[0] != '\\')
-			{
-				GetModuleFileName(0, setting, MAX_PATH);
-				wcsrchr(setting, L'\\')[1] = 0;
-				wcscat(setting, SHADER_CACHE_PATH);
-				wcscpy(SHADER_CACHE_PATH, setting);
-			}
-			// Create directory?
-			CreateDirectory(SHADER_CACHE_PATH, 0);
-		}
-
-		G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, iniFile) == 1;
-		G->PRELOAD_SHADERS = GetPrivateProfileInt(L"Rendering", L"preload_shaders", 0, iniFile) == 1;
-		G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, iniFile) == 1;
-		G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, iniFile) == 1;
-
-		G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
-		G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
-		G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
-		G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
-
-		if (LogFile)
-		{
-			LogInfo("[Rendering]\n");
-			if (SHADER_PATH[0])
-				LogInfoW(L"  override_directory=%s\n", SHADER_PATH);
-			if (SHADER_CACHE_PATH[0])
-				LogInfoW(L"  cache_directory=%s\n", SHADER_CACHE_PATH);
-
-			if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
-			if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
-			if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
-			if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
-
-			if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
-			if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
-			if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
-			if (G->DumpUsage) LogInfo("  dump_usage=1\n");
-		}
-
-
-		// Automatic section 
-		G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, iniFile) == 1;
-		G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, iniFile) == 1;
-		G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, iniFile) == 1;
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH, iniFile))
-		{
-			char buf[MAX_PATH];
-			wcstombs(buf, setting, MAX_PATH);
-			char *end = RightStripA(buf);
-			G->ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
-			char *start = buf; while (isspace(*start)) start++;
-			G->ZRepair_DepthTexture1 = start;
-		}
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH, iniFile))
-		{
-			char buf[MAX_PATH];
-			wcstombs(buf, setting, MAX_PATH);
-			char *end = RightStripA(buf);
-			G->ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
-			char *start = buf; while (isspace(*start)) start++;
-			G->ZRepair_DepthTexture2 = start;
-		}
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH, iniFile))
-			G->ZRepair_ZPosCalc1 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH, iniFile))
-			G->ZRepair_ZPosCalc2 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH, iniFile))
-			G->ZRepair_PositionTexture = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH, iniFile))
-			G->ZRepair_WorldPosCalc = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH, iniFile))
-		{
-			char buf[MAX_PATH];
-			wcstombs(buf, setting, MAX_PATH);
-			char *start = buf; while (isspace(*start)) ++start;
-			while (*start)
-			{
-				char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-				G->ZRepair_Dependencies1.push_back(string(start, end));
-				start = end; if (*start == ',') ++start;
-			}
-		}
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_Dependencies2", 0, setting, MAX_PATH, iniFile))
-		{
-			char buf[MAX_PATH];
-			wcstombs(buf, setting, MAX_PATH);
-			char *start = buf; while (isspace(*start)) ++start;
-			while (*start)
-			{
-				char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-				G->ZRepair_Dependencies2.push_back(string(start, end));
-				start = end; if (*start == ',') ++start;
-			}
-		}
-		if (GetPrivateProfileString(L"Rendering", L"fix_InvTransform", 0, setting, MAX_PATH, iniFile))
-		{
-			char buf[MAX_PATH];
-			wcstombs(buf, setting, MAX_PATH);
-			char *start = buf; while (isspace(*start)) ++start;
-			while (*start)
-			{
-				char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-				G->InvTransforms.push_back(string(start, end));
-				start = end; if (*start == ',') ++start;
-			}
-		}
-		if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH, iniFile))
-		{
-			unsigned long hashHi, hashLo;
-			swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-			G->ZBufferHashToInject = (UINT64(hashHi) << 32) | UINT64(hashLo);
-		}
-		if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH, iniFile))
-			G->BackProject_Vector1 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH, iniFile))
-			G->BackProject_Vector2 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH, iniFile))
-			G->ObjectPos_ID1 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH, iniFile))
-			G->ObjectPos_ID2 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH, iniFile))
-			G->ObjectPos_MUL1 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH, iniFile))
-			G->ObjectPos_MUL2 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH, iniFile))
-			G->MatrixPos_ID1 = readStringParameter(setting);
-		if (GetPrivateProfileString(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH, iniFile))
-			G->MatrixPos_MUL1 = readStringParameter(setting);
-
-		// Todo: finish logging all these settings
-		LogInfo("  ... missing automatic ini section\n");
-
-
-		// [Hunting]
-		LogInfo("[Hunting]\n");
-		G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
-		if (G->hunting)
-			LogInfo("  hunting=1\n");
-
-		if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
-			if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
-			if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
-			if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
-			if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
-			LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
-		}
-
-		if (G->hunting)
-			RegisterHuntingKeyBindings(iniFile);
-
-		RegisterPresetKeyBindings(iniFile);
-
-
-		// Todo: Not sure this is best spot.
-		G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
-		if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
-			swscanf_s(setting, L"%f", &G->gTuneStep);
-
-
-		// Shader separation overrides.
-		for (int i = 1;; ++i)
-		{
-			LogDebug("Find [ShaderOverride] i=%i\n", i);
-			wchar_t id[] = L"ShaderOverridexxx";
-			_itow_s(i, id + 14, 3, 10);
-			if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-				break;
-			unsigned long hashHi, hashLo;
-			swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-			if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
-			{
-				float separation;
-				swscanf_s(setting, L"%e", &separation);
-				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
-				LogDebug(" [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
-			}
-			if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
-				if (!wcscmp(setting, L"skip"))
-					G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
-			}
-			if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
-			{
-				int iteration;
-				std::vector<int> iterations;
-				iterations.push_back(0);
-				swscanf_s(setting, L"%d", &iteration);
-				iterations.push_back(iteration);
-				G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-			}
-			if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
-			{
-				unsigned long hashHi2, hashLo2;
-				swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
-				G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
-			}
-		}
-
-		// Todo: finish logging all input parameters.
-		LogInfo("  ... missing shader override ini section\n");
-
-		// Texture overrides.
-		for (int i = 1;; ++i)
-		{
-			wchar_t id[] = L"TextureOverridexxx";
-			_itow_s(i, id + 15, 3, 10);
-			if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-				break;
-			unsigned long hashHi, hashLo;
-			swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-			int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-			if (stereoMode >= 0)
-			{
-				G->mTextureStereoMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = stereoMode;
-				LogDebug("[TextureOverride] Texture = %08lx%08lx, stereo mode = %d\n", hashHi, hashLo, stereoMode);
-			}
-			int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-			if (texFormat >= 0)
-			{
-				G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
-				LogDebug("[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
-			}
-			if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
-			{
-				std::vector<int> iterations;
-				iterations.push_back(0);
-				int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-				swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
-				for (int j = 0; j < 10; ++j)
-				{
-					if (id[j] <= 0) break;
-					iterations.push_back(id[j]);
-				}
-				G->mTextureIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-				LogDebug("[TextureOverride] Texture = %08lx%08lx, iterations = %d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", hashHi, hashLo,
-					id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9]);
-			}
-		}
-
-		// Todo: finish logging all input parameters.
-		LogInfo("  ... missing texture override ini section\n");
-
-		// Todo: finish logging all input parameters.
-		LogInfo("  ... missing mouse OverrideSettings ini section\n");
-		LogInfo("  ... missing convergence map ini section\n");
-		LogInfo("-----------------------------------------\n");
-
-		// Read in any constants defined in the ini, for use as shader parameters
-		// Any result of the default FLT_MAX means the parameter is not in use.
-		// stof will crash if passed FLT_MAX, hence the extra check.
-		// We use FLT_MAX instead of the more logical INFINITY, because Microsoft *always* generates 
-		// warnings, even for simple comparisons. And NaN comparisons are similarly broken.
-		if (GetPrivateProfileString(L"Constants", L"x", L"FLT_MAX", setting, MAX_PATH, iniFile))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0)
-				G->iniParams.x = stof(setting);
-		}
-		if (GetPrivateProfileString(L"Constants", L"y", L"FLT_MAX", setting, MAX_PATH, iniFile))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0)
-				G->iniParams.y = stof(setting);
-		}
-		if (GetPrivateProfileString(L"Constants", L"z", L"FLT_MAX", setting, MAX_PATH, iniFile))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0)
-				G->iniParams.z = stof(setting);
-		}
-		if (GetPrivateProfileString(L"Constants", L"w", L"FLT_MAX", setting, MAX_PATH, iniFile))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0)
-				G->iniParams.w = stof(setting);
-		}
-
-		if (LogFile && 
-			(G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
-		{
-			LogInfo("[Constants]\n");
-			LogInfo("  x=%#.2g\n", G->iniParams.x);
-			LogInfo("  y=%#.2g\n", G->iniParams.y);
-			LogInfo("  z=%#.2g\n", G->iniParams.z);
-			LogInfo("  w=%#.2g\n", G->iniParams.w);
-		}
+		LoadConfigFile();
 
 		// NVAPI
 		D3D11Base::NvAPI_Initialize();
@@ -1680,37 +1734,6 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 }
 
 
-// Todo: I'm just hacking this in here at the moment, because I'm not positive it will work.
-//	Once it's clearly a good path, we can move it out.
-
-// Using the wrapped Device, we want to change the iniParams associated with the device.
-
-void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
-{
-	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
-	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
-	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
-	memset(&mappedResource, 0, sizeof(D3D11Base::D3D11_MAPPED_SUBRESOURCE));
-
-	if (on)
-	{
-		DirectX::XMFLOAT4 zeroed = {0, 0, 0, 0};
-
-		//	Disable GPU access to the texture ini data so we can rewrite it.
-		realContext->Map(wrapped->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		memcpy(mappedResource.pData, &zeroed, sizeof(zeroed));
-		realContext->Unmap(wrapped->mIniTexture, 0);
-	}
-	else
-	{
-		// Restore texture ini data to original values from d3dx.ini
-		realContext->Map(wrapped->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-		realContext->Unmap(wrapped->mIniTexture, 0);
-	}
-}
-
-
 // Key binding callbacks
 static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 {
@@ -2134,6 +2157,17 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	int i;
 	wchar_t buf[16];
 
+	// reload_config is registered even if not hunting - this allows us to
+	// turn on hunting in the ini dynamically without having to relaunch
+	// the game. This can be useful in games that receive a significant
+	// performance hit with hunting on, or where a broken effect is
+	// discovered while playing normally where it may not be easy/fast to
+	// find the effect again later.
+	RegisterIniKeyBinding(L"Hunting", L"reload_config", iniFile, FlagConfigReload, NULL, NULL);
+
+	if (!G->hunting)
+		return;
+
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", iniFile, PrevPixelShader, NULL, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", iniFile, MarkPixelShader, NULL, NULL);
@@ -2165,17 +2199,6 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	}
 }
 
-
-
-// Check for keys being sent from the user to change behavior as a hotkey.  This will update
-// the iniParams live, so that the shaders can use that keypress to change behavior.
-
-// Four states of toggle, with key presses.  
-enum TState
-{
-	offDown, offUp, onDown, onUp
-};
-TState toggleState = offUp;
 
 extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
@@ -2211,6 +2234,12 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	if (LogFile) fflush(LogFile);
 
 	bool newEvent = DispatchInputEvents(device);
+
+	// The config file is not safe to reload from within the input handler
+	// since it needs to change the key bindings, so it sets this flag
+	// instead and we handle it now.
+	if (ReloadConfigPending)
+		ReloadConfig(device);
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.

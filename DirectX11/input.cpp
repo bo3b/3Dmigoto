@@ -128,6 +128,11 @@ void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 	return RegisterKeyBinding(key, buf, callbacks);
 }
 
+void ClearKeyBindings()
+{
+	actions.clear();
+}
+
 bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
 {
 	std::vector<class InputAction *>::iterator i;
