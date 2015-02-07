@@ -1713,37 +1713,6 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 }
 
 
-// Todo: I'm just hacking this in here at the moment, because I'm not positive it will work.
-//	Once it's clearly a good path, we can move it out.
-
-// Using the wrapped Device, we want to change the iniParams associated with the device.
-
-void SetIniParams(D3D11Base::ID3D11Device *device, bool on)
-{
-	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
-	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
-	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
-	memset(&mappedResource, 0, sizeof(D3D11Base::D3D11_MAPPED_SUBRESOURCE));
-
-	if (on)
-	{
-		DirectX::XMFLOAT4 zeroed = {0, 0, 0, 0};
-
-		//	Disable GPU access to the texture ini data so we can rewrite it.
-		realContext->Map(wrapped->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		memcpy(mappedResource.pData, &zeroed, sizeof(zeroed));
-		realContext->Unmap(wrapped->mIniTexture, 0);
-	}
-	else
-	{
-		// Restore texture ini data to original values from d3dx.ini
-		realContext->Map(wrapped->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-		realContext->Unmap(wrapped->mIniTexture, 0);
-	}
-}
-
-
 // Key binding callbacks
 static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 {
@@ -2209,17 +2178,6 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	}
 }
 
-
-
-// Check for keys being sent from the user to change behavior as a hotkey.  This will update
-// the iniParams live, so that the shaders can use that keypress to change behavior.
-
-// Four states of toggle, with key presses.  
-enum TState
-{
-	offDown, offUp, onDown, onUp
-};
-TState toggleState = offUp;
 
 extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
