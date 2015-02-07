@@ -128,11 +128,6 @@ static bool gDirectXOverride = false;
 static int gSurfaceCreateMode = -1;
 static bool UnlockSeparation = false;
 
-// Used for aiming override, as last seen handle for SetConvergence.
-// This may not be the one created by the wrapper, but it doesn't seem
-// like that will really matter, as we want to change convergence regardless.
-static D3D9Base::StereoHandle lastStereoHandle = 0;
-
 static float UserConvergence = -1, SetConvergence = -1, GetConvergence = -1;
 static float UserSeparation = -1, SetSeparation = -1, GetSeparation = -1;
 
@@ -309,8 +304,6 @@ STDAPI DllUnregisterServer(void)
 
 static int __cdecl NvAPI_Stereo_GetConvergence(D3D9Base::StereoHandle stereoHandle, float *pConvergence)
 {
-	lastStereoHandle = stereoHandle;
-
 	// Callback from DX wrapper?
 	if ((unsigned int)stereoHandle == 0x77aa8ebc && *pConvergence == 1.23f)
 	{
@@ -329,8 +322,6 @@ static int __cdecl NvAPI_Stereo_GetConvergence(D3D9Base::StereoHandle stereoHand
 
 static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHandle, float newConvergence)
 {
-	lastStereoHandle = stereoHandle;
-
 	if (ConvergenceLogging() && SetConvergence != newConvergence)
 	{
 		LogInfo("%s - Request SetConvergence to %e, hex=%x\n", LogTime(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
@@ -370,8 +361,6 @@ static int __cdecl NvAPI_Stereo_SetConvergence(D3D9Base::StereoHandle stereoHand
 
 static int __cdecl NvAPI_Stereo_GetSeparation(D3D9Base::StereoHandle stereoHandle, float *pSeparationPercentage)
 {
-	lastStereoHandle = stereoHandle;
-
 	int ret = (*_NvAPI_Stereo_GetSeparation)(stereoHandle, pSeparationPercentage);
 	if (SeparationLogging() && GetSeparation != *pSeparationPercentage)
 	{
@@ -381,8 +370,6 @@ static int __cdecl NvAPI_Stereo_GetSeparation(D3D9Base::StereoHandle stereoHandl
 }
 static int __cdecl NvAPI_Stereo_SetSeparation(D3D9Base::StereoHandle stereoHandle, float newSeparationPercentage)
 {
-	lastStereoHandle = stereoHandle;
-
 	if (gDirectXOverride)
 	{
 		if (CallsLogging()) LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime());
