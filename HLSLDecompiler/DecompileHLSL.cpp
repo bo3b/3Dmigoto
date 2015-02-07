@@ -1646,8 +1646,9 @@ public:
 		if (!strncmp(op, "float", 5))
 			return;
 
-		int pos = 5;																		// Might need 'Buffer' for int
-		if (!strncmp(textype, "Texture1D<", strlen("Texture1D<"))) pos = 3;					// int2 .xy
+		int pos = 5;																		
+		if (!strncmp(textype, "Buffer<", strlen("Buffer<"))) pos = 2;						// int  .x
+		else if (!strncmp(textype, "Texture1D<", strlen("Texture1D<"))) pos = 3;			// int2 .xy
 		else if (!strncmp(textype, "Texture2DMS<", strlen("Texture2DMS<"))) pos = 3;
 		else if (!strncmp(textype, "Texture1DArray<", strlen("Texture1DArray<"))) pos = 4;	// int3 .xyz
 		else if (!strncmp(textype, "Texture2D<", strlen("Texture2D<"))) pos = 4;
