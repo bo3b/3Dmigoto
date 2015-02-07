@@ -398,6 +398,7 @@ static void LoadConfigFile()
 	if (G->hunting)
 		LogInfo("  hunting=1\n");
 
+	G->marking_mode = MARKING_MODE_SKIP;
 	if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
 		if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
 		if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
@@ -418,6 +419,9 @@ static void LoadConfigFile()
 
 
 	// Shader separation overrides.
+	G->mShaderSeparationMap.clear();
+	G->mShaderIterationMap.clear();
+	G->mShaderIndexBufferFilter.clear();
 	for (int i = 1;; ++i)
 	{
 		LogDebug("Find [ShaderOverride] i=%i\n", i);
@@ -459,6 +463,9 @@ static void LoadConfigFile()
 	LogInfo("  ... missing shader override ini section\n");
 
 	// Texture overrides.
+	G->mTextureStereoMap.clear();
+	G->mTextureTypeMap.clear();
+	G->mTextureIterationMap.clear();
 	for (int i = 1;; ++i)
 	{
 		wchar_t id[] = L"TextureOverridexxx";
@@ -509,6 +516,10 @@ static void LoadConfigFile()
 	// stof will crash if passed FLT_MAX, hence the extra check.
 	// We use FLT_MAX instead of the more logical INFINITY, because Microsoft *always* generates 
 	// warnings, even for simple comparisons. And NaN comparisons are similarly broken.
+	G->iniParams.x = 0;
+	G->iniParams.y = 0;
+	G->iniParams.z = 0;
+	G->iniParams.w = 0;
 	if (GetPrivateProfileString(L"Constants", L"x", L"FLT_MAX", setting, MAX_PATH, iniFile))
 	{
 		if (wcscmp(setting, L"FLT_MAX") != 0)
