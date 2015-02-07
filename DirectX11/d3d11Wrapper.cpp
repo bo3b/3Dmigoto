@@ -540,8 +540,12 @@ static void LoadConfigFile()
 	}
 }
 
-static void ReloadConfig()
+static void ReloadConfig(D3D11Base::ID3D11Device *device)
 {
+	D3D11Wrapper::ID3D11Device* wrapper = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
+
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
 	ReloadConfigPending = false;
@@ -556,6 +560,11 @@ static void ReloadConfig()
 	LoadConfigFile();
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+	// Update the iniParams resource from the config file:
+	realContext->Map(wrapper->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+	realContext->Unmap(wrapper->mIniTexture, 0);
 }
 
 static void FlagConfigReload(D3D11Base::ID3D11Device *device, void *private_data)
@@ -2218,7 +2227,7 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	// since it needs to change the key bindings, so it sets this flag
 	// instead and we handle it now.
 	if (ReloadConfigPending)
-		ReloadConfig();
+		ReloadConfig(device);
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.
