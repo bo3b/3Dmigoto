@@ -33,4 +33,8 @@ void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 		InputCallback down_cb, InputCallback up_cb,
 		void *private_data);
 
+// Clears all current key bindings in preparation for reloading the config.
+// Note - this is not safe to call from within an input callback!
+void ClearKeyBindings();
+
 bool DispatchInputEvents(D3D11Base::ID3D11Device *device);
