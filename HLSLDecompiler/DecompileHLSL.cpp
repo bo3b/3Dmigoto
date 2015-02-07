@@ -2745,6 +2745,29 @@ public:
 					}
 				}
 			}
+			else if (!strcmp(statement, "dcl_resource_texturecube"))
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture register index: " + string(op2));
+						return;
+					}
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						sprintf(buffer, "t%d", bufIndex);
+						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "TextureCube<float4>";
+						sprintf(buffer, "TextureCube<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
+					}
+				}
+			}
 			else if (!strcmp(statement, "{"))
 			{
 				// Declaration from 
