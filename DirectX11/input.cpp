@@ -6,94 +6,73 @@
 #include <vector>
 #include "vkeys.h"
 
-class InputCallbacks : public InputListener {
-private:
-	InputCallback down_cb;
-	InputCallback up_cb;
-	void *private_data;
 
-public:
-	InputCallbacks(InputCallback down_cb, InputCallback up_cb,
-			void *private_data) :
-		down_cb(down_cb),
-		up_cb(up_cb),
-		private_data(private_data)
-	{}
+// -----------------------------------------------------------------------------
 
-	void DownEvent(D3D11Base::ID3D11Device *device)
-	{
-		if (down_cb)
-			return down_cb(device, private_data);
-	}
+InputCallbacks::InputCallbacks(InputCallback down_cb, InputCallback up_cb,
+		void *private_data) :
+	down_cb(down_cb),
+	up_cb(up_cb),
+	private_data(private_data)
+{}
 
-	void UpEvent(D3D11Base::ID3D11Device *device)
-	{
-		if (up_cb)
-			return up_cb(device, private_data);
-	}
-};
+void InputCallbacks::DownEvent(D3D11Base::ID3D11Device *device)
+{
+	if (down_cb)
+		return down_cb(device, private_data);
+}
 
-// I'm using inheritance here because if we wanted to add another input backend
-// in the future this is where I see the logical split between common code and
-// input backend specific code (we would still need to add an abstraction of
-// the backends themselves). One reason we might want to considder this is to
-// re-add the ability to use gamepads or other input devices which was removed
-// when we pulled out the problematic DirectInput support. I'm not concerned
-// about supporting gamepads for hunting, but we might want it for e.g.
-// convergence overrides with the aim button on a controller in a FPS.
+void InputCallbacks::UpEvent(D3D11Base::ID3D11Device *device)
+{
+	if (up_cb)
+		return up_cb(device, private_data);
+}
 
-class InputAction {
-public:
-	bool last_state;
-	InputListener *listener;
 
-	InputAction(InputListener *listener) :
+// -----------------------------------------------------------------------------
+
+InputAction::InputAction(InputListener *listener) :
 		last_state(false),
 		listener(listener)
 	{}
 
-	~InputAction()
-	{
-		delete listener;
-	}
+InputAction::~InputAction()
+{
+	delete listener;
+}
 
-	virtual bool CheckState()
-	{
+bool InputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	bool state = CheckState();
+
+	if (state == last_state)
 		return false;
-	}
 
-	bool Dispatch(D3D11Base::ID3D11Device *device)
-	{
-		bool state = CheckState();
+	if (state)
+		listener->DownEvent(device);
+	else
+		listener->UpEvent(device);
 
-		if (state == last_state)
-			return false;
+	last_state = state;
 
-		if (state)
-			listener->DownEvent(device);
-		else
-			listener->UpEvent(device);
+	return true;
+}
 
-		last_state = state;
 
-		return true;
-	}
-};
+// -----------------------------------------------------------------------------
 
-class VKInputAction : public InputAction {
-public:
-	int vkey;
+VKInputAction::VKInputAction(int vkey, InputListener *listener) :
+	InputAction(listener),
+	vkey(vkey)
+{}
 
-	VKInputAction(int vkey, InputListener *listener) :
-		InputAction(listener),
-		vkey(vkey)
-	{}
+bool VKInputAction::CheckState()
+{
+	return (GetAsyncKeyState(vkey) < 0);
+}
 
-	bool CheckState()
-	{
-		return (GetAsyncKeyState(vkey) < 0);
-	}
-};
+
+// -----------------------------------------------------------------------------
 
 static std::vector<class InputAction *> actions;
 
