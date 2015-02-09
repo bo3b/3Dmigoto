@@ -114,7 +114,7 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 		preset = new KeyOverride(type);
 		preset->ParseIniSection(id, iniFile);
 
-		RegisterKeyBinding(L"Key", key, (InputListener*)preset);
+		RegisterKeyBinding(L"Key", key, preset);
 	}
 }
 
