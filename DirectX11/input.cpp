@@ -416,6 +416,7 @@ bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
 	std::vector<class InputAction *>::iterator i;
 	class InputAction *action;
 	bool input_processed = false;
+	static time_t last_time = 0;
 	time_t now = time(NULL);
 	int j;
 
@@ -423,13 +424,15 @@ bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
 		// Stagger polling controllers that were not connected last
 		// frame over four seconds to minimise performance impact,
 		// which has been observed to be extremely significant.
-		if (!XInputState[j].connected && ((now % 4) != j))
+		if (!XInputState[j].connected && ((now == last_time) || (now % 4 != j)))
 			continue;
 
 		// TODO: Use undocumented XInputGetStateEx so we can also read the guide button
 		XInputState[j].connected =
 			(XInputGetState(j, &XInputState[j].state) == ERROR_SUCCESS);
 	}
+
+	last_time = now;
 
 	for (i = actions.begin(); i != actions.end(); i++) {
 		action = *i;
