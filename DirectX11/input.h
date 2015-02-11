@@ -77,7 +77,7 @@ public:
 	~InputAction();
 
 	virtual bool CheckState() =0;
-	bool Dispatch(D3D11Base::ID3D11Device *device);
+	virtual bool Dispatch(D3D11Base::ID3D11Device *device);
 };
 
 
@@ -97,17 +97,32 @@ public:
 };
 
 
+// -----------------------------------------------------------------------------
+// VKRepeatingInputAction is used for the hunting key inputs, as a distinct subclass
+// that supports auto-repeat.
+
+class VKRepeatingInputAction : public VKInputAction {
+private:
+	int repeatRate = 8;			// repeats per second
+	ULONGLONG lastTick = 0;
+
+public:
+	VKRepeatingInputAction(int vkey, int repeat, InputListener *listener);
+	bool Dispatch(D3D11Base::ID3D11Device *device);
+};
+
+
 
 // -----------------------------------------------------------------------------
 // At the moment RegisterKeyBinding takes a class implementing InputListener,
 // while RegisterIniKeyBinding takes a pair of callbacks and private_data.
-// Right now these are the only two combinations we need, but free to add more
-// variants as needed.
+// Right now these are the only two combinations we need, but feel free to add 
+// more variants as needed.
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 		InputListener *listener);
 void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
-		InputCallback down_cb, InputCallback up_cb,
+		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data);
 
 // Clears all current key bindings in preparation for reloading the config.
