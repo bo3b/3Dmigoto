@@ -76,7 +76,7 @@ public:
 	InputAction(InputListener *listener);
 	~InputAction();
 
-	virtual bool CheckState() =0;
+	virtual bool CheckState() = 0;
 	virtual bool Dispatch(D3D11Base::ID3D11Device *device);
 };
 
@@ -88,7 +88,7 @@ public:
 // The keybindings are oriented around the use of GetAsyncKeyState, and numerous
 // convenience aliases are defined in vkeys.h.
 
-class VKInputAction : public InputAction {
+class VKInputAction : public virtual InputAction {
 public:
 	int vkey;
 
@@ -96,21 +96,52 @@ public:
 	bool CheckState() override;
 };
 
+// -----------------------------------------------------------------------------
+// XInputAction serves much the same purpose as VKInputAction, but implements
+// XInput to support xbox controllers
+class XInputAction : public virtual InputAction {
+private:
+	int controller;
+	WORD button;
+	BYTE left_trigger;
+	BYTE right_trigger;
+
+	bool _CheckState(int controller);
+public:
+	XInputAction(int controller, WORD button, BYTE left_trigger,
+			BYTE right_trigger, InputListener *listener);
+	bool CheckState() override;
+};
+
 
 // -----------------------------------------------------------------------------
-// VKRepeatingInputAction is used for the hunting key inputs, as a distinct subclass
-// that supports auto-repeat.
+// RepeatingInputAction is used to provide auto-repeating functionality to
+// other key bindings.
 
-class VKRepeatingInputAction : public VKInputAction {
+class RepeatingInputAction : public virtual InputAction {
 private:
 	int repeatRate = 8;			// repeats per second
 	ULONGLONG lastTick = 0;
 
 public:
+	RepeatingInputAction(int repeat, InputListener *listener);
+	bool Dispatch(D3D11Base::ID3D11Device *device) override;
+};
+
+// -----------------------------------------------------------------------------
+// Classes using multiple inheritance to add auto-repeat functionality to
+// VKInputAction and XInputAction
+class VKRepeatingInputAction : public VKInputAction, public RepeatingInputAction {
+public:
 	VKRepeatingInputAction(int vkey, int repeat, InputListener *listener);
 	bool Dispatch(D3D11Base::ID3D11Device *device);
 };
-
+class XRepeatingInputAction : public XInputAction, public RepeatingInputAction {
+public:
+	XRepeatingInputAction(int controller, WORD button, BYTE left_trigger,
+		BYTE right_trigger, int repeat, InputListener *listener);
+	bool Dispatch(D3D11Base::ID3D11Device *device);
+};
 
 
 // -----------------------------------------------------------------------------
@@ -120,7 +151,7 @@ public:
 // more variants as needed.
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener);
+		InputListener *listener, int auto_repeat);
 void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data);

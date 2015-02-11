@@ -80,12 +80,12 @@ bool VKInputAction::CheckState()
 
 
 // -----------------------------------------------------------------------------
-// The VKRepeatAction is to allow for auto-repeat on hunting operations.
+// The RepeatAction is to allow for auto-repeat on hunting operations.
 // Regular user inputs, and not all hunting operations are suitable for auto-
 // repeat.  These are only created for operations that desire auto-repeat,
-// otherwise the VKInputAction is used.
+// otherwise the VKInputAction or XInputAction is used.
 
-// For Dispatch, we have no need to be called as often as we are, that's just 
+// For Dispatch, we have no need to be called as often as we are, that's just
 // an artifact of where we get processing time, from the Draw() calls made by the game.
 // To trim this down to a sensible human-oriented, keyboard input type time, we'll
 // use the GetTickCount64 to skip processing.  The reason to add this limiter is
@@ -94,17 +94,16 @@ bool VKInputAction::CheckState()
 // TODO: Determine if an alternate thread can properly provide time. That would make
 // it possible to simply have the OS call us as desired.
 
-VKRepeatingInputAction::VKRepeatingInputAction(int vkey, int repeat, InputListener *listener) :
-VKInputAction(vkey, listener),
-repeatRate(repeat)
+RepeatingInputAction::RepeatingInputAction(int repeat, InputListener *listener) :
+	repeatRate(repeat),
+	InputAction(listener)
 {}
 
-bool VKRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool RepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
 {
 	int ms = (1000 / repeatRate);
 	if (GetTickCount64() < (lastTick + ms))
 		return false;
-	lastTick = GetTickCount64();
 
 	bool state = CheckState();
 
@@ -116,6 +115,7 @@ bool VKRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
 		else
 			listener->UpEvent(device);
 
+		lastTick = GetTickCount64();
 		last_state = state;
 
 		return true;
@@ -124,10 +124,34 @@ bool VKRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
 	return false;
 }
 
+VKRepeatingInputAction::VKRepeatingInputAction(int vkey, int repeat, InputListener *listener) :
+	RepeatingInputAction(repeat, listener),
+	InputAction(listener),
+	VKInputAction(vkey, listener)
+{}
+
+bool VKRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	return RepeatingInputAction::Dispatch(device);
+}
+
+XRepeatingInputAction::XRepeatingInputAction(int controller, WORD button, BYTE left_trigger,
+		BYTE right_trigger, int repeat,
+		InputListener *listener) :
+	RepeatingInputAction(repeat, listener),
+	InputAction(listener),
+	XInputAction(controller, button, left_trigger, right_trigger, listener)
+{}
+
+bool XRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	return RepeatingInputAction::Dispatch(device);
+}
+
 
 // -----------------------------------------------------------------------------
 
-VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener)
+VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener, int auto_repeat)
 {
 	int vkey;
 
@@ -135,57 +159,51 @@ VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener)
 	if (vkey < 0)
 		return NULL;
 
+	if (auto_repeat)
+		return new VKRepeatingInputAction(vkey, auto_repeat, listener);
+
 	return new VKInputAction(vkey, listener);
 }
 
 static XINPUT_STATE XInputState[4];
 
-class XInputAction : public InputAction {
-private:
-	int controller;
-	WORD button;
-	BYTE left_trigger;
-	BYTE right_trigger;
+bool XInputAction::_CheckState(int controller)
+{
+	XINPUT_GAMEPAD *gamepad = &XInputState[controller].Gamepad;
 
-	bool _CheckState(int controller)
-	{
-		XINPUT_GAMEPAD *gamepad = &XInputState[controller].Gamepad;
+	if (button && (gamepad->wButtons & button))
+		return true;
+	if (left_trigger && (gamepad->bLeftTrigger >= left_trigger))
+		return true;
+	if (right_trigger && (gamepad->bRightTrigger >= right_trigger))
+		return true;
 
-		if (button && (gamepad->wButtons & button))
-			return true;
-		if (left_trigger && (gamepad->bLeftTrigger >= left_trigger))
-			return true;
-		if (right_trigger && (gamepad->bRightTrigger >= right_trigger))
-			return true;
+	return false;
+}
 
-		return false;
+XInputAction::XInputAction(int controller, WORD button, BYTE left_trigger,
+		BYTE right_trigger, InputListener *listener) :
+	InputAction(listener),
+	controller(controller),
+	button(button),
+	left_trigger(left_trigger),
+	right_trigger(right_trigger)
+{}
+
+bool XInputAction::CheckState()
+{
+	int i;
+
+	if (controller != -1)
+		return _CheckState(controller);
+
+	for (i = 0; i < 4; i++) {
+		if (_CheckState(i))
+			return true;
 	}
 
-public:
-	XInputAction(int controller, WORD button, BYTE left_trigger,
-			BYTE right_trigger, InputListener *listener) :
-		InputAction(listener),
-		controller(controller),
-		button(button),
-		left_trigger(left_trigger),
-		right_trigger(right_trigger)
-	{}
-
-	bool CheckState()
-	{
-		int i;
-
-		if (controller != -1)
-			return _CheckState(controller);
-
-		for (i = 0; i < 4; i++) {
-			if (_CheckState(i))
-				return true;
-		}
-
-		return false;
-	}
-};
+	return false;
+}
 
 struct XInputMapping_t {
 	wchar_t *name;
@@ -219,7 +237,7 @@ static XInputMapping_t XInputButtons[] = {
 // (either that or I have a very precise 100% reproducable memory corruption
 // issue), which isn't that surprising given that regular expressions are
 // uncommon in the Windows world. Feel free to rewrite this in a cleaner way.
-XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener)
+XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener, int auto_repeat)
 {
 	int i, controller = -1, button = 0, threshold = 0;
 	BYTE left_trigger = 0, right_trigger = 0;
@@ -277,6 +295,9 @@ XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener)
 		*trigger = std::min(threshold + 1, 255);
 	}
 
+	if (auto_repeat)
+		return new XRepeatingInputAction(controller, button, left_trigger, right_trigger, auto_repeat, listener);
+
 	return new XInputAction(controller, button, left_trigger, right_trigger, listener);
 }
 
@@ -331,15 +352,15 @@ XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener)
 static std::vector<class InputAction *> actions;
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener)
+		InputListener *listener, int auto_repeat)
 {
 	class InputAction *action;
 
 	RightStripW(keyName);
 
-	action = NewVKInputAction(keyName, listener);
+	action = NewVKInputAction(keyName, listener, auto_repeat);
 	if (!action)
-		action = NewXInputAction(keyName, listener);
+		action = NewXInputAction(keyName, listener, auto_repeat);
 
 	if (action) {
 		LogInfoW(L"  %s=%s\n", iniKey, keyName);
@@ -355,23 +376,11 @@ void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
 {
 	InputCallbacks *callbacks = new InputCallbacks(down_cb, up_cb, private_data);
 	wchar_t keyName[MAX_PATH];
-	class InputAction *action;
-	int vkey;
 
 	if (!GetPrivateProfileString(app, iniKey, 0, keyName, MAX_PATH, ini))
 		return;
 
-	if (auto_repeat) {
-		vkey = ConvertKeyName(iniKey, keyName);
-		action = new VKRepeatingInputAction(vkey, auto_repeat, callbacks);
-		actions.push_back(action);
-
-		// Log key settings e.g. next_pixelshader=VK_NUMPAD2
-		LogInfoW(L"  %s=%s\n", iniKey, keyName);
-	}
-	else {
-		RegisterKeyBinding(iniKey, keyName, callbacks);
-	}
+	RegisterKeyBinding(iniKey, keyName, callbacks, auto_repeat);
 }
 
 void ClearKeyBindings()
