@@ -2227,6 +2227,17 @@ extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
+	static ULONGLONG last_ticks = 0;
+	ULONGLONG ticks = GetTickCount();
+
+	// Prevent excessive input processing. XInput added an extreme
+	// performance hit when processing four controllers on every draw call,
+	// so only process input if at least 8ms has passed (approx 125Hz - may
+	// be less depending on timer resolution)
+	if (ticks - last_ticks < 8)
+		return;
+	last_ticks = ticks;
+
 	LogDebug("Running frame actions.  Device: %p\n", device);
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
