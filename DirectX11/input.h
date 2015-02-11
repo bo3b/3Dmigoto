@@ -135,12 +135,14 @@ class VKRepeatingInputAction : public VKInputAction, public RepeatingInputAction
 public:
 	VKRepeatingInputAction(int vkey, int repeat, InputListener *listener);
 	bool Dispatch(D3D11Base::ID3D11Device *device);
+	bool CheckState(); // Only necessary to silence warning from MSVC bug
 };
 class XRepeatingInputAction : public XInputAction, public RepeatingInputAction {
 public:
 	XRepeatingInputAction(int controller, WORD button, BYTE left_trigger,
 		BYTE right_trigger, int repeat, InputListener *listener);
 	bool Dispatch(D3D11Base::ID3D11Device *device);
+	bool CheckState(); // Only necessary to silence warning from MSVC bug
 };
 
 

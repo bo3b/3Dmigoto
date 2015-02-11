@@ -135,6 +135,13 @@ bool VKRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
 	return RepeatingInputAction::Dispatch(device);
 }
 
+// Only necessary to silence an MSVC warning - there is only one CheckState
+// implementation in the class heirachy
+bool VKRepeatingInputAction::CheckState()
+{
+	return VKInputAction::CheckState();
+}
+
 XRepeatingInputAction::XRepeatingInputAction(int controller, WORD button, BYTE left_trigger,
 		BYTE right_trigger, int repeat,
 		InputListener *listener) :
@@ -146,6 +153,13 @@ XRepeatingInputAction::XRepeatingInputAction(int controller, WORD button, BYTE l
 bool XRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
 {
 	return RepeatingInputAction::Dispatch(device);
+}
+
+// Only necessary to silence an MSVC warning - there is only one CheckState
+// implementation in the class heirachy
+bool XRepeatingInputAction::CheckState()
+{
+	return XInputAction::CheckState();
 }
 
 
