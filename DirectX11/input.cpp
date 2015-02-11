@@ -8,64 +8,109 @@
 #include <Xinput.h>
 #include <algorithm>
 
-class InputCallbacks : public InputListener {
-private:
-	InputCallback down_cb;
-	InputCallback up_cb;
-	void *private_data;
 
-public:
-	InputCallbacks(InputCallback down_cb, InputCallback up_cb,
-			void *private_data) :
-		down_cb(down_cb),
-		up_cb(up_cb),
-		private_data(private_data)
-	{}
+// -----------------------------------------------------------------------------
 
-	void DownEvent(D3D11Base::ID3D11Device *device)
-	{
-		if (down_cb)
-			return down_cb(device, private_data);
-	}
+InputCallbacks::InputCallbacks(InputCallback down_cb, InputCallback up_cb,
+		void *private_data) :
+	down_cb(down_cb),
+	up_cb(up_cb),
+	private_data(private_data)
+{}
 
-	void UpEvent(D3D11Base::ID3D11Device *device)
-	{
-		if (up_cb)
-			return up_cb(device, private_data);
-	}
-};
+void InputCallbacks::DownEvent(D3D11Base::ID3D11Device *device)
+{
+	if (down_cb)
+		return down_cb(device, private_data);
+}
 
-// I'm using inheritance here because if we wanted to add another input backend
-// in the future this is where I see the logical split between common code and
-// input backend specific code.
+void InputCallbacks::UpEvent(D3D11Base::ID3D11Device *device)
+{
+	if (up_cb)
+		return up_cb(device, private_data);
+}
 
-class InputAction {
-public:
-	bool last_state;
-	InputListener *listener;
 
-	InputAction(InputListener *listener) :
+// -----------------------------------------------------------------------------
+
+InputAction::InputAction(InputListener *listener) :
 		last_state(false),
 		listener(listener)
 	{}
 
-	~InputAction()
-	{
-		delete listener;
-	}
+InputAction::~InputAction()
+{
+	delete listener;
+}
 
-	virtual bool CheckState()
-	{
+bool InputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	bool state = CheckState();
+
+	if (state == last_state)
 		return false;
-	}
 
-	bool Dispatch(D3D11Base::ID3D11Device *device)
+	if (state)
+		listener->DownEvent(device);
+	else
+		listener->UpEvent(device);
+
+	last_state = state;
+
+	return true;
+}
+
+
+// -----------------------------------------------------------------------------
+
+VKInputAction::VKInputAction(int vkey, InputListener *listener) :
+	InputAction(listener),
+	vkey(vkey)
+{}
+
+// The check for < 0 is a little odd.  The reason to use this form is because
+// the call can also set the low bit in different situations that can theoretically
+// result in non-zero, but top bit not set. This form ensures we only test the
+// actual key bit.
+
+bool VKInputAction::CheckState()
+{
+	return (GetAsyncKeyState(vkey) < 0);
+}
+
+
+// -----------------------------------------------------------------------------
+// The VKRepeatAction is to allow for auto-repeat on hunting operations.
+// Regular user inputs, and not all hunting operations are suitable for auto-
+// repeat.  These are only created for operations that desire auto-repeat,
+// otherwise the VKInputAction is used.
+
+// For Dispatch, we have no need to be called as often as we are, that's just 
+// an artifact of where we get processing time, from the Draw() calls made by the game.
+// To trim this down to a sensible human-oriented, keyboard input type time, we'll
+// use the GetTickCount64 to skip processing.  The reason to add this limiter is
+// to make auto-repeat slow enough to be usable, and consistent.
+
+// TODO: Determine if an alternate thread can properly provide time. That would make
+// it possible to simply have the OS call us as desired.
+
+VKRepeatingInputAction::VKRepeatingInputAction(int vkey, int repeat, InputListener *listener) :
+VKInputAction(vkey, listener),
+repeatRate(repeat)
+{}
+
+bool VKRepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	int ms = (1000 / repeatRate);
+	if (GetTickCount64() < (lastTick + ms))
+		return false;
+	lastTick = GetTickCount64();
+
+	bool state = CheckState();
+
+	// Only allow auto-repeat for down events.
+	if (state || (state != last_state))
 	{
-		bool state = CheckState();
-
-		if (state == last_state)
-			return false;
-
 		if (state)
 			listener->DownEvent(device);
 		else
@@ -75,22 +120,12 @@ public:
 
 		return true;
 	}
-};
 
-class VKInputAction : public InputAction {
-public:
-	int vkey;
+	return false;
+}
 
-	VKInputAction(int vkey, InputListener *listener) :
-		InputAction(listener),
-		vkey(vkey)
-	{}
 
-	bool CheckState()
-	{
-		return (GetAsyncKeyState(vkey) < 0);
-	}
-};
+// -----------------------------------------------------------------------------
 
 VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener)
 {
@@ -314,23 +349,36 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 	}
 }
 
-void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
-		InputCallback down_cb, InputCallback up_cb,
+void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
+		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data)
 {
 	InputCallbacks *callbacks = new InputCallbacks(down_cb, up_cb, private_data);
-	wchar_t buf[MAX_PATH];
+	wchar_t keyName[MAX_PATH];
+	class InputAction *action;
+	int vkey;
 
-	if (!GetPrivateProfileString(app, key, 0, buf, MAX_PATH, ini))
+	if (!GetPrivateProfileString(app, iniKey, 0, keyName, MAX_PATH, ini))
 		return;
 
-	return RegisterKeyBinding(key, buf, callbacks);
+	if (auto_repeat) {
+		vkey = ConvertKeyName(iniKey, keyName);
+		action = new VKRepeatingInputAction(vkey, auto_repeat, callbacks);
+		actions.push_back(action);
+
+		// Log key settings e.g. next_pixelshader=VK_NUMPAD2
+		LogInfoW(L"  %s=%s\n", iniKey, keyName);
+	}
+	else {
+		RegisterKeyBinding(iniKey, keyName, callbacks);
+	}
 }
 
 void ClearKeyBindings()
 {
 	actions.clear();
 }
+
 
 bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
 {

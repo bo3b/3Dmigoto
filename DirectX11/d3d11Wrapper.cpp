@@ -114,7 +114,7 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 		preset = new KeyOverride(type);
 		preset->ParseIniSection(id, iniFile);
 
-		RegisterKeyBinding(L"Key", key, (InputListener*)preset);
+		RegisterKeyBinding(L"Key", key, preset);
 	}
 }
 
@@ -2156,6 +2156,7 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 {
 	int i;
 	wchar_t buf[16];
+	int repeat = 8, noRepeat = 0;
 
 	// reload_config is registered even if not hunting - this allows us to
 	// turn on hunting in the ini dynamically without having to relaunch
@@ -2163,40 +2164,45 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	// performance hit with hunting on, or where a broken effect is
 	// discovered while playing normally where it may not be easy/fast to
 	// find the effect again later.
-	RegisterIniKeyBinding(L"Hunting", L"reload_config", iniFile, FlagConfigReload, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"reload_config", iniFile, FlagConfigReload, NULL, noRepeat, NULL);
 
 	if (!G->hunting)
 		return;
 
-	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", iniFile, PrevPixelShader, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", iniFile, MarkPixelShader, NULL, NULL);
+	if (GetPrivateProfileString(L"Hunting", L"repeat_rate", 0, buf, MAX_PATH, iniFile))
+		repeat = _wtoi(buf);
 
-	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", iniFile, TakeScreenShot, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", iniFile, PrevPixelShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", iniFile, MarkPixelShader, NULL, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", iniFile, NextIndexBuffer, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", iniFile, PrevIndexBuffer, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", iniFile, MarkIndexBuffer, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", iniFile, TakeScreenShot, NULL, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", iniFile, NextVertexShader, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", iniFile, PrevVertexShader, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", iniFile, MarkVertexShader, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", iniFile, NextIndexBuffer, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", iniFile, PrevIndexBuffer, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", iniFile, MarkIndexBuffer, NULL, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", iniFile, NextVertexShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", iniFile, PrevVertexShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", iniFile, MarkVertexShader, NULL, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"done_hunting", iniFile, DoneHunting, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"done_hunting", iniFile, DoneHunting, NULL, noRepeat, NULL);
+
+	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, noRepeat, NULL);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);
-		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, (void*)i);
+		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, repeat, (void*)i);
 
 		_snwprintf(buf, 16, L"tune%i_down", i + 1);
-		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, (void*)i);
+		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, repeat, (void*)i);
 	}
+
+	LogInfoW(L"  repeat_rate=%d\n", repeat);
 }
 
 

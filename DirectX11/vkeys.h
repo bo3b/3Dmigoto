@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
 struct VKMapping_t {
 	wchar_t *name;
@@ -190,4 +192,17 @@ static int ParseVKey(wchar_t *name)
 	}
 
 	return -1;
+}
+
+// Reverse lookup of key back to string name
+
+static wstring GetKeyName(int key)
+{
+	for (int i = 0; i < ARRAYSIZE(VKMappings); i++) {
+		if (VKMappings[i].key == key) {
+			return (VKMappings[i].name);
+		}
+	}
+
+	return (L"missing");
 }
