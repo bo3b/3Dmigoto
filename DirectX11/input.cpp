@@ -7,6 +7,7 @@
 #include "vkeys.h"
 #include <Xinput.h>
 #include <algorithm>
+#include <ctime>
 
 
 // -----------------------------------------------------------------------------
@@ -179,11 +180,18 @@ VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener, int a
 	return new VKInputAction(vkey, listener);
 }
 
-static XINPUT_STATE XInputState[4];
+struct XInputState_t {
+	XINPUT_STATE state;
+	bool connected;
+};
+static XInputState_t XInputState[4];
 
 bool XInputAction::_CheckState(int controller)
 {
-	XINPUT_GAMEPAD *gamepad = &XInputState[controller].Gamepad;
+	XINPUT_GAMEPAD *gamepad = &XInputState[controller].state.Gamepad;
+
+	if (!XInputState[controller].connected)
+		return false;
 
 	if (button && (gamepad->wButtons & button))
 		return true;
@@ -408,14 +416,19 @@ bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
 	std::vector<class InputAction *>::iterator i;
 	class InputAction *action;
 	bool input_processed = false;
+	time_t now = time(NULL);
 	int j;
 
 	for (j = 0; j < 4; j++) {
+		// Stagger polling controllers that were not connected last
+		// frame over four seconds to minimise performance impact,
+		// which has been observed to be extremely significant.
+		if (!XInputState[j].connected && ((now % 4) != j))
+			continue;
+
 		// TODO: Use undocumented XInputGetStateEx so we can also read the guide button
-		if (XInputGetState(j, &XInputState[j]) != ERROR_SUCCESS) {
-			if (XInputState[j].dwPacketNumber)
-				memset(&XInputState[j], 0, sizeof(XINPUT_STATE));
-		}
+		XInputState[j].connected =
+			(XInputGetState(j, &XInputState[j].state) == ERROR_SUCCESS);
 	}
 
 	for (i = actions.begin(); i != actions.end(); i++) {
