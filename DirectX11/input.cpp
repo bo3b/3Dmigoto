@@ -251,8 +251,8 @@ static XInputMapping_t XInputButtons[] = {
 
 // This function is parsing strings with formats such as:
 //
-// XINPUT:DPAD_DOWN               - dpad down on any controller
-// xinput 0 : left_trigger > 128  - left trigger half way on 1st controller
+// XB_DPAD_DOWN           - dpad down on any controller
+// x1_left_trigger > 128  - left trigger half way on 1st controller
 //
 // I originally wrote this using regular expressions rather than C style
 // pointer arithmetic, but it looks like MSVC's implementation may be buggy
@@ -261,31 +261,25 @@ static XInputMapping_t XInputButtons[] = {
 // uncommon in the Windows world. Feel free to rewrite this in a cleaner way.
 XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener, int auto_repeat)
 {
-	int i, controller = -1, button = 0, threshold = 0;
+	int i, controller = -1, button = 0, threshold = XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
 	BYTE left_trigger = 0, right_trigger = 0;
 	BYTE *trigger;
 
-	if (_wcsnicmp(keyName, L"XINPUT", 6))
-		return NULL;
-	keyName += 6;
-
-	while (*keyName == L' ')
-		keyName++;
-
-	if (*keyName >= L'0' && *keyName < L'4') {
-		controller = *keyName - L'0';
-		keyName++;
-	}
-
-	while (*keyName == L' ')
-		keyName++;
-
-	if (*keyName != L':')
+	if (*keyName != L'X')
 		return NULL;
 	keyName++;
 
-	while (*keyName == L' ')
-		keyName++;
+	if (*keyName == L'B') {
+		controller = -1;
+	} else if (*keyName >= L'1' && *keyName <= L'4') {
+		controller = *keyName - L'1';
+	} else
+		return NULL;
+	keyName++;
+
+	if (*keyName != L'_')
+		return NULL;
+	keyName++;
 
 	for (i = 0; i < ARRAYSIZE(XInputButtons); i++) {
 		if (!_wcsicmp(keyName, XInputButtons[i].name)) {
