@@ -176,15 +176,13 @@ static char *LogTime()
 }
 #pragma warning( default : 4996 )
 
-#if _WIN64
-#if HOOK_SYSTEM32
+#if (_WIN64 && HOOK_SYSTEM32)
 #define REAL_NVAPI_DLL L"\\original_nvapi64.dll"
-#else /* HOOK_SYSTEM32 */
+#elif(_WIN64)
 #define REAL_NVAPI_DLL L"\\nvapi64.dll"
-#endif /* HOOK_SYSTEM32 */
-#else /* _WIN64 */
+#else 
 #define REAL_NVAPI_DLL L"\\nvapi.dll"
-#endif /* _WIN64 */
+#endif
 
 static void loadDll()
 {
