@@ -317,54 +317,6 @@ XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener, int aut
 	return new XInputAction(controller, button, left_trigger, right_trigger, listener);
 }
 
-#if 0
-// Alternate implementation using regular expressions - gave up after hitting
-// what appears to be a bug in MSVC (if I was able to hit one so easily with a
-// relatively straight forward expression, who knows how many more are lurking
-// in wait). Alternatively maybe I mucked up something I just can't spot.
-XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener)
-{
-	std::wregex pattern(L"^XINPUT\\s*([0-3])?\\s*:\\s*([A-Z_]*)(?:\\s*>\\s*([0-9]+))?$",
-			std::regex_constants::icase);
-	std::wcmatch match;
-	const wchar_t *button_name;
-	int i, controller = -1, button = 0;
-	BYTE left_trigger = 0, right_trigger = 0, threshold = 1;
-
-	if (!std::regex_match(keyName, match, pattern))
-		return NULL;
-
-	if (match[1].length())
-		controller = stoi(match[1].str());
-
-	// Looks like an MSVC bug - the first character in this group is garbage :(
-	button_name = match[2].str().c_str();
-	LogInfoW(L"button_name: %s\n", button_name);
-
-	for (i = 0; i < ARRAYSIZE(XInputButtons); i++) {
-		if (!_wcsicmp(button_name, XInputButtons[i].name)) {
-			button = XInputButtons[i].button;
-			break;
-		}
-	}
-
-	if (!button) {
-		if (match[3].length())
-			threshold = stoi(match[3].str()) + 1;
-
-		if (!_wcsicmp(button_name, L"LEFT_TRIGGER"))
-			left_trigger = threshold;
-		else if (!_wcsicmp(button_name, L"RIGHT_TRIGGER"))
-			right_trigger = threshold;
-		else
-			return NULL;
-	}
-
-	return new XInputAction(controller, button, left_trigger, right_trigger, listener);
-
-}
-#endif
-
 static std::vector<class InputAction *> actions;
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
