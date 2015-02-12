@@ -252,7 +252,7 @@ static XInputMapping_t XInputButtons[] = {
 // This function is parsing strings with formats such as:
 //
 // XB_DPAD_DOWN           - dpad down on any controller
-// x1_left_trigger > 128  - left trigger half way on 1st controller
+// xb1_left_trigger > 128 - left trigger half way on 1st controller
 //
 // I originally wrote this using regular expressions rather than C style
 // pointer arithmetic, but it looks like MSVC's implementation may be buggy
