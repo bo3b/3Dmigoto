@@ -265,17 +265,14 @@ XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener, int aut
 	BYTE left_trigger = 0, right_trigger = 0;
 	BYTE *trigger;
 
-	if (*keyName != L'X')
+	if (_wcsnicmp(keyName, L"XB", 2))
 		return NULL;
-	keyName++;
+	keyName += 2;
 
-	if (*keyName == L'B') {
-		controller = -1;
-	} else if (*keyName >= L'1' && *keyName <= L'4') {
+	if (*keyName >= L'1' && *keyName <= L'4') {
 		controller = *keyName - L'1';
-	} else
-		return NULL;
-	keyName++;
+		keyName++;
+	}
 
 	if (*keyName != L'_')
 		return NULL;
