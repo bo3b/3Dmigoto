@@ -2256,6 +2256,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 
 	bool newEvent = DispatchInputEvents(device);
 
+	CurrentTransition.UpdateTransitions(device);
+
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag
 	// instead and we handle it now.
