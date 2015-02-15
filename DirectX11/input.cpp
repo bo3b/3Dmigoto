@@ -125,6 +125,38 @@ bool RepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
 	return false;
 }
 
+DelayedInputAction::DelayedInputAction(int delay_down, int delay_up, InputListener *listener) :
+	delay_down(delay_down),
+	delay_up(delay_up),
+	effective_state(false),
+	state_change_time(0),
+	InputAction(listener)
+{}
+
+bool DelayedInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	ULONGLONG now = GetTickCount64();
+	bool state = CheckState();
+
+	if (state != last_state)
+		state_change_time = now;
+	last_state = state;
+
+	if (state != effective_state) {
+		if (state && ((now - state_change_time) >= delay_down)) {
+			effective_state = state;
+			listener->DownEvent(device);
+			return true;
+		} else if (!state && ((now - state_change_time) >= delay_up)) {
+			effective_state = state;
+			listener->UpEvent(device);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 VKRepeatingInputAction::VKRepeatingInputAction(int vkey, int repeat, InputListener *listener) :
 	RepeatingInputAction(repeat, listener),
 	InputAction(listener),
@@ -163,10 +195,49 @@ bool XRepeatingInputAction::CheckState()
 	return XInputAction::CheckState();
 }
 
+VKDelayedInputAction::VKDelayedInputAction(int vkey, int down_delay, int up_delay, InputListener *listener) :
+	DelayedInputAction(down_delay, up_delay, listener),
+	InputAction(listener),
+	VKInputAction(vkey, listener)
+{}
+
+bool VKDelayedInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	return DelayedInputAction::Dispatch(device);
+}
+
+// Only necessary to silence an MSVC warning - there is only one CheckState
+// implementation in the class heirachy
+bool VKDelayedInputAction::CheckState()
+{
+	return VKInputAction::CheckState();
+}
+
+XDelayedInputAction::XDelayedInputAction(int controller, WORD button, BYTE left_trigger,
+		BYTE right_trigger, int down_delay, int up_delay,
+		InputListener *listener) :
+	DelayedInputAction(down_delay, up_delay, listener),
+	InputAction(listener),
+	XInputAction(controller, button, left_trigger, right_trigger, listener)
+{}
+
+bool XDelayedInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+{
+	return DelayedInputAction::Dispatch(device);
+}
+
+// Only necessary to silence an MSVC warning - there is only one CheckState
+// implementation in the class heirachy
+bool XDelayedInputAction::CheckState()
+{
+	return XInputAction::CheckState();
+}
+
 
 // -----------------------------------------------------------------------------
 
-VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener, int auto_repeat)
+VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener,
+		int auto_repeat, int down_delay, int up_delay)
 {
 	int vkey;
 
@@ -176,6 +247,9 @@ VKInputAction *NewVKInputAction(wchar_t *keyName, InputListener *listener, int a
 
 	if (auto_repeat)
 		return new VKRepeatingInputAction(vkey, auto_repeat, listener);
+
+	if (down_delay || up_delay)
+		return new VKDelayedInputAction(vkey, down_delay, up_delay, listener);
 
 	return new VKInputAction(vkey, listener);
 }
@@ -259,7 +333,8 @@ static XInputMapping_t XInputButtons[] = {
 // (either that or I have a very precise 100% reproducable memory corruption
 // issue), which isn't that surprising given that regular expressions are
 // uncommon in the Windows world. Feel free to rewrite this in a cleaner way.
-XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener, int auto_repeat)
+XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener,
+		int auto_repeat, int down_delay, int up_delay)
 {
 	int i, controller = -1, button = 0, threshold = XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
 	BYTE left_trigger = 0, right_trigger = 0;
@@ -311,21 +386,25 @@ XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener, int aut
 	if (auto_repeat)
 		return new XRepeatingInputAction(controller, button, left_trigger, right_trigger, auto_repeat, listener);
 
+	if (down_delay || up_delay)
+		return new XDelayedInputAction(controller, button, left_trigger, right_trigger, down_delay, up_delay, listener);
+
 	return new XInputAction(controller, button, left_trigger, right_trigger, listener);
 }
 
 static std::vector<class InputAction *> actions;
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener, int auto_repeat)
+		InputListener *listener, int auto_repeat, int down_delay,
+		int up_delay)
 {
 	class InputAction *action;
 
 	RightStripW(keyName);
 
-	action = NewVKInputAction(keyName, listener, auto_repeat);
+	action = NewVKInputAction(keyName, listener, auto_repeat, down_delay, up_delay);
 	if (!action)
-		action = NewXInputAction(keyName, listener, auto_repeat);
+		action = NewXInputAction(keyName, listener, auto_repeat, down_delay, up_delay);
 
 	if (action) {
 		LogInfoW(L"  %s=%s\n", iniKey, keyName);
@@ -345,7 +424,7 @@ void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
 	if (!GetPrivateProfileString(app, iniKey, 0, keyName, MAX_PATH, ini))
 		return;
 
-	RegisterKeyBinding(iniKey, keyName, callbacks, auto_repeat);
+	RegisterKeyBinding(iniKey, keyName, callbacks, auto_repeat, 0, 0);
 }
 
 void ClearKeyBindings()
