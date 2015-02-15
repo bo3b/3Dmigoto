@@ -26,7 +26,6 @@ public:
 	void Activate(D3D11Base::ID3D11Device *device);
 	void Deactivate(D3D11Base::ID3D11Device *device);
 	void Toggle(D3D11Base::ID3D11Device *device);
-	void Save(D3D11Base::ID3D11Device *device);
 };
 
 enum KeyOverrideType {
@@ -67,9 +66,9 @@ struct OverrideTransitionParam
 
 class OverrideTransition
 {
-private:
-	OverrideTransitionParam x, y, z, w, separation, convergence;
 public:
+	OverrideTransitionParam x, y, z, w, separation, convergence;
+
 	void ScheduleTransition(D3D11Base::ID3D11Device *device,
 			float target_separation, float target_convergence,
 			float target_x, float target_y, float target_z,
@@ -77,7 +76,35 @@ public:
 	void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device);
 };
 
+// This struct + class provides a global save for each of the overridable
+// parameters. It is used to ensure that after all toggle and hold type
+// bindings are released that the final value that is restored matches the
+// original value. The local saves in each individual override do not guarantee
+// this.
+class OverrideGlobalSaveParam
+{
+private:
+	float save;
+	int refcount;
+public:
+	void Reset();
+	void Save(float val);
+	void Restore(float *val);
+};
+
+class OverrideGlobalSave
+{
+public:
+	OverrideGlobalSaveParam x, y, z, w, separation, convergence;
+	OverrideGlobalSave();
+
+	void Reset();
+	void Save(D3D11Base::ID3D11Device *device, Override *preset);
+	void Restore(Override *preset);
+};
+
 // We only use a single transition instance to simplify the edge cases and
 // answer what happens when we have overlapping transitions - there can only be
 // one active transition for each parameter.
 extern OverrideTransition CurrentTransition;
+extern OverrideGlobalSave OverrideSave;

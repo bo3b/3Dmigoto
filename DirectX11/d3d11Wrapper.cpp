@@ -573,6 +573,9 @@ static void ReloadConfig(D3D11Base::ID3D11Device *device)
 	// many as possible inside LoadConfigFile() where they are set.
 	ClearKeyBindings();
 
+	// Reset the counters on the global parameter save area:
+	OverrideSave.Reset();
+
 	LoadConfigFile();
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
