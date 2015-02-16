@@ -127,6 +127,7 @@
   <ItemGroup>
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\IDirect3DUnknown.h" />
+    <ClInclude Include="..\version.h" />
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />
@@ -135,7 +136,6 @@
     <ClInclude Include="input.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="Override.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="vkeys.h" />
   </ItemGroup>
   <ItemGroup>
