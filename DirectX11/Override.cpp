@@ -66,9 +66,9 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	if (transition)
 		LogInfo("  transition=%ims\n", transition);
 
-	releasetransition = GetPrivateProfileInt(section, L"releasetransition", 0, ini);
-	if (releasetransition)
-		LogInfo("  releasetransition=%ims\n", releasetransition);
+	release_transition = GetPrivateProfileInt(section, L"release_transition", 0, ini);
+	if (release_transition)
+		LogInfo("  release_transition=%ims\n", release_transition);
 }
 
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
@@ -129,7 +129,7 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 			mSavedParams.y,
 			mSavedParams.z,
 			mSavedParams.w,
-			releasetransition);
+			release_transition);
 }
 
 void Override::Toggle(D3D11Base::ID3D11Device *device)
@@ -308,7 +308,7 @@ void OverrideGlobalSaveParam::Save(float val)
 // If a parameter is currently in a transition, the target value of that
 // transition is used instead of the current value. This prevents an
 // intermediate transition value from being saved and restored later (e.g. if
-// rapidly pressing RMB with a releasetransition set).
+// rapidly pressing RMB with a release_transition set).
 
 void OverrideGlobalSave::Save(D3D11Base::ID3D11Device *device, Override *preset)
 {

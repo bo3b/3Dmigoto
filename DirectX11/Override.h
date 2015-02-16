@@ -8,7 +8,7 @@ class Override
 {
 private:
 	bool active;
-	int transition, releasetransition;
+	int transition, release_transition;
 
 public:
 	DirectX::XMFLOAT4 mOverrideParams;
