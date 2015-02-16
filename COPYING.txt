@@ -1,0 +1,20 @@
+The source code of 3Dmigoto is released under the MIT license - refer to
+LICENSE.MIT.txt for details. We ask that you consider contributing enhancements
+back to the 3Dmigoto project, but this is not strictly required.
+
+Any shaders distributed along with 3Dmigoto as part of game fixes are not
+covered by the license of 3Dmigoto, and are owned by their respective copyright
+holders - these are modified and distributed in good faith for the sole purpose
+of fixing problems in the original games.
+
+3Dmigoto makes use of the Deviare-InProcess library from Nektra, which is
+licensed under the General Public License version 3 - refer to LICENSE.GPL.txt
+for details.
+
+Please be aware that in some situations this may cause 3Dmigoto as a whole to
+be licensed under the GPLv3, with all the requirements thereof. This will
+happen for example, when 3Dmigoto has been distributed in library form linked
+against the Deviare-InProcess library. If you wish to use 3Dmigoto without
+being bound by the terms of the GPLv3 you should purchase a commercial license
+for Deviare-InProcess from Nektra, or completely remove the Deviare-InProcess
+library prior to distribution.

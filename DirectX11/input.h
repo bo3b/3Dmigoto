@@ -129,8 +129,22 @@ public:
 };
 
 // -----------------------------------------------------------------------------
-// Classes using multiple inheritance to add auto-repeat functionality to
-// VKInputAction and XInputAction
+// DelayedInputAction is used to add delays to the activation of other key
+// bindings.
+class DelayedInputAction : public virtual InputAction {
+private:
+	int delay_down, delay_up;
+	bool effective_state;
+	ULONGLONG state_change_time;
+public:
+	DelayedInputAction(int delayDown, int delayUp, InputListener *listener);
+	bool Dispatch(D3D11Base::ID3D11Device *device) override;
+};
+
+// -----------------------------------------------------------------------------
+// Classes using multiple inheritance to add auto-repeat or delay functionality
+// to VKInputAction and XInputAction. TODO: Look into C++ mixins to see if that
+// can reduce the number of classes we need here
 class VKRepeatingInputAction : public VKInputAction, public RepeatingInputAction {
 public:
 	VKRepeatingInputAction(int vkey, int repeat, InputListener *listener);
@@ -144,6 +158,19 @@ public:
 	bool Dispatch(D3D11Base::ID3D11Device *device);
 	bool CheckState(); // Only necessary to silence warning from MSVC bug
 };
+class VKDelayedInputAction : public VKInputAction, public DelayedInputAction {
+public:
+	VKDelayedInputAction(int vkey, int down_dealy, int up_delay, InputListener *listener);
+	bool Dispatch(D3D11Base::ID3D11Device *device);
+	bool CheckState(); // Only necessary to silence warning from MSVC bug
+};
+class XDelayedInputAction : public XInputAction, public DelayedInputAction {
+public:
+	XDelayedInputAction(int controller, WORD button, BYTE left_trigger,
+		BYTE right_trigger, int down_dealy, int up_delay, InputListener *listener);
+	bool Dispatch(D3D11Base::ID3D11Device *device);
+	bool CheckState(); // Only necessary to silence warning from MSVC bug
+};
 
 
 // -----------------------------------------------------------------------------
@@ -153,7 +180,8 @@ public:
 // more variants as needed.
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener, int auto_repeat);
+		InputListener *listener, int auto_repeat, int down_delay,
+		int up_delay);
 void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data);

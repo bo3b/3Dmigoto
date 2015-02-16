@@ -68,6 +68,7 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
 	KeyOverride *preset;
+	int delay, releasedelay;
 	int i;
 
 	// TODO: Use GetPrivateProfileSectionNames() to enumerate all [Key*]
@@ -105,6 +106,9 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 			}
 		}
 
+		delay = GetPrivateProfileInt(id, L"delay", 0, iniFile);
+		releasedelay = GetPrivateProfileInt(id, L"releasedelay", 0, iniFile);
+
 		// TODO: Alternatively allow the [Key] section to contain a
 		// reference to other preset sections, to allow a single key to
 		// be used to cycle between several presets. In this case we
@@ -114,7 +118,7 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 		preset = new KeyOverride(type);
 		preset->ParseIniSection(id, iniFile);
 
-		RegisterKeyBinding(L"Key", key, preset, 0);
+		RegisterKeyBinding(L"Key", key, preset, 0, delay, releasedelay);
 	}
 }
 
@@ -2251,6 +2255,8 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 	if (LogFile) fflush(LogFile);
 
 	bool newEvent = DispatchInputEvents(device);
+
+	CurrentTransition.UpdateTransitions(device);
 
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag

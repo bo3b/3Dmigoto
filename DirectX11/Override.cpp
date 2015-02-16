@@ -3,6 +3,8 @@
 #include "Main.h"
 #include "globals.h"
 
+OverrideTransition CurrentTransition;
+
 Override::Override()
 {
 	// It's important for us to know if any are actively in use or not, so setting them
@@ -58,6 +60,47 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		swscanf_s(buf, L"%f", &mOverrideParams.w);
 		LogInfo("  w=%#.2g\n", mOverrideParams.w);
 	}
+
+	transition = GetPrivateProfileInt(section, L"transition", 0, ini);
+	if (transition)
+		LogInfo("  transition=%ims\n", transition);
+
+	releasetransition = GetPrivateProfileInt(section, L"releasetransition", 0, ini);
+	if (releasetransition)
+		LogInfo("  releasetransition=%ims\n", releasetransition);
+}
+
+void Override::Save(D3D11Base::ID3D11Device *device)
+{
+	D3D11Base::NvAPI_Status err;
+	D3D11Wrapper::ID3D11Device *wrapper;
+
+	wrapper = (D3D11Wrapper::ID3D11Device*)D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
+
+	if (mOverrideSeparation != FLT_MAX) {
+		err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &mUserSeparation);
+		if (err != D3D11Base::NVAPI_OK) {
+			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+		}
+	}
+
+	if (mOverrideConvergence != FLT_MAX) {
+		err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &mUserConvergence);
+		if (err != D3D11Base::NVAPI_OK) {
+			LogDebug("    Stereo_GetConvergence failed: %#.2f\n", err);
+		}
+	}
+
+	if (mOverrideParams.x != FLT_MAX)
+		mSavedParams.x = G->iniParams.x;
+	if (mOverrideParams.y != FLT_MAX)
+		mSavedParams.y = G->iniParams.y;
+	if (mOverrideParams.z != FLT_MAX)
+		mSavedParams.z = G->iniParams.z;
+	if (mOverrideParams.w != FLT_MAX)
+		mSavedParams.w = G->iniParams.w;
 }
 
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
@@ -67,7 +110,7 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 
 static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 		D3D11Wrapper::ID3D11Device* wrapper,
-		DirectX::XMFLOAT4 *params, DirectX::XMFLOAT4 *save)
+		DirectX::XMFLOAT4 *params)
 {
 	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
 	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -76,9 +119,6 @@ static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 	    params->z == FLT_MAX && params->w == FLT_MAX) {
 		return;
 	}
-
-	if (save)
-		memcpy(save, &G->iniParams, sizeof(G->iniParams));
 
 	if (params->x != FLT_MAX)
 		G->iniParams.x = params->x;
@@ -93,99 +133,47 @@ static void UpdateIniParams(D3D11Base::ID3D11Device *device,
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(wrapper->mIniTexture, 0);
 
-	LogInfo(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
+	LogDebug(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
 }
 
 void Override::Activate(D3D11Base::ID3D11Device *device)
 {
-	// In general we want to be calling the _real_ d3d11 device here.
-	using namespace D3D11Base;
-
-	NvAPI_Status err;
-
 	LogInfo("User key activation -->\n");
 
-	D3D11Wrapper::ID3D11Device* wrapper =
-		(D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
-	if (!wrapper)
-		return;
-
-	if (mOverrideSeparation != FLT_MAX) {
-		err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &mUserSeparation);
-		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
-		}
-
-		LogInfo(" Changing separation from %#.2f to %#.2f\n", mUserSeparation, mOverrideSeparation);
-
-		D3D11Wrapper::NvAPIOverride();
-		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, mOverrideSeparation);
-		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_SetSeparation failed: %#.2f\n", err);
-		}
-	}
-	if (mOverrideConvergence != FLT_MAX) {
-		err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &mUserConvergence);
-		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_GetConvergence failed: %#.2f\n", err);
-		}
-
-		LogInfo(" Changing convergence from %#.2f to %#.2f\n", mUserConvergence, mOverrideConvergence);
-
-		D3D11Wrapper::NvAPIOverride();
-		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, mOverrideConvergence);
-		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_SetConvergence failed: %#.2f\n", err);
-		}
-	}
-
-	UpdateIniParams(device, wrapper, &mOverrideParams, &mSavedParams);
-
-	active = true;
+	// FIXME: Don't save any values that are currently being transitioned
+	// This is another case of a more general problem where
+	// multiple type=hold/toggle keys change the same parameters -
+	// we need a global save rather than an override specific one
+	// to resolve it.
+	Save(device);
+	CurrentTransition.ScheduleTransition(device,
+			mOverrideSeparation,
+			mOverrideConvergence,
+			mOverrideParams.x,
+			mOverrideParams.y,
+			mOverrideParams.z,
+			mOverrideParams.w,
+			transition);
 }
 
 void Override::Deactivate(D3D11Base::ID3D11Device *device)
 {
-	using namespace D3D11Base;
-
-	NvAPI_Status err;
-
 	LogInfo("User key deactivation <--\n");
 
-	D3D11Wrapper::ID3D11Device* wrapper =
-		(D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
-	if (!wrapper)
-		return;
-
-	if (mUserSeparation != FLT_MAX) {
-		LogInfo(" Changing separation from %#.2f to %#.2f\n", mOverrideSeparation, mUserSeparation);
-
-		D3D11Wrapper::NvAPIOverride();
-		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, mUserSeparation);
-		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_SetSeparation failed: %d\n", err);
-		}
-		mUserSeparation = FLT_MAX;
-	}
-	if (mUserConvergence != FLT_MAX) {
-		LogInfo(" Changing convergence from %#.2f to %#.2f\n", mOverrideConvergence, mUserConvergence);
-
-		D3D11Wrapper::NvAPIOverride();
-		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, mUserConvergence);
-		if (err != NVAPI_OK) {
-			LogDebug("    Stereo_SetConvergence failed: %d\n", err);
-		}
-		mUserConvergence = FLT_MAX;
-	}
-
-	UpdateIniParams(device, wrapper, &mSavedParams, NULL);
-
-	active = false;
+	CurrentTransition.ScheduleTransition(device,
+			mUserSeparation,
+			mUserConvergence,
+			mSavedParams.x,
+			mSavedParams.y,
+			mSavedParams.z,
+			mSavedParams.w,
+			releasetransition);
 }
 
 void Override::Toggle(D3D11Base::ID3D11Device *device)
 {
-	if (active)
+	active = !active;
+	if (!active)
 		return Deactivate(device);
 	return Activate(device);
 }
@@ -201,4 +189,119 @@ void KeyOverride::UpEvent(D3D11Base::ID3D11Device *device)
 {
 	if (type == KeyOverrideType::HOLD)
 		return Deactivate(device);
+}
+
+static void _ScheduleTransition(struct OverrideTransitionParam *transition,
+		char *name, float current, float val, ULONGLONG now, int time)
+{
+	LogInfo(" %s: %#.2g -> %#.2g", name, current, val);
+	transition->start = current;
+	transition->target = val;
+	transition->activation_time = now;
+	transition->time = time;
+}
+
+void OverrideTransition::ScheduleTransition(D3D11Base::ID3D11Device *device,
+		float target_separation, float target_convergence, float
+		target_x, float target_y, float target_z, float target_w,
+		int time)
+{
+	ULONGLONG now = GetTickCount64();
+	D3D11Base::NvAPI_Status err;
+	float current;
+	D3D11Wrapper::ID3D11Device *wrapper;
+
+	wrapper = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
+
+	LogInfo(" Override");
+	if (time)
+		LogInfo(" transition: %ims", time);
+
+	if (target_separation != FLT_MAX) {
+		err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
+		if (err != D3D11Base::NVAPI_OK)
+			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+		_ScheduleTransition(&separation, "separation", current, target_separation, now, time);
+	}
+	if (target_convergence != FLT_MAX) {
+		err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
+		if (err != D3D11Base::NVAPI_OK)
+			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time);
+	}
+	if (target_x != FLT_MAX)
+		_ScheduleTransition(&x, "x", G->iniParams.x, target_x, now, time);
+	if (target_y != FLT_MAX)
+		_ScheduleTransition(&y, "y", G->iniParams.y, target_y, now, time);
+	if (target_z != FLT_MAX)
+		_ScheduleTransition(&z, "z", G->iniParams.z, target_z, now, time);
+	if (target_w != FLT_MAX)
+		_ScheduleTransition(&w, "w", G->iniParams.w, target_w, now, time);
+	LogInfo("\n");
+}
+
+static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONGLONG now)
+{
+	ULONGLONG time;
+	float percent;
+
+	if (transition->time == -1)
+		return FLT_MAX;
+
+	if (transition->time == 0) {
+		transition->time = -1;
+		return transition->target;
+	}
+
+	time = now - transition->activation_time;
+	percent = (float)time / transition->time;
+
+	if (percent >= 1.0f) {
+		transition->time = -1;
+		return transition->target;
+	}
+
+	return transition->target * percent + transition->start * (1.0f - percent);
+}
+
+void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
+{
+	D3D11Wrapper::ID3D11Device *wrapper;
+	ULONGLONG now = GetTickCount64();
+	DirectX::XMFLOAT4 params = {FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX};
+	D3D11Base::NvAPI_Status err;
+	float val;
+
+	wrapper = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
+
+	val = _UpdateTransition(&separation, now);
+	if (val != FLT_MAX) {
+		LogInfo(" Transitioning separation to %#.2f\n", val);
+
+		D3D11Wrapper::NvAPIOverride();
+		err = D3D11Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		if (err != D3D11Base::NVAPI_OK)
+			LogDebug("    Stereo_SetSeparation failed: %#.2f\n", err);
+	}
+
+	val = _UpdateTransition(&convergence, now);
+	if (val != FLT_MAX) {
+		LogInfo(" Transitioning convergence to %#.2f\n", val);
+
+		D3D11Wrapper::NvAPIOverride();
+		err = D3D11Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		if (err != D3D11Base::NVAPI_OK)
+			LogDebug("    Stereo_SetConvergence failed: %#.2f\n", err);
+	}
+
+	params.x = _UpdateTransition(&x, now);
+	params.y = _UpdateTransition(&y, now);
+	params.z = _UpdateTransition(&z, now);
+	params.w = _UpdateTransition(&w, now);
+
+	UpdateIniParams(device, wrapper, &params);
 }
