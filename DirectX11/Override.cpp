@@ -4,6 +4,7 @@
 #include "globals.h"
 
 OverrideTransition CurrentTransition;
+OverrideGlobalSave OverrideSave;
 
 Override::Override()
 {
@@ -70,39 +71,6 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		LogInfo("  releasetransition=%ims\n", releasetransition);
 }
 
-void Override::Save(D3D11Base::ID3D11Device *device)
-{
-	D3D11Base::NvAPI_Status err;
-	D3D11Wrapper::ID3D11Device *wrapper;
-
-	wrapper = (D3D11Wrapper::ID3D11Device*)D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
-	if (!wrapper)
-		return;
-
-	if (mOverrideSeparation != FLT_MAX) {
-		err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &mUserSeparation);
-		if (err != D3D11Base::NVAPI_OK) {
-			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
-		}
-	}
-
-	if (mOverrideConvergence != FLT_MAX) {
-		err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &mUserConvergence);
-		if (err != D3D11Base::NVAPI_OK) {
-			LogDebug("    Stereo_GetConvergence failed: %#.2f\n", err);
-		}
-	}
-
-	if (mOverrideParams.x != FLT_MAX)
-		mSavedParams.x = G->iniParams.x;
-	if (mOverrideParams.y != FLT_MAX)
-		mSavedParams.y = G->iniParams.y;
-	if (mOverrideParams.z != FLT_MAX)
-		mSavedParams.z = G->iniParams.z;
-	if (mOverrideParams.w != FLT_MAX)
-		mSavedParams.w = G->iniParams.w;
-}
-
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
 // can change the values, then remap them back to the GPU where they can be accessed by shader code.
 // This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.
@@ -140,12 +108,6 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 {
 	LogInfo("User key activation -->\n");
 
-	// FIXME: Don't save any values that are currently being transitioned
-	// This is another case of a more general problem where
-	// multiple type=hold/toggle keys change the same parameters -
-	// we need a global save rather than an override specific one
-	// to resolve it.
-	Save(device);
 	CurrentTransition.ScheduleTransition(device,
 			mOverrideSeparation,
 			mOverrideConvergence,
@@ -173,8 +135,11 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 void Override::Toggle(D3D11Base::ID3D11Device *device)
 {
 	active = !active;
-	if (!active)
+	if (!active) {
+		OverrideSave.Restore(this);
 		return Deactivate(device);
+	}
+	OverrideSave.Save(device, this);
 	return Activate(device);
 }
 
@@ -182,13 +147,17 @@ void KeyOverride::DownEvent(D3D11Base::ID3D11Device *device)
 {
 	if (type == KeyOverrideType::TOGGLE)
 		return Toggle(device);
+	if (type == KeyOverrideType::HOLD)
+		OverrideSave.Save(device, this);
 	return Activate(device);
 }
 
 void KeyOverride::UpEvent(D3D11Base::ID3D11Device *device)
 {
-	if (type == KeyOverrideType::HOLD)
+	if (type == KeyOverrideType::HOLD) {
+		OverrideSave.Restore(this);
 		return Deactivate(device);
+	}
 }
 
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
@@ -304,4 +273,150 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 	params.w = _UpdateTransition(&w, now);
 
 	UpdateIniParams(device, wrapper, &params);
+}
+
+OverrideGlobalSave::OverrideGlobalSave()
+{
+	Reset();
+}
+
+void OverrideGlobalSaveParam::Reset()
+{
+	save = FLT_MAX;
+	refcount = 0;
+}
+
+void OverrideGlobalSave::Reset()
+{
+	x.Reset();
+	y.Reset();
+	z.Reset();
+	w.Reset();
+	separation.Reset();
+	convergence.Reset();
+}
+
+void OverrideGlobalSaveParam::Save(float val)
+{
+	if (!refcount)
+		save = val;
+	refcount++;
+}
+
+// Saves the current values for each parameter to the override's local save
+// area, and the global save area (if nothing is already saved there).
+// If a parameter is currently in a transition, the target value of that
+// transition is used instead of the current value. This prevents an
+// intermediate transition value from being saved and restored later (e.g. if
+// rapidly pressing RMB with a releasetransition set).
+
+void OverrideGlobalSave::Save(D3D11Base::ID3D11Device *device, Override *preset)
+{
+	D3D11Base::NvAPI_Status err;
+	D3D11Wrapper::ID3D11Device *wrapper;
+	float val;
+
+	wrapper = (D3D11Wrapper::ID3D11Device*)D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
+
+	if (preset->mOverrideSeparation != FLT_MAX) {
+		if (CurrentTransition.separation.time != -1) {
+			val = CurrentTransition.separation.target;
+		} else {
+			err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
+			if (err != D3D11Base::NVAPI_OK) {
+				LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+			}
+		}
+
+		preset->mUserSeparation = val;
+		separation.Save(val);
+	}
+
+	if (preset->mOverrideConvergence != FLT_MAX) {
+		if (CurrentTransition.convergence.time != -1) {
+			val = CurrentTransition.convergence.target;
+		} else {
+			err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
+			if (err != D3D11Base::NVAPI_OK) {
+				LogDebug("    Stereo_GetConvergence failed: %#.2f\n", err);
+			}
+		}
+
+		preset->mUserConvergence = val;
+		convergence.Save(val);
+	}
+
+	if (preset->mOverrideParams.x != FLT_MAX) {
+		if (CurrentTransition.x.time != -1)
+			val = CurrentTransition.x.target;
+		else
+			val = G->iniParams.x;
+
+		preset->mSavedParams.x = val;
+		x.Save(val);
+	}
+	if (preset->mOverrideParams.y != FLT_MAX) {
+		if (CurrentTransition.y.time != -1)
+			val = CurrentTransition.y.target;
+		else
+			val = G->iniParams.y;
+
+		preset->mSavedParams.y = val;
+		y.Save(val);
+	}
+	if (preset->mOverrideParams.z != FLT_MAX) {
+		if (CurrentTransition.z.time != -1)
+			val = CurrentTransition.z.target;
+		else
+			val = G->iniParams.z;
+
+		preset->mSavedParams.z = val;
+		z.Save(val);
+	}
+	if (preset->mOverrideParams.w != FLT_MAX) {
+		if (CurrentTransition.w.time != -1)
+			val = CurrentTransition.w.target;
+		else
+			val = G->iniParams.w;
+
+		preset->mSavedParams.w = val;
+		w.Save(val);
+	}
+}
+
+void OverrideGlobalSaveParam::Restore(float *val)
+{
+	refcount--;
+
+	if (!refcount) {
+		if (val)
+			*val = save;
+		save = FLT_MAX;
+	} else if (refcount < 0) {
+		LogInfo("BUG! OverrideGlobalSaveParam refcount < 0!\n");
+	}
+}
+
+void OverrideGlobalSave::Restore(Override *preset)
+{
+	// This replaces the local saved values in the override with the global
+	// ones for any parameters where this is the last override being
+	// deactivated. This ensures that we will finally restore the original
+	// value, even if keys were held and released in a bad order, or a
+	// local value was saved in the middle of a transition.
+
+	if (preset->mOverrideSeparation != FLT_MAX)
+		separation.Restore(&preset->mUserSeparation);
+	if (preset->mOverrideConvergence != FLT_MAX)
+		convergence.Restore(&preset->mUserConvergence);
+	if (preset->mOverrideParams.x != FLT_MAX)
+		x.Restore(&preset->mSavedParams.x);
+	if (preset->mOverrideParams.y != FLT_MAX)
+		y.Restore(&preset->mSavedParams.y);
+	if (preset->mOverrideParams.z != FLT_MAX)
+		y.Restore(&preset->mSavedParams.z);
+	if (preset->mOverrideParams.w != FLT_MAX)
+		y.Restore(&preset->mSavedParams.w);
 }
