@@ -1,5 +1,8 @@
 @echo off
+SetLocal EnableDelayedExpansion
+Pushd "%~dp0"
 
+REM -----------------------------------------------------------------------------
 REM Publish batch file to safely build a complete Zip file to be published.
 REM This takes it out of being a manual operation, and will always build and
 REM zip the current code.
@@ -14,10 +17,41 @@ REM TODO: change Win32 to x86, it's annoying
 REM TODO: remove all invalid build targets like x32 for Mordor.
 
 
-REM Activate the VsDevCmds so that we can do msbuild easily.
+REM -----------------------------------------------------------------------------
+REM Before doing a build, let's bump the version number of the tool. 
+REM This is stored in the version.h file at the project root, and is used 
+REM during resource file compiles to build the proper output in the DLLs.
+REM
+REM This awesome batch sequence to auto-increment the VERSION_REVISION is courtesy of
+REM   *** TsaebehT ***
 
-CALL "C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\VsDevCmd.bat"
+For /F "tokens=1,2 delims=[]" %%? in ('Type Version.h ^| Find /V /N ""') do (
+Set "Line=%%@"
+if "!Line:~0,21!" == "#define VERSION_MAJOR" (
+For /F "tokens=3" %%? in ("%%@") do (Set /A "Major=%%?")
+)
+if "!Line:~0,21!" == "#define VERSION_MINOR" (
+For /F "tokens=3" %%? in ("%%@") do (Set /A "Minor=%%?")
+)
+if "!Line:~0,24!" == "#define VERSION_REVISION" (
+For /F "tokens=3" %%? in ("%%@") do (Set /A "NewRev=%%?+1","OldRev=%%?")
+Call Set "Line=%%Line:!OldRev!=!NewRev!%%"
+)
+Set "Line%%?=!Line!"&&Set "Count=%%?"
+)
 
+> Version.h (
+For /L %%? in (1,1,!Count!) do (
+Echo/!Line%%?!
+))
+
+echo(
+echo(
+echo === Latest Version After Increment ===
+echo   !Major!.!Minor!.!NewRev!
+
+
+REM -----------------------------------------------------------------------------
 echo(
 echo(
 echo === Deep Cleaning Output Directories ===
@@ -26,6 +60,13 @@ RMDIR ".\Zip Release\" /S /Q
 RMDIR ".\x64\Zip Release\" /S /Q
 @echo off
 
+
+REM -----------------------------------------------------------------------------
+REM Activate the VsDevCmds so that we can do MSBUILD easily.
+
+CALL "C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\VsDevCmd.bat"
+
+REM -----------------------------------------------------------------------------
 echo(
 echo(
 echo === Building Win32 target ===
@@ -38,6 +79,7 @@ echo(
 MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:minimal
 
 
+REM -----------------------------------------------------------------------------
 REM Use 7zip command tool to create a full release that can be unzipped into a
 REM game directory. This builds a Side-by-Side zip of x32/x64.
 REM Includes d3dx.ini and uninstall.bat for x32/x64.
@@ -59,8 +101,8 @@ MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
 echo(
 echo(
 echo === Create Zip release for x32 and x64  ===
-7zip\7za a ".\Zip Release\3Dmigoto-0.99.xx.zip"   ".\Zip Release\x32\"
-7zip\7za a ".\Zip Release\3Dmigoto-0.99.xx.zip"   ".\Zip Release\x64\"
+7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x32\"
+7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x64\"
 
 PAUSE
 EXIT

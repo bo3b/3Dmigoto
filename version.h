@@ -16,6 +16,8 @@
 
 // Actual version, name, copyright information that is built into the dlls.
 // This is what an end-user will see when they look at dll properties.
+// The VERSION_MAJOR and VERSION_MINOR are hand edited when versions are to change.
+// The VERSION_REVISION is automatically incremented for every Publish build.
 
 #define VERSION_MAJOR               0
 #define VERSION_MINOR               99
