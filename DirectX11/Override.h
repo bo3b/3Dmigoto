@@ -3,8 +3,15 @@
 #include <DirectXMath.h>
 #include "input.h"
 #include "Main.h"
+#include <vector>
 
-class Override
+class OverrideBase
+{
+public:
+	virtual void ParseIniSection(LPCWSTR section, LPCWSTR ini) = 0;
+};
+
+class Override : public virtual OverrideBase
 {
 private:
 	bool active;
@@ -20,8 +27,16 @@ public:
 	float mUserConvergence;
 
 	Override();
+	Override(float x, float y, float z, float w, float separation,
+		 float convergence, int transition, int release_transition) :
+		mOverrideParams({x, y, z, w}),
+		mOverrideSeparation(separation),
+		mOverrideConvergence(convergence),
+		transition(transition),
+		release_transition(release_transition)
+	{}
 
-	void ParseIniSection(LPCWSTR section, LPCWSTR ini);
+	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
 
 	void Activate(D3D11Base::ID3D11Device *device);
 	void Deactivate(D3D11Base::ID3D11Device *device);
@@ -32,9 +47,14 @@ enum KeyOverrideType {
 	ACTIVATE,
 	HOLD,
 	TOGGLE,
+	CYCLE,
 };
 
-class KeyOverride : public InputListener, public Override
+class KeyOverrideBase : public virtual OverrideBase, public InputListener
+{
+};
+
+class KeyOverride : public KeyOverrideBase, public Override
 {
 private:
 	enum KeyOverrideType type;
@@ -44,9 +64,30 @@ public:
 		Override(),
 		type(type)
 	{}
+	KeyOverride(enum KeyOverrideType type, float x, float y, float z,
+			float w, float separation, float convergence,
+			int transition, int release_transition) :
+		Override(x, y, z, w, separation, convergence, transition, release_transition),
+		type(type)
+	{}
 
 	void DownEvent(D3D11Base::ID3D11Device *device);
 	void UpEvent(D3D11Base::ID3D11Device *device);
+#pragma warning(suppress : 4250) // Suppress ParseIniSection inheritance via dominance warning
+};
+
+class KeyOverrideCycle : public KeyOverrideBase
+{
+private:
+	std::vector<class KeyOverride> presets;
+	int current;
+public:
+	KeyOverrideCycle() :
+		current(0)
+	{}
+
+	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
+	void DownEvent(D3D11Base::ID3D11Device *device);
 };
 
 struct OverrideTransitionParam

@@ -10,6 +10,10 @@
 #include <ctime>
 
 
+void InputListener::UpEvent(D3D11Base::ID3D11Device *device)
+{
+}
+
 // -----------------------------------------------------------------------------
 
 InputCallbacks::InputCallbacks(InputCallback down_cb, InputCallback up_cb,

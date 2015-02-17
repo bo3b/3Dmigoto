@@ -71,6 +71,126 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		LogInfo("  release_transition=%ims\n", release_transition);
 }
 
+struct KeyOverrideCycleParam
+{
+	float float_val;
+	int int_val;
+	wchar_t buf[MAX_PATH];
+	wchar_t *ptr;
+
+	KeyOverrideCycleParam() :
+		float_val(FLT_MAX),
+		int_val(0),
+		ptr(buf)
+	{}
+
+	bool next(char fmt)
+	{
+		int ret;
+
+		// Skip over whitespace:
+		for (; *ptr == L' '; ptr++) {}
+
+		// There's probably a better way to do this, but this works:
+		if (fmt == 'f') {
+			ret = swscanf_s(ptr, L"%f", &float_val);
+			if (!ret) {
+				// Explicit blank entry - clear val
+				float_val = FLT_MAX;
+			}
+			if (ret == EOF)
+				return false;
+		} else {
+			assert(fmt == 'i');
+			ret = swscanf_s(ptr, L"%i", &int_val);
+			if (!ret) {
+				// Explicit blank entry - clear val
+				int_val = 0;
+			}
+			if (ret == EOF)
+				return false;
+		}
+
+		// Scan until the next comma or end of string:
+		for (; *ptr && *ptr != L','; ptr++) {}
+
+		// If it's a comma, advance to the next item:
+		if (*ptr == L',')
+			ptr++;
+
+		return true;
+	}
+
+	void log(wchar_t *name, char fmt)
+	{
+		if (fmt == 'f') {
+			if (float_val != FLT_MAX)
+				LogInfoW(L" %s=%g", name, float_val);
+		} else {
+			if (int_val != 0)
+				LogInfoW(L" %s=%i", name, int_val);
+		}
+	}
+};
+
+void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
+{
+	struct KeyOverrideCycleParam x, y, z, w, separation, convergence;
+	struct KeyOverrideCycleParam transition, release_transition;
+	bool not_done = true;
+	int i;
+
+	GetPrivateProfileString(section, L"x", 0, x.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"y", 0, y.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"z", 0, z.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"w", 0, w.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"separation", 0, separation.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"convergence", 0, convergence.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"transition", 0, transition.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"release_transition", 0, release_transition.buf, MAX_PATH, ini);
+
+	for (i = 1; not_done; i++) {
+		not_done = false;
+
+		not_done = x.next('f') || not_done;
+		not_done = y.next('f') || not_done;
+		not_done = z.next('f') || not_done;
+		not_done = w.next('f') || not_done;
+		not_done = separation.next('f') || not_done;
+		not_done = convergence.next('f') || not_done;
+		not_done = transition.next('i') || not_done;
+		not_done = release_transition.next('i') || not_done;
+
+		if (!not_done)
+			break;
+
+		LogInfo("  Cycle %i:", i);
+		x.log(L"x", 'f');
+		y.log(L"y", 'f');
+		z.log(L"z", 'f');
+		w.log(L"w", 'f');
+		separation.log(L"separation", 'f');
+		convergence.log(L"convergence", 'f');
+		transition.log(L"transition", 'i');
+		release_transition.log(L"release_transition", 'i');
+		LogInfo("\n");
+
+		presets.push_back(KeyOverride(KeyOverrideType::CYCLE,
+			x.float_val, y.float_val, z.float_val, w.float_val,
+			separation.float_val, convergence.float_val,
+			transition.int_val, release_transition.int_val));
+	}
+}
+
+void KeyOverrideCycle::DownEvent(D3D11Base::ID3D11Device *device)
+{
+	if (presets.empty())
+		return;
+
+	presets[current].Activate(device);
+	current = (current + 1) % presets.size();
+}
+
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
 // can change the values, then remap them back to the GPU where they can be accessed by shader code.
 // This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.

@@ -67,7 +67,7 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 	enum KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
-	KeyOverride *preset;
+	KeyOverrideBase *preset;
 	int delay, release_delay;
 	int i;
 
@@ -101,6 +101,9 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 			} else if (!_wcsicmp(buf, L"toggle")) {
 				type = KeyOverrideType::TOGGLE;
 				LogInfo("  type=toggle\n");
+			} else if (!_wcsicmp(buf, L"cycle")) {
+				type = KeyOverrideType::CYCLE;
+				LogInfo("  type=cycle\n");
 			} else {
 				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
 			}
@@ -109,13 +112,10 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 		delay = GetPrivateProfileInt(id, L"delay", 0, iniFile);
 		release_delay = GetPrivateProfileInt(id, L"release_delay", 0, iniFile);
 
-		// TODO: Alternatively allow the [Key] section to contain a
-		// reference to other preset sections, to allow a single key to
-		// be used to cycle between several presets. In this case we
-		// would use that list of presets rather than the settings
-		// directly in the Key section.
-
-		preset = new KeyOverride(type);
+		if (type == KeyOverrideType::CYCLE)
+			preset = new KeyOverrideCycle();
+		else
+			preset = new KeyOverride(type);
 		preset->ParseIniSection(id, iniFile);
 
 		RegisterKeyBinding(L"Key", key, preset, 0, delay, release_delay);
