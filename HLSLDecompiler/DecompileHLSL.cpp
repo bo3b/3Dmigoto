@@ -47,6 +47,7 @@ enum DataType
 	DT_float4x2,
 	DT_float3x3,
 	DT_float4x3,
+	DT_float2x4,
 	DT_float3x4,
 	DT_float4x4,
 	DT_uint4,
@@ -146,6 +147,7 @@ public:
 		if (!strcmp(name, "float4x4")) return DT_float4x4;
 		if (!strcmp(name, "float4x3")) return DT_float4x3;
 		if (!strcmp(name, "float4x2")) return DT_float4x2;
+		if (!strcmp(name, "float2x4")) return DT_float2x4;
 		if (!strcmp(name, "float3x4")) return DT_float3x4;
 		if (!strcmp(name, "float4")) return DT_float4;
 		if (!strcmp(name, "float3x3")) return DT_float3x3;
@@ -645,6 +647,7 @@ public:
 			case DT_uint4:
 			case DT_int4:
 				return 16;
+			case DT_float2x4:
 			case DT_float4x2:
 				return 32;
 			case DT_float3x3:
@@ -906,10 +909,12 @@ public:
 				// possible uses of those offsets in the ASM code.
 				size_t ep = e.Name.find('[');
 				if (ep != string::npos &&
-					(e.bt == DT_bool || e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 ||
+					(e.bt == DT_bool || 
+					e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 ||
 					e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
 					e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4 ||
-					e.bt == DT_float4x4 || e.bt == DT_float3x4 || e.bt == DT_float4x3 || e.bt == DT_float3x3 || e.bt == DT_float4x2))
+					e.bt == DT_float4x4 || e.bt == DT_float3x4 || e.bt == DT_float4x3 || e.bt == DT_float3x3 || 
+					e.bt == DT_float4x2 || DT_float2x4))
 				{
 					// Register each array element.
 					int numElements = 0;
@@ -921,7 +926,7 @@ public:
 					else if (e.bt == DT_float2 || e.bt == DT_uint2 || e.bt == DT_int2) counter = 8;
 					else if (e.bt == DT_float3 || e.bt == DT_uint3 || e.bt == DT_int3) counter = 12;
 					else if (e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
-					else if (e.bt == DT_float4x2) counter = 16 * 2;
+					else if (e.bt == DT_float4x2 || e.bt == DT_float2x4) counter = 16 * 2;
 					else if (e.bt == DT_float3x3 || e.bt == DT_float4x3) counter = 16 * 3;
 					else if (e.bt == DT_float3x4 || e.bt == DT_float4x4) counter = 16 * 4;
 
@@ -942,6 +947,7 @@ public:
 						{
 							case DT_float4x4:
 							case DT_float3x4:
+							case DT_float2x4:  // Not positive this is right
 								e.matrixRow = 3;
 								offsetPos = (bufferRegister << 16) + offset + i*counter + 3 * 16;
 								mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
@@ -966,15 +972,22 @@ public:
 					}
 				}
 				// Non-array versions of floatYxZ
-				else if (e.bt == DT_float4x4 || e.bt == DT_float4x3 || e.bt == DT_float4x2 || e.bt == DT_float3x4 || e.bt == DT_float3x3)
+				else if (e.bt == DT_float4x2 || e.bt == DT_float3x3 || e.bt == DT_float4x3 ||
+					e.bt == DT_float2x4 || e.bt == DT_float3x4 || e.bt == DT_float4x4)
 				{
-					e.matrixRow = 0; int offsetPos = (bufferRegister << 16) + offset; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
-					e.matrixRow = 1; offsetPos = (bufferRegister << 16) + offset + 1 * 16; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+					e.matrixRow = 0; int offsetPos = (bufferRegister << 16) + offset; 
+					mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+					e.matrixRow = 1; offsetPos = (bufferRegister << 16) + offset + 1 * 16; 
+					mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 					if (e.bt != DT_float4x2)
 					{
-						e.matrixRow = 2; offsetPos = (bufferRegister << 16) + offset + 2 * 16; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+						e.matrixRow = 2; offsetPos = (bufferRegister << 16) + offset + 2 * 16; 
+						mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
 						if (e.bt != DT_float4x3 || e.bt != DT_float3x3)
-							e.matrixRow = 3; offsetPos = (bufferRegister << 16) + offset + 3 * 16; mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+						{  // Nearly sure this missing nesting was a bug
+							e.matrixRow = 3; offsetPos = (bufferRegister << 16) + offset + 3 * 16;  
+							mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
+						}
 					}
 				}
 				// Non-array versions of scalar entities like float4
@@ -1326,14 +1339,15 @@ public:
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 					}
 					else if (mLastStatement && mLastStatement->eOpcode == OPCODE_IMUL &&
-						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
+						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float2x4 ||
+						i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
 					{
 						char newOperand[opcodeSize]; strcpy(newOperand, mMulOperand.c_str());
 						applySwizzle(regAndSwiz, newOperand, true);
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s]", newOperand);
 						mCorrectedIndexRegisters[indexRegisterName] = mMulOperand;
 					}
-					else if (i->second.bt == DT_float4x2)
+					else if (i->second.bt == DT_float4x2 || i->second.bt == DT_float2x4)
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/2]", regAndSwiz);
 					else if (i->second.bt == DT_float4x3 || i->second.bt == DT_float3x4)
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/3]", regAndSwiz);
@@ -1359,7 +1373,8 @@ public:
 				if (i->second.bt != DT_float && i->second.bt != DT_bool && i->second.bt != DT_uint && i->second.bt != DT_int)
 				{
 					strcat(right3, ".");
-					if (i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3)
+					if (i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float2x4 ||
+						i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3)
 					{
 						strPos = strrchr(right2, '.');
 						while (*++strPos)
