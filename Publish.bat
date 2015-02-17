@@ -1,6 +1,7 @@
 @echo off
 SetLocal EnableDelayedExpansion
 Pushd "%~dp0"
+PATH=%PATH%;C:\Program Files (x86)\Git\bin\
 
 REM -----------------------------------------------------------------------------
 REM Publish batch file to safely build a complete Zip file to be published.
@@ -18,6 +19,20 @@ REM TODO: remove all invalid build targets like x32 for Mordor.
 
 
 REM -----------------------------------------------------------------------------
+REM Since we are going to autoincrement and Publish a new version, we want to
+REM check-in that new version.h file with the latest revision.
+REM The users git home may be full of junk though, and we don't want to build
+REM stuff they might have half-done.  We'll use "git stash" to temporarily get
+REM a clean check-out for building.
+
+echo(
+echo(
+echo === Git Stash Uncommitted Changes ===
+
+git stash
+
+
+REM -----------------------------------------------------------------------------
 REM Before doing a build, let's bump the version number of the tool. 
 REM This is stored in the version.h file at the project root, and is used 
 REM during resource file compiles to build the proper output in the DLLs.
@@ -28,10 +43,10 @@ REM   *** TsaebehT ***
 For /F "tokens=1,2 delims=[]" %%? in ('Type Version.h ^| Find /V /N ""') do (
 Set "Line=%%@"
 if "!Line:~0,21!" == "#define VERSION_MAJOR" (
-For /F "tokens=3" %%? in ("%%@") do (Set /A "Major=%%?")
+For /F "tokens=3" %%? in ("%%@") do (Set "Major=%%?")
 )
 if "!Line:~0,21!" == "#define VERSION_MINOR" (
-For /F "tokens=3" %%? in ("%%@") do (Set /A "Minor=%%?")
+For /F "tokens=3" %%? in ("%%@") do (Set "Minor=%%?")
 )
 if "!Line:~0,24!" == "#define VERSION_REVISION" (
 For /F "tokens=3" %%? in ("%%@") do (Set /A "NewRev=%%?+1","OldRev=%%?")
@@ -48,6 +63,7 @@ Echo/!Line%%?!
 echo(
 echo(
 echo === Latest Version After Increment ===
+echo(
 echo   !Major!.!Minor!.!NewRev!
 
 
@@ -80,13 +96,34 @@ MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:
 
 
 REM -----------------------------------------------------------------------------
+REM Assuming the build completed, check-in the change to the version.h file as
+REM the only thing changed in the working directory.
+
+git commit --all --message="Incremental Publish build: !Major!.!Minor!.!NewRev!"
+
+
+REM -----------------------------------------------------------------------------
+REM With the build complete, and the version.h committed as latest change, we need
+REM to restore the user's Git environment to what it was using "Git Stash Pop".
+
+echo(
+echo(
+echo === Git Stash Pop ===
+
+git stash pop
+
+
+REM -----------------------------------------------------------------------------
 REM Use 7zip command tool to create a full release that can be unzipped into a
 REM game directory. This builds a Side-by-Side zip of x32/x64.
 REM Includes d3dx.ini and uninstall.bat for x32/x64.
 
 echo(
 echo(
+echo(
+echo(
 echo === Move builds to target zip directory ===
+echo(
 MKDIR ".\Zip Release\x32\"
 MOVE ".\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
 MOVE ".\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
