@@ -178,14 +178,17 @@ void main(
 // Push the scope into the screen.
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
-float hud_depth = IniParams.Load(0).x;
+float4 params = IniParams.Load(0);
+float hud_depth = params.x;
 
-// Had to multiply the adjustment by output w to position it correctly - seems
-// is already drawn at some depth, but the driver isn't stereoising it.
-//o0.x += separation * hud_depth * o0.w;
-
-// may be better for red dot sight:
-//o0.x += separation * (o0.w - convergence);
+if (params.y == 1) {
+	// Had to multiply the adjustment by output w to position it correctly - seems
+	// is already drawn at some depth, but the driver isn't stereoising it.
+	o0.x += separation * hud_depth * o0.w;
+} else if (params.y == 2) {
+	// may be better for red dot sight:
+	o0.x += separation * (o0.w - convergence);
+}
 
   return;
 }
