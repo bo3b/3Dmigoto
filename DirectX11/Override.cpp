@@ -77,16 +77,21 @@ struct KeyOverrideCycleParam
 	int int_val;
 	wchar_t buf[MAX_PATH];
 	wchar_t *ptr;
+	bool done;
 
 	KeyOverrideCycleParam() :
 		float_val(FLT_MAX),
 		int_val(0),
-		ptr(buf)
+		ptr(buf),
+		done(false)
 	{}
 
 	bool next(char fmt)
 	{
 		int ret;
+
+		if (done)
+			return false;
 
 		// Skip over whitespace:
 		for (; *ptr == L' '; ptr++) {}
@@ -94,29 +99,27 @@ struct KeyOverrideCycleParam
 		// There's probably a better way to do this, but this works:
 		if (fmt == 'f') {
 			ret = swscanf_s(ptr, L"%f", &float_val);
-			if (!ret) {
-				// Explicit blank entry - clear val
+			if (!ret || ret == EOF) {
+				// Blank entry - clear val
 				float_val = FLT_MAX;
 			}
-			if (ret == EOF)
-				return false;
 		} else {
 			assert(fmt == 'i');
 			ret = swscanf_s(ptr, L"%i", &int_val);
-			if (!ret) {
-				// Explicit blank entry - clear val
+			if (!ret || ret == EOF) {
+				// Blank entry - clear val
 				int_val = 0;
 			}
-			if (ret == EOF)
-				return false;
 		}
 
 		// Scan until the next comma or end of string:
 		for (; *ptr && *ptr != L','; ptr++) {}
 
-		// If it's a comma, advance to the next item:
+		// If it's a comma, advance to the next item, otherwise mark us as done:
 		if (*ptr == L',')
 			ptr++;
+		else
+			done = true;
 
 		return true;
 	}
