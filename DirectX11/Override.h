@@ -4,6 +4,25 @@
 #include "input.h"
 #include "Main.h"
 #include <vector>
+#include "../util.h"
+
+enum KeyOverrideType {
+	ACTIVATE,
+	HOLD,
+	TOGGLE,
+	CYCLE,
+};
+
+enum TransitionType {
+	INVALID = -1,
+	LINEAR,
+	COSINE,
+};
+static EnumName_t<wchar_t *, TransitionType> TransitionTypeNames[] = {
+	{L"linear", TransitionType::LINEAR},
+	{L"cosine", TransitionType::COSINE},
+	{NULL, TransitionType::INVALID} // End of list marker
+};
 
 class OverrideBase
 {
@@ -16,6 +35,7 @@ class Override : public virtual OverrideBase
 private:
 	bool active;
 	int transition, release_transition;
+	TransitionType transition_type, release_transition_type;
 
 public:
 	DirectX::XMFLOAT4 mOverrideParams;
@@ -28,12 +48,16 @@ public:
 
 	Override();
 	Override(float x, float y, float z, float w, float separation,
-		 float convergence, int transition, int release_transition) :
+		 float convergence, int transition, int release_transition,
+		 TransitionType transition_type,
+		 TransitionType release_transition_type) :
 		mOverrideParams({x, y, z, w}),
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
 		transition(transition),
-		release_transition(release_transition)
+		release_transition(release_transition),
+		transition_type(transition_type),
+		release_transition_type(release_transition_type)
 	{}
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
@@ -41,13 +65,6 @@ public:
 	void Activate(D3D11Base::ID3D11Device *device);
 	void Deactivate(D3D11Base::ID3D11Device *device);
 	void Toggle(D3D11Base::ID3D11Device *device);
-};
-
-enum KeyOverrideType {
-	ACTIVATE,
-	HOLD,
-	TOGGLE,
-	CYCLE,
 };
 
 class KeyOverrideBase : public virtual OverrideBase, public InputListener
@@ -66,8 +83,12 @@ public:
 	{}
 	KeyOverride(enum KeyOverrideType type, float x, float y, float z,
 			float w, float separation, float convergence,
-			int transition, int release_transition) :
-		Override(x, y, z, w, separation, convergence, transition, release_transition),
+			int transition, int release_transition,
+			TransitionType transition_type,
+			TransitionType release_transition_type) :
+		Override(x, y, z, w, separation, convergence, transition,
+				release_transition, transition_type,
+				release_transition_type),
 		type(type)
 	{}
 
@@ -96,12 +117,14 @@ struct OverrideTransitionParam
 	float target;
 	ULONGLONG activation_time;
 	int time;
+	TransitionType transition_type;
 
 	OverrideTransitionParam() :
 		start(FLT_MAX),
 		target(FLT_MAX),
 		activation_time(0),
-		time(-1)
+		time(-1),
+		transition_type(TransitionType::LINEAR)
 	{}
 };
 
@@ -113,7 +136,7 @@ public:
 	void ScheduleTransition(D3D11Base::ID3D11Device *device,
 			float target_separation, float target_convergence,
 			float target_x, float target_y, float target_z,
-			float target_w, int time);
+			float target_w, int time, TransitionType transition_type);
 	void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device);
 };
 

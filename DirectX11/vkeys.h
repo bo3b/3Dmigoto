@@ -1,13 +1,10 @@
 #pragma once
 
 #include <string>
+#include "../util.h"
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
-struct VKMapping_t {
-	wchar_t *name;
-	int key;
-};
-static VKMapping_t VKMappings[] = {
+static EnumName_t<wchar_t *, int> VKMappings[] = {
 	{L"LBUTTON", 0x01},
 	{L"RBUTTON", 0x02},
 	{L"CANCEL", 0x03},
@@ -188,7 +185,7 @@ static int ParseVKey(wchar_t *name)
 
 	for (i = 0; i < ARRAYSIZE(VKMappings); i++) {
 		if (!_wcsicmp(name, VKMappings[i].name))
-			return VKMappings[i].key;
+			return VKMappings[i].val;
 	}
 
 	return -1;
@@ -199,7 +196,7 @@ static int ParseVKey(wchar_t *name)
 static wstring GetKeyName(int key)
 {
 	for (int i = 0; i < ARRAYSIZE(VKMappings); i++) {
-		if (VKMappings[i].key == key) {
+		if (VKMappings[i].val == key) {
 			return (VKMappings[i].name);
 		}
 	}
