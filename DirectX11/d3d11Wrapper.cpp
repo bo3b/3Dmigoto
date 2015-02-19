@@ -352,7 +352,8 @@ static void LoadConfigFile()
 	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
 	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
-	G->COPY_ON_MARK = GetPrivateProfileInt(L"Rendering", L"copy_on_mark", 0, iniFile) == 1;
+	// Default is true to avoid changing behaviour with existing d3dx.ini files:
+	G->COPY_ON_MARK = GetPrivateProfileInt(L"Rendering", L"copy_on_mark", 1, iniFile) == 1;
 	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
 	if (LogFile)
