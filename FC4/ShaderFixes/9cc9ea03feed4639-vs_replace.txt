@@ -1,0 +1,615 @@
+
+cbuffer CViewportShaderParameterProvider : register(b0)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
+cbuffer CGlobalShaderParameterProvider : register(b1)
+{
+  float4 _BurnColor : packoffset(c0);
+  float4 _BurnParams : packoffset(c1);
+  float4 _BurnParams2 : packoffset(c2);
+  float4 _BurnParams3 : packoffset(c3);
+  float4 _CascadedShadowScaleOffsetTile0 : packoffset(c4);
+  float4 _CascadedShadowScaleOffsetTile1 : packoffset(c5);
+  float4 _GlobalScalars : packoffset(c6);
+  float4 _SSS_MiscParams : packoffset(c7);
+  float4 _WindSimParamsX : packoffset(c8);
+  float4 _WindSimParamsY : packoffset(c9);
+  float2 _RangeDepthCompression : packoffset(c10);
+  float3 _SSS_Color : packoffset(c11);
+  int _BRDFHighQuality : packoffset(c11.w);
+}
+
+cbuffer CImpostorDataProvider : register(b2)
+{
+  float4 _Binormal_DepthRange[9] : packoffset(c0);
+  float4 _MeshDecompression : packoffset(c9);
+  float4 _Normal[9] : packoffset(c10);
+  float4 _QuadAxisU[9] : packoffset(c19);
+  float4 _QuadAxisU_VS[9] : packoffset(c28);
+  float4 _QuadAxisV[9] : packoffset(c37);
+  float4 _QuadAxisV_VS[9] : packoffset(c46);
+  float4 _QuadTopLeft[9] : packoffset(c55);
+  float4 _QuadTopLeft_VS[9] : packoffset(c64);
+  float4 _Tangent[9] : packoffset(c73);
+  float _MaxSectorDistanceSqr : packoffset(c82);
+}
+Texture2DArray<float4> DepthLowRes : register(t0);
+StructuredBuffer<instanceData> instanceData : register(t1);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float2 v0 : texcoord0,
+  uint v1 : SV_InstanceID0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : _uv0,
+  out float o2 : SV_ClipDistance0,
+  out float3 o3 : _wsPos0,
+  out float p3 : _v1Factor0,
+  out float3 o4 : _WSNormal0,
+  out float3 o5 : _WSBinormal0,
+  out float3 o6 : _WSTangent0,
+  out float3 o7 : _worldSpace0,
+  out float3 o8 : fogColor0,
+  out uint o9 : _instId0,
+  out uint2 p9 : _viewIndex0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask;
+  DepthLowRes.GetDimensions(r0.x, r0.y, bitmask.x);
+  r0.xy = float2(-1.000000e+000,-1.000000e+000) + r0.xy;
+  r0.zw = saturate(v0.xy);
+  r0.xy = r0.xy * r0.zw;
+  r0.xy = (int2)r0.xy;
+  r0.w = 0.000000000e+000;
+  r1.xyw = r0.xyw;
+// Known bad code for instruction (needs manual fix):
+// ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r2.xyzw, v1.x, l(0), t1.xyzw
+r2.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r2.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r2.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r2.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+  r3.xyzw = (int4)r2.xyzw & int4(0,0,0,0);
+  r2.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
+  r2.xyzw = f16tof32(r2.xywz);
+  r3.xyzw = f16tof32(r3.xywz);
+  r4.x = r3.z;
+  r4.y = r2.z;
+// Known bad code for instruction (needs manual fix):
+// ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r5.xyzw, v1.x, l(16), t1.xyzw
+r5.x = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r5.y = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r5.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+r5.w = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+  r5.x = (int)r5.x & 0x0000ffff;
+  r4.z = f16tof32(r5.x);
+  r6.xyz = -_CameraPosition_DistanceScale.xyz + r5.yzw;
+  r7.z = dot(r4.xyz, r6.xyz);
+  r8.y = r2.x;
+  r8.xz = r3.xy;
+  r7.x = dot(r8.xyz, r6.xyz);
+  r4.x = r8.z;
+  r8.y = r3.w;
+  r8.xz = r2.yw;
+  r7.y = dot(r8.xyz, r6.xyz);
+  r2.y = r8.y;
+  r5.x = dot(r7.xyz, r7.xyz);
+  r5.x = rsqrt(r5.x);
+  r6.xyz = r7.xyz * r5.xxx;
+  r5.x = max(abs(r6.x), abs(r6.y));
+  r5.x = 1.000000e+000 / r5.x;
+  r6.w = min(abs(r6.x), abs(r6.y));
+  r5.x = r6.w * r5.x;
+  r6.w = r5.x * r5.x;
+  r7.x = r6.w * 2.083509974e-002 + -8.513300121e-002;
+  r7.x = r6.w * r7.x + 1.801410019e-001;
+  r7.x = r6.w * r7.x + -3.302994967e-001;
+  r6.w = r6.w * r7.x + 9.998660088e-001;
+  r7.x = r6.w * r5.x;
+  r7.x = r7.x * -2.000000000e+000 + 1.570796371e+000;
+  r7.y = abs(r6.x) < abs(r6.y);
+  r7.x = r7.y ? r7.x : 0;
+  r5.x = r5.x * r6.w + r7.x;
+  r6.w = r6.x < -r6.x;
+  r6.w = r6.w ? -3.141593 : 0;
+  r5.x = r6.w + r5.x;
+  r6.w = min(r6.x, r6.y);
+  r6.w = r6.w < -r6.w;
+  r6.x = max(r6.x, r6.y);
+  r6.y = r6.z < -7.699999809e-001;
+  r6.x = r6.x >= -r6.x;
+  r6.x = r6.x ? r6.w : 0;
+  r5.x = r6.x ? -r5.x : r5.x;
+  r5.x = 4.712385178e+000 + r5.x;
+  r5.x = -r5.x * 1.271649122e+000 + 3.250000000e+001;
+  r6.x = (int)r5.x;
+  r5.x = frac(r5.x);
+  r5.x = -5.000000000e-001 + r5.x;
+  r7.x = (int)r6.x & 7;
+  r6.xz = (int2)r7.xx + int2(1,7);
+  r6.xz = (int2)r6.xz & int2(7,7);
+  r6.w = 0.000000000e+000 < r5.x;
+  r7.z = abs(r5.x);
+  r7.y = r6.w ? r6.x : r6.z;
+  r6.xyz = r6.yyy ? float3(8.000000e+000,8.000000e+000,1.000000e+000) : r7.xyz;
+  r1.z = r6.y;
+  r1.x = DepthLowRes.Load(r1.xyz).x;
+  r1.x = _Binormal_DepthRange[r6.y].w * r1.x;
+  r1.y = _Binormal_DepthRange[r6.y].w * 5.000000000e-001 + -r1.x;
+// Known bad code for instruction (needs manual fix):
+// ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.z, v1.x, l(36), t1.xxxx
+r1.z = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;
+  r1.z = (uint)r1.z >> 24;
+  r1.z = r1.z;
+  r1.w = 3.921568859e-003 * r1.z;
+  r1.z = -r1.z * 3.921568859e-003 + 1.000000000e+000;
+  r1.x = r1.w * r1.y + r1.x;
+  r1.x = _Binormal_DepthRange[r6.y].w + -r1.x;
+  r7.xyz = _QuadAxisU[r6.y].xyz * v0.xxx + _QuadTopLeft[r6.y].xyz;
+  r7.xyz = _QuadAxisV[r6.y].xyz * v0.yyy + r7.xyz;
+  r7.xyz = _Normal[r6.y].xyz * r1.xxx + r7.xyz;
+  r7.w = 1.000000000e+000;
+  r7.xyzw = r7.xyzw * r6.zzzz;
+  r0.z = r6.x;
+  r0.x = DepthLowRes.Load(r0.xyz).x;
+  r0.x = _Binormal_DepthRange[r6.x].w * r0.x;
+  r0.y = _Binormal_DepthRange[r6.x].w * 5.000000000e-001 + -r0.x;
+  r0.x = r1.w * r0.y + r0.x;
+  r0.x = _Binormal_DepthRange[r6.x].w + -r0.x;
+  r0.yzw = _QuadAxisU[r6.x].xyz * v0.xxx + _QuadTopLeft[r6.x].xyz;
+  r0.yzw = _QuadAxisV[r6.x].xyz * v0.yyy + r0.yzw;
+  r0.xyz = _Normal[r6.x].xyz * r0.xxx + r0.yzw;
+  r0.w = 1.000000000e+000;
+  r1.x = 1.000000000e+000 + -r6.z;
+  r0.xyzw = r0.xyzw * r1.xxxx + r7.xyzw;
+  r1.y = r5.z + r0.y;
+  r1.y = _GlobalScalars.y * 1.000000015e-001 + r1.y;
+  r1.y = 7.929999828e-001 * r1.y;
+  r1.y = frac(r1.y);
+  r1.y = r1.y * 2.000000000e+000 + -1.000000000e+000;
+  r1.y = r1.y * 2.000000000e+000 + 5.000000000e-001;
+  r1.y = frac(r1.y);
+  r1.y = r1.y * 2.000000000e+000 + -1.000000000e+000;
+  r1.w = abs(r1.y) * abs(r1.y);
+  r1.y = -abs(-r1.y) * 2.000000000e+000 + 3.000000000e+000;
+  r1.y = r1.w * r1.y + -5.000000000e-001;
+  r7.xyz = _GlobalScalars.yyy * float3(5.000000e-002,5.000000e-002,5.000000e-002) + r5.yzw;
+  r7.xyz = float3(9.750000e-001,7.930000e-001,3.750000e-001) * r7.xyz;
+  r7.xyz = frac(r7.xyz);
+  r7.xyz = r7.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r7.xyz = r7.xyz * float3(2.500000e+000,2.500000e+000,2.500000e+000) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  r7.xyz = frac(r7.xyz);
+  r7.xyz = r7.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r9.xyz = abs(r7.xyz) * abs(r7.xyz);
+  r7.xyz = -abs(-r7.xyz) * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(3.000000e+000,3.000000e+000,3.000000e+000);
+  r7.xyz = r9.xyz * r7.xyz + float3(-5.000000e-001,-5.000000e-001,-5.000000e-001);
+  r7.xyz = r7.xyz * r0.zzz;
+  r0.xyz = r7.xyz * float3(3.000000e-002,3.000000e-002,3.000000e-002) + r0.xyz;
+  r1.y = r1.y * r0.z;
+  r1.y = 1.999999955e-002 * r1.y;
+  r0.xz = r1.yy * r1.zz + r0.xz;
+  r3.y = r8.x;
+  r4.y = r8.z;
+  r3.w = r5.y;
+  r7.x = dot(r0.xyzw, r3.xyzw);
+  r2.w = r5.z;
+  r4.w = r5.w;
+  r7.z = dot(r0.xyzw, r4.xyzw);
+  r7.y = dot(r0.xyzw, r2.xyzw);
+  r0.xyz = -_CameraPosition_DistanceScale.xyz + r7.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.xyz = r0.xyz * _CameraPositionFractions_ZOffsetWS.www + r7.xyz;
+  r5.xyz = -_CameraPosition_DistanceScale.xyz + r0.xyz;
+  o7.xyz = r0.xyz;
+  r5.w = 1.000000000e+000;
+  o0.x = dot(r5.xyzw, _ViewRotProjectionMatrix._m00_m10_m20_m30);
+  o0.y = dot(r5.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
+  o0.z = dot(r5.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
+  o0.w = dot(r5.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
+  o1.xy = v0.xy;
+  o2.x = 0.000000000e+000;
+  r6.w = 0.000000000e+000;
+  o3.xyzw = r6.wwwz;
+  r0.xyz = _Normal[r6.y].xyz * r6.zzz;
+  r0.xyz = _Normal[r6.x].xyz * r1.xxx + r0.xyz;
+  o4.x = dot(r0.xyz, r3.xyz);
+  o4.y = dot(r0.xyz, r2.xyz);
+  o4.z = dot(r0.xyz, r4.xyz);
+  r0.xyz = _Binormal_DepthRange[r6.y].xyz * r6.zzz;
+  r0.xyz = _Binormal_DepthRange[r6.x].xyz * r1.xxx + r0.xyz;
+  o5.z = dot(r0.xyz, r4.xyz);
+  o5.x = dot(r0.xyz, r3.xyz);
+  o5.y = dot(r0.xyz, r2.xyz);
+  r0.xyz = _Tangent[r6.y].xyz * r6.zzz;
+  r0.xyz = _Tangent[r6.x].xyz * r1.xxx + r0.xyz;
+  p9.xy = r6.xy;
+  o6.z = dot(r0.xyz, r4.xyz);
+  o6.x = dot(r0.xyz, r3.xyz);
+  o6.y = dot(r0.xyz, r2.xyz);
+  r0.x = dot(r5.xyz, r5.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.yzw = r5.yzx * r0.xxx;
+  r0.x = 1.000000000e+000;
+  r1.x = dot(_FogSHR.xyzw, r0.xyzw);
+  r1.y = dot(_FogSHG.xyzw, r0.xyzw);
+  r1.z = dot(_FogSHB.xyzw, r0.xyzw);
+  o8.xyz = max(r1.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+  o9.x = v1.x;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer CViewportShaderParameterProvider
+// {
+//
+//   float4 _AmbientColorMultiplier;    // Offset:    0 Size:    16 [unused]
+//   float4 _AmbientOcclusionRanges_SunOcclusionFactor;// Offset:   16 Size:    16 [unused]
+//   float4 _BloomAdaptationFactor;     // Offset:   32 Size:    16 [unused]
+//   float4 _CameraDirection_FOVDeg;    // Offset:   48 Size:    16 [unused]
+//   float4 _CameraDistances;           // Offset:   64 Size:    16 [unused]
+//   float4 _CameraNearPlaneSize;       // Offset:   80 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS;// Offset:   96 Size:    16
+//   float4 _CameraPositionFractions_ZOffsetWS_Previous;// Offset:  112 Size:    16 [unused]
+//   float4 _CameraPosition_DistanceScale;// Offset:  128 Size:    16
+//   float4 _CameraPosition_DistanceScale_Previous;// Offset:  144 Size:    16 [unused]
+//   float4x4 _CullingViewProjectionMatrix;// Offset:  160 Size:    64 [unused]
+//   float4 _DepthScale;                // Offset:  224 Size:    16 [unused]
+//   float4 _DepthTextureRcpSize;       // Offset:  240 Size:    16 [unused]
+//   float4 _DepthTextureScaleOffset;   // Offset:  256 Size:    16 [unused]
+//   float4 _FogParams;                 // Offset:  272 Size:    16 [unused]
+//   float4 _FogSHB;                    // Offset:  288 Size:    16
+//   float4 _FogSHG;                    // Offset:  304 Size:    16
+//   float4 _FogSHR;                    // Offset:  320 Size:    16
+//   float4 _HeightFogParams;           // Offset:  336 Size:    16 [unused]
+//   float4x4 _InvProjectionMatrix;     // Offset:  352 Size:    64 [unused]
+//   float4x4 _InvViewMatrix;           // Offset:  416 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  480 Size:    64 [unused]
+//   float4 _TempSunDirection;          // Offset:  544 Size:    16 [unused]
+//   float4x4 _ViewMatrix;              // Offset:  560 Size:    64 [unused]
+//   float4 _ViewPoint_ShadowProjDepthMin;// Offset:  624 Size:    16 [unused]
+//   float4x4 _ViewProjectionMatrix;    // Offset:  640 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix; // Offset:  704 Size:    64
+//   float4x4 _ViewRotProjectionMatrix_Previous;// Offset:  768 Size:    64 [unused]
+//   float4 _ViewportSize;              // Offset:  832 Size:    16 [unused]
+//   float2 _MotionVectorOffsets;       // Offset:  848 Size:     8 [unused]
+//   float3 _CameraRight;               // Offset:  864 Size:    12 [unused]
+//   float3 _CameraUp;                  // Offset:  880 Size:    12 [unused]
+//   float3 _EnvironmentMapColorOffset; // Offset:  896 Size:    12 [unused]
+//   float3 _EnvironmentMapColorScale;  // Offset:  912 Size:    12 [unused]
+//
+// }
+//
+// cbuffer CGlobalShaderParameterProvider
+// {
+//
+//   float4 _BurnColor;                 // Offset:    0 Size:    16 [unused]
+//   float4 _BurnParams;                // Offset:   16 Size:    16 [unused]
+//   float4 _BurnParams2;               // Offset:   32 Size:    16 [unused]
+//   float4 _BurnParams3;               // Offset:   48 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile0;// Offset:   64 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile1;// Offset:   80 Size:    16 [unused]
+//   float4 _GlobalScalars;             // Offset:   96 Size:    16
+//   float4 _SSS_MiscParams;            // Offset:  112 Size:    16 [unused]
+//   float4 _WindSimParamsX;            // Offset:  128 Size:    16 [unused]
+//   float4 _WindSimParamsY;            // Offset:  144 Size:    16 [unused]
+//   float2 _RangeDepthCompression;     // Offset:  160 Size:     8 [unused]
+//   float3 _SSS_Color;                 // Offset:  176 Size:    12 [unused]
+//   int _BRDFHighQuality;              // Offset:  188 Size:     4 [unused]
+//
+// }
+//
+// cbuffer CImpostorDataProvider
+// {
+//
+//   float4 _Binormal_DepthRange[9];    // Offset:    0 Size:   144
+//   float4 _MeshDecompression;         // Offset:  144 Size:    16 [unused]
+//   float4 _Normal[9];                 // Offset:  160 Size:   144
+//   float4 _QuadAxisU[9];              // Offset:  304 Size:   144
+//   float4 _QuadAxisU_VS[9];           // Offset:  448 Size:   144 [unused]
+//   float4 _QuadAxisV[9];              // Offset:  592 Size:   144
+//   float4 _QuadAxisV_VS[9];           // Offset:  736 Size:   144 [unused]
+//   float4 _QuadTopLeft[9];            // Offset:  880 Size:   144
+//   float4 _QuadTopLeft_VS[9];         // Offset: 1024 Size:   144 [unused]
+//   float4 _Tangent[9];                // Offset: 1168 Size:   144
+//   float _MaxSectorDistanceSqr;       // Offset: 1312 Size:     4 [unused]
+//
+// }
+//
+// Resource bind info for instanceData
+// {
+//
+//   struct SImpostorInstance
+//   {
+//       
+//       struct SPackedMatrix
+//       {
+//           
+//           uint rot[5];               // Offset:    0
+//           float3 pos;                // Offset:   20
+//
+//       } m_treeToWS;                  // Offset:    0
+//       uint m_tint;                   // Offset:   32
+//       uint m_packData;               // Offset:   36
+//       float2 m_ditherUVOffset;       // Offset:   40
+//
+//   } $Element;                        // Offset:    0 Size:    48
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// DepthLowRes                       texture  float4     2darray    0        1
+// instanceData                      texture  struct         r/o    1        1
+// CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
+// CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
+// CImpostorDataProvider             cbuffer      NA          NA    2        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// texcoord                 0   xy          0     NONE   float   xy  
+// SV_InstanceID            0   x           1   INSTID    uint   x   
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// _uv                      0   xy          1     NONE   float   xy  
+// SV_ClipDistance          0   x           2  CLIPDST   float   x   
+// _wsPos                   0   xyz         3     NONE   float   xyz 
+// _v1Factor                0      w        3     NONE   float      w
+// _WSNormal                0   xyz         4     NONE   float   xyz 
+// _WSBinormal              0   xyz         5     NONE   float   xyz 
+// _WSTangent               0   xyz         6     NONE   float   xyz 
+// _worldSpace              0   xyz         7     NONE   float   xyz 
+// fogColor                 0   xyz         8     NONE   float   xyz 
+// _instId                  0   x           9     NONE    uint   x   
+// _viewIndex               0    yz         9     NONE    uint    yz 
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[48], immediateIndexed
+dcl_constantbuffer cb1[7], immediateIndexed
+dcl_constantbuffer cb2[82], dynamicIndexed
+dcl_resource_texture2darray (float,float,float,float) t0
+dcl_resource_structured t1, 48 
+dcl_input v0.xy
+dcl_input_sgv v1.x, instance_id
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xy
+dcl_output_siv o2.x, clip_distance
+dcl_output o3.xyz
+dcl_output o3.w
+dcl_output o4.xyz
+dcl_output o5.xyz
+dcl_output o6.xyz
+dcl_output o7.xyz
+dcl_output o8.xyz
+dcl_output o9.x
+dcl_output o9.yz
+dcl_temps 10
+resinfo_indexable(texture2darray)(float,float,float,float) r0.xy, l(0), t0.xyzw
+add r0.xy, r0.xyxx, l(-1.000000, -1.000000, 0.000000, 0.000000)
+mov_sat r0.zw, v0.xxxy
+mul r0.xy, r0.zwzz, r0.xyxx
+ftoi r0.xy, r0.xyxx
+mov r0.w, l(0)
+mov r1.xyw, r0.xyxw
+ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r2.xyzw, v1.x, l(0), t1.xyzw
+and r3.xyzw, r2.xyzw, l(0x0000ffff, 0x0000ffff, 0x0000ffff, 0x0000ffff)
+ushr r2.xyzw, r2.xyzw, l(16, 16, 16, 16)
+f16tof32 r2.xyzw, r2.xywz
+f16tof32 r3.xyzw, r3.xywz
+mov r4.x, r3.z
+mov r4.y, r2.z
+ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r5.xyzw, v1.x, l(16), t1.xyzw
+and r5.x, r5.x, l(0x0000ffff)
+f16tof32 r4.z, r5.x
+add r6.xyz, r5.yzwy, -cb0[8].xyzx
+dp3 r7.z, r4.xyzx, r6.xyzx
+mov r8.y, r2.x
+mov r8.xz, r3.xxyx
+dp3 r7.x, r8.xyzx, r6.xyzx
+mov r4.x, r8.z
+mov r8.y, r3.w
+mov r8.xz, r2.yywy
+dp3 r7.y, r8.xyzx, r6.xyzx
+mov r2.y, r8.y
+dp3 r5.x, r7.xyzx, r7.xyzx
+rsq r5.x, r5.x
+mul r6.xyz, r5.xxxx, r7.xyzx
+max r5.x, |r6.x|, |r6.y|
+div r5.x, l(1.000000, 1.000000, 1.000000, 1.000000), r5.x
+min r6.w, |r6.x|, |r6.y|
+mul r5.x, r5.x, r6.w
+mul r6.w, r5.x, r5.x
+mad r7.x, r6.w, l(0.020835), l(-0.085133)
+mad r7.x, r6.w, r7.x, l(0.180141)
+mad r7.x, r6.w, r7.x, l(-0.330299)
+mad r6.w, r6.w, r7.x, l(0.999866)
+mul r7.x, r5.x, r6.w
+mad r7.x, r7.x, l(-2.000000), l(1.570796)
+lt r7.y, |r6.x|, |r6.y|
+and r7.x, r7.y, r7.x
+mad r5.x, r5.x, r6.w, r7.x
+lt r6.w, r6.x, -r6.x
+and r6.w, r6.w, l(0xc0490fdb)
+add r5.x, r5.x, r6.w
+min r6.w, r6.x, r6.y
+lt r6.w, r6.w, -r6.w
+max r6.x, r6.x, r6.y
+lt r6.y, r6.z, l(-0.770000)
+ge r6.x, r6.x, -r6.x
+and r6.x, r6.x, r6.w
+movc r5.x, r6.x, -r5.x, r5.x
+add r5.x, r5.x, l(4.712385)
+mad r5.x, -r5.x, l(1.271649), l(32.500000)
+ftoi r6.x, r5.x
+frc r5.x, r5.x
+add r5.x, r5.x, l(-0.500000)
+and r7.x, r6.x, l(7)
+iadd r6.xz, r7.xxxx, l(1, 0, 7, 0)
+and r6.xz, r6.xxzx, l(7, 0, 7, 0)
+lt r6.w, l(0.000000), r5.x
+mov r7.z, |r5.x|
+movc r7.y, r6.w, r6.x, r6.z
+movc r6.xyz, r6.yyyy, l(8,8,1.000000,0), r7.xyzx
+mov r1.z, r6.y
+ld_indexable(texture2darray)(float,float,float,float) r1.x, r1.xyzw, t0.xyzw
+mul r1.x, r1.x, cb2[r6.y + 0].w
+mad r1.y, cb2[r6.y + 0].w, l(0.500000), -r1.x
+ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.z, v1.x, l(36), t1.xxxx
+ushr r1.z, r1.z, l(24)
+utof r1.z, r1.z
+mul r1.w, r1.z, l(0.003922)
+mad r1.z, -r1.z, l(0.003922), l(1.000000)
+mad r1.x, r1.w, r1.y, r1.x
+add r1.x, -r1.x, cb2[r6.y + 0].w
+mad r7.xyz, cb2[r6.y + 19].xyzx, v0.xxxx, cb2[r6.y + 55].xyzx
+mad r7.xyz, cb2[r6.y + 37].xyzx, v0.yyyy, r7.xyzx
+mad r7.xyz, -cb2[r6.y + 10].xyzx, r1.xxxx, r7.xyzx
+mov r7.w, l(1.000000)
+mul r7.xyzw, r6.zzzz, r7.xyzw
+mov r0.z, r6.x
+ld_indexable(texture2darray)(float,float,float,float) r0.x, r0.xyzw, t0.xyzw
+mul r0.x, r0.x, cb2[r6.x + 0].w
+mad r0.y, cb2[r6.x + 0].w, l(0.500000), -r0.x
+mad r0.x, r1.w, r0.y, r0.x
+add r0.x, -r0.x, cb2[r6.x + 0].w
+mad r0.yzw, cb2[r6.x + 19].xxyz, v0.xxxx, cb2[r6.x + 55].xxyz
+mad r0.yzw, cb2[r6.x + 37].xxyz, v0.yyyy, r0.yyzw
+mad r0.xyz, -cb2[r6.x + 10].xyzx, r0.xxxx, r0.yzwy
+mov r0.w, l(1.000000)
+add r1.x, -r6.z, l(1.000000)
+mad r0.xyzw, r0.xyzw, r1.xxxx, r7.xyzw
+add r1.y, r0.y, r5.z
+mad r1.y, cb1[6].y, l(0.100000), r1.y
+mul r1.y, r1.y, l(0.793000)
+frc r1.y, r1.y
+mad r1.y, r1.y, l(2.000000), l(-1.000000)
+mad r1.y, r1.y, l(2.000000), l(0.500000)
+frc r1.y, r1.y
+mad r1.y, r1.y, l(2.000000), l(-1.000000)
+mul r1.w, |r1.y|, |r1.y|
+mad r1.y, -|r1.y|, l(2.000000), l(3.000000)
+mad r1.y, r1.w, r1.y, l(-0.500000)
+mad r7.xyz, cb1[6].yyyy, l(0.050000, 0.050000, 0.050000, 0.000000), r5.yzwy
+mul r7.xyz, r7.xyzx, l(0.975000, 0.793000, 0.375000, 0.000000)
+frc r7.xyz, r7.xyzx
+mad r7.xyz, r7.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mad r7.xyz, r7.xyzx, l(2.500000, 2.500000, 2.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+frc r7.xyz, r7.xyzx
+mad r7.xyz, r7.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mul r9.xyz, |r7.xyzx|, |r7.xyzx|
+mad r7.xyz, -|r7.xyzx|, l(2.000000, 2.000000, 2.000000, 0.000000), l(3.000000, 3.000000, 3.000000, 0.000000)
+mad r7.xyz, r9.xyzx, r7.xyzx, l(-0.500000, -0.500000, -0.500000, 0.000000)
+mul r7.xyz, r0.zzzz, r7.xyzx
+mad r0.xyz, r7.xyzx, l(0.030000, 0.030000, 0.030000, 0.000000), r0.xyzx
+mul r1.y, r0.z, r1.y
+mul r1.y, r1.y, l(0.020000)
+mad r0.xz, r1.yyyy, r1.zzzz, r0.xxzx
+mov r3.y, r8.x
+mov r4.y, r8.z
+mov r3.w, r5.y
+dp4 r7.x, r0.xyzw, r3.xyzw
+mov r2.w, r5.z
+mov r4.w, r5.w
+dp4 r7.z, r0.xyzw, r4.xyzw
+dp4 r7.y, r0.xyzw, r2.xyzw
+add r0.xyz, r7.xyzx, -cb0[8].xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+mad r0.xyz, r0.xyzx, cb0[6].wwww, r7.xyzx
+add r5.xyz, r0.xyzx, -cb0[8].xyzx
+mov o7.xyz, r0.xyzx
+mov r5.w, l(1.000000)
+dp4 o0.x, r5.xyzw, cb0[44].xyzw
+dp4 o0.y, r5.xyzw, cb0[45].xyzw
+dp4 o0.z, r5.xyzw, cb0[46].xyzw
+dp4 o0.w, r5.xyzw, cb0[47].xyzw
+mov o1.xy, v0.xyxx
+mov o2.x, l(0)
+mov r6.w, l(0)
+mov o3.xyzw, r6.wwwz
+mul r0.xyz, r6.zzzz, cb2[r6.y + 10].xyzx
+mad r0.xyz, cb2[r6.x + 10].xyzx, r1.xxxx, r0.xyzx
+dp3 o4.x, r0.xyzx, r3.xyzx
+dp3 o4.y, r0.xyzx, r2.xyzx
+dp3 o4.z, r0.xyzx, r4.xyzx
+mul r0.xyz, r6.zzzz, cb2[r6.y + 0].xyzx
+mad r0.xyz, cb2[r6.x + 0].xyzx, r1.xxxx, r0.xyzx
+dp3 o5.z, r0.xyzx, r4.xyzx
+dp3 o5.x, r0.xyzx, r3.xyzx
+dp3 o5.y, r0.xyzx, r2.xyzx
+mul r0.xyz, r6.zzzz, cb2[r6.y + 73].xyzx
+mad r0.xyz, cb2[r6.x + 73].xyzx, r1.xxxx, r0.xyzx
+mov o9.yz, r6.xxyx
+dp3 o6.z, r0.xyzx, r4.xyzx
+dp3 o6.x, r0.xyzx, r3.xyzx
+dp3 o6.y, r0.xyzx, r2.xyzx
+dp3 r0.x, r5.xyzx, r5.xyzx
+rsq r0.x, r0.x
+mul r0.yzw, r0.xxxx, r5.yyzx
+mov r0.x, l(1.000000)
+dp4 r1.x, cb0[20].xyzw, r0.xyzw
+dp4 r1.y, cb0[19].xyzw, r0.xyzw
+dp4 r1.z, cb0[18].xyzw, r0.xyzw
+max o8.xyz, r1.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+mov o9.x, v1.x
+ret 
+// Approximately 170 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
