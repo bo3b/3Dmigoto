@@ -62,32 +62,56 @@ static char *readStringParameter(wchar_t *val)
 	return start;
 }
 
-void RegisterPresetKeyBindings(LPCWSTR iniFile)
+// Case insensitive version of less comparitor. This is used to create case
+// insensitive sets of section names in the ini so we can detect duplicate
+// sections that vary only by case, e.g. [Key1] and [KEY1], as these are
+// treated equivelent by the GetPrivateProfileXXX APIs. It also means that the
+// set will be sorted in a case insensitive manner making it easy to iterate
+// over all section names starting with a given case insensitive prefix.
+struct WStringInsensitiveLess {
+	bool operator() (const wstring &x, const wstring &y) const
+	{
+		return _wcsicmp(x.c_str(), y.c_str()) < 0;
+	}
+};
+
+typedef std::set<wstring, WStringInsensitiveLess> IniSections;
+
+// Returns an iterator to the first element in a set that does not begin with
+// prefix in a case insensitive way. Combined with set::lower_bound, this can
+// be used to iterate over all elements in the sections set that begin with a
+// given prefix.
+IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
+{
+	IniSections::iterator i;
+
+	for (i = sections.lower_bound(prefix); i != sections.end(); i++) {
+		if (_wcsnicmp(i->c_str(), prefix.c_str(), prefix.length()) > 0)
+			return i;
+	}
+
+	return sections.end();
+}
+
+void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 {
 	enum KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
 	KeyOverrideBase *preset;
 	int delay, release_delay;
-	int i;
+	IniSections::iterator lower, upper, i;
 
-	// TODO: Use GetPrivateProfileSectionNames() to enumerate all [Key*]
-	// sections, rather than requiring them to start at 1 and increment
-	// consecutively. Same thing also applies to [ShaderOverride*] and
-	// [TextureOverride*] sections. Also, I'm considering dropping the
-	// requirement for these to end in a number - after all, these are not
-	// referenced by anything and the only real reason there is a number
-	// here at all is to work around the limitation that they must be
-	// unique names since we are using a .ini file to store configuration.
+	lower = sections.lower_bound(wstring(L"Key"));
+	upper = prefix_upper_bound(sections, wstring(L"Key"));
 
-	for (i = 1;; i++) {
-		LogDebug("Find [Key] i=%i\n", i);
-		wchar_t id[] = L"Keyxxx";
-		_itow_s(i, id + 3, 3, 10);
-		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
-			break;
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
 
 		LogInfoW(L"[%s]\n", id);
+
+		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
+			break;
 
 		type = KeyOverrideType::ACTIVATE;
 
@@ -122,6 +146,41 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 	}
 }
 
+static void GetIniSections(IniSections &sections, wchar_t *iniFile)
+{
+	wchar_t *buf, *ptr;
+	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSectionNames
+	// returns 0 instead of the documented (buf_size - 2) in that case.
+	int buf_size = 256;
+	DWORD result;
+
+	sections.clear();
+
+	while (true) {
+		buf = new wchar_t[buf_size];
+		if (!buf)
+			return;
+
+		result = GetPrivateProfileSectionNames(buf, buf_size, iniFile);
+		if (result != buf_size - 2)
+			break;
+
+		delete[] buf;
+		buf_size <<= 1;
+	}
+
+	for (ptr = buf; *ptr; ptr++) {
+		if (sections.count(ptr)) {
+			LogInfoW(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
+			BeepFailure2();
+		}
+		sections.insert(ptr);
+		for (; *ptr; ptr++) {}
+	}
+
+	delete[] buf;
+}
+
 // TODO: Reorder functions in this file to remove the need for this prototype:
 void RegisterHuntingKeyBindings(wchar_t *iniFile);
 
@@ -129,6 +188,8 @@ static void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH];
 	wchar_t setting[MAX_PATH];
+	IniSections sections;
+	IniSections::iterator lower, upper, i;
 
 	gInitialized = true;
 
@@ -147,6 +208,8 @@ static void LoadConfigFile()
 		LogInfo("\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
+
+	GetIniSections(sections, iniFile);
 
 	LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
 	LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
@@ -413,7 +476,7 @@ static void LoadConfigFile()
 
 	RegisterHuntingKeyBindings(iniFile);
 
-	RegisterPresetKeyBindings(iniFile);
+	RegisterPresetKeyBindings(sections, iniFile);
 
 
 	// Todo: Not sure this is best spot.
@@ -426,11 +489,14 @@ static void LoadConfigFile()
 	G->mShaderSeparationMap.clear();
 	G->mShaderIterationMap.clear();
 	G->mShaderIndexBufferFilter.clear();
-	for (int i = 1;; ++i)
-	{
-		LogDebug("Find [ShaderOverride] i=%i\n", i);
-		wchar_t id[] = L"ShaderOverridexxx";
-		_itow_s(i, id + 14, 3, 10);
+
+	lower = sections.lower_bound(wstring(L"ShaderOverride"));
+	upper = prefix_upper_bound(sections, wstring(L"ShaderOverride"));
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
+
+		LogInfoW(L"[%s]\n", id);
+
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
 			break;
 		unsigned long hashHi, hashLo;
@@ -470,10 +536,15 @@ static void LoadConfigFile()
 	G->mTextureStereoMap.clear();
 	G->mTextureTypeMap.clear();
 	G->mTextureIterationMap.clear();
-	for (int i = 1;; ++i)
-	{
-		wchar_t id[] = L"TextureOverridexxx";
-		_itow_s(i, id + 15, 3, 10);
+
+	lower = sections.lower_bound(wstring(L"TextureOverride"));
+	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
+
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
+
+		LogInfoW(L"[%s]\n", id);
+
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
 			break;
 		unsigned long hashHi, hashLo;
@@ -1284,7 +1355,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 		_wfopen_s(&fw, fullName, L"ab");
 		fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
 		fclose(fw);
-		Beep(1800, 100);					// Short High beep for for double beep that it's already there.
+		BeepShort();						// Short High beep for for double beep that it's already there.
 		return true;
 	}
 
@@ -1730,12 +1801,12 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 
 	if (success)
 	{
-		Beep(1800, 400);		// High beep for success, to notify it's running fresh fixes.
+		BeepSuccess();			// High beep for success, to notify it's running fresh fixes.
 		LogInfo("> successfully copied Marked shader to ShaderFixes\n");
 	}
 	else
 	{
-		Beep(200, 150);			// Bonk sound for failure.
+		BeepFailure();			// Bonk sound for failure.
 		LogInfo("> FAILED to copy Marked shader to ShaderFixes\n");
 	}
 }
@@ -1754,7 +1825,7 @@ static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 		if (err != D3D11Base::NVAPI_OK)
 		{
 			LogInfo("> screenshot failed, error:%d\n", err);
-			Beep(300, 200); Beep(200, 150);		// Brnk, dunk sound for failure.
+			BeepFailure2();		// Brnk, dunk sound for failure.
 		}
 	}
 }
@@ -1784,12 +1855,12 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 
 		if (success)
 		{
-			Beep(1800, 400);		// High beep for success, to notify it's running fresh fixes.
+			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
 			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
 		}
 		else
 		{
-			Beep(200, 150);			// Bonk sound for failure.
+			BeepFailure();			// Bonk sound for failure.
 			LogInfo("> FAILED to reload shaders from ShaderFixes\n");
 		}
 	}
