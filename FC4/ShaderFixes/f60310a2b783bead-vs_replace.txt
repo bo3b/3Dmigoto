@@ -214,6 +214,11 @@ o0.xyw = r21.xyw;
   o3.x = dot(r1.xyzw, _ViewMatrix._m00_m10_m20_m30);
   o3.y = dot(r1.xyzw, _ViewMatrix._m01_m11_m21_m31);
   o3.z = dot(r1.xyzw, _ViewMatrix._m02_m12_m22_m32);
+  
+
+  
+  
+  
   o4.xyz = r1.xyz;
   r3.xyz = _CameraPosition_DistanceScale.xyz + -r1.xyz;
   r0.yw = _Dir3.xy * _GlobalScalars.yy + r1.xy;
@@ -242,6 +247,9 @@ o0.xyw = r21.xyw;
   o8.x = dot(r1.xyz, r0.xyz);
   o8.y = dot(r2.xyz, r0.xyz);
   o8.z = dot(r4.xyz, r0.xyz);
+  
+  
+  // o8=0;
   return;
 }
 
@@ -859,3 +867,4 @@ ret
 // Approximately 72 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+     

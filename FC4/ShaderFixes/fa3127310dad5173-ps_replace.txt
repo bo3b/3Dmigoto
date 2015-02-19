@@ -96,11 +96,11 @@ Texture2D<float4> DeferredAmbientTexture_TextureObject : register(t0);
 Texture2D<float4> SpotGobo0__TexObj__ : register(t1);
 Texture2D<float4> SpotGobo1__TexObj__ : register(t2);
 Texture2D<float> SSToksvig : register(t3);
-Texture2DMS<float4,4> GBufferT0 : register(t4);
-Texture2DMS<float4,4> GBufferT1 : register(t5);
-Texture2DMS<float4,4> GBufferT2 : register(t6);
-Texture2DMS<float4,4> GBufferT3 : register(t7);
-Texture2DMS<float4,4> GBufferDepth_TextureObject : register(t8);
+Texture2DMS<float4,8> GBufferT0 : register(t4);
+Texture2DMS<float4,8> GBufferT1 : register(t5);
+Texture2DMS<float4,8> GBufferT2 : register(t6);
+Texture2DMS<float4,8> GBufferT3 : register(t7);
+Texture2DMS<float4,8> GBufferDepth_TextureObject : register(t8);
 Texture2D<float4> SkinDiffusePreIntegrated__TexObj__ : register(t9);
 
 Texture2D<float4> StereoParams : register(t125);
@@ -114,6 +114,7 @@ void main(
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29;
   uint4 bitmask;
+  // GBufferDepth_TextureObject.GetDimensions(r0.x, r0.y);
   GBufferDepth_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
   r0.xy = r0.xy;
   r0.xy = v1.xy * r0.xy;
@@ -136,13 +137,13 @@ void main(
   r0.xyz = r1.xyz / r0.xxx;
   r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
   
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+float4 r31, r32, r33, r34;
+r31.xyz = r0.xyz;
+r31.w = 1.0;
+r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
 r32.x -= stereo.x * (r32.w - stereo.y);
@@ -1481,11 +1482,11 @@ r0.xyz = r34.xyz;
 // SpotGobo0__TexObj__               texture  float4          2d    1        1
 // SpotGobo1__TexObj__               texture  float4          2d    2        1
 // SSToksvig                         texture   float          2d    3        1
-// GBufferT0                         texture  float4       2dMS4    4        1
-// GBufferT1                         texture  float4       2dMS4    5        1
-// GBufferT2                         texture  float4       2dMS4    6        1
-// GBufferT3                         texture  float4       2dMS4    7        1
-// GBufferDepth_TextureObject        texture  float4       2dMS4    8        1
+// GBufferT0                         texture  float4       2dMS8    4        1
+// GBufferT1                         texture  float4       2dMS8    5        1
+// GBufferT2                         texture  float4       2dMS8    6        1
+// GBufferT3                         texture  float4       2dMS8    7        1
+// GBufferDepth_TextureObject        texture  float4       2dMS8    8        1
 // SkinDiffusePreIntegrated__TexObj__    texture  float4          2d    9        1
 // CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
 // CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
@@ -1521,11 +1522,11 @@ dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
-dcl_resource_texture2dms(4) (float,float,float,float) t4
-dcl_resource_texture2dms(4) (float,float,float,float) t5
-dcl_resource_texture2dms(4) (float,float,float,float) t6
-dcl_resource_texture2dms(4) (float,float,float,float) t7
-dcl_resource_texture2dms(4) (float,float,float,float) t8
+dcl_resource_texture2dms(8) (float,float,float,float) t4
+dcl_resource_texture2dms(8) (float,float,float,float) t5
+dcl_resource_texture2dms(8) (float,float,float,float) t6
+dcl_resource_texture2dms(8) (float,float,float,float) t7
+dcl_resource_texture2dms(8) (float,float,float,float) t8
 dcl_resource_texture2d (float,float,float,float) t9
 dcl_input_ps_siv linear noperspective centroid v0.xy, position
 dcl_input_ps linear v1.xy

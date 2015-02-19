@@ -1,4 +1,4 @@
-
+//Lights - untested
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -118,16 +118,13 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27;
-  uint4 bitmask, uiDest;
-  float4 fDest;
-
-  GBufferDepth_TextureObject.GetDimensions(uiDest.x, uiDest.y, uiDest.z);
-  r0.xy = uiDest.xy;
+  uint4 bitmask;
+  GBufferDepth_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
   r0.xy = r0.xy;
   r0.xy = v1.xy * r0.xy;
   r0.xy = (int2)r0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
-  r0.x = GBufferDepth_TextureObject.Load(r0.xy, w2.x).x;
+  r0.x = GBufferDepth_TextureObject.Load(r0.xyz,w2.x).x;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
   r0.y = _CameraDistances.x * _CameraDistances.y;
@@ -142,24 +139,51 @@ void main(
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
+  
+r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;  
+  
+float4 r35, r32, r33, r34;
+r35.xyz = r0.xyz;
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x -= stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
+
+
   r0.xyz = _CameraPosition_DistanceScale.xzy + r0.xyz;
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
-  r2.xyzw = GBufferT0.Load(r1.xy, w2.x).xyzw;
-  r3.xyzw = GBufferT1.Load(r1.xy, w2.x).xyzw;
-  r4.xyzw = GBufferT2.Load(r1.xy, w2.x).wxyz;
+  r2.xyzw = GBufferT0.Load(r1.xyw,w2.x).xyzw;
+  r3.xyzw = GBufferT1.Load(r1.xyw,w2.x).xyzw;
+  r4.xyzw = GBufferT2.Load(r1.xyw,w2.x).wxyz;
   r5.xyzw = (int4)r1.xyxy + int4(-1,0,1,0);
   r6.xy = r5.zw;
   r6.zw = float2(0.000000e+000,0.000000e+000);
-  r6.xw = GBufferT0.Load(r6.xy, w2.x).xy;
+  r6.xw = GBufferT0.Load(r6.xyz,w2.x).xy;
   r5.zw = float2(0.000000e+000,0.000000e+000);
-  r5.xy = GBufferT0.Load(r5.xy, w2.x).xy;
+  r5.xy = GBufferT0.Load(r5.xyz,w2.x).xy;
   r7.xyzw = (int4)r1.xyxy + int4(0,-1,0,1);
   r8.xy = r7.zw;
   r8.zw = float2(0.000000e+000,0.000000e+000);
-  r5.zw = GBufferT0.Load(r8.xy, w2.x).xy;
+  r5.zw = GBufferT0.Load(r8.xyz,w2.x).xy;
   r7.zw = float2(0.000000e+000,0.000000e+000);
-  r7.xy = GBufferT0.Load(r7.xy, w2.x).xy;
+  r7.xy = GBufferT0.Load(r7.xyz,w2.x).xy;
   r8.x = r7.x;
   r8.yz = r5.zx;
   r8.w = r6.x;
@@ -173,7 +197,7 @@ void main(
   r6.yz = r5.wy;
   r5.y = dot(r6.xyzw, r8.xyzw);
   r5.xw = (int2)r1.xy & int2(1,1);
-  r0.w = (int)r5.x != (int)r5.w;
+  r0.w = r5.x != r5.w;
   r5.z = r2.y;
   r5.yz = r0.ww ? r5.yz : r5.zy;
   r5.x = r2.x * r2.x;
@@ -197,7 +221,7 @@ void main(
   r3.w = 1.000000000e+000 + -r3.w;
   r3.w = sqrt(r3.w);
   r5.w = r2.w ? r3.x : r3.w;
-  r7.xy = (int)r2.ww == int2(1,2);
+  r7.xy = r2.ww == float2(1.000000e+000,2.000000e+000);
   r5.yz = r7.xy ? r3.ww : r3.yz;
   r2.w = r2.w ? r3.w : r3.x;
   r2.w = r7.x ? r3.y : r2.w;
@@ -208,7 +232,7 @@ void main(
   r7.xyz = r8.zyz * r5.xyw + r7.xyz;
   r8.xyz = r8.xyz * r5.zxw + float3(0.000000e+000,0.000000e+000,1.000000e+000);
   r8.xyz = r3.xyx * r5.xzy + r8.xyz;
-  r9.xyzw = (int)r0.wwww == int4(1,5,6,3);
+  r9.xyzw = r0.wwww == float4(1.000000e+000,5.000000e+000,6.000000e+000,3.000000e+000);
   if (r9.x != 0) {
     r10.xy = float2(3.200000e+001,2.550000e+002) * r4.yz;
     r2.w = (uint)r10.y;
@@ -227,7 +251,7 @@ void main(
     r2.w = 1.500000060e-001;
     r15.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
   } else {
-    r17.xyzw = GBufferT3.Load(r1.xy, w2.x).xyzw;
+    r17.xyzw = GBufferT3.Load(r1.xyw,w2.x).xyzw;
     r4.y = 2.550000000e+002 * r4.y;
     r4.y = (uint)r4.y;
     r6.w = (uint)r4.y >> 4;
@@ -236,7 +260,7 @@ void main(
     r4.y = (int)r4.y & 15;
     r4.y = r4.y;
     r2.w = 6.666667014e-002 * r4.y;
-    r4.y = (int)r0.w == 3;
+    r4.y = r0.w == 3;
     if (r4.y != 0) {
       r18.xyz = r17.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.y = dot(r18.xyz, r18.xyz);
@@ -252,7 +276,7 @@ void main(
       r4.y = dot(r18.xyz, r18.xyz);
       r4.y = rsqrt(r4.y);
       r18.xyz = r18.xyz * r4.yyy;
-      r19.xyz = (int)r0.www == int3(4,5,6);
+      r19.xyz = r0.www == float3(4.000000e+000,5.000000e+000,6.000000e+000);
       r20.xyz = r17.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.y = dot(r20.xyz, r20.xyz);
       r4.y = rsqrt(r4.y);
@@ -326,31 +350,30 @@ void main(
   r17.yzw = r13.xxx * r17.yzw + r2.www;
   r4.z = 1.000000000e+000 + -r13.x;
   r19.xyz = r6.xyz * r4.zzz;
-  DepthVPSampler_TextureObject.GetDimensions(uiDest.x, uiDest.y, uiDest.z);
-  r11.zw = uiDest.xy;
+  DepthVPSampler_TextureObject.GetDimensions(r11.z, r11.w, bitmask.x);
   r11.zw = r11.zw;
   r11.zw = v1.xy * r11.zw;
   r20.xy = (int2)r11.zw;
   r20.zw = float2(0.000000e+000,0.000000e+000);
-  r4.z = GBufferDepth_TextureObject.Load(r20.xy, w2.x).x;
+  r4.z = GBufferDepth_TextureObject.Load(r20.xyw,w2.x).x;
   r4.z = _DepthScale.y * r4.z + _DepthScale.x;
   r4.z = 1.000000e+000 / r4.z;
-  r6.w = GBufferDepth_TextureObject.Load(r20.xy, 0.000000000e+000).x;
+  r6.w = GBufferDepth_TextureObject.Load(r20.xyz,0.000000000e+000).x;
   r6.w = _DepthScale.y * r6.w + _DepthScale.x;
   r21.x = 1.000000e+000 / r6.w;
   r22.xyzw = (int4)r20.xyxy + int4(0,1,1,0);
   r23.xy = r22.zw;
   r23.zw = float2(0.000000e+000,0.000000e+000);
-  r6.w = GBufferDepth_TextureObject.Load(r23.xy, 0.000000000e+000).x;
+  r6.w = GBufferDepth_TextureObject.Load(r23.xyz,0.000000000e+000).x;
   r6.w = _DepthScale.y * r6.w + _DepthScale.x;
   r21.y = 1.000000e+000 / r6.w;
   r22.zw = float2(0.000000e+000,0.000000e+000);
-  r6.w = GBufferDepth_TextureObject.Load(r22.xy, 0.000000000e+000).x;
+  r6.w = GBufferDepth_TextureObject.Load(r22.xyz,0.000000000e+000).x;
   r6.w = _DepthScale.y * r6.w + _DepthScale.x;
   r21.z = 1.000000e+000 / r6.w;
   r20.xy = (int2)r20.xy + int2(1,1);
   r20.zw = float2(0.000000e+000,0.000000e+000);
-  r6.w = GBufferDepth_TextureObject.Load(r20.xy, 0.000000000e+000).x;
+  r6.w = GBufferDepth_TextureObject.Load(r20.xyz,0.000000000e+000).x;
   r6.w = _DepthScale.y * r6.w + _DepthScale.x;
   r21.w = 1.000000e+000 / r6.w;
   r20.xyzw = r21.xyzw + -r4.zzzz;
@@ -364,27 +387,26 @@ void main(
   r4.z = 1.000100017e+000 >= r4.z;
   r4.z = r4.z ? 1.000000 : 0;
   r4.z = r6.w * r4.z;
-  DeferredAmbientTexture_TextureObject.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);
-  r11.zw = uiDest.xy;
+  DeferredAmbientTexture_TextureObject.GetDimensions(r11.z, r11.w, bitmask.x);
   r11.zw = r11.zw;
   r11.zw = float2(5.000000e-001,5.000000e-001) / r11.zw;
   r11.zw = v1.xy + r11.zw;
   r21.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw).xyzw;
   r21.xyz = r21.xyz * r21.xyz;
-  r22.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw, int2(1, 0)).xyzw;
+  r22.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw, int2(1,0)).xyzw;
   r22.xyz = r22.xyz * r22.xyz;
-  r23.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw, int2(0, 1)).xyzw;
+  r23.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw, int2(0,1)).xyzw;
   r23.xyz = r23.xyz * r23.xyz;
-  r24.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw, int2(1, 1)).xyzw;
+  r24.xyzw = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r11.zw, int2(1,1)).xyzw;
   r24.xyz = r24.xyz * r24.xyz;
   r22.xyzw = r22.xyzw * r20.yyyy;
   r21.xyzw = r21.xyzw * r20.xxxx + r22.xyzw;
   r21.xyzw = r23.xyzw * r20.zzzz + r21.xyzw;
   r20.xyzw = r24.xyzw * r20.wwww + r21.xyzw;
   r20.xyz = _AmbientRange * r20.xyz;
-  r11.zw = (int)r0.ww == int2(2,4);
+  r11.zw = r0.ww == float2(2.000000e+000,4.000000e+000);
   if (r11.z != 0) {
-    r6.w = DeferredLighting_DeferredShadowTexture.Load(r1.xy, w2.x).x;
+    r6.w = DeferredLighting_DeferredShadowTexture.Load(r1.xyw,w2.x).x;
     r6.w = max(r6.w, _ForceAlbedoOnlyDisableShadows.y);
     r7.w = saturate(dot(-r8.xyz, _SunDirection.xyz));
     r8.w = saturate(r15.w);
@@ -441,9 +463,9 @@ void main(
     r21.xyz = _BRDFHighQuality ? r21.xyz : r24.xyz;
     r21.xyz = r22.xyz * r21.xyz;
   } else {
-    r6.w = (int)r0.w == 4;
+    r6.w = r0.w == 4;
     if (r6.w != 0) {
-      r6.w = DeferredLighting_DeferredShadowTexture.Load(r1.xy, w2.x).x;
+      r6.w = DeferredLighting_DeferredShadowTexture.Load(r1.xyw,w2.x).x;
       r6.w = max(r6.w, _ForceAlbedoOnlyDisableShadows.y);
       r7.w = saturate(dot(r16.xyz, -_SunDirection.xyz));
       r22.xyz = r16.xyz + -r8.xyz;
@@ -513,7 +535,7 @@ void main(
     } else {
       r12.xyw = r3.xyy * r5.ywx + float3(1.000000e+000,0.000000e+000,0.000000e+000);
       r3.xyz = r3.zzw * r5.zxw + r12.xyw;
-      r3.w = (int)r0.w == 0;
+      r3.w = r0.w == 0;
       r3.w = (int)r9.w | (int)r3.w;
       r3.w = (int)r9.y | (int)r3.w;
       r5.x = -r18.y * r4.y + r18.y;
@@ -525,7 +547,7 @@ void main(
       r5.x = _BRDFHighQuality ? r5.x : r5.y;
       r3.w = r3.w ? r2.z : r5.x;
       if (r9.y != 0) {
-        r5.y = DeferredLighting_DeferredShadowTexture.Load(r1.xy, w2.x).x;
+        r5.y = DeferredLighting_DeferredShadowTexture.Load(r1.xyw,w2.x).x;
         r5.y = max(r5.y, _ForceAlbedoOnlyDisableShadows.y);
         r5.z = saturate(dot(r16.xyz, -_SunDirection.xyz));
         r12.xyw = _SunColor.xyz * r5.zzz;
@@ -620,7 +642,7 @@ void main(
           r6.xyz = r6.xyz * r5.www;
           r5.y = saturate(dot(r8.xyz, r12.xyw));
           r5.y = r5.z + -r5.y;
-          r5.y = 1.000000000e+000 + -abs(r5.y);
+          r5.y = 1.000000000e+000 + -abs(-r5.y);
           r5.y = log2(r5.y);
           r5.y = r5.y * r2.z;
           r5.y = exp2(r5.y);
@@ -633,7 +655,7 @@ void main(
         if (r9.z != 0) {
           r5.yzw = r9.zzz ? r10.yzw : 0;
           r6.xyz = r9.zzz ? r14.xyz : 0;
-          r6.w = DeferredLighting_DeferredShadowTexture.Load(r1.xy, w2.x).x;
+          r6.w = DeferredLighting_DeferredShadowTexture.Load(r1.xyw,w2.x).x;
           r6.w = max(r6.w, _ForceAlbedoOnlyDisableShadows.y);
           r10.yzw = -_SunDirection.xyz + r0.xzy;
           r7.w = dot(r10.yzw, r10.yzw);
@@ -674,7 +696,7 @@ void main(
         } else {
           r5.y = _SSS_MiscParams.w * r4.z;
           r5.z = r5.y * r4.x;
-          r1.x = DeferredLighting_DeferredShadowTexture.Load(r1.xy, w2.x).x;
+          r1.x = DeferredLighting_DeferredShadowTexture.Load(r1.xyz,w2.x).x;
           r1.x = max(r1.x, _ForceAlbedoOnlyDisableShadows.y);
           r1.y = dot(r8.xyz, _SunDirection.xyz);
           r1.y = saturate(-r1.y);
@@ -757,7 +779,7 @@ void main(
   r3.xyz = r3.xyz * _AmbientRange + -r20.xyz;
   r3.xyz = r1.www * r3.xyz + r20.xyz;
   r1.w = (int)r9.w | (int)r11.w;
-  r1.w = r1.w ? 1.000000 : 0;
+  r1.w = (int)r1.w & 0x3f800000;
   r1.w = _SSAOPerMaterialIntensity * r1.w;
   r2.x = 1.000000000e+000 + -r20.w;
   r1.w = r1.w * r2.x + r20.w;
@@ -792,7 +814,7 @@ void main(
   r3.w = 1.000000e+000 / r3.w;
   r3.w = _BRDFHighQuality ? r3.w : 1.000000000e+000;
   r6.xyz = r21.xyz * r3.www;
-  r0.w = (int)r0.w != 2;
+  r0.w = r0.w != 2;
   r3.w = saturate(r15.w);
   r5.w = r3.w * r3.w;
   r2.z = r5.w * r2.z + r4.x;
@@ -1787,939 +1809,25 @@ ret
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
-//
-//
-// Buffer Definitions: 
-//
-// cbuffer CViewportShaderParameterProvider
-// {
-//
-//   float4 _AmbientColorMultiplier;    // Offset:    0 Size:    16 [unused]
-//   float4 _AmbientOcclusionRanges_SunOcclusionFactor;// Offset:   16 Size:    16 [unused]
-//   float4 _BloomAdaptationFactor;     // Offset:   32 Size:    16
-//   float4 _CameraDirection_FOVDeg;    // Offset:   48 Size:    16 [unused]
-//   float4 _CameraDistances;           // Offset:   64 Size:    16
-//   float4 _CameraNearPlaneSize;       // Offset:   80 Size:    16 [unused]
-//   float4 _CameraPositionFractions_ZOffsetWS;// Offset:   96 Size:    16 [unused]
-//   float4 _CameraPositionFractions_ZOffsetWS_Previous;// Offset:  112 Size:    16 [unused]
-//   float4 _CameraPosition_DistanceScale;// Offset:  128 Size:    16
-//   float4 _CameraPosition_DistanceScale_Previous;// Offset:  144 Size:    16 [unused]
-//   float4x4 _CullingViewProjectionMatrix;// Offset:  160 Size:    64 [unused]
-//   float4 _DepthScale;                // Offset:  224 Size:    16
-//   float4 _DepthTextureRcpSize;       // Offset:  240 Size:    16 [unused]
-//   float4 _DepthTextureScaleOffset;   // Offset:  256 Size:    16 [unused]
-//   float4 _FogParams;                 // Offset:  272 Size:    16
-//   float4 _FogSHB;                    // Offset:  288 Size:    16
-//   float4 _FogSHG;                    // Offset:  304 Size:    16
-//   float4 _FogSHR;                    // Offset:  320 Size:    16
-//   float4 _HeightFogParams;           // Offset:  336 Size:    16
-//   float4x4 _InvProjectionMatrix;     // Offset:  352 Size:    64 [unused]
-//   float4x4 _InvViewMatrix;           // Offset:  416 Size:    64 [unused]
-//   float4x4 _ProjectionMatrix;        // Offset:  480 Size:    64 [unused]
-//   float4 _TempSunDirection;          // Offset:  544 Size:    16 [unused]
-//   float4x4 _ViewMatrix;              // Offset:  560 Size:    64 [unused]
-//   float4 _ViewPoint_ShadowProjDepthMin;// Offset:  624 Size:    16 [unused]
-//   float4x4 _ViewProjectionMatrix;    // Offset:  640 Size:    64 [unused]
-//   float4x4 _ViewRotProjectionMatrix; // Offset:  704 Size:    64 [unused]
-//   float4x4 _ViewRotProjectionMatrix_Previous;// Offset:  768 Size:    64 [unused]
-//   float4 _ViewportSize;              // Offset:  832 Size:    16 [unused]
-//   float2 _MotionVectorOffsets;       // Offset:  848 Size:     8 [unused]
-//   float3 _CameraRight;               // Offset:  864 Size:    12 [unused]
-//   float3 _CameraUp;                  // Offset:  880 Size:    12 [unused]
-//   float3 _EnvironmentMapColorOffset; // Offset:  896 Size:    12
-//   float3 _EnvironmentMapColorScale;  // Offset:  912 Size:    12
-//
-// }
-//
-// cbuffer CGlobalShaderParameterProvider
-// {
-//
-//   float4 _BurnColor;                 // Offset:    0 Size:    16 [unused]
-//   float4 _BurnParams;                // Offset:   16 Size:    16 [unused]
-//   float4 _BurnParams2;               // Offset:   32 Size:    16 [unused]
-//   float4 _BurnParams3;               // Offset:   48 Size:    16 [unused]
-//   float4 _CascadedShadowScaleOffsetTile0;// Offset:   64 Size:    16 [unused]
-//   float4 _CascadedShadowScaleOffsetTile1;// Offset:   80 Size:    16 [unused]
-//   float4 _GlobalScalars;             // Offset:   96 Size:    16 [unused]
-//   float4 _SSS_MiscParams;            // Offset:  112 Size:    16
-//   float4 _WindSimParamsX;            // Offset:  128 Size:    16 [unused]
-//   float4 _WindSimParamsY;            // Offset:  144 Size:    16 [unused]
-//   float2 _RangeDepthCompression;     // Offset:  160 Size:     8 [unused]
-//   float3 _SSS_Color;                 // Offset:  176 Size:    12
-//   int _BRDFHighQuality;              // Offset:  188 Size:     4
-//
-// }
-//
-// cbuffer CDeferredLightingParameterProvider
-// {
-//
-//   float4 _DistanceBoostParameters;   // Offset:    0 Size:    16
-//   float4 _ForceAlbedoOnlyDisableShadows;// Offset:   16 Size:    16
-//   float4x4 _InvViewRotProjectionMatrix;// Offset:   32 Size:    64
-//   float4 _LightClippingPlanes[24];   // Offset:   96 Size:   384 [unused]
-//   float4 _PointLightAttenuation[4];  // Offset:  480 Size:    64 [unused]
-//   float4 _PointLightClippingInfo[4]; // Offset:  544 Size:    64 [unused]
-//   float4 _PointLightColor[4];        // Offset:  608 Size:    64 [unused]
-//   float4 _PointLightMinMaxDepth[4];  // Offset:  672 Size:    64 [unused]
-//   float4 _PointLightPos[4];          // Offset:  736 Size:    64 [unused]
-//   float4 _QuadParams;                // Offset:  800 Size:    16 [unused]
-//   float4 _SpotLightAttenuation[4];   // Offset:  816 Size:    64 [unused]
-//   float4 _SpotLightClippingInfo[4];  // Offset:  880 Size:    64 [unused]
-//   float4 _SpotLightColor[4];         // Offset:  944 Size:    64 [unused]
-//   float4 _SpotLightDirection[4];     // Offset: 1008 Size:    64 [unused]
-//   float4 _SpotLightMinMaxDepth[4];   // Offset: 1072 Size:    64 [unused]
-//   float4 _SpotLightPos[4];           // Offset: 1136 Size:    64 [unused]
-//   float4 _SpotScaleOffsetUVS[4];     // Offset: 1200 Size:    64 [unused]
-//   float4 _SpotShadowMapSize;         // Offset: 1264 Size:    16 [unused]
-//   float4x4 _SpotShadowProjectionMatrix[4];// Offset: 1280 Size:   256 [unused]
-//   float4 _SunColor;                  // Offset: 1536 Size:    16
-//   float4 _SunDirection;              // Offset: 1552 Size:    16
-//   float3 _CamVectorOffset;           // Offset: 1568 Size:    12 [unused]
-//   float3 _CamVectorScaleX;           // Offset: 1584 Size:    12 [unused]
-//   float3 _CamVectorScaleY;           // Offset: 1600 Size:    12 [unused]
-//   float _AmbientRange;               // Offset: 1612 Size:     4
-//   float _DebugLightComplexityBias;   // Offset: 1616 Size:     4 [unused]
-//   float _DirectLightOcclusion;       // Offset: 1620 Size:     4
-//   float _SSAOPerMaterialIntensity;   // Offset: 1624 Size:     4
-//   int _PointLightCount;              // Offset: 1628 Size:     4 [unused]
-//   int _SpotLightCount;               // Offset: 1632 Size:     4 [unused]
-//   int _SpotLightGoboCount;           // Offset: 1636 Size:     4 [unused]
-//
-// }
-//
-//
-// Resource Bindings:
-//
-// Name                                 Type  Format         Dim Slot Elements
-// ------------------------------ ---------- ------- ----------- ---- --------
-// DeferredReflectedAmbientTexture__SampObj___s    sampler      NA          NA    0        1
-// EnvironmentMapTexture__SampObj___s    sampler      NA          NA    1        1
-// EnvironmentMapAttenuationTexture__SampObj___s    sampler      NA          NA    2        1
-// ColorPointClamp_s                 sampler      NA          NA    3        1
-// SkinDiffusePreIntegrated__SampObj___s    sampler      NA          NA    4        1
-// DepthVPSampler_TextureObject      texture  float4       2dMS4    0        1
-// DeferredReflectedAmbientTexture__TexObj__    texture  float4          2d    1        1
-// EnvironmentMapTexture__TexObj__    texture  float4        cube    2        1
-// EnvironmentMapAttenuationTexture__TexObj__    texture  float4          2d    3        1
-// DeferredAmbientTexture_TextureObject    texture  float4          2d    4        1
-// SSToksvig                         texture   float          2d    5        1
-// GBufferT0                         texture  float4       2dMS4    6        1
-// GBufferT1                         texture  float4       2dMS4    7        1
-// GBufferT2                         texture  float4       2dMS4    8        1
-// GBufferT3                         texture  float4       2dMS4    9        1
-// GBufferDepth_TextureObject        texture  float4       2dMS4   10        1
-// DeferredLighting_DeferredShadowTexture    texture  float4       2dMS4   11        1
-// SkinDiffusePreIntegrated__TexObj__    texture  float4          2d   12        1
-// CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
-// CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
-// CDeferredLightingParameterProvider    cbuffer      NA          NA    2        1
-//
-//
-//
-// Input signature:
-//
-// Name                 Index   Mask Register SysValue  Format   Used
-// -------------------- ----- ------ -------- -------- ------- ------
-// SV_Position              0   xyzw        0      POS   float   xy  
-// TEXCOORD                 0   xyzw        1     NONE   float   xy  
-// SV_IsFrontFace           0   x           2    FFACE    uint       
-// SV_SampleIndex           0    y          2   SAMPLE    uint    y  
-//
-//
-// Output signature:
-//
-// Name                 Index   Mask Register SysValue  Format   Used
-// -------------------- ----- ------ -------- -------- ------- ------
-// SV_Target                0   xyzw        0   TARGET   float   xyzw
-//
-// Pixel Shader runs at sample frequency
-//
-ps_4_1
-dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[58], immediateIndexed
-dcl_constantbuffer cb1[12], immediateIndexed
-dcl_constantbuffer cb2[102], immediateIndexed
-dcl_sampler s0, mode_default
-dcl_sampler s1, mode_default
-dcl_sampler s2, mode_default
-dcl_sampler s3, mode_default
-dcl_sampler s4, mode_default
-dcl_resource_texture2dms(4) (float,float,float,float) t0
-dcl_resource_texture2d (float,float,float,float) t1
-dcl_resource_texturecube (float,float,float,float) t2
-dcl_resource_texture2d (float,float,float,float) t3
-dcl_resource_texture2d (float,float,float,float) t4
-dcl_resource_texture2d (float,float,float,float) t5
-dcl_resource_texture2dms(4) (float,float,float,float) t6
-dcl_resource_texture2dms(4) (float,float,float,float) t7
-dcl_resource_texture2dms(4) (float,float,float,float) t8
-dcl_resource_texture2dms(4) (float,float,float,float) t9
-dcl_resource_texture2dms(4) (float,float,float,float) t10
-dcl_resource_texture2dms(4) (float,float,float,float) t11
-dcl_resource_texture2d (float,float,float,float) t12
-dcl_input_ps_siv linear noperspective v0.xy, position
-dcl_input_ps linear v1.xy
-dcl_input_ps_sgv v2.y, sampleIndex
-dcl_output o0.xyzw
-dcl_temps 28
-resinfo_uint r0.xy, l(0), t10.xyzw
-utof r0.xy, r0.xyxx
-mul r0.xy, r0.xyxx, v1.xyxx
-round_z r0.xy, r0.xyxx
-ftoi r0.xy, r0.xyxx
-mov r0.zw, l(0,0,0,0)
-ldms r0.x, r0.xyzw, t10.xyzw, v2.y
-mad r0.x, cb0[14].y, r0.x, cb0[14].x
-div r0.x, l(1.000000, 1.000000, 1.000000, 1.000000), r0.x
-mul r0.y, cb0[4].y, cb0[4].x
-mul r0.x, r0.x, cb0[4].z
-div r0.x, r0.y, r0.x
-add r0.x, -r0.x, cb0[4].y
-mad r0.z, -r0.x, cb0[4].w, l(1.000000)
-mad r0.xy, v1.xyxx, l(2.000000, -2.000000, 0.000000, 0.000000), l(-1.000000, 1.000000, 0.000000, 0.000000)
-mov r0.w, l(1.000000)
-dp4 r1.x, r0.xyzw, cb2[2].xyzw
-dp4 r1.z, r0.xyzw, cb2[3].xyzw
-dp4 r1.y, r0.xyzw, cb2[4].xyzw
-dp4 r0.x, r0.xyzw, cb2[5].xyzw
-div r0.xyz, r1.xyzx, r0.xxxx
-add r0.xyz, r0.xyzx, cb0[8].xzyx
-round_z r1.xy, v0.xyxx
-ftoi r2.xy, r1.xyxx
-mov r2.zw, l(0,0,0,0)
-ldms r3.xyzw, r2.xyww, t6.xyzw, v2.y
-ldms r4.xyzw, r2.xyww, t7.xyzw, v2.y
-ldms r5.xyzw, r2.xyww, t8.wxyz, v2.y
-iadd r6.xyz, r2.xyxx, l(-1, 0, 1, 0)
-mov r6.w, l(0)
-ldms r7.xw, r6.zyww, t6.xzwy, v2.y
-ldms r1.zw, r6.xyww, t6.zwxy, v2.y
-iadd r6.xyz, r2.xyyx, l(0, -1, 1, 0)
-mov r6.w, l(0)
-ldms r8.xy, r6.xzww, t6.xyzw, v2.y
-ldms r6.xy, r6.xyww, t6.xyzw, v2.y
-mov r9.x, r6.x
-mov r9.y, r8.x
-mov r9.z, r1.z
-mov r9.w, r7.x
-add r9.xyzw, -r3.xxxx, r9.xyzw
-mad r9.xyzw, |r9.xyzw|, l(10.000000, 10.000000, 10.000000, 10.000000), l(0.100000, 0.100000, 0.100000, 0.100000)
-div r9.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000), r9.xyzw
-dp4 r0.w, r9.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
-mul r9.xyzw, r0.wwww, r9.xyzw
-mov r7.x, r6.y
-mov r7.y, r8.y
-mov r7.z, r1.w
-dp4 r6.y, r7.xyzw, r9.xyzw
-and r1.zw, r2.xxxy, l(0, 0, 1, 1)
-ine r0.w, r1.w, r1.z
-mov r6.z, r3.y
-movc r6.yz, r0.wwww, r6.yyzy, r6.zzyz
-mul r6.x, r3.x, r3.x
-add r6.xyz, r6.xyzx, l(-0.000000, -0.498039, -0.498039, 0.000000)
-add r7.yw, r6.zzzy, r6.xxxx
-add r7.x, -r6.z, r7.w
-add r0.w, -r6.y, r6.x
-add r7.z, -r6.z, r0.w
-mov_sat r7.xyz, r7.xyzx
-mul r1.zw, r3.wwwz, l(0.000000, 0.000000, 255.000000, 13.000000)
-ftou r0.w, r1.z
-utof r1.z, r0.w
-ushr r0.w, r0.w, l(3)
-utof r0.w, r0.w
-ftoi r0.w, r0.w
-and r0.w, r0.w, l(1)
-itof r0.w, r0.w
-ftoi r1.z, r1.z
-and r1.z, r1.z, l(7)
-itof r3.x, r1.z
-mul r3.y, r4.w, l(3.000000)
-ftou r3.y, r3.y
-utof r3.y, r3.y
-mad r4.xyz, r4.xyzx, l(1.414214, 1.414214, 1.414214, 0.000000), l(-0.707107, -0.707107, -0.707107, 0.000000)
-dp3 r3.w, r4.xyzx, r4.xyzx
-min r3.w, r3.w, l(1.000000)
-add r3.w, -r3.w, l(1.000000)
-sqrt r3.w, r3.w
-ne r4.w, l(0.000000, 0.000000, 0.000000, 0.000000), r3.y
-movc r6.w, r4.w, r4.x, r3.w
-ftoi r3.y, r3.y
-ieq r8.xy, r3.yyyy, l(1, 2, 0, 0)
-movc r6.xy, r8.xyxx, r3.wwww, r4.yzyy
-movc r3.y, r4.w, r3.w, r4.x
-movc r3.y, r8.x, r4.y, r3.y
-movc r6.z, r8.y, r4.z, r3.y
-mul r4.xyzw, r6.xxyy, l(-2.000000, 2.000000, -2.000000, 2.000000)
-mad r8.xyz, r4.zwwz, r6.yxzy, l(1.000000, 0.000000, 0.000000, 0.000000)
-mul r9.xyz, r6.wwww, l(2.000000, 2.000000, -2.000000, 0.000000)
-mad r8.xyz, r9.zzyz, r6.wzxw, r8.xyzx
-mad r9.xyz, r9.xyzx, r6.yzwy, l(0.000000, 0.000000, 1.000000, 0.000000)
-mad r9.xyz, r4.xyxx, r6.zyxz, r9.xyzx
-ieq r10.xyzw, r1.zzzz, l(1, 5, 6, 3)
-if_nz r10.x
-  mul r3.yw, r5.yyyz, l(0.000000, 32.000000, 0.000000, 255.000000)
-  ftou r3.w, r3.w
-  utof r7.w, r3.w
-  ushr r3.w, r3.w, l(2)
-  utof r3.w, r3.w
-  mul r11.x, r3.w, l(0.015873)
-  ftoi r3.w, r7.w
-  and r3.w, r3.w, l(3)
-  itof r3.w, r3.w
-  mul r11.y, r3.w, l(0.333333)
-  mov r12.xyz, l(0,0,0,0)
-  mov r13.xyz, l(0,0,0,0)
-  mov r14.xyz, l(0,0,0,0)
-  mov r15.xyz, r9.xyzx
-  mov r3.w, l(0.150000)
-  mov r16.xyz, l(0,0,0,0)
-  mov r17.x, l(0)
-  mov r18.x, l(0)
-else 
-  ldms r18.xyzw, r2.xyww, t9.xyzw, v2.y
-  mul r5.y, r5.y, l(255.000000)
-  ftou r5.y, r5.y
-  utof r7.w, r5.y
-  ushr r5.y, r5.y, l(4)
-  utof r5.y, r5.y
-  mul r17.x, r5.y, l(0.066667)
-  ftoi r5.y, r7.w
-  and r5.y, r5.y, l(15)
-  itof r5.y, r5.y
-  mul r3.w, r5.y, l(0.066667)
-  ieq r5.y, r1.z, l(3)
-  if_nz r5.y
-    mad r19.xyz, r18.yzwy, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-    dp3 r5.y, r19.xyzx, r19.xyzx
-    rsq r5.y, r5.y
-    mul r15.xyz, r5.yyyy, r19.xyzx
-    mov r12.xyz, l(0,0,0,0)
-    mov r13.xyz, l(0,0,0,0)
-    mov r14.xyz, l(0,0,0,0)
-    mov r16.x, r5.x
-    mov r16.yz, l(0,0,0,0)
-  else 
-    mad r19.xyz, r18.yzwy, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-    dp3 r5.y, r19.xyzx, r19.xyzx
-    rsq r5.y, r5.y
-    mul r19.xyz, r5.yyyy, r19.xyzx
-    ieq r20.xyz, r1.zzzz, l(4, 5, 6, 0)
-    mad r21.xyz, r18.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-    dp3 r5.y, r21.xyzx, r21.xyzx
-    rsq r5.y, r5.y
-    mul r21.xyz, r5.yyyy, r21.xyzx
-    mul r5.y, r18.w, l(255.000000)
-    ftou r5.y, r5.y
-    utof r7.w, r5.y
-    ushr r5.y, r5.y, l(4)
-    utof r5.y, r5.y
-    mul r22.x, r5.y, l(0.066667)
-    ftoi r5.y, r7.w
-    and r5.y, r5.y, l(15)
-    itof r5.y, r5.y
-    mul r22.y, r5.y, l(0.066667)
-    mul r23.xyz, r5.xzwx, l(255.000000, 255.000000, 255.000000, 0.000000)
-    ftou r5.y, r23.x
-    utof r7.w, r5.y
-    ushr r5.y, r5.y, l(4)
-    utof r5.y, r5.y
-    mul r22.w, r5.y, l(0.066667)
-    ftoi r5.y, r7.w
-    and r5.y, r5.y, l(15)
-    itof r5.y, r5.y
-    mul r23.w, r5.y, l(0.066667)
-    mov r22.z, r23.y
-    and r22.xyzw, r20.zzzz, r22.xyzw
-    and r21.xyz, r20.zzzz, r21.xyzx
-    and r11.zw, r20.zzzz, r23.zzzw
-    mov r18.z, r5.x
-    mov r18.yw, l(0,1.000000,0,0)
-    movc r23.xz, r20.yyyy, r18.yyzy, r18.zzwz
-    or r5.y, r20.y, r20.x
-    movc r13.xyzw, r5.yyyy, l(0,0,0,0), r22.xzyw
-    movc r12.xyz, r5.yyyy, l(0,0,0,0), r21.xyzx
-    movc r15.xyz, r20.xxxx, r19.xyzx, r9.xyzx
-    mov r23.y, l(0)
-    movc r16.xyz, r20.xxxx, r18.zxwz, r23.xyzx
-    movc r14.yz, r5.yyyy, l(0,0,0,0), r11.zzwz
-    mov r14.x, r13.w
-    mov r18.x, l(0)
-  endif 
-  mov r11.xy, r5.zzzz
-  mov r5.x, l(1.000000)
-  mov r3.y, l(0)
-endif 
-ftoi r19.xy, r1.xyxx
-mov r19.zw, l(0,0,0,0)
-ld r1.x, r19.xyzw, t5.xyzw
-exp r1.y, r1.w
-add r1.w, -r1.x, l(1.000000)
-mad r1.y, r1.y, r1.w, r1.x
-div r1.x, r1.x, r1.y
-log r1.x, |r1.x|
-mul r1.x, r1.x, l(0.110977)
-exp r1.x, r1.x
-mul r1.x, r1.x, r3.z
-mul r1.y, r1.x, l(0.570000)
-movc r1.y, cb1[11].w, r1.x, r1.y
-movc r1.y, r10.y, r1.y, r1.x
-mov r14.w, l(0)
-mov r17.y, l(0)
-movc r14.xyzw, r10.zzzz, r14.wxyz, r17.xyyy
-add r0.xyz, -r0.xyzx, cb0[8].xzyx
-dp3 r1.w, r0.xyzx, r0.xyzx
-sqrt r1.w, r1.w
-div r0.xyz, r0.xyzx, r1.wwww
-dp3 r17.w, r9.xzyx, r0.xyzx
-mul r3.z, r1.y, l(13.000000)
-mad r5.yz, r1.yyyy, l(0.000000, -0.255445, -6.000000, 0.000000), l(0.000000, 1.401520, 6.000000, 0.000000)
-mad r5.y, r5.y, r1.y, l(-1.946950)
-mad r5.y, r5.y, r1.y, l(0.816500)
-exp r3.z, r3.z
-movc r3.z, cb1[11].w, r5.y, r3.z
-movc r5.y, r10.z, l(1.000000), r16.x
-mad r3.w, r3.w, l(0.082000), l(0.018000)
-add r18.yzw, -r3.wwww, r7.xxyz
-mad r18.yzw, r14.xxxx, r18.yyzw, r3.wwww
-add r7.w, -r14.x, l(1.000000)
-mul r19.xyz, r7.wwww, r7.xyzx
-resinfo_uint r11.zw, l(0), t0.zwxy
-utof r11.zw, r11.zzzw
-mul r11.zw, r11.zzzw, v1.xxxy
-round_z r11.zw, r11.zzzw
-ftoi r20.xy, r11.zwzz
-mov r20.zw, l(0,0,0,0)
-ldms r7.w, r20.xyww, t10.yzwx, v2.y
-mad r7.w, cb0[14].y, r7.w, cb0[14].x
-div r7.w, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
-ldms r8.w, r20.xyzw, t10.yzwx, l(0)
-mad r8.w, cb0[14].y, r8.w, cb0[14].x
-div r21.x, l(1.000000, 1.000000, 1.000000, 1.000000), r8.w
-iadd r20.xyzw, r20.xyxy, l(0, 1, 1, 0)
-mov r22.xy, r20.zwzz
-mov r22.z, l(0)
-ldms r8.w, r22.xyzz, t10.yzwx, l(0)
-mad r8.w, cb0[14].y, r8.w, cb0[14].x
-div r21.y, l(1.000000, 1.000000, 1.000000, 1.000000), r8.w
-mov r20.zw, l(0,0,0,0)
-ldms r8.w, r20.xyzw, t10.yzwx, l(0)
-mad r8.w, cb0[14].y, r8.w, cb0[14].x
-div r21.z, l(1.000000, 1.000000, 1.000000, 1.000000), r8.w
-mov r22.w, r20.y
-ldms r8.w, r22.xwzz, t10.yzwx, l(0)
-mad r8.w, cb0[14].y, r8.w, cb0[14].x
-div r21.w, l(1.000000, 1.000000, 1.000000, 1.000000), r8.w
-add r20.xyzw, -r7.wwww, r21.xyzw
-lt r20.xyzw, |r20.xyzw|, l(0.000100, 0.000100, 0.000100, 0.000100)
-movc r20.xyzw, r20.xyzw, l(1.000000,1.000000,1.000000,1.000000), l(0.000100,0.000100,0.000100,0.000100)
-dp4 r7.w, r20.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
-div r20.xyzw, r20.xyzw, r7.wwww
-ge r7.w, r3.x, l(0.999900)
-and r7.w, r7.w, l(0x3f800000)
-ge r3.x, l(1.000100), r3.x
-and r3.x, r3.x, l(0x3f800000)
-mul r3.x, r3.x, r7.w
-resinfo_uint r11.zw, l(0), t4.zwxy
-utof r11.zw, r11.zzzw
-div r11.zw, l(0.000000, 0.000000, 0.500000, 0.500000), r11.zzzw
-add r11.zw, r11.zzzw, v1.xxxy
-sample r21.xyzw, r11.zwzz, t4.xyzw, s3
-mul r21.xyz, r21.xyzx, r21.xyzx
-sample_aoffimmi(1,0,0) r22.xyzw, r11.zwzz, t4.xyzw, s3
-mul r22.xyz, r22.xyzx, r22.xyzx
-sample_aoffimmi(0,1,0) r23.xyzw, r11.zwzz, t4.xyzw, s3
-mul r23.xyz, r23.xyzx, r23.xyzx
-sample_aoffimmi(1,1,0) r24.xyzw, r11.zwzz, t4.xyzw, s3
-mul r24.xyz, r24.xyzx, r24.xyzx
-mul r22.xyzw, r20.yyyy, r22.xyzw
-mad r21.xyzw, r21.xyzw, r20.xxxx, r22.xyzw
-mad r21.xyzw, r23.xyzw, r20.zzzz, r21.xyzw
-mad r20.xyzw, r24.xyzw, r20.wwww, r21.xyzw
-mul r20.xyz, r20.xyzx, cb2[100].wwww
-ieq r11.zw, r1.zzzz, l(0, 0, 2, 4)
-if_nz r11.z
-  ldms r7.w, r2.xyww, t11.yzwx, v2.y
-  max r7.w, r7.w, cb2[1].y
-  dp3_sat r8.w, -r9.xyzx, cb2[97].xyzx
-  mov_sat r9.w, r17.w
-  add r10.x, r8.w, r9.w
-  mad r9.w, -r8.w, r9.w, r10.x
-  max r9.w, r9.w, l(0.010000)
-  div r9.w, l(1.000000, 1.000000, 1.000000, 1.000000), r9.w
-  movc r9.w, cb1[11].w, r9.w, l(1.000000)
-  add r21.xyz, r0.xzyx, -cb2[97].xyzx
-  dp3 r10.x, r21.xyzx, r21.xyzx
-  rsq r10.x, r10.x
-  mul r21.xyz, r10.xxxx, r21.xyzx
-  dp3 r10.x, r21.xzyx, r0.xyzx
-  add r11.z, -r10.x, l(1.000000)
-  mul r12.w, r11.z, r11.z
-  mul r12.w, r12.w, r12.w
-  mul r11.z, r11.z, r12.w
-  add r22.xyz, -r18.yzwy, l(1.000000, 1.000000, 1.000000, 0.000000)
-  mad r23.xyz, r22.xyzx, r11.zzzz, r18.yzwy
-  mul r10.x, r10.x, l(-8.656170)
-  exp r10.x, r10.x
-  mad r22.xyz, r22.xyzx, r10.xxxx, r18.yzwy
-  movc r22.xyz, cb1[11].wwww, r23.xyzx, r22.xyzx
-  dp3_sat r10.x, r9.xyzx, -cb2[97].xyzx
-  mul r23.xyz, r10.xxxx, cb2[96].xyzx
-  mul r23.xyz, r7.wwww, r23.xyzx
-  mul r22.xyz, r7.wwww, r22.xyzx
-  mul r22.xyz, r8.wwww, r22.xyzx
-  mul r22.xyz, r9.wwww, r22.xyzx
-  dp3_sat r7.w, r21.xyzx, r9.xyzx
-  mul r8.w, r7.w, r7.w
-  min r8.w, r8.w, l(0.999999)
-  add r9.w, -r8.w, l(1.000000)
-  div r8.w, r8.w, r9.w
-  mul r9.w, r9.w, r9.w
-  mul r10.x, r3.z, r3.z
-  mad r10.x, r10.x, l(4.000000), l(1.000000)
-  div r10.x, l(1.000000, 1.000000, 1.000000, 1.000000), r10.x
-  mad r11.z, r3.z, r3.z, l(0.000001)
-  div r8.w, -r8.w, r11.z
-  mul r8.w, r8.w, l(1.442695)
-  exp r8.w, r8.w
-  mul r8.w, r8.w, l(4.000000)
-  div r8.w, r8.w, r9.w
-  add r8.w, r8.w, l(1.000000)
-  mul r8.w, r8.w, r10.x
-  mul r21.xyz, r8.wwww, cb2[96].xyzx
-  log r7.w, r7.w
-  mul r7.w, r3.z, r7.w
-  exp r7.w, r7.w
-  mad r8.w, r3.z, l(0.125000), l(0.250000)
-  mul r7.w, r7.w, r8.w
-  mul r24.xyz, r7.wwww, cb2[96].xyzx
-  movc r21.xyz, cb1[11].wwww, r21.xyzx, r24.xyzx
-  mul r21.xyz, r21.xyzx, r22.xyzx
-else 
-  ieq r7.w, r1.z, l(4)
-  if_nz r7.w
-    ldms r7.w, r2.xyww, t11.yzwx, v2.y
-    max r7.w, r7.w, cb2[1].y
-    dp3_sat r8.w, r15.xyzx, -cb2[97].xyzx
-    add r22.xyz, -r9.xyzx, r15.xyzx
-    mad r24.xyz, r22.xyzx, l(0.100000, 0.100000, 0.100000, 0.000000), r9.xyzx
-    dp3 r9.w, r24.xyzx, r24.xyzx
-    rsq r9.w, r9.w
-    mul r24.xyz, r9.wwww, r24.xyzx
-    mad r22.xyz, r22.xyzx, l(0.300000, 0.300000, 0.300000, 0.000000), r9.xyzx
-    dp3 r9.w, r22.xyzx, r22.xyzx
-    rsq r9.w, r9.w
-    mul r22.xyz, r9.wwww, r22.xyzx
-    dp3 r9.w, r9.xyzx, -cb2[97].xyzx
-    dp3 r10.x, r24.xyzx, -cb2[97].xyzx
-    dp3 r11.z, r22.xyzx, -cb2[97].xyzx
-    mad r16.w, r9.w, l(0.500000), l(0.500000)
-    mad r22.xy, r16.wyww, l(0.984375, 0.984375, 0.000000, 0.000000), l(0.007813, 0.007813, 0.000000, 0.000000)
-    sample_l r22.x, r22.xyxx, t12.xyzw, s4, l(0.000000)
-    mad r16.z, r10.x, l(0.500000), l(0.500000)
-    mad r24.xy, r16.zyzz, l(0.984375, 0.984375, 0.000000, 0.000000), l(0.007813, 0.007813, 0.000000, 0.000000)
-    sample_l r22.y, r24.xyxx, t12.xyzw, s4, l(0.000000)
-    mad r16.x, r11.z, l(0.500000), l(0.500000)
-    mad r16.xy, r16.xyxx, l(0.984375, 0.984375, 0.000000, 0.000000), l(0.007813, 0.007813, 0.000000, 0.000000)
-    sample_l r22.z, r16.xyxx, t12.xyzw, s4, l(0.000000)
-    mul r9.w, r8.w, r8.w
-    mul r10.x, r3.z, r3.z
-    mad r11.z, -r3.z, r3.z, l(1.000000)
-    mad r9.w, r9.w, r11.z, r10.x
-    sqrt r9.w, r9.w
-    add r9.w, r8.w, r9.w
-    div r9.w, l(1.000000, 1.000000, 1.000000, 1.000000), r9.w
-    movc r9.w, cb1[11].w, r9.w, l(1.000000)
-    add r16.xyw, r0.xzxy, -cb2[97].xyxz
-    dp3 r10.x, r16.xywx, r16.xywx
-    rsq r10.x, r10.x
-    mul r16.xyw, r10.xxxx, r16.xyxw
-    dp3 r10.x, r16.xwyx, r0.xyzx
-    add r11.z, -r10.x, l(1.000000)
-    mul r12.w, r11.z, r11.z
-    mul r12.w, r12.w, r12.w
-    mul r11.z, r11.z, r12.w
-    add r24.xyz, -r18.yzwy, l(1.000000, 1.000000, 1.000000, 0.000000)
-    mad r25.xyz, r24.xyzx, r11.zzzz, r18.yzwy
-    mul r10.x, r10.x, l(-8.656170)
-    exp r10.x, r10.x
-    mad r24.xyz, r24.xyzx, r10.xxxx, r18.yzwy
-    movc r24.xyz, cb1[11].wwww, r25.xyzx, r24.xyzx
-    mul r25.xyz, r7.wwww, cb2[96].xyzx
-    mul r23.xyz, r22.xyzx, r25.xyzx
-    mul r22.xyz, r7.wwww, r24.xyzx
-    mul r22.xyz, r8.wwww, r22.xyzx
-    mul r22.xyz, r9.wwww, r22.xyzx
-    dp3_sat r7.w, r16.xywx, r15.xyzx
-    mad r8.w, r3.z, r3.z, l(-1.000000)
-    mul r9.w, r7.w, r7.w
-    mad r8.w, r9.w, r8.w, l(1.000000)
-    div r8.w, r3.z, r8.w
-    mul r8.w, r8.w, r8.w
-    mul r16.xyw, r8.wwww, cb2[96].xyxz
-    log r7.w, r7.w
-    mul r7.w, r3.z, r7.w
-    exp r7.w, r7.w
-    mad r8.w, r3.z, l(0.125000), l(0.250000)
-    mul r7.w, r7.w, r8.w
-    mul r24.xyz, r7.wwww, cb2[96].xyzx
-    movc r16.xyw, cb1[11].wwww, r16.xyxw, r24.xyxz
-    mul r21.xyz, r16.xywx, r22.xyzx
-  else 
-    mad r16.xyw, r4.xyxy, r6.xwxz, l(1.000000, 0.000000, 0.000000, 0.000000)
-    mad r4.xyz, r4.zzwz, r6.yzwy, r16.xywx
-    and r6.xy, r10.wyww, l(1, 1, 0, 0)
-    movc r4.w, r1.z, l(0), l(1)
-    or r4.w, r4.w, r6.x
-    or r4.w, r4.w, r6.y
-    itof r4.w, r4.w
-    mad r6.x, -r1.y, r5.y, r1.y
-    mul r6.y, r6.x, l(13.000000)
-    mad r6.z, r6.x, l(-0.255445), l(1.401520)
-    mad r6.z, r6.z, r6.x, l(-1.946950)
-    mad r6.x, r6.z, r6.x, l(0.816500)
-    exp r6.y, r6.y
-    movc r6.x, cb1[11].w, r6.x, r6.y
-    ne r4.w, l(0.000000, 0.000000, 0.000000, 0.000000), r4.w
-    movc r4.w, r4.w, r3.z, r6.x
-    if_nz r10.y
-      ldms r6.y, r2.xyww, t11.yxzw, v2.y
-      max r6.y, r6.y, cb2[1].y
-      dp3_sat r6.z, r15.xyzx, -cb2[97].xyzx
-      mul r16.xyw, r6.zzzz, cb2[96].xyxz
-      mul r23.xyz, r6.yyyy, r16.xywx
-      dp3_sat r6.z, r9.xyzx, -cb2[97].xyzx
-      mul r6.w, r6.z, r6.z
-      mul r7.w, r3.z, r3.z
-      mad r8.w, -r3.z, r3.z, l(1.000000)
-      mad r6.w, r6.w, r8.w, r7.w
-      sqrt r6.w, r6.w
-      add r6.w, r6.w, r6.z
-      div r6.w, l(1.000000, 1.000000, 1.000000, 1.000000), r6.w
-      movc r6.w, cb1[11].w, r6.w, l(1.000000)
-      add r16.xyw, r0.xzxy, -cb2[97].xyxz
-      dp3 r7.w, r16.xywx, r16.xywx
-      rsq r7.w, r7.w
-      mul r16.xyw, r7.wwww, r16.xyxw
-      dp3 r7.w, r16.xwyx, r0.xyzx
-      add r8.w, -r7.w, l(1.000000)
-      mul r9.w, r8.w, r8.w
-      mul r9.w, r9.w, r9.w
-      mul r8.w, r8.w, r9.w
-      add r22.xyz, -r18.yzwy, l(1.000000, 1.000000, 1.000000, 0.000000)
-      mad r24.xyz, r22.xyzx, r8.wwww, r18.yzwy
-      mul r7.w, r7.w, l(-8.656170)
-      exp r7.w, r7.w
-      mad r22.xyz, r22.xyzx, r7.wwww, r18.yzwy
-      movc r22.xyz, cb1[11].wwww, r24.xyzx, r22.xyzx
-      if_nz cb1[11].w
-        add r7.w, r16.z, r16.z
-        mul r24.xyz, r6.yyyy, r22.xyzx
-        mul r24.xyz, r6.zzzz, r24.xyzx
-        mul r24.xyz, r6.wwww, r24.xyzx
-        dp3 r25.x, r16.xywx, r4.xyzx
-        dp3 r25.y, r16.ywxy, r8.xyzx
-        dp3 r8.w, r16.xywx, r9.xyzx
-        mul r25.xy, r25.xyxx, r25.xyxx
-        mul r9.w, r6.x, r6.x
-        div r9.w, r25.x, r9.w
-        mad r8.w, r8.w, r8.w, r9.w
-        mul r9.w, r4.w, r4.w
-        div r9.w, r25.y, r9.w
-        add r8.w, r8.w, r9.w
-        mul r9.w, r4.w, r6.x
-        mul r8.w, r8.w, r8.w
-        mul r8.w, r9.w, r8.w
-        div r8.w, l(1.000000, 1.000000, 1.000000, 1.000000), r8.w
-        mul r25.xyz, r8.wwww, cb2[96].xyzx
-        mul r24.xyz, r24.xyzx, r25.xyzx
-        mul r25.xyz, r7.wwww, r8.zxyz
-        mad r25.xyz, r25.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), -cb2[97].xyzx
-        dp3 r7.w, r25.xyzx, r25.xyzx
-        rsq r7.w, r7.w
-        mad r25.xyz, r25.xyzx, r7.wwww, r0.xzyx
-        dp3 r7.w, r25.xyzx, r25.xyzx
-        rsq r7.w, r7.w
-        mul r25.xyz, r7.wwww, r25.xyzx
-        mul r26.xyz, r7.xyzx, r3.wwww
-        dp3 r7.w, r25.xzyx, r0.xyzx
-        add r7.w, -r7.w, l(1.000000)
-        mul r8.w, r7.w, r7.w
-        mul r8.w, r8.w, r8.w
-        mul r7.w, r7.w, r8.w
-        mad r7.xyz, -r3.wwww, r7.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
-        mad r7.xyz, r7.xyzx, r7.wwww, r26.xyzx
-        add r26.xyz, -r7.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
-        mul r7.xyz, r6.yyyy, r7.xyzx
-        mul r7.xyz, r6.zzzz, r7.xyzx
-        mul r7.xyz, r6.wwww, r7.xyzx
-        add r7.w, r6.x, r6.x
-        add r8.w, r4.w, r4.w
-        dp3 r27.x, r25.xyzx, r4.xyzx
-        dp3 r27.y, r25.yzxy, r8.xyzx
-        dp3 r9.w, r25.xyzx, r9.xyzx
-        mul r25.xy, r27.xyxx, r27.xyxx
-        mul r10.x, r7.w, r7.w
-        div r10.x, r25.x, r10.x
-        mad r9.w, r9.w, r9.w, r10.x
-        mul r10.x, r8.w, r8.w
-        div r10.x, r25.y, r10.x
-        add r9.w, r9.w, r10.x
-        mul r7.w, r7.w, r8.w
-        mul r8.w, r9.w, r9.w
-        mul r7.w, r7.w, r8.w
-        div r7.w, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
-        mul r25.xyz, r7.wwww, cb2[96].xyzx
-        mul r7.xyz, r7.xyzx, r25.xyzx
-        mad r21.xyz, r24.xyzx, r26.xyzx, r7.xyzx
-      else 
-        mul r7.xyz, r6.yyyy, r22.xyzx
-        mul r7.xyz, r6.zzzz, r7.xyzx
-        mul r7.xyz, r6.wwww, r7.xyzx
-        dp3_sat r6.y, r9.xyzx, r16.xywx
-        add r6.y, -r6.y, r6.z
-        add r6.y, -|r6.y|, l(1.000000)
-        log r6.y, r6.y
-        mul r6.y, r3.z, r6.y
-        exp r6.y, r6.y
-        mul r6.yzw, r6.yyyy, cb2[96].xxyz
-        mad r7.w, r3.z, l(0.125000), l(0.250000)
-        mul r6.yzw, r6.yyzw, r7.wwww
-        mul r21.xyz, r6.yzwy, r7.xyzx
-      endif 
-    else 
-      if_nz r10.z
-        ldms r6.y, r2.xyww, t11.yxzw, v2.y
-        max r6.y, r6.y, cb2[1].y
-        add r7.xyz, r0.xzyx, -cb2[97].xyzx
-        dp3 r6.z, r7.xyzx, r7.xyzx
-        rsq r6.z, r6.z
-        mul r7.xyz, r6.zzzz, r7.xyzx
-        dp3 r6.z, r12.xyzx, -cb2[97].xyzx
-        max r6.z, r6.z, l(-1.000000)
-        dp3 r6.w, r12.xyzx, r7.xyzx
-        max r6.w, r6.w, l(-1.000000)
-        min r6.zw, r6.zzzw, l(0.000000, 0.000000, 1.000000, 1.000000)
-        dp3_sat r7.x, r15.xyzx, -cb2[97].xyzx
-        mul r7.xyz, r7.xxxx, cb2[96].xyzx
-        mad r6.z, -r6.z, r6.z, l(1.000000)
-        sqrt r6.z, r6.z
-        dp3 r7.w, r9.xyzx, -cb2[97].xyzx
-        max r7.w, r7.w, l(0.000000)
-        add r7.w, -r6.z, r7.w
-        mad r6.z, r13.x, r7.w, r6.z
-        mul r7.xyz, r6.yyyy, r7.xyzx
-        mul r23.xyz, r6.zzzz, r7.xyzx
-        mad r6.y, -r6.w, r6.w, l(1.000000)
-        sqrt r6.y, r6.y
-        log r6.y, r6.y
-        mul r6.y, r6.y, r13.y
-        exp r6.y, r6.y
-        add r6.z, r13.z, r6.w
-        min r6.z, r6.z, l(1.000000)
-        mad r6.z, -r6.z, r6.z, l(1.000000)
-        sqrt r6.z, r6.z
-        log r6.z, r6.z
-        mul r6.z, r6.z, r14.z
-        exp r6.z, r6.z
-        mul r7.xyz, r7.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
-        mul r6.z, r6.z, r14.w
-        mad r6.y, r14.y, r6.y, r6.z
-        mul r21.xyz, r6.yyyy, r7.xyzx
-      else 
-        mul r6.y, r3.x, cb1[7].w
-        mul r6.z, r5.x, r6.y
-        ldms r2.x, r2.xyzw, t11.xyzw, v2.y
-        max r2.x, r2.x, cb2[1].y
-        dp3 r2.y, r9.xyzx, cb2[97].xyzx
-        mov_sat r2.y, -r2.y
-        mul r2.z, r2.y, r2.y
-        mul r2.w, r3.z, r3.z
-        mad r6.w, -r3.z, r3.z, l(1.000000)
-        mad r2.z, r2.z, r6.w, r2.w
-        sqrt r2.z, r2.z
-        add r2.z, r2.z, r2.y
-        div r2.z, l(1.000000, 1.000000, 1.000000, 1.000000), r2.z
-        movc r2.z, cb1[11].w, r2.z, l(1.000000)
-        add r7.xyz, r0.xzyx, -cb2[97].xyzx
-        dp3 r2.w, r7.xyzx, r7.xyzx
-        rsq r2.w, r2.w
-        mul r7.xyz, r2.wwww, r7.xyzx
-        dp3 r2.w, r7.xzyx, r0.xyzx
-        add r6.w, -r2.w, l(1.000000)
-        mul r7.w, r6.w, r6.w
-        mul r7.w, r7.w, r7.w
-        mul r6.w, r6.w, r7.w
-        add r12.xyz, -r18.yzwy, l(1.000000, 1.000000, 1.000000, 0.000000)
-        mad r13.xyz, r12.xyzx, r6.wwww, r18.yzwy
-        mul r2.w, r2.w, l(-8.656170)
-        exp r2.w, r2.w
-        mad r12.xyz, r12.xyzx, r2.wwww, r18.yzwy
-        movc r12.xyz, cb1[11].wwww, r13.xyzx, r12.xyzx
-        mul r12.xyz, r2.xxxx, r12.xyzx
-        mul r12.xyz, r2.yyyy, r12.xyzx
-        mul r2.yzw, r2.zzzz, r12.xxyz
-        dp3 r4.x, r7.xyzx, r4.xyzx
-        dp3 r4.y, r7.yzxy, r8.xyzx
-        dp3 r4.z, r7.xyzx, r9.xyzx
-        mul r4.xy, r4.xyxx, r4.xyxx
-        mul r6.w, r6.x, r6.x
-        div r4.x, r4.x, r6.w
-        mad r4.x, r4.z, r4.z, r4.x
-        mul r6.w, r4.w, r4.w
-        div r4.y, r4.y, r6.w
-        add r4.x, r4.y, r4.x
-        mul r4.y, r4.w, r6.x
-        mul r4.x, r4.x, r4.x
-        mul r4.x, r4.y, r4.x
-        div r4.x, l(1.000000, 1.000000, 1.000000, 1.000000), r4.x
-        mul r4.xyw, r4.xxxx, cb2[96].xyxz
-        mul r4.xyw, r2.yzyw, r4.xyxw
-        mov_sat r4.z, r4.z
-        log r4.z, r4.z
-        mul r4.z, r3.z, r4.z
-        exp r4.z, r4.z
-        mad r6.x, r3.z, l(0.125000), l(0.250000)
-        mul r4.z, r4.z, r6.x
-        mul r7.xyz, r4.zzzz, cb2[96].xyzx
-        mul r2.yzw, r2.yyzw, r7.xxyz
-        movc r2.yzw, cb1[11].wwww, r4.xxyw, r2.yyzw
-        dp3 r4.x, r15.xyzx, -cb2[97].xyzx
-        mul r4.yzw, r2.xxxx, cb2[96].xxyz
-        mov_sat r6.x, r4.x
-        mad_sat r4.x, r4.x, l(-0.600000), l(0.200000)
-        mul r7.xyz, r4.xxxx, cb1[11].xyzx
-        mul r7.xyz, r6.zzzz, r7.xyzx
-        mul r7.xyz, r2.xxxx, r7.xyzx
-        mul r7.xyz, r7.xyzx, cb2[96].xyzx
-        mad r23.xyz, r4.yzwy, r6.xxxx, r7.xyzx
-        add r4.xyz, l(1.000000, 1.000000, 1.000000, 0.000000), cb1[11].xyzx
-        mad_sat r4.xyz, -r6.yyyy, r5.xxxx, r4.xyzx
-        mul r21.xyz, r2.yzwy, r4.xyzx
-      endif 
-    endif 
-  endif 
-endif 
-mad_sat r2.x, r1.w, cb2[0].x, cb2[0].y
-mul r2.x, r2.x, cb2[0].z
-mul r0.w, r0.w, r2.x
-mad r2.xyz, r20.yyyy, r0.wwww, r20.xyzx
-sample r4.xyz, v1.xyxx, t1.xyzw, s0
-mul r4.xyz, r4.xyzx, r4.xyzx
-dp3 r0.w, r4.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)
-ge r0.w, r0.w, l(0.000100)
-and r0.w, r0.w, l(0x3f800000)
-mad r4.xyz, r4.xyzx, cb2[100].wwww, -r20.xyzx
-mad r4.xyz, r0.wwww, r4.xyzx, r20.xyzx
-or r0.w, r10.w, r11.w
-and r0.w, r0.w, l(0x3f800000)
-mul r0.w, r0.w, cb2[101].z
-add r2.w, -r20.w, l(1.000000)
-mad r0.w, r0.w, r2.w, r20.w
-mov r6.yzw, -r0.zzyx
-mov r6.x, l(1.000000)
-dp4 r7.x, cb0[20].xyzw, r6.xyzw
-dp4 r7.y, cb0[19].xyzw, r6.xyzw
-dp4 r7.z, cb0[18].xyzw, r6.xyzw
-max r6.xyw, r7.xyxz, l(0.000000, 0.000000, 0.000000, 0.000000)
-mul r2.w, r1.w, r6.z
-mad_sat r1.w, r1.w, cb0[17].y, cb0[17].x
-mul r2.w, r2.w, cb0[21].y
-max r2.w, r2.w, l(-125.000000)
-lt r4.w, l(0.000001), |r2.w|
-exp r5.x, -r2.w
-add r5.x, -r5.x, l(1.000000)
-div r2.w, r5.x, r2.w
-movc r2.w, r4.w, r2.w, l(1.000000)
-mad r2.w, r2.w, cb0[21].x, cb0[17].w
-mul r1.w, r1.w, r2.w
-mul r1.w, r1.w, -cb0[17].z
-exp r1.w, r1.w
-mad r6.xyz, -r6.xywx, r1.wwww, r6.xywx
-mov r1.x, |r17.w|
-mul r2.w, r1.x, r1.x
-mul r4.w, r3.z, r3.z
-mad r3.z, -r3.z, r3.z, l(1.000000)
-mad r2.w, r2.w, r3.z, r4.w
-sqrt r2.w, r2.w
-add r2.w, r1.x, r2.w
-div r2.w, l(1.000000, 1.000000, 1.000000, 1.000000), r2.w
-movc r2.w, cb1[11].w, r2.w, l(1.000000)
-mul r7.xyz, r2.wwww, r21.xyzx
-ine r1.z, r1.z, l(2)
-mov_sat r2.w, r17.w
-mul r5.x, r2.w, r2.w
-mad r3.z, r5.x, r3.z, r4.w
-sqrt r3.z, r3.z
-add r2.w, r2.w, r3.z
-div r2.w, l(1.000000, 1.000000, 1.000000, 1.000000), r2.w
-movc r2.w, cb1[11].w, r2.w, l(1.000000)
-mul r12.xyz, r2.wwww, r21.xyzx
-movc r12.xyz, r1.zzzz, r12.xyzx, r21.xyzx
-movc r7.xyz, r10.yyyy, r7.xyzx, r12.xyzx
-movc r17.xyz, r11.wwww, r15.xyzx, r9.xyzx
-mul r9.xyz, r8.zxyz, r0.zyxz
-mad r9.xyz, r0.xzyx, r8.xyzx, -r9.xyzx
-mul r10.xyw, r8.yzyx, r9.zxzy
-mad r8.xyz, r8.xyzx, r9.xyzx, -r10.xywx
-add r8.xyz, -r17.xyzx, r8.xyzx
-mad r8.xyz, r5.yyyy, r8.xyzx, r17.xyzx
-dp3 r1.z, r8.xyzx, r8.xyzx
-rsq r1.z, r1.z
-mul r8.xyz, r1.zzzz, r8.xyzx
-dp3 r8.w, r8.xzyx, r0.xyzx
-movc r8.xyzw, cb1[11].wwww, r8.xyzw, r17.xyzw
-add r1.z, r8.w, r8.w
-mad r0.xyz, -r1.zzzz, r8.xzyx, r0.xyzx
-mov r0.xyz, -r0.xyzx
-sample_l r0.xyz, r0.xyzx, t2.xyzw, s1, r5.z
-mad r0.xyz, r0.xyzx, cb0[57].xyzx, cb0[56].xyzx
-if_nz cb1[11].w
-  sample_l r5.xy, r1.xyxx, t3.xyzw, s2, l(0.000000)
-  mad_sat r5.xyz, r18.yzwy, r5.yyyy, r5.xxxx
-  mul r5.xyz, r0.xyzx, r5.xyzx
-else 
-  add r8.xyz, -r18.yzwy, l(1.000000, 1.000000, 1.000000, 0.000000)
-  mul r1.x, r1.x, l(-8.656170)
-  exp r1.x, r1.x
-  mul r1.y, r1.y, r1.y
-  mad r1.y, r1.y, l(0.830000), l(0.170000)
-  mul r1.x, r1.x, r1.y
-  mad r1.xyz, r8.xyzx, r1.xxxx, r18.yzwy
-  mul r5.xyz, r0.xyzx, r1.xyzx
-endif 
-mul r0.x, r3.x, l(0.500000)
-mad r0.y, r3.x, l(-0.500000), l(1.000000)
-mad_sat r0.x, r0.w, r0.y, r0.x
-movc r0.y, r10.z, l(1.000000), r5.w
-mul r0.y, r0.x, r0.y
-add r0.z, r0.x, l(-1.000000)
-mad_sat r0.z, cb2[101].y, r0.z, l(1.000000)
-mul r1.xyz, r0.yyyy, r2.xyzx
-movc r0.yw, r10.zzzz, l(0,1.000000,0,1.000000), r11.xxxy
-mul r2.xyz, r0.yyyy, r7.xyzx
-dp3 r0.y, r4.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)
-mul r4.xyz, r0.yyyy, r5.xyzx
-mul r4.xyz, r0.wwww, r4.xyzx
-mul r0.xyw, r0.xxxx, r4.xyxz
-mad r2.w, r18.x, l(4.000000), l(1.000000)
-mul r0.xyw, r0.xyxw, r2.wwww
-add r2.w, -r3.w, l(1.000000)
-mad r1.xyz, r23.xyzx, r0.zzzz, r1.xyzx
-mul r1.xyz, r1.xyzx, r19.xyzx
-mul r1.xyz, r2.wwww, r1.xyzx
-mad r0.xyz, r2.xyzx, r0.zzzz, r0.xywx
-mad r1.xyz, r19.xyzx, r3.yyyy, r1.xyzx
-add r0.xyz, r0.xyzx, r1.xyzx
-mad r0.xyz, r0.xyzx, r1.wwww, r6.xyzx
-mul r0.xyz, r0.xyzx, cb0[2].zzzz
-lt r0.w, l(0.500000), cb2[1].x
-movc o0.xyz, r0.wwww, r19.xyzx, r0.xyzx
-mov o0.w, l(1.000000)
-ret 
-// Approximately 755 instruction slots used
-
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(127,10-53): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(145,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(146,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(147,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(151,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(153,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(157,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(159,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(227,16-42): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(331,10-54): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(334,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(340,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(344,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(349,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(363,3-77): error X3013: 'GetDimensions': no matching 3 parameter intrinsic method
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(363,3-77): error X3013: Possible intrinsic methods are:
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(363,3-77): error X3013:     Texture2D<float4>.GetDimensions(uint, out uint width, out uint height, out uint levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(363,3-77): error X3013:     Texture2D<float4>.GetDimensions(uint, out float|half|min10float|min16float width, out float|half|min10float|min16float height, out float|half|min10float|min16float levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(363,3-77): error X3013:     Texture2D<float4>.GetDimensions(out uint width, out uint height)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(363,3-77): error X3013:     Texture2D<float4>.GetDimensions(out float|half|min10float|min16float width, out float|half|min10float|min16float height)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

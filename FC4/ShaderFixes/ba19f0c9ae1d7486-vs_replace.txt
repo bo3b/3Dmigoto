@@ -1,5 +1,4 @@
-// HUD - Enemy, animal, etc. markers tagged with camera
-
+//HUD Markers
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -66,6 +65,7 @@ void main(
   r0.x = dot(v0.xyzw, _Transform._m00_m10_m20_m30);
   r0.y = dot(v0.xyzw, _Transform._m01_m11_m21_m31);
   r0.z = dot(v0.xyzw, _Transform._m02_m12_m22_m32);
+  
   r1.xyz = -_CameraPosition_DistanceScale.xyz + r0.xyz;
   r0.w = dot(r1.xyz, r1.xyz);
   r0.w = rsqrt(r0.w);
@@ -80,11 +80,9 @@ void main(
   o1.xyzw = v1.xyzw;
   o2.xy = v0.xy;
   o2.zw = v2.xy;
-
-// Stereoise HUD icons:
+  
 float4 stereo = StereoParams.Load(0);
-float separation = stereo.x; float convergence = stereo.y;
-o0.x += separation * (o0.w - convergence);
+o0.x += stereo.x*(o0.w-stereo.y);
 
   return;
 }
@@ -208,3 +206,4 @@ ret
 // Approximately 18 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  

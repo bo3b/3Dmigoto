@@ -339,9 +339,9 @@ void main(
   r8.y = dot(r3.xyzw, _CSMSlice1_1.xyzw);
   r8.z = dot(r3.xyzw, _CSMSlice1_2.xyzw);
   r9.xyz = r8.xyz >= float3(0.000000e+000,0.000000e+000,0.000000e+000);
-  r9.xyz = r9.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r9.xyz = r9.xyz ? 1.000000 : 0;
   r10.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) >= r8.xyz;
-  r10.xyz = r10.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r10.xyz = r10.xyz ? 1.000000 : 0;
   r9.xyz = r10.xyz * r9.xyz;
   r4.w = dot(r9.xyz, float3(1.000000e+000,1.000000e+000,1.000000e+000));
   r4.w = r4.w >= 3.000000000e+000;
@@ -352,9 +352,9 @@ void main(
   r10.y = dot(r3.xyzw, _CSMSlice0_1.xyzw);
   r10.z = dot(r3.xyzw, _CSMSlice0_2.xyzw);
   r3.xyw = r10.xyz >= float3(0.000000e+000,0.000000e+000,0.000000e+000);
-  r3.xyw = r3.xyw ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r3.xyw = r3.xyw ? 1.000000 : 0;
   r11.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) >= r10.xyz;
-  r11.xyz = r11.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r11.xyz = r11.xyz ? 1.000000 : 0;
   r3.xyw = r11.xyz * r3.xyw;
   r3.x = dot(r3.xyw, float3(1.000000e+000,1.000000e+000,1.000000e+000));
   r3.x = r3.x >= 3.000000000e+000;
@@ -667,12 +667,37 @@ void main(
   r6.xyz = r6.xyz * r3.xxx;
   r5.xyz = r3.www * r5.xyz;
   r7.xy = _ViewportSize.zw * v0.xy;
-  r3.yw = r7.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r3.yw = r7.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000); 
   r3.yw = -abs(-r3.yw) * abs(r3.yw) + float2(1.000000e+000,1.000000e+000);
   r4.xw = _ReflectionNormalOffsetScale * r1.yw;
   r8.xy = r4.xw * r0.xx + v5.xy;
   r8.z = v5.z;
   r8.w = 1.000000000e+000;
+  
+float4 r31, r32, r33, r34;
+r31.xyz = r8.xyz;
+r31.w = 1.0;
+r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x += stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r8.xyz = r34.xyz;  
+  
+  
   r9.x = dot(r8.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
   r9.y = dot(r8.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);
   r4.x = dot(r8.xyzw, _WaterReflectionTransform._m03_m13_m23_m33);
@@ -739,9 +764,9 @@ void main(
   r5.y = dot(r7.xyzw, _CSMSlice1_1.xyzw);
   r5.z = dot(r7.xyzw, _CSMSlice1_2.xyzw);
   r6.xyz = r5.xyz >= float3(0.000000e+000,0.000000e+000,0.000000e+000);
-  r6.xyz = r6.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r6.xyz = r6.xyz ? 1.000000 : 0;
   r8.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) >= r5.xyz;
-  r8.xyz = r8.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r8.xyz = r8.xyz ? 1.000000 : 0;
   r6.xyz = r8.xyz * r6.xyz;
   r2.w = dot(r6.xyz, float3(1.000000e+000,1.000000e+000,1.000000e+000));
   r2.w = r2.w >= 3.000000000e+000;
@@ -752,9 +777,9 @@ void main(
   r8.y = dot(r7.xyzw, _CSMSlice0_1.xyzw);
   r8.z = dot(r7.xyzw, _CSMSlice0_2.xyzw);
   r7.xyz = r8.xyz >= float3(0.000000e+000,0.000000e+000,0.000000e+000);
-  r7.xyz = r7.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r7.xyz = r7.xyz ? 1.000000 : 0;
   r9.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) >= r8.xyz;
-  r9.xyz = r9.xyz ? float3(1.000000e+000,1.000000e+000,1.000000e+000) : 0;
+  r9.xyz = r9.xyz ? 1.000000 : 0;
   r7.xyz = r9.xyz * r7.xyz;
   r2.w = dot(r7.xyz, float3(1.000000e+000,1.000000e+000,1.000000e+000));
   r2.w = r2.w >= 3.000000000e+000;

@@ -115,8 +115,10 @@ void main(
   r0.x = -v2.w + r0.x;
   r0.x = saturate(2.000000000e+005 * r0.x);
  
-  
   r0.yz = _SpecularAndAlphaTiling.zw * v8.xy;
+
+
+  
   r1.xyzw = DiffuseTexture1__TexObj__.Sample(DiffuseTexture1__SampObj___s, r0.yz).xyzw;
   r0.y = v1.w * r1.z;
   r0.z = r0.y * r0.x + -3.921568859e-003;
@@ -172,7 +174,14 @@ void main(
   r0.yzw = r1.zzz * v2.yxz + r0.yzw;
   r1.x = dot(r0.yzw, r0.yzw);
   r1.x = rsqrt(r1.x);
-  r1.yz = _ViewportSize.zw * v0.xy;
+  
+// float4 stereo = StereoParams.Load(0);
+// float4 r20;
+// r20.xy = v0.xy;
+// r20.x -= stereo.x*(d - stereo.y);   
+  
+  
+  r1.yz = _ViewportSize.zw * v0.xy; //v0.xy;
   r2.xyzw = ResolvedNormalGBuffer__TexObj__.Sample(ResolvedNormalGBuffer__SampObj___s, r1.yz).xyzw;
   r1.y = 3.000000000e+000 * r2.w;
   r2.xyz = r2.xyz * float3(1.414214e+000,1.414214e+000,1.414214e+000) + float3(-7.071068e-001,-7.071068e-001,-7.071068e-001);
@@ -235,6 +244,7 @@ void main(
   o3.w = r0.x;
   o2.xz = float2(7.843138e-003,1.000000e+000);
   o3.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+
   return;
 }
 
@@ -529,4 +539,4 @@ ret
 // Approximately 126 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  
+         

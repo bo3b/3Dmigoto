@@ -1,4 +1,4 @@
-
+//Lights
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -101,6 +101,31 @@ void main(
   r0.xyz = r0.xyz * r0.www;
   r0.xyz = r0.xyz * float3(1.500000e-001,1.500000e-001,1.500000e-001) + r1.xyz;
   r0.w = 1.000000000e+000;
+  
+//Stereo correction
+float4 r35, r32, r33, r34;
+r35.xyz = r0.xyz; 
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x += stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);   
+
+r0.xyzw = r34.xyzw;  
+  
   r1.x = dot(r0.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
   r1.y = dot(r0.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
   r1.w = dot(r0.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);
@@ -109,19 +134,14 @@ void main(
   r0.x = dot(_CameraDirection_FOVDeg.xyz, r0.xyz);
   o1.w = _CameraDistances.w * r0.x;
 
-
-//Mike_ar69 - Stereo Shift
-float4 r21;
-float4 stereo = StereoParams.Load(0);
-r21.xyw = r1.xyw;
-r1.x += stereo.x * (r1.w - stereo.y);
-o0.xyw = r21.xyw;
-
+  o0.xyw = r1.xyw;
 
   r0.xyzw = _DepthTextureScaleOffset.xyzw * r1.xyww;
   o1.z = r1.w;
   o1.xy = r0.xy + r0.zw;
-  o2 = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+  // o2.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
+o2.xy = float2(0.000000e+000,0.000000e+000);  
+p2.xy = float2(0.000000e+000,0.000000e+000);
   return;
 }
 
@@ -286,3 +306,4 @@ ret
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(115,3-9): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    

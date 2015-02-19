@@ -155,6 +155,7 @@ r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
 r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
 
 r0.xyz = r34.xyz; 
+// r34.xyz = r35.xyz;
 
 
   r1.xy = (int2)v0.xy;
@@ -311,6 +312,11 @@ r0.xyz = r34.xyz;
   r10.y = 0.000000000e+000;
   r4.xyzw = r9.zzzz ? r13.wxyz : r10.xyyy;
   r1.yzw = _CameraPosition_DistanceScale.xyz + -r0.xyz;
+  
+
+
+
+
   r2.y = dot(r1.yzw, r1.yzw);
   r2.y = sqrt(r2.y);
   r1.yzw = r1.yzw / r2.yyy;
@@ -422,7 +428,7 @@ r0.xyz = r34.xyz;
       r23.xyz = r22.xyz * r13.www;
       r12.w = _SpotLightAttenuation[r10.w].x / r12.w;
       r12.w = saturate(_SpotLightAttenuation[r10.w].y + r12.w);
-      r14.w = dot(r23.xyz, _SpotLightDirection[r10.w].xyz);
+      r14.w = dot(r23.xyz, -_SpotLightDirection[r10.w].xyz);
       r14.w = saturate(r14.w * _SpotLightColor[r10.w].w + _SpotLightDirection[r10.w].w);
       r14.w = r14.w * r14.w;
       r24.xyz = r14.www * r12.www;
@@ -436,9 +442,9 @@ r0.xyz = r34.xyz;
         r12.w = (int)r10.w < (int)_SpotLightGoboCount;
         if (r12.w != 0) {
           r12.w = (uint)r10.w << 2;
-          r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m00_m10_m20_m30);
-          r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m01_m11_m21_m31);
-          r12.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m03_m13_m23_m33);
+          r25.x = dot(r34.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m00_m10_m20_m30);
+          r25.y = dot(r34.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m01_m11_m21_m31);
+          r12.w = dot(r34.xyzw, _SpotShadowProjectionMatrix[r12.w/4]._m03_m13_m23_m33);
           r12.w = max(r12.w, 9.999999747e-006);
           r16.yw = r25.xy / r12.ww;
           r16.yw = r16.yw * _SpotScaleOffsetUVS[r10.w].xy + _SpotScaleOffsetUVS[r10.w].zw;
@@ -594,7 +600,7 @@ r0.xyz = r34.xyz;
         r10.w = (int)r10.w + 1;
         r22.w = r23.x;
       }
-      r24.xyz = r0.xyz;
+r24.xyz = r34.xyz;
       r24.w = 1.000000000e+000;
       r20.xyz = r22.xyz;
       r21.x = r22.w;
@@ -609,7 +615,7 @@ r0.xyz = r34.xyz;
         r26.xyz = r25.xyz * r13.www;
         r12.w = _SpotLightAttenuation[r10.w].x / r12.w;
         r12.w = saturate(_SpotLightAttenuation[r10.w].y + r12.w);
-        r14.w = dot(r26.xyz, _SpotLightDirection[r10.w].xyz);
+        r14.w = dot(r26.xyz, -_SpotLightDirection[r10.w].xyz);
         r14.w = saturate(r14.w * _SpotLightColor[r10.w].w + _SpotLightDirection[r10.w].w);
         r14.w = r14.w * r14.w;
         r27.xyz = r14.www * r12.www;
@@ -838,7 +844,7 @@ r0.xyz = r34.xyz;
           }
           r15.w = (int)r15.w + 1;
         }
-        r19.xyz = r0.xyz;
+r19.xyz = r34.xyz;
         r19.w = 1.000000000e+000;
         r20.xyz = r18.xyz;
         r21.x = r18.w;
@@ -853,7 +859,7 @@ r0.xyz = r34.xyz;
           r23.xyz = r22.xyz * r20.www;
           r17.x = _SpotLightAttenuation[r15.w].x / r17.x;
           r17.x = saturate(_SpotLightAttenuation[r15.w].y + r17.x);
-          r21.w = dot(r23.xyz, _SpotLightDirection[r15.w].xyz);
+          r21.w = dot(r23.xyz, -_SpotLightDirection[r15.w].xyz);
           r21.w = saturate(r21.w * _SpotLightColor[r15.w].w + _SpotLightDirection[r15.w].w);
           r21.w = r21.w * r21.w;
           r24.xyz = r21.www * r17.xxx;
@@ -1030,7 +1036,7 @@ r0.xyz = r34.xyz;
             r5.w = (int)r5.w + 1;
             r11.w = r12.x;
           }
-          r14.xyz = r0.xyz;
+r14.xyz = r34.xyz;
           r14.w = 1.000000000e+000;
           r20.xyz = r11.xyz;
           r21.x = r11.w;
@@ -1045,7 +1051,7 @@ r0.xyz = r34.xyz;
             r17.xyz = r16.xyw * r8.www;
             r7.w = _SpotLightAttenuation[r5.w].x / r7.w;
             r7.w = saturate(_SpotLightAttenuation[r5.w].y + r7.w);
-            r9.x = dot(r17.xyz, _SpotLightDirection[r5.w].xyz);
+            r9.x = dot(r17.xyz, -_SpotLightDirection[r5.w].xyz);
             r9.x = saturate(r9.x * _SpotLightColor[r5.w].w + _SpotLightDirection[r5.w].w);
             r9.x = r9.x * r9.x;
             r18.xyz = r9.xxx * r7.www;
@@ -1198,7 +1204,7 @@ r0.xyz = r34.xyz;
             }
             r8.w = (int)r8.w + 1;
           }
-          r12.xyz = r0.xyz;
+r12.xyz = r34.xyz;
           r12.w = 1.000000000e+000;
           r20.xyz = r7.xyz;
           r21.x = r7.w;
@@ -1213,7 +1219,7 @@ r0.xyz = r34.xyz;
             r16.xyw = r14.xyz * r10.www;
             r9.x = _SpotLightAttenuation[r8.w].x / r9.x;
             r9.x = saturate(_SpotLightAttenuation[r8.w].y + r9.x);
-            r11.x = dot(r16.xyw, _SpotLightDirection[r8.w].xyz);
+            r11.x = dot(r16.xyw, -_SpotLightDirection[r8.w].xyz);
             r11.x = saturate(r11.x * _SpotLightColor[r8.w].w + _SpotLightDirection[r8.w].w);
             r11.x = r11.x * r11.x;
             r17.xyz = r11.xxx * r9.xxx;
@@ -2757,3 +2763,4 @@ ret
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(272,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    

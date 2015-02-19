@@ -152,7 +152,6 @@ void main(
   r0.x = exp2(r0.x);
   r0.y = 1.000000000e+000 + -v0.x;
   r1.xyz = _CornerPointsWS[2].xyw * r0.yyy;
-  r1.w = 1;
   r0.yzw = _CornerPointsWS[0].xyw * r0.yyy;
   r0.yzw = v0.xxx * _CornerPointsWS[1].xyw + r0.yzw;
   r1.xyz = v0.xxx * _CornerPointsWS[3].xyw + r1.xyz;
@@ -171,9 +170,9 @@ void main(
 //Mike_ar69 - Stereo Shift
 float4 r21;
 float4 stereo = StereoParams.Load(0);
-r21.xyw = r1.xyw;
-r1.x += stereo.x * (r1.w - stereo.y);
-o0.xyw = r21.xyw;
+r21.xyz = r1.xyz;
+r1.x += stereo.x * (r1.z - stereo.y);
+o0.xyw = r21.xyz;
 
 
   r2.xyz = -_CameraPosition_DistanceScale.yzx + r0.yzx;

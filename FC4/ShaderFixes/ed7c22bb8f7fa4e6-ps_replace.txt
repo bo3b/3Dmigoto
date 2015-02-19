@@ -92,11 +92,10 @@ cbuffer CSceneTerrainVistaShadowPrivateData : register(b5)
 {
   float4x4 _VistaShadowMatrix : packoffset(c0);
 }
-SamplerState DepthVPSampler__SampObj___s : register(s0);
-SamplerState SkyDomeColorWrap_s : register(s2);
-SamplerComparisonState ShadowCmpSampler_s : register(s1);
-SamplerComparisonState VistaShadowTexture_s : register(s3);
-Texture2D<float4> DepthVPSampler__TexObj__ : register(t0);
+SamplerState SkyDomeColorWrap_s : register(s1);
+SamplerComparisonState ShadowCmpSampler_s : register(s0);
+SamplerComparisonState VistaShadowTexture_s : register(s2);
+Texture2DMS<float4,4> DepthVPSampler_TextureObject : register(t0);
 Texture2DArray<float4> ShadowCmpSampler_TextureObject : register(t1);
 Texture2D<uint4> SectorAtlasTexture_UINT_TextureObject : register(t2);
 Texture2D<float4> CloudShadowTexture : register(t3);
@@ -109,11 +108,17 @@ void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   uint v2 : SV_IsFrontFace0,
+  uint w2 : SV_SampleIndex0,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
   uint4 bitmask;
-  r0.x = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).x;
+  DepthVPSampler_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
+  r0.xy = r0.xy;
+  r0.xy = v1.xy * r0.xy;
+  r0.xy = (int2)r0.xy;
+  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.x = DepthVPSampler_TextureObject.Load(r0.xyz,w2.x).x;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
   r0.y = _CameraDistances.x * _CameraDistances.y;
@@ -291,7 +296,6 @@ r1.xyz = r34.xyz;
     r0.yz = r1.yx * _SectorOffsetScale.yx + _SectorOffsetScale.wz;
     SectorAtlasTexture_UINT_TextureObject.GetDimensions(r1.x, r1.y);
 	// SectorAtlasTexture_UINT_TextureObject.GetDimensions(r1.x, r1.y, bitmask.x);
-	
     r2.zw = r1.xy;
     r0.yz = r0.yz * r2.zw + float2(5.000000e-001,5.000000e-001);
     r2.zw = frac(r0.zy);
@@ -310,12 +314,14 @@ r1.xyz = r34.xyz;
 	uint4 src00 = r8.zwxy;
     uint4 src10 = r1.xyxy;
     r8.xyzw = src00 % src10;
-    r0.yz = (int2)r0.yz + int2(-1,-1);
+    
+	r0.yz = (int2)r0.yz + int2(-1,-1);
     
 	uint2 src000 = r0.yz;
     uint2 src100 = r1.xy;
     r11.xy = src000 % src100;
-    r12.xy = r8.zw;
+    
+	r12.xy = r8.zw;
     r12.zw = float2(0.000000e+000,0.000000e+000);
     r0.yz = SectorAtlasTexture_UINT_TextureObject.Load(r12.xyz).xy;
     r10.zw = float2(0.000000e+000,0.000000e+000);
@@ -764,11 +770,10 @@ r1.xyz = r34.xyz;
 //
 // Name                                 Type  Format         Dim Slot Elements
 // ------------------------------ ---------- ------- ----------- ---- --------
-// DepthVPSampler__SampObj__         sampler      NA          NA    0        1
-// ShadowCmpSampler                sampler_c      NA          NA    1        1
-// SkyDomeColorWrap                  sampler      NA          NA    2        1
-// VistaShadowTexture              sampler_c      NA          NA    3        1
-// DepthVPSampler__TexObj__          texture  float4          2d    0        1
+// ShadowCmpSampler                sampler_c      NA          NA    0        1
+// SkyDomeColorWrap                  sampler      NA          NA    1        1
+// VistaShadowTexture              sampler_c      NA          NA    2        1
+// DepthVPSampler_TextureObject      texture  float4       2dMS4    0        1
 // ShadowCmpSampler_TextureObject    texture  float4     2darray    1        1
 // SectorAtlasTexture_UINT_TextureObject    texture   uint4          2d    2        1
 // CloudShadowTexture                texture  float4          2d    3        1
@@ -789,6 +794,7 @@ r1.xyz = r34.xyz;
 // SV_Position              0   xyzw        0      POS   float       
 // TEXCOORD                 0   xyzw        1     NONE   float   xy  
 // SV_IsFrontFace           0   x           2    FFACE    uint       
+// SV_SampleIndex           0    y          2   SAMPLE    uint    y  
 //
 //
 // Output signature:
@@ -796,6 +802,8 @@ r1.xyz = r34.xyz;
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+// Pixel Shader runs at sample frequency
 //
 ps_5_0
 dcl_globalFlags refactoringAllowed
@@ -805,19 +813,24 @@ dcl_constantbuffer cb2[2], immediateIndexed
 dcl_constantbuffer cb3[4], immediateIndexed
 dcl_constantbuffer cb4[4], immediateIndexed
 dcl_constantbuffer cb5[4], immediateIndexed
-dcl_sampler s0, mode_default
-dcl_sampler s1, mode_comparison
-dcl_sampler s2, mode_default
-dcl_sampler s3, mode_comparison
-dcl_resource_texture2d (float,float,float,float) t0
+dcl_sampler s0, mode_comparison
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_comparison
+dcl_resource_texture2dms(4) (float,float,float,float) t0
 dcl_resource_texture2darray (float,float,float,float) t1
 dcl_resource_texture2d (uint,uint,uint,uint) t2
 dcl_resource_texture2d (float,float,float,float) t3
 dcl_resource_texture2d (float,float,float,float) t4
 dcl_input_ps linear v1.xy
+dcl_input_ps_sgv v2.y, sampleIndex
 dcl_output o0.xyzw
 dcl_temps 16
-sample_l_indexable(texture2d)(float,float,float,float) r0.x, v1.xyxx, t0.xyzw, s0, l(0.000000)
+resinfo_indexable(texture2dms)(float,float,float,float)_uint r0.xy, l(0), t0.xyzw
+utof r0.xy, r0.xyxx
+mul r0.xy, r0.xyxx, v1.xyxx
+ftoi r0.xy, r0.xyxx
+mov r0.zw, l(0,0,0,0)
+ldms_indexable(texture2dms)(float,float,float,float) r0.x, r0.xyzw, t0.xyzw, v2.y
 mad r0.x, cb0[14].y, r0.x, cb0[14].x
 div r0.x, l(1.000000, 1.000000, 1.000000, 1.000000), r0.x
 mul r0.y, cb0[4].y, cb0[4].x
@@ -880,7 +893,7 @@ mul_sat r2.z, r0.w, r2.z
 mad r2.w, r2.z, l(-2.000000), l(3.000000)
 mul r2.z, r2.z, r2.z
 mul r2.z, r2.z, r2.w
-sample_l_indexable(texture2d)(float,float,float,float) r2.x, r2.xyxx, t3.wxyz, s2, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r2.x, r2.xyxx, t3.wxyz, s1, l(0.000000)
 add r2.y, r2.x, l(-0.100000)
 mul_sat r2.y, r2.y, l(10.000000)
 mad r2.w, r2.y, l(-2.000000), l(3.000000)
@@ -945,16 +958,16 @@ if_nz r2.z
   add r11.xy, r2.zwzz, l(1.000000, 1.000000, 0.000000, 0.000000)
   mul r1.w, r10.x, r10.y
   mad r12.xyzw, r11.zwxw, r9.xyxy, r9.zwzw
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.z, r12.xyxx, t4.xxxx, s3, r8.z
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.z, r12.xyxx, t4.xxxx, s2, r8.z
   mul r10.xy, r10.xyxx, r10.zwzz
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.w, r12.zwzz, t4.xxxx, s3, r8.z
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.w, r12.zwzz, t4.xxxx, s2, r8.z
   mul r2.w, r2.w, r10.x
   mad r1.w, r1.w, r2.z, r2.w
   mad r9.xyzw, r11.zyxy, r9.xyxy, r9.zwzw
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.z, r9.xyxx, t4.xxxx, s3, r8.z
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.z, r9.xyxx, t4.xxxx, s2, r8.z
   mad r1.w, r10.y, r2.z, r1.w
   mul r2.z, r10.w, r10.z
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.w, r9.zwzz, t4.xxxx, s3, r8.z
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2d)(float,float,float,float) r2.w, r9.zwzz, t4.xxxx, s2, r8.z
   mad r1.w, r2.z, r2.w, r1.w
   ge r9.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), r8.xyzx
   and r9.xyz, r9.xyzx, l(0x3f800000, 0x3f800000, 0x3f800000, 0)
@@ -1065,22 +1078,22 @@ if_nz r2.z
   mul r4.xyzw, r3.zwxw, cb1[12].zwzw
   mad r8.xy, r1.xyxx, cb1[12].zwzz, r4.xyxx
   mov r8.z, l(2.000000)
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r8.xyzx, t1.xxxx, s1, r6.w
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r8.xyzx, t1.xxxx, s0, r6.w
   mul r1.zw, r1.zzzw, r2.xxxz
   mad r4.xy, r1.xyxx, cb1[12].zwzz, r4.zwzz
   mov r4.z, l(2.000000)
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r2.w, r4.xyzx, t1.xxxx, s1, r6.w
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r2.w, r4.xyzx, t1.xxxx, s0, r6.w
   mul r1.z, r1.z, r2.w
   mad r0.z, r0.z, r0.w, r1.z
   mul r3.xyzw, r3.zyxy, cb1[12].zwzw
   mad r4.xy, r1.xyxx, cb1[12].zwzz, r3.xyxx
   mov r4.z, l(2.000000)
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r4.xyzx, t1.xxxx, s1, r6.w
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r4.xyzx, t1.xxxx, s0, r6.w
   mad r0.z, r1.w, r0.w, r0.z
   mul r0.w, r2.z, r2.x
   mad r1.xy, r1.xyxx, cb1[12].zwzz, r3.zwzz
   mov r1.z, l(2.000000)
-  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r1.xyzx, t1.xxxx, s1, r6.w
+  sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r1.xyzx, t1.xxxx, s0, r6.w
   mad r0.z, r0.w, r1.x, r0.z
   mad r0.z, r0.z, l(0.062500), -r0.x
   mad r0.x, r0.y, r0.z, r0.x
@@ -1105,11 +1118,11 @@ else
     mul r9.xyzw, r8.xwzw, cb1[12].zwzw
     mad r10.xy, r1.xyxx, cb1[12].zwzz, r9.xyxx
     mov r10.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r10.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r10.xyzx, t1.xxxx, s0, r6.w
     mul r3.zw, r2.xxxz, l(0.000000, 0.000000, 7.000000, 7.000000)
     mad r9.xy, r1.xyxx, cb1[12].zwzz, r9.zwzz
     mov r9.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r9.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r9.xyzx, t1.xxxx, s0, r6.w
     mul r0.w, r0.w, r3.z
     mad r0.y, r0.y, r0.z, r0.w
     mul r0.zw, r2.xxxz, r3.xxxy
@@ -1117,36 +1130,36 @@ else
     mul r9.xyzw, r4.xzxw, cb1[12].zwzw
     mad r10.xy, r1.xyxx, cb1[12].zwzz, r9.xyxx
     mov r10.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r2.x, r10.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r2.x, r10.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r0.z, r2.x, r0.y
     mul r10.xyzw, r8.xyzy, cb1[12].zwzw
     mad r11.xy, r1.xyxx, cb1[12].zwzz, r10.xyxx
     mov r11.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r11.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r11.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r3.w, r0.z, r0.y
     mad r10.xy, r1.xyxx, cb1[12].zwzz, r10.zwzz
     mov r10.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r10.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r10.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r0.z, l(49.000000), r0.y
     mul r2.xz, r3.xxyx, l(7.000000, 0.000000, 7.000000, 0.000000)
     mad r9.xy, r1.xyxx, cb1[12].zwzz, r9.zwzz
     mov r9.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r9.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r9.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r2.x, r0.z, r0.y
     mov r8.y, r4.y
     mul r8.xyzw, r8.xyzy, cb1[12].zwzw
     mad r9.xy, r1.xyxx, cb1[12].zwzz, r8.xyxx
     mov r9.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r9.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r9.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r0.w, r0.z, r0.y
     mad r8.xy, r1.xyxx, cb1[12].zwzz, r8.zwzz
     mov r8.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r8.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r8.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r2.z, r0.z, r0.y
     mul r0.z, r3.y, r3.x
     mad r1.xy, r4.xyxx, cb1[12].zwzz, r1.zwzz
     mov r1.z, l(1.000000)
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r1.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.w, r1.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r0.z, r0.w, r0.y
     mul r0.x, r0.y, l(0.006944)
   else 
@@ -1171,67 +1184,67 @@ else
     mov r4.w, r10.x
     mul r13.xyzw, r4.ywxw, cb1[12].zwzw
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r13.xyxx
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.y, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.y, r6.xyzx, t1.xxxx, s0, r6.w
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r13.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mul r0.z, r0.z, r12.y
     mad r0.y, r12.x, r0.y, r0.z
     mul r13.xyzw, -r3.ywyw, r9.zzxx
     mad r6.xy, r4.zwzz, cb1[12].zwzz, r1.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.x, r0.z, r0.y
     mov r8.y, r4.w
     mad r6.xy, r8.xyxx, cb1[12].zwzz, r1.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.y, r0.z, r0.y
     mov r10.w, r4.y
     mul r14.xyzw, r10.wywz, cb1[12].zwzw
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r14.xyxx
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r12.z, r0.z, r0.y
     mov r4.yw, r10.yyyz
     mul r15.xyzw, r4.xyzy, cb1[12].zwzw
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r15.xyxx
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r12.w, r0.z, r0.y
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r15.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.z, r0.z, r0.y
     mov r8.zw, r4.yyyw
     mul r12.xyzw, r8.xzxw, cb1[12].zwzw
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r12.xyxx
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.w, r0.z, r0.y
     mul r13.xyzw, r3.zxzx, -r9.yyww
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r14.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.x, r0.z, r0.y
     mul r14.xyzw, r4.xwzw, cb1[12].zwzw
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r14.xyxx
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.y, r0.z, r0.y
     mul r3.xyzw, r3.ywyw, r9.yyww
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r14.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r3.x, r0.z, r0.y
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r12.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r3.y, r0.z, r0.y
     mov r11.x, r10.w
     mad r6.xy, r11.xyxx, cb1[12].zwzz, r1.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.z, r0.z, r0.y
     mov r11.zw, r4.xxxz
     mul r4.xyzw, r11.zywy, cb1[12].zwzw
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r4.xyxx
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r13.w, r0.z, r0.y
     mad r6.xy, r1.xyxx, cb1[12].zwzz, r4.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r3.z, r0.z, r0.y
     mov r11.x, r8.x
     mad r6.xy, r11.xyxx, cb1[12].zwzz, r1.zwzz
-    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s1, r6.w
+    sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r0.z, r6.xyzx, t1.xxxx, s0, r6.w
     mad r0.y, r3.w, r0.z, r0.y
     mul r0.x, r0.y, l(0.000370)
     mad r1.xyz, r7.xyzx, l(2.000000, 2.000000, 1.000000, 0.000000), l(-1.000000, -1.000000, -0.000000, 0.000000)
@@ -1260,11 +1273,11 @@ else
       mul r7.xyzw, r6.xwzw, cb1[12].zwzw
       mad r8.xy, r1.zwzz, cb1[12].zwzz, r7.xyxx
       mov r8.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r8.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r8.xyzx, t1.xxxx, s0, r5.z
       mul r5.xy, r3.xyxx, l(7.000000, 7.000000, 0.000000, 0.000000)
       mad r7.xy, r1.zwzz, cb1[12].zwzz, r7.zwzz
       mov r7.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.y, r7.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.y, r7.xyzx, t1.xxxx, s0, r5.z
       mul r1.y, r1.y, r5.x
       mad r0.w, r0.w, r1.x, r1.y
       mul r1.xy, r3.xyxx, r3.zwzz
@@ -1272,36 +1285,36 @@ else
       mul r7.xyzw, r4.xzxw, cb1[12].zwzw
       mad r8.xy, r1.zwzz, cb1[12].zwzz, r7.xyxx
       mov r8.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r2.w, r8.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r2.w, r8.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r1.x, r2.w, r0.w
       mul r8.xyzw, r6.xyzy, cb1[12].zwzw
       mad r9.xy, r1.zwzz, cb1[12].zwzz, r8.xyxx
       mov r9.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r9.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r9.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r5.y, r1.x, r0.w
       mad r8.xy, r1.zwzz, cb1[12].zwzz, r8.zwzz
       mov r8.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r8.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r8.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r1.x, l(49.000000), r0.w
       mul r3.xy, r3.zwzz, l(7.000000, 7.000000, 0.000000, 0.000000)
       mad r7.xy, r1.zwzz, cb1[12].zwzz, r7.zwzz
       mov r7.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r7.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r7.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r3.x, r1.x, r0.w
       mov r6.y, r4.y
       mul r6.xyzw, r6.xyzy, cb1[12].zwzw
       mad r7.xy, r1.zwzz, cb1[12].zwzz, r6.xyxx
       mov r7.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r7.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r7.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r1.y, r1.x, r0.w
       mad r1.xy, r1.zwzz, cb1[12].zwzz, r6.zwzz
       mov r1.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r1.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.x, r1.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r3.y, r1.x, r0.w
       mul r1.x, r3.w, r3.z
       mad r3.xy, r4.xyxx, cb1[12].zwzz, r2.xzxx
       mov r3.z, l(1.000000)
-      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.y, r3.xyzx, t1.xxxx, s1, r5.z
+      sample_c_lz_aoffimmi_indexable(0,0,0)(texture2darray)(float,float,float,float) r1.y, r3.xyzx, t1.xxxx, s0, r5.z
       mad r0.w, r1.x, r1.y, r0.w
       mul r0.w, r0.w, l(0.006944)
       mad r0.y, r0.y, l(0.000370), -r0.w
@@ -1311,16 +1324,17 @@ else
 endif 
 mul o0.xyzw, r2.yyyy, r0.xxxx
 ret 
-// Approximately 494 instruction slots used
+// Approximately 499 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(228,5-73): error X3013: 'GetDimensions': no matching 3 parameter intrinsic method
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(228,5-73): error X3013: Possible intrinsic methods are:
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(228,5-73): error X3013:     Texture2D<float4>.GetDimensions(uint, out uint width, out uint height, out uint levels)
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(228,5-73): error X3013:     Texture2D<float4>.GetDimensions(uint, out float|half|min10float|min16float width, out float|half|min10float|min16float height, out float|half|min10float|min16float levels)
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(228,5-73): error X3013:     Texture2D<float4>.GetDimensions(out uint width, out uint height)
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(228,5-73): error X3013:     Texture2D<float4>.GetDimensions(out float|half|min10float|min16float width, out float|half|min10float|min16float height)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(121,10-55): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(233,5-73): error X3013: 'GetDimensions': no matching 3 parameter intrinsic method
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(233,5-73): error X3013: Possible intrinsic methods are:
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(233,5-73): error X3013:     Texture2D<float4>.GetDimensions(uint, out uint width, out uint height, out uint levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(233,5-73): error X3013:     Texture2D<float4>.GetDimensions(uint, out float|half|min10float|min16float width, out float|half|min10float|min16float height, out float|half|min10float|min16float levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(233,5-73): error X3013:     Texture2D<float4>.GetDimensions(out uint width, out uint height)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(233,5-73): error X3013:     Texture2D<float4>.GetDimensions(out float|half|min10float|min16float width, out float|half|min10float|min16float height)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

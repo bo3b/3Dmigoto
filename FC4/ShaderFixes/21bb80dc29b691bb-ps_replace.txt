@@ -1,4 +1,4 @@
-
+//Lights - untested
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -134,6 +134,33 @@ void main(
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
+  
+r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;  
+  
+float4 r35, r32, r33, r34;
+r35.xyz = r0.xyz;
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x -= stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;  
+  
+  
   r0.xyz = _CameraPosition_DistanceScale.xzy + r0.xyz;
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
@@ -802,6 +829,19 @@ mov o0.w, l(1.000000)
 ret 
 // Approximately 259 instruction slots used
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(122,10-65): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(140,13-51): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(141,13-51): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(142,13-51): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(146,11-49): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(148,11-49): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(152,11-49): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(154,11-49): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(223,15-53): warning X3206: 'Load': implicit truncation of vector type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 

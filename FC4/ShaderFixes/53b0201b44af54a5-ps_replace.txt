@@ -58,7 +58,7 @@ cbuffer CCloudShadowParameterProvider : register(b2)
   float3 _SunDirection : packoffset(c3);
 }
 SamplerState SkyDomeColorWrap_s : register(s0);
-Texture2DMS<float4,2> DepthVPSampler_TextureObject : register(t0);
+Texture2DMS<float4,4> DepthVPSampler_TextureObject : register(t0);
 Texture2D<float4> ShadowMaskPCSSSampler_TextureObject : register(t1);
 Texture2D<float4> CloudShadowTexture : register(t2);
 
@@ -89,6 +89,7 @@ void main(
   r0.z = -r0.x * _CameraDistances.w + 1.000000000e+000;
   r0.xy = v1.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
   r0.w = 1.000000000e+000;
+   
   r1.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m00_m10_m20_m30);
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m01_m11_m21_m31);
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
@@ -118,7 +119,6 @@ r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
 r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
 
 r0.xyz = r34.xyz;
-
 
   
   r0.xyz = -_PlayerPosition.xyz + r0.xyz;
@@ -183,6 +183,7 @@ r0.xyz = r34.xyz;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r0.y = ShadowMaskPCSSSampler_TextureObject.Load(r1.xyz).x;
   o0.xyzw = r0.yyyy * r0.xxxx;
+  
   return;
 }
 
@@ -264,7 +265,7 @@ r0.xyz = r34.xyz;
 // Name                                 Type  Format         Dim Slot Elements
 // ------------------------------ ---------- ------- ----------- ---- --------
 // SkyDomeColorWrap                  sampler      NA          NA    0        1
-// DepthVPSampler_TextureObject      texture  float4       2dMS2    0        1
+// DepthVPSampler_TextureObject      texture  float4       2dMS4    0        1
 // ShadowMaskPCSSSampler_TextureObject    texture  float4          2d    1        1
 // CloudShadowTexture                texture  float4          2d    2        1
 // CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
@@ -297,7 +298,7 @@ dcl_constantbuffer cb0[15], immediateIndexed
 dcl_constantbuffer cb1[4], immediateIndexed
 dcl_constantbuffer cb2[4], immediateIndexed
 dcl_sampler s0, mode_default
-dcl_resource_texture2dms(2) (float,float,float,float) t0
+dcl_resource_texture2dms(4) (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_input_ps_siv linear noperspective centroid v0.xy, position

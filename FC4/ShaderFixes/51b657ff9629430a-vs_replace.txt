@@ -1,4 +1,4 @@
-
+//Under water
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -73,7 +73,7 @@ void main(
 float4 r21;
 float4 stereo = StereoParams.Load(0);
 r21.xyw = r1.xyw;
-r1.x += stereo.x * (r1.w - stereo.y);
+r21.x -= stereo.x * (r21.w - stereo.y);
 o0.xyw = r21.xyw;
 
 
@@ -333,3 +333,4 @@ ret
 // Approximately 19 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

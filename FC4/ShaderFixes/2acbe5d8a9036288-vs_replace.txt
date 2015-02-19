@@ -1,5 +1,4 @@
-// minimap, text
-
+//HUD
 cbuffer CSceneFireUiPrimitiveParameterProvider : register(b0)
 {
   float4 _BackgroundColor : packoffset(c0);
@@ -44,11 +43,9 @@ void main(
   o1.xyzw = float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000);
   o2.xy = v0.xy;
   o2.zw = v1.xy;
-
+  
 float4 stereo = StereoParams.Load(0);
-float separation = stereo.x; float convergence = stereo.y;
-float hud_depth = IniParams.Load(0).x;
-o0.x += separation * hud_depth;
+o0.x += stereo.x*0.7;
 
   return;
 }
@@ -129,5 +126,6 @@ mov o2.xy, v0.xyxx
 mov o2.zw, v1.xxxy
 ret 
 // Approximately 12 instruction slots used
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- 
+  

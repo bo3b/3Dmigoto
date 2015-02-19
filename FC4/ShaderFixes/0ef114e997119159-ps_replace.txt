@@ -88,20 +88,21 @@ cbuffer CDeferredLightingParameterProvider : register(b2)
   int _SpotLightCount : packoffset(c102);
   int _SpotLightGoboCount : packoffset(c102.y);
 }
-SamplerState DeferredAmbientTexture_s : register(s0);
-SamplerState SpotGobo0__SampObj___s : register(s1);
-SamplerState SpotGobo1__SampObj___s : register(s2);
+SamplerState SpotGobo0__SampObj___s : register(s0);
+SamplerState SpotGobo1__SampObj___s : register(s1);
+SamplerState ColorPointClamp_s : register(s2);
 SamplerState SkinDiffusePreIntegrated__SampObj___s : register(s3);
-Texture2D<float4> DeferredAmbientTexture_TextureObject : register(t0);
-Texture2D<float4> SpotGobo0__TexObj__ : register(t1);
-Texture2D<float4> SpotGobo1__TexObj__ : register(t2);
-Texture2D<float> SSToksvig : register(t3);
-Texture2DMS<float4,4> GBufferT0 : register(t4);
-Texture2DMS<float4,4> GBufferT1 : register(t5);
-Texture2DMS<float4,4> GBufferT2 : register(t6);
-Texture2DMS<float4,4> GBufferT3 : register(t7);
-Texture2DMS<float4,4> GBufferDepth_TextureObject : register(t8);
-Texture2D<float4> SkinDiffusePreIntegrated__TexObj__ : register(t9);
+Texture2DMS<float4,8> DepthVPSampler_TextureObject : register(t0);
+Texture2D<float4> DeferredAmbientTexture_TextureObject : register(t1);
+Texture2D<float4> SpotGobo0__TexObj__ : register(t2);
+Texture2D<float4> SpotGobo1__TexObj__ : register(t3);
+Texture2D<float> SSToksvig : register(t4);
+Texture2DMS<float4,8> GBufferT0 : register(t5);
+Texture2DMS<float4,8> GBufferT1 : register(t6);
+Texture2DMS<float4,8> GBufferT2 : register(t7);
+Texture2DMS<float4,8> GBufferT3 : register(t8);
+Texture2DMS<float4,8> GBufferDepth_TextureObject : register(t9);
+Texture2D<float4> SkinDiffusePreIntegrated__TexObj__ : register(t10);
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -110,16 +111,18 @@ void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   uint v2 : SV_IsFrontFace0,
+  uint w2 : SV_SampleIndex0,
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29;
   uint4 bitmask;
+  // GBufferDepth_TextureObject.GetDimensions(r0.x, r0.y);
   GBufferDepth_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
   r0.xy = r0.xy;
   r0.xy = v1.xy * r0.xy;
   r0.xy = (int2)r0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
-  r0.x = GBufferDepth_TextureObject.Load(r0.xyz,0.000000000e+000).x;
+  r0.x = GBufferDepth_TextureObject.Load(r0.xyz,w2.x).x;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
   r0.y = _CameraDistances.x * _CameraDistances.y;
@@ -136,13 +139,13 @@ void main(
   r0.xyz = r1.xyz / r0.xxx;
   r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
   
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+float4 r31, r32, r33, r34;
+r31.xyz = r0.xyz;
+r31.w = 1.0;
+r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
 r32.x -= stereo.x * (r32.w - stereo.y);
@@ -162,21 +165,21 @@ r0.xyz = r34.xyz;
 
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
-  r2.xyzw = GBufferT0.Load(r1.xyw,0.000000000e+000).xyzw;
-  r3.xyzw = GBufferT1.Load(r1.xyw,0.000000000e+000).xyzw;
-  r4.xyzw = GBufferT2.Load(r1.xyw,0.000000000e+000).yxzw;
+  r2.xyzw = GBufferT0.Load(r1.xyw,w2.x).xyzw;
+  r3.xyzw = GBufferT1.Load(r1.xyw,w2.x).xyzw;
+  r4.xyzw = GBufferT2.Load(r1.xyw,w2.x).yxzw;
   r5.xyzw = (int4)r1.xyxy + int4(-1,0,1,0);
   r6.xy = r5.zw;
   r6.zw = float2(0.000000e+000,0.000000e+000);
-  r6.xw = GBufferT0.Load(r6.xyz,0.000000000e+000).xy;
+  r6.xw = GBufferT0.Load(r6.xyz,w2.x).xy;
   r5.zw = float2(0.000000e+000,0.000000e+000);
-  r5.xy = GBufferT0.Load(r5.xyz,0.000000000e+000).xy;
+  r5.xy = GBufferT0.Load(r5.xyz,w2.x).xy;
   r7.xyzw = (int4)r1.xyxy + int4(0,-1,0,1);
   r8.xy = r7.zw;
   r8.zw = float2(0.000000e+000,0.000000e+000);
-  r5.zw = GBufferT0.Load(r8.xyz,0.000000000e+000).xy;
+  r5.zw = GBufferT0.Load(r8.xyz,w2.x).xy;
   r7.zw = float2(0.000000e+000,0.000000e+000);
-  r7.xy = GBufferT0.Load(r7.xyz,0.000000000e+000).xy;
+  r7.xy = GBufferT0.Load(r7.xyz,w2.x).xy;
   r8.x = r7.x;
   r8.yz = r5.zx;
   r8.w = r6.x;
@@ -236,7 +239,7 @@ r0.xyz = r34.xyz;
     r13.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
     r16.x = 0.000000000e+000;
   } else {
-    r17.xyzw = GBufferT3.Load(r1.xyw,0.000000000e+000).xyzw;
+    r17.xyzw = GBufferT3.Load(r1.xyw,w2.x).xyzw;
     r3.w = 2.550000000e+002 * r4.y;
     r3.w = (uint)r3.w;
     r4.y = (uint)r3.w >> 4;
@@ -333,13 +336,57 @@ r0.xyz = r34.xyz;
   r4.yzw = r10.xxx * r4.yzw + r2.www;
   r6.w = 1.000000000e+000 + -r10.x;
   r13.xyz = r6.xyz * r6.www;
+  // DepthVPSampler_TextureObject.GetDimensions(r16.y, r16.z);
+  DepthVPSampler_TextureObject.GetDimensions(r16.y, r16.z, bitmask.x);
+  r16.yz = r16.yz;
+  r16.yz = v1.xy * r16.yz;
+  r17.xy = (int2)r16.yz;
+  r17.zw = float2(0.000000e+000,0.000000e+000);
+  r6.w = GBufferDepth_TextureObject.Load(r17.xyw,w2.x).x;
+  r6.w = _DepthScale.y * r6.w + _DepthScale.x;
+  r6.w = 1.000000e+000 / r6.w;
+  r7.w = GBufferDepth_TextureObject.Load(r17.xyz,0.000000000e+000).x;
+  r7.w = _DepthScale.y * r7.w + _DepthScale.x;
+  r18.x = 1.000000e+000 / r7.w;
+  r19.xyzw = (int4)r17.xyxy + int4(0,1,1,0);
+  r20.xy = r19.zw;
+  r20.zw = float2(0.000000e+000,0.000000e+000);
+  r7.w = GBufferDepth_TextureObject.Load(r20.xyz,0.000000000e+000).x;
+  r7.w = _DepthScale.y * r7.w + _DepthScale.x;
+  r18.y = 1.000000e+000 / r7.w;
+  r19.zw = float2(0.000000e+000,0.000000e+000);
+  r7.w = GBufferDepth_TextureObject.Load(r19.xyz,0.000000000e+000).x;
+  r7.w = _DepthScale.y * r7.w + _DepthScale.x;
+  r18.z = 1.000000e+000 / r7.w;
+  r17.xy = (int2)r17.xy + int2(1,1);
+  r17.zw = float2(0.000000e+000,0.000000e+000);
+  r7.w = GBufferDepth_TextureObject.Load(r17.xyz,0.000000000e+000).x;
+  r7.w = _DepthScale.y * r7.w + _DepthScale.x;
+  r18.w = 1.000000e+000 / r7.w;
+  r17.xyzw = r18.xyzw + -r6.wwww;
+  r17.xyzw = abs(r17.xyzw) < float4(1.000000e-004,1.000000e-004,1.000000e-004,1.000000e-004);
+  r17.xyzw = r17.xyzw ? float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000) : float4(1.000000e-004,1.000000e-004,1.000000e-004,1.000000e-004);
+  r6.w = dot(r17.xyzw, float4(1.000000e+000,1.000000e+000,1.000000e+000,1.000000e+000));
+  r17.xyzw = r17.xyzw / r6.wwww;
   r6.w = r2.x;
   r7.w = r6.w >= 9.998999834e-001;
   r7.w = r7.w ? 1.000000 : 0;
   r6.w = 1.000100017e+000 >= r6.w;
   r6.w = r6.w ? 1.000000 : 0;
   r6.w = r7.w * r6.w;
-  r7.w = DeferredAmbientTexture_TextureObject.Sample(DeferredAmbientTexture_s, v1.xy).w;
+  DeferredAmbientTexture_TextureObject.GetDimensions(r16.y, r16.z);
+  // DeferredAmbientTexture_TextureObject.GetDimensions(r16.y, r16.z, bitmask.x);
+  r16.yz = r16.yz;
+  r16.yz = float2(5.000000e-001,5.000000e-001) / r16.yz;
+  r16.yz = v1.xy + r16.yz;
+  r7.w = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r16.yz).w;
+  r8.w = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r16.yz).w;
+  r9.x = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r16.yz).w;
+  r10.x = DeferredAmbientTexture_TextureObject.Sample(ColorPointClamp_s, r16.yz).w;
+  r8.w = r8.w * r17.y;
+  r7.w = r7.w * r17.x + r8.w;
+  r7.w = r9.x * r17.z + r7.w;
+  r7.w = r10.x * r17.w + r7.w;
   r16.yz = r2.xx == float2(2.000000e+000,4.000000e+000);
   if (r16.y != 0) {
     r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r4.yzw;
@@ -1473,20 +1520,21 @@ r0.xyz = r34.xyz;
 //
 // Name                                 Type  Format         Dim Slot Elements
 // ------------------------------ ---------- ------- ----------- ---- --------
-// DeferredAmbientTexture            sampler      NA          NA    0        1
-// SpotGobo0__SampObj__              sampler      NA          NA    1        1
-// SpotGobo1__SampObj__              sampler      NA          NA    2        1
+// SpotGobo0__SampObj__              sampler      NA          NA    0        1
+// SpotGobo1__SampObj__              sampler      NA          NA    1        1
+// ColorPointClamp                   sampler      NA          NA    2        1
 // SkinDiffusePreIntegrated__SampObj__    sampler      NA          NA    3        1
-// DeferredAmbientTexture_TextureObject    texture  float4          2d    0        1
-// SpotGobo0__TexObj__               texture  float4          2d    1        1
-// SpotGobo1__TexObj__               texture  float4          2d    2        1
-// SSToksvig                         texture   float          2d    3        1
-// GBufferT0                         texture  float4       2dMS4    4        1
-// GBufferT1                         texture  float4       2dMS4    5        1
-// GBufferT2                         texture  float4       2dMS4    6        1
-// GBufferT3                         texture  float4       2dMS4    7        1
-// GBufferDepth_TextureObject        texture  float4       2dMS4    8        1
-// SkinDiffusePreIntegrated__TexObj__    texture  float4          2d    9        1
+// DepthVPSampler_TextureObject      texture  float4       2dMS8    0        1
+// DeferredAmbientTexture_TextureObject    texture  float4          2d    1        1
+// SpotGobo0__TexObj__               texture  float4          2d    2        1
+// SpotGobo1__TexObj__               texture  float4          2d    3        1
+// SSToksvig                         texture   float          2d    4        1
+// GBufferT0                         texture  float4       2dMS8    5        1
+// GBufferT1                         texture  float4       2dMS8    6        1
+// GBufferT2                         texture  float4       2dMS8    7        1
+// GBufferT3                         texture  float4       2dMS8    8        1
+// GBufferDepth_TextureObject        texture  float4       2dMS8    9        1
+// SkinDiffusePreIntegrated__TexObj__    texture  float4          2d   10        1
 // CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
 // CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
 // CDeferredLightingParameterProvider    cbuffer      NA          NA    2        1
@@ -1500,6 +1548,7 @@ r0.xyz = r34.xyz;
 // SV_Position              0   xyzw        0      POS   float   xy  
 // TEXCOORD                 0   xyzw        1     NONE   float   xy  
 // SV_IsFrontFace           0   x           2    FFACE    uint       
+// SV_SampleIndex           0    y          2   SAMPLE    uint    y  
 //
 //
 // Output signature:
@@ -1507,6 +1556,8 @@ r0.xyz = r34.xyz;
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+// Pixel Shader runs at sample frequency
 //
 ps_4_1
 dcl_globalFlags refactoringAllowed
@@ -1517,26 +1568,28 @@ dcl_sampler s0, mode_default
 dcl_sampler s1, mode_default
 dcl_sampler s2, mode_default
 dcl_sampler s3, mode_default
-dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2dms(8) (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
-dcl_resource_texture2dms(4) (float,float,float,float) t4
-dcl_resource_texture2dms(4) (float,float,float,float) t5
-dcl_resource_texture2dms(4) (float,float,float,float) t6
-dcl_resource_texture2dms(4) (float,float,float,float) t7
-dcl_resource_texture2dms(4) (float,float,float,float) t8
-dcl_resource_texture2d (float,float,float,float) t9
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2dms(8) (float,float,float,float) t5
+dcl_resource_texture2dms(8) (float,float,float,float) t6
+dcl_resource_texture2dms(8) (float,float,float,float) t7
+dcl_resource_texture2dms(8) (float,float,float,float) t8
+dcl_resource_texture2dms(8) (float,float,float,float) t9
+dcl_resource_texture2d (float,float,float,float) t10
 dcl_input_ps_siv linear noperspective centroid v0.xy, position
 dcl_input_ps linear v1.xy
+dcl_input_ps_sgv v2.y, sampleIndex
 dcl_output o0.xyzw
 dcl_temps 30
-resinfo_uint r0.xy, l(0), t8.xyzw
+resinfo_uint r0.xy, l(0), t9.xyzw
 utof r0.xy, r0.xyxx
 mul r0.xy, r0.xyxx, v1.xyxx
 ftoi r0.xy, r0.xyxx
 mov r0.zw, l(0,0,0,0)
-ldms r0.x, r0.xyzw, t8.xyzw, l(0)
+ldms r0.x, r0.xyzw, t9.xyzw, v2.y
 mad r0.x, cb0[14].y, r0.x, cb0[14].x
 div r0.x, l(1.000000, 1.000000, 1.000000, 1.000000), r0.x
 mul r0.y, cb0[4].y, cb0[4].x
@@ -1554,21 +1607,21 @@ div r0.xyz, r1.xyzx, r0.xxxx
 add r0.xyz, r0.xyzx, cb0[8].xyzx
 ftoi r1.xy, v0.xyxx
 mov r1.zw, l(0,0,0,0)
-ldms r2.xyzw, r1.xyww, t4.xyzw, l(0)
-ldms r3.xyzw, r1.xyww, t5.xyzw, l(0)
-ldms r4.xyzw, r1.xyww, t6.yxzw, l(0)
+ldms r2.xyzw, r1.xyww, t5.xyzw, v2.y
+ldms r3.xyzw, r1.xyww, t6.xyzw, v2.y
+ldms r4.xyzw, r1.xyww, t7.yxzw, v2.y
 iadd r5.xyzw, r1.xyxy, l(-1, 0, 1, 0)
 mov r6.xy, r5.zwzz
 mov r6.zw, l(0,0,0,0)
-ldms r6.xw, r6.xyzw, t4.xzwy, l(0)
+ldms r6.xw, r6.xyzw, t5.xzwy, v2.y
 mov r5.zw, l(0,0,0,0)
-ldms r5.xy, r5.xyzw, t4.xyzw, l(0)
+ldms r5.xy, r5.xyzw, t5.xyzw, v2.y
 iadd r7.xyzw, r1.xyxy, l(0, -1, 0, 1)
 mov r8.xy, r7.zwzz
 mov r8.zw, l(0,0,0,0)
-ldms r5.zw, r8.xyzw, t4.zwxy, l(0)
+ldms r5.zw, r8.xyzw, t5.zwxy, v2.y
 mov r7.zw, l(0,0,0,0)
-ldms r7.xy, r7.xyzw, t4.xyzw, l(0)
+ldms r7.xy, r7.xyzw, t5.xyzw, v2.y
 mov r8.x, r7.x
 mov r8.yz, r5.zzxz
 mov r8.w, r6.x
@@ -1628,7 +1681,7 @@ if_nz r9.x
   mov r13.xyz, l(0,0,0,0)
   mov r16.x, l(0)
 else 
-  ldms r17.xyzw, r1.xyww, t7.xyzw, l(0)
+  ldms r17.xyzw, r1.xyww, t8.xyzw, v2.y
   mul r3.w, r4.y, l(255.000000)
   ftou r3.w, r3.w
   ushr r4.y, r3.w, l(4)
@@ -1694,7 +1747,7 @@ else
     mov r13.yz, r16.yyzy
   endif 
 endif 
-ld r1.x, r1.xyzw, t3.xyzw
+ld r1.x, r1.xyzw, t4.xyzw
 exp r1.y, r2.y
 add r1.z, -r1.x, l(1.000000)
 mad r1.y, r1.y, r1.z, r1.x
@@ -1725,13 +1778,55 @@ add r4.yzw, -r2.wwww, r6.xxyz
 mad r4.yzw, r10.xxxx, r4.yyzw, r2.wwww
 add r6.w, -r10.x, l(1.000000)
 mul r13.xyz, r6.wwww, r6.xyzx
+resinfo_uint r16.yz, l(0), t0.zxyw
+utof r16.yz, r16.yyzy
+mul r16.yz, r16.yyzy, v1.xxyx
+ftoi r17.xy, r16.yzyy
+mov r17.zw, l(0,0,0,0)
+ldms r6.w, r17.xyww, t9.yzwx, v2.y
+mad r6.w, cb0[14].y, r6.w, cb0[14].x
+div r6.w, l(1.000000, 1.000000, 1.000000, 1.000000), r6.w
+ldms r7.w, r17.xyzw, t9.yzwx, l(0)
+mad r7.w, cb0[14].y, r7.w, cb0[14].x
+div r18.x, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+iadd r19.xyzw, r17.xyxy, l(0, 1, 1, 0)
+mov r20.xy, r19.zwzz
+mov r20.zw, l(0,0,0,0)
+ldms r7.w, r20.xyzw, t9.yzwx, l(0)
+mad r7.w, cb0[14].y, r7.w, cb0[14].x
+div r18.y, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+mov r19.zw, l(0,0,0,0)
+ldms r7.w, r19.xyzw, t9.yzwx, l(0)
+mad r7.w, cb0[14].y, r7.w, cb0[14].x
+div r18.z, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+iadd r17.xy, r17.xyxx, l(1, 1, 0, 0)
+mov r17.zw, l(0,0,0,0)
+ldms r7.w, r17.xyzw, t9.yzwx, l(0)
+mad r7.w, cb0[14].y, r7.w, cb0[14].x
+div r18.w, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+add r17.xyzw, -r6.wwww, r18.xyzw
+lt r17.xyzw, |r17.xyzw|, l(0.000100, 0.000100, 0.000100, 0.000100)
+movc r17.xyzw, r17.xyzw, l(1.000000,1.000000,1.000000,1.000000), l(0.000100,0.000100,0.000100,0.000100)
+dp4 r6.w, r17.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+div r17.xyzw, r17.xyzw, r6.wwww
 utof r6.w, r2.x
 ge r7.w, r6.w, l(0.999900)
 and r7.w, r7.w, l(0x3f800000)
 ge r6.w, l(1.000100), r6.w
 and r6.w, r6.w, l(0x3f800000)
 mul r6.w, r6.w, r7.w
-sample r7.w, v1.xyxx, t0.xyzw, s0
+resinfo_uint r16.yz, l(0), t1.zxyw
+utof r16.yz, r16.yyzy
+div r16.yz, l(0.000000, 0.500000, 0.500000, 0.000000), r16.yyzy
+add r16.yz, r16.yyzy, v1.xxyx
+sample r7.w, r16.yzyy, t1.xyzw, s2
+sample_aoffimmi(1,0,0) r8.w, r16.yzyy, t1.xyzw, s2
+sample_aoffimmi(0,1,0) r9.x, r16.yzyy, t1.wxyz, s2
+sample_aoffimmi(1,1,0) r10.x, r16.yzyy, t1.wxyz, s2
+mul r8.w, r17.y, r8.w
+mad r7.w, r7.w, r17.x, r8.w
+mad r7.w, r9.x, r17.z, r7.w
+mad r7.w, r10.x, r17.w, r7.w
 ieq r16.yz, r2.xxxx, l(0, 2, 4, 0)
 if_nz r16.y
   add r17.xyz, -r4.yzwy, l(1.000000, 1.000000, 1.000000, 0.000000)
@@ -1843,12 +1938,12 @@ if_nz r16.y
         mad r16.yw, r16.yyyw, cb2[r12.w + 75].xxxy, cb2[r12.w + 75].zzzw
         ieq r13.w, r12.w, l(1)
         if_z r12.w
-          sample_l r25.xyz, r16.ywyy, t1.xyzw, s1, l(0.000000)
+          sample_l r25.xyz, r16.ywyy, t2.xyzw, s0, l(0.000000)
         else 
           mov r25.xyz, l(1.000000,0,1.000000,0)
         endif 
         if_nz r13.w
-          sample_l r25.xyz, r16.ywyy, t2.xyzw, s2, l(0.000000)
+          sample_l r25.xyz, r16.ywyy, t3.xyzw, s1, l(0.000000)
         endif 
         mul r24.xyz, r24.zzzz, r25.xyzx
       else 
@@ -1963,13 +2058,13 @@ else
       dp3 r17.w, r18.xyzx, r25.xyzx
       mad r11.z, r16.y, l(0.500000), l(0.500000)
       mad r25.xy, r11.zwzz, l(0.984375, 0.984375, 0.000000, 0.000000), l(0.007813, 0.007813, 0.000000, 0.000000)
-      sample_l r25.x, r25.xyxx, t9.xyzw, s3, l(0.000000)
+      sample_l r25.x, r25.xyxx, t10.xyzw, s3, l(0.000000)
       mad r11.y, r16.w, l(0.500000), l(0.500000)
       mad r16.yw, r11.yyyw, l(0.000000, 0.984375, 0.000000, 0.984375), l(0.000000, 0.007813, 0.000000, 0.007813)
-      sample_l r25.y, r16.ywyy, t9.xyzw, s3, l(0.000000)
+      sample_l r25.y, r16.ywyy, t10.xyzw, s3, l(0.000000)
       mad r11.x, r17.w, l(0.500000), l(0.500000)
       mad r16.yw, r11.xxxw, l(0.000000, 0.984375, 0.000000, 0.984375), l(0.000000, 0.007813, 0.000000, 0.007813)
-      sample_l r25.z, r16.ywyy, t9.xyzw, s3, l(0.000000)
+      sample_l r25.z, r16.ywyy, t10.xyzw, s3, l(0.000000)
       mul r27.xyz, r14.wwww, cb2[r12.w + 38].xyzx
       mad r22.xyz, r27.xyzx, r25.xyzx, r22.xyzx
       mul r25.xyz, r15.wwww, r26.xyzx
@@ -2028,12 +2123,12 @@ else
           mad r16.yw, r16.yyyw, cb2[r12.w + 75].xxxy, cb2[r12.w + 75].zzzw
           ieq r13.w, r12.w, l(1)
           if_z r12.w
-            sample_l r28.xyz, r16.ywyy, t1.xyzw, s1, l(0.000000)
+            sample_l r28.xyz, r16.ywyy, t2.xyzw, s0, l(0.000000)
           else 
             mov r28.xyz, l(1.000000,0,1.000000,0)
           endif 
           if_nz r13.w
-            sample_l r28.xyz, r16.ywyy, t2.xyzw, s2, l(0.000000)
+            sample_l r28.xyz, r16.ywyy, t3.xyzw, s1, l(0.000000)
           endif 
           mul r27.xyz, r27.zzzz, r28.xyzx
         else 
@@ -2066,13 +2161,13 @@ else
       dp3 r16.w, r18.xyzx, r26.xyzx
       mad r11.z, r15.w, l(0.500000), l(0.500000)
       mad r23.xw, r11.zzzw, l(0.984375, 0.000000, 0.000000, 0.984375), l(0.007813, 0.000000, 0.000000, 0.007813)
-      sample_l r26.x, r23.xwxx, t9.xyzw, s3, l(0.000000)
+      sample_l r26.x, r23.xwxx, t10.xyzw, s3, l(0.000000)
       mad r11.y, r16.y, l(0.500000), l(0.500000)
       mad r11.yz, r11.yywy, l(0.000000, 0.984375, 0.984375, 0.000000), l(0.000000, 0.007813, 0.007813, 0.000000)
-      sample_l r26.y, r11.yzyy, t9.xyzw, s3, l(0.000000)
+      sample_l r26.y, r11.yzyy, t10.xyzw, s3, l(0.000000)
       mad r11.x, r16.w, l(0.500000), l(0.500000)
       mad r11.yz, r11.xxwx, l(0.000000, 0.984375, 0.984375, 0.000000), l(0.000000, 0.007813, 0.007813, 0.000000)
-      sample_l r26.z, r11.yzyy, t9.xyzw, s3, l(0.000000)
+      sample_l r26.z, r11.yzyy, t10.xyzw, s3, l(0.000000)
       mul r27.xyz, r27.xyzx, cb2[r12.w + 59].xyzx
       mad r20.xyz, r27.xyzx, r26.xyzx, r20.xyzx
       mul r26.xyz, r14.wwww, r28.xyzx
@@ -2270,12 +2365,12 @@ else
             mad r19.xw, r19.xxxw, cb2[r13.w + 75].xxxy, cb2[r13.w + 75].zzzw
             ieq r14.w, r13.w, l(1)
             if_z r13.w
-              sample_l r26.xyz, r19.xwxx, t1.xyzw, s1, l(0.000000)
+              sample_l r26.xyz, r19.xwxx, t2.xyzw, s0, l(0.000000)
             else 
               mov r26.xyz, l(1.000000,0,1.000000,0)
             endif 
             if_nz r14.w
-              sample_l r26.xyz, r19.xwxx, t2.xyzw, s2, l(0.000000)
+              sample_l r26.xyz, r19.xwxx, t3.xyzw, s1, l(0.000000)
             endif 
             mul r25.xyz, r25.zzzz, r26.xyzx
           else 
@@ -2461,12 +2556,12 @@ else
               mad r12.xw, r12.xxxw, cb2[r5.w + 75].xxxy, cb2[r5.w + 75].zzzw
               ieq r8.w, r5.w, l(1)
               if_z r5.w
-                sample_l r19.xyz, r12.xwxx, t1.xyzw, s1, l(0.000000)
+                sample_l r19.xyz, r12.xwxx, t2.xyzw, s0, l(0.000000)
               else 
                 mov r19.xyz, l(1.000000,0,1.000000,0)
               endif 
               if_nz r8.w
-                sample_l r19.xyz, r12.xwxx, t2.xyzw, s2, l(0.000000)
+                sample_l r19.xyz, r12.xwxx, t3.xyzw, s1, l(0.000000)
               endif 
               mul r18.xyz, r18.zzzz, r19.xyzx
             else 
@@ -2630,12 +2725,12 @@ else
               mad r18.xy, r18.xyxx, cb2[r8.w + 75].xyxx, cb2[r8.w + 75].zwzz
               ieq r9.x, r8.w, l(1)
               if_z r8.w
-                sample_l r19.xyz, r18.xyxx, t1.xyzw, s1, l(0.000000)
+                sample_l r19.xyz, r18.xyxx, t2.xyzw, s0, l(0.000000)
               else 
                 mov r19.xyz, l(1.000000,0,1.000000,0)
               endif 
               if_nz r9.x
-                sample_l r19.xyz, r18.xyxx, t2.xyzw, s2, l(0.000000)
+                sample_l r19.xyz, r18.xyxx, t3.xyzw, s1, l(0.000000)
               endif 
               mul r17.xyz, r17.zzzz, r19.xyzx
             else 
@@ -2755,25 +2850,30 @@ lt r0.w, l(0.500000), cb2[1].x
 movc o0.xyz, r0.wwww, r13.xyzx, r0.xyzx
 mov o0.w, l(1.000000)
 ret 
-// Approximately 1224 instruction slots used
+// Approximately 1266 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(122,10-65): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(140,13-51): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(141,13-51): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(142,13-51): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(146,11-49): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(148,11-49): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(152,11-49): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(154,11-49): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(214,16-54): warning X3206: 'Load': implicit truncation of vector type
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(332,36): error X3000: syntax error: unexpected token ']'
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(334,42): error X3000: syntax error: unexpected token ']'
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(335,51): error X3000: syntax error: unexpected token ']'
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(335,15-62): error X3013: 'saturate': no matching 0 parameter intrinsic function
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(335,15-62): error X3013: Possible intrinsic functions are:
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(335,15-62): error X3013:     saturate(float|half|double|min10float|min16float)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(124,10-53): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(142,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(143,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(144,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(148,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(150,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(154,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(156,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(216,16-42): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(318,10-54): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(321,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(327,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(331,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(336,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013: 'GetDimensions': no matching 3 parameter intrinsic method
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013: Possible intrinsic methods are:
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(uint, out uint width, out uint height, out uint levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(uint, out float|half|min10float|min16float width, out float|half|min10float|min16float height, out float|half|min10float|min16float levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(out uint width, out uint height)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(out float|half|min10float|min16float width, out float|half|min10float|min16float height)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

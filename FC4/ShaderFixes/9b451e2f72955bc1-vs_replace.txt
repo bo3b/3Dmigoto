@@ -74,50 +74,125 @@ void main(
   r1.z = 5.000000075e-002 + r0.z;
   r1.x = _WorldMatrix._m30 + r0.x;
   r1.y = _WorldMatrix._m31 + r0.y;
-  r0.xyz = -_CameraPosition_DistanceScale.xyz + r1.xyz;
+  
+//Stereo correction
+// float4 r35, r32, r33, r34;
+// r35.xyz = r1.xyz; 
+// r35.w = 1.0;
+// r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+// r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+// r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+// r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+// float4 stereo = StereoParams.Load(0);
+// r32.x -= stereo.x * (r32.w - stereo.y);
+  
+// r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+// r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+// r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+// r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+// r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+// r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+// r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+// r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);   
+
+// r1.xyzw = r34.xyzw;  
+  
+  r0.xyz = -_CameraPosition_DistanceScale.xyz + r1.xyz; 
+
   o5.xyz = r1.xyz;
+  
   r0.w = 1.000000000e+000;
+  o0.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32); 
   r1.x = dot(r0.xyzw, _ViewRotProjectionMatrix._m00_m10_m20_m30);
   r1.y = dot(r0.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
-  r1.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
-  o0.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);  
   
 float4 stereo = StereoParams.Load(0);
-float4 r10;
-r10.xyzw = r1.xyzw;
+float4 r20, r11;
+r20.xyzw = r1.xyzw;
 r1.x += stereo.x*(r1.w - stereo.y);  
   
-  o0.xyw = r10.xyw; //r1.xyw;  
+  o0.xyw = r20.xyw; //r10.xyw; //r1.xyw;  //Puts ripples at correct depth (uncorrected)
+   
+  r2.xyzw = _DepthTextureScaleOffset.xyzw * r1.xyww;    //Fixes Haloing (must use r1.x +=)
   
-  r2.xyzw = _DepthTextureScaleOffset.xyzw * r1.xyww;
   o7.z = r1.w;
-  o7.xy = r2.xy + r2.zw;
+  o7.xy = r2.xy + r2.zw;  
+
   r0.w = dot(r0.xyz, r0.xyz);
   r0.w = rsqrt(r0.w);
   r1.yzw = r0.yzx * r0.www;
-  r0.x = dot(_CameraDirection_FOVDeg.xyz, r0.xyz);
+ 
+  r0.x = dot(_CameraDirection_FOVDeg.xyz, r0.xyz);  
   o2.w = _CameraDistances.w * r0.x;
+  
   r1.x = 1.000000000e+000;
   r0.x = dot(_FogSHR.xyzw, r1.xyzw);
   r0.y = dot(_FogSHG.xyzw, r1.xyzw);
   r0.z = dot(_FogSHB.xyzw, r1.xyzw);
   o1.xyz = max(r0.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
   o1.w = saturate(v3.w + v3.w);
-  r0.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
+    
+// o1.xyz = float3(0,0,0);
+
+  r0.xyz = v2.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);  //v2->r34
+  
   o2.x = dot(r0.xyz, _WorldMatrix._m00_m10_m20);
   o2.y = dot(r0.xyz, _WorldMatrix._m01_m11_m21);
   o2.z = dot(r0.xyz, _WorldMatrix._m02_m12_m22);
+
+// float4 stereo = StereoParams.Load(0);
+// o2.x += stereo.x * (o2.w - stereo.y); //*0.5/(1920);
+  
+//Stereo correction
+// float4 r35, r32, r33, r34;
+// r35.xyz = o2.xyz; 
+// r35.w = 1.0;
+// r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+// r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+// r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+// r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+// float4 stereo = StereoParams.Load(0);
+// r32.x += stereo.x * (r32.w - stereo.y)*0.5/(1920);
+  
+// r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+// r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+// r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+// r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+// r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+// r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+// r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+// r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33); 
+
+// o2.xyz = r34.xyz;  
+  
+  
+ // o2.xyz = float3(0.1, 0.1, 0.1);
+ 
+  
   r0.xyz = v5.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   o3.x = dot(r0.xyz, _WorldMatrix._m00_m10_m20);
   o3.y = dot(r0.xyz, _WorldMatrix._m01_m11_m21);
   o3.z = dot(r0.xyz, _WorldMatrix._m02_m12_m22);
+  
+// o3.xyz = float3(0,0,0);
+
   r0.xyz = v4.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   o4.x = dot(r0.xyz, _WorldMatrix._m00_m10_m20);
   o4.y = dot(r0.xyz, _WorldMatrix._m01_m11_m21);
   o4.z = dot(r0.xyz, _WorldMatrix._m02_m12_m22);
-  o6.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  
+// o4.xyz = float3(0,0,0);  
+  
+  o6.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);   
+  
   r0.xy = v1.xy;
   o8.xy = r0.xy * _MeshDecompression.ww + _MeshDecompression.zz;
+    
   return;
 }
 
@@ -281,4 +356,4 @@ ret
 // Approximately 44 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-   
+     

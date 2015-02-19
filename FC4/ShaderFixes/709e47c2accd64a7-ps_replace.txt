@@ -137,6 +137,30 @@ void main(
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
   r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+  
+float4 r35, r32, r33, r34;
+r35.xyz = r0.xyz;
+r35.w = 1.0;
+r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+float4 stereo = StereoParams.Load(0);
+r32.x -= stereo.x * (r32.w - stereo.y);
+  
+r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
+r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
+r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
+  
+r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
+r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
+r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
+r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+
+r0.xyz = r34.xyz;  
+  
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw,w2.x).xyzw;
@@ -347,7 +371,8 @@ void main(
   r6.w = 1.000100017e+000 >= r6.w;
   r6.w = r6.w ? 1.000000 : 0;
   r6.w = r7.w * r6.w;
-  DeferredAmbientTexture_TextureObject.GetDimensions(r16.y, r16.z, bitmask.x);
+  DeferredAmbientTexture_TextureObject.GetDimensions(r16.y, r16.z);
+  // DeferredAmbientTexture_TextureObject.GetDimensions(r16.y, r16.z, bitmask.x);
   r16.yz = r16.yz;
   r16.yz = float2(5.000000e-001,5.000000e-001) / r16.yz;
   r16.yz = v1.xy + r16.yz;
@@ -373,10 +398,10 @@ void main(
     while (true) {
       r13.w = (int)r12.w >= (int)_PointLightCount;
       if (r13.w != 0) break;
-      r20.xyz = _PointLightPos[r12.].xyz + -r0.xyz;
+      r20.xyz = _PointLightPos[r12.w].xyz + -r0.xyz;
       r13.w = dot(r20.xyz, r20.xyz);
-      r14.w = _PointLightAttenuation[r12.].x / r13.w;
-      r14.w = saturate(_PointLightAttenuation[r12.].y + r14.w);
+      r14.w = _PointLightAttenuation[r12.w].x / r13.w;
+      r14.w = saturate(_PointLightAttenuation[r12.w].y + r14.w);
       r15.w = r14.w == 0.000000;
       if (r15.w != 0) {
         r12.w = (int)r12.w + 1;
@@ -404,7 +429,7 @@ void main(
       r15.w = max(r15.w, 9.999999776e-003);
       r15.w = 1.000000e+000 / r15.w;
       r15.w = _BRDFHighQuality ? r15.w : 1.000000000e+000;
-      r23.xyz = _PointLightColor[r12.].xyz * r14.www;
+      r23.xyz = _PointLightColor[r12.w].xyz * r14.www;
       r14.w = saturate(dot(r15.xyz, r21.xyz));
       r18.xyz = r14.www * r23.xyz + r18.xyz;
       r21.xyz = r22.xyz * r13.www;
@@ -442,14 +467,14 @@ void main(
     while (true) {
       r13.w = (int)r12.w >= (int)_SpotLightCount;
       if (r13.w != 0) break;
-      r22.xyz = _SpotLightPos[r12.].xyz + -r0.xyz;
+      r22.xyz = _SpotLightPos[r12.w].xyz + -r0.xyz;
       r13.w = dot(r22.xyz, r22.xyz);
       r14.w = rsqrt(r13.w);
       r23.xyz = r22.xyz * r14.www;
-      r13.w = _SpotLightAttenuation[r12.].x / r13.w;
-      r13.w = saturate(_SpotLightAttenuation[r12.].y + r13.w);
-      r15.w = dot(r23.xyz, _SpotLightDirection[r12.].xyz);
-      r15.w = saturate(r15.w * _SpotLightColor[r12.].w + _SpotLightDirection[r12.].w);
+      r13.w = _SpotLightAttenuation[r12.w].x / r13.w;
+      r13.w = saturate(_SpotLightAttenuation[r12.w].y + r13.w);
+      r15.w = dot(r23.xyz, -_SpotLightDirection[r12.w].xyz);
+      r15.w = saturate(r15.w * _SpotLightColor[r12.w].w + _SpotLightDirection[r12.w].w);
       r15.w = r15.w * r15.w;
       r24.xyz = r15.www * r13.www;
       r13.w = r24.z == 0.000000;
@@ -462,12 +487,12 @@ void main(
         r13.w = (int)r12.w < (int)_SpotLightGoboCount;
         if (r13.w != 0) {
           r13.w = (uint)r12.w << 2;
-          r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m00_m10_m20_m30);
-          r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m01_m11_m21_m31);
-          r13.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13./4]._m03_m13_m23_m33);
+          r25.x = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m00_m10_m20_m30);
+          r25.y = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m01_m11_m21_m31);
+          r13.w = dot(r0.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m03_m13_m23_m33);
           r13.w = max(r13.w, 9.999999747e-006);
           r16.yw = r25.xy / r13.ww;
-          r16.yw = r16.yw * _SpotScaleOffsetUVS[r12.].xy + _SpotScaleOffsetUVS[r12.].zw;
+          r16.yw = r16.yw * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
           r13.w = r12.w == 1;
           if (r12.w == 0) {
             r25.xyz = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyz;
@@ -502,7 +527,7 @@ void main(
       r14.w = max(r14.w, 9.999999776e-003);
       r14.w = 1.000000e+000 / r14.w;
       r14.w = _BRDFHighQuality ? r14.w : 1.000000000e+000;
-      r24.xyz = _SpotLightColor[r12.].xyz * r24.xyz;
+      r24.xyz = _SpotLightColor[r12.w].xyz * r24.xyz;
       r15.w = saturate(dot(r15.xyz, r23.xyz));
       r20.xyz = r15.www * r24.xyz + r20.xyz;
       r23.xyz = r25.xyz * r13.www;
@@ -553,10 +578,10 @@ void main(
       while (true) {
         r13.w = (int)r12.w >= (int)_PointLightCount;
         if (r13.w != 0) break;
-        r24.xyz = _PointLightPos[r12.].xyz + -r0.xyz;
+        r24.xyz = _PointLightPos[r12.w].xyz + -r0.xyz;
         r13.w = dot(r24.xyz, r24.xyz);
-        r14.w = _PointLightAttenuation[r12.].x / r13.w;
-        r14.w = saturate(_PointLightAttenuation[r12.].y + r14.w);
+        r14.w = _PointLightAttenuation[r12.w].x / r13.w;
+        r14.w = saturate(_PointLightAttenuation[r12.w].y + r14.w);
         r15.w = r14.w == 0.000000;
         if (r15.w != 0) {
           r12.w = (int)r12.w + 1;
@@ -597,7 +622,7 @@ void main(
         r11.x = r17.w * 5.000000000e-001 + 5.000000000e-001;
         r16.yw = r11.xw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
         r25.z = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r16.yw, 0.000000000e+000).z;
-        r27.xyz = _PointLightColor[r12.].xyz * r14.www;
+        r27.xyz = _PointLightColor[r12.w].xyz * r14.www;
         r22.xyz = r27.xyz * r25.xyz + r22.xyz;
         r25.xyz = r26.xyz * r15.www;
         r25.xyz = r25.xyz * r13.www;
@@ -627,14 +652,14 @@ void main(
       while (true) {
         r13.w = (int)r12.w >= (int)_SpotLightCount;
         if (r13.w != 0) break;
-        r25.xyz = _SpotLightPos[r12.].xyz + -r0.xyz;
+        r25.xyz = _SpotLightPos[r12.w].xyz + -r0.xyz;
         r13.w = dot(r25.xyz, r25.xyz);
         r14.w = rsqrt(r13.w);
         r26.xyz = r25.xyz * r14.www;
-        r13.w = _SpotLightAttenuation[r12.].x / r13.w;
-        r13.w = saturate(_SpotLightAttenuation[r12.].y + r13.w);
-        r15.w = dot(r26.xyz, _SpotLightDirection[r12.].xyz);
-        r15.w = saturate(r15.w * _SpotLightColor[r12.].w + _SpotLightDirection[r12.].w);
+        r13.w = _SpotLightAttenuation[r12.w].x / r13.w;
+        r13.w = saturate(_SpotLightAttenuation[r12.w].y + r13.w);
+        r15.w = dot(r26.xyz, -_SpotLightDirection[r12.w].xyz);
+        r15.w = saturate(r15.w * _SpotLightColor[r12.w].w + _SpotLightDirection[r12.w].w);
         r15.w = r15.w * r15.w;
         r27.xyz = r15.www * r13.www;
         r13.w = r27.z == 0.000000;
@@ -647,12 +672,12 @@ void main(
           r13.w = (int)r12.w < (int)_SpotLightGoboCount;
           if (r13.w != 0) {
             r13.w = (uint)r12.w << 2;
-            r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m00_m10_m20_m30);
-            r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m01_m11_m21_m31);
-            r13.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13./4]._m03_m13_m23_m33);
+            r28.x = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m00_m10_m20_m30);
+            r28.y = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m01_m11_m21_m31);
+            r13.w = dot(r24.xyzw, _SpotShadowProjectionMatrix[r13.w/4]._m03_m13_m23_m33);
             r13.w = max(r13.w, 9.999999747e-006);
             r16.yw = r28.xy / r13.ww;
-            r16.yw = r16.yw * _SpotScaleOffsetUVS[r12.].xy + _SpotScaleOffsetUVS[r12.].zw;
+            r16.yw = r16.yw * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
             r13.w = r12.w == 1;
             if (r12.w == 0) {
               r28.xyz = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyz;
@@ -700,7 +725,7 @@ void main(
         r11.x = r16.w * 5.000000000e-001 + 5.000000000e-001;
         r11.yz = r11.xw * float2(9.843750e-001,9.843750e-001) + float2(7.812500e-003,7.812500e-003);
         r26.z = SkinDiffusePreIntegrated__TexObj__.SampleLevel(SkinDiffusePreIntegrated__SampObj___s, r11.yz, 0.000000000e+000).z;
-        r27.xyz = _SpotLightColor[r12.].xyz * r27.xyz;
+        r27.xyz = _SpotLightColor[r12.w].xyz * r27.xyz;
         r20.xyz = r27.xyz * r26.xyz + r20.xyz;
         r26.xyz = r28.xyz * r14.www;
         r26.xyz = r26.xyz * r13.www;
@@ -759,10 +784,10 @@ void main(
         while (true) {
           r14.w = (int)r13.w >= (int)_PointLightCount;
           if (r14.w != 0) break;
-          r22.xyz = _PointLightPos[r13.].xyz + -r0.xyz;
+          r22.xyz = _PointLightPos[r13.w].xyz + -r0.xyz;
           r14.w = dot(r22.xyz, r22.xyz);
-          r15.w = _PointLightAttenuation[r13.].x / r14.w;
-          r15.w = saturate(_PointLightAttenuation[r13.].y + r15.w);
+          r15.w = _PointLightAttenuation[r13.w].x / r14.w;
+          r15.w = saturate(_PointLightAttenuation[r13.w].y + r15.w);
           r17.w = r15.w == 0.000000;
           if (r17.w != 0) {
             r13.w = (int)r13.w + 1;
@@ -791,7 +816,7 @@ void main(
           r19.w = r19.w + r17.w;
           r19.w = 1.000000e+000 / r19.w;
           r19.w = _BRDFHighQuality ? r19.w : 1.000000000e+000;
-          r26.xyz = _PointLightColor[r13.].xyz * r15.www;
+          r26.xyz = _PointLightColor[r13.w].xyz * r15.www;
           r15.w = saturate(dot(r15.xyz, r23.xyz));
           r18.xyz = r15.www * r26.xyz + r18.xyz;
           if (_BRDFHighQuality != 0) {
@@ -869,14 +894,14 @@ void main(
         while (true) {
           r14.w = (int)r13.w >= (int)_SpotLightCount;
           if (r14.w != 0) break;
-          r23.xyz = _SpotLightPos[r13.].xyz + -r0.xyz;
+          r23.xyz = _SpotLightPos[r13.w].xyz + -r0.xyz;
           r14.w = dot(r23.xyz, r23.xyz);
           r15.w = rsqrt(r14.w);
           r24.xyz = r23.xyz * r15.www;
-          r14.w = _SpotLightAttenuation[r13.].x / r14.w;
-          r14.w = saturate(_SpotLightAttenuation[r13.].y + r14.w);
-          r17.w = dot(r24.xyz, _SpotLightDirection[r13.].xyz);
-          r17.w = saturate(r17.w * _SpotLightColor[r13.].w + _SpotLightDirection[r13.].w);
+          r14.w = _SpotLightAttenuation[r13.w].x / r14.w;
+          r14.w = saturate(_SpotLightAttenuation[r13.w].y + r14.w);
+          r17.w = dot(r24.xyz, -_SpotLightDirection[r13.w].xyz);
+          r17.w = saturate(r17.w * _SpotLightColor[r13.w].w + _SpotLightDirection[r13.w].w);
           r17.w = r17.w * r17.w;
           r25.xyz = r17.www * r14.www;
           r14.w = r25.z == 0.000000;
@@ -889,12 +914,12 @@ void main(
             r14.w = (int)r13.w < (int)_SpotLightGoboCount;
             if (r14.w != 0) {
               r14.w = (uint)r13.w << 2;
-              r26.x = dot(r22.xyzw, _SpotShadowProjectionMatrix[r14./4]._m00_m10_m20_m30);
-              r26.y = dot(r22.xyzw, _SpotShadowProjectionMatrix[r14./4]._m01_m11_m21_m31);
-              r14.w = dot(r22.xyzw, _SpotShadowProjectionMatrix[r14./4]._m03_m13_m23_m33);
+              r26.x = dot(r22.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m00_m10_m20_m30);
+              r26.y = dot(r22.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m01_m11_m21_m31);
+              r14.w = dot(r22.xyzw, _SpotShadowProjectionMatrix[r14.w/4]._m03_m13_m23_m33);
               r14.w = max(r14.w, 9.999999747e-006);
               r19.xw = r26.xy / r14.ww;
-              r19.xw = r19.xw * _SpotScaleOffsetUVS[r13.].xy + _SpotScaleOffsetUVS[r13.].zw;
+              r19.xw = r19.xw * _SpotScaleOffsetUVS[r13.w].xy + _SpotScaleOffsetUVS[r13.w].zw;
               r14.w = r13.w == 1;
               if (r13.w == 0) {
                 r26.xyz = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r19.xw, 0.000000000e+000).xyz;
@@ -930,7 +955,7 @@ void main(
           r17.w = r17.w + r14.w;
           r17.w = 1.000000e+000 / r17.w;
           r17.w = _BRDFHighQuality ? r17.w : 1.000000000e+000;
-          r25.xyz = _SpotLightColor[r13.].xyz * r25.xyz;
+          r25.xyz = _SpotLightColor[r13.w].xyz * r25.xyz;
           r19.x = saturate(dot(r15.xyz, r24.xyz));
           r20.xyz = r19.xxx * r25.xyz + r20.xyz;
           if (_BRDFHighQuality != 0) {
@@ -1067,7 +1092,7 @@ void main(
             r17.xyz = r16.xyw * r9.xxx;
             r8.w = _SpotLightAttenuation[r5.w].x / r8.w;
             r8.w = saturate(_SpotLightAttenuation[r5.w].y + r8.w);
-            r10.x = dot(r17.xyz, _SpotLightDirection[r5.w].xyz);
+            r10.x = dot(r17.xyz, -_SpotLightDirection[r5.w].xyz);
             r10.x = saturate(r10.x * _SpotLightColor[r5.w].w + _SpotLightDirection[r5.w].w);
             r10.x = r10.x * r10.x;
             r18.xyz = r10.xxx * r8.www;
@@ -1235,7 +1260,7 @@ void main(
             r16.xyw = r14.xyz * r11.xxx;
             r9.x = _SpotLightAttenuation[r8.w].x / r9.x;
             r9.x = saturate(_SpotLightAttenuation[r8.w].y + r9.x);
-            r11.w = dot(r16.xyw, _SpotLightDirection[r8.w].xyz);
+            r11.w = dot(r16.xyw, -_SpotLightDirection[r8.w].xyz);
             r11.w = saturate(r11.w * _SpotLightColor[r8.w].w + _SpotLightDirection[r8.w].w);
             r11.w = r11.w * r11.w;
             r17.xyz = r11.www * r9.xxx;
@@ -2824,4 +2849,28 @@ mov o0.w, l(1.000000)
 ret 
 // Approximately 1266 instruction slots used
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(124,10-53): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(142,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(143,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(144,13-39): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(148,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(150,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(154,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(156,11-37): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(216,16-42): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(318,10-54): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(321,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(327,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(331,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(336,10-66): warning X3206: 'Load': implicit truncation of vector type
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013: 'GetDimensions': no matching 3 parameter intrinsic method
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013: Possible intrinsic methods are:
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(uint, out uint width, out uint height, out uint levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(uint, out float|half|min10float|min16float width, out float|half|min10float|min16float height, out float|half|min10float|min16float levels)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(out uint width, out uint height)
+J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(350,3-77): error X3013:     Texture2D<float4>.GetDimensions(out float|half|min10float|min16float width, out float|half|min10float|min16float height)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

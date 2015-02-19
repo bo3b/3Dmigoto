@@ -1,4 +1,4 @@
-//Shadow/Light UNTESTED
+//Lights
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -156,18 +156,18 @@ r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
 r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
 r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
 
-r0.xyz = r34.xyz;  
-  
+r0.xyz = r34.xyz; 
+
   
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
   r3.xyzw = GBufferT1.Load(r1.xyw).xyzw;
   r4.xyzw = GBufferT2.Load(r1.xyw).xyzw;
-  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xzwy;
-  r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
-  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
-  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
+  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(1, 0)).xzwy;
+  r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(-1, 0)).xyzw;
+  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(0, 1)).xyzw;
+  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(0, -1)).xyzw;
   r9.x = r8.x;
   r9.y = r7.x;
   r9.z = r6.x;
@@ -183,7 +183,7 @@ r0.xyz = r34.xyz;
   r5.z = r6.y;
   r5.y = dot(r5.xyzw, r9.xyzw);
   r5.xw = (int2)r1.xy & int2(1,1);
-  r5.x = r5.x != r5.w;
+  r5.x = (int)r5.x != (int)r5.w;
   r5.z = r2.y;
   r5.yz = r5.xx ? r5.yz : r5.zy;
   r5.x = r2.x * r2.x;
@@ -204,7 +204,7 @@ r0.xyz = r34.xyz;
   r3.w = 1.000000000e+000 + -r3.w;
   r3.w = sqrt(r3.w);
   r5.w = r2.w ? r3.x : r3.w;
-  r7.xy = r2.ww == float2(1.000000e+000,2.000000e+000);
+  r7.xy = (int)r2.ww == int2(1,2);
   r5.xy = r7.xy ? r3.ww : r3.yz;
   r2.w = r2.w ? r3.w : r3.x;
   r2.w = r7.x ? r3.y : r2.w;
@@ -213,7 +213,7 @@ r0.xyz = r34.xyz;
   r7.xyz = float3(2.000000e+000,-2.000000e+000,-2.000000e+000) * r5.www;
   r8.xyz = r7.xxz * r5.yzw + float3(0.000000e+000,0.000000e+000,1.000000e+000);
   r8.xyz = r3.xzx * r5.zyx + r8.xyz;
-  r9.xyzw = r2.xxxx == float4(1.000000e+000,5.000000e+000,6.000000e+000,3.000000e+000);
+  r9.xyzw = (int)r2.xxxx == int4(1,5,6,3);
   if (r9.x != 0) {
     r2.w = 2.550000000e+002 * r4.y;
     r2.w = (uint)r2.w;
@@ -238,7 +238,7 @@ r0.xyz = r34.xyz;
     r4.x = (int)r4.x & 15;
     r4.x = r4.x;
     r3.w = 6.666667014e-002 * r4.x;
-    r4.x = r2.x == 3;
+    r4.x = (int)r2.x == 3;
     if (r4.x != 0) {
       r18.xyz = r17.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r18.xyz, r18.xyz);
@@ -254,7 +254,7 @@ r0.xyz = r34.xyz;
       r4.x = dot(r18.xyz, r18.xyz);
       r4.x = rsqrt(r4.x);
       r18.xyz = r18.xyz * r4.xxx;
-      r19.xyz = r2.xxx == float3(4.000000e+000,5.000000e+000,6.000000e+000);
+      r19.xyz = (int)r2.xxx == int3(4,5,6);
       r20.xyz = r17.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r20.xyz, r20.xyz);
       r4.x = rsqrt(r4.x);
@@ -296,8 +296,7 @@ r0.xyz = r34.xyz;
     }
     r2.w = r4.y;
   }
-  r1.xyzw = SSToksvig.Load(r1.xyz);
-  // r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
+  r1.xyzw = SSToksvig.Load(r1.xyz).x;
   r1.y = exp2(r2.y);
   r1.z = 1.000000000e+000 + -r1.x;
   r1.y = r1.y * r1.z + r1.x;
@@ -335,7 +334,7 @@ r0.xyz = r34.xyz;
   r4.x = r4.x ? 1.000000 : 0;
   r4.x = r7.w * r4.x;
   r17.xyzw = DeferredAmbientTexture_TextureObject.Sample(DeferredAmbientTexture_s, v1.xy).xyzw;
-  r16.yz = r2.xx == float2(2.000000e+000,4.000000e+000);
+  r16.yz = (int)r2.xx == int2(2,4);
   if (r16.y != 0) {
     r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r10.xyz;
     r7.w = r6.w * r6.w;
@@ -425,7 +424,7 @@ r0.xyz = r34.xyz;
       r23.xyz = r22.xyz * r14.www;
       r13.w = _SpotLightAttenuation[r12.w].x / r13.w;
       r13.w = saturate(_SpotLightAttenuation[r12.w].y + r13.w);
-      r15.w = dot(r23.xyz, _SpotLightDirection[r12.w].xyz);
+      r15.w = dot(r23.xyz, -_SpotLightDirection[r12.w].xyz);
       r15.w = saturate(r15.w * _SpotLightColor[r12.w].w + _SpotLightDirection[r12.w].w);
       r15.w = r15.w * r15.w;
       r24.xyz = r15.www * r13.www;
@@ -474,7 +473,7 @@ r0.xyz = r34.xyz;
         r13.w = (int)r12.w < (int)r10.w;
         if (r13.w != 0) {
           r16.yw = r16.yw * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
-          r13.w = r12.w == 1;
+          r13.w = (int)r12.w == 1;
           if (r12.w == 0) {
             r25.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
           } else {
@@ -535,7 +534,7 @@ r0.xyz = r34.xyz;
       r12.w = (int)r12.w + 1;
     }
   } else {
-    r0.w = r2.x == 4;
+    r0.w = (int)r2.x == 4;
     if (r0.w != 0) {
       r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r10.xyz;
       r0.w = r6.w * r6.w;
@@ -640,7 +639,7 @@ r0.xyz = r34.xyz;
         r26.xyz = r25.xyz * r14.www;
         r13.w = _SpotLightAttenuation[r12.w].x / r13.w;
         r13.w = saturate(_SpotLightAttenuation[r12.w].y + r13.w);
-        r15.w = dot(r26.xyz, _SpotLightDirection[r12.w].xyz);
+        r15.w = dot(r26.xyz, -_SpotLightDirection[r12.w].xyz);
         r15.w = saturate(r15.w * _SpotLightColor[r12.w].w + _SpotLightDirection[r12.w].w);
         r15.w = r15.w * r15.w;
         r27.xyz = r15.www * r13.www;
@@ -689,7 +688,7 @@ r0.xyz = r34.xyz;
           r13.w = (int)r12.w < (int)r10.w;
           if (r13.w != 0) {
             r16.yw = r16.yw * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
-            r13.w = r12.w == 1;
+            r13.w = (int)r12.w == 1;
             if (r12.w == 0) {
               r28.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.yw, 0.000000000e+000).xyzw;
             } else {
@@ -761,7 +760,7 @@ r0.xyz = r34.xyz;
       r3.xyz = r11.zzw * r5.yzw + r3.xyz;
       r11.yzw = r11.yzw * r5.zyx + float3(0.000000e+000,1.000000e+000,0.000000e+000);
       r5.xyz = r7.xyz * r5.xwz + r11.yzw;
-      r7.xy = r2.xx == float2(0.000000e+000,5.000000e+000);
+      r7.xy = (int)r2.xx == int2(0,5);
       r0.w = (int)r9.w | (int)r7.x;
       r0.w = (int)r9.y | (int)r0.w;
       r5.w = r9.z ? 1.000000000e+000 : r16.x;
@@ -906,14 +905,14 @@ r0.xyz = r34.xyz;
         while (true) {
           r20.w = (int)r17.x >= (int)_SpotLightCount;
           if (r20.w != 0) break;
-          r22.xyz = _SpotLightPos[r17.w].xyz + -r0.xyz;
+          r22.xyz = _SpotLightPos[r17.x].xyz + -r0.xyz;
           r20.w = dot(r22.xyz, r22.xyz);
           r21.w = rsqrt(r20.w);
           r23.xyz = r22.xyz * r21.www;
-          r20.w = _SpotLightAttenuation[r17.w].x / r20.w;
-          r20.w = saturate(_SpotLightAttenuation[r17.w].y + r20.w);
-          r22.w = dot(r23.xyz, _SpotLightDirection[r17.w].xyz);
-          r22.w = saturate(r22.w * _SpotLightColor[r17.w].w + _SpotLightDirection[r17.w].w);
+          r20.w = _SpotLightAttenuation[r17.x].x / r20.w;
+          r20.w = saturate(_SpotLightAttenuation[r17.x].y + r20.w);
+          r22.w = dot(r23.xyz, -_SpotLightDirection[r17.x].xyz);
+          r22.w = saturate(r22.w * _SpotLightColor[r17.x].w + _SpotLightDirection[r17.x].w);
           r22.w = r22.w * r22.w;
           r24.xyz = r22.www * r20.www;
           r20.w = r24.z == 0.000000;
@@ -960,8 +959,8 @@ r0.xyz = r34.xyz;
           } else {
             r20.w = (int)r17.x < (int)r15.w;
             if (r20.w != 0) {
-              r25.xy = r25.xy * _SpotScaleOffsetUVS[r17.w].xy + _SpotScaleOffsetUVS[r17.w].zw;
-              r20.w = r17.x == 1;
+              r25.xy = r25.xy * _SpotScaleOffsetUVS[r17.x].xy + _SpotScaleOffsetUVS[r17.x].zw;
+              r20.w = (int)r17.x == 1;
               if (r17.x == 0) {
                 r26.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r25.xy, 0.000000000e+000).xyzw;
               } else {
@@ -994,7 +993,7 @@ r0.xyz = r34.xyz;
           r22.w = r22.w + r20.w;
           r22.w = 1.000000e+000 / r22.w;
           r22.w = _BRDFHighQuality ? r22.w : 1.000000000e+000;
-          r24.xyz = _SpotLightColor[r17.w].xyz * r24.xyz;
+          r24.xyz = _SpotLightColor[r17.x].xyz * r24.xyz;
           r23.x = saturate(dot(r15.xyz, r23.xyz));
           r20.xyz = r23.xxx * r24.xyz + r20.xyz;
           if (_BRDFHighQuality != 0) {
@@ -1132,7 +1131,7 @@ r0.xyz = r34.xyz;
             r17.xyz = r16.xyw * r9.xxx;
             r8.w = _SpotLightAttenuation[r7.w].x / r8.w;
             r8.w = saturate(_SpotLightAttenuation[r7.w].y + r8.w);
-            r10.w = dot(r17.xyz, _SpotLightDirection[r7.w].xyz);
+            r10.w = dot(r17.xyz, -_SpotLightDirection[r7.w].xyz);
             r10.w = saturate(r10.w * _SpotLightColor[r7.w].w + _SpotLightDirection[r7.w].w);
             r10.w = r10.w * r10.w;
             r18.xyz = r10.www * r8.www;
@@ -1180,7 +1179,7 @@ r0.xyz = r34.xyz;
               r8.w = (int)r7.w < (int)r5.w;
               if (r8.w != 0) {
                 r12.xw = r12.xw * _SpotScaleOffsetUVS[r7.w].xy + _SpotScaleOffsetUVS[r7.w].zw;
-                r8.w = r7.w == 1;
+                r8.w = (int)r7.w == 1;
                 if (r7.w == 0) {
                   r19.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r12.xw, 0.000000000e+000).xyzw;
                 } else {
@@ -1328,7 +1327,7 @@ r0.xyz = r34.xyz;
             r16.xyw = r14.xyz * r11.xxx;
             r10.w = _SpotLightAttenuation[r9.x].x / r10.w;
             r10.w = saturate(_SpotLightAttenuation[r9.x].y + r10.w);
-            r11.w = dot(r16.xyw, _SpotLightDirection[r9.x].xyz);
+            r11.w = dot(r16.xyw, -_SpotLightDirection[r9.x].xyz);
             r11.w = saturate(r11.w * _SpotLightColor[r9.x].w + _SpotLightDirection[r9.x].w);
             r11.w = r11.w * r11.w;
             r17.xyz = r11.www * r10.www;
@@ -1377,7 +1376,7 @@ r0.xyz = r34.xyz;
               r10.w = (int)r9.x < (int)r8.w;
               if (r10.w != 0) {
                 r18.xy = r18.xy * _SpotScaleOffsetUVS[r9.x].xy + _SpotScaleOffsetUVS[r9.x].zw;
-                r10.w = r9.x == 1;
+                r10.w = (int)r9.x == 1;
                 if (r9.x == 0) {
                   r19.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r18.xy, 0.000000000e+000).xyzw;
                 } else {
@@ -1474,7 +1473,7 @@ r0.xyz = r34.xyz;
   r0.w = 1.000000e+000 / r0.w;
   r0.w = _BRDFHighQuality ? r0.w : 1.000000000e+000;
   r3.xyz = r21.xyz * r0.www;
-  r0.w = r2.x != 2;
+  r0.w = (int)r2.x != 2;
   r2.z = saturate(r2.z);
   r1.z = r2.z * r2.z;
   r1.x = r1.z * r1.y + r1.x;
@@ -3041,5 +3040,5 @@ ret
 
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(274,13-39): error X3018: invalid subscript 'xyzw'
+T:\Bootleg\Far Cry 4\bin\wrapper1349(274,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

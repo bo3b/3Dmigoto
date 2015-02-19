@@ -142,10 +142,11 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 float4 r10;
-r10.xyzw = r2.xyzw;
-r2.x += stereo.x*(r2.w - stereo.y);  
+r10.xyw = r2.xyw;
+r2.x += stereo.x*(r2.w - stereo.y);
   
   o0.xyw = r10.xyw; //r2.xyw;  
+  
   
   r3.xyzw = _DepthTextureScaleOffset.xyzw * r2.xyww;
   o6.z = r2.w;
@@ -448,3 +449,4 @@ ret
 // Approximately 78 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

@@ -78,7 +78,7 @@ struct SkyParamBufferS
   float b[9];                    // Offset:   72
   float3 sunColor;               // Offset:  108
   float3 moonColor;              // Offset:  120
-};                        // Offset:    0 Size:   132
+};  
 
 SamplerState SectorOcclusion_HeightTexture__SampObj___s : register(s0);
 SamplerState SectorOcclusion_OcclusionTexture__SampObj___s : register(s1);
@@ -92,7 +92,7 @@ Texture3D<float4> SHTextureR : register(t3);
 Texture3D<float4> SHTextureG : register(t4);
 Texture3D<float4> SHTextureB : register(t5);
 Texture2D<float4> DownsampledDepthTexture__TexObj__ : register(t6);
-Texture2DMS<float4,4> NormalWSTexture_Point_TextureObject : register(t7);
+Texture2DMS<float4,8> NormalWSTexture_Point_TextureObject : register(t7);
 StructuredBuffer<SkyParamBufferS> SkyParamBuffer : register(t8);
 
 Texture2D<float4> StereoParams : register(t125);
@@ -108,6 +108,7 @@ void main(
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16;
   uint4 bitmask;
+  // NormalWSTexture_Point_TextureObject.GetDimensions(r0.x, r0.y);
   NormalWSTexture_Point_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
   r0.xy = r0.xy;
   r0.xy = w1.xy * r0.xy;
@@ -149,13 +150,13 @@ void main(
   r1.xyz = r2.yzw / r0.www;
   r2.xyz = _CameraPosition_DistanceScale.xyz + r1.zxy;
   
-float4 r35, r32, r33, r34;
-r35.xyz = r2.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+float4 r31, r32, r33, r34;
+r31.xyz = r2.xyz;
+r31.w = 1.0;
+r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
 r32.x -= stereo.x * (r32.w - stereo.y);
@@ -512,7 +513,7 @@ r16.w = SkyParamBuffer[0].r[7];
 // SHTextureG                        texture  float4          3d    4        1
 // SHTextureB                        texture  float4          3d    5        1
 // DownsampledDepthTexture__TexObj__    texture  float4          2d    6        1
-// NormalWSTexture_Point_TextureObject    texture  float4       2dMS4    7        1
+// NormalWSTexture_Point_TextureObject    texture  float4       2dMS8    7        1
 // SkyParamBuffer                    texture  struct         r/o    8        1
 // CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
 // CSceneTerrainSkyOcclusionAtlasPrivateData    cbuffer      NA          NA    1        1
@@ -556,7 +557,7 @@ dcl_resource_texture3d (float,float,float,float) t3
 dcl_resource_texture3d (float,float,float,float) t4
 dcl_resource_texture3d (float,float,float,float) t5
 dcl_resource_texture2d (float,float,float,float) t6
-dcl_resource_texture2dms(4) (float,float,float,float) t7
+dcl_resource_texture2dms(8) (float,float,float,float) t7
 dcl_resource_structured t8, 132 
 dcl_input_ps linear v1.xy
 dcl_input_ps linear v1.zw

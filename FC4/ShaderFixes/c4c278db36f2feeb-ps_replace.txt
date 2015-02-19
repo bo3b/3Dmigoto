@@ -86,7 +86,7 @@ cbuffer CSceneTerrainVistaShadowPrivateData : register(b4)
 }
 SamplerComparisonState ShadowCmpSampler_s : register(s0);
 SamplerComparisonState VistaShadowTexture_s : register(s1);
-Texture2DMS<float4,4> DepthVPSampler_TextureObject : register(t0);
+Texture2DMS<float4,8> DepthVPSampler_TextureObject : register(t0);
 Texture2DArray<float4> ShadowCmpSampler_TextureObject : register(t1);
 Texture2D<uint4> SectorAtlasTexture_UINT_TextureObject : register(t2);
 Texture2D<float4> VistaShadowTexture_TextureObject : register(t3);
@@ -103,6 +103,7 @@ void main(
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14;
   uint4 bitmask;
+  // DepthVPSampler_TextureObject.GetDimensions(r0.x, r0.y);
   DepthVPSampler_TextureObject.GetDimensions(r0.x, r0.y, bitmask.x);
   r0.xy = r0.xy;
   r0.xy = v1.xy * r0.xy;
@@ -125,13 +126,13 @@ void main(
   r0.xyz = r1.xyz / r0.xxx;
   r1.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
   
-float4 r35, r32, r33, r34;
-r35.xyz = r1.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+float4 r31, r32, r33, r34;
+r31.xyz = r1.xyz;
+r31.w = 1.0;
+r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
+r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
+r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
+r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
 r32.x -= stereo.x * (r32.w - stereo.y);
@@ -234,8 +235,8 @@ r1.xyz = r34.xyz;
     r0.yz = (uint2)r0.yz;
     r0.yz = (int2)r0.yz + (int2)r1.xy;
     r6.xyzw = (int4)r0.yzyz + int4(-1,0,0,-1);
-    
-	uint2 src0 = r0.yz;
+   
+    uint2 src0 = r0.yz;
     uint2 src1 = r1.xy;
     
 	r8.xy = src0 % src1;
@@ -245,8 +246,8 @@ r1.xyz = r34.xyz;
     
 	r6.xyzw = src00 % src10;
     r0.yz = (int2)r0.yz + int2(-1,-1);
-	
-    uint2 src000 = r0.yz;
+    
+	uint2 src000 = r0.yz;
     uint2 src100 = r1.xy;
     
 	r9.xy = src000 % src100;
@@ -679,7 +680,7 @@ r1.xyz = r34.xyz;
 // ------------------------------ ---------- ------- ----------- ---- --------
 // ShadowCmpSampler                sampler_c      NA          NA    0        1
 // VistaShadowTexture              sampler_c      NA          NA    1        1
-// DepthVPSampler_TextureObject      texture  float4       2dMS4    0        1
+// DepthVPSampler_TextureObject      texture  float4       2dMS8    0        1
 // ShadowCmpSampler_TextureObject    texture  float4     2darray    1        1
 // SectorAtlasTexture_UINT_TextureObject    texture   uint4          2d    2        1
 // VistaShadowTexture_TextureObject    texture  float4          2d    3        1
@@ -718,7 +719,7 @@ dcl_constantbuffer cb3[4], immediateIndexed
 dcl_constantbuffer cb4[4], immediateIndexed
 dcl_sampler s0, mode_comparison
 dcl_sampler s1, mode_comparison
-dcl_resource_texture2dms(4) (float,float,float,float) t0
+dcl_resource_texture2dms(8) (float,float,float,float) t0
 dcl_resource_texture2darray (float,float,float,float) t1
 dcl_resource_texture2d (uint,uint,uint,uint) t2
 dcl_resource_texture2d (float,float,float,float) t3
