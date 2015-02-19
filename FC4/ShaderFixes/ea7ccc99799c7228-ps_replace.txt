@@ -387,7 +387,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r4.z = 1.000100017e+000 >= r4.z;
   r4.z = r4.z ? 1.000000 : 0;
   r4.z = r6.w * r4.z;
-  DeferredAmbientTexture_TextureObject.GetDimensions(r11.z, r11.w, bitmask.x);
+  DeferredAmbientTexture_TextureObject.GetDimensions(r11.z, r11.w);
   r11.zw = r11.zw;
   r11.zw = float2(5.000000e-001,5.000000e-001) / r11.zw;
   r11.zw = v1.xy + r11.zw;
