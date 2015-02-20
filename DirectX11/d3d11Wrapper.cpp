@@ -150,48 +150,61 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
+	const wchar_t *id;
+	ShaderOverride *override;
+	UINT64 hash, hash2;
 
-	// Shader separation overrides.
-	G->mShaderSeparationMap.clear();
-	G->mShaderIterationMap.clear();
-	G->mShaderIndexBufferFilter.clear();
+	G->mShaderOverrideMap.clear();
 
 	lower = sections.lower_bound(wstring(L"ShaderOverride"));
 	upper = prefix_upper_bound(sections, wstring(L"ShaderOverride"));
 	for (i = lower; i != upper; i++) {
-		const wchar_t *id = i->c_str();
+		id = i->c_str();
 
 		LogInfoW(L"[%s]\n", id);
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
 			break;
-		unsigned long hashHi, hashLo;
-		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		swscanf_s(setting, L"%16llx", &hash);
+		LogInfo("  Hash=%16llx\n", hash);
+
+		if (G->mShaderOverrideMap.count(hash)) {
+			LogInfo("  WARNING: Duplicate ShaderOverride hash: %16llx\n", hash);
+			BeepFailure2();
+		}
+		override = &G->mShaderOverrideMap[hash];
+
 		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
 		{
-			float separation;
-			swscanf_s(setting, L"%e", &separation);
-			G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
-			LogDebug(" [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
+			swscanf_s(setting, L"%e", &override->separation);
+			LogInfo("  Separation=%f\n", override->separation);
 		}
 		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
-			if (!wcscmp(setting, L"skip"))
-				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
+			if (!wcscmp(setting, L"skip")) {
+				override->skip = true;
+				LogInfo("  Handling=skip\n");
+			} else {
+				LogInfoW(L"  WARNING: Unknown handling type \"%s\"\n", setting);
+				BeepFailure2();
+			}
 		}
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
+			// XXX: This differs from the TextureOverride
+			// iterations, in that there can only be one iteration
+			// here - not sure why.
 			int iteration;
-			std::vector<int> iterations;
-			iterations.push_back(0);
+			override->iterations.clear();
+			override->iterations.push_back(0);
 			swscanf_s(setting, L"%d", &iteration);
-			iterations.push_back(iteration);
-			G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
+			LogInfo("  Iteration=%d\n", iteration);
+			override->iterations.push_back(iteration);
 		}
 		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
 		{
-			unsigned long hashHi2, hashLo2;
-			swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
-			G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
+			swscanf_s(setting, L"%16llx", &hash2);
+			LogInfo("  IndexBufferFilter=%16llx\n", hash2);
+			override->indexBufferFilter.push_back(hash2);
 		}
 	}
 }
@@ -200,50 +213,61 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
+	const wchar_t *id;
+	TextureOverride *override;
+	UINT64 hash;
 
-	// Texture overrides.
-	G->mTextureStereoMap.clear();
-	G->mTextureTypeMap.clear();
-	G->mTextureIterationMap.clear();
+	G->mTextureOverrideMap.clear();
 
 	lower = sections.lower_bound(wstring(L"TextureOverride"));
 	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
 
 	for (i = lower; i != upper; i++) {
-		const wchar_t *id = i->c_str();
+		id = i->c_str();
 
 		LogInfoW(L"[%s]\n", id);
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
 			break;
-		unsigned long hashHi, hashLo;
-		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		swscanf_s(setting, L"%16llx", &hash);
+		LogInfo("  Hash=%16llx\n", hash);
+
+		if (G->mTextureOverrideMap.count(hash)) {
+			LogInfo("  WARNING: Duplicate TextureOverride hash: %16llx\n", hash);
+			BeepFailure2();
+		}
+		override = &G->mTextureOverrideMap[hash];
+
 		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
 		if (stereoMode >= 0)
 		{
-			G->mTextureStereoMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = stereoMode;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, stereo mode = %d\n", hashHi, hashLo, stereoMode);
+			override->stereoMode = stereoMode;
+			LogInfo("  StereoMode=%d\n", stereoMode);
 		}
 		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
 		if (texFormat >= 0)
 		{
-			G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
+			override->format = texFormat;
+			LogInfo("  Format=%d\n", texFormat);
 		}
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
-			std::vector<int> iterations;
-			iterations.push_back(0);
+			// TODO: This supports more iterations than the
+			// ShaderOverride iteration parameter, and it's not
+			// clear why there is a difference. This seems like the
+			// better way, but should change it to use my list
+			// parsing code rather than hard coding a maximum of 10
+			// supported iterations.
+			override->iterations.clear();
+			override->iterations.push_back(0);
 			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
 			for (int j = 0; j < 10; ++j)
 			{
 				if (id[j] <= 0) break;
-				iterations.push_back(id[j]);
+				override->iterations.push_back(id[j]);
+				LogInfo("  Iteration=%d\n", id[j]);
 			}
-			G->mTextureIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, iterations = %d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", hashHi, hashLo,
-				id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9]);
 		}
 	}
 }
@@ -597,21 +621,8 @@ static void LoadConfigFile()
 	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
 		swscanf_s(setting, L"%f", &G->gTuneStep);
 
-
 	ParseShaderOverrideSections(sections, iniFile);
-
-	// Todo: finish logging all input parameters.
-	LogInfo("  ... missing shader override ini section\n");
-
 	ParseTextureOverrideSections(sections, iniFile);
-
-	// Todo: finish logging all input parameters.
-	LogInfo("  ... missing texture override ini section\n");
-
-	// Todo: finish logging all input parameters.
-	LogInfo("  ... missing mouse OverrideSettings ini section\n");
-	LogInfo("  ... missing convergence map ini section\n");
-	LogInfo("-----------------------------------------\n");
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.
@@ -2238,8 +2249,14 @@ static void TimeoutHuntingBuffers()
 	G->mSelectedVertexShader_IndexBuffer.clear();
 	G->mSelectedIndexBuffer_PixelShader.clear();
 	G->mSelectedIndexBuffer_VertexShader.clear();
-	for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
-		i->second[0] = 0;
+
+	// This seems totally bogus - shouldn't we be resetting the iteration
+	// on each new frame, not after hunting timeout? This probably worked
+	// back when RunFrameActions() was called from present(), but I suspect
+	// has been broken ever since that was changed to come from draw(), and
+	// it's not related to hunting buffers so it doesn't belong here:
+	for (ShaderOverrideMap::iterator i = G->mShaderOverrideMap.begin(); i != G->mShaderOverrideMap.end(); ++i)
+		i->second.iterations[0] = 0;
 }
 
 // User has requested all shaders be re-enabled

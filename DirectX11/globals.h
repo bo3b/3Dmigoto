@@ -56,15 +56,30 @@ typedef std::map<D3D11Base::ID3D11DomainShader *, UINT64> DomainShaderMap;
 typedef std::map<D3D11Base::ID3D11ComputeShader *, UINT64> ComputeShaderMap;
 typedef std::map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
-// Separation override for shader.
-typedef std::map<UINT64, float> ShaderSeparationMap;
-typedef std::map<UINT64, std::vector<int> > ShaderIterationMap;
-typedef std::map<UINT64, std::vector<UINT64>> ShaderIndexBufferFilter;
+struct ShaderOverride {
+	float separation;
+	bool skip;
+	std::vector<int> iterations; // Only for separation changes, not shaders.
+	std::vector<UINT64> indexBufferFilter;
 
-// Texture override.
-typedef std::map<UINT64, int> TextureStereoMap;
-typedef std::map<UINT64, int> TextureTypeMap;
-typedef std::map<UINT64, std::vector<int> > TextureIterationMap;
+	ShaderOverride() :
+		separation(FLT_MAX),
+		skip(false)
+	{}
+};
+typedef std::map<UINT64, struct ShaderOverride> ShaderOverrideMap;
+
+struct TextureOverride {
+	int stereoMode;
+	int format;
+	std::vector<int> iterations;
+
+	TextureOverride() :
+		stereoMode(-1),
+		format(-1)
+	{}
+};
+typedef std::map<UINT64, struct TextureOverride> TextureOverrideMap;
 
 struct ShaderInfoData
 {
@@ -184,15 +199,8 @@ struct Globals
 	DomainShaderMap mDomainShaders;
 	HullShaderMap mHullShaders;
 
-	// Separation override for shader.
-	ShaderSeparationMap mShaderSeparationMap;
-	ShaderIterationMap mShaderIterationMap;					// Only for separation changes, not shaders.
-	ShaderIndexBufferFilter mShaderIndexBufferFilter;
-
-	// Texture override.
-	TextureStereoMap mTextureStereoMap;
-	TextureTypeMap mTextureTypeMap;
-	ShaderIterationMap mTextureIterationMap;
+	ShaderOverrideMap mShaderOverrideMap;
+	TextureOverrideMap mTextureOverrideMap;
 
 	// Statistics
 	std::map<void *, UINT64> mRenderTargets;
