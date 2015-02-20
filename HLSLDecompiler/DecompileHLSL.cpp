@@ -2563,7 +2563,23 @@ public:
 		{
 			Instruction *instr = &shader->psInst[iNr];
 
-			// Ignore comments.
+			// Now ignore '#line' or 'undecipherable' debug info (DefenseGrid2)
+			if (!strncmp(c + pos, "#line", 5) ||
+				!strncmp(c + pos, "undecipherable", 14))
+			{
+				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				continue;
+			}
+
+			// And the dissassembler apparently can add trailing \0 characters
+			// and blank lines to the buffer in the debug case.
+			if (c[pos] == 0x0a || c[pos] == 0x00)
+			{
+				pos++;
+				continue;
+			}
+
+			// Ignore comments. 
 			if (!strncmp(c + pos, "//", 2))
 			{
 				while (c[pos] != 0x0a && pos < size) pos++; pos++;
@@ -4466,6 +4482,10 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	// block to handle any exceptions and mark the shader as presently bad.
 	// In order for this to work, the /EHa option must be enabled for code-generation
 	// so that system level exceptions are caught too.
+	
+	// It's worth noting that some fatal exceptions will still bypass this catch,
+	// like a stack corruption, stack overflow, or out of memory, and crash the game.
+	// The termination handler approach does not catch those errors either.
 	try
 	{
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
