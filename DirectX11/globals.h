@@ -59,7 +59,9 @@ typedef std::map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 struct ShaderOverride {
 	float separation;
 	bool skip;
+#if 0 /* Iterations are broken since we no longer use present() */
 	std::vector<int> iterations; // Only for separation changes, not shaders.
+#endif
 	std::vector<UINT64> indexBufferFilter;
 
 	ShaderOverride() :
@@ -72,7 +74,9 @@ typedef std::map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 struct TextureOverride {
 	int stereoMode;
 	int format;
+#if 0 /* Iterations are broken since we no longer use present() */
 	std::vector<int> iterations;
+#endif
 
 	TextureOverride() :
 		stereoMode(-1),

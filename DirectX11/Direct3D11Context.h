@@ -680,6 +680,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 		data.override = true;
 		separationValue = shaderOverride->separation;
 		data.skip = shaderOverride->skip;
+#if 0 /* Iterations are broken since we no longer use present() */
 		// Check iteration.
 		if (!shaderOverride->iterations.empty()) {
 			std::vector<int>::iterator k = shaderOverride->iterations.begin();
@@ -700,6 +701,7 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 				LogDebug("  override skipped\n");
 			}
 		}
+#endif
 		// Check index buffer filter.
 		if (!shaderOverride->indexBufferFilter.empty()) {
 			bool found = false;

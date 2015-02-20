@@ -188,6 +188,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 				BeepFailure2();
 			}
 		}
+#if 0 /* Iterations are broken since we no longer use present() */
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
 			// XXX: This differs from the TextureOverride
@@ -200,6 +201,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
 		}
+#endif
 		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
 		{
 			swscanf_s(setting, L"%16llx", &hash2);
@@ -250,6 +252,7 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			override->format = texFormat;
 			LogInfo("  Format=%d\n", texFormat);
 		}
+#if 0 /* Iterations are broken since we no longer use present() */
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
 			// TODO: This supports more iterations than the
@@ -269,6 +272,7 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 				LogInfo("  Iteration=%d\n", id[j]);
 			}
 		}
+#endif
 	}
 }
 
@@ -2250,6 +2254,7 @@ static void TimeoutHuntingBuffers()
 	G->mSelectedIndexBuffer_PixelShader.clear();
 	G->mSelectedIndexBuffer_VertexShader.clear();
 
+#if 0 /* Iterations are broken since we no longer use present() */
 	// This seems totally bogus - shouldn't we be resetting the iteration
 	// on each new frame, not after hunting timeout? This probably worked
 	// back when RunFrameActions() was called from present(), but I suspect
@@ -2257,6 +2262,7 @@ static void TimeoutHuntingBuffers()
 	// it's not related to hunting buffers so it doesn't belong here:
 	for (ShaderOverrideMap::iterator i = G->mShaderOverrideMap.begin(); i != G->mShaderOverrideMap.end(); ++i)
 		i->second.iterations[0] = 0;
+#endif
 }
 
 // User has requested all shaders be re-enabled

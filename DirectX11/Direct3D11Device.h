@@ -511,6 +511,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		override = true;
 		if (textureOverride->stereoMode != -1)
 			newMode = (D3D11Base::NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
+#if 0 /* Iterations are broken since we no longer use present() */
 		// Check iteration.
 		if (!textureOverride->iterations.empty()) {
 			std::vector<int>::iterator k = textureOverride->iterations.begin();
@@ -531,6 +532,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				LogInfo("  override skipped\n");
 			}
 		}
+#endif
 	}
 	if (pDesc && G->gSurfaceSquareCreateMode >= 0 && pDesc->Width == pDesc->Height && (pDesc->Usage & D3D11Base::D3D11_USAGE_IMMUTABLE) == 0)
 	{
