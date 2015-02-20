@@ -2229,6 +2229,8 @@ static void TimeoutHuntingBuffers()
 // User has requested all shaders be re-enabled
 static void DoneHunting(D3D11Base::ID3D11Device *device, void *private_data)
 {
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	TimeoutHuntingBuffers();
 
 	G->mSelectedRenderTargetPos = 0;
