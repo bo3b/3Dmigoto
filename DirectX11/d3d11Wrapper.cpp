@@ -146,6 +146,108 @@ void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
+void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wchar_t setting[MAX_PATH];
+
+	// Shader separation overrides.
+	G->mShaderSeparationMap.clear();
+	G->mShaderIterationMap.clear();
+	G->mShaderIndexBufferFilter.clear();
+
+	lower = sections.lower_bound(wstring(L"ShaderOverride"));
+	upper = prefix_upper_bound(sections, wstring(L"ShaderOverride"));
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
+
+		LogInfoW(L"[%s]\n", id);
+
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+			break;
+		unsigned long hashHi, hashLo;
+		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
+		{
+			float separation;
+			swscanf_s(setting, L"%e", &separation);
+			G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
+			LogDebug(" [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
+		}
+		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
+			if (!wcscmp(setting, L"skip"))
+				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
+		}
+		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
+		{
+			int iteration;
+			std::vector<int> iterations;
+			iterations.push_back(0);
+			swscanf_s(setting, L"%d", &iteration);
+			iterations.push_back(iteration);
+			G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
+		}
+		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
+		{
+			unsigned long hashHi2, hashLo2;
+			swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
+			G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
+		}
+	}
+}
+
+void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wchar_t setting[MAX_PATH];
+
+	// Texture overrides.
+	G->mTextureStereoMap.clear();
+	G->mTextureTypeMap.clear();
+	G->mTextureIterationMap.clear();
+
+	lower = sections.lower_bound(wstring(L"TextureOverride"));
+	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
+
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
+
+		LogInfoW(L"[%s]\n", id);
+
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+			break;
+		unsigned long hashHi, hashLo;
+		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
+		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
+		if (stereoMode >= 0)
+		{
+			G->mTextureStereoMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = stereoMode;
+			LogDebug("[TextureOverride] Texture = %08lx%08lx, stereo mode = %d\n", hashHi, hashLo, stereoMode);
+		}
+		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
+		if (texFormat >= 0)
+		{
+			G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
+			LogDebug("[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
+		}
+		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
+		{
+			std::vector<int> iterations;
+			iterations.push_back(0);
+			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
+			for (int j = 0; j < 10; ++j)
+			{
+				if (id[j] <= 0) break;
+				iterations.push_back(id[j]);
+			}
+			G->mTextureIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
+			LogDebug("[TextureOverride] Texture = %08lx%08lx, iterations = %d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", hashHi, hashLo,
+				id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9]);
+		}
+	}
+}
+
 static void GetIniSections(IniSections &sections, wchar_t *iniFile)
 {
 	wchar_t *buf, *ptr;
@@ -496,98 +598,12 @@ static void LoadConfigFile()
 		swscanf_s(setting, L"%f", &G->gTuneStep);
 
 
-	// Shader separation overrides.
-	G->mShaderSeparationMap.clear();
-	G->mShaderIterationMap.clear();
-	G->mShaderIndexBufferFilter.clear();
-
-	lower = sections.lower_bound(wstring(L"ShaderOverride"));
-	upper = prefix_upper_bound(sections, wstring(L"ShaderOverride"));
-	for (i = lower; i != upper; i++) {
-		const wchar_t *id = i->c_str();
-
-		LogInfoW(L"[%s]\n", id);
-
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
-		unsigned long hashHi, hashLo;
-		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
-		{
-			float separation;
-			swscanf_s(setting, L"%e", &separation);
-			G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
-			LogDebug(" [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
-		}
-		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
-			if (!wcscmp(setting, L"skip"))
-				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
-		}
-		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
-		{
-			int iteration;
-			std::vector<int> iterations;
-			iterations.push_back(0);
-			swscanf_s(setting, L"%d", &iteration);
-			iterations.push_back(iteration);
-			G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-		}
-		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
-		{
-			unsigned long hashHi2, hashLo2;
-			swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
-			G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
-		}
-	}
+	ParseShaderOverrideSections(sections, iniFile);
 
 	// Todo: finish logging all input parameters.
 	LogInfo("  ... missing shader override ini section\n");
 
-	// Texture overrides.
-	G->mTextureStereoMap.clear();
-	G->mTextureTypeMap.clear();
-	G->mTextureIterationMap.clear();
-
-	lower = sections.lower_bound(wstring(L"TextureOverride"));
-	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
-
-	for (i = lower; i != upper; i++) {
-		const wchar_t *id = i->c_str();
-
-		LogInfoW(L"[%s]\n", id);
-
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
-		unsigned long hashHi, hashLo;
-		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-		if (stereoMode >= 0)
-		{
-			G->mTextureStereoMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = stereoMode;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, stereo mode = %d\n", hashHi, hashLo, stereoMode);
-		}
-		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-		if (texFormat >= 0)
-		{
-			G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
-		}
-		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
-		{
-			std::vector<int> iterations;
-			iterations.push_back(0);
-			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
-			for (int j = 0; j < 10; ++j)
-			{
-				if (id[j] <= 0) break;
-				iterations.push_back(id[j]);
-			}
-			G->mTextureIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, iterations = %d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", hashHi, hashLo,
-				id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9]);
-		}
-	}
+	ParseTextureOverrideSections(sections, iniFile);
 
 	// Todo: finish logging all input parameters.
 	LogInfo("  ... missing texture override ini section\n");
