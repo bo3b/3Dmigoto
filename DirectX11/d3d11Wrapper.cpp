@@ -179,6 +179,11 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			swscanf_s(setting, L"%e", &override->separation);
 			LogInfo("  Separation=%f\n", override->separation);
 		}
+		if (GetPrivateProfileString(id, L"Convergence", 0, setting, MAX_PATH, iniFile))
+		{
+			swscanf_s(setting, L"%e", &override->convergence);
+			LogInfo("  Convergence=%f\n", override->convergence);
+		}
 		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
 			if (!wcscmp(setting, L"skip")) {
 				override->skip = true;

@@ -58,6 +58,7 @@ typedef std::map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
 struct ShaderOverride {
 	float separation;
+	float convergence;
 	bool skip;
 #if 0 /* Iterations are broken since we no longer use present() */
 	std::vector<int> iterations; // Only for separation changes, not shaders.
@@ -66,6 +67,7 @@ struct ShaderOverride {
 
 	ShaderOverride() :
 		separation(FLT_MAX),
+		convergence(FLT_MAX),
 		skip(false)
 	{}
 };
