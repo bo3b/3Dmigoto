@@ -10,6 +10,10 @@
 #include <ctime>
 
 
+void InputListener::UpEvent(D3D11Base::ID3D11Device *device)
+{
+}
+
 // -----------------------------------------------------------------------------
 
 InputCallbacks::InputCallbacks(InputCallback down_cb, InputCallback up_cb,
@@ -301,11 +305,7 @@ bool XInputAction::CheckState()
 	return false;
 }
 
-struct XInputMapping_t {
-	wchar_t *name;
-	WORD button;
-};
-static XInputMapping_t XInputButtons[] = {
+static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
 	{L"DPAD_UP", XINPUT_GAMEPAD_DPAD_UP},
 	{L"DPAD_DOWN", XINPUT_GAMEPAD_DPAD_DOWN},
 	{L"DPAD_LEFT", XINPUT_GAMEPAD_DPAD_LEFT},
@@ -355,7 +355,7 @@ XInputAction *NewXInputAction(wchar_t *keyName, InputListener *listener,
 
 	for (i = 0; i < ARRAYSIZE(XInputButtons); i++) {
 		if (!_wcsicmp(keyName, XInputButtons[i].name)) {
-			button = XInputButtons[i].button;
+			button = XInputButtons[i].val;
 			break;
 		}
 	}

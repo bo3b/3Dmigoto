@@ -56,15 +56,36 @@ typedef std::map<D3D11Base::ID3D11DomainShader *, UINT64> DomainShaderMap;
 typedef std::map<D3D11Base::ID3D11ComputeShader *, UINT64> ComputeShaderMap;
 typedef std::map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
-// Separation override for shader.
-typedef std::map<UINT64, float> ShaderSeparationMap;
-typedef std::map<UINT64, std::vector<int> > ShaderIterationMap;
-typedef std::map<UINT64, std::vector<UINT64>> ShaderIndexBufferFilter;
+struct ShaderOverride {
+	float separation;
+	float convergence;
+	bool skip;
+#if 0 /* Iterations are broken since we no longer use present() */
+	std::vector<int> iterations; // Only for separation changes, not shaders.
+#endif
+	std::vector<UINT64> indexBufferFilter;
 
-// Texture override.
-typedef std::map<UINT64, int> TextureStereoMap;
-typedef std::map<UINT64, int> TextureTypeMap;
-typedef std::map<UINT64, std::vector<int> > TextureIterationMap;
+	ShaderOverride() :
+		separation(FLT_MAX),
+		convergence(FLT_MAX),
+		skip(false)
+	{}
+};
+typedef std::map<UINT64, struct ShaderOverride> ShaderOverrideMap;
+
+struct TextureOverride {
+	int stereoMode;
+	int format;
+#if 0 /* Iterations are broken since we no longer use present() */
+	std::vector<int> iterations;
+#endif
+
+	TextureOverride() :
+		stereoMode(-1),
+		format(-1)
+	{}
+};
+typedef std::map<UINT64, struct TextureOverride> TextureOverrideMap;
 
 struct ShaderInfoData
 {
@@ -121,7 +142,7 @@ struct Globals
 	time_t huntTime;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
-	bool EXPORT_SHADERS, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	bool EXPORT_SHADERS, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE, COPY_ON_MARK;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
@@ -184,15 +205,8 @@ struct Globals
 	DomainShaderMap mDomainShaders;
 	HullShaderMap mHullShaders;
 
-	// Separation override for shader.
-	ShaderSeparationMap mShaderSeparationMap;
-	ShaderIterationMap mShaderIterationMap;					// Only for separation changes, not shaders.
-	ShaderIndexBufferFilter mShaderIndexBufferFilter;
-
-	// Texture override.
-	TextureStereoMap mTextureStereoMap;
-	TextureTypeMap mTextureTypeMap;
-	ShaderIterationMap mTextureIterationMap;
+	ShaderOverrideMap mShaderOverrideMap;
+	TextureOverrideMap mTextureOverrideMap;
 
 	// Statistics
 	std::map<void *, UINT64> mRenderTargets;
@@ -258,7 +272,8 @@ struct Globals
 		gSurfaceCreateMode(-1),
 		gSurfaceSquareCreateMode(-1),
 		ZBufferHashToInject(0),
-		SCISSOR_DISABLE(0)
+		SCISSOR_DISABLE(0),
+		COPY_ON_MARK(false)
 	{
 		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;

@@ -22,8 +22,8 @@
 
 class InputListener {
 public:
-	virtual void DownEvent(D3D11Base::ID3D11Device *device) =0;
-	virtual void UpEvent(D3D11Base::ID3D11Device *device) =0;
+	virtual void DownEvent(D3D11Base::ID3D11Device *device) = 0;
+	virtual void UpEvent(D3D11Base::ID3D11Device *device);
 };
 
 

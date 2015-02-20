@@ -62,32 +62,56 @@ static char *readStringParameter(wchar_t *val)
 	return start;
 }
 
-void RegisterPresetKeyBindings(LPCWSTR iniFile)
+// Case insensitive version of less comparitor. This is used to create case
+// insensitive sets of section names in the ini so we can detect duplicate
+// sections that vary only by case, e.g. [Key1] and [KEY1], as these are
+// treated equivelent by the GetPrivateProfileXXX APIs. It also means that the
+// set will be sorted in a case insensitive manner making it easy to iterate
+// over all section names starting with a given case insensitive prefix.
+struct WStringInsensitiveLess {
+	bool operator() (const wstring &x, const wstring &y) const
+	{
+		return _wcsicmp(x.c_str(), y.c_str()) < 0;
+	}
+};
+
+typedef std::set<wstring, WStringInsensitiveLess> IniSections;
+
+// Returns an iterator to the first element in a set that does not begin with
+// prefix in a case insensitive way. Combined with set::lower_bound, this can
+// be used to iterate over all elements in the sections set that begin with a
+// given prefix.
+IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
+{
+	IniSections::iterator i;
+
+	for (i = sections.lower_bound(prefix); i != sections.end(); i++) {
+		if (_wcsnicmp(i->c_str(), prefix.c_str(), prefix.length()) > 0)
+			return i;
+	}
+
+	return sections.end();
+}
+
+void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 {
 	enum KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
-	KeyOverride *preset;
+	KeyOverrideBase *preset;
 	int delay, release_delay;
-	int i;
+	IniSections::iterator lower, upper, i;
 
-	// TODO: Use GetPrivateProfileSectionNames() to enumerate all [Key*]
-	// sections, rather than requiring them to start at 1 and increment
-	// consecutively. Same thing also applies to [ShaderOverride*] and
-	// [TextureOverride*] sections. Also, I'm considering dropping the
-	// requirement for these to end in a number - after all, these are not
-	// referenced by anything and the only real reason there is a number
-	// here at all is to work around the limitation that they must be
-	// unique names since we are using a .ini file to store configuration.
+	lower = sections.lower_bound(wstring(L"Key"));
+	upper = prefix_upper_bound(sections, wstring(L"Key"));
 
-	for (i = 1;; i++) {
-		LogDebug("Find [Key] i=%i\n", i);
-		wchar_t id[] = L"Keyxxx";
-		_itow_s(i, id + 3, 3, 10);
-		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
-			break;
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
 
 		LogInfoW(L"[%s]\n", id);
+
+		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
+			break;
 
 		type = KeyOverrideType::ACTIVATE;
 
@@ -101,6 +125,9 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 			} else if (!_wcsicmp(buf, L"toggle")) {
 				type = KeyOverrideType::TOGGLE;
 				LogInfo("  type=toggle\n");
+			} else if (!_wcsicmp(buf, L"cycle")) {
+				type = KeyOverrideType::CYCLE;
+				LogInfo("  type=cycle\n");
 			} else {
 				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
 			}
@@ -109,17 +136,184 @@ void RegisterPresetKeyBindings(LPCWSTR iniFile)
 		delay = GetPrivateProfileInt(id, L"delay", 0, iniFile);
 		release_delay = GetPrivateProfileInt(id, L"release_delay", 0, iniFile);
 
-		// TODO: Alternatively allow the [Key] section to contain a
-		// reference to other preset sections, to allow a single key to
-		// be used to cycle between several presets. In this case we
-		// would use that list of presets rather than the settings
-		// directly in the Key section.
-
-		preset = new KeyOverride(type);
+		if (type == KeyOverrideType::CYCLE)
+			preset = new KeyOverrideCycle();
+		else
+			preset = new KeyOverride(type);
 		preset->ParseIniSection(id, iniFile);
 
 		RegisterKeyBinding(L"Key", key, preset, 0, delay, release_delay);
 	}
+}
+
+void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wchar_t setting[MAX_PATH];
+	const wchar_t *id;
+	ShaderOverride *override;
+	UINT64 hash, hash2;
+
+	G->mShaderOverrideMap.clear();
+
+	lower = sections.lower_bound(wstring(L"ShaderOverride"));
+	upper = prefix_upper_bound(sections, wstring(L"ShaderOverride"));
+	for (i = lower; i != upper; i++) {
+		id = i->c_str();
+
+		LogInfoW(L"[%s]\n", id);
+
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+			break;
+		swscanf_s(setting, L"%16llx", &hash);
+		LogInfo("  Hash=%16llx\n", hash);
+
+		if (G->mShaderOverrideMap.count(hash)) {
+			LogInfo("  WARNING: Duplicate ShaderOverride hash: %16llx\n", hash);
+			BeepFailure2();
+		}
+		override = &G->mShaderOverrideMap[hash];
+
+		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
+		{
+			swscanf_s(setting, L"%e", &override->separation);
+			LogInfo("  Separation=%f\n", override->separation);
+		}
+		if (GetPrivateProfileString(id, L"Convergence", 0, setting, MAX_PATH, iniFile))
+		{
+			swscanf_s(setting, L"%e", &override->convergence);
+			LogInfo("  Convergence=%f\n", override->convergence);
+		}
+		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
+			if (!wcscmp(setting, L"skip")) {
+				override->skip = true;
+				LogInfo("  Handling=skip\n");
+			} else {
+				LogInfoW(L"  WARNING: Unknown handling type \"%s\"\n", setting);
+				BeepFailure2();
+			}
+		}
+#if 0 /* Iterations are broken since we no longer use present() */
+		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
+		{
+			// XXX: This differs from the TextureOverride
+			// iterations, in that there can only be one iteration
+			// here - not sure why.
+			int iteration;
+			override->iterations.clear();
+			override->iterations.push_back(0);
+			swscanf_s(setting, L"%d", &iteration);
+			LogInfo("  Iteration=%d\n", iteration);
+			override->iterations.push_back(iteration);
+		}
+#endif
+		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
+		{
+			swscanf_s(setting, L"%16llx", &hash2);
+			LogInfo("  IndexBufferFilter=%16llx\n", hash2);
+			override->indexBufferFilter.push_back(hash2);
+		}
+	}
+}
+
+void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wchar_t setting[MAX_PATH];
+	const wchar_t *id;
+	TextureOverride *override;
+	UINT64 hash;
+
+	G->mTextureOverrideMap.clear();
+
+	lower = sections.lower_bound(wstring(L"TextureOverride"));
+	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
+
+	for (i = lower; i != upper; i++) {
+		id = i->c_str();
+
+		LogInfoW(L"[%s]\n", id);
+
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
+			break;
+		swscanf_s(setting, L"%16llx", &hash);
+		LogInfo("  Hash=%16llx\n", hash);
+
+		if (G->mTextureOverrideMap.count(hash)) {
+			LogInfo("  WARNING: Duplicate TextureOverride hash: %16llx\n", hash);
+			BeepFailure2();
+		}
+		override = &G->mTextureOverrideMap[hash];
+
+		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
+		if (stereoMode >= 0)
+		{
+			override->stereoMode = stereoMode;
+			LogInfo("  StereoMode=%d\n", stereoMode);
+		}
+		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
+		if (texFormat >= 0)
+		{
+			override->format = texFormat;
+			LogInfo("  Format=%d\n", texFormat);
+		}
+#if 0 /* Iterations are broken since we no longer use present() */
+		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
+		{
+			// TODO: This supports more iterations than the
+			// ShaderOverride iteration parameter, and it's not
+			// clear why there is a difference. This seems like the
+			// better way, but should change it to use my list
+			// parsing code rather than hard coding a maximum of 10
+			// supported iterations.
+			override->iterations.clear();
+			override->iterations.push_back(0);
+			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
+			for (int j = 0; j < 10; ++j)
+			{
+				if (id[j] <= 0) break;
+				override->iterations.push_back(id[j]);
+				LogInfo("  Iteration=%d\n", id[j]);
+			}
+		}
+#endif
+	}
+}
+
+static void GetIniSections(IniSections &sections, wchar_t *iniFile)
+{
+	wchar_t *buf, *ptr;
+	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSectionNames
+	// returns 0 instead of the documented (buf_size - 2) in that case.
+	int buf_size = 256;
+	DWORD result;
+
+	sections.clear();
+
+	while (true) {
+		buf = new wchar_t[buf_size];
+		if (!buf)
+			return;
+
+		result = GetPrivateProfileSectionNames(buf, buf_size, iniFile);
+		if (result != buf_size - 2)
+			break;
+
+		delete[] buf;
+		buf_size <<= 1;
+	}
+
+	for (ptr = buf; *ptr; ptr++) {
+		if (sections.count(ptr)) {
+			LogInfoW(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
+			BeepFailure2();
+		}
+		sections.insert(ptr);
+		for (; *ptr; ptr++) {}
+	}
+
+	delete[] buf;
 }
 
 // TODO: Reorder functions in this file to remove the need for this prototype:
@@ -129,6 +323,8 @@ static void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH];
 	wchar_t setting[MAX_PATH];
+	IniSections sections;
+	IniSections::iterator lower, upper, i;
 
 	gInitialized = true;
 
@@ -147,6 +343,8 @@ static void LoadConfigFile()
 		LogInfo("\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
+
+	GetIniSections(sections, iniFile);
 
 	LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
 	LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
@@ -242,6 +440,14 @@ static void LoadConfigFile()
 	}
 
 	// [Rendering]
+
+	// Why [Rendering]? Most of these options seem unrelated to rendering -
+	// if this is a catch-all section, maybe we should rename it to
+	// [Global], or add more fine-grained sections?
+	// Of course - that would break users, so I'm not keen on that idea
+	// unless we still parse rendering for backwards compatibility.
+	//   -DarkStarSword
+
 	GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
 	if (SHADER_PATH[0])
 	{
@@ -281,6 +487,8 @@ static void LoadConfigFile()
 	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
 	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
+	// Default is true to avoid changing behaviour with existing d3dx.ini files:
+	G->COPY_ON_MARK = GetPrivateProfileInt(L"Rendering", L"copy_on_mark", 1, iniFile) == 1;
 	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
 	if (LogFile)
@@ -299,6 +507,7 @@ static void LoadConfigFile()
 		if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
 		if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
 		if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
+		if (G->COPY_ON_MARK) LogInfo("  copy_on_mark=%d\n", G->COPY_ON_MARK);
 		if (G->DumpUsage) LogInfo("  dump_usage=1\n");
 	}
 
@@ -413,7 +622,7 @@ static void LoadConfigFile()
 
 	RegisterHuntingKeyBindings(iniFile);
 
-	RegisterPresetKeyBindings(iniFile);
+	RegisterPresetKeyBindings(sections, iniFile);
 
 
 	// Todo: Not sure this is best spot.
@@ -421,99 +630,8 @@ static void LoadConfigFile()
 	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
 		swscanf_s(setting, L"%f", &G->gTuneStep);
 
-
-	// Shader separation overrides.
-	G->mShaderSeparationMap.clear();
-	G->mShaderIterationMap.clear();
-	G->mShaderIndexBufferFilter.clear();
-	for (int i = 1;; ++i)
-	{
-		LogDebug("Find [ShaderOverride] i=%i\n", i);
-		wchar_t id[] = L"ShaderOverridexxx";
-		_itow_s(i, id + 14, 3, 10);
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
-		unsigned long hashHi, hashLo;
-		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
-		{
-			float separation;
-			swscanf_s(setting, L"%e", &separation);
-			G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = separation;
-			LogDebug(" [ShaderOverride] Shader = %08lx%08lx, separation = %f\n", hashHi, hashLo, separation);
-		}
-		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
-			if (!wcscmp(setting, L"skip"))
-				G->mShaderSeparationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = 10000;
-		}
-		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
-		{
-			int iteration;
-			std::vector<int> iterations;
-			iterations.push_back(0);
-			swscanf_s(setting, L"%d", &iteration);
-			iterations.push_back(iteration);
-			G->mShaderIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-		}
-		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
-		{
-			unsigned long hashHi2, hashLo2;
-			swscanf_s(setting, L"%08lx%08lx", &hashHi2, &hashLo2);
-			G->mShaderIndexBufferFilter[(UINT64(hashHi) << 32) | UINT64(hashLo)].push_back((UINT64(hashHi2) << 32) | UINT64(hashLo2));
-		}
-	}
-
-	// Todo: finish logging all input parameters.
-	LogInfo("  ... missing shader override ini section\n");
-
-	// Texture overrides.
-	G->mTextureStereoMap.clear();
-	G->mTextureTypeMap.clear();
-	G->mTextureIterationMap.clear();
-	for (int i = 1;; ++i)
-	{
-		wchar_t id[] = L"TextureOverridexxx";
-		_itow_s(i, id + 15, 3, 10);
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
-		unsigned long hashHi, hashLo;
-		swscanf_s(setting, L"%08lx%08lx", &hashHi, &hashLo);
-		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-		if (stereoMode >= 0)
-		{
-			G->mTextureStereoMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = stereoMode;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, stereo mode = %d\n", hashHi, hashLo, stereoMode);
-		}
-		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-		if (texFormat >= 0)
-		{
-			G->mTextureTypeMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = texFormat;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, format = %d\n", hashHi, hashLo, texFormat);
-		}
-		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
-		{
-			std::vector<int> iterations;
-			iterations.push_back(0);
-			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
-			for (int j = 0; j < 10; ++j)
-			{
-				if (id[j] <= 0) break;
-				iterations.push_back(id[j]);
-			}
-			G->mTextureIterationMap[(UINT64(hashHi) << 32) | UINT64(hashLo)] = iterations;
-			LogDebug("[TextureOverride] Texture = %08lx%08lx, iterations = %d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", hashHi, hashLo,
-				id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9]);
-		}
-	}
-
-	// Todo: finish logging all input parameters.
-	LogInfo("  ... missing texture override ini section\n");
-
-	// Todo: finish logging all input parameters.
-	LogInfo("  ... missing mouse OverrideSettings ini section\n");
-	LogInfo("  ... missing convergence map ini section\n");
-	LogInfo("-----------------------------------------\n");
+	ParseShaderOverrideSections(sections, iniFile);
+	ParseTextureOverrideSections(sections, iniFile);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.
@@ -1284,7 +1402,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 		_wfopen_s(&fw, fullName, L"ab");
 		fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
 		fclose(fw);
-		Beep(1800, 100);					// Short High beep for for double beep that it's already there.
+		BeepShort();						// Short High beep for for double beep that it's already there.
 		return true;
 	}
 
@@ -1730,12 +1848,12 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 
 	if (success)
 	{
-		Beep(1800, 400);		// High beep for success, to notify it's running fresh fixes.
+		BeepSuccess();			// High beep for success, to notify it's running fresh fixes.
 		LogInfo("> successfully copied Marked shader to ShaderFixes\n");
 	}
 	else
 	{
-		Beep(200, 150);			// Bonk sound for failure.
+		BeepFailure();			// Bonk sound for failure.
 		LogInfo("> FAILED to copy Marked shader to ShaderFixes\n");
 	}
 }
@@ -1754,7 +1872,7 @@ static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 		if (err != D3D11Base::NVAPI_OK)
 		{
 			LogInfo("> screenshot failed, error:%d\n", err);
-			Beep(300, 200); Beep(200, 150);		// Brnk, dunk sound for failure.
+			BeepFailure2();		// Brnk, dunk sound for failure.
 		}
 	}
 }
@@ -1784,12 +1902,12 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 
 		if (success)
 		{
-			Beep(1800, 400);		// High beep for success, to notify it's running fresh fixes.
+			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
 			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
 		}
 		else
 		{
-			Beep(200, 150);			// Bonk sound for failure.
+			BeepFailure();			// Bonk sound for failure.
 			LogInfo("> FAILED to reload shaders from ShaderFixes\n");
 		}
 	}
@@ -1940,7 +2058,8 @@ static void MarkPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 		LogInfo("       vertex shader was compiled from source code %s\n", i->second);
 	}
 	// Copy marked shader to ShaderFixes
-	CopyToFixes(G->mSelectedPixelShader, device);
+	if (G->COPY_ON_MARK)
+		CopyToFixes(G->mSelectedPixelShader, device);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	if (G->DumpUsage) DumpUsage();
 }
@@ -2018,7 +2137,8 @@ static void MarkVertexShader(D3D11Base::ID3D11Device *device, void *private_data
 		LogInfo("       shader was compiled from source code %s\n", i->second);
 	}
 	// Copy marked shader to ShaderFixes
-	CopyToFixes(G->mSelectedVertexShader, device);
+	if (G->COPY_ON_MARK)
+		CopyToFixes(G->mSelectedVertexShader, device);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	if (G->DumpUsage) DumpUsage();
 }
@@ -2138,13 +2258,23 @@ static void TimeoutHuntingBuffers()
 	G->mSelectedVertexShader_IndexBuffer.clear();
 	G->mSelectedIndexBuffer_PixelShader.clear();
 	G->mSelectedIndexBuffer_VertexShader.clear();
-	for (ShaderIterationMap::iterator i = G->mShaderIterationMap.begin(); i != G->mShaderIterationMap.end(); ++i)
-		i->second[0] = 0;
+
+#if 0 /* Iterations are broken since we no longer use present() */
+	// This seems totally bogus - shouldn't we be resetting the iteration
+	// on each new frame, not after hunting timeout? This probably worked
+	// back when RunFrameActions() was called from present(), but I suspect
+	// has been broken ever since that was changed to come from draw(), and
+	// it's not related to hunting buffers so it doesn't belong here:
+	for (ShaderOverrideMap::iterator i = G->mShaderOverrideMap.begin(); i != G->mShaderOverrideMap.end(); ++i)
+		i->second.iterations[0] = 0;
+#endif
 }
 
 // User has requested all shaders be re-enabled
 static void DoneHunting(D3D11Base::ID3D11Device *device, void *private_data)
 {
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	TimeoutHuntingBuffers();
 
 	G->mSelectedRenderTargetPos = 0;

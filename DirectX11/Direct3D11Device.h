@@ -402,6 +402,9 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11Texture2D **ppTexture2D)
 {
+	TextureOverride *textureOverride = NULL;
+	bool override = false;
+
 	LogDebug("ID3D11Device::CreateTexture2D called with parameters\n");
 	if (pDesc) LogDebug("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
@@ -498,26 +501,25 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 	LogDebug("  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
 
 	// Override custom settings?
-	bool override = false;
-	TextureStereoMap::iterator istereo = G->mTextureStereoMap.find(hash);
-	TextureTypeMap::iterator itype = G->mTextureTypeMap.find(hash);
 	D3D11Base::NVAPI_STEREO_SURFACECREATEMODE oldMode = (D3D11Base::NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (D3D11Base::NVAPI_STEREO_SURFACECREATEMODE) - 1;
 	D3D11Base::D3D11_TEXTURE2D_DESC newDesc = *pDesc;
-	if (istereo != G->mTextureStereoMap.end() || itype != G->mTextureTypeMap.end())
-	{
+
+	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
+	if (i != G->mTextureOverrideMap.end()) {
+		textureOverride = &i->second;
+
 		override = true;
-		if (istereo != G->mTextureStereoMap.end())
-			newMode = (D3D11Base::NVAPI_STEREO_SURFACECREATEMODE) istereo->second;
+		if (textureOverride->stereoMode != -1)
+			newMode = (D3D11Base::NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
+#if 0 /* Iterations are broken since we no longer use present() */
 		// Check iteration.
-		TextureIterationMap::iterator j = G->mTextureIterationMap.find(hash);
-		if (j != G->mTextureIterationMap.end())
-		{
-			std::vector<int>::iterator k = j->second.begin();
-			int currentIteration = j->second[0] = j->second[0] + 1;
+		if (!textureOverride->iterations.empty()) {
+			std::vector<int>::iterator k = textureOverride->iterations.begin();
+			int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
 			LogInfo("  current iteration = %d\n", currentIteration);
 
 			override = false;
-			while (++k != j->second.end())
+			while (++k != textureOverride->iterations.end())
 			{
 				if (currentIteration == *k)
 				{
@@ -530,6 +532,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				LogInfo("  override skipped\n");
 			}
 		}
+#endif
 	}
 	if (pDesc && G->gSurfaceSquareCreateMode >= 0 && pDesc->Width == pDesc->Height && (pDesc->Usage & D3D11Base::D3D11_USAGE_IMMUTABLE) == 0)
 	{
@@ -549,11 +552,11 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				LogInfo("    call failed.\n");
 			}
 		}
-		if (itype != G->mTextureTypeMap.end())
+		if (textureOverride && textureOverride->format != -1)
 		{
-			LogInfo("  setting custom format to %d\n", itype->second);
+			LogInfo("  setting custom format to %d\n", textureOverride->format);
 
-			newDesc.Format = (D3D11Base::DXGI_FORMAT) itype->second;
+			newDesc.Format = (D3D11Base::DXGI_FORMAT) textureOverride->format;
 		}
 	}
 	HRESULT hr = GetD3D11Device()->CreateTexture2D(&newDesc, pInitialData, ppTexture2D);

@@ -3,6 +3,9 @@
 #include "Main.h"
 #include "globals.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 OverrideTransition CurrentTransition;
 OverrideGlobalSave OverrideSave;
 
@@ -69,6 +72,190 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	release_transition = GetPrivateProfileInt(section, L"release_transition", 0, ini);
 	if (release_transition)
 		LogInfo("  release_transition=%ims\n", release_transition);
+
+	if (GetPrivateProfileString(section, L"transition_type", 0, buf, MAX_PATH, ini)) {
+		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
+		if (transition_type == TransitionType::INVALID) {
+			LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
+			transition_type = TransitionType::COSINE;
+		} else {
+			LogInfoW(L"  transition_type=%s\n", buf);
+		}
+	}
+
+	if (GetPrivateProfileString(section, L"release_transition_type", 0, buf, MAX_PATH, ini)) {
+		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
+		if (release_transition_type == TransitionType::INVALID) {
+			LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
+			release_transition_type = TransitionType::COSINE;
+		} else {
+			LogInfoW(L"  release_transition_type=%s\n", buf);
+		}
+	}
+}
+
+struct KeyOverrideCycleParam
+{
+	wchar_t *cur;
+	wchar_t buf[MAX_PATH];
+	wchar_t *ptr;
+	bool done;
+
+	KeyOverrideCycleParam() :
+		cur(L""),
+		ptr(buf),
+		done(false)
+	{}
+
+	bool next()
+	{
+		wchar_t *tmp;
+
+		if (done)
+			return false;
+
+		// Skip over whitespace:
+		for (; *ptr == L' '; ptr++) {}
+
+		// Mark start of current entry:
+		cur = ptr;
+
+		// Scan until the next comma or end of string:
+		for (; *ptr && *ptr != L','; ptr++) {}
+
+		// Scan backwards over any trailing whitespace in this entry:
+		for (tmp = ptr - 1; ptr >= cur && *ptr == L' '; ptr--) {}
+
+		// If it's a comma advance to the next item, otherwise mark us as done:
+		if (*ptr == L',')
+			ptr++;
+		else
+			done = true;
+
+		// NULL terminate this entry:
+		*(tmp + 1) = L'\0';
+
+		return true;
+	}
+
+	void log(wchar_t *name)
+	{
+		if (*cur)
+			LogInfoW(L" %s=%s", name, cur);
+	}
+
+	float as_float(float default)
+	{
+		float val;
+		int n;
+
+		n = swscanf_s(cur, L"%f", &val);
+		if (!n || n == EOF) {
+			// Blank entry
+			return default;
+		}
+		return val;
+	}
+
+	int as_int(int default)
+	{
+		int val;
+		int n;
+
+		n = swscanf_s(cur, L"%i", &val);
+		if (!n || n == EOF) {
+			// Blank entry
+			return default;
+		}
+		return val;
+	}
+
+	template <class T1, class T2>
+	T2 as_enum(EnumName_t<T1, T2> *enum_names, T2 default)
+	{
+		T2 val;
+
+		if (*cur == L'\0') {
+			// Blank entry
+			return default;
+		}
+
+		val = lookup_enum_val<wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
+		if (val == (T2)-1) {
+			LogInfoW(L"WARNING: Unmatched value \"%s\"\n", cur);
+			return default;
+		}
+
+		return val;
+	}
+};
+
+void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
+{
+	struct KeyOverrideCycleParam x, y, z, w, separation, convergence;
+	struct KeyOverrideCycleParam transition, release_transition;
+	struct KeyOverrideCycleParam transition_type, release_transition_type;
+	bool not_done = true;
+	int i;
+
+	GetPrivateProfileString(section, L"x", 0, x.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"y", 0, y.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"z", 0, z.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"w", 0, w.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"separation", 0, separation.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"convergence", 0, convergence.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"transition", 0, transition.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"release_transition", 0, release_transition.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"transition_type", 0, transition_type.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH, ini);
+
+	for (i = 1; not_done; i++) {
+		not_done = false;
+
+		not_done = x.next() || not_done;
+		not_done = y.next() || not_done;
+		not_done = z.next() || not_done;
+		not_done = w.next() || not_done;
+		not_done = separation.next() || not_done;
+		not_done = convergence.next() || not_done;
+		not_done = transition.next() || not_done;
+		not_done = release_transition.next() || not_done;
+		not_done = transition_type.next() || not_done;
+		not_done = release_transition_type.next() || not_done;
+
+		if (!not_done)
+			break;
+
+		LogInfo("  Cycle %i:", i);
+		x.log(L"x");
+		y.log(L"y");
+		z.log(L"z");
+		w.log(L"w");
+		separation.log(L"separation");
+		convergence.log(L"convergence");
+		transition.log(L"transition");
+		release_transition.log(L"release_transition");
+		transition_type.log(L"transition_type");
+		release_transition_type.log(L"release_transition_type");
+		LogInfo("\n");
+
+		presets.push_back(KeyOverride(KeyOverrideType::CYCLE,
+			x.as_float(FLT_MAX), y.as_float(FLT_MAX),
+			z.as_float(FLT_MAX), w.as_float(FLT_MAX),
+			separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
+			transition.as_int(0), release_transition.as_int(0),
+			transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			release_transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR)));
+	}
+}
+
+void KeyOverrideCycle::DownEvent(D3D11Base::ID3D11Device *device)
+{
+	if (presets.empty())
+		return;
+
+	presets[current].Activate(device);
+	current = (current + 1) % presets.size();
 }
 
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
@@ -115,7 +302,8 @@ void Override::Activate(D3D11Base::ID3D11Device *device)
 			mOverrideParams.y,
 			mOverrideParams.z,
 			mOverrideParams.w,
-			transition);
+			transition,
+			transition_type);
 }
 
 void Override::Deactivate(D3D11Base::ID3D11Device *device)
@@ -129,7 +317,8 @@ void Override::Deactivate(D3D11Base::ID3D11Device *device)
 			mSavedParams.y,
 			mSavedParams.z,
 			mSavedParams.w,
-			release_transition);
+			release_transition,
+			release_transition_type);
 }
 
 void Override::Toggle(D3D11Base::ID3D11Device *device)
@@ -161,19 +350,21 @@ void KeyOverride::UpEvent(D3D11Base::ID3D11Device *device)
 }
 
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
-		char *name, float current, float val, ULONGLONG now, int time)
+		char *name, float current, float val, ULONGLONG now, int time,
+		TransitionType transition_type)
 {
 	LogInfo(" %s: %#.2g -> %#.2g", name, current, val);
 	transition->start = current;
 	transition->target = val;
 	transition->activation_time = now;
 	transition->time = time;
+	transition->transition_type = transition_type;
 }
 
 void OverrideTransition::ScheduleTransition(D3D11Base::ID3D11Device *device,
 		float target_separation, float target_convergence, float
 		target_x, float target_y, float target_z, float target_w,
-		int time)
+		int time, TransitionType transition_type)
 {
 	ULONGLONG now = GetTickCount64();
 	D3D11Base::NvAPI_Status err;
@@ -185,29 +376,32 @@ void OverrideTransition::ScheduleTransition(D3D11Base::ID3D11Device *device,
 		return;
 
 	LogInfo(" Override");
-	if (time)
+	if (time) {
 		LogInfo(" transition: %ims", time);
+		LogInfoW(L" transition_type: %s",
+			lookup_enum_name<wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
+	}
 
 	if (target_separation != FLT_MAX) {
 		err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
-		_ScheduleTransition(&separation, "separation", current, target_separation, now, time);
+		_ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
 	}
 	if (target_convergence != FLT_MAX) {
 		err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
-		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time);
+		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
 	}
 	if (target_x != FLT_MAX)
-		_ScheduleTransition(&x, "x", G->iniParams.x, target_x, now, time);
+		_ScheduleTransition(&x, "x", G->iniParams.x, target_x, now, time, transition_type);
 	if (target_y != FLT_MAX)
-		_ScheduleTransition(&y, "y", G->iniParams.y, target_y, now, time);
+		_ScheduleTransition(&y, "y", G->iniParams.y, target_y, now, time, transition_type);
 	if (target_z != FLT_MAX)
-		_ScheduleTransition(&z, "z", G->iniParams.z, target_z, now, time);
+		_ScheduleTransition(&z, "z", G->iniParams.z, target_z, now, time, transition_type);
 	if (target_w != FLT_MAX)
-		_ScheduleTransition(&w, "w", G->iniParams.w, target_w, now, time);
+		_ScheduleTransition(&w, "w", G->iniParams.w, target_w, now, time, transition_type);
 	LogInfo("\n");
 }
 
@@ -232,7 +426,12 @@ static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONG
 		return transition->target;
 	}
 
-	return transition->target * percent + transition->start * (1.0f - percent);
+	if (transition->transition_type == TransitionType::COSINE)
+		percent = (float)((1.0 - cos(percent * M_PI)) / 2.0);
+
+	percent = transition->target * percent + transition->start * (1.0f - percent);
+
+	return percent;
 }
 
 void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)

@@ -3,12 +3,39 @@
 #include <DirectXMath.h>
 #include "input.h"
 #include "Main.h"
+#include <vector>
+#include "../util.h"
 
-class Override
+enum KeyOverrideType {
+	ACTIVATE,
+	HOLD,
+	TOGGLE,
+	CYCLE,
+};
+
+enum TransitionType {
+	INVALID = -1,
+	LINEAR,
+	COSINE,
+};
+static EnumName_t<wchar_t *, TransitionType> TransitionTypeNames[] = {
+	{L"linear", TransitionType::LINEAR},
+	{L"cosine", TransitionType::COSINE},
+	{NULL, TransitionType::INVALID} // End of list marker
+};
+
+class OverrideBase
+{
+public:
+	virtual void ParseIniSection(LPCWSTR section, LPCWSTR ini) = 0;
+};
+
+class Override : public virtual OverrideBase
 {
 private:
 	bool active;
 	int transition, release_transition;
+	TransitionType transition_type, release_transition_type;
 
 public:
 	DirectX::XMFLOAT4 mOverrideParams;
@@ -20,21 +47,31 @@ public:
 	float mUserConvergence;
 
 	Override();
+	Override(float x, float y, float z, float w, float separation,
+		 float convergence, int transition, int release_transition,
+		 TransitionType transition_type,
+		 TransitionType release_transition_type) :
+		mOverrideParams({x, y, z, w}),
+		mOverrideSeparation(separation),
+		mOverrideConvergence(convergence),
+		transition(transition),
+		release_transition(release_transition),
+		transition_type(transition_type),
+		release_transition_type(release_transition_type)
+	{}
 
-	void ParseIniSection(LPCWSTR section, LPCWSTR ini);
+	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
 
 	void Activate(D3D11Base::ID3D11Device *device);
 	void Deactivate(D3D11Base::ID3D11Device *device);
 	void Toggle(D3D11Base::ID3D11Device *device);
 };
 
-enum KeyOverrideType {
-	ACTIVATE,
-	HOLD,
-	TOGGLE,
+class KeyOverrideBase : public virtual OverrideBase, public InputListener
+{
 };
 
-class KeyOverride : public InputListener, public Override
+class KeyOverride : public KeyOverrideBase, public Override
 {
 private:
 	enum KeyOverrideType type;
@@ -44,9 +81,34 @@ public:
 		Override(),
 		type(type)
 	{}
+	KeyOverride(enum KeyOverrideType type, float x, float y, float z,
+			float w, float separation, float convergence,
+			int transition, int release_transition,
+			TransitionType transition_type,
+			TransitionType release_transition_type) :
+		Override(x, y, z, w, separation, convergence, transition,
+				release_transition, transition_type,
+				release_transition_type),
+		type(type)
+	{}
 
 	void DownEvent(D3D11Base::ID3D11Device *device);
 	void UpEvent(D3D11Base::ID3D11Device *device);
+#pragma warning(suppress : 4250) // Suppress ParseIniSection inheritance via dominance warning
+};
+
+class KeyOverrideCycle : public KeyOverrideBase
+{
+private:
+	std::vector<class KeyOverride> presets;
+	int current;
+public:
+	KeyOverrideCycle() :
+		current(0)
+	{}
+
+	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
+	void DownEvent(D3D11Base::ID3D11Device *device);
 };
 
 struct OverrideTransitionParam
@@ -55,12 +117,14 @@ struct OverrideTransitionParam
 	float target;
 	ULONGLONG activation_time;
 	int time;
+	TransitionType transition_type;
 
 	OverrideTransitionParam() :
 		start(FLT_MAX),
 		target(FLT_MAX),
 		activation_time(0),
-		time(-1)
+		time(-1),
+		transition_type(TransitionType::LINEAR)
 	{}
 };
 
@@ -72,7 +136,7 @@ public:
 	void ScheduleTransition(D3D11Base::ID3D11Device *device,
 			float target_separation, float target_convergence,
 			float target_x, float target_y, float target_z,
-			float target_w, int time);
+			float target_w, int time, TransitionType transition_type);
 	void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device);
 };
 

@@ -583,15 +583,18 @@ struct DrawContext
 	bool skip;
 	bool override;
 	float oldSeparation;
+	float oldConvergence;
 };
 static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 {
 	DrawContext data;
-	float separationValue;
+	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
 	data.override = false;
-	data.skip = G->mBlockingMode;
+	data.oldSeparation = FLT_MAX;
+	data.oldConvergence = FLT_MAX;
+	data.skip = G->mBlockingMode; // mBlockingMode doesn't appear that it can ever be set - hardcoded hack?
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting)
@@ -667,28 +670,33 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	}
 
 	// Override settings?
-	ShaderSeparationMap::iterator i = G->mShaderSeparationMap.find(G->mCurrentVertexShader);
-	if (i == G->mShaderSeparationMap.end()) i = G->mShaderSeparationMap.find(G->mCurrentPixelShader);
-	if (i != G->mShaderSeparationMap.end())
-	{
-		LogDebug("  seperation override found for shader\n");
+	ShaderOverrideMap::iterator i = G->mShaderOverrideMap.find(G->mCurrentVertexShader);
+	if (i == G->mShaderOverrideMap.end())
+		i = G->mShaderOverrideMap.find(G->mCurrentPixelShader);
 
-		data.override = true;
-		separationValue = i->second;
-		if (separationValue == 10000)
-			data.skip = true;
+	if (i != G->mShaderOverrideMap.end()) {
+		ShaderOverride *shaderOverride = &i->second;
+
+		LogDebug("  override found for shader\n");
+
+		separationValue = shaderOverride->separation;
+		if (separationValue != FLT_MAX)
+			data.override = true;
+		convergenceValue = shaderOverride->convergence;
+		if (convergenceValue != FLT_MAX)
+			data.override = true;
+		data.skip = shaderOverride->skip;
+#if 0 /* Iterations are broken since we no longer use present() */
 		// Check iteration.
-		ShaderIterationMap::iterator j = G->mShaderIterationMap.find(i->first);
-		if (j != G->mShaderIterationMap.end())
-		{
-			std::vector<int>::iterator k = j->second.begin();
-			int currentIteration = *k = *k + 1;
-			LogDebug("  current iteration = %d\n", currentIteration);
+		if (!shaderOverride->iterations.empty()) {
+			std::vector<int>::iterator k = shaderOverride->iterations.begin();
+			int currentiterations = *k = *k + 1;
+			LogDebug("  current iterations = %d\n", currentiterations);
 
 			data.override = false;
-			while (++k != j->second.end())
+			while (++k != shaderOverride->iterations.end())
 			{
-				if (currentIteration == *k)
+				if (currentiterations == *k)
 				{
 					data.override = true;
 					break;
@@ -699,12 +707,11 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 				LogDebug("  override skipped\n");
 			}
 		}
+#endif
 		// Check index buffer filter.
-		ShaderIndexBufferFilter::iterator k = G->mShaderIndexBufferFilter.find(i->first);
-		if (k != G->mShaderIndexBufferFilter.end())
-		{
+		if (!shaderOverride->indexBufferFilter.empty()) {
 			bool found = false;
-			for (vector<UINT64>::iterator l = k->second.begin(); l != k->second.end(); ++l)
+			for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
 				if (G->mCurrentIndexBuffer == *l)
 				{
 					found = true;
@@ -718,22 +725,34 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 		}
 	}
 
-	if (data.override)
-	{
+	if (data.override) {
 		D3D11Wrapper::ID3D11Device *device;
 		context->GetDevice(&device);
-		if (device->mStereoHandle)
-		{
-			LogDebug("  setting custom separation value\n");
+		if (device->mStereoHandle) {
+			if (separationValue != FLT_MAX) {
+				LogDebug("  setting custom separation value\n");
 
-			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &data.oldSeparation))
-			{
-				LogDebug("    Stereo_GetSeparation failed.\n");
+				if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &data.oldSeparation))
+				{
+					LogDebug("    Stereo_GetSeparation failed.\n");
+				}
+				D3D11Wrapper::NvAPIOverride();
+				if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
+				{
+					LogDebug("    Stereo_SetSeparation failed.\n");
+				}
 			}
-			D3D11Wrapper::NvAPIOverride();
-			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
-			{
-				LogDebug("    Stereo_SetSeparation failed.\n");
+
+			if (convergenceValue != FLT_MAX) {
+				LogDebug("  setting custom convergence value\n");
+
+				if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &data.oldConvergence)) {
+					LogDebug("    Stereo_GetConvergence failed.\n");
+				}
+				D3D11Wrapper::NvAPIOverride();
+				if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetConvergence(device->mStereoHandle, convergenceValue * data.oldConvergence)) {
+					LogDebug("    Stereo_SetConvergence failed.\n");
+				}
 			}
 		}
 		device->Release();
@@ -745,18 +764,27 @@ static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *cont
 {
 	if (data.skip)
 		return;
-	if (data.override)
-	{
+
+	if (data.override) {
 		D3D11Wrapper::ID3D11Device *device;
 		context->GetDevice(&device);
-		if (device->mStereoHandle)
-		{
-			D3D11Wrapper::NvAPIOverride();
-			if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, data.oldSeparation))
-			{
-				LogDebug("    Stereo_SetSeparation failed.\n");
+
+		if (device->mStereoHandle) {
+			if (data.oldSeparation != FLT_MAX) {
+				D3D11Wrapper::NvAPIOverride();
+				if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, data.oldSeparation)) {
+					LogDebug("    Stereo_SetSeparation failed.\n");
+				}
+			}
+
+			if (data.oldConvergence != FLT_MAX) {
+				D3D11Wrapper::NvAPIOverride();
+				if (D3D11Base::NVAPI_OK != D3D11Base::NvAPI_Stereo_SetConvergence(device->mStereoHandle, data.oldConvergence)) {
+					LogDebug("    Stereo_SetConvergence failed.\n");
+				}
 			}
 		}
+
 		device->Release();
 	}
 

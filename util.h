@@ -23,6 +23,55 @@ static wchar_t *RightStripW(wchar_t *buf)
 	return end;
 }
 
+static void BeepSuccess() {
+	// High beep for success
+	Beep(1800, 400);
+}
+
+static void BeepShort() {
+	// Short High beep
+	Beep(1800, 100);
+}
+
+static void BeepFailure() {
+	// Bonk sound for failure.
+	Beep(200, 150);
+}
+
+static void BeepFailure2() {
+	// Brnk, dunk sound for failure.
+	Beep(300, 200); Beep(200, 150);
+}
+
+template <class T1, class T2>
+struct EnumName_t {
+	T1 name;
+	T2 val;
+};
+
+// To use this function be sure to terminate an EnumName_t list with {NULL, 0}
+// as it cannot use ArraySize on passed in arrays.
+template <class T1, class T2>
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 default)
+{
+	for (; enum_names->name; enum_names++) {
+		if (!_wcsicmp(name, enum_names->name))
+			return enum_names->val;
+	}
+
+	return default;
+}
+template <class T1, class T2>
+static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
+{
+	for (; enum_names->name; enum_names++) {
+		if (val == enum_names->val)
+			return enum_names->name;
+	}
+
+	return NULL;
+}
+
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
 static char *DXGIFormats[] = {
 	"UNKNOWN",
