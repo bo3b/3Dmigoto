@@ -37,21 +37,19 @@ REM Before doing a build, let's bump the version number of the tool.
 REM This is stored in the version.h file at the project root, and is used 
 REM during resource file compiles to build the proper output in the DLLs.
 REM
-REM This awesome batch sequence to auto-increment the VERSION_REVISION is courtesy of
+REM This awesome batch sequence to auto-increment VERSION_REVISION is courtesy of
 REM   *** TsaebehT ***
 
 For /F "tokens=1,2 delims=[]" %%? in ('Type Version.h ^| Find /V /N ""') do (
 Set "Line=%%@"
-if "!Line:~0,21!" == "#define VERSION_MAJOR" (
-For /F "tokens=3" %%? in ("%%@") do (Set "Major=%%?")
-)
-if "!Line:~0,21!" == "#define VERSION_MINOR" (
-For /F "tokens=3" %%? in ("%%@") do (Set "Minor=%%?")
-)
-if "!Line:~0,24!" == "#define VERSION_REVISION" (
-For /F "tokens=3" %%? in ("%%@") do (Set /A "NewRev=%%?+1","OldRev=%%?")
+if "!Line:~0,16!" == "#define VERSION_" (
+For /F "tokens=3,4 delims=_ " %%? in ("%%@") do (
+if "%%?" == "MAJOR" Set "Major=%%@"
+if "%%?" == "MINOR" Set "Minor=%%@"
+if "%%?" == "REVISION" (
+Set /A "NewRev=%%@+1","OldRev=%%@"
 Call Set "Line=%%Line:!OldRev!=!NewRev!%%"
-)
+)))
 Set "Line%%?=!Line!"&&Set "Count=%%?"
 )
 
