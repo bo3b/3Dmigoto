@@ -2675,7 +2675,7 @@ public:
 						{
 							sprintf(buffer, "s%d_s", bufIndex);
 							mSamplerNames[bufIndex] = buffer;
-							sprintf(buffer, "SamplerState %s : register(s%d);\n\n", mSamplerNames[bufIndex], bufIndex);
+							sprintf(buffer, "SamplerState %s : register(s%d);\n\n", mSamplerNames[bufIndex].c_str(), bufIndex);
 							mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 							mCodeStartPos += strlen(buffer);
 						}
@@ -2687,7 +2687,7 @@ public:
 						{
 							sprintf(buffer, "s%d_s", bufIndex);
 							mSamplerComparisonNames[bufIndex] = buffer;
-							sprintf(buffer, "SamplerComparisonState %s : register(s%d);\n\n", mSamplerComparisonNames[bufIndex], bufIndex);
+							sprintf(buffer, "SamplerComparisonState %s : register(s%d);\n\n", mSamplerComparisonNames[bufIndex].c_str(), bufIndex);
 							mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 							mCodeStartPos += strlen(buffer);
 						}
