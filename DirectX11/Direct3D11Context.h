@@ -1235,8 +1235,10 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::OMSetRenderTargets(THIS_
 		G->mCurrentDepthTarget = NULL;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
-		for (UINT i = 0; i < NumViews; ++i)
-			RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+		if (ppRenderTargetViews) {
+			for (UINT i = 0; i < NumViews; ++i)
+				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+		}
 
 		RecordDepthStencil(pDepthStencilView);
 	}

@@ -38,7 +38,7 @@ static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
 		DWORD dwFlags, LPCWSTR magic_name, LPCWSTR library)
 {
 	WCHAR systemPath[MAX_PATH];
-	GetSystemDirectoryW(systemPath, sizeof(systemPath));
+	GetSystemDirectoryW(systemPath, ARRAYSIZE(systemPath));
 	wcscat_s(systemPath, MAX_PATH, L"\\");
 	wcscat_s(systemPath, MAX_PATH, library);
 

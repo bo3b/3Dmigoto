@@ -631,7 +631,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateShaderResourceView(THIS_
 	HRESULT hr = GetD3D11Device()->CreateShaderResourceView(pResource, pDesc, ppSRView);
 
 	// Check for depth buffer view.
-	if (hr == S_OK && G->ZBufferHashToInject)
+	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
 		map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator i = G->mTexture2D_ID.find((D3D11Base::ID3D11Texture2D *) pResource);
 		if (i != G->mTexture2D_ID.end() && i->second == G->ZBufferHashToInject)
@@ -811,7 +811,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			else
 			{
 				pCodeSize = codeSize;
-				LogInfo("    Bytecode loaded. Size = %d\n", pCodeSize);
+				LogInfo("    Bytecode loaded. Size = %Iu\n", pCodeSize);
 				CloseHandle(f);
 
 				foundShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
@@ -1337,7 +1337,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			LogInfo("  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1401,12 +1401,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			LogInfo("  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, (ppGeometryShader ? *ppGeometryShader : NULL));
 
 	return hr;
 }
@@ -1435,7 +1435,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShaderWithStreamOutput(TH
 
 	HRESULT hr = GetD3D11Device()->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
 		NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppGeometryShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, (ppGeometryShader ? *ppGeometryShader : NULL));
 
 	return hr;
 }
@@ -1561,7 +1561,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			LogInfo("  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1625,12 +1625,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			LogInfo("  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppHullShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, (ppHullShader ? *ppHullShader : NULL));
 
 	return hr;
 }
@@ -1689,12 +1689,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			LogInfo("  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppDomainShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, (ppDomainShader ? *ppDomainShader : NULL));
 
 	return hr;
 }
@@ -1753,12 +1753,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
 		{
-			LogInfo("  shader was compiled from source code %s\n", i->second);
+			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppComputeShader);
+	LogInfo("  returns result = %x, handle = %p\n", hr, (ppComputeShader ? *ppComputeShader : NULL));
 
 	return hr;
 }
@@ -1867,7 +1867,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDeferredContext(THIS_
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
-	*ppDeferredContext = wrapper;
+	if (ppDeferredContext)
+		*ppDeferredContext = wrapper;
 
 	LogInfo("  returns result = %x, handle = %p, wrapper = %p\n", ret, origContext, wrapper);
 

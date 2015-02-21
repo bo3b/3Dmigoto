@@ -385,13 +385,13 @@ void OverrideTransition::ScheduleTransition(D3D11Base::ID3D11Device *device,
 	if (target_separation != FLT_MAX) {
 		err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
 		if (err != D3D11Base::NVAPI_OK)
-			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+			LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 		_ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
 	}
 	if (target_convergence != FLT_MAX) {
 		err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
 		if (err != D3D11Base::NVAPI_OK)
-			LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+			LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
 	}
 	if (target_x != FLT_MAX)
@@ -453,7 +453,7 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 		D3D11Wrapper::NvAPIOverride();
 		err = D3D11Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != D3D11Base::NVAPI_OK)
-			LogDebug("    Stereo_SetSeparation failed: %#.2f\n", err);
+			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
 
 	val = _UpdateTransition(&convergence, now);
@@ -463,7 +463,7 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 		D3D11Wrapper::NvAPIOverride();
 		err = D3D11Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != D3D11Base::NVAPI_OK)
-			LogDebug("    Stereo_SetConvergence failed: %#.2f\n", err);
+			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
 
 	params.x = _UpdateTransition(&x, now);
@@ -525,7 +525,7 @@ void OverrideGlobalSave::Save(D3D11Base::ID3D11Device *device, Override *preset)
 		} else {
 			err = D3D11Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
 			if (err != D3D11Base::NVAPI_OK) {
-				LogDebug("    Stereo_GetSeparation failed: %#.2f\n", err);
+				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 			}
 		}
 
@@ -539,7 +539,7 @@ void OverrideGlobalSave::Save(D3D11Base::ID3D11Device *device, Override *preset)
 		} else {
 			err = D3D11Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
 			if (err != D3D11Base::NVAPI_OK) {
-				LogDebug("    Stereo_GetConvergence failed: %#.2f\n", err);
+				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 			}
 		}
 

@@ -454,7 +454,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSSetViewports(THIS_
 		{
 			for (UINT i = 0; i < NumViewports; ++i)
 			{
-				LogInfo("  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n",
+				LogInfo("  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n", i,
 					pViewports[i].TopLeftX, pViewports[i].TopLeftY, pViewports[i].Width,
 					pViewports[i].Height, pViewports[i].MinDepth, pViewports[i].MaxDepth);
 			}
@@ -857,7 +857,7 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D10Device::RSGetViewports(THIS_
 		{
 			for (UINT i = 0; i < *NumViewports; ++i)
 			{
-				LogInfo("  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n",
+				LogInfo("  viewport #%d: TopLeft=(%d,%d), Width=%d, Height=%d, MinDepth=%f, MaxDepth=%f\n", i,
 					pViewports[i].TopLeftX, pViewports[i].TopLeftY, pViewports[i].Width,
 					pViewports[i].Height, pViewports[i].MinDepth, pViewports[i].MaxDepth);
 			}
@@ -956,7 +956,8 @@ STDMETHODIMP D3D11Wrapper::ID3D10Device::CreateTexture2D(THIS_
 	LogInfo("ID3D10Device::CreateTexture2D called with\n");
 	LogInfo("  Width = %d, Height = %d\n", pDesc->Width, pDesc->Height);
 	LogInfo("  MipLevels = %d, ArraySize = %d\n", pDesc->MipLevels, pDesc->ArraySize);
-	LogInfo("  Format = %x, SampleDesc = %x\n", pDesc->Format, pDesc->SampleDesc);
+	LogInfo("  Format = %x, SampleDesc.Count = %u, SampleDesc.Quality = %u\n",
+			pDesc->Format, pDesc->SampleDesc.Count, pDesc->SampleDesc.Quality);
 	
 	return m_pDevice->CreateTexture2D(pDesc, pInitialData, ppTexture2D);
 }
