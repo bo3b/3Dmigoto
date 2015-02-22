@@ -1053,7 +1053,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
 				if (!errorOccurred)
 				{
-					LogInfo("    compiling fixed HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
+					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
 
 					D3D11Base::ID3DBlob *pErrorMsgs;
 					D3D11Base::ID3DBlob *pCompiledOutput = 0;
@@ -1164,7 +1164,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			if (!errorOccurred)
 			{
 				// Compile replacement.
-				LogInfo("    compiling zero HLSL code with shader model %s, size = %d\n", shaderModel.c_str(), decompiledCode.size());
+				LogInfo("    compiling zero HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
 
 				D3D11Base::ID3DBlob *pErrorMsgs;
 				D3D11Base::ID3DBlob *pCompiledOutput = 0;
@@ -1223,7 +1223,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11VertexShader **ppVertexShader)
 {
-	LogInfo("ID3D11Device::CreateVertexShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+	LogInfo("ID3D11Device::CreateVertexShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1357,7 +1357,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateGeometryShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11GeometryShader **ppGeometryShader)
 {
-	LogInfo("ID3D11Device::CreateGeometryShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateGeometryShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1450,7 +1450,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11PixelShader **ppPixelShader)
 {
-	LogInfo("ID3D11Device::CreatePixelShader called with BytecodeLength = %d, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+	LogInfo("ID3D11Device::CreatePixelShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1581,7 +1581,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateHullShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11HullShader **ppHullShader)
 {
-	LogInfo("ID3D11Device::CreateHullShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateHullShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1645,7 +1645,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateDomainShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11DomainShader **ppDomainShader)
 {
-	LogInfo("ID3D11Device::CreateDomainShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateDomainShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1709,7 +1709,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateComputeShader(THIS_
 	/* [annotation] */
 	__out_opt  D3D11Base::ID3D11ComputeShader **ppComputeShader)
 {
-	LogInfo("ID3D11Device::CreateComputeShader called with BytecodeLength = %d, handle = %p\n", BytecodeLength, pShaderBytecode);
+	LogInfo("ID3D11Device::CreateComputeShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
