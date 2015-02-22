@@ -447,14 +447,6 @@ static void LoadConfigFile()
 	}
 
 	// [Rendering]
-
-	// Why [Rendering]? Most of these options seem unrelated to rendering -
-	// if this is a catch-all section, maybe we should rename it to
-	// [Global], or add more fine-grained sections?
-	// Of course - that would break users, so I'm not keen on that idea
-	// unless we still parse rendering for backwards compatibility.
-	//   -DarkStarSword
-
 	GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
 	if (SHADER_PATH[0])
 	{
@@ -494,8 +486,6 @@ static void LoadConfigFile()
 	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
 	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
-	// Default is true to avoid changing behaviour with existing d3dx.ini files:
-	G->COPY_ON_MARK = GetPrivateProfileInt(L"Rendering", L"copy_on_mark", 1, iniFile) == 1;
 	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
 	if (LogFile)
@@ -514,7 +504,6 @@ static void LoadConfigFile()
 		if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
 		if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
 		if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
-		if (G->COPY_ON_MARK) LogInfo("  copy_on_mark=%d\n", G->COPY_ON_MARK);
 		if (G->DumpUsage) LogInfo("  dump_usage=1\n");
 	}
 
@@ -2067,8 +2056,7 @@ static void MarkPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 		LogInfo("       vertex shader was compiled from source code %s\n", i->second.c_str());
 	}
 	// Copy marked shader to ShaderFixes
-	if (G->COPY_ON_MARK)
-		CopyToFixes(G->mSelectedPixelShader, device);
+	CopyToFixes(G->mSelectedPixelShader, device);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	if (G->DumpUsage) DumpUsage();
 }
@@ -2146,8 +2134,7 @@ static void MarkVertexShader(D3D11Base::ID3D11Device *device, void *private_data
 		LogInfo("       shader was compiled from source code %s\n", i->second.c_str());
 	}
 	// Copy marked shader to ShaderFixes
-	if (G->COPY_ON_MARK)
-		CopyToFixes(G->mSelectedVertexShader, device);
+	CopyToFixes(G->mSelectedVertexShader, device);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	if (G->DumpUsage) DumpUsage();
 }
