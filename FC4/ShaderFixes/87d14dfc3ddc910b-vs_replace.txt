@@ -167,8 +167,11 @@ void main(
 // Push flame backwards to line up with repair tool. This adjusts the depth
 // independently of scale (xyz scale countered by w depth adjustment), and was
 // the only solution I could find that works independently of convergence.
-o0 *= 2.4; // Best for bright white
-//o0 *= 2.8; // Better for pilot light
+float4 params = IniParams.Load(0);
+if (params.z == 1)
+	o0 *= 2.4; // Best for bright white
+else
+	o0 *= 2.8; // Better for pilot light
 //o0 *= 2.5;
 
   return;
