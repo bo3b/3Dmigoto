@@ -95,7 +95,7 @@ IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
 
 void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 {
-	enum KeyOverrideType type;
+	KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
 	KeyOverrideBase *preset;
@@ -119,17 +119,13 @@ void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 			// XXX: hold & toggle types will restore the previous
 			// settings on release - there's possibly also another
 			// use case for setting a specific profile instead.
-			if (!_wcsicmp(buf, L"hold")) {
-				type = KeyOverrideType::HOLD;
-				LogInfo("  type=hold\n");
-			} else if (!_wcsicmp(buf, L"toggle")) {
-				type = KeyOverrideType::TOGGLE;
-				LogInfo("  type=toggle\n");
-			} else if (!_wcsicmp(buf, L"cycle")) {
-				type = KeyOverrideType::CYCLE;
-				LogInfo("  type=cycle\n");
-			} else {
+			type = lookup_enum_val<wchar_t *, KeyOverrideType>
+				(KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
+			if (type == KeyOverrideType::INVALID) {
 				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
+				BeepFailure2();
+			} else {
+				LogInfoW(L"  type=%s\n", buf);
 			}
 		}
 

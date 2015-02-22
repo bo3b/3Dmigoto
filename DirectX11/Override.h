@@ -6,14 +6,22 @@
 #include <vector>
 #include "../util.h"
 
-enum KeyOverrideType {
+enum class KeyOverrideType {
+	INVALID = -1,
 	ACTIVATE,
 	HOLD,
 	TOGGLE,
 	CYCLE,
 };
+static EnumName_t<wchar_t *, KeyOverrideType> KeyOverrideTypeNames[] = {
+	{L"activate", KeyOverrideType::ACTIVATE},
+	{L"hold", KeyOverrideType::HOLD},
+	{L"toggle", KeyOverrideType::TOGGLE},
+	{L"cycle", KeyOverrideType::CYCLE},
+	{NULL, KeyOverrideType::INVALID} // End of list marker
+};
 
-enum TransitionType {
+enum class TransitionType {
 	INVALID = -1,
 	LINEAR,
 	COSINE,
@@ -74,14 +82,14 @@ class KeyOverrideBase : public virtual OverrideBase, public InputListener
 class KeyOverride : public KeyOverrideBase, public Override
 {
 private:
-	enum KeyOverrideType type;
+	KeyOverrideType type;
 
 public:
-	KeyOverride(enum KeyOverrideType type) :
+	KeyOverride(KeyOverrideType type) :
 		Override(),
 		type(type)
 	{}
-	KeyOverride(enum KeyOverrideType type, float x, float y, float z,
+	KeyOverride(KeyOverrideType type, float x, float y, float z,
 			float w, float separation, float convergence,
 			int transition, int release_transition,
 			TransitionType transition_type,

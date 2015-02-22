@@ -77,7 +77,8 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
-			transition_type = TransitionType::COSINE;
+			transition_type = TransitionType::LINEAR;
+			BeepFailure2();
 		} else {
 			LogInfoW(L"  transition_type=%s\n", buf);
 		}
@@ -87,7 +88,8 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (release_transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
-			release_transition_type = TransitionType::COSINE;
+			release_transition_type = TransitionType::LINEAR;
+			BeepFailure2();
 		} else {
 			LogInfoW(L"  release_transition_type=%s\n", buf);
 		}
@@ -183,6 +185,7 @@ struct KeyOverrideCycleParam
 		val = lookup_enum_val<wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
 		if (val == (T2)-1) {
 			LogInfoW(L"WARNING: Unmatched value \"%s\"\n", cur);
+			BeepFailure2();
 			return default;
 		}
 
