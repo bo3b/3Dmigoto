@@ -1213,6 +1213,55 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	return pCode;
 }
 
+static bool NeedOriginalShader(UINT64 hash)
+{
+	ShaderOverride *shaderOverride;
+	ShaderOverrideMap::iterator i;
+
+	if (G->hunting && (G->marking_mode == MARKING_MODE_ORIGINAL || G->config_reloadable))
+		return true;
+
+	i = G->mShaderOverrideMap.find(hash);
+	if (i == G->mShaderOverrideMap.end())
+		return false;
+	shaderOverride = &i->second;
+
+	if ((shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE) ||
+	    (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE)) {
+		return true;
+	}
+
+	return false;
+}
+
+// Keep the original shader around if it may be needed by a filter in a
+// [ShaderOverride] section, or if hunting is enabled and either the
+// marking_mode=original, or reload_config support is enabled
+static void KeepOriginalShader(D3D11Wrapper::ID3D11Device *device, UINT64 hash,
+		D3D11Base::ID3D11VertexShader *pVertexShader,
+		D3D11Base::ID3D11PixelShader *pPixelShader,
+		const void *pShaderBytecode,
+		SIZE_T BytecodeLength,
+		D3D11Base::ID3D11ClassLinkage *pClassLinkage)
+{
+	if (!NeedOriginalShader(hash))
+		return;
+
+	LogInfo("    keeping original shader for filtering: %016llx\n", hash);
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	if (pVertexShader) {
+		D3D11Base::ID3D11VertexShader *originalShader;
+		device->GetD3D11Device()->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		G->mOriginalVertexShaders[pVertexShader] = originalShader;
+	} else if (pPixelShader) {
+		D3D11Base::ID3D11PixelShader *originalShader;
+		device->GetD3D11Device()->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		G->mOriginalPixelShaders[pPixelShader] = originalShader;
+	}
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
 STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	/* [annotation] */
 	__in  const void *pShaderBytecode,
@@ -1256,13 +1305,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 						shaderModel, ftWrite, (void **)&zeroShader);
 					delete replaceShader;
 				}
-				if (G->marking_mode == MARKING_MODE_ORIGINAL)
-				{
-					// Compile original shader.
-					D3D11Base::ID3D11VertexShader *originalShader;
-					GetD3D11Device()->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-					G->mOriginalVertexShaders[*ppVertexShader] = originalShader;
-				}
+				KeepOriginalShader(this, hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
 		}
 	}
@@ -1292,15 +1335,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
-
-					if (G->marking_mode == MARKING_MODE_ORIGINAL)
-					{
-						// Compile original shader.
-						D3D11Base::ID3D11VertexShader *originalShader;
-						GetD3D11Device()->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-						G->mOriginalVertexShaders[*ppVertexShader] = originalShader;
-					}
 				}
+				KeepOriginalShader(this, hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
 			else
 			{
@@ -1482,13 +1518,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 						shaderModel, ftWrite, (void **)&zeroShader);
 					delete replaceShader;
 				}
-				if (G->marking_mode == MARKING_MODE_ORIGINAL)
-				{
-					// Compile original shader.
-					D3D11Base::ID3D11PixelShader *originalShader;
-					GetD3D11Device()->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-					G->mOriginalPixelShaders[*ppPixelShader] = originalShader;
-				}
+				KeepOriginalShader(this, hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
 		}
 	}
@@ -1516,15 +1546,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
-
-					if (G->marking_mode == MARKING_MODE_ORIGINAL)
-					{
-						// Compile original shader.
-						D3D11Base::ID3D11PixelShader *originalShader;
-						GetD3D11Device()->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-						G->mOriginalPixelShaders[*ppPixelShader] = originalShader;
-					}
 				}
+				KeepOriginalShader(this, hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
 			else
 			{

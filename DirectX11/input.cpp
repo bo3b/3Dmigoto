@@ -414,7 +414,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 	}
 }
 
-void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
+bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data)
 {
@@ -422,9 +422,10 @@ void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
 	wchar_t keyName[MAX_PATH];
 
 	if (!GetPrivateProfileString(app, iniKey, 0, keyName, MAX_PATH, ini))
-		return;
+		return false;
 
 	RegisterKeyBinding(iniKey, keyName, callbacks, auto_repeat, 0, 0);
+	return true;
 }
 
 void ClearKeyBindings()

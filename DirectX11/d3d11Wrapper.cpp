@@ -189,6 +189,17 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 				BeepFailure2();
 			}
 		}
+		if (GetPrivateProfileString(id, L"depth_filter", 0, setting, MAX_PATH, iniFile)) {
+			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
+				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
+			if (override->depth_filter == DepthBufferFilter::INVALID) {
+				LogInfoW(L"  WARNING: Unknown depth_filter \"%s\"\n", setting);
+				override->depth_filter = DepthBufferFilter::NONE;
+				BeepFailure2();
+			} else {
+				LogInfoW(L"  depth_filter=%s\n", setting);
+			}
+		}
 #if 0 /* Iterations are broken since we no longer use present() */
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
@@ -2299,7 +2310,7 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	// performance hit with hunting on, or where a broken effect is
 	// discovered while playing normally where it may not be easy/fast to
 	// find the effect again later.
-	RegisterIniKeyBinding(L"Hunting", L"reload_config", iniFile, FlagConfigReload, NULL, noRepeat, NULL);
+	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", iniFile, FlagConfigReload, NULL, noRepeat, NULL);
 
 	if (!G->hunting)
 		return;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Main.h"
+#include "../util.h"
 #include <DirectXMath.h>
 #include <ctime>
 #include <vector>
@@ -56,6 +57,19 @@ typedef std::map<D3D11Base::ID3D11DomainShader *, UINT64> DomainShaderMap;
 typedef std::map<D3D11Base::ID3D11ComputeShader *, UINT64> ComputeShaderMap;
 typedef std::map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
+enum class DepthBufferFilter {
+	INVALID = -1,
+	NONE,
+	DEPTH_ACTIVE,
+	DEPTH_INACTIVE,
+};
+static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
+	{L"none", DepthBufferFilter::NONE},
+	{L"depth_active", DepthBufferFilter::DEPTH_ACTIVE},
+	{L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE},
+	{NULL, DepthBufferFilter::INVALID} // End of list marker
+};
+
 struct ShaderOverride {
 	float separation;
 	float convergence;
@@ -64,11 +78,13 @@ struct ShaderOverride {
 	std::vector<int> iterations; // Only for separation changes, not shaders.
 #endif
 	std::vector<UINT64> indexBufferFilter;
+	DepthBufferFilter depth_filter;
 
 	ShaderOverride() :
 		separation(FLT_MAX),
 		convergence(FLT_MAX),
-		skip(false)
+		skip(false),
+		depth_filter(DepthBufferFilter::NONE)
 	{}
 };
 typedef std::map<UINT64, struct ShaderOverride> ShaderOverrideMap;
@@ -139,6 +155,7 @@ struct Globals
 	int gSurfaceSquareCreateMode;
 
 	bool hunting;
+	bool config_reloadable;
 	time_t huntTime;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
@@ -183,6 +200,7 @@ struct Globals
 	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
 	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	UINT64 mCurrentVertexShader;							// Shader currently live in GPU pipeline.
+	D3D11Base::ID3D11VertexShader *mCurrentVertexShaderHandle;			// Shader currently live in GPU pipeline.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen in latest frame
 	UINT64 mSelectedVertexShader;							// Shader selected using XInput
 	unsigned int mSelectedVertexShaderPos;
@@ -193,6 +211,7 @@ struct Globals
 	PixelShaderReplacementMap mOriginalPixelShaders;
 	PixelShaderReplacementMap mZeroPixelShaders;
 	UINT64 mCurrentPixelShader;
+	D3D11Base::ID3D11PixelShader *mCurrentPixelShaderHandle;
 	std::set<UINT64> mVisitedPixelShaders;
 	UINT64 mSelectedPixelShader;
 	unsigned int mSelectedPixelShaderPos;
@@ -235,9 +254,11 @@ struct Globals
 		mSelectedRenderTarget((void *)1),
 		mCurrentDepthTarget(0),
 		mCurrentPixelShader(0),
+		mCurrentPixelShaderHandle(NULL),
 		mSelectedPixelShader(1),
 		mSelectedPixelShaderPos(0),
 		mCurrentVertexShader(0),
+		mCurrentVertexShaderHandle(NULL),
 		mSelectedVertexShader(1),
 		mSelectedVertexShaderPos(0),
 		mCurrentIndexBuffer(0),
@@ -245,6 +266,7 @@ struct Globals
 		mSelectedIndexBufferPos(0),
 
 		hunting(false),
+		config_reloadable(false),
 		huntTime(0),
 
 		EXPORT_SHADERS(false),

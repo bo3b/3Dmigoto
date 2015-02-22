@@ -182,7 +182,7 @@ public:
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 		InputListener *listener, int auto_repeat, int down_delay,
 		int up_delay);
-void RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
+bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data);
 

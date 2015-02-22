@@ -471,19 +471,23 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 	LogDebug("ID3D11DeviceContext::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
 
 	bool patchedShader = false;
-	if (G->hunting && pPixelShader)
+	if (pPixelShader)
 	{
-		// Store as current pixel shader.
+		// Store as current pixel shader. Need to do this even while
+		// not hunting for ShaderOverride sections.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		PixelShaderMap::iterator i = G->mPixelShaders.find(pPixelShader);
 		if (i != G->mPixelShaders.end())
 		{
 			G->mCurrentPixelShader = i->second;
+			G->mCurrentPixelShaderHandle = pPixelShader;
 			LogDebug("  pixel shader found: handle = %p, hash = %08lx%08lx\n", pPixelShader, (UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
 
-			// Add to visited pixel shaders.
-			G->mVisitedPixelShaders.insert(i->second);
-			patchedShader = true;
+			if (G->hunting) {
+				// Add to visited pixel shaders.
+				G->mVisitedPixelShaders.insert(i->second);
+				patchedShader = true;
+			}
 
 			// second try to hide index buffer.
 			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
@@ -493,23 +497,30 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 		{
 			LogDebug("  pixel shader %p not found\n", pPixelShader);
 		}
+	}
 
+	if (G->hunting && pPixelShader)
+	{
 		// Replacement map.
-		PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
-		if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mOriginalPixelShaders.end())
-		{
-			D3D11Base::ID3D11PixelShader *shader = j->second;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
+		if (G->marking_mode == MARKING_MODE_ORIGINAL) {
+			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
+			if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mOriginalPixelShaders.end())
+			{
+				D3D11Base::ID3D11PixelShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
+				return;
+			}
 		}
-		j = G->mZeroPixelShaders.find(pPixelShader);
-		if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mZeroPixelShaders.end())
-		{
-			D3D11Base::ID3D11PixelShader *shader = j->second;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
+		if (G->marking_mode == MARKING_MODE_ZERO) {
+			PixelShaderReplacementMap::iterator j = G->mZeroPixelShaders.find(pPixelShader);
+			if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mZeroPixelShaders.end())
+			{
+				D3D11Base::ID3D11PixelShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
+				return;
+			}
 		}
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
@@ -524,6 +535,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 			GetD3D11DeviceContext()->PSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
 		}
+	}
+
+	if (pPixelShader) {
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -584,16 +598,157 @@ struct DrawContext
 	bool override;
 	float oldSeparation;
 	float oldConvergence;
+	D3D11Base::ID3D11PixelShader *oldPixelShader;
+	D3D11Base::ID3D11VertexShader *oldVertexShader;
+
+	DrawContext() :
+		skip(false),
+		override(false),
+		oldSeparation(FLT_MAX),
+		oldConvergence(FLT_MAX),
+		oldVertexShader(NULL),
+		oldPixelShader(NULL)
+	{}
 };
+
+static D3D11Base::ID3D11VertexShader *SwitchVSShader(
+		D3D11Wrapper::ID3D11DeviceContext *context,
+		D3D11Base::ID3D11VertexShader *shader)
+{
+
+	D3D11Base::ID3D11VertexShader *pVertexShader;
+	D3D11Base::ID3D11ClassInstance *pClassInstances;
+	UINT NumClassInstances = 0, i;
+
+	// We can possibly save the need to get the current shader by saving the ClassInstances
+	context->GetD3D11DeviceContext()->VSGetShader(&pVertexShader, &pClassInstances, &NumClassInstances);
+	context->GetD3D11DeviceContext()->VSSetShader(shader, &pClassInstances, NumClassInstances);
+
+	for (i = 0; i < NumClassInstances; i++)
+		pClassInstances[i].Release();
+
+	return pVertexShader;
+}
+
+static D3D11Base::ID3D11PixelShader *SwitchPSShader(
+		D3D11Wrapper::ID3D11DeviceContext *context,
+		D3D11Base::ID3D11PixelShader *shader)
+{
+
+	D3D11Base::ID3D11PixelShader *pPixelShader;
+	D3D11Base::ID3D11ClassInstance *pClassInstances;
+	UINT NumClassInstances = 0, i;
+
+	// We can possibly save the need to get the current shader by saving the ClassInstances
+	context->GetD3D11DeviceContext()->PSGetShader(&pPixelShader, &pClassInstances, &NumClassInstances);
+	context->GetD3D11DeviceContext()->PSSetShader(shader, &pClassInstances, NumClassInstances);
+
+	for (i = 0; i < NumClassInstances; i++)
+		pClassInstances[i].Release();
+
+	return pPixelShader;
+}
+
+static void ProcessShaderOverride(D3D11Wrapper::ID3D11DeviceContext *context,
+		ShaderOverride *shaderOverride,
+		bool isPixelShader,
+		struct DrawContext *data,
+		float *separationValue, float *convergenceValue)
+{
+	bool use_orig = false;
+
+	LogDebug("  override found for shader\n");
+
+	*separationValue = shaderOverride->separation;
+	if (*separationValue != FLT_MAX)
+		data->override = true;
+	*convergenceValue = shaderOverride->convergence;
+	if (*convergenceValue != FLT_MAX)
+		data->override = true;
+	data->skip = shaderOverride->skip;
+
+#if 0 /* Iterations are broken since we no longer use present() */
+	// Check iteration.
+	if (!shaderOverride->iterations.empty()) {
+		std::vector<int>::iterator k = shaderOverride->iterations.begin();
+		int currentiterations = *k = *k + 1;
+		LogDebug("  current iterations = %d\n", currentiterations);
+
+		data->override = false;
+		while (++k != shaderOverride->iterations.end())
+		{
+			if (currentiterations == *k)
+			{
+				data->override = true;
+				break;
+			}
+		}
+		if (!data->override)
+		{
+			LogDebug("  override skipped\n");
+		}
+	}
+#endif
+	// Check index buffer filter.
+	if (!shaderOverride->indexBufferFilter.empty()) {
+		bool found = false;
+		for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
+			if (G->mCurrentIndexBuffer == *l)
+			{
+				found = true;
+				break;
+			}
+		if (!found)
+		{
+			data->override = false;
+			data->skip = false;
+		}
+
+		// TODO: This filter currently seems pretty limited as it only
+		// applies to handling=skip and per-draw separation/convergence.
+	}
+
+	if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
+		D3D11Base::ID3D11DepthStencilView *pDepthStencilView = NULL;
+
+		context->GetD3D11DeviceContext()->OMGetRenderTargets(0, NULL, &pDepthStencilView);
+
+		// Remember - we are NOT switching to the original shader when the condition is true
+		if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
+			use_orig = true;
+		} else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
+			use_orig = true;
+		}
+
+		if (pDepthStencilView)
+			pDepthStencilView->Release();
+
+		// TODO: Add alternate filter type where the depth
+		// buffer state is passed as an input to the shader
+	}
+
+	// TODO: Add render target filters, texture filters, etc.
+
+	if (use_orig) {
+		if (isPixelShader) {
+			PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(G->mCurrentPixelShaderHandle);
+			if (i != G->mOriginalPixelShaders.end())
+				data->oldPixelShader = SwitchPSShader(context, i->second);
+		} else {
+			VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(G->mCurrentVertexShaderHandle);
+			if (i != G->mOriginalVertexShaders.end())
+				data->oldVertexShader = SwitchVSShader(context, i->second);
+		}
+	}
+
+}
+
 static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 {
 	DrawContext data;
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
-	data.override = false;
-	data.oldSeparation = FLT_MAX;
-	data.oldConvergence = FLT_MAX;
 	data.skip = G->mBlockingMode; // mBlockingMode doesn't appear that it can ever be set - hardcoded hack?
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
@@ -670,60 +825,13 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 	}
 
 	// Override settings?
-	ShaderOverrideMap::iterator i = G->mShaderOverrideMap.find(G->mCurrentVertexShader);
-	if (i == G->mShaderOverrideMap.end())
-		i = G->mShaderOverrideMap.find(G->mCurrentPixelShader);
+	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(G->mCurrentVertexShader);
+	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(G->mCurrentPixelShader);
 
-	if (i != G->mShaderOverrideMap.end()) {
-		ShaderOverride *shaderOverride = &i->second;
-
-		LogDebug("  override found for shader\n");
-
-		separationValue = shaderOverride->separation;
-		if (separationValue != FLT_MAX)
-			data.override = true;
-		convergenceValue = shaderOverride->convergence;
-		if (convergenceValue != FLT_MAX)
-			data.override = true;
-		data.skip = shaderOverride->skip;
-#if 0 /* Iterations are broken since we no longer use present() */
-		// Check iteration.
-		if (!shaderOverride->iterations.empty()) {
-			std::vector<int>::iterator k = shaderOverride->iterations.begin();
-			int currentiterations = *k = *k + 1;
-			LogDebug("  current iterations = %d\n", currentiterations);
-
-			data.override = false;
-			while (++k != shaderOverride->iterations.end())
-			{
-				if (currentiterations == *k)
-				{
-					data.override = true;
-					break;
-				}
-			}
-			if (!data.override)
-			{
-				LogDebug("  override skipped\n");
-			}
-		}
-#endif
-		// Check index buffer filter.
-		if (!shaderOverride->indexBufferFilter.empty()) {
-			bool found = false;
-			for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
-				if (G->mCurrentIndexBuffer == *l)
-				{
-					found = true;
-					break;
-				}
-			if (!found)
-			{
-				data.override = false;
-				data.skip = false;
-			}
-		}
-	}
+	if (iVertex != G->mShaderOverrideMap.end())
+		ProcessShaderOverride(context, &iVertex->second, false, &data, &separationValue, &convergenceValue);
+	if (iPixel != G->mShaderOverrideMap.end())
+		ProcessShaderOverride(context, &iPixel->second, true, &data, &separationValue, &convergenceValue);
 
 	if (data.override) {
 		D3D11Wrapper::ID3D11Device *device;
@@ -788,6 +896,21 @@ static void AfterDraw(DrawContext &data, D3D11Wrapper::ID3D11DeviceContext *cont
 		device->Release();
 	}
 
+	if (data.oldVertexShader) {
+		D3D11Base::ID3D11VertexShader *ret;
+		ret = SwitchVSShader(context, data.oldVertexShader);
+		data.oldVertexShader->Release();
+		if (ret)
+			ret->Release();
+	}
+	if (data.oldPixelShader) {
+		D3D11Base::ID3D11PixelShader *ret;
+		ret = SwitchPSShader(context, data.oldPixelShader);
+		data.oldPixelShader->Release();
+		if (ret)
+			ret->Release();
+	}
+
 	// When in hunting mode, we need to get time to run the UI for stepping through shaders.
 	// This gets called for every Draw, and is a definitely overkill, but is a convenient spot
 	// where we are absolutely certain that everyone is set up correctly.  And where we can
@@ -809,19 +932,23 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 	LogDebug("ID3D11DeviceContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
 
 	bool patchedShader = false;
-	if (G->hunting && pVertexShader)
+	if (pVertexShader)
 	{
-		// Store as current vertex shader.
+		// Store as current vertex shader. Need to do this even while
+		// not hunting for ShaderOverride sections.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		VertexShaderMap::iterator i = G->mVertexShaders.find(pVertexShader);
 		if (i != G->mVertexShaders.end())
 		{
 			G->mCurrentVertexShader = i->second;
+			G->mCurrentVertexShaderHandle = pVertexShader;
 			LogDebug("  vertex shader found: handle = %p, hash = %08lx%08lx\n", pVertexShader, (UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader);
 
-			// Add to visited vertex shaders.
-			G->mVisitedVertexShaders.insert(i->second);
-			patchedShader = true;
+			if (G->hunting) {
+				// Add to visited vertex shaders.
+				G->mVisitedVertexShaders.insert(i->second);
+				patchedShader = true;
+			}
 
 			// second try to hide index buffer.
 			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
@@ -832,23 +959,30 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 			LogDebug("  vertex shader %p not found\n", pVertexShader);
 			// G->mCurrentVertexShader = 0;
 		}
+	}
 
+	if (G->hunting && pVertexShader)
+	{
 		// Replacement map.
-		VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
-		if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mOriginalVertexShaders.end())
-		{
-			D3D11Base::ID3D11VertexShader *shader = j->second;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
+		if (G->marking_mode == MARKING_MODE_ORIGINAL) {
+			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
+			if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mOriginalVertexShaders.end())
+			{
+				D3D11Base::ID3D11VertexShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
+				return;
+			}
 		}
-		j = G->mZeroVertexShaders.find(pVertexShader);
-		if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mZeroVertexShaders.end())
-		{
-			D3D11Base::ID3D11VertexShader *shader = j->second;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
+		if (G->marking_mode == MARKING_MODE_ZERO) {
+			VertexShaderReplacementMap::iterator j = G->mZeroVertexShaders.find(pVertexShader);
+			if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mZeroVertexShaders.end())
+			{
+				D3D11Base::ID3D11VertexShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
+				return;
+			}
 		}
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
@@ -862,6 +996,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 			GetD3D11DeviceContext()->VSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
 		}
+	}
+
+	if (pVertexShader) {
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
