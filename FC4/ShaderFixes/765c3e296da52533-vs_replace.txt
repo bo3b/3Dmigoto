@@ -172,22 +172,21 @@ void main(
   r2.y = r1.x * r2.x + r0.w;
   o5.xy = r3.ww ? r2.xy : r0.xy;
 
-// !!! THIS CREATES AN ADDITIONAL HALO ON THE WATER !!!
-// I'll probably have to use a whitelist
-
 // Push the scope into the screen.
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
 float4 params = IniParams.Load(0);
 float hud_depth = params.x;
 
-if (params.y == 1) {
-	// Had to multiply the adjustment by output w to position it correctly - seems
-	// is already drawn at some depth, but the driver isn't stereoising it.
-	o0.x += separation * hud_depth * o0.w;
-} else if (params.y == 2) {
-	// may be better for red dot sight:
-	o0.x += separation * (o0.w - convergence);
+if (params.y == 1) { // Aiming
+	if (params.w == 0) {
+		// Had to multiply the adjustment by output w to position it correctly - seems
+		// is already drawn at some depth, but the driver isn't stereoising it.
+		o0.x += separation * hud_depth * o0.w;
+	} else if (params.w == 1) {
+		// may be better for red dot sight:
+		o0.x += separation * (o0.w - convergence);
+	}
 }
 
   return;
