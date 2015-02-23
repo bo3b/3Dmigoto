@@ -201,7 +201,7 @@ static UINT64 GetTexture2DHash(D3D11Base::ID3D11Texture2D *texture,
 {
 
 	D3D11Base::D3D11_TEXTURE2D_DESC desc;
-	std::map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator j;
+	std::unordered_map<D3D11Base::ID3D11Texture2D *, UINT64>::iterator j;
 
 	texture->GetDesc(&desc);
 
@@ -229,7 +229,7 @@ static UINT64 GetTexture3DHash(D3D11Base::ID3D11Texture3D *texture,
 {
 
 	D3D11Base::D3D11_TEXTURE3D_DESC desc;
-	std::map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator j;
+	std::unordered_map<D3D11Base::ID3D11Texture3D *, UINT64>::iterator j;
 
 	texture->GetDesc(&desc);
 

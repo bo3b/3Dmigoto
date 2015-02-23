@@ -75,6 +75,7 @@ struct WStringInsensitiveLess {
 	}
 };
 
+// std::set is used so this is sorted for iterating over a prefix:
 typedef std::set<wstring, WStringInsensitiveLess> IniSections;
 
 // Returns an iterator to the first element in a set that does not begin with
@@ -2250,6 +2251,10 @@ static void TimeoutHuntingBuffers()
 	G->mVisitedIndexBuffers.clear();
 	G->mVisitedVertexShaders.clear();
 	G->mVisitedPixelShaders.clear();
+
+	// FIXME: Not sure this is the right place to clear these - I think
+	// they should be cleared every frame as they appear to be aimed at
+	// providing a single frame usage snapshot on mark:
 	G->mSelectedPixelShader_IndexBuffer.clear();
 	G->mSelectedVertexShader_IndexBuffer.clear();
 	G->mSelectedIndexBuffer_PixelShader.clear();

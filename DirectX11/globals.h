@@ -6,12 +6,13 @@
 #include <ctime>
 #include <vector>
 #include <set>
+#include <unordered_map>
 
 // Key is index/vertex buffer, value is hash key.
-typedef std::map<D3D11Base::ID3D11Buffer *, UINT64> DataBufferMap;
+typedef std::unordered_map<D3D11Base::ID3D11Buffer *, UINT64> DataBufferMap;
 
 // Source compiled shaders.
-typedef std::map<UINT64, std::string> CompiledShaderMap;
+typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
 //	pixelshader and vertexshader that are compiled from hlsl text from the ShaderFixes
@@ -40,22 +41,22 @@ struct OriginalShaderInfo
 };
 
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
-typedef std::map<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
+typedef std::unordered_map<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
 
 // Key is vertexshader, value is hash key.
-typedef std::map<D3D11Base::ID3D11VertexShader *, UINT64> VertexShaderMap;
-typedef std::map<UINT64, D3D11Base::ID3D11VertexShader *> PreloadVertexShaderMap;
-typedef std::map<D3D11Base::ID3D11VertexShader *, D3D11Base::ID3D11VertexShader *> VertexShaderReplacementMap;
+typedef std::unordered_map<D3D11Base::ID3D11VertexShader *, UINT64> VertexShaderMap;
+typedef std::unordered_map<UINT64, D3D11Base::ID3D11VertexShader *> PreloadVertexShaderMap;
+typedef std::unordered_map<D3D11Base::ID3D11VertexShader *, D3D11Base::ID3D11VertexShader *> VertexShaderReplacementMap;
 
 // Key is pixelshader, value is hash key.
-typedef std::map<D3D11Base::ID3D11PixelShader *, UINT64> PixelShaderMap;
-typedef std::map<UINT64, D3D11Base::ID3D11PixelShader *> PreloadPixelShaderMap;
-typedef std::map<D3D11Base::ID3D11PixelShader *, D3D11Base::ID3D11PixelShader *> PixelShaderReplacementMap;
+typedef std::unordered_map<D3D11Base::ID3D11PixelShader *, UINT64> PixelShaderMap;
+typedef std::unordered_map<UINT64, D3D11Base::ID3D11PixelShader *> PreloadPixelShaderMap;
+typedef std::unordered_map<D3D11Base::ID3D11PixelShader *, D3D11Base::ID3D11PixelShader *> PixelShaderReplacementMap;
 
-typedef std::map<D3D11Base::ID3D11HullShader *, UINT64> HullShaderMap;
-typedef std::map<D3D11Base::ID3D11DomainShader *, UINT64> DomainShaderMap;
-typedef std::map<D3D11Base::ID3D11ComputeShader *, UINT64> ComputeShaderMap;
-typedef std::map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
+typedef std::unordered_map<D3D11Base::ID3D11HullShader *, UINT64> HullShaderMap;
+typedef std::unordered_map<D3D11Base::ID3D11DomainShader *, UINT64> DomainShaderMap;
+typedef std::unordered_map<D3D11Base::ID3D11ComputeShader *, UINT64> ComputeShaderMap;
+typedef std::unordered_map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
 enum class DepthBufferFilter {
 	INVALID = -1,
@@ -87,7 +88,7 @@ struct ShaderOverride {
 		depth_filter(DepthBufferFilter::NONE)
 	{}
 };
-typedef std::map<UINT64, struct ShaderOverride> ShaderOverrideMap;
+typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 
 struct TextureOverride {
 	int stereoMode;
@@ -101,10 +102,11 @@ struct TextureOverride {
 		format(-1)
 	{}
 };
-typedef std::map<UINT64, struct TextureOverride> TextureOverrideMap;
+typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;
 
 struct ShaderInfoData
 {
+	// All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<int, void *> ResourceRegisters;
 	std::set<UINT64> PartnerShader;
 	std::vector<std::set<void *>> RenderTargets;
@@ -187,11 +189,11 @@ struct Globals
 
 	DataBufferMap mDataBuffers;
 	UINT64 mCurrentIndexBuffer;
-	std::set<UINT64> mVisitedIndexBuffers;
+	std::set<UINT64> mVisitedIndexBuffers; // std::set is sorted for consistent order while hunting
 	UINT64 mSelectedIndexBuffer;
 	unsigned int mSelectedIndexBufferPos;
-	std::set<UINT64> mSelectedIndexBuffer_VertexShader;
-	std::set<UINT64> mSelectedIndexBuffer_PixelShader;
+	std::set<UINT64> mSelectedIndexBuffer_VertexShader; // std::set so that shaders used with an index buffer will be sorted in log when marked
+	std::set<UINT64> mSelectedIndexBuffer_PixelShader; // std::set so that shaders used with an index buffer will be sorted in log when marked
 
 	CompiledShaderMap mCompiledShaderMap;
 
@@ -201,10 +203,10 @@ struct Globals
 	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	UINT64 mCurrentVertexShader;							// Shader currently live in GPU pipeline.
 	D3D11Base::ID3D11VertexShader *mCurrentVertexShaderHandle;			// Shader currently live in GPU pipeline.
-	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen in latest frame
+	std::set<UINT64> mVisitedVertexShaders;				// Only shaders seen since last hunting timeout; std::set for consistent order whiel hunting
 	UINT64 mSelectedVertexShader;							// Shader selected using XInput
 	unsigned int mSelectedVertexShaderPos;
-	std::set<UINT64> mSelectedVertexShader_IndexBuffer;
+	std::set<UINT64> mSelectedVertexShader_IndexBuffer; // std::set so that index buffers used with a shader will be sorted in log when marked
 
 	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
 	PreloadPixelShaderMap mPreloadedPixelShaders;
@@ -212,10 +214,10 @@ struct Globals
 	PixelShaderReplacementMap mZeroPixelShaders;
 	UINT64 mCurrentPixelShader;
 	D3D11Base::ID3D11PixelShader *mCurrentPixelShaderHandle;
-	std::set<UINT64> mVisitedPixelShaders;
+	std::set<UINT64> mVisitedPixelShaders; // std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;
 	unsigned int mSelectedPixelShaderPos;
-	std::set<UINT64> mSelectedPixelShader_IndexBuffer;
+	std::set<UINT64> mSelectedPixelShader_IndexBuffer; // std::set so that index buffers used with a shader will be sorted in log when marked
 
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 
@@ -228,22 +230,22 @@ struct Globals
 	TextureOverrideMap mTextureOverrideMap;
 
 	// Statistics
-	std::map<void *, UINT64> mRenderTargets;
-	std::map<UINT64, struct ResourceInfo> mRenderTargetInfo;
-	std::map<UINT64, struct ResourceInfo> mDepthTargetInfo;
-	std::set<void *> mVisitedRenderTargets;
+	std::unordered_map<void *, UINT64> mRenderTargets;
+	std::map<UINT64, struct ResourceInfo> mRenderTargetInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, struct ResourceInfo> mDepthTargetInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<void *> mVisitedRenderTargets; // std::set is sorted for consistent order while hunting
 	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
 	unsigned int mSelectedRenderTargetPos;
 	void *mCurrentDepthTarget;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
-	std::set<void *> mSelectedRenderTargetSnapshotList;
+	std::set<void *> mSelectedRenderTargetSnapshotList; // std::set so that render targets will be sorted in log when marked
 	// Relations
-	std::map<D3D11Base::ID3D11Texture2D *, UINT64> mTexture2D_ID;
-	std::map<D3D11Base::ID3D11Texture3D *, UINT64> mTexture3D_ID;
-	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;
-	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;
+	std::unordered_map<D3D11Base::ID3D11Texture2D *, UINT64> mTexture2D_ID;
+	std::unordered_map<D3D11Base::ID3D11Texture3D *, UINT64> mTexture3D_ID;
+	std::map<UINT64, ShaderInfoData> mVertexShaderInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mPixelShaderInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	bool mBlockingMode;
 
