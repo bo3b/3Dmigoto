@@ -56,50 +56,31 @@ public:
 
 
 // -----------------------------------------------------------------------------
-// I'm using inheritance here because if we wanted to add another input backend
-// in the future this is where I see the logical split between common code and
-// input backend specific code (we would still need to add an abstraction of
-// the backends themselves). 
-//
-// One reason we might want to considder this is to
-// re-add the ability to use gamepads or other input devices which was removed
-// when we pulled out the problematic DirectInput support. I'm not concerned
-// about supporting gamepads for hunting, but we might want it for e.g.
-// convergence overrides with the aim button on a controller in a FPS.
-// At present we can require users to use XPadder to generate keypresses.
-
-class InputAction {
+// Abstract base class of all input backend button classes
+class InputButton {
 public:
-	bool last_state;
-	InputListener *listener;
-
-	InputAction(InputListener *listener);
-	~InputAction();
-
 	virtual bool CheckState() = 0;
-	virtual bool Dispatch(D3D11Base::ID3D11Device *device);
 };
 
-
 // -----------------------------------------------------------------------------
-// VKInputAction is the primary object used for game input from the users, for
+// VKInputButton is the primary object used for game input from the users, for
 // changing separation/convergence/iniParams.
 //
 // The keybindings are oriented around the use of GetAsyncKeyState, and numerous
 // convenience aliases are defined in vkeys.h.
 
-class VKInputAction : public virtual InputAction {
+class VKInputButton : public InputButton {
 public:
 	int vkey;
 
-	VKInputAction(int vkey, InputListener *listener);
+	VKInputButton(wchar_t *keyName);
 	bool CheckState() override;
 };
 
 // -----------------------------------------------------------------------------
-// XInputAction serves much the same purpose as VKInputAction, but implements
-// XInput to support xbox controllers
-class XInputAction : public virtual InputAction {
+// XInputButton serves much the same purpose as VKInputButton, but implements
+// XInputButton to support xbox controllers
+class XInputButton : public InputButton {
 private:
 	int controller;
 	WORD button;
@@ -108,11 +89,26 @@ private:
 
 	bool _CheckState(int controller);
 public:
-	XInputAction(int controller, WORD button, BYTE left_trigger,
-			BYTE right_trigger, InputListener *listener);
+	XInputButton(wchar_t *keyName);
 	bool CheckState() override;
 };
 
+
+// -----------------------------------------------------------------------------
+// InputAction combines an InputButton and an InputListener together to create
+// an action.
+
+class InputAction {
+public:
+	bool last_state;
+	InputButton *button;
+	InputListener *listener;
+
+	InputAction(InputButton *button, InputListener *listener);
+	virtual ~InputAction();
+
+	virtual bool Dispatch(D3D11Base::ID3D11Device *device);
+};
 
 // -----------------------------------------------------------------------------
 // RepeatingInputAction is used to provide auto-repeating functionality to
@@ -124,7 +120,7 @@ private:
 	ULONGLONG lastTick = 0;
 
 public:
-	RepeatingInputAction(int repeat, InputListener *listener);
+	RepeatingInputAction(InputButton *button, InputListener *listener, int repeat);
 	bool Dispatch(D3D11Base::ID3D11Device *device) override;
 };
 
@@ -137,39 +133,8 @@ private:
 	bool effective_state;
 	ULONGLONG state_change_time;
 public:
-	DelayedInputAction(int delayDown, int delayUp, InputListener *listener);
+	DelayedInputAction(InputButton *button, InputListener *listener, int delayDown, int delayUp);
 	bool Dispatch(D3D11Base::ID3D11Device *device) override;
-};
-
-// -----------------------------------------------------------------------------
-// Classes using multiple inheritance to add auto-repeat or delay functionality
-// to VKInputAction and XInputAction. TODO: Look into C++ mixins to see if that
-// can reduce the number of classes we need here
-class VKRepeatingInputAction : public VKInputAction, public RepeatingInputAction {
-public:
-	VKRepeatingInputAction(int vkey, int repeat, InputListener *listener);
-	bool Dispatch(D3D11Base::ID3D11Device *device);
-	bool CheckState(); // Only necessary to silence warning from MSVC bug
-};
-class XRepeatingInputAction : public XInputAction, public RepeatingInputAction {
-public:
-	XRepeatingInputAction(int controller, WORD button, BYTE left_trigger,
-		BYTE right_trigger, int repeat, InputListener *listener);
-	bool Dispatch(D3D11Base::ID3D11Device *device);
-	bool CheckState(); // Only necessary to silence warning from MSVC bug
-};
-class VKDelayedInputAction : public VKInputAction, public DelayedInputAction {
-public:
-	VKDelayedInputAction(int vkey, int down_dealy, int up_delay, InputListener *listener);
-	bool Dispatch(D3D11Base::ID3D11Device *device);
-	bool CheckState(); // Only necessary to silence warning from MSVC bug
-};
-class XDelayedInputAction : public XInputAction, public DelayedInputAction {
-public:
-	XDelayedInputAction(int controller, WORD button, BYTE left_trigger,
-		BYTE right_trigger, int down_dealy, int up_delay, InputListener *listener);
-	bool Dispatch(D3D11Base::ID3D11Device *device);
-	bool CheckState(); // Only necessary to silence warning from MSVC bug
 };
 
 
