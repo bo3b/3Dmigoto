@@ -57,7 +57,8 @@ void main(
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
 
-o0.x += separation * (o0.w - convergence) * 1.5;
+// We don't know the depth of the light, so just add separation, which generally looks fine:
+o0.x += separation;
 
   o1.xyzw = v1.xyzw;
   r0.xyz = v0.xyz;
