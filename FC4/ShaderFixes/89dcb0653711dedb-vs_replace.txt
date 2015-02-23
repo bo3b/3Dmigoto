@@ -160,7 +160,12 @@ void main(
 // Push flame backwards to line up with repair tool. This adjusts the depth
 // independently of scale (xyz scale countered by w depth adjustment), and was
 // the only solution I could find that works independently of convergence.
-o0 *= 2.4;
+
+// This also messes up the pilot light on the flame thrower, so only apply
+// the adjustment while the fire button is held
+float4 params = IniParams.Load(0);
+if (params.z == 1)
+	o0 *= 2.4;
 
   return;
 }
