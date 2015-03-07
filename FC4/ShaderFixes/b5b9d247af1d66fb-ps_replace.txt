@@ -1,3 +1,4 @@
+// Outdoor shadows - MSAA8, Very High / Ultra
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -137,6 +138,13 @@ void main(
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
   r1.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+
+// Fix shadows:
+float4 stereo = StereoParams.Load(0);
+float4 tmp = mul(float4(r1.xyz, 1), _ViewProjectionMatrix);
+tmp.x -= stereo.x * (tmp.w - stereo.y);
+r1.xyz = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
+
   r2.xyz = -_PlayerPosition.xyz + r1.xyz;
   r0.w = dot(r2.xyz, -_SunDirection.xyz);
   r2.w = r0.w + r0.w;
