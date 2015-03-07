@@ -46,19 +46,10 @@ void main(
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
 
-// FIXME: Screen dimensions from 3Dmigoto are -1 x -1
-float2 resolution = StereoParams.Load(int3(2,0,0));
-
-// Hard code 1920x1080 for now, but only until 3Dmigoto is fixed:
-if (resolution.x == -1) {
-	resolution = float2(1920, 1080);
-	//resolution = float2(1280, 720);
-}
-
 // Remove halo from nvidia god rays resulting from stereo adjustment in other
 // shader. Note that this is in pixels, so we need to use the screen size to
 // calculate the correct adjustment.
-v0.x += separation * resolution.x / 8;
+v0.x += separation / g_fBufferWidthInv / 8;
 
   r0.xy = g_fResMultiplier * v0.xy;
   r0.y = g_fBufferHeightInv * r0.y;
