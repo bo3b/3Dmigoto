@@ -1,3 +1,4 @@
+// Water pixel shader (No AA)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -158,7 +159,7 @@ void main(
   float4 v2 : TEXCOORD1,
   float3 v3 : TEXCOORD2,
   float3 v4 : TEXCOORD3,
-  float3 v5 : TEXCOORD4,
+  float3 v5 : TEXCOORD4, // related to reflection coords
   float3 v6 : TEXCOORD5,
   float3 v7 : TEXCOORD6,
   float3 v8 : TEXCOORD7,
@@ -187,6 +188,7 @@ void main(
     r1.x = r1.x / r1.z;
     r3.x = r1.x * 5.000000000e-001 + 5.000000000e-001;
     r1.x = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r3.xy).x;
+//r1.x=0;
     r1.x = 2.000000030e-001 * r1.x;
     r1.z = -_CameraPosition_DistanceScale.z + v4.z;
     r1.x = r1.x / r1.z;
@@ -249,6 +251,8 @@ void main(
     r1.w = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r6.xy).x;
     r2.x = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r7.xy).x;
     r2.y = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r8.xy).x;
+// r1.yw = 0;
+// r2.xy = 0;
     r5.x = r1.w + -r1.y;
     r5.y = r2.y + -r2.x;
     r1.yw = r5.xy / r4.xx;
@@ -673,30 +677,11 @@ void main(
   r8.xy = r4.xw * r0.xx + v5.xy;
   r8.z = v5.z;
   r8.w = 1.000000000e+000;
-  
-float4 r31, r32, r33, r34;
-r31.xyz = r8.xyz;
-r31.w = 1.0;
-r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
-r32.x += stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
-
-r8.xyz = r34.xyz;
-
+float4 tmp = mul(r8, _ViewProjectionMatrix);
+tmp.x += stereo.x * (tmp.w - stereo.y);
+r8 = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
 
   r9.x = dot(r8.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
   r9.y = dot(r8.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);
@@ -714,6 +699,14 @@ r8.xyz = r34.xyz;
   r4.x = r0.x * r4.x + -_ReflectionAnisotropicDistanceOffset;
   r4.x = r4.x * _ReflectionAnisotropicDistanceScale + 1.000000000e+000;
   r4.x = log2(r4.x);
+
+// Early attempts to fix reflection placement. Worked, but reflections were
+// missing on left/right of screen. Instead, adjusting the output position of
+// all vertex shaders that are used to draw reflected objects by -2 * stereo
+// correction.
+//r3.y += stereo.x / 2;
+//r3.y += stereo.x;
+
   r7.xyz = ReflectionRealTexture__TexObj__.SampleLevel(ReflectionRealTexture__SampObj___s, r3.yw, r4.x).xyz;
   r7.xyz = r7.xyz * r7.xyz;
   r7.xyz = min(r7.xyz, float3(1.600000e+001,1.600000e+001,1.600000e+001));
@@ -755,6 +748,7 @@ r8.xyz = r34.xyz;
   r1.yz = r1.yz * float2(5.000000e-001,5.000000e-001) + r7.xy;
   r1.yz = _CausticsScale * r1.yz;
   r1.yzw = CausticsTexture__TexObj__.Sample(CausticsTexture__SampObj___s, r1.yz).xyz;
+// r1.yzw = 0;
   r1.yzw = _LightColorUpNormal.xyz * r1.yzw;
   r7.w = 1.000000000e+000;
   r4.x = dot(r7.xyzw, _CSMSlice2_0.xyzw);
@@ -3339,3 +3333,4 @@ ret
 // Approximately 862 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+   

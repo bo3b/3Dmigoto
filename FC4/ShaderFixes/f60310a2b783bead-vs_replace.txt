@@ -1,3 +1,4 @@
+// Water vertex shader (all quality settings)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -182,7 +183,8 @@ void main(
 float4 r21;
 float4 stereo = StereoParams.Load(0);
 r21.xyw = r2.xyw;
-r2.x += stereo.x * (r2.w - stereo.y);
+float adj = stereo.x * (r2.w - stereo.y);
+r2.x += adj;
 o0.xyw = r21.xyw;
 
 
@@ -247,9 +249,21 @@ o0.xyw = r21.xyw;
   o8.x = dot(r1.xyz, r0.xyz);
   o8.y = dot(r2.xyz, r0.xyz);
   o8.z = dot(r4.xyz, r0.xyz);
-  
-  
+
+
   // o8=0;
+//o1 = 0; // Disable ripples
+//o4 = 0; // Disable surface, leaving fog volume
+
+
+//o5 = 0; // Messes up reflections
+//o5.x += stereo.x; // Adjusts reflections (direction looks like world coords?)
+//o5.x += stereo.x * (o0.w - stereo.y);
+
+//o5 -= mul(mul(float4(adj, 0, 0, 0), _InvProjectionMatrix), _InvViewMatrix);
+
+//o7 += stereo.x; // Messes up sun reflection in one direction (world?)
+//o8 += stereo.x; // Messes up sun reflection in different direction (world coords?)
   return;
 }
 

@@ -1,3 +1,4 @@
+// Water pixel shader (MSAA4)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -672,29 +673,11 @@ void main(
   r8.xy = r4.xw * r0.xx + v5.xy;
   r8.z = v5.z;
   r8.w = 1.000000000e+000;
-  
-float4 r31, r32, r33, r34;
-r31.xyz = r8.xyz;
-r31.w = 1.0;
-r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
-r32.x += stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
-
-r8.xyz = r34.xyz;
+float4 tmp = mul(r8, _ViewProjectionMatrix);
+tmp.x += stereo.x * (tmp.w - stereo.y);
+r8 = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
 
   r9.x = dot(r8.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
   r9.y = dot(r8.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);

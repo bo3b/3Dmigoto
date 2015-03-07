@@ -1,3 +1,4 @@
+// Reflected object shader
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -113,20 +114,18 @@ void main(
   r0.w = rsqrt(r0.w);
   r1.xyz = r1.xyz * r0.www;
   r1.xyz = r1.xyz * _CameraPositionFractions_ZOffsetWS.www + r2.xyz;
-   
+
   r2.xyz = -_CameraPosition_DistanceScale.xyz + r1.xyz;
   r2.w = 1.000000000e+000;
-  
+
   o0.x = dot(r2.xyzw, _ViewRotProjectionMatrix._m00_m10_m20_m30);
   o0.y = dot(r2.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
   o0.z = dot(r2.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o0.w = dot(r2.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
-  
-  
-float4 stereo = StereoParams.Load(0);
-o0.x -= stereo.x * (o0.w - stereo.y); 
 
-  
+float4 stereo = StereoParams.Load(0);
+o0.x -= stereo.x * (o0.w - stereo.y) * 2;
+
   r1.w = 1.000000000e+000;
   o1.x = dot(_UserClipPlane.xyzw, r1.xyzw);
   o5.xyz = r1.xyz;

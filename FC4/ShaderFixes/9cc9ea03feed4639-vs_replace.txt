@@ -1,3 +1,4 @@
+// Reflected object (trees) shader
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -259,11 +260,11 @@ r1.z = SImpostorInstance_Obj[v1.x].m_packData; //.swiz;
   o0.y = dot(r5.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
   o0.z = dot(r5.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o0.w = dot(r5.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
-  
-  
+
+// Fix reflected trees
   float4 stereo = StereoParams.Load(0);
-o0.x -= stereo.x * (o0.w - stereo.y);  
-  
+o0.x -= stereo.x * (o0.w - stereo.y) * 2;
+
   o1.xy = v0.xy;
   o2.x = 0.000000000e+000;
   r6.w = 0.000000000e+000;

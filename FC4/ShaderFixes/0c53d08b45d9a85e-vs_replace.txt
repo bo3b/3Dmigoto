@@ -1,4 +1,4 @@
-//NO!  Is skybox
+// Skybox & reflection of skybox
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -80,9 +80,15 @@ void main(
   o0.z = dot(r1.xyzw, _ModelViewProj._m02_m12_m22_m32);
   o0.w = dot(r1.xyzw, _ModelViewProj._m03_m13_m23_m33);
 
-float4 stereo = StereoParams.Load(0);
-// o0.x -= stereo.x * (o0.w - stereo.y);  
-  
+// Shader is used for both skybox & sky reflections. Check render target
+// dimensions and only adjust when it is square or matche the dimensions of the
+// low quality water render target:
+if (_ViewportSize.x == 640 && _ViewportSize.y == 360 /* Low quality water */
+ || _ViewportSize.x == _ViewportSize.y) { /* Medium - Ultra quality water */
+	float4 stereo = StereoParams.Load(0);
+	o0.x -= stereo.x * (o0.w - stereo.y) * 2;
+}
+
   o1.yz = -r1.yz;
   o1.w = 0.000000000e+000;
   r1.w = v0.w;
