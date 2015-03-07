@@ -1,4 +1,11 @@
-//Lights - untested
+// Lighting related (specular highlights, environment reflection, etc)
+// Shader has several variants:
+//       No AA: 18d84611abd87606
+// MSAA2/TXAA2: d4e77294d5c49a53
+// MSAA4/TXAA4: bae6b98bfda33066
+// MSAA8      : 343df1da0e3edd9e
+// MSAA8      : 6ee0d5531150d4cd
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -125,6 +132,7 @@ void main(
   r0.x = GBufferDepth_TextureObject.Load(r0.xyz,0.000000000e+000).x;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
+float depth = r0.x;
   r0.y = _CameraDistances.x * _CameraDistances.y;
   r0.x = _CameraDistances.z * r0.x;
   r0.x = r0.y / r0.x;
@@ -137,32 +145,17 @@ void main(
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  
-r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;  
-  
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
-r32.x -= stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
 
-r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
+float4 tmp = float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1);
+tmp = mul(tmp, _ViewProjectionMatrix);
+tmp.x += stereo.x * (tmp.w - stereo.y);
 
+// This correction messed up distant haze (not volumetric fog), making
+// the hills a solid colour in one eye, but we do need the correction for the
+// environment map later, so keep the adjustment around.
+//r0.xyz += mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix) - _CameraPosition_DistanceScale.xyz;
 
   r0.xyz = _CameraPosition_DistanceScale.xzy + r0.xyz;
   r1.xy = (int2)v0.xy;
@@ -331,6 +324,17 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r14.w = 0.000000000e+000;
   r13.y = 0.000000000e+000;
   r13.xyzw = r9.zzzz ? r14.wxyz : r13.xyyy;
+
+// Adjusted version of r0 for specular reflections
+// multiplier found through experimenting at different times of day/night
+float multiplier = depth * 8192;
+float3 adj_r0 = r0 - mul(float4(stereo.x * multiplier, 0, 0, 0), _InvViewRotProjectionMatrix).xzy; // Axis order XZY
+
+adj_r0.xyz = _CameraPosition_DistanceScale.xzy + -adj_r0.xyz;
+r1.z = dot(adj_r0.xyz, adj_r0.xyz);
+r1.z = sqrt(r1.z);
+adj_r0.xyz = adj_r0.xyz / r1.zzz;
+
   r0.xyz = _CameraPosition_DistanceScale.xzy + -r0.xyz;
   r2.y = dot(r0.xyz, r0.xyz);
   r2.y = sqrt(r2.y);
@@ -661,7 +665,11 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
           r1.z = r1.y + r1.z;
           r1.z = 1.000000e+000 / r1.z;
           r1.z = _BRDFHighQuality ? r1.z : 1.000000000e+000;
-          r6.xyz = -_SunDirection.xyz + r0.xzy;
+
+// Use adjusted r0 to fix specular reflections:
+          //r6.xyz = -_SunDirection.xyz + r0.xzy;
+r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
+
           r1.w = dot(r6.xyz, r6.xyz);
           r1.w = rsqrt(r1.w);
           r6.xyz = r6.xyz * r1.www;
@@ -794,6 +802,15 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r0.xyz = -r0.www * r7.xzy + r0.xyz;
   r0.xyz = -r0.xyz;
   r0.w = -r18.y * 6.000000000e+000 + 6.000000000e+000;
+
+// r0 is the coords to sample the environment cube map, and need to be fixed
+float4 adj = float4(stereo.x, 0, 0, 0);
+adj = mul(adj, _InvViewRotProjectionMatrix);
+
+// Had to switch axis for horizontal reflections. May need more work for sloped
+// or vertical surfaces... may need the surface normal?
+r0.xz -= adj.xy;
+
   r0.xyz = EnvironmentMapTexture__TexObj__.SampleLevel(EnvironmentMapTexture__SampObj___s, r0.xyz, r0.w).xyz;
   r0.xyz = r0.xyz * _EnvironmentMapColorScale.xyz + _EnvironmentMapColorOffset.xyz;
   if (_BRDFHighQuality != 0) {
@@ -2605,3 +2622,4 @@ ret
 // Approximately 701 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
