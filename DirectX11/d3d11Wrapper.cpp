@@ -2372,7 +2372,7 @@ extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
 static void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
 	static ULONGLONG last_ticks = 0;
-	ULONGLONG ticks = GetTickCount();
+	ULONGLONG ticks = GetTickCount64();
 
 	// Prevent excessive input processing. XInput added an extreme
 	// performance hit when processing four controllers on every draw call,

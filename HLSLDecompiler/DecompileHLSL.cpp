@@ -130,6 +130,11 @@ public:
 	int nestCount;
 
 
+// Suppress all these warnings, as they are an _int64 mismatch for the aging sscanf, which should
+// accept that in x64, but doesn't.  Requiring int instead.  Not worth altering for a benign warning.
+#pragma warning(push)
+#pragma warning(disable: 6328)
+
 	Decompiler()
 		: mLastStatement(0),
 		uuidVar(0),
@@ -332,7 +337,7 @@ public:
 			else if (numRead == 3)
 			{
 				char sysValue[64];
-				int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
 					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
 				// Write.
 				char buffer[256];
@@ -410,7 +415,7 @@ public:
 			else if (numRead == 3)
 			{
 				char sysValue[64];
-				int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
 					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
 				// Write.
 				char buffer[256];
@@ -914,7 +919,7 @@ public:
 					e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
 					e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4 ||
 					e.bt == DT_float4x4 || e.bt == DT_float3x4 || e.bt == DT_float4x3 || e.bt == DT_float3x3 || 
-					e.bt == DT_float4x2 || DT_float2x4))
+					e.bt == DT_float4x2 || e.bt == DT_float2x4))
 				{
 					// Register each array element.
 					int numElements = 0;
@@ -983,7 +988,7 @@ public:
 					{
 						e.matrixRow = 2; offsetPos = (bufferRegister << 16) + offset + 2 * 16; 
 						mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
-						if (e.bt != DT_float4x3 || e.bt != DT_float3x3)
+						if (e.bt != DT_float4x3 && e.bt != DT_float3x3)
 						{  // Nearly sure this missing nesting was a bug
 							e.matrixRow = 3; offsetPos = (bufferRegister << 16) + offset + 3 * 16;  
 							mCBufferData[offsetPos] = e; if (structLevel >= 0) pendingStructAttributes[structLevel].push_back(offsetPos);
@@ -1071,7 +1076,7 @@ public:
 						if (suboffset == 0)
 							sprintf(buffer, "  %s%s %s : packoffset(c%d);\n", modifier.c_str(), type, name, packoffset);
 						else
-							sprintf(buffer, "  %s%s %s : packoffset(c%d.%c);\n", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+							sprintf(buffer, "  %s%s %s : packoffset(c%d.%c);\n", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
 					}
 					else
 						sprintf(buffer, "  %s%s%s %s;\n", structSpacing.c_str(), modifier.c_str(), type, name);
@@ -1197,7 +1202,7 @@ public:
 				// crushed the spaces out of the input.
 
 				// Like: -cb2[r12.w+63].xyzx  as : -cb(bufIndex)[(regAndSwiz)+(bufOffset)]
-				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, &regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 3)
+				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 3)
 				{
 					// Some constant buffers no longer have variable names, giving us generic names like cb0[23].
 					// The syntax doesn't work to use those names, so in this scenario, we want to just use the strPos name, unchanged.
@@ -1222,12 +1227,12 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: cb0[r0.w].xy
-				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, &regAndSwiz, sizeof(regAndSwiz)) == 2)
+				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, sizeof(regAndSwiz)) == 2)
 				{
 					bufOffset = 0;
 				}
 				// Like: icb[r0.w+0].xyzw
-				else if (sscanf_s(strPos, "cb[%[^+]+%d]", &regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 2)
+				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 2)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 				}
@@ -1238,7 +1243,7 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: icb[r1.z].xy
-				else if (sscanf_s(strPos, "cb[%s]", &regAndSwiz, sizeof(regAndSwiz)) == 1)
+				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, sizeof(regAndSwiz)) == 1)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 					bufOffset = 0;
@@ -1278,8 +1283,6 @@ public:
 				if (i == mCBufferData.end())
 				{
 					logDecompileError("3 Error parsing buffer offset: " + string(right2));
-					LogInfo("   bufIndex: %d  bufOffset: %d\n", bufIndex, bufOffset);
-					LogInfo("   strPos: %s\n", string(strPos));
 					//error parsing shader> 3 Error parsing buffer offset : icb[r6.z + 10].w
 					//bufIndex : -1  bufOffset : 10
 					//strPos : +10].w
@@ -1289,7 +1292,7 @@ public:
 					((i->second.bt == DT_float2 || i->second.bt == DT_uint2 || i->second.bt == DT_int2) && (strrchr(right2, '.')[1] == 'w' || strrchr(right2, '.')[1] == 'z')) ||
 					((i->second.bt == DT_float3 || i->second.bt == DT_uint3 || i->second.bt == DT_int3) && strrchr(right2, '.')[1] == 'w'))
 				{
-					int skip;
+					int skip = 4;
 					if (i->second.bt == DT_float || i->second.bt == DT_uint || i->second.bt == DT_int) skip = 1;
 					else if (i->second.bt == DT_float2 || i->second.bt == DT_uint2 || i->second.bt == DT_int2) skip = 2;
 					else if (i->second.bt == DT_float3 || i->second.bt == DT_uint3 || i->second.bt == DT_int3) skip = 3;
@@ -1997,7 +2000,7 @@ public:
 						mOutput.insert(writePos, StereoDecl, StereoDecl + strlen(StereoDecl));
 						stereoParamsWritten = true;
 						char buffer[256];
-						sprintf(buffer, "%s.x -= separation * (%s.w - convergence);\n", mSV_Position.c_str(), mSV_Position.c_str(), mSV_Position.c_str());
+						sprintf(buffer, "%s.x -= separation * (%s.w - convergence);\n", mSV_Position.c_str(), mSV_Position.c_str());
 						mOutput.insert(mOutput.end() - 1, buffer, buffer + strlen(buffer));
 					}
 				}
@@ -2050,7 +2053,7 @@ public:
 							char buffer[256];
 							string outputReg = i->first;
 							if (outputReg.find('.') != string::npos) outputReg = outputReg.substr(0, outputReg.find('.'));
-							sprintf(buffer, "\n%s.x += separation * (%s.w - convergence);", outputReg.c_str(), outputReg.c_str(), outputReg.c_str());
+							sprintf(buffer, "\n%s.x += separation * (%s.w - convergence);", outputReg.c_str(), outputReg.c_str());
 							mOutput.insert(writePos, buffer, buffer + strlen(buffer));
 							mPatched = true;
 						}
@@ -2516,9 +2519,12 @@ public:
 								char *posParam1 = strstr(mOutput.data(), ParamPos1);
 								char *posParam2 = strstr(mOutput.data(), ParamPos2);
 								char *posParam = posParam1 ? posParam1 : posParam2;
-								while (*posParam != '\n') --posParam;
-								mOutput.insert(mOutput.begin() + (posParam - mOutput.data()), NewParam, NewParam + strlen(NewParam));
-								parameterWritten = true;
+								if (posParam != NULL)
+								{
+									while (*posParam != '\n') --posParam;
+									mOutput.insert(mOutput.begin() + (posParam - mOutput.data()), NewParam, NewParam + strlen(NewParam));
+									parameterWritten = true;
+								}
 							}
 						}
 					}
@@ -2854,7 +2860,7 @@ public:
 				// format as: dcl_indexableTemp x0[40], 4
 				int numIndex = 0;
 				char varName[opcodeSize];
-				sscanf_s(op1, "%[^[][%d]", &varName, opcodeSize, &numIndex);
+				sscanf_s(op1, "%[^[][%d]", varName, opcodeSize, &numIndex);
 				sprintf(buffer, "  float4 %s[%d];\n", varName, numIndex);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
@@ -3640,7 +3646,7 @@ public:
 						break;
 
 					case OPCODE_LOOP:
-						sprintf(buffer, "  while (true) {\n", op1);
+						sprintf(buffer, "  while (true) {\n");
 						appendOutput(buffer);
 						break;
 					case OPCODE_BREAK:
@@ -3668,7 +3674,7 @@ public:
 						appendOutput(buffer);
 						break;
 					case OPCODE_ENDLOOP:
-						sprintf(buffer, "  }\n", op1);
+						sprintf(buffer, "  }\n");
 						appendOutput(buffer);
 						break;
 
@@ -4098,7 +4104,6 @@ public:
 					{
 						string dst0, srcAddress, srcByteOffset, src0;
 						string swiz;
-						int reg;
 
 						dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
 						srcAddress = instr->asOperands[1].specialName;
@@ -4389,6 +4394,9 @@ public:
 		// This fixes the double injection of "injectedScreenPos : SV_Position"
 		WritePatches();
 	}
+
+// Restore the warning that was disabled outside of the main usage. sscanf_s warning on _int64.
+#pragma warning(pop)
 
 	void ParseCodeOnlyShaderType(Shader *shader, const char *c, size_t size)
 	{
