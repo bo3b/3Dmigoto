@@ -1,4 +1,5 @@
-// HUD - Enemy, animal, etc. markers tagged with camera
+// HUD - Enemy, animal, etc. markers tagged with camera.
+// Also the Sniper rifle laser, which should not be adjusted - filter on depth buffer in d3dx.ini
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -208,3 +209,4 @@ ret
 // Approximately 18 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
