@@ -1,3 +1,4 @@
+// Reflected object shader (unverified)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -112,6 +113,10 @@ void main(
   o0.y = dot(r2.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
   o0.z = dot(r2.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o0.w = dot(r2.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
+
+float4 stereo = StereoParams.Load(0);
+o0.x -= stereo.x * (o0.w - stereo.y) * 2;
+
   r0.w = 1.000000000e+000;
   o1.x = dot(_UserClipPlane.xyzw, r0.xyzw);
   o5.xyz = r0.xyz;
