@@ -477,25 +477,55 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 	UpdateIniParams(device, wrapper, &params);
 }
 
-OverrideGlobalSave::OverrideGlobalSave()
+OverrideGlobalSaveParam::OverrideGlobalSaveParam() :
+	save(FLT_MAX),
+	refcount(0)
 {
-	Reset();
 }
 
-void OverrideGlobalSaveParam::Reset()
+float OverrideGlobalSaveParam::Reset()
 {
+	float ret = save;
+
 	save = FLT_MAX;
 	refcount = 0;
+
+	return ret;
 }
 
-void OverrideGlobalSave::Reset()
+void OverrideGlobalSave::Reset(D3D11Wrapper::ID3D11Device* wrapper)
 {
+	D3D11Base::NvAPI_Status err;
+	float val;
+
 	x.Reset();
 	y.Reset();
 	z.Reset();
 	w.Reset();
-	separation.Reset();
-	convergence.Reset();
+
+	// Restore any saved separation & convergence settings to prevent a
+	// currently active preset from becoming the default on config reload.
+	// Don't worry about the ini params since the config reload will reset
+	// them anyway.
+	val = separation.Reset();
+	if (val != FLT_MAX) {
+		LogInfo(" Restoring separation to %#.2f\n", val);
+
+		D3D11Wrapper::NvAPIOverride();
+		err = D3D11Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		if (err != D3D11Base::NVAPI_OK)
+			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
+	}
+
+	val = convergence.Reset();
+	if (val != FLT_MAX) {
+		LogInfo(" Restoring convergence to %#.2f\n", val);
+
+		D3D11Wrapper::NvAPIOverride();
+		err = D3D11Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		if (err != D3D11Base::NVAPI_OK)
+			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
+	}
 }
 
 void OverrideGlobalSaveParam::Save(float val)

@@ -159,7 +159,9 @@ private:
 	float save;
 	int refcount;
 public:
-	void Reset();
+	OverrideGlobalSaveParam();
+
+	float Reset();
 	void Save(float val);
 	void Restore(float *val);
 };
@@ -168,9 +170,8 @@ class OverrideGlobalSave
 {
 public:
 	OverrideGlobalSaveParam x, y, z, w, separation, convergence;
-	OverrideGlobalSave();
 
-	void Reset();
+	void Reset(D3D11Wrapper::ID3D11Device* wrapper);
 	void Save(D3D11Base::ID3D11Device *device, Override *preset);
 	void Restore(Override *preset);
 };

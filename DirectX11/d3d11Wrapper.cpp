@@ -689,7 +689,7 @@ static void ReloadConfig(D3D11Base::ID3D11Device *device)
 	ClearKeyBindings();
 
 	// Reset the counters on the global parameter save area:
-	OverrideSave.Reset();
+	OverrideSave.Reset(wrapper);
 
 	LoadConfigFile();
 
