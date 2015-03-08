@@ -1357,6 +1357,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 			D3DCreateBlob(BytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
 			RegisterForReload(*ppVertexShader, hash, L"vs", "bin", pClassLinkage, blob, ftWrite);
+
+			// Also add the original shader to the original shaders
+			// map so that if it is later replaced marking_mode =
+			// original and depth buffer filtering will work:
+			if (G->mOriginalVertexShaders.count(*ppVertexShader) == 0)
+				G->mOriginalVertexShaders[*ppVertexShader] = *ppVertexShader;
 		}
 	}
 	if (hr == S_OK && ppVertexShader && pShaderBytecode)
@@ -1568,6 +1574,12 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 			D3DCreateBlob(BytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
 			RegisterForReload(*ppPixelShader, hash, L"ps", "bin", pClassLinkage, blob, ftWrite);
+
+			// Also add the original shader to the original shaders
+			// map so that if it is later replaced marking_mode =
+			// original and depth buffer filtering will work:
+			if (G->mOriginalPixelShaders.count(*ppPixelShader) == 0)
+				G->mOriginalPixelShaders[*ppPixelShader] = *ppPixelShader;
 		}
 	}
 	if (hr == S_OK && ppPixelShader && pShaderBytecode)
