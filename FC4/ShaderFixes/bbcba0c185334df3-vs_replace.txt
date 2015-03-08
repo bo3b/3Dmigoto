@@ -1,3 +1,4 @@
+// Lights vertex shader (MSAA / TXAA)
 
 cbuffer CDeferredLightingParameterProvider : register(b0)
 {
@@ -42,6 +43,12 @@ void main(
   out float4 o0 : SV_Position0,
   out float4 o1 : TEXCOORD0)
 {
+float4 stereo = StereoParams.Load(0);
+
+// Remove clipping on lights:
+if (abs(v0.x) != 1)
+	v0.x += stereo.x;
+
   o0.xy = v0.xy * _QuadParams.xy + _QuadParams.zw;
   o0.zw = float2(0.000000e+000,1.000000e+000);
   o1.xy = v0.xy * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);

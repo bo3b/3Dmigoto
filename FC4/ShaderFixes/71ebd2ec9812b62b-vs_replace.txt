@@ -1,4 +1,4 @@
-// Lights vertex shader
+// Lights vertex shader (No AA / SMAA)
 
 cbuffer CDeferredLightingParameterProvider : register(b0)
 {
