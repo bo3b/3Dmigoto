@@ -1,8 +1,11 @@
 // Lighting related (specular highlights, environment reflection, etc)
-// Shader has several variants:
+// Shader has several variants. Some AA variants have two - one for the fill,
+// one for the anti-aliased polygon edges:
 //       No AA: 18d84611abd87606
-// MSAA2/TXAA2: d4e77294d5c49a53
-// MSAA4/TXAA4: bae6b98bfda33066
+// MSAA2/TXAA2: d4e77294d5c49a53 (fill)
+// MSAA2/TXAA2: 8afc461f52eab3e6 (polygon edges)
+// MSAA4/TXAA4: bae6b98bfda33066 (fill)
+// MSAA4/TXAA4: ea7ccc99799c7228 (polygon edges)
 // MSAA8      : 343df1da0e3edd9e
 // MSAA8      : 6ee0d5531150d4cd
 
@@ -150,13 +153,11 @@ float depth = r0.x;
 
 float4 stereo = StereoParams.Load(0);
 
-float4 tmp = float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1);
-tmp = mul(tmp, _ViewProjectionMatrix);
-tmp.x += stereo.x * (tmp.w - stereo.y);
-
 // This correction messed up distant haze (not volumetric fog), making
-// the hills a solid colour in one eye, but we do need the correction for the
-// environment map later, so keep the adjustment around.
+// the hills a solid colour in one eye.
+//float4 tmp = float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1);
+//tmp = mul(tmp, _ViewProjectionMatrix);
+//tmp.x += stereo.x * (tmp.w - stereo.y);
 //r0.xyz += mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix) - _CameraPosition_DistanceScale.xyz;
 
   r0.xyz = _CameraPosition_DistanceScale.xzy + r0.xyz;

@@ -1,4 +1,6 @@
 //Lights - untested
+// Seemed to be used when I started the game with MSAA4, but not sure where it is used
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -337,7 +339,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r1.z = 1.000100017e+000 >= r1.z;
   r1.z = r1.z ? 1.000000 : 0;
   r1.z = r2.w * r1.z;
-  DeferredAmbientTexture_TextureObject.GetDimensions(r4.x, r4.y, bitmask.x);
+  DeferredAmbientTexture_TextureObject.GetDimensions(r4.x, r4.y);
   r4.xy = r4.xy;
   r4.xy = float2(5.000000e-001,5.000000e-001) / r4.xy;
   r4.xy = v1.xy + r4.xy;
