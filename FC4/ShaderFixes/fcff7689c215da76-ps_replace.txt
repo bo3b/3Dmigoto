@@ -163,10 +163,13 @@ r0.xyz = r34.xyz;
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
   r3.xyzw = GBufferT1.Load(r1.xyw).xyzw;
   r4.xyzw = GBufferT2.Load(r1.xyw).xyzw;
-  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xzwy;
-  r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
-  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
-  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy).xyzw;
+
+// Decompiler missed the offset in the sample_aoffimmi variant:
+  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 1,  0)).xzwy;
+  r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(-1,  0)).xyzw;
+  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 0,  1)).xyzw;
+  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 0, -1)).xyzw;
+
   r9.x = r8.x;
   r9.y = r7.x;
   r9.z = r6.x;
@@ -873,9 +876,9 @@ r19.xyz = r34.xyz;
             r17.x = (int)r15.w < (int)_SpotLightGoboCount;
             if (r17.x != 0) {
               r17.x = (uint)r15.w << 2;
-              r25.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.w/4]._m00_m10_m20_m30);
-              r25.y = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.w/4]._m01_m11_m21_m31);
-              r17.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.w/4]._m03_m13_m23_m33);
+              r25.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.x/4]._m00_m10_m20_m30);
+              r25.y = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.x/4]._m01_m11_m21_m31);
+              r17.x = dot(r19.xyzw, _SpotShadowProjectionMatrix[r17.x/4]._m03_m13_m23_m33);
               r17.x = max(r17.x, 9.999999747e-006);
               r25.xy = r25.xy / r17.xx;
               r25.xy = r25.xy * _SpotScaleOffsetUVS[r15.w].xy + _SpotScaleOffsetUVS[r15.w].zw;
@@ -2758,9 +2761,3 @@ ret
 // Approximately 1218 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(272,13-39): error X3018: invalid subscript 'xyzw'
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    
