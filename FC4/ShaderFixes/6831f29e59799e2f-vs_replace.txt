@@ -1,5 +1,7 @@
-// Direct sun shafts + other celestial objects
-// Using partner pixel shader filtering in d3dx.ini to only adjust sun shafts
+// Direct sun shafts (pass 1/4) + other celestial objects
+
+// Was using partner pixel shader filtering in d3dx.ini to only adjust sun
+// shafts, now doing the fix in parts 2+3 instead of here.
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -66,11 +68,14 @@ void main(
   o0.z = dot(v0.xyzw, _ModelViewProj._m02_m12_m22_m32);
   o0.w = dot(v0.xyzw, _ModelViewProj._m03_m13_m23_m33);
 
-// Fix sun shaft origin so they cast towards the camera instead of off to the side.
-// NOTE: would break sun position, so using partner shader filtering so this
+// Part of an early attempt to fix god rays (direct, not nvidia or volumetric
+// fog). Was able to position them correctly, but they were not being occluded
+// accurately. Instead they are now fixed in the two propagation shaders.
+
+// NOTE: would break sun position, so use partner shader filtering so this
 // only applies when used with the sun shaft pixel shader
-float4 stereo = StereoParams.Load(0);
-o0.x -= stereo.x * o0.w; //(o0.w - stereo.y);
+//float4 stereo = StereoParams.Load(0);
+//o0.x -= stereo.x * (o0.w - stereo.y);
 
   r0.xyz = v0.yzx * _CameraDistances.yyy + _SkyPosition.yzx;
   r0.xyz = -_CameraPosition_DistanceScale.yzx + r0.xyz;
