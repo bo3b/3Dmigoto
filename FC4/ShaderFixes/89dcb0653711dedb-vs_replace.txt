@@ -1,4 +1,5 @@
 // Flame on repair tool
+// Adjusting this messes up candles in intro :(
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -157,15 +158,18 @@ void main(
   o3.w = v3.w * v1.w;
   o5.xy = v2.xy;
 
-// Push flame backwards to line up with repair tool. This adjusts the depth
-// independently of scale (xyz scale countered by w depth adjustment), and was
-// the only solution I could find that works independently of convergence.
+// This adjustment messes up candles in the intro - need to find a way to
+// detect when the repair tool is in use.
 
-// This also messes up the pilot light on the flame thrower, so only apply
-// the adjustment while the fire button is held
-float4 params = IniParams.Load(0);
-if (params.z == 1)
-	o0 *= 2.4;
+// // Push flame backwards to line up with repair tool. This adjusts the depth
+// // independently of scale (xyz scale countered by w depth adjustment), and was
+// // the only solution I could find that works independently of convergence.
+// 
+// // This also messes up the pilot light on the flame thrower, so only apply
+// // the adjustment while the fire button is held
+// float4 params = IniParams.Load(0);
+// if (params.z == 1)
+// 	o0 *= 2.4;
 
   return;
 }
