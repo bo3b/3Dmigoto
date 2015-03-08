@@ -648,7 +648,7 @@ void OverrideGlobalSave::Restore(Override *preset)
 	if (preset->mOverrideParams.y != FLT_MAX)
 		y.Restore(&preset->mSavedParams.y);
 	if (preset->mOverrideParams.z != FLT_MAX)
-		y.Restore(&preset->mSavedParams.z);
+		z.Restore(&preset->mSavedParams.z);
 	if (preset->mOverrideParams.w != FLT_MAX)
-		y.Restore(&preset->mSavedParams.w);
+		w.Restore(&preset->mSavedParams.w);
 }
