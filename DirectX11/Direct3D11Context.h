@@ -727,6 +727,16 @@ static void ProcessShaderOverride(D3D11Wrapper::ID3D11DeviceContext *context,
 		// buffer state is passed as an input to the shader
 	}
 
+	if (shaderOverride->partner_hash) {
+		if (isPixelShader) {
+			if (G->mCurrentVertexShader != shaderOverride->partner_hash)
+				use_orig = true;
+		} else {
+			if (G->mCurrentPixelShader != shaderOverride->partner_hash)
+				use_orig = true;
+		}
+	}
+
 	// TODO: Add render target filters, texture filters, etc.
 
 	if (use_orig) {

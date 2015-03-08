@@ -80,12 +80,14 @@ struct ShaderOverride {
 #endif
 	std::vector<UINT64> indexBufferFilter;
 	DepthBufferFilter depth_filter;
+	UINT64 partner_hash;
 
 	ShaderOverride() :
 		separation(FLT_MAX),
 		convergence(FLT_MAX),
 		skip(false),
-		depth_filter(DepthBufferFilter::NONE)
+		depth_filter(DepthBufferFilter::NONE),
+		partner_hash(0)
 	{}
 };
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;

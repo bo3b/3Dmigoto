@@ -201,6 +201,14 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 				LogInfoW(L"  depth_filter=%s\n", setting);
 			}
 		}
+
+		// TODO: make this a list and/or add a way to pass in an
+		// identifier for the partner shader
+		if (GetPrivateProfileString(id, L"partner", 0, setting, MAX_PATH, iniFile)) {
+			swscanf_s(setting, L"%16llx", &override->partner_hash);
+			LogInfo("  partner=%16llx\n", override->partner_hash);
+		}
+
 #if 0 /* Iterations are broken since we no longer use present() */
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
