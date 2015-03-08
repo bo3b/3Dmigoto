@@ -90,7 +90,8 @@ else /* right eye */
 // r2.xyz = 0;
 
   r0.xyz = r1.xyz * r2.xyz + r0.xyz;
-  r1.xyz = GodRaysSampler.SampleLevel(LinearTextureSampler_s, v1.xy, 0.000000000e+000).xyz;
+coords.x = v1.x - stereo.x / 2;
+r1.xyz = GodRaysSampler.SampleLevel(LinearTextureSampler_s, coords, 0.000000000e+000).xyz;
   r0.xyz = _CombineSettings.xxx * r1.xyz + r0.xyz;
   o0.xyz = _CombineSettings.www * r0.xyz;
   o0.w = 0.000000000e+000;
