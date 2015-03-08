@@ -1912,6 +1912,18 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 	}
 }
 
+static void DisableFix(D3D11Base::ID3D11Device *device, void *private_data)
+{
+	LogInfo("show_original pressed - switching to original shaders\n");
+	G->fix_enabled = false;
+}
+
+static void EnableFix(D3D11Base::ID3D11Device *device, void *private_data)
+{
+	LogInfo("show_original released - switching to replaced shaders\n");
+	G->fix_enabled = true;
+}
+
 static void NextIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -2331,6 +2343,8 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	RegisterIniKeyBinding(L"Hunting", L"done_hunting", iniFile, DoneHunting, NULL, noRepeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, noRepeat, NULL);
+
+	RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);

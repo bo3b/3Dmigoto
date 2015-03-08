@@ -157,6 +157,7 @@ struct Globals
 	int gSurfaceSquareCreateMode;
 
 	bool hunting;
+	bool fix_enabled;
 	bool config_reloadable;
 	time_t huntTime;
 
@@ -268,6 +269,7 @@ struct Globals
 		mSelectedIndexBufferPos(0),
 
 		hunting(false),
+		fix_enabled(true),
 		config_reloadable(false),
 		huntTime(0),
 

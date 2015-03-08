@@ -502,9 +502,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::PSSetShader(THIS_
 	if (G->hunting && pPixelShader)
 	{
 		// Replacement map.
-		if (G->marking_mode == MARKING_MODE_ORIGINAL) {
+		if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
 			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
-			if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mOriginalPixelShaders.end())
+			if ((G->mSelectedPixelShader == G->mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
 			{
 				D3D11Base::ID3D11PixelShader *shader = j->second;
 				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -824,6 +824,9 @@ static DrawContext BeforeDraw(D3D11Wrapper::ID3D11DeviceContext *context)
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
+	if (!G->fix_enabled)
+		return data;
+
 	// Override settings?
 	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(G->mCurrentVertexShader);
 	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(G->mCurrentPixelShader);
@@ -964,9 +967,9 @@ STDMETHODIMP_(void) D3D11Wrapper::ID3D11DeviceContext::VSSetShader(THIS_
 	if (G->hunting && pVertexShader)
 	{
 		// Replacement map.
-		if (G->marking_mode == MARKING_MODE_ORIGINAL) {
+		if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
 			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
-			if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mOriginalVertexShaders.end())
+			if ((G->mSelectedVertexShader == G->mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
 			{
 				D3D11Base::ID3D11VertexShader *shader = j->second;
 				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
