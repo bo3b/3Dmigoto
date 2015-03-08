@@ -1,4 +1,4 @@
-// Reflected object shader (unverified)
+// Numbers on cellphone after driving section in intro
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -160,8 +160,10 @@ void main(
   o0.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o0.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
 
-float4 stereo = StereoParams.Load(0);
-o0.x -= stereo.x * (o0.w - stereo.y) * 2;
+// No - ShaderUsage pointed to this being used as a reflection shader, but this
+// messes up the cellphone in the intro
+// float4 stereo = StereoParams.Load(0);
+// o0.x -= stereo.x * (o0.w - stereo.y) * 2;
 
   r0.xyz = -_CameraPosition_DistanceScale.xyz + r1.xyz;
   r0.w = dot(r0.xyz, r0.xyz);
@@ -724,3 +726,4 @@ ret
 // Approximately 78 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

@@ -128,6 +128,10 @@ void main(
   r2.w = dot(r1.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
   o0.z = dot(r1.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
   o0.xyw = r2.xyw;
+
+float4 stereo = StereoParams.Load(0);
+r2.x += stereo.x * (r2.w - stereo.y);
+
   r3.xyzw = _DepthTextureScaleOffset.xyzw * r2.xyww;
   o5.z = r2.w;
   o5.xy = r3.xy + r3.zw;
@@ -396,4 +400,5 @@ ret
 // Approximately 67 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
  
