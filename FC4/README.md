@@ -15,7 +15,7 @@ rendering issues please report back:**
 
 Fixed
 -----
-- Shadows (except soft shadows)
+- Shadows (including soft shadows)
 - Halos
 - Water reflections
 - Environment reflections on horizontal surfaces
@@ -50,12 +50,10 @@ Installation
 5. If using a recent driver version >= 347.09, press ctrl+alt+F11 in game to
    disable compatibility mode
 
-7. Set shadows to any setting except soft shadows.
-
-8. Set ambient occlusion to HBAO+ (recommended) or off. Do not use other
+7. Set ambient occlusion to HBAO+ (recommended) or off. Do not use other
    settings.
 
-9. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
+8. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
    but shadows will have a 1 frame sync issue, and may appear to lift off the
    ground while walking. SMAA is not recommended. (3)
 
