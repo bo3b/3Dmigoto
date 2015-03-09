@@ -379,8 +379,9 @@ void main(
 
 float4 stereo = StereoParams.Load(0);
 float4 tmp = mul(r7, _ViewProjectionMatrix);
-tmp.x += stereo.x * (tmp.w - stereo.y);
-r7 = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+// Negating Z axis to improve reflections while camera is rotated (e.g. in wingsuit)
+r7 += mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix) * float4(1,1,-1,1);
 
   r8.x = dot(r7.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
   r8.y = dot(r7.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);
