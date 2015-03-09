@@ -1,3 +1,4 @@
+// Water reflections (unverified)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -380,6 +381,13 @@ void main(
   r8.xy = r8.xy * r0.xx + v5.xy;
   r8.z = v5.z;
   r8.w = 1.000000000e+000;
+
+float4 stereo = StereoParams.Load(0);
+float4 tmp = mul(r8, _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+// Negating Z axis to improve reflections while camera is rotated (e.g. in wingsuit)
+r8 += mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix) * float4(1,1,-1,1);
+
   r9.x = dot(r8.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
   r9.y = dot(r8.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);
   r6.w = dot(r8.xyzw, _WaterReflectionTransform._m03_m13_m23_m33);

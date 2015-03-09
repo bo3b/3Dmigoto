@@ -1,3 +1,4 @@
+// Water near white tiger in Shangria-La (No AA)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -679,6 +680,13 @@ void main(
   r9.xy = r5.xw * r0.xx + v5.xy;
   r9.z = v5.z;
   r9.w = 1.000000000e+000;
+
+float4 stereo = StereoParams.Load(0);
+float4 tmp = mul(r9, _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+// Negating Z axis to improve reflections while camera is rotated (e.g. in wingsuit)
+r9 += mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix) * float4(1,1,-1,1);
+
   r10.x = dot(r9.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
   r10.y = dot(r9.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);
   r5.x = dot(r9.xyzw, _WaterReflectionTransform._m03_m13_m23_m33);
