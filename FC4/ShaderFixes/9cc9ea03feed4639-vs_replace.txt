@@ -1,4 +1,17 @@
-// Reflected object (trees) shader
+// Reflected imposter trees shader
+
+// Had a lot of decompile issues. Still not quite right - it selects the wrong
+// imposter from the array, so reflections don't line up as nice as they
+// should, and the imposter is missing from some angles. I've got it pretty
+// close to the original assembly and I still can't see what's wrong. Probably
+// close enough for now...
+
+// To compare with the original shader it's best to turn off 3D, find somewhere
+// with distinctive tree reflections (The lake in Shangri-La is quite good for
+// this) and use the show_original key binding to compare.
+
+// Could be a rounding error - I noticed the PI constant was truncated, maybe
+// something else was too? Not sure, just guesssing.
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -73,17 +86,18 @@ cbuffer CImpostorDataProvider : register(b2)
 
 struct SImpostorInstance
 {
-  uint rot[5];               // Offset:    0
-  float3 pos;                // Offset:   20
-  uint m_tint;                   // Offset:   32
-  uint m_packData;               // Offset:   36
-  float2 m_ditherUVOffset;       // Offset:   40
+    struct {
+        uint rot[5];               // Offset:    0
+        float3 pos;                // Offset:   20
 
-}; 		                        // Offset:    0 Size:    48
-
+    } m_treeToWS;                  // Offset:    0
+    uint m_tint;                   // Offset:   32
+    uint m_packData;               // Offset:   36
+    float2 m_ditherUVOffset;       // Offset:   40
+};                        // Offset:    0 Size:    48
 
 Texture2DArray<float4> DepthLowRes : register(t0);
-StructuredBuffer<SImpostorInstance> SImpostorInstance_Obj : register(t1);
+StructuredBuffer<SImpostorInstance> instanceData : register(t1);
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -105,36 +119,51 @@ void main(
   out uint2 p9 : _viewIndex0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
-  uint4 bitmask;
-  DepthLowRes.GetDimensions(r0.x, r0.y, bitmask.x);
+  uint4 r0u, r1u, r2u, r3u, r4u, r5u, r6u, r7u, r8u, r9u;
+  int4 r0i, r1i, r2i, r3i, r4i, r5i, r6i, r7i, r8i, r9i;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  DepthLowRes.GetDimensions(0, fDest.x, fDest.y, fDest.z, fDest.w);
+  r0.xy = fDest.xy;
   r0.xy = float2(-1.000000e+000,-1.000000e+000) + r0.xy;
   r0.zw = saturate(v0.xy);
   r0.xy = r0.xy * r0.zw;
-  r0.xy = (int2)r0.xy;
-  r0.w = 0.000000000e+000;
-  r1.xyw = r0.xyw;
+  r0i.xy = (int2)r0.xy;
+  r0.w = 0;
+  r1i.xyw = r0.xyw;
+
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r2.xyzw, v1.x, l(0), t1.xyzw
-r2.x = SImpostorInstance_Obj[v1.x].rot[0]; //.swiz;
-r2.y = SImpostorInstance_Obj[v1.x].rot[1]; //.swiz;
-r2.z = SImpostorInstance_Obj[v1.x].rot[2]; //.swiz;
-r2.w = SImpostorInstance_Obj[v1.x].rot[3]; //srcByteOffsetName.swiz;
-  r3.xyzw = (int4)r2.xyzw & int4(0,0,0,0);
-  r2.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
-  r2.xyzw = f16tof32(r2.xywz);
-  r3.xyzw = f16tof32(r3.xywz);
+r2u.x = instanceData[v1.x].m_treeToWS.rot[0];
+r2u.y = instanceData[v1.x].m_treeToWS.rot[1];
+r2u.z = instanceData[v1.x].m_treeToWS.rot[2];
+r2u.w = instanceData[v1.x].m_treeToWS.rot[3];
+
+// Bad decompiler!
+//  r3.xyzw = (int4)r2.xyzw & int4(0,0,0,0);
+// Assembly was:
+//  and r3.xyzw, r2.xyzw, l(0x0000ffff, 0x0000ffff, 0x0000ffff, 0x0000ffff)
+// Should be:
+r3u.xyzw = r2u.xyzw & uint4(0xffff, 0xffff, 0xffff, 0xffff);
+
+  r2u.xyzw = r2u.xyzw >> uint4(16,16,16,16);
+  r2.xyzw = f16tof32(r2u.xywz);
+  r3.xyzw = f16tof32(r3u.xywz);
   r4.x = r3.z;
   r4.y = r2.z;
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r5.xyzw, v1.x, l(16), t1.xyzw
-r5.x = SImpostorInstance_Obj[v1.x].rot[4]; //.swiz;
-r5.y = SImpostorInstance_Obj[v1.x].pos.x;
-r5.z = SImpostorInstance_Obj[v1.x].pos.y;
-r5.w = SImpostorInstance_Obj[v1.x].pos.z;
-  r5.x = (int)r5.x & 0x0000ffff;
-  r4.z = f16tof32(r5.x);
+r5u.x = instanceData[v1.x].m_treeToWS.rot[4];
+r5.y = instanceData[v1.x].m_treeToWS.pos.x;
+r5.z = instanceData[v1.x].m_treeToWS.pos.y;
+r5.w = instanceData[v1.x].m_treeToWS.pos.z;
+  r5u.x = r5u.x & 0x0000ffff;
+  r4.z = f16tof32(r5u.x);
   r6.xyz = -_CameraPosition_DistanceScale.xyz + r5.yzw;
+
   r7.z = dot(r4.xyz, r6.xyz);
+
   r8.y = r2.x;
   r8.xz = r3.xy;
   r7.x = dot(r8.xyz, r6.xyz);
@@ -145,7 +174,10 @@ r5.w = SImpostorInstance_Obj[v1.x].pos.z;
   r2.y = r8.y;
   r5.x = dot(r7.xyz, r7.xyz);
   r5.x = rsqrt(r5.x);
+
+// r6.z messed up?
   r6.xyz = r7.xyz * r5.xxx;
+
   r5.x = max(abs(r6.x), abs(r6.y));
   r5.x = 1.000000e+000 / r5.x;
   r6.w = min(abs(r6.x), abs(r6.y));
@@ -161,56 +193,83 @@ r5.w = SImpostorInstance_Obj[v1.x].pos.z;
   r7.x = r7.y ? r7.x : 0;
   r5.x = r5.x * r6.w + r7.x;
   r6.w = r6.x < -r6.x;
-  r6.w = r6.w ? -3.141593 : 0;
+
+  //r6.w = r6.w ? -3.141593 : 0;
+  r6.w = r6.w ? -3.141592653589793 : 0;
+//r6.w = asfloat(asint(r6.w) & 0xc0490fdb);
+
   r5.x = r6.w + r5.x;
   r6.w = min(r6.x, r6.y);
   r6.w = r6.w < -r6.w;
   r6.x = max(r6.x, r6.y);
+
   r6.y = r6.z < -7.699999809e-001;
+// Loss of precision? no
+//r6.y = r6.z < -0.77;
+
   r6.x = r6.x >= -r6.x;
+
   r6.x = r6.x ? r6.w : 0;
+// Produces same assembly:
+//r6.x = asfloat(asint(r6.x) & asint(r6.w));
+
   r5.x = r6.x ? -r5.x : r5.x;
   r5.x = 4.712385178e+000 + r5.x;
-  r5.x = -r5.x * 1.271649122e+000 + 3.250000000e+001;
-  r6.x = (int)r5.x;
+  r5.x = -r5.x * 1.271649122 + 32.5;
+  r6i.x = (int)r5.x;
   r5.x = frac(r5.x);
   r5.x = -5.000000000e-001 + r5.x;
-  r7.x = (int)r6.x & 7;
-  r6.xz = (int2)r7.xx + int2(1,7);
-  r6.xz = (int2)r6.xz & int2(7,7);
-  r6.w = 0.000000000e+000 < r5.x;
+
+// r7.x from r6.x:
+  r7i.x = (int)r6i.x & 7;
+
+// Which comes from r7.x:
+  r6i.xz = (int2)r7i.xx + int2(1,7);
+  r6i.xz = (int2)r6i.xz & int2(7,7);
+
+  r6.w = 0 < r5.x;
   r7.z = abs(r5.x);
-  r7.y = r6.w ? r6.x : r6.z;
-  r6.xyz = r6.yyy ? float3(8.000000e+000,8.000000e+000,1.000000e+000) : r7.xyz;
-  r1.z = r6.y;
-  r1.x = DepthLowRes.Load(r1.x).x;
-  // r1.x = DepthLowRes.Load(r1.xyz).x;
-  r1.x = _Binormal_DepthRange[r6.y].w * r1.x;
-  r1.y = _Binormal_DepthRange[r6.y].w * 5.000000000e-001 + -r1.x;
+
+// r7.y can come from r6.x or r6.z
+  r7i.y = r6.w ? r6i.x : r6i.z;
+
+// r6.y comes from r7.y...
+// r6.x is low three bits (direction?), or 0b1000 from above - it's fine
+  //r6.xyz = r6.yyy ? float3(8.000000e+000,8.000000e+000,1.000000e+000) : r7.xyz;
+  r6i.xy = r6.yy ? int2(8,8) : r7i.xy;
+  r6.z = r6.y ? 1.0 : r7.z;
+
+//r6.x -= 1;
+
+  r1i.z = r6i.y;
+  r1.x = DepthLowRes.Load(r1i.xyzw).x;
+  r1.x = _Binormal_DepthRange[r6i.y].w * r1.x;
+  r1.y = _Binormal_DepthRange[r6i.y].w * 5.000000000e-001 + -r1.x;
 // Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.z, v1.x, l(36), t1.xxxx
-r1.z = SImpostorInstance_Obj[v1.x].m_packData; //.swiz;
-  r1.z = (uint)r1.z >> 24;
-  r1.z = r1.z;
+// ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1i.z, v1.x, l(36), t1.xxxx
+r1u.z = instanceData[v1.x].m_packData;
+  r1u.z = r1u.z >> 24;
+  r1.z = r1u.z;
   r1.w = 3.921568859e-003 * r1.z;
   r1.z = -r1.z * 3.921568859e-003 + 1.000000000e+000;
   r1.x = r1.w * r1.y + r1.x;
-  r1.x = _Binormal_DepthRange[r6.y].w + -r1.x;
-  r7.xyz = _QuadAxisU[r6.y].xyz * v0.xxx + _QuadTopLeft[r6.y].xyz;
-  r7.xyz = _QuadAxisV[r6.y].xyz * v0.yyy + r7.xyz;
-  r7.xyz = _Normal[r6.y].xyz * r1.xxx + r7.xyz;
-  r7.w = 1.000000000e+000;
+  r1.x = _Binormal_DepthRange[r6i.y].w + -r1.x;
+  r7.xyz = _QuadAxisU[r6i.y].xyz * v0.xxx + _QuadTopLeft[r6i.y].xyz;
+  r7.xyz = _QuadAxisV[r6i.y].xyz * v0.yyy + r7.xyz;
+  r7.xyz = -_Normal[r6i.y].xyz * r1.xxx + r7.xyz;
+
+  r7.w = 1.0;
   r7.xyzw = r7.xyzw * r6.zzzz;
-  r0.z = r6.x;
-  r0.x = DepthLowRes.Load(r0.x).x;
-  // r0.x = DepthLowRes.Load(r0.xyz).x;
-  r0.x = _Binormal_DepthRange[r6.x].w * r0.x;
-  r0.y = _Binormal_DepthRange[r6.x].w * 5.000000000e-001 + -r0.x;
+
+  r0.z = r6i.x;
+  r0.x = DepthLowRes.Load(r0.xyzw).x;
+  r0.x = _Binormal_DepthRange[r6i.x].w * r0.x;
+  r0.y = _Binormal_DepthRange[r6i.x].w * 5.000000000e-001 + -r0.x;
   r0.x = r1.w * r0.y + r0.x;
-  r0.x = _Binormal_DepthRange[r6.x].w + -r0.x;
-  r0.yzw = _QuadAxisU[r6.x].xyz * v0.xxx + _QuadTopLeft[r6.x].xyz;
-  r0.yzw = _QuadAxisV[r6.x].xyz * v0.yyy + r0.yzw;
-  r0.xyz = _Normal[r6.x].xyz * r0.xxx + r0.yzw;
+  r0.x = _Binormal_DepthRange[r6i.x].w + -r0.x;
+  r0.yzw = _QuadAxisU[r6i.x].xyz * v0.xxx + _QuadTopLeft[r6i.x].xyz;
+  r0.yzw = _QuadAxisV[r6i.x].xyz * v0.yyy + r0.yzw;
+  r0.xyz = -_Normal[r6i.x].xyz * r0.xxx + r0.yzw;
   r0.w = 1.000000000e+000;
   r1.x = 1.000000000e+000 + -r6.z;
   r0.xyzw = r0.xyzw * r1.xxxx + r7.xyzw;
@@ -223,7 +282,7 @@ r1.z = SImpostorInstance_Obj[v1.x].m_packData; //.swiz;
   r1.y = frac(r1.y);
   r1.y = r1.y * 2.000000000e+000 + -1.000000000e+000;
   r1.w = abs(r1.y) * abs(r1.y);
-  r1.y = -abs(-r1.y) * 2.000000000e+000 + 3.000000000e+000;
+  r1.y = -abs(r1.y) * 2.000000000e+000 + 3.000000000e+000;
   r1.y = r1.w * r1.y + -5.000000000e-001;
   r7.xyz = _GlobalScalars.yyy * float3(5.000000e-002,5.000000e-002,5.000000e-002) + r5.yzw;
   r7.xyz = float3(9.750000e-001,7.930000e-001,3.750000e-001) * r7.xyz;
@@ -233,7 +292,7 @@ r1.z = SImpostorInstance_Obj[v1.x].m_packData; //.swiz;
   r7.xyz = frac(r7.xyz);
   r7.xyz = r7.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r9.xyz = abs(r7.xyz) * abs(r7.xyz);
-  r7.xyz = -abs(-r7.xyz) * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(3.000000e+000,3.000000e+000,3.000000e+000);
+  r7.xyz = -abs(r7.xyz) * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(3.000000e+000,3.000000e+000,3.000000e+000);
   r7.xyz = r9.xyz * r7.xyz + float3(-5.000000e-001,-5.000000e-001,-5.000000e-001);
   r7.xyz = r7.xyz * r0.zzz;
   r0.xyz = r7.xyz * float3(3.000000e-002,3.000000e-002,3.000000e-002) + r0.xyz;
@@ -265,25 +324,40 @@ r1.z = SImpostorInstance_Obj[v1.x].m_packData; //.swiz;
   float4 stereo = StereoParams.Load(0);
 o0.x -= stereo.x * (o0.w - stereo.y) * 2;
 
+// r6.y is wrong at this point?
+// r6.x is fine
+// No obvious mapping to fix it
+
+//switch(r6.y) {
+//case 0: r6.y = 1; break;
+//case 1: r6.y = 0; break;
+//case 2: r6.y = 1; break; // but not always, need to work out what is wrong
+//// ... through to case 8
+//}
+
+//r6.y = 0;
+
+// r6.x += 1;
+
   o1.xy = v0.xy;
   o2.x = 0.000000000e+000;
   r6.w = 0.000000000e+000;
   // o3.xyzw = r6.wwwz;
 o3.xyz = r6.www;
 p3.x = r6.z;
-  r0.xyz = _Normal[r6.y].xyz * r6.zzz;
-  r0.xyz = _Normal[r6.x].xyz * r1.xxx + r0.xyz;
+  r0.xyz = _Normal[r6i.y].xyz * r6.zzz;
+  r0.xyz = _Normal[r6i.x].xyz * r1.xxx + r0.xyz;
   o4.x = dot(r0.xyz, r3.xyz);
   o4.y = dot(r0.xyz, r2.xyz);
   o4.z = dot(r0.xyz, r4.xyz);
-  r0.xyz = _Binormal_DepthRange[r6.y].xyz * r6.zzz;
-  r0.xyz = _Binormal_DepthRange[r6.x].xyz * r1.xxx + r0.xyz;
+  r0.xyz = _Binormal_DepthRange[r6i.y].xyz * r6.zzz;
+  r0.xyz = _Binormal_DepthRange[r6i.x].xyz * r1.xxx + r0.xyz;
   o5.z = dot(r0.xyz, r4.xyz);
   o5.x = dot(r0.xyz, r3.xyz);
   o5.y = dot(r0.xyz, r2.xyz);
-  r0.xyz = _Tangent[r6.y].xyz * r6.zzz;
-  r0.xyz = _Tangent[r6.x].xyz * r1.xxx + r0.xyz;
-  p9.xy = r6.xy;
+  r0.xyz = _Tangent[r6i.y].xyz * r6.zzz;
+  r0.xyz = _Tangent[r6i.x].xyz * r1.xxx + r0.xyz;
+  p9.xy = r6i.xy;
   o6.z = dot(r0.xyz, r4.xyz);
   o6.x = dot(r0.xyz, r3.xyz);
   o6.y = dot(r0.xyz, r2.xyz);
@@ -299,7 +373,7 @@ p3.x = r6.z;
   return;
 }
 
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
 //
@@ -636,4 +710,9 @@ ret
 // Approximately 170 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Games\Far Cry 4\bin\wrapper1349(72,18-29): error X3000: syntax error: unexpected token 'instanceData'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  
