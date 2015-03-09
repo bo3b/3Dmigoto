@@ -1,0 +1,1585 @@
+
+cbuffer CViewportShaderParameterProvider : register(b0)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
+cbuffer CGlobalShaderParameterProvider : register(b1)
+{
+  float4 _BurnColor : packoffset(c0);
+  float4 _BurnParams : packoffset(c1);
+  float4 _BurnParams2 : packoffset(c2);
+  float4 _BurnParams3 : packoffset(c3);
+  float4 _CascadedShadowScaleOffsetTile0 : packoffset(c4);
+  float4 _CascadedShadowScaleOffsetTile1 : packoffset(c5);
+  float4 _GlobalScalars : packoffset(c6);
+  float4 _SSS_MiscParams : packoffset(c7);
+  float4 _WindSimParamsX : packoffset(c8);
+  float4 _WindSimParamsY : packoffset(c9);
+  float2 _RangeDepthCompression : packoffset(c10);
+  float3 _SSS_Color : packoffset(c11);
+  int _BRDFHighQuality : packoffset(c11.w);
+}
+
+cbuffer CWaterReflectionParameterProvider : register(b2)
+{
+  float4 _WaterReflectionColor : packoffset(c0);
+  float4 _WaterReflectionPlane : packoffset(c1);
+  float4 _WaterReflectionTexCoordRange : packoffset(c2);
+  float4x4 _WaterReflectionTransform : packoffset(c3);
+  float _WaterLevelAdjustment : packoffset(c7);
+}
+
+cbuffer CWaterParameterProvider : register(b3)
+{
+  float4 _BorderAlphaMask : packoffset(c0);
+  float _ReflectionInvSquareFadeDistance : packoffset(c1);
+  float _ReflectionSquareFadeDistance : packoffset(c1.y);
+  float _SunLightScale : packoffset(c1.z);
+  bool _DisableThirdNormalUVs : packoffset(c1.w);
+}
+
+cbuffer CWaterWaveParameterProvider : register(b4)
+{
+  float4 _WaterWave_CameraCenter_FrontVector : packoffset(c0);
+  float4 _WaterWave_CameraRightVector_ : packoffset(c1);
+  float4 _WaterWave_CameraTanFOVx_2_Near_Far : packoffset(c2);
+  bool _WaterWave_Enabled : packoffset(c3);
+}
+
+cbuffer Water : register(b5)
+{
+  float _NormalOffsetScale : packoffset(c0);
+  float2 _Tiling1 : packoffset(c0.y);
+  float2 _Tiling2 : packoffset(c1);
+  float2 _Dir1 : packoffset(c1.z);
+  float2 _Dir2 : packoffset(c2);
+  float2 _Tiling3 : packoffset(c2.z);
+  float2 _Dir3 : packoffset(c3);
+  float _NormalTexture3Blend : packoffset(c3.z);
+  float _CausticsIntensity : packoffset(c3.w);
+  float _CausticsScale : packoffset(c4);
+  float _ReflectionNormalOffsetScale : packoffset(c4.y);
+  float _ReflectionColorOffset : packoffset(c4.z);
+  float _ReflectionColorScale : packoffset(c4.w);
+  float _ReflectionAnisotropicDistanceScale : packoffset(c5);
+  float _ReflectionAnisotropicDistanceOffset : packoffset(c5.y);
+  float2 _DiffuseTiling : packoffset(c5.z);
+  float _DiffuseSpeedFactor : packoffset(c6);
+  float4 _WaterColor : packoffset(c7);
+  float4 _UnderwaterColor : packoffset(c8);
+  float4 _Specular : packoffset(c9);
+  float2 _BaseTiling : packoffset(c10);
+  float4 _RefractionWaveInfo : packoffset(c11);
+  float _NormalModifier : packoffset(c12);
+  float4 _Extinctions : packoffset(c13);
+  float4 _MaterialPickingID : packoffset(c14);
+}
+
+cbuffer CNewLightingDataProvider : register(b6)
+{
+  float4 _CSMSlice0_0 : packoffset(c0);
+  float4 _CSMSlice0_1 : packoffset(c1);
+  float4 _CSMSlice0_2 : packoffset(c2);
+  float4 _CSMSlice1_0 : packoffset(c3);
+  float4 _CSMSlice1_1 : packoffset(c4);
+  float4 _CSMSlice1_2 : packoffset(c5);
+  float4 _CSMSlice2_0 : packoffset(c6);
+  float4 _CSMSlice2_1 : packoffset(c7);
+  float4 _CSMSlice2_2 : packoffset(c8);
+  float4 _CSMSliceFade : packoffset(c9);
+  float4 _LightUpWS_RcpSquaredLightRadius : packoffset(c10);
+  float4 _PointAttenuation_SpotFactors : packoffset(c11);
+  float4 _ShadowMapSize : packoffset(c12);
+  float4x4 _ShadowProjectionMatrix : packoffset(c13);
+  float4x4 _ShadowRotProjectionMatrix : packoffset(c17);
+  float3 _LightColor : packoffset(c21);
+  float3 _LightColorUpNormal : packoffset(c22);
+  float3 _LightDirectionWS : packoffset(c23);
+  float3 _LightPositionWS : packoffset(c24);
+  float3 _LightRightWS : packoffset(c25);
+}
+SamplerState EnvironmentMapTexture__SampObj___s : register(s0);
+SamplerState WaterWaveTexture__SampObj___s : register(s1);
+SamplerState NormalTexture__SampObj___s : register(s2);
+SamplerState NormalTexture3__SampObj___s : register(s3);
+SamplerState CausticsTexture__SampObj___s : register(s4);
+SamplerState DiffuseTexture__SampObj___s : register(s5);
+SamplerState ReflectionRealTexture__SampObj___s : register(s6);
+Texture2DMS<float4,2> DepthVPSampler_TextureObject : register(t0);
+TextureCube<float4> EnvironmentMapTexture__TexObj__ : register(t1);
+Texture2D<float4> WaterWaveTexture__TexObj__ : register(t2);
+Texture2D<float4> NormalTexture__TexObj__ : register(t3);
+Texture2D<float4> NormalTexture3__TexObj__ : register(t4);
+Texture2D<float4> CausticsTexture__TexObj__ : register(t5);
+Texture2D<float4> DiffuseTexture__TexObj__ : register(t6);
+Texture2D<float4> ReflectionRealTexture__TexObj__ : register(t7);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  float3 v4 : TEXCOORD3,
+  float3 v5 : TEXCOORD4,
+  float3 v6 : TEXCOORD5,
+  float3 v7 : TEXCOORD6,
+  float3 v8 : TEXCOORD7,
+  float4 v9 : TEXCOORD8,
+  uint v10 : SV_IsFrontFace0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(v3.xyz, v3.xyz);
+  r0.x = sqrt(r0.x);
+  r0.yzw = _CameraPosition_DistanceScale.xyz + -v4.xyz;
+  r1.x = dot(r0.yzw, r0.yzw);
+  r1.x = rsqrt(r1.x);
+  r0.yzw = r1.xxx * r0.yzw;
+  if (_WaterWave_Enabled != 0) {
+    r1.xy = -_WaterWave_CameraCenter_FrontVector.xy + v4.xy;
+    r1.z = dot(_WaterWave_CameraCenter_FrontVector.zw, r1.xy);
+    r1.x = dot(_WaterWave_CameraRightVector_.xy, r1.xy);
+    r1.y = _WaterWave_CameraTanFOVx_2_Near_Far.y * _WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r1.w = 1.000000e+000 / r1.z;
+    r1.w = r1.y * r1.w + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r2.x = _WaterWave_CameraTanFOVx_2_Near_Far.y + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r3.y = r1.w / r2.x;
+    r1.z = _WaterWave_CameraTanFOVx_2_Near_Far.x * r1.z;
+    r1.x = r1.x / r1.z;
+    r3.x = r1.x * 5.000000000e-001 + 5.000000000e-001;
+    r1.x = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r3.xy).x;
+    r1.x = 2.000000030e-001 * r1.x;
+    r1.z = -_CameraPosition_DistanceScale.z + v4.z;
+    r1.x = r1.x / r1.z;
+    r1.x = r1.x * r0.x;
+    r1.x = max(r1.x, -2.000000000e+000);
+    r1.x = min(r1.x, 2.000000000e+000);
+    r2.yzw = r0.yzw * -r1.xxx + v4.xyz;
+    r1.x = r1.x + r0.x;
+    r1.x = r1.x / r0.x;
+    r1.x = v3.z * r1.x;
+    r3.x = 9.999999776e-003 * r0.x;
+    r1.zw = -_WaterWave_CameraCenter_FrontVector.xy + r2.yz;
+    r1.z = dot(_WaterWave_CameraCenter_FrontVector.zw, r1.zw);
+    r1.z = 1.000000e+000 / r1.z;
+    r1.z = r1.y * r1.z + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r1.z = r1.z / r2.x;
+    r4.x = -r3.x;
+    r4.y = 0.000000000e+000;
+    r4.xy = r4.xy + r2.yz;
+    r4.xy = -_WaterWave_CameraCenter_FrontVector.xy + r4.xy;
+    r1.w = dot(_WaterWave_CameraCenter_FrontVector.zw, r4.xy);
+    r3.w = dot(_WaterWave_CameraRightVector_.xy, r4.xy);
+    r4.x = 1.000000e+000 / r1.w;
+    r4.x = r1.y * r4.x + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r4.y = r4.x / r2.x;
+    r1.w = _WaterWave_CameraTanFOVx_2_Near_Far.x * r1.w;
+    r1.w = r3.w / r1.w;
+    r4.x = r1.w * 5.000000000e-001 + 5.000000000e-001;
+    r3.y = 0.000000000e+000;
+    r5.xyzw = r3.xyyx + r2.yzyz;
+    r5.xyzw = -_WaterWave_CameraCenter_FrontVector.xyxy + r5.xyzw;
+    r1.w = dot(_WaterWave_CameraCenter_FrontVector.zw, r5.xy);
+    r3.w = dot(_WaterWave_CameraRightVector_.xy, r5.xy);
+    r4.z = 1.000000e+000 / r1.w;
+    r4.z = r1.y * r4.z + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r5.y = r4.z / r2.x;
+    r1.w = _WaterWave_CameraTanFOVx_2_Near_Far.x * r1.w;
+    r1.w = r3.w / r1.w;
+    r5.x = r1.w * 5.000000000e-001 + 5.000000000e-001;
+    r3.z = -r3.x;
+    r3.yz = r3.yz + r2.yz;
+    r3.yz = -_WaterWave_CameraCenter_FrontVector.xy + r3.yz;
+    r1.w = dot(_WaterWave_CameraCenter_FrontVector.zw, r3.yz);
+    r3.y = dot(_WaterWave_CameraRightVector_.xy, r3.yz);
+    r3.z = 1.000000e+000 / r1.w;
+    r3.z = r1.y * r3.z + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r6.y = r3.z / r2.x;
+    r1.w = _WaterWave_CameraTanFOVx_2_Near_Far.x * r1.w;
+    r1.w = r3.y / r1.w;
+    r6.x = r1.w * 5.000000000e-001 + 5.000000000e-001;
+    r1.w = dot(_WaterWave_CameraCenter_FrontVector.zw, r5.zw);
+    r3.y = dot(_WaterWave_CameraRightVector_.xy, r5.zw);
+    r3.z = 1.000000e+000 / r1.w;
+    r1.y = r1.y * r3.z + -_WaterWave_CameraTanFOVx_2_Near_Far.z;
+    r7.y = r1.y / r2.x;
+    r1.y = _WaterWave_CameraTanFOVx_2_Near_Far.x * r1.w;
+    r1.y = r3.y / r1.y;
+    r7.x = r1.y * 5.000000000e-001 + 5.000000000e-001;
+    r1.y = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r4.xy).x;
+    r1.w = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r5.xy).x;
+    r2.x = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r6.xy).x;
+    r3.y = WaterWaveTexture__TexObj__.Sample(WaterWaveTexture__SampObj___s, r7.xy).x;
+    r4.x = r1.w + -r1.y;
+    r4.y = r3.y + -r2.x;
+    r1.yw = r4.xy / r3.xx;
+  } else {
+    r1.x = v3.z;
+    r2.yzw = v4.xyz;
+    r1.yzw = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+  }
+  r3.xy = NormalTexture__TexObj__.Sample(NormalTexture__SampObj___s, v1.yx).yw;
+  r3.xy = r3.xy * float2(2.007874e+000,2.007874e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r3.xz = _NormalModifier * r3.xy;
+  r2.x = dot(r3.xz, r3.xz);
+  r2.x = min(r2.x, 1.000000000e+000);
+  r2.x = -r2.x * 9.990000129e-001 + 1.000000000e+000;
+  r3.y = sqrt(r2.x);
+  r4.xy = NormalTexture__TexObj__.Sample(NormalTexture__SampObj___s, v1.wz).yw;
+  r4.xy = r4.xy * float2(2.007874e+000,2.007874e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r4.xz = _NormalModifier * r4.xy;
+  r2.x = dot(r4.xz, r4.xz);
+  r2.x = min(r2.x, 1.000000000e+000);
+  r2.x = -r2.x * 9.990000129e-001 + 1.000000000e+000;
+  r4.y = sqrt(r2.x);
+  r3.xyz = r4.xyz + r3.xyz;
+  r2.x = dot(r3.xyz, r3.xyz);
+  r2.x = rsqrt(r2.x);
+  r4.xyz = r3.xyz * r2.xxx;
+  r5.xy = NormalTexture3__TexObj__.Sample(NormalTexture3__SampObj___s, v9.yx).yw;
+  r5.xy = r5.xy * float2(2.007874e+000,2.007874e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r5.xz = _NormalModifier * r5.xy;
+  r2.x = dot(r5.xz, r5.xz);
+  r2.x = min(r2.x, 1.000000000e+000);
+  r2.x = -r2.x * 9.990000129e-001 + 1.000000000e+000;
+  r5.y = sqrt(r2.x);
+  r5.xyz = r5.xyz + -r3.xyz;
+  r3.xyz = _NormalTexture3Blend * r5.xyz + r3.xyz;
+  r2.x = dot(r3.xyz, r3.xyz);
+  r2.x = rsqrt(r2.x);
+  r3.xyz = r3.xyz * r2.xxx;
+  r3.xyz = _DisableThirdNormalUVs ? r4.xyz : r3.xyz;
+  r1.z = -8.999999762e-001 + r1.z;
+  r1.z = saturate(1.000000000e+001 * r1.z);
+  r1.z = r1.z * -5.000000075e-002 + 5.000000075e-002;
+  r4.xz = r1.yw * r1.zz;
+  r4.y = 0.000000000e+000;
+  r1.yzw = r4.xyz + r3.xyz;
+  r2.x = dot(r1.yzw, r1.yzw);
+  r2.x = rsqrt(r2.x);
+  r1.yzw = r2.xxx * r1.yzw;
+  r1.yzw = _WaterWave_Enabled ? r1.yzw : r3.xyz;
+  r3.xy = r1.yw * _NormalOffsetScale + v9.zw;
+  r3.xyzw = DiffuseTexture__TexObj__.Sample(DiffuseTexture__SampObj___s, r3.xy).xyzw;
+  r2.x = dot(r1.ywz, r0.yzw);
+  r4.x = saturate(r2.x);
+  r4.y = 1.000000000e+000 + -r4.x;
+  r4.z = r4.y * r4.y;
+  r4.z = r4.z * r4.z;
+  r4.y = r4.z * r4.y;
+  r4.y = 9.800000191e-001 * r4.y;
+  r4.z = _Specular.x * _Specular.x;
+  r4.z = r4.z * 8.299999833e-001 + 1.700000018e-001;
+  r4.y = r4.y * r4.z + 1.999999955e-002;
+  r4.w = -8.656169891e+000 * r4.x;
+  r4.w = exp2(r4.w);
+  r4.z = r4.z * r4.w;
+  r4.z = r4.z * 9.800000191e-001 + 1.999999955e-002;
+  r4.y = _BRDFHighQuality ? r4.y : r4.z;
+  r5.xyz = _LightColor.xyz * _SunLightScale;
+  r4.z = dot(v8.xyz, v8.xyz);
+  r4.z = rsqrt(r4.z);
+  r6.xyz = v8.xyz * r4.zzz;
+  r7.xyz = v8.xyz * r4.zzz + -v7.xyz;
+  r4.z = dot(r7.xyz, r7.xyz);
+  r4.z = rsqrt(r4.z);
+  r7.xyz = r7.xyz * r4.zzz;
+  r4.z = dot(r7.xyz, r6.xyz);
+  r4.w = 1.000000000e+000 + -r4.z;
+  r5.w = r4.w * r4.w;
+  r5.w = r5.w * r5.w;
+  r4.w = r5.w * r4.w;
+  r4.w = r4.w * 9.800000191e-001 + 1.999999955e-002;
+  r4.z = -8.656169891e+000 * r4.z;
+  r4.z = exp2(r4.z);
+  r4.z = r4.z * 9.800000191e-001 + 1.999999955e-002;
+  r4.z = _BRDFHighQuality ? r4.w : r4.z;
+  r4.w = 1.300000000e+001 * _Specular.x;
+  r5.w = _Specular.x * -2.554450035e-001 + 1.401520014e+000;
+  r5.w = r5.w * _Specular.x + -1.946949959e+000;
+  r5.w = r5.w * _Specular.x + 8.165000081e-001;
+  r4.w = exp2(r4.w);
+  r4.w = _BRDFHighQuality ? r5.w : r4.w;
+  r5.w = saturate(dot(-v7.xzy, r1.yzw));
+  r6.x = r5.w * r5.w;
+  r6.y = r4.w * r4.w;
+  r6.z = -r4.w * r4.w + 1.000000000e+000;
+  r6.x = r6.x * r6.z + r6.y;
+  r6.x = sqrt(r6.x);
+  r6.x = r6.x + r5.w;
+  r6.x = 1.000000e+000 / r6.x;
+  r6.x = _BRDFHighQuality ? r6.x : 1.000000000e+000;
+  r6.w = r4.x * r4.x;
+  r6.y = r6.w * r6.z + r6.y;
+  r6.y = sqrt(r6.y);
+  r4.x = r6.y + r4.x;
+  r4.x = 1.000000e+000 / r4.x;
+  r4.x = _BRDFHighQuality ? r4.x : 1.000000000e+000;
+  r4.x = r6.x * r4.x;
+  r6.x = saturate(dot(r7.xzy, r1.yzw));
+  r6.y = r4.w * r4.w + -1.000000000e+000;
+  r6.z = r6.x * r6.x;
+  r6.y = r6.z * r6.y + 1.000000000e+000;
+  r6.y = r4.w / r6.y;
+  r6.y = r6.y * r6.y;
+  r6.yzw = r6.yyy * r5.xyz;
+  r6.x = log2(r6.x);
+  r6.x = r6.x * r4.w;
+  r6.x = exp2(r6.x);
+  r4.w = r4.w * 1.250000000e-001 + 2.500000000e-001;
+  r4.w = r6.x * r4.w;
+  r7.xyz = r5.xyz * r4.www;
+  r6.xyz = _BRDFHighQuality ? r6.yzw : r7.xyz;
+  r6.xyz = r6.xyz * r5.www;
+  r6.xyz = r6.xyz * r4.xxx;
+  r7.xy = _ViewportSize.zw * v0.xy;
+  r4.xw = r7.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  r4.xw = -abs(r4.xw) * abs(r4.xw) + float2(1.000000e+000,1.000000e+000);
+  r8.xy = _ReflectionNormalOffsetScale * r1.yw;
+  r8.xy = r8.xy * r0.xx + v5.xy;
+  r8.z = v5.z;
+  r8.w = 1.000000000e+000;
+  r9.x = dot(r8.xyzw, _WaterReflectionTransform._m00_m10_m20_m30);
+  r9.y = dot(r8.xyzw, _WaterReflectionTransform._m01_m11_m21_m31);
+  r6.w = dot(r8.xyzw, _WaterReflectionTransform._m03_m13_m23_m33);
+  r9.xy = r9.xy / r6.ww;
+  r7.zw = -v0.xx * _ViewportSize.zz + float2(1.000000e+000,1.000000e+000);
+  r7.xz = r9.xy + -r7.zy;
+  r4.xw = saturate(r7.xz * r4.xw + r7.wy);
+  r7.xyz = -_CameraPosition_DistanceScale.xyz + r8.xyz;
+  r6.w = dot(r7.xyz, r7.xyz);
+  r6.w = sqrt(r6.w);
+  r6.w = r6.w / abs(r7.z);
+  r6.w = max(r6.w, 1.000000000e+000);
+  r6.w = min(r6.w, 8.000000000e+000);
+  r6.w = r0.x * r6.w + -_ReflectionAnisotropicDistanceOffset;
+  r6.w = r6.w * _ReflectionAnisotropicDistanceScale + 1.000000000e+000;
+  r6.w = log2(r6.w);
+  r7.xyz = ReflectionRealTexture__TexObj__.SampleLevel(ReflectionRealTexture__SampObj___s, r4.xw, r6.w).xyz;
+  r7.xyz = r7.xyz * r7.xyz;
+  r7.xyz = min(r7.xyz, float3(1.600000e+001,1.600000e+001,1.600000e+001));
+  r7.xyz = _WaterReflectionColor.www * r7.xyz;
+  r8.xyz = _CameraPosition_DistanceScale.xyz + -r2.yzw;
+  r4.x = dot(r8.xyz, r8.xyz);
+  r4.x = saturate(r4.x * _ReflectionInvSquareFadeDistance + _ReflectionSquareFadeDistance);
+  r2.x = r2.x + r2.x;
+  r8.xyz = r1.yzw * -r2.xxx + r0.ywz;
+  r8.xyz = -r8.xyz;
+  r1.z = -_Specular.x * 6.000000000e+000 + 6.000000000e+000;
+  r8.xyz = EnvironmentMapTexture__TexObj__.SampleLevel(EnvironmentMapTexture__SampObj___s, r8.xyz, r1.z).xyz;
+  r8.xyz = r8.xyz * _ReflectionColorScale + _ReflectionColorOffset;
+  r8.xyz = _AmbientColorMultiplier.xyz * r8.xyz + -r7.xyz;
+  r7.xyz = r4.xxx * r8.xyz + r7.xyz;
+  r8.xy = v6.xy / v6.zz;
+  DepthVPSampler_TextureObject.GetDimensions(uiDest.x, uiDest.y, uiDest.z);
+  r4.xw = uiDest.xy;
+  r4.xw = r4.xw;
+  r4.xw = r8.xy * r4.xw;
+  r9.xy = (int2)r4.xw;
+  r9.zw = float2(0.000000e+000,0.000000e+000);
+  r8.z = DepthVPSampler_TextureObject.Load(r9.xy, 0.000000000e+000).x;
+  r8.w = 1.000000000e+000;
+  r1.z = dot(r8.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
+  r2.x = dot(r8.xyzw, _InvProjectionMatrix._m03_m13_m23_m33);
+  r1.z = -r1.z / r2.x;
+  r1.z = -r1.z * r0.x;
+  r1.x = r1.z / r1.x;
+  r0.x = r1.x + -r0.x;
+  r0.yzw = -r0.yzw * r1.xxx + _CameraPosition_DistanceScale.xyz;
+  r0.x = -_Extinctions.x * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = 1.000000000e+000 + -r0.x;
+  r0.x = max(r0.x, 0.000000000e+000);
+  r5.xyz = r5.www * r5.xyz + _AmbientColorMultiplier.xyz;
+  r1.x = 1.000000000e+000 + -r4.y;
+  r5.xyz = r5.xyz * r1.xxx;
+  r4.xzw = r6.xyz * r4.zzz;
+  r4.xyz = r7.xyz * r4.yyy + r4.xzw;
+  r3.xyz = -_WaterColor.xyz + r3.xyz;
+  r3.xyz = r3.www * r3.xyz + _WaterColor.xyz;
+  r0.w = r2.w + -r0.w;
+  r0.w = max(r0.w, 0.000000000e+000);
+  r1.xy = r1.yw * r0.ww;
+  r0.yz = r1.xy * float2(5.000000e-001,5.000000e-001) + r0.yz;
+  r0.yz = _CausticsScale * r0.yz;
+  r1.xyz = CausticsTexture__TexObj__.Sample(CausticsTexture__SampObj___s, r0.yz).xyz;
+  r1.xyz = _LightColorUpNormal.xyz * r1.xyz;
+  r0.y = -_Extinctions.y * r0.w;
+  r0.y = exp2(r0.y);
+  r0.yzw = r1.xyz * r0.yyy;
+  r0.yzw = _CausticsIntensity * r0.yzw;
+  r1.xyz = r4.xyz * r0.xxx;
+  r1.xyz = r5.xyz * r3.xyz + r1.xyz;
+  r3.w = -r0.x;
+  r1.w = 1.000000000e+000 + r3.w;
+  r0.yzw = r0.yzw * r1.www + r1.xyz;
+  r1.xyz = -_CameraPosition_DistanceScale.xyz + r2.yzw;
+  r1.x = dot(r1.xyz, r1.xyz);
+  r1.x = sqrt(r1.x);
+  r1.x = saturate(r1.x * _FogParams.y + _FogParams.x);
+  r1.y = _HeightFogParams.y * r1.z;
+  r1.y = max(r1.y, -1.250000000e+002);
+  r1.z = 9.999999975e-007 < abs(r1.y);
+  r1.w = exp2(-r1.y);
+  r1.w = 1.000000000e+000 + -r1.w;
+  r1.y = r1.w / r1.y;
+  r1.y = r1.z ? r1.y : 1.000000000e+000;
+  r1.y = r1.y * _HeightFogParams.x + _FogParams.w;
+  r1.x = r1.x * r1.y;
+  r1.x = -_FogParams.z * r1.x;
+  r1.x = exp2(r1.x);
+  r1.yzw = -v2.xyz * r1.xxx + v2.xyz;
+  r0.yzw = r0.yzw * r1.xxx + r1.yzw;
+  r3.xyz = r0.yzw * r0.xxx;
+  r0.xyzw = v2.wwww * r3.xyzw + float4(0.000000e+000,0.000000e+000,0.000000e+000,1.000000e+000);
+  o0.xyz = _BloomAdaptationFactor.zzz * r0.xyz;
+  o0.w = r0.w;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer CViewportShaderParameterProvider
+// {
+//
+//   float4 _AmbientColorMultiplier;    // Offset:    0 Size:    16
+//   float4 _AmbientOcclusionRanges_SunOcclusionFactor;// Offset:   16 Size:    16 [unused]
+//   float4 _BloomAdaptationFactor;     // Offset:   32 Size:    16
+//   float4 _CameraDirection_FOVDeg;    // Offset:   48 Size:    16 [unused]
+//   float4 _CameraDistances;           // Offset:   64 Size:    16 [unused]
+//   float4 _CameraNearPlaneSize;       // Offset:   80 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS;// Offset:   96 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS_Previous;// Offset:  112 Size:    16 [unused]
+//   float4 _CameraPosition_DistanceScale;// Offset:  128 Size:    16
+//   float4 _CameraPosition_DistanceScale_Previous;// Offset:  144 Size:    16 [unused]
+//   float4x4 _CullingViewProjectionMatrix;// Offset:  160 Size:    64 [unused]
+//   float4 _DepthScale;                // Offset:  224 Size:    16 [unused]
+//   float4 _DepthTextureRcpSize;       // Offset:  240 Size:    16 [unused]
+//   float4 _DepthTextureScaleOffset;   // Offset:  256 Size:    16 [unused]
+//   float4 _FogParams;                 // Offset:  272 Size:    16
+//   float4 _FogSHB;                    // Offset:  288 Size:    16 [unused]
+//   float4 _FogSHG;                    // Offset:  304 Size:    16 [unused]
+//   float4 _FogSHR;                    // Offset:  320 Size:    16 [unused]
+//   float4 _HeightFogParams;           // Offset:  336 Size:    16
+//   float4x4 _InvProjectionMatrix;     // Offset:  352 Size:    64
+//   float4x4 _InvViewMatrix;           // Offset:  416 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  480 Size:    64 [unused]
+//   float4 _TempSunDirection;          // Offset:  544 Size:    16 [unused]
+//   float4x4 _ViewMatrix;              // Offset:  560 Size:    64 [unused]
+//   float4 _ViewPoint_ShadowProjDepthMin;// Offset:  624 Size:    16 [unused]
+//   float4x4 _ViewProjectionMatrix;    // Offset:  640 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix; // Offset:  704 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix_Previous;// Offset:  768 Size:    64 [unused]
+//   float4 _ViewportSize;              // Offset:  832 Size:    16
+//   float2 _MotionVectorOffsets;       // Offset:  848 Size:     8 [unused]
+//   float3 _CameraRight;               // Offset:  864 Size:    12 [unused]
+//   float3 _CameraUp;                  // Offset:  880 Size:    12 [unused]
+//   float3 _EnvironmentMapColorOffset; // Offset:  896 Size:    12 [unused]
+//   float3 _EnvironmentMapColorScale;  // Offset:  912 Size:    12 [unused]
+//
+// }
+//
+// cbuffer CGlobalShaderParameterProvider
+// {
+//
+//   float4 _BurnColor;                 // Offset:    0 Size:    16 [unused]
+//   float4 _BurnParams;                // Offset:   16 Size:    16 [unused]
+//   float4 _BurnParams2;               // Offset:   32 Size:    16 [unused]
+//   float4 _BurnParams3;               // Offset:   48 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile0;// Offset:   64 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile1;// Offset:   80 Size:    16 [unused]
+//   float4 _GlobalScalars;             // Offset:   96 Size:    16 [unused]
+//   float4 _SSS_MiscParams;            // Offset:  112 Size:    16 [unused]
+//   float4 _WindSimParamsX;            // Offset:  128 Size:    16 [unused]
+//   float4 _WindSimParamsY;            // Offset:  144 Size:    16 [unused]
+//   float2 _RangeDepthCompression;     // Offset:  160 Size:     8 [unused]
+//   float3 _SSS_Color;                 // Offset:  176 Size:    12 [unused]
+//   int _BRDFHighQuality;              // Offset:  188 Size:     4
+//
+// }
+//
+// cbuffer CWaterReflectionParameterProvider
+// {
+//
+//   float4 _WaterReflectionColor;      // Offset:    0 Size:    16
+//   float4 _WaterReflectionPlane;      // Offset:   16 Size:    16 [unused]
+//   float4 _WaterReflectionTexCoordRange;// Offset:   32 Size:    16 [unused]
+//   float4x4 _WaterReflectionTransform;// Offset:   48 Size:    64
+//   float _WaterLevelAdjustment;       // Offset:  112 Size:     4 [unused]
+//
+// }
+//
+// cbuffer CWaterParameterProvider
+// {
+//
+//   float4 _BorderAlphaMask;           // Offset:    0 Size:    16 [unused]
+//   float _ReflectionInvSquareFadeDistance;// Offset:   16 Size:     4
+//   float _ReflectionSquareFadeDistance;// Offset:   20 Size:     4
+//   float _SunLightScale;              // Offset:   24 Size:     4
+//   bool _DisableThirdNormalUVs;       // Offset:   28 Size:     4
+//
+// }
+//
+// cbuffer CWaterWaveParameterProvider
+// {
+//
+//   float4 _WaterWave_CameraCenter_FrontVector;// Offset:    0 Size:    16
+//   float4 _WaterWave_CameraRightVector_;// Offset:   16 Size:    16
+//   float4 _WaterWave_CameraTanFOVx_2_Near_Far;// Offset:   32 Size:    16
+//   bool _WaterWave_Enabled;           // Offset:   48 Size:     4
+//
+// }
+//
+// cbuffer Water
+// {
+//
+//   float _NormalOffsetScale;          // Offset:    0 Size:     4
+//   float2 _Tiling1;                   // Offset:    4 Size:     8 [unused]
+//   float2 _Tiling2;                   // Offset:   16 Size:     8 [unused]
+//   float2 _Dir1;                      // Offset:   24 Size:     8 [unused]
+//   float2 _Dir2;                      // Offset:   32 Size:     8 [unused]
+//   float2 _Tiling3;                   // Offset:   40 Size:     8 [unused]
+//   float2 _Dir3;                      // Offset:   48 Size:     8 [unused]
+//   float _NormalTexture3Blend;        // Offset:   56 Size:     4
+//   float _CausticsIntensity;          // Offset:   60 Size:     4
+//   float _CausticsScale;              // Offset:   64 Size:     4
+//   float _ReflectionNormalOffsetScale;// Offset:   68 Size:     4
+//   float _ReflectionColorOffset;      // Offset:   72 Size:     4
+//   float _ReflectionColorScale;       // Offset:   76 Size:     4
+//   float _ReflectionAnisotropicDistanceScale;// Offset:   80 Size:     4
+//   float _ReflectionAnisotropicDistanceOffset;// Offset:   84 Size:     4
+//   float2 _DiffuseTiling;             // Offset:   88 Size:     8 [unused]
+//   float _DiffuseSpeedFactor;         // Offset:   96 Size:     4 [unused]
+//   float4 _WaterColor;                // Offset:  112 Size:    16
+//   float4 _UnderwaterColor;           // Offset:  128 Size:    16 [unused]
+//   float4 _Specular;                  // Offset:  144 Size:    16
+//   float2 _BaseTiling;                // Offset:  160 Size:     8 [unused]
+//   float4 _RefractionWaveInfo;        // Offset:  176 Size:    16 [unused]
+//   float _NormalModifier;             // Offset:  192 Size:     4
+//   float4 _Extinctions;               // Offset:  208 Size:    16
+//   float4 _MaterialPickingID;         // Offset:  224 Size:    16 [unused]
+//
+// }
+//
+// cbuffer CNewLightingDataProvider
+// {
+//
+//   float4 _CSMSlice0_0;               // Offset:    0 Size:    16 [unused]
+//   float4 _CSMSlice0_1;               // Offset:   16 Size:    16 [unused]
+//   float4 _CSMSlice0_2;               // Offset:   32 Size:    16 [unused]
+//   float4 _CSMSlice1_0;               // Offset:   48 Size:    16 [unused]
+//   float4 _CSMSlice1_1;               // Offset:   64 Size:    16 [unused]
+//   float4 _CSMSlice1_2;               // Offset:   80 Size:    16 [unused]
+//   float4 _CSMSlice2_0;               // Offset:   96 Size:    16 [unused]
+//   float4 _CSMSlice2_1;               // Offset:  112 Size:    16 [unused]
+//   float4 _CSMSlice2_2;               // Offset:  128 Size:    16 [unused]
+//   float4 _CSMSliceFade;              // Offset:  144 Size:    16 [unused]
+//   float4 _LightUpWS_RcpSquaredLightRadius;// Offset:  160 Size:    16 [unused]
+//   float4 _PointAttenuation_SpotFactors;// Offset:  176 Size:    16 [unused]
+//   float4 _ShadowMapSize;             // Offset:  192 Size:    16 [unused]
+//   float4x4 _ShadowProjectionMatrix;  // Offset:  208 Size:    64 [unused]
+//   float4x4 _ShadowRotProjectionMatrix;// Offset:  272 Size:    64 [unused]
+//   float3 _LightColor;                // Offset:  336 Size:    12
+//   float3 _LightColorUpNormal;        // Offset:  352 Size:    12
+//   float3 _LightDirectionWS;          // Offset:  368 Size:    12 [unused]
+//   float3 _LightPositionWS;           // Offset:  384 Size:    12 [unused]
+//   float3 _LightRightWS;              // Offset:  400 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// EnvironmentMapTexture__SampObj__    sampler      NA          NA    0        1
+// WaterWaveTexture__SampObj__       sampler      NA          NA    1        1
+// NormalTexture__SampObj__          sampler      NA          NA    2        1
+// NormalTexture3__SampObj__         sampler      NA          NA    3        1
+// CausticsTexture__SampObj__        sampler      NA          NA    4        1
+// DiffuseTexture__SampObj__         sampler      NA          NA    5        1
+// ReflectionRealTexture__SampObj__    sampler      NA          NA    6        1
+// DepthVPSampler_TextureObject      texture  float4       2dMS2    0        1
+// EnvironmentMapTexture__TexObj__    texture  float4        cube    1        1
+// WaterWaveTexture__TexObj__        texture  float4          2d    2        1
+// NormalTexture__TexObj__           texture  float4          2d    3        1
+// NormalTexture3__TexObj__          texture  float4          2d    4        1
+// CausticsTexture__TexObj__         texture  float4          2d    5        1
+// DiffuseTexture__TexObj__          texture  float4          2d    6        1
+// ReflectionRealTexture__TexObj__    texture  float4          2d    7        1
+// CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
+// CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
+// CWaterReflectionParameterProvider    cbuffer      NA          NA    2        1
+// CWaterParameterProvider           cbuffer      NA          NA    3        1
+// CWaterWaveParameterProvider       cbuffer      NA          NA    4        1
+// Water                             cbuffer      NA          NA    5        1
+// CNewLightingDataProvider          cbuffer      NA          NA    6        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyz         5     NONE   float   xyz 
+// TEXCOORD                 5   xyz         6     NONE   float   xyz 
+// TEXCOORD                 6   xyz         7     NONE   float   xyz 
+// TEXCOORD                 7   xyz         8     NONE   float   xyz 
+// TEXCOORD                 8   xyzw        9     NONE   float   xyzw
+// SV_IsFrontFace           0   x          10    FFACE    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[53], immediateIndexed
+dcl_constantbuffer cb1[12], immediateIndexed
+dcl_constantbuffer cb2[7], immediateIndexed
+dcl_constantbuffer cb3[2], immediateIndexed
+dcl_constantbuffer cb4[4], immediateIndexed
+dcl_constantbuffer cb5[14], immediateIndexed
+dcl_constantbuffer cb6[23], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_default
+dcl_resource_texture2dms(2) (float,float,float,float) t0
+dcl_resource_texturecube (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_input_ps_siv linear noperspective centroid v0.xy, position
+dcl_input_ps linear v1.xyzw
+dcl_input_ps linear centroid v2.xyzw
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyz
+dcl_input_ps linear v5.xyz
+dcl_input_ps linear v6.xyz
+dcl_input_ps linear v7.xyz
+dcl_input_ps linear v8.xyz
+dcl_input_ps linear v9.xyzw
+dcl_output o0.xyzw
+dcl_temps 10
+dp3 r0.x, v3.xyzx, v3.xyzx
+sqrt r0.x, r0.x
+add r0.yzw, -v4.xxyz, cb0[8].xxyz
+dp3 r1.x, r0.yzwy, r0.yzwy
+rsq r1.x, r1.x
+mul r0.yzw, r0.yyzw, r1.xxxx
+if_nz cb4[3].x
+  add r1.xy, v4.xyxx, -cb4[0].xyxx
+  dp2 r1.z, cb4[0].zwzz, r1.xyxx
+  dp2 r1.x, cb4[1].xyxx, r1.xyxx
+  mul r1.y, cb4[2].z, cb4[2].y
+  div r1.w, l(1.000000, 1.000000, 1.000000, 1.000000), r1.z
+  mad r1.w, r1.y, r1.w, -cb4[2].z
+  add r2.x, -cb4[2].z, cb4[2].y
+  div r3.y, r1.w, r2.x
+  mul r1.z, r1.z, cb4[2].x
+  div r1.x, r1.x, r1.z
+  mad r3.x, r1.x, l(0.500000), l(0.500000)
+  sample_indexable(texture2d)(float,float,float,float) r1.x, r3.xyxx, t2.xyzw, s1
+  mul r1.x, r1.x, l(0.200000)
+  add r1.z, v4.z, -cb0[8].z
+  div r1.x, r1.x, r1.z
+  mul r1.x, r0.x, r1.x
+  max r1.x, r1.x, l(-2.000000)
+  min r1.x, r1.x, l(2.000000)
+  mad r2.yzw, r0.yyzw, -r1.xxxx, v4.xxyz
+  add r1.x, r0.x, r1.x
+  div r1.x, r1.x, r0.x
+  mul r1.x, r1.x, v3.z
+  mul r3.x, r0.x, l(0.010000)
+  add r1.zw, r2.yyyz, -cb4[0].xxxy
+  dp2 r1.z, cb4[0].zwzz, r1.zwzz
+  div r1.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.z
+  mad r1.z, r1.y, r1.z, -cb4[2].z
+  div r1.z, r1.z, r2.x
+  mov r4.x, -r3.x
+  mov r4.y, l(0)
+  add r4.xy, r2.yzyy, r4.xyxx
+  add r4.xy, r4.xyxx, -cb4[0].xyxx
+  dp2 r1.w, cb4[0].zwzz, r4.xyxx
+  dp2 r3.w, cb4[1].xyxx, r4.xyxx
+  div r4.x, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r4.x, r1.y, r4.x, -cb4[2].z
+  div r4.y, r4.x, r2.x
+  mul r1.w, r1.w, cb4[2].x
+  div r1.w, r3.w, r1.w
+  mad r4.x, r1.w, l(0.500000), l(0.500000)
+  mov r3.y, l(0)
+  add r5.xyzw, r2.yzyz, r3.xyyx
+  add r5.xyzw, r5.xyzw, -cb4[0].xyxy
+  dp2 r1.w, cb4[0].zwzz, r5.xyxx
+  dp2 r3.w, cb4[1].xyxx, r5.xyxx
+  div r4.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r4.z, r1.y, r4.z, -cb4[2].z
+  div r5.y, r4.z, r2.x
+  mul r1.w, r1.w, cb4[2].x
+  div r1.w, r3.w, r1.w
+  mad r5.x, r1.w, l(0.500000), l(0.500000)
+  mov r3.z, -r3.x
+  add r3.yz, r2.yyzy, r3.yyzy
+  add r3.yz, r3.yyzy, -cb4[0].xxyx
+  dp2 r1.w, cb4[0].zwzz, r3.yzyy
+  dp2 r3.y, cb4[1].xyxx, r3.yzyy
+  div r3.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r3.z, r1.y, r3.z, -cb4[2].z
+  div r6.y, r3.z, r2.x
+  mul r1.w, r1.w, cb4[2].x
+  div r1.w, r3.y, r1.w
+  mad r6.x, r1.w, l(0.500000), l(0.500000)
+  dp2 r1.w, cb4[0].zwzz, r5.zwzz
+  dp2 r3.y, cb4[1].xyxx, r5.zwzz
+  div r3.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r1.y, r1.y, r3.z, -cb4[2].z
+  div r7.y, r1.y, r2.x
+  mul r1.y, r1.w, cb4[2].x
+  div r1.y, r3.y, r1.y
+  mad r7.x, r1.y, l(0.500000), l(0.500000)
+  sample_indexable(texture2d)(float,float,float,float) r1.y, r4.xyxx, t2.yxzw, s1
+  sample_indexable(texture2d)(float,float,float,float) r1.w, r5.xyxx, t2.yzwx, s1
+  sample_indexable(texture2d)(float,float,float,float) r2.x, r6.xyxx, t2.xyzw, s1
+  sample_indexable(texture2d)(float,float,float,float) r3.y, r7.xyxx, t2.yxzw, s1
+  add r4.x, -r1.y, r1.w
+  add r4.y, -r2.x, r3.y
+  div r1.yw, r4.xxxy, r3.xxxx
+else 
+  mov r1.x, v3.z
+  mov r2.yzw, v4.xxyz
+  mov r1.yzw, l(0,0,0,0)
+endif 
+sample_indexable(texture2d)(float,float,float,float) r3.xy, v1.yxyy, t3.ywxz, s2
+mad r3.xy, r3.xyxx, l(2.007874, 2.007874, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r3.xz, r3.xxyx, cb5[12].xxxx
+dp2 r2.x, r3.xzxx, r3.xzxx
+min r2.x, r2.x, l(1.000000)
+mad r2.x, -r2.x, l(0.999000), l(1.000000)
+sqrt r3.y, r2.x
+sample_indexable(texture2d)(float,float,float,float) r4.xy, v1.wzww, t3.ywxz, s2
+mad r4.xy, r4.xyxx, l(2.007874, 2.007874, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r4.xz, r4.xxyx, cb5[12].xxxx
+dp2 r2.x, r4.xzxx, r4.xzxx
+min r2.x, r2.x, l(1.000000)
+mad r2.x, -r2.x, l(0.999000), l(1.000000)
+sqrt r4.y, r2.x
+add r3.xyz, r3.xyzx, r4.xyzx
+dp3 r2.x, r3.xyzx, r3.xyzx
+rsq r2.x, r2.x
+mul r4.xyz, r2.xxxx, r3.xyzx
+sample_indexable(texture2d)(float,float,float,float) r5.xy, v9.yxyy, t4.ywxz, s3
+mad r5.xy, r5.xyxx, l(2.007874, 2.007874, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r5.xz, r5.xxyx, cb5[12].xxxx
+dp2 r2.x, r5.xzxx, r5.xzxx
+min r2.x, r2.x, l(1.000000)
+mad r2.x, -r2.x, l(0.999000), l(1.000000)
+sqrt r5.y, r2.x
+add r5.xyz, -r3.xyzx, r5.xyzx
+mad r3.xyz, cb5[3].zzzz, r5.xyzx, r3.xyzx
+dp3 r2.x, r3.xyzx, r3.xyzx
+rsq r2.x, r2.x
+mul r3.xyz, r2.xxxx, r3.xyzx
+movc r3.xyz, cb3[1].wwww, r4.xyzx, r3.xyzx
+add r1.z, r1.z, l(-0.900000)
+mul_sat r1.z, r1.z, l(10.000000)
+mad r1.z, r1.z, l(-0.050000), l(0.050000)
+mul r4.xz, r1.zzzz, r1.yywy
+mov r4.y, l(0)
+add r1.yzw, r3.xxyz, r4.xxyz
+dp3 r2.x, r1.yzwy, r1.yzwy
+rsq r2.x, r2.x
+mul r1.yzw, r1.yyzw, r2.xxxx
+movc r1.yzw, cb4[3].xxxx, r1.yyzw, r3.xxyz
+mad r3.xy, r1.ywyy, cb5[0].xxxx, v9.zwzz
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.xyxx, t6.xyzw, s5
+dp3 r2.x, r1.ywzy, r0.yzwy
+mov_sat r4.x, r2.x
+add r4.y, -r4.x, l(1.000000)
+mul r4.z, r4.y, r4.y
+mul r4.z, r4.z, r4.z
+mul r4.y, r4.y, r4.z
+mul r4.y, r4.y, l(0.980000)
+mul r4.z, cb5[9].x, cb5[9].x
+mad r4.z, r4.z, l(0.830000), l(0.170000)
+mad r4.y, r4.y, r4.z, l(0.020000)
+mul r4.w, r4.x, l(-8.656170)
+exp r4.w, r4.w
+mul r4.z, r4.w, r4.z
+mad r4.z, r4.z, l(0.980000), l(0.020000)
+movc r4.y, cb1[11].w, r4.y, r4.z
+mul r5.xyz, cb3[1].zzzz, cb6[21].xyzx
+dp3 r4.z, v8.xyzx, v8.xyzx
+rsq r4.z, r4.z
+mul r6.xyz, r4.zzzz, v8.xyzx
+mad r7.xyz, v8.xyzx, r4.zzzz, -v7.xyzx
+dp3 r4.z, r7.xyzx, r7.xyzx
+rsq r4.z, r4.z
+mul r7.xyz, r4.zzzz, r7.xyzx
+dp3 r4.z, r7.xyzx, r6.xyzx
+add r4.w, -r4.z, l(1.000000)
+mul r5.w, r4.w, r4.w
+mul r5.w, r5.w, r5.w
+mul r4.w, r4.w, r5.w
+mad r4.w, r4.w, l(0.980000), l(0.020000)
+mul r4.z, r4.z, l(-8.656170)
+exp r4.z, r4.z
+mad r4.z, r4.z, l(0.980000), l(0.020000)
+movc r4.z, cb1[11].w, r4.w, r4.z
+mul r4.w, cb5[9].x, l(13.000000)
+mad r5.w, cb5[9].x, l(-0.255445), l(1.401520)
+mad r5.w, r5.w, cb5[9].x, l(-1.946950)
+mad r5.w, r5.w, cb5[9].x, l(0.816500)
+exp r4.w, r4.w
+movc r4.w, cb1[11].w, r5.w, r4.w
+dp3_sat r5.w, -v7.xzyx, r1.yzwy
+mul r6.x, r5.w, r5.w
+mul r6.y, r4.w, r4.w
+mad r6.z, -r4.w, r4.w, l(1.000000)
+mad r6.x, r6.x, r6.z, r6.y
+sqrt r6.x, r6.x
+add r6.x, r5.w, r6.x
+div r6.x, l(1.000000, 1.000000, 1.000000, 1.000000), r6.x
+movc r6.x, cb1[11].w, r6.x, l(1.000000)
+mul r6.w, r4.x, r4.x
+mad r6.y, r6.w, r6.z, r6.y
+sqrt r6.y, r6.y
+add r4.x, r4.x, r6.y
+div r4.x, l(1.000000, 1.000000, 1.000000, 1.000000), r4.x
+movc r4.x, cb1[11].w, r4.x, l(1.000000)
+mul r4.x, r4.x, r6.x
+dp3_sat r6.x, r7.xzyx, r1.yzwy
+mad r6.y, r4.w, r4.w, l(-1.000000)
+mul r6.z, r6.x, r6.x
+mad r6.y, r6.z, r6.y, l(1.000000)
+div r6.y, r4.w, r6.y
+mul r6.y, r6.y, r6.y
+mul r6.yzw, r5.xxyz, r6.yyyy
+log r6.x, r6.x
+mul r6.x, r4.w, r6.x
+exp r6.x, r6.x
+mad r4.w, r4.w, l(0.125000), l(0.250000)
+mul r4.w, r4.w, r6.x
+mul r7.xyz, r4.wwww, r5.xyzx
+movc r6.xyz, cb1[11].wwww, r6.yzwy, r7.xyzx
+mul r6.xyz, r5.wwww, r6.xyzx
+mul r6.xyz, r4.xxxx, r6.xyzx
+mul r7.xy, v0.xyxx, cb0[52].zwzz
+mad r4.xw, r7.xxxy, l(2.000000, 0.000000, 0.000000, 2.000000), l(-1.000000, 0.000000, 0.000000, -1.000000)
+mad r4.xw, -|r4.xxxw|, |r4.xxxw|, l(1.000000, 0.000000, 0.000000, 1.000000)
+mul r8.xy, r1.ywyy, cb5[4].yyyy
+mad r8.xy, r8.xyxx, r0.xxxx, v5.xyxx
+mov r8.z, v5.z
+mov r8.w, l(1.000000)
+dp4 r9.x, r8.xyzw, cb2[3].xyzw
+dp4 r9.y, r8.xyzw, cb2[4].xyzw
+dp4 r6.w, r8.xyzw, cb2[6].xyzw
+div r9.xy, r9.xyxx, r6.wwww
+mad r7.zw, -v0.xxxx, cb0[52].zzzz, l(0.000000, 0.000000, 1.000000, 1.000000)
+add r7.xz, -r7.zzyz, r9.xxyx
+mad_sat r4.xw, r7.xxxz, r4.xxxw, r7.wwwy
+add r7.xyz, r8.xyzx, -cb0[8].xyzx
+dp3 r6.w, r7.xyzx, r7.xyzx
+sqrt r6.w, r6.w
+div r6.w, r6.w, |r7.z|
+max r6.w, r6.w, l(1.000000)
+min r6.w, r6.w, l(8.000000)
+mad r6.w, r0.x, r6.w, -cb5[5].y
+mad r6.w, r6.w, cb5[5].x, l(1.000000)
+log r6.w, r6.w
+sample_l_indexable(texture2d)(float,float,float,float) r7.xyz, r4.xwxx, t7.xyzw, s6, r6.w
+mul r7.xyz, r7.xyzx, r7.xyzx
+min r7.xyz, r7.xyzx, l(16.000000, 16.000000, 16.000000, 0.000000)
+mul r7.xyz, r7.xyzx, cb2[0].wwww
+add r8.xyz, -r2.yzwy, cb0[8].xyzx
+dp3 r4.x, r8.xyzx, r8.xyzx
+mad_sat r4.x, r4.x, cb3[1].x, cb3[1].y
+add r2.x, r2.x, r2.x
+mad r8.xyz, r1.yzwy, -r2.xxxx, r0.ywzy
+mov r8.xyz, -r8.xyzx
+mad r1.z, -cb5[9].x, l(6.000000), l(6.000000)
+sample_l_indexable(texturecube)(float,float,float,float) r8.xyz, r8.xyzx, t1.xyzw, s0, r1.z
+mad r8.xyz, r8.xyzx, cb5[4].wwww, cb5[4].zzzz
+mad r8.xyz, cb0[0].xyzx, r8.xyzx, -r7.xyzx
+mad r7.xyz, r4.xxxx, r8.xyzx, r7.xyzx
+div r8.xy, v6.xyxx, v6.zzzz
+resinfo_indexable(texture2dms)(float,float,float,float)_uint r4.xw, l(0), t0.xzwy
+utof r4.xw, r4.xxxw
+mul r4.xw, r4.xxxw, r8.xxxy
+ftoi r9.xy, r4.xwxx
+mov r9.zw, l(0,0,0,0)
+ldms_indexable(texture2dms)(float,float,float,float) r8.z, r9.xyzw, t0.yzxw, l(0)
+mov r8.w, l(1.000000)
+dp4 r1.z, r8.xyzw, cb0[24].xyzw
+dp4 r2.x, r8.xyzw, cb0[25].xyzw
+div r1.z, -r1.z, r2.x
+mul r1.z, r0.x, -r1.z
+div r1.x, r1.z, r1.x
+add r0.x, -r0.x, r1.x
+mad r0.yzw, -r0.yyzw, r1.xxxx, cb0[8].xxyz
+mul r0.x, r0.x, -cb5[13].x
+exp r0.x, r0.x
+add r0.x, -r0.x, l(1.000000)
+max r0.x, r0.x, l(0.000000)
+mad r5.xyz, r5.wwww, r5.xyzx, cb0[0].xyzx
+add r1.x, -r4.y, l(1.000000)
+mul r5.xyz, r1.xxxx, r5.xyzx
+mul r4.xzw, r4.zzzz, r6.xxyz
+mad r4.xyz, r7.xyzx, r4.yyyy, r4.xzwx
+add r3.xyz, r3.xyzx, -cb5[7].xyzx
+mad r3.xyz, r3.wwww, r3.xyzx, cb5[7].xyzx
+add r0.w, -r0.w, r2.w
+max r0.w, r0.w, l(0.000000)
+mul r1.xy, r0.wwww, r1.ywyy
+mad r0.yz, r1.xxyx, l(0.000000, 0.500000, 0.500000, 0.000000), r0.yyzy
+mul r0.yz, r0.yyzy, cb5[4].xxxx
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, r0.yzyy, t5.xyzw, s4
+mul r1.xyz, r1.xyzx, cb6[22].xyzx
+mul r0.y, r0.w, -cb5[13].y
+exp r0.y, r0.y
+mul r0.yzw, r0.yyyy, r1.xxyz
+mul r0.yzw, r0.yyzw, cb5[3].wwww
+mul r1.xyz, r0.xxxx, r4.xyzx
+mad r1.xyz, r5.xyzx, r3.xyzx, r1.xyzx
+mov r3.w, -r0.x
+add r1.w, r3.w, l(1.000000)
+mad r0.yzw, r0.yyzw, r1.wwww, r1.xxyz
+add r1.xyz, r2.yzwy, -cb0[8].xyzx
+dp3 r1.x, r1.xyzx, r1.xyzx
+sqrt r1.x, r1.x
+mad_sat r1.x, r1.x, cb0[17].y, cb0[17].x
+mul r1.y, r1.z, cb0[21].y
+max r1.y, r1.y, l(-125.000000)
+lt r1.z, l(0.000001), |r1.y|
+exp r1.w, -r1.y
+add r1.w, -r1.w, l(1.000000)
+div r1.y, r1.w, r1.y
+movc r1.y, r1.z, r1.y, l(1.000000)
+mad r1.y, r1.y, cb0[21].x, cb0[17].w
+mul r1.x, r1.y, r1.x
+mul r1.x, r1.x, -cb0[17].z
+exp r1.x, r1.x
+mad r1.yzw, -v2.xxyz, r1.xxxx, v2.xxyz
+mad r0.yzw, r0.yyzw, r1.xxxx, r1.yyzw
+mul r3.xyz, r0.xxxx, r0.yzwy
+mad r0.xyzw, v2.wwww, r3.xyzw, l(0.000000, 0.000000, 0.000000, 1.000000)
+mul o0.xyz, r0.xyzx, cb0[2].zzzz
+mov o0.w, r0.w
+ret 
+// Approximately 305 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer CViewportShaderParameterProvider
+// {
+//
+//   float4 _AmbientColorMultiplier;    // Offset:    0 Size:    16
+//   float4 _AmbientOcclusionRanges_SunOcclusionFactor;// Offset:   16 Size:    16 [unused]
+//   float4 _BloomAdaptationFactor;     // Offset:   32 Size:    16
+//   float4 _CameraDirection_FOVDeg;    // Offset:   48 Size:    16 [unused]
+//   float4 _CameraDistances;           // Offset:   64 Size:    16 [unused]
+//   float4 _CameraNearPlaneSize;       // Offset:   80 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS;// Offset:   96 Size:    16 [unused]
+//   float4 _CameraPositionFractions_ZOffsetWS_Previous;// Offset:  112 Size:    16 [unused]
+//   float4 _CameraPosition_DistanceScale;// Offset:  128 Size:    16
+//   float4 _CameraPosition_DistanceScale_Previous;// Offset:  144 Size:    16 [unused]
+//   float4x4 _CullingViewProjectionMatrix;// Offset:  160 Size:    64 [unused]
+//   float4 _DepthScale;                // Offset:  224 Size:    16 [unused]
+//   float4 _DepthTextureRcpSize;       // Offset:  240 Size:    16 [unused]
+//   float4 _DepthTextureScaleOffset;   // Offset:  256 Size:    16 [unused]
+//   float4 _FogParams;                 // Offset:  272 Size:    16
+//   float4 _FogSHB;                    // Offset:  288 Size:    16 [unused]
+//   float4 _FogSHG;                    // Offset:  304 Size:    16 [unused]
+//   float4 _FogSHR;                    // Offset:  320 Size:    16 [unused]
+//   float4 _HeightFogParams;           // Offset:  336 Size:    16
+//   float4x4 _InvProjectionMatrix;     // Offset:  352 Size:    64
+//   float4x4 _InvViewMatrix;           // Offset:  416 Size:    64 [unused]
+//   float4x4 _ProjectionMatrix;        // Offset:  480 Size:    64 [unused]
+//   float4 _TempSunDirection;          // Offset:  544 Size:    16 [unused]
+//   float4x4 _ViewMatrix;              // Offset:  560 Size:    64 [unused]
+//   float4 _ViewPoint_ShadowProjDepthMin;// Offset:  624 Size:    16 [unused]
+//   float4x4 _ViewProjectionMatrix;    // Offset:  640 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix; // Offset:  704 Size:    64 [unused]
+//   float4x4 _ViewRotProjectionMatrix_Previous;// Offset:  768 Size:    64 [unused]
+//   float4 _ViewportSize;              // Offset:  832 Size:    16
+//   float2 _MotionVectorOffsets;       // Offset:  848 Size:     8 [unused]
+//   float3 _CameraRight;               // Offset:  864 Size:    12 [unused]
+//   float3 _CameraUp;                  // Offset:  880 Size:    12 [unused]
+//   float3 _EnvironmentMapColorOffset; // Offset:  896 Size:    12 [unused]
+//   float3 _EnvironmentMapColorScale;  // Offset:  912 Size:    12 [unused]
+//
+// }
+//
+// cbuffer CGlobalShaderParameterProvider
+// {
+//
+//   float4 _BurnColor;                 // Offset:    0 Size:    16 [unused]
+//   float4 _BurnParams;                // Offset:   16 Size:    16 [unused]
+//   float4 _BurnParams2;               // Offset:   32 Size:    16 [unused]
+//   float4 _BurnParams3;               // Offset:   48 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile0;// Offset:   64 Size:    16 [unused]
+//   float4 _CascadedShadowScaleOffsetTile1;// Offset:   80 Size:    16 [unused]
+//   float4 _GlobalScalars;             // Offset:   96 Size:    16 [unused]
+//   float4 _SSS_MiscParams;            // Offset:  112 Size:    16 [unused]
+//   float4 _WindSimParamsX;            // Offset:  128 Size:    16 [unused]
+//   float4 _WindSimParamsY;            // Offset:  144 Size:    16 [unused]
+//   float2 _RangeDepthCompression;     // Offset:  160 Size:     8 [unused]
+//   float3 _SSS_Color;                 // Offset:  176 Size:    12 [unused]
+//   int _BRDFHighQuality;              // Offset:  188 Size:     4
+//
+// }
+//
+// cbuffer CWaterReflectionParameterProvider
+// {
+//
+//   float4 _WaterReflectionColor;      // Offset:    0 Size:    16
+//   float4 _WaterReflectionPlane;      // Offset:   16 Size:    16 [unused]
+//   float4 _WaterReflectionTexCoordRange;// Offset:   32 Size:    16 [unused]
+//   float4x4 _WaterReflectionTransform;// Offset:   48 Size:    64
+//   float _WaterLevelAdjustment;       // Offset:  112 Size:     4 [unused]
+//
+// }
+//
+// cbuffer CWaterParameterProvider
+// {
+//
+//   float4 _BorderAlphaMask;           // Offset:    0 Size:    16 [unused]
+//   float _ReflectionInvSquareFadeDistance;// Offset:   16 Size:     4
+//   float _ReflectionSquareFadeDistance;// Offset:   20 Size:     4
+//   float _SunLightScale;              // Offset:   24 Size:     4
+//   bool _DisableThirdNormalUVs;       // Offset:   28 Size:     4
+//
+// }
+//
+// cbuffer CWaterWaveParameterProvider
+// {
+//
+//   float4 _WaterWave_CameraCenter_FrontVector;// Offset:    0 Size:    16
+//   float4 _WaterWave_CameraRightVector_;// Offset:   16 Size:    16
+//   float4 _WaterWave_CameraTanFOVx_2_Near_Far;// Offset:   32 Size:    16
+//   bool _WaterWave_Enabled;           // Offset:   48 Size:     4
+//
+// }
+//
+// cbuffer Water
+// {
+//
+//   float _NormalOffsetScale;          // Offset:    0 Size:     4
+//   float2 _Tiling1;                   // Offset:    4 Size:     8 [unused]
+//   float2 _Tiling2;                   // Offset:   16 Size:     8 [unused]
+//   float2 _Dir1;                      // Offset:   24 Size:     8 [unused]
+//   float2 _Dir2;                      // Offset:   32 Size:     8 [unused]
+//   float2 _Tiling3;                   // Offset:   40 Size:     8 [unused]
+//   float2 _Dir3;                      // Offset:   48 Size:     8 [unused]
+//   float _NormalTexture3Blend;        // Offset:   56 Size:     4
+//   float _CausticsIntensity;          // Offset:   60 Size:     4
+//   float _CausticsScale;              // Offset:   64 Size:     4
+//   float _ReflectionNormalOffsetScale;// Offset:   68 Size:     4
+//   float _ReflectionColorOffset;      // Offset:   72 Size:     4
+//   float _ReflectionColorScale;       // Offset:   76 Size:     4
+//   float _ReflectionAnisotropicDistanceScale;// Offset:   80 Size:     4
+//   float _ReflectionAnisotropicDistanceOffset;// Offset:   84 Size:     4
+//   float2 _DiffuseTiling;             // Offset:   88 Size:     8 [unused]
+//   float _DiffuseSpeedFactor;         // Offset:   96 Size:     4 [unused]
+//   float4 _WaterColor;                // Offset:  112 Size:    16
+//   float4 _UnderwaterColor;           // Offset:  128 Size:    16 [unused]
+//   float4 _Specular;                  // Offset:  144 Size:    16
+//   float2 _BaseTiling;                // Offset:  160 Size:     8 [unused]
+//   float4 _RefractionWaveInfo;        // Offset:  176 Size:    16 [unused]
+//   float _NormalModifier;             // Offset:  192 Size:     4
+//   float4 _Extinctions;               // Offset:  208 Size:    16
+//   float4 _MaterialPickingID;         // Offset:  224 Size:    16 [unused]
+//
+// }
+//
+// cbuffer CNewLightingDataProvider
+// {
+//
+//   float4 _CSMSlice0_0;               // Offset:    0 Size:    16 [unused]
+//   float4 _CSMSlice0_1;               // Offset:   16 Size:    16 [unused]
+//   float4 _CSMSlice0_2;               // Offset:   32 Size:    16 [unused]
+//   float4 _CSMSlice1_0;               // Offset:   48 Size:    16 [unused]
+//   float4 _CSMSlice1_1;               // Offset:   64 Size:    16 [unused]
+//   float4 _CSMSlice1_2;               // Offset:   80 Size:    16 [unused]
+//   float4 _CSMSlice2_0;               // Offset:   96 Size:    16 [unused]
+//   float4 _CSMSlice2_1;               // Offset:  112 Size:    16 [unused]
+//   float4 _CSMSlice2_2;               // Offset:  128 Size:    16 [unused]
+//   float4 _CSMSliceFade;              // Offset:  144 Size:    16 [unused]
+//   float4 _LightUpWS_RcpSquaredLightRadius;// Offset:  160 Size:    16 [unused]
+//   float4 _PointAttenuation_SpotFactors;// Offset:  176 Size:    16 [unused]
+//   float4 _ShadowMapSize;             // Offset:  192 Size:    16 [unused]
+//   float4x4 _ShadowProjectionMatrix;  // Offset:  208 Size:    64 [unused]
+//   float4x4 _ShadowRotProjectionMatrix;// Offset:  272 Size:    64 [unused]
+//   float3 _LightColor;                // Offset:  336 Size:    12
+//   float3 _LightColorUpNormal;        // Offset:  352 Size:    12
+//   float3 _LightDirectionWS;          // Offset:  368 Size:    12 [unused]
+//   float3 _LightPositionWS;           // Offset:  384 Size:    12 [unused]
+//   float3 _LightRightWS;              // Offset:  400 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// EnvironmentMapTexture__SampObj___s    sampler      NA          NA    0        1
+// WaterWaveTexture__SampObj___s     sampler      NA          NA    1        1
+// NormalTexture__SampObj___s        sampler      NA          NA    2        1
+// NormalTexture3__SampObj___s       sampler      NA          NA    3        1
+// CausticsTexture__SampObj___s      sampler      NA          NA    4        1
+// DiffuseTexture__SampObj___s       sampler      NA          NA    5        1
+// ReflectionRealTexture__SampObj___s    sampler      NA          NA    6        1
+// DepthVPSampler_TextureObject      texture  float4       2dMS2    0        1
+// EnvironmentMapTexture__TexObj__    texture  float4        cube    1        1
+// WaterWaveTexture__TexObj__        texture  float4          2d    2        1
+// NormalTexture__TexObj__           texture  float4          2d    3        1
+// NormalTexture3__TexObj__          texture  float4          2d    4        1
+// CausticsTexture__TexObj__         texture  float4          2d    5        1
+// DiffuseTexture__TexObj__          texture  float4          2d    6        1
+// ReflectionRealTexture__TexObj__    texture  float4          2d    7        1
+// CViewportShaderParameterProvider    cbuffer      NA          NA    0        1
+// CGlobalShaderParameterProvider    cbuffer      NA          NA    1        1
+// CWaterReflectionParameterProvider    cbuffer      NA          NA    2        1
+// CWaterParameterProvider           cbuffer      NA          NA    3        1
+// CWaterWaveParameterProvider       cbuffer      NA          NA    4        1
+// Water                             cbuffer      NA          NA    5        1
+// CNewLightingDataProvider          cbuffer      NA          NA    6        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyz         5     NONE   float   xyz 
+// TEXCOORD                 5   xyz         6     NONE   float   xyz 
+// TEXCOORD                 6   xyz         7     NONE   float   xyz 
+// TEXCOORD                 7   xyz         8     NONE   float   xyz 
+// TEXCOORD                 8   xyzw        9     NONE   float   xyzw
+// SV_IsFrontFace           0   x          10    FFACE    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[53], immediateIndexed
+dcl_constantbuffer cb1[12], immediateIndexed
+dcl_constantbuffer cb2[7], immediateIndexed
+dcl_constantbuffer cb3[2], immediateIndexed
+dcl_constantbuffer cb4[4], immediateIndexed
+dcl_constantbuffer cb5[14], immediateIndexed
+dcl_constantbuffer cb6[23], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_default
+dcl_resource_texture2dms(2) (float,float,float,float) t0
+dcl_resource_texturecube (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xyzw
+dcl_input_ps linear v2.xyzw
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyz
+dcl_input_ps linear v5.xyz
+dcl_input_ps linear v6.xyz
+dcl_input_ps linear v7.xyz
+dcl_input_ps linear v8.xyz
+dcl_input_ps linear v9.xyzw
+dcl_output o0.xyzw
+dcl_temps 10
+dp3 r0.x, v3.xyzx, v3.xyzx
+sqrt r0.x, r0.x
+add r0.yzw, -v4.xxyz, cb0[8].xxyz
+dp3 r1.x, r0.yzwy, r0.yzwy
+rsq r1.x, r1.x
+mul r0.yzw, r0.yyzw, r1.xxxx
+movc r1.x, cb4[3].x, l(1), l(0)
+if_nz r1.x
+  add r1.xy, v4.xyxx, -cb4[0].xyxx
+  dp2 r1.z, cb4[0].zwzz, r1.xyxx
+  dp2 r1.x, cb4[1].xyxx, r1.xyxx
+  mul r1.y, cb4[2].z, cb4[2].y
+  div r1.w, l(1.000000, 1.000000, 1.000000, 1.000000), r1.z
+  mad r1.w, r1.y, r1.w, -cb4[2].z
+  add r2.x, -cb4[2].z, cb4[2].y
+  div r3.y, r1.w, r2.x
+  mul r1.z, r1.z, cb4[2].x
+  div r1.x, r1.x, r1.z
+  mad r3.x, r1.x, l(0.500000), l(0.500000)
+  sample_indexable(texture2d)(float,float,float,float) r1.x, r3.xyxx, t2.xyzw, s1
+  mul r1.x, r1.x, l(0.200000)
+  add r1.z, v4.z, -cb0[8].z
+  div r1.x, r1.x, r1.z
+  mul r1.x, r0.x, r1.x
+  max r1.x, r1.x, l(-2.000000)
+  min r1.x, r1.x, l(2.000000)
+  mad r2.yzw, r0.yyzw, -r1.xxxx, v4.xxyz
+  add r1.x, r0.x, r1.x
+  div r1.x, r1.x, r0.x
+  mul r1.x, r1.x, v3.z
+  mul r3.x, r0.x, l(0.010000)
+  add r1.zw, r2.yyyz, -cb4[0].xxxy
+  dp2 r1.z, cb4[0].zwzz, r1.zwzz
+  div r1.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.z
+  mad r1.z, r1.y, r1.z, -cb4[2].z
+  div r1.z, r1.z, r2.x
+  mov r4.x, -r3.x
+  mov r4.y, l(0)
+  add r4.xy, r2.yzyy, r4.xyxx
+  add r4.xy, r4.xyxx, -cb4[0].xyxx
+  dp2 r1.w, cb4[0].zwzz, r4.xyxx
+  dp2 r3.w, cb4[1].xyxx, r4.xyxx
+  div r4.x, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r4.x, r1.y, r4.x, -cb4[2].z
+  div r4.y, r4.x, r2.x
+  mul r1.w, r1.w, cb4[2].x
+  div r1.w, r3.w, r1.w
+  mad r4.x, r1.w, l(0.500000), l(0.500000)
+  mov r3.y, l(0)
+  add r5.xyzw, r2.yzyz, r3.xyyx
+  add r5.xyzw, r5.xyzw, -cb4[0].xyxy
+  dp2 r1.w, cb4[0].zwzz, r5.xyxx
+  dp2 r3.w, cb4[1].xyxx, r5.xyxx
+  div r4.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r4.z, r1.y, r4.z, -cb4[2].z
+  div r5.y, r4.z, r2.x
+  mul r1.w, r1.w, cb4[2].x
+  div r1.w, r3.w, r1.w
+  mad r5.x, r1.w, l(0.500000), l(0.500000)
+  mov r3.z, -r3.x
+  add r3.yz, r2.yyzy, r3.yyzy
+  add r3.yz, r3.yyzy, -cb4[0].xxyx
+  dp2 r1.w, cb4[0].zwzz, r3.yzyy
+  dp2 r3.y, cb4[1].xyxx, r3.yzyy
+  div r3.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r3.z, r1.y, r3.z, -cb4[2].z
+  div r6.y, r3.z, r2.x
+  mul r1.w, r1.w, cb4[2].x
+  div r1.w, r3.y, r1.w
+  mad r6.x, r1.w, l(0.500000), l(0.500000)
+  dp2 r1.w, cb4[0].zwzz, r5.zwzz
+  dp2 r3.y, cb4[1].xyxx, r5.zwzz
+  div r3.z, l(1.000000, 1.000000, 1.000000, 1.000000), r1.w
+  mad r1.y, r1.y, r3.z, -cb4[2].z
+  div r7.y, r1.y, r2.x
+  mul r1.y, r1.w, cb4[2].x
+  div r1.y, r3.y, r1.y
+  mad r7.x, r1.y, l(0.500000), l(0.500000)
+  sample_indexable(texture2d)(float,float,float,float) r1.y, r4.xyxx, t2.yxzw, s1
+  sample_indexable(texture2d)(float,float,float,float) r1.w, r5.xyxx, t2.yzwx, s1
+  sample_indexable(texture2d)(float,float,float,float) r2.x, r6.xyxx, t2.xyzw, s1
+  sample_indexable(texture2d)(float,float,float,float) r3.y, r7.xyxx, t2.yxzw, s1
+  add r4.x, -r1.y, r1.w
+  add r4.y, -r2.x, r3.y
+  div r1.yw, r4.xxxy, r3.xxxx
+else 
+  mov r1.x, v3.z
+  mov r1.yzw, l(0,0,0,0)
+  mov r2.yzw, v4.xxyz
+endif 
+sample_indexable(texture2d)(float,float,float,float) r3.xy, v1.yxyy, t3.ywxz, s2
+mad r3.xy, r3.xyxx, l(2.007874, 2.007874, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r3.xz, r3.xxyx, cb5[12].xxxx
+dp2 r2.x, r3.xzxx, r3.xzxx
+min r2.x, r2.x, l(1.000000)
+mad r2.x, r2.x, l(-0.999000), l(1.000000)
+sqrt r3.y, r2.x
+sample_indexable(texture2d)(float,float,float,float) r4.xy, v1.wzww, t3.ywxz, s2
+mad r4.xy, r4.xyxx, l(2.007874, 2.007874, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r4.xz, r4.xxyx, cb5[12].xxxx
+dp2 r2.x, r4.xzxx, r4.xzxx
+min r2.x, r2.x, l(1.000000)
+mad r2.x, r2.x, l(-0.999000), l(1.000000)
+sqrt r4.y, r2.x
+add r3.xyz, r3.xyzx, r4.xyzx
+dp3 r2.x, r3.xyzx, r3.xyzx
+rsq r2.x, r2.x
+mul r4.xyz, r2.xxxx, r3.xyzx
+sample_indexable(texture2d)(float,float,float,float) r5.xy, v9.yxyy, t4.ywxz, s3
+mad r5.xy, r5.xyxx, l(2.007874, 2.007874, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r5.xz, r5.xxyx, cb5[12].xxxx
+dp2 r2.x, r5.xzxx, r5.xzxx
+min r2.x, r2.x, l(1.000000)
+mad r2.x, r2.x, l(-0.999000), l(1.000000)
+sqrt r5.y, r2.x
+add r5.xyz, -r3.xyzx, r5.xyzx
+mad r3.xyz, cb5[3].zzzz, r5.xyzx, r3.xyzx
+dp3 r2.x, r3.xyzx, r3.xyzx
+rsq r2.x, r2.x
+mul r3.xyz, r2.xxxx, r3.xyzx
+movc r3.xyz, cb3[1].wwww, r4.xyzx, r3.xyzx
+add r1.z, r1.z, l(-0.900000)
+mul_sat r1.z, r1.z, l(10.000000)
+mad r1.z, r1.z, l(-0.050000), l(0.050000)
+mul r4.xz, r1.zzzz, r1.yywy
+mov r4.y, l(0)
+add r1.yzw, r3.xxyz, r4.xxyz
+dp3 r2.x, r1.yzwy, r1.yzwy
+rsq r2.x, r2.x
+mul r1.yzw, r1.yyzw, r2.xxxx
+movc r1.yzw, cb4[3].xxxx, r1.yyzw, r3.xxyz
+mad r3.xy, r1.ywyy, cb5[0].xxxx, v9.zwzz
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.xyxx, t6.xyzw, s5
+dp3 r2.x, r1.ywzy, r0.yzwy
+mov_sat r4.x, r2.x
+add r4.y, -r4.x, l(1.000000)
+mul r4.z, r4.y, r4.y
+mul r4.z, r4.z, r4.z
+mul r4.y, r4.y, r4.z
+mul r4.y, r4.y, l(0.980000)
+mul r4.z, cb5[9].x, cb5[9].x
+mad r4.z, r4.z, l(0.830000), l(0.170000)
+mad r4.y, r4.y, r4.z, l(0.020000)
+mul r4.w, r4.x, l(-8.656170)
+exp r4.w, r4.w
+mul r4.z, r4.w, r4.z
+mad r4.z, r4.z, l(0.980000), l(0.020000)
+movc r4.y, cb1[11].w, r4.y, r4.z
+mul r5.xyz, cb3[1].zzzz, cb6[21].xyzx
+dp3 r4.z, v8.xyzx, v8.xyzx
+rsq r4.z, r4.z
+mul r6.xyz, r4.zzzz, v8.xyzx
+mad r7.xyz, v8.xzyx, r4.zzzz, -v7.xzyx
+dp3 r4.z, r7.xyzx, r7.xyzx
+rsq r4.z, r4.z
+mul r7.xyz, r4.zzzz, r7.xyzx
+dp3 r4.z, r7.xzyx, r6.xyzx
+add r4.w, -r4.z, l(1.000000)
+mul r5.w, r4.w, r4.w
+mul r5.w, r5.w, r5.w
+mul r4.w, r4.w, r5.w
+mad r4.w, r4.w, l(0.980000), l(0.020000)
+mul r4.z, r4.z, l(-8.656170)
+exp r4.z, r4.z
+mad r4.z, r4.z, l(0.980000), l(0.020000)
+movc r4.z, cb1[11].w, r4.w, r4.z
+mul r4.w, l(13.000000), cb5[9].x
+mad r6.xy, cb5[9].xxxx, l(-0.255445, -6.000000, 0.000000, 0.000000), l(1.401520, 6.000000, 0.000000, 0.000000)
+mad r5.w, r6.x, cb5[9].x, l(-1.946950)
+mad r5.w, r5.w, cb5[9].x, l(0.816500)
+exp r4.w, r4.w
+movc r4.w, cb1[11].w, r5.w, r4.w
+dp3_sat r5.w, -v7.xzyx, r1.yzwy
+mul r6.x, r5.w, r5.w
+mul r6.z, r4.w, r4.w
+mad r6.w, -r4.w, r4.w, l(1.000000)
+mad r6.x, r6.x, r6.w, r6.z
+sqrt r6.x, r6.x
+add r6.x, r5.w, r6.x
+div r6.x, l(1.000000, 1.000000, 1.000000, 1.000000), r6.x
+movc r6.x, cb1[11].w, r6.x, l(1.000000)
+mul r7.w, r4.x, r4.x
+mad r6.z, r7.w, r6.w, r6.z
+sqrt r6.z, r6.z
+add r4.x, r4.x, r6.z
+div r4.x, l(1.000000, 1.000000, 1.000000, 1.000000), r4.x
+movc r4.x, cb1[11].w, r4.x, l(1.000000)
+mul r4.x, r4.x, r6.x
+dp3_sat r6.x, r7.xyzx, r1.yzwy
+mad r6.z, r4.w, r4.w, l(-1.000000)
+mul r6.w, r6.x, r6.x
+mad r6.z, r6.w, r6.z, l(1.000000)
+div r6.z, r4.w, r6.z
+mul r6.z, r6.z, r6.z
+mul r7.xyz, r5.xyzx, r6.zzzz
+log r6.x, r6.x
+mul r6.x, r4.w, r6.x
+exp r6.x, r6.x
+mad r4.w, r4.w, l(0.125000), l(0.250000)
+mul r4.w, r4.w, r6.x
+mul r6.xzw, r4.wwww, r5.xxyz
+movc r6.xzw, cb1[11].wwww, r7.xxyz, r6.xxzw
+mul r6.xzw, r5.wwww, r6.xxzw
+mul r6.xzw, r4.xxxx, r6.xxzw
+mul r7.yz, v0.xxyx, cb0[52].zzwz
+mad r4.xw, r7.yyyz, l(2.000000, 0.000000, 0.000000, 2.000000), l(-1.000000, 0.000000, 0.000000, -1.000000)
+mad r4.xw, -|r4.xxxw|, |r4.xxxw|, l(1.000000, 0.000000, 0.000000, 1.000000)
+mul r7.yw, r1.yyyw, cb5[4].yyyy
+mad r8.xy, r7.ywyy, r0.xxxx, v5.xyxx
+mov r8.z, v5.z
+mov r8.w, l(1.000000)
+dp4 r9.x, r8.xyzw, cb2[3].xyzw
+dp4 r9.y, r8.xyzw, cb2[4].xyzw
+dp4 r7.y, r8.xyzw, cb2[6].xyzw
+div r7.yw, r9.xxxy, r7.yyyy
+mad r7.x, -v0.x, cb0[52].z, l(1.000000)
+add r7.yw, -r7.xxxz, r7.yyyw
+mad_sat r4.xw, r7.yyyw, r4.xxxw, r7.xxxz
+add r7.xyz, r8.xyzx, -cb0[8].xyzx
+dp3 r7.x, r7.xyzx, r7.xyzx
+sqrt r7.x, r7.x
+div r7.x, r7.x, |r7.z|
+max r7.x, r7.x, l(1.000000)
+min r7.x, r7.x, l(8.000000)
+mad r7.x, r0.x, r7.x, -cb5[5].y
+mad r7.x, r7.x, cb5[5].x, l(1.000000)
+log r7.x, r7.x
+sample_l_indexable(texture2d)(float,float,float,float) r7.xyz, r4.xwxx, t7.xyzw, s6, r7.x
+mul r7.xyz, r7.xyzx, r7.xyzx
+min r7.xyz, r7.xyzx, l(16.000000, 16.000000, 16.000000, 0.000000)
+mul r7.xyz, r7.xyzx, cb2[0].wwww
+add r8.xyz, -r2.yzwy, cb0[8].xyzx
+dp3 r4.x, r8.xyzx, r8.xyzx
+mad_sat r4.x, r4.x, cb3[1].x, cb3[1].y
+add r2.x, r2.x, r2.x
+mad r8.xyz, r1.yzwy, -r2.xxxx, r0.ywzy
+mov r8.xyz, -r8.xyzx
+sample_l_indexable(texturecube)(float,float,float,float) r8.xyz, r8.xyzx, t1.xyzw, s0, r6.y
+mad r8.xyz, r8.xyzx, cb5[4].wwww, cb5[4].zzzz
+mad r8.xyz, cb0[0].xyzx, r8.xyzx, -r7.xyzx
+mad r7.xyz, r4.xxxx, r8.xyzx, r7.xyzx
+div r8.xy, v6.xyxx, v6.zzzz
+resinfo_indexable(texture2dms)(float,float,float,float)_uint r4.xw, l(0), t0.xzwy
+utof r4.xw, r4.xxxw
+mul r4.xw, r4.xxxw, r8.xxxy
+round_z r4.xw, r4.xxxw
+ftoi r9.xy, r4.xwxx
+mov r9.zw, l(0,0,0,0)
+ldms_indexable(texture2dms)(float,float,float,float) r8.z, r9.xyzw, t0.yzxw, l(0)
+mov r8.w, l(1.000000)
+dp4 r1.z, r8.xyzw, cb0[24].xyzw
+dp4 r2.x, r8.xyzw, cb0[25].xyzw
+div r1.z, -r1.z, r2.x
+mul r1.z, r0.x, -r1.z
+div r1.x, r1.z, r1.x
+add r0.x, -r0.x, r1.x
+mad r0.yzw, -r0.yyzw, r1.xxxx, cb0[8].xxyz
+mul r0.x, r0.x, -cb5[13].x
+exp r0.x, r0.x
+add r0.x, -r0.x, l(1.000000)
+mad r5.xyz, r5.wwww, r5.xyzx, cb0[0].xyzx
+add r1.x, -r4.y, l(1.000000)
+mul r5.xyz, r1.xxxx, r5.xyzx
+mul r4.xzw, r4.zzzz, r6.xxzw
+mad r4.xyz, r7.xyzx, r4.yyyy, r4.xzwx
+add r3.xyz, r3.xyzx, -cb5[7].xyzx
+mad r3.xyz, r3.wwww, r3.xyzx, cb5[7].xyzx
+add r0.w, -r0.w, r2.w
+max r0.xw, r0.xxxw, l(0.000000, 0.000000, 0.000000, 0.000000)
+mul r1.xy, r0.wwww, r1.ywyy
+mad r0.yz, r1.xxyx, l(0.000000, 0.500000, 0.500000, 0.000000), r0.yyzy
+mul r0.yz, r0.yyzy, cb5[4].xxxx
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, r0.yzyy, t5.xyzw, s4
+mul r1.xyz, r1.xyzx, cb6[22].xyzx
+mul r0.y, r0.w, -cb5[13].y
+exp r0.y, r0.y
+mul r0.yzw, r0.yyyy, r1.xxyz
+mul r0.yzw, r0.yyzw, cb5[3].wwww
+mul r1.xyz, r0.xxxx, r4.xyzx
+mad r1.xyz, r5.xyzx, r3.xyzx, r1.xyzx
+mov r3.w, -r0.x
+add r1.w, r3.w, l(1.000000)
+mad r0.yzw, r0.yyzw, r1.wwww, r1.xxyz
+add r1.xyz, r2.yzwy, -cb0[8].xyzx
+dp3 r1.x, r1.xyzx, r1.xyzx
+sqrt r1.x, r1.x
+mad_sat r1.x, r1.x, cb0[17].y, cb0[17].x
+mul r1.y, r1.z, cb0[21].y
+max r1.y, r1.y, l(-125.000000)
+lt r1.z, l(0.000001), |r1.y|
+exp r1.w, -r1.y
+add r1.w, -r1.w, l(1.000000)
+div r1.y, r1.w, r1.y
+movc r1.y, r1.z, r1.y, l(1.000000)
+mad r1.y, r1.y, cb0[21].x, cb0[17].w
+mul r1.x, r1.y, r1.x
+mul r1.x, r1.x, -cb0[17].z
+exp r1.x, r1.x
+mad r1.yzw, -v2.xxyz, r1.xxxx, v2.xxyz
+mad r0.yzw, r0.yyzw, r1.xxxx, r1.yyzw
+mul r3.xyz, r0.xxxx, r0.yzwy
+mad r0.xyzw, v2.wwww, r3.xyzw, l(0.000000, 0.000000, 0.000000, 1.000000)
+mul o0.xyz, r0.xyzx, cb0[2].zzzz
+mov o0.w, r0.w
+ret 
+// Approximately 305 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
