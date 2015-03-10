@@ -18,7 +18,7 @@ Fixed
 - Shadows (including soft shadows)
 - Halos
 - Water reflections
-- Environment reflections on horizontal surfaces
+- Environment reflections
 - Specular highlights
 - Interior building masks
 - Clipping on lights
@@ -35,6 +35,7 @@ Fixed
 - Halos around lights
 - Decals
 - Moon glow
+- Fog
 
 Installation
 ------------
@@ -61,9 +62,6 @@ Known Issues
 ------------
 - Repair tool flame is misaligned, and can't be fixed without breaking other
   flames.
-
-- Environment reflections on vertical surfaces are slightly off (e.g. sky blue
-  highlights on walls).
 
 - Some clipping occurs on the building's interior masks. This is pretty minor
   but you may sometimes notice that the interior of a building may not appear

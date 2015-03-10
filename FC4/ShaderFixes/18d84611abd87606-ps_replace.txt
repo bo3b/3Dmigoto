@@ -339,7 +339,8 @@ r1.z = dot(adj_r0.xyz, adj_r0.xyz);
 r1.z = sqrt(r1.z);
 adj_r0.xyz = adj_r0.xyz / r1.zzz;
 
-  r15.w = dot(r8.xzy, r0.xyz);
+  r15.w = dot(r8.xzy, adj_r0.xyz); // Use adjusted position to fix highlights on surfaces
+
   r1.w = 1.300000000e+001 * r1.y;
   r2.y = r1.y * -2.554450035e-001 + 1.401520014e+000;
   r2.y = r2.y * r1.y + -1.946949959e+000;
@@ -801,17 +802,12 @@ r10.yzw = -_SunDirection.xyz + adj_r0.xzy;
   r7.w = dot(r7.xzy, r0.xyz);
   r7.xyzw = _BRDFHighQuality ? r7.xyzw : r15.xyzw;
   r0.w = r7.w + r7.w;
-  r0.xyz = -r0.www * r7.xzy + r0.xyz;
+
+// Use adjusted position to fix environment map reflection:
+  r0.xyz = -r0.www * r7.xzy + adj_r0.xyz;
+
   r0.xyz = -r0.xyz;
   r0.w = -r1.y * 6.000000000e+000 + 6.000000000e+000;
-
-// r0 is the coords to sample the environment cube map, and need to be fixed
-float4 adj = float4(stereo.x, 0, 0, 0);
-adj = mul(adj, _InvViewRotProjectionMatrix);
-
-// Had to switch axis for horizontal reflections. May need more work for sloped
-// or vertical surfaces... may need the surface normal?
-r0.xz -= adj.xy;
 
   r0.xyzw = EnvironmentMapTexture__TexObj__.SampleLevel(EnvironmentMapTexture__SampObj___s, r0.xyz, r0.w).xyzw;
 
