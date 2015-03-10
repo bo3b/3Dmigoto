@@ -29,8 +29,8 @@ const int MARKING_MODE_ZERO = 3;
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIDevice2::m_List;
-ThreadSafePointerSet D3D11Wrapper::ID3D10Device::m_List;
-ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
+//ThreadSafePointerSet D3D11Wrapper::ID3D10Device::m_List;
+//ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
 static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
 static wchar_t SHADER_CACHE_PATH[MAX_PATH] = { 0 };
 
@@ -2594,23 +2594,23 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			unsigned long cnt2 = p3->AddRef();
 			LogDebug("  interface replaced with IDXGIDevice2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p3->m_ulRef, cnt2);
 		}
-		D3D11Wrapper::ID3D10Device *p4 = (D3D11Wrapper::ID3D10Device*) D3D11Wrapper::ID3D10Device::m_List.GetDataPtr(*ppvObj);
-		if (p4)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p4;
-			unsigned long cnt2 = p4->AddRef();
-			LogDebug("  interface replaced with ID3D10Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p4->m_ulRef, cnt2);
-		}
-		D3D11Wrapper::ID3D10Multithread *p5 = (D3D11Wrapper::ID3D10Multithread*) D3D11Wrapper::ID3D10Multithread::m_List.GetDataPtr(*ppvObj);
-		if (p5)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p5;
-			unsigned long cnt2 = p5->AddRef();
-			LogDebug("  interface replaced with ID3D10Multithread wrapper. Interface counter=%d, wrapper counter=%d\n", cnt, p5->m_ulRef);
-		}
-		if (!p1 && !p2 && !p3 && !p4 && !p5)
+		//D3D11Wrapper::ID3D10Device *p4 = (D3D11Wrapper::ID3D10Device*) D3D11Wrapper::ID3D10Device::m_List.GetDataPtr(*ppvObj);
+		//if (p4)
+		//{
+		//	unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
+		//	*ppvObj = p4;
+		//	unsigned long cnt2 = p4->AddRef();
+		//	LogDebug("  interface replaced with ID3D10Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p4->m_ulRef, cnt2);
+		//}
+		//D3D11Wrapper::ID3D10Multithread *p5 = (D3D11Wrapper::ID3D10Multithread*) D3D11Wrapper::ID3D10Multithread::m_List.GetDataPtr(*ppvObj);
+		//if (p5)
+		//{
+		//	unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
+		//	*ppvObj = p5;
+		//	unsigned long cnt2 = p5->AddRef();
+		//	LogDebug("  interface replaced with ID3D10Multithread wrapper. Interface counter=%d, wrapper counter=%d\n", cnt, p5->m_ulRef);
+		//}
+		if (!p1 && !p2 && !p3)// && !p4 && !p5)
 		{
 			// Check for IDXGIDevice, IDXGIDevice1 or IDXGIDevice2 cast.
 			if (dxgidevice || dxgidevice1 || dxgidevice2)
@@ -2657,34 +2657,34 @@ STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 					origDevice, wrapper->m_ulRef);
 			}
 			// Check for DirectX10 cast.
-			if (d3d10device)
-			{
-				D3D11Base::ID3D10Device *origDevice = (D3D11Base::ID3D10Device *)*ppvObj;
-				D3D11Wrapper::ID3D10Device *wrapper = D3D11Wrapper::ID3D10Device::GetDirect3DDevice(origDevice);
-				if (wrapper == NULL)
-				{
-					LogInfo("  error allocating ID3D10Device wrapper.\n");
+		//	if (d3d10device)
+		//	{
+		//		D3D11Base::ID3D10Device *origDevice = (D3D11Base::ID3D10Device *)*ppvObj;
+		//		D3D11Wrapper::ID3D10Device *wrapper = D3D11Wrapper::ID3D10Device::GetDirect3DDevice(origDevice);
+		//		if (wrapper == NULL)
+		//		{
+		//			LogInfo("  error allocating ID3D10Device wrapper.\n");
 
-					origDevice->Release();
-					return E_OUTOFMEMORY;
-				}
-				*ppvObj = wrapper;
-				LogDebug("  interface replaced with ID3D10Device wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
-			}
-			if (d3d10multithread)
-			{
-				D3D11Base::ID3D10Multithread *origDevice = (D3D11Base::ID3D10Multithread *)*ppvObj;
-				D3D11Wrapper::ID3D10Multithread *wrapper = D3D11Wrapper::ID3D10Multithread::GetDirect3DMultithread(origDevice);
-				if (wrapper == NULL)
-				{
-					LogInfo("  error allocating ID3D10Multithread wrapper.\n");
+		//			origDevice->Release();
+		//			return E_OUTOFMEMORY;
+		//		}
+		//		*ppvObj = wrapper;
+		//		LogDebug("  interface replaced with ID3D10Device wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
+		//	}
+		//	if (d3d10multithread)
+		//	{
+		//		D3D11Base::ID3D10Multithread *origDevice = (D3D11Base::ID3D10Multithread *)*ppvObj;
+		//		D3D11Wrapper::ID3D10Multithread *wrapper = D3D11Wrapper::ID3D10Multithread::GetDirect3DMultithread(origDevice);
+		//		if (wrapper == NULL)
+		//		{
+		//			LogInfo("  error allocating ID3D10Multithread wrapper.\n");
 
-					origDevice->Release();
-					return E_OUTOFMEMORY;
-				}
-				*ppvObj = wrapper;
-				LogDebug("  interface replaced with ID3D10Multithread wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
-			}
+		//			origDevice->Release();
+		//			return E_OUTOFMEMORY;
+		//		}
+		//		*ppvObj = wrapper;
+		//		LogDebug("  interface replaced with ID3D10Multithread wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
+		//	}
 		}
 	}
 	LogDebug("  result = %x, handle = %p\n", hr, *ppvObj);
@@ -2931,4 +2931,4 @@ void D3D11Wrapper::NvAPIOverride()
 #include "Direct3D11Device.h"
 #include "Direct3D11Context.h"
 #include "DirectDXGIDevice.h"
-#include "../DirectX10/Direct3D10Device.h"
+//#include "../DirectX10/Direct3D10Device.h"
