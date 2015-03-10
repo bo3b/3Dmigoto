@@ -1,4 +1,4 @@
-// Lighting related (specular highlights, environment reflection, etc)
+// Lighting related (specular highlights, environment reflection, fog, etc)
 // Shader has several variants. Some AA variants have two - one for the fill,
 // one for the anti-aliased polygon edges:
 //       No AA: 18d84611abd87606
@@ -331,15 +331,17 @@ float4 stereo = StereoParams.Load(0);
 float multiplier = depth * 8192;
 float3 adj_r0 = r0 - mul(float4(stereo.x * multiplier, 0, 0, 0), _InvViewRotProjectionMatrix).xzy; // Axis order XZY
 
-adj_r0.xyz = _CameraPosition_DistanceScale.xzy + -adj_r0.xyz;
-r1.z = dot(adj_r0.xyz, adj_r0.xyz);
-r1.z = sqrt(r1.z);
-adj_r0.xyz = adj_r0.xyz / r1.zzz;
-
   r0.xyz = _CameraPosition_DistanceScale.xzy + -r0.xyz;
   r2.y = dot(r0.xyz, r0.xyz);
   r2.y = sqrt(r2.y);
   r0.xyz = r0.xyz / r2.yyy;
+
+// Do this second so r2.y is the adjusted version, which fixes fog
+adj_r0.xyz = _CameraPosition_DistanceScale.xzy + -adj_r0.xyz;
+r2.y = dot(adj_r0.xyz, adj_r0.xyz);
+r2.y = sqrt(r2.y);
+adj_r0.xyz = adj_r0.xyz / r2.yyy;
+
   r14.w = dot(r8.xzy, r0.xyz);
   r2.z = 1.300000000e+001 * r18.y;
   r4.y = r18.y * -2.554450035e-001 + 1.401520014e+000;
