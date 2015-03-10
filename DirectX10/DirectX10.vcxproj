@@ -126,6 +126,7 @@
     <ClInclude Include="d3d10Wrapper.h" />
     <ClInclude Include="d3d10WrapperDevice.h" />
     <ClInclude Include="Direct3D10Device.h" />
+    <ClInclude Include="globals.h" />
     <ClInclude Include="Main.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

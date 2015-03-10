@@ -13,5 +13,6 @@
     <ClInclude Include="Direct3D10Device.h" />
     <ClInclude Include="d3d10WrapperDevice.h" />
     <ClInclude Include="DirectInput.h" />
+    <ClInclude Include="globals.h" />
   </ItemGroup>
 </Project>
