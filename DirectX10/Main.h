@@ -18,16 +18,20 @@
 
 using namespace std;
 extern FILE *LogFile;
+extern bool LogDebug;
 
-namespace D3D11Base
+namespace D3D10Base
 {
 #include <d3d10.h>
 #include "../nvapi.h"
+#include "../nvstereo.h"
+#include <D3Dcompiler.h>
 }
 
 #include "../PointerSet.h"
 
-namespace D3D11Wrapper
+namespace D3D10Wrapper
 {
+#include "../IDirect3DUnknown.h"
 #include "d3d10Wrapper.h"
 }
