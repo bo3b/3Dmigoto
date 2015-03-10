@@ -32,6 +32,10 @@ std::string Decompile(_TCHAR* asmFileName)
 
 	cout << "    creating HLSL representation.\n" << endl;
 
+	// Given an ASM file, we need to reassemble it to get the binary of the shader, because
+	// the Decompiler needs both ASM and binary for the James-Jones side.
+
+
 	bool patched = false;
 	string shaderModel;
 	bool errorOccurred = false;

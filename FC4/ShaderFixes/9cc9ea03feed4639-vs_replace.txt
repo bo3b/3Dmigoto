@@ -107,6 +107,7 @@ void main(
   uint v1 : SV_InstanceID0,
   out float4 o0 : SV_Position0,
   out float2 o1 : _uv0,
+  out float2 p1 : dummy0,
   out float o2 : SV_ClipDistance0,
   out float3 o3 : _wsPos0,
   out float p3 : _v1Factor0,
