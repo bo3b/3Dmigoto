@@ -22,7 +22,7 @@ extern bool LogDebug;
 
 namespace D3D10Base
 {
-#include <d3d10.h>
+#include <d3d10_1.h>
 #include "../nvapi.h"
 #include "../nvstereo.h"
 #include <D3Dcompiler.h>
@@ -32,6 +32,5 @@ namespace D3D10Base
 
 namespace D3D10Wrapper
 {
-#include "../IDirect3DUnknown.h"
 #include "d3d10Wrapper.h"
 }

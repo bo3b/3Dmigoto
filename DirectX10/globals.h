@@ -9,16 +9,16 @@
 #include <unordered_map>
 
 // Key is index/vertex buffer, value is hash key.
-typedef std::unordered_map<D3D11Base::ID3D11Buffer *, UINT64> DataBufferMap;
+typedef std::unordered_map<D3D10Base::ID3D10Buffer *, UINT64> DataBufferMap;
 
 // Source compiled shaders.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
 //	pixelshader and vertexshader that are compiled from hlsl text from the ShaderFixes
-//	folder.  This keeps track of the original shader information using the ID3D11VertexShader*
-//	or ID3D11PixelShader* as a master key to the key map.
-//	We are using the base class of ID3D11DeviceChild* since both descend from that, and that allows
+//	folder.  This keeps track of the original shader information using the ID3D10VertexShader*
+//	or ID3D10PixelShader* as a master key to the key map.
+//	We are using the base class of ID3D10DeviceChild* since both descend from that, and that allows
 //	us to use the same structure for Pixel and Vertex shaders both.
 
 // Info saved about originally overridden shaders passed in by the game in CreateVertexShader or
@@ -28,35 +28,35 @@ typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 //	linkage is passed as a parameter, seems to be rarely if ever used.
 //	byteCode is the original shader byte code passed in by game, or recompiled by override.
 //	timeStamp allows reloading/recompiling only modified shaders
-//	replacement is either ID3D11VertexShader or ID3D11PixelShader
+//	replacement is either ID3D10VertexShader or ID3D10PixelShader
 struct OriginalShaderInfo
 {
 	UINT64 hash;
 	std::wstring shaderType;
 	std::string shaderModel;
-	D3D11Base::ID3D11ClassLinkage* linkage;
-	D3D11Base::ID3DBlob* byteCode;
+	//D3D10Base::ID3D10ClassLinkage* linkage;
+	D3D10Base::ID3DBlob* byteCode;
 	FILETIME timeStamp;
-	D3D11Base::ID3D11DeviceChild* replacement;
+	D3D10Base::ID3D10DeviceChild* replacement;
 };
 
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
-typedef std::unordered_map<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
+typedef std::unordered_map<D3D10Base::ID3D10DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
 
 // Key is vertexshader, value is hash key.
-typedef std::unordered_map<D3D11Base::ID3D11VertexShader *, UINT64> VertexShaderMap;
-typedef std::unordered_map<UINT64, D3D11Base::ID3D11VertexShader *> PreloadVertexShaderMap;
-typedef std::unordered_map<D3D11Base::ID3D11VertexShader *, D3D11Base::ID3D11VertexShader *> VertexShaderReplacementMap;
+typedef std::unordered_map<D3D10Base::ID3D10VertexShader *, UINT64> VertexShaderMap;
+typedef std::unordered_map<UINT64, D3D10Base::ID3D10VertexShader *> PreloadVertexShaderMap;
+typedef std::unordered_map<D3D10Base::ID3D10VertexShader *, D3D10Base::ID3D10VertexShader *> VertexShaderReplacementMap;
 
 // Key is pixelshader, value is hash key.
-typedef std::unordered_map<D3D11Base::ID3D11PixelShader *, UINT64> PixelShaderMap;
-typedef std::unordered_map<UINT64, D3D11Base::ID3D11PixelShader *> PreloadPixelShaderMap;
-typedef std::unordered_map<D3D11Base::ID3D11PixelShader *, D3D11Base::ID3D11PixelShader *> PixelShaderReplacementMap;
+typedef std::unordered_map<D3D10Base::ID3D10PixelShader *, UINT64> PixelShaderMap;
+typedef std::unordered_map<UINT64, D3D10Base::ID3D10PixelShader *> PreloadPixelShaderMap;
+typedef std::unordered_map<D3D10Base::ID3D10PixelShader *, D3D10Base::ID3D10PixelShader *> PixelShaderReplacementMap;
 
-typedef std::unordered_map<D3D11Base::ID3D11HullShader *, UINT64> HullShaderMap;
-typedef std::unordered_map<D3D11Base::ID3D11DomainShader *, UINT64> DomainShaderMap;
-typedef std::unordered_map<D3D11Base::ID3D11ComputeShader *, UINT64> ComputeShaderMap;
-typedef std::unordered_map<D3D11Base::ID3D11GeometryShader *, UINT64> GeometryShaderMap;
+//typedef std::unordered_map<D3D10Base::ID3D10HullShader *, UINT64> HullShaderMap;
+//typedef std::unordered_map<D3D10Base::ID3D10DomainShader *, UINT64> DomainShaderMap;
+//typedef std::unordered_map<D3D10Base::ID3D10ComputeShader *, UINT64> ComputeShaderMap;
+typedef std::unordered_map<D3D10Base::ID3D10GeometryShader *, UINT64> GeometryShaderMap;
 
 enum class DepthBufferFilter {
 	INVALID = -1,
@@ -121,26 +121,26 @@ struct SwapChainInfo
 
 struct ResourceInfo
 {
-	D3D11Base::D3D11_RESOURCE_DIMENSION type;
+	D3D10Base::D3D10_RESOURCE_DIMENSION type;
 	union {
-		D3D11Base::D3D11_TEXTURE2D_DESC tex2d_desc;
-		D3D11Base::D3D11_TEXTURE3D_DESC tex3d_desc;
+		D3D10Base::D3D10_TEXTURE2D_DESC tex2d_desc;
+		D3D10Base::D3D10_TEXTURE3D_DESC tex3d_desc;
 	};
 
 	ResourceInfo() :
-		type(D3D11Base::D3D11_RESOURCE_DIMENSION_UNKNOWN)
+		type(D3D10Base::D3D10_RESOURCE_DIMENSION_UNKNOWN)
 	{}
 
-	struct ResourceInfo & operator= (D3D11Base::D3D11_TEXTURE2D_DESC desc)
+	struct ResourceInfo & operator= (D3D10Base::D3D10_TEXTURE2D_DESC desc)
 	{
-		type = D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+		type = D3D10Base::D3D10_RESOURCE_DIMENSION_TEXTURE2D;
 		tex2d_desc = desc;
 		return *this;
 	}
 
-	struct ResourceInfo & operator= (D3D11Base::D3D11_TEXTURE3D_DESC desc)
+	struct ResourceInfo & operator= (D3D10Base::D3D10_TEXTURE3D_DESC desc)
 	{
-		type = D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+		type = D3D10Base::D3D10_RESOURCE_DIMENSION_TEXTURE3D;
 		tex3d_desc = desc;
 		return *this;
 	}
@@ -205,7 +205,7 @@ struct Globals
 	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
 	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	UINT64 mCurrentVertexShader;							// Shader currently live in GPU pipeline.
-	D3D11Base::ID3D11VertexShader *mCurrentVertexShaderHandle;			// Shader currently live in GPU pipeline.
+	D3D10Base::ID3D10VertexShader *mCurrentVertexShaderHandle;			// Shader currently live in GPU pipeline.
 	std::set<UINT64> mVisitedVertexShaders;				// Only shaders seen since last hunting timeout; std::set for consistent order whiel hunting
 	UINT64 mSelectedVertexShader;							// Shader selected using XInput
 	unsigned int mSelectedVertexShaderPos;
@@ -216,7 +216,7 @@ struct Globals
 	PixelShaderReplacementMap mOriginalPixelShaders;
 	PixelShaderReplacementMap mZeroPixelShaders;
 	UINT64 mCurrentPixelShader;
-	D3D11Base::ID3D11PixelShader *mCurrentPixelShaderHandle;
+	D3D10Base::ID3D10PixelShader *mCurrentPixelShaderHandle;
 	std::set<UINT64> mVisitedPixelShaders; // std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;
 	unsigned int mSelectedPixelShaderPos;
@@ -225,9 +225,9 @@ struct Globals
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 
 	GeometryShaderMap mGeometryShaders;
-	ComputeShaderMap mComputeShaders;
-	DomainShaderMap mDomainShaders;
-	HullShaderMap mHullShaders;
+	//ComputeShaderMap mComputeShaders;
+	//DomainShaderMap mDomainShaders;
+	//HullShaderMap mHullShaders;
 
 	ShaderOverrideMap mShaderOverrideMap;
 	TextureOverrideMap mTextureOverrideMap;
@@ -245,8 +245,8 @@ struct Globals
 	void *mSelectedRenderTargetSnapshot;
 	std::set<void *> mSelectedRenderTargetSnapshotList; // std::set so that render targets will be sorted in log when marked
 	// Relations
-	std::unordered_map<D3D11Base::ID3D11Texture2D *, UINT64> mTexture2D_ID;
-	std::unordered_map<D3D11Base::ID3D11Texture3D *, UINT64> mTexture3D_ID;
+	std::unordered_map<D3D10Base::ID3D10Texture2D *, UINT64> mTexture2D_ID;
+	std::unordered_map<D3D10Base::ID3D10Texture3D *, UINT64> mTexture3D_ID;
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 

@@ -77,10 +77,10 @@ void InitializeDLL()
 		gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, dir) == 1;
 
 		// DirectInput
-		InputDevice[0] = 0;
-		GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, dir);
-		RightStripW(InputDevice);
-		InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, dir);
+		//InputDevice[0] = 0;
+		//GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, dir);
+		//RightStripW(InputDevice);
+		//InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, dir);
 		// Actions
 		// XXX: This needs to be updated to work with the new input infrastructure
 		// Besides which, I can't see any evidence that these are actually used in the DX10 project
@@ -104,9 +104,9 @@ void InitializeDLL()
 		//RightStripW(InputAction[8]);
 		//GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, dir);
 		//RightStripW(InputAction[9]);
-		InitDirectInput();
+		//InitDirectInput();
 		// XInput
-		XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, dir);		
+		//XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, dir);		
 
 		LogInfo("D3D10 DLL initialized.\n");
 	}
