@@ -5,8 +5,11 @@
 #include "../util.h"
 #include "../log.h"
 #include "globals.h"
+#include "../HLSLDecompiler/DecompileHLSL.h"
 
-FILE *LogFile = 0;
+FILE *LogFile = 0; 
+bool LogInput = false, LogDebug = false;
+
 static bool gInitialized = false;
 static int SCREEN_WIDTH = -1;
 static int SCREEN_HEIGHT = -1;
@@ -14,17 +17,32 @@ static int SCREEN_REFRESH = -1;
 static int SCREEN_FULLSCREEN = -1;
 static bool gForceStereo = false;
 static bool gCreateStereoProfile = false;
-bool LogInput = false;
 static bool take_screenshot = false;
+
+const int MARKING_MODE_SKIP = 0;
+const int MARKING_MODE_MONO = 1;
+const int MARKING_MODE_ORIGINAL = 2;
+const int MARKING_MODE_ZERO = 3;
+
+static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
+static wchar_t SHADER_CACHE_PATH[MAX_PATH] = { 0 };
 
 ThreadSafePointerSet D3D10Wrapper::ID3D10Device::m_List;
 ThreadSafePointerSet D3D10Wrapper::ID3D10Multithread::m_List;
 
-static char *LogTime()
+Globals *G;
+
+static string LogTime()
 {
+	string timeStr;
+	char cTime[32];
+	tm timestruct;
+
 	time_t ltime = time(0);
-	char *timeStr = asctime(localtime(&ltime));
-	timeStr[strlen(timeStr) - 1] = 0;
+	localtime_s(&timestruct, &ltime);
+	asctime_s(cTime, sizeof(cTime), &timestruct);
+
+	timeStr = cTime;
 	return timeStr;
 }
 
@@ -60,7 +78,7 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
 		{
 			DWORD one = 0x01;
-			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			BOOL result = SetProcessAffinityMask(GetCurrentProcess(), one);
 			LogInfo("CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
