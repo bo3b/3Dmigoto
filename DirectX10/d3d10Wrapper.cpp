@@ -10,14 +10,6 @@
 #include "Hunting.h"
 
 
-static int SCREEN_WIDTH = -1;
-static int SCREEN_HEIGHT = -1;
-static int SCREEN_REFRESH = -1;
-static int SCREEN_FULLSCREEN = -1;
-static bool gForceStereo = false;
-static bool gCreateStereoProfile = false;
-static bool take_screenshot = false;
-
 ThreadSafePointerSet D3D10Wrapper::ID3D10Device::m_List;
 ThreadSafePointerSet D3D10Wrapper::ID3D10Multithread::m_List;
 
@@ -285,7 +277,7 @@ HRESULT WINAPI D3D10CreateBlob(SIZE_T NumBytes, D3D10Base::LPD3D10BLOB *ppBuffer
 
 static void EnableStereo()
 {
-	if (!gForceStereo) return;
+	if (!G->gForceStereo) return;
 
 	// Prepare NVAPI for use in this application
 	D3D10Base::NvAPI_Status status;
@@ -316,7 +308,7 @@ static void EnableStereo()
 				LogInfo("    enabling stereo failed.\n");		
 		}
 
-		if (gCreateStereoProfile)
+		if (G->gCreateStereoProfile)
 		{
 			LogInfo("  enabling registry profile.\n");		
 			
@@ -384,14 +376,14 @@ HRESULT WINAPI D3D10CreateDeviceAndSwapChain(D3D10Base::IDXGIAdapter *pAdapter, 
 	if (pSwapChainDesc) LogInfo(" Refresh rate = %f\n", 
 		(float) pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float) pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
 
-	if (SCREEN_FULLSCREEN >= 0 && pSwapChainDesc) pSwapChainDesc->Windowed = !SCREEN_FULLSCREEN;
-	if (SCREEN_REFRESH >= 0 && pSwapChainDesc && !pSwapChainDesc->Windowed)
+	if (G->SCREEN_FULLSCREEN >= 0 && pSwapChainDesc) pSwapChainDesc->Windowed = !G->SCREEN_FULLSCREEN;
+	if (G->SCREEN_REFRESH >= 0 && pSwapChainDesc && !pSwapChainDesc->Windowed)
 	{
-		pSwapChainDesc->BufferDesc.RefreshRate.Numerator = SCREEN_REFRESH;
+		pSwapChainDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
 		pSwapChainDesc->BufferDesc.RefreshRate.Denominator = 1;
 	}
-	if (SCREEN_WIDTH >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Width = SCREEN_WIDTH;
-	if (SCREEN_HEIGHT >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Height = SCREEN_HEIGHT;
+	if (G->SCREEN_WIDTH >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Width = G->SCREEN_WIDTH;
+	if (G->SCREEN_HEIGHT >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
 	if (pSwapChainDesc) LogInfo("  calling with parameters width = %d, height = %d, refresh rate = %f, windowed = %d\n", 
 		pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height, 
 		(float) pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float) pSwapChainDesc->BufferDesc.RefreshRate.Denominator,
