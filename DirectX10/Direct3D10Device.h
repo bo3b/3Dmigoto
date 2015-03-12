@@ -241,7 +241,7 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::PSSetShader(THIS_
 
 				GetD3D10Device()->PSSetShaderResources(126, 1, &device->mZBufferResourceView);
 			}
-			device->Release();
+			//device->Release();
 		}
 		else
 		{
@@ -268,6 +268,10 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::VSSetShader(THIS_
             __in_opt  D3D10Base::ID3D10VertexShader *pVertexShader)
 {
 	LogDebug("ID3D10DeviceContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
+
+	GetD3D10Device()->VSSetShader(pVertexShader);
+
+	return;
 
 	bool patchedShader = false;
 	if (pVertexShader)
@@ -365,7 +369,7 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::VSSetShader(THIS_
 
 				GetD3D10Device()->VSSetShaderResources(120, 1, &device->mIniResourceView);
 			}
-			device->Release();
+			//device->Release();
 		}
 		else
 		{
@@ -1005,7 +1009,10 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawIndexed(THIS_
 	LogInfo("ID3D10Device::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n",
 		IndexCount, StartIndexLocation, BaseVertexLocation);
 	
-	GetD3D10Device()->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
+	DrawContext c = BeforeDraw(this);
+	if (!c.skip)
+		GetD3D10Device()->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
+	AfterDraw(c, this);
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::Draw(THIS_
@@ -1017,7 +1024,10 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::Draw(THIS_
 	LogInfo("ID3D10Device::Draw called with VertexCount = %d, StartVertexLocation = %d\n", 
 		VertexCount, StartVertexLocation);
 	
-	GetD3D10Device()->Draw(VertexCount, StartVertexLocation);
+	DrawContext c = BeforeDraw(this);
+	if (!c.skip)
+		GetD3D10Device()->Draw(VertexCount, StartVertexLocation);
+	AfterDraw(c, this);
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::PSSetConstantBuffers(THIS_ 
@@ -1086,8 +1096,11 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawIndexedInstanced(THIS_
 {
 	LogInfo("ID3D10Device::DrawIndexedInstanced called\n");
 	
-	GetD3D10Device()->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, 
+	DrawContext c = BeforeDraw(this);
+	if (!c.skip)
+		GetD3D10Device()->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
 		BaseVertexLocation, StartInstanceLocation);
+	AfterDraw(c, this);
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawInstanced(THIS_
@@ -1102,8 +1115,11 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawInstanced(THIS_
 {
 	LogInfo("ID3D10Device::DrawInstanced called\n");
 	
-	GetD3D10Device()->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation,
+	DrawContext c = BeforeDraw(this);
+	if (!c.skip)
+		GetD3D10Device()->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation,
 		StartInstanceLocation);
+	AfterDraw(c, this);
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::GSSetConstantBuffers(THIS_
@@ -1257,7 +1273,10 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawAuto(THIS)
 {
 	LogInfo("ID3D10Device::DrawAuto called\n");
 	
-	GetD3D10Device()->DrawAuto();
+	DrawContext c = BeforeDraw(this);
+	if (!c.skip)
+		GetD3D10Device()->DrawAuto();
+	AfterDraw(c, this);
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::RSSetState(THIS_
