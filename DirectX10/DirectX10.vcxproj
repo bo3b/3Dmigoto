@@ -117,17 +117,26 @@
   <ItemGroup>
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="d3d10Wrapper.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
+    <ClCompile Include="input.cpp" />
+    <ClCompile Include="Override.cpp" />
+    <ClCompile Include="Hunting.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d10Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="..\log.h" />
     <ClInclude Include="d3d10Wrapper.h" />
     <ClInclude Include="d3d10WrapperDevice.h" />
     <ClInclude Include="Direct3D10Device.h" />
     <ClInclude Include="globals.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="IniHandler.h" />
+    <ClInclude Include="input.h" />
     <ClInclude Include="Main.h" />
+    <ClInclude Include="Override.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BinaryDecompiler\BinaryDecompiler.vcxproj">
@@ -369,8 +378,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>d3d10</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(IncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -497,16 +506,20 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_WIN32_WINNT=_WIN32_WINNT_WIN7;_DEBUG;_WINDOWS;_USRDLL;DIRECTX10_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_WIN32_WINNT=_WIN32_WINNT_WIN7;NDEBUG;_WINDOWS;_USRDLL;DIRECTX10_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d10Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>dinput8.lib;dxguid.lib;comctl32.lib;Xinput9_1_0.lib;../nvapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y $(OutDir)d3d10.dll T:\SteamLibrary\SteamApps\common\Cryostasis\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -543,6 +556,9 @@
       <ModuleDefinitionFile>d3d10Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y $(OutDir)d3d10.dll T:\SteamLibrary\SteamApps\common\Cryostasis\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <ClCompile>

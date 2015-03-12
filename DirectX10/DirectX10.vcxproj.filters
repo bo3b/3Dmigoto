@@ -3,6 +3,10 @@
   <ItemGroup>
     <ClCompile Include="d3d10Wrapper.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="Override.cpp" />
+    <ClCompile Include="input.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d10Wrapper.def" />
@@ -14,5 +18,10 @@
     <ClInclude Include="d3d10WrapperDevice.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="Override.h" />
+    <ClInclude Include="input.h" />
+    <ClInclude Include="IniHandler.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="..\log.h" />
   </ItemGroup>
 </Project>

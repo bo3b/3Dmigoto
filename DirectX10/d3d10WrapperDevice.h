@@ -2,16 +2,22 @@
 
 // 9B7E4C00-342C-4106-A19F-4F2704F689F0 ID3D10DeviceChild
 // 9B7E4C0F-342C-4106-A19F-4F2704F689F0 ID3D10Device
+
 class ID3D10Device : public IDirect3DUnknown
 {
 public:
-    D3D10Base::ID3D10Device *m_pDevice;
-    static ThreadSafePointerSet	 m_List;
+	static ThreadSafePointerSet	 m_List;
+	D3D10Base::StereoHandle mStereoHandle;
+	D3D10Base::nv::stereo::ParamTextureManagerD3D11 mParamTextureManager;
+	D3D10Base::ID3D10Texture2D *mStereoTexture;
+	D3D10Base::ID3D10ShaderResourceView *mStereoResourceView;
+	D3D10Base::ID3D10ShaderResourceView *mZBufferResourceView;
+	D3D10Base::ID3D10Texture1D *mIniTexture;
+	D3D10Base::ID3D10ShaderResourceView *mIniResourceView;
 
-    ID3D10Device(D3D10Base::ID3D10Device *pDevice);
-    static ID3D10Device* GetDirect3DDevice(D3D10Base::ID3D10Device *pDevice);
-
-	__forceinline D3D10Base::ID3D10Device *GetD3D10Device() { return m_pDevice; }
+	ID3D10Device(D3D10Base::ID3D10Device *pDevice);
+	static ID3D10Device* GetDirect3DDevice(D3D10Base::ID3D10Device *pDevice);
+	__forceinline D3D10Base::ID3D10Device *GetD3D10Device() { return (D3D10Base::ID3D10Device*) m_pUnk; }
 
     // *** IDirect3DUnknown methods 
 	STDMETHOD_(ULONG,AddRef)(THIS);
@@ -709,17 +715,19 @@ public:
         
 };
 
+/*------------------------------------------------------------------*/
+
 // MIDL_INTERFACE("9B7E4E00-342C-4106-A19F-4F2704F689F0")
 class ID3D10Multithread : public IDirect3DUnknown
 {
 public:
-    D3D10Base::ID3D10Multithread *m_pDevice;
-    static ThreadSafePointerSet	 m_List;
+	static ThreadSafePointerSet	 m_List;
 
-    ID3D10Multithread(D3D10Base::ID3D10Multithread *pDevice);
-    static ID3D10Multithread* GetDirect3DMultithread(D3D10Base::ID3D10Multithread *pDevice);
+	ID3D10Multithread(D3D10Base::ID3D10Multithread *pDevice);
+	static ID3D10Multithread* GetDirect3DDevice(D3D10Base::ID3D10Multithread *pDevice);
+	__forceinline D3D10Base::ID3D10Multithread *GetD3D10MultithreadDevice() { return (D3D10Base::ID3D10Multithread*) m_pUnk; }
 
-	__forceinline D3D10Base::ID3D10Multithread *GetD3D10Multithread() { return m_pDevice; }
+	static ID3D10Multithread* GetDirect3DMultithread(D3D10Base::ID3D10Multithread *pDevice);
 
     // *** IDirect3DUnknown methods 
 	STDMETHOD_(ULONG,AddRef)(THIS);
