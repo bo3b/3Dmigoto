@@ -1045,7 +1045,7 @@ static void TuneDown(D3D10Base::ID3D10Device *device, void *private_data)
 // Start with a fresh set of shaders in the scene - either called explicitly
 // via keypress, or after no hunting for 1 minute (see comment in RunFrameActions)
 // Caller must have taken G->mCriticalSection (if enabled)
-static void TimeoutHuntingBuffers()
+void TimeoutHuntingBuffers()
 {
 	G->mVisitedIndexBuffers.clear();
 	G->mVisitedVertexShaders.clear();

@@ -374,6 +374,626 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::VSSetShader(THIS_
 	}
 }
         
+UINT64 CalcTexture2DDescHash(const D3D10Base::D3D10_TEXTURE2D_DESC *desc,
+	UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// It concerns me that CreateTextureND can use an override if it
+	// matches screen resolution, but when we record render target / shader
+	// resource stats we don't use the same override.
+	//
+	// For textures made with CreateTextureND and later used as a render
+	// target it's probably fine since the hash will still be stored, but
+	// it could be a problem if we need the hash of a render target not
+	// created directly with that. I don't know enough about the DX11 API
+	// to know if this is an issue, but it might be worth using the screen
+	// resolution override in all cases. -DarkStarSword
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->SampleDesc.Count;
+	hash ^= desc->SampleDesc.Quality;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
+UINT64 CalcTexture3DDescHash(const D3D10Base::D3D10_TEXTURE3D_DESC *desc,
+	UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// Same comment as in CalcTexture2DDescHash above - concerned about
+	// inconsistent use of these resolution overrides
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->Depth; hash *= FNV_64_PRIME;
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
+static UINT64 GetTexture2DHash(D3D10Base::ID3D10Texture2D *texture,
+	bool log_new, struct ResourceInfo *resource_info)
+{
+
+	D3D10Base::D3D10_TEXTURE2D_DESC desc;
+	std::unordered_map<D3D10Base::ID3D10Texture2D *, UINT64>::iterator j;
+
+	texture->GetDesc(&desc);
+
+	if (resource_info)
+		*resource_info = desc;
+
+	j = G->mTexture2D_ID.find(texture);
+	if (j != G->mTexture2D_ID.end())
+		return j->second;
+
+	if (log_new) {
+		// TODO: Refactor with LogRenderTarget()
+		LogDebug("    Unknown render target:\n");
+		LogDebug("    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+			desc.Width, desc.Height, desc.MipLevels, desc.ArraySize);
+		LogDebug("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+			desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
+	}
+
+	return CalcTexture2DDescHash(&desc, 0, 0, 0);
+}
+
+static UINT64 GetTexture3DHash(D3D10Base::ID3D10Texture3D *texture,
+	bool log_new, struct ResourceInfo *resource_info)
+{
+
+	D3D10Base::D3D10_TEXTURE3D_DESC desc;
+	std::unordered_map<D3D10Base::ID3D10Texture3D *, UINT64>::iterator j;
+
+	texture->GetDesc(&desc);
+
+	if (resource_info)
+		*resource_info = desc;
+
+	j = G->mTexture3D_ID.find(texture);
+	if (j != G->mTexture3D_ID.end())
+		return j->second;
+
+	if (log_new) {
+		// TODO: Refactor with LogRenderTarget()
+		LogDebug("    Unknown 3D render target:\n");
+		LogDebug("    Width = %d, Height = %d, MipLevels = %d\n",
+			desc.Width, desc.Height, desc.MipLevels);
+		LogDebug("    Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+			desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
+	}
+
+	return CalcTexture3DDescHash(&desc, 0, 0, 0);
+}
+
+// Records the hash of this shader resource view for later lookup. Returns the
+// handle to the resource, but be aware that it no longer has a reference and
+// should only be used for map lookups.
+static void *RecordResourceViewStats(D3D10Base::ID3D10ShaderResourceView *view)
+{
+	D3D10Base::D3D10_SHADER_RESOURCE_VIEW_DESC desc;
+	D3D10Base::ID3D10Resource *resource = NULL;
+	UINT64 hash = 0;
+
+	if (!view)
+		return NULL;
+
+	view->GetResource(&resource);
+	if (!resource)
+		return NULL;
+
+	view->GetDesc(&desc);
+
+	switch (desc.ViewDimension) {
+		case D3D10Base::D3D10_SRV_DIMENSION_TEXTURE2D:
+		case D3D10Base::D3D10_SRV_DIMENSION_TEXTURE2DMS:
+		case D3D10Base::D3D10_SRV_DIMENSION_TEXTURE2DMSARRAY:
+			hash = GetTexture2DHash((D3D10Base::ID3D10Texture2D *)resource, false, NULL);
+			break;
+		case D3D10Base::D3D10_SRV_DIMENSION_TEXTURE3D:
+			hash = GetTexture3DHash((D3D10Base::ID3D10Texture3D *)resource, false, NULL);
+			break;
+	}
+
+	resource->Release();
+
+	if (hash)
+		G->mRenderTargets[resource] = hash;
+
+	return resource;
+}
+
+static void RecordShaderResourceUsage(D3D10Wrapper::ID3D10Device *context)
+{
+	D3D10Base::ID3D10ShaderResourceView *ps_views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	D3D10Base::ID3D10ShaderResourceView *vs_views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	void *resource;
+	int i;
+
+	context->PSGetShaderResources(0, D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
+	context->VSGetShaderResources(0, D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
+
+	for (i = 0; i < D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+		resource = RecordResourceViewStats(ps_views[i]);
+		if (resource) {
+			// FIXME: Don't clobber these - it would be useful to
+			// collect a set of all seen resources, e.g. for
+			// matching all textures used by a shader.
+			G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[i] = resource;
+		}
+
+		resource = RecordResourceViewStats(vs_views[i]);
+		if (resource) {
+			// FIXME: Don't clobber these - it would be useful to
+			// collect a set of all seen resources, e.g. for
+			// matching all textures used by a shader.
+			G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[i] = resource;
+		}
+	}
+}
+
+static void RecordRenderTargetInfo(D3D10Base::ID3D10RenderTargetView *target, UINT view_num)
+{
+	D3D10Base::D3D10_RENDER_TARGET_VIEW_DESC desc;
+	D3D10Base::ID3D10Resource *resource = NULL;
+	struct ResourceInfo resource_info;
+	UINT64 hash = 0;
+
+	if (!target)
+		return;
+
+	target->GetDesc(&desc);
+
+	LogDebug("  View #%d, Format = %d, Is2D = %d\n",
+		view_num, desc.Format, D3D10Base::D3D10_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
+
+	switch (desc.ViewDimension) {
+		case D3D10Base::D3D10_RTV_DIMENSION_TEXTURE2D:
+		case D3D10Base::D3D10_RTV_DIMENSION_TEXTURE2DMS:
+			target->GetResource(&resource);
+			if (!resource)
+				return;
+			hash = GetTexture2DHash((D3D10Base::ID3D10Texture2D *)resource,
+				gLogDebug, &resource_info);
+			resource->Release();
+			break;
+		case D3D10Base::D3D10_RTV_DIMENSION_TEXTURE3D:
+			target->GetResource(&resource);
+			if (!resource)
+				return;
+			hash = GetTexture3DHash((D3D10Base::ID3D10Texture3D *)resource,
+				gLogDebug, &resource_info);
+			resource->Release();
+			break;
+	}
+
+	if (!resource)
+		return;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	G->mRenderTargets[resource] = hash;
+	G->mCurrentRenderTargets.push_back(resource);
+	G->mVisitedRenderTargets.insert(resource);
+	G->mRenderTargetInfo[hash] = resource_info;
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
+static void RecordDepthStencil(D3D10Base::ID3D10DepthStencilView *target)
+{
+	D3D10Base::D3D10_DEPTH_STENCIL_VIEW_DESC desc;
+	D3D10Base::D3D10_TEXTURE2D_DESC tex_desc;
+	D3D10Base::ID3D10Resource *resource = NULL;
+	D3D10Base::ID3D10Texture2D *texture;
+	struct ResourceInfo resource_info;
+	UINT64 hash = 0;
+
+	if (!target)
+		return;
+
+	target->GetResource(&resource);
+	if (!resource)
+		return;
+
+	target->GetDesc(&desc);
+
+	switch (desc.ViewDimension) {
+		// TODO: Is it worth recording the type of 2D texture view?
+		// TODO: Maybe for array variants, record all resources in array?
+		case D3D10Base::D3D10_DSV_DIMENSION_TEXTURE2D:
+		case D3D10Base::D3D10_DSV_DIMENSION_TEXTURE2DARRAY:
+		case D3D10Base::D3D10_DSV_DIMENSION_TEXTURE2DMS:
+		case D3D10Base::D3D10_DSV_DIMENSION_TEXTURE2DMSARRAY:
+			texture = (D3D10Base::ID3D10Texture2D *)resource;
+			hash = GetTexture2DHash(texture, false, NULL);
+			texture->GetDesc(&tex_desc);
+			resource_info = tex_desc;
+			break;
+	}
+
+	resource->Release();
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	G->mRenderTargets[resource] = hash;
+	G->mCurrentDepthTarget = resource;
+	G->mDepthTargetInfo[hash] = resource_info;
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
+static D3D10Base::ID3D10VertexShader *SwitchVSShader(
+	D3D10Wrapper::ID3D10Device *context,
+	D3D10Base::ID3D10VertexShader *shader)
+{
+
+	D3D10Base::ID3D10VertexShader *pVertexShader;
+	//D3D10Base::ID3D10ClassInstance *pClassInstances;
+	//UINT NumClassInstances = 0, i;
+
+	// We can possibly save the need to get the current shader by saving the ClassInstances
+	context->GetD3D10Device()->VSGetShader(&pVertexShader);
+	context->GetD3D10Device()->VSSetShader(shader);
+
+	//for (i = 0; i < NumClassInstances; i++)
+	//	pClassInstances[i].Release();
+
+	return pVertexShader;
+}
+
+static D3D10Base::ID3D10PixelShader *SwitchPSShader(
+	D3D10Wrapper::ID3D10Device *context,
+	D3D10Base::ID3D10PixelShader *shader)
+{
+
+	D3D10Base::ID3D10PixelShader *pPixelShader;
+	//D3D10Base::ID3D10ClassInstance *pClassInstances;
+	//UINT NumClassInstances = 0, i;
+
+	// We can possibly save the need to get the current shader by saving the ClassInstances
+	context->GetD3D10Device()->PSGetShader(&pPixelShader);
+	context->GetD3D10Device()->PSSetShader(shader);
+
+	//for (i = 0; i < NumClassInstances; i++)
+	//	pClassInstances[i].Release();
+
+	return pPixelShader;
+}
+
+struct DrawContext
+{
+	bool skip;
+	bool override;
+	float oldSeparation;
+	float oldConvergence;
+	D3D10Base::ID3D10PixelShader *oldPixelShader;
+	D3D10Base::ID3D10VertexShader *oldVertexShader;
+
+	DrawContext() :
+		skip(false),
+		override(false),
+		oldSeparation(FLT_MAX),
+		oldConvergence(FLT_MAX),
+		oldVertexShader(NULL),
+		oldPixelShader(NULL)
+	{}
+};
+
+static void ProcessShaderOverride(D3D10Wrapper::ID3D10Device *context,
+	ShaderOverride *shaderOverride,
+	bool isPixelShader,
+	struct DrawContext *data,
+	float *separationValue, float *convergenceValue)
+{
+	bool use_orig = false;
+
+	LogDebug("  override found for shader\n");
+
+	*separationValue = shaderOverride->separation;
+	if (*separationValue != FLT_MAX)
+		data->override = true;
+	*convergenceValue = shaderOverride->convergence;
+	if (*convergenceValue != FLT_MAX)
+		data->override = true;
+	data->skip = shaderOverride->skip;
+
+#if 0 /* Iterations are broken since we no longer use present() */
+	// Check iteration.
+	if (!shaderOverride->iterations.empty()) {
+		std::vector<int>::iterator k = shaderOverride->iterations.begin();
+		int currentiterations = *k = *k + 1;
+		LogDebug("  current iterations = %d\n", currentiterations);
+
+		data->override = false;
+		while (++k != shaderOverride->iterations.end())
+		{
+			if (currentiterations == *k)
+			{
+				data->override = true;
+				break;
+			}
+		}
+		if (!data->override)
+		{
+			LogDebug("  override skipped\n");
+		}
+	}
+#endif
+	// Check index buffer filter.
+	if (!shaderOverride->indexBufferFilter.empty()) {
+		bool found = false;
+		for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
+			if (G->mCurrentIndexBuffer == *l)
+			{
+				found = true;
+				break;
+			}
+		if (!found)
+		{
+			data->override = false;
+			data->skip = false;
+		}
+
+		// TODO: This filter currently seems pretty limited as it only
+		// applies to handling=skip and per-draw separation/convergence.
+	}
+
+	if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
+		D3D10Base::ID3D10DepthStencilView *pDepthStencilView = NULL;
+
+		context->GetD3D10Device()->OMGetRenderTargets(0, NULL, &pDepthStencilView);
+
+		// Remember - we are NOT switching to the original shader when the condition is true
+		if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
+			use_orig = true;
+		}
+		else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
+			use_orig = true;
+		}
+
+		if (pDepthStencilView)
+			pDepthStencilView->Release();
+
+		// TODO: Add alternate filter type where the depth
+		// buffer state is passed as an input to the shader
+	}
+
+	if (shaderOverride->partner_hash) {
+		if (isPixelShader) {
+			if (G->mCurrentVertexShader != shaderOverride->partner_hash)
+				use_orig = true;
+		}
+		else {
+			if (G->mCurrentPixelShader != shaderOverride->partner_hash)
+				use_orig = true;
+		}
+	}
+
+	// TODO: Add render target filters, texture filters, etc.
+
+	if (use_orig) {
+		if (isPixelShader) {
+			PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(G->mCurrentPixelShaderHandle);
+			if (i != G->mOriginalPixelShaders.end())
+				data->oldPixelShader = SwitchPSShader(context, i->second);
+		}
+		else {
+			VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(G->mCurrentVertexShaderHandle);
+			if (i != G->mOriginalVertexShaders.end())
+				data->oldVertexShader = SwitchVSShader(context, i->second);
+		}
+	}
+}
+
+static DrawContext BeforeDraw(D3D10Wrapper::ID3D10Device *device)
+{
+	DrawContext data;
+	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
+
+	// Skip?
+	data.skip = G->mBlockingMode; // mBlockingMode doesn't appear that it can ever be set - hardcoded hack?
+
+	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
+	if (G->hunting)
+	{
+		UINT selectedRenderTargetPos;
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		{
+			// Stats
+			if (G->mCurrentVertexShader && G->mCurrentPixelShader)
+			{
+				G->mVertexShaderInfo[G->mCurrentVertexShader].PartnerShader.insert(G->mCurrentPixelShader);
+				G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
+			}
+			if (G->mCurrentPixelShader) {
+				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+					std::vector<std::set<void *>> &targets = G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets;
+
+					if (selectedRenderTargetPos >= targets.size())
+						targets.push_back(std::set<void *>());
+
+					targets[selectedRenderTargetPos].insert(G->mCurrentRenderTargets[selectedRenderTargetPos]);
+				}
+				if (G->mCurrentDepthTarget)
+					G->mPixelShaderInfo[G->mCurrentPixelShader].DepthTargets.insert(G->mCurrentDepthTarget);
+			}
+
+			// Maybe make this optional if it turns out to have a
+			// significant performance impact:
+			RecordShaderResourceUsage(device);
+
+			// Selection
+			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
+				if (G->mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
+			if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
+				G->mCurrentVertexShader == G->mSelectedVertexShader ||
+				G->mCurrentPixelShader == G->mSelectedPixelShader ||
+				selectedRenderTargetPos < G->mCurrentRenderTargets.size())
+			{
+				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx%08lx, CurrentVertexShader = %08lx%08lx, CurrentPixelShader = %08lx%08lx\n",
+					(UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer,
+					(UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader,
+					(UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
+
+				// Snapshot render target list.
+				if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
+				{
+					G->mSelectedRenderTargetSnapshotList.clear();
+					G->mSelectedRenderTargetSnapshot = G->mSelectedRenderTarget;
+				}
+				G->mSelectedRenderTargetSnapshotList.insert(G->mCurrentRenderTargets.begin(), G->mCurrentRenderTargets.end());
+				// Snapshot info.
+				if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer)
+				{
+					G->mSelectedIndexBuffer_VertexShader.insert(G->mCurrentVertexShader);
+					G->mSelectedIndexBuffer_PixelShader.insert(G->mCurrentPixelShader);
+				}
+				if (G->mCurrentVertexShader == G->mSelectedVertexShader)
+					G->mSelectedVertexShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
+				if (G->mCurrentPixelShader == G->mSelectedPixelShader)
+					G->mSelectedPixelShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
+				if (G->marking_mode == MARKING_MODE_MONO)
+				{
+					data.override = true;
+					separationValue = 0;
+				}
+				else if (G->marking_mode == MARKING_MODE_SKIP)
+				{
+					data.skip = true;
+				}
+			}
+		}
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+
+	if (!G->fix_enabled)
+		return data;
+
+	// Override settings?
+	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(G->mCurrentVertexShader);
+	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(G->mCurrentPixelShader);
+
+	if (iVertex != G->mShaderOverrideMap.end())
+		ProcessShaderOverride(device, &iVertex->second, false, &data, &separationValue, &convergenceValue);
+	if (iPixel != G->mShaderOverrideMap.end())
+		ProcessShaderOverride(device, &iPixel->second, true, &data, &separationValue, &convergenceValue);
+
+	if (data.override) {
+		//D3D10Wrapper::ID3D10Device *device;
+		//context->GetDevice(&device);
+		if (device->mStereoHandle) {
+			if (separationValue != FLT_MAX) {
+				LogDebug("  setting custom separation value\n");
+
+				if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &data.oldSeparation))
+				{
+					LogDebug("    Stereo_GetSeparation failed.\n");
+				}
+				//D3D10Wrapper::NvAPIOverride();
+				if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
+				{
+					LogDebug("    Stereo_SetSeparation failed.\n");
+				}
+			}
+
+			if (convergenceValue != FLT_MAX) {
+				LogDebug("  setting custom convergence value\n");
+
+				if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &data.oldConvergence)) {
+					LogDebug("    Stereo_GetConvergence failed.\n");
+				}
+				//D3D10Wrapper::NvAPIOverride();
+				if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_SetConvergence(device->mStereoHandle, convergenceValue * data.oldConvergence)) {
+					LogDebug("    Stereo_SetConvergence failed.\n");
+				}
+			}
+		}
+		device->Release();
+	}
+	return data;
+}
+
+static void AfterDraw(DrawContext &data, D3D10Wrapper::ID3D10Device *device)
+{
+	if (data.skip)
+		return;
+
+	if (data.override) {
+		//D3D10Wrapper::ID3D10Device *device;
+		//context->GetDevice(&device);
+		if (device->mStereoHandle) {
+			if (data.oldSeparation != FLT_MAX) {
+				//D3D10Wrapper::NvAPIOverride();
+				if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_SetSeparation(device->mStereoHandle, data.oldSeparation)) {
+					LogDebug("    Stereo_SetSeparation failed.\n");
+				}
+			}
+
+			if (data.oldConvergence != FLT_MAX) {
+				//D3D10Wrapper::NvAPIOverride();
+				if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_SetConvergence(device->mStereoHandle, data.oldConvergence)) {
+					LogDebug("    Stereo_SetConvergence failed.\n");
+				}
+			}
+		}
+
+		//device->Release();
+	}
+
+	if (data.oldVertexShader) {
+		D3D10Base::ID3D10VertexShader *ret;
+		ret = SwitchVSShader(device, data.oldVertexShader);
+		data.oldVertexShader->Release();
+		if (ret)
+			ret->Release();
+	}
+	if (data.oldPixelShader) {
+		D3D10Base::ID3D10PixelShader *ret;
+		ret = SwitchPSShader(device, data.oldPixelShader);
+		data.oldPixelShader->Release();
+		if (ret)
+			ret->Release();
+	}
+
+	// When in hunting mode, we need to get time to run the UI for stepping through shaders.
+	// This gets called for every Draw, and is a definitely overkill, but is a convenient spot
+	// where we are absolutely certain that everyone is set up correctly.  And where we can
+	// get the original ID3D10Device.  This used to be done through the DXGI Present interface,
+	// but that had a number of problems.
+	RunFrameActions(device->GetD3D10Device());
+}
+
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawIndexed(THIS_
             /* [annotation] */ 
             __in  UINT IndexCount,
