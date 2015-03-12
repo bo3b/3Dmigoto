@@ -136,9 +136,118 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::PSSetShader(THIS_
             /* [annotation] */ 
             __in_opt  D3D10Base::ID3D10PixelShader *pPixelShader)
 {
-	LogInfo("ID3D10Device::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
+	LogDebug("ID3D10Device::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
+
+	bool patchedShader = false;
+	if (pPixelShader)
+	{
+		// Store as current pixel shader. Need to do this even while
+		// not hunting for ShaderOverride sections.
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		PixelShaderMap::iterator i = G->mPixelShaders.find(pPixelShader);
+		if (i != G->mPixelShaders.end())
+		{
+			G->mCurrentPixelShader = i->second;
+			G->mCurrentPixelShaderHandle = pPixelShader;
+			LogDebug("  pixel shader found: handle = %p, hash = %08lx%08lx\n", pPixelShader, (UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
+
+			if (G->hunting) {
+				// Add to visited pixel shaders.
+				G->mVisitedPixelShaders.insert(i->second);
+				patchedShader = true;
+			}
+
+			// second try to hide index buffer.
+			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
+			//	pIndexBuffer = 0;
+		}
+		else
+		{
+			LogDebug("  pixel shader %p not found\n", pPixelShader);
+		}
+	}
+
+	if (G->hunting && pPixelShader)
+	{
+		// Replacement map.
+		if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
+			if ((G->mSelectedPixelShader == G->mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
+			{
+				D3D10Base::ID3D10PixelShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D10Device()->PSSetShader(shader);
+				return;
+			}
+		}
+		if (G->marking_mode == MARKING_MODE_ZERO) {
+			PixelShaderReplacementMap::iterator j = G->mZeroPixelShaders.find(pPixelShader);
+			if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mZeroPixelShaders.end())
+			{
+				D3D10Base::ID3D10PixelShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D10Device()->PSSetShader(shader);
+				return;
+			}
+		}
+
+		// If the shader has been live reloaded from ShaderFixes, use the new one
+		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
+		{
+			LogDebug("  pixel shader replaced by: %p\n", it->second.replacement);
+
+			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
+			D3D10Base::ID3D10PixelShader *shader = (D3D10Base::ID3D10PixelShader*) it->second.replacement;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			GetD3D10Device()->PSSetShader(shader);
+			return;
+		}
+	}
+
+	if (pPixelShader) {
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
 
 	GetD3D10Device()->PSSetShader(pPixelShader);
+
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	if (!G->hunting || patchedShader)
+	{
+		// Device is THIS here, not context like DX11
+		D3D10Wrapper::ID3D10Device *device = this;
+		//GetDevice(&device);
+		if (device)
+		{
+			// Set NVidia stereo texture.
+			if (device->mStereoResourceView)
+			{
+				LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+
+				GetD3D10Device()->PSSetShaderResources(125, 1, &device->mStereoResourceView);
+			}
+			// Set constants from ini file if they exist
+			if (device->mIniResourceView)
+			{
+				LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
+
+				GetD3D10Device()->PSSetShaderResources(120, 1, &device->mIniResourceView);
+			}
+			// Set custom depth texture.
+			if (device->mZBufferResourceView)
+			{
+				LogDebug("  adding Z buffer to shader resources in slot 126.\n");
+
+				GetD3D10Device()->PSSetShaderResources(126, 1, &device->mZBufferResourceView);
+			}
+			device->Release();
+		}
+		else
+		{
+			LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+		}
+	}
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::PSSetSamplers(THIS_
@@ -158,10 +267,111 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::VSSetShader(THIS_
             /* [annotation] */ 
             __in_opt  D3D10Base::ID3D10VertexShader *pVertexShader)
 {
-	// :todo: intercept here
-	//LogInfo("ID3D10Device::VSSetShader called\n");
-	//
+	LogDebug("ID3D10DeviceContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
+
+	bool patchedShader = false;
+	if (pVertexShader)
+	{
+		// Store as current vertex shader. Need to do this even while
+		// not hunting for ShaderOverride sections.
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		VertexShaderMap::iterator i = G->mVertexShaders.find(pVertexShader);
+		if (i != G->mVertexShaders.end())
+		{
+			G->mCurrentVertexShader = i->second;
+			G->mCurrentVertexShaderHandle = pVertexShader;
+			LogDebug("  vertex shader found: handle = %p, hash = %08lx%08lx\n", pVertexShader, (UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader);
+
+			if (G->hunting) {
+				// Add to visited vertex shaders.
+				G->mVisitedVertexShaders.insert(i->second);
+				patchedShader = true;
+			}
+
+			// second try to hide index buffer.
+			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
+			//	pIndexBuffer = 0;
+		}
+		else
+		{
+			LogDebug("  vertex shader %p not found\n", pVertexShader);
+			// G->mCurrentVertexShader = 0;
+		}
+	}
+
+	if (G->hunting && pVertexShader)
+	{
+		// Replacement map.
+		if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
+			if ((G->mSelectedVertexShader == G->mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
+			{
+				D3D10Base::ID3D10VertexShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D10Device()->VSSetShader(shader);
+				return;
+			}
+		}
+		if (G->marking_mode == MARKING_MODE_ZERO) {
+			VertexShaderReplacementMap::iterator j = G->mZeroVertexShaders.find(pVertexShader);
+			if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mZeroVertexShaders.end())
+			{
+				D3D10Base::ID3D10VertexShader *shader = j->second;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				GetD3D10Device()->VSSetShader(shader);
+				return;
+			}
+		}
+
+		// If the shader has been live reloaded from ShaderFixes, use the new one
+		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
+		{
+			LogDebug("  vertex shader replaced by: %p\n", it->second.replacement);
+
+			D3D10Base::ID3D10VertexShader *shader = (D3D10Base::ID3D10VertexShader*) it->second.replacement;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			GetD3D10Device()->VSSetShader(shader);
+			return;
+		}
+	}
+
+	if (pVertexShader) {
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+
 	GetD3D10Device()->VSSetShader(pVertexShader);
+
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	if (!G->hunting || patchedShader)
+	{
+		D3D10Wrapper::ID3D10Device *device = this;
+		//GetDevice(&device);  not context based, like DX11
+		if (device)
+		{
+			// Set NVidia stereo texture.
+			if (device->mStereoResourceView)
+			{
+				LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+
+				GetD3D10Device()->VSSetShaderResources(125, 1, &device->mStereoResourceView);
+			}
+
+			// Set constants from ini file if they exist
+			if (device->mIniResourceView)
+			{
+				LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
+
+				GetD3D10Device()->VSSetShaderResources(120, 1, &device->mIniResourceView);
+			}
+			device->Release();
+		}
+		else
+		{
+			LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+		}
+	}
 }
         
 STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::DrawIndexed(THIS_
@@ -1783,7 +1993,7 @@ STDMETHODIMP D3D10Wrapper::ID3D10Device::CreatePixelShader(THIS_
             __out_opt  D3D10Base::ID3D10PixelShader **ppPixelShader)
 {
 	// Create the new shader.
-	LogDebug("    D3D10Wrapper::ID3D10Device::CreatePixelShader.  Device: %p\n", GetD3D10Device());
+	LogInfo("ID3D10Device::CreatePixelShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	HRESULT hr = -1;
 	UINT64 hash;
