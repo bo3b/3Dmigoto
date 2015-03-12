@@ -127,6 +127,8 @@
   <ItemGroup>
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\IDirect3DUnknown.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
     <ClInclude Include="..\version.h" />
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Direct3D11Context.h" />
