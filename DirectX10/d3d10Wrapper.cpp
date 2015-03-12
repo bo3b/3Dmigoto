@@ -3,14 +3,13 @@
 #include <Winuser.h>
 
 #include "../util.h"
-#include "../log.h"
 #include "globals.h"
 #include "../HLSLDecompiler/DecompileHLSL.h"
+#include "Override.h"
+#include "IniHandler.h"
+#include "Hunting.h"
 
-FILE *LogFile = 0; 
-bool LogInput = false, LogDebug = false;
 
-static bool gInitialized = false;
 static int SCREEN_WIDTH = -1;
 static int SCREEN_HEIGHT = -1;
 static int SCREEN_REFRESH = -1;
@@ -19,112 +18,25 @@ static bool gForceStereo = false;
 static bool gCreateStereoProfile = false;
 static bool take_screenshot = false;
 
-const int MARKING_MODE_SKIP = 0;
-const int MARKING_MODE_MONO = 1;
-const int MARKING_MODE_ORIGINAL = 2;
-const int MARKING_MODE_ZERO = 3;
-
-static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
-static wchar_t SHADER_CACHE_PATH[MAX_PATH] = { 0 };
-
 ThreadSafePointerSet D3D10Wrapper::ID3D10Device::m_List;
 ThreadSafePointerSet D3D10Wrapper::ID3D10Multithread::m_List;
 
 Globals *G;
-
-static string LogTime()
-{
-	string timeStr;
-	char cTime[32];
-	tm timestruct;
-
-	time_t ltime = time(0);
-	localtime_s(&timestruct, &ltime);
-	asctime_s(cTime, sizeof(cTime), &timestruct);
-
-	timeStr = cTime;
-	return timeStr;
-}
+FILE *gLogFile = 0;
+bool gLogDebug = false;
 
 
 void InitializeDLL()
 {
 	if (!gInitialized)
 	{
-		gInitialized = true;
-		wchar_t dir[MAX_PATH];
-		GetModuleFileName(0, dir, MAX_PATH);
-		wcsrchr(dir, L'\\')[1] = 0;
-		wcscat(dir, L"d3dx.ini");
-		LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
-		if (LogFile)
-		{
-			fopen_s(&LogFile, "d3d10_log.txt", "w");
-			LogInfo("\nD3D10 DLL starting init  -  %s\n\n", LogTime());
-			LogInfo("----------- d3dx.ini settings -----------\n");
-		}
-		LogInput = GetPrivateProfileInt(L"Logging", L"input", 0, dir) == 1;
 
-		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
-		// to open active files.
-		int unbuffered = -1;
-		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, dir) == 1)
-		{
-			unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
-			LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-		}
+		LoadConfigFile();
 
-		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
-		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
-		{
-			DWORD one = 0x01;
-			BOOL result = SetProcessAffinityMask(GetCurrentProcess(), one);
-			LogInfo("CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
-		}
+		// NVAPI
+		D3D10Base::NvAPI_Initialize();
 
-		wchar_t val[MAX_PATH];
-		if (GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir))
-			swscanf_s(val, L"%d", &SCREEN_WIDTH);
-		if (GetPrivateProfileString(L"Device", L"height", 0, val, MAX_PATH, dir))
-			swscanf_s(val, L"%d", &SCREEN_HEIGHT);
-		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir))
-			swscanf_s(val, L"%d", &SCREEN_REFRESH);
-		if (GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir))
-			swscanf_s(val, L"%d", &SCREEN_FULLSCREEN);
-		gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, dir) == 1;
-		gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, dir) == 1;
-
-		// DirectInput
-		//InputDevice[0] = 0;
-		//GetPrivateProfileString(L"Hunting", L"Input", 0, InputDevice, MAX_PATH, dir);
-		//RightStripW(InputDevice);
-		//InputDeviceId = GetPrivateProfileInt(L"Hunting", L"DeviceNr", -1, dir);
-		// Actions
-		// XXX: This needs to be updated to work with the new input infrastructure
-		// Besides which, I can't see any evidence that these are actually used in the DX10 project
-		//GetPrivateProfileString(L"Hunting", L"next_pixelshader", 0, InputAction[0], MAX_PATH, dir);
-		//RightStripW(InputAction[0]);
-		//GetPrivateProfileString(L"Hunting", L"previous_pixelshader", 0, InputAction[1], MAX_PATH, dir);
-		//RightStripW(InputAction[1]);
-		//GetPrivateProfileString(L"Hunting", L"mark_pixelshader", 0, InputAction[2], MAX_PATH, dir);
-		//RightStripW(InputAction[2]);
-		//GetPrivateProfileString(L"Hunting", L"take_screenshot", 0, InputAction[3], MAX_PATH, dir);
-		//RightStripW(InputAction[3]);
-		//GetPrivateProfileString(L"Hunting", L"next_indexbuffer", 0, InputAction[4], MAX_PATH, dir);
-		//RightStripW(InputAction[4]);
-		//GetPrivateProfileString(L"Hunting", L"previous_indexbuffer", 0, InputAction[5], MAX_PATH, dir);
-		//RightStripW(InputAction[5]);
-		//GetPrivateProfileString(L"Hunting", L"mark_indexbuffer", 0, InputAction[6], MAX_PATH, dir);
-		//RightStripW(InputAction[6]);
-		//GetPrivateProfileString(L"Hunting", L"next_vertexshader", 0, InputAction[7], MAX_PATH, dir);
-		//RightStripW(InputAction[7]);
-		//GetPrivateProfileString(L"Hunting", L"previous_vertexshader", 0, InputAction[8], MAX_PATH, dir);
-		//RightStripW(InputAction[8]);
-		//GetPrivateProfileString(L"Hunting", L"mark_vertexshader", 0, InputAction[9], MAX_PATH, dir);
-		//RightStripW(InputAction[9]);
-		//InitDirectInput();
-		// XInput
-		//XInputDeviceId = GetPrivateProfileInt(L"Hunting", L"XInputDevice", -1, dir);		
+		InitializeCriticalSection(&G->mCriticalSection);
 
 		LogInfo("D3D10 DLL initialized.\n");
 	}
@@ -132,15 +44,15 @@ void InitializeDLL()
 
 void DestroyDLL()
 {
-	if (LogFile)
+	if (gLogFile)
 	{
 		LogInfo("Destroying DLL...\n");
-		fclose(LogFile);
+		fclose(gLogFile);
 	}
 }
 
 // D3DCompiler bridge
-struct D3D11BridgeData
+struct D3D10BridgeData
 {
 	UINT64 BinaryHash;
 	char *HLSLFileName;
@@ -265,27 +177,30 @@ static tOpenAdapter10 _OpenAdapter10;
 typedef int (WINAPI *tOpenAdapter10_2)(D3D10DDIARG_OPENADAPTER *adapter);
 static tOpenAdapter10_2 _OpenAdapter10_2;
 
-typedef int (WINAPI *tD3D11CoreCreateDevice)(__int32, int, int, LPCSTR lpModuleName, int, int, int, int, int, int);
-static tD3D11CoreCreateDevice _D3D11CoreCreateDevice;
+typedef int (WINAPI *tD3D10CoreCreateDevice)(__int32, int, int, LPCSTR lpModuleName, int, int, int, int, int, int);
+static tD3D10CoreCreateDevice _D3D10CoreCreateDevice;
 
-//typedef int (WINAPI *tD3D11CoreCreateLayeredDevice)(int a, int b, int c, int d, int e);
-//static tD3D11CoreCreateLayeredDevice _D3D11CoreCreateLayeredDevice;
-typedef HRESULT(WINAPI *tD3D11CoreCreateLayeredDevice)(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj);
-static tD3D11CoreCreateLayeredDevice _D3D11CoreCreateLayeredDevice;
+//typedef int (WINAPI *tD3D10CoreCreateLayeredDevice)(int a, int b, int c, int d, int e);
+//static tD3D10CoreCreateLayeredDevice _D3D10CoreCreateLayeredDevice;
+typedef HRESULT(WINAPI *tD3D10CoreCreateLayeredDevice)(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj);
+static tD3D10CoreCreateLayeredDevice _D3D10CoreCreateLayeredDevice;
 
-//typedef int (WINAPI *tD3D11CoreGetLayeredDeviceSize)(int a, int b);
-//static tD3D11CoreGetLayeredDeviceSize _D3D11CoreGetLayeredDeviceSize;
-typedef SIZE_T(WINAPI *tD3D11CoreGetLayeredDeviceSize)(const void *unknown0, DWORD unknown1);
-static tD3D11CoreGetLayeredDeviceSize _D3D11CoreGetLayeredDeviceSize;
+//typedef int (WINAPI *tD3D10CoreGetLayeredDeviceSize)(int a, int b);
+//static tD3D10CoreGetLayeredDeviceSize _D3D10CoreGetLayeredDeviceSize;
+typedef SIZE_T(WINAPI *tD3D10CoreGetLayeredDeviceSize)(const void *unknown0, DWORD unknown1);
+static tD3D10CoreGetLayeredDeviceSize _D3D10CoreGetLayeredDeviceSize;
 
-//typedef int (WINAPI *tD3D11CoreRegisterLayers)(int a, int b);
-//static tD3D11CoreRegisterLayers _D3D11CoreRegisterLayers;
-typedef HRESULT(WINAPI *tD3D11CoreRegisterLayers)(const void *unknown0, DWORD unknown1);
-static tD3D11CoreRegisterLayers _D3D11CoreRegisterLayers;
+//typedef int (WINAPI *tD3D10CoreRegisterLayers)(int a, int b);
+//static tD3D10CoreRegisterLayers _D3D10CoreRegisterLayers;
+typedef HRESULT(WINAPI *tD3D10CoreRegisterLayers)(const void *unknown0, DWORD unknown1);
+static tD3D10CoreRegisterLayers _D3D10CoreRegisterLayers;
 
 static void InitD310()
 {
 	if (hD3D10) return;
+
+	G = new Globals();
+
 	InitializeDLL();
 	wchar_t sysDir[MAX_PATH];
 	SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
@@ -330,10 +245,10 @@ static void InitD310()
 	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo) GetProcAddress(hD3D10, "D3DKMTQueryAdapterInfo");
 	_OpenAdapter10 = (tOpenAdapter10) GetProcAddress(hD3D10, "OpenAdapter10");
 	_OpenAdapter10_2 = (tOpenAdapter10_2) GetProcAddress(hD3D10, "OpenAdapter10_2");
-	_D3D11CoreCreateDevice = (tD3D11CoreCreateDevice) GetProcAddress(hD3D10, "D3D11CoreCreateDevice");
-	_D3D11CoreCreateLayeredDevice = (tD3D11CoreCreateLayeredDevice) GetProcAddress(hD3D10, "D3D11CoreCreateLayeredDevice");
-	_D3D11CoreGetLayeredDeviceSize = (tD3D11CoreGetLayeredDeviceSize) GetProcAddress(hD3D10, "D3D11CoreGetLayeredDeviceSize");
-	_D3D11CoreRegisterLayers = (tD3D11CoreRegisterLayers) GetProcAddress(hD3D10, "D3D11CoreRegisterLayers");
+	_D3D10CoreCreateDevice = (tD3D10CoreCreateDevice) GetProcAddress(hD3D10, "D3D10CoreCreateDevice");
+	_D3D10CoreCreateLayeredDevice = (tD3D10CoreCreateLayeredDevice) GetProcAddress(hD3D10, "D3D10CoreCreateLayeredDevice");
+	_D3D10CoreGetLayeredDeviceSize = (tD3D10CoreGetLayeredDeviceSize) GetProcAddress(hD3D10, "D3D10CoreGetLayeredDeviceSize");
+	_D3D10CoreRegisterLayers = (tD3D10CoreRegisterLayers) GetProcAddress(hD3D10, "D3D10CoreRegisterLayers");
 }
 
 HRESULT WINAPI D3D10CompileEffectFromMemory(void *pData, SIZE_T DataLength, LPCSTR pSrcFileName, 
@@ -754,7 +669,7 @@ STDMETHODIMP D3D10Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		}
 		else
 		{
-			*ppvObj = ((D3D10Wrapper::ID3D10Device *)*ppvObj)->m_pDevice;
+			*ppvObj = ((D3D10Wrapper::ID3D10Device *)*ppvObj)->m_pUnk;
 		}
 		LogInfo("  returning handle = %x\n", *ppvObj);
 		

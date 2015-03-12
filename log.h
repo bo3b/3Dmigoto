@@ -1,6 +1,13 @@
 #pragma once
 
+#include <time.h>
+#include <stdarg.h>
+
 // Wrappers to make logging cleaner.
+
+extern FILE *gLogFile;
+extern bool gLogDebug;
+
 
 // Note that for now I've left the definitions of LogFile and LogDebug as they
 // were - either declared locally in a file, as an extern, or from another
@@ -9,11 +16,12 @@
 // logging framework.
 
 #define LogInfo(fmt, ...) \
-	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__)
+	if (gLogFile) fprintf(gLogFile, fmt, __VA_ARGS__)
 #define LogInfoW(fmt, ...) \
-	if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__)
+	if (gLogFile) fwprintf(gLogFile, fmt, __VA_ARGS__)
 
 #define LogDebug(fmt, ...) \
-	if (LogDebug) LogInfo(fmt, __VA_ARGS__)
+	if (gLogDebug) LogInfo(fmt, __VA_ARGS__)
 #define LogDebugW(fmt, ...) \
-	if (LogDebug) LogInfoW(fmt, __VA_ARGS__)
+	if (gLogDebug) LogInfoW(fmt, __VA_ARGS__)
+

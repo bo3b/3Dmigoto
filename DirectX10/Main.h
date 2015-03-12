@@ -11,14 +11,13 @@
 #include <math.h>
 #include <stdlib.h>
 #include <tchar.h>
-#include <stdio.h>
 #include <crtdbg.h>
 
 #include <fstream>
 
 using namespace std;
-extern FILE *LogFile;
-extern bool LogDebug;
+
+#include "../log.h"
 
 namespace D3D10Base
 {
