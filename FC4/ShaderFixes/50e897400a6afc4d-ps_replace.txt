@@ -1,3 +1,4 @@
+// Underwater fog volume (No MSAA, Himalayas, caustics fix unverified)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -117,6 +118,14 @@ void main(
   r1.y = 0.000000000e+000 < r1.w;
   r3.xyzw = r0.wwww ? r3.xyzw : r2.xyzw;
   r2.xyzw = r1.yyyy ? r3.xyzw : r2.xyzw;
+
+// Line up underwater caustics with ground:
+// Unverified - caustics not visible when I encounted this
+float4 stereo = StereoParams.Load(0);
+float4 tmp = mul(float4(r2.yzw, 1), _ViewProjectionMatrix);
+tmp.x -= stereo.x * (tmp.w - stereo.y);
+r2.yzw = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
+
   r3.xyzw = _UnderwaterCaustics.xxxx * r2.zwwy;
   r3.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) * r3.xyzw;
   r4.xyzw = CausticsTexture__TexObj__.Sample(CausticsTexture__SampObj___s, r3.zw).xyzw;
