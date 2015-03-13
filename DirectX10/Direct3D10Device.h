@@ -855,7 +855,7 @@ static DrawContext BeforeDraw(D3D10Wrapper::ID3D10Device *device)
 
 			// Maybe make this optional if it turns out to have a
 			// significant performance impact:
-			RecordShaderResourceUsage(device);
+			//RecordShaderResourceUsage(device);
 
 			// Selection
 			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)

@@ -1163,7 +1163,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 // the dxgi wrapper as unneeded.  The draw is caught at AfterDraw in the Context, which is called for
 // every type of Draw, including DrawIndexed.
 
-static void RunFrameActions(D3D10Base::ID3D10Device *device)
+void RunFrameActions(D3D10Base::ID3D10Device *device)
 {
 	static ULONGLONG last_ticks = 0;
 	ULONGLONG ticks = GetTickCount64();
