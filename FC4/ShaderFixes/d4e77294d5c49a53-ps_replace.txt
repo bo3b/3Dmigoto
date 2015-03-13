@@ -8,6 +8,14 @@
 // MSAA4/TXAA4: ea7ccc99799c7228 (polygon edges)
 // MSAA8      : 343df1da0e3edd9e
 // MSAA8      : 6ee0d5531150d4cd
+// And even more variants without specular highlights (seen in some Himalayas missions):
+//       No AA: 8870ff9827077a28
+// MSAA2/TXAA2: 21bb80dc29b691bb (fill)
+// MSAA2/TXAA2: 5b0fcbe11dff7344 (polygon edges)
+// MSAA4/TXAA4: 325594ab3056df53 (fill)
+// MSAA4/TXAA4: 72a6e709c250e563 (polygon edges)
+// MSAA8/TXAA8: 375c5401a4ad4241 (fill)
+// MSAA8/TXAA8: 8a508f9327f97cf3 (polygon edges)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
