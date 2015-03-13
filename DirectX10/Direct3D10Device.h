@@ -3,7 +3,119 @@ D3D10Wrapper::ID3D10Device::ID3D10Device(D3D10Base::ID3D10Device *pDevice)
     : D3D10Wrapper::IDirect3DUnknown((IUnknown*) pDevice),
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), mIniResourceView(0), mIniTexture(0), mZBufferResourceView(0)
 {
+	if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_CreateHandleFromIUnknown(pDevice, &mStereoHandle))
+		mStereoHandle = 0;
+	
+	// This reassignment is not valid because it's a private member.  Not sure why this
+	// was being done- maybe for Tune support.
+	//mParamTextureManager.mStereoHandle = mStereoHandle;
 
+	LogInfo("  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
+
+	// Override custom settings.
+	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
+	{
+		//NvAPIOverride();
+		LogInfo("  setting custom surface creation mode.\n");
+
+		if (D3D10Base::NVAPI_OK != D3D10Base::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			(D3D10Base::NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceCreateMode))
+		{
+			LogInfo("    call failed.\n");
+		}
+	}
+	// Create stereo parameter texture.
+	if (mStereoHandle)
+	{
+		LogInfo("  creating stereo parameter texture.\n");
+
+		D3D10Base::D3D10_TEXTURE2D_DESC desc;
+		memset(&desc, 0, sizeof(D3D10Base::D3D10_TEXTURE2D_DESC));
+		desc.Width = D3D10Base::nv::stereo::ParamTextureManagerD3D10::Parms::StereoTexWidth;
+		desc.Height = D3D10Base::nv::stereo::ParamTextureManagerD3D10::Parms::StereoTexHeight;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = D3D10Base::nv::stereo::ParamTextureManagerD3D10::Parms::StereoTexFormat;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D10Base::D3D10_USAGE_DEFAULT;
+		desc.BindFlags = D3D10Base::D3D10_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = 0;
+		desc.MiscFlags = 0;
+		HRESULT ret = pDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
+		if (FAILED(ret))
+		{
+			LogInfo("    call failed with result = %x.\n", ret);
+		}
+		else
+		{
+			LogInfo("    stereo texture created, handle = %p\n", mStereoTexture);
+			LogInfo("  creating stereo parameter resource view.\n");
+
+			// Since we need to bind the texture to a shader input, we also need a resource view.
+			D3D10Base::D3D10_SHADER_RESOURCE_VIEW_DESC descRV;
+			memset(&descRV, 0, sizeof(D3D10Base::D3D10_SHADER_RESOURCE_VIEW_DESC));
+			descRV.Format = desc.Format;
+			descRV.ViewDimension = D3D10Base::D3D10_SRV_DIMENSION_TEXTURE2D;
+			descRV.Texture2D.MostDetailedMip = 0;
+			descRV.Texture2D.MipLevels = -1;
+			ret = pDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
+			if (FAILED(ret))
+			{
+				LogInfo("    call failed with result = %x.\n", ret);
+			}
+			LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
+		}
+	}
+
+	// If constants are specified in the .ini file that need to be sent to shaders, we need to create
+	// the resource view in order to deliver them via SetShaderResources.
+	// Check for depth buffer view.
+	if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
+	{
+		D3D10Base::D3D10_TEXTURE1D_DESC desc;
+		memset(&desc, 0, sizeof(D3D10Base::D3D10_TEXTURE1D_DESC));
+		D3D10Base::D3D10_SUBRESOURCE_DATA initialData;
+
+		LogInfo("  creating .ini constant parameter texture.\n");
+
+		// Stuff the constants read from the .ini file into the subresource data structure, so 
+		// we can init the texture with them.
+		initialData.pSysMem = &G->iniParams;
+		initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * 1;	// only one 4 element struct 
+
+		desc.Width = 1;												// 1 texel, .rgba as a float4
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = D3D10Base::DXGI_FORMAT_R32G32B32A32_FLOAT;	// float4
+		desc.Usage = D3D10Base::D3D10_USAGE_DYNAMIC;				// Read/Write access from GPU and CPU
+		desc.BindFlags = D3D10Base::D3D10_BIND_SHADER_RESOURCE;		// As resource view, access via t120
+		desc.CPUAccessFlags = D3D10Base::D3D10_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
+		desc.MiscFlags = 0;
+		HRESULT ret = pDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
+		if (FAILED(ret))
+		{
+			LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
+		}
+		else
+		{
+			LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
+			LogInfo("  creating IniParam resource view.\n");
+
+			// Since we need to bind the texture to a shader input, we also need a resource view.
+			// The pDesc is set to NULL so that it will simply use the desc format above.
+			D3D10Base::D3D10_SHADER_RESOURCE_VIEW_DESC descRV;
+			memset(&descRV, 0, sizeof(D3D10Base::D3D10_SHADER_RESOURCE_VIEW_DESC));
+
+			ret = pDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
+			if (FAILED(ret))
+			{
+				LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
+			}
+
+			LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+		}
+	}
 }
 
 D3D10Wrapper::ID3D10Device* D3D10Wrapper::ID3D10Device::GetDirect3DDevice(D3D10Base::ID3D10Device *pOrig)
@@ -25,21 +137,68 @@ STDMETHODIMP_(ULONG) D3D10Wrapper::ID3D10Device::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D10Wrapper::ID3D10Device::Release(THIS)
 {
-	LogInfo("ID3D10Device::Release handle=%p, counter=%d\n", m_pUnk, m_ulRef);
-	
-    m_pUnk->Release();
 
-    ULONG ulRef = --m_ulRef;
+	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
+	LogDebug("  internal counter = %d\n", ulRef);
 
-    if(ulRef <= 0)
-    {
+	--m_ulRef;
+
+	if (ulRef == 0)
+	{
+		if (!gLogDebug) LogInfo("ID3D10Device::Release handle=%p, counter=%d, internal counter = %d, this=%p\n", m_pUnk, m_ulRef, ulRef, this);
 		LogInfo("  deleting self\n");
-		
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
-        delete this;
-        return 0L;
-    }
-    return ulRef;
+
+		if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
+		if (mStereoHandle)
+		{
+			int result = D3D10Base::NvAPI_Stereo_DestroyHandle(mStereoHandle);
+			mStereoHandle = 0;
+			LogInfo("  releasing NVAPI stereo handle, result = %d\n", result);
+		}
+		if (mStereoResourceView)
+		{
+			long result = mStereoResourceView->Release();
+			mStereoResourceView = 0;
+			LogInfo("  releasing stereo parameters resource view, result = %d\n", result);
+		}
+		if (mStereoTexture)
+		{
+			long result = mStereoTexture->Release();
+			mStereoTexture = 0;
+			LogInfo("  releasing stereo texture, result = %d\n", result);
+		}
+		if (mIniResourceView)
+		{
+			long result = mIniResourceView->Release();
+			mIniResourceView = 0;
+			LogInfo("  releasing ini parameters resource view, result = %d\n", result);
+		}
+		if (mIniTexture)
+		{
+			long result = mIniTexture->Release();
+			mIniTexture = 0;
+			LogInfo("  releasing iniparams texture, result = %d\n", result);
+		}
+		if (!G->mPreloadedPixelShaders.empty())
+		{
+			LogInfo("  releasing preloaded pixel shaders\n");
+
+			for (PreloadPixelShaderMap::iterator i = G->mPreloadedPixelShaders.begin(); i != G->mPreloadedPixelShaders.end(); ++i)
+				i->second->Release();
+			G->mPreloadedPixelShaders.clear();
+		}
+		if (!G->mPreloadedVertexShaders.empty())
+		{
+			LogInfo("  releasing preloaded vertex shaders\n");
+
+			for (PreloadVertexShaderMap::iterator i = G->mPreloadedVertexShaders.begin(); i != G->mPreloadedVertexShaders.end(); ++i)
+				i->second->Release();
+			G->mPreloadedVertexShaders.clear();
+		}
+		delete this;
+		return 0L;
+	}
+	return ulRef;
 }
 
 /*
@@ -268,10 +427,6 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::VSSetShader(THIS_
             __in_opt  D3D10Base::ID3D10VertexShader *pVertexShader)
 {
 	LogDebug("ID3D10DeviceContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
-
-	GetD3D10Device()->VSSetShader(pVertexShader);
-
-	return;
 
 	bool patchedShader = false;
 	if (pVertexShader)
@@ -1382,9 +1537,40 @@ STDMETHODIMP_(void) D3D10Wrapper::ID3D10Device::ClearRenderTargetView(THIS_
             /* [annotation] */ 
             __in  const FLOAT ColorRGBA[ 4 ])
 {
-	LogInfo("ID3D10Device::ClearRenderTargetView called with handle %p, color=(rgba)(%f,%f,%f,%f)\n", 
-		pRenderTargetView, ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
-	
+	LogDebug("ID3D11DeviceContext::ClearRenderTargetView called with RenderTargetView=%p, color=[%f,%f,%f,%f]\n", pRenderTargetView,
+		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
+
+	//if (G->hunting)
+	{
+		// Update stereo parameter texture.
+		LogDebug("  updating stereo parameter texture.\n");
+
+		ID3D10Device *device = this;
+		//GetDevice(&device);
+
+		// Todo: This variant has no Tune support.
+
+		//device->mParamTextureManager.mScreenWidth = (float)G->mSwapChainInfo.width;
+		//device->mParamTextureManager.mScreenHeight = (float)G->mSwapChainInfo.height;
+		//if (G->ENABLE_TUNE)
+		//{
+		//	//device->mParamTextureManager.mSeparationModifier = gTuneValue;
+		//	device->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
+		//	device->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
+		//	device->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
+		//	device->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
+		//	static int counter = 0;
+		//	if (counter-- < 0)
+		//	{
+		//		counter = 30;
+		//		device->mParamTextureManager.mForceUpdate = true;
+		//	}
+		//}
+
+		device->mParamTextureManager.UpdateStereoTexture(device->GetD3D10Device(), device->mStereoTexture, false);
+		//device->Release();
+	}
+
 	GetD3D10Device()->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
         

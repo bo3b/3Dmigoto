@@ -8,7 +8,7 @@ class ID3D10Device : public IDirect3DUnknown
 public:
 	static ThreadSafePointerSet	 m_List;
 	D3D10Base::StereoHandle mStereoHandle;
-	D3D10Base::nv::stereo::ParamTextureManagerD3D11 mParamTextureManager;
+	D3D10Base::nv::stereo::ParamTextureManagerD3D10 mParamTextureManager;
 	D3D10Base::ID3D10Texture2D *mStereoTexture;
 	D3D10Base::ID3D10ShaderResourceView *mStereoResourceView;
 	D3D10Base::ID3D10ShaderResourceView *mZBufferResourceView;

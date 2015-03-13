@@ -136,6 +136,7 @@
     <ClInclude Include="IniHandler.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="Main.h" />
+    <ClInclude Include="nvstereo.h" />
     <ClInclude Include="Override.h" />
   </ItemGroup>
   <ItemGroup>

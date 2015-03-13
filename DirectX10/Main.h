@@ -23,7 +23,7 @@ namespace D3D10Base
 {
 #include <d3d10_1.h>
 #include "../nvapi.h"
-#include "../nvstereo.h"
+#include "nvstereo.h"
 #include <D3Dcompiler.h>
 }
 
