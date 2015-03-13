@@ -1,4 +1,4 @@
-// Interior lights (MSAA4 polygon edges)
+// Interior lights (MSAA4 polygon edges) - Flickering on a table at start of Act 3
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -142,12 +142,18 @@ void main(
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+
+// At the start of Act 3 this adjustment causes flickering on a table
+// (insufficient shadow bias?). Change the maths a little from the standard
+// pattern to keep the floating point values smaller, which better utilises
+// their precision to reduce the error enough that the flicker is eliminated.
 
 float4 stereo = StereoParams.Load(0);
-float4 tmp = mul(float4(r0.xyz, 1), _ViewProjectionMatrix);
-tmp.x -= stereo.x * (tmp.w - stereo.y);
-r0.xyz = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
+float4 tmp = mul(float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1), _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
+
+  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
 
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);

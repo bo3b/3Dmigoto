@@ -1,4 +1,5 @@
-//Lights
+// Interior lights (No AA) - Flickering on a table at start of Act 3
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -117,7 +118,9 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31;
-  uint4 bitmask;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   r0.xyzw = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).xyzw;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
@@ -133,32 +136,19 @@ void main(
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
-  
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+// At the start of Act 3 this adjustment causes flickering on a table
+// (insufficient shadow bias?). Change the maths a little from the standard
+// pattern to keep the floating point values smaller, which better utilises
+// their precision to reduce the error enough that the flicker is eliminated.
 
 float4 stereo = StereoParams.Load(0);
-r32.x -= stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+float4 tmp = mul(float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1), _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
 
-r0.xyz = r34.xyz; 
+  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
 
-  
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
@@ -296,7 +286,7 @@ r0.xyz = r34.xyz;
     }
     r2.w = r4.y;
   }
-  r1.xyzw = SSToksvig.Load(r1.xyz).x;
+  r1.xyzw = SSToksvig.Load(r1.xyz);
   r1.y = exp2(r2.y);
   r1.z = 1.000000000e+000 + -r1.x;
   r1.y = r1.y * r1.z + r1.x;
@@ -883,7 +873,7 @@ r0.xyz = r34.xyz;
             r19.xyz = r19.xyz * r21.www;
             r19.w = saturate(dot(r8.xyz, r23.xyz));
             r19.w = r21.w + -r19.w;
-            r19.w = 1.000000000e+000 + -abs(-r19.w);
+            r19.w = 1.000000000e+000 + -abs(r19.w);
             r19.w = log2(r19.w);
             r19.w = r19.w * r6.w;
             r19.w = exp2(r19.w);
@@ -1044,7 +1034,7 @@ r0.xyz = r34.xyz;
             r22.xyz = r22.xyz * r20.www;
             r21.w = saturate(dot(r8.xyz, r25.xyz));
             r20.w = -r21.w + r20.w;
-            r20.w = 1.000000000e+000 + -abs(-r20.w);
+            r20.w = 1.000000000e+000 + -abs(r20.w);
             r20.w = log2(r20.w);
             r20.w = r20.w * r6.w;
             r20.w = exp2(r20.w);
@@ -3040,5 +3030,5 @@ ret
 
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-T:\Bootleg\Far Cry 4\bin\wrapper1349(274,13-39): error X3018: invalid subscript 'xyzw'
+C:\Games\Far Cry 4\bin\wrapper1349(276,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
