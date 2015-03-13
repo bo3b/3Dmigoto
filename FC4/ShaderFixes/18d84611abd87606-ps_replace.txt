@@ -748,7 +748,9 @@ r10.yzw = -_SunDirection.xyz + adj_r0.xzy;
   r3.w = 1.000000000e+000 + -r18.w;
   r2.x = r2.x * r3.w + r18.w;
   r3.w = 5.000000000e-001 * r2.w;
-  r6.yzw = -r0.zyx;
+
+  r6.yzw = -adj_r0.zyx; // Use adjusted position to fix fog while camera is tilted
+
   r6.x = 1.000000000e+000;
   r12.x = dot(_FogSHR.xyzw, r6.xyzw);
   r12.y = dot(_FogSHG.xyzw, r6.xyzw);
