@@ -645,7 +645,7 @@ HRESULT WINAPI D3D10StateBlockMaskUnion(D3D10Base::D3D10_STATE_BLOCK_MASK *pA,
 
 STDMETHODIMP D3D10Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
-	LogInfo("D3D10Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+	LogDebug("D3D10Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
 
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	if (riid.Data1 == marker.Data1 && riid.Data2 == marker.Data2 && riid.Data3 == marker.Data3 && 
@@ -668,7 +668,7 @@ STDMETHODIMP D3D10Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 		return 0x13bc7e31;
 	}
 
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n", 
+	LogDebug("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 	bool d3d9device = riid.Data1 == 0xd0223b96 && riid.Data2 == 0xbf7a && riid.Data3 == 0x43fd && riid.Data4[0] == 0x92 && 
 		riid.Data4[1] == 0xbd && riid.Data4[2] == 0xa4 && riid.Data4[3] == 0x3b && riid.Data4[4] == 0x0d && 
@@ -759,7 +759,7 @@ STDMETHODIMP D3D10Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, v
 			// create d3d9 wrapper!
 		}
 	}
-	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	LogDebug("  result = %x, handle = %x\n", hr, *ppvObj);
 	
 	return hr;
 }
