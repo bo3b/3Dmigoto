@@ -108,7 +108,18 @@ r1.xyz += mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r1.w = 3.125000000e-002 * r0.w;
   r2.xyz = -r0.zxy / r0.www;
   r0.w = min(r1.w, 1.000000000e+000);
-  r0.w = r0.w * _TerrainDecal + _LayerOffset;
+
+// Decompiler picked wrong offset in this buffer, which made the decals Z-fight!
+// Original decompiled code:
+//   r0.w = r0.w * _TerrainDecal + _LayerOffset;
+// Original asm:
+//   mad r0.w, r0.w, cb1[6].z, cb4[0].x
+// Bad recompiled asm:
+//   movc r0.w, cb1[6].x, r0.w, l(0)
+//   add r0.w, r0.w, cb4[0].x
+// So it should have chosen _DepthOffset:
+  r0.w = r0.w * _DepthOffset + _LayerOffset;
+
   r2.xyz = r0.www * r2.xyz + r1.xyz;
   o3.xyz = r1.xyz;
   r1.xyz = -_CameraPosition_DistanceScale.xyz + r2.xyz;
@@ -336,3 +347,4 @@ ret
 // Approximately 48 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
