@@ -1912,6 +1912,8 @@ static void RevertMissingShaders()
 			if (j == G->mOriginalPixelShaders.end())
 				continue;
 			replacement = j->second;
+		} else {
+			continue;
 		}
 
 		if ((i->second.replacement == NULL && i->first == replacement)
