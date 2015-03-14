@@ -1,4 +1,19 @@
-// Distant Soft Shadows (MSAA2)
+// Outdoor shadows
+// Other variants of this shader:
+// Hash             |   Shadow  |AA |
+// -----------------+-----------+---+
+// 149c09dd3792cebb |      High | 0 |
+// b674b00500663d60 | Very High | 0 |
+// 7f6a827ab54982d8 |      Soft | 0 |
+// 78fedf913827866d |      High | 2 |
+// ac5fba3d4b543796 | Very High | 2 |
+// 03232d48bca270a2 |      Soft | 2 |
+// e32db13a74674ed9 |      High | 4 |
+// ed7c22bb8f7fa4e6 | Very High | 4 |
+// 6b3342526a5ce50b |      Soft | 4 |
+// c4c278db36f2feeb |      High | 8 |
+// b5b9d247af1d66fb | Very High | 8 |
+// b7f7ad62461f55c0 |      Soft | 8 |
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -137,14 +152,18 @@ void main(
   r2.z = dot(r1.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r1.x = dot(r1.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r1.xyz = r2.xyz / r1.xxx;
-  r2.xyz = _CameraPosition_DistanceScale.xyz + r1.xyz;
 
 // Fixes distant soft shadows:
-float4 tmp = mul(float4(r2.xyz, 1), _ViewProjectionMatrix);
-float4 stereo = StereoParams.Load(0);
-tmp.x -= stereo.x * (tmp.w - stereo.y);
-r2.xyz = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
 
+// Keep the floating point values low to eliminate artefacts due to floating
+// point error!
+
+float4 stereo = StereoParams.Load(0);
+float4 tmp = mul(float4(_CameraPosition_DistanceScale.xyz + r1.xyz, 1), _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+r1.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
+
+  r2.xyz = _CameraPosition_DistanceScale.xyz + r1.xyz;
   r1.x = dot(r1.xyz, r1.xyz);
   r1.x = sqrt(r1.x);
   r1.yz = r2.yx * _SectorOffsetScale.yx + _SectorOffsetScale.wz;
@@ -1196,3 +1215,4 @@ ret
 // Approximately 257 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

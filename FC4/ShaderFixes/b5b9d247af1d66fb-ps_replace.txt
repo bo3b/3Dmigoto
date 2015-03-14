@@ -1,4 +1,19 @@
-// Outdoor shadows - MSAA8, Very High / Ultra
+// Outdoor shadows
+// Other variants of this shader:
+// Hash             |   Shadow  |AA |
+// -----------------+-----------+---+
+// 149c09dd3792cebb |      High | 0 |
+// b674b00500663d60 | Very High | 0 |
+// 7f6a827ab54982d8 |      Soft | 0 |
+// 78fedf913827866d |      High | 2 |
+// ac5fba3d4b543796 | Very High | 2 |
+// 03232d48bca270a2 |      Soft | 2 |
+// e32db13a74674ed9 |      High | 4 |
+// ed7c22bb8f7fa4e6 | Very High | 4 |
+// 6b3342526a5ce50b |      Soft | 4 |
+// c4c278db36f2feeb |      High | 8 |
+// b5b9d247af1d66fb | Very High | 8 |
+// b7f7ad62461f55c0 |      Soft | 8 |
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -137,14 +152,16 @@ void main(
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  r1.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
 
-// Fix shadows:
+// Keep the floating point values low to eliminate artefacts due to floating
+// point error!
+
 float4 stereo = StereoParams.Load(0);
-float4 tmp = mul(float4(r1.xyz, 1), _ViewProjectionMatrix);
-tmp.x -= stereo.x * (tmp.w - stereo.y);
-r1.xyz = mul(mul(tmp, _InvProjectionMatrix), _InvViewMatrix);
+float4 tmp = mul(float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1), _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
 
+  r1.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
   r2.xyz = -_PlayerPosition.xyz + r1.xyz;
   r0.w = dot(r2.xyz, -_SunDirection.xyz);
   r2.w = r0.w + r0.w;
