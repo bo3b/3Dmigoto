@@ -15,7 +15,7 @@ rendering issues please report back:**
 
 Fixed
 -----
-- Shadows (including soft shadows)
+- Shadows
 - Halos
 - Water reflections
 - Environment reflections
@@ -51,22 +51,25 @@ Installation
 5. If using a recent driver version >= 347.09, press ctrl+alt+F11 in game to
    disable compatibility mode
 
-7. Set ambient occlusion to HBAO+ (recommended) or off. Do not use other
-   settings.
+7. Set ambient occlusion to HBAO+ or SSAO. HBAO+ looks significantly better
+   than SSAO, but has some minor artefacts on some surfaces. SSAO may not work
+   on earlier versions of the game.
 
 8. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
    but shadows will have a 1 frame sync issue, and may appear to lift off the
    ground while walking. SMAA is not recommended. (3)
+
+9. Disable motion blur, as it causes rendering artefacts.
+
 
 Known Issues
 ------------
 - Repair tool flame is misaligned, and can't be fixed without breaking other
   flames.
 
-- Some clipping occurs on the building's interior masks. This is pretty minor
-  but you may sometimes notice that the interior of a building may not appear
-  to be in shadow when looking through a window on the left or right of the
-  building from a distance.
+- Windows & doors of buildings sometimes appear brighter than they should.
+
+- Soft shadows have some artefacts.
 
 Notes
 -----
