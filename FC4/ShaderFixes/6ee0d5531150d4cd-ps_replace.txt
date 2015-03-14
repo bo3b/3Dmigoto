@@ -1,21 +1,34 @@
-// Lighting related (specular highlights, environment reflection, etc)
+// Lighting related/environment (specular highlights, environment reflection, fog, etc)
 // Shader has several variants. Some AA variants have two - one for the fill,
 // one for the anti-aliased polygon edges:
-//       No AA: 18d84611abd87606
-// MSAA2/TXAA2: d4e77294d5c49a53 (fill)
-// MSAA2/TXAA2: 8afc461f52eab3e6 (polygon edges)
-// MSAA4/TXAA4: bae6b98bfda33066 (fill)
-// MSAA4/TXAA4: ea7ccc99799c7228 (polygon edges)
-// MSAA8      : 343df1da0e3edd9e
-// MSAA8      : 6ee0d5531150d4cd
+//
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 18d84611abd87606 | 0 | N/A  | Medium
+// 6d82ce75a16feb83 | 0 | N/A  | High
+// d4e77294d5c49a53 | 2 | Fill | Medium
+// aa0ba3aefd2413b1 | 2 | Fill | High
+// 8afc461f52eab3e6 | 2 | Edge | Medium
+// 26d2628c45dfbeea | 2 | Edge | High
+// bae6b98bfda33066 | 4 | Fill | Medium
+// c73430e1895ff2f8 | 4 | Fill | Medium
+// ea7ccc99799c7228 | 4 | Edge | Medium
+// 54eae19b7f5cc5a0 | 4 | Edge | Medium
+// 6ee0d5531150d4cd | 8 | Fill | Medium
+// d120ec3d6d0ad200 | 8 | Fill | Medium
+// 343df1da0e3edd9e | 8 | Edge | Medium
+// 9a9b807b3669906a | 8 | Edge | Medium
+//
 // And even more variants without specular highlights (seen in some Himalayas missions):
-//       No AA: 8870ff9827077a28
-// MSAA2/TXAA2: 21bb80dc29b691bb (fill)
-// MSAA2/TXAA2: 5b0fcbe11dff7344 (polygon edges)
-// MSAA4/TXAA4: 325594ab3056df53 (fill)
-// MSAA4/TXAA4: 72a6e709c250e563 (polygon edges)
-// MSAA8/TXAA8: 375c5401a4ad4241 (fill)
-// MSAA8/TXAA8: 8a508f9327f97cf3 (polygon edges)
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 8870ff9827077a28 | 0 | N/A  | Medium
+// 21bb80dc29b691bb | 2 | Fill | Medium
+// 5b0fcbe11dff7344 | 2 | Edge | Medium
+// 325594ab3056df53 | 4 | Fill | Medium
+// 72a6e709c250e563 | 4 | Edge | Medium
+// 375c5401a4ad4241 | 8 | Fill | Medium
+// 8a508f9327f97cf3 | 8 | Edge | Medium
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {

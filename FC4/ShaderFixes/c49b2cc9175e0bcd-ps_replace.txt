@@ -1,4 +1,37 @@
-// Interior lights (MSAA2 polygon edges) - Flickering on a table at start of Act 3
+// Interior lights
+// Other variations of this shader:
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 5c1136eef70d149e | 0 | N/A  | Medium
+// 890fe252a779dd94 | 0 | N/A  | High
+// e6c730868bfaea0f | 2 | Fill | Medium
+// 0fb3d86dde7b9faa | 2 | Fill | High
+// c49b2cc9175e0bcd | 2 | Edge | Medium
+// fe2394bbe85a5ab1 | 2 | Edge | High
+// 2aac4ac19020f4c3 | 4 | Fill | Medium
+// b973b84590f20a33 | 4 | Fill | High
+// d465646da83c03cf | 4 | Edge | Medium
+// 9ad5264b26733432 | 4 | Edge | High
+// 5a97e76dde4ad4c2 | 8 | Fill | Medium
+// 7929ad6cd34e7942 | 8 | Fill | High
+// 30f216fe42f20408 | 8 | Edge | Medium
+// b08304817ec206b8 | 8 | Edge | High
+//
+// More variations that don't cast shadows:
+// fcff7689c215da76 | 0 | N/A  | Medium
+// 08d2a5930e7bab14 | 0 | N/A  | High
+// d1f4f128cea4159e | 2 | Fill | Medium
+// 5e064d029277e985 | 2 | Fill | High
+// 709e47c2accd64a7 | 2 | Edge | Medium
+// 9768d1b44f6a0d3d | 2 | Edge | High
+// c8313c235c14b44c | 4 | Fill | Medium
+// 0e90ab6213100bfb | 4 | Fill | High
+// 978c5aa6736a9e43 | 4 | Edge | Medium
+// 6fbe28ffd48f0da6 | 4 | Edge | High
+// 0ef114e997119159 | 8 | Fill | Medium
+// 275b4e279ebf7449 | 8 | Fill | High
+// fa3127310dad5173 | 8 | Edge | Medium
+// 22b7bdf16d890164 | 8 | Edge | High
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {

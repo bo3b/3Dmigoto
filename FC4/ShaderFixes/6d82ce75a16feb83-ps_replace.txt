@@ -1,4 +1,35 @@
-//Lights - untested
+// Lighting related/environment (specular highlights, environment reflection, fog, etc)
+// Shader has several variants. Some AA variants have two - one for the fill,
+// one for the anti-aliased polygon edges:
+//
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 18d84611abd87606 | 0 | N/A  | Medium
+// 6d82ce75a16feb83 | 0 | N/A  | High
+// d4e77294d5c49a53 | 2 | Fill | Medium
+// aa0ba3aefd2413b1 | 2 | Fill | High
+// 8afc461f52eab3e6 | 2 | Edge | Medium
+// 26d2628c45dfbeea | 2 | Edge | High
+// bae6b98bfda33066 | 4 | Fill | Medium
+// c73430e1895ff2f8 | 4 | Fill | Medium
+// ea7ccc99799c7228 | 4 | Edge | Medium
+// 54eae19b7f5cc5a0 | 4 | Edge | Medium
+// 6ee0d5531150d4cd | 8 | Fill | Medium
+// d120ec3d6d0ad200 | 8 | Fill | Medium
+// 343df1da0e3edd9e | 8 | Edge | Medium
+// 9a9b807b3669906a | 8 | Edge | Medium
+//
+// And even more variants without specular highlights (seen in some Himalayas missions):
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 8870ff9827077a28 | 0 | N/A  | Medium
+// 21bb80dc29b691bb | 2 | Fill | Medium
+// 5b0fcbe11dff7344 | 2 | Edge | Medium
+// 325594ab3056df53 | 4 | Fill | Medium
+// 72a6e709c250e563 | 4 | Edge | Medium
+// 375c5401a4ad4241 | 8 | Fill | Medium
+// 8a508f9327f97cf3 | 8 | Edge | Medium
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -123,6 +154,9 @@ void main(
   r0.xyzw = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).xyzw;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
+
+float depth = r0.x;
+
   r0.y = _CameraDistances.x * _CameraDistances.y;
   r0.x = _CameraDistances.z * r0.x;
   r0.x = r0.y / r0.x;
@@ -135,32 +169,9 @@ void main(
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  
-r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;  
-  
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
+// Do not adjust at this point!
 float4 stereo = StereoParams.Load(0);
-r32.x -= stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
-
-r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
-
 
   r0.xyz = _CameraPosition_DistanceScale.xzy + r0.xyz;
   r1.xy = (int2)v0.xy;
@@ -328,11 +339,25 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r12.w = 0.000000000e+000;
   r16.y = 0.000000000e+000;
   r12.xyzw = r9.zzzz ? r12.wxyz : r16.xyyy;
+
+// Adjusted version of r0 for various fixes
+// multiplier found through experimenting at different times of day/night
+float multiplier = depth * 8192;
+float3 adj_r0 = r0 - mul(float4(stereo.x * multiplier, 0, 0, 0), _InvViewRotProjectionMatrix).xzy; // Axis order XZY
+
   r0.xyz = _CameraPosition_DistanceScale.xzy + -r0.xyz;
   r1.z = dot(r0.xyz, r0.xyz);
   r1.z = sqrt(r1.z);
   r0.xyz = r0.xyz / r1.zzz;
-  r16.w = dot(r8.xzy, r0.xyz);
+
+// Do this second so r1.z is the adjusted version, which fixes fog
+adj_r0.xyz = _CameraPosition_DistanceScale.xzy + -adj_r0.xyz;
+r1.z = dot(adj_r0.xyz, adj_r0.xyz);
+r1.z = sqrt(r1.z);
+adj_r0.xyz = adj_r0.xyz / r1.zzz;
+
+  r16.w = dot(r8.xzy, adj_r0.xyz); // Use adjusted position to fix highlights on surfaces
+
   r1.w = 1.300000000e+001 * r1.y;
   r2.y = r1.y * -2.554450035e-001 + 1.401520014e+000;
   r2.y = r2.y * r1.y + -1.946949959e+000;
@@ -656,7 +681,11 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
           r5.z = r5.y + r5.z;
           r5.z = 1.000000e+000 / r5.z;
           r5.z = _BRDFHighQuality ? r5.z : 1.000000000e+000;
-          r6.xyz = -_SunDirection.xyz + r0.xzy;
+
+// Use adjusted r0 to fix specular reflections:
+          // r6.xyz = -_SunDirection.xyz + r0.xzy;
+r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
+
           r5.w = dot(r6.xyz, r6.xyz);
           r5.w = rsqrt(r5.w);
           r6.xyz = r6.xyz * r5.www;
@@ -727,7 +756,9 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r2.w = 1.000000000e+000 + -r18.w;
   r2.x = r2.x * r2.w + r18.w;
   r2.w = r9.x ? 0.250000 : 0;
-  r12.yzw = -r0.zyx;
+
+  r12.yzw = -adj_r0.zyx; // Use adjusted position to fix fog while camera is tilted
+
   r12.x = 1.000000000e+000;
   r6.x = dot(_FogSHR.xyzw, r12.xyzw);
   r6.y = dot(_FogSHG.xyzw, r12.xyzw);
@@ -781,7 +812,10 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r7.w = dot(r7.xzy, r0.xyz);
   r7.xyzw = _BRDFHighQuality ? r7.xyzw : r16.xyzw;
   r0.w = r7.w + r7.w;
-  r0.xyz = -r0.www * r7.xzy + r0.xyz;
+
+// Use adjusted position to fix environment map reflection:
+  r0.xyz = -r0.www * r7.xzy + adj_r0.xyz;
+
   r0.xyz = -r0.xyz;
   r0.w = -r1.y * 6.000000000e+000 + 6.000000000e+000;
   r0.xyzw = EnvironmentMapTexture__TexObj__.SampleLevel(EnvironmentMapTexture__SampObj___s, r0.xyz, r0.w).xyzw;
@@ -1716,3 +1750,4 @@ ret
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(289,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

@@ -1,4 +1,38 @@
-//Shadow/Light UNTESTED
+// Interior lights
+// Other variations of this shader:
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 5c1136eef70d149e | 0 | N/A  | Medium
+// 890fe252a779dd94 | 0 | N/A  | High
+// e6c730868bfaea0f | 2 | Fill | Medium
+// 0fb3d86dde7b9faa | 2 | Fill | High
+// c49b2cc9175e0bcd | 2 | Edge | Medium
+// fe2394bbe85a5ab1 | 2 | Edge | High
+// 2aac4ac19020f4c3 | 4 | Fill | Medium
+// b973b84590f20a33 | 4 | Fill | High
+// d465646da83c03cf | 4 | Edge | Medium
+// 9ad5264b26733432 | 4 | Edge | High
+// 5a97e76dde4ad4c2 | 8 | Fill | Medium
+// 7929ad6cd34e7942 | 8 | Fill | High
+// 30f216fe42f20408 | 8 | Edge | Medium
+// b08304817ec206b8 | 8 | Edge | High
+//
+// More variations that don't cast shadows:
+// fcff7689c215da76 | 0 | N/A  | Medium
+// 08d2a5930e7bab14 | 0 | N/A  | High
+// d1f4f128cea4159e | 2 | Fill | Medium
+// 5e064d029277e985 | 2 | Fill | High
+// 709e47c2accd64a7 | 2 | Edge | Medium
+// 9768d1b44f6a0d3d | 2 | Edge | High
+// c8313c235c14b44c | 4 | Fill | Medium
+// 0e90ab6213100bfb | 4 | Fill | High
+// 978c5aa6736a9e43 | 4 | Edge | Medium
+// 6fbe28ffd48f0da6 | 4 | Edge | High
+// 0ef114e997119159 | 8 | Fill | Medium
+// 275b4e279ebf7449 | 8 | Fill | High
+// fa3127310dad5173 | 8 | Edge | Medium
+// 22b7bdf16d890164 | 8 | Edge | High
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -133,31 +167,18 @@ void main(
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
-  
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
+
+// At the start of Act 3 this adjustment causes flickering on a table
+// (insufficient shadow bias?). Change the maths a little from the standard
+// pattern to keep the floating point values smaller, which better utilises
+// their precision to reduce the error enough that the flicker is eliminated.
 
 float4 stereo = StereoParams.Load(0);
-r32.x -= stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+float4 tmp = mul(float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1), _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
 
-r0.xyz = r34.xyz; 
-
+  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
 
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
@@ -3025,3 +3046,4 @@ ret
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(271,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
