@@ -1914,6 +1914,11 @@ static void RevertMissingShaders()
 			replacement = j->second;
 		}
 
+		if ((i->second.replacement == NULL && i->first == replacement)
+				|| replacement == i->second.replacement) {
+			continue;
+		}
+
 		LogInfo("Reverting %016llx not found in ShaderFixes\n", i->second.hash);
 
 		if (i->second.replacement)
