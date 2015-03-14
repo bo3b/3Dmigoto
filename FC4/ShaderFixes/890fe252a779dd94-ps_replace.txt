@@ -151,7 +151,9 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31;
-  uint4 bitmask;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   r0.xyzw = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).xyzw;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
@@ -185,10 +187,10 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
   r3.xyzw = GBufferT1.Load(r1.xyw).xyzw;
   r4.xyzw = GBufferT2.Load(r1.xyw).xyzw;
-  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 1, 0)).xzwy;
+  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(1, 0)).xzwy;
   r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(-1, 0)).xyzw;
-  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 0, 1)).xyzw;
-  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 0,-1)).xyzw;
+  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(0, 1)).xyzw;
+  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(0, -1)).xyzw;
   r9.x = r8.x;
   r9.y = r7.x;
   r9.z = r6.x;
@@ -204,7 +206,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r5.z = r6.y;
   r5.y = dot(r5.xyzw, r9.xyzw);
   r5.xw = (int2)r1.xy & int2(1,1);
-  r5.x = r5.x != r5.w;
+  r5.x = (int)r5.x != (int)r5.w;
   r5.z = r2.y;
   r5.yz = r5.xx ? r5.yz : r5.zy;
   r5.x = r2.x * r2.x;
@@ -225,7 +227,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r3.w = 1.000000000e+000 + -r3.w;
   r3.w = sqrt(r3.w);
   r5.w = r2.w ? r3.x : r3.w;
-  r7.xy = r2.ww == float2(1.000000e+000,2.000000e+000);
+  r7.xy = (int)r2.ww == int2(1,2);
   r5.xy = r7.xy ? r3.ww : r3.yz;
   r2.w = r2.w ? r3.w : r3.x;
   r2.w = r7.x ? r3.y : r2.w;
@@ -234,7 +236,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r7.xyz = float3(2.000000e+000,-2.000000e+000,-2.000000e+000) * r5.www;
   r8.xyz = r7.xxz * r5.yzw + float3(0.000000e+000,0.000000e+000,1.000000e+000);
   r8.xyz = r3.xzx * r5.zyx + r8.xyz;
-  r9.xyzw = r2.xxxx == float4(1.000000e+000,5.000000e+000,6.000000e+000,3.000000e+000);
+  r9.xyzw = (int)r2.xxxx == int4(1,5,6,3);
   if (r9.x != 0) {
     r2.w = 2.550000000e+002 * r4.y;
     r2.w = (uint)r2.w;
@@ -258,7 +260,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
     r4.x = (int)r4.x & 15;
     r4.x = r4.x;
     r3.w = 6.666667014e-002 * r4.x;
-    r4.x = r2.x == 3;
+    r4.x = (int)r2.x == 3;
     if (r4.x != 0) {
       r17.xyz = r16.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r17.xyz, r17.xyz);
@@ -274,7 +276,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
       r4.x = dot(r17.xyz, r17.xyz);
       r4.x = rsqrt(r4.x);
       r17.xyz = r17.xyz * r4.xxx;
-      r18.xyz = r2.xxx == float3(4.000000e+000,5.000000e+000,6.000000e+000);
+      r18.xyz = (int)r2.xxx == int3(4,5,6);
       r19.xyz = r16.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r19.xyz, r19.xyz);
       r4.x = rsqrt(r4.x);
@@ -315,7 +317,6 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
     r2.w = r4.y;
   }
   r1.xyzw = SSToksvig.Load(r1.xyz);
-  // r1.xyzw = SSToksvig.Load(r1.xyz).xyzw;
   r1.y = exp2(r2.y);
   r1.z = 1.000000000e+000 + -r1.x;
   r1.y = r1.y * r1.z + r1.x;
@@ -347,7 +348,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r4.x = 1.000000000e+000 + -r4.x;
   r13.xyz = r6.xyz * r4.xxx;
   r16.xyzw = DeferredAmbientTexture_TextureObject.Sample(DeferredAmbientTexture_s, v1.xy).xyzw;
-  r16.xy = r2.xx == float2(2.000000e+000,4.000000e+000);
+  r16.xy = (int)r2.xx == int2(2,4);
   if (r16.x != 0) {
     r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r11.xyz;
     r4.x = r6.w * r6.w;
@@ -486,7 +487,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
         r13.w = (int)r12.w < (int)r11.w;
         if (r13.w != 0) {
           r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
-          r13.w = r12.w == 1;
+          r13.w = (int)r12.w == 1;
           if (r12.w == 0) {
             r25.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
           } else {
@@ -547,7 +548,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
       r12.w = (int)r12.w + 1;
     }
   } else {
-    r0.w = r2.x == 4;
+    r0.w = (int)r2.x == 4;
     if (r0.w != 0) {
       r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r11.xyz;
       r0.w = r6.w * r6.w;
@@ -701,7 +702,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
           r13.w = (int)r12.w < (int)r11.w;
           if (r13.w != 0) {
             r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
-            r13.w = r12.w == 1;
+            r13.w = (int)r12.w == 1;
             if (r12.w == 0) {
               r28.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
             } else {
@@ -773,7 +774,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
       r3.xyz = r17.yyz * r5.yzw + r3.xyz;
       r17.xyz = r17.xyz * r5.zyx + float3(0.000000e+000,1.000000e+000,0.000000e+000);
       r5.xyz = r7.xyz * r5.xwz + r17.xyz;
-      r7.xy = r2.xx == float2(0.000000e+000,5.000000e+000);
+      r7.xy = (int)r2.xx == int2(0,5);
       r0.w = (int)r9.w | (int)r7.x;
       r0.w = (int)r9.y | (int)r0.w;
       r4.x = r9.z ? 1.000000000e+000 : r10.x;
@@ -896,7 +897,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
             r23.xyz = r23.xyz * r15.www;
             r13.w = saturate(dot(r8.xyz, r25.xyz));
             r13.w = r15.w + -r13.w;
-            r13.w = 1.000000000e+000 + -abs(-r13.w);
+            r13.w = 1.000000000e+000 + -abs(r13.w);
             r13.w = log2(r13.w);
             r13.w = r13.w * r6.w;
             r13.w = exp2(r13.w);
@@ -973,7 +974,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
             r14.w = (int)r13.w < (int)r12.w;
             if (r14.w != 0) {
               r16.xz = r16.xz * _SpotScaleOffsetUVS[r13.w].xy + _SpotScaleOffsetUVS[r13.w].zw;
-              r14.w = r13.w == 1;
+              r14.w = (int)r13.w == 1;
               if (r13.w == 0) {
                 r27.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
               } else {
@@ -1057,7 +1058,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
             r24.xyz = r24.xyz * r14.www;
             r15.w = saturate(dot(r8.xyz, r27.xyz));
             r14.w = -r15.w + r14.w;
-            r14.w = 1.000000000e+000 + -abs(-r14.w);
+            r14.w = 1.000000000e+000 + -abs(r14.w);
             r14.w = log2(r14.w);
             r14.w = r14.w * r6.w;
             r14.w = exp2(r14.w);
@@ -1192,7 +1193,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
               r7.w = (int)r5.w < (int)r4.x;
               if (r7.w != 0) {
                 r12.xw = r12.xw * _SpotScaleOffsetUVS[r5.w].xy + _SpotScaleOffsetUVS[r5.w].zw;
-                r7.w = r5.w == 1;
+                r7.w = (int)r5.w == 1;
                 if (r5.w == 0) {
                   r22.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r12.xw, 0.000000000e+000).xyzw;
                 } else {
@@ -1350,14 +1351,14 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
               continue;
             }
             r10.x = (uint)r8.w << 2;
-            r19.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m00_m10_m20_m30);
-            r19.y = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m01_m11_m21_m31);
-            r11.w = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m03_m13_m23_m33);
+            r19.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.x/4]._m00_m10_m20_m30);
+            r19.y = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.x/4]._m01_m11_m21_m31);
+            r11.w = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.x/4]._m03_m13_m23_m33);
             r11.w = max(r11.w, 9.999999747e-006);
             r16.xz = r19.xy / r11.ww;
             r11.w = (int)r8.w < (int)1;
             if (r11.w != 0) {
-              r10.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.w/4]._m02_m12_m22_m32);
+              r10.x = dot(r12.xyzw, _SpotShadowProjectionMatrix[r10.x/4]._m02_m12_m22_m32);
               r19.xy = r16.xz * _SpotShadowMapSize.xy + float2(5.000000e-001,5.000000e-001);
               r19.zw = floor(r19.xy);
               r19.xy = r19.xy + -r19.zw;
@@ -1389,7 +1390,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
               r10.x = (int)r8.w < (int)r6.z;
               if (r10.x != 0) {
                 r16.xz = r16.xz * _SpotScaleOffsetUVS[r8.w].xy + _SpotScaleOffsetUVS[r8.w].zw;
-                r10.x = r8.w == 1;
+                r10.x = (int)r8.w == 1;
                 if (r8.w == 0) {
                   r19.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
                 } else {
@@ -1486,7 +1487,7 @@ r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
   r0.w = 1.000000e+000 / r0.w;
   r0.w = _BRDFHighQuality ? r0.w : 1.000000000e+000;
   r3.xyz = r21.xyz * r0.www;
-  r0.w = r2.x != 2;
+  r0.w = (int)r2.x != 2;
   r2.z = saturate(r2.z);
   r1.z = r2.z * r2.z;
   r1.x = r1.z * r1.y + r1.x;
@@ -3044,6 +3045,6 @@ ret
 
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(271,13-39): error X3018: invalid subscript 'xyzw'
+C:\Games\Far Cry 4\bin\wrapper1349(273,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  
