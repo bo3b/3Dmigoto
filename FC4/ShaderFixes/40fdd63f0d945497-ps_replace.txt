@@ -1,4 +1,42 @@
-//Lights - untested
+// Lighting related/environment (specular highlights, environment reflection, fog, etc)
+// Shader has several variants. Some AA variants have two - one for the fill,
+// one for the anti-aliased polygon edges:
+//
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 18d84611abd87606 | 0 | N/A  | Medium
+// 6d82ce75a16feb83 | 0 | N/A  | High
+// d4e77294d5c49a53 | 2 | Fill | Medium
+// aa0ba3aefd2413b1 | 2 | Fill | High
+// 8afc461f52eab3e6 | 2 | Edge | Medium
+// 26d2628c45dfbeea | 2 | Edge | High
+// bae6b98bfda33066 | 4 | Fill | Medium
+// c73430e1895ff2f8 | 4 | Fill | High
+// ea7ccc99799c7228 | 4 | Edge | Medium
+// 54eae19b7f5cc5a0 | 4 | Edge | High
+// 6ee0d5531150d4cd | 8 | Fill | Medium
+// d120ec3d6d0ad200 | 8 | Fill | High
+// 343df1da0e3edd9e | 8 | Edge | Medium
+// 9a9b807b3669906a | 8 | Edge | High
+//
+// And even more variants without specular highlights (seen in some Himalayas missions):
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 8870ff9827077a28 | 0 | N/A  | Medium
+// 40fdd63f0d945497 | 0 | N/A  | High
+// 21bb80dc29b691bb | 2 | Fill | Medium
+// 01f23eabdd55a4de | 2 | Fill | High
+// 5b0fcbe11dff7344 | 2 | Edge | Medium
+// 5059cf988234568b | 2 | Edge | High
+// 325594ab3056df53 | 4 | Fill | Medium
+// f22672f7d2f3e4d5 | 4 | Fill | High
+// 72a6e709c250e563 | 4 | Edge | Medium
+// ef62df7b760ff261 | 4 | Edge | High
+// 375c5401a4ad4241 | 8 | Fill | Medium
+// 775ad5671fae6770 | 8 | Fill | High
+// 8a508f9327f97cf3 | 8 | Edge | Medium
+// dd3d62e85908f373 | 8 | Edge | High
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -115,10 +153,15 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
-  uint4 bitmask;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   r0.xyzw = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).xyzw;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
+
+float depth = r0.x;
+
   r0.y = _CameraDistances.x * _CameraDistances.y;
   r0.x = _CameraDistances.z * r0.x;
   r0.x = r0.y / r0.x;
@@ -131,32 +174,9 @@ void main(
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  
-r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;  
-  
-float4 r35, r32, r33, r34;
-r35.xyz = r0.xyz;
-r35.w = 1.0;
-r32.x = dot(r35.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r35.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r35.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r35.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
+// Do not adjust at this point!
 float4 stereo = StereoParams.Load(0);
-r32.x -= stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
-
-r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
-
 
   r0.xyz = _CameraPosition_DistanceScale.xzy + r0.xyz;
   r1.xy = (int2)v0.xy;
@@ -183,7 +203,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r5.z = r6.y;
   r5.y = dot(r5.xyzw, r9.xyzw);
   r5.xw = (int2)r1.xy & int2(1,1);
-  r0.w = r5.x != r5.w;
+  r0.w = (int)r5.x != (int)r5.w;
   r5.z = r2.y;
   r5.yz = r0.ww ? r5.yz : r5.zy;
   r5.x = r2.x * r2.x;
@@ -207,7 +227,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r3.w = 1.000000000e+000 + -r3.w;
   r3.w = sqrt(r3.w);
   r5.w = r2.w ? r3.x : r3.w;
-  r7.xy = r2.ww == float2(1.000000e+000,2.000000e+000);
+  r7.xy = (int)r2.ww == int2(1,2);
   r8.xy = r7.xy ? r3.ww : r3.yz;
   r2.w = r2.w ? r3.w : r3.x;
   r2.w = r7.x ? r3.y : r2.w;
@@ -226,7 +246,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r8.xyz = r9.wxw * r8.xxx;
   r5.y = 2.000000000e+000;
   r5.xyz = r8.xyz * r5.xyz + r7.xyz;
-  r7.xyzw = r0.wwww == float4(1.000000e+000,5.000000e+000,6.000000e+000,4.000000e+000);
+  r7.xyzw = (int)r0.wwww == int4(1,5,6,4);
   if (r7.x != 0) {
     r8.xy = float2(3.200000e+001,2.550000e+002) * r4.xy;
     r2.w = (uint)r8.y;
@@ -247,7 +267,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
     r4.x = (int)r4.x & 15;
     r4.x = r4.x;
     r3.w = 6.666667014e-002 * r4.x;
-    r4.x = r0.w == 3;
+    r4.x = (int)r0.w == 3;
     if (r4.x != 0) {
       r11.xyz = r9.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r11.xyz, r11.xyz);
@@ -259,7 +279,7 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
       r4.x = dot(r9.yzw, r9.yzw);
       r4.x = rsqrt(r4.x);
       r9.yzw = r9.yzw * r4.xxx;
-      r10.zw = r0.ww == float2(4.000000e+000,5.000000e+000);
+      r10.zw = (int)r0.ww == int2(4,5);
       r4.x = r10.w ? 1.000000000e+000 : r4.w;
       r8.yzw = r10.zzz ? r9.yzw : r5.xyz;
       r10.x = r10.z ? r4.w : r4.x;
@@ -281,11 +301,26 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r1.y = _BRDFHighQuality ? r1.x : r1.y;
   r1.y = r7.y ? r1.y : r1.x;
   r1.zw = r7.zz ? float2(0.000000e+000,1.000000e+000) : r10.yx;
+
+// Adjusted version of r0 for various fixes
+// multiplier found through experimenting at different times of day/night
+float multiplier = depth * 8192;
+float3 adj_r0 = r0 - mul(float4(stereo.x * multiplier, 0, 0, 0), _InvViewRotProjectionMatrix).xzy; // Axis order XZY
+//adj_r0 = r0;
+
   r0.xyz = _CameraPosition_DistanceScale.xzy + -r0.xyz;
   r2.y = dot(r0.xyz, r0.xyz);
   r2.y = sqrt(r2.y);
   r0.xyz = r0.xyz / r2.yyy;
-  r10.w = dot(r5.xzy, r0.xyz);
+
+// Do this second so r2.y is the adjusted version, which fixes fog
+adj_r0.xyz = _CameraPosition_DistanceScale.xzy + -adj_r0.xyz;
+r2.y = dot(adj_r0.xyz, adj_r0.xyz);
+r2.y = sqrt(r2.y);
+adj_r0.xyz = adj_r0.xyz / r2.yyy;
+
+  r10.w = dot(r5.xzy, adj_r0.xyz); // Use adjusted position to fix highlights on surfaces
+
   r2.z = r3.w * 8.200000226e-002 + 1.799999923e-002;
   r4.xyw = r6.xyz + -r2.zzz;
   r4.xyw = r1.zzz * r4.xyw + r2.zzz;
@@ -305,14 +340,16 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r1.z = r1.z ? 1.000000 : 0;
   r12.xyz = r12.xyz * _AmbientRange + -r9.yzw;
   r9.yzw = r1.zzz * r12.xyz + r9.yzw;
-  r0.w = r0.w == 3;
+  r0.w = (int)r0.w == 3;
   r0.w = (int)r0.w | (int)r7.w;
   r0.w = r0.w ? 1.000000 : 0;
   r0.w = _SSAOPerMaterialIntensity * r0.w;
   r1.z = 1.000000000e+000 + -r11.w;
   r0.w = r0.w * r1.z + r11.w;
   r1.z = r7.x ? 0.250000 : 0;
-  r12.yzw = -r0.zyx;
+
+  r12.yzw = -adj_r0.zyx; // Use adjusted position to fix fog while camera is tilted
+
   r12.x = 1.000000000e+000;
   r13.x = dot(_FogSHR.xyzw, r12.xyzw);
   r13.y = dot(_FogSHG.xyzw, r12.xyzw);
@@ -345,7 +382,10 @@ r0.xyz = r34.xyz - _CameraPosition_DistanceScale.xyz ;
   r3.w = dot(r3.xzy, r0.xyz);
   r3.xyzw = _BRDFHighQuality ? r3.xyzw : r10.xyzw;
   r1.w = r3.w + r3.w;
-  r0.xyz = -r1.www * r3.xzy + r0.xyz;
+
+// Use adjusted position to fix environment map reflection:
+  r0.xyz = -r1.www * r3.xzy + adj_r0.xyz;
+
   r0.xyz = -r0.xyz;
   r1.w = -r1.y * 6.000000000e+000 + 6.000000000e+000;
   r3.xyzw = EnvironmentMapTexture__TexObj__.SampleLevel(EnvironmentMapTexture__SampObj___s, r0.xyz, r1.w).xyzw;
@@ -804,9 +844,4 @@ mov o0.w, l(1.000000)
 ret 
 // Approximately 244 instruction slots used
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(244,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

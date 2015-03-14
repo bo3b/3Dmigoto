@@ -11,24 +11,31 @@
 // 8afc461f52eab3e6 | 2 | Edge | Medium
 // 26d2628c45dfbeea | 2 | Edge | High
 // bae6b98bfda33066 | 4 | Fill | Medium
-// c73430e1895ff2f8 | 4 | Fill | Medium
+// c73430e1895ff2f8 | 4 | Fill | High
 // ea7ccc99799c7228 | 4 | Edge | Medium
-// 54eae19b7f5cc5a0 | 4 | Edge | Medium
+// 54eae19b7f5cc5a0 | 4 | Edge | High
 // 6ee0d5531150d4cd | 8 | Fill | Medium
-// d120ec3d6d0ad200 | 8 | Fill | Medium
+// d120ec3d6d0ad200 | 8 | Fill | High
 // 343df1da0e3edd9e | 8 | Edge | Medium
-// 9a9b807b3669906a | 8 | Edge | Medium
+// 9a9b807b3669906a | 8 | Edge | High
 //
 // And even more variants without specular highlights (seen in some Himalayas missions):
 // Hash             |AA | Fill | Vegetation
 //------------------+---+------+-----------
 // 8870ff9827077a28 | 0 | N/A  | Medium
+// 40fdd63f0d945497 | 0 | N/A  | High
 // 21bb80dc29b691bb | 2 | Fill | Medium
+// 01f23eabdd55a4de | 2 | Fill | High
 // 5b0fcbe11dff7344 | 2 | Edge | Medium
+// 5059cf988234568b | 2 | Edge | High
 // 325594ab3056df53 | 4 | Fill | Medium
+// f22672f7d2f3e4d5 | 4 | Fill | High
 // 72a6e709c250e563 | 4 | Edge | Medium
+// ef62df7b760ff261 | 4 | Edge | High
 // 375c5401a4ad4241 | 8 | Fill | Medium
+// 775ad5671fae6770 | 8 | Fill | High
 // 8a508f9327f97cf3 | 8 | Edge | Medium
+// dd3d62e85908f373 | 8 | Edge | High
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
