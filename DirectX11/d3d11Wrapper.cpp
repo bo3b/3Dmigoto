@@ -1748,6 +1748,11 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 				continue;
 			}
 
+			// Is there a good reason we are operating on a copy of the map and not the original?
+			// Took me a while to work out why this wasn't working: iter.second.found = true;
+			//   -DarkStarSword
+			G->mReloadedShaders[oldShader].found = true;
+
 			// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
 			// Disassemble the binary to get that string.
 			if (shaderModel.compare("bin") == 0)
@@ -1884,15 +1889,56 @@ static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 	}
 }
 
+// If a shader no longer exists in ShaderFixes, point it back to the original
+// shader so that the replaced shaders are consistent with those in
+// ShaderFixes. Especially useful if the decompiler creates a rendering issue
+// in a shader we actually don't need so we don't need to restart the game.
+static void RevertMissingShaders()
+{
+	D3D11Base::ID3D11DeviceChild* replacement = NULL;
+	ShaderReloadMap::iterator i;
+
+	for (i = G->mReloadedShaders.begin(); i != G->mReloadedShaders.end(); i++) {
+		if (i->second.found)
+			continue;
+
+		if (i->second.shaderType.compare(L"vs") == 0) {
+			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find((D3D11Base::ID3D11VertexShader*)i->first);
+			if (j == G->mOriginalVertexShaders.end())
+				continue;
+			replacement = j->second;
+		} else if (i->second.shaderType.compare(L"ps") == 0) {
+			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find((D3D11Base::ID3D11PixelShader*)i->first);
+			if (j == G->mOriginalPixelShaders.end())
+				continue;
+			replacement = j->second;
+		}
+
+		LogInfo("Reverting %016llx not found in ShaderFixes\n", i->second.hash);
+
+		if (i->second.replacement)
+			i->second.replacement->Release();
+
+		replacement->AddRef();
+		i->second.replacement = replacement;
+		i->second.timeStamp = { 0 };
+	}
+}
+
 static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 {
+	ShaderReloadMap::iterator i;
+
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (SHADER_PATH[0])
 	{
-		bool success = false;
+		bool success = true;
 		WIN32_FIND_DATA findFileData;
 		wchar_t fileName[MAX_PATH];
+
+		for (i = G->mReloadedShaders.begin(); i != G->mReloadedShaders.end(); i++)
+			i->second.found = false;
 
 		// Strict file name format, to allow renaming out of the way. "00aa7fa12bbf66b3-ps_replace.txt"
 		// Will still blow up if the first characters are not hex.
@@ -1911,6 +1957,8 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 		{
 			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
 			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
+
+			RevertMissingShaders();
 		}
 		else
 		{

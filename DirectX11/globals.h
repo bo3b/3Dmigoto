@@ -38,6 +38,7 @@ struct OriginalShaderInfo
 	D3D11Base::ID3DBlob* byteCode;
 	FILETIME timeStamp;
 	D3D11Base::ID3D11DeviceChild* replacement;
+	bool found;
 };
 
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
