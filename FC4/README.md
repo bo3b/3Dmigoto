@@ -71,6 +71,9 @@ Known Issues
 
 - Soft shadows have some artefacts.
 
+- Simulated fur glitches a little when very close to the camera, but otherwise
+  looks fine.
+
 Notes
 -----
 (1) I've actually been using the Far Cry 4 profile with StereoFlagsDX10 set to
