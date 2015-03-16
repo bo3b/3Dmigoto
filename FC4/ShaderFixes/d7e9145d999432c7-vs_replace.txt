@@ -190,17 +190,15 @@ void main(
 // Push the scope into the screen.
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
-float4 params = IniParams.Load(0);
-float hud_depth = params.x;
+float scope_depth = IniParams.Load(0).y;
 
-if (params.y == 1) { // Aiming
-	if (params.w == 0) {
-		// Move to UI depth
-		o0.x += separation * hud_depth * o0.w;
-	} else if (params.w == 1) {
-		// Alternate adjustment to align with weapon
-		o0.x += separation * (o0.w - convergence);
-	}
+if (scope_depth == -1) {
+	// Use standard stereo correction to align with weapon sight:
+	o0.x += separation * (o0.w - convergence);
+} else {
+	// Adjust to a fixed depth. Since W already has the depth of the sight
+	// (not 1), we need to multiply the adjustment by W:
+	o0.x += separation * scope_depth * o0.w;
 }
 
   return;
