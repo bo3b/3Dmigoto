@@ -1,5 +1,12 @@
 // atmosphere glow around moon
 
+// NOTE: The reflection of this glow is off (needs += separation instead of
+// -= separation), but this shader doesn't have access to _ViewportSize, so
+// there is currently no way to tell which one it is rendering.
+
+// Later once we support render target filtering in 3Dmigoto itself we can fix
+// this properly, but until then it's only a minor issue.
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 

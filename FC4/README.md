@@ -3,16 +3,6 @@ Far Cry 4
 
 A fix by DarkStarSword and mike_ar69
 
-**NOTE: This is an early alpha release for wider testing. If you find any
-rendering issues please report back:**
-
-- What is broken (a 3D screenshot showing the broken effect is fine)
-- Where in the game (somewhere in the open world, or a particular mission)
-- What anti-aliasing setting you are using **(VERY IMPORTANT!!!)**
-- What other settings you are using
-- Which driver profile you are using
-- If you using SLI or a single GPU
-
 Fixed
 -----
 - Shadows
@@ -23,10 +13,12 @@ Fixed
 - Interior building masks
 - Clipping on lights
 - Low convergence preset activated when aiming via right mouse or left trigger
+  (you can edit the d3dx.ini file to adjust the convergence amount or key
+  binding under \[Key1\] and \[Key2\]).
 - UI/HUD depth adjusted (depth may be customised via the X parameter in
   d3dx.ini under \[Constants\])
-- Weapon sight depth adjusted (press tilde to toggle between lining up with the
-  UI depth, or the weapon depth).
+- Weapon sight depth adjusted (depth may be customised via the Y parameter in
+  d3dx.ini under \[Constants\]).
 - "Dirty lens" bloom depth adjusted
 - nVidia god rays ("ENHANCED" option in settings)
 - Regular god rays (while looking at sun through trees)
@@ -39,27 +31,28 @@ Fixed
 
 Installation
 ------------
-1. Use nvidia inspector to assign the game to the Max Payne 3 profile(1)(2)
+1. Use nvidia inspector to assign the game to the Max Payne 3 profile. Refer to
+   [this guide][1] for instructions on how to do this.
+
+   [1]: http://helixmod.blogspot.com/2013/03/how-to-change-3d-vision-profile-and.html
 
 2. Unpack zip to Far Cry 4\bin directory
 
-3. Enable advanced keys in nVidia control panel
-
-4. If game switches to windowed mode after launch, press alt+enter to switch
+3. If game switches to windowed mode after launch, press alt+enter to switch
    back to full screen
 
-5. If using a recent driver version >= 347.09, press ctrl+alt+F11 in game to
-   disable compatibility mode
-
-7. Set ambient occlusion to HBAO+ or SSAO. HBAO+ looks significantly better
+4. Set ambient occlusion to HBAO+ or SSAO. HBAO+ looks significantly better
    than SSAO, but has some minor artefacts on some surfaces. SSAO may not work
    on earlier versions of the game.
 
-8. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
+5. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
    but shadows will have a 1 frame sync issue, and may appear to lift off the
-   ground while walking. SMAA is not recommended. (3)
+   ground while walking. SMAA is not recommended.
 
-9. Disable motion blur, as it causes rendering artefacts.
+6. Disable motion blur, as it causes rendering artefacts.
+
+7. If you are using SLI, set terrain to medium or lower to get good
+   performance.
 
 
 Known Issues
@@ -69,22 +62,18 @@ Known Issues
 
 - Windows & doors of buildings sometimes appear brighter than they should.
 
-- Soft shadows have some artefacts.
+- Soft shadows have some minor artefacts.
 
 - Simulated fur glitches a little when very close to the camera, but otherwise
   looks fine.
 
+- Moon glow reflection is not quite right (I could either fix the reflection,
+  or the glow in the sky... I chose the later).
+
 Notes
 -----
-(1) I've actually been using the Far Cry 4 profile with StereoFlagsDX10 set to
-    0x00004000 instead of the Max Payne 3 profile, but they should be roughly
-    equivelent.
+If you find any rendering issues please post on [the forum thread][2], and be
+sure to mention where the broken effect was in the game, and what settings you
+are using - particularly anti-aliasing, shadows and vegetation.
 
-(2) SLI users can alternatively use a null profile with the SLI compatibility
-    bits copied from the Far Cry 3 profile. Plese report back with what works
-    best for performance and without graphics glitches.
-
-(3) Many effects use different shaders depending on the AA settings (off/SMAA,
-    MSAA2/TXAA2, MSAA4/TXAA4, MSAA8). I've tried to fix all variants, but I may
-    have missed some - please let me know if you find something broken and
-    which AA setting you were using.
+[2]: https://forums.geforce.com/default/topic/789514/far-cry-4-3d-screenshots-
