@@ -146,6 +146,7 @@ public:
 			float target_x, float target_y, float target_z,
 			float target_w, int time, TransitionType transition_type);
 	void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device);
+	void Stop();
 };
 
 // This struct + class provides a global save for each of the overridable

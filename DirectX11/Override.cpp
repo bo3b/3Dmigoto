@@ -477,6 +477,16 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 	UpdateIniParams(device, wrapper, &params);
 }
 
+void OverrideTransition::Stop()
+{
+	x.time = -1;
+	y.time = -1;
+	z.time = -1;
+	w.time = -1;
+	separation.time = -1;
+	convergence.time = -1;
+}
+
 OverrideGlobalSaveParam::OverrideGlobalSaveParam() :
 	save(FLT_MAX),
 	refcount(0)
@@ -505,9 +515,15 @@ void OverrideGlobalSave::Reset(D3D11Wrapper::ID3D11Device* wrapper)
 
 	// Restore any saved separation & convergence settings to prevent a
 	// currently active preset from becoming the default on config reload.
+	//
+	// If there is no active preset, but there is a transition in progress,
+	// use it's target to avoid an intermediate value becoming the default.
+	//
 	// Don't worry about the ini params since the config reload will reset
 	// them anyway.
 	val = separation.Reset();
+	if (val == FLT_MAX && CurrentTransition.separation.time != -1)
+		val = CurrentTransition.separation.target;
 	if (val != FLT_MAX) {
 		LogInfo(" Restoring separation to %#.2f\n", val);
 
@@ -518,6 +534,8 @@ void OverrideGlobalSave::Reset(D3D11Wrapper::ID3D11Device* wrapper)
 	}
 
 	val = convergence.Reset();
+	if (val == FLT_MAX && CurrentTransition.convergence.time != -1)
+		val = CurrentTransition.convergence.target;
 	if (val != FLT_MAX) {
 		LogInfo(" Restoring convergence to %#.2f\n", val);
 
@@ -526,6 +544,10 @@ void OverrideGlobalSave::Reset(D3D11Wrapper::ID3D11Device* wrapper)
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
+
+	// Make sure any current transition won't continue to change the
+	// parameters after the reset:
+	CurrentTransition.Stop();
 }
 
 void OverrideGlobalSaveParam::Save(float val)
