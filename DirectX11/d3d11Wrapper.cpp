@@ -15,20 +15,25 @@
 #include "Override.h"
 #include "globals.h"
 
+// The Log file and the Globals are both used globally, and these are the actual
+// definitions of the variables.  All other uses will be via the extern in the 
+// globals.h and log.h files.
+
+Globals *G;
+
 FILE *LogFile = 0;		// off by default.
 bool LogInput = false, LogDebug = false;
 
-static bool gInitialized = false;
 
+static bool gInitialized = false;
+static bool ReloadConfigPending = false;
+
+// Todo: Not sure if these are global or not
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIDevice2::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D10Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
-
-static bool ReloadConfigPending = false;
-
-Globals *G;
 
 
 static string LogTime()
