@@ -18,7 +18,6 @@
 FILE *LogFile = 0;		// off by default.
 bool LogInput = false, LogDebug = false;
 
-static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gInitialized = false;
 
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
@@ -400,11 +399,11 @@ static void LoadConfigFile()
 	}
 
 	// [System]
-	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, DLL_PATH, MAX_PATH, iniFile);
+	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH, iniFile);
 	if (LogFile)
 	{
 		LogInfo("[System]\n");
-		if (!DLL_PATH) LogInfoW(L"  proxy_d3d11=%s\n", DLL_PATH);
+		if (!G->CHAIN_DLL_PATH) LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
 	}
 
 	// [Device]
@@ -1040,12 +1039,12 @@ static void InitD311()
 	if (hD3D11) return;
 	G = new Globals();
 	InitializeDLL();
-	if (DLL_PATH[0])
+	if (G->CHAIN_DLL_PATH[0])
 	{
 		wchar_t sysDir[MAX_PATH];
 		GetModuleFileName(0, sysDir, MAX_PATH);
 		wcsrchr(sysDir, L'\\')[1] = 0;
-		wcscat(sysDir, DLL_PATH);
+		wcscat(sysDir, G->CHAIN_DLL_PATH);
 		if (LogFile)
 		{
 			char path[MAX_PATH];
@@ -1058,10 +1057,10 @@ static void InitD311()
 			if (LogFile)
 			{
 				char path[MAX_PATH];
-				wcstombs(path, DLL_PATH, MAX_PATH);
+				wcstombs(path, G->CHAIN_DLL_PATH, MAX_PATH);
 				LogInfo("load failed. Trying to load %s\n", path);
 			}
-			hD3D11 = LoadLibrary(DLL_PATH);
+			hD3D11 = LoadLibrary(G->CHAIN_DLL_PATH);
 		}
 	}
 	else

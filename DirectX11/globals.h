@@ -156,6 +156,7 @@ struct Globals
 {
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
+	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
@@ -313,6 +314,7 @@ struct Globals
 	{
 		SHADER_PATH[0] = 0;
 		SHADER_CACHE_PATH[0] = 0;
+		CHAIN_DLL_PATH[0] = 0;
 
 		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;
