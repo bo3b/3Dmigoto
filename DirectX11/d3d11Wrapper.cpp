@@ -21,18 +21,11 @@ bool LogInput = false, LogDebug = false;
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gInitialized = false;
 
-const int MARKING_MODE_SKIP = 0;
-const int MARKING_MODE_MONO = 1;
-const int MARKING_MODE_ORIGINAL = 2;
-const int MARKING_MODE_ZERO = 3;
-
 ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
 ThreadSafePointerSet D3D11Wrapper::IDXGIDevice2::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D10Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
-static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
-static wchar_t SHADER_CACHE_PATH[MAX_PATH] = { 0 };
 
 static bool ReloadConfigPending = false;
 
@@ -456,35 +449,35 @@ static void LoadConfigFile()
 	}
 
 	// [Rendering]
-	GetPrivateProfileString(L"Rendering", L"override_directory", 0, SHADER_PATH, MAX_PATH, iniFile);
-	if (SHADER_PATH[0])
+	GetPrivateProfileString(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH, iniFile);
+	if (G->SHADER_PATH[0])
 	{
-		while (SHADER_PATH[wcslen(SHADER_PATH) - 1] == L' ')
-			SHADER_PATH[wcslen(SHADER_PATH) - 1] = 0;
-		if (SHADER_PATH[1] != ':' && SHADER_PATH[0] != '\\')
+		while (G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] == L' ')
+			G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] = 0;
+		if (G->SHADER_PATH[1] != ':' && G->SHADER_PATH[0] != '\\')
 		{
 			GetModuleFileName(0, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
-			wcscat(setting, SHADER_PATH);
-			wcscpy(SHADER_PATH, setting);
+			wcscat(setting, G->SHADER_PATH);
+			wcscpy(G->SHADER_PATH, setting);
 		}
 		// Create directory?
-		CreateDirectory(SHADER_PATH, 0);
+		CreateDirectory(G->SHADER_PATH, 0);
 	}
-	GetPrivateProfileString(L"Rendering", L"cache_directory", 0, SHADER_CACHE_PATH, MAX_PATH, iniFile);
-	if (SHADER_CACHE_PATH[0])
+	GetPrivateProfileString(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH, iniFile);
+	if (G->SHADER_CACHE_PATH[0])
 	{
-		while (SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] == L' ')
-			SHADER_CACHE_PATH[wcslen(SHADER_CACHE_PATH) - 1] = 0;
-		if (SHADER_CACHE_PATH[1] != ':' && SHADER_CACHE_PATH[0] != '\\')
+		while (G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] == L' ')
+			G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] = 0;
+		if (G->SHADER_CACHE_PATH[1] != ':' && G->SHADER_CACHE_PATH[0] != '\\')
 		{
 			GetModuleFileName(0, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
-			wcscat(setting, SHADER_CACHE_PATH);
-			wcscpy(SHADER_CACHE_PATH, setting);
+			wcscat(setting, G->SHADER_CACHE_PATH);
+			wcscpy(G->SHADER_CACHE_PATH, setting);
 		}
 		// Create directory?
-		CreateDirectory(SHADER_CACHE_PATH, 0);
+		CreateDirectory(G->SHADER_CACHE_PATH, 0);
 	}
 
 	G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, iniFile) == 1;
@@ -500,10 +493,10 @@ static void LoadConfigFile()
 	if (LogFile)
 	{
 		LogInfo("[Rendering]\n");
-		if (SHADER_PATH[0])
-			LogInfoW(L"  override_directory=%s\n", SHADER_PATH);
-		if (SHADER_CACHE_PATH[0])
-			LogInfoW(L"  cache_directory=%s\n", SHADER_CACHE_PATH);
+		if (G->SHADER_PATH[0])
+			LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
+		if (G->SHADER_CACHE_PATH[0])
+			LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
 		if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
 		if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
@@ -1398,7 +1391,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 	wchar_t fullName[MAX_PATH];
 	FILE *fw;
 
-	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
+	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 	{
@@ -1510,7 +1503,7 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
 	wchar_t fullName[MAX_PATH];
 	FILE *f;
 
-	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
+	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
 
 	// Check if the file already exists.
 	_wfopen_s(&f, fullName, L"rb");
@@ -1848,7 +1841,7 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 			// shader code, in case there are visual errors, and make it the match the code in the file.
 			wchar_t fileName[MAX_PATH];
 			wsprintf(fileName, L"%08lx%08lx-%ls_replace.txt", (UINT32)(hash >> 32), (UINT32)(hash), iter.second.shaderType.c_str());
-			if (!ReloadShader(SHADER_PATH, fileName, device))
+			if (!ReloadShader(G->SHADER_PATH, fileName, device))
 				break;
 
 			// There can be more than one in the map with the same hash, but we only need a single copy to
@@ -1938,7 +1931,7 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
-	if (SHADER_PATH[0])
+	if (G->SHADER_PATH[0])
 	{
 		bool success = true;
 		WIN32_FIND_DATA findFileData;
@@ -1949,13 +1942,13 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 
 		// Strict file name format, to allow renaming out of the way. "00aa7fa12bbf66b3-ps_replace.txt"
 		// Will still blow up if the first characters are not hex.
-		wsprintf(fileName, L"%ls\\????????????????-??_replace.txt", SHADER_PATH);
+		wsprintf(fileName, L"%ls\\????????????????-??_replace.txt", G->SHADER_PATH);
 		HANDLE hFind = FindFirstFile(fileName, &findFileData);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
 			do
 			{
-				success = ReloadShader(SHADER_PATH, findFileData.cFileName, device);
+				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device);
 			} while (FindNextFile(hFind, &findFileData) && success);
 			FindClose(hFind);
 		}

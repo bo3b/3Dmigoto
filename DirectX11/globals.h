@@ -8,6 +8,11 @@
 #include <set>
 #include <unordered_map>
 
+const int MARKING_MODE_SKIP = 0;
+const int MARKING_MODE_MONO = 1;
+const int MARKING_MODE_ORIGINAL = 2;
+const int MARKING_MODE_ZERO = 3;
+
 // Key is index/vertex buffer, value is hash key.
 typedef std::unordered_map<D3D11Base::ID3D11Buffer *, UINT64> DataBufferMap;
 
@@ -149,6 +154,9 @@ struct ResourceInfo
 
 struct Globals
 {
+	wchar_t SHADER_PATH[MAX_PATH];
+	wchar_t SHADER_CACHE_PATH[MAX_PATH];
+
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
@@ -303,6 +311,9 @@ struct Globals
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0)
 	{
+		SHADER_PATH[0] = 0;
+		SHADER_CACHE_PATH[0] = 0;
+
 		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;
 

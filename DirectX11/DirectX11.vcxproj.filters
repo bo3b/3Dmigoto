@@ -23,6 +23,8 @@
     <ClInclude Include="Override.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="..\version.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

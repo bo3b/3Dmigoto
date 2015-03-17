@@ -266,10 +266,10 @@ static void RegisterForReload(D3D11Base::ID3D11DeviceChild* ppShader,
 	G->mReloadedShaders[ppShader].replacement = NULL;
 }
 
-static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
+static void PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
 {
 	wchar_t fileName[MAX_PATH];
-	wsprintf(fileName, L"%ls\\%ls", shader_path, findFileData.cFileName);
+	wsprintf(fileName, L"%ls\\%ls", path, findFileData.cFileName);
 	char cFileName[MAX_PATH];
 
 	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
@@ -330,10 +330,10 @@ static void PreloadVertexShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileD
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PreloadPixelShader(wchar_t *shader_path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
+static void PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileData, D3D11Base::ID3D11Device *m_pDevice)
 {
 	wchar_t fileName[MAX_PATH];
-	wsprintf(fileName, L"%ls\\%ls", shader_path, findFileData.cFileName);
+	wsprintf(fileName, L"%ls\\%ls", path, findFileData.cFileName);
 	char cFileName[MAX_PATH];
 
 	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
@@ -417,9 +417,9 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 		LogInfo("  preloading custom shaders.\n");
 
 		wchar_t fileName[MAX_PATH];
-		if (SHADER_PATH[0])
+		if (G->SHADER_PATH[0])
 		{
-			wsprintf(fileName, L"%ls\\*-vs_replace.bin", SHADER_PATH);
+			wsprintf(fileName, L"%ls\\*-vs_replace.bin", G->SHADER_PATH);
 			WIN32_FIND_DATA findFileData;
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
@@ -427,15 +427,15 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				BOOL found = true;
 				while (found)
 				{
-					PreloadVertexShader(SHADER_PATH, findFileData, GetD3D11Device());
+					PreloadVertexShader(G->SHADER_PATH, findFileData, GetD3D11Device());
 					found = FindNextFile(hFind, &findFileData);
 				}
 				FindClose(hFind);
 			}
 		}
-		if (SHADER_CACHE_PATH[0])
+		if (G->SHADER_CACHE_PATH[0])
 		{
-			wsprintf(fileName, L"%ls\\*-vs_replace.bin", SHADER_CACHE_PATH);
+			wsprintf(fileName, L"%ls\\*-vs_replace.bin", G->SHADER_CACHE_PATH);
 			WIN32_FIND_DATA findFileData;
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
@@ -443,15 +443,15 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				BOOL found = true;
 				while (found)
 				{
-					PreloadVertexShader(SHADER_CACHE_PATH, findFileData, GetD3D11Device());
+					PreloadVertexShader(G->SHADER_CACHE_PATH, findFileData, GetD3D11Device());
 					found = FindNextFile(hFind, &findFileData);
 				}
 				FindClose(hFind);
 			}
 		}
-		if (SHADER_PATH[0])
+		if (G->SHADER_PATH[0])
 		{
-			wsprintf(fileName, L"%ls\\*-ps_replace.bin", SHADER_PATH);
+			wsprintf(fileName, L"%ls\\*-ps_replace.bin", G->SHADER_PATH);
 			WIN32_FIND_DATA findFileData;
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
@@ -459,15 +459,15 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				BOOL found = true;
 				while (found)
 				{
-					PreloadPixelShader(SHADER_PATH, findFileData, GetD3D11Device());
+					PreloadPixelShader(G->SHADER_PATH, findFileData, GetD3D11Device());
 					found = FindNextFile(hFind, &findFileData);
 				}
 				FindClose(hFind);
 			}
 		}
-		if (SHADER_CACHE_PATH[0])
+		if (G->SHADER_CACHE_PATH[0])
 		{
-			wsprintf(fileName, L"%ls\\*-ps_replace.bin", SHADER_CACHE_PATH);
+			wsprintf(fileName, L"%ls\\*-ps_replace.bin", G->SHADER_CACHE_PATH);
 			WIN32_FIND_DATA findFileData;
 			HANDLE hFind = FindFirstFile(fileName, &findFileData);
 			if (hFind != INVALID_HANDLE_VALUE)
@@ -475,7 +475,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture2D(THIS_
 				BOOL found = true;
 				while (found)
 				{
-					PreloadPixelShader(SHADER_CACHE_PATH, findFileData, GetD3D11Device());
+					PreloadPixelShader(G->SHADER_CACHE_PATH, findFileData, GetD3D11Device());
 					found = FindNextFile(hFind, &findFileData);
 				}
 				FindClose(hFind);
@@ -723,7 +723,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	char *pCode = 0;
 	wchar_t val[MAX_PATH];
 
-	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0])
+	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0])
 	{
 		// Export every shader seen as an ASM file.
 		if (G->EXPORT_SHADERS)
@@ -738,7 +738,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 			}
 			else
 			{
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+				wsprintf(val, L"%ls\\%08lx%08lx-%ls.txt", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 				FILE *f = _wfsopen(val, L"rb", _SH_DENYNO);
 				bool exists = false;
 				if (f)
@@ -761,7 +761,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 							exists = true;
 						delete buf;
 						if (exists) break;
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType, ++cnt);
+						wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.txt", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType, ++cnt);
 						f = _wfsopen(val, L"rb", _SH_DENYNO);
 					}
 				}
@@ -790,7 +790,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		}
 
 		// Read binary compiled shader.
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (f != INVALID_HANDLE_VALUE)
 		{
@@ -832,7 +832,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 		// Load previously created HLSL shaders, but only from ShaderFixes
 		if (!pCode)
 		{
-			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (f != INVALID_HANDLE_VALUE)
 			{
@@ -910,7 +910,7 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 					// Cache binary replacement.
 					if (G->CACHE_SHADERS && pCode)
 					{
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 						FILE *fw;
 						_wfopen_s(&fw, val, L"wb");
 						if (LogFile)
@@ -934,10 +934,10 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 	}
 
 	// Shader hacking?
-	if (SHADER_PATH[0] && SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
+	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
 	{
 		// Skip?
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_bad.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+		wsprintf(val, L"%ls\\%08lx%08lx-%ls_bad.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
 		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
@@ -954,9 +954,9 @@ static char *ReplaceShader(D3D11Base::ID3D11Device *realDevice, UINT64 hash, con
 
 			// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
 			if (G->EXPORT_HLSL >= 1)
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
+				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
 			else
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
+				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
 
 			// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
 			errno_t err = _wfopen_s(&fw, val, L"rb");
