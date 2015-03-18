@@ -35,7 +35,6 @@ ThreadSafePointerSet D3D11Wrapper::IDXGIDevice2::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D10Device::m_List;
 ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
 
-
 static string LogTime()
 {
 	string timeStr;
@@ -50,14 +49,6 @@ static string LogTime()
 	return timeStr;
 }
 
-static char *readStringParameter(wchar_t *val)
-{
-	static char buf[MAX_PATH];
-	wcstombs(buf, val, MAX_PATH);
-	RightStripA(buf);
-	char *start = buf; while (isspace(*start)) start++;
-	return start;
-}
 
 // Case insensitive version of less comparitor. This is used to create case
 // insensitive sets of section names in the ini so we can detect duplicate
@@ -2944,25 +2935,6 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 	LogInfo("D3DKMTQueryResourceInfo called.\n");
 
 	return (*_D3DKMTQueryResourceInfo)(a);
-}
-
-// 64 bit magic FNV-0 and FNV-1 prime
-#define FNV_64_PRIME ((UINT64)0x100000001b3ULL)
-static UINT64 fnv_64_buf(const void *buf, size_t len)
-{
-	UINT64 hval = 0;
-	unsigned const char *bp = (unsigned const char *)buf;	/* start of buffer */
-	unsigned const char *be = bp + len;		/* beyond end of buffer */
-
-	// FNV-1 hash each octet of the buffer
-	while (bp < be)
-	{
-		// multiply by the 64 bit FNV magic prime mod 2^64 */
-		hval *= FNV_64_PRIME;
-		// xor the bottom with the current octet
-		hval ^= (UINT64)*bp++;
-	}
-	return hval;
 }
 
 void D3D11Wrapper::NvAPIOverride()

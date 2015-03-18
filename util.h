@@ -4,6 +4,29 @@
 #include <wchar.h>
 #include <string.h>
 
+
+// Primary hash calculation for all shader file names, all textures.
+
+// 64 bit magic FNV-0 and FNV-1 prime
+#define FNV_64_PRIME ((UINT64)0x100000001b3ULL)
+static UINT64 fnv_64_buf(const void *buf, size_t len)
+{
+	UINT64 hval = 0;
+	unsigned const char *bp = (unsigned const char *)buf;	/* start of buffer */
+	unsigned const char *be = bp + len;		/* beyond end of buffer */
+
+	// FNV-1 hash each octet of the buffer
+	while (bp < be)
+	{
+		// multiply by the 64 bit FNV magic prime mod 2^64 */
+		hval *= FNV_64_PRIME;
+		// xor the bottom with the current octet
+		hval ^= (UINT64)*bp++;
+	}
+	return hval;
+}
+
+
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
 static char *RightStripA(char *buf)
@@ -21,6 +44,15 @@ static wchar_t *RightStripW(wchar_t *buf)
 		end--;
 	*(end + 1) = 0;
 	return end;
+}
+
+static char *readStringParameter(wchar_t *val)
+{
+	static char buf[MAX_PATH];
+	wcstombs(buf, val, MAX_PATH);
+	RightStripA(buf);
+	char *start = buf; while (isspace(*start)) start++;
+	return start;
 }
 
 static void BeepSuccess() {
