@@ -14,8 +14,6 @@
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="Direct3D11Device.h" />
-    <ClInclude Include="Direct3D11Context.h" />
-    <ClInclude Include="DirectDXGIDevice.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="input.h" />
@@ -25,6 +23,7 @@
     <ClInclude Include="..\version.h" />
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
+    <ClInclude Include="Direct3D11Context.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

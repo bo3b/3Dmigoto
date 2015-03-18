@@ -133,7 +133,6 @@
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />
-    <ClInclude Include="DirectDXGIDevice.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="Main.h" />

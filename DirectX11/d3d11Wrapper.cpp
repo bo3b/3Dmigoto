@@ -2405,8 +2405,6 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 }
 
 
-extern "C" int * __cdecl nvapi_QueryInterface(unsigned int offset);
-
 // Called indirectly through the QueryInterface for every vertical blanking, based on calls to
 // IDXGISwapChain1::Present1 and/or IDXGISwapChain::Present in the dxgi interface wrapper.
 // This looks for user input for shader hunting.
@@ -2486,268 +2484,20 @@ static void RunFrameActions(D3D11Base::ID3D11Device *device)
 }
 
 
-// Todo: straighten out these includes and methods to make more sense.
-
-// For reasons that I do not understand, this method is actually a part of the IDXGIDevice2 object. 
-// I think that this is here so that it can get access to the RunFrameActions routine directly,
-// because that is not a method, but simply a function.
-// Whenever I arrive here in the debugger, the object type of 'this' is IDXGIDevice2, and using the
-// expected GetD3D11Device off what I'd expect to be a D3D11Wrapper object, I also get another
-// IDXGIDevice2 object as probably an expected original/wrapper.
-// So... Pretty sure this method is actually part of IDXGIDevice2, NOT the ID3D11Device as I'd expect.
-// This was a problem that took me a couple of days to figure out, because I need the original ID3D11Device
-// in order to call CreateVertexShader here.
-// As part of that I also looked at the piece here before, taking screen snapshots.  That also does
-// not work for the same reason, because the object has a bad stereo texture, because the DXGIDevice2
-// does not include that override, so it gets junk out of memory.  Pretty sure.
-// More info.
-// The way this is defined, it is used in two places.  One for the ID3D11Device and one for the IDXGIDevice2.
-// These are not in conflict, but because of the way the includes are set up, this routine is assumed to be
-// the base class implementation for IDirect3DUnknown, and thus it is used for both those objects.
-// This is bad, because the ID3d11Device is not being accessed, we are only seeing this called from
-// IDXGIDevice2. So, 'this' is always a IDXGIDevice2 object.  
-// So, I'm fairly sure this is just a bug.
-// The current fix is to make a global to store the real ID3D11Device and use that when RunFrameActions
-// calls. The correct answer is to split these QueryInterface routines in two, make one for ID3D11Device
-// and one for IDXGIDevice2, and make a callback where the IDXGIDevice2 can know how to Present to the
-// proper object.
+// This QueryInterface may no longer be necessary.  After removing DXGI interface altogether.
+// Verified that the typeid passed in is the D3D11Base::Device
 
 STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
 	LogDebug("D3D11Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
 
-	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
-	IID m2 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-	IID m3 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
-	if (riid.Data1 == m1.Data1 && riid.Data2 == m1.Data2 && riid.Data3 == m1.Data3 &&
-		riid.Data4[0] == m1.Data4[0] && riid.Data4[1] == m1.Data4[1] && riid.Data4[2] == m1.Data4[2] && riid.Data4[3] == m1.Data4[3] &&
-		riid.Data4[4] == m1.Data4[4] && riid.Data4[5] == m1.Data4[5] && riid.Data4[6] == m1.Data4[6] && riid.Data4[7] == m1.Data4[7])
-	{
-		LogInfo("Callback from dxgi.dll wrapper: requesting real ID3D11Device handle from %p\n", *ppvObj);
-
-		D3D11Wrapper::ID3D11Device *p = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(*ppvObj);
-		if (p)
-		{
-			LogInfo("  given pointer was already the real device.\n");
-		}
-		else
-		{
-			*ppvObj = ((D3D11Wrapper::ID3D11Device *)*ppvObj)->m_pUnk;
-		}
-		LogInfo("  returning handle = %p\n", *ppvObj);
-
-		return 0x13bc7e31;
-	}
-	else if (riid.Data1 == m2.Data1 && riid.Data2 == m2.Data2 && riid.Data3 == m2.Data3 &&
-		riid.Data4[0] == m2.Data4[0] && riid.Data4[1] == m2.Data4[1] && riid.Data4[2] == m2.Data4[2] && riid.Data4[3] == m2.Data4[3] &&
-		riid.Data4[4] == m2.Data4[4] && riid.Data4[5] == m2.Data4[5] && riid.Data4[6] == m2.Data4[6] && riid.Data4[7] == m2.Data4[7])
-	{
-		LogDebug("Callback from dxgi.dll wrapper: notification %s received\n", typeid(*ppvObj).name());
-
-		// This callback from DXGI has been disabled, because the DXGI interface does not get called in all games.
-		// We have switched to using a similar callback, but from DeviceContext so that we don't need DXGI.
-		//switch ((int) *ppvObj)
-		//{
-		//	case 0:
-		//	{
-		// Present received.
-		// Todo: this cast is wrong. The object is always IDXGIDevice2.
-		//				ID3D11Device *device = (ID3D11Device *)this;
-		//		RunFrameActions((D3D11Base::ID3D11Device*) realDevice);
-		//	break;
-		//}
-		//}
-		return 0x13bc7e31;
-	}
-	else if (riid.Data1 == m3.Data1 && riid.Data2 == m3.Data2 && riid.Data3 == m3.Data3 &&
-		riid.Data4[0] == m3.Data4[0] && riid.Data4[1] == m3.Data4[1] && riid.Data4[2] == m3.Data4[2] && riid.Data4[3] == m3.Data4[3] &&
-		riid.Data4[4] == m3.Data4[4] && riid.Data4[5] == m3.Data4[5] && riid.Data4[6] == m3.Data4[6] && riid.Data4[7] == m3.Data4[7])
-	{
-		SwapChainInfo *info = (SwapChainInfo *)*ppvObj;
-		LogInfo("Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n",
-			info->width, info->height);
-
-		G->mSwapChainInfo = *info;
-		return 0x13bc7e31;
-	}
-
-	LogDebug("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
-
-	bool d3d10device = riid.Data1 == 0x9b7e4c0f && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 &&
-		riid.Data4[1] == 0x9f && riid.Data4[2] == 0x4f && riid.Data4[3] == 0x27 && riid.Data4[4] == 0x04 &&
-		riid.Data4[5] == 0xf6 && riid.Data4[6] == 0x89 && riid.Data4[7] == 0xf0;
-	bool d3d10multithread = riid.Data1 == 0x9b7e4e00 && riid.Data2 == 0x342c && riid.Data3 == 0x4106 && riid.Data4[0] == 0xa1 &&
-		riid.Data4[1] == 0x9f && riid.Data4[2] == 0x4f && riid.Data4[3] == 0x27 && riid.Data4[4] == 0x04 &&
-		riid.Data4[5] == 0xf6 && riid.Data4[6] == 0x89 && riid.Data4[7] == 0xf0;
-	bool dxgidevice = riid.Data1 == 0x54ec77fa && riid.Data2 == 0x1377 && riid.Data3 == 0x44e6 && riid.Data4[0] == 0x8c &&
-		riid.Data4[1] == 0x32 && riid.Data4[2] == 0x88 && riid.Data4[3] == 0xfd && riid.Data4[4] == 0x5f &&
-		riid.Data4[5] == 0x44 && riid.Data4[6] == 0xc8 && riid.Data4[7] == 0x4c;
-	bool dxgidevice1 = riid.Data1 == 0x77db970f && riid.Data2 == 0x6276 && riid.Data3 == 0x48ba && riid.Data4[0] == 0xba &&
-		riid.Data4[1] == 0x28 && riid.Data4[2] == 0x07 && riid.Data4[3] == 0x01 && riid.Data4[4] == 0x43 &&
-		riid.Data4[5] == 0xb4 && riid.Data4[6] == 0x39 && riid.Data4[7] == 0x2c;
-	bool dxgidevice2 = riid.Data1 == 0x05008617 && riid.Data2 == 0xfbfd && riid.Data3 == 0x4051 && riid.Data4[0] == 0xa7 &&
-		riid.Data4[1] == 0x90 && riid.Data4[2] == 0x14 && riid.Data4[3] == 0x48 && riid.Data4[4] == 0x84 &&
-		riid.Data4[5] == 0xb4 && riid.Data4[6] == 0xf6 && riid.Data4[7] == 0xa9;
-	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e &&
-		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 &&
-		riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
-	if (d3d10device) LogDebug("  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = ID3D10Device\n");
-	if (d3d10multithread) LogDebug("  9b7e4e00-342c-4106-a19f-4f2704f689f0 = ID3D10Multithread\n");
-	if (dxgidevice) LogDebug("  54ec77fa-1377-44e6-8c32-88fd5f44c84c = IDXGIDevice\n");
-	if (dxgidevice1) LogDebug("  77db970f-6276-48ba-ba28-070143b4392c = IDXGIDevice1\n");
-	if (dxgidevice2) LogDebug("  05008617-fbfd-4051-a790-144884b4f6a9 = IDXGIDevice2\n");
-	/*
-	if (unknown1) LogInfo("  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
-	if (unknown1)
-	{
-	*ppvObj = 0;
-	return E_OUTOFMEMORY;
-	}
-	*/
-
 	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
-	if (hr == S_OK)
-	{
-		D3D11Wrapper::ID3D11Device *p1 = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(*ppvObj);
-		if (p1)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p1;
-			unsigned long cnt2 = p1->AddRef();
-			LogDebug("  interface replaced with ID3D11Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p1->m_ulRef, cnt2);
-		}
-		D3D11Wrapper::ID3D11DeviceContext *p2 = (D3D11Wrapper::ID3D11DeviceContext*) D3D11Wrapper::ID3D11DeviceContext::m_List.GetDataPtr(*ppvObj);
-		if (p2)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p2;
-			unsigned long cnt2 = p2->AddRef();
-			LogDebug("  interface replaced with ID3D11DeviceContext wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p2->m_ulRef, cnt2);
-		}
-		D3D11Wrapper::IDXGIDevice2 *p3 = (D3D11Wrapper::IDXGIDevice2*) D3D11Wrapper::IDXGIDevice2::m_List.GetDataPtr(*ppvObj);
-		if (p3)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p3;
-			unsigned long cnt2 = p3->AddRef();
-			LogDebug("  interface replaced with IDXGIDevice2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p3->m_ulRef, cnt2);
-		}
-		D3D11Wrapper::ID3D10Device *p4 = (D3D11Wrapper::ID3D10Device*) D3D11Wrapper::ID3D10Device::m_List.GetDataPtr(*ppvObj);
-		if (p4)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p4;
-			unsigned long cnt2 = p4->AddRef();
-			LogDebug("  interface replaced with ID3D10Device wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter = %d\n", cnt, p4->m_ulRef, cnt2);
-		}
-		D3D11Wrapper::ID3D10Multithread *p5 = (D3D11Wrapper::ID3D10Multithread*) D3D11Wrapper::ID3D10Multithread::m_List.GetDataPtr(*ppvObj);
-		if (p5)
-		{
-			unsigned long cnt = ((IDirect3DUnknown*)*ppvObj)->Release();
-			*ppvObj = p5;
-			unsigned long cnt2 = p5->AddRef();
-			LogDebug("  interface replaced with ID3D10Multithread wrapper. Interface counter=%d, wrapper counter=%d\n", cnt, p5->m_ulRef);
-		}
-		if (!p1 && !p2 && !p3 && !p4 && !p5)
-		{
-			// Check for IDXGIDevice, IDXGIDevice1 or IDXGIDevice2 cast.
-			if (dxgidevice || dxgidevice1 || dxgidevice2)
-			{
-				// Cast again, but always use IDXGIDevice2 interface.
-				D3D11Base::IDXGIDevice *oldDevice = (D3D11Base::IDXGIDevice *)*ppvObj;
-				LogDebug("  releasing received IDXGIDevice, handle=%p. Querying IDXGIDevice2 interface.\n", *ppvObj);
-
-				oldDevice->Release();
-				const IID IID_IGreet = { 0x7A5E6E81, 0x3DF8, 0x11D3, { 0x90, 0x3D, 0x00, 0x10, 0x5A, 0xA4, 0x5B, 0xDC } };
-				const IID IDXGIDevice2 = { 0x05008617, 0xfbfd, 0x4051, { 0xa7, 0x90, 0x14, 0x48, 0x84, 0xb4, 0xf6, 0xa9 } };
-				hr = m_pUnk->QueryInterface(IDXGIDevice2, ppvObj);
-				if (hr != S_OK)
-				{
-					LogInfo("  error querying IDXGIDevice2 interface: %x. Trying IDXGIDevice1.\n", hr);
-
-					const IID IDXGIDevice1 = { 0x77db970f, 0x6276, 0x48ba, { 0xba, 0x28, 0x07, 0x01, 0x43, 0xb4, 0x39, 0x2c } };
-					hr = m_pUnk->QueryInterface(IDXGIDevice1, ppvObj);
-					if (hr != S_OK)
-					{
-						LogInfo("  error querying IDXGIDevice1 interface: %x. Trying IDXGIDevice.\n", hr);
-
-						const IID IDXGIDevice = { 0x54ec77fa, 0x1377, 0x44e6, { 0x8c, 0x32, 0x88, 0xfd, 0x5f, 0x44, 0xc8, 0x4c } };
-						hr = m_pUnk->QueryInterface(IDXGIDevice, ppvObj);
-						if (hr != S_OK)
-						{
-							LogInfo("  fatal error querying IDXGIDevice interface: %x.\n", hr);
-
-							return E_OUTOFMEMORY;
-						}
-					}
-				}
-				D3D11Base::IDXGIDevice2 *origDevice = (D3D11Base::IDXGIDevice2 *)*ppvObj;
-				D3D11Wrapper::IDXGIDevice2 *wrapper = D3D11Wrapper::IDXGIDevice2::GetDirectDevice2(origDevice);
-				if (wrapper == NULL)
-				{
-					LogInfo("  error allocating IDXGIDevice2 wrapper.\n");
-
-					origDevice->Release();
-					return E_OUTOFMEMORY;
-				}
-				*ppvObj = wrapper;
-				LogDebug("  interface replaced with IDXGIDevice2 wrapper, original device handle=%p. Wrapper counter=%d\n",
-					origDevice, wrapper->m_ulRef);
-			}
-			// Check for DirectX10 cast.
-			if (d3d10device)
-			{
-				D3D11Base::ID3D10Device *origDevice = (D3D11Base::ID3D10Device *)*ppvObj;
-				D3D11Wrapper::ID3D10Device *wrapper = D3D11Wrapper::ID3D10Device::GetDirect3DDevice(origDevice);
-				if (wrapper == NULL)
-				{
-					LogInfo("  error allocating ID3D10Device wrapper.\n");
-
-					origDevice->Release();
-					return E_OUTOFMEMORY;
-				}
-				*ppvObj = wrapper;
-				LogDebug("  interface replaced with ID3D10Device wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
-			}
-			if (d3d10multithread)
-			{
-				D3D11Base::ID3D10Multithread *origDevice = (D3D11Base::ID3D10Multithread *)*ppvObj;
-				D3D11Wrapper::ID3D10Multithread *wrapper = D3D11Wrapper::ID3D10Multithread::GetDirect3DMultithread(origDevice);
-				if (wrapper == NULL)
-				{
-					LogInfo("  error allocating ID3D10Multithread wrapper.\n");
-
-					origDevice->Release();
-					return E_OUTOFMEMORY;
-				}
-				*ppvObj = wrapper;
-				LogDebug("  interface replaced with ID3D10Multithread wrapper. Wrapper counter=%d\n", wrapper->m_ulRef);
-			}
-		}
-	}
-	LogDebug("  result = %x, handle = %p\n", hr, *ppvObj);
 
 	return hr;
 }
 
-static D3D11Base::IDXGIAdapter *ReplaceAdapter(D3D11Base::IDXGIAdapter *wrapper)
-{
-	if (!wrapper)
-		return wrapper;
-	LogInfo("  checking for adapter wrapper, handle = %p\n", wrapper);
-	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x00 } };
-	D3D11Base::IDXGIAdapter *realAdapter;
-	if (wrapper->GetParent(marker, (void **)&realAdapter) == 0x13bc7e32)
-	{
-		LogInfo("    wrapper found. replacing with original handle = %p\n", realAdapter);
 
-		// Register adapter.
-		G->m_AdapterList.AddMember(realAdapter, wrapper);
-		return realAdapter;
-	}
-	return wrapper;
-}
+// -----------------------------------------------------------------------------------------------
 
 HRESULT WINAPI D3D11CreateDevice(
 	D3D11Base::IDXGIAdapter *pAdapter,
@@ -2773,7 +2523,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	D3D11Base::ID3D11Device *origDevice = 0;
 	D3D11Base::ID3D11DeviceContext *origContext = 0;
 	EnableStereo();
-	HRESULT ret = (*_D3D11CreateDevice)(ReplaceAdapter(pAdapter), DriverType, Software, Flags, pFeatureLevels,
+	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, &origDevice, pFeatureLevel, &origContext);
 
 	// ret from D3D11CreateDevice has the same problem as CreateDeviceAndSwapChain, in that it can return
@@ -2861,7 +2611,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	D3D11Base::ID3D11Device *origDevice = 0;
 	D3D11Base::ID3D11DeviceContext *origContext = 0;
-	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(ReplaceAdapter(pAdapter), DriverType, Software, Flags, pFeatureLevels,
+	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, &origDevice, pFeatureLevel, &origContext);
 
 	// Changed to recognize that >0 DXGISTATUS values are possible, not just S_OK.
@@ -2950,5 +2700,5 @@ void D3D11Wrapper::NvAPIOverride()
 
 #include "Direct3D11Device.h"
 #include "Direct3D11Context.h"
-#include "DirectDXGIDevice.h"
-#include "../DirectX10/Direct3D10Device.h"
+//#include "DirectDXGIDevice.h"
+//#include "../DirectX10/Direct3D10Device.h"
