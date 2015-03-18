@@ -973,45 +973,16 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	return hash;
 }
 
-vector<byte> assembler(string asmFile, vector<byte> buffer) {
-	byte fourcc[4];
-	DWORD fHash[4];
-	DWORD one;
-	DWORD fSize;
-	//DWORD size;
-	DWORD numChunks;
-	vector<DWORD> chunkOffsets;
-
-	byte* pPosition = buffer.data();
-	std::memcpy(fourcc, pPosition, 4);
-	pPosition += 4;
-	std::memcpy(fHash, pPosition, 16);
-	pPosition += 16;
-	one = *(DWORD*)pPosition;
-	pPosition += 4;
-	fSize = *(DWORD*)pPosition;
-	pPosition += 4;
-	numChunks = *(DWORD*)pPosition;
-	pPosition += 4;
-	chunkOffsets.resize(numChunks);
-	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
-
+void assembler(string asmFile, vector<byte> & bc) {
 	char* asmBuffer;
 	int asmSize;
 	vector<byte> asmBuf;
 	asmBuf = readFile(asmFile);
 	asmBuffer = (char*)asmBuf.data();
 	asmSize = asmBuf.size();
-	byte* codeByteStart;
-	int codeChunk = 0;
-	for (DWORD i = 1; i <= numChunks; i++) {
-		codeChunk = numChunks - i;
-		codeByteStart = buffer.data() + chunkOffsets[numChunks - i];
-		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
-			break;
-	}
+
 	vector<string> lines = stringToLines(asmBuffer, asmSize);
-	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
+
 	bool codeStarted = false;
 	bool multiLine = false;
 	string s2;
@@ -1046,24 +1017,7 @@ vector<byte> assembler(string asmFile, vector<byte> buffer) {
 			}
 		}
 	}
-	codeStart = (DWORD*)(codeByteStart);
-	auto it = buffer.begin() + chunkOffsets[codeChunk];
-	DWORD codeSize = codeStart[1];
-	buffer.erase(it + 8, it + codeSize + 8);
-	codeStart[1] = 4 * o.size();
-	o[1] = o.size();
-	vector<byte> newCode(4 * o.size());
-	memcpy(newCode.data(), o.data(), 4 * o.size());
-	buffer.insert(it + 8, newCode.begin(), newCode.end());
-	DWORD* dwordBuffer = (DWORD*)buffer.data();
-	for (DWORD i = codeChunk + 1; i < numChunks; i++) {
-		dwordBuffer[8 + i] += 4 * o.size() - codeSize;
-	}
-	vector<DWORD> hash = ComputeHash((byte const*)buffer.data() + 20, buffer.size() - 20);
-	dwordBuffer[1] = hash[0];
-	dwordBuffer[2] = hash[1];
-	dwordBuffer[3] = hash[2];
-	dwordBuffer[4] = hash[3];
-	dwordBuffer[6] = buffer.size();
-	return buffer;
+
+	bc.resize(4 * o.size());
+	memcpy(bc.data(), o.data(), 4 * o.size());
 }

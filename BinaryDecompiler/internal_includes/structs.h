@@ -5,8 +5,8 @@
 #include <string>
 #include "hlslcc.h"
 
-#include "internal_includes/tokens.h"
-#include "internal_includes/reflect.h"
+#include "tokens.h"
+#include "reflect.h"
 
 static enum{ MAX_SUB_OPERANDS = 3};
 
@@ -59,6 +59,7 @@ struct Instruction
 	COMPARISON_DX9 eDX9TestType;
     uint32_t ui32SyncFlags;
     uint32_t ui32NumOperands;
+	uint32_t ui32FirstSrc;
     Operand asOperands[6];
     uint32_t bSaturate;
     uint32_t ui32FuncIndexWithinInterface;
@@ -139,6 +140,25 @@ struct Declaration
 
 };
 
+static const uint32_t MAIN_PHASE = 0;
+static const uint32_t HS_GLOBAL_DECL = 1;
+static const uint32_t HS_CTRL_POINT_PHASE = 2;
+static const uint32_t HS_FORK_PHASE = 3;
+static const uint32_t HS_JOIN_PHASE = 4;
+static enum{ NUM_PHASES = 5 };
+
+typedef struct ShaderPhase_TAG
+{
+	//How many instances of this phase type are there?
+	uint32_t ui32InstanceCount;
+
+    uint32_t ui32DeclCount;
+    std::vector<Declaration> psDecl;
+
+    uint32_t ui32InstCount;
+    std::vector<Instruction> psInst;
+} ShaderPhase;
+
 struct Shader
 {
     uint32_t ui32MajorVersion;
@@ -202,6 +222,8 @@ struct Shader
 
     ShaderInfo *sInfo;
 
+	ShaderPhase asPhase[NUM_PHASES];
+
 	std::vector<int> abScalarInput;
 
     std::map<int, int> aIndexedOutput;
@@ -219,6 +241,8 @@ struct Shader
     std::map<int, int> abInputReferencedByInstruction;
 
 	//int aiOpcodeUsed[NUM_OPCODES];
+
+	bool dx9Shader;
 
 	Shader() :
 		ui32MajorVersion(0),
@@ -249,7 +273,8 @@ struct Shader
 		aeResourceDims(),
 		aiInputDeclaredSize(),
 		aiOutputDeclared(),
-		abInputReferencedByInstruction()
+		abInputReferencedByInstruction(),
+		dx9Shader(false)
 	{
 		for (int i = 0; i < MAX_FORK_PHASES; ++i)
 		{
@@ -268,9 +293,5 @@ struct Shader
 	}
 };
 
-static const uint32_t MAIN_PHASE = 0;
-static const uint32_t HS_FORK_PHASE = 1;
-static const uint32_t HS_CTRL_POINT_PHASE = 2;
-static const uint32_t HS_JOIN_PHASE = 3;
-static enum{ NUM_PHASES = 4};
+
 

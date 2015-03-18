@@ -69,10 +69,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\BinaryDecompiler\include;..\mojoShader</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>BinaryDecompiler.lib;Shlwapi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../../Debug</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -113,10 +117,19 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\DecompileHLSL.h" />
+    <ClInclude Include="..\mojoShader\mojoshader.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\DecompileHLSL.cpp" />
+    <ClCompile Include="..\mojoShader\mojoshader.cpp" />
+    <ClCompile Include="..\mojoShader\mojoshader_assembler.cpp" />
+    <ClCompile Include="..\mojoShader\mojoshader_common.cpp" />
+    <ClCompile Include="..\mojoShader\mojoshader_lexer.cpp" />
+    <ClCompile Include="..\mojoShader\mojoshader_preprocessor.cpp" />
+    <ClCompile Include="Assembler.cpp" />
     <ClCompile Include="cmd_Decompiler.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
