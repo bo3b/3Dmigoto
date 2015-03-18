@@ -16,6 +16,8 @@
 
 #include <fstream>
 
+#include <DirectXMath.h>
+
 using namespace std;
 extern FILE *LogFile;
 extern bool LogDebug;
@@ -33,6 +35,10 @@ namespace D3D11Base
 
 namespace D3D11Wrapper
 {
-#include "../IDirect3DUnknown.h"
-#include "d3d11Wrapper.h"
+#include "IDirect3DUnknown.h"
+#include "Direct3D11Context.h"
+#include "Direct3D11Device.h"
+
+//#include "../IDirect3DUnknown.h"
+//#include "d3d11Wrapper.h"
 }

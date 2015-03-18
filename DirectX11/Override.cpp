@@ -2,6 +2,7 @@
 
 #include "Main.h"
 #include "globals.h"
+#include "d3d11Wrapper.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -453,7 +454,7 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 	if (val != FLT_MAX) {
 		LogInfo(" Transitioning separation to %#.2f\n", val);
 
-		D3D11Wrapper::NvAPIOverride();
+		NvAPIOverride();
 		err = D3D11Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
@@ -463,7 +464,7 @@ void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device)
 	if (val != FLT_MAX) {
 		LogInfo(" Transitioning convergence to %#.2f\n", val);
 
-		D3D11Wrapper::NvAPIOverride();
+		NvAPIOverride();
 		err = D3D11Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
@@ -527,7 +528,7 @@ void OverrideGlobalSave::Reset(D3D11Wrapper::ID3D11Device* wrapper)
 	if (val != FLT_MAX) {
 		LogInfo(" Restoring separation to %#.2f\n", val);
 
-		D3D11Wrapper::NvAPIOverride();
+		NvAPIOverride();
 		err = D3D11Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
@@ -539,7 +540,7 @@ void OverrideGlobalSave::Reset(D3D11Wrapper::ID3D11Device* wrapper)
 	if (val != FLT_MAX) {
 		LogInfo(" Restoring convergence to %#.2f\n", val);
 
-		D3D11Wrapper::NvAPIOverride();
+		NvAPIOverride();
 		err = D3D11Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != D3D11Base::NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);

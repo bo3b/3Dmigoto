@@ -6,6 +6,8 @@
     <ClCompile Include="MainHook.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="Override.cpp" />
+    <ClCompile Include="Direct3D11Device.cpp" />
+    <ClCompile Include="Direct3D11Context.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -13,9 +15,7 @@
   <ItemGroup>
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Main.h" />
-    <ClInclude Include="Direct3D11Device.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="vkeys.h" />
     <ClInclude Include="Override.h" />
@@ -24,6 +24,8 @@
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="Direct3D11Context.h" />
+    <ClInclude Include="Direct3D11Device.h" />
+    <ClInclude Include="IDirect3DUnknown.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

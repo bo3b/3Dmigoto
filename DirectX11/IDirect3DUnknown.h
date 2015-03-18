@@ -1,3 +1,5 @@
+#pragma once
+
 // Base class for all wrapper objects. 
 // Not sure, but apparently this is to allow IPC between the objects using QueryInterface.
 

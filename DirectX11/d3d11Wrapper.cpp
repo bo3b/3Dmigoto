@@ -8,12 +8,14 @@
 #include <set>
 #include <iterator>
 #include <string>
-#include <DirectXMath.h>
 #include "../HLSLDecompiler/DecompileHLSL.h"
 #include "../util.h"
 #include "../log.h"
 #include "Override.h"
 #include "globals.h"
+
+#include "Direct3D11Device.h"
+//#include "Direct3D11Context.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
@@ -27,13 +29,6 @@ bool LogInput = false, LogDebug = false;
 
 static bool gInitialized = false;
 static bool ReloadConfigPending = false;
-
-// Todo: Not sure if these are global or not
-ThreadSafePointerSet D3D11Wrapper::ID3D11Device::m_List;
-ThreadSafePointerSet D3D11Wrapper::ID3D11DeviceContext::m_List;
-ThreadSafePointerSet D3D11Wrapper::IDXGIDevice2::m_List;
-ThreadSafePointerSet D3D11Wrapper::ID3D10Device::m_List;
-ThreadSafePointerSet D3D11Wrapper::ID3D10Multithread::m_List;
 
 static string LogTime()
 {
@@ -2428,7 +2423,7 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 // the dxgi wrapper as unneeded.  The draw is caught at AfterDraw in the Context, which is called for
 // every type of Draw, including DrawIndexed.
 
-static void RunFrameActions(D3D11Base::ID3D11Device *device)
+void RunFrameActions(D3D11Base::ID3D11Device *device)
 {
 	static ULONGLONG last_ticks = 0;
 	ULONGLONG ticks = GetTickCount64();
@@ -2687,7 +2682,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 	return (*_D3DKMTQueryResourceInfo)(a);
 }
 
-void D3D11Wrapper::NvAPIOverride()
+void NvAPIOverride()
 {
 	// Override custom settings.
 	const D3D11Base::StereoHandle id1 = (D3D11Base::StereoHandle)0x77aa8ebc;
@@ -2698,7 +2693,7 @@ void D3D11Wrapper::NvAPIOverride()
 	}
 }
 
-#include "Direct3D11Device.h"
-#include "Direct3D11Context.h"
+//#include "Direct3D11Device.h"
+//#include "Direct3D11Context.h"
 //#include "DirectDXGIDevice.h"
 //#include "../DirectX10/Direct3D10Device.h"
