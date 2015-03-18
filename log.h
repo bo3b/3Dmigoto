@@ -1,6 +1,14 @@
 #pragma once
 
+using namespace std;
+
+#include <string>
+#include <ctime>
+
 // Wrappers to make logging cleaner.
+
+extern FILE *LogFile;
+extern bool LogDebug;
 
 // Note that for now I've left the definitions of LogFile and LogDebug as they
 // were - either declared locally in a file, as an extern, or from another
@@ -17,3 +25,18 @@
 	if (LogDebug) LogInfo(fmt, __VA_ARGS__)
 #define LogDebugW(fmt, ...) \
 	if (LogDebug) LogInfoW(fmt, __VA_ARGS__)
+
+static string LogTime()
+{
+	string timeStr;
+	char cTime[32];
+	tm timestruct;
+
+	time_t ltime = time(0);
+	localtime_s(&timestruct, &ltime);
+	asctime_s(cTime, sizeof(cTime), &timestruct);
+
+	timeStr = cTime;
+	return timeStr;
+}
+

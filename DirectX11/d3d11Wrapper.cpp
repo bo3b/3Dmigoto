@@ -30,20 +30,6 @@ bool LogInput = false, LogDebug = false;
 static bool gInitialized = false;
 static bool ReloadConfigPending = false;
 
-static string LogTime()
-{
-	string timeStr;
-	char cTime[32];
-	tm timestruct;
-
-	time_t ltime = time(0);
-	localtime_s(&timestruct, &ltime);
-	asctime_s(cTime, sizeof(cTime), &timestruct);
-
-	timeStr = cTime;
-	return timeStr;
-}
-
 
 // Case insensitive version of less comparitor. This is used to create case
 // insensitive sets of section names in the ini so we can detect duplicate
