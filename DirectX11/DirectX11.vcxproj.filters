@@ -14,7 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3d11Wrapper.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="vkeys.h" />
@@ -25,7 +24,6 @@
     <ClInclude Include="..\util.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />
-    <ClInclude Include="IDirect3DUnknown.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
