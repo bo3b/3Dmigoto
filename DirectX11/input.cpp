@@ -1,18 +1,16 @@
 #include "input.h"
 
-#include "Main.h"
+#include <Xinput.h>
+#include <vector>
+#include <algorithm>
+
 #include "../log.h"
 #include "../util.h"
-#include <vector>
 #include "vkeys.h"
-#include <Xinput.h>
-#include <algorithm>
-#include <ctime>
-#include <exception>
 
 class KeyParseError: public exception {} keyParseError;
 
-void InputListener::UpEvent(D3D11Base::ID3D11Device *device)
+void InputListener::UpEvent(HackerDevice *device)
 {
 }
 
@@ -25,13 +23,13 @@ InputCallbacks::InputCallbacks(InputCallback down_cb, InputCallback up_cb,
 	private_data(private_data)
 {}
 
-void InputCallbacks::DownEvent(D3D11Base::ID3D11Device *device)
+void InputCallbacks::DownEvent(HackerDevice *device)
 {
 	if (down_cb)
 		return down_cb(device, private_data);
 }
 
-void InputCallbacks::UpEvent(D3D11Base::ID3D11Device *device)
+void InputCallbacks::UpEvent(HackerDevice *device)
 {
 	if (up_cb)
 		return up_cb(device, private_data);
@@ -52,7 +50,7 @@ InputAction::~InputAction()
 	delete listener;
 }
 
-bool InputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool InputAction::Dispatch(HackerDevice *device)
 {
 	bool state = button->CheckState();
 
@@ -110,7 +108,7 @@ RepeatingInputAction::RepeatingInputAction(InputButton *button, InputListener *l
 	InputAction(button, listener)
 {}
 
-bool RepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool RepeatingInputAction::Dispatch(HackerDevice *device)
 {
 	int ms = (1000 / repeatRate);
 	if (GetTickCount64() < (lastTick + ms))
@@ -143,7 +141,7 @@ DelayedInputAction::DelayedInputAction(InputButton *button, InputListener *liste
 	InputAction(button, listener)
 {}
 
-bool DelayedInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool DelayedInputAction::Dispatch(HackerDevice *device)
 {
 	ULONGLONG now = GetTickCount64();
 	bool state = button->CheckState();
@@ -270,7 +268,7 @@ XInputButton::XInputButton(wchar_t *keyName) :
 		threshold = _wtoi(keyName);
 	}
 
-	*trigger = std::min(threshold + 1, 255);
+	*trigger = min(threshold + 1, 255);
 }
 
 bool XInputButton::CheckState()
@@ -347,7 +345,7 @@ void ClearKeyBindings()
 }
 
 
-bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
+bool DispatchInputEvents(HackerDevice *device)
 {
 	std::vector<class InputAction *>::iterator i;
 	class InputAction *action;

@@ -1,21 +1,21 @@
-#include "Main.h"
+#include "d3d11Wrapper.h"
+
 #include <Shlobj.h>
 #include <Winuser.h>
-#include "input.h"
-#include <ctime>
 #include <map>
 #include <vector>
 #include <set>
 #include <iterator>
 #include <string>
+#include <D3Dcompiler.h>
+
 #include "../HLSLDecompiler/DecompileHLSL.h"
 #include "../util.h"
 #include "../log.h"
 #include "Override.h"
 #include "globals.h"
-
 #include "Direct3D11Device.h"
-//#include "Direct3D11Context.h"
+#include "Direct3D11Context.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
@@ -648,11 +648,10 @@ static void LoadConfigFile()
 	}
 }
 
-static void ReloadConfig(D3D11Base::ID3D11Device *device)
+static void ReloadConfig(HackerDevice *device)
 {
-	D3D11Wrapper::ID3D11Device* wrapper = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
-	D3D11Base::ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
-	D3D11Base::D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
@@ -666,19 +665,19 @@ static void ReloadConfig(D3D11Base::ID3D11Device *device)
 	ClearKeyBindings();
 
 	// Reset the counters on the global parameter save area:
-	OverrideSave.Reset(wrapper);
+	OverrideSave.Reset(device);
 
 	LoadConfigFile();
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	// Update the iniParams resource from the config file:
-	realContext->Map(wrapper->mIniTexture, 0, D3D11Base::D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-	realContext->Unmap(wrapper->mIniTexture, 0);
+	realContext->Unmap(device->mIniTexture, 0);
 }
 
-static void FlagConfigReload(D3D11Base::ID3D11Device *device, void *private_data)
+static void FlagConfigReload(HackerDevice *device, void *private_data)
 {
 	// When we reload the configuration, we are going to clear the existing
 	// key bindings and reassign them. Naturally this is not a safe thing
@@ -697,7 +696,7 @@ void InitializeDLL()
 		LoadConfigFile();
 
 		// NVAPI
-		D3D11Base::NvAPI_Initialize();
+		NvAPI_Initialize();
 
 		InitializeCriticalSection(&G->mCriticalSection);
 
@@ -752,169 +751,169 @@ struct D3D11BridgeData
 	char *HLSLFileName;
 };
 
-int WINAPI D3DKMTCloseAdapter()
+__declspec(dllexport) int WINAPI D3DKMTCloseAdapter()
 {
 	LogDebug("D3DKMTCloseAdapter called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTDestroyAllocation()
+__declspec(dllexport) int WINAPI D3DKMTDestroyAllocation()
 {
 	LogDebug("D3DKMTDestroyAllocation called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTDestroyContext()
+__declspec(dllexport) int WINAPI D3DKMTDestroyContext()
 {
 	LogDebug("D3DKMTDestroyContext called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTDestroyDevice()
+__declspec(dllexport) int WINAPI D3DKMTDestroyDevice()
 {
 	LogDebug("D3DKMTDestroyDevice called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTDestroySynchronizationObject()
+__declspec(dllexport) int WINAPI D3DKMTDestroySynchronizationObject()
 {
 	LogDebug("D3DKMTDestroySynchronizationObject called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSetDisplayPrivateDriverFormat()
+__declspec(dllexport) int WINAPI D3DKMTSetDisplayPrivateDriverFormat()
 {
 	LogDebug("D3DKMTSetDisplayPrivateDriverFormat called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSignalSynchronizationObject()
+__declspec(dllexport) int WINAPI D3DKMTSignalSynchronizationObject()
 {
 	LogDebug("D3DKMTSignalSynchronizationObject called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTUnlock()
+__declspec(dllexport) int WINAPI D3DKMTUnlock()
 {
 	LogDebug("D3DKMTUnlock called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTWaitForSynchronizationObject()
+__declspec(dllexport) int WINAPI D3DKMTWaitForSynchronizationObject()
 {
 	LogDebug("D3DKMTWaitForSynchronizationObject called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTCreateAllocation()
+__declspec(dllexport) int WINAPI D3DKMTCreateAllocation()
 {
 	LogDebug("D3DKMTCreateAllocation called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTCreateContext()
+__declspec(dllexport) int WINAPI D3DKMTCreateContext()
 {
 	LogDebug("D3DKMTCreateContext called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTCreateDevice()
+__declspec(dllexport) int WINAPI D3DKMTCreateDevice()
 {
 	LogDebug("D3DKMTCreateDevice called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTCreateSynchronizationObject()
+__declspec(dllexport) int WINAPI D3DKMTCreateSynchronizationObject()
 {
 	LogDebug("D3DKMTCreateSynchronizationObject called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTEscape()
+__declspec(dllexport) int WINAPI D3DKMTEscape()
 {
 	LogDebug("D3DKMTEscape called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTGetContextSchedulingPriority()
+__declspec(dllexport) int WINAPI D3DKMTGetContextSchedulingPriority()
 {
 	LogDebug("D3DKMTGetContextSchedulingPriority called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTGetDisplayModeList()
+__declspec(dllexport) int WINAPI D3DKMTGetDisplayModeList()
 {
 	LogDebug("D3DKMTGetDisplayModeList called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTGetMultisampleMethodList()
+__declspec(dllexport) int WINAPI D3DKMTGetMultisampleMethodList()
 {
 	LogDebug("D3DKMTGetMultisampleMethodList called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTGetRuntimeData()
+__declspec(dllexport) int WINAPI D3DKMTGetRuntimeData()
 {
 	LogDebug("D3DKMTGetRuntimeData called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTGetSharedPrimaryHandle()
+__declspec(dllexport) int WINAPI D3DKMTGetSharedPrimaryHandle()
 {
 	LogDebug("D3DKMTGetRuntimeData called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTLock()
+__declspec(dllexport) int WINAPI D3DKMTLock()
 {
 	LogDebug("D3DKMTLock called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTPresent()
+__declspec(dllexport) int WINAPI D3DKMTPresent()
 {
 	LogDebug("D3DKMTPresent called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTQueryAllocationResidency()
+__declspec(dllexport) int WINAPI D3DKMTQueryAllocationResidency()
 {
 	LogDebug("D3DKMTQueryAllocationResidency called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTRender()
+__declspec(dllexport) int WINAPI D3DKMTRender()
 {
 	LogDebug("D3DKMTRender called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSetAllocationPriority()
+__declspec(dllexport) int WINAPI D3DKMTSetAllocationPriority()
 {
 	LogDebug("D3DKMTSetAllocationPriority called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSetContextSchedulingPriority()
+__declspec(dllexport) int WINAPI D3DKMTSetContextSchedulingPriority()
 {
 	LogDebug("D3DKMTSetContextSchedulingPriority called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSetDisplayMode()
+__declspec(dllexport) int WINAPI D3DKMTSetDisplayMode()
 {
 	LogDebug("D3DKMTSetDisplayMode called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSetGammaRamp()
+__declspec(dllexport) int WINAPI D3DKMTSetGammaRamp()
 {
 	LogDebug("D3DKMTSetGammaRamp called.\n");
 
 	return 0;
 }
-int WINAPI D3DKMTSetVidPnSourceOwner()
+__declspec(dllexport) int WINAPI D3DKMTSetVidPnSourceOwner()
 {
 	LogDebug("D3DKMTSetVidPnSourceOwner called.\n");
 
@@ -975,30 +974,30 @@ typedef HRESULT(WINAPI *tD3D11CoreRegisterLayers)(const void *unknown0, DWORD un
 static tD3D11CoreRegisterLayers _D3D11CoreRegisterLayers;
 
 typedef HRESULT(WINAPI *tD3D11CreateDevice)(
-	D3D11Base::IDXGIAdapter *pAdapter,
-	D3D11Base::D3D_DRIVER_TYPE DriverType,
+	IDXGIAdapter *pAdapter,
+	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
 	UINT Flags,
-	const D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevels,
+	const D3D_FEATURE_LEVEL *pFeatureLevels,
 	UINT FeatureLevels,
 	UINT SDKVersion,
-	D3D11Base::ID3D11Device **ppDevice,
-	D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevel,
-	D3D11Base::ID3D11DeviceContext **ppImmediateContext);
+	ID3D11Device **ppDevice,
+	D3D_FEATURE_LEVEL *pFeatureLevel,
+	ID3D11DeviceContext **ppImmediateContext);
 static tD3D11CreateDevice _D3D11CreateDevice;
 typedef HRESULT(WINAPI *tD3D11CreateDeviceAndSwapChain)(
-	D3D11Base::IDXGIAdapter *pAdapter,
-	D3D11Base::D3D_DRIVER_TYPE DriverType,
+	IDXGIAdapter *pAdapter,
+	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
 	UINT Flags,
-	const D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevels,
+	const D3D_FEATURE_LEVEL *pFeatureLevels,
 	UINT FeatureLevels,
 	UINT SDKVersion,
-	D3D11Base::DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	D3D11Base::IDXGISwapChain **ppSwapChain,
-	D3D11Base::ID3D11Device **ppDevice,
-	D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevel,
-	D3D11Base::ID3D11DeviceContext **ppImmediateContext);
+	DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
+	IDXGISwapChain **ppSwapChain,
+	ID3D11Device **ppDevice,
+	D3D_FEATURE_LEVEL *pFeatureLevel,
+	ID3D11DeviceContext **ppImmediateContext);
 static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
 
 typedef int (WINAPI *tD3DKMTGetDeviceState)(int a);
@@ -1082,7 +1081,7 @@ static void InitD311()
 	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
 }
 
-int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
+__declspec(dllexport) int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
 	InitD311();
 	LogInfo("D3DKMTQueryAdapterInfo called.\n");
@@ -1090,7 +1089,7 @@ int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 	return (*_D3DKMTQueryAdapterInfo)(info);
 }
 
-int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
+__declspec(dllexport) int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
 	LogInfo("OpenAdapter10 called.\n");
@@ -1098,7 +1097,7 @@ int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 	return (*_OpenAdapter10)(adapter);
 }
 
-int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
+__declspec(dllexport) int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
 	LogInfo("OpenAdapter10_2 called.\n");
@@ -1106,7 +1105,7 @@ int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 	return (*_OpenAdapter10_2)(adapter);
 }
 
-int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
+__declspec(dllexport) int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
 {
 	InitD311();
 	LogInfo("D3D11CoreCreateDevice called.\n");
@@ -1115,7 +1114,7 @@ int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, i
 }
 
 
-HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
+__declspec(dllexport) HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
 {
 	InitD311();
 	LogInfo("D3D11CoreCreateLayeredDevice called.\n");
@@ -1123,7 +1122,7 @@ HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1
 	return (*_D3D11CoreCreateLayeredDevice)(unknown0, unknown1, unknown2, riid, ppvObj);
 }
 
-SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
+__declspec(dllexport) SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
 	// Call from D3DCompiler (magic number from there) ?
@@ -1143,7 +1142,7 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
 }
 
-HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
+__declspec(dllexport) HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
 	LogInfo("D3D11CoreRegisterLayers called.\n");
@@ -1156,31 +1155,31 @@ static void EnableStereo()
 	if (!G->gForceStereo) return;
 
 	// Prepare NVAPI for use in this application
-	D3D11Base::NvAPI_Status status;
-	status = D3D11Base::NvAPI_Initialize();
-	if (status != D3D11Base::NVAPI_OK)
+	NvAPI_Status status;
+	status = NvAPI_Initialize();
+	if (status != NVAPI_OK)
 	{
-		D3D11Base::NvAPI_ShortString errorMessage;
+		NvAPI_ShortString errorMessage;
 		NvAPI_GetErrorMessage(status, errorMessage);
 		LogInfo("  stereo init failed: %s\n", errorMessage);
 	}
 	else
 	{
 		// Check the Stereo availability
-		D3D11Base::NvU8 isStereoEnabled;
-		status = D3D11Base::NvAPI_Stereo_IsEnabled(&isStereoEnabled);
+		NvU8 isStereoEnabled;
+		status = NvAPI_Stereo_IsEnabled(&isStereoEnabled);
 		// Stereo status report an error
-		if (status != D3D11Base::NVAPI_OK)
+		if (status != NVAPI_OK)
 		{
 			// GeForce Stereoscopic 3D driver is not installed on the system
 			LogInfo("  stereo init failed: no stereo driver detected.\n");
 		}
 		// Stereo is available but not enabled, let's enable it
-		else if (D3D11Base::NVAPI_OK == status && !isStereoEnabled)
+		else if (NVAPI_OK == status && !isStereoEnabled)
 		{
 			LogInfo("  stereo available and disabled. Enabling stereo.\n");
-			status = D3D11Base::NvAPI_Stereo_Enable();
-			if (status != D3D11Base::NVAPI_OK)
+			status = NvAPI_Stereo_Enable();
+			if (status != NVAPI_OK)
 				LogInfo("    enabling stereo failed.\n");
 		}
 
@@ -1188,12 +1187,12 @@ static void EnableStereo()
 		{
 			LogInfo("  enabling registry profile.\n");
 
-			D3D11Base::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3D11Base::NVAPI_STEREO_DEFAULT_REGISTRY_PROFILE);
+			NvAPI_Stereo_CreateConfigurationProfileRegistryKey(NVAPI_STEREO_DEFAULT_REGISTRY_PROFILE);
 		}
 	}
 }
 
-static int StrRenderTarget2D(char *buf, size_t size, D3D11Base::D3D11_TEXTURE2D_DESC *desc)
+static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture2D Width=%u Height=%u MipLevels=%u "
 			"ArraySize=%u RawFormat=%u Format=\"%s\" SampleDesc.Count=%u "
@@ -1206,7 +1205,7 @@ static int StrRenderTarget2D(char *buf, size_t size, D3D11Base::D3D11_TEXTURE2D_
 			desc->CPUAccessFlags, desc->MiscFlags);
 }
 
-static int StrRenderTarget3D(char *buf, size_t size, D3D11Base::D3D11_TEXTURE3D_DESC *desc)
+static int StrRenderTarget3D(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
 {
 
 	return _snprintf_s(buf, size, size, "type=Texture3D Width=%u Height=%u Depth=%u "
@@ -1221,9 +1220,9 @@ static int StrRenderTarget3D(char *buf, size_t size, D3D11Base::D3D11_TEXTURE3D_
 static int StrRenderTarget(char *buf, size_t size, struct ResourceInfo &info)
 {
 	switch(info.type) {
-		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			return StrRenderTarget2D(buf, size, &info.tex2d_desc);
-		case D3D11Base::D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			return StrRenderTarget3D(buf, size, &info.tex3d_desc);
 		default:
 			return _snprintf_s(buf, size, size, "type=%i\n", info.type);
@@ -1347,7 +1346,7 @@ static void DumpUsage()
 // Convenience class to avoid passing wrong objects all of Blob type.
 // For strong type checking.  Already had a couple of bugs with generic ID3DBlobs.
 
-class AsmTextBlob : public D3D11Base::ID3DBlob
+class AsmTextBlob : public ID3DBlob
 {
 };
 
@@ -1407,7 +1406,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 // This is pretty heavyweight obviously, so it is only being done during Mark operations.
 // Todo: another copy/paste job, we really need some subroutines, utility library.
 
-static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disassembly)
+static string Decompile(ID3DBlob* pShaderByteCode, AsmTextBlob* disassembly)
 {
 	LogInfo("    creating HLSL representation.\n");
 
@@ -1455,11 +1454,11 @@ static string Decompile(D3D11Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disas
 
 // Get the text disassembly of the shader byte code specified.
 
-static AsmTextBlob* GetDisassembly(D3D11Base::ID3DBlob* pCode)
+static AsmTextBlob* GetDisassembly(ID3DBlob* pCode)
 {
-	D3D11Base::ID3DBlob *disassembly;
+	ID3DBlob *disassembly;
 
-	HRESULT ret = D3D11Base::D3DDisassemble(pCode->GetBufferPointer(), pCode->GetBufferSize(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0,
+	HRESULT ret = D3DDisassemble(pCode->GetBufferPointer(), pCode->GetBufferSize(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0,
 		&disassembly);
 	if (FAILED(ret))
 	{
@@ -1532,7 +1531,7 @@ static string GetShaderModel(AsmTextBlob* asmTextBlob)
 // error, but skipped.  On actual errors, return true so that we bail out.
 
 static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, UINT64 hash, wstring shaderType, FILETIME* timeStamp,
-	_Outptr_ D3D11Base::ID3DBlob** pCode)
+	_Outptr_ ID3DBlob** pCode)
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
@@ -1575,9 +1574,9 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel);
 
 
-	D3D11Base::ID3DBlob* pByteCode = nullptr;
-	D3D11Base::ID3DBlob* pErrorMsgs = nullptr;
-	HRESULT ret = D3D11Base::D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((D3D11Base::ID3DInclude*)(UINT_PTR)1),
+	ID3DBlob* pByteCode = nullptr;
+	ID3DBlob* pErrorMsgs = nullptr;
+	HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
 	delete srcData; srcData = 0;
@@ -1676,13 +1675,13 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 // new version will be used at VSSetShader and PSSetShader.
 // File names are uniform in the form: 3c69e169edc8cd5f-ps_replace.txt
 
-static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D11Device *realDevice)
+static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *device)
 {
 	UINT64 hash;
-	D3D11Base::ID3D11DeviceChild* oldShader = NULL;
-	D3D11Base::ID3D11DeviceChild* replacement = NULL;
-	D3D11Base::ID3D11ClassLinkage* classLinkage;
-	D3D11Base::ID3DBlob* shaderCode;
+	ID3D11DeviceChild* oldShader = NULL;
+	ID3D11DeviceChild* replacement = NULL;
+	ID3D11ClassLinkage* classLinkage;
+	ID3DBlob* shaderCode;
 	string shaderModel;
 	wstring shaderType;		// "vs" or "ps" maybe "gs"
 	FILETIME timeStamp;
@@ -1698,7 +1697,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 	// This needs to use the value to find the key, so a linear search.
 	// It's notable that the map can contain multiple copies of the same hash, used for different visual
 	// items, but with same original code.  We need to update all copies.
-	for each (pair<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
 		if (iter.second.hash == hash)
 		{
@@ -1736,7 +1735,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			}
 
 			// Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
-			D3D11Base::ID3DBlob *pShaderBytecode = NULL;
+			ID3DBlob *pShaderBytecode = NULL;
 			if (!CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &timeStamp, &pShaderBytecode))
 				continue;
 
@@ -1750,13 +1749,13 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
-				hr = realDevice->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
-					(D3D11Base::ID3D11VertexShader**) &replacement);
+				hr = device->ID3D11Device::CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+					(ID3D11VertexShader**) &replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
-				hr = realDevice->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
-					(D3D11Base::ID3D11PixelShader**) &replacement);
+				hr = device->ID3D11Device::CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+					(ID3D11PixelShader**) &replacement);
 			}
 			if (FAILED(hr))
 				return false;
@@ -1785,7 +1784,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D11Base::ID3D
 // the replacement and build code to match.  This handles all the variants of preload, cache, hlsl 
 // or not, and allows creating new files on a first run.  Should be handy.
 
-static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
+static void CopyToFixes(UINT64 hash, HackerDevice *device)
 {
 	bool success = false;
 	string shaderModel;
@@ -1793,7 +1792,7 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 	string decompiled;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
-	for each (pair<D3D11Base::ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
 		if (iter.second.hash == hash)
 		{
@@ -1841,16 +1840,15 @@ static void CopyToFixes(UINT64 hash, D3D11Base::ID3D11Device *device)
 
 
 // Key binding callbacks
-static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
+static void TakeScreenShot(HackerDevice *wrapped, void *private_data)
 {
 	LogInfo("> capturing screenshot\n");
 
-	D3D11Wrapper::ID3D11Device* wrapped = (D3D11Wrapper::ID3D11Device*) D3D11Wrapper::ID3D11Device::m_List.GetDataPtr(device);
 	if (wrapped->mStereoHandle)
 	{
-		D3D11Base::NvAPI_Status err;
-		err = D3D11Base::NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
-		if (err != D3D11Base::NVAPI_OK)
+		NvAPI_Status err;
+		err = NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
+		if (err != NVAPI_OK)
 		{
 			LogInfo("> screenshot failed, error:%d\n", err);
 			BeepFailure2();		// Brnk, dunk sound for failure.
@@ -1864,7 +1862,7 @@ static void TakeScreenShot(D3D11Base::ID3D11Device *device, void *private_data)
 // in a shader we actually don't need so we don't need to restart the game.
 static void RevertMissingShaders()
 {
-	D3D11Base::ID3D11DeviceChild* replacement = NULL;
+	ID3D11DeviceChild* replacement = NULL;
 	ShaderReloadMap::iterator i;
 
 	for (i = G->mReloadedShaders.begin(); i != G->mReloadedShaders.end(); i++) {
@@ -1872,12 +1870,12 @@ static void RevertMissingShaders()
 			continue;
 
 		if (i->second.shaderType.compare(L"vs") == 0) {
-			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find((D3D11Base::ID3D11VertexShader*)i->first);
+			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find((ID3D11VertexShader*)i->first);
 			if (j == G->mOriginalVertexShaders.end())
 				continue;
 			replacement = j->second;
 		} else if (i->second.shaderType.compare(L"ps") == 0) {
-			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find((D3D11Base::ID3D11PixelShader*)i->first);
+			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find((ID3D11PixelShader*)i->first);
 			if (j == G->mOriginalPixelShaders.end())
 				continue;
 			replacement = j->second;
@@ -1901,7 +1899,7 @@ static void RevertMissingShaders()
 	}
 }
 
-static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
+static void ReloadFixes(HackerDevice *device, void *private_data)
 {
 	ShaderReloadMap::iterator i;
 
@@ -1944,19 +1942,19 @@ static void ReloadFixes(D3D11Base::ID3D11Device *device, void *private_data)
 	}
 }
 
-static void DisableFix(D3D11Base::ID3D11Device *device, void *private_data)
+static void DisableFix(HackerDevice *device, void *private_data)
 {
 	LogInfo("show_original pressed - switching to original shaders\n");
 	G->fix_enabled = false;
 }
 
-static void EnableFix(D3D11Base::ID3D11Device *device, void *private_data)
+static void EnableFix(HackerDevice *device, void *private_data)
 {
 	LogInfo("show_original released - switching to replaced shaders\n");
 	G->fix_enabled = true;
 }
 
-static void NextIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
+static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
@@ -1983,7 +1981,7 @@ static void NextIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
+static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
@@ -2010,7 +2008,7 @@ static void PrevIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void MarkIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
+static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 {
 	if (LogFile)
 	{
@@ -2023,7 +2021,7 @@ static void MarkIndexBuffer(D3D11Base::ID3D11Device *device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
+static void NextPixelShader(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::const_iterator i = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
@@ -2050,7 +2048,7 @@ static void NextPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
+static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
@@ -2077,7 +2075,7 @@ static void PrevPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void MarkPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
+static void MarkPixelShader(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
@@ -2104,7 +2102,7 @@ static void MarkPixelShader(D3D11Base::ID3D11Device *device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextVertexShader(D3D11Base::ID3D11Device *device, void *private_data)
+static void NextVertexShader(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
@@ -2131,7 +2129,7 @@ static void NextVertexShader(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevVertexShader(D3D11Base::ID3D11Device *device, void *private_data)
+static void PrevVertexShader(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
@@ -2158,7 +2156,7 @@ static void PrevVertexShader(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void MarkVertexShader(D3D11Base::ID3D11Device *device, void *private_data)
+static void MarkVertexShader(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
@@ -2181,7 +2179,7 @@ static void MarkVertexShader(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextRenderTarget(D3D11Base::ID3D11Device *device, void *private_data)
+static void NextRenderTarget(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
@@ -2208,7 +2206,7 @@ static void NextRenderTarget(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void PrevRenderTarget(D3D11Base::ID3D11Device *device, void *private_data)
+static void PrevRenderTarget(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
@@ -2251,7 +2249,7 @@ static void LogRenderTarget(void *target, char *log_prefix)
 			log_prefix, target, hash, buf);
 }
 
-static void MarkRenderTarget(D3D11Base::ID3D11Device *device, void *private_data)
+static void MarkRenderTarget(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
@@ -2267,7 +2265,7 @@ static void MarkRenderTarget(D3D11Base::ID3D11Device *device, void *private_data
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void TuneUp(D3D11Base::ID3D11Device *device, void *private_data)
+static void TuneUp(HackerDevice *device, void *private_data)
 {
 	int index = (int)private_data;
 
@@ -2275,7 +2273,7 @@ static void TuneUp(D3D11Base::ID3D11Device *device, void *private_data)
 	LogInfo("> Value %i tuned to %f\n", index+1, G->gTuneValue[index]);
 }
 
-static void TuneDown(D3D11Base::ID3D11Device *device, void *private_data)
+static void TuneDown(HackerDevice *device, void *private_data)
 {
 	int index = (int)private_data;
 
@@ -2312,7 +2310,7 @@ static void TimeoutHuntingBuffers()
 }
 
 // User has requested all shaders be re-enabled
-static void DoneHunting(D3D11Base::ID3D11Device *device, void *private_data)
+static void DoneHunting(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
@@ -2409,7 +2407,7 @@ static void RegisterHuntingKeyBindings(wchar_t *iniFile)
 // the dxgi wrapper as unneeded.  The draw is caught at AfterDraw in the Context, which is called for
 // every type of Draw, including DrawIndexed.
 
-void RunFrameActions(D3D11Base::ID3D11Device *device)
+void RunFrameActions(HackerDevice *device)
 {
 	static ULONGLONG last_ticks = 0;
 	ULONGLONG ticks = GetTickCount64();
@@ -2465,47 +2463,46 @@ void RunFrameActions(D3D11Base::ID3D11Device *device)
 }
 
 
-// This QueryInterface may no longer be necessary.  After removing DXGI interface altogether.
-// Verified that the typeid passed in is the D3D11Base::Device
-
-STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
-{
-	LogDebug("D3D11Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
-
-	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
-
-	return hr;
-}
-
 
 // -----------------------------------------------------------------------------------------------
 
-HRESULT WINAPI D3D11CreateDevice(
-	D3D11Base::IDXGIAdapter *pAdapter,
-	D3D11Base::D3D_DRIVER_TYPE DriverType,
+// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
+// Direct3D, and collect the original Device and original Context.  Both of those will be handed
+// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
+// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
+// created here, it's easy enough to provide them upon instantiation.
+
+__declspec(dllexport) HRESULT WINAPI D3D11CreateDevice(
+	IDXGIAdapter *pAdapter,
+	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
 	UINT Flags,
-	const D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevels,
+	const D3D_FEATURE_LEVEL *pFeatureLevels,
 	UINT FeatureLevels,
 	UINT SDKVersion,
-	D3D11Wrapper::ID3D11Device **ppDevice,
-	D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevel,
-	D3D11Wrapper::ID3D11DeviceContext **ppImmediateContext)
+	HackerDevice **ppDevice,
+	D3D_FEATURE_LEVEL *pFeatureLevel,
+	HackerContext **ppImmediateContext)
 {
 	InitD311();
 	LogInfo("D3D11CreateDevice called with adapter = %p\n", pAdapter);
 
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
-	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
-	Flags |= D3D11Base::D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
+	Flags |= D3D11_CREATE_DEVICE_DEBUG;
+	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
 #endif
 
-	D3D11Base::ID3D11Device *origDevice = 0;
-	D3D11Base::ID3D11DeviceContext *origContext = 0;
+	ID3D11Device *origDevice = 0;
+	ID3D11DeviceContext *origContext = 0;
+
 	EnableStereo();
+
 	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, &origDevice, pFeatureLevel, &origContext);
+
+	if (!origDevice || !origContext)
+		return ret;
 
 	// ret from D3D11CreateDevice has the same problem as CreateDeviceAndSwapChain, in that it can return
 	// a value that S_FALSE, which is a positive number.  It's not an error exactly, but it's not S_OK.
@@ -2513,53 +2510,58 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (FAILED(ret))
 	{
 		LogInfo("  failed with HRESULT=%x\n", ret);
-
 		return ret;
 	}
 
-	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
-	if (wrapper == NULL)
+	// Create a wrapped version of the original device to return to the game.
+	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
+	if (deviceWrap == NULL)
 	{
-		LogInfo("  error allocating wrapper.\n");
-
+		LogInfo("  error allocating deviceWrap.\n");
 		origDevice->Release();
 		origContext->Release();
-
 		return E_OUTOFMEMORY;
 	}
+
+	// Create a wrapped version of the original context to return to the game.
+	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
+	if (contextWrap == NULL)
+	{
+		LogInfo("  error allocating contextWrap.\n");
+		origDevice->Release();
+		origContext->Release();
+		return E_OUTOFMEMORY;
+	}
+
+	// Let each of the new Hacker objects know about the other, needed for unusual
+	// calls that we want to return the Hacker versions.
+	deviceWrap.SetHackerContext(contextWrap);
+	contextWrap.SetHackerDevice(deviceWrap);
+
 	if (ppDevice)
-		*ppDevice = wrapper;
-
-	D3D11Wrapper::ID3D11DeviceContext *wrapper2 = D3D11Wrapper::ID3D11DeviceContext::GetDirect3DDeviceContext(origContext);
-	if (wrapper2 == NULL)
-	{
-		LogInfo("  error allocating wrapper2.\n");
-
-		origDevice->Release();
-		origContext->Release();
-		return E_OUTOFMEMORY;
-	}
+		*ppDevice = deviceWrap;
 	if (ppImmediateContext)
-		*ppImmediateContext = wrapper2;
+		*ppImmediateContext = contextWrap;
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, wrapper, origContext, wrapper2);
-
+	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
+	LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n", 
+		typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
 	return ret;
 }
 
-HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
-	D3D11Base::IDXGIAdapter *pAdapter,
-	D3D11Base::D3D_DRIVER_TYPE DriverType,
+__declspec(dllexport) HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
+	IDXGIAdapter *pAdapter,
+	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
 	UINT Flags,
-	const D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevels,
+	const D3D_FEATURE_LEVEL *pFeatureLevels,
 	UINT FeatureLevels,
 	UINT SDKVersion,
-	D3D11Base::DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	D3D11Base::IDXGISwapChain **ppSwapChain,
-	D3D11Wrapper::ID3D11Device **ppDevice,
-	D3D11Base::D3D_FEATURE_LEVEL *pFeatureLevel,
-	D3D11Wrapper::ID3D11DeviceContext **ppImmediateContext)
+	DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
+	IDXGISwapChain **ppSwapChain,
+	HackerDevice **ppDevice,
+	D3D_FEATURE_LEVEL *pFeatureLevel,
+	HackerContext **ppImmediateContext)
 {
 	InitD311();
 	LogInfo("D3D11CreateDeviceAndSwapChain called with adapter = %p\n", pAdapter);
@@ -2586,12 +2588,12 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
-	Flags |= D3D11Base::D3D11_CREATE_DEVICE_DEBUG;
-	Flags |= D3D11Base::D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
+	Flags |= D3D11_CREATE_DEVICE_DEBUG;
+	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
 #endif
 
-	D3D11Base::ID3D11Device *origDevice = 0;
-	D3D11Base::ID3D11DeviceContext *origContext = 0;
+	ID3D11Device *origDevice = 0;
+	ID3D11DeviceContext *origContext = 0;
 	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, &origDevice, pFeatureLevel, &origContext);
 
@@ -2607,32 +2609,37 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (!origDevice || !origContext)
 		return ret;
 
-	D3D11Wrapper::ID3D11Device *wrapper = D3D11Wrapper::ID3D11Device::GetDirect3DDevice(origDevice);
-	if (wrapper == NULL)
+	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
+	if (deviceWrap == NULL)
 	{
-		LogInfo("  error allocating wrapper.\n");
-
+		LogInfo("  error allocating deviceWrap.\n");
 		origDevice->Release();
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
+
+	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
+	if (contextWrap == NULL)
+	{
+		LogInfo("  error allocating contextWrap.\n");
+		origDevice->Release();
+		origContext->Release();
+		return E_OUTOFMEMORY;
+	}
+
+	// Let each of the new Hacker objects know about the other, needed for unusual
+	// calls that we want to return the Hacker versions.
+	deviceWrap.SetHackerContext(contextWrap);
+	contextWrap.SetHackerDevice(deviceWrap);
+
 	if (ppDevice)
-		*ppDevice = wrapper;
-
-	D3D11Wrapper::ID3D11DeviceContext *wrapper2 = D3D11Wrapper::ID3D11DeviceContext::GetDirect3DDeviceContext(origContext);
-	if (wrapper2 == NULL)
-	{
-		LogInfo("  error allocating wrapper2.\n");
-
-		origDevice->Release();
-		origContext->Release();
-		return E_OUTOFMEMORY;
-	}
+		*ppDevice = deviceWrap;
 	if (ppImmediateContext)
-		*ppImmediateContext = wrapper2;
+		*ppImmediateContext = contextWrap;
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, wrapper, origContext, wrapper2);
-
+	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
+	LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",
+		typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
 	return ret;
 }
 
@@ -2644,7 +2651,7 @@ int WINAPI D3DKMTGetDeviceState(int a)
 	return (*_D3DKMTGetDeviceState)(a);
 }
 
-int WINAPI D3DKMTOpenAdapterFromHdc(int a)
+__declspec(dllexport) int WINAPI D3DKMTOpenAdapterFromHdc(int a)
 {
 	InitD311();
 	LogInfo("D3DKMTOpenAdapterFromHdc called.\n");
@@ -2652,7 +2659,7 @@ int WINAPI D3DKMTOpenAdapterFromHdc(int a)
 	return (*_D3DKMTOpenAdapterFromHdc)(a);
 }
 
-int WINAPI D3DKMTOpenResource(int a)
+__declspec(dllexport) int WINAPI D3DKMTOpenResource(int a)
 {
 	InitD311();
 	LogInfo("D3DKMTOpenResource called.\n");
@@ -2660,7 +2667,7 @@ int WINAPI D3DKMTOpenResource(int a)
 	return (*_D3DKMTOpenResource)(a);
 }
 
-int WINAPI D3DKMTQueryResourceInfo(int a)
+__declspec(dllexport) int WINAPI D3DKMTQueryResourceInfo(int a)
 {
 	InitD311();
 	LogInfo("D3DKMTQueryResourceInfo called.\n");
@@ -2671,9 +2678,9 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 void NvAPIOverride()
 {
 	// Override custom settings.
-	const D3D11Base::StereoHandle id1 = (D3D11Base::StereoHandle)0x77aa8ebc;
+	const StereoHandle id1 = (StereoHandle)0x77aa8ebc;
 	float id2 = 1.23f;
-	if (D3D11Base::NvAPI_Stereo_GetConvergence(id1, &id2) != 0xeecc34ab)
+	if (NvAPI_Stereo_GetConvergence(id1, &id2) != 0xeecc34ab)
 	{
 		LogDebug("  overriding NVAPI wrapper failed.\n");
 	}

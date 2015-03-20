@@ -1,10 +1,12 @@
 #pragma once
 
 #include <DirectXMath.h>
-#include "input.h"
-#include "Main.h"
+#include <d3d11.h>
 #include <vector>
+
+#include "input.h"
 #include "../util.h"
+#include "Direct3D11Device.h"
 
 enum class KeyOverrideType {
 	INVALID = -1,
@@ -70,9 +72,9 @@ public:
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
 
-	void Activate(D3D11Base::ID3D11Device *device);
-	void Deactivate(D3D11Base::ID3D11Device *device);
-	void Toggle(D3D11Base::ID3D11Device *device);
+	void Activate(HackerDevice *device);
+	void Deactivate(HackerDevice *device);
+	void Toggle(HackerDevice *device);
 };
 
 class KeyOverrideBase : public virtual OverrideBase, public InputListener
@@ -100,8 +102,8 @@ public:
 		type(type)
 	{}
 
-	void DownEvent(D3D11Base::ID3D11Device *device);
-	void UpEvent(D3D11Base::ID3D11Device *device);
+	void DownEvent(HackerDevice *device);
+	void UpEvent(HackerDevice *device);
 #pragma warning(suppress : 4250) // Suppress ParseIniSection inheritance via dominance warning
 };
 
@@ -116,7 +118,7 @@ public:
 	{}
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
-	void DownEvent(D3D11Base::ID3D11Device *device);
+	void DownEvent(HackerDevice *device);
 };
 
 struct OverrideTransitionParam
@@ -141,11 +143,11 @@ class OverrideTransition
 public:
 	OverrideTransitionParam x, y, z, w, separation, convergence;
 
-	void ScheduleTransition(D3D11Base::ID3D11Device *device,
+	void ScheduleTransition(HackerDevice *wrapper,
 			float target_separation, float target_convergence,
 			float target_x, float target_y, float target_z,
 			float target_w, int time, TransitionType transition_type);
-	void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device);
+	void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
 	void Stop();
 };
 
@@ -172,8 +174,8 @@ class OverrideGlobalSave
 public:
 	OverrideGlobalSaveParam x, y, z, w, separation, convergence;
 
-	void Reset(D3D11Wrapper::ID3D11Device* wrapper);
-	void Save(D3D11Base::ID3D11Device *device, Override *preset);
+	void Reset(HackerDevice* wrapper);
+	void Save(HackerDevice *wrapper, Override *preset);
 	void Restore(Override *preset);
 };
 
