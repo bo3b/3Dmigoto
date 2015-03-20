@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include <wchar.h>
 #include <string.h>
-
+#include <d3d11.h>
 
 // Primary hash calculation for all shader file names, all textures.
 
@@ -24,6 +24,76 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
 		hval ^= (UINT64)*bp++;
 	}
 	return hval;
+}
+
+UINT64 CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *desc,
+	UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// It concerns me that CreateTextureND can use an override if it
+	// matches screen resolution, but when we record render target / shader
+	// resource stats we don't use the same override.
+	//
+	// For textures made with CreateTextureND and later used as a render
+	// target it's probably fine since the hash will still be stored, but
+	// it could be a problem if we need the hash of a render target not
+	// created directly with that. I don't know enough about the DX11 API
+	// to know if this is an issue, but it might be worth using the screen
+	// resolution override in all cases. -DarkStarSword
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->SampleDesc.Count;
+	hash ^= desc->SampleDesc.Quality;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
+UINT64 CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *desc,
+	UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// Same comment as in CalcTexture2DDescHash above - concerned about
+	// inconsistent use of these resolution overrides
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->Depth; hash *= FNV_64_PRIME;
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
 }
 
 

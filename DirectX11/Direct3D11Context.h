@@ -1,22 +1,35 @@
 #pragma once
 
-#include "IDirect3DUnknown.h"
+#include <d3d11.h>
+
 #include "Direct3D11Device.h"
+
+// Hierarchy:
+//  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
 // devicechild: MIDL_INTERFACE("1841e5c8-16b0-489b-bcc8-44cfb0d5deae")
 // MIDL_INTERFACE("c0bfa96c-e089-44fb-8eaf-26f8796190da")
-class ID3D11DeviceContext : public IDirect3DUnknown
+class HackerContext : public ID3D11DeviceContext 
 {
 public:
-	static ThreadSafePointerSet	m_List;
+	HackerContext(ID3D11DeviceContext *pContext);
 
-	ID3D11DeviceContext(D3D11Base::ID3D11DeviceContext *pContext);
-	static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(D3D11Base::ID3D11DeviceContext *pContext);
-	__forceinline D3D11Base::ID3D11DeviceContext *GetD3D11DeviceContext() { return (D3D11Base::ID3D11DeviceContext*) m_pUnk; }
+	HackerDevice* GetHackerDevice(void);
+
+	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
+	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }
 
 	/*** IDirect3DUnknown methods ***/
-	STDMETHOD_(ULONG, AddRef)(THIS);
-	STDMETHOD_(ULONG, Release)(THIS);
+	//STDMETHOD_(ULONG, AddRef)(THIS);
+	//STDMETHOD_(ULONG, Release)(THIS);
+
+	HRESULT STDMETHODCALLTYPE QueryInterface(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
+
+	ULONG STDMETHODCALLTYPE AddRef(void);
+
+	ULONG STDMETHODCALLTYPE Release(void);
 
 	// ******************* ID3D11DeviceChild interface
 
@@ -54,7 +67,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers) D3D11Base::ID3D11Buffer *const *ppConstantBuffers);
+		__in_ecount(NumBuffers) ID3D11Buffer *const *ppConstantBuffers);
 
 	STDMETHOD_(void, PSSetShaderResources)(THIS_
 		/* [annotation] */
@@ -62,13 +75,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews) D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 	STDMETHOD_(void, PSSetShader)(THIS_
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11PixelShader *pPixelShader,
+		__in_opt ID3D11PixelShader *pPixelShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
+		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
 	STDMETHOD_(void, PSSetSamplers)(THIS_
@@ -77,13 +90,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers) D3D11Base::ID3D11SamplerState *const *ppSamplers);
+		__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers);
 
 	STDMETHOD_(void, VSSetShader)(THIS_
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11VertexShader *pVertexShader,
+		__in_opt ID3D11VertexShader *pVertexShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
+		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
 	STDMETHOD_(void, DrawIndexed)(THIS_
@@ -102,19 +115,19 @@ public:
 
 	STDMETHOD(Map)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pResource,
+		__in  ID3D11Resource *pResource,
 		/* [annotation] */
 		__in  UINT Subresource,
 		/* [annotation] */
-		__in  D3D11Base::D3D11_MAP MapType,
+		__in  D3D11_MAP MapType,
 		/* [annotation] */
 		__in  UINT MapFlags,
 		/* [annotation] */
-		__out D3D11Base::D3D11_MAPPED_SUBRESOURCE *pMappedResource);
+		__out D3D11_MAPPED_SUBRESOURCE *pMappedResource);
 
 	STDMETHOD_(void, Unmap)(THIS_
 		/* [annotation] */
-		__in D3D11Base::ID3D11Resource *pResource,
+		__in ID3D11Resource *pResource,
 		/* [annotation] */
 		__in  UINT Subresource);
 
@@ -124,11 +137,11 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers) D3D11Base::ID3D11Buffer *const *ppConstantBuffers);
+		__in_ecount(NumBuffers) ID3D11Buffer *const *ppConstantBuffers);
 
 	STDMETHOD_(void, IASetInputLayout)(THIS_
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11InputLayout *pInputLayout);
+		__in_opt ID3D11InputLayout *pInputLayout);
 
 	STDMETHOD_(void, IASetVertexBuffers)(THIS_
 		/* [annotation] */
@@ -136,7 +149,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  D3D11Base::ID3D11Buffer *const *ppVertexBuffers,
+		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppVertexBuffers,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  const UINT *pStrides,
 		/* [annotation] */
@@ -144,9 +157,9 @@ public:
 
 	STDMETHOD_(void, IASetIndexBuffer)(THIS_
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11Buffer *pIndexBuffer,
+		__in_opt ID3D11Buffer *pIndexBuffer,
 		/* [annotation] */
-		__in D3D11Base::DXGI_FORMAT Format,
+		__in DXGI_FORMAT Format,
 		/* [annotation] */
 		__in  UINT Offset);
 
@@ -178,18 +191,18 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers) D3D11Base::ID3D11Buffer *const *ppConstantBuffers);
+		__in_ecount(NumBuffers) ID3D11Buffer *const *ppConstantBuffers);
 
 	STDMETHOD_(void, GSSetShader)(THIS_
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11GeometryShader *pShader,
+		__in_opt ID3D11GeometryShader *pShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
+		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
 	STDMETHOD_(void, IASetPrimitiveTopology)(THIS_
 		/* [annotation] */
-		__in D3D11Base::D3D11_PRIMITIVE_TOPOLOGY Topology);
+		__in D3D11_PRIMITIVE_TOPOLOGY Topology);
 
 	STDMETHOD_(void, VSSetShaderResources)(THIS_
 		/* [annotation] */
@@ -197,7 +210,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews) D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 	STDMETHOD_(void, VSSetSamplers)(THIS_
 		/* [annotation] */
@@ -205,19 +218,19 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers) D3D11Base::ID3D11SamplerState *const *ppSamplers);
+		__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers);
 
 	STDMETHOD_(void, Begin)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Asynchronous *pAsync);
+		__in  ID3D11Asynchronous *pAsync);
 
 	STDMETHOD_(void, End)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Asynchronous *pAsync);
+		__in  ID3D11Asynchronous *pAsync);
 
 	STDMETHOD(GetData)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Asynchronous *pAsync,
+		__in  ID3D11Asynchronous *pAsync,
 		/* [annotation] */
 		__out_bcount_opt(DataSize)  void *pData,
 		/* [annotation] */
@@ -227,7 +240,7 @@ public:
 
 	STDMETHOD_(void, SetPredication)(THIS_
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11Predicate *pPredicate,
+		__in_opt ID3D11Predicate *pPredicate,
 		/* [annotation] */
 		__in  BOOL PredicateValue);
 
@@ -237,7 +250,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews) D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 	STDMETHOD_(void, GSSetSamplers)(THIS_
 		/* [annotation] */
@@ -245,35 +258,35 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers) D3D11Base::ID3D11SamplerState *const *ppSamplers);
+		__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers);
 
 	STDMETHOD_(void, OMSetRenderTargets)(THIS_
 		/* [annotation] */
 		__in_range(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount_opt(NumViews) D3D11Base::ID3D11RenderTargetView *const *ppRenderTargetViews,
+		__in_ecount_opt(NumViews) ID3D11RenderTargetView *const *ppRenderTargetViews,
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11DepthStencilView *pDepthStencilView);
+		__in_opt ID3D11DepthStencilView *pDepthStencilView);
 
 	STDMETHOD_(void, OMSetRenderTargetsAndUnorderedAccessViews)(THIS_
 		/* [annotation] */
 		__in  UINT NumRTVs,
 		/* [annotation] */
-		__in_ecount_opt(NumRTVs) D3D11Base::ID3D11RenderTargetView *const *ppRenderTargetViews,
+		__in_ecount_opt(NumRTVs) ID3D11RenderTargetView *const *ppRenderTargetViews,
 		/* [annotation] */
-		__in_opt D3D11Base::ID3D11DepthStencilView *pDepthStencilView,
+		__in_opt ID3D11DepthStencilView *pDepthStencilView,
 		/* [annotation] */
 		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT UAVStartSlot,
 		/* [annotation] */
 		__in  UINT NumUAVs,
 		/* [annotation] */
-		__in_ecount_opt(NumUAVs) D3D11Base::ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
+		__in_ecount_opt(NumUAVs) ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
 		/* [annotation] */
 		__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts);
 
 	STDMETHOD_(void, OMSetBlendState)(THIS_
 		/* [annotation] */
-		__in_opt  D3D11Base::ID3D11BlendState *pBlendState,
+		__in_opt  ID3D11BlendState *pBlendState,
 		/* [annotation] */
 		__in_opt  const FLOAT BlendFactor[4],
 		/* [annotation] */
@@ -281,7 +294,7 @@ public:
 
 	STDMETHOD_(void, OMSetDepthStencilState)(THIS_
 		/* [annotation] */
-		__in_opt  D3D11Base::ID3D11DepthStencilState *pDepthStencilState,
+		__in_opt  ID3D11DepthStencilState *pDepthStencilState,
 		/* [annotation] */
 		__in  UINT StencilRef);
 
@@ -289,7 +302,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount_opt(NumBuffers)  D3D11Base::ID3D11Buffer *const *ppSOTargets,
+		__in_ecount_opt(NumBuffers)  ID3D11Buffer *const *ppSOTargets,
 		/* [annotation] */
 		__in_ecount_opt(NumBuffers)  const UINT *pOffsets);
 
@@ -297,13 +310,13 @@ public:
 
 	STDMETHOD_(void, DrawIndexedInstancedIndirect)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Buffer *pBufferForArgs,
+		__in  ID3D11Buffer *pBufferForArgs,
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs);
 
 	STDMETHOD_(void, DrawInstancedIndirect)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Buffer *pBufferForArgs,
+		__in  ID3D11Buffer *pBufferForArgs,
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs);
 
@@ -317,29 +330,29 @@ public:
 
 	STDMETHOD_(void, DispatchIndirect)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Buffer *pBufferForArgs,
+		__in  ID3D11Buffer *pBufferForArgs,
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs);
 
 	STDMETHOD_(void, RSSetState)(THIS_
 		/* [annotation] */
-		__in_opt  D3D11Base::ID3D11RasterizerState *pRasterizerState);
+		__in_opt  ID3D11RasterizerState *pRasterizerState);
 
 	STDMETHOD_(void, RSSetViewports)(THIS_
 		/* [annotation] */
 		__in_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)  UINT NumViewports,
 		/* [annotation] */
-		__in_ecount_opt(NumViewports)  const D3D11Base::D3D11_VIEWPORT *pViewports);
+		__in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports);
 
 	STDMETHOD_(void, RSSetScissorRects)(THIS_
 		/* [annotation] */
 		__in_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)  UINT NumRects,
 		/* [annotation] */
-		__in_ecount_opt(NumRects)  const D3D11Base::D3D11_RECT *pRects);
+		__in_ecount_opt(NumRects)  const D3D11_RECT *pRects);
 
 	STDMETHOD_(void, CopySubresourceRegion)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pDstResource,
+		__in  ID3D11Resource *pDstResource,
 		/* [annotation] */
 		__in  UINT DstSubresource,
 		/* [annotation] */
@@ -349,25 +362,25 @@ public:
 		/* [annotation] */
 		__in  UINT DstZ,
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pSrcResource,
+		__in  ID3D11Resource *pSrcResource,
 		/* [annotation] */
 		__in  UINT SrcSubresource,
 		/* [annotation] */
-		__in_opt  const D3D11Base::D3D11_BOX *pSrcBox);
+		__in_opt  const D3D11_BOX *pSrcBox);
 
 	STDMETHOD_(void, CopyResource)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pDstResource,
+		__in  ID3D11Resource *pDstResource,
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pSrcResource);
+		__in  ID3D11Resource *pSrcResource);
 
 	STDMETHOD_(void, UpdateSubresource)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pDstResource,
+		__in  ID3D11Resource *pDstResource,
 		/* [annotation] */
 		__in  UINT DstSubresource,
 		/* [annotation] */
-		__in_opt  const D3D11Base::D3D11_BOX *pDstBox,
+		__in_opt  const D3D11_BOX *pDstBox,
 		/* [annotation] */
 		__in  const void *pSrcData,
 		/* [annotation] */
@@ -377,33 +390,33 @@ public:
 
 	STDMETHOD_(void, CopyStructureCount)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Buffer *pDstBuffer,
+		__in  ID3D11Buffer *pDstBuffer,
 		/* [annotation] */
 		__in  UINT DstAlignedByteOffset,
 		/* [annotation] */
-		__in  D3D11Base::ID3D11UnorderedAccessView *pSrcView);
+		__in  ID3D11UnorderedAccessView *pSrcView);
 
 	STDMETHOD_(void, ClearRenderTargetView)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11RenderTargetView *pRenderTargetView,
+		__in  ID3D11RenderTargetView *pRenderTargetView,
 		/* [annotation] */
 		__in  const FLOAT ColorRGBA[4]);
 
 	STDMETHOD_(void, ClearUnorderedAccessViewUint)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11UnorderedAccessView *pUnorderedAccessView,
+		__in  ID3D11UnorderedAccessView *pUnorderedAccessView,
 		/* [annotation] */
 		__in  const UINT Values[4]);
 
 	STDMETHOD_(void, ClearUnorderedAccessViewFloat)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11UnorderedAccessView *pUnorderedAccessView,
+		__in  ID3D11UnorderedAccessView *pUnorderedAccessView,
 		/* [annotation] */
 		__in  const FLOAT Values[4]);
 
 	STDMETHOD_(void, ClearDepthStencilView)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11DepthStencilView *pDepthStencilView,
+		__in  ID3D11DepthStencilView *pDepthStencilView,
 		/* [annotation] */
 		__in  UINT ClearFlags,
 		/* [annotation] */
@@ -413,32 +426,32 @@ public:
 
 	STDMETHOD_(void, GenerateMips)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11ShaderResourceView *pShaderResourceView);
+		__in  ID3D11ShaderResourceView *pShaderResourceView);
 
 	STDMETHOD_(void, SetResourceMinLOD)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pResource,
+		__in  ID3D11Resource *pResource,
 		FLOAT MinLOD);
 
 	STDMETHOD_(FLOAT, GetResourceMinLOD)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pResource);
+		__in  ID3D11Resource *pResource);
 
 	STDMETHOD_(void, ResolveSubresource)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pDstResource,
+		__in  ID3D11Resource *pDstResource,
 		/* [annotation] */
 		__in  UINT DstSubresource,
 		/* [annotation] */
-		__in  D3D11Base::ID3D11Resource *pSrcResource,
+		__in  ID3D11Resource *pSrcResource,
 		/* [annotation] */
 		__in  UINT SrcSubresource,
 		/* [annotation] */
-		__in  D3D11Base::DXGI_FORMAT Format);
+		__in  DXGI_FORMAT Format);
 
 	STDMETHOD_(void, ExecuteCommandList)(THIS_
 		/* [annotation] */
-		__in  D3D11Base::ID3D11CommandList *pCommandList,
+		__in  ID3D11CommandList *pCommandList,
 		BOOL RestoreContextState);
 
 	STDMETHOD_(void, HSSetShaderResources)(THIS_
@@ -447,13 +460,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 	STDMETHOD_(void, HSSetShader)(THIS_
 		/* [annotation] */
-		__in_opt  D3D11Base::ID3D11HullShader *pHullShader,
+		__in_opt  ID3D11HullShader *pHullShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances)  D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
+		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
 	STDMETHOD_(void, HSSetSamplers)(THIS_
@@ -462,7 +475,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState *const *ppSamplers);
+		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
 	STDMETHOD_(void, HSSetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -470,7 +483,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  D3D11Base::ID3D11Buffer *const *ppConstantBuffers);
+		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
 	STDMETHOD_(void, DSSetShaderResources)(THIS_
 		/* [annotation] */
@@ -478,13 +491,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 	STDMETHOD_(void, DSSetShader)(THIS_
 		/* [annotation] */
-		__in_opt  D3D11Base::ID3D11DomainShader *pDomainShader,
+		__in_opt  ID3D11DomainShader *pDomainShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances)  D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
+		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
 	STDMETHOD_(void, DSSetSamplers)(THIS_
@@ -493,7 +506,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState *const *ppSamplers);
+		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
 	STDMETHOD_(void, DSSetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -501,7 +514,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  D3D11Base::ID3D11Buffer *const *ppConstantBuffers);
+		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
 	STDMETHOD_(void, CSSetShaderResources)(THIS_
 		/* [annotation] */
@@ -509,7 +522,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 	STDMETHOD_(void, CSSetUnorderedAccessViews)(THIS_
 		/* [annotation] */
@@ -517,15 +530,15 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - StartSlot)  UINT NumUAVs,
 		/* [annotation] */
-		__in_ecount(NumUAVs)  D3D11Base::ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
+		__in_ecount(NumUAVs)  ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
 		/* [annotation] */
 		__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts);
 
 	STDMETHOD_(void, CSSetShader)(THIS_
 		/* [annotation] */
-		__in_opt  D3D11Base::ID3D11ComputeShader *pComputeShader,
+		__in_opt  ID3D11ComputeShader *pComputeShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances)  D3D11Base::ID3D11ClassInstance *const *ppClassInstances,
+		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
 	STDMETHOD_(void, CSSetSamplers)(THIS_
@@ -534,7 +547,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState *const *ppSamplers);
+		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
 	STDMETHOD_(void, CSSetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -542,7 +555,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  D3D11Base::ID3D11Buffer *const *ppConstantBuffers);
+		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
 	STDMETHOD_(void, VSGetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -550,7 +563,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppConstantBuffers);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
 	STDMETHOD_(void, PSGetShaderResources)(THIS_
 		/* [annotation] */
@@ -558,13 +571,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView **ppShaderResourceViews);
+		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
 	STDMETHOD_(void, PSGetShader)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11PixelShader **ppPixelShader,
+		__out  ID3D11PixelShader **ppPixelShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  D3D11Base::ID3D11ClassInstance **ppClassInstances,
+		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances);
 
@@ -574,13 +587,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState **ppSamplers);
+		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
 	STDMETHOD_(void, VSGetShader)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11VertexShader **ppVertexShader,
+		__out  ID3D11VertexShader **ppVertexShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  D3D11Base::ID3D11ClassInstance **ppClassInstances,
+		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances);
 
@@ -590,11 +603,11 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppConstantBuffers);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
 	STDMETHOD_(void, IAGetInputLayout)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11InputLayout **ppInputLayout);
+		__out  ID3D11InputLayout **ppInputLayout);
 
 	STDMETHOD_(void, IAGetVertexBuffers)(THIS_
 		/* [annotation] */
@@ -602,7 +615,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount_opt(NumBuffers)  D3D11Base::ID3D11Buffer **ppVertexBuffers,
+		__out_ecount_opt(NumBuffers)  ID3D11Buffer **ppVertexBuffers,
 		/* [annotation] */
 		__out_ecount_opt(NumBuffers)  UINT *pStrides,
 		/* [annotation] */
@@ -610,9 +623,9 @@ public:
 
 	STDMETHOD_(void, IAGetIndexBuffer)(THIS_
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11Buffer **pIndexBuffer,
+		__out_opt  ID3D11Buffer **pIndexBuffer,
 		/* [annotation] */
-		__out_opt  D3D11Base::DXGI_FORMAT *Format,
+		__out_opt  DXGI_FORMAT *Format,
 		/* [annotation] */
 		__out_opt  UINT *Offset);
 
@@ -622,19 +635,19 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppConstantBuffers);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
 	STDMETHOD_(void, GSGetShader)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11GeometryShader **ppGeometryShader,
+		__out  ID3D11GeometryShader **ppGeometryShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  D3D11Base::ID3D11ClassInstance **ppClassInstances,
+		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances);
 
 	STDMETHOD_(void, IAGetPrimitiveTopology)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::D3D11_PRIMITIVE_TOPOLOGY *pTopology);
+		__out  D3D11_PRIMITIVE_TOPOLOGY *pTopology);
 
 	STDMETHOD_(void, VSGetShaderResources)(THIS_
 		/* [annotation] */
@@ -642,7 +655,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView **ppShaderResourceViews);
+		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
 	STDMETHOD_(void, VSGetSamplers)(THIS_
 		/* [annotation] */
@@ -650,11 +663,11 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState **ppSamplers);
+		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
 	STDMETHOD_(void, GetPredication)(THIS_
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11Predicate **ppPredicate,
+		__out_opt  ID3D11Predicate **ppPredicate,
 		/* [annotation] */
 		__out_opt  BOOL *pPredicateValue);
 
@@ -664,7 +677,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView **ppShaderResourceViews);
+		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
 	STDMETHOD_(void, GSGetSamplers)(THIS_
 		/* [annotation] */
@@ -672,33 +685,33 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState **ppSamplers);
+		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
 	STDMETHOD_(void, OMGetRenderTargets)(THIS_
 		/* [annotation] */
 		__in_range(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount_opt(NumViews)  D3D11Base::ID3D11RenderTargetView **ppRenderTargetViews,
+		__out_ecount_opt(NumViews)  ID3D11RenderTargetView **ppRenderTargetViews,
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11DepthStencilView **ppDepthStencilView);
+		__out_opt  ID3D11DepthStencilView **ppDepthStencilView);
 
 	STDMETHOD_(void, OMGetRenderTargetsAndUnorderedAccessViews)(THIS_
 		/* [annotation] */
 		__in_range(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumRTVs,
 		/* [annotation] */
-		__out_ecount_opt(NumRTVs)  D3D11Base::ID3D11RenderTargetView **ppRenderTargetViews,
+		__out_ecount_opt(NumRTVs)  ID3D11RenderTargetView **ppRenderTargetViews,
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11DepthStencilView **ppDepthStencilView,
+		__out_opt  ID3D11DepthStencilView **ppDepthStencilView,
 		/* [annotation] */
 		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT UAVStartSlot,
 		/* [annotation] */
 		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - UAVStartSlot)  UINT NumUAVs,
 		/* [annotation] */
-		__out_ecount_opt(NumUAVs)  D3D11Base::ID3D11UnorderedAccessView **ppUnorderedAccessViews);
+		__out_ecount_opt(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews);
 
 	STDMETHOD_(void, OMGetBlendState)(THIS_
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11BlendState **ppBlendState,
+		__out_opt  ID3D11BlendState **ppBlendState,
 		/* [annotation] */
 		__out_opt  FLOAT BlendFactor[4],
 		/* [annotation] */
@@ -706,7 +719,7 @@ public:
 
 	STDMETHOD_(void, OMGetDepthStencilState)(THIS_
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11DepthStencilState **ppDepthStencilState,
+		__out_opt  ID3D11DepthStencilState **ppDepthStencilState,
 		/* [annotation] */
 		__out_opt  UINT *pStencilRef);
 
@@ -714,23 +727,23 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppSOTargets);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppSOTargets);
 
 	STDMETHOD_(void, RSGetState)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11RasterizerState **ppRasterizerState);
+		__out  ID3D11RasterizerState **ppRasterizerState);
 
 	STDMETHOD_(void, RSGetViewports)(THIS_
 		/* [annotation] */
 		__inout /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/   UINT *pNumViewports,
 		/* [annotation] */
-		__out_ecount_opt(*pNumViewports)  D3D11Base::D3D11_VIEWPORT *pViewports);
+		__out_ecount_opt(*pNumViewports)  D3D11_VIEWPORT *pViewports);
 
 	STDMETHOD_(void, RSGetScissorRects)(THIS_
 		/* [annotation] */
 		__inout /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/   UINT *pNumRects,
 		/* [annotation] */
-		__out_ecount_opt(*pNumRects)  D3D11Base::D3D11_RECT *pRects);
+		__out_ecount_opt(*pNumRects)  D3D11_RECT *pRects);
 
 	STDMETHOD_(void, HSGetShaderResources)(THIS_
 		/* [annotation] */
@@ -738,13 +751,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView **ppShaderResourceViews);
+		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
 	STDMETHOD_(void, HSGetShader)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11HullShader **ppHullShader,
+		__out  ID3D11HullShader **ppHullShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  D3D11Base::ID3D11ClassInstance **ppClassInstances,
+		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances);
 
@@ -754,7 +767,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState **ppSamplers);
+		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
 	STDMETHOD_(void, HSGetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -762,7 +775,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppConstantBuffers);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
 	STDMETHOD_(void, DSGetShaderResources)(THIS_
 		/* [annotation] */
@@ -770,13 +783,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView **ppShaderResourceViews);
+		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
 	STDMETHOD_(void, DSGetShader)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11DomainShader **ppDomainShader,
+		__out  ID3D11DomainShader **ppDomainShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  D3D11Base::ID3D11ClassInstance **ppClassInstances,
+		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances);
 
@@ -786,7 +799,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState **ppSamplers);
+		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
 	STDMETHOD_(void, DSGetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -794,7 +807,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppConstantBuffers);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
 	STDMETHOD_(void, CSGetShaderResources)(THIS_
 		/* [annotation] */
@@ -802,7 +815,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  D3D11Base::ID3D11ShaderResourceView **ppShaderResourceViews);
+		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
 	STDMETHOD_(void, CSGetUnorderedAccessViews)(THIS_
 		/* [annotation] */
@@ -810,13 +823,13 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - StartSlot)  UINT NumUAVs,
 		/* [annotation] */
-		__out_ecount(NumUAVs)  D3D11Base::ID3D11UnorderedAccessView **ppUnorderedAccessViews);
+		__out_ecount(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews);
 
 	STDMETHOD_(void, CSGetShader)(THIS_
 		/* [annotation] */
-		__out  D3D11Base::ID3D11ComputeShader **ppComputeShader,
+		__out  ID3D11ComputeShader **ppComputeShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  D3D11Base::ID3D11ClassInstance **ppClassInstances,
+		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances);
 
@@ -826,7 +839,7 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  D3D11Base::ID3D11SamplerState **ppSamplers);
+		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
 	STDMETHOD_(void, CSGetConstantBuffers)(THIS_
 		/* [annotation] */
@@ -834,25 +847,19 @@ public:
 		/* [annotation] */
 		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  D3D11Base::ID3D11Buffer **ppConstantBuffers);
+		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
 	STDMETHOD_(void, ClearState)(THIS);
 
 	STDMETHOD_(void, Flush)(THIS);
 
-	STDMETHOD_(D3D11Base::D3D11_DEVICE_CONTEXT_TYPE, GetType)(THIS);
+	STDMETHOD_(D3D11_DEVICE_CONTEXT_TYPE, GetType)(THIS);
 
 	STDMETHOD_(UINT, GetContextFlags)(THIS);
 
 	STDMETHOD(FinishCommandList)(THIS_
 		BOOL RestoreDeferredContextState,
 		/* [annotation] */
-		__out_opt  D3D11Base::ID3D11CommandList **ppCommandList);
+		__out_opt  ID3D11CommandList **ppCommandList);
 
 };
-
-UINT64 CalcTexture2DDescHash(const D3D11Base::D3D11_TEXTURE2D_DESC *desc,
-	UINT64 initial_hash, int override_width, int override_height);
-
-UINT64 CalcTexture3DDescHash(const D3D11Base::D3D11_TEXTURE3D_DESC *desc,
-	UINT64 initial_hash, int override_width, int override_height);
