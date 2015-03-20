@@ -44,8 +44,8 @@
  *
  **/
 
-//#include "nvapi.h"
 #include <D3D11.h>
+#include "nvapi.h"
 #include "log.h"
 
 namespace nv
