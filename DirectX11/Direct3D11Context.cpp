@@ -505,7 +505,6 @@ DrawContext HackerContext::BeforeDraw()
 				}
 			}
 		}
-		device->Release();
 	}
 	return data;
 }
@@ -1974,7 +1973,6 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 
 				mOrigContext->PSSetShaderResources(126, 1, &device->mZBufferResourceView);
 			}
-			device->Release();
 		}
 		else
 		{
