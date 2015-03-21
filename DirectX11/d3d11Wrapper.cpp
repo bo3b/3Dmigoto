@@ -2544,8 +2544,8 @@ HRESULT WINAPI D3D11CreateDevice(
 		*ppImmediateContext = contextWrap;
 
 	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
-	LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n", 
-		typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
+	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n", 
+	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
 	return ret;
 }
 
@@ -2638,8 +2638,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		*ppImmediateContext = contextWrap;
 
 	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
-	LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",
-		typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
+	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",
+	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
 	return ret;
 }
 
