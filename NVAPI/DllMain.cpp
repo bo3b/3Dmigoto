@@ -160,19 +160,6 @@ static bool ConvergenceLogging()
 	return true;
 }
 
-// Ignore the warnings for secure function here.  Too much trouble for no risk.
-// Better bet is to use logging api like Log4C.
-// Made another example in d3d11wrapper.cpp
-//#pragma warning( disable : 4996 )
-//static char *LogTime()
-//{
-//	time_t ltime = time(0);
-//	char *timeStr = asctime(localtime(&ltime));
-//	timeStr[strlen(timeStr) - 1] = 0;
-//	return timeStr;
-//}
-//#pragma warning( default : 4996 )
-
 #if (_WIN64 && HOOK_SYSTEM32)
 #define REAL_NVAPI_DLL L"\\original_nvapi64.dll"
 #elif(_WIN64)
@@ -217,7 +204,7 @@ static void loadDll()
 		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir) == 1;
 		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
 
-		if (CallsLogging()) LogInfo("\nNVapi DLL starting init  -  %s\n\n", LogTime());
+		if (CallsLogging()) LogInfo("\nNVapi DLL starting init  -  %s\n\n", LogTime().c_str());
 
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
@@ -302,7 +289,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetConvergence(StereoHandle stereoHandl
 	// Callback from DX wrapper?
 	if ((unsigned int)stereoHandle == 0x77aa8ebc && *pConvergence == 1.23f)
 	{
-		if (CallsLogging()) LogDebug("%s - Callback from DirectX wrapper: override next call.\n", LogTime());
+		if (CallsLogging()) LogDebug("%s - Callback from DirectX wrapper: override next call.\n", LogTime().c_str());
 		gDirectXOverride = true;
 		return (NvAPI_Status)0xeecc34ab;
 	}
@@ -310,7 +297,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetConvergence(StereoHandle stereoHandl
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetConvergence)(stereoHandle, pConvergence);
 	if (ConvergenceLogging() && GetConvergence != *pConvergence)
 	{
-		LogInfo("%s - GetConvergence value=%e, hex=%x\n", LogTime(), GetConvergence = *pConvergence, *reinterpret_cast<unsigned int *>(pConvergence));
+		LogInfo("%s - GetConvergence value=%e, hex=%x\n", LogTime().c_str(), GetConvergence = *pConvergence, *reinterpret_cast<unsigned int *>(pConvergence));
 	}
 	return ret;
 }
@@ -319,12 +306,12 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetConvergence(StereoHandle stereoHandl
 {
 	if (ConvergenceLogging() && SetConvergence != newConvergence)
 	{
-		LogInfo("%s - Request SetConvergence to %e, hex=%x\n", LogTime(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
+		LogInfo("%s - Request SetConvergence to %e, hex=%x\n", LogTime().c_str(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
 	}
 
 	if (gDirectXOverride)
 	{
-		if (CallsLogging()) LogDebug("%s - Stereo_SetConvergence called from DirectX wrapper: ignoring user overrides.\n", LogTime());
+		if (CallsLogging()) LogDebug("%s - Stereo_SetConvergence called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
 		gDirectXOverride = false;
 		return (*_NvAPI_Stereo_SetConvergence)(stereoHandle, newConvergence);
 	}
@@ -349,7 +336,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetConvergence(StereoHandle stereoHandl
 		return NVAPI_OK;
 	if (ConvergenceLogging() && SetConvergence != newConvergence)
 	{
-		LogInfo("%s - Remap SetConvergence to %e, hex=%x\n", LogTime(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
+		LogInfo("%s - Remap SetConvergence to %e, hex=%x\n", LogTime().c_str(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));
 	}
 	return (*_NvAPI_Stereo_SetConvergence)(stereoHandle, newConvergence);
 }
@@ -359,7 +346,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetSeparation(StereoHandle stereoHandle
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetSeparation)(stereoHandle, pSeparationPercentage);
 	if (SeparationLogging() && GetSeparation != *pSeparationPercentage)
 	{
-		LogInfo("%s - GetSeparation value=%e, hex=%x\n", LogTime(), GetSeparation = *pSeparationPercentage, *reinterpret_cast<unsigned int *>(pSeparationPercentage));
+		LogInfo("%s - GetSeparation value=%e, hex=%x\n", LogTime().c_str(), GetSeparation = *pSeparationPercentage, *reinterpret_cast<unsigned int *>(pSeparationPercentage));
 	}
 	return ret;
 }
@@ -367,7 +354,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle
 {
 	if (gDirectXOverride)
 	{
-		if (CallsLogging()) LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime());
+		if (CallsLogging()) LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
 		gDirectXOverride = false;
 		return (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	}
@@ -378,13 +365,13 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle
 	NvAPI_Status ret = (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	if (SeparationLogging() && SetSeparation != newSeparationPercentage)
 	{
-		LogInfo("%s - SetSeparation to %e, hex=%x\n", LogTime(), SetSeparation = newSeparationPercentage, *reinterpret_cast<unsigned int *>(&newSeparationPercentage));
+		LogInfo("%s - SetSeparation to %e, hex=%x\n", LogTime().c_str(), SetSeparation = newSeparationPercentage, *reinterpret_cast<unsigned int *>(&newSeparationPercentage));
 	}
 	return ret;
 }
 static NvAPI_Status __cdecl NvAPI_Stereo_Disable()
 {
-	if (CallsLogging()) LogInfo("%s - Stereo_Disable called.\n", LogTime());
+	if (CallsLogging()) LogInfo("%s - Stereo_Disable called.\n", LogTime().c_str());
 	if (NoStereoDisable)
 	{
 		if (CallsLogging()) LogInfo("  Stereo_Disable ignored.\n");
@@ -397,7 +384,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Disable()
 //{
 //	if (CallsLogging())
 //	{
-//		LogInfo("%s - D3D9_VideoSetStereoInfo called width\n", LogTime());
+//		LogInfo("%s - D3D9_VideoSetStereoInfo called width\n", LogTime().c_str());
 //		LogInfo("  IDirect3DDevice9 = %p\n", pDev);
 //		LogInfo("  hSurface = %p\n", pStereoInfo->hSurface);
 //		LogInfo("  Format = %x\n", pStereoInfo->eFormat);
@@ -410,7 +397,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_CreateConfigurationProfileRegistryKey(
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_CreateConfigurationProfileRegistryKey called width type = %d\n", LogTime(),
+		LogInfo("%s - Stereo_CreateConfigurationProfileRegistryKey called width type = %d\n", LogTime().c_str(),
 			registryProfileType);
 	}
 	return (*_NvAPI_Stereo_CreateConfigurationProfileRegistryKey)(registryProfileType);
@@ -420,7 +407,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_DeleteConfigurationProfileRegistryKey(
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_DeleteConfigurationProfileRegistryKey called width type = %d\n", LogTime(),
+		LogInfo("%s - Stereo_DeleteConfigurationProfileRegistryKey called width type = %d\n", LogTime().c_str(),
 			registryProfileType);
 	}
 	return (*_NvAPI_Stereo_DeleteConfigurationProfileRegistryKey)(registryProfileType);
@@ -431,7 +418,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetConfigurationProfileValue(
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_SetConfigurationProfileValue called width type = %d\n", LogTime(),
+		LogInfo("%s - Stereo_SetConfigurationProfileValue called width type = %d\n", LogTime().c_str(),
 			registryProfileType);
 		LogInfo("  value ID = %x\n", valueRegistryID);
 		LogInfo("  value = %x\n", *(NvAPI_Status*)pValue);
@@ -444,7 +431,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_DeleteConfigurationProfileValue(
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_SetConfigurationProfileValue called width type = %d\n", LogTime(),
+		LogInfo("%s - Stereo_SetConfigurationProfileValue called width type = %d\n", LogTime().c_str(),
 			registryProfileType);
 		LogInfo("  value ID = %x\n", valueRegistryID);
 	}
@@ -454,7 +441,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_Enable called\n", LogTime());
+		LogInfo("%s - Stereo_Enable called\n", LogTime().c_str());
 	}
 	return (*_NvAPI_Stereo_Enable)();
 }
@@ -463,7 +450,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 	if (CallsLogging())
 	{
-		LogInfo("%s - NvAPI_Stereo_IsEnabled called. Returns IsStereoEnabled = %d, Result = %d\n", LogTime(),
+		LogInfo("%s - NvAPI_Stereo_IsEnabled called. Returns IsStereoEnabled = %d, Result = %d\n", LogTime().c_str(),
 			*pIsStereoEnabled, ret);
 	}
 	return ret;
@@ -474,7 +461,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetStereoSupport(
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetStereoSupport)(hMonitor, pCaps);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_GetStereoSupportStereo_Enable called with hMonitor = %p. Returns:\n", LogTime(),
+		LogInfo("%s - Stereo_GetStereoSupportStereo_Enable called with hMonitor = %p. Returns:\n", LogTime().c_str(),
 			hMonitor);
 		LogInfo("  result = %d\n", ret);
 		LogInfo("  version = %d\n", pCaps->version);
@@ -490,7 +477,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_CreateHandleFromIUnknown(
 	NvAPI_Status ret = (*_NvAPI_Stereo_CreateHandleFromIUnknown)(pDevice, pStereoHandle);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_CreateHandleFromIUnknown called with device = %p. Result = %d\n", LogTime(), pDevice, ret);
+		LogInfo("%s - Stereo_CreateHandleFromIUnknown called with device = %p. Result = %d\n", LogTime().c_str(), pDevice, ret);
 	}
 	return ret;
 }
@@ -499,7 +486,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_DestroyHandle(StereoHandle stereoHandle
 	NvAPI_Status ret = (*_NvAPI_Stereo_DestroyHandle)(stereoHandle);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_DestroyHandle called. Result = %d\n", LogTime(), ret);
+		LogInfo("%s - Stereo_DestroyHandle called. Result = %d\n", LogTime().c_str(), ret);
 	}
 	return ret;
 }
@@ -508,7 +495,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Activate(StereoHandle stereoHandle)
 	NvAPI_Status ret = (*_NvAPI_Stereo_Activate)(stereoHandle);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_Activate called. Result = %d\n", LogTime(), ret);
+		LogInfo("%s - Stereo_Activate called. Result = %d\n", LogTime().c_str(), ret);
 	}
 	return ret;
 }
@@ -516,7 +503,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Deactivate(StereoHandle stereoHandle)
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_Deactivate called.\n", LogTime());
+		LogInfo("%s - Stereo_Deactivate called.\n", LogTime().c_str());
 	}
 	if (NoStereoDisable)
 	{
@@ -535,7 +522,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, 
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsActivated)(stereoHandle, pIsStereoOn);
 	if (CallsLogging() && LogDebug)
 	{
-		LogInfo("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime(), ret, *pIsStereoOn);
+		LogInfo("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime().c_str(), ret, *pIsStereoOn);
 	}
 	return ret;
 }
@@ -543,7 +530,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_DecreaseSeparation(StereoHandle stereoH
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_DecreaseSeparation called.\n", LogTime());
+		LogInfo("%s - Stereo_DecreaseSeparation called.\n", LogTime().c_str());
 	}
 	return (*_NvAPI_Stereo_DecreaseSeparation)(stereoHandle);
 }
@@ -551,7 +538,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IncreaseSeparation(StereoHandle stereoH
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_IncreaseSeparation called.\n", LogTime());
+		LogInfo("%s - Stereo_IncreaseSeparation called.\n", LogTime().c_str());
 	}
 	return (*_NvAPI_Stereo_IncreaseSeparation)(stereoHandle);
 }
@@ -559,7 +546,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_DecreaseConvergence(StereoHandle stereo
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_DecreaseConvergence called.\n", LogTime());
+		LogInfo("%s - Stereo_DecreaseConvergence called.\n", LogTime().c_str());
 	}
 	return (*_NvAPI_Stereo_DecreaseConvergence)(stereoHandle);
 }
@@ -567,7 +554,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IncreaseConvergence(StereoHandle stereo
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_IncreaseConvergence called.\n", LogTime());
+		LogInfo("%s - Stereo_IncreaseConvergence called.\n", LogTime().c_str());
 	}
 	return (*_NvAPI_Stereo_IncreaseConvergence)(stereoHandle);
 }
@@ -577,7 +564,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetFrustumAdjustMode(StereoHandle stere
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetFrustumAdjustMode)(stereoHandle, pFrustumAdjustMode);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_GetFrustumAdjustMode called. Result = %d, returns:\n", LogTime(), ret);
+		LogInfo("%s - Stereo_GetFrustumAdjustMode called. Result = %d, returns:\n", LogTime().c_str(), ret);
 		LogInfo("  FrustumAdjustMode = %d\n", *pFrustumAdjustMode);
 	}
 	return ret;
@@ -587,7 +574,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetFrustumAdjustMode(StereoHandle stere
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_SetFrustumAdjustMode called with FrustumAdjustMode = %d\n", LogTime(), newFrustumAdjustModeValue);
+		LogInfo("%s - Stereo_SetFrustumAdjustMode called with FrustumAdjustMode = %d\n", LogTime().c_str(), newFrustumAdjustModeValue);
 	}
 	return (*_NvAPI_Stereo_SetFrustumAdjustMode)(stereoHandle, newFrustumAdjustModeValue);
 }
@@ -597,7 +584,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_InitActivation(__in StereoHandle hStere
 	NvAPI_Status ret = (*_NvAPI_Stereo_InitActivation)(hStereoHandle, flags);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_InitActivation called with flags = %d. Result = %d\n", LogTime(),
+		LogInfo("%s - Stereo_InitActivation called with flags = %d. Result = %d\n", LogTime().c_str(),
 			flags, ret);
 	}
 	return ret;
@@ -607,7 +594,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Trigger_Activation(__in StereoHandle hS
 	NvAPI_Status ret = (*_NvAPI_Stereo_Trigger_Activation)(hStereoHandle);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_Trigger_Activation called. Result = %d\n", LogTime(), ret);
+		LogInfo("%s - Stereo_Trigger_Activation called. Result = %d\n", LogTime().c_str(), ret);
 	}
 	return ret;
 }
@@ -616,7 +603,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_ReverseStereoBlitControl(StereoHandle h
 	NvAPI_Status ret = (*_NvAPI_Stereo_ReverseStereoBlitControl)(hStereoHandle, TurnOn);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_Trigger_Activation called with TurnOn = %d. Result = %d\n", LogTime(),
+		LogInfo("%s - Stereo_Trigger_Activation called with TurnOn = %d. Result = %d\n", LogTime().c_str(),
 			TurnOn, ret);
 	}
 	return ret;
@@ -627,7 +614,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetActiveEye(StereoHandle hStereoHandle
 	NvAPI_Status ret = (*_NvAPI_Stereo_SetActiveEye)(hStereoHandle, StereoEye);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_SetActiveEye called with StereoEye = %d. Result = %d\n", LogTime(),
+		LogInfo("%s - Stereo_SetActiveEye called with StereoEye = %d. Result = %d\n", LogTime().c_str(),
 			StereoEye, ret);
 	}
 	return ret;
@@ -636,7 +623,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetDriverMode(NV_STEREO_DRIVER_MODE mod
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_SetDriverMode called with mode = %d.\n", LogTime(), mode);
+		LogInfo("%s - Stereo_SetDriverMode called with mode = %d.\n", LogTime().c_str(), mode);
 		switch (mode)
 		{
 			case NVAPI_STEREO_DRIVER_MODE_AUTOMATIC:
@@ -667,7 +654,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetEyeSeparation(StereoHandle hStereoHa
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetEyeSeparation)(hStereoHandle, pSeparation);
 	if (SeparationLogging() && LogDebug)
 	{
-		LogInfo("%s - Stereo_GetEyeSeparation called. Result = %d, Separation = %f\n", LogTime(),
+		LogInfo("%s - Stereo_GetEyeSeparation called. Result = %d, Separation = %f\n", LogTime().c_str(),
 			ret, *pSeparation);
 	}
 	return ret;
@@ -679,7 +666,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSurfaceCreationMode(__in StereoHandl
 	{
 		if (CallsLogging())
 		{
-			LogInfo("%s - Stereo_SetSurfaceCreationMode called from DirectX wrapper: ignoring user overrides.\n", LogTime());
+			LogInfo("%s - Stereo_SetSurfaceCreationMode called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
 		}
 		gDirectXOverride = false;
 	}
@@ -691,7 +678,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSurfaceCreationMode(__in StereoHandl
 	NvAPI_Status ret = (*_NvAPI_Stereo_SetSurfaceCreationMode)(hStereoHandle, creationMode);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_SetSurfaceCreationMode called with CreationMode = %d. Result = %d\n", LogTime(),
+		LogInfo("%s - Stereo_SetSurfaceCreationMode called with CreationMode = %d. Result = %d\n", LogTime().c_str(),
 			creationMode, ret);
 	}
 	return ret;
@@ -702,7 +689,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetSurfaceCreationMode(__in StereoHandl
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetSurfaceCreationMode)(hStereoHandle, pCreationMode);
 	if (CallsLogging())
 	{
-		LogInfo("%s - Stereo_GetSurfaceCreationMode called. Result = %d, CreationMode = %d\n", LogTime(),
+		LogInfo("%s - Stereo_GetSurfaceCreationMode called. Result = %d, CreationMode = %d\n", LogTime().c_str(),
 			ret, *pCreationMode);
 	}
 	return ret;
@@ -714,7 +701,7 @@ static NvAPI_Status __cdecl NvAPI_D3D1x_CreateSwapChain(StereoHandle hStereoHand
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - D3D1x_CreateSwapChain called with parameters\n", LogTime());
+		LogInfo("%s - D3D1x_CreateSwapChain called with parameters\n", LogTime().c_str());
 		LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
 		LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
 		LogInfo("  Refresh rate = %f\n",
@@ -745,7 +732,7 @@ static NvAPI_Status __cdecl NvAPI_D3D1x_CreateSwapChain(StereoHandle hStereoHand
 //{
 //	if (CallsLogging())
 //	{
-//		LogInfo("%s - D3D9_CreateSwapChain called with parameters\n", LogTime());
+//		LogInfo("%s - D3D9_CreateSwapChain called with parameters\n", LogTime().c_str());
 //		LogInfo("  Width = %d\n", pPresentationParameters->BackBufferWidth);
 //		LogInfo("  Height = %d\n", pPresentationParameters->BackBufferHeight);
 //		LogInfo("  Refresh rate = %d\n", pPresentationParameters->FullScreen_RefreshRateInHz);
@@ -784,7 +771,7 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 	NvAPI_Status ret = (*_NvAPI_D3D_GetCurrentSLIState)(pDevice, pSliState);
 	if (CallsLogging())
 	{
-		LogInfo("%s - NvAPI_D3D_GetCurrentSLIState called with device = %p. Result = %d\n", LogTime(), pDevice, ret);
+		LogInfo("%s - NvAPI_D3D_GetCurrentSLIState called with device = %p. Result = %d\n", LogTime().c_str(), pDevice, ret);
 	}
 	return ret;
 }
