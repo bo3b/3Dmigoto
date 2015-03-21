@@ -751,169 +751,169 @@ struct D3D11BridgeData
 	char *HLSLFileName;
 };
 
-__declspec(dllexport) int WINAPI D3DKMTCloseAdapter()
+int WINAPI D3DKMTCloseAdapter()
 {
 	LogDebug("D3DKMTCloseAdapter called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTDestroyAllocation()
+int WINAPI D3DKMTDestroyAllocation()
 {
 	LogDebug("D3DKMTDestroyAllocation called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTDestroyContext()
+int WINAPI D3DKMTDestroyContext()
 {
 	LogDebug("D3DKMTDestroyContext called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTDestroyDevice()
+int WINAPI D3DKMTDestroyDevice()
 {
 	LogDebug("D3DKMTDestroyDevice called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTDestroySynchronizationObject()
+int WINAPI D3DKMTDestroySynchronizationObject()
 {
 	LogDebug("D3DKMTDestroySynchronizationObject called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSetDisplayPrivateDriverFormat()
+int WINAPI D3DKMTSetDisplayPrivateDriverFormat()
 {
 	LogDebug("D3DKMTSetDisplayPrivateDriverFormat called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSignalSynchronizationObject()
+int WINAPI D3DKMTSignalSynchronizationObject()
 {
 	LogDebug("D3DKMTSignalSynchronizationObject called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTUnlock()
+int WINAPI D3DKMTUnlock()
 {
 	LogDebug("D3DKMTUnlock called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTWaitForSynchronizationObject()
+int WINAPI D3DKMTWaitForSynchronizationObject()
 {
 	LogDebug("D3DKMTWaitForSynchronizationObject called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTCreateAllocation()
+int WINAPI D3DKMTCreateAllocation()
 {
 	LogDebug("D3DKMTCreateAllocation called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTCreateContext()
+int WINAPI D3DKMTCreateContext()
 {
 	LogDebug("D3DKMTCreateContext called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTCreateDevice()
+int WINAPI D3DKMTCreateDevice()
 {
 	LogDebug("D3DKMTCreateDevice called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTCreateSynchronizationObject()
+int WINAPI D3DKMTCreateSynchronizationObject()
 {
 	LogDebug("D3DKMTCreateSynchronizationObject called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTEscape()
+int WINAPI D3DKMTEscape()
 {
 	LogDebug("D3DKMTEscape called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTGetContextSchedulingPriority()
+int WINAPI D3DKMTGetContextSchedulingPriority()
 {
 	LogDebug("D3DKMTGetContextSchedulingPriority called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTGetDisplayModeList()
+int WINAPI D3DKMTGetDisplayModeList()
 {
 	LogDebug("D3DKMTGetDisplayModeList called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTGetMultisampleMethodList()
+int WINAPI D3DKMTGetMultisampleMethodList()
 {
 	LogDebug("D3DKMTGetMultisampleMethodList called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTGetRuntimeData()
+int WINAPI D3DKMTGetRuntimeData()
 {
 	LogDebug("D3DKMTGetRuntimeData called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTGetSharedPrimaryHandle()
+int WINAPI D3DKMTGetSharedPrimaryHandle()
 {
 	LogDebug("D3DKMTGetRuntimeData called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTLock()
+int WINAPI D3DKMTLock()
 {
 	LogDebug("D3DKMTLock called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTPresent()
+int WINAPI D3DKMTPresent()
 {
 	LogDebug("D3DKMTPresent called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTQueryAllocationResidency()
+int WINAPI D3DKMTQueryAllocationResidency()
 {
 	LogDebug("D3DKMTQueryAllocationResidency called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTRender()
+int WINAPI D3DKMTRender()
 {
 	LogDebug("D3DKMTRender called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSetAllocationPriority()
+int WINAPI D3DKMTSetAllocationPriority()
 {
 	LogDebug("D3DKMTSetAllocationPriority called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSetContextSchedulingPriority()
+int WINAPI D3DKMTSetContextSchedulingPriority()
 {
 	LogDebug("D3DKMTSetContextSchedulingPriority called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSetDisplayMode()
+int WINAPI D3DKMTSetDisplayMode()
 {
 	LogDebug("D3DKMTSetDisplayMode called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSetGammaRamp()
+int WINAPI D3DKMTSetGammaRamp()
 {
 	LogDebug("D3DKMTSetGammaRamp called.\n");
 
 	return 0;
 }
-__declspec(dllexport) int WINAPI D3DKMTSetVidPnSourceOwner()
+int WINAPI D3DKMTSetVidPnSourceOwner()
 {
 	LogDebug("D3DKMTSetVidPnSourceOwner called.\n");
 
@@ -1081,7 +1081,7 @@ static void InitD311()
 	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
 }
 
-__declspec(dllexport) int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
+int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
 	InitD311();
 	LogInfo("D3DKMTQueryAdapterInfo called.\n");
@@ -1089,7 +1089,7 @@ __declspec(dllexport) int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO
 	return (*_D3DKMTQueryAdapterInfo)(info);
 }
 
-__declspec(dllexport) int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
+int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
 	LogInfo("OpenAdapter10 called.\n");
@@ -1097,7 +1097,7 @@ __declspec(dllexport) int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *a
 	return (*_OpenAdapter10)(adapter);
 }
 
-__declspec(dllexport) int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
+int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
 	LogInfo("OpenAdapter10_2 called.\n");
@@ -1105,7 +1105,7 @@ __declspec(dllexport) int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER 
 	return (*_OpenAdapter10_2)(adapter);
 }
 
-__declspec(dllexport) int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
+int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
 {
 	InitD311();
 	LogInfo("D3D11CoreCreateDevice called.\n");
@@ -1114,7 +1114,7 @@ __declspec(dllexport) int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, 
 }
 
 
-__declspec(dllexport) HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
+HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
 {
 	InitD311();
 	LogInfo("D3D11CoreCreateLayeredDevice called.\n");
@@ -1122,7 +1122,7 @@ __declspec(dllexport) HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *un
 	return (*_D3D11CoreCreateLayeredDevice)(unknown0, unknown1, unknown2, riid, ppvObj);
 }
 
-__declspec(dllexport) SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
+SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
 	// Call from D3DCompiler (magic number from there) ?
@@ -1142,7 +1142,7 @@ __declspec(dllexport) SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *un
 	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
 }
 
-__declspec(dllexport) HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
+HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
 	LogInfo("D3D11CoreRegisterLayers called.\n");
@@ -2472,7 +2472,7 @@ void RunFrameActions(HackerDevice *device)
 // as needed.  Both Hacker objects need access to both Context and Device, so since both are 
 // created here, it's easy enough to provide them upon instantiation.
 
-__declspec(dllexport) HRESULT WINAPI D3D11CreateDevice(
+HRESULT WINAPI D3D11CreateDevice(
 	IDXGIAdapter *pAdapter,
 	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
@@ -2549,7 +2549,7 @@ __declspec(dllexport) HRESULT WINAPI D3D11CreateDevice(
 	return ret;
 }
 
-__declspec(dllexport) HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
+HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	IDXGIAdapter *pAdapter,
 	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
@@ -2651,7 +2651,7 @@ int WINAPI D3DKMTGetDeviceState(int a)
 	return (*_D3DKMTGetDeviceState)(a);
 }
 
-__declspec(dllexport) int WINAPI D3DKMTOpenAdapterFromHdc(int a)
+int WINAPI D3DKMTOpenAdapterFromHdc(int a)
 {
 	InitD311();
 	LogInfo("D3DKMTOpenAdapterFromHdc called.\n");
@@ -2659,7 +2659,7 @@ __declspec(dllexport) int WINAPI D3DKMTOpenAdapterFromHdc(int a)
 	return (*_D3DKMTOpenAdapterFromHdc)(a);
 }
 
-__declspec(dllexport) int WINAPI D3DKMTOpenResource(int a)
+int WINAPI D3DKMTOpenResource(int a)
 {
 	InitD311();
 	LogInfo("D3DKMTOpenResource called.\n");
@@ -2667,7 +2667,7 @@ __declspec(dllexport) int WINAPI D3DKMTOpenResource(int a)
 	return (*_D3DKMTOpenResource)(a);
 }
 
-__declspec(dllexport) int WINAPI D3DKMTQueryResourceInfo(int a)
+int WINAPI D3DKMTQueryResourceInfo(int a)
 {
 	InitD311();
 	LogInfo("D3DKMTQueryResourceInfo called.\n");
