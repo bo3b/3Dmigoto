@@ -3,7 +3,11 @@
 #include <ctype.h>
 #include <wchar.h>
 #include <string.h>
+
 #include <d3d11.h>
+
+
+// -----------------------------------------------------------------------------------------------
 
 // Primary hash calculation for all shader file names, all textures.
 
@@ -26,7 +30,10 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
 	return hval;
 }
 
-UINT64 CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *desc,
+
+// -----------------------------------------------------------------------------------------------
+
+static UINT64 CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *desc,
 	UINT64 initial_hash, int override_width, int override_height)
 {
 	UINT64 hash = initial_hash;
@@ -66,7 +73,7 @@ UINT64 CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *desc,
 	return hash;
 }
 
-UINT64 CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *desc,
+static UINT64 CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *desc,
 	UINT64 initial_hash, int override_width, int override_height)
 {
 	UINT64 hash = initial_hash;
@@ -96,6 +103,7 @@ UINT64 CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *desc,
 	return hash;
 }
 
+// -----------------------------------------------------------------------------------------------
 
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.

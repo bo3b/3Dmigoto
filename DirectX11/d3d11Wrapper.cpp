@@ -1749,12 +1749,12 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
-				hr = device->ID3D11Device::CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetOrigDevice()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11VertexShader**) &replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
-				hr = device->ID3D11Device::CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetOrigDevice()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**) &replacement);
 			}
 			if (FAILED(hr))
@@ -2535,8 +2535,8 @@ __declspec(dllexport) HRESULT WINAPI D3D11CreateDevice(
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.
-	deviceWrap.SetHackerContext(contextWrap);
-	contextWrap.SetHackerDevice(deviceWrap);
+	deviceWrap->SetHackerContext(contextWrap);
+	contextWrap->SetHackerDevice(deviceWrap);
 
 	if (ppDevice)
 		*ppDevice = deviceWrap;
@@ -2629,8 +2629,8 @@ __declspec(dllexport) HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.
-	deviceWrap.SetHackerContext(contextWrap);
-	contextWrap.SetHackerDevice(deviceWrap);
+	deviceWrap->SetHackerContext(contextWrap);
+	contextWrap->SetHackerDevice(deviceWrap);
 
 	if (ppDevice)
 		*ppDevice = deviceWrap;

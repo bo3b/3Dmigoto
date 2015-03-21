@@ -3,6 +3,33 @@
 #include <d3d11.h>
 
 #include "Direct3D11Device.h"
+#include "globals.h"
+
+struct DrawContext
+{
+	bool skip;
+	bool override;
+	float oldSeparation;
+	float oldConvergence;
+	ID3D11PixelShader *oldPixelShader;
+	ID3D11VertexShader *oldVertexShader;
+
+	DrawContext() :
+		skip(false),
+		override(false),
+		oldSeparation(FLT_MAX),
+		oldConvergence(FLT_MAX),
+		oldVertexShader(NULL),
+		oldPixelShader(NULL)
+	{}
+};
+
+
+// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
+// We need this to allow each to reference the other as needed.
+
+class HackerDevice;
+
 
 // Hierarchy:
 //  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
@@ -11,15 +38,37 @@
 // MIDL_INTERFACE("c0bfa96c-e089-44fb-8eaf-26f8796190da")
 class HackerContext : public ID3D11DeviceContext 
 {
-public:
-	HackerContext(ID3D11DeviceContext *pContext);
+private:
+	ID3D11Device *mOrigDevice;
+	ID3D11DeviceContext *mOrigContext;
+	HackerDevice *mHackerDevice;
 
-	HackerDevice* GetHackerDevice(void);
+	// These private methods are utility routines for HackerContext.
+	DrawContext BeforeDraw();
+	void AfterDraw(DrawContext &data);
+	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
+		DrawContext *data,float *separationValue, float *convergenceValue);
+	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
+	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
+	void RecordDepthStencil(ID3D11DepthStencilView *target);
+	void RecordShaderResourceUsage();
+	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
+	void* RecordResourceViewStats(ID3D11ShaderResourceView *view);
+	UINT64 GetTexture2DHash(ID3D11Texture2D *texture,
+		bool log_new, struct ResourceInfo *resource_info);
+	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
+		bool log_new, struct ResourceInfo *resource_info);
+
+public:
+	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+
+	void SetHackerDevice(HackerDevice *pDevice);
+	
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
 	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }
 
-	/*** IDirect3DUnknown methods ***/
+	/*** IUnknown methods ***/
 	//STDMETHOD_(ULONG, AddRef)(THIS);
 	//STDMETHOD_(ULONG, Release)(THIS);
 

@@ -1,10 +1,34 @@
 #pragma once
 
 #include <d3d11.h>
+
 #include "../nvstereo.h"
+#include "Direct3D11Context.h"
+
+
+// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
+// We need this to allow each to reference the other as needed.
+
+class HackerContext;
 
 class HackerDevice : public ID3D11Device
 {
+private:
+	ID3D11Device *mOrigDevice;
+	ID3D11DeviceContext *mOrigContext;
+	HackerContext *mHackerContext;
+
+	// Utility routines
+	void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
+		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp);
+	void PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileData);
+	void PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileData);
+	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader);
+	bool NeedOriginalShader(UINT64 hash);
+	void KeepOriginalShader(UINT64 hash, ID3D11VertexShader *pVertexShader, ID3D11PixelShader *pPixelShader,
+		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
+
 public:
 	//static ThreadSafePointerSet	 m_List;
 	StereoHandle mStereoHandle;
@@ -15,7 +39,11 @@ public:
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
 
-	HackerDevice(ID3D11Device *pDevice);
+	HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+
+	void SetHackerContext(HackerContext *pHackerContext);
+	ID3D11Device* GetOrigDevice();
+
 
 	//static ID3D11Device* GetDirect3DDevice(ID3D11Device *pDevice);
 	//static __forceinline ID3D11Device *GetD3D11Device() { return (ID3D11Device*) m_pUnk; }
