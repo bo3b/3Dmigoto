@@ -269,7 +269,7 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 static void UpdateIniParams(HackerDevice* wrapper,
 		DirectX::XMFLOAT4 *params)
 {
-	ID3D11DeviceContext* realContext; wrapper->GetImmediateContext(&realContext);
+	ID3D11DeviceContext* realContext = wrapper->GetOrigContext();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 	if (params->x == FLT_MAX && params->y == FLT_MAX &&

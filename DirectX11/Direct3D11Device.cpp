@@ -156,6 +156,11 @@ ID3D11Device* HackerDevice::GetOrigDevice()
 	return mOrigDevice;
 }
 
+ID3D11DeviceContext* HackerDevice::GetOrigContext()
+{
+	return mOrigContext;
+}
+
 
 // No longer need this routine, we are storing Device and Context in the object
 

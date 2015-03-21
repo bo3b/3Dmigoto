@@ -43,6 +43,7 @@ public:
 
 	void SetHackerContext(HackerContext *pHackerContext);
 	ID3D11Device* GetOrigDevice();
+	ID3D11DeviceContext* GetOrigContext();
 
 
 	//static ID3D11Device* GetDirect3DDevice(ID3D11Device *pDevice);
