@@ -1593,7 +1593,9 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 					ID3DBlob* blob;
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
@@ -1615,7 +1617,9 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 			ID3DBlob* blob;
 			D3DCreateBlob(BytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			RegisterForReload(*ppVertexShader, hash, L"vs", "bin", pClassLinkage, blob, ftWrite);
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 			// Also add the original shader to the original shaders
 			// map so that if it is later replaced marking_mode =
@@ -1810,7 +1814,9 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 					ID3DBlob* blob;
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
@@ -1832,7 +1838,9 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 			ID3DBlob* blob;
 			D3DCreateBlob(BytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			RegisterForReload(*ppPixelShader, hash, L"ps", "bin", pClassLinkage, blob, ftWrite);
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 			// Also add the original shader to the original shaders
 			// map so that if it is later replaced marking_mode =
