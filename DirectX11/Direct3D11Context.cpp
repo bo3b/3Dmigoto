@@ -124,7 +124,11 @@ void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 	resource->Release();
 
 	if (hash)
-		G->mRenderTargets[resource] = hash;
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			G->mRenderTargets[resource] = hash;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
 
 	return resource;
 }
@@ -197,10 +201,10 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 		return;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mRenderTargets[resource] = hash;
-	G->mCurrentRenderTargets.push_back(resource);
-	G->mVisitedRenderTargets.insert(resource);
-	G->mRenderTargetInfo[hash] = resource_info;
+		G->mRenderTargets[resource] = hash;
+		G->mCurrentRenderTargets.push_back(resource);
+		G->mVisitedRenderTargets.insert(resource);
+		G->mRenderTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -239,9 +243,9 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 	resource->Release();
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mRenderTargets[resource] = hash;
-	G->mCurrentDepthTarget = resource;
-	G->mDepthTargetInfo[hash] = resource_info;
+		G->mRenderTargets[resource] = hash;
+		G->mCurrentDepthTarget = resource;
+		G->mDepthTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -2157,8 +2161,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	if (G->hunting)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mCurrentRenderTargets.clear();
-		G->mCurrentDepthTarget = NULL;
+			G->mCurrentRenderTargets.clear();
+			G->mCurrentDepthTarget = NULL;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {

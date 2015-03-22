@@ -120,6 +120,10 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 	ShaderOverride *override;
 	UINT64 hash, hash2;
 
+	// Lock entire routine. This can be re-inited live.  These shaderoverrides
+	// are unlikely to be changing much, but for consistency.
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	G->mShaderOverrideMap.clear();
 
 	lower = sections.lower_bound(wstring(L"ShaderOverride"));
@@ -199,6 +203,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			override->indexBufferFilter.push_back(hash2);
 		}
 	}
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
@@ -208,6 +213,10 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 	const wchar_t *id;
 	TextureOverride *override;
 	UINT64 hash;
+
+	// Lock entire routine, this can be re-inited.  These shaderoverrides
+	// are unlikely to be changing much, but for consistency.
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
 
@@ -264,6 +273,7 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 		}
 #endif
 	}
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void GetIniSections(IniSections &sections, wchar_t *iniFile)
@@ -1693,6 +1703,10 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 	wstring ws = fileName;
 	hash = stoull(ws.substr(0, 16), NULL, 16);
 
+	// This is probably unnecessary, because we modify already existing map entries, but
+	// for consistency, we'll wrap this.
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	// Find the original shader bytecode in the mReloadedShaders Map. This map contains entries for all
 	// shaders from the ShaderFixes and ShaderCache folder, and can also include .bin files that were loaded directly.
 	// We include ShaderCache because that allows moving files into ShaderFixes as they are identified.
@@ -1721,6 +1735,9 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// Is there a good reason we are operating on a copy of the map and not the original?
 			// Took me a while to work out why this wasn't working: iter.second.found = true;
 			//   -DarkStarSword
+			// Not a _good_ reason, but I was worried about breaking something I didn't understand, 
+			// if I were to modify the original. Too many moving parts for me, no good way to test regressions.
+			//   -bo3b
 			G->mReloadedShaders[oldShader].found = true;
 
 			// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
@@ -1776,6 +1793,8 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			LogInfo("> successfully reloaded shader: %ls\n", fileName);
 		}
 	}	// for every registered shader in mReloadedShaders 
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	return true;
 }

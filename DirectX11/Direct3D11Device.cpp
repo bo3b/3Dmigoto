@@ -231,7 +231,7 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 
 			for (PreloadPixelShaderMap::iterator i = G->mPreloadedPixelShaders.begin(); i != G->mPreloadedPixelShaders.end(); ++i)
 				i->second->Release();
-			G->mPreloadedPixelShaders.clear();
+			G->mPreloadedPixelShaders.clear();		// No critical wrap for exiting.
 		}
 		if (!G->mPreloadedVertexShaders.empty())
 		{
@@ -239,7 +239,7 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 
 			for (PreloadVertexShaderMap::iterator i = G->mPreloadedVertexShaders.begin(); i != G->mPreloadedVertexShaders.end(); ++i)
 				i->second->Release();
-			G->mPreloadedVertexShaders.clear();
+			G->mPreloadedVertexShaders.clear();		// No critical wrap for exiting.
 		}
 		delete this;
 		return 0L;
@@ -263,6 +263,8 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 // dynamically, and do on-the-fly fix testing.
 // ShaderModel is usually something like "vs_5_0", but "bin" is a valid ShaderModel string, and tells the 
 // reloader to disassemble the .bin file to determine the shader model.
+
+// Currently, critical lock must be taken BEFORE this is called.
 
 void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
 		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp)
@@ -1492,7 +1494,11 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
-		G->mTexture3D_ID[*ppTexture3D] = hash;
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			G->mTexture3D_ID[*ppTexture3D] = hash;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
 
 	LogInfo("  returns result = %x\n", hr);
 
