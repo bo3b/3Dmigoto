@@ -1134,7 +1134,9 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 		LogInfo("  Bytecode hash = %08lx%08lx\n", (UINT32)(data->BinaryHash >> 32), (UINT32)data->BinaryHash);
 		LogInfo("  Filename = %s\n", data->HLSLFileName);
 
-		G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		return 0xaa77125b;
 	}
 	LogInfo("D3D11CoreGetLayeredDeviceSize called.\n");

@@ -330,15 +330,15 @@ void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileD
 	}
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mPreloadedVertexShaders[keyHash] = pVertexShader;
-	if (G->hunting)
-	{
-		ID3DBlob* blob;
-		D3DCreateBlob(bytecodeLength, &blob);
-		memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
-		RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite);
-	}
-	delete pShaderBytecode; pShaderBytecode = 0;
+		G->mPreloadedVertexShaders[keyHash] = pVertexShader;
+		if (G->hunting)
+		{
+			ID3DBlob* blob;
+			D3DCreateBlob(bytecodeLength, &blob);
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
+			RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite);
+		}
+		delete pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -394,15 +394,15 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 	}
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	G->mPreloadedPixelShaders[hash] = pPixelShader;
-	if (G->hunting)
-	{
-		ID3DBlob* blob;
-		D3DCreateBlob(bytecodeLength, &blob);
-		memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
-		RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite);
-	}
-	delete pShaderBytecode; pShaderBytecode = 0;
+		G->mPreloadedPixelShaders[hash] = pPixelShader;
+		if (G->hunting)
+		{
+			ID3DBlob* blob;
+			D3DCreateBlob(bytecodeLength, &blob);
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
+			RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite);
+		}
+		delete pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -718,7 +718,9 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				p.InvTransforms = G->InvTransforms;
 				p.fixLightPosition = G->FIX_Light_Position;
 				p.ZeroOutput = false;
-				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+					const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				if (!decompiledCode.size())
 				{
 					LogInfo("    error while decompiling.\n");
@@ -956,16 +958,16 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, ID3D11VertexShader *pVertexSh
 	LogInfo("    keeping original shader for filtering: %016llx\n", hash);
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	if (pVertexShader) {
-		ID3D11VertexShader *originalShader;
-		mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-		G->mOriginalVertexShaders[pVertexShader] = originalShader;
-	}
-	else if (pPixelShader) {
-		ID3D11PixelShader *originalShader;
-		mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-		G->mOriginalPixelShaders[pPixelShader] = originalShader;
-	}
+		if (pVertexShader) {
+			ID3D11VertexShader *originalShader;
+			mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			G->mOriginalVertexShaders[pVertexShader] = originalShader;
+		}
+		else if (pPixelShader) {
+			ID3D11PixelShader *originalShader;
+			mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			G->mOriginalPixelShaders[pPixelShader] = originalShader;
+		}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -1251,7 +1253,9 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->MiscFlags; hash *= FNV_64_PRIME;
 		hash ^= pDesc->StructureByteStride;
-		G->mDataBuffers[*ppBuffer] = hash;
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			G->mDataBuffers[*ppBuffer] = hash;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		LogDebug("    Buffer registered: handle = %p, hash = %08lx%08lx\n", *ppBuffer, (UINT32)(hash >> 32), (UINT32)hash);
 	}
 	return hr;
@@ -1445,8 +1449,11 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 
 	// Register texture.
 	if (ppTexture2D)
-		G->mTexture2D_ID[*ppTexture2D] = hash;
-
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			G->mTexture2D_ID[*ppTexture2D] = hash;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
 	return hr;
 }
 
@@ -1573,10 +1580,8 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 		ID3D11VertexShader *zeroShader = 0;
 		// Not sure why, but blocking the Decompiler from multi-threading prevents a crash.
 		// This is just a patch for now.
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char *replaceShader = ReplaceShader(hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1594,7 +1599,7 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
+						RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -1614,36 +1619,36 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 		// have a copy for every shader seen.
 		if (G->hunting)
 		{
-			ID3DBlob* blob;
-			D3DCreateBlob(BytecodeLength, &blob);
-			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
 			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			RegisterForReload(*ppVertexShader, hash, L"vs", "bin", pClassLinkage, blob, ftWrite);
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				ID3DBlob* blob;
+				D3DCreateBlob(BytecodeLength, &blob);
+				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+				RegisterForReload(*ppVertexShader, hash, L"vs", "bin", pClassLinkage, blob, ftWrite);
 
-			// Also add the original shader to the original shaders
-			// map so that if it is later replaced marking_mode =
-			// original and depth buffer filtering will work:
-			if (G->mOriginalVertexShaders.count(*ppVertexShader) == 0)
-				G->mOriginalVertexShaders[*ppVertexShader] = *ppVertexShader;
+				// Also add the original shader to the original shaders
+				// map so that if it is later replaced marking_mode =
+				// original and depth buffer filtering will work:
+				if (G->mOriginalVertexShaders.count(*ppVertexShader) == 0)
+					G->mOriginalVertexShaders[*ppVertexShader] = *ppVertexShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 	if (hr == S_OK && ppVertexShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mVertexShaders[*ppVertexShader] = hash;
-		LogDebug("    Vertex shader registered: handle = %p, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
+			G->mVertexShaders[*ppVertexShader] = hash;
+			LogDebug("    Vertex shader registered: handle = %p, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
 
-		if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
-		{
-			G->mZeroVertexShaders[*ppVertexShader] = zeroShader;
-		}
+			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
+			{
+				G->mZeroVertexShaders[*ppVertexShader] = zeroShader;
+			}
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1699,15 +1704,15 @@ STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
 	if (hr == S_OK && ppGeometryShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mGeometryShaders[*ppGeometryShader] = hash;
-		LogDebug("    Geometry shader registered: handle = %p, hash = %08lx%08lx\n",
-			*ppGeometryShader, (UINT32)(hash >> 32), (UINT32)hash);
+			G->mGeometryShaders[*ppGeometryShader] = hash;
+			LogDebug("    Geometry shader registered: handle = %p, hash = %08lx%08lx\n",
+				*ppGeometryShader, (UINT32)(hash >> 32), (UINT32)hash);
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1794,10 +1799,8 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 	if (hr != S_OK && ppPixelShader && pShaderBytecode)
 	{
 		// TODO: shouldn't require critical section
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char *replaceShader = ReplaceShader(hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1815,7 +1818,7 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
+						RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -1835,36 +1838,36 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 		// have a copy for every shader seen.
 		if (G->hunting)
 		{
-			ID3DBlob* blob;
-			D3DCreateBlob(BytecodeLength, &blob);
-			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
 			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			RegisterForReload(*ppPixelShader, hash, L"ps", "bin", pClassLinkage, blob, ftWrite);
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				ID3DBlob* blob;
+				D3DCreateBlob(BytecodeLength, &blob);
+				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+				RegisterForReload(*ppPixelShader, hash, L"ps", "bin", pClassLinkage, blob, ftWrite);
 
-			// Also add the original shader to the original shaders
-			// map so that if it is later replaced marking_mode =
-			// original and depth buffer filtering will work:
-			if (G->mOriginalPixelShaders.count(*ppPixelShader) == 0)
-				G->mOriginalPixelShaders[*ppPixelShader] = *ppPixelShader;
+				// Also add the original shader to the original shaders
+				// map so that if it is later replaced marking_mode =
+				// original and depth buffer filtering will work:
+				if (G->mOriginalPixelShaders.count(*ppPixelShader) == 0)
+					G->mOriginalPixelShaders[*ppPixelShader] = *ppPixelShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 	if (hr == S_OK && ppPixelShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mPixelShaders[*ppPixelShader] = hash;
-		LogDebug("    Pixel shader: handle = %p, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
+			G->mPixelShaders[*ppPixelShader] = hash;
+			LogDebug("    Pixel shader: handle = %p, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
 
-		if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
-		{
-			G->mZeroPixelShaders[*ppPixelShader] = zeroShader;
-		}
+			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
+			{
+				G->mZeroPixelShaders[*ppPixelShader] = zeroShader;
+			}
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1920,15 +1923,15 @@ STDMETHODIMP HackerDevice::CreateHullShader(THIS_
 	if (hr == S_OK && ppHullShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mHullShaders[*ppHullShader] = hash;
-		LogDebug("    Hull shader: handle = %p, hash = %08lx%08lx\n",
-			*ppHullShader, (UINT32)(hash >> 32), (UINT32)hash);
+			G->mHullShaders[*ppHullShader] = hash;
+			LogDebug("    Hull shader: handle = %p, hash = %08lx%08lx\n",
+				*ppHullShader, (UINT32)(hash >> 32), (UINT32)hash);
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1984,15 +1987,15 @@ STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
 	if (hr == S_OK && ppDomainShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mDomainShaders[*ppDomainShader] = hash;
-		LogDebug("    Domain shader: handle = %p, hash = %08lx%08lx\n",
-			*ppDomainShader, (UINT32)(hash >> 32), (UINT32)hash);
+			G->mDomainShaders[*ppDomainShader] = hash;
+			LogDebug("    Domain shader: handle = %p, hash = %08lx%08lx\n",
+				*ppDomainShader, (UINT32)(hash >> 32), (UINT32)hash);
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2048,15 +2051,15 @@ STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
 	if (hr == S_OK && ppComputeShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mComputeShaders[*ppComputeShader] = hash;
-		LogDebug("    Compute shader: handle = %p, hash = %08lx%08lx\n",
-			*ppComputeShader, (UINT32)(hash >> 32), (UINT32)hash);
+			G->mComputeShaders[*ppComputeShader] = hash;
+			LogDebug("    Compute shader: handle = %p, hash = %08lx%08lx\n",
+				*ppComputeShader, (UINT32)(hash >> 32), (UINT32)hash);
 
-		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-		if (i != G->mCompiledShaderMap.end())
-		{
-			LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-		}
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 

@@ -2027,20 +2027,20 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 	{
 		// Store as current index buffer.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);
-		if (i != G->mDataBuffers.end())
-		{
-			G->mCurrentIndexBuffer = i->second;
-			LogDebug("  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer);
+			DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);
+			if (i != G->mDataBuffers.end())
+			{
+				G->mCurrentIndexBuffer = i->second;
+				LogDebug("  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer);
 
-			// Add to visited index buffers.
-			G->mVisitedIndexBuffers.insert(G->mCurrentIndexBuffer);
+				// Add to visited index buffers.
+				G->mVisitedIndexBuffers.insert(G->mCurrentIndexBuffer);
 
-			// second try to hide index buffer.
-			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
-			//	pIndexBuffer = 0;
-		}
-		else LogDebug("  index buffer %p not found\n", pIndexBuffer);
+				// second try to hide index buffer.
+				// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
+				//	pIndexBuffer = 0;
+			}
+			else LogDebug("  index buffer %p not found\n", pIndexBuffer);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
