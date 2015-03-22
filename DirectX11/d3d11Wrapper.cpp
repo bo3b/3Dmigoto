@@ -705,10 +705,7 @@ void InitializeDLL()
 	{
 		LoadConfigFile();
 
-		// NVAPI
 		NvAPI_Initialize();
-
-		InitializeCriticalSection(&G->mCriticalSection);
 
 		// Everything set up, let's make another thread for watching the keyboard for shader hunting.
 		// It's all multi-threaded rendering now anyway, so it has to be ready for that.
@@ -1023,7 +1020,10 @@ static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 static void InitD311()
 {
 	if (hD3D11) return;
+
 	G = new Globals();
+	InitializeCriticalSection(&G->mCriticalSection);
+
 	InitializeDLL();
 	if (G->CHAIN_DLL_PATH[0])
 	{
