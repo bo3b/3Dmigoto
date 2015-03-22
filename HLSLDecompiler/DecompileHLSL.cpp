@@ -1426,7 +1426,7 @@ public:
 	int ReadStatement(const char *pos)
 	{
 		// Kill newline.
-		static char lineBuffer[256];
+		char lineBuffer[256];
 		strncpy(lineBuffer, pos, 255); lineBuffer[255] = 0;
 		char *newlinePos = strchr(lineBuffer, '\n'); if (newlinePos) *newlinePos = 0;
 		op1[0] = 0; op2[0] = 0; op3[0] = 0; op4[0] = 0; op5[0] = 0; op6[0] = 0; op7[0] = 0; op8[0] = 0;

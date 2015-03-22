@@ -183,7 +183,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 
 			for (PreloadPixelShaderMap::iterator i = G->mPreloadedPixelShaders.begin(); i != G->mPreloadedPixelShaders.end(); ++i)
 				i->second->Release();
-			G->mPreloadedPixelShaders.clear();
+			G->mPreloadedPixelShaders.clear();		// No critical wrap for exiting.
 		}
 		if (!G->mPreloadedVertexShaders.empty())
 		{
@@ -191,7 +191,7 @@ STDMETHODIMP_(ULONG) D3D11Wrapper::ID3D11Device::Release(THIS)
 
 			for (PreloadVertexShaderMap::iterator i = G->mPreloadedVertexShaders.begin(); i != G->mPreloadedVertexShaders.end(); ++i)
 				i->second->Release();
-			G->mPreloadedVertexShaders.clear();
+			G->mPreloadedVertexShaders.clear();		// No critical wrap for exiting.
 		}
 		delete this;
 		return 0L;
@@ -251,6 +251,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateTexture1D(THIS_
 // dynamically, and do on-the-fly fix testing.
 // ShaderModel is usually something like "vs_5_0", but "bin" is a valid ShaderModel string, and tells the 
 // reloader to disassemble the .bin file to determine the shader model.
+
+// Currently, critical lock must be taken BEFORE this is called.
 
 static void RegisterForReload(D3D11Base::ID3D11DeviceChild* ppShader,
 	UINT64 hash, wstring shaderType, string shaderModel, D3D11Base::ID3D11ClassLinkage* pClassLinkage, D3D11Base::ID3DBlob* byteCode, FILETIME timeStamp)
@@ -1312,12 +1314,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 	if (hr != S_OK && ppVertexShader && pShaderBytecode)
 	{
 		D3D11Base::ID3D11VertexShader *zeroShader = 0;
-		// Not sure why, but blocking the Decompiler from multi-threading prevents a crash.
-		// This is just a patch for now.
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1334,7 +1332,9 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 					D3D11Base::ID3DBlob* blob;
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 					RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(this, hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
@@ -1353,6 +1353,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 		// have a copy for every shader seen.
 		if (G->hunting)
 		{
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			D3D11Base::ID3DBlob* blob;
 			D3DCreateBlob(BytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
@@ -1363,6 +1364,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreateVertexShader(THIS_
 			// original and depth buffer filtering will work:
 			if (G->mOriginalVertexShaders.count(*ppVertexShader) == 0)
 				G->mOriginalVertexShaders[*ppVertexShader] = *ppVertexShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 	if (hr == S_OK && ppVertexShader && pShaderBytecode)
@@ -1530,11 +1532,8 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 	}
 	if (hr != S_OK && ppPixelShader && pShaderBytecode)
 	{
-		// TODO: shouldn't require critical section
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char *replaceShader = ReplaceShader(GetD3D11Device(), hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1551,7 +1550,9 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 					D3D11Base::ID3DBlob* blob;
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 					RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(this, hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
@@ -1570,6 +1571,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 		// have a copy for every shader seen.
 		if (G->hunting)
 		{
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			D3D11Base::ID3DBlob* blob;
 			D3DCreateBlob(BytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
@@ -1580,6 +1582,7 @@ STDMETHODIMP D3D11Wrapper::ID3D11Device::CreatePixelShader(THIS_
 			// original and depth buffer filtering will work:
 			if (G->mOriginalPixelShaders.count(*ppPixelShader) == 0)
 				G->mOriginalPixelShaders[*ppPixelShader] = *ppPixelShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 	if (hr == S_OK && ppPixelShader && pShaderBytecode)
