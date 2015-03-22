@@ -720,9 +720,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				p.InvTransforms = G->InvTransforms;
 				p.fixLightPosition = G->FIX_Light_Position;
 				p.ZeroOutput = false;
-				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-					const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 				if (!decompiledCode.size())
 				{
 					LogInfo("    error while decompiling.\n");
@@ -1584,8 +1582,6 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 	if (hr != S_OK && ppVertexShader && pShaderBytecode)
 	{
 		ID3D11VertexShader *zeroShader = 0;
-		// Not sure why, but blocking the Decompiler from multi-threading prevents a crash.
-		// This is just a patch for now.
 		char *replaceShader = ReplaceShader(hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
 		if (replaceShader)
@@ -1804,7 +1800,6 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 	}
 	if (hr != S_OK && ppPixelShader && pShaderBytecode)
 	{
-		// TODO: shouldn't require critical section
 		char *replaceShader = ReplaceShader(hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize,
 			shaderModel, ftWrite, (void **)&zeroShader);
 		if (replaceShader)
