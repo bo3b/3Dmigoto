@@ -378,7 +378,7 @@ void LoadConfigFile()
 	GetIniSections(sections, iniFile);
 
 	G->gLogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
-	G->gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
+	gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
 
 	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 	// to open active files.

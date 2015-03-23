@@ -2,7 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <string>
 
 // The goal with this file is too keep it as much C++ as possible.
 // So we avoid adding Windows specific stuff if at all possible.

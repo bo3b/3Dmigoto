@@ -183,7 +183,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 			if (!resource)
 				return;
 			hash = GetTexture2DHash((ID3D11Texture2D *)resource,
-				G->gLogDebug, &resource_info);
+				gLogDebug, &resource_info);
 			resource->Release();
 			break;
 		case D3D11_RTV_DIMENSION_TEXTURE3D:
@@ -191,7 +191,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 			if (!resource)
 				return;
 			hash = GetTexture3DHash((ID3D11Texture3D *)resource,
-				G->gLogDebug, &resource_info);
+				gLogDebug, &resource_info);
 			resource->Release();
 			break;
 	}

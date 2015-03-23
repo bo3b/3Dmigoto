@@ -1,7 +1,6 @@
 #pragma once
 
-//#include "Main.h"
-
+#include <d3d11.h>
 #include "../util.h"
 #include <DirectXMath.h>
 #include <ctime>
@@ -158,7 +157,6 @@ struct Globals
 {
 	bool gInitialized;
 	bool gReloadConfigPending;
-	bool gLogDebug;
 	bool gLogInput;
 
 	wchar_t SHADER_PATH[MAX_PATH];
@@ -320,7 +318,6 @@ struct Globals
 
 		gInitialized(false),
 		gReloadConfigPending(false),
-		gLogDebug(false),
 		gLogInput(false)
 
 	{

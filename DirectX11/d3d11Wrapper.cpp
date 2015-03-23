@@ -24,6 +24,7 @@
 Globals *G;
 
 FILE *LogFile = 0;		// off by default.
+bool gLogDebug = false;
 
 
 // During the initialize, we will also Log every setting that is enabled, so that the log
