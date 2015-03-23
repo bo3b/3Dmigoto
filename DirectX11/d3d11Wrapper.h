@@ -5,6 +5,4 @@
 
 void NvAPIOverride();
 
-void RunFrameActions(HackerDevice *device);
 
-//#include "../DirectX10/d3d10WrapperDevice.h"

@@ -119,6 +119,8 @@
     <ClCompile Include="d3d11Wrapper.cpp" />
     <ClCompile Include="Direct3D11Context.cpp" />
     <ClCompile Include="Direct3D11Device.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="MainHook.cpp" />
     <ClCompile Include="Override.cpp" />
@@ -135,6 +137,8 @@
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />
     <ClInclude Include="globals.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="IniHandler.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="vkeys.h" />

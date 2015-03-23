@@ -8,6 +8,8 @@
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="Direct3D11Device.cpp" />
     <ClCompile Include="Direct3D11Context.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -24,6 +26,8 @@
     <ClInclude Include="..\util.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="IniHandler.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
