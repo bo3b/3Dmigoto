@@ -136,7 +136,8 @@ static int SCREEN_FULLSCREEN = -1;
 static bool LogConvergence = false;
 static bool LogSeparation = false;
 static bool LogCalls = false;
-static bool LogDebug = false;
+
+bool gLogDebug = false;
 FILE *LogFile = 0;
 
 
@@ -202,7 +203,7 @@ static void loadDll()
 		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir) == 1;
 		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir) == 1;
 		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir) == 1;
-		LogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
+		gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
 
 		if (CallsLogging()) LogInfo("\nNVapi DLL starting init  -  %s\n\n", LogTime().c_str());
 
@@ -520,7 +521,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Deactivate(StereoHandle stereoHandle)
 static NvAPI_Status __cdecl NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, NvU8 *pIsStereoOn)
 {
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsActivated)(stereoHandle, pIsStereoOn);
-	if (CallsLogging() && LogDebug)
+	if (CallsLogging() && gLogDebug)
 	{
 		LogInfo("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime().c_str(), ret, *pIsStereoOn);
 	}
@@ -652,7 +653,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetDriverMode(NV_STEREO_DRIVER_MODE mod
 static NvAPI_Status __cdecl NvAPI_Stereo_GetEyeSeparation(StereoHandle hStereoHandle, float *pSeparation)
 {
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetEyeSeparation)(hStereoHandle, pSeparation);
-	if (SeparationLogging() && LogDebug)
+	if (SeparationLogging() && gLogDebug)
 	{
 		LogInfo("%s - Stereo_GetEyeSeparation called. Result = %d, Separation = %f\n", LogTime().c_str(),
 			ret, *pSeparation);
