@@ -5,10 +5,11 @@ using namespace std;
 #include <string>
 #include <ctime>
 
+#include "globals.h"
+
 // Wrappers to make logging cleaner.
 
 extern FILE *LogFile;
-extern bool gLogDebug;
 
 // Note that for now I've left the definitions of LogFile and LogDebug as they
 // were - either declared locally in a file, as an extern, or from another
@@ -22,9 +23,9 @@ extern bool gLogDebug;
 	if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__)
 
 #define LogDebug(fmt, ...) \
-	if (gLogDebug) LogInfo(fmt, __VA_ARGS__)
+	if (G->gLogDebug) LogInfo(fmt, __VA_ARGS__)
 #define LogDebugW(fmt, ...) \
-	if (gLogDebug) LogInfoW(fmt, __VA_ARGS__)
+	if (G->gLogDebug) LogInfoW(fmt, __VA_ARGS__)
 
 static string LogTime()
 {

@@ -156,6 +156,11 @@ struct ResourceInfo
 
 struct Globals
 {
+	bool gInitialized;
+	bool gReloadConfigPending;
+	bool gLogDebug;
+	bool gLogInput;
+
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
@@ -311,7 +316,13 @@ struct Globals
 		gSurfaceCreateMode(-1),
 		gSurfaceSquareCreateMode(-1),
 		ZBufferHashToInject(0),
-		SCISSOR_DISABLE(0)
+		SCISSOR_DISABLE(0),
+
+		gInitialized(false),
+		gReloadConfigPending(false),
+		gLogDebug(false),
+		gLogInput(false)
+
 	{
 		SHADER_PATH[0] = 0;
 		SHADER_CACHE_PATH[0] = 0;

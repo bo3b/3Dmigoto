@@ -24,7 +24,6 @@
 Globals *G;
 
 FILE *LogFile = 0;		// off by default.
-bool gLogDebug = false;
 
 
 // During the initialize, we will also Log every setting that is enabled, so that the log
@@ -32,7 +31,7 @@ bool gLogDebug = false;
 
 bool InitializeDLL()
 {
-	if (gInitialized)
+	if (G->gInitialized)
 		return true;
 
 	LoadConfigFile();

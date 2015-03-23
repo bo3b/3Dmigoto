@@ -346,7 +346,7 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 	// key bindings and reassign them. Naturally this is not a safe thing
 	// to do from inside a key binding callback, so we just set a flag and
 	// do this after the input subsystem has finished dispatching calls.
-	gReloadConfigPending = true;
+	G->gReloadConfigPending = true;
 }
 
 
@@ -357,7 +357,7 @@ void LoadConfigFile()
 	IniSections sections;
 	IniSections::iterator lower, upper, i;
 
-	gInitialized = true;
+	G->gInitialized = true;
 
 	GetModuleFileName(0, iniFile, MAX_PATH);
 	wcsrchr(iniFile, L'\\')[1] = 0;
@@ -377,8 +377,8 @@ void LoadConfigFile()
 
 	GetIniSections(sections, iniFile);
 
-	gLogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
-	gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
+	G->gLogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
+	G->gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
 
 	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 	// to open active files.
@@ -414,7 +414,7 @@ void LoadConfigFile()
 	{
 		LogInfo("[Logging]\n");
 		LogInfo("  calls=1\n");
-		if (gLogInput) LogInfo("  input=1\n");
+		if (G->gLogInput) LogInfo("  input=1\n");
 		LogDebug("  debug=1\n");
 		if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
 		if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
@@ -702,7 +702,7 @@ void ReloadConfig(HackerDevice *device)
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
-	gReloadConfigPending = false;
+	G->gReloadConfigPending = false;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
