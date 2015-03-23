@@ -10,4 +10,3 @@
 
 void TimeoutHuntingBuffers();
 void RegisterHuntingKeyBindings(wchar_t *iniFile);
-void RunFrameActions(HackerDevice *device);

@@ -1117,7 +1117,7 @@ static void TuneDown(HackerDevice *device, void *private_data)
 // Start with a fresh set of shaders in the scene - either called explicitly
 // via keypress, or after no hunting for 1 minute (see comment in RunFrameActions)
 // Caller must have taken G->mCriticalSection (if enabled)
-static void TimeoutHuntingBuffers()
+void TimeoutHuntingBuffers()
 {
 	G->mVisitedIndexBuffers.clear();
 	G->mVisitedVertexShaders.clear();
@@ -1217,68 +1217,4 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 }
 
 
-
-// Rather than do all that, we now insert a RunFrameActions in the Draw method of the Context object,
-// where it is absolutely certain that the game is fully loaded and ready to go, because it's actively
-// drawing.  This gives us too many calls, maybe 5 per frame, but should not be a problem. The code
-// is expecting to be called in a loop, and locks out auto-repeat using that looping.
-
-// Draw is a very late binding for the game, and should solve all these problems, and allow us to retire
-// the dxgi wrapper as unneeded.  The draw is caught at AfterDraw in the Context, which is called for
-// every type of Draw, including DrawIndexed.
-
-void RunFrameActions(HackerDevice *device)
-{
-	static ULONGLONG last_ticks = 0;
-	ULONGLONG ticks = GetTickCount64();
-
-	// Prevent excessive input processing. XInput added an extreme
-	// performance hit when processing four controllers on every draw call,
-	// so only process input if at least 8ms has passed (approx 125Hz - may
-	// be less depending on timer resolution)
-	if (ticks - last_ticks < 8)
-		return;
-	last_ticks = ticks;
-
-	LogDebug("Running frame actions.  Device: %p\n", device);
-
-	// Regardless of log settings, since this runs every frame, let's flush the log
-	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
-	if (LogFile) fflush(LogFile);
-
-	bool newEvent = DispatchInputEvents(device);
-
-	CurrentTransition.UpdateTransitions(device);
-
-	// The config file is not safe to reload from within the input handler
-	// since it needs to change the key bindings, so it sets this flag
-	// instead and we handle it now.
-	if (gReloadConfigPending)
-		ReloadConfig(device);
-
-	// When not hunting most keybindings won't have been registered, but
-	// still skip the below logic that only applies while hunting.
-	if (!G->hunting)
-		return;
-
-	// Update the huntTime whenever we get fresh user input.
-	if (newEvent)
-		G->huntTime = time(NULL);
-
-	// Clear buffers after some user idle time.  This allows the buffers to be
-	// stable during a hunt, and cleared after one minute of idle time.  The idea
-	// is to make the arrays of shaders stable so that hunting up and down the arrays
-	// is consistent, while the user is engaged.  After 1 minute, they are likely onto
-	// some other spot, and we should start with a fresh set, to keep the arrays and
-	// active shader list small for easier hunting.  Until the first keypress, the arrays
-	// are cleared at each thread wake, just like before. 
-	// The arrays will be continually filled by the SetShader sections, but should 
-	// rapidly converge upon all active shaders.
-
-	if (difftime(time(NULL), G->huntTime) > 60) {
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		TimeoutHuntingBuffers();
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-}
 

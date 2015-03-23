@@ -11,11 +11,9 @@
 #include "../log.h"
 #include "globals.h"
 #include "Hunting.h"
+#include "Override.h"
+#include "IniHandler.h"
 
-//#include "Main.h"
-//#include "globals.h"
-//#include "d3d11Wrapper.h"
-//#include "Direct3D11Device.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -185,7 +183,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 			if (!resource)
 				return;
 			hash = GetTexture2DHash((ID3D11Texture2D *)resource,
-				gLogDebug, &resource_info);
+				G->gLogDebug, &resource_info);
 			resource->Release();
 			break;
 		case D3D11_RTV_DIMENSION_TEXTURE3D:
@@ -193,7 +191,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 			if (!resource)
 				return;
 			hash = GetTexture3DHash((ID3D11Texture3D *)resource,
-				gLogDebug, &resource_info);
+				G->gLogDebug, &resource_info);
 			resource->Release();
 			break;
 	}
@@ -388,6 +386,70 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 
 }
 
+// Rather than do all that, we now insert a RunFrameActions in the Draw method of the Context object,
+// where it is absolutely certain that the game is fully loaded and ready to go, because it's actively
+// drawing.  This gives us too many calls, maybe 5 per frame, but should not be a problem. The code
+// is expecting to be called in a loop, and locks out auto-repeat using that looping.
+
+// Draw is a very late binding for the game, and should solve all these problems, and allow us to retire
+// the dxgi wrapper as unneeded.  The draw is caught at AfterDraw in the Context, which is called for
+// every type of Draw, including DrawIndexed.
+
+void HackerContext::RunFrameActions()
+{
+	static ULONGLONG last_ticks = 0;
+	ULONGLONG ticks = GetTickCount64();
+
+	// Prevent excessive input processing. XInput added an extreme
+	// performance hit when processing four controllers on every draw call,
+	// so only process input if at least 8ms has passed (approx 125Hz - may
+	// be less depending on timer resolution)
+	if (ticks - last_ticks < 8)
+		return;
+	last_ticks = ticks;
+
+	LogDebug("Running frame actions.  Device: %p\n", mHackerDevice);
+
+	// Regardless of log settings, since this runs every frame, let's flush the log
+	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
+	if (LogFile) fflush(LogFile);
+
+	bool newEvent = DispatchInputEvents(mHackerDevice);
+
+	CurrentTransition.UpdateTransitions(mHackerDevice);
+
+	// The config file is not safe to reload from within the input handler
+	// since it needs to change the key bindings, so it sets this flag
+	// instead and we handle it now.
+	if (G->gReloadConfigPending)
+		ReloadConfig(mHackerDevice);
+
+	// When not hunting most keybindings won't have been registered, but
+	// still skip the below logic that only applies while hunting.
+	if (!G->hunting)
+		return;
+
+	// Update the huntTime whenever we get fresh user input.
+	if (newEvent)
+		G->huntTime = time(NULL);
+
+	// Clear buffers after some user idle time.  This allows the buffers to be
+	// stable during a hunt, and cleared after one minute of idle time.  The idea
+	// is to make the arrays of shaders stable so that hunting up and down the arrays
+	// is consistent, while the user is engaged.  After 1 minute, they are likely onto
+	// some other spot, and we should start with a fresh set, to keep the arrays and
+	// active shader list small for easier hunting.  Until the first keypress, the arrays
+	// are cleared at each thread wake, just like before. 
+	// The arrays will be continually filled by the SetShader sections, but should 
+	// rapidly converge upon all active shaders.
+
+	if (difftime(time(NULL), G->huntTime) > 60) {
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		TimeoutHuntingBuffers();
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+}
+
 DrawContext HackerContext::BeforeDraw()
 {
 	DrawContext data;
@@ -557,7 +619,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 	// where we are absolutely certain that everyone is set up correctly.  And where we can
 	// get the original ID3D11Device.  This used to be done through the DXGI Present interface,
 	// but that had a number of problems.
-	RunFrameActions(mHackerDevice);
+	RunFrameActions();
 }
 
 // -----------------------------------------------------------------------------------------------

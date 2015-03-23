@@ -44,6 +44,7 @@ private:
 	HackerDevice *mHackerDevice;
 
 	// These private methods are utility routines for HackerContext.
+	void HackerContext::RunFrameActions();
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
