@@ -294,6 +294,52 @@ static void GetIniSections(IniSections &sections, wchar_t *iniFile)
 	delete[] buf;
 }
 
+// Check the Stereo availability. If stereo is disabled we otherwise will crash 
+// when trying to create stereo texture.  This should be more graceful now.
+
+NvAPI_Status CheckStereo()
+{
+	NvU8 isStereoEnabled;
+	NvAPI_Status status = NvAPI_Stereo_IsEnabled(&isStereoEnabled);
+	if (status != NVAPI_OK)
+	{
+		// GeForce Stereoscopic 3D driver is not installed on the system
+		NvAPI_ShortString nvDescription;
+		NvAPI_GetErrorMessage(status, nvDescription);
+		LogInfo("  stereo init failed: no stereo driver detected- %s\n", nvDescription);
+		return status;
+	}
+
+	// Stereo is available but not enabled, let's enable it if specified.
+	if (!isStereoEnabled)
+	{
+		LogInfo("  stereo available but disabled.\n");
+
+		if (!G->gForceStereo)
+			return NVAPI_STEREO_NOT_ENABLED;
+
+		status = NvAPI_Stereo_Enable();
+		if (status != NVAPI_OK)
+		{
+			NvAPI_ShortString nvDescription;
+			NvAPI_GetErrorMessage(status, nvDescription);
+			LogInfo("   force enabling stereo failed- %s\n", nvDescription);
+			return status;
+		}
+	}
+
+	if (G->gCreateStereoProfile)
+	{
+		LogInfo("  enabling registry profile.\n");
+
+		NvAPI_Stereo_CreateConfigurationProfileRegistryKey(NVAPI_STEREO_DEFAULT_REGISTRY_PROFILE);
+	}
+
+	return NVAPI_OK;
+}
+
+
+
 void FlagConfigReload(HackerDevice *device, void *private_data)
 {
 	// When we reload the configuration, we are going to clear the existing

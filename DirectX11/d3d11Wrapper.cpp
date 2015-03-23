@@ -30,16 +30,33 @@ bool gLogDebug = false;
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
 
-void InitializeDLL()
+bool InitializeDLL()
 {
-	if (!gInitialized)
+	if (gInitialized)
+		return true;
+
+	LoadConfigFile();
+
+	NvAPI_ShortString errorMessage;
+	NvAPI_Status status;
+
+	status = NvAPI_Initialize();
+	if (status != NVAPI_OK)
 	{
-		LoadConfigFile();
-
-		NvAPI_Initialize();
-
-		LogInfo("D3D11 DLL initialized.\n");
+		NvAPI_GetErrorMessage(status, errorMessage);
+		LogInfo("  NvAPI_Initialize failed: %s\n", errorMessage);
+		return false;
 	}
+	status = CheckStereo();
+	if (status != NVAPI_OK)
+	{
+		NvAPI_GetErrorMessage(status, errorMessage);
+		LogInfo("  *** stereo is disabled: %s  ***\n", errorMessage);
+		return false;
+	}
+		
+	LogInfo("\n***  D3D11 DLL successfully initialized.  ***\n\n");
+	return true;
 }
 
 void DestroyDLL()
@@ -327,7 +344,16 @@ static void InitD311()
 	G = new Globals();
 	InitializeCriticalSection(&G->mCriticalSection);
 
-	InitializeDLL();
+	if (!InitializeDLL())
+	{
+		// Failed to init?  Best to exit now, we are sure to crash.
+		BeepFailure2();
+		Sleep(500);
+		BeepFailure2();
+		Sleep(200);
+		ExitProcess(0xc0000135);
+	}
+
 	if (G->CHAIN_DLL_PATH[0])
 	{
 		wchar_t sysDir[MAX_PATH];
@@ -497,50 +523,6 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 	return (*_D3DKMTQueryResourceInfo)(a);
 }
 
-static void EnableStereo()
-{
-	if (!G->gForceStereo) return;
-
-	// Prepare NVAPI for use in this application
-	NvAPI_Status status;
-	status = NvAPI_Initialize();
-	if (status != NVAPI_OK)
-	{
-		NvAPI_ShortString errorMessage;
-		NvAPI_GetErrorMessage(status, errorMessage);
-		LogInfo("  stereo init failed: %s\n", errorMessage);
-	}
-	else
-	{
-		// Check the Stereo availability
-		NvU8 isStereoEnabled;
-		status = NvAPI_Stereo_IsEnabled(&isStereoEnabled);
-		// Stereo status report an error
-		if (status != NVAPI_OK)
-		{
-			// GeForce Stereoscopic 3D driver is not installed on the system
-			LogInfo("  stereo init failed: no stereo driver detected.\n");
-		}
-		// Stereo is available but not enabled, let's enable it
-		else if (NVAPI_OK == status && !isStereoEnabled)
-		{
-			LogInfo("  stereo available and disabled. Enabling stereo.\n");
-			status = NvAPI_Stereo_Enable();
-			if (status != NVAPI_OK)
-				LogInfo("    enabling stereo failed.\n");
-		}
-
-		if (G->gCreateStereoProfile)
-		{
-			LogInfo("  enabling registry profile.\n");
-
-			NvAPI_Stereo_CreateConfigurationProfileRegistryKey(NVAPI_STEREO_DEFAULT_REGISTRY_PROFILE);
-		}
-	}
-}
-
-
-
 
 // -----------------------------------------------------------------------------------------------
 
@@ -573,8 +555,6 @@ HRESULT WINAPI D3D11CreateDevice(
 
 	ID3D11Device *origDevice = 0;
 	ID3D11DeviceContext *origContext = 0;
-
-	EnableStereo();
 
 	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, &origDevice, pFeatureLevel, &origContext);
@@ -661,8 +641,6 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height,
 		(float)pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float)pSwapChainDesc->BufferDesc.RefreshRate.Denominator,
 		pSwapChainDesc->Windowed);
-
-	EnableStereo();
 
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
