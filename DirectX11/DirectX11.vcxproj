@@ -117,6 +117,10 @@
   <ItemGroup>
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="d3d11Wrapper.cpp" />
+    <ClCompile Include="Direct3D11Context.cpp" />
+    <ClCompile Include="Direct3D11Device.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="MainHook.cpp" />
     <ClCompile Include="Override.cpp" />
@@ -126,17 +130,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="..\IDirect3DUnknown.h" />
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="..\version.h" />
     <ClInclude Include="d3d11Wrapper.h" />
     <ClInclude Include="Direct3D11Context.h" />
     <ClInclude Include="Direct3D11Device.h" />
-    <ClInclude Include="DirectDXGIDevice.h" />
     <ClInclude Include="globals.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="IniHandler.h" />
     <ClInclude Include="input.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="vkeys.h" />
   </ItemGroup>
@@ -395,8 +398,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -407,8 +410,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -608,6 +611,8 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)Redist\D3D\x86\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y

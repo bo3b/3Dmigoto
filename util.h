@@ -4,6 +4,107 @@
 #include <wchar.h>
 #include <string.h>
 
+#include <d3d11.h>
+
+
+// -----------------------------------------------------------------------------------------------
+
+// Primary hash calculation for all shader file names, all textures.
+
+// 64 bit magic FNV-0 and FNV-1 prime
+#define FNV_64_PRIME ((UINT64)0x100000001b3ULL)
+static UINT64 fnv_64_buf(const void *buf, size_t len)
+{
+	UINT64 hval = 0;
+	unsigned const char *bp = (unsigned const char *)buf;	/* start of buffer */
+	unsigned const char *be = bp + len;		/* beyond end of buffer */
+
+	// FNV-1 hash each octet of the buffer
+	while (bp < be)
+	{
+		// multiply by the 64 bit FNV magic prime mod 2^64 */
+		hval *= FNV_64_PRIME;
+		// xor the bottom with the current octet
+		hval ^= (UINT64)*bp++;
+	}
+	return hval;
+}
+
+
+// -----------------------------------------------------------------------------------------------
+
+static UINT64 CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *desc,
+	UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// It concerns me that CreateTextureND can use an override if it
+	// matches screen resolution, but when we record render target / shader
+	// resource stats we don't use the same override.
+	//
+	// For textures made with CreateTextureND and later used as a render
+	// target it's probably fine since the hash will still be stored, but
+	// it could be a problem if we need the hash of a render target not
+	// created directly with that. I don't know enough about the DX11 API
+	// to know if this is an issue, but it might be worth using the screen
+	// resolution override in all cases. -DarkStarSword
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->SampleDesc.Count;
+	hash ^= desc->SampleDesc.Quality;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
+static UINT64 CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *desc,
+	UINT64 initial_hash, int override_width, int override_height)
+{
+	UINT64 hash = initial_hash;
+
+	// Same comment as in CalcTexture2DDescHash above - concerned about
+	// inconsistent use of these resolution overrides
+	if (override_width)
+		hash ^= override_width;
+	else
+		hash ^= desc->Width;
+	hash *= FNV_64_PRIME;
+
+	if (override_height)
+		hash ^= override_height;
+	else
+		hash ^= desc->Height;
+	hash *= FNV_64_PRIME;
+
+	hash ^= desc->Depth; hash *= FNV_64_PRIME;
+	hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+	hash ^= desc->Format; hash *= FNV_64_PRIME;
+	hash ^= desc->Usage; hash *= FNV_64_PRIME;
+	hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+	hash ^= desc->MiscFlags;
+
+	return hash;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
 static char *RightStripA(char *buf)
@@ -21,6 +122,15 @@ static wchar_t *RightStripW(wchar_t *buf)
 		end--;
 	*(end + 1) = 0;
 	return end;
+}
+
+static char *readStringParameter(wchar_t *val)
+{
+	static char buf[MAX_PATH];
+	wcstombs(buf, val, MAX_PATH);
+	RightStripA(buf);
+	char *start = buf; while (isspace(*start)) start++;
+	return start;
 }
 
 static void BeepSuccess() {

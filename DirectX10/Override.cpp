@@ -1,7 +1,7 @@
 #include "Override.h"
 
+#include "Main.h"
 #include "globals.h"
-#include "d3d11Wrapper.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -252,7 +252,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	}
 }
 
-void KeyOverrideCycle::DownEvent(HackerDevice *device)
+void KeyOverrideCycle::DownEvent(D3D10Base::ID3D10Device *device)
 {
 	if (presets.empty())
 		return;
@@ -263,37 +263,40 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
 // can change the values, then remap them back to the GPU where they can be accessed by shader code.
-// This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.
+// This map/unmap code also requires that the texture be created with the D3D10_USAGE_DYNAMIC flag set.
 // This map operation can also cause the GPU to stall, so this should be done as rarely as possible.
 
-static void UpdateIniParams(HackerDevice* wrapper,
+static void UpdateIniParams(D3D10Base::ID3D10Device *device,
+		D3D10Wrapper::ID3D10Device* wrapper,
 		DirectX::XMFLOAT4 *params)
 {
-	ID3D11DeviceContext* realContext = wrapper->GetOrigContext();
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	LogDebug("UpdateIniParams for DX10- unimplemented");
 
-	if (params->x == FLT_MAX && params->y == FLT_MAX &&
-	    params->z == FLT_MAX && params->w == FLT_MAX) {
-		return;
-	}
+	//D3D10Base::ID3D10DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	//D3D10Base::D3D10_MAPPED_SUBRESOURCE mappedResource;
 
-	if (params->x != FLT_MAX)
-		G->iniParams.x = params->x;
-	if (params->y != FLT_MAX)
-		G->iniParams.y = params->y;
-	if (params->z != FLT_MAX)
-		G->iniParams.z = params->z;
-	if (params->w != FLT_MAX)
-		G->iniParams.w = params->w;
+	//if (params->x == FLT_MAX && params->y == FLT_MAX &&
+	//    params->z == FLT_MAX && params->w == FLT_MAX) {
+	//	return;
+	//}
 
-	realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-	realContext->Unmap(wrapper->mIniTexture, 0);
+	//if (params->x != FLT_MAX)
+	//	G->iniParams.x = params->x;
+	//if (params->y != FLT_MAX)
+	//	G->iniParams.y = params->y;
+	//if (params->z != FLT_MAX)
+	//	G->iniParams.z = params->z;
+	//if (params->w != FLT_MAX)
+	//	G->iniParams.w = params->w;
 
-	LogDebug(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
+	//realContext->Map(wrapper->mIniTexture, 0, D3D10Base::D3D10_MAP_WRITE_DISCARD, 0, &mappedResource);
+	//memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+	//realContext->Unmap(wrapper->mIniTexture, 0);
+
+	//LogDebug(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
 }
 
-void Override::Activate(HackerDevice *device)
+void Override::Activate(D3D10Base::ID3D10Device *device)
 {
 	LogInfo("User key activation -->\n");
 
@@ -308,7 +311,7 @@ void Override::Activate(HackerDevice *device)
 			transition_type);
 }
 
-void Override::Deactivate(HackerDevice *device)
+void Override::Deactivate(D3D10Base::ID3D10Device *device)
 {
 	LogInfo("User key deactivation <--\n");
 
@@ -323,7 +326,7 @@ void Override::Deactivate(HackerDevice *device)
 			release_transition_type);
 }
 
-void Override::Toggle(HackerDevice *device)
+void Override::Toggle(D3D10Base::ID3D10Device *device)
 {
 	active = !active;
 	if (!active) {
@@ -334,7 +337,7 @@ void Override::Toggle(HackerDevice *device)
 	return Activate(device);
 }
 
-void KeyOverride::DownEvent(HackerDevice *device)
+void KeyOverride::DownEvent(D3D10Base::ID3D10Device *device)
 {
 	if (type == KeyOverrideType::TOGGLE)
 		return Toggle(device);
@@ -343,7 +346,7 @@ void KeyOverride::DownEvent(HackerDevice *device)
 	return Activate(device);
 }
 
-void KeyOverride::UpEvent(HackerDevice *device)
+void KeyOverride::UpEvent(D3D10Base::ID3D10Device *device)
 {
 	if (type == KeyOverrideType::HOLD) {
 		OverrideSave.Restore(this);
@@ -363,14 +366,19 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 	transition->transition_type = transition_type;
 }
 
-void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
+void OverrideTransition::ScheduleTransition(D3D10Base::ID3D10Device *device,
 		float target_separation, float target_convergence, float
 		target_x, float target_y, float target_z, float target_w,
 		int time, TransitionType transition_type)
 {
 	ULONGLONG now = GetTickCount64();
-	NvAPI_Status err;
+	D3D10Base::NvAPI_Status err;
 	float current;
+	D3D10Wrapper::ID3D10Device *wrapper;
+
+	wrapper = (D3D10Wrapper::ID3D10Device*) D3D10Wrapper::ID3D10Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
 
 	LogInfo(" Override");
 	if (time) {
@@ -380,14 +388,14 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 	}
 
 	if (target_separation != FLT_MAX) {
-		err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
-		if (err != NVAPI_OK)
+		err = D3D10Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
+		if (err != D3D10Base::NVAPI_OK)
 			LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 		_ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
 	}
 	if (target_convergence != FLT_MAX) {
-		err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
-		if (err != NVAPI_OK)
+		err = D3D10Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
+		if (err != D3D10Base::NVAPI_OK)
 			LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
 	}
@@ -431,20 +439,25 @@ static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONG
 	return percent;
 }
 
-void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
+void OverrideTransition::UpdateTransitions(D3D10Base::ID3D10Device *device)
 {
+	D3D10Wrapper::ID3D10Device *wrapper;
 	ULONGLONG now = GetTickCount64();
 	DirectX::XMFLOAT4 params = {FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX};
-	NvAPI_Status err;
+	D3D10Base::NvAPI_Status err;
 	float val;
+
+	wrapper = (D3D10Wrapper::ID3D10Device*) D3D10Wrapper::ID3D10Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
 
 	val = _UpdateTransition(&separation, now);
 	if (val != FLT_MAX) {
 		LogInfo(" Transitioning separation to %#.2f\n", val);
 
-		NvAPIOverride();
-		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
-		if (err != NVAPI_OK)
+//		D3D10Wrapper::NvAPIOverride();
+		err = D3D10Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		if (err != D3D10Base::NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
 
@@ -452,9 +465,9 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 	if (val != FLT_MAX) {
 		LogInfo(" Transitioning convergence to %#.2f\n", val);
 
-		NvAPIOverride();
-		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
-		if (err != NVAPI_OK)
+		//D3D10Wrapper::NvAPIOverride();
+		err = D3D10Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		if (err != D3D10Base::NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
 
@@ -463,17 +476,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 	params.z = _UpdateTransition(&z, now);
 	params.w = _UpdateTransition(&w, now);
 
-	UpdateIniParams(wrapper, &params);
-}
-
-void OverrideTransition::Stop()
-{
-	x.time = -1;
-	y.time = -1;
-	z.time = -1;
-	w.time = -1;
-	separation.time = -1;
-	convergence.time = -1;
+	UpdateIniParams(device, wrapper, &params);
 }
 
 OverrideGlobalSaveParam::OverrideGlobalSaveParam() :
@@ -492,9 +495,9 @@ float OverrideGlobalSaveParam::Reset()
 	return ret;
 }
 
-void OverrideGlobalSave::Reset(HackerDevice* wrapper)
+void OverrideGlobalSave::Reset(D3D10Wrapper::ID3D10Device* wrapper)
 {
-	NvAPI_Status err;
+	D3D10Base::NvAPI_Status err;
 	float val;
 
 	x.Reset();
@@ -504,39 +507,27 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 
 	// Restore any saved separation & convergence settings to prevent a
 	// currently active preset from becoming the default on config reload.
-	//
-	// If there is no active preset, but there is a transition in progress,
-	// use it's target to avoid an intermediate value becoming the default.
-	//
 	// Don't worry about the ini params since the config reload will reset
 	// them anyway.
 	val = separation.Reset();
-	if (val == FLT_MAX && CurrentTransition.separation.time != -1)
-		val = CurrentTransition.separation.target;
 	if (val != FLT_MAX) {
 		LogInfo(" Restoring separation to %#.2f\n", val);
 
-		NvAPIOverride();
-		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
-		if (err != NVAPI_OK)
+//		D3D10Wrapper::NvAPIOverride();
+		err = D3D10Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		if (err != D3D10Base::NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
 
 	val = convergence.Reset();
-	if (val == FLT_MAX && CurrentTransition.convergence.time != -1)
-		val = CurrentTransition.convergence.target;
 	if (val != FLT_MAX) {
 		LogInfo(" Restoring convergence to %#.2f\n", val);
 
-		NvAPIOverride();
-		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
-		if (err != NVAPI_OK)
+	//	D3D10Wrapper::NvAPIOverride();
+		err = D3D10Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		if (err != D3D10Base::NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
-
-	// Make sure any current transition won't continue to change the
-	// parameters after the reset:
-	CurrentTransition.Stop();
 }
 
 void OverrideGlobalSaveParam::Save(float val)
@@ -553,17 +544,22 @@ void OverrideGlobalSaveParam::Save(float val)
 // intermediate transition value from being saved and restored later (e.g. if
 // rapidly pressing RMB with a release_transition set).
 
-void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
+void OverrideGlobalSave::Save(D3D10Base::ID3D10Device *device, Override *preset)
 {
-	NvAPI_Status err;
+	D3D10Base::NvAPI_Status err;
+	D3D10Wrapper::ID3D10Device *wrapper;
 	float val;
+
+	wrapper = (D3D10Wrapper::ID3D10Device*)D3D10Wrapper::ID3D10Device::m_List.GetDataPtr(device);
+	if (!wrapper)
+		return;
 
 	if (preset->mOverrideSeparation != FLT_MAX) {
 		if (CurrentTransition.separation.time != -1) {
 			val = CurrentTransition.separation.target;
 		} else {
-			err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
-			if (err != NVAPI_OK) {
+			err = D3D10Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
+			if (err != D3D10Base::NVAPI_OK) {
 				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 			}
 		}
@@ -576,8 +572,8 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 		if (CurrentTransition.convergence.time != -1) {
 			val = CurrentTransition.convergence.target;
 		} else {
-			err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
-			if (err != NVAPI_OK) {
+			err = D3D10Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
+			if (err != D3D10Base::NVAPI_OK) {
 				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 			}
 		}

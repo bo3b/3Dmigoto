@@ -71,9 +71,6 @@ struct BufferEntry
 typedef map<int, BufferEntry> CBufferData;
 typedef map<string, string> StringStringMap;
 
-extern FILE *LogFile;
-extern bool LogDebug;
-
 class Decompiler
 {
 public:

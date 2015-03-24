@@ -1,12 +1,10 @@
 #pragma once
 
 #include <DirectXMath.h>
-#include <d3d11.h>
-#include <vector>
-
 #include "input.h"
+#include "Main.h"
+#include <vector>
 #include "../util.h"
-#include "Direct3D11Device.h"
 
 enum class KeyOverrideType {
 	INVALID = -1,
@@ -72,9 +70,9 @@ public:
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
 
-	void Activate(HackerDevice *device);
-	void Deactivate(HackerDevice *device);
-	void Toggle(HackerDevice *device);
+	void Activate(D3D10Base::ID3D10Device *device);
+	void Deactivate(D3D10Base::ID3D10Device *device);
+	void Toggle(D3D10Base::ID3D10Device *device);
 };
 
 class KeyOverrideBase : public virtual OverrideBase, public InputListener
@@ -102,8 +100,8 @@ public:
 		type(type)
 	{}
 
-	void DownEvent(HackerDevice *device);
-	void UpEvent(HackerDevice *device);
+	void DownEvent(D3D10Base::ID3D10Device *device);
+	void UpEvent(D3D10Base::ID3D10Device *device);
 #pragma warning(suppress : 4250) // Suppress ParseIniSection inheritance via dominance warning
 };
 
@@ -118,7 +116,7 @@ public:
 	{}
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
-	void DownEvent(HackerDevice *device);
+	void DownEvent(D3D10Base::ID3D10Device *device);
 };
 
 struct OverrideTransitionParam
@@ -143,12 +141,11 @@ class OverrideTransition
 public:
 	OverrideTransitionParam x, y, z, w, separation, convergence;
 
-	void ScheduleTransition(HackerDevice *wrapper,
+	void ScheduleTransition(D3D10Base::ID3D10Device *device,
 			float target_separation, float target_convergence,
 			float target_x, float target_y, float target_z,
 			float target_w, int time, TransitionType transition_type);
-	void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
-	void Stop();
+	void OverrideTransition::UpdateTransitions(D3D10Base::ID3D10Device *device);
 };
 
 // This struct + class provides a global save for each of the overridable
@@ -174,8 +171,8 @@ class OverrideGlobalSave
 public:
 	OverrideGlobalSaveParam x, y, z, w, separation, convergence;
 
-	void Reset(HackerDevice* wrapper);
-	void Save(HackerDevice *wrapper, Override *preset);
+	void Reset(D3D10Wrapper::ID3D10Device* wrapper);
+	void Save(D3D10Base::ID3D10Device *device, Override *preset);
 	void Restore(Override *preset);
 };
 

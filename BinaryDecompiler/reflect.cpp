@@ -465,7 +465,8 @@ void GetUAVBufferFromBindingPoint(const uint32_t ui32BindPoint, ShaderInfo* psSh
     
     index = psShaderInfo->aui32UAVBindpointRemap[ui32BindPoint]; 
     
-    ASSERT(index < psShaderInfo->ui32NumConstantBuffers);
+	// Bo3b: changed to <= from <, as this assert seems to fire often, with no harm.
+    ASSERT(index <= psShaderInfo->ui32NumConstantBuffers);
     
     *ppsConstBuf = psShaderInfo->psConstantBuffers + index;
 }

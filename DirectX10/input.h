@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Direct3D11Device.h"
+#include "Main.h"
 
 // The "input" files are a set of objects to handle user input for both gaming 
 // purposes and for tool purposes, like hunting for shaders.
 //
 // The hunting usage is presently built using a call-back mechanism, to call
-// the older routines in the d3d11Wrapper.cpp to actually track and disable shaders.
+// the older routines in the D3D10Wrapper.cpp to actually track and disable shaders.
 //
 // For gameplay purposes, like aiming override, HUD movement, menu adjustments
 // based on keys- the VKInputAction objects are used.
@@ -22,8 +22,8 @@
 
 class InputListener {
 public:
-	virtual void DownEvent(HackerDevice *device) = 0;
-	virtual void UpEvent(HackerDevice *device);
+	virtual void DownEvent(D3D10Base::ID3D10Device *device) = 0;
+	virtual void UpEvent(D3D10Base::ID3D10Device *device);
 };
 
 
@@ -33,7 +33,7 @@ public:
 // callback function may be used with this type signature and registered via
 // RegisterIniKeyBinding:
 
-typedef void(*InputCallback)(HackerDevice *device, void *private_data);
+typedef void(*InputCallback)(D3D10Base::ID3D10Device *device, void *private_data);
 
 // -----------------------------------------------------------------------------
 // InputCallbacks is a key descendant of InputListener, and is used primarily
@@ -50,8 +50,8 @@ private:
 public:
 	InputCallbacks(InputCallback down_cb, InputCallback up_cb, void *private_data);
 
-	void DownEvent(HackerDevice *device) override;
-	void UpEvent(HackerDevice *device) override;
+	void DownEvent(D3D10Base::ID3D10Device *device) override;
+	void UpEvent(D3D10Base::ID3D10Device *device) override;
 };
 
 
@@ -107,7 +107,7 @@ public:
 	InputAction(InputButton *button, InputListener *listener);
 	virtual ~InputAction();
 
-	virtual bool Dispatch(HackerDevice *device);
+	virtual bool Dispatch(D3D10Base::ID3D10Device *device);
 };
 
 // -----------------------------------------------------------------------------
@@ -121,7 +121,7 @@ private:
 
 public:
 	RepeatingInputAction(InputButton *button, InputListener *listener, int repeat);
-	bool Dispatch(HackerDevice *device) override;
+	bool Dispatch(D3D10Base::ID3D10Device *device) override;
 };
 
 // -----------------------------------------------------------------------------
@@ -134,7 +134,7 @@ private:
 	ULONGLONG state_change_time;
 public:
 	DelayedInputAction(InputButton *button, InputListener *listener, int delayDown, int delayUp);
-	bool Dispatch(HackerDevice *device) override;
+	bool Dispatch(D3D10Base::ID3D10Device *device) override;
 };
 
 
@@ -155,4 +155,4 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 // Note - this is not safe to call from within an input callback!
 void ClearKeyBindings();
 
-bool DispatchInputEvents(HackerDevice *device);
+bool DispatchInputEvents(D3D10Base::ID3D10Device *device);
