@@ -2313,8 +2313,6 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	// Update stereo parameter texture.
 	LogDebug("  updating stereo parameter texture.\n");
 
-	mHackerDevice->mParamTextureManager.mScreenWidth = (float)G->mSwapChainInfo.width;
-	mHackerDevice->mParamTextureManager.mScreenHeight = (float)G->mSwapChainInfo.height;
 	if (G->ENABLE_TUNE)
 	{
 		//device->mParamTextureManager.mSeparationModifier = gTuneValue;

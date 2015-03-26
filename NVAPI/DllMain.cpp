@@ -161,6 +161,8 @@ static bool ConvergenceLogging()
 	return true;
 }
 
+// -----------------------------------------------------------------------------------------------
+
 #if (_WIN64 && HOOK_SYSTEM32)
 #define REAL_NVAPI_DLL L"\\original_nvapi64.dll"
 #elif(_WIN64)
@@ -245,21 +247,6 @@ static void loadDll()
 	}
 }
 
-// No DestroyDLL function?
-//TerminateThread(
-//	_Inout_  HuntingThread,
-//	_In_     0
-//	);
-
-//// Should be the normal 100ms wait.
-//DWORD err =  WaitForSingleObject(
-//	_In_  HuntingThread,
-//	_In_  INFINITE
-//	);
-//BOOL ok = CloseHandle(HuntingThread);
-//LogInfo("Hunting thread closed: %x, %d\n", err, ok);
-
-
 STDAPI DllCanUnloadNow(void)
 {
 	loadDll();
@@ -284,6 +271,8 @@ STDAPI DllUnregisterServer(void)
 	loadDll();
 	return (*DllUnregisterServerPtr)();
 }
+
+// -----------------------------------------------------------------------------------------------
 
 static NvAPI_Status __cdecl NvAPI_Stereo_GetConvergence(StereoHandle stereoHandle, float *pConvergence)
 {
