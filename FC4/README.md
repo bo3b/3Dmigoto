@@ -3,6 +3,9 @@ Far Cry 4
 
 A fix by DarkStarSword and mike_ar69
 
+Special thanks to Bo3b for the decompiler fixes and DHR for discovering the Max
+Payne 3 profile!
+
 Fixed
 -----
 - Shadows
@@ -54,15 +57,26 @@ Installation
 7. If you are using SLI, set terrain to medium or lower to get good
    performance.
 
+8. If your screen resolution is either 2560x1440 or 3840x2160 and you wish to
+   play with SMAA or anti-aliasing disabled, refer to the instructions in [this
+   post][2].
+
+[2]: https://forums.geforce.com/default/topic/789514/3d-vision/far-cry-4-3d-screenshots-/post/4492434/#4492434
+
+
 
 Known Issues
 ------------
+- Shangri-La missions are reportedly broken with SLI for some users. Currently
+  the only known workarounds are to turn off either 3D or SLI for these
+  missions.
+
 - Repair tool flame is misaligned, and can't be fixed without breaking other
   flames.
 
 - Windows & doors of buildings sometimes appear brighter than they should.
 
-- Soft shadows have some minor artefacts.
+- Soft shadows create a box shaped artefact.
 
 - Simulated fur glitches a little when very close to the camera, but otherwise
   looks fine.
@@ -72,8 +86,8 @@ Known Issues
 
 Notes
 -----
-If you find any rendering issues please post on [the forum thread][2], and be
+If you find any rendering issues please post on [the forum thread][3], and be
 sure to mention where the broken effect was in the game, and what settings you
 are using - particularly anti-aliasing, shadows and vegetation.
 
-[2]: https://forums.geforce.com/default/topic/789514/far-cry-4-3d-screenshots-
+[3]: https://forums.geforce.com/default/topic/789514/far-cry-4-3d-screenshots-
