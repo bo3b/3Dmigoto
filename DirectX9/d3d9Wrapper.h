@@ -23,7 +23,7 @@ typedef void (WINAPI *D3DPERF_SetMarker)(D3D9Base::D3DCOLOR color, LPCWSTR name)
 typedef void (WINAPI *D3DPERF_SetOptions)(DWORD options);
 typedef void (WINAPI *D3DPERF_SetRegion)(D3D9Base::D3DCOLOR color, LPCWSTR name); 	
 typedef void (WINAPI *DebugSetLevel)(int a1, int a2);
-typedef void (WINAPI *DebugSetMute)(int a);
+typedef void (WINAPI *DebugSetMute)();
 typedef void* (WINAPI *Direct3DShaderValidatorCreate9)(void);
 typedef void (WINAPI *PSGPError)(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, unsigned int a);
 typedef void (WINAPI *PSGPSampleTexture)(void *D3DFE_PROCESSVERTICES, unsigned int a, float (* const b)[4], unsigned int c, float (* const d)[4]);

@@ -13,7 +13,7 @@
 #include "mojoshader.h"
 
 FILE *LogFile = 0;
-
+bool LogInfo = true;
 
 //----------------------------------------------------------------------------- 
 // Print help lines on errors. 

@@ -332,12 +332,520 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ D3D9Base::D3DPRESENT_PAR
 	return hr;
 }
 
+struct QuadVertex
+{
+	float x, y, z, w;
+	float u, v;
+};
+
+void DrawQuad(D3D9Wrapper::IDirect3DDevice9 * device)
+{
+	//0-----13
+
+
+	//25-----4
+	QuadVertex vertex[6];
+
+	float width = (float)lastTargetWidth;
+	float height = (float)lastTargetHeight;
+
+	vertex[0].x = 0.0;
+	vertex[0].y = 0.0;
+	vertex[0].z = 0.0;
+	vertex[0].w = 1.0;
+	vertex[0].u = 0.0;
+	vertex[0].v = 0.0;
+
+	vertex[1].x = width;
+	vertex[1].y = 0.0;
+	vertex[1].z = 0.0;
+	vertex[1].w = 1.0;
+	vertex[1].u = 1.0;
+	vertex[1].v = 0.0;
+
+	vertex[2].x = 0.0;
+	vertex[2].y = height;
+	vertex[2].z = 0.0;
+	vertex[2].w = 1.0;
+	vertex[2].u = 0.0;
+	vertex[2].v = 1.0;
+
+	vertex[3].x = width;
+	vertex[3].y = 0.0;
+	vertex[3].z = 0.0;
+	vertex[3].w = 1.0;
+	vertex[3].u = 1.0;
+	vertex[3].v = 0.0;
+
+	vertex[4].x = width;
+	vertex[4].y = height;
+	vertex[4].z = 0.0;
+	vertex[4].w = 1.0;
+	vertex[4].u = 1.0;
+	vertex[4].v = 1.0;
+
+
+	vertex[5].x = 0.0;
+	vertex[5].y = height;
+	vertex[5].z = 0.0;
+	vertex[5].w = 1.0;
+	vertex[5].u = 0.0;
+	vertex[5].v = 1.0;
+
+	for (int i = 0; i < 6; i++)
+	{
+		vertex[i].x -= 0.5f / width;
+		vertex[i].y -= 0.5f / height;
+	}
+
+	D3D9Base::LPDIRECT3DDEVICE9EX d3d9Device = device->GetD3D9Device();
+
+	d3d9Device->SetVertexShader(NULL);
+	d3d9Device->SetPixelShader(NULL);
+
+	if (lastTargetTex == NULL)
+	{
+		LogInfo = true;
+		LogInfo("target texture is null\n");
+		LogInfo = false;
+	}
+
+	d3d9Device->SetTexture(0, lastTargetTex);
+	d3d9Device->SetRenderState(D3D9Base::D3DRS_ALPHATESTENABLE, FALSE);
+	d3d9Device->SetRenderState(D3D9Base::D3DRS_ALPHABLENDENABLE, FALSE);
+	d3d9Device->SetRenderState(D3D9Base::D3DRS_LIGHTING, FALSE);
+	d3d9Device->SetRenderState(D3D9Base::D3DRS_ZENABLE, FALSE);
+
+	d3d9Device->SetTextureStageState(0, D3D9Base::D3DTSS_COLOROP, D3D9Base::D3DTOP_SELECTARG1);
+	d3d9Device->SetTextureStageState(1, D3D9Base::D3DTSS_COLOROP, D3D9Base::D3DTOP_DISABLE);
+	d3d9Device->SetTextureStageState(0, D3D9Base::D3DTSS_ALPHAOP, D3D9Base::D3DTOP_DISABLE);
+	d3d9Device->SetTextureStageState(0, D3D9Base::D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+	d3d9Device->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+	d3d9Device->DrawPrimitiveUP(D3D9Base::D3DPT_TRIANGLELIST, 2, vertex, sizeof(QuadVertex));
+}
+
+bool NeedDrawQuad(D3D9Wrapper::IDirect3DDevice9 * device)
+{
+	if (lastTarget == NULL)
+	{
+		return false;
+	}
+
+	D3D9Base::LPDIRECT3DDEVICE9EX d3d9Device = device->GetD3D9Device();
+
+	D3D9Base::LPDIRECT3DSURFACE9 backBuffer = NULL;
+	d3d9Device->GetBackBuffer(0, 0, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+
+	bool needDrawQuad =  backBuffer != lastTarget;
+
+	if (backBuffer != NULL)
+	{
+		backBuffer->Release();
+		backBuffer = NULL;
+	}
+
+	return needDrawQuad;
+}
+
+
+void GetTextureFromSurface(D3D9Wrapper::IDirect3DDevice9 * device)
+{
+
+	D3D9Base::LPDIRECT3DDEVICE9EX d3d9Device = device->GetD3D9Device();
+
+	static D3D9Base::LPDIRECT3DSURFACE9 surfaceWhenCreateTex = NULL;
+
+	if (surfaceWhenCreateTex != lastTarget)
+	{
+		if (lastTargetTex != NULL)
+		{
+			lastTargetTex->Release();
+			lastTargetTex = NULL;
+		}
+	}
+
+	if (lastTarget != NULL)
+	{
+		if (lastTargetTex == NULL)
+		{
+			D3D9Base::D3DSURFACE_DESC desc;
+			lastTarget->GetDesc(&desc);
+			lastTargetWidth = (int)desc.Width;
+			lastTargetHeight = (int)desc.Height;
+			HRESULT hr = d3d9Device->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_DYNAMIC, desc.Format, D3D9Base::D3DPOOL_DEFAULT, &lastTargetTex, NULL);
+			if (FAILED(hr))
+			{
+				LogInfo = true;
+				LogInfo("create texture failed, because %x\n", hr);
+				LogInfo = false;
+			}
+
+
+			surfaceWhenCreateTex = lastTarget;
+		}
+	}
+
+	if (lastTargetTex != NULL)
+	{
+		D3D9Base::LPDIRECT3DSURFACE9 dest = NULL;
+		lastTargetTex->GetSurfaceLevel(0, &dest);
+		HRESULT hr = d3d9Device->StretchRect(lastTarget, NULL, dest, NULL, D3D9Base::D3DTEXF_NONE);
+		if (FAILED(hr))
+		{
+			LogInfo = true;
+			LogInfo("stretch rect failed\n");
+			LogInfo = false;
+		}
+
+		dest->Release();
+		dest = NULL;
+	}
+}
+
+#include "TriMesh.h"
+
+void SaveMesh(D3D9Wrapper::IDirect3DDevice9 * device, D3D9Base::D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount, int renderIndex)
+{
+	if (!saveMesh)
+	{
+		return;
+	}
+
+
+	D3D9Base::LPDIRECT3DDEVICE9EX d3d9Device = device->GetD3D9Device();
+
+	D3D9Base::IDirect3DIndexBuffer9 * ib = NULL;
+	d3d9Device->GetIndices(&ib);
+
+	if (ib == NULL)
+	{
+		saveMesh = false;
+		return;
+	}
+
+	UINT indexCount = 0;
+	if (Type == D3D9Base::D3DPT_TRIANGLELIST)
+	{
+		indexCount = primCount * 3;
+	}
+	else if (Type == D3D9Base::D3DPT_TRIANGLESTRIP)
+	{
+		indexCount = primCount + 2;
+	}
+	else
+	{
+		saveMesh = false;
+		return;
+	}
+
+	void * ibBuffer = NULL;
+	HRESULT hr = ib->Lock(0, 0, &ibBuffer, 0);
+
+	unsigned char * ibDest = new unsigned char[indexCount * 2];
+	memset(ibDest, 0, indexCount * 2);
+
+	if (SUCCEEDED(hr))
+	{
+		memcpy(ibDest, ((unsigned char *)ibBuffer) + startIndex * 2, indexCount * 2);
+		ib->Unlock();
+
+		LogInfo = true;
+		LogInfo("lock ib succeeded\n");
+		LogInfo = false;
+	}
+	else
+	{
+		LogInfo = true;
+		LogInfo("lock ib failed\n");
+		LogInfo = false;
+
+		delete[] ibDest;
+		saveMesh = false;
+		return;
+	}
+
+	D3D9Base::LPDIRECT3DVERTEXBUFFER9 vb = NULL;
+	UINT offset = 0;
+	UINT stride = 0;
+	d3d9Device->GetStreamSource(0, &vb, &offset, &stride);
+
+
+	if (vb == NULL)
+	{
+		delete[] ibDest;
+		saveMesh = false;
+		return;
+	}
+
+
+	unsigned char * vbDest = new unsigned char[NumVertices * stride];
+	memset(vbDest, 0, NumVertices * stride);
+
+
+	void * vbBuffer = NULL;
+	hr = vb->Lock(0, 0, &vbBuffer, 0);
+	if (SUCCEEDED(hr))
+	{
+		memcpy(vbDest, (unsigned char *)vbBuffer + BaseVertexIndex * stride, NumVertices * stride);
+		vb->Unlock();
+
+		LogInfo = true;
+		LogInfo("lock vb succeeded\n");
+		LogInfo = false;
+	}
+	else
+	{
+		LogInfo = true;
+		LogInfo("lock vb failed\n");
+		LogInfo = false;
+
+		delete[] ibDest;
+		delete[] vbDest;
+		saveMesh = false;
+		return;
+	}
+
+	D3D9Base::IDirect3DVertexDeclaration9 * vertexDecl = NULL;
+	d3d9Device->GetVertexDeclaration(&vertexDecl);
+
+	if (vertexDecl == NULL)
+	{
+		LogInfo = true;
+		LogInfo("get vertex declaration failed\n");
+		LogInfo = false;
+
+		delete[] ibDest;
+		delete[] vbDest;
+		saveMesh = false;
+		return;
+	}
+
+	D3D9Base::D3DVERTEXELEMENT9 element[MAXD3DDECLLENGTH];
+	UINT elementCount = 0;
+	vertexDecl->GetDeclaration(element, &elementCount);
+
+	D3D9Base::D3DVERTEXELEMENT9 * posElement = NULL;
+	D3D9Base::D3DVERTEXELEMENT9 * uvElement = NULL;
+	D3D9Base::D3DVERTEXELEMENT9 * normalElement = NULL;
+	for (UINT i = 0; i < elementCount; i++)
+	{
+		//暂时只支持stream 0
+		if (element[i].Stream != 0)
+		{
+			continue;
+		}
+
+		if (element[i].Usage == D3D9Base::D3DDECLUSAGE_POSITION)
+		{
+			posElement = &element[i];
+		}
+
+		if (element[i].Usage == D3D9Base::D3DDECLUSAGE_TEXCOORD)
+		{
+			uvElement = &element[i];
+		}
+
+		if (element[i].Usage == D3D9Base::D3DDECLUSAGE_NORMAL)
+		{
+			normalElement = &element[i];
+		}
+	}
+
+	trimesh::TriMesh mesh;
+
+	WORD * ibFirst = (WORD *)ibDest;
+	for (UINT i = 0; i < primCount; i++)
+	{
+		trimesh::TriMesh::Face face;
+		face.v[0] = ibFirst[0];
+		face.v[1] = ibFirst[1];
+		face.v[2] = ibFirst[2];
+		mesh.faces.push_back(face);
+
+		if (Type == D3D9Base::D3DPT_TRIANGLELIST)
+		{
+			ibFirst += 3;
+		}
+		else if (Type == D3D9Base::D3DPT_TRIANGLESTRIP)
+		{
+			ibFirst += 1;
+		}
+	}
+
+	float * vbFirst = (float *)vbDest;
+	if (posElement != NULL)
+	{
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * pos = vbFirst + posElement->Offset / 4;
+
+			trimesh::point point;
+			point[0] = pos[0];
+			point[1] = pos[1];
+			point[2] = pos[2];
+
+			mesh.vertices.push_back(point);
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	vbFirst = (float *)vbDest;
+	if (uvElement != NULL)
+	{
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * uv = vbFirst + uvElement->Offset / 4;
+
+			trimesh::vec2 texcoord;
+			texcoord[0] = uv[0];
+			texcoord[1] = 1.0 - uv[1];
+
+			mesh.uvs.push_back(texcoord);
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	vbFirst = (float *)vbDest;
+	if (normalElement != NULL)
+	{
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * normals = vbFirst + normalElement->Offset / 4;
+
+			trimesh::vec normal;
+			normal[0] = normals[0];
+			normal[1] = normals[1];
+			normal[2] = normals[2];
+
+			mesh.normals.push_back(normal);
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	char fileName[260];
+	sprintf_s(fileName, 260, "D:\\\\%d.obj", renderIndex);
+
+	LogInfo = true;
+	LogInfo("write mesh %s\n", fileName);
+	LogInfo = false;
+	
+	mesh.write(fileName);
+	
+	delete[] ibDest;
+	delete[] vbDest;
+	saveMesh = false;
+}
+
 UINT FrameIndex = 0;
+
+#define KEYDOWN(vk_code) ((GetAsyncKeyState(vk_code) & 0x8000) ? 1 : 0) 
+
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Present(THIS_ CONST RECT* pSourceRect,CONST RECT* pDestRect,HWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion)
 {
 	LogDebug("IDirect3DDevice9::Present called.\n");
 	
 	CheckDevice(this);
+
+	lastMode = mode;
+
+	if (mode == Normal && KEYDOWN(VK_CONTROL) && KEYDOWN('Z'))
+	{
+		mode = Step;
+		MessageBox(NULL, L"进入Step模式", L"提示", MB_OK);
+	}
+
+	if (mode == Step && KEYDOWN(VK_CONTROL) && KEYDOWN('X'))
+	{
+		mode = Normal;
+		lastTarget = NULL;
+		if (lastTargetTex != NULL)
+		{
+			lastTargetTex->Release();
+			lastTargetTex = NULL;
+		}
+		MessageBox(NULL, L"进入Normal模式", L"提示", MB_OK);
+	}
+
+	if (mode == Step && lastMode != Step)
+	{
+		LogInfo = true;
+		LogInfo("enter step mode\n");
+		LogInfo = false;
+
+		for (int i = 0; i < 8; i++)
+		{
+			setNullTexture[i] = false;
+		}
+
+		//renderCount = currentFrameRenderCount;
+		renderCount = 0;
+	}
+
+	for (int i = 0; i < 8; i++)
+	{
+		if (KEYDOWN(VK_MENU) && KEYDOWN(0x31 + i))
+		{
+			setNullTexture[i] = !setNullTexture[i];
+			setNullTextureIndex = renderCount;
+		}
+	}
+
+	if (mode == Step)
+	{
+		static DWORD lastTime = GetTickCount();
+		DWORD currentTime = GetTickCount();
+
+		if (currentTime - lastTime > 100)
+		{
+			if (KEYDOWN(VK_LEFT))
+			{
+				renderCount--;
+				if (renderCount < 0)
+				{
+					renderCount = 0;
+				}
+				LogInfo = true;
+				LogInfo("render count is %d\n", renderCount);
+				LogInfo = false;
+			}
+
+			if (KEYDOWN(VK_RIGHT))
+			{
+				renderCount++;
+				LogInfo = true;
+				LogInfo("render count is %d\n", renderCount);
+				LogInfo = false;
+			}
+
+			if (KEYDOWN(VK_CONTROL) && KEYDOWN('S'))
+			{
+				LogInfo = true;
+				LogInfo("save mesh\n");
+				LogInfo = false;
+
+				saveMesh = true;
+				//D3DXSaveTextureToFile(L"D:\\1.dds", D3D9Base::D3DXIFF_DDS, lastTargetTex, NULL);
+			}
+
+			lastTime = currentTime;
+		}
+
+		if (NeedDrawQuad(this))
+		{
+			//GetTextureFromSurface(this);
+			DrawQuad(this);
+		}
+	}
+
+
+
+	currentFrameRenderCount = 0;
+
+
 
 	if (SCREEN_FULLSCREEN == 2)
 	{
@@ -735,9 +1243,18 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurface(THIS_ UI
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderTarget(THIS_ DWORD RenderTargetIndex, D3D9Wrapper::IDirect3DSurface9 *pRenderTarget)
 {
 	LogDebug("IDirect3DDevice9::SetRenderTarget called with RenderTargetIndex=%d, pRenderTarget=%x.\n", RenderTargetIndex, pRenderTarget);
-	
+
 	CheckDevice(this);
 	D3D9Base::LPDIRECT3DSURFACE9 baseRenderTarget = replaceSurface9(pRenderTarget);
+
+	if (mode == Step && currentFrameRenderCount < renderCount)
+	{
+		if (baseRenderTarget != NULL)
+		{
+			lastTarget = baseRenderTarget;
+		}
+	}
+
 	HRESULT hr = GetD3D9Device()->SetRenderTarget(RenderTargetIndex, baseRenderTarget);
 	LogInfo("  returns result=%x\n", hr);
 	
@@ -1250,6 +1767,13 @@ STDMETHODIMP_(float) D3D9Wrapper::IDirect3DDevice9::GetNPatchMode(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitive(THIS_ D3D9Base::D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount)
 {
+	currentFrameRenderCount++;
+
+	if (mode == Step && currentFrameRenderCount > renderCount)
+	{
+		return S_OK;
+	}
+
 	LogDebug("IDirect3DDevice9::DrawPrimitive called with PrimitiveType=%d, StartVertex=%d, PrimitiveCount=%d\n",
 		PrimitiveType, StartVertex, PrimitiveCount);
 	
@@ -1257,11 +1781,34 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitive(THIS_ D3D9Base::D3DPRI
 	HRESULT hr = GetD3D9Device()->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 	LogDebug("  returns result=%x\n", hr);
 	
+	if (mode == Step && currentFrameRenderCount == renderCount)
+	{
+		GetTextureFromSurface(this);
+	}
+
 	return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitive(THIS_ D3D9Base::D3DPRIMITIVETYPE Type,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount)
 {
+	currentFrameRenderCount++;
+
+	if (mode == Step && currentFrameRenderCount > renderCount)
+	{
+		return S_OK;
+	}
+
+	if (currentFrameRenderCount == renderCount)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			if (setNullTexture[i])
+			{
+				GetD3D9Device()->SetTexture(i, NULL);
+			}
+		}
+	}
+
 	LogDebug("IDirect3DDevice9::DrawIndexedPrimitive called with Type=%d, BaseVertexIndex=%d, MinVertexIndex=%d, NumVertices=%d, startIndex=%d, primCount=%d\n",
 		Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 	
@@ -1269,22 +1816,48 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitive(THIS_ D3D9Base:
 	HRESULT hr = GetD3D9Device()->DrawIndexedPrimitive(Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 	LogDebug("  returns result=%x\n", hr);
 	
+
+	if (mode == Step && currentFrameRenderCount == renderCount)
+	{
+		GetTextureFromSurface(this);
+		SaveMesh(this, Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount, renderCount);
+	}
+
 	return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitiveUP(THIS_ D3D9Base::D3DPRIMITIVETYPE PrimitiveType,UINT PrimitiveCount,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
 {
+	currentFrameRenderCount++;
+
+	if (mode == Step && currentFrameRenderCount > renderCount)
+	{
+		return S_OK;
+	}
+
 	LogDebug("IDirect3DDevice9::DrawPrimitiveUP called.\n");
 	
 	CheckDevice(this);
 	HRESULT hr = GetD3D9Device()->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
 	LogDebug("  returns result=%x\n", hr);
 	
+	if (mode == Step && currentFrameRenderCount == renderCount)
+	{
+		GetTextureFromSurface(this);
+	}
+
 	return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitiveUP(THIS_ D3D9Base::D3DPRIMITIVETYPE PrimitiveType,UINT MinVertexIndex,UINT NumVertices,UINT PrimitiveCount,CONST void* pIndexData,D3D9Base::D3DFORMAT IndexDataFormat,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
 {
+	currentFrameRenderCount++;
+
+	if (mode == Step && currentFrameRenderCount > renderCount)
+	{
+		return S_OK;
+	}
+
 	LogDebug("IDirect3DDevice9::DrawIndexedPrimitiveUP called with PrimitiveType=%d, MinVertexIndex=%d, NumVertices=%d, PrimitiveCount=%d, IndexDataFormat=%d\n",
 		PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, IndexDataFormat);
 	
@@ -1292,6 +1865,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitiveUP(THIS_ D3D9Bas
 	HRESULT hr = GetD3D9Device()->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
 	LogDebug("  returns result=%x\n", hr);
 	
+	if (mode == Step && currentFrameRenderCount == renderCount)
+	{
+		GetTextureFromSurface(this);
+	}
+
 	return hr;
 }
 

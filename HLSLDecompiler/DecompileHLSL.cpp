@@ -82,6 +82,7 @@ struct ConstantValue
 };
 
 extern FILE *LogFile;
+extern bool LogInfo;
 extern bool LogDebug;
 
 class Decompiler
@@ -3728,7 +3729,7 @@ public:
 							Instruction * nextIns = &(*inst)[iNr + 1];
 							if (nextIns->eOpcode == OPCODE_MAD &&
 								IsInstructionOperandSame(instr, 3, nextIns, 3, GetComponentStrFromInstruction(instr, 0).c_str(), GetComponentStrFromInstruction(nextIns, 0).c_str()) == 2 &&
-								IsInstructionOperandSame(instr, 0, nextIns, 2, GetComponentStrFromInstruction(instr, 0).c_str(), GetComponentStrFromInstruction(nextIns, 0).c_str()) == 1)
+								IsInstructionOperandSame(instr, 0, nextIns, 2, NULL, GetComponentStrFromInstruction(nextIns, 0).c_str()) == 1)
 							{
 								applySwizzle(op1, op2);
 								applySwizzle(op1, op3);

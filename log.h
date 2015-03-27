@@ -9,9 +9,9 @@
 // logging framework.
 
 #define LogInfo(fmt, ...) \
-	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__)
+	if (LogInfo) fprintf(LogFile, fmt, __VA_ARGS__)
 #define LogInfoW(fmt, ...) \
-	if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__)
+	if (LogInfo) fwprintf(LogFile, fmt, __VA_ARGS__)
 
 #define LogDebug(fmt, ...) \
 	if (LogDebug) LogInfo(fmt, __VA_ARGS__)

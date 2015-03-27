@@ -17,7 +17,7 @@ ThreadSafePointerSet D3D9Wrapper::IDirect3DPixelShader9::m_List;
 
 static HMODULE hD3D;
 static FILE *LogFile = 0;
-static bool LogInput = false, LogDebug = false;
+static bool LogInput = false, LogDebug = false, LogInfo = false;
 static bool gInitialized = false;
 static int SCREEN_WIDTH = -1;
 static int SCREEN_WIDTH_DELAY = -1;
@@ -28,6 +28,29 @@ static int SCREEN_REFRESH_DELAY = -1;
 static int SCREEN_FULLSCREEN = -1;
 static wchar_t DLL_PATH[MAX_PATH] = { 0 };
 static bool gDelayDeviceCreation = false;
+
+
+static int renderCount = 0;
+static int currentFrameRenderCount = 0;
+
+static bool saveMesh = false;
+
+static bool setNullTexture[8] = { false };
+static int setNullTextureIndex = 0;
+
+enum Mode
+{
+	Normal = 0,
+	Step,
+};
+
+static Mode mode = Normal;
+static Mode lastMode = Normal;
+
+static D3D9Base::IDirect3DSurface9 * lastTarget = NULL;
+static D3D9Base::IDirect3DTexture9 * lastTargetTex = NULL;
+static int lastTargetWidth = 0;
+static int lastTargetHeight = 0;
 
 struct SwapChainInfo
 {
@@ -93,18 +116,90 @@ void InitializeDLL()
 			SCREEN_REFRESH_DELAY = SCREEN_REFRESH; SCREEN_REFRESH = -1;
 		}
 
+		if (DLL_PATH[0])
+		{
+			wchar_t sysDir[MAX_PATH];
+			GetModuleFileName(0, sysDir, MAX_PATH);
+			wcsrchr(sysDir, L'\\')[1] = 0;
+			wcscat(sysDir, DLL_PATH);
+			if (LogFile)
+			{
+				char path[MAX_PATH];
+				wcstombs(path, sysDir, MAX_PATH);
+				LogInfo("trying to load %s\n", path);
+			}
+			hD3D = LoadLibrary(sysDir);
+			if (!hD3D)
+			{
+				if (LogFile)
+				{
+					char path[MAX_PATH];
+					wcstombs(path, DLL_PATH, MAX_PATH);
+					LogInfo("load failed. Trying to load %s\n", path);
+				}
+				hD3D = LoadLibrary(DLL_PATH);
+			}
+		}
+		else
+		{
+			wchar_t sysDir[MAX_PATH];
+			SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
+			wcscat(sysDir, L"\\d3d9.dll");
+			if (LogFile)
+			{
+				char path[MAX_PATH];
+				wcstombs(path, sysDir, MAX_PATH);
+				LogInfo("trying to load %s\n", path);
+			}
+			hD3D = LoadLibrary(sysDir);
+		}
+
 		LogInfo("D3D9 DLL initialized.\n");
 	}
 }
 
 void DestroyDLL()
 {
+	FreeLibrary(hD3D);
+
 	if (LogFile)
 	{
 		LogInfo("Destroying DLL...\n");
 		fclose(LogFile);
 	}
 }
+
+
+BOOL WINAPI DllMain(
+	_In_  HINSTANCE hinstDLL,
+	_In_  DWORD fdwReason,
+	_In_  LPVOID lpvReserved)
+{
+	bool result = true;
+
+	switch (fdwReason)
+	{
+	case DLL_PROCESS_ATTACH:
+		InitializeDLL();
+		break;
+
+	case DLL_PROCESS_DETACH:
+		DestroyDLL();
+		break;
+
+	case DLL_THREAD_ATTACH:
+		// Do thread-specific initialization.
+		break;
+
+	case DLL_THREAD_DETACH:
+		// Do thread-specific cleanup.
+		break;
+	}
+
+	return result;
+}
+
+
 
 int WINAPI D3DPERF_BeginEvent(DWORD col, LPCWSTR wszName)
 {
@@ -170,12 +265,12 @@ void WINAPI DebugSetLevel(int a1, int a2)
 	(*call)(a1, a2);
 }
 
-void WINAPI DebugSetMute(int a)
+void WINAPI DebugSetMute()
 {
 	LogInfo("DebugSetMute called\n");
 
 	D3D9Wrapper::DebugSetMute call = (D3D9Wrapper::DebugSetMute)GetProcAddress(hD3D, "DebugSetMute");
-	(*call)(a);
+	(*call)();
 }
 
 void *WINAPI Direct3DShaderValidatorCreate9()
@@ -361,45 +456,6 @@ STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, vo
 
 D3D9Wrapper::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
 {
-	InitializeDLL();
-	if (DLL_PATH[0])
-	{
-		wchar_t sysDir[MAX_PATH];
-		GetModuleFileName(0, sysDir, MAX_PATH);
-		wcsrchr(sysDir, L'\\')[1] = 0;
-		wcscat(sysDir, DLL_PATH);
-		if (LogFile)
-		{
-			char path[MAX_PATH];
-			wcstombs(path, sysDir, MAX_PATH);
-			LogInfo("trying to load %s\n", path);
-		}
-		hD3D = LoadLibrary(sysDir);	
-		if (!hD3D)
-		{
-			if (LogFile)
-			{
-				char path[MAX_PATH];
-				wcstombs(path, DLL_PATH, MAX_PATH);
-				LogInfo("load failed. Trying to load %s\n", path);
-			}
-			hD3D = LoadLibrary(DLL_PATH);
-		}
-	}
-	else
-	{
-		wchar_t sysDir[MAX_PATH];
-		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
-		wcscat(sysDir, L"\\d3d9.dll");
-		if (LogFile)
-		{
-			char path[MAX_PATH];
-			wcstombs(path, sysDir, MAX_PATH);
-			LogInfo("trying to load %s\n", path);
-		}
-		hD3D = LoadLibrary(sysDir);
-	}
-	
     if (!hD3D)
     {
         LogInfo("LoadLibrary on d3d9.dll failed\n");
