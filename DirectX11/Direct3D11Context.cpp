@@ -13,7 +13,7 @@
 #include "Hunting.h"
 #include "Override.h"
 #include "IniHandler.h"
-
+#include "Overlay.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -22,11 +22,17 @@ HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContex
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
+
+	// Create Overlay class that will be responsible for drawing any text
+	// info over the game. Using the original Device and Context.
+	mOverlay = new Overlay(mOrigDevice, mOrigContext);
 }
 
 
 // Save the corresponding HackerDevice, as we need to use it periodically to get
 // access to the StereoParams.
+// We create the Overlay here as the moment when we have both HackerDevice and
+// HackerContext available.
 
 void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 {
@@ -432,6 +438,9 @@ void HackerContext::RunFrameActions()
 	// Update the huntTime whenever we get fresh user input.
 	if (newEvent)
 		G->huntTime = time(NULL);
+
+	// Draw the on-screen overlay text with hunting info.
+	mOverlay->DrawOverlay();
 
 	// Clear buffers after some user idle time.  This allows the buffers to be
 	// stable during a hunt, and cleared after one minute of idle time.  The idea

@@ -2,6 +2,7 @@
 
 #include <d3d11.h>
 
+#include "Overlay.h"
 #include "Direct3D11Device.h"
 #include "globals.h"
 
@@ -29,6 +30,7 @@ struct DrawContext
 // We need this to allow each to reference the other as needed.
 
 class HackerDevice;
+class Overlay;
 
 
 // Hierarchy:
@@ -43,8 +45,10 @@ private:
 	ID3D11DeviceContext *mOrigContext;
 	HackerDevice *mHackerDevice;
 
+	Overlay *mOverlay;
+
 	// These private methods are utility routines for HackerContext.
-	void HackerContext::RunFrameActions();
+	void RunFrameActions();
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,

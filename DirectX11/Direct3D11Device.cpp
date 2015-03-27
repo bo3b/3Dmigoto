@@ -11,18 +11,15 @@
 #include "d3d11Wrapper.h"
 #include <D3Dcompiler.h>
 #include "../HLSLDecompiler/DecompileHLSL.h"
-
-//#include "Main.h"
-//#include "globals.h"
-//#include "../HLSLDecompiler/DecompileHLSL.h"
-//#include "Direct3D11Context.h"
-//#include "d3d11Wrapper.h"
+#include "SpriteFont.h"
 
 // -----------------------------------------------------------------------------------------------
 
 HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: ID3D11Device(),
-	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), mIniResourceView(0), mIniTexture(0), mZBufferResourceView(0)
+	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), 
+	mIniResourceView(0), mIniTexture(0), 
+	mZBufferResourceView(0)
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
