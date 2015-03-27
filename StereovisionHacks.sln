@@ -40,6 +40,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D_Shaders", "D3D_Shaders\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{881AED83-BA3E-4BF3-B3A3-782E82BE575C}"
 	ProjectSection(SolutionItems) = preProject
+		Dependencies\courierbold.spritefont = Dependencies\courierbold.spritefont
 		Dependencies\D3DCompiler_46_org.dll = Dependencies\D3DCompiler_46_org.dll
 		Dependencies\d3dx.ini = Dependencies\d3dx.ini
 		Dependencies\uninstall.bat = Dependencies\uninstall.bat
@@ -2688,6 +2689,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "x64 Dependencies", "x64 Dependencies", "{9B1DC82F-514E-46C3-9AE4-2C6307245154}"
 	ProjectSection(SolutionItems) = preProject
+		Dependencies64\courierbold.spritefont = Dependencies64\courierbold.spritefont
 		Dependencies64\D3DCompiler_46_org.dll = Dependencies64\D3DCompiler_46_org.dll
 		Dependencies64\d3dx.ini = Dependencies64\d3dx.ini
 		Dependencies64\uninstall.bat = Dependencies64\uninstall.bat
