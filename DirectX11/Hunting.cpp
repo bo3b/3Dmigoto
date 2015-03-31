@@ -3,11 +3,11 @@
 #include <string>
 #include <D3Dcompiler.h>
 
-#include "../util.h"
-#include "input.h"
+#include "util.h"
+#include "DecompileHLSL.h"
+#include "Input.h"
 #include "Override.h"
-#include "globals.h"
-#include "../HLSLDecompiler/DecompileHLSL.h"
+#include "Globals.h"
 #include "IniHandler.h"
 
 

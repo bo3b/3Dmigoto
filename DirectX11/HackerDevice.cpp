@@ -1,16 +1,17 @@
 // Wrapper for the ID3D11Device.
 // This gives us access to every D3D11 call for a device, and override the pieces needed.
 
-#include "Direct3D11Device.h"
+#include "HackerDevice.h"
 
-#include "Direct3D11Context.h"
-#include "../nvapi.h"
-#include "../log.h"
-#include "../util.h"
-#include "globals.h"
-#include "d3d11Wrapper.h"
 #include <D3Dcompiler.h>
-#include "../HLSLDecompiler/DecompileHLSL.h"
+
+#include "nvapi.h"
+#include "log.h"
+#include "util.h"
+#include "DecompileHLSL.h"
+#include "HackerContext.h"
+#include "Globals.h"
+#include "D3D11Wrapper.h"
 #include "SpriteFont.h"
 
 // -----------------------------------------------------------------------------------------------

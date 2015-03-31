@@ -1,4 +1,4 @@
-#include "Direct3D11Device.h"
+#include "HackerDevice.h"
 
 NvAPI_Status CheckStereo();
 void FlagConfigReload(HackerDevice *device, void *private_data);

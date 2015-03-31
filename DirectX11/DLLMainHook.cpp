@@ -1,5 +1,5 @@
-#include "../log.h"
-#include "../Nektra/NktHookLib.h"
+#include "log.h"
+#include "Nektra/NktHookLib.h"
 
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when

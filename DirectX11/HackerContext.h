@@ -3,8 +3,8 @@
 #include <d3d11.h>
 
 #include "Overlay.h"
-#include "Direct3D11Device.h"
-#include "globals.h"
+#include "HackerDevice.h"
+#include "Globals.h"
 
 struct DrawContext
 {

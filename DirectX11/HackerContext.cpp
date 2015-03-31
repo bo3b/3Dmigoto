@@ -4,12 +4,12 @@
 // Hierarchy:
 //  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
-#include "Direct3D11Context.h"
+#include "HackerContext.h"
 
-#include "Direct3D11Device.h"
-#include "d3d11Wrapper.h"
-#include "../log.h"
-#include "globals.h"
+#include "log.h"
+#include "HackerDevice.h"
+#include "D3D11Wrapper.h"
+#include "Globals.h"
 #include "Hunting.h"
 #include "Override.h"
 #include "IniHandler.h"

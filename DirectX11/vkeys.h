@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "../util.h"
+#include "util.h"
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
 static EnumName_t<wchar_t *, int> VKMappings[] = {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Direct3D11Device.h"
+#include "HackerDevice.h"
 
 
 void NvAPIOverride();

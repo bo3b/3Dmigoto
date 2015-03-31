@@ -2,8 +2,8 @@
 
 #include <d3d11.h>
 
-#include "../nvstereo.h"
-#include "Direct3D11Context.h"
+#include "nvstereo.h"
+#include "HackerContext.h"
 
 
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 

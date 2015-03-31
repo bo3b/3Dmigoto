@@ -1,13 +1,14 @@
 #pragma once
 
 #include <d3d11.h>
-#include "../util.h"
 #include <DirectXMath.h>
 #include <ctime>
 #include <vector>
 #include <set>
 #include <map>
 #include <unordered_map>
+
+#include "util.h"
 
 const int MARKING_MODE_SKIP = 0;
 const int MARKING_MODE_MONO = 1;

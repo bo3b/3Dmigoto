@@ -6,7 +6,7 @@
 //  handling for user overrides, so it should probably be moved.
 //  It was moved out of d3d11Wrapper so that d3d11Wrapper can be only wrapper code.
 
-#include "Direct3D11Device.h"
+#include "HackerDevice.h"
 
 void TimeoutHuntingBuffers();
 void RegisterHuntingKeyBindings(wchar_t *iniFile);

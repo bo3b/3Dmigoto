@@ -1,11 +1,11 @@
-#include "input.h"
+#include "Input.h"
 
 #include <Xinput.h>
 #include <vector>
 #include <algorithm>
 
-#include "../log.h"
-#include "../util.h"
+#include "log.h"
+#include "util.h"
 #include "vkeys.h"
 
 class KeyParseError: public exception {} keyParseError;

@@ -2,10 +2,10 @@
 
 #include <string>
 
-#include "globals.h"
+#include "log.h"
+#include "Globals.h"
 #include "Override.h"
 #include "Hunting.h"
-#include "../log.h"
 
 
 // Case insensitive version of less comparitor. This is used to create case

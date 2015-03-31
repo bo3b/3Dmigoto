@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Direct3D11Device.h"
+#include "HackerDevice.h"
 
 // The "input" files are a set of objects to handle user input for both gaming 
 // purposes and for tool purposes, like hunting for shaders.

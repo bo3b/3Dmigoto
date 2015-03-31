@@ -4,9 +4,9 @@
 #include <d3d11.h>
 #include <vector>
 
-#include "input.h"
-#include "../util.h"
-#include "Direct3D11Device.h"
+#include "util.h"
+#include "Input.h"
+#include "HackerDevice.h"
 
 enum class KeyOverrideType {
 	INVALID = -1,

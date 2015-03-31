@@ -1,7 +1,7 @@
 #include "Override.h"
 
-#include "globals.h"
-#include "d3d11Wrapper.h"
+#include "Globals.h"
+#include "D3D11Wrapper.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>

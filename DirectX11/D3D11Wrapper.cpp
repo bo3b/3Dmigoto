@@ -1,4 +1,4 @@
-#include "d3d11Wrapper.h"
+#include "D3D11Wrapper.h"
 
 #include <Shlobj.h>
 #include <Winuser.h>
@@ -8,13 +8,13 @@
 #include <iterator>
 #include <string>
 
-#include "../HLSLDecompiler/DecompileHLSL.h"
-#include "../util.h"
-#include "../log.h"
+#include "util.h"
+#include "log.h"
+#include "DecompileHLSL.h"
 #include "Override.h"
-#include "globals.h"
-#include "Direct3D11Device.h"
-#include "Direct3D11Context.h"
+#include "Globals.h"
+#include "HackerDevice.h"
+#include "HackerContext.h"
 #include "IniHandler.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
