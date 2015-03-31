@@ -1,35 +1,32 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="d3d11Wrapper.cpp" />
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
-    <ClCompile Include="MainHook.cpp" />
-    <ClCompile Include="input.cpp" />
-    <ClCompile Include="Override.cpp" />
-    <ClCompile Include="Direct3D11Device.cpp" />
-    <ClCompile Include="Direct3D11Context.cpp" />
+    <ClCompile Include="D3D11Wrapper.cpp" />
+    <ClCompile Include="DLLMainHook.cpp" />
+    <ClCompile Include="HackerContext.cpp" />
+    <ClCompile Include="HackerDevice.cpp" />
     <ClCompile Include="Hunting.cpp" />
     <ClCompile Include="IniHandler.cpp" />
+    <ClCompile Include="Input.cpp" />
     <ClCompile Include="Overlay.cpp" />
+    <ClCompile Include="Override.cpp" />
+    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="d3d11Wrapper.h" />
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="input.h" />
-    <ClInclude Include="vkeys.h" />
-    <ClInclude Include="Override.h" />
-    <ClInclude Include="globals.h" />
-    <ClInclude Include="..\version.h" />
-    <ClInclude Include="..\util.h" />
-    <ClInclude Include="Direct3D11Context.h" />
-    <ClInclude Include="Direct3D11Device.h" />
+    <ClInclude Include="D3D11Wrapper.h" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="HackerContext.h" />
+    <ClInclude Include="HackerDevice.h" />
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="IniHandler.h" />
-    <ClInclude Include="..\log.h" />
+    <ClInclude Include="Input.h" />
     <ClInclude Include="Overlay.h" />
+    <ClInclude Include="Override.h" />
+    <ClInclude Include="vkeys.h" />
+    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
