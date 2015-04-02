@@ -16,6 +16,8 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 #include "IniHandler.h"
+#include "HookedDXGI.h"
+
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
@@ -344,7 +346,7 @@ static void InitD311()
 	G = new Globals();
 	InitializeCriticalSection(&G->mCriticalSection);
 
-	if (!InitializeDLL())
+	if (!InitializeDLL() || !InstallDXGIHooks())
 	{
 		// Failed to init?  Best to exit now, we are sure to crash.
 		BeepFailure2();
@@ -353,6 +355,11 @@ static void InitD311()
 		Sleep(200);
 		ExitProcess(0xc0000135);
 	}
+
+	
+
+	// Chain through to the either the original DLL in the system, or to a proxy
+	// DLL with the same interface, specified in the d3dx.ini file.
 
 	if (G->CHAIN_DLL_PATH[0])
 	{
@@ -580,6 +587,8 @@ HRESULT WINAPI D3D11CreateDevice(
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
+	if (ppDevice)
+		*ppDevice = deviceWrap;
 
 	// Create a wrapped version of the original context to return to the game.
 	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
@@ -590,16 +599,13 @@ HRESULT WINAPI D3D11CreateDevice(
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
+	if (ppImmediateContext)
+		*ppImmediateContext = contextWrap;
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.
 	deviceWrap->SetHackerContext(contextWrap);
 	contextWrap->SetHackerDevice(deviceWrap);
-
-	if (ppDevice)
-		*ppDevice = deviceWrap;
-	if (ppImmediateContext)
-		*ppImmediateContext = contextWrap;
 
 	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
 	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n", 
@@ -673,6 +679,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
+	if (ppDevice)
+		*ppDevice = deviceWrap;
 
 	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
 	if (contextWrap == NULL)
@@ -682,16 +690,22 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		origContext->Release();
 		return E_OUTOFMEMORY;
 	}
+	if (ppImmediateContext)
+		*ppImmediateContext = contextWrap;
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.
 	deviceWrap->SetHackerContext(contextWrap);
 	contextWrap->SetHackerDevice(deviceWrap);
 
-	if (ppDevice)
-		*ppDevice = deviceWrap;
-	if (ppImmediateContext)
-		*ppImmediateContext = contextWrap;
+	// Since we are creating a SwapChain here as well, we need to make a Hooked
+	// version in order to get access to Present().  We don't return our version
+	// of the object here, because we are hooking this call, not wrapping.
+	if (ppSwapChain)
+	{
+		new HookedSwapChain(*ppSwapChain);
+		// attach to device?
+	}
 
 	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
 	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",

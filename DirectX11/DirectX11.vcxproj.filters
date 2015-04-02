@@ -11,6 +11,7 @@
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="HookedDXGI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -27,6 +28,8 @@
     <ClInclude Include="Override.h" />
     <ClInclude Include="vkeys.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="HookedDXGI.h" />
+    <ClInclude Include="DLLMainHook.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

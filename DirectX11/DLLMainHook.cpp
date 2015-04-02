@@ -1,5 +1,6 @@
+#include "DLLMainHook.h"
+
 #include "log.h"
-#include "Nektra/NktHookLib.h"
 
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
@@ -9,14 +10,17 @@
 // Pretty sure this is safe at DLLMain, because we are only accessing kernel32 stuff which is sure
 // to be loaded.
 
+// Used for other hooking. extern in the .h file.
+// Only one instance of CNktHookLib is allowed for a given process.
+CNktHookLib cHookMgr;
+
+
 // Use this logging when at DLLMain which is too early to do anything with the file system.
 #if _DEBUG
 	bool bLog = true;
 #else
 	bool bLog = false;
 #endif
-
-CNktHookLib cHookMgr;
 
 typedef HMODULE(WINAPI *lpfnLoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);

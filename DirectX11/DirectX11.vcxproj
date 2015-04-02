@@ -128,6 +128,7 @@
     <ClCompile Include="DLLMainHook.cpp" />
     <ClCompile Include="HackerContext.cpp" />
     <ClCompile Include="HackerDevice.cpp" />
+    <ClCompile Include="HookedDXGI.cpp" />
     <ClCompile Include="Hunting.cpp" />
     <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="Input.cpp" />
@@ -140,9 +141,11 @@
   <ItemGroup>
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="D3D11Wrapper.h" />
+    <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="HackerContext.h" />
     <ClInclude Include="HackerDevice.h" />
+    <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="IniHandler.h" />
     <ClInclude Include="Input.h" />
@@ -562,7 +565,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)Redist\D3D\x86\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
@@ -587,7 +590,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\D3DCompile*.DLL” “$(TargetDir)” /E /Y
@@ -615,7 +618,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
@@ -983,7 +986,7 @@ REM And, the d3dx.ini from game specific folder
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
     </Link>
