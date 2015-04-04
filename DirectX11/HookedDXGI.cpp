@@ -29,6 +29,7 @@
 #include "DLLMainHook.h"
 
 
+
 // ----------------------------------------------------------------------------
 
 // The signature copied from dxgi.h, in C section.
@@ -74,7 +75,13 @@ typedef HRESULT(STDMETHODCALLTYPE *lpfnPresent)(
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags);
 
-// static declaration of Present in .h file
+static HRESULT HookedPresent(
+	IDXGISwapChain * This,
+	/* [in] */ UINT SyncInterval,
+	/* [in] */ UINT Flags);
+
+static SIZE_T nHookId = 0;
+static lpfnPresent pOrigPresent = NULL;
 
 // ----------------------------------------------------------------------------
 
@@ -125,12 +132,13 @@ bool InstallDXGIHooks(void)
 	// Create a SwapChain, just so we can get access to its vtable, and thus hook
 	// the Present() call to ours.
 
-	IDXGIFactory_CreateSwapChain(factory, pDevice, pDesc, ppSwapChain);
+	// not sure where to get device from.
+	//IDXGIFactory_CreateSwapChain(factory, pDevice, pDesc, ppSwapChain);
 
-	HackerDevice *pDevice;
-	DXGI_SWAP_CHAIN_DESC *pDesc;
-	IDXGISwapChain *ppSwapChain;
-	IDXGIFactory2_CreateSwapChain(factory, pDevice, pDesc, &ppSwapChain);
+	//HackerDevice *pDevice;
+	//DXGI_SWAP_CHAIN_DESC *pDesc;
+	//IDXGISwapChain *ppSwapChain;
+	//IDXGIFactory2_CreateSwapChain(factory, pDevice, pDesc, &ppSwapChain);
 
 	return true;
 }
@@ -145,7 +153,23 @@ static void UninstallDXGIHooks()
 
 HookedSwapChain::HookedSwapChain(IDXGISwapChain* pOrigSwapChain)
 {
+	DWORD dwOsErr;
+
 	mOrigSwapChain = pOrigSwapChain;
+
+	if (pOrigPresent == NULL)
+	{
+		LPVOID dxgiSwapChain = pOrigSwapChain->lpVtbl->Present;
+
+		cHookMgr.SetEnableDebugOutput(TRUE);
+		dwOsErr = cHookMgr.Hook(&nCSCHookId, (LPVOID*)&pOrigPresent, &dxgiSwapChain, HookedPresent);
+		if (dwOsErr)
+		{
+			LogInfo("*** HookedSwapChain::HookedSwapChain Hook failed: %d \n", dwOsErr);
+			return;
+		}
+	}
+	LogInfo("HookedSwapChain::HookedSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
 }
 
 
@@ -155,18 +179,18 @@ HookedSwapChain::~HookedSwapChain()
 }
 
 
-// Static version of Present.
+// The hooked static version of Present.
 
-HRESULT HookedSwapChain::Present(
+HRESULT HookedPresent(
 	IDXGISwapChain * This,
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags)
 {
 	HRESULT hr;
 
-	hr = This->lpVtbl->Present(This, SyncInterval, Flags);
+	hr = pOrigPresent(This, SyncInterval, Flags);
 
-	LogInfo("HookedSwapChain::Present mOrigSwapChain: %p, result: %d \n", mOrigSwapChain, hr);
+	LogInfo("HookedPresent result: %d \n", hr);
 
 	return hr;
 }

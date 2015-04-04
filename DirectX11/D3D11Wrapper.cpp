@@ -346,7 +346,7 @@ static void InitD311()
 	G = new Globals();
 	InitializeCriticalSection(&G->mCriticalSection);
 
-	if (!InitializeDLL() || !InstallDXGIHooks())
+	if (!InitializeDLL())
 	{
 		// Failed to init?  Best to exit now, we are sure to crash.
 		BeepFailure2();

@@ -41,9 +41,5 @@ public:
 	HookedSwapChain(IDXGISwapChain* pOrigSwapChain);
 	~HookedSwapChain();
 
-	static HRESULT Present(
-		IDXGISwapChain * This,
-		/* [in] */ UINT SyncInterval,
-		/* [in] */ UINT Flags);
 };
 
