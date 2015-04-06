@@ -30,6 +30,9 @@
 // processes in mind.
 
 
+#include "log.h"
+#include "DLLMainHook.h"
+
 // For this object, we want to use the CINTERFACE, not the C++ interface.
 // The reason is that it allows us easy access to the COM object vtable, which
 // we need to hook in order to override the functions.  Once we include dxgi.h
@@ -37,20 +40,15 @@
 //
 // This is a little odd, but it's the way that Detours hooks COM objects, and
 // thus it seems superior to the Nektra approach of groping the vtable directly
-// using constants.
+// using constants and void* pointers.
 // 
 // This is only used for .cpp file here, not the .h file, because otherwise other
-// units get compiled with this CINTERFACE.
+// units get compiled with this CINTERFACE, which wrecks their calling out.
 
 #define CINTERFACE
 #define COBJMACROS
 
 #include <dxgi.h>
-
-
-#include "log.h"
-#include "DLLMainHook.h"
-
 
 
 // -----------------------------------------------------------------------------
@@ -195,8 +193,17 @@ static lpfnPresent pOrigPresent = NULL;
 // -----------------------------------------------------------------------------
 
 // The hooked static version of Present.
+//
+// It is worth noting, since it took me 3 days to figure it out, than even though
+// this is defined C style, that it must use STDMETHODCALLTYPE (or__stdcall) 
+// because otherwise the stack is broken by the different calling conventions.
+//
+// In normal method calls, the 'this' parameter is implicitly added.  Since we are
+// using the C style dxgi interface though, we are declaring this routine differently.
+//
 // Since we want to allow reentrancy for this call, we need to use the returned
-// lpfnPresent to call the original.
+// lpfnPresent to call the original, instead of the alternate approach offered by
+// Deviare.
 
 static HRESULT STDMETHODCALLTYPE HookedPresent(
 	IDXGISwapChain * This,
@@ -213,12 +220,15 @@ static HRESULT STDMETHODCALLTYPE HookedPresent(
 }
 
 // Hook the Present call in the DXGI COM interface.
+// Will only hook once, because there is only one instance
+// of the actual underlying code.
+//
+// The cHookMgr is assumed to already be created and initialized by the
+// C++ runtime, even if we are not hooking in DLLMain.
 
 void HookSwapChain(IDXGISwapChain* pSwapChain)
 {
 	DWORD dwOsErr;
-
-	// Avoid hooking more than once.
 
 	if (pOrigPresent == NULL)
 	{
@@ -227,12 +237,11 @@ void HookSwapChain(IDXGISwapChain* pSwapChain)
 		if (hr != NOERROR)
 			LogInfo("HookSwapChain CoInitialize return: %d \n", hr);
 
+		// The tricky part- fetching the actual address of the original
+		// DXGI::Present call.
 		LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
 
 		cHookMgr.SetEnableDebugOutput(TRUE);
-
-		//DWORD Hook(__out SIZE_T *lpnHookId, __out LPVOID *lplpCallOriginal, __in LPVOID lpProcToHook,
-		//	__in LPVOID lpNewProcAddr, __in DWORD dwFlags = 0);
 
 		dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
 		if (dwOsErr)
