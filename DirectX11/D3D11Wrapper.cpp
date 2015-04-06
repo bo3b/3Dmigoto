@@ -18,7 +18,6 @@
 #include "IniHandler.h"
 #include "HookedDXGI.h"
 
-
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
 // globals.h and log.h files.
@@ -703,7 +702,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	// of the object here, because we are hooking this call, not wrapping.
 	if (ppSwapChain)
 	{
-		new HookedSwapChain(*ppSwapChain);
+		HRESULT hr = (*ppSwapChain)->Present(0, DXGI_PRESENT_TEST);
+		HookSwapChain(*ppSwapChain);
+		hr = (*ppSwapChain)->Present(0, DXGI_PRESENT_TEST);
 		// attach to device?
 	}
 

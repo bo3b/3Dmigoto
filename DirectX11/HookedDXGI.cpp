@@ -22,16 +22,38 @@
 // calls we want, because they are not true objects with attached vtables, they have
 // a non-standard vtable/indexing system, and the main differentiator is the object
 // passed in as 'this'.  
+//
+// After much experimentation and study, it seems clear that we should use the in-proc
+// version of Deviare. I tried to see if Deviare2 would be a match, but they have a 
+// funny event callback mechanism that requires an ATL object connection, and is not
+// really suited for same-process operations.  It's really built with separate
+// processes in mind.
 
-#include "HookedDXGI.h"
+
+// For this object, we want to use the CINTERFACE, not the C++ interface.
+// The reason is that it allows us easy access to the COM object vtable, which
+// we need to hook in order to override the functions.  Once we include dxgi.h
+// it will be defined with C headers instead.
+//
+// This is a little odd, but it's the way that Detours hooks COM objects, and
+// thus it seems superior to the Nektra approach of groping the vtable directly
+// using constants.
+// 
+// This is only used for .cpp file here, not the .h file, because otherwise other
+// units get compiled with this CINTERFACE.
+
+#define CINTERFACE
+#define COBJMACROS
+
+#include <dxgi.h>
+
 
 #include "log.h"
 #include "DLLMainHook.h"
 
 
 
-// ----------------------------------------------------------------------------
-
+// -----------------------------------------------------------------------------
 // The signature copied from dxgi.h, in C section.
 // This unusual format also provides storage for the original pointer to the 
 // routine.
@@ -68,14 +90,101 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 	return hr;
 }
 
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+//bool InstallDXGIHooks(void)
+//{
+//	// Seems like we need to do this in order to init any use of COM here.
+//	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+//
+//	HRESULT result;
+//	IDXGIFactory* factory;
+//		
+//	// We need a DXGI interface factory in order to get access to the CreateSwapChain
+//	// call. This CreateDXGIFactory call is defined as an export in dxgi.dll and is
+//	// called normally.  It will return an interface to a COM object.
+//	// We will have access to the COM routines available after we have one of these.
+//
+//	result = CreateDXGIFactory(IID_IDXGIFactory, (void**)(&factory));
+//	if (FAILED(result))
+//	{
+//		LogInfo("*** InstallDXGIHooks CreateDXGIFactory failed: %d \n", result);
+//		return false;
+//	}
+//
+//	// Hook the factory call for CreateSwapChain, as the game may use that to create
+//	// its swapchain instead of CreateDeviceAndSwapChain.
+//
+//	cHookMgr.SetEnableDebugOutput(TRUE);
+//
+//	// Routine address fetched from the COM vtable.  This address will be patched by
+//	// deviare to jump to HookedCreateSwapChain, which will then need the original
+//	// address to call the unmodified function, found in OrigCreateSwapChain.
+//
+//	LPVOID CreateSwapChain = factory->lpVtbl->CreateSwapChain;
+//
+//	DWORD dwOsErr;
+//	dwOsErr = cHookMgr.Hook(&nCSCHookId, &CreateSwapChain, &OrigCreateSwapChain, HookedCreateSwapChain);
+//	if (FAILED(dwOsErr))
+//	{
+//		LogInfo("*** InstallDXGIHooks Hook failed: %d \n", dwOsErr);
+//		return false;
+//	}
+//
+//	LogInfo("InstallDXGIHooks CreateSwapChain result: %d, at: %p \n", dwOsErr, OrigCreateSwapChain);
+//
+//
+//	// Create a SwapChain, just so we can get access to its vtable, and thus hook
+//	// the Present() call to ours.
+//
+//	// not sure where to get device from.
+//	//IDXGIFactory_CreateSwapChain(factory, pDevice, pDesc, ppSwapChain);
+//
+//	//HackerDevice *pDevice;
+//	//DXGI_SWAP_CHAIN_DESC *pDesc;
+//	//IDXGISwapChain *ppSwapChain;
+//	//IDXGIFactory2_CreateSwapChain(factory, pDevice, pDesc, &ppSwapChain);
+//
+//	return true;
+//}
+
+//void UninstallDXGIHooks()
+//{
+//	DWORD dwOsErr; 
+//	dwOsErr = cHookMgr.Unhook(nCSCHookId);
+//}
+
+// -----------------------------------------------------------------------------
+//HookedSwapChain::HookedSwapChain(IDXGISwapChain* pOrigSwapChain)
+//{
+//	DWORD dwOsErr;
+//
+//	mOrigSwapChain = pOrigSwapChain;
+//
+//	if (pOrigPresent == NULL)
+//	{
+//		LPVOID dxgiSwapChain = pOrigSwapChain->lpVtbl->Present;
+//
+//		cHookMgr.SetEnableDebugOutput(TRUE);
+//		dwOsErr = cHookMgr.Hook(&nCSCHookId, (LPVOID*)&pOrigPresent, &dxgiSwapChain, HookedPresent);
+//		if (dwOsErr)
+//		{
+//			LogInfo("*** HookedSwapChain::HookedSwapChain Hook failed: %d \n", dwOsErr);
+//			return;
+//		}
+//	}
+//	LogInfo("HookedSwapChain::HookedSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
+//}
+//
+//
+//HookedSwapChain::~HookedSwapChain()
+//{
+//	
+//}
+
+// -----------------------------------------------------------------------------
 
 typedef HRESULT(STDMETHODCALLTYPE *lpfnPresent)(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags);
-
-static HRESULT HookedPresent(
 	IDXGISwapChain * This,
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags);
@@ -83,105 +192,13 @@ static HRESULT HookedPresent(
 static SIZE_T nHookId = 0;
 static lpfnPresent pOrigPresent = NULL;
 
-// ----------------------------------------------------------------------------
-
-SIZE_T nCSCHookId;
-
-bool InstallDXGIHooks(void)
-{
-	// Seems like we need to do this in order to init any use of COM here.
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-
-	HRESULT result;
-	IDXGIFactory* factory;
-		
-	// We need a DXGI interface factory in order to get access to the CreateSwapChain
-	// call. This CreateDXGIFactory call is defined as an export in dxgi.dll and is
-	// called normally.  It will return an interface to a COM object.
-	// We will have access to the COM routines available after we have one of these.
-
-	result = CreateDXGIFactory(IID_IDXGIFactory, (void**)(&factory));
-	if (FAILED(result))
-	{
-		LogInfo("*** InstallDXGIHooks CreateDXGIFactory failed: %d \n", result);
-		return false;
-	}
-
-	// Hook the factory call for CreateSwapChain, as the game may use that to create
-	// its swapchain instead of CreateDeviceAndSwapChain.
-
-	cHookMgr.SetEnableDebugOutput(TRUE);
-
-	// Routine address fetched from the COM vtable.  This address will be patched by
-	// deviare to jump to HookedCreateSwapChain, which will then need the original
-	// address to call the unmodified function, found in OrigCreateSwapChain.
-
-	LPVOID CreateSwapChain = factory->lpVtbl->CreateSwapChain;
-
-	DWORD dwOsErr;
-	dwOsErr = cHookMgr.Hook(&nCSCHookId, &CreateSwapChain, &OrigCreateSwapChain, HookedCreateSwapChain);
-	if (FAILED(dwOsErr))
-	{
-		LogInfo("*** InstallDXGIHooks Hook failed: %d \n", dwOsErr);
-		return false;
-	}
-
-	LogInfo("InstallDXGIHooks CreateSwapChain result: %d, at: %p \n", dwOsErr, OrigCreateSwapChain);
-
-
-	// Create a SwapChain, just so we can get access to its vtable, and thus hook
-	// the Present() call to ours.
-
-	// not sure where to get device from.
-	//IDXGIFactory_CreateSwapChain(factory, pDevice, pDesc, ppSwapChain);
-
-	//HackerDevice *pDevice;
-	//DXGI_SWAP_CHAIN_DESC *pDesc;
-	//IDXGISwapChain *ppSwapChain;
-	//IDXGIFactory2_CreateSwapChain(factory, pDevice, pDesc, &ppSwapChain);
-
-	return true;
-}
-
-static void UninstallDXGIHooks()
-{
-	DWORD dwOsErr; 
-	dwOsErr = cHookMgr.Unhook(nCSCHookId);
-}
-
-// -----------------------------------------------------------------------------------------------
-
-HookedSwapChain::HookedSwapChain(IDXGISwapChain* pOrigSwapChain)
-{
-	DWORD dwOsErr;
-
-	mOrigSwapChain = pOrigSwapChain;
-
-	if (pOrigPresent == NULL)
-	{
-		LPVOID dxgiSwapChain = pOrigSwapChain->lpVtbl->Present;
-
-		cHookMgr.SetEnableDebugOutput(TRUE);
-		dwOsErr = cHookMgr.Hook(&nCSCHookId, (LPVOID*)&pOrigPresent, &dxgiSwapChain, HookedPresent);
-		if (dwOsErr)
-		{
-			LogInfo("*** HookedSwapChain::HookedSwapChain Hook failed: %d \n", dwOsErr);
-			return;
-		}
-	}
-	LogInfo("HookedSwapChain::HookedSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
-}
-
-
-HookedSwapChain::~HookedSwapChain()
-{
-	
-}
-
+// -----------------------------------------------------------------------------
 
 // The hooked static version of Present.
+// Since we want to allow reentrancy for this call, we need to use the returned
+// lpfnPresent to call the original.
 
-HRESULT HookedPresent(
+static HRESULT STDMETHODCALLTYPE HookedPresent(
 	IDXGISwapChain * This,
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags)
@@ -190,9 +207,42 @@ HRESULT HookedPresent(
 
 	hr = pOrigPresent(This, SyncInterval, Flags);
 
-	LogInfo("HookedPresent result: %d \n", hr);
+	LogDebug("HookedPresent result: %d \n", hr);
 
 	return hr;
 }
+
+// Hook the Present call in the DXGI COM interface.
+
+void HookSwapChain(IDXGISwapChain* pSwapChain)
+{
+	DWORD dwOsErr;
+
+	// Avoid hooking more than once.
+
+	if (pOrigPresent == NULL)
+	{
+		// Seems like we need to do this in order to init any use of COM here.
+		HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+		if (hr != NOERROR)
+			LogInfo("HookSwapChain CoInitialize return: %d \n", hr);
+
+		LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
+
+		cHookMgr.SetEnableDebugOutput(TRUE);
+
+		//DWORD Hook(__out SIZE_T *lpnHookId, __out LPVOID *lplpCallOriginal, __in LPVOID lpProcToHook,
+		//	__in LPVOID lpNewProcAddr, __in DWORD dwFlags = 0);
+
+		dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
+		if (dwOsErr)
+		{
+			LogInfo("*** HookSwapChain Hook failed: %d \n", dwOsErr);
+			return;
+		}
+	}
+	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
+}
+
 
 
