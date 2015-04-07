@@ -29,10 +29,6 @@
 // really suited for same-process operations.  It's really built with separate
 // processes in mind.
 
-
-#include "log.h"
-#include "DLLMainHook.h"
-
 // For this object, we want to use the CINTERFACE, not the C++ interface.
 // The reason is that it allows us easy access to the COM object vtable, which
 // we need to hook in order to override the functions.  Once we include dxgi.h
@@ -46,9 +42,14 @@
 // units get compiled with this CINTERFACE, which wrecks their calling out.
 
 #define CINTERFACE
-#define COBJMACROS
+  #include <dxgi.h>
+#undef CINTERFACE
 
-#include <dxgi.h>
+#include <d3d11.h>
+
+#include "log.h"
+#include "DLLMainHook.h"
+#include "Overlay.h"
 
 
 // -----------------------------------------------------------------------------
@@ -190,6 +191,9 @@ typedef HRESULT(STDMETHODCALLTYPE *lpfnPresent)(
 static SIZE_T nHookId = 0;
 static lpfnPresent pOrigPresent = NULL;
 
+Overlay *mOverlay;
+
+
 // -----------------------------------------------------------------------------
 
 // The hooked static version of Present.
@@ -212,6 +216,9 @@ static HRESULT STDMETHODCALLTYPE HookedPresent(
 {
 	HRESULT hr;
 
+	// Draw the on-screen overlay text with hunting info.
+	mOverlay->DrawOverlay();
+
 	hr = pOrigPresent(This, SyncInterval, Flags);
 
 	LogDebug("HookedPresent result: %d \n", hr);
@@ -226,7 +233,7 @@ static HRESULT STDMETHODCALLTYPE HookedPresent(
 // The cHookMgr is assumed to already be created and initialized by the
 // C++ runtime, even if we are not hooking in DLLMain.
 
-void HookSwapChain(IDXGISwapChain* pSwapChain)
+void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 {
 	DWORD dwOsErr;
 
@@ -251,6 +258,11 @@ void HookSwapChain(IDXGISwapChain* pSwapChain)
 		}
 	}
 	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
+
+
+	// Create Overlay class that will be responsible for drawing any text
+	// info over the game. Using the original Device and Context.
+	mOverlay = new Overlay(pDevice, pContext);
 }
 
 

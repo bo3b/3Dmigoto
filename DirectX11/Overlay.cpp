@@ -27,16 +27,14 @@ Overlay::~Overlay()
 
 void Overlay::DrawOverlay(void)
 {
-	// Disable for time being, until we can draw at Present(). This flickers too much.
+	DirectX::SimpleMath::Vector2 fontPos(50, 1000);
 
-	//DirectX::SimpleMath::Vector2 fontPos(50, 1000);
+	std::wstring output = std::wstring(L"Hello") + std::wstring(L" World");
 
-	//std::wstring output = std::wstring(L"Hello") + std::wstring(L" World");
-
-	//mSpriteBatch->Begin();
-	//{
-	//	//mFont->DrawString(mSpriteBatch.get(), L"Hello, world!", DirectX::XMFLOAT2(50, 1000));
-	//	mFont->DrawString(mSpriteBatch.get(), output.c_str(), fontPos, DirectX::Colors::LimeGreen);
-	//}
-	//mSpriteBatch->End();
+	mSpriteBatch->Begin();
+	{
+		//mFont->DrawString(mSpriteBatch.get(), L"Hello, world!", DirectX::XMFLOAT2(50, 1000));
+		mFont->DrawString(mSpriteBatch.get(), output.c_str(), fontPos, DirectX::Colors::LimeGreen);
+	}
+	mSpriteBatch->End();
 }

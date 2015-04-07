@@ -45,8 +45,6 @@ private:
 	ID3D11DeviceContext *mOrigContext;
 	HackerDevice *mHackerDevice;
 
-	Overlay *mOverlay;
-
 	// These private methods are utility routines for HackerContext.
 	void RunFrameActions();
 	DrawContext BeforeDraw();

@@ -22,10 +22,6 @@ HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContex
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
-
-	// Create Overlay class that will be responsible for drawing any text
-	// info over the game. Using the original Device and Context.
-	mOverlay = new Overlay(mOrigDevice, mOrigContext);
 }
 
 
@@ -440,7 +436,7 @@ void HackerContext::RunFrameActions()
 		G->huntTime = time(NULL);
 
 	// Draw the on-screen overlay text with hunting info.
-	mOverlay->DrawOverlay();
+//	mOverlay->DrawOverlay();
 
 	// Clear buffers after some user idle time.  This allows the buffers to be
 	// stable during a hunt, and cleared after one minute of idle time.  The idea

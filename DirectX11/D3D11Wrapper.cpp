@@ -702,7 +702,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	// of the object here, because we are hooking this call, not wrapping.
 	if (ppSwapChain)
 	{
-		HookSwapChain(*ppSwapChain);
+		HookSwapChain(*ppSwapChain, origDevice, origContext);
 		// attach to device?
 	}
 

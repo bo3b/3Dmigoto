@@ -1,6 +1,9 @@
 #pragma once
 
+#include <d3d11.h>
 #include <dxgi.h>
+
+#include "Overlay.h"
 
 
 // Cannot be declared static, even though that is what I want, because of some
@@ -9,7 +12,8 @@
 
 bool InstallDXGIHooks(void);
 
-void HookSwapChain(IDXGISwapChain* pSwapChain);
+void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
+
 
 
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead
