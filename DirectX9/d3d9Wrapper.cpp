@@ -35,7 +35,7 @@ static int currentFrameRenderCount = 0;
 
 static bool saveMesh = false;
 
-static bool setNullTexture[8] = { false };
+static bool setNullTexture[10] = { false };
 static int setNullTextureIndex = 0;
 
 enum Mode

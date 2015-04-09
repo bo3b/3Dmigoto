@@ -503,7 +503,7 @@ void GetTextureFromSurface(D3D9Wrapper::IDirect3DDevice9 * device)
 	}
 }
 
-#include "TriMesh.h"
+#include <fbxsdk.h>
 
 void SaveMesh(D3D9Wrapper::IDirect3DDevice9 * device, D3D9Base::D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount, int renderIndex)
 {
@@ -628,6 +628,8 @@ void SaveMesh(D3D9Wrapper::IDirect3DDevice9 * device, D3D9Base::D3DPRIMITIVETYPE
 	D3D9Base::D3DVERTEXELEMENT9 * posElement = NULL;
 	D3D9Base::D3DVERTEXELEMENT9 * uvElement = NULL;
 	D3D9Base::D3DVERTEXELEMENT9 * normalElement = NULL;
+	D3D9Base::D3DVERTEXELEMENT9 * tangentElement = NULL;
+	D3D9Base::D3DVERTEXELEMENT9 * bitangentElement = NULL;
 	for (UINT i = 0; i < elementCount; i++)
 	{
 		//暂时只支持stream 0
@@ -650,18 +652,168 @@ void SaveMesh(D3D9Wrapper::IDirect3DDevice9 * device, D3D9Base::D3DPRIMITIVETYPE
 		{
 			normalElement = &element[i];
 		}
+
+		if (element[i].Usage == D3D9Base::D3DDECLUSAGE_TANGENT)
+		{
+			tangentElement = &element[i];
+		}
+
+		if (element[i].Usage == D3D9Base::D3DDECLUSAGE_BINORMAL)
+		{
+			bitangentElement = &element[i];
+		}
 	}
 
-	trimesh::TriMesh mesh;
+
+
+	FbxManager* lSdkManager = FbxManager::Create();
+
+	if (lSdkManager == NULL)
+	{
+		LogInfo = true;
+		LogInfo("create sdk manager failed\n");
+		LogInfo = false;
+
+		delete[] ibDest;
+		delete[] vbDest;
+		saveMesh = false;
+		return;
+	}
+
+	// Create an IOSettings object. IOSROOT is defined in Fbxiosettingspath.h.
+	FbxIOSettings * ios = FbxIOSettings::Create(lSdkManager, IOSROOT);
+	lSdkManager->SetIOSettings(ios);
+
+	FbxScene* lScene = FbxScene::Create(lSdkManager, "tianyu");
+
+	char nodeName[260];
+	sprintf_s(nodeName, 260, "meshnode%d", renderIndex);
+	FbxNode* lMeshNode = FbxNode::Create(lScene, nodeName);
+
+	// Create a mesh.
+	FbxMesh* lMesh = FbxMesh::Create(lScene, "mesh");
+
+	if (lMeshNode == NULL || lMesh == NULL)
+	{
+		LogInfo = true;
+		LogInfo("create mesh node failed\n");
+		LogInfo = false;
+
+		delete[] ibDest;
+		delete[] vbDest;
+		saveMesh = false;
+		return;
+	}
+
+
+	// Set the node attribute of the mesh node.
+	lMeshNode->SetNodeAttribute(lMesh);
+
+	// Add the mesh node to the root node in the scene.
+	FbxNode *lRootNode = lScene->GetRootNode();
+	lRootNode->AddChild(lMeshNode);
+
+	// Initialize the control point array of the mesh.
+
+
+
+	float * vbFirst = (float *)vbDest;
+	if (posElement != NULL)
+	{
+		lMesh->InitControlPoints(NumVertices);
+		FbxVector4* lControlPoints = lMesh->GetControlPoints();
+
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * pos = vbFirst + posElement->Offset / 4;
+			lControlPoints[i] = FbxVector4(-pos[0], pos[1], pos[2]);
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	vbFirst = (float *)vbDest;
+	if (uvElement != NULL)
+	{
+		FbxLayerElementUV* lLayerElementUV = lMesh->CreateElementUV("DiffuseUV");
+		lLayerElementUV->SetMappingMode(FbxLayerElement::eByControlPoint);
+		lLayerElementUV->SetReferenceMode(FbxLayerElement::eDirect);
+
+
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * uv = vbFirst + uvElement->Offset / 4;
+			lLayerElementUV->GetDirectArray().Add(FbxVector2(uv[0], uv[1]));
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	vbFirst = (float *)vbDest;
+	if (normalElement != NULL)
+	{
+		// Create a normal layer.
+		FbxLayerElementNormal* lLayerElementNormal = lMesh->CreateElementNormal();
+
+		// Set its mapping mode to map each normal vector to each control point.
+		lLayerElementNormal->SetMappingMode(FbxLayerElement::eByControlPoint);
+
+		// Set the reference mode of so that the n'th element of the normal array maps to the n'th
+		// element of the control point array.
+		lLayerElementNormal->SetReferenceMode(FbxLayerElement::eDirect);
+
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * normals = vbFirst + normalElement->Offset / 4;
+			lLayerElementNormal->GetDirectArray().Add(FbxVector4(-normals[0], normals[1], normals[2]));
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	vbFirst = (float *)vbDest;
+	if (tangentElement != NULL)
+	{
+		FbxLayerElementTangent* lLayerElementTangent = lMesh->CreateElementTangent();
+		lLayerElementTangent->SetMappingMode(FbxLayerElement::eByControlPoint);
+		lLayerElementTangent->SetReferenceMode(FbxLayerElement::eDirect);
+
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * tangents = vbFirst + tangentElement->Offset / 4;
+			lLayerElementTangent->GetDirectArray().Add(FbxVector4(-tangents[0], tangents[1], tangents[2]));
+
+			vbFirst += stride / 4;
+		}
+	}
+
+	vbFirst = (float *)vbDest;
+	if (bitangentElement != NULL)
+	{
+		FbxLayerElementBinormal* lLayerElementBinormal = lMesh->CreateElementBinormal();
+		lLayerElementBinormal->SetMappingMode(FbxLayerElement::eByControlPoint);
+		lLayerElementBinormal->SetReferenceMode(FbxLayerElement::eDirect);
+
+		for (UINT i = 0; i < NumVertices; i++)
+		{
+			float * binormals = vbFirst + bitangentElement->Offset / 4;
+			lLayerElementBinormal->GetDirectArray().Add(FbxVector4(-binormals[0], binormals[1], binormals[2]));
+
+			vbFirst += stride / 4;
+		}
+	}
 
 	WORD * ibFirst = (WORD *)ibDest;
 	for (UINT i = 0; i < primCount; i++)
 	{
-		trimesh::TriMesh::Face face;
-		face.v[0] = ibFirst[0];
-		face.v[1] = ibFirst[1];
-		face.v[2] = ibFirst[2];
-		mesh.faces.push_back(face);
+
+		lMesh->BeginPolygon();
+
+		lMesh->AddPolygon(ibFirst[0]);
+		lMesh->AddPolygon(ibFirst[2]);
+		lMesh->AddPolygon(ibFirst[1]);
+
+		lMesh->EndPolygon();
 
 		if (Type == D3D9Base::D3DPT_TRIANGLELIST)
 		{
@@ -673,67 +825,32 @@ void SaveMesh(D3D9Wrapper::IDirect3DDevice9 * device, D3D9Base::D3DPRIMITIVETYPE
 		}
 	}
 
-	float * vbFirst = (float *)vbDest;
-	if (posElement != NULL)
-	{
-		for (UINT i = 0; i < NumVertices; i++)
-		{
-			float * pos = vbFirst + posElement->Offset / 4;
 
-			trimesh::point point;
-			point[0] = pos[0];
-			point[1] = pos[1];
-			point[2] = pos[2];
 
-			mesh.vertices.push_back(point);
 
-			vbFirst += stride / 4;
-		}
-	}
 
-	vbFirst = (float *)vbDest;
-	if (uvElement != NULL)
-	{
-		for (UINT i = 0; i < NumVertices; i++)
-		{
-			float * uv = vbFirst + uvElement->Offset / 4;
 
-			trimesh::vec2 texcoord;
-			texcoord[0] = uv[0];
-			texcoord[1] = 1.0 - uv[1];
-
-			mesh.uvs.push_back(texcoord);
-
-			vbFirst += stride / 4;
-		}
-	}
-
-	vbFirst = (float *)vbDest;
-	if (normalElement != NULL)
-	{
-		for (UINT i = 0; i < NumVertices; i++)
-		{
-			float * normals = vbFirst + normalElement->Offset / 4;
-
-			trimesh::vec normal;
-			normal[0] = normals[0];
-			normal[1] = normals[1];
-			normal[2] = normals[2];
-
-			mesh.normals.push_back(normal);
-
-			vbFirst += stride / 4;
-		}
-	}
 
 	char fileName[260];
-	sprintf_s(fileName, 260, "D:\\\\%d.obj", renderIndex);
+	sprintf_s(fileName, 260, "D:\\\\%d.fbx", renderIndex);
 
 	LogInfo = true;
 	LogInfo("write mesh %s\n", fileName);
 	LogInfo = false;
 	
-	mesh.write(fileName);
+	lSdkManager->GetIOSettings()->SetBoolProp(EXP_FBX_ANIMATION, false);
+	lSdkManager->GetIOSettings()->SetBoolProp(EXP_FBX_EMBEDDED, false);
+
+	FbxExporter * lExporter = FbxExporter::Create(lSdkManager, "");
+	
+	if (lExporter->Initialize(fileName, -1, lSdkManager->GetIOSettings()))
+	{
+		lExporter->Export(lScene);
+	}
+
+	lExporter->Destroy();
+	lSdkManager->Destroy();
+
 	
 	delete[] ibDest;
 	delete[] vbDest;
@@ -776,7 +893,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Present(THIS_ CONST RECT* pSourceRec
 		LogInfo("enter step mode\n");
 		LogInfo = false;
 
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 10; i++)
 		{
 			setNullTexture[i] = false;
 		}
@@ -785,7 +902,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Present(THIS_ CONST RECT* pSourceRec
 		renderCount = 0;
 	}
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		if (KEYDOWN(VK_MENU) && KEYDOWN(0x31 + i))
 		{
@@ -1800,7 +1917,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitive(THIS_ D3D9Base:
 
 	if (currentFrameRenderCount == renderCount)
 	{
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 10; i++)
 		{
 			if (setNullTexture[i])
 			{

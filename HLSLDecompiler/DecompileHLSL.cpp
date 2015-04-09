@@ -3875,7 +3875,10 @@ public:
 						{
 							remapTarget(op1);
 							Instruction *nextInstr = &(*inst)[iNr + 1];
-							if (nextInstr->eOpcode == OPCODE_RSQ)
+							string outputOp0 = GetComponentStrFromInstruction(instr, 0);
+
+							//nrm生成了两条指令，dp4和rsq
+							if (nextInstr->eOpcode == OPCODE_RSQ && outputOp0.size() == 3)
 							{
 								applySwizzle(op1, op2);
 								sprintf(buffer, "  %s = normalize(%s);\n", writeTarget(op1), ci(op2).c_str());
