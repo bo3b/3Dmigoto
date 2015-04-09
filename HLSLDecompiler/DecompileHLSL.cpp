@@ -1333,20 +1333,46 @@ public:
 		else if (right[0] == 'c')
 		{
 
+			char * result = strrchr(right, '.');
+			if (result == NULL)		//如果没有swizzle信息，加上.xyzw
+			{
+				strcat(right, ".xyzw");
+			}
+
+			strPos = strrchr(right, '.') + 1;
+			strncpy(right2, right, strPos - right);
+			right2[strPos - right] = 0;
+			pos = strlen(right2);
+			// Single value?
+			if (strlen(right) - strlen(right2) == 1)
+				strcpy(right2, right);
+			else
+			{
+				for (int i = 0; idx[i] >= 0 && i < 4; ++i)
+					right2[pos++] = strPos[idx[i]];
+				right2[pos] = 0;
+			}
+
+			const char *strPos1 = strrchr(right2, '.') + 1;
+			char idx1[4] = { -1, -1, -1, -1 };
+			size_t pos1 = 0;
+			while (*strPos1 && pos1 < 4)
+				idx1[pos1++] = map[*strPos1++ - 'w'];
+
 			char buff[opcodeSize];
 			char suffix[opcodeSize];
-			char * pos = strchr(right, '.');
+			char * pos = strchr(right2, '.');
 			if (pos != NULL)
 			{
-				strncpy(buff, right, pos - right);
-				buff[pos - right] = 0;
-				size_t len = strlen(right) - (right - pos) - 1;
+				strncpy(buff, right2, pos - right2);
+				buff[pos - right2] = 0;
+				size_t len = strlen(right2) - (right2 - pos) - 1;
 				strncpy(suffix, pos + 1, len);
 				suffix[len] = 0;
 			}
 			else
 			{
-				strcpy_s(buff, opcodeSize, right);
+				strcpy_s(buff, opcodeSize, right2);
 				suffix[0] = 0;
 			}
 
@@ -1363,33 +1389,27 @@ public:
 			std::map<int, ConstantValue>::iterator cit = mConstantValues.find(index);
 			if (cit != mConstantValues.end())
 			{
-				if (strlen(suffix) == 0 || strlen(suffix) == 4)
-				{
-					sprintf_s(buff, opcodeSize, "%s float4(%f, %f, %f, %f)", right, cit->second.x, cit->second.y, cit->second.z, cit->second.w);
-				}
 
-				if (strlen(suffix) == 1)
+				sprintf_s(buff, opcodeSize, "%s", right2);
+
+
+				for (int i = 0; idx1[i] >= 0 && i < 4; ++i)
 				{
-					if (!strcmp(suffix, "x"))
+					if (idx1[i] == 0)
 					{
-						sprintf_s(buff, opcodeSize, "%f", cit->second.x);
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.x);
 					}
-					else if (!strcmp(suffix, "y"))
+					else if (idx1[i] == 1)
 					{
-						sprintf_s(buff, opcodeSize, "%f", cit->second.y);
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.y);
 					}
-					else if (!strcmp(suffix, "z"))
+					else if (idx1[i] == 2)
 					{
-						sprintf_s(buff, opcodeSize, "%f", cit->second.z);
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.z);
 					}
-					else if (!strcmp(suffix, "w"))
+					else if (idx1[i] == 3)
 					{
-						sprintf_s(buff, opcodeSize, "%f", cit->second.w);
-					}
-					else
-					{
-						logDecompileError("constant error suffix: " + string(suffix));
-						return;
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.w);
 					}
 				}
 			}
@@ -1397,10 +1417,10 @@ public:
 
 			strcpy_s(right2, opcodeSize, buff);
 		}
-		else if (right[0] == 'v')
+		/*else if (right[0] == 'v')
 		{
 			strcpy_s(right2, opcodeSize, right);
-		}
+		}*/
 		else
 		{
 			char * result = strrchr(right, '.');
@@ -3429,9 +3449,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
