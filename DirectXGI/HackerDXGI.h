@@ -1,25 +1,27 @@
 #pragma once
 
+#include <dxgi1_2.h>
+#include <stdio.h>
+
+
 extern FILE *LogFile;
 
-class IDXGIAdapter;
-class IDXGIAdapter1;
-class IDXGISwapChain;
-class IDXGIFactory : public IDirect3DUnknown
+// -----------------------------------------------------------------------------
+
+class HackerDXGIFactory : public IDXGIFactory
 {
 public:
-    D3D11Base::IDXGIFactory		*m_pFactory;
-	static ThreadSafePointerSet	m_List;
+    IDXGIFactory		*m_pFactory;
 
-	IDXGIFactory(D3D11Base::IDXGIFactory *pFactory);
-    static IDXGIFactory* GetDirectFactory(D3D11Base::IDXGIFactory *pOrig);
-    inline D3D11Base::IDXGIFactory *GetFactory() { return m_pFactory; }
+	HackerDXGIFactory(IDXGIFactory *pFactory);
 
-    //*** IDirect3DUnknown methods 
+	// ******************* IDirect3DUnknown methods
+	
 	STDMETHOD_(ULONG,AddRef)(THIS);
     STDMETHOD_(ULONG,Release)(THIS);
 
-	//*** IDXGIObject methods
+	// ******************* IDXGIObject methods
+
     STDMETHOD(SetPrivateData)(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
@@ -47,7 +49,8 @@ public:
             /* [annotation][retval][out] */ 
             __out  void **ppParent);
 
-    //*** IDXGIFactory methods 
+	// ******************* IDXGIFactory methods 
+
     STDMETHOD(EnumAdapters)(THIS_ 
             /* [in] */ UINT Adapter,
             /* [annotation][out] */ 
@@ -65,24 +68,23 @@ public:
             /* [annotation][in] */ 
             __in  IUnknown *pDevice,
             /* [annotation][in] */ 
-            __in  D3D11Base::DXGI_SWAP_CHAIN_DESC *pDesc,
+            __in  DXGI_SWAP_CHAIN_DESC *pDesc,
             /* [annotation][out] */ 
             __out  IDXGISwapChain **ppSwapChain);
         
     STDMETHOD(CreateSoftwareAdapter)(THIS_ 
             /* [in] */ HMODULE Module,
             /* [annotation][out] */ 
-            __out  D3D11Base::IDXGIAdapter **ppAdapter);
+            __out  IDXGIAdapter **ppAdapter);
 
 };
 
-class IDXGIAdapter1;
-class IDXGIFactory1 : public IDXGIFactory
+// -----------------------------------------------------------------------------
+
+class HackerDXGIFactory1 : public HackerDXGIFactory
 {
 public:
-	IDXGIFactory1(D3D11Base::IDXGIFactory1 *pFactory);
-    static IDXGIFactory1* GetDirectFactory(D3D11Base::IDXGIFactory1 *pOrig);
-	inline D3D11Base::IDXGIFactory1 *GetFactory1() { return (D3D11Base::IDXGIFactory1 *) m_pFactory; }
+	HackerDXGIFactory1(IDXGIFactory1 *pFactory);
 	 
     STDMETHOD(EnumAdapters1)(THIS_ 
         /* [in] */ UINT Adapter,
@@ -92,111 +94,110 @@ public:
     STDMETHOD_(BOOL, IsCurrent)(THIS);
 };
 
-class IDXGIOutput;
-class IDXGISwapChain1;
-class IDXGIFactory2 : public IDXGIFactory1
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIFactory2 : public HackerDXGIFactory1
 {
 public:
-	IDXGIFactory2(D3D11Base::IDXGIFactory2 *pFactory);
-    static IDXGIFactory2* GetDirectFactory(D3D11Base::IDXGIFactory2 *pOrig);
-	inline D3D11Base::IDXGIFactory2 *GetFactory2() { return (D3D11Base::IDXGIFactory2 *) m_pFactory; }
+	HackerDXGIFactory2(IDXGIFactory2 *pFactory);
 	 
 	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
         
-    STDMETHOD(CreateSwapChainForHwnd)(THIS_
-            /* [annotation][in] */ 
-            _In_  IUnknown *pDevice,
-            /* [annotation][in] */ 
-            _In_  HWND hWnd,
-            /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc,
-            /* [annotation][in] */ 
-            _In_opt_  D3D11Base::DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
-            /* [annotation][in] */ 
-            _In_opt_  IDXGIOutput *pRestrictToOutput,
-            /* [annotation][out] */ 
-            _Out_  IDXGISwapChain1 **ppSwapChain);
-        
-	STDMETHOD(CreateSwapChainForCoreWindow)(THIS_
-            /* [annotation][in] */ 
-            _In_  IUnknown *pDevice,
-            /* [annotation][in] */ 
-            _In_  IUnknown *pWindow,
-            /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc,
-            /* [annotation][in] */ 
-            _In_opt_  IDXGIOutput *pRestrictToOutput,
-            /* [annotation][out] */ 
-            _Out_  IDXGISwapChain1 **ppSwapChain);
-        
-	STDMETHOD(GetSharedResourceAdapterLuid)(THIS_
-            /* [annotation] */ 
-            _In_  HANDLE hResource,
-            /* [annotation] */ 
-            _Out_  LUID *pLuid);
-        
-	STDMETHOD(RegisterStereoStatusWindow)(THIS_
-            /* [annotation][in] */ 
-            _In_  HWND WindowHandle,
-            /* [annotation][in] */ 
-            _In_  UINT wMsg,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie);
-        
-	STDMETHOD(RegisterStereoStatusEvent)(THIS_
-            /* [annotation][in] */ 
-            _In_  HANDLE hEvent,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie);
-        
-	STDMETHOD_(void, UnregisterStereoStatus)(THIS_
-            /* [annotation][in] */ 
-            _In_  DWORD dwCookie);
-        
-	STDMETHOD(RegisterOcclusionStatusWindow)(THIS_
-            /* [annotation][in] */ 
-            _In_  HWND WindowHandle,
-            /* [annotation][in] */ 
-            _In_  UINT wMsg,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie);
-        
-	STDMETHOD(RegisterOcclusionStatusEvent)(THIS_
-            /* [annotation][in] */ 
-            _In_  HANDLE hEvent,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie);
-        
-	STDMETHOD_(void, UnregisterOcclusionStatus)(THIS_
-            /* [annotation][in] */ 
-            _In_  DWORD dwCookie);
-        
-	STDMETHOD(CreateSwapChainForComposition)(THIS_
-            /* [annotation][in] */ 
-            _In_  IUnknown *pDevice,
-            /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc,
-            /* [annotation][in] */ 
-            _In_opt_  IDXGIOutput *pRestrictToOutput,
-            /* [annotation][out] */ 
-            _Outptr_  IDXGISwapChain1 **ppSwapChain);
+	HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][in] */
+		_In_  HWND hWnd,
+		/* [annotation][in] */
+		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		/* [annotation][in] */
+		_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+		/* [annotation][in] */
+		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		/* [annotation][out] */
+		_Out_  IDXGISwapChain1 **ppSwapChain);
+
+	HRESULT STDMETHODCALLTYPE CreateSwapChainForCoreWindow(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][in] */
+		_In_  IUnknown *pWindow,
+		/* [annotation][in] */
+		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		/* [annotation][in] */
+		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		/* [annotation][out] */
+		_Out_  IDXGISwapChain1 **ppSwapChain);
+
+	HRESULT STDMETHODCALLTYPE GetSharedResourceAdapterLuid(
+		/* [annotation] */
+		_In_  HANDLE hResource,
+		/* [annotation] */
+		_Out_  LUID *pLuid);
+
+	HRESULT STDMETHODCALLTYPE RegisterStereoStatusWindow(
+		/* [annotation][in] */
+		_In_  HWND WindowHandle,
+		/* [annotation][in] */
+		_In_  UINT wMsg,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	HRESULT STDMETHODCALLTYPE RegisterStereoStatusEvent(
+		/* [annotation][in] */
+		_In_  HANDLE hEvent,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	void STDMETHODCALLTYPE UnregisterStereoStatus(
+		/* [annotation][in] */
+		_In_  DWORD dwCookie);
+
+	HRESULT STDMETHODCALLTYPE RegisterOcclusionStatusWindow(
+		/* [annotation][in] */
+		_In_  HWND WindowHandle,
+		/* [annotation][in] */
+		_In_  UINT wMsg,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	HRESULT STDMETHODCALLTYPE RegisterOcclusionStatusEvent(
+		/* [annotation][in] */
+		_In_  HANDLE hEvent,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	void STDMETHODCALLTYPE UnregisterOcclusionStatus(
+		/* [annotation][in] */
+		_In_  DWORD dwCookie);
+
+	HRESULT STDMETHODCALLTYPE CreateSwapChainForComposition(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][in] */
+		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		/* [annotation][in] */
+		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		/* [annotation][out] */
+		_Outptr_  IDXGISwapChain1 **ppSwapChain);
 };
 
-class IDXGIAdapter : public IDirect3DUnknown
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIAdapter : public IDXGIAdapter
 {
 public:
-    D3D11Base::IDXGIAdapter		*m_pAdapter;
-	static ThreadSafePointerSet	m_List;
+    IDXGIAdapter		*m_pAdapter;
 
-	IDXGIAdapter(D3D11Base::IDXGIAdapter *pAdapter);
-    static IDXGIAdapter* GetDirectAdapter(D3D11Base::IDXGIAdapter *pOrig);
-    inline D3D11Base::IDXGIAdapter *GetAdapter() { return m_pAdapter; }
+	HackerDXGIAdapter(IDXGIAdapter *pAdapter);
 
-    //*** IDirect3DUnknown methods 
+    // ******************* IDirect3DUnknown methods 
 	STDMETHOD_(ULONG,AddRef)(THIS);
     STDMETHOD_(ULONG,Release)(THIS);
 
-	//*** IDXGIObject methods
+	// ******************* IDXGIObject methods
     STDMETHOD(SetPrivateData)(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
@@ -224,7 +225,7 @@ public:
             /* [annotation][retval][out] */ 
             __out  void **ppParent);
 
-    //*** IDXGIFactory methods 
+    // ******************* IDXGIFactory methods 
 	STDMETHOD(EnumOutputs)(THIS_
             /* [in] */ UINT Output,
             /* [annotation][out][in] */ 
@@ -232,7 +233,7 @@ public:
         
     STDMETHOD(GetDesc)(THIS_
             /* [annotation][out] */ 
-            __out D3D11Base::DXGI_ADAPTER_DESC *pDesc);
+            __out DXGI_ADAPTER_DESC *pDesc);
         
     STDMETHOD(CheckInterfaceSupport)(THIS_
             /* [annotation][in] */ 
@@ -242,34 +243,37 @@ public:
 
 };
 
-class IDXGIAdapter1 : public IDXGIAdapter
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIAdapter1 : public HackerDXGIAdapter
 {
 public:
-	IDXGIAdapter1(D3D11Base::IDXGIAdapter1 *pAdapter)
-		: IDXGIAdapter(pAdapter) {}
-    static IDXGIAdapter1* GetDirectAdapter(D3D11Base::IDXGIAdapter1 *pOrig);
-    inline D3D11Base::IDXGIAdapter1 *GetAdapter() { return (D3D11Base::IDXGIAdapter1*) m_pAdapter; }
+	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter);
 
     STDMETHOD(GetDesc1)(THIS_ 
 	        /* [annotation][out] */ 
-            __out  D3D11Base::DXGI_ADAPTER_DESC1 *pDesc);
+            __out  DXGI_ADAPTER_DESC1 *pDesc);
 };
 
-class IDXGIOutput : public IDirect3DUnknown
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIOutput : public IDXGIOutput
 {
 public:
-    D3D11Base::IDXGIOutput		*m_pOutput;
-	static ThreadSafePointerSet	m_List;
+    IDXGIOutput		*m_pOutput;
+	
+	HackerDXGIOutput(IDXGIOutput *pOutput);
+    
 
-	IDXGIOutput(D3D11Base::IDXGIOutput *pOutput);
-    static IDXGIOutput* GetDirectOutput(D3D11Base::IDXGIOutput *pOrig);
-    inline D3D11Base::IDXGIOutput *GetOutput() { return m_pOutput; }
-
-    //*** IDirect3DUnknown methods 
+    // ******************* IDirect3DUnknown methods 
+	
 	STDMETHOD_(ULONG,AddRef)(THIS);
     STDMETHOD_(ULONG,Release)(THIS);
 
-	//*** IDXGIObject methods
+	// ******************* IDXGIObject methods
+
     STDMETHOD(SetPrivateData)(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
@@ -292,29 +296,29 @@ public:
             __out_bcount(*pDataSize)  void *pData);
         
     STDMETHOD(GetParent)(THIS_ 
-            /* [annotation][in] */ 
+            /* [annotation][in] */	 
             __in  REFIID riid,
             /* [annotation][retval][out] */ 
             __out  void **ppParent);
 
-    //*** IDXGIOutput methods 
+    // ******************* IDXGIOutput methods 
 	STDMETHOD(GetDesc)(THIS_ 
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_OUTPUT_DESC *pDesc);
+        __out  DXGI_OUTPUT_DESC *pDesc);
         
     STDMETHOD(GetDisplayModeList)(THIS_ 
-        /* [in] */ D3D11Base::DXGI_FORMAT EnumFormat,
+        /* [in] */ DXGI_FORMAT EnumFormat,
         /* [in] */ UINT Flags,
         /* [annotation][out][in] */ 
         __inout  UINT *pNumModes,
         /* [annotation][out] */ 
-        __out_ecount_part_opt(*pNumModes,*pNumModes)  D3D11Base::DXGI_MODE_DESC *pDesc);
+        __out_ecount_part_opt(*pNumModes,*pNumModes)  DXGI_MODE_DESC *pDesc);
         
     STDMETHOD(FindClosestMatchingMode)(THIS_ 
         /* [annotation][in] */ 
-        __in  const D3D11Base::DXGI_MODE_DESC *pModeToMatch,
+        __in  const DXGI_MODE_DESC *pModeToMatch,
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_MODE_DESC *pClosestMatch,
+        __out  DXGI_MODE_DESC *pClosestMatch,
         /* [annotation][in] */ 
         __in_opt  IUnknown *pConcernedDevice);
         
@@ -329,46 +333,48 @@ public:
         
     STDMETHOD(GetGammaControlCapabilities)(THIS_  
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps);
+        __out  DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps);
         
     STDMETHOD(SetGammaControl)(THIS_ 
         /* [annotation][in] */ 
-        __in  const D3D11Base::DXGI_GAMMA_CONTROL *pArray);
+        __in  const DXGI_GAMMA_CONTROL *pArray);
         
     STDMETHOD(GetGammaControl)(THIS_ 
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_GAMMA_CONTROL *pArray);
+        __out  DXGI_GAMMA_CONTROL *pArray);
         
     STDMETHOD(SetDisplaySurface)(THIS_ 
         /* [annotation][in] */ 
-        __in  D3D11Base::IDXGISurface *pScanoutSurface);
+        __in  IDXGISurface *pScanoutSurface);
         
     STDMETHOD(GetDisplaySurfaceData)(THIS_ 
         /* [annotation][in] */ 
-        __in  D3D11Base::IDXGISurface *pDestination);
+        __in  IDXGISurface *pDestination);
         
     STDMETHOD(GetFrameStatistics)(THIS_ 
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_FRAME_STATISTICS *pStats);
+        __out  DXGI_FRAME_STATISTICS *pStats);
 };
 
+
+// -----------------------------------------------------------------------------
+
 // MIDL_INTERFACE("310d36a0-d2e7-4c0a-aa04-6a9d23b8886a")
-class IDXGISwapChain : public IDirect3DUnknown
+class HackerDXGISwapChain : public IDXGISwapChain
 {
 public:
-    D3D11Base::IDXGISwapChain *m_pSwapChain;
-	static ThreadSafePointerSet	m_List;
+    IDXGISwapChain *m_pSwapChain;
 	IUnknown *m_WrappedDevice, *m_RealDevice;
 
-	IDXGISwapChain(D3D11Base::IDXGISwapChain *pOutput);
-    static IDXGISwapChain* GetDirectSwapChain(D3D11Base::IDXGISwapChain *pOrig);
-    inline D3D11Base::IDXGISwapChain *GetSwapChain() { return m_pSwapChain; }
+	HackerDXGISwapChain(IDXGISwapChain *pOutput);
 
-    //*** IDirect3DUnknown methods 
+    // ******************* IDirect3DUnknown methods 
+	
 	STDMETHOD_(ULONG,AddRef)(THIS);
     STDMETHOD_(ULONG,Release)(THIS);
 
-	//*** IDXGIDeviceSubObject methods
+	// ******************* IDXGIDeviceSubObject methods
+
 	STDMETHOD(SetPrivateData)(THIS_
             /* [annotation][in] */ 
             _In_  REFGUID Name,
@@ -427,18 +433,18 @@ public:
         
     STDMETHOD(GetDesc)(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_SWAP_CHAIN_DESC *pDesc);
+            _Out_  DXGI_SWAP_CHAIN_DESC *pDesc);
         
     STDMETHOD(ResizeBuffers)(THIS_
             /* [in] */ UINT BufferCount,
             /* [in] */ UINT Width,
             /* [in] */ UINT Height,
-            /* [in] */ D3D11Base::DXGI_FORMAT NewFormat,
+            /* [in] */ DXGI_FORMAT NewFormat,
             /* [in] */ UINT SwapChainFlags);
         
     STDMETHOD(ResizeTarget)(THIS_
             /* [annotation][in] */ 
-            _In_  const D3D11Base::DXGI_MODE_DESC *pNewTargetParameters);
+            _In_  const DXGI_MODE_DESC *pNewTargetParameters);
         
     STDMETHOD(GetContainingOutput)(THIS_
             /* [annotation][out] */ 
@@ -446,7 +452,7 @@ public:
         
     STDMETHOD(GetFrameStatistics)(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_FRAME_STATISTICS *pStats);
+            _Out_  DXGI_FRAME_STATISTICS *pStats);
         
     STDMETHOD(GetLastPresentCount)(THIS_
             /* [annotation][out] */ 
@@ -454,21 +460,21 @@ public:
         
 };
 
-class IDXGISwapChain1 : public IDXGISwapChain
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGISwapChain1 : public IDXGISwapChain1
 {
 public:
-	IDXGISwapChain1(D3D11Base::IDXGISwapChain1 *pSwapChain)
-		: IDXGISwapChain(pSwapChain) {}
-    static IDXGISwapChain1* GetDirectSwapChain(D3D11Base::IDXGISwapChain1 *pOrig);
-    inline D3D11Base::IDXGISwapChain1 *GetSwapChain1() { return (D3D11Base::IDXGISwapChain1*) m_pSwapChain; }
+	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain);
 
 	STDMETHOD(GetDesc1)(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc);
+            _Out_  DXGI_SWAP_CHAIN_DESC1 *pDesc);
         
 	STDMETHOD(GetFullscreenDesc)(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc);
+            _Out_  DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc);
         
 	STDMETHOD(GetHwnd)(THIS_
             /* [annotation][out] */ 
@@ -484,7 +490,7 @@ public:
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT PresentFlags,
             /* [annotation][in] */ 
-            _In_  const D3D11Base::DXGI_PRESENT_PARAMETERS *pPresentParameters);
+            _In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters);
         
 	STDMETHOD_(BOOL, IsTemporaryMonoSupported)(THIS);
         
@@ -494,17 +500,17 @@ public:
         
 	STDMETHOD(SetBackgroundColor)(THIS_
             /* [annotation][in] */ 
-            _In_  const D3D11Base::DXGI_RGBA *pColor);
+            _In_  const DXGI_RGBA *pColor);
         
 	STDMETHOD(GetBackgroundColor)(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_RGBA *pColor);
+            _Out_  DXGI_RGBA *pColor);
         
 	STDMETHOD(SetRotation)(THIS_
             /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_MODE_ROTATION Rotation);
+            _In_  DXGI_MODE_ROTATION Rotation);
         
 	STDMETHOD(GetRotation)(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_MODE_ROTATION *pRotation);
+            _Out_  DXGI_MODE_ROTATION *pRotation);
 };

@@ -1,6 +1,6 @@
 
-D3D11Wrapper::IDXGIFactory::IDXGIFactory(D3D11Base::IDXGIFactory *pFactory)
-    : D3D11Wrapper::IDirect3DUnknown((IUnknown*) pFactory)
+HookedDXGIFactory::HookedDXGIFactory(IDXGIFactory *pFactory)
+	: IDXGIFactory(pFactory)
 {
     m_pFactory = pFactory;
 }

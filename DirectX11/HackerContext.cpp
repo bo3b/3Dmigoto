@@ -32,7 +32,7 @@ void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 	mHackerDevice = pDevice;
 }
 
-// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 UINT64 HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,
 	bool log_new, struct ResourceInfo *resource_info)

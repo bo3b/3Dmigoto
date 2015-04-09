@@ -1,14 +1,21 @@
-#include "Main.h"
-#include <Shlobj.h>
-#include <ctime>
-#include "../log.h"
+// 4-8-15: Changing this subproject to be just a logging based project.
+//	Previously is was actively used for hooking dxgi, but was disabled
+//  a while back to make the tool work on 8.1.  This has been broken
+//  since then.
+//
+//  The goal of making it a logger, is to inspect game use of dxgi in
+//  order to understand what we need.
+//
+// While still part of the overal project, this is a subpiece not shipped
+// with game fixes.
 
-ThreadSafePointerSet D3D11Wrapper::IDXGIFactory::m_List;
-ThreadSafePointerSet D3D11Wrapper::IDXGIAdapter::m_List;
-ThreadSafePointerSet D3D11Wrapper::IDXGIOutput::m_List;
-ThreadSafePointerSet D3D11Wrapper::IDXGISwapChain::m_List;
+#include "d3dxgiWrapper.h"
 
-FILE *D3D11Wrapper::LogFile = 0;
+#include "log.h"
+
+
+FILE *LogFile = 0;
+
 static bool gInitialized = false;
 static bool gAllowWindowCommands = false;
 static int SCREEN_WIDTH = -1;
@@ -18,15 +25,6 @@ static int FILTER_REFRESH[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
 static int SCREEN_FULLSCREEN = -1;
 
 static bool mBlockingMode = false;
-
-
-static char *LogTime()
-{
-	time_t ltime = time(0);
-	char *timeStr = asctime(localtime(&ltime));
-	timeStr[strlen(timeStr) - 1] = 0;
-	return timeStr;
-}
 
 
 void InitializeDLL()
@@ -509,5 +507,3 @@ static void SendScreenResolution(IUnknown *wrapper, int width, int height)
 		if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    notification successful.\n");
 	}
 }
-
-#include "Direct3DXGIFunctions.h"

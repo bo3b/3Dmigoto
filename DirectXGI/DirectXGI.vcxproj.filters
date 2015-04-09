@@ -9,7 +9,6 @@
   <ItemGroup>
     <ClInclude Include="d3dxgiWrapper.h" />
     <ClInclude Include="Direct3DXGIFunctions.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="..\IDirect3DUnknown.h" />
   </ItemGroup>
 </Project>
