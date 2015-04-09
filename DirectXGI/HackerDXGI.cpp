@@ -385,7 +385,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory1::EnumAdapters1(THIS_
 		*/
 		*ppAdapter = D3D11Wrapper::IDXGIAdapter1::GetDirectAdapter(origAdapter);
 	}
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", ret, origAdapter, *ppAdapter);
+	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", ret, origAdapter, *ppAdapter);
 	
 	return ret;
 }
@@ -640,7 +640,7 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter::EnumOutputs(THIS_
 	{
 		*ppOutput = IDXGIOutput::GetDirectOutput(pOrig);
 	}
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", hr, pOrig, *ppOutput);
+	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", hr, pOrig, *ppOutput);
 
 	return hr;
 }
@@ -1190,7 +1190,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
 
 		if (deviceIU->QueryInterface(marker, (void **)&param) == 0x13bc7e31)
 		{
-			//if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
+			//LogInfo("    forward was successful.\n");
 			//
 		}
 	}
@@ -1303,7 +1303,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetContainingOutput(THIS_
 	{
 		*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
 	}
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppOutput);
+	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppOutput);
 	
 	return hr;
 }
@@ -1417,7 +1417,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
 
 		if (deviceIU->QueryInterface(marker, (void **)&param) == 0x13bc7e31)
 		{
-			if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "    forward was successful.\n");
+			LogInfo("    forward was successful.\n");
 		}
 	}
 
@@ -1448,7 +1448,7 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetRestrictToOutput(THIS_
 	{
 		*ppRestrictToOutput = IDXGIOutput::GetDirectOutput(origOutput);
 	}
-	if (D3D11Wrapper::LogFile) fprintf(D3D11Wrapper::LogFile, "  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppRestrictToOutput);
+	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppRestrictToOutput);
 	
 	return hr;
 }
