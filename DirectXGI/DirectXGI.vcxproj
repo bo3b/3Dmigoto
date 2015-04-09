@@ -116,14 +116,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="d3dxgiWrapper.cpp" />
+    <ClCompile Include="HackerDXGI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3dxgiWrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\IDirect3DUnknown.h" />
-    <ClInclude Include="d3dxgiWrapper.h" />
-    <ClInclude Include="Direct3DXGIFunctions.h" />
+    <ClInclude Include="HackerDXGI.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{16459E48-9CD1-49FE-8703-D8B275CFCE1E}</ProjectGuid>
