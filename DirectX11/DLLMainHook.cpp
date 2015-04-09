@@ -14,12 +14,11 @@
 // Only one instance of CNktHookLib is allowed for a given process.
 CNktHookLib cHookMgr;
 
-
 // Use this logging when at DLLMain which is too early to do anything with the file system.
 #if _DEBUG
-	bool bLog = true;
+bool bLog = true;
 #else
-	bool bLog = false;
+bool bLog = false;
 #endif
 
 typedef HMODULE(WINAPI *lpfnLoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);

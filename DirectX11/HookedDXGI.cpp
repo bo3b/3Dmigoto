@@ -183,15 +183,17 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 
 // -----------------------------------------------------------------------------
 
-typedef HRESULT(STDMETHODCALLTYPE *lpfnPresent)(
+// This serves a dual purpose of defining the interface routine as required by
+// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
+
+HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
 	IDXGISwapChain * This,
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags);
 
 static SIZE_T nHookId = 0;
-static lpfnPresent pOrigPresent = NULL;
 
-Overlay *mOverlay;
+Overlay *overlay;
 
 
 // -----------------------------------------------------------------------------
@@ -216,8 +218,8 @@ static HRESULT STDMETHODCALLTYPE HookedPresent(
 {
 	HRESULT hr;
 
-	// Draw the on-screen overlay text with hunting info.
-	mOverlay->DrawOverlay();
+	// Draw the on-screen overlay text with hunting info, before final Present.
+	overlay->DrawOverlay();
 
 	hr = pOrigPresent(This, SyncInterval, Flags);
 
@@ -236,33 +238,38 @@ static HRESULT STDMETHODCALLTYPE HookedPresent(
 void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 {
 	DWORD dwOsErr;
+	HRESULT hr;
 
-	if (pOrigPresent == NULL)
+	if (pOrigPresent != NULL)
 	{
-		// Seems like we need to do this in order to init any use of COM here.
-		HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-		if (hr != NOERROR)
-			LogInfo("HookSwapChain CoInitialize return: %d \n", hr);
+		LogInfo("*** HookSwapChain called again. SwapChain: %p, Device: %p, Context: %p \n", pSwapChain, pDevice, pContext);
+		return;
+	} 
 
-		// The tricky part- fetching the actual address of the original
-		// DXGI::Present call.
-		LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
+	// Seems like we need to do this in order to init any use of COM here.
+	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	if (hr != NOERROR)
+		LogInfo("HookSwapChain CoInitialize return error: %d \n", hr);
 
-		cHookMgr.SetEnableDebugOutput(TRUE);
+	// The tricky part- fetching the actual address of the original
+	// DXGI::Present call.
+	LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
 
-		dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
-		if (dwOsErr)
-		{
-			LogInfo("*** HookSwapChain Hook failed: %d \n", dwOsErr);
-			return;
-		}
+	cHookMgr.SetEnableDebugOutput(bLog);
+
+	dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
+	if (dwOsErr)
+	{
+		LogInfo("*** HookSwapChain Hook failed: %d \n", dwOsErr);
+		return;
 	}
-	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
 
 
 	// Create Overlay class that will be responsible for drawing any text
 	// info over the game. Using the original Device and Context.
-	mOverlay = new Overlay(pDevice, pContext);
+	overlay = new Overlay(pDevice, pContext);
+
+	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
 }
 
 
