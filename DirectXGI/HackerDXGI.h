@@ -1,186 +1,105 @@
 #pragma once
 
 #include <dxgi1_2.h>
-#include <stdio.h>
-
-
-extern FILE *LogFile;
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGIFactory : public IDXGIFactory
+class HackerDXGIOutput : public IDXGIOutput
 {
+private:
+	IDXGIOutput		*mOrigOutput;
+
 public:
-    IDXGIFactory		*m_pFactory;
+	HackerDXGIOutput(IDXGIOutput *pOutput);
 
-	HackerDXGIFactory(IDXGIFactory *pFactory);
 
-	// ******************* IDirect3DUnknown methods
-	
-	STDMETHOD_(ULONG,AddRef)(THIS);
-    STDMETHOD_(ULONG,Release)(THIS);
+	// ******************* IDirect3DUnknown methods 
+
+	STDMETHOD_(ULONG, AddRef)(THIS);
+	STDMETHOD_(ULONG, Release)(THIS);
 
 	// ******************* IDXGIObject methods
 
-    STDMETHOD(SetPrivateData)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            __in_bcount(DataSize)  const void *pData);
-        
-    STDMETHOD(SetPrivateDataInterface)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][in] */ 
-            __in  const IUnknown *pUnknown);
-        
-    STDMETHOD(GetPrivateData)(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][out][in] */ 
-            __inout  UINT *pDataSize,
-            /* [annotation][out] */ 
-            __out_bcount(*pDataSize)  void *pData);
-        
-    STDMETHOD(GetParent)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFIID riid,
-            /* [annotation][retval][out] */ 
-            __out  void **ppParent);
-
-	// ******************* IDXGIFactory methods 
-
-    STDMETHOD(EnumAdapters)(THIS_ 
-            /* [in] */ UINT Adapter,
-            /* [annotation][out] */ 
-            __out IDXGIAdapter1 **ppAdapter);
-        
-    STDMETHOD(MakeWindowAssociation)(THIS_ 
-            HWND WindowHandle,
-            UINT Flags);
-        
-    STDMETHOD(GetWindowAssociation)(THIS_ 
-            /* [annotation][out] */ 
-            __out  HWND *pWindowHandle);
-        
-    STDMETHOD(CreateSwapChain)(THIS_ 
-            /* [annotation][in] */ 
-            __in  IUnknown *pDevice,
-            /* [annotation][in] */ 
-            __in  DXGI_SWAP_CHAIN_DESC *pDesc,
-            /* [annotation][out] */ 
-            __out  IDXGISwapChain **ppSwapChain);
-        
-    STDMETHOD(CreateSoftwareAdapter)(THIS_ 
-            /* [in] */ HMODULE Module,
-            /* [annotation][out] */ 
-            __out  IDXGIAdapter **ppAdapter);
-
-};
-
-// -----------------------------------------------------------------------------
-
-class HackerDXGIFactory1 : public HackerDXGIFactory
-{
-public:
-	HackerDXGIFactory1(IDXGIFactory1 *pFactory);
-	 
-    STDMETHOD(EnumAdapters1)(THIS_ 
-        /* [in] */ UINT Adapter,
-        /* [annotation][out] */ 
-        __out IDXGIAdapter1 **ppAdapter);
-        
-    STDMETHOD_(BOOL, IsCurrent)(THIS);
-};
-
-
-// -----------------------------------------------------------------------------
-
-class HackerDXGIFactory2 : public HackerDXGIFactory1
-{
-public:
-	HackerDXGIFactory2(IDXGIFactory2 *pFactory);
-	 
-	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
-        
-	HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
+	STDMETHOD(SetPrivateData)(THIS_
 		/* [annotation][in] */
-		_In_  IUnknown *pDevice,
+		__in  REFGUID Name,
+		/* [in] */ UINT DataSize,
 		/* [annotation][in] */
-		_In_  HWND hWnd,
+		__in_bcount(DataSize)  const void *pData);
+
+	STDMETHOD(SetPrivateDataInterface)(THIS_
 		/* [annotation][in] */
-		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		__in  REFGUID Name,
 		/* [annotation][in] */
-		_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+		__in  const IUnknown *pUnknown);
+
+	STDMETHOD(GetPrivateData)(THIS_
 		/* [annotation][in] */
-		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		__in  REFGUID Name,
+		/* [annotation][out][in] */
+		__inout  UINT *pDataSize,
 		/* [annotation][out] */
-		_Out_  IDXGISwapChain1 **ppSwapChain);
+		__out_bcount(*pDataSize)  void *pData);
 
-	HRESULT STDMETHODCALLTYPE CreateSwapChainForCoreWindow(
+	STDMETHOD(GetParent)(THIS_
 		/* [annotation][in] */
-		_In_  IUnknown *pDevice,
-		/* [annotation][in] */
-		_In_  IUnknown *pWindow,
-		/* [annotation][in] */
-		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-		/* [annotation][in] */
-		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		__in  REFIID riid,
+		/* [annotation][retval][out] */
+		__out  void **ppParent);
+
+	// ******************* IDXGIOutput methods 
+	STDMETHOD(GetDesc)(THIS_
 		/* [annotation][out] */
-		_Out_  IDXGISwapChain1 **ppSwapChain);
+		__out  DXGI_OUTPUT_DESC *pDesc);
 
-	HRESULT STDMETHODCALLTYPE GetSharedResourceAdapterLuid(
-		/* [annotation] */
-		_In_  HANDLE hResource,
-		/* [annotation] */
-		_Out_  LUID *pLuid);
-
-	HRESULT STDMETHODCALLTYPE RegisterStereoStatusWindow(
-		/* [annotation][in] */
-		_In_  HWND WindowHandle,
-		/* [annotation][in] */
-		_In_  UINT wMsg,
+	STDMETHOD(GetDisplayModeList)(THIS_
+		/* [in] */ DXGI_FORMAT EnumFormat,
+		/* [in] */ UINT Flags,
+		/* [annotation][out][in] */
+		__inout  UINT *pNumModes,
 		/* [annotation][out] */
-		_Out_  DWORD *pdwCookie);
+		__out_ecount_part_opt(*pNumModes, *pNumModes)  DXGI_MODE_DESC *pDesc);
 
-	HRESULT STDMETHODCALLTYPE RegisterStereoStatusEvent(
+	STDMETHOD(FindClosestMatchingMode)(THIS_
 		/* [annotation][in] */
-		_In_  HANDLE hEvent,
+		__in  const DXGI_MODE_DESC *pModeToMatch,
 		/* [annotation][out] */
-		_Out_  DWORD *pdwCookie);
+		__out  DXGI_MODE_DESC *pClosestMatch,
+		/* [annotation][in] */
+		__in_opt  IUnknown *pConcernedDevice);
 
-	void STDMETHODCALLTYPE UnregisterStereoStatus(
-		/* [annotation][in] */
-		_In_  DWORD dwCookie);
+	STDMETHOD(WaitForVBlank)(THIS_);
 
-	HRESULT STDMETHODCALLTYPE RegisterOcclusionStatusWindow(
+	STDMETHOD(TakeOwnership)(THIS_
 		/* [annotation][in] */
-		_In_  HWND WindowHandle,
-		/* [annotation][in] */
-		_In_  UINT wMsg,
+		__in  IUnknown *pDevice,
+		BOOL Exclusive);
+
+	virtual void STDMETHODCALLTYPE ReleaseOwnership(void);
+
+	STDMETHOD(GetGammaControlCapabilities)(THIS_
 		/* [annotation][out] */
-		_Out_  DWORD *pdwCookie);
+		__out  DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps);
 
-	HRESULT STDMETHODCALLTYPE RegisterOcclusionStatusEvent(
+	STDMETHOD(SetGammaControl)(THIS_
 		/* [annotation][in] */
-		_In_  HANDLE hEvent,
+		__in  const DXGI_GAMMA_CONTROL *pArray);
+
+	STDMETHOD(GetGammaControl)(THIS_
 		/* [annotation][out] */
-		_Out_  DWORD *pdwCookie);
+		__out  DXGI_GAMMA_CONTROL *pArray);
 
-	void STDMETHODCALLTYPE UnregisterOcclusionStatus(
+	STDMETHOD(SetDisplaySurface)(THIS_
 		/* [annotation][in] */
-		_In_  DWORD dwCookie);
+		__in  IDXGISurface *pScanoutSurface);
 
-	HRESULT STDMETHODCALLTYPE CreateSwapChainForComposition(
+	STDMETHOD(GetDisplaySurfaceData)(THIS_
 		/* [annotation][in] */
-		_In_  IUnknown *pDevice,
-		/* [annotation][in] */
-		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-		/* [annotation][in] */
-		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		__in  IDXGISurface *pDestination);
+
+	STDMETHOD(GetFrameStatistics)(THIS_
 		/* [annotation][out] */
-		_Outptr_  IDXGISwapChain1 **ppSwapChain);
+		__out  DXGI_FRAME_STATISTICS *pStats);
 };
 
 
@@ -188,9 +107,10 @@ public:
 
 class HackerDXGIAdapter : public IDXGIAdapter
 {
-public:
-    IDXGIAdapter		*m_pAdapter;
+private:
+	IDXGIAdapter *mOrigAdapter;
 
+public:
 	HackerDXGIAdapter(IDXGIAdapter *pAdapter);
 
     // ******************* IDirect3DUnknown methods 
@@ -248,6 +168,9 @@ public:
 
 class HackerDXGIAdapter1 : public HackerDXGIAdapter
 {
+private:
+	IDXGIAdapter1 *mOrigAdapter1;
+
 public:
 	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter);
 
@@ -259,112 +182,13 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGIOutput : public IDXGIOutput
-{
-public:
-    IDXGIOutput		*m_pOutput;
-	
-	HackerDXGIOutput(IDXGIOutput *pOutput);
-    
-
-    // ******************* IDirect3DUnknown methods 
-	
-	STDMETHOD_(ULONG,AddRef)(THIS);
-    STDMETHOD_(ULONG,Release)(THIS);
-
-	// ******************* IDXGIObject methods
-
-    STDMETHOD(SetPrivateData)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            __in_bcount(DataSize)  const void *pData);
-        
-    STDMETHOD(SetPrivateDataInterface)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][in] */ 
-            __in  const IUnknown *pUnknown);
-        
-    STDMETHOD(GetPrivateData)(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][out][in] */ 
-            __inout  UINT *pDataSize,
-            /* [annotation][out] */ 
-            __out_bcount(*pDataSize)  void *pData);
-        
-    STDMETHOD(GetParent)(THIS_ 
-            /* [annotation][in] */	 
-            __in  REFIID riid,
-            /* [annotation][retval][out] */ 
-            __out  void **ppParent);
-
-    // ******************* IDXGIOutput methods 
-	STDMETHOD(GetDesc)(THIS_ 
-        /* [annotation][out] */ 
-        __out  DXGI_OUTPUT_DESC *pDesc);
-        
-    STDMETHOD(GetDisplayModeList)(THIS_ 
-        /* [in] */ DXGI_FORMAT EnumFormat,
-        /* [in] */ UINT Flags,
-        /* [annotation][out][in] */ 
-        __inout  UINT *pNumModes,
-        /* [annotation][out] */ 
-        __out_ecount_part_opt(*pNumModes,*pNumModes)  DXGI_MODE_DESC *pDesc);
-        
-    STDMETHOD(FindClosestMatchingMode)(THIS_ 
-        /* [annotation][in] */ 
-        __in  const DXGI_MODE_DESC *pModeToMatch,
-        /* [annotation][out] */ 
-        __out  DXGI_MODE_DESC *pClosestMatch,
-        /* [annotation][in] */ 
-        __in_opt  IUnknown *pConcernedDevice);
-        
-    STDMETHOD(WaitForVBlank)(THIS_ );
-        
-    STDMETHOD(TakeOwnership)(THIS_  
-        /* [annotation][in] */ 
-        __in  IUnknown *pDevice,
-        BOOL Exclusive);
-        
-    virtual void STDMETHODCALLTYPE ReleaseOwnership(void);
-        
-    STDMETHOD(GetGammaControlCapabilities)(THIS_  
-        /* [annotation][out] */ 
-        __out  DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps);
-        
-    STDMETHOD(SetGammaControl)(THIS_ 
-        /* [annotation][in] */ 
-        __in  const DXGI_GAMMA_CONTROL *pArray);
-        
-    STDMETHOD(GetGammaControl)(THIS_ 
-        /* [annotation][out] */ 
-        __out  DXGI_GAMMA_CONTROL *pArray);
-        
-    STDMETHOD(SetDisplaySurface)(THIS_ 
-        /* [annotation][in] */ 
-        __in  IDXGISurface *pScanoutSurface);
-        
-    STDMETHOD(GetDisplaySurfaceData)(THIS_ 
-        /* [annotation][in] */ 
-        __in  IDXGISurface *pDestination);
-        
-    STDMETHOD(GetFrameStatistics)(THIS_ 
-        /* [annotation][out] */ 
-        __out  DXGI_FRAME_STATISTICS *pStats);
-};
-
-
-// -----------------------------------------------------------------------------
-
 // MIDL_INTERFACE("310d36a0-d2e7-4c0a-aa04-6a9d23b8886a")
 class HackerDXGISwapChain : public IDXGISwapChain
 {
+private:
+	IDXGISwapChain *mOrigSwapChain;
+
 public:
-    IDXGISwapChain *m_pSwapChain;
-	IUnknown *m_WrappedDevice, *m_RealDevice;
 
 	HackerDXGISwapChain(IDXGISwapChain *pOutput);
 
@@ -463,8 +287,11 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGISwapChain1 : public IDXGISwapChain1
+class HackerDXGISwapChain1 : public HackerDXGISwapChain
 {
+private:
+	IDXGISwapChain1 *mOrigSwapChain1;
+
 public:
 	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain);
 
@@ -514,3 +341,192 @@ public:
             /* [annotation][out] */ 
             _Out_  DXGI_MODE_ROTATION *pRotation);
 };
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIFactory : public IDXGIFactory
+{
+private:
+	IDXGIFactory *mOrigFactory;
+
+public:
+	HackerDXGIFactory(IDXGIFactory *pFactory);
+
+	// ******************* IDirect3DUnknown methods
+
+	STDMETHOD_(ULONG, AddRef)(THIS);
+	STDMETHOD_(ULONG, Release)(THIS);
+	STDMETHOD(QueryInterface(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject));
+
+	// ******************* IDXGIObject methods
+
+	STDMETHOD(SetPrivateData)(THIS_
+		/* [annotation][in] */
+		__in  REFGUID Name,
+		/* [in] */ UINT DataSize,
+		/* [annotation][in] */
+		__in_bcount(DataSize)  const void *pData);
+
+	STDMETHOD(SetPrivateDataInterface)(THIS_
+		/* [annotation][in] */
+		__in  REFGUID Name,
+		/* [annotation][in] */
+		__in  const IUnknown *pUnknown);
+
+	STDMETHOD(GetPrivateData)(THIS_
+		/* [annotation][in] */
+		__in  REFGUID Name,
+		/* [annotation][out][in] */
+		__inout  UINT *pDataSize,
+		/* [annotation][out] */
+		__out_bcount(*pDataSize)  void *pData);
+
+	STDMETHOD(GetParent)(THIS_
+		/* [annotation][in] */
+		__in  REFIID riid,
+		/* [annotation][retval][out] */
+		__out  void **ppParent);
+
+	// ******************* IDXGIFactory methods 
+
+	STDMETHOD(EnumAdapters)(THIS_
+		/* [in] */ UINT Adapter,
+		/* [annotation][out] */
+		__out IDXGIAdapter **ppAdapter);
+
+	STDMETHOD(MakeWindowAssociation)(THIS_
+		HWND WindowHandle,
+		UINT Flags);
+
+	STDMETHOD(GetWindowAssociation)(THIS_
+		/* [annotation][out] */
+		__out  HWND *pWindowHandle);
+
+	STDMETHOD(CreateSwapChain)(THIS_
+		/* [annotation][in] */
+		__in  IUnknown *pDevice,
+		/* [annotation][in] */
+		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
+		/* [annotation][out] */
+		__out  IDXGISwapChain **ppSwapChain);
+
+	STDMETHOD(CreateSoftwareAdapter)(THIS_
+		/* [in] */ HMODULE Module,
+		/* [annotation][out] */
+		__out  IDXGIAdapter **ppAdapter);
+
+};
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIFactory1 : public HackerDXGIFactory
+{
+private:
+	IDXGIFactory1 *mOrigFactory1;
+
+public:
+	HackerDXGIFactory1(IDXGIFactory1 *pFactory);
+
+	STDMETHOD(EnumAdapters1)(THIS_
+		/* [in] */ UINT Adapter,
+		/* [annotation][out] */
+		__out IDXGIAdapter1 **ppAdapter);
+
+	STDMETHOD_(BOOL, IsCurrent)(THIS);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIFactory2 : public HackerDXGIFactory1
+{
+private:
+	IDXGIFactory2 *mOrigFactory2;
+
+public:
+	HackerDXGIFactory2(IDXGIFactory2 *pFactory);
+
+	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
+
+	STDMETHOD(CreateSwapChainForHwnd)(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][in] */
+		_In_  HWND hWnd,
+		/* [annotation][in] */
+		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		/* [annotation][in] */
+		_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+		/* [annotation][in] */
+		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		/* [annotation][out] */
+		_Out_  IDXGISwapChain1 **ppSwapChain);
+
+	STDMETHOD(CreateSwapChainForCoreWindow)(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][in] */
+		_In_  IUnknown *pWindow,
+		/* [annotation][in] */
+		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		/* [annotation][in] */
+		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		/* [annotation][out] */
+		_Out_  IDXGISwapChain1 **ppSwapChain);
+
+	STDMETHOD(GetSharedResourceAdapterLuid)(
+		/* [annotation] */
+		_In_  HANDLE hResource,
+		/* [annotation] */
+		_Out_  LUID *pLuid);
+
+	STDMETHOD(RegisterStereoStatusWindow)(
+		/* [annotation][in] */
+		_In_  HWND WindowHandle,
+		/* [annotation][in] */
+		_In_  UINT wMsg,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	STDMETHOD(RegisterStereoStatusEvent)(
+		/* [annotation][in] */
+		_In_  HANDLE hEvent,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	STDMETHOD_(void, STDMETHODCALLTYPE UnregisterStereoStatus)(
+		/* [annotation][in] */
+		_In_  DWORD dwCookie);
+
+	STDMETHOD(RegisterOcclusionStatusWindow)(
+		/* [annotation][in] */
+		_In_  HWND WindowHandle,
+		/* [annotation][in] */
+		_In_  UINT wMsg,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	STDMETHOD(RegisterOcclusionStatusEvent)(
+		/* [annotation][in] */
+		_In_  HANDLE hEvent,
+		/* [annotation][out] */
+		_Out_  DWORD *pdwCookie);
+
+	STDMETHOD_(void, STDMETHODCALLTYPE UnregisterOcclusionStatus)(
+		/* [annotation][in] */
+		_In_  DWORD dwCookie);
+
+	STDMETHOD(CreateSwapChainForComposition)(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][in] */
+		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+		/* [annotation][in] */
+		_In_opt_  IDXGIOutput *pRestrictToOutput,
+		/* [annotation][out] */
+		_Outptr_  IDXGISwapChain1 **ppSwapChain);
+};
+
+

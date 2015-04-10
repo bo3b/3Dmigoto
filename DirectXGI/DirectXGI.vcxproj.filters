@@ -9,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HackerDXGI.h" />
+    <ClInclude Include="DXGIWrapper.h" />
   </ItemGroup>
 </Project>

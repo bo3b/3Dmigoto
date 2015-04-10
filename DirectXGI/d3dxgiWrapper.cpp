@@ -9,23 +9,27 @@
 // While still part of the overal project, this is a subpiece not shipped
 // with game fixes.
 
+#include <Windows.h>
 #include <stdio.h>
-#include <Winuser.h>
 #include <Shlobj.h>
+#include <dxgi1_2.h>
+
+#include "DXGIWrapper.h"
+#include "HackerDXGI.h"
 
 #include "log.h"
 
 
 FILE *LogFile = 0;
 
-static bool gInitialized = false;
-static bool gAllowWindowCommands = false;
-static int SCREEN_WIDTH = -1;
-static int SCREEN_HEIGHT = -1;
-static int SCREEN_REFRESH = -1;
-static int FILTER_REFRESH[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
-static int SCREEN_FULLSCREEN = -1;
+bool gAllowWindowCommands = false;
+int SCREEN_FULLSCREEN = -1;
+int SCREEN_WIDTH = -1;
+int SCREEN_HEIGHT = -1;
+int SCREEN_REFRESH = -1;
+int FILTER_REFRESH[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
 
+static bool gInitialized = false;
 static bool mBlockingMode = false;
 
 
@@ -38,6 +42,20 @@ void InitializeDLL()
 		GetModuleFileName(0, dir, MAX_PATH);
 		wcsrchr(dir, L'\\')[1] = 0;
 		wcscat(dir, L"d3dx.ini");
+
+		// If specified in Logging section, wait for Attach to Debugger.
+		bool waitfordebugger = false;
+		int debugger = GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, dir);
+		if (debugger > 0)
+		{
+			waitfordebugger = true;
+			do
+			{
+				Sleep(250);
+			} while (!IsDebuggerPresent());
+			if (debugger > 1)
+				__debugbreak();
+		}
 
 		// Switch to unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
@@ -60,7 +78,7 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, dir))
 		{
 			DWORD one = 0x01;
-			bool result = SetProcessAffinityMask(GetCurrentProcess(), one);
+			BOOL result = SetProcessAffinityMask(GetCurrentProcess(), one);
 			LogInfo("  CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
@@ -171,8 +189,8 @@ static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 typedef void (WINAPI *tDXGIDumpJournal)(void (__stdcall *function)(const char *));
 static tDXGIDumpJournal _DXGIDumpJournal;
 
-typedef HRESULT(WINAPI *tDXGID3D10CreateDevice)(HMODULE d3d10core, D3D11Wrapper::IDXGIFactory *factory, 
-	D3D11Wrapper::IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device);
+typedef HRESULT(WINAPI *tDXGID3D10CreateDevice)(HMODULE d3d10core, IDXGIFactory *factory, 
+	IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device);
 static tDXGID3D10CreateDevice _DXGID3D10CreateDevice;
 
 typedef HRESULT (WINAPI *tDXGID3D10CreateLayeredDevice)(int a, int b, int c, int d, int e);
@@ -187,10 +205,13 @@ static tDXGID3D10RegisterLayers _DXGID3D10RegisterLayers;
 typedef HRESULT (WINAPI *tDXGIReportAdapterConfiguration)(int a);
 static tDXGIReportAdapterConfiguration _DXGIReportAdapterConfiguration;
 
+// These are the two interesting API entries for the dxgi.dll that we are replacing.
 typedef HRESULT (WINAPI *tCreateDXGIFactory)(const IID *const riid, void **ppFactory);
 static tCreateDXGIFactory _CreateDXGIFactory;
 typedef HRESULT (WINAPI *tCreateDXGIFactory1)(const IID *const riid, void **ppFactory);
 static tCreateDXGIFactory1 _CreateDXGIFactory1;
+
+// Doesn't exist as a dll export, except for under 8.1
 typedef HRESULT (WINAPI *tCreateDXGIFactory2)(const IID *const riid, void **ppFactory);
 static tCreateDXGIFactory2 _CreateDXGIFactory2;
 
@@ -223,6 +244,8 @@ static void InitD311()
 	_DXGIReportAdapterConfiguration = (tDXGIReportAdapterConfiguration) GetProcAddress(hD3D11, "DXGIReportAdapterConfiguration");
 	_CreateDXGIFactory = (tCreateDXGIFactory) GetProcAddress(hD3D11, "CreateDXGIFactory");
 	_CreateDXGIFactory1 = (tCreateDXGIFactory1) GetProcAddress(hD3D11, "CreateDXGIFactory1");
+
+	// 8.1 only
 	_CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hD3D11, "CreateDXGIFactory2");
 }
 
@@ -250,8 +273,8 @@ void WINAPI DXGIDumpJournal(void (__stdcall *function)(const char *))
 	(*_DXGIDumpJournal)(function);
 }
 
-HRESULT WINAPI DXGID3D10CreateDevice(HMODULE d3d10core, D3D11Wrapper::IDXGIFactory *factory,
-	D3D11Wrapper::IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device)
+HRESULT WINAPI DXGID3D10CreateDevice(HMODULE d3d10core, IDXGIFactory *factory,
+	IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device)
 {
 	InitD311();
 	return (*_DXGID3D10CreateDevice)(d3d10core, factory, adapter, flags, unknown0, device);
@@ -290,73 +313,72 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	LogInfo("CreateDXGIFactory2 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
 	
-	D3D11Base::IDXGIFactory2 *origFactory = 0;
-	if (ppFactory)
-		*ppFactory = 0;
-	HRESULT ret;
-	if (_CreateDXGIFactory2)
+	LogInfo("  calling original CreateDXGIFactory2 API\n");
+
+	IDXGIFactory2 *origFactory2;
+	HRESULT hr = (*_CreateDXGIFactory2)(riid, (void **)&origFactory2);
+	if (FAILED(hr))
 	{
-		LogInfo("  calling original CreateDXGIFactory2 API\n");
-		
-		ret = (*_CreateDXGIFactory2)(riid, (void **) &origFactory);
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
 	}
-	else if (_CreateDXGIFactory1)
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
+
+	HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(origFactory2);
+	if (factory2Wrap == NULL)
 	{
-		LogInfo("  calling original CreateDXGIFactory1 API\n");
-		
-		ret = (*_CreateDXGIFactory1)(riid, (void **) &origFactory);
-	}
-	else
-	{
-		LogInfo("  calling original CreateDXGIFactory API\n");
-		
-		ret = (*_CreateDXGIFactory)(riid, (void **) &origFactory);
-	}
-	if (ret != S_OK)
-	{
-		LogInfo("  failed with HRESULT=%x\n", ret);
-		
-		return ret;
-	}
-	
-	D3D11Wrapper::IDXGIFactory2 *wrapper = D3D11Wrapper::IDXGIFactory2::GetDirectFactory(origFactory);
-	if(wrapper == NULL)
-	{
-		LogInfo("  error allocating wrapper.\n");
-		
-		origFactory->Release();
+		LogInfo("  error allocating factory2Wrap. \n");
+		origFactory2->Release();
 		return E_OUTOFMEMORY;
 	}
-	
 	if (ppFactory)
-		*ppFactory = wrapper;
-	LogInfo("  returns result = %x, handle = %p, wrapper = %p\n", ret, origFactory, wrapper);
-	
-	return ret;
-}
+		*ppFactory = factory2Wrap;
 
-HRESULT WINAPI CreateDXGIFactory(const IID *const riid, void **ppFactory)
-{
-	InitD311();
-	LogInfo("CreateDXGIFactory called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
-	if (_CreateDXGIFactory2)
-	{
-		LogInfo("  routing call to CreateDXGIFactory2 with riid=50c83a1c-e072-4c48-87b0-3630fa36a6d0\n");
-		
-		IID factory2 = { 0x50c83a1cul, 0xe072, 0x4c48, { 0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0 } };
-		return CreateDXGIFactory2(&factory2, ppFactory);
-	}
-	if (_CreateDXGIFactory1)
-	{
-		LogInfo("  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
-		
-		IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
-		return CreateDXGIFactory2(&factory1, ppFactory);
-	}
-	LogInfo("  routing call to CreateDXGIFactory2 with original riid\n");
-	
-	return CreateDXGIFactory2(riid, ppFactory);
+	return hr;
+
+	//D3D11Base::IDXGIFactory2 *origFactory = 0;
+	//if (ppFactory)
+	//	*ppFactory = 0;
+	//HRESULT ret;
+	//if (_CreateDXGIFactory2)
+	//{
+	//	LogInfo("  calling original CreateDXGIFactory2 API\n");
+	//	
+	//	ret = (*_CreateDXGIFactory2)(riid, (void **) &origFactory);
+	//}
+	//else if (_CreateDXGIFactory1)
+	//{
+	//	LogInfo("  calling original CreateDXGIFactory1 API\n");
+	//	
+	//	ret = (*_CreateDXGIFactory1)(riid, (void **) &origFactory);
+	//}
+	//else
+	//{
+	//	LogInfo("  calling original CreateDXGIFactory API\n");
+	//	
+	//	ret = (*_CreateDXGIFactory)(riid, (void **) &origFactory);
+	//}
+	//if (ret != S_OK)
+	//{
+	//	LogInfo("  failed with HRESULT=%x\n", ret);
+	//	
+	//	return ret;
+	//}
+	//
+	//D3D11Wrapper::IDXGIFactory2 *wrapper = D3D11Wrapper::IDXGIFactory2::GetDirectFactory(origFactory);
+	//if(wrapper == NULL)
+	//{
+	//	LogInfo("  error allocating wrapper.\n");
+	//	
+	//	origFactory->Release();
+	//	return E_OUTOFMEMORY;
+	//}
+	//
+	//if (ppFactory)
+	//	*ppFactory = wrapper;
+	//LogInfo("  returns result = %x, handle = %p, wrapper = %p\n", ret, origFactory, wrapper);
+	//
+	//return ret;
 }
 
 HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
@@ -364,16 +386,88 @@ HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
 	InitD311();
 	LogInfo("CreateDXGIFactory1 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
-	if (_CreateDXGIFactory1)
+
+	LogInfo("  calling original CreateDXGIFactory1 API\n");
+
+	IDXGIFactory1 *origFactory1;
+	HRESULT hr = (*_CreateDXGIFactory1)(riid, (void **)&origFactory1);
+	if (FAILED(hr))
 	{
-		LogInfo("  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
-		
-		IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
-		return CreateDXGIFactory2(&factory1, ppFactory);
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
 	}
-	LogInfo("  routing call to CreateDXGIFactory2 with original riid\n");
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
+
+	HackerDXGIFactory1 *factory1Wrap = new HackerDXGIFactory1(origFactory1);
+	if (factory1Wrap == NULL)
+	{
+		LogInfo("  error allocating factory1Wrap. \n");
+		origFactory1->Release();
+		return E_OUTOFMEMORY;
+	}
+	if (ppFactory)
+		*ppFactory = factory1Wrap;
+
+	return hr;
+
+	//if (_CreateDXGIFactory1)
+	//{
+	//	LogInfo("  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
+	//	
+	//	IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
+	//	return CreateDXGIFactory2(&factory1, ppFactory);
+	//}
+	//LogInfo("  routing call to CreateDXGIFactory2 with original riid\n");
+	//
+	//return CreateDXGIFactory2(riid, ppFactory);
+}
+
+HRESULT WINAPI CreateDXGIFactory(const IID *const riid, void **ppFactory)
+{
+	InitD311();
+	LogInfo("CreateDXGIFactory called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
 	
-	return CreateDXGIFactory2(riid, ppFactory);
+	LogInfo("  calling original CreateDXGIFactory API\n");
+
+	IDXGIFactory *origFactory;
+	HRESULT hr = (*_CreateDXGIFactory)(riid, (void **)&origFactory);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
+
+	HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory);
+	if (factoryWrap == NULL)
+	{
+		LogInfo("  error allocating factoryWrap. \n");
+		origFactory->Release();
+		return E_OUTOFMEMORY;
+	}
+	if (ppFactory)
+		*ppFactory = factoryWrap;
+	
+	return hr;
+
+	//if (_CreateDXGIFactory2)
+	//{
+	//	LogInfo("  routing call to CreateDXGIFactory2 with riid=50c83a1c-e072-4c48-87b0-3630fa36a6d0\n");
+
+	//	IID factory2 = { 0x50c83a1cul, 0xe072, 0x4c48, { 0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0 } };
+	//	return CreateDXGIFactory2(&factory2, ppFactory);
+	//}
+	//if (_CreateDXGIFactory1)
+	//{
+	//	LogInfo("  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
+
+	//	IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
+	//	return CreateDXGIFactory2(&factory1, ppFactory);
+	//}
+	//LogInfo("  routing call to CreateDXGIFactory2 with original riid\n");
+
+	//return CreateDXGIFactory2(riid, ppFactory);
 }
 
 int WINAPI D3DKMTGetDeviceState(int a)
@@ -400,112 +494,111 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 	return (*_D3DKMTQueryResourceInfo)(a);
 }
 
-static void ReplaceInterface(void **ppvObj)
-{
-    D3D11Wrapper::IDXGIAdapter1 *p1 = (D3D11Wrapper::IDXGIAdapter1*) D3D11Wrapper::IDXGIAdapter::m_List.GetDataPtr(*ppvObj);
-    if (p1)
-	{
-		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
-		*ppvObj = p1;
-		unsigned long cnt2 = p1->AddRef();
-		LogInfo("  interface replaced with IDXGIAdapter1 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p1->m_ulRef, cnt2);
-	}
-    D3D11Wrapper::IDXGIOutput *p2 = (D3D11Wrapper::IDXGIOutput*) D3D11Wrapper::IDXGIOutput::m_List.GetDataPtr(*ppvObj);
-    if (p2)
-	{
-		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
-		*ppvObj = p2;
-		unsigned long cnt2 = p2->AddRef();
-		LogInfo("  interface replaced with IDXGIOutput wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p2->m_ulRef, cnt2);
-	}
-    D3D11Wrapper::IDXGIFactory2 *p3 = (D3D11Wrapper::IDXGIFactory2*) D3D11Wrapper::IDXGIFactory::m_List.GetDataPtr(*ppvObj);
-    if (p3)
-	{
-		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
-		*ppvObj = p3;
-		unsigned long cnt2 = p3->AddRef();
-		LogInfo("  interface replaced with IDXGIFactory2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p3->m_ulRef, cnt2);
-	}
-    D3D11Wrapper::IDXGISwapChain *p4 = (D3D11Wrapper::IDXGISwapChain*) D3D11Wrapper::IDXGISwapChain::m_List.GetDataPtr(*ppvObj);
-    if (p4)
-	{
-		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
-		*ppvObj = p4;
-		unsigned long cnt2 = p4->AddRef();
-		LogInfo("  interface replaced with IDXGISwapChain wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p4->m_ulRef, cnt2);
-	}
-}
+//static void ReplaceInterface(void **ppvObj)
+//{
+//    D3D11Wrapper::IDXGIAdapter1 *p1 = (D3D11Wrapper::IDXGIAdapter1*) D3D11Wrapper::IDXGIAdapter::m_List.GetDataPtr(*ppvObj);
+//    if (p1)
+//	{
+//		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+//		*ppvObj = p1;
+//		unsigned long cnt2 = p1->AddRef();
+//		LogInfo("  interface replaced with IDXGIAdapter1 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p1->m_ulRef, cnt2);
+//	}
+//    D3D11Wrapper::IDXGIOutput *p2 = (D3D11Wrapper::IDXGIOutput*) D3D11Wrapper::IDXGIOutput::m_List.GetDataPtr(*ppvObj);
+//    if (p2)
+//	{
+//		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+//		*ppvObj = p2;
+//		unsigned long cnt2 = p2->AddRef();
+//		LogInfo("  interface replaced with IDXGIOutput wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p2->m_ulRef, cnt2);
+//	}
+//    D3D11Wrapper::IDXGIFactory2 *p3 = (D3D11Wrapper::IDXGIFactory2*) D3D11Wrapper::IDXGIFactory::m_List.GetDataPtr(*ppvObj);
+//    if (p3)
+//	{
+//		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+//		*ppvObj = p3;
+//		unsigned long cnt2 = p3->AddRef();
+//		LogInfo("  interface replaced with IDXGIFactory2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p3->m_ulRef, cnt2);
+//	}
+//    D3D11Wrapper::IDXGISwapChain *p4 = (D3D11Wrapper::IDXGISwapChain*) D3D11Wrapper::IDXGISwapChain::m_List.GetDataPtr(*ppvObj);
+//    if (p4)
+//	{
+//		unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
+//		*ppvObj = p4;
+//		unsigned long cnt2 = p4->AddRef();
+//		LogInfo("  interface replaced with IDXGISwapChain wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p4->m_ulRef, cnt2);
+//	}
+//}
 
-// Todo: Why is this named D3D11Wrapper, but in the d3dxgiWrapper?
 
-STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
-{
-//	LogInfo("D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
-
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
-	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
-		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
-		riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
-	/*
-	if (unknown1) LogInfo("  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
-	if (unknown1)
-	{
-		*ppvObj = 0;
-		return E_OUTOFMEMORY;
-	}
-	*/
-	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
-	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
-	ReplaceInterface(ppvObj);
-	/*
-	if (!p1 && !p2 && !p3)
-	{
-		((IDirect3DUnknown*)*ppvObj)->Release();
-		hr = E_NOINTERFACE;
-		LogInfo("  removing unknown interface and returning error.\n");
-	}
-	*/
-	
-	return hr;
-}
-
-static IUnknown *ReplaceDevice(IUnknown *wrapper)
-{
-	if (!wrapper)
-		return wrapper;
-	LogInfo("  checking for device wrapper, handle = %p\n", wrapper);
-	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
-	IUnknown *realDevice = wrapper;
-	LogInfo("  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
-
-	if (wrapper->QueryInterface(marker, (void **)&realDevice) == 0x13bc7e31)
-	{
-		LogInfo("    device found. replacing with original handle = %p\n", realDevice);
-		
-		return realDevice;
-	}
-	return wrapper;
-}
-
-struct SwapChainInfo
-{
-	int width, height;
-};
-static void SendScreenResolution(IUnknown *wrapper, int width, int height)
-{
-	if (!wrapper)
-		return;
-	LogInfo("  sending screen resolution to DX11\n");	
-	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
-	SwapChainInfo info;
-	info.width = width;
-	info.height = height;
-	SwapChainInfo *infoPtr = &info;
-	LogInfo("  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
-
-	if (wrapper->QueryInterface(marker, (void **)&infoPtr) == 0x13bc7e31)
-	{
-		LogInfo("    notification successful.\n");
-	}
-}
+//STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
+//{
+////	LogInfo("D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+//
+//	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
+//		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+//	bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
+//		riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
+//		riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
+//	/*
+//	if (unknown1) LogInfo("  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
+//	if (unknown1)
+//	{
+//		*ppvObj = 0;
+//		return E_OUTOFMEMORY;
+//	}
+//	*/
+//	HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
+//	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+//	ReplaceInterface(ppvObj);
+//	/*
+//	if (!p1 && !p2 && !p3)
+//	{
+//		((IDirect3DUnknown*)*ppvObj)->Release();
+//		hr = E_NOINTERFACE;
+//		LogInfo("  removing unknown interface and returning error.\n");
+//	}
+//	*/
+//	
+//	return hr;
+//}
+//
+//static IUnknown *ReplaceDevice(IUnknown *wrapper)
+//{
+//	if (!wrapper)
+//		return wrapper;
+//	LogInfo("  checking for device wrapper, handle = %p\n", wrapper);
+//	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
+//	IUnknown *realDevice = wrapper;
+//	LogInfo("  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
+//
+//	if (wrapper->QueryInterface(marker, (void **)&realDevice) == 0x13bc7e31)
+//	{
+//		LogInfo("    device found. replacing with original handle = %p\n", realDevice);
+//		
+//		return realDevice;
+//	}
+//	return wrapper;
+//}
+//
+//struct SwapChainInfo
+//{
+//	int width, height;
+//};
+//static void SendScreenResolution(IUnknown *wrapper, int width, int height)
+//{
+//	if (!wrapper)
+//		return;
+//	LogInfo("  sending screen resolution to DX11\n");	
+//	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
+//	SwapChainInfo info;
+//	info.width = width;
+//	info.height = height;
+//	SwapChainInfo *infoPtr = &info;
+//	LogInfo("  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", typeid(*wrapper).name());
+//
+//	if (wrapper->QueryInterface(marker, (void **)&infoPtr) == 0x13bc7e31)
+//	{
+//		LogInfo("    notification successful.\n");
+//	}
+//}

@@ -1,114 +1,106 @@
 
-HookedDXGIFactory::HookedDXGIFactory(IDXGIFactory *pFactory)
-	: IDXGIFactory(pFactory)
+#include "HackerDXGI.h"
+
+#include "log.h"
+#include "DXGIWrapper.h"
+
+
+// -----------------------------------------------------------------------------
+// Constructors:
+
+HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory)
+	: IDXGIFactory()
 {
-    m_pFactory = pFactory;
-}
-D3D11Wrapper::IDXGIFactory1::IDXGIFactory1(D3D11Base::IDXGIFactory1 *pFactory)
-	: D3D11Wrapper::IDXGIFactory(pFactory)
-{
-}
-D3D11Wrapper::IDXGIFactory2::IDXGIFactory2(D3D11Base::IDXGIFactory2 *pFactory)
-	: D3D11Wrapper::IDXGIFactory1(pFactory)
-{
+	mOrigFactory = pFactory;
 }
 
-D3D11Wrapper::IDXGIFactory* D3D11Wrapper::IDXGIFactory::GetDirectFactory(D3D11Base::IDXGIFactory *pOrig)
+
+HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory)
+	: HackerDXGIFactory(pFactory)
 {
-    D3D11Wrapper::IDXGIFactory* p = (D3D11Wrapper::IDXGIFactory*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGIFactory(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
-D3D11Wrapper::IDXGIFactory1* D3D11Wrapper::IDXGIFactory1::GetDirectFactory(D3D11Base::IDXGIFactory1 *pOrig)
-{
-    D3D11Wrapper::IDXGIFactory1* p = (D3D11Wrapper::IDXGIFactory1*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGIFactory1(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
-D3D11Wrapper::IDXGIFactory2* D3D11Wrapper::IDXGIFactory2::GetDirectFactory(D3D11Base::IDXGIFactory2 *pOrig)
-{
-    D3D11Wrapper::IDXGIFactory2* p = (D3D11Wrapper::IDXGIFactory2*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGIFactory2(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
+	mOrigFactory1 = pFactory;
 }
 
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIFactory::AddRef(THIS)
+HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory)
+	: HackerDXGIFactory1(pFactory)
 {
-	++m_ulRef;
-	return m_pUnk->AddRef();
+	mOrigFactory2 = pFactory;
 }
 
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIFactory::Release(THIS)
+HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter)
+	: IDXGIAdapter()
 {
-	LogInfo("IDXGIFactory::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
-	//LogInfo("  ignoring call\n");
-	
-    ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	LogInfo("  internal counter = %d\n", ulRef);
-	
-	--m_ulRef;
-    if (ulRef == 0)
-    {
+	mOrigAdapter = pAdapter;
+}
+
+HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain)
+	: IDXGISwapChain()
+{
+	mOrigSwapChain = pSwapChain;
+}
+
+HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain)
+	: HackerDXGISwapChain(pSwapChain)
+{
+	mOrigSwapChain1 = pSwapChain;
+}
+
+HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
+	: IDXGIOutput()
+{
+	mOrigOutput = pOutput;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP_(ULONG) HackerDXGIFactory::AddRef(THIS)
+{
+	return mOrigFactory->AddRef();
+}
+
+STDMETHODIMP_(ULONG) HackerDXGIFactory::Release(THIS)
+{
+	ULONG ulRef = mOrigFactory->Release();
+	LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
+
+	if (ulRef <= 0)
+	{
+		LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
 		LogInfo("  deleting self\n");
-		
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
-        delete this;
-        return 0L;
-    }
-    return ulRef;
+
+		delete this;
+		return 0L;
+	}
+	return ulRef;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::EnumAdapters(THIS_
+STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
+	/* [in] */ REFIID riid,
+	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
+{
+	return mOrigFactory->QueryInterface(riid, ppvObject);
+}
+
+
+STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
             /* [in] */ UINT Adapter,
             /* [annotation][out] */ 
-            __out IDXGIAdapter1 **ppAdapter)
+            __out IDXGIAdapter **ppAdapter)
 {
-	LogInfo("IDXGIFactory::EnumAdapters adapter %d requested\n", Adapter);
-	LogInfo("  routing call to IDXGIFactory1::EnumAdapters1\n");
-	
-
-	D3D11Wrapper::IDXGIFactory1 *factory1 = (D3D11Wrapper::IDXGIFactory1*)this;
-	return factory1->EnumAdapters1(Adapter, ppAdapter);
-	/*
-	D3D11Base::IDXGIAdapter *origAdapter;
-	HRESULT ret = m_pFactory->EnumAdapters(Adapter, &origAdapter);
-	if (ret == S_OK)
-	{
-		if (LogFile)
-		{
-			char instance[MAX_PATH];
-			D3D11Base::DXGI_ADAPTER_DESC desc;
-			if (origAdapter->GetDesc(&desc) == S_OK)
-			{
-				wcstombs(instance, desc.Description, MAX_PATH);
-				LogInfo(" Returning adapter: %s, sysmem=%d, vidmem=%d\n", instance, desc.DedicatedSystemMemory, desc.DedicatedVideoMemory);
-			}
-		}
-		*ppAdapter = D3D11Wrapper::IDXGIAdapter::GetDirectAdapter(origAdapter);
-	}
-	return ret;
-	*/
+	LogInfo("HackerDXGIFactory::EnumAdapters adapter %d requested\n", Adapter);
+	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, ppAdapter);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::MakeWindowAssociation(THIS_
+STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
             HWND WindowHandle,
             UINT Flags)
 {
 	if (LogFile)
 	{
-		LogInfo("IDXGIFactory::MakeWindowAssociation called with WindowHandle = %p, Flags = %x\n", WindowHandle, Flags);
+		LogInfo("HackerDXGIFactory::MakeWindowAssociation called with WindowHandle = %p, Flags = %x\n", WindowHandle, Flags);
 		if (Flags) LogInfo("  Flags =");
 		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfo(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
 		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfo(" DXGI_MWA_NO_ALT_ENTER");
@@ -116,55 +108,58 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::MakeWindowAssociation(THIS_
 		if (Flags) LogInfo("\n");
 	}
 
-	if (gAllowWindowCommands && Flags)
-	{
-		LogInfo("  overriding Flags to allow all window commands\n");
-		
-		Flags = 0;
-	}
-	HRESULT hr = m_pFactory->MakeWindowAssociation(WindowHandle, Flags);
+	//if (gAllowWindowCommands && Flags)
+	//{
+	//	LogInfo("  overriding Flags to allow all window commands\n");
+	//	
+	//	Flags = 0;
+	//}
+	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
 	LogInfo("  returns result = %x\n", hr);
 	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetWindowAssociation(THIS_
+STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
             /* [annotation][out] */ 
             __out  HWND *pWindowHandle)
 {
-	LogInfo("IDXGIFactory::GetWindowAssociation called\n");
-	
-	return m_pFactory->GetWindowAssociation(pWindowHandle);
+	LogInfo("HackerDXGIFactory::GetWindowAssociation called\n");
+	HRESULT hr = mOrigFactory->GetWindowAssociation(pWindowHandle);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
+STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
             /* [annotation][in] */ 
             __in  IUnknown *pDevice,
             /* [annotation][in] */ 
-            __in  D3D11Base::DXGI_SWAP_CHAIN_DESC *pDesc,
+            __in  DXGI_SWAP_CHAIN_DESC *pDesc,
             /* [annotation][out] */ 
             __out  IDXGISwapChain **ppSwapChain)
 {
-	LogInfo("IDXGIFactory::CreateSwapChain called with parameters\n");
+	LogInfo("HackerDXGIFactory::CreateSwapChain called with parameters\n");
 	LogInfo("  Device = %p\n", pDevice);
-	if (pDesc) LogInfo("  Windowed = %d\n", pDesc->Windowed);
-	if (pDesc) LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
-	if (pDesc) LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
-	if (pDesc) LogInfo("  Refresh rate = %f\n", 
-		(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
-
-	if (pDesc && SCREEN_REFRESH >= 0)
+	if (pDesc)
 	{
-		pDesc->BufferDesc.RefreshRate.Numerator = SCREEN_REFRESH;
-		pDesc->BufferDesc.RefreshRate.Denominator = 1;
-	}
-	if (pDesc && SCREEN_WIDTH >= 0) pDesc->BufferDesc.Width = SCREEN_WIDTH;
-	if (pDesc && SCREEN_HEIGHT >= 0) pDesc->BufferDesc.Height = SCREEN_HEIGHT;
-	if (pDesc && SCREEN_FULLSCREEN >= 0) pDesc->Windowed = !SCREEN_FULLSCREEN;
+		LogInfo("  Windowed = %d\n", pDesc->Windowed);
+		LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
+		LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
+		LogInfo("  Refresh rate = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 
-	D3D11Base::IDXGISwapChain *origSwapChain;
-	IUnknown *realDevice = ReplaceDevice(pDevice);
-	HRESULT hr = m_pFactory->CreateSwapChain(realDevice, pDesc, &origSwapChain);
+		// Force screen resolution or refresh if specified by d3dx.ini
+		if (SCREEN_REFRESH >= 0)
+		{
+			pDesc->BufferDesc.RefreshRate.Numerator = SCREEN_REFRESH;
+			pDesc->BufferDesc.RefreshRate.Denominator = 1;
+		}
+		if (SCREEN_WIDTH >= 0) pDesc->BufferDesc.Width = SCREEN_WIDTH;
+		if (SCREEN_HEIGHT >= 0) pDesc->BufferDesc.Height = SCREEN_HEIGHT;
+		if (SCREEN_FULLSCREEN >= 0) pDesc->Windowed = !SCREEN_FULLSCREEN;
+	}
+
+	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
 	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
@@ -174,33 +169,180 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSwapChain(THIS_
 	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
 	// Same bug fix is applied for the other CreateSwapChain* variants.
 
-	if (SUCCEEDED(hr))
-	{
-		*ppSwapChain = D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(origSwapChain);
-		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-		(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-		(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
-	}
+	//if (SUCCEEDED(hr))
+	//{
+	//	*ppSwapChain = HackerDXGISwapChain::GetDirectSwapChain(origSwapChain);
+	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
+	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
+	//	(*ppSwapChain)->m_RealDevice = realDevice;
+	//	if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
+	//}
 	
 	return hr;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
+STDMETHODIMP HackerDXGIFactory::CreateSoftwareAdapter(THIS_
+	/* [in] */ HMODULE Module,
+	/* [annotation][out] */
+	__out  IDXGIAdapter **ppAdapter)
+{
+	LogInfo("HackerDXGIFactory::CreateSoftwareAdapter called\n");
+	HRESULT hr = mOrigFactory->CreateSoftwareAdapter(Module, ppAdapter);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory::SetPrivateData(THIS_
+	/* [annotation][in] */
+	__in  REFGUID Name,
+	/* [in] */ UINT DataSize,
+	/* [annotation][in] */
+	__in_bcount(DataSize)  const void *pData)
+{
+	LogInfo("HackerDXGIFactory::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3],
+		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
+	LogInfo("  DataSize = %d\n", DataSize);
+
+	HRESULT hr = mOrigFactory->SetPrivateData(Name, DataSize, pData);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory::SetPrivateDataInterface(THIS_
+	/* [annotation][in] */
+	__in  REFGUID Name,
+	/* [annotation][in] */
+	__in  const IUnknown *pUnknown)
+{
+	LogInfo("HackerDXGIFactory::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3],
+		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
+
+	HRESULT hr = mOrigFactory->SetPrivateDataInterface(Name, pUnknown);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory::GetPrivateData(THIS_
+	/* [annotation][in] */
+	__in  REFGUID Name,
+	/* [annotation][out][in] */
+	__inout  UINT *pDataSize,
+	/* [annotation][out] */
+	__out_bcount(*pDataSize)  void *pData)
+{
+	LogInfo("HackerDXGIFactory::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3],
+		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
+
+	HRESULT hr = mOrigFactory->GetPrivateData(Name, pDataSize, pData);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory::GetParent(THIS_
+	/* [annotation][in] */
+	__in  REFIID riid,
+	/* [annotation][retval][out] */
+	__out  void **ppParent)
+{
+	LogInfo("HackerDXGIFactory::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
+
+	HRESULT hr = mOrigFactory->GetParent(riid, ppParent);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
+	/* [in] */ UINT Adapter,
+	/* [annotation][out] */
+	__out  IDXGIAdapter1 **ppAdapter)
+{
+	LogInfo("HackerDXGIFactory1::EnumAdapters1 called: adapter #%d requested\n", Adapter);
+
+	HRESULT ret = mOrigFactory1->EnumAdapters1(Adapter, ppAdapter);
+
+	if (SUCCEEDED(ret) && LogFile)
+	{
+		DXGI_ADAPTER_DESC1 desc;
+		if (SUCCEEDED((*ppAdapter)->GetDesc1(&desc)))
+		{
+			char instance[MAX_PATH];
+			wcstombs(instance, desc.Description, MAX_PATH);
+			LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d, flags=%x\n", instance, desc.DedicatedSystemMemory, desc.DedicatedVideoMemory, desc.Flags);
+		}
+	}
+		/*
+		IDXGIOutput *output;
+		HRESULT h = S_OK;
+		for (int i = 0; h == S_OK; ++i)
+		{
+		if ((h = (*ppAdapter)->EnumOutputs(i, &output)) == S_OK)
+		{
+		DXGI_OUTPUT_DESC outputDesc;
+		if (output->GetDesc(&outputDesc) == S_OK)
+		{
+		wcstombs(instance, outputDesc.DeviceName, MAX_PATH);
+		LogInfo("  Output found: %s, desktop=%d\n", instance, outputDesc.AttachedToDesktop);
+		}
+
+		UINT num = 0;
+		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		UINT flags = DXGI_ENUM_MODES_INTERLACED | DXGI_ENUM_MODES_SCALING;
+		if (output->GetDisplayModeList(format, flags, &num, 0) == S_OK)
+		{
+		DXGI_MODE_DESC *pDescs = new DXGI_MODE_DESC[num];
+		if (output->GetDisplayModeList(format, flags, &num, pDescs) == S_OK)
+		{
+		for (int j=0; j < num; ++j)
+		{
+		LogInfo("   Mode found: width=%d, height=%d, refresh rate=%f\n", pDescs[j].Width, pDescs[j].Height,
+		(float) pDescs[j].RefreshRate.Numerator / (float) pDescs[j].RefreshRate.Denominator);
+		}
+		}
+		delete pDescs;
+		}
+
+		output->Release();
+		}
+		}
+		*/
+	
+	LogInfo("  returns result = %x, handle = %x \n", ret, *ppAdapter);
+	return ret;
+}
+
+STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
+{
+	LogInfo("HackerDXGIFactory1::IsCurrent called\n");
+	HRESULT hr = mOrigFactory1->IsCurrent();
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][in] */ 
             _In_  IUnknown *pDevice,
             /* [annotation][in] */ 
             _In_  HWND hWnd,
             /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc,
+            _In_ const DXGI_SWAP_CHAIN_DESC1 *pDesc,
             /* [annotation][in] */ 
-            _In_opt_  D3D11Base::DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+            _In_opt_ const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
             /* [annotation][in] */ 
             _In_opt_  IDXGIOutput *pRestrictToOutput,
             /* [annotation][out] */ 
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogInfo("IDXGIFactory2::CreateSwapChainForHwnd called with parameters\n");
+	LogInfo("HackerDXGIFactory2::CreateSwapChainForHwnd called with parameters\n");
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  HWND = %x\n", hWnd);
 	if (pDesc) LogInfo("  Stereo = %d\n", pDesc->Stereo);
@@ -210,228 +352,284 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForHwnd(THIS_
 		(float) pFullscreenDesc->RefreshRate.Numerator / (float) pFullscreenDesc->RefreshRate.Denominator);
 	if (pFullscreenDesc) LogInfo("  Windowed = %d\n", pFullscreenDesc->Windowed);
 
-	if (pFullscreenDesc && SCREEN_REFRESH >= 0)
-	{
-		pFullscreenDesc->RefreshRate.Numerator = SCREEN_REFRESH;
-		pFullscreenDesc->RefreshRate.Denominator = 1;
-	}
-	if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
-	if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
-	if (pFullscreenDesc && SCREEN_FULLSCREEN >= 0) pFullscreenDesc->Windowed = !SCREEN_FULLSCREEN;
+	//if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
+	//if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
+	//if (pFullscreenDesc && SCREEN_REFRESH >= 0)
+	//{
+	//	pFullscreenDesc->RefreshRate.Numerator = SCREEN_REFRESH;
+	//	pFullscreenDesc->RefreshRate.Denominator = 1;
+	//}
+	//if (pFullscreenDesc && SCREEN_FULLSCREEN >= 0) pFullscreenDesc->Windowed = !SCREEN_FULLSCREEN;
 
-	D3D11Base::IDXGISwapChain1 *origSwapChain;
-	IUnknown *realDevice = ReplaceDevice(pDevice);
-	HRESULT hr = -1;
-	if (pRestrictToOutput)
-		hr = GetFactory2()->CreateSwapChainForHwnd(realDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
+	//HRESULT hr = -1;
+	//if (pRestrictToOutput)
+	//hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
+	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
-	if (SUCCEEDED(hr))
-	{
-		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
-		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-		(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-		(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	}
+	//if (SUCCEEDED(hr))
+	//{
+	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
+	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
+	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
+	//	(*ppSwapChain)->m_RealDevice = realDevice;
+	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
+	//}
 	
 	return hr;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
+STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
             /* [annotation][in] */ 
             _In_  IUnknown *pDevice,
             /* [annotation][in] */ 
             _In_  IUnknown *pWindow,
             /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc,
+			_In_ const DXGI_SWAP_CHAIN_DESC1 *pDesc,
             /* [annotation][in] */ 
             _In_opt_  IDXGIOutput *pRestrictToOutput,
             /* [annotation][out] */ 
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogInfo("IDXGIFactory2::CreateSwapChainForCoreWindow called with parameters\n");
+	LogInfo("HackerDXGIFactory2::CreateSwapChainForCoreWindow called with parameters\n");
 	LogInfo("  Device = %x\n", pDevice);
 	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
 	if (pDesc) LogInfo("  Height = %d\n", pDesc->Height);
 	if (pDesc) LogInfo("  Stereo = %d\n", pDesc->Stereo);
 
-	if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
-	if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
+	//if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
+	//if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
 
-	D3D11Base::IDXGISwapChain1 *origSwapChain;
-	IUnknown *realDevice = ReplaceDevice(pDevice);
-	HRESULT hr = -1;
-	if (pRestrictToOutput)
-		hr = GetFactory2()->CreateSwapChainForCoreWindow(realDevice, pWindow, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
+	//IDXGISwapChain1 *origSwapChain;
+	//IUnknown *realDevice = ReplaceDevice(pDevice);
+	//HRESULT hr = -1;
+	//if (pRestrictToOutput)
+	//	hr = mOrigFactory->CreateSwapChainForCoreWindow(realDevice, pWindow, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
-	if (SUCCEEDED(hr))
-	{
-		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
-		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-		(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-		(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	}
+	//if (SUCCEEDED(hr))
+	//{
+	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
+	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
+	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
+	//	(*ppSwapChain)->m_RealDevice = realDevice;
+	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
+	//}
 
 	return hr;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::CreateSwapChainForComposition(THIS_
+STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
             /* [annotation][in] */ 
             _In_  IUnknown *pDevice,
             /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc,
+            _In_ const DXGI_SWAP_CHAIN_DESC1 *pDesc,
             /* [annotation][in] */ 
             _In_opt_  IDXGIOutput *pRestrictToOutput,
             /* [annotation][out] */ 
             _Outptr_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogInfo("IDXGIFactory2::CreateSwapChainForComposition called with parameters\n");
+	LogInfo("HackerDXGIFactory2::CreateSwapChainForComposition called with parameters\n");
 	LogInfo("  Device = %x\n", pDevice);
 	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
 	if (pDesc) LogInfo("  Height = %d\n", pDesc->Height);
 	if (pDesc) LogInfo("  Stereo = %d\n", pDesc->Stereo);
 
-	if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
-	if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
+	//if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
+	//if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
 
-	D3D11Base::IDXGISwapChain1 *origSwapChain;
-	IUnknown *realDevice = ReplaceDevice(pDevice);
-	HRESULT hr = -1;
-	if (pRestrictToOutput)
-		hr = GetFactory2()->CreateSwapChainForComposition(realDevice, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
+	//IDXGISwapChain1 *origSwapChain;
+	//IUnknown *realDevice = ReplaceDevice(pDevice);
+	//HRESULT hr = -1;
+	//if (pRestrictToOutput)
+	//	hr = mOrigFactory->CreateSwapChainForComposition(realDevice, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
+	//LogInfo("  return value = %x\n", hr);
+
+	//if (SUCCEEDED(hr))
+	//{
+	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
+	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
+	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
+	//	(*ppSwapChain)->m_RealDevice = realDevice;
+	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
+	//}
+
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
-
-	if (SUCCEEDED(hr))
-	{
-		*ppSwapChain = D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(origSwapChain);
-		if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-		(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-		(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	}
-
 	return hr;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::CreateSoftwareAdapter(THIS_
-            /* [in] */ HMODULE Module,
-            /* [annotation][out] */ 
-            __out  D3D11Base::IDXGIAdapter **ppAdapter)
+STDMETHODIMP_(BOOL) HackerDXGIFactory2::IsWindowedStereoEnabled(THIS)
 {
-	LogInfo("IDXGIFactory::CreateSoftwareAdapter called\n");
-	
-	return m_pFactory->CreateSoftwareAdapter(Module, ppAdapter);
-}
-
-STDMETHODIMP D3D11Wrapper::IDXGIFactory1::EnumAdapters1(THIS_
-        /* [in] */ UINT Adapter,
-        /* [annotation][out] */ 
-        __out  IDXGIAdapter1 **ppAdapter)
-{
-	LogInfo("IDXGIFactory1::EnumAdapters1 called: adapter #%d requested\n", Adapter);
-	
-	D3D11Base::IDXGIAdapter1 *origAdapter;
-	HRESULT ret = GetFactory1()->EnumAdapters1(Adapter, &origAdapter);
-
-	if (ret == S_OK)
-	{
-		if (LogFile)
-		{
-			char instance[MAX_PATH];
-			D3D11Base::DXGI_ADAPTER_DESC1 desc;
-			if (origAdapter->GetDesc1(&desc) == S_OK)
-			{
-				wcstombs(instance, desc.Description, MAX_PATH);
-				LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d, flags=%x\n", instance, desc.DedicatedSystemMemory, desc.DedicatedVideoMemory, desc.Flags);
-			}
-		}
-		/*
-		D3D11Base::IDXGIOutput *output;
-		HRESULT h = S_OK;
-		for (int i = 0; h == S_OK; ++i)
-		{
-			if ((h = (*ppAdapter)->EnumOutputs(i, &output)) == S_OK)
-			{
-				D3D11Base::DXGI_OUTPUT_DESC outputDesc;
-				if (output->GetDesc(&outputDesc) == S_OK)
-				{
-					wcstombs(instance, outputDesc.DeviceName, MAX_PATH);
-					LogInfo("  Output found: %s, desktop=%d\n", instance, outputDesc.AttachedToDesktop);
-				}
-				
-				UINT num = 0;
-				D3D11Base::DXGI_FORMAT format = D3D11Base::DXGI_FORMAT_R8G8B8A8_UNORM;
-				UINT flags = DXGI_ENUM_MODES_INTERLACED | DXGI_ENUM_MODES_SCALING;
-				if (output->GetDisplayModeList(format, flags, &num, 0) == S_OK)
-				{
-					D3D11Base::DXGI_MODE_DESC *pDescs = new D3D11Base::DXGI_MODE_DESC[num];
-					if (output->GetDisplayModeList(format, flags, &num, pDescs) == S_OK)
-					{
-						for (int j=0; j < num; ++j)
-						{
-							LogInfo("   Mode found: width=%d, height=%d, refresh rate=%f\n", pDescs[j].Width, pDescs[j].Height, 
-								(float) pDescs[j].RefreshRate.Numerator / (float) pDescs[j].RefreshRate.Denominator);
-						}
-					}
-					delete pDescs;
-				}
-				
-				output->Release();
-			}
-		}
-		*/
-		*ppAdapter = D3D11Wrapper::IDXGIAdapter1::GetDirectAdapter(origAdapter);
-	}
-	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", ret, origAdapter, *ppAdapter);
-	
+	LogInfo("HackerDXGIFactory2::IsWindowedStereoEnabled called\n");
+	BOOL ret = mOrigFactory2->IsWindowedStereoEnabled();
+	LogInfo("  returns %d\n", ret);
 	return ret;
 }
-   
-STDMETHODIMP_(BOOL) D3D11Wrapper::IDXGIFactory1::IsCurrent(THIS)
+                 
+STDMETHODIMP HackerDXGIFactory2::GetSharedResourceAdapterLuid(THIS_
+            /* [annotation] */ 
+            _In_  HANDLE hResource,
+            /* [annotation] */ 
+            _Out_  LUID *pLuid)
 {
-	LogInfo("IDXGIFactory1::IsCurrent called\n");
-	
-	return GetFactory1()->IsCurrent();
+	LogInfo("HackerDXGIFactory2::GetSharedResourceAdapterLuid called\n");
+	HRESULT ret = mOrigFactory2->GetSharedResourceAdapterLuid(hResource, pLuid);
+	LogInfo("  returns %d\n", ret);
+	return ret;
+}
+        
+STDMETHODIMP HackerDXGIFactory2::RegisterStereoStatusWindow(THIS_
+            /* [annotation][in] */ 
+            _In_  HWND WindowHandle,
+            /* [annotation][in] */ 
+            _In_  UINT wMsg,
+            /* [annotation][out] */ 
+            _Out_  DWORD *pdwCookie)
+{
+	LogInfo("HackerDXGIFactory2::RegisterStereoStatusWindow called\n");
+	HRESULT ret = mOrigFactory2->RegisterStereoStatusWindow(WindowHandle, wMsg, pdwCookie);
+	LogInfo("  returns %d\n", ret);
+	return ret;
+}
+        
+STDMETHODIMP HackerDXGIFactory2::RegisterStereoStatusEvent(THIS_
+            /* [annotation][in] */ 
+            _In_  HANDLE hEvent,
+            /* [annotation][out] */ 
+            _Out_  DWORD *pdwCookie)
+{
+	LogInfo("HackerDXGIFactory2::RegisterStereoStatusEvent called\n");
+	HRESULT ret = mOrigFactory2->RegisterStereoStatusEvent(hEvent, pdwCookie);
+	LogInfo("  returns %d\n", ret);
+	return ret;
+}
+        
+STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterStereoStatus(THIS_
+            /* [annotation][in] */ 
+            _In_  DWORD dwCookie)
+{
+	LogInfo("HackerDXGIFactory2::UnregisterStereoStatus called\n");
+	mOrigFactory2->UnregisterStereoStatus(dwCookie);
+}
+        
+STDMETHODIMP HackerDXGIFactory2::RegisterOcclusionStatusWindow(THIS_
+            /* [annotation][in] */ 
+            _In_  HWND WindowHandle,
+            /* [annotation][in] */ 
+            _In_  UINT wMsg,
+            /* [annotation][out] */ 
+            _Out_  DWORD *pdwCookie)
+{
+	LogInfo("HackerDXGIFactory2::RegisterOcclusionStatusWindow called\n");
+	HRESULT ret = mOrigFactory2->RegisterOcclusionStatusWindow(WindowHandle, wMsg, pdwCookie);
+	LogInfo("  returns %d\n", ret);
+	return ret;
+}
+        
+STDMETHODIMP HackerDXGIFactory2::RegisterOcclusionStatusEvent(THIS_
+            /* [annotation][in] */ 
+            _In_  HANDLE hEvent,
+            /* [annotation][out] */ 
+            _Out_  DWORD *pdwCookie)
+{
+	LogInfo("HackerDXGIFactory2::RegisterOcclusionStatusEvent called\n");
+	HRESULT ret = mOrigFactory2->RegisterOcclusionStatusEvent(hEvent, pdwCookie);
+	LogInfo("  returns %d\n", ret);
+	return ret;
+}
+        
+STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterOcclusionStatus(THIS_
+            /* [annotation][in] */ 
+            _In_  DWORD dwCookie)
+{
+	LogInfo("HackerDXGIFactory2::UnregisterOcclusionStatus called\n");
+	mOrigFactory2->UnregisterOcclusionStatus(dwCookie);
+}
+        
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP_(ULONG) HackerDXGIAdapter::AddRef(THIS)
+{
+	return mOrigAdapter->AddRef();
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::SetPrivateData(THIS_ 
+STDMETHODIMP_(ULONG) HackerDXGIAdapter::Release(THIS)
+{
+	ULONG ulRef = mOrigAdapter->Release();
+	LogInfo("HackerDXGIAdapter::Release counter=%d, this=%p\n", ulRef, this);
+
+	if (ulRef <= 0)
+	{
+		LogInfo("  deleting self\n");
+
+		delete this;
+		return 0L;
+	}
+	return ulRef;
+}
+
+STDMETHODIMP HackerDXGIAdapter::EnumOutputs(THIS_
+            /* [in] */ UINT Output,
+            /* [annotation][out][in] */ 
+            __out IDXGIOutput **ppOutput)
+{
+	LogInfo("HackerDXGIAdapter::EnumOutputs called: output #%d requested\n", Output);
+	HRESULT hr = mOrigAdapter->EnumOutputs(Output, ppOutput);
+	LogInfo("  returns result = %x, handle = %x\n", hr, *ppOutput);
+	return hr;
+}
+        
+STDMETHODIMP HackerDXGIAdapter::GetDesc(THIS_
+            /* [annotation][out] */ 
+            __out DXGI_ADAPTER_DESC *pDesc)
+{
+	LogInfo("HackerDXGIAdapter::GetDesc called\n");
+	
+	HRESULT hr = mOrigAdapter->GetDesc(pDesc);
+	if (LogFile && hr == S_OK)
+	{
+		char s[MAX_PATH];
+		wcstombs(s, pDesc->Description, MAX_PATH);
+		LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory);
+	}
+	return hr;
+}
+       
+STDMETHODIMP HackerDXGIAdapter::SetPrivateData(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
             /* [in] */ UINT DataSize,
             /* [annotation][in] */ 
             __in_bcount(DataSize)  const void *pData)
 {
-	LogInfo("IDXGIFactory::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGIAdapter::SetPrivateData called with Name=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx, DataSize = %d\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	LogInfo("  DataSize = %d\n", DataSize);
+		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7], DataSize);
 	
-	HRESULT hr = GetFactory()->SetPrivateData(Name, DataSize, pData);
+	HRESULT hr = mOrigAdapter->SetPrivateData(Name, DataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::SetPrivateDataInterface(THIS_ 
+STDMETHODIMP HackerDXGIAdapter::SetPrivateDataInterface(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
             /* [annotation][in] */ 
             __in  const IUnknown *pUnknown)
 {
-	LogInfo("IDXGIFactory::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGIAdapter::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	
-	HRESULT hr = GetFactory()->SetPrivateDataInterface(Name, pUnknown);
+	HRESULT hr = mOrigAdapter->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetPrivateData(THIS_
+STDMETHODIMP HackerDXGIAdapter::GetPrivateData(THIS_
             /* [annotation][in] */ 
             __in  REFGUID Name,
             /* [annotation][out][in] */ 
@@ -439,154 +637,56 @@ STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetPrivateData(THIS_
             /* [annotation][out] */ 
             __out_bcount(*pDataSize)  void *pData)
 {
-	LogInfo("IDXGIFactory::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	
-	HRESULT hr = GetFactory()->GetPrivateData(Name, pDataSize, pData);
+	LogInfo("HackerDXGIAdapter::GetPrivateData called\n");
+	HRESULT hr = mOrigAdapter->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIFactory::GetParent(THIS_ 
+STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_ 
             /* [annotation][in] */ 
             __in  REFIID riid,
             /* [annotation][retval][out] */ 
             __out  void **ppParent)
 {
-	LogInfo("IDXGIFactory::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGIAdapter::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
 	
-	HRESULT hr = GetFactory()->GetParent(riid, ppParent);
+	HRESULT hr = mOrigAdapter->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
 
-STDMETHODIMP_(BOOL) D3D11Wrapper::IDXGIFactory2::IsWindowedStereoEnabled(THIS)
-{
-	LogInfo("IDXGIFactory2::IsWindowedStereoEnabled called\n");
-	BOOL ret = GetFactory2()->IsWindowedStereoEnabled();
-	LogInfo("  returns %d\n", ret);
-	return ret;
-}
-                 
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::GetSharedResourceAdapterLuid(THIS_
-            /* [annotation] */ 
-            _In_  HANDLE hResource,
-            /* [annotation] */ 
-            _Out_  LUID *pLuid)
-{
-	LogInfo("IDXGIFactory2::GetSharedResourceAdapterLuid called\n");
-	HRESULT ret = GetFactory2()->GetSharedResourceAdapterLuid(hResource, pLuid);
-	LogInfo("  returns %d\n", ret);
-	return ret;
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::RegisterStereoStatusWindow(THIS_
+STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
             /* [annotation][in] */ 
-            _In_  HWND WindowHandle,
-            /* [annotation][in] */ 
-            _In_  UINT wMsg,
+            __in  REFGUID InterfaceName,
             /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie)
+            __out  LARGE_INTEGER *pUMDVersion)
 {
-	LogInfo("IDXGIFactory2::RegisterStereoStatusWindow called\n");
-	HRESULT ret = GetFactory2()->RegisterStereoStatusWindow(WindowHandle, wMsg, pdwCookie);
-	LogInfo("  returns %d\n", ret);
-	return ret;
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::RegisterStereoStatusEvent(THIS_
-            /* [annotation][in] */ 
-            _In_  HANDLE hEvent,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie)
-{
-	LogInfo("IDXGIFactory2::RegisterStereoStatusEvent called\n");
-	HRESULT ret = GetFactory2()->RegisterStereoStatusEvent(hEvent, pdwCookie);
-	LogInfo("  returns %d\n", ret);
-	return ret;
-}
-        
-STDMETHODIMP_(void) D3D11Wrapper::IDXGIFactory2::UnregisterStereoStatus(THIS_
-            /* [annotation][in] */ 
-            _In_  DWORD dwCookie)
-{
-	LogInfo("IDXGIFactory2::UnregisterStereoStatus called\n");
-	GetFactory2()->UnregisterStereoStatus(dwCookie);
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::RegisterOcclusionStatusWindow(THIS_
-            /* [annotation][in] */ 
-            _In_  HWND WindowHandle,
-            /* [annotation][in] */ 
-            _In_  UINT wMsg,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie)
-{
-	LogInfo("IDXGIFactory2::RegisterOcclusionStatusWindow called\n");
-	HRESULT ret = GetFactory2()->RegisterOcclusionStatusWindow(WindowHandle, wMsg, pdwCookie);
-	LogInfo("  returns %d\n", ret);
-	return ret;
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIFactory2::RegisterOcclusionStatusEvent(THIS_
-            /* [annotation][in] */ 
-            _In_  HANDLE hEvent,
-            /* [annotation][out] */ 
-            _Out_  DWORD *pdwCookie)
-{
-	LogInfo("IDXGIFactory2::RegisterOcclusionStatusEvent called\n");
-	HRESULT ret = GetFactory2()->RegisterOcclusionStatusEvent(hEvent, pdwCookie);
-	LogInfo("  returns %d\n", ret);
-	return ret;
-}
-        
-STDMETHODIMP_(void) D3D11Wrapper::IDXGIFactory2::UnregisterOcclusionStatus(THIS_
-            /* [annotation][in] */ 
-            _In_  DWORD dwCookie)
-{
-	LogInfo("IDXGIFactory2::UnregisterOcclusionStatus called\n");
-	GetFactory2()->UnregisterOcclusionStatus(dwCookie);
-}
-        
-D3D11Wrapper::IDXGIAdapter::IDXGIAdapter(D3D11Base::IDXGIAdapter *pAdapter)
-    : D3D11Wrapper::IDirect3DUnknown((IUnknown*) pAdapter)
-{
-    m_pAdapter = pAdapter;
-}
-
-D3D11Wrapper::IDXGIAdapter* D3D11Wrapper::IDXGIAdapter::GetDirectAdapter(D3D11Base::IDXGIAdapter *pOrig)
-{
-    D3D11Wrapper::IDXGIAdapter* p = (D3D11Wrapper::IDXGIAdapter*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGIAdapter(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
-
-D3D11Wrapper::IDXGIAdapter1* D3D11Wrapper::IDXGIAdapter1::GetDirectAdapter(D3D11Base::IDXGIAdapter1 *pOrig)
-{
-    D3D11Wrapper::IDXGIAdapter1* p = (D3D11Wrapper::IDXGIAdapter1*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGIAdapter1(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
-
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter1::GetDesc1(THIS_ 
-	        /* [annotation][out] */ 
-            __out  D3D11Base::DXGI_ADAPTER_DESC1 *pDesc)
-{
-	LogInfo("IDXGIAdapter1::GetDesc1 called\n");
+	LogInfo("HackerDXGIAdapter::CheckInterfaceSupport called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+		InterfaceName.Data1, InterfaceName.Data2, InterfaceName.Data3, InterfaceName.Data4[0], InterfaceName.Data4[1], InterfaceName.Data4[2], InterfaceName.Data4[3], 
+		InterfaceName.Data4[4], InterfaceName.Data4[5], InterfaceName.Data4[6], InterfaceName.Data4[7]);
+	if (LogFile && InterfaceName.Data1 == 0x9b7e4c0f && InterfaceName.Data2 == 0x342c && InterfaceName.Data3 == 0x4106 && InterfaceName.Data4[0] == 0xa1 && 
+		InterfaceName.Data4[1] == 0x9f && InterfaceName.Data4[2] == 0x4f && InterfaceName.Data4[3] == 0x27 && InterfaceName.Data4[4] == 0x04 && 
+		InterfaceName.Data4[5] == 0xf6 && InterfaceName.Data4[6] == 0x89 && InterfaceName.Data4[7] == 0xf0)
+		LogInfo("  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = IID_ID3D10Device\n");
 	
-	HRESULT hr = GetAdapter()->GetDesc1(pDesc);
+	HRESULT hr = mOrigAdapter->CheckInterfaceSupport(InterfaceName, pUMDVersion);
+	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIAdapter1::GetDesc1(THIS_
+	/* [annotation][out] */
+	__out  DXGI_ADAPTER_DESC1 *pDesc)
+{
+	LogInfo("HackerDXGIAdapter1::GetDesc1 called\n");
+
+	HRESULT hr = mOrigAdapter1->GetDesc1(pDesc);
 	if (LogFile)
 	{
 		char s[MAX_PATH];
@@ -599,213 +699,36 @@ STDMETHODIMP D3D11Wrapper::IDXGIAdapter1::GetDesc1(THIS_
 	return hr;
 }
 
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIAdapter::AddRef(THIS)
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP_(ULONG) HackerDXGIOutput::AddRef(THIS)
 {
-//	LogInfo("IDXGIAdapter::AddRef called\n");
-//	
-	++m_ulRef;
-	return m_pUnk->AddRef();
+	return mOrigOutput->AddRef();
 }
 
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIAdapter::Release(THIS)
+STDMETHODIMP_(ULONG) HackerDXGIOutput::Release(THIS)
 {
-	LogInfo("IDXGIAdapter::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	//LogInfo("  ignoring call\n");
-	
-    ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	LogInfo("  internal counter = %d\n", ulRef);
-	
-	--m_ulRef;
-    if (ulRef == 0)
-    {
+	ULONG ulRef = mOrigOutput->Release();
+	LogInfo("HackerDXGIOutput::Release counter=%d, this=%p\n", ulRef, this);
+
+	if (ulRef <= 0)
+	{
 		LogInfo("  deleting self\n");
-		
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
-        delete this;
-        return 0L;
-    }
-    return ulRef;
-}
 
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::EnumOutputs(THIS_
-            /* [in] */ UINT Output,
-            /* [annotation][out][in] */ 
-            __out IDXGIOutput **ppOutput)
-{
-	LogInfo("IDXGIAdapter::EnumOutputs called: output #%d requested\n", Output);
-	
-	HRESULT hr;
-	D3D11Base::IDXGIOutput *pOrig;
-	if ((hr = GetAdapter()->EnumOutputs(Output, &pOrig)) == S_OK)
-	{
-		*ppOutput = IDXGIOutput::GetDirectOutput(pOrig);
+		delete this;
+		return 0L;
 	}
-	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", hr, pOrig, *ppOutput);
-
-	return hr;
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::GetDesc(THIS_
-            /* [annotation][out] */ 
-            __out D3D11Base::DXGI_ADAPTER_DESC *pDesc)
-{
-	LogInfo("IDXGIAdapter::GetDesc called\n");
-	
-	HRESULT hr = GetAdapter()->GetDesc(pDesc);
-	if (LogFile && hr == S_OK)
-	{
-		char s[MAX_PATH];
-		wcstombs(s, pDesc->Description, MAX_PATH);
-		LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory);
-	}
-	return hr;
-}
-       
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::SetPrivateData(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            __in_bcount(DataSize)  const void *pData)
-{
-	LogInfo("IDXGIAdapter::SetPrivateData called with Name=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx, DataSize = %d\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7], DataSize);
-	
-	HRESULT hr = GetAdapter()->SetPrivateData(Name, DataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	
-	return hr;
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::SetPrivateDataInterface(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][in] */ 
-            __in  const IUnknown *pUnknown)
-{
-	LogInfo("IDXGIAdapter::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	
-	return GetAdapter()->SetPrivateDataInterface(Name, pUnknown);
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::GetPrivateData(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][out][in] */ 
-            __inout  UINT *pDataSize,
-            /* [annotation][out] */ 
-            __out_bcount(*pDataSize)  void *pData)
-{
-	LogInfo("IDXGIAdapter::GetPrivateData called\n");
-	
-	return GetAdapter()->GetPrivateData(Name, pDataSize, pData);
-}
-        
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::GetParent(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFIID riid,
-            /* [annotation][retval][out] */ 
-            __out  void **ppParent)
-{
-	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x00 } };
-	if (riid.Data1 == marker.Data1 && riid.Data2 == marker.Data2 && riid.Data3 == marker.Data3 && 
-		riid.Data4[0] == marker.Data4[0] && riid.Data4[1] == marker.Data4[1] && riid.Data4[2] == marker.Data4[2] && riid.Data4[3] == marker.Data4[3] && 
-		riid.Data4[4] == marker.Data4[4] && riid.Data4[5] == marker.Data4[5] && riid.Data4[6] == marker.Data4[6] && riid.Data4[7] == marker.Data4[7])
-	{
-		LogInfo("Callback from d3d11.dll wrapper: requesting real IDXGIAdapter handle.\n");
-		LogInfo("  returning handle = %x\n", GetAdapter());
-		
-		*ppParent = GetAdapter();
-		return 0x13bc7e32;
-	}
-
-	LogInfo("IDXGIAdapter::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	
-	HRESULT hr = GetAdapter()->GetParent(riid, ppParent);
-	if (hr == S_OK)
-	{
-		ReplaceInterface(ppParent);
-	}
-	return hr;
+	return ulRef;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIAdapter::CheckInterfaceSupport(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID InterfaceName,
-            /* [annotation][out] */ 
-            __out  LARGE_INTEGER *pUMDVersion)
-{
-	LogInfo("IDXGIAdapter::CheckInterfaceSupport called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		InterfaceName.Data1, InterfaceName.Data2, InterfaceName.Data3, InterfaceName.Data4[0], InterfaceName.Data4[1], InterfaceName.Data4[2], InterfaceName.Data4[3], 
-		InterfaceName.Data4[4], InterfaceName.Data4[5], InterfaceName.Data4[6], InterfaceName.Data4[7]);
-	if (LogFile && InterfaceName.Data1 == 0x9b7e4c0f && InterfaceName.Data2 == 0x342c && InterfaceName.Data3 == 0x4106 && InterfaceName.Data4[0] == 0xa1 && 
-		InterfaceName.Data4[1] == 0x9f && InterfaceName.Data4[2] == 0x4f && InterfaceName.Data4[3] == 0x27 && InterfaceName.Data4[4] == 0x04 && 
-		InterfaceName.Data4[5] == 0xf6 && InterfaceName.Data4[6] == 0x89 && InterfaceName.Data4[7] == 0xf0)
-		LogInfo("  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = IID_ID3D10Device\n");
-	
-	HRESULT hr = GetAdapter()->CheckInterfaceSupport(InterfaceName, pUMDVersion);
-	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
-	LogInfo("  returns hr=%x\n", hr);
-	
-	return hr;
-}
-
-D3D11Wrapper::IDXGIOutput::IDXGIOutput(D3D11Base::IDXGIOutput *pOutput)
-    : D3D11Wrapper::IDirect3DUnknown((IUnknown*) pOutput)
-{
-	m_pOutput = pOutput;
-}
-
-D3D11Wrapper::IDXGIOutput* D3D11Wrapper::IDXGIOutput::GetDirectOutput(D3D11Base::IDXGIOutput *pOrig)
-{
-    D3D11Wrapper::IDXGIOutput* p = (D3D11Wrapper::IDXGIOutput*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGIOutput(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
-
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIOutput::AddRef(THIS)
-{
-//	LogInfo("IDXGIOutput::AddRef called\n", m_pUnk);
-//	
-	++m_ulRef;
-	return m_pUnk->AddRef();
-}
-
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGIOutput::Release(THIS)
-{
-	LogInfo("IDXGIOutput::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	
-    ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	LogInfo("  internal counter = %d\n", ulRef);
-	
-	--m_ulRef;
-
-    if (ulRef == 0)
-    {
-		LogInfo("  deleting self\n");
-		
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
-        delete this;
-        return 0L;
-    }
-    return ulRef;
-}
-
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDesc(THIS_ 
+STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_ 
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_OUTPUT_DESC *pDesc)
+        __out  DXGI_OUTPUT_DESC *pDesc)
 {
-	LogInfo("IDXGIOutput::GetDesc called\n");
+	LogInfo("HackerDXGIOutput::GetDesc called\n");
 	
-	HRESULT ret = GetOutput()->GetDesc(pDesc);
+	HRESULT ret = mOrigOutput->GetDesc(pDesc);
 	if (LogFile)
 	{
 		char str[MAX_PATH];
@@ -824,17 +747,17 @@ static bool FilterRate(int rate)
 	return FILTER_REFRESH[i] == 0;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDisplayModeList(THIS_ 
-        /* [in] */ D3D11Base::DXGI_FORMAT EnumFormat,
+STDMETHODIMP HackerDXGIOutput::GetDisplayModeList(THIS_ 
+        /* [in] */ DXGI_FORMAT EnumFormat,
         /* [in] */ UINT Flags,
         /* [annotation][out][in] */ 
         __inout  UINT *pNumModes,
         /* [annotation][out] */ 
-        __out_ecount_part_opt(*pNumModes,*pNumModes)  D3D11Base::DXGI_MODE_DESC *pDesc)
+        __out_ecount_part_opt(*pNumModes,*pNumModes)  DXGI_MODE_DESC *pDesc)
 {
-	LogInfo("IDXGIOutput::GetDisplayModeList called\n");
+	LogInfo("HackerDXGIOutput::GetDisplayModeList called\n");
 	
-	HRESULT ret = GetOutput()->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
+	HRESULT ret = mOrigOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
 	if (ret == S_OK && pDesc)
 	{
 		for (UINT j=0; j < *pNumModes; ++j)
@@ -857,18 +780,19 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDisplayModeList(THIS_
 	return ret;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::FindClosestMatchingMode(THIS_ 
+STDMETHODIMP HackerDXGIOutput::FindClosestMatchingMode(THIS_ 
         /* [annotation][in] */ 
-        __in  const D3D11Base::DXGI_MODE_DESC *pModeToMatch,
+        __in  const DXGI_MODE_DESC *pModeToMatch,
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_MODE_DESC *pClosestMatch,
+        __out  DXGI_MODE_DESC *pClosestMatch,
         /* [annotation][in] */ 
         __in_opt  IUnknown *pConcernedDevice)
 {
-	if (pModeToMatch) LogInfo("IDXGIOutput::FindClosestMatchingMode called: width=%d, height=%d, refresh rate=%f\n", 
+	if (pModeToMatch) LogInfo("HackerDXGIOutput::FindClosestMatchingMode called: width=%d, height=%d, refresh rate=%f\n", 
 		pModeToMatch->Width, pModeToMatch->Height, (float) pModeToMatch->RefreshRate.Numerator / (float) pModeToMatch->RefreshRate.Denominator);
 	
-	HRESULT ret = GetOutput()->FindClosestMatchingMode(pModeToMatch, pClosestMatch, ReplaceDevice(pConcernedDevice));
+	HRESULT hr = mOrigOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
+
 	if (pClosestMatch && SCREEN_REFRESH >= 0)
 	{
 		pClosestMatch->RefreshRate.Numerator = SCREEN_REFRESH;
@@ -879,113 +803,124 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::FindClosestMatchingMode(THIS_
 	if (pClosestMatch) LogInfo("  returning width=%d, height=%d, refresh rate=%f\n", 
 		pClosestMatch->Width, pClosestMatch->Height, (float) pClosestMatch->RefreshRate.Numerator / (float) pClosestMatch->RefreshRate.Denominator);
 	
-	return ret;
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::WaitForVBlank(THIS_ )
+STDMETHODIMP HackerDXGIOutput::WaitForVBlank(THIS_ )
 {
-	LogInfo("IDXGIOutput::WaitForVBlank called\n");
-	
-	return GetOutput()->WaitForVBlank();
+	LogInfo("HackerDXGIOutput::WaitForVBlank called\n");
+	HRESULT hr = mOrigOutput->WaitForVBlank();
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::TakeOwnership(THIS_  
+STDMETHODIMP HackerDXGIOutput::TakeOwnership(THIS_  
         /* [annotation][in] */ 
         __in  IUnknown *pDevice,
         BOOL Exclusive)
 {
-	LogInfo("IDXGIOutput::TakeOwnership called\n");
-	
-	return GetOutput()->TakeOwnership(ReplaceDevice(pDevice), Exclusive);
+	LogInfo("HackerDXGIOutput::TakeOwnership called\n");
+	HRESULT hr = mOrigOutput->TakeOwnership(pDevice, Exclusive);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-void STDMETHODCALLTYPE D3D11Wrapper::IDXGIOutput::ReleaseOwnership(void)
+void STDMETHODCALLTYPE HackerDXGIOutput::ReleaseOwnership(void)
 {
-	LogInfo("IDXGIOutput::ReleaseOwnership called\n");
-	
-	return GetOutput()->ReleaseOwnership();
+	LogInfo("HackerDXGIOutput::ReleaseOwnership called\n");
+	return mOrigOutput->ReleaseOwnership();
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetGammaControlCapabilities(THIS_  
+STDMETHODIMP HackerDXGIOutput::GetGammaControlCapabilities(THIS_  
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps)
+        __out  DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps)
 {
-	LogInfo("IDXGIOutput::GetGammaControlCapabilities called\n");
-	
-	return GetOutput()->GetGammaControlCapabilities(pGammaCaps);
+	LogInfo("HackerDXGIOutput::GetGammaControlCapabilities called\n");
+	HRESULT hr = mOrigOutput->GetGammaControlCapabilities(pGammaCaps);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetGammaControl(THIS_ 
+STDMETHODIMP HackerDXGIOutput::SetGammaControl(THIS_ 
         /* [annotation][in] */ 
-        __in  const D3D11Base::DXGI_GAMMA_CONTROL *pArray)
+        __in  const DXGI_GAMMA_CONTROL *pArray)
 {
-	LogInfo("IDXGIOutput::SetGammaControl called\n");
-	
-	return GetOutput()->SetGammaControl(pArray);
+	LogInfo("HackerDXGIOutput::SetGammaControl called\n");
+	HRESULT hr = mOrigOutput->SetGammaControl(pArray);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetGammaControl(THIS_ 
+STDMETHODIMP HackerDXGIOutput::GetGammaControl(THIS_ 
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_GAMMA_CONTROL *pArray)
+        __out  DXGI_GAMMA_CONTROL *pArray)
 {
-	LogInfo("IDXGIOutput::GetGammaControl called\n");
-	
-	return GetOutput()->GetGammaControl(pArray);
+	LogInfo("HackerDXGIOutput::GetGammaControl called\n");
+	HRESULT hr = mOrigOutput->GetGammaControl(pArray);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetDisplaySurface(THIS_ 
+STDMETHODIMP HackerDXGIOutput::SetDisplaySurface(THIS_ 
         /* [annotation][in] */ 
-        __in  D3D11Base::IDXGISurface *pScanoutSurface)
+        __in  IDXGISurface *pScanoutSurface)
 {
-	LogInfo("IDXGIOutput::SetDisplaySurface called\n");
-	
-	return GetOutput()->SetDisplaySurface(pScanoutSurface);
+	LogInfo("HackerDXGIOutput::SetDisplaySurface called\n");
+	HRESULT hr = mOrigOutput->SetDisplaySurface(pScanoutSurface);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetDisplaySurfaceData(THIS_ 
+STDMETHODIMP HackerDXGIOutput::GetDisplaySurfaceData(THIS_ 
         /* [annotation][in] */ 
-        __in  D3D11Base::IDXGISurface *pDestination)
+        __in  IDXGISurface *pDestination)
 {
-	LogInfo("IDXGIOutput::GetDisplaySurfaceData called\n");
-	
-	return GetOutput()->GetDisplaySurfaceData(pDestination);
+	LogInfo("HackerDXGIOutput::GetDisplaySurfaceData called\n");
+	HRESULT hr = mOrigOutput->GetDisplaySurfaceData(pDestination);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetFrameStatistics(THIS_ 
+STDMETHODIMP HackerDXGIOutput::GetFrameStatistics(THIS_ 
         /* [annotation][out] */ 
-        __out  D3D11Base::DXGI_FRAME_STATISTICS *pStats)
+        __out  DXGI_FRAME_STATISTICS *pStats)
 {
-	LogInfo("IDXGIOutput::GetFrameStatistics called\n");
-	
-	return GetOutput()->GetFrameStatistics(pStats);
+	LogInfo("HackerDXGIOutput::GetFrameStatistics called\n");
+	HRESULT hr = mOrigOutput->GetFrameStatistics(pStats);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
                
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetPrivateData(THIS_ 
+STDMETHODIMP HackerDXGIOutput::SetPrivateData(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
             /* [in] */ UINT DataSize,
             /* [annotation][in] */ 
             __in_bcount(DataSize)  const void *pData)
 {
-	LogInfo("IDXGIOutput::SetPrivateData called\n");
-	
-	return GetOutput()->SetPrivateData(Name, DataSize, pData);
+	LogInfo("HackerDXGIOutput::SetPrivateData called\n");
+	HRESULT hr = mOrigOutput->SetPrivateData(Name, DataSize, pData);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::SetPrivateDataInterface(THIS_ 
+STDMETHODIMP HackerDXGIOutput::SetPrivateDataInterface(THIS_ 
             /* [annotation][in] */ 
             __in  REFGUID Name,
             /* [annotation][in] */ 
             __in  const IUnknown *pUnknown)
 {
-	LogInfo("IDXGIOutput::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGIOutput::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	
-	return GetOutput()->SetPrivateDataInterface(Name, pUnknown);
+	HRESULT hr = mOrigOutput->SetPrivateDataInterface(Name, pUnknown);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetPrivateData(THIS_
+STDMETHODIMP HackerDXGIOutput::GetPrivateData(THIS_
             /* [annotation][in] */ 
             __in  REFGUID Name,
             /* [annotation][out][in] */ 
@@ -993,119 +928,84 @@ STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetPrivateData(THIS_
             /* [annotation][out] */ 
             __out_bcount(*pDataSize)  void *pData)
 {
-	LogInfo("IDXGIOutput::GetPrivateData called\n");
-	
-	return GetOutput()->GetPrivateData(Name, pDataSize, pData);
+	LogInfo("HackerDXGIOutput::GetPrivateData called\n");
+	HRESULT hr = mOrigOutput->GetPrivateData(Name, pDataSize, pData);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGIOutput::GetParent(THIS_ 
+STDMETHODIMP HackerDXGIOutput::GetParent(THIS_ 
             /* [annotation][in] */ 
             __in  REFIID riid,
             /* [annotation][retval][out] */ 
             __out  void **ppParent)
 {
-	LogInfo("IDXGIOutput::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGIOutput::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
 	
-	HRESULT hr = GetOutput()->GetParent(riid, ppParent);
-	if (hr == S_OK)
-	{
-		ReplaceInterface(ppParent);
-	}
+	HRESULT hr = mOrigOutput->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x, handle = %x\n", hr, *ppParent);
-	
 	return hr;
 }
 
-D3D11Wrapper::IDXGISwapChain::IDXGISwapChain(D3D11Base::IDXGISwapChain *pSwapChain)
-    : D3D11Wrapper::IDirect3DUnknown((IUnknown*) pSwapChain),
-	m_pSwapChain(pSwapChain), m_WrappedDevice(0), m_RealDevice(0)
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP_(ULONG) HackerDXGISwapChain::AddRef(THIS)
 {
+	return mOrigSwapChain->AddRef();
 }
 
-D3D11Wrapper::IDXGISwapChain* D3D11Wrapper::IDXGISwapChain::GetDirectSwapChain(D3D11Base::IDXGISwapChain *pOrig)
+STDMETHODIMP_(ULONG) HackerDXGISwapChain::Release(THIS)
 {
-    D3D11Wrapper::IDXGISwapChain* p = (D3D11Wrapper::IDXGISwapChain*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGISwapChain(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
+	ULONG ulRef = mOrigSwapChain->Release();
+	LogInfo("HackerDXGISwapChain::Release counter=%d, this=%p\n", ulRef, this);
 
-D3D11Wrapper::IDXGISwapChain1* D3D11Wrapper::IDXGISwapChain1::GetDirectSwapChain(D3D11Base::IDXGISwapChain1 *pOrig)
-{
-    D3D11Wrapper::IDXGISwapChain1* p = (D3D11Wrapper::IDXGISwapChain1*) m_List.GetDataPtr(pOrig);
-    if (!p)
-    {
-        p = new D3D11Wrapper::IDXGISwapChain1(pOrig);
-        if (pOrig) m_List.AddMember(pOrig,p);
-    }
-    return p;
-}
-
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGISwapChain::AddRef(THIS)
-{
-	++m_ulRef;
-	return m_pUnk->AddRef();
-}
-
-STDMETHODIMP_(ULONG) D3D11Wrapper::IDXGISwapChain::Release(THIS)
-{
-	LogInfo("IDXGISwapChain::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
-	
-    ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-	LogInfo("  internal counter = %d\n", ulRef);
-	
-	--m_ulRef;
-    if (ulRef == 0)
-    {
+	if (ulRef <= 0)
+	{
 		LogInfo("  deleting self\n");
-		
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); m_pUnk = 0;
-		if (m_WrappedDevice) m_WrappedDevice->Release(); m_WrappedDevice = 0;
-        delete this;
-        return 0L;
-    }
-    return ulRef;
+
+		delete this;
+		return 0L;
+	}
+	return ulRef;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetPrivateData(THIS_
+STDMETHODIMP HackerDXGISwapChain::SetPrivateData(THIS_
             /* [annotation][in] */ 
             _In_  REFGUID Name,
             /* [in] */ UINT DataSize,
             /* [annotation][in] */ 
             _In_reads_bytes_(DataSize)  const void *pData)
 {
-	LogInfo("IDXGISwapChain::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGISwapChain::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	LogInfo("  DataSize = %d\n", DataSize);
 	
-	HRESULT hr = GetSwapChain()->SetPrivateData(Name, DataSize, pData);
+	HRESULT hr = mOrigSwapChain->SetPrivateData(Name, DataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
 	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetPrivateDataInterface(THIS_
+STDMETHODIMP HackerDXGISwapChain::SetPrivateDataInterface(THIS_
             /* [annotation][in] */ 
             _In_  REFGUID Name,
             /* [annotation][in] */ 
             _In_  const IUnknown *pUnknown)
 {
-	LogInfo("IDXGISwapChain::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGISwapChain::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	
-	HRESULT hr = GetSwapChain()->SetPrivateDataInterface(Name, pUnknown);
+	HRESULT hr = mOrigSwapChain->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetPrivateData(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetPrivateData(THIS_
             /* [annotation][in] */ 
             _In_  REFGUID Name,
             /* [annotation][out][in] */ 
@@ -1113,152 +1013,119 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetPrivateData(THIS_
             /* [annotation][out] */ 
             _Out_writes_bytes_(*pDataSize)  void *pData)
 {
-	LogInfo("IDXGISwapChain::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGISwapChain::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
 		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
 	
-	HRESULT hr = GetSwapChain()->GetPrivateData(Name, pDataSize, pData);
+	HRESULT hr = mOrigSwapChain->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetParent(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetParent(THIS_
             /* [annotation][in] */ 
             _In_  REFIID riid,
             /* [annotation][retval][out] */ 
             _Out_  void **ppParent)
 {
-	LogInfo("IDXGISwapChain::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGISwapChain::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
 	
-	HRESULT hr = GetSwapChain()->GetParent(riid, ppParent);
-	if (hr == S_OK)
-	{
-		ReplaceInterface(ppParent);
-		// Check if parent is wrapped device.
-		if (m_RealDevice == *ppParent)
-		{
-			LogInfo("  real IDXGIDevice %x replaced with wrapper %x\n", m_RealDevice, m_WrappedDevice);
-			*ppParent = m_WrappedDevice;
-		}
-	}
+	HRESULT hr = mOrigSwapChain->GetParent(riid, ppParent);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDevice(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetDevice(THIS_
             /* [annotation][in] */ 
             _In_  REFIID riid,
             /* [annotation][retval][out] */ 
             _Out_  void **ppDevice)
 {
-	LogInfo("IDXGISwapChain::GetDevice called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
+	LogInfo("HackerDXGISwapChain::GetDevice called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
 		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
 
 	// Get old device pointer.
-	HRESULT hr = GetSwapChain()->GetDevice(riid, ppDevice);
-	if (hr == S_OK)
-	{
-		// Create device wrapper. We assume the wrapper has already been created.
-	}
+	HRESULT hr = mOrigSwapChain->GetDevice(riid, ppDevice);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::Present(THIS_
+STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags)
 {
-	/*
-	LogInfo("IDXGISwapChain::Present called with\n");
+	LogInfo("HackerDXGISwapChain::Present called with\n");
 	LogInfo("  SyncInterval = %d\n", SyncInterval);
 	LogInfo("  Flags = %d\n", Flags);
-	if (!m_WrappedDevice) LogInfo("  Warning: no parent wrapped device available!\n");
-	*/
-	HRESULT hr = GetSwapChain()->Present(SyncInterval, Flags);
 
-	if (m_WrappedDevice)
-	{
-		// Forward call to device.
-		//LogInfo("  forwarding Present call to device %x\n", m_WrappedDevice);
-		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
-		IUnknown *param = m_RealDevice;
-		//LogInfo("D3D11Wrapper::IDXGISwapChain::Present calling m_WrappedDevice->QueryInterface\n"
-		//								"   m_WrappedDevice: %s\n", typeid(*m_WrappedDevice).name());
+	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
-		if (deviceIU->QueryInterface(marker, (void **)&param) == 0x13bc7e31)
-		{
-			//LogInfo("    forward was successful.\n");
-			//
-		}
-	}
-
-	//LogInfo("  returns %x\n", hr);
-	//
+	LogInfo("  returns %x\n", hr);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetBuffer(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
             /* [in] */ UINT Buffer,
             /* [annotation][in] */ 
             _In_  REFIID riid,
             /* [annotation][out][in] */ 
             _Out_  void **ppSurface)
 {
-	HRESULT hr = GetSwapChain()->GetBuffer(Buffer, riid, ppSurface);
+	LogInfo("HackerDXGISwapChain::GetBuffer called \n");
+	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
+	LogInfo("  returns %x\n", hr);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::SetFullscreenState(THIS_
+STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
             /* [in] */ BOOL Fullscreen,
             /* [annotation][in] */ 
             _In_opt_  IDXGIOutput *pTarget)
 {
-	LogInfo("IDXGISwapChain::SetFullscreenState called with\n");
+	LogInfo("HackerDXGISwapChain::SetFullscreenState called with\n");
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %x\n", pTarget);
 
 	HRESULT hr;
-	if (pTarget)	
-		hr = GetSwapChain()->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
-	else
-		hr = GetSwapChain()->SetFullscreenState(Fullscreen, 0);
+	//if (pTarget)	
+	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
+	//else
+	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, 0);
 
+	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
 	LogInfo("  returns %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetFullscreenState(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetFullscreenState(THIS_
             /* [annotation][out] */ 
             _Out_opt_  BOOL *pFullscreen,
             /* [annotation][out] */ 
             _Out_opt_  IDXGIOutput **ppTarget)
 {
-	LogInfo("IDXGISwapChain::GetFullscreenState called\n");
+	LogInfo("HackerDXGISwapChain::GetFullscreenState called\n");
 	
-	D3D11Base::IDXGIOutput *origOutput;
-	HRESULT hr = GetSwapChain()->GetFullscreenState(pFullscreen, &origOutput);
-	if (hr == S_OK)
-	{
-		*ppTarget = IDXGIOutput::GetDirectOutput(origOutput);
-		if (pFullscreen) LogInfo("  returns Fullscreen = %d\n", *pFullscreen);
-		if (ppTarget) LogInfo("  returns target IDXGIOutput = %x, wrapper = %x\n", origOutput, *ppTarget);
-	}
+	//IDXGIOutput *origOutput;
+	//HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, &origOutput);
+	//if (hr == S_OK)
+	//{
+	//	*ppTarget = IDXGIOutput::GetDirectOutput(origOutput);
+	//	if (pFullscreen) LogInfo("  returns Fullscreen = %d\n", *pFullscreen);
+	//	if (ppTarget) LogInfo("  returns target IDXGIOutput = %x, wrapper = %x\n", origOutput, *ppTarget);
+	//}
+
+	HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, ppTarget);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDesc(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_SWAP_CHAIN_DESC *pDesc)
+            _Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
 {
-	LogInfo("IDXGISwapChain::GetDesc called\n");
+	LogInfo("HackerDXGISwapChain::GetDesc called\n");
 	
-	HRESULT hr = GetSwapChain()->GetDesc(pDesc);
+	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
 	if (hr == S_OK)
 	{
 		if (pDesc) LogInfo("  returns Windowed = %d\n", pDesc->Windowed);
@@ -1268,73 +1135,81 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetDesc(THIS_
 			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
 	}
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::ResizeBuffers(THIS_
+STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
             /* [in] */ UINT BufferCount,
             /* [in] */ UINT Width,
             /* [in] */ UINT Height,
-            /* [in] */ D3D11Base::DXGI_FORMAT NewFormat,
+            /* [in] */ DXGI_FORMAT NewFormat,
             /* [in] */ UINT SwapChainFlags)
 {
-	HRESULT hr = GetSwapChain()->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+	LogInfo("HackerDXGISwapChain::ResizeBuffers called\n");
+	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+	LogInfo("  returns result = %x\n", hr); 
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::ResizeTarget(THIS_
+STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
             /* [annotation][in] */ 
-            _In_  const D3D11Base::DXGI_MODE_DESC *pNewTargetParameters)
+            _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
-	HRESULT hr = GetSwapChain()->ResizeTarget(pNewTargetParameters);
+	LogInfo("HackerDXGISwapChain::ResizeTarget called\n");
+	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
+	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetContainingOutput(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppOutput)
 {
-	LogInfo("IDXGISwapChain::GetContainingOutput called\n");
+	LogInfo("HackerDXGISwapChain::GetContainingOutput called\n");
 	
-	D3D11Base::IDXGIOutput *origOutput;
-	HRESULT hr = GetSwapChain()->GetContainingOutput(&origOutput);
-	if (hr == S_OK)
-	{
-		*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
-	}
-	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppOutput);
-	
+	//IDXGIOutput *origOutput;
+	//HRESULT hr = mOrigSwapChain->GetContainingOutput(&origOutput);
+	//if (hr == S_OK)
+	//{
+	//	*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
+	//}
+
+	HRESULT hr = mOrigSwapChain->GetContainingOutput(ppOutput);
+	LogInfo("  returns result = %x, handle = %x \n", hr, *ppOutput);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetFrameStatistics(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetFrameStatistics(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_FRAME_STATISTICS *pStats)
+            _Out_  DXGI_FRAME_STATISTICS *pStats)
 {
-	LogInfo("IDXGISwapChain::GetFrameStatistics called\n");
-	
-	HRESULT hr = GetSwapChain()->GetFrameStatistics(pStats);
+	LogInfo("HackerDXGISwapChain::GetFrameStatistics called\n");
+	HRESULT hr = mOrigSwapChain->GetFrameStatistics(pStats);
+	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain::GetLastPresentCount(THIS_
+STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
             /* [annotation][out] */ 
             _Out_  UINT *pLastPresentCount)
 {
-	LogInfo("IDXGISwapChain::GetLastPresentCount called\n");
-	
-	HRESULT hr = GetSwapChain()->GetLastPresentCount(pLastPresentCount);
+	LogInfo("HackerDXGISwapChain::GetLastPresentCount called\n");
+	HRESULT hr = mOrigSwapChain->GetLastPresentCount(pLastPresentCount);
+	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
 
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetDesc1(THIS_
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGISwapChain1::GetDesc1(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_SWAP_CHAIN_DESC1 *pDesc)
+            _Out_  DXGI_SWAP_CHAIN_DESC1 *pDesc)
 {
-	LogInfo("IDXGISwapChain1::GetDesc1 called\n");
+	LogInfo("HackerDXGISwapChain1::GetDesc1 called\n");
 	
-	HRESULT hr = GetSwapChain1()->GetDesc1(pDesc);
+	HRESULT hr = mOrigSwapChain1->GetDesc1(pDesc);
 	if (hr == S_OK)
 	{
 		if (pDesc) LogInfo("  returns Stereo = %d\n", pDesc->Stereo);
@@ -1346,13 +1221,13 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetDesc1(THIS_
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetFullscreenDesc(THIS_
+STDMETHODIMP HackerDXGISwapChain1::GetFullscreenDesc(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc)
+            _Out_  DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc)
 {
-	LogInfo("IDXGISwapChain1::GetFullscreenDesc called\n");
+	LogInfo("HackerDXGISwapChain1::GetFullscreenDesc called\n");
 	
-	HRESULT hr = GetSwapChain1()->GetFullscreenDesc(pDesc);
+	HRESULT hr = mOrigSwapChain1->GetFullscreenDesc(pDesc);
 	if (hr == S_OK)
 	{
 		if (pDesc) LogInfo("  returns Windowed = %d\n", pDesc->Windowed);
@@ -1364,139 +1239,97 @@ STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetFullscreenDesc(THIS_
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetHwnd(THIS_
+STDMETHODIMP HackerDXGISwapChain1::GetHwnd(THIS_
             /* [annotation][out] */ 
             _Out_  HWND *pHwnd)
 {
-	LogInfo("IDXGISwapChain1::GetHwnd called\n");
-	
-	HRESULT hr = GetSwapChain1()->GetHwnd(pHwnd);
-	if (hr == S_OK && pHwnd) LogInfo("  returns Hwnd = %x\n", *pHwnd);
+	LogInfo("HackerDXGISwapChain1::GetHwnd called\n");
+	HRESULT hr = mOrigSwapChain1->GetHwnd(pHwnd);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetCoreWindow(THIS_
+STDMETHODIMP HackerDXGISwapChain1::GetCoreWindow(THIS_
             /* [annotation][in] */ 
             _In_  REFIID refiid,
             /* [annotation][out] */ 
             _Out_  void **ppUnk)
 {
-	LogInfo("IDXGISwapChain1::GetCoreWindow called\n");
-	
-	HRESULT hr = GetSwapChain1()->GetCoreWindow(refiid, ppUnk);
-	if (hr == S_OK && ppUnk) LogInfo("  returns IUnknown = %x\n", *ppUnk);
+	LogInfo("HackerDXGISwapChain1::GetCoreWindow called\n");
+	HRESULT hr = mOrigSwapChain1->GetCoreWindow(refiid, ppUnk);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::Present1(THIS_
+STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT PresentFlags,
             /* [annotation][in] */ 
-            _In_  const D3D11Base::DXGI_PRESENT_PARAMETERS *pPresentParameters)
+            _In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
 {
-	LogInfo("IDXGISwapChain1::Present1 called\n");
+	LogInfo("HackerDXGISwapChain1::Present1 called\n");
 	LogInfo("  SyncInterval = %d\n", SyncInterval);
 	LogInfo("  PresentFlags = %d\n", PresentFlags);
 	
-	HRESULT hr = GetSwapChain1()->Present1(SyncInterval, PresentFlags, pPresentParameters);
-
-	if (m_WrappedDevice)
-	{
-		// Forward call to device.
-		LogInfo("  forwarding Present call to device %x\n", m_WrappedDevice);
-
-		const static IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
-		IUnknown *deviceIU = (IUnknown *)m_WrappedDevice;
-		int param = 0;
-		//LogInfo("D3D11Wrapper::IDXGISwapChain::Present1 calling m_WrappedDevice->QueryInterface\n"
-		//								"   m_WrappedDevice: %s\n", typeid(*m_WrappedDevice).name());
-
-		if (deviceIU->QueryInterface(marker, (void **)&param) == 0x13bc7e31)
-		{
-			LogInfo("    forward was successful.\n");
-		}
-	}
-
+	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP_(BOOL) D3D11Wrapper::IDXGISwapChain1::IsTemporaryMonoSupported(THIS)
+STDMETHODIMP_(BOOL) HackerDXGISwapChain1::IsTemporaryMonoSupported(THIS)
 {
-	LogInfo("IDXGISwapChain1::IsTemporaryMonoSupported called\n");
-	
-	BOOL ret = GetSwapChain1()->IsTemporaryMonoSupported();
+	LogInfo("HackerDXGISwapChain1::IsTemporaryMonoSupported called\n");
+	BOOL ret = mOrigSwapChain1->IsTemporaryMonoSupported();
 	LogInfo("  returns %d\n", ret);
-	
 	return ret;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetRestrictToOutput(THIS_
+STDMETHODIMP HackerDXGISwapChain1::GetRestrictToOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppRestrictToOutput)
 {
-	LogInfo("IDXGISwapChain1::GetRestrictToOutput called\n");
-	
-	D3D11Base::IDXGIOutput *origOutput;
-	HRESULT hr = GetSwapChain1()->GetRestrictToOutput(&origOutput);
-	if (hr == S_OK)
-	{
-		*ppRestrictToOutput = IDXGIOutput::GetDirectOutput(origOutput);
-	}
-	LogInfo("  returns result = %x, handle = %x, wrapper = %x\n", hr, origOutput, *ppRestrictToOutput);
-	
+	LogInfo("HackerDXGISwapChain1::GetRestrictToOutput called\n");
+	HRESULT hr = mOrigSwapChain1->GetRestrictToOutput(ppRestrictToOutput);
+	LogInfo("  returns result = %x, handle = %x \n", hr, *ppRestrictToOutput);
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::SetBackgroundColor(THIS_
+STDMETHODIMP HackerDXGISwapChain1::SetBackgroundColor(THIS_
             /* [annotation][in] */ 
-            _In_  const D3D11Base::DXGI_RGBA *pColor)
+            _In_  const DXGI_RGBA *pColor)
 {
-	LogInfo("IDXGISwapChain1::SetBackgroundColor called\n");
-	
-	HRESULT hr = GetSwapChain1()->SetBackgroundColor(pColor);
+	LogInfo("HackerDXGISwapChain1::SetBackgroundColor called\n");
+	HRESULT hr = mOrigSwapChain1->SetBackgroundColor(pColor);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetBackgroundColor(THIS_
+STDMETHODIMP HackerDXGISwapChain1::GetBackgroundColor(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_RGBA *pColor)
+            _Out_  DXGI_RGBA *pColor)
 {
-	LogInfo("IDXGISwapChain1::GetBackgroundColor called\n");
-	
-	HRESULT hr = GetSwapChain1()->GetBackgroundColor(pColor);
+	LogInfo("HackerDXGISwapChain1::GetBackgroundColor called\n");
+	HRESULT hr = mOrigSwapChain1->GetBackgroundColor(pColor);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::SetRotation(THIS_
+STDMETHODIMP HackerDXGISwapChain1::SetRotation(THIS_
             /* [annotation][in] */ 
-            _In_  D3D11Base::DXGI_MODE_ROTATION Rotation)
+            _In_  DXGI_MODE_ROTATION Rotation)
 {
-	LogInfo("IDXGISwapChain1::SetRotation called\n");
-	
-	HRESULT hr = GetSwapChain1()->SetRotation(Rotation);
+	LogInfo("HackerDXGISwapChain1::SetRotation called\n");
+	HRESULT hr = mOrigSwapChain1->SetRotation(Rotation);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
         
-STDMETHODIMP D3D11Wrapper::IDXGISwapChain1::GetRotation(THIS_
+STDMETHODIMP HackerDXGISwapChain1::GetRotation(THIS_
             /* [annotation][out] */ 
-            _Out_  D3D11Base::DXGI_MODE_ROTATION *pRotation)
+            _Out_  DXGI_MODE_ROTATION *pRotation)
 {
-	LogInfo("IDXGISwapChain1::GetRotation called\n");
-	
-	HRESULT hr = GetSwapChain1()->GetRotation(pRotation);
+	LogInfo("HackerDXGISwapChain1::GetRotation called\n");
+	HRESULT hr = mOrigSwapChain1->GetRotation(pRotation);
 	LogInfo("  returns result = %x\n", hr);
-	
 	return hr;
 }
