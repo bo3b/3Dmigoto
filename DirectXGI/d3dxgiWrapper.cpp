@@ -62,7 +62,7 @@ void InitializeDLL()
 		if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
 		{
 			LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
-			LogInfo("\n *** DXGI DLL starting init  -  %s\n\n", LogTime());
+			LogInfo("\n *** DXGI DLL starting init  -  %s\n\n", LogTime().c_str());
 		}
 
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
@@ -98,7 +98,7 @@ void InitializeDLL()
 			FILTER_REFRESH+5, FILTER_REFRESH+6, FILTER_REFRESH+7, FILTER_REFRESH+8, &FILTER_REFRESH+9);
 	}
 
-	LogInfo(" *** DXGI DLL successfully initialized. *** \n");
+	LogInfo(" *** DXGI DLL successfully initialized. *** \n\n");
 }
 
 void DestroyDLL()
@@ -225,7 +225,7 @@ static void InitD311()
 	hD3D11 = LoadLibrary(sysDir);	
     if (hD3D11 == NULL)
     {
-        LogInfo("LoadLibrary on dxgi.dll failed\n");
+        LogInfo("\n *** LoadLibrary on dxgi.dll failed *** \n\n");
         
         return;
     }
