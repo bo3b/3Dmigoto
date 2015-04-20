@@ -138,6 +138,8 @@ HRESULT WINAPI D3DKMTSetContextSchedulingPriority() { return 0; }
 HRESULT WINAPI D3DKMTSetDisplayMode() { return 0; }
 HRESULT WINAPI D3DKMTSetGammaRamp() { return 0; }
 HRESULT WINAPI D3DKMTSetVidPnSourceOwner() { return 0; }
+HRESULT WINAPI D3DKMTWaitForVerticalBlankEvent() { return 0; }
+
 
 typedef ULONG 	D3DKMT_HANDLE;
 typedef int		KMTQUERYADAPTERINFOTYPE;
