@@ -56,17 +56,19 @@ HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
 
 STDMETHODIMP_(ULONG) HackerDXGIFactory::AddRef(THIS)
 {
-	return mOrigFactory->AddRef();
+	ULONG ulRef = mOrigFactory->AddRef();
+	LogInfo("HackerDXGIFactory::AddRef counter=%d, this=%p \n", ulRef, this);
+	return ulRef;
 }
 
 STDMETHODIMP_(ULONG) HackerDXGIFactory::Release(THIS)
 {
 	ULONG ulRef = mOrigFactory->Release();
-	LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
+	LogInfo("HackerDXGIFactory::Release counter=%d, this=%p \n", ulRef, this);
 
 	if (ulRef <= 0)
 	{
-		LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
+		LogInfo("HackerDXGIFactory::Release counter=%d, this=%p \n", ulRef, this);
 		LogInfo("  deleting self\n");
 
 		delete this;
@@ -79,7 +81,11 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	return mOrigFactory->QueryInterface(riid, ppvObject);
+	LogInfo("HackerDXGIFactory::QueryInterface called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
+	HRESULT hr = mOrigFactory->QueryInterface(riid, ppvObject);
+	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
+	return hr;
 }
 
 
@@ -257,6 +263,160 @@ STDMETHODIMP HackerDXGIFactory::GetParent(THIS_
 
 
 // -----------------------------------------------------------------------------
+
+// ToDo: In between state here, where we duplicate the calls to the Factory1
+// objects.  It's not clear at runtime whether they use a vtable that has any
+// correlation to c++ objects, so even though Factory1 subclasses Factory,
+// the calls may not be dispatched to Factory.
+// This was an experiment to see if further wrapping would trigger them to
+// be called, and hence logged, but this did change the runtime at all, as the
+// the games don't use these APIs it appears.
+
+STDMETHODIMP_(ULONG) HackerDXGIFactory1::AddRef(THIS)
+{
+	ULONG ulRef = mOrigFactory1->AddRef();
+	LogInfo("HackerDXGIFactory1::AddRef counter=%d, this=%p \n", ulRef, this);
+	return ulRef;
+}
+
+STDMETHODIMP_(ULONG) HackerDXGIFactory1::Release(THIS)
+{
+	ULONG ulRef = mOrigFactory1->Release();
+	LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
+
+	if (ulRef <= 0)
+	{
+		LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
+		LogInfo("  deleting self\n");
+
+		delete this;
+		return 0L;
+	}
+	return ulRef;
+}
+
+STDMETHODIMP HackerDXGIFactory1::QueryInterface(THIS_
+	/* [in] */ REFIID riid,
+	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
+{
+	LogInfo("HackerDXGIFactory1::QueryInterface called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
+		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
+	HRESULT hr = mOrigFactory1->QueryInterface(riid, ppvObject);
+	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
+	return hr;
+}
+
+
+STDMETHODIMP HackerDXGIFactory1::EnumAdapters(THIS_
+	/* [in] */ UINT Adapter,
+	/* [annotation][out] */
+	__out IDXGIAdapter **ppAdapter)
+{
+	LogInfo("HackerDXGIFactory1::EnumAdapters adapter %d requested\n", Adapter);
+	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, ppAdapter);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory1::MakeWindowAssociation(THIS_
+	HWND WindowHandle,
+	UINT Flags)
+{
+	if (LogFile)
+	{
+		LogInfo("HackerDXGIFactory1::MakeWindowAssociation called with WindowHandle = %p, Flags = %x\n", WindowHandle, Flags);
+		if (Flags) LogInfo("  Flags =");
+		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfo(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
+		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfo(" DXGI_MWA_NO_ALT_ENTER");
+		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfo(" DXGI_MWA_NO_PRINT_SCREEN");
+		if (Flags) LogInfo("\n");
+	}
+
+	//if (gAllowWindowCommands && Flags)
+	//{
+	//	LogInfo("  overriding Flags to allow all window commands\n");
+	//	
+	//	Flags = 0;
+	//}
+	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
+	LogInfo("  returns result = %x\n", hr);
+
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory1::GetWindowAssociation(THIS_
+	/* [annotation][out] */
+	__out  HWND *pWindowHandle)
+{
+	LogInfo("HackerDXGIFactory1::GetWindowAssociation called\n");
+	HRESULT hr = mOrigFactory->GetWindowAssociation(pWindowHandle);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory1::CreateSwapChain(THIS_
+	/* [annotation][in] */
+	__in  IUnknown *pDevice,
+	/* [annotation][in] */
+	__in  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	__out  IDXGISwapChain **ppSwapChain)
+{
+	LogInfo("HackerDXGIFactory1::CreateSwapChain called with parameters\n");
+	LogInfo("  Device = %p\n", pDevice);
+	if (pDesc)
+	{
+		LogInfo("  Windowed = %d\n", pDesc->Windowed);
+		LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
+		LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
+		LogInfo("  Refresh rate = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+
+		// Force screen resolution or refresh if specified by d3dx.ini
+		if (SCREEN_REFRESH >= 0)
+		{
+			pDesc->BufferDesc.RefreshRate.Numerator = SCREEN_REFRESH;
+			pDesc->BufferDesc.RefreshRate.Denominator = 1;
+		}
+		if (SCREEN_WIDTH >= 0) pDesc->BufferDesc.Width = SCREEN_WIDTH;
+		if (SCREEN_HEIGHT >= 0) pDesc->BufferDesc.Height = SCREEN_HEIGHT;
+		if (SCREEN_FULLSCREEN >= 0) pDesc->Windowed = !SCREEN_FULLSCREEN;
+	}
+
+	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, ppSwapChain);
+	LogInfo("  return value = %x\n", hr);
+
+	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
+	// can be occluded when we return from creating the real swap chain.  
+	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
+	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
+	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
+	// Same bug fix is applied for the other CreateSwapChain* variants.
+
+	//if (SUCCEEDED(hr))
+	//{
+	//	*ppSwapChain = HackerDXGISwapChain::GetDirectSwapChain(origSwapChain);
+	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
+	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
+	//	(*ppSwapChain)->m_RealDevice = realDevice;
+	//	if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
+	//}
+
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIFactory1::CreateSoftwareAdapter(THIS_
+	/* [in] */ HMODULE Module,
+	/* [annotation][out] */
+	__out  IDXGIAdapter **ppAdapter)
+{
+	LogInfo("HackerDXGIFactory1::CreateSoftwareAdapter called\n");
+	HRESULT hr = mOrigFactory->CreateSoftwareAdapter(Module, ppAdapter);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+
 
 STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 	/* [in] */ UINT Adapter,

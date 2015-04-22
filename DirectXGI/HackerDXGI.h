@@ -346,7 +346,7 @@ public:
 
 class HackerDXGIFactory : public IDXGIFactory
 {
-private:
+protected:
 	IDXGIFactory *mOrigFactory;
 
 public:
@@ -428,6 +428,42 @@ private:
 
 public:
 	HackerDXGIFactory1(IDXGIFactory1 *pFactory);
+
+	STDMETHOD_(ULONG, AddRef)(THIS);
+	STDMETHOD_(ULONG, Release)(THIS);
+	STDMETHOD(QueryInterface(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject));
+
+	// ******************* IDXGIFactory methods 
+
+	STDMETHOD(EnumAdapters)(THIS_
+		/* [in] */ UINT Adapter,
+		/* [annotation][out] */
+		__out IDXGIAdapter **ppAdapter);
+
+	STDMETHOD(MakeWindowAssociation)(THIS_
+		HWND WindowHandle,
+		UINT Flags);
+
+	STDMETHOD(GetWindowAssociation)(THIS_
+		/* [annotation][out] */
+		__out  HWND *pWindowHandle);
+
+	STDMETHOD(CreateSwapChain)(THIS_
+		/* [annotation][in] */
+		__in  IUnknown *pDevice,
+		/* [annotation][in] */
+		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
+		/* [annotation][out] */
+		__out  IDXGISwapChain **ppSwapChain);
+
+	STDMETHOD(CreateSoftwareAdapter)(THIS_
+		/* [in] */ HMODULE Module,
+		/* [annotation][out] */
+		__out  IDXGIAdapter **ppAdapter);
+
+	// ******************* IDXGIFactory1 methods 
 
 	STDMETHOD(EnumAdapters1)(THIS_
 		/* [in] */ UINT Adapter,
