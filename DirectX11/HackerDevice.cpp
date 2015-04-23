@@ -249,7 +249,10 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	return mOrigDevice->QueryInterface(riid, ppvObject);
+	LogDebug("HackerDevice::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
+	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
+	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
+	return hr;
 }
 
 

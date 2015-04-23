@@ -31,6 +31,7 @@
     <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

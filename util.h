@@ -2,9 +2,10 @@
 
 #include <ctype.h>
 #include <wchar.h>
-#include <string.h>
+#include <string>
 
 #include <d3d11.h>
+#include <dxgi1_2.h>
 
 
 // -----------------------------------------------------------------------------------------------
@@ -307,4 +308,73 @@ static char *TexFormatStr(unsigned int format)
 	if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
 		return DXGIFormats[format];
 	return "UNKNOWN";
-}
+};
+
+// When logging, it's not very helpful to have long sequences of hex instead of
+// the actual names of the objects in question.
+// e.g.
+// DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
+
+static std::string NameFromIID(IID id)
+{
+	if (__uuidof(IUnknown) == id)
+		return "IUnknown";
+
+	if (__uuidof(ID3D11Device) == id)
+		return "ID3D11Device";
+
+	if (__uuidof(ID3D10Device) == id)
+		return "ID3D10Device";
+
+	if (__uuidof(ID3D11InfoQueue) == id)
+		return "ID3D11InfoQueue ";
+
+	// All the DXGI interfaces
+
+	if (__uuidof(IDXGIFactory) == id)
+		return "IDXGIFactory";
+	if (__uuidof(IDXGIFactory1) == id)
+		return "IDXGIFactory1";
+	if (__uuidof(IDXGIFactory2) == id)
+		return "IDXGIFactory2";
+
+	if (__uuidof(IDXGIDevice) == id)
+		return "IDXGIDevice";
+	if (__uuidof(IDXGIDevice1) == id)
+		return "IDXGIDevice1";
+	if (__uuidof(IDXGIDevice2) == id)
+		return "IDXGIDevice2";
+
+	if (__uuidof(IDXGISwapChain) == id)
+		return "IDXGISwapChain";
+	if (__uuidof(IDXGISwapChain1) == id)
+		return "IDXGISwapChain1";
+
+	if (__uuidof(IDXGIAdapter) == id)
+		return "IDXGIAdapter";
+	if (__uuidof(IDXGIAdapter1) == id)
+		return "IDXGIAdapter1";
+	if (__uuidof(IDXGIAdapter2) == id)
+		return "IDXGIAdapter2";
+
+	if (__uuidof(IDXGIObject) == id)
+		return "IDXGIObject";
+
+	// For unknown IIDs lets return the hex string.
+	// Converting from wchar_t to string using stackoverflow suggestion.
+
+	std::string iidString;
+	wchar_t wiid[128];
+	if (SUCCEEDED(StringFromGUID2(id, wiid, sizeof(wiid))))
+	{
+		std::wstring convert = std::wstring(wiid);
+		iidString = std::string(convert.begin(), convert.end());
+	}
+	else
+	{
+		iidString = "unknown";
+	}
+
+	return iidString;
+};
+

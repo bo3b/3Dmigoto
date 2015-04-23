@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="Globals.h" />
