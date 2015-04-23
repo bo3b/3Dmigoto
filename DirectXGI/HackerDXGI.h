@@ -68,8 +68,6 @@ public:
 			  
 // -----------------------------------------------------------------------------
 
-// MIDL_INTERFACE("54ec77fa-1377-44e6-8c32-88fd5f44c84c")
-
 class HackerDXGIDevice : public HackerDXGIObject
 {
 private:
@@ -78,6 +76,13 @@ private:
 public:
 	HackerDXGIDevice(IDXGIDevice *pDXGIDevice);
 
+
+	// Override the GetParent so we can wrap objects returned.
+	STDMETHOD(GetParent)(
+		/* [annotation][in] */
+		_In_  REFIID riid,
+		/* [annotation][retval][out] */
+		_Out_  void **ppParent) override;
 
 	STDMETHOD(GetAdapter)(
 		/* [annotation][out] */
@@ -212,7 +217,7 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGIAdapter : public IDXGIAdapter
+class HackerDXGIAdapter : public HackerDXGIObject
 {
 private:
 	IDXGIAdapter *mOrigAdapter;
@@ -220,39 +225,14 @@ private:
 public:
 	HackerDXGIAdapter(IDXGIAdapter *pAdapter);
 
-    // ******************* IDirect3DUnknown methods 
-	STDMETHOD_(ULONG,AddRef)(THIS);
-    STDMETHOD_(ULONG,Release)(THIS);
 
-	// ******************* IDXGIObject methods
-    STDMETHOD(SetPrivateData)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            __in_bcount(DataSize)  const void *pData);
-        
-    STDMETHOD(SetPrivateDataInterface)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][in] */ 
-            __in  const IUnknown *pUnknown);
-        
-    STDMETHOD(GetPrivateData)(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][out][in] */ 
-            __inout  UINT *pDataSize,
-            /* [annotation][out] */ 
-            __out_bcount(*pDataSize)  void *pData);
-        
-    STDMETHOD(GetParent)(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFIID riid,
-            /* [annotation][retval][out] */ 
-            __out  void **ppParent);
+	// Override the GetParent so we can wrap objects returned.
+	STDMETHOD(GetParent)(
+		/* [annotation][in] */
+		_In_  REFIID riid,
+		/* [annotation][retval][out] */
+		_Out_  void **ppParent) override;
 
-    // ******************* IDXGIFactory methods 
 	STDMETHOD(EnumOutputs)(THIS_
             /* [in] */ UINT Output,
             /* [annotation][out][in] */ 
@@ -267,7 +247,6 @@ public:
             __in  REFGUID InterfaceName,
             /* [annotation][out] */ 
             __out  LARGE_INTEGER *pUMDVersion);
-
 };
 
 
@@ -451,21 +430,13 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGIFactory : public IDXGIFactory
+class HackerDXGIFactory : public HackerDXGIObject
 {
 protected:
 	IDXGIFactory *mOrigFactory;
 
 public:
 	HackerDXGIFactory(IDXGIFactory *pFactory);
-
-	// ******************* IDirect3DUnknown methods
-
-	STDMETHOD_(ULONG, AddRef)(THIS);
-	STDMETHOD_(ULONG, Release)(THIS);
-	STDMETHOD(QueryInterface(
-		/* [in] */ REFIID riid,
-		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject));
 
 	// ******************* IDXGIObject methods
 

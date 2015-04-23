@@ -33,29 +33,16 @@ HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice)
 	mOrigDXGIDevice = pDXGIDevice;
 }
 
-HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory)
-	: IDXGIFactory()
-{
-	mOrigFactory = pFactory;
-}
-
-
-HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory)
-	: HackerDXGIFactory(pFactory)
-{
-	mOrigFactory1 = pFactory;
-}
-
-HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory)
-	: HackerDXGIFactory1(pFactory)
-{
-	mOrigFactory2 = pFactory;
-}
-
 HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter)
-	: IDXGIAdapter()
+	: HackerDXGIObject(pAdapter)
 {
 	mOrigAdapter = pAdapter;
+}
+
+HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
+	: IDXGIOutput()
+{
+	mOrigOutput = pOutput;
 }
 
 HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain)
@@ -70,10 +57,23 @@ HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain)
 	mOrigSwapChain1 = pSwapChain;
 }
 
-HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
-	: IDXGIOutput()
+
+HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory)
+	: HackerDXGIObject(pFactory)
 {
-	mOrigOutput = pOutput;
+	mOrigFactory = pFactory;
+}
+
+HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory)
+	: HackerDXGIFactory(pFactory)
+{
+	mOrigFactory1 = pFactory;
+}
+
+HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory)
+	: HackerDXGIFactory1(pFactory)
+{
+	mOrigFactory2 = pFactory;
 }
 
 
@@ -164,9 +164,35 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	/* [annotation][retval][out] */
 	__out  void **ppParent)
 {
-	LogDebug("HackerDXGIObject::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+	HRESULT hr;
 
-	HRESULT hr = mOrigObject->GetParent(riid, ppParent);
+	LogInfo("HackerDXGIObject::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+
+	// If the parent request is for the IDXGIAdapter, that must mean we are taking the secret
+	// path for getting the swap chain.  Return a wrapped version whenever this happens, so
+	// we can get access later.
+
+	if (riid == __uuidof(IDXGIAdapter))
+	{
+		IDXGIAdapter *origAdapter;
+		hr = mOrigObject->GetParent(riid, (void**)(&origAdapter));
+
+		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter);
+		if (adapterWrap == NULL)
+		{
+			LogInfo("  error allocating dxgiAdapterWrap. \n");
+			return E_OUTOFMEMORY;
+		}
+		if (ppParent)
+			*ppParent = adapterWrap;
+
+		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
+	}
+	else
+	{
+		hr = mOrigObject->GetParent(riid, ppParent);
+	}
+
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -232,43 +258,50 @@ STDMETHODIMP HackerDXGIDevice::GetGPUThreadPriority(
 	return hr;
 }
 
+// Override of HackerDXGIObject::GetParent, as we are wrapping specific calls
+// expected to call the HackerDXGIDevice to find the DXGIFactory.
+//
+// If the parent request is for the IDXGIAdapter, that must mean we are taking the secret
+// path for getting the swap chain.  Return a wrapped version whenever this happens, so
+// we can get access later.
 
-// -----------------------------------------------------------------------------
-
-STDMETHODIMP_(ULONG) HackerDXGIFactory::AddRef(THIS)
+STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
+	/* [annotation][in] */
+	__in  REFIID riid,
+	/* [annotation][retval][out] */
+	__out  void **ppParent)
 {
-	ULONG ulRef = mOrigFactory->AddRef();
-	LogInfo("HackerDXGIFactory::AddRef counter=%d, this=%p \n", ulRef, this);
-	return ulRef;
-}
+	HRESULT hr;
 
-STDMETHODIMP_(ULONG) HackerDXGIFactory::Release(THIS)
-{
-	ULONG ulRef = mOrigFactory->Release();
-	LogInfo("HackerDXGIFactory::Release counter=%d, this=%p \n", ulRef, this);
+	LogInfo("HackerDXGIDevice::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
 
-	if (ulRef <= 0)
+	if (riid == __uuidof(IDXGIAdapter))
 	{
-		LogInfo("HackerDXGIFactory::Release counter=%d, this=%p \n", ulRef, this);
-		LogInfo("  deleting self\n");
+		IDXGIAdapter *origAdapter;
+		hr = mOrigDXGIDevice->GetParent(riid, (void**)(&origAdapter));
 
-		delete this;
-		return 0L;
+		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter);
+		if (adapterWrap == NULL)
+		{
+			LogInfo("  error allocating dxgiAdapterWrap. \n");
+			return E_OUTOFMEMORY;
+		}
+		if (ppParent)
+			*ppParent = adapterWrap;
+
+		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	}
-	return ulRef;
-}
+	else
+	{
+		hr = mOrigDXGIDevice->GetParent(riid, ppParent);
+	}
 
-STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
-	/* [in] */ REFIID riid,
-	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
-{
-	LogInfo("HackerDXGIFactory::QueryInterface called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	HRESULT hr = mOrigFactory->QueryInterface(riid, ppvObject);
-	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
+	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
 
+
+// -----------------------------------------------------------------------------
 
 STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
             /* [in] */ UINT Adapter,
@@ -892,26 +925,6 @@ STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterOcclusionStatus(THIS_
 
 // -----------------------------------------------------------------------------
 
-STDMETHODIMP_(ULONG) HackerDXGIAdapter::AddRef(THIS)
-{
-	return mOrigAdapter->AddRef();
-}
-
-STDMETHODIMP_(ULONG) HackerDXGIAdapter::Release(THIS)
-{
-	ULONG ulRef = mOrigAdapter->Release();
-	LogInfo("HackerDXGIAdapter::Release counter=%d, this=%p\n", ulRef, this);
-
-	if (ulRef <= 0)
-	{
-		LogInfo("  deleting self\n");
-
-		delete this;
-		return 0L;
-	}
-	return ulRef;
-}
-
 STDMETHODIMP HackerDXGIAdapter::EnumOutputs(THIS_
             /* [in] */ UINT Output,
             /* [annotation][out][in] */ 
@@ -938,65 +951,6 @@ STDMETHODIMP HackerDXGIAdapter::GetDesc(THIS_
 	}
 	return hr;
 }
-       
-STDMETHODIMP HackerDXGIAdapter::SetPrivateData(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            __in_bcount(DataSize)  const void *pData)
-{
-	LogInfo("HackerDXGIAdapter::SetPrivateData called with Name=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx, DataSize = %d\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7], DataSize);
-	
-	HRESULT hr = mOrigAdapter->SetPrivateData(Name, DataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGIAdapter::SetPrivateDataInterface(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][in] */ 
-            __in  const IUnknown *pUnknown)
-{
-	LogInfo("HackerDXGIAdapter::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	
-	HRESULT hr = mOrigAdapter->SetPrivateDataInterface(Name, pUnknown);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGIAdapter::GetPrivateData(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][out][in] */ 
-            __inout  UINT *pDataSize,
-            /* [annotation][out] */ 
-            __out_bcount(*pDataSize)  void *pData)
-{
-	LogInfo("HackerDXGIAdapter::GetPrivateData called\n");
-	HRESULT hr = mOrigAdapter->GetPrivateData(Name, pDataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFIID riid,
-            /* [annotation][retval][out] */ 
-            __out  void **ppParent)
-{
-	LogInfo("HackerDXGIAdapter::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	
-	HRESULT hr = mOrigAdapter->GetParent(riid, ppParent);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
 
 STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
             /* [annotation][in] */ 
@@ -1015,6 +969,47 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
 	HRESULT hr = mOrigAdapter->CheckInterfaceSupport(InterfaceName, pUMDVersion);
 	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
 	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+// expected to call the HackerDXGIAdapter to find the DXGIFactory.
+//
+// If the parent request is for the IDXGIFactory, that must mean we are taking the secret
+// path for getting the swap chain.  Return a wrapped version whenever this happens, so
+// we can get access later.
+
+STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_
+	/* [annotation][in] */
+	__in  REFIID riid,
+	/* [annotation][retval][out] */
+	__out  void **ppParent)
+{
+	HRESULT hr;
+
+	LogInfo("HackerDXGIAdapter::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+
+	if (riid == __uuidof(IDXGIFactory))
+	{
+		IDXGIFactory *origFactory;
+		hr = mOrigAdapter->GetParent(riid, (void**)(&origFactory));
+
+		HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory);
+		if (factoryWrap == NULL)
+		{
+			LogInfo("  error allocating dxgiFactoryWrap. \n");
+			return E_OUTOFMEMORY;
+		}
+		if (ppParent)
+			*ppParent = factoryWrap;
+
+		LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, origFactory);
+	}
+	else
+	{
+		hr = mOrigAdapter->GetParent(riid, ppParent);
+	}
+
+	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
 
