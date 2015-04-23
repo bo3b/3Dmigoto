@@ -2,6 +2,7 @@
 // This gives us access to every D3D11 call for a device, and override the pieces needed.
 
 #include "HackerDevice.h"
+#include "HackerDXGI.h"
 
 #include <D3Dcompiler.h>
 
@@ -249,8 +250,36 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
+	HRESULT hr;
+
 	LogDebug("HackerDevice::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
-	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
+
+
+	// If called with IDXGIDevice, that's the game trying to access the original DXGIFactory to 
+	// get access to the swap chain.  We need to return a HackerDXGIDevice so that we can get 
+	// access to that swap chain.
+
+	if (riid == __uuidof(IDXGIDevice))
+	{
+		IDXGIDevice *origDXGIDevice;
+		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDXGIDevice));
+
+		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice);
+		if (dxgiDeviceWrap == NULL)
+		{
+			LogInfo("  error allocating dxgiDeviceWrap. \n");
+			return E_OUTOFMEMORY;
+		}
+		if (ppvObject)
+			*ppvObject = dxgiDeviceWrap;
+
+		LogInfo("  created HackerDXGIDevice wrapper = %p of %p \n", ppvObject, origDXGIDevice);
+	}
+	else
+	{
+		hr = mOrigDevice->QueryInterface(riid, ppvObject);
+	}
+
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
 }
