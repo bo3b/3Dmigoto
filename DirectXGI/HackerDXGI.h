@@ -2,12 +2,119 @@
 
 #include <dxgi1_2.h>
 
+
+// -----------------------------------------------------------------------------
+
+// MIDL_INTERFACE("00000000-0000-0000-C000-000000000046")
+
+class HackerUnknown : public IUnknown
+{
+private:
+	IUnknown *mOrigUnknown;
+
+public:
+	HackerUnknown(IUnknown *pUnknown);
+
+
+	STDMETHOD(QueryInterface)(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
+
+	STDMETHOD_(ULONG, AddRef)(THIS);
+
+	STDMETHOD_(ULONG, Release)(THIS);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIObject : public HackerUnknown
+{
+private:
+	IDXGIObject *mOrigObject;
+
+public:
+	HackerDXGIObject(IDXGIObject *pObject);
+
+
+	STDMETHOD(SetPrivateData)(
+		/* [annotation][in] */
+		_In_  REFGUID Name,
+		/* [in] */ UINT DataSize,
+		/* [annotation][in] */
+		_In_reads_bytes_(DataSize)  const void *pData);
+
+	STDMETHOD(SetPrivateDataInterface)(
+		/* [annotation][in] */
+		_In_  REFGUID Name,
+		/* [annotation][in] */
+		_In_  const IUnknown *pUnknown);
+
+	STDMETHOD(GetPrivateData)(
+		/* [annotation][in] */
+		_In_  REFGUID Name,
+		/* [annotation][out][in] */
+		_Inout_  UINT *pDataSize,
+		/* [annotation][out] */
+		_Out_writes_bytes_(*pDataSize)  void *pData);
+
+	STDMETHOD(GetParent)(
+		/* [annotation][in] */
+		_In_  REFIID riid,
+		/* [annotation][retval][out] */
+		_Out_  void **ppParent);
+};
+
+			  
+// -----------------------------------------------------------------------------
+
+// MIDL_INTERFACE("54ec77fa-1377-44e6-8c32-88fd5f44c84c")
+
+class HackerDXGIDevice : public HackerDXGIObject
+{
+private:
+	IDXGIDevice *mOrigDXGIDevice;
+
+public:
+	HackerDXGIDevice(IDXGIDevice *pDXGIDevice);
+
+
+	STDMETHOD(GetAdapter)(
+		/* [annotation][out] */
+		_Out_  IDXGIAdapter **pAdapter);
+
+	STDMETHOD(CreateSurface)(
+		/* [annotation][in] */
+		_In_  const DXGI_SURFACE_DESC *pDesc,
+		/* [in] */ UINT NumSurfaces,
+		/* [in] */ DXGI_USAGE Usage,
+		/* [annotation][in] */
+		_In_opt_  const DXGI_SHARED_RESOURCE *pSharedResource,
+		/* [annotation][out] */
+		_Out_  IDXGISurface **ppSurface);
+
+	STDMETHOD(QueryResourceResidency)(
+		/* [annotation][size_is][in] */
+		_In_reads_(NumResources)  IUnknown *const *ppResources,
+		/* [annotation][size_is][out] */
+		_Out_writes_(NumResources)  DXGI_RESIDENCY *pResidencyStatus,
+		/* [in] */ UINT NumResources);
+
+	STDMETHOD(SetGPUThreadPriority)(
+		/* [in] */ INT Priority);
+
+	STDMETHOD(GetGPUThreadPriority)(
+		/* [annotation][retval][out] */
+		_Out_  INT *pPriority);
+};
+
+
 // -----------------------------------------------------------------------------
 
 class HackerDXGIOutput : public IDXGIOutput
 {
 private:
-	IDXGIOutput		*mOrigOutput;
+	IDXGIOutput	*mOrigOutput;
 
 public:
 	HackerDXGIOutput(IDXGIOutput *pOutput);

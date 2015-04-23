@@ -22,13 +22,6 @@
 
 FILE *LogFile = 0;
 
-bool gAllowWindowCommands = false;
-int SCREEN_FULLSCREEN = -1;
-int SCREEN_WIDTH = -1;
-int SCREEN_HEIGHT = -1;
-int SCREEN_REFRESH = -1;
-int FILTER_REFRESH[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
-
 static bool gInitialized = false;
 static bool mBlockingMode = false;
 
