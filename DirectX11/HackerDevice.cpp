@@ -246,6 +246,16 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 	return ulRef;
 }
 
+// If called with IDXGIDevice, that's the game trying to access the original DXGIFactory to 
+// get access to the swap chain.  We need to return a HackerDXGIDevice so that we can get 
+// access to that swap chain.
+// 
+// This is the 'secret' path to getting the DXGIFactory and thus the swap chain, without
+// having to go direct to DXGI calls. As described:
+// https://msdn.microsoft.com/en-us/library/windows/desktop/bb174535(v=vs.85).aspx
+//
+// This technique is used in Mordor for sure, and very likely others.
+
 HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
@@ -253,11 +263,6 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	HRESULT hr;
 
 	LogDebug("HackerDevice::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
-
-
-	// If called with IDXGIDevice, that's the game trying to access the original DXGIFactory to 
-	// get access to the swap chain.  We need to return a HackerDXGIDevice so that we can get 
-	// access to that swap chain.
 
 	if (riid == __uuidof(IDXGIDevice))
 	{
