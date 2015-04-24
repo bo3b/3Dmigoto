@@ -12,7 +12,7 @@
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="HookedDXGI.cpp" />
-    <ClCompile Include="..\DirectXGI\HackerDXGI.cpp" />
+    <ClCompile Include="HackerDXGI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -33,7 +33,7 @@
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
-    <ClInclude Include="..\DirectXGI\HackerDXGI.h" />
+    <ClInclude Include="HackerDXGI.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
