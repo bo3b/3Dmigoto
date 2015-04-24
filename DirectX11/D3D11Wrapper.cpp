@@ -695,7 +695,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (ppImmediateContext)
 		*ppImmediateContext = contextWrap;
 
-	HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain);
+	HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, origDevice, origContext);
 	if (swapchainWrap == NULL)
 	{
 		LogInfo("  error allocating swapchainWrap. \n");

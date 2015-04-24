@@ -2,6 +2,7 @@
 
 #include <dxgi1_2.h>
 
+#include "Overlay.h"
 
 // -----------------------------------------------------------------------------
 
@@ -72,9 +73,11 @@ class HackerDXGIDevice : public HackerDXGIObject
 {
 private:
 	IDXGIDevice *mOrigDXGIDevice;
+	ID3D11Device *mOrigDevice;
+	ID3D11DeviceContext *mOrigContext;
 
 public:
-	HackerDXGIDevice(IDXGIDevice *pDXGIDevice);
+	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 
 	// Override the GetParent so we can wrap objects returned.
@@ -221,9 +224,11 @@ class HackerDXGIAdapter : public HackerDXGIObject
 {
 private:
 	IDXGIAdapter *mOrigAdapter;
+	ID3D11Device *mOrigDevice;
+	ID3D11DeviceContext *mOrigContext;
 
 public:
-	HackerDXGIAdapter(IDXGIAdapter *pAdapter);
+	HackerDXGIAdapter(IDXGIAdapter *pAdapter, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 
 	// Override the GetParent so we can wrap objects returned.
@@ -287,15 +292,15 @@ public:
 
 // -----------------------------------------------------------------------------
 
-// MIDL_INTERFACE("310d36a0-d2e7-4c0a-aa04-6a9d23b8886a")
 class HackerDXGISwapChain : public HackerDXGIDeviceSubObject
 {
 private:
 	IDXGISwapChain *mOrigSwapChain;
+	Overlay *mOverlay;
 
 public:
 
-	HackerDXGISwapChain(IDXGISwapChain *pOutput);
+	HackerDXGISwapChain(IDXGISwapChain *pOutput, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	//**** IDXGISwapChain implementation
     STDMETHOD(Present)(THIS_
@@ -358,7 +363,7 @@ private:
 	IDXGISwapChain1 *mOrigSwapChain1;
 
 public:
-	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain);
+	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	STDMETHOD(GetDesc1)(THIS_
             /* [annotation][out] */ 
@@ -413,9 +418,11 @@ class HackerDXGIFactory : public HackerDXGIObject
 {
 protected:
 	IDXGIFactory *mOrigFactory;
+	ID3D11Device *mOrigDevice;
+	ID3D11DeviceContext *mOrigContext;
 
 public:
-	HackerDXGIFactory(IDXGIFactory *pFactory);
+	HackerDXGIFactory(IDXGIFactory *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 
 	STDMETHOD(EnumAdapters)(THIS_
@@ -454,7 +461,7 @@ private:
 	IDXGIFactory1 *mOrigFactory1;
 
 public:
-	HackerDXGIFactory1(IDXGIFactory1 *pFactory);
+	HackerDXGIFactory1(IDXGIFactory1 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	STDMETHOD_(ULONG, AddRef)(THIS);
 	STDMETHOD_(ULONG, Release)(THIS);
@@ -509,7 +516,7 @@ private:
 	IDXGIFactory2 *mOrigFactory2;
 
 public:
-	HackerDXGIFactory2(IDXGIFactory2 *pFactory);
+	HackerDXGIFactory2(IDXGIFactory2 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
 

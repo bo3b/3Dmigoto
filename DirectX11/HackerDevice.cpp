@@ -269,7 +269,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		IDXGIDevice *origDXGIDevice;
 		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDXGIDevice));
 
-		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice);
+		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, mOrigDevice, mOrigContext);
 		if (dxgiDeviceWrap == NULL)
 		{
 			LogInfo("  error allocating dxgiDeviceWrap. \n");

@@ -27,16 +27,20 @@ HackerDXGIObject::HackerDXGIObject(IDXGIObject *pObject)
 	mOrigObject = pObject;
 }
 
-HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice)
+HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: HackerDXGIObject(pDXGIDevice)
 {
 	mOrigDXGIDevice = pDXGIDevice;
+	mOrigDevice = pDevice;
+	mOrigContext = pContext;
 }
 
-HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter)
+HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: HackerDXGIObject(pAdapter)
 {
 	mOrigAdapter = pAdapter;
+	mOrigDevice = pDevice;
+	mOrigContext = pContext;
 }
 
 HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
@@ -52,33 +56,39 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 	mOrigDeviceSubObject = pSubObject;
 }
 
-HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain)
+HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: HackerDXGIDeviceSubObject(pSwapChain)
 {
 	mOrigSwapChain = pSwapChain;
+
+	// Create Overlay class that will be responsible for drawing any text
+	// info over the game. Using the original Device and Context.
+	mOverlay = new Overlay(pDevice, pContext);
 }
 
-HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain)
-	: HackerDXGISwapChain(pSwapChain)
+HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+	: HackerDXGISwapChain(pSwapChain, pDevice, pContext)
 {
 	mOrigSwapChain1 = pSwapChain;
 }
 
 
-HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory)
+HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: HackerDXGIObject(pFactory)
 {
 	mOrigFactory = pFactory;
+	mOrigDevice = pDevice;
+	mOrigContext = pContext;
 }
 
-HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory)
-	: HackerDXGIFactory(pFactory)
+HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+	: HackerDXGIFactory(pFactory, pDevice, pContext)
 {
 	mOrigFactory1 = pFactory;
 }
 
-HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory)
-	: HackerDXGIFactory1(pFactory)
+HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+	: HackerDXGIFactory1(pFactory, pDevice, pContext)
 {
 	mOrigFactory2 = pFactory;
 }
@@ -115,7 +125,7 @@ STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 {
 	LogDebug("HackerUnknown::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
 	HRESULT hr = mOrigUnknown->QueryInterface(riid, ppvObject);
-	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
+	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
 }
 
@@ -129,7 +139,7 @@ STDMETHODIMP HackerDXGIObject::SetPrivateData(THIS_
 	/* [annotation][in] */
 	__in_bcount(DataSize)  const void *pData)
 {
-	LogDebug("HackerDXGIObject::SetPrivateData called with GUID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIObject::SetPrivateData called with GUID: %s \n", NameFromIID(Name).c_str());
 	LogInfo("  DataSize = %d\n", DataSize);
 
 	HRESULT hr = mOrigObject->SetPrivateData(Name, DataSize, pData);
@@ -143,7 +153,7 @@ STDMETHODIMP HackerDXGIObject::SetPrivateDataInterface(THIS_
 	/* [annotation][in] */
 	__in  const IUnknown *pUnknown)
 {
-	LogDebug("HackerDXGIObject::SetPrivateDataInterface called with GUID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIObject::SetPrivateDataInterface called with GUID: %s \n", NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigObject->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns result = %x\n", hr);
@@ -158,7 +168,7 @@ STDMETHODIMP HackerDXGIObject::GetPrivateData(THIS_
 	/* [annotation][out] */
 	__out_bcount(*pDataSize)  void *pData)
 {
-	LogDebug("HackerDXGIObject::GetPrivateData called with GUID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIObject::GetPrivateData called with GUID: %s \n", NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigObject->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
@@ -171,35 +181,9 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	/* [annotation][retval][out] */
 	__out  void **ppParent)
 {
-	HRESULT hr;
-
 	LogInfo("HackerDXGIObject::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
 
-	// If the parent request is for the IDXGIAdapter, that must mean we are taking the secret
-	// path for getting the swap chain.  Return a wrapped version whenever this happens, so
-	// we can get access later.
-
-	if (riid == __uuidof(IDXGIAdapter))
-	{
-		IDXGIAdapter *origAdapter;
-		hr = mOrigObject->GetParent(riid, (void**)(&origAdapter));
-
-		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter);
-		if (adapterWrap == NULL)
-		{
-			LogInfo("  error allocating dxgiAdapterWrap. \n");
-			return E_OUTOFMEMORY;
-		}
-		if (ppParent)
-			*ppParent = adapterWrap;
-
-		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
-	}
-	else
-	{
-		hr = mOrigObject->GetParent(riid, ppParent);
-	}
-
+	HRESULT hr = mOrigObject->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -271,6 +255,9 @@ STDMETHODIMP HackerDXGIDevice::GetGPUThreadPriority(
 // If the parent request is for the IDXGIAdapter, that must mean we are taking the secret
 // path for getting the swap chain.  Return a wrapped version whenever this happens, so
 // we can get access later.
+// 
+// It might make sense to drop these into the HackerDXGIObject::GetParent call, 
+// and not override these.
 
 STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 	/* [annotation][in] */
@@ -287,7 +274,7 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 		IDXGIAdapter *origAdapter;
 		hr = mOrigDXGIDevice->GetParent(riid, (void**)(&origAdapter));
 
-		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter);
+		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mOrigDevice, mOrigContext);
 		if (adapterWrap == NULL)
 		{
 			LogInfo("  error allocating dxgiAdapterWrap. \n");
@@ -401,7 +388,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (SUCCEEDED(hr))
 	{
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain);
+		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, mOrigDevice, mOrigContext);
 		if (swapchainWrap == NULL)
 		{
 			LogInfo("  error allocating swapchainWrap. \n");
@@ -946,7 +933,7 @@ STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_
 		IDXGIFactory *origFactory;
 		hr = mOrigAdapter->GetParent(riid, (void**)(&origFactory));
 
-		HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory);
+		HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory, mOrigDevice, mOrigContext);
 		if (factoryWrap == NULL)
 		{
 			LogInfo("  error allocating dxgiFactoryWrap. \n");
@@ -1246,7 +1233,7 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 	/* [annotation][retval][out] */
 	_Out_  void **ppDevice)
 {
-	LogDebug("HackerDXGIDeviceSubObject::GetDevice called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIDeviceSubObject::GetDevice called with IID: %s \n", NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDeviceSubObject->GetDevice(riid, ppDevice);
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppDevice);
@@ -1260,13 +1247,16 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags)
 {
-	LogInfo("HackerDXGISwapChain::Present called with\n");
-	LogInfo("  SyncInterval = %d\n", SyncInterval);
-	LogInfo("  Flags = %d\n", Flags);
+	LogDebug("HackerDXGISwapChain::Present called with\n");
+	LogDebug("  SyncInterval = %d\n", SyncInterval);
+	LogDebug("  Flags = %d\n", Flags);
+
+	// Draw the on-screen overlay text with hunting info, before final Present.
+	mOverlay->DrawOverlay();
 
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
-	LogInfo("  returns %x\n", hr);
+	LogDebug("  returns %x\n", hr);
 	return hr;
 }
         
