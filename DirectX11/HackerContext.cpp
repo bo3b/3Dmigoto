@@ -1880,7 +1880,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	LogDebug("mOrigContext->PSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
+	LogDebug("  mOrigContext->PSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
 	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
 	mOrigContext->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
@@ -1935,7 +1935,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("mOrigContext->PSSetShader called with pixelshader handle = %p\n", pPixelShader);
+	LogDebug("  mOrigContext->PSSetShader called with pixelshader handle = %p\n", pPixelShader);
 
 	bool patchedShader = false;
 	if (pPixelShader)
