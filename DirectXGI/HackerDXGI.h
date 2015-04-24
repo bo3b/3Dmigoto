@@ -268,8 +268,27 @@ public:
 
 // -----------------------------------------------------------------------------
 
+class HackerDXGIDeviceSubObject: public HackerDXGIObject
+{
+private:
+	IDXGIDeviceSubObject *mOrigDeviceSubObject;
+
+public:
+	HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubObject);
+
+
+	STDMETHOD(GetDevice)(
+		/* [annotation][in] */
+		_In_  REFIID riid,
+		/* [annotation][retval][out] */
+		_Out_  void **ppDevice);
+};
+
+
+// -----------------------------------------------------------------------------
+
 // MIDL_INTERFACE("310d36a0-d2e7-4c0a-aa04-6a9d23b8886a")
-class HackerDXGISwapChain : public IDXGISwapChain
+class HackerDXGISwapChain : public HackerDXGIDeviceSubObject
 {
 private:
 	IDXGISwapChain *mOrigSwapChain;
@@ -277,46 +296,6 @@ private:
 public:
 
 	HackerDXGISwapChain(IDXGISwapChain *pOutput);
-
-    // ******************* IDirect3DUnknown methods 
-	
-	STDMETHOD_(ULONG,AddRef)(THIS);
-    STDMETHOD_(ULONG,Release)(THIS);
-
-	// ******************* IDXGIDeviceSubObject methods
-
-	STDMETHOD(SetPrivateData)(THIS_
-            /* [annotation][in] */ 
-            _In_  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            _In_reads_bytes_(DataSize)  const void *pData);
-        
-	STDMETHOD(SetPrivateDataInterface)(THIS_
-            /* [annotation][in] */ 
-            _In_  REFGUID Name,
-            /* [annotation][in] */ 
-            _In_  const IUnknown *pUnknown);
-        
-	STDMETHOD(GetPrivateData)(THIS_
-            /* [annotation][in] */ 
-            _In_  REFGUID Name,
-            /* [annotation][out][in] */ 
-            _Inout_  UINT *pDataSize,
-            /* [annotation][out] */ 
-            _Out_writes_bytes_(*pDataSize)  void *pData);
-        
-	STDMETHOD(GetParent)(THIS_
-            /* [annotation][in] */ 
-            _In_  REFIID riid,
-            /* [annotation][retval][out] */ 
-            _Out_  void **ppParent);
-        
-	STDMETHOD(GetDevice)(THIS_
-            /* [annotation][in] */ 
-            _In_  REFIID riid,
-            /* [annotation][retval][out] */ 
-            _Out_  void **ppDevice);
 
 	//**** IDXGISwapChain implementation
     STDMETHOD(Present)(THIS_
@@ -438,36 +417,6 @@ protected:
 public:
 	HackerDXGIFactory(IDXGIFactory *pFactory);
 
-	// ******************* IDXGIObject methods
-
-	STDMETHOD(SetPrivateData)(THIS_
-		/* [annotation][in] */
-		__in  REFGUID Name,
-		/* [in] */ UINT DataSize,
-		/* [annotation][in] */
-		__in_bcount(DataSize)  const void *pData);
-
-	STDMETHOD(SetPrivateDataInterface)(THIS_
-		/* [annotation][in] */
-		__in  REFGUID Name,
-		/* [annotation][in] */
-		__in  const IUnknown *pUnknown);
-
-	STDMETHOD(GetPrivateData)(THIS_
-		/* [annotation][in] */
-		__in  REFGUID Name,
-		/* [annotation][out][in] */
-		__inout  UINT *pDataSize,
-		/* [annotation][out] */
-		__out_bcount(*pDataSize)  void *pData);
-
-	STDMETHOD(GetParent)(THIS_
-		/* [annotation][in] */
-		__in  REFIID riid,
-		/* [annotation][retval][out] */
-		__out  void **ppParent);
-
-	// ******************* IDXGIFactory methods 
 
 	STDMETHOD(EnumAdapters)(THIS_
 		/* [in] */ UINT Adapter,
@@ -488,7 +437,7 @@ public:
 		/* [annotation][in] */
 		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
 		/* [annotation][out] */
-		__out  IDXGISwapChain **ppSwapChain);
+		__out  HackerDXGISwapChain **ppSwapChain);
 
 	STDMETHOD(CreateSoftwareAdapter)(THIS_
 		/* [in] */ HMODULE Module,

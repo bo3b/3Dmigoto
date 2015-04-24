@@ -45,8 +45,15 @@ HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
 	mOrigOutput = pOutput;
 }
 
+
+HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubObject)
+	: HackerDXGIObject(pSubObject)
+{
+	mOrigDeviceSubObject = pSubObject;
+}
+
 HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain)
-	: IDXGISwapChain()
+	: HackerDXGIDeviceSubObject(pSwapChain)
 {
 	mOrigSwapChain = pSwapChain;
 }
@@ -328,12 +335,12 @@ STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
 		if (Flags) LogInfo("\n");
 	}
 
-	//if (gAllowWindowCommands && Flags)
-	//{
-	//	LogInfo("  overriding Flags to allow all window commands\n");
-	//	
-	//	Flags = 0;
-	//}
+	if (gAllowWindowCommands && Flags)
+	{
+		LogInfo("  overriding Flags to allow all window commands\n");
+		
+		Flags = 0;
+	}
 	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
 	LogInfo("  returns result = %x\n", hr);
 	
@@ -350,13 +357,16 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
 	return hr;
 }
         
+// For any given SwapChain created by the factory here, we want to wrap the SwapChain so that
+// we can get called when Present() is called.
+
 STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
             /* [annotation][in] */ 
             __in  IUnknown *pDevice,
             /* [annotation][in] */ 
             __in  DXGI_SWAP_CHAIN_DESC *pDesc,
             /* [annotation][out] */ 
-            __out  IDXGISwapChain **ppSwapChain)
+            __out  HackerDXGISwapChain **ppSwapChain)
 {
 	LogInfo("HackerDXGIFactory::CreateSwapChain called with parameters\n");
 	LogInfo("  Device = %p\n", pDevice);
@@ -379,8 +389,8 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		if (SCREEN_FULLSCREEN >= 0) pDesc->Windowed = !SCREEN_FULLSCREEN;
 	}
 
-	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, ppSwapChain);
-	LogInfo("  return value = %x\n", hr);
+	IDXGISwapChain *origSwapChain = 0;
+	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, &origSwapChain);
 
 	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
 	// can be occluded when we return from creating the real swap chain.  
@@ -389,15 +399,21 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
 	// Same bug fix is applied for the other CreateSwapChain* variants.
 
-	//if (SUCCEEDED(hr))
-	//{
-	//	*ppSwapChain = HackerDXGISwapChain::GetDirectSwapChain(origSwapChain);
-	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
-	//}
+	if (SUCCEEDED(hr))
+	{
+		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain);
+		if (swapchainWrap == NULL)
+		{
+			LogInfo("  error allocating swapchainWrap. \n");
+			origSwapChain->Release();
+			return E_OUTOFMEMORY;
+		}
+
+		if (ppSwapChain)
+			*ppSwapChain = swapchainWrap;
+	}
 	
+	LogInfo("  return value = %x, swapchain: %p, swapchain wrap: %p \n", hr, origSwapChain, ppSwapChain);
 	return hr;
 }
 
@@ -408,69 +424,6 @@ STDMETHODIMP HackerDXGIFactory::CreateSoftwareAdapter(THIS_
 {
 	LogInfo("HackerDXGIFactory::CreateSoftwareAdapter called\n");
 	HRESULT hr = mOrigFactory->CreateSoftwareAdapter(Module, ppAdapter);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory::SetPrivateData(THIS_
-	/* [annotation][in] */
-	__in  REFGUID Name,
-	/* [in] */ UINT DataSize,
-	/* [annotation][in] */
-	__in_bcount(DataSize)  const void *pData)
-{
-	LogInfo("HackerDXGIFactory::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3],
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	LogInfo("  DataSize = %d\n", DataSize);
-
-	HRESULT hr = mOrigFactory->SetPrivateData(Name, DataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory::SetPrivateDataInterface(THIS_
-	/* [annotation][in] */
-	__in  REFGUID Name,
-	/* [annotation][in] */
-	__in  const IUnknown *pUnknown)
-{
-	LogInfo("HackerDXGIFactory::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3],
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-
-	HRESULT hr = mOrigFactory->SetPrivateDataInterface(Name, pUnknown);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory::GetPrivateData(THIS_
-	/* [annotation][in] */
-	__in  REFGUID Name,
-	/* [annotation][out][in] */
-	__inout  UINT *pDataSize,
-	/* [annotation][out] */
-	__out_bcount(*pDataSize)  void *pData)
-{
-	LogInfo("HackerDXGIFactory::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3],
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-
-	HRESULT hr = mOrigFactory->GetPrivateData(Name, pDataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory::GetParent(THIS_
-	/* [annotation][in] */
-	__in  REFIID riid,
-	/* [annotation][retval][out] */
-	__out  void **ppParent)
-{
-	LogInfo("HackerDXGIFactory::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-
-	HRESULT hr = mOrigFactory->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -546,12 +499,12 @@ STDMETHODIMP HackerDXGIFactory1::MakeWindowAssociation(THIS_
 		if (Flags) LogInfo("\n");
 	}
 
-	//if (gAllowWindowCommands && Flags)
-	//{
-	//	LogInfo("  overriding Flags to allow all window commands\n");
-	//	
-	//	Flags = 0;
-	//}
+	if (gAllowWindowCommands && Flags)
+	{
+		LogInfo("  overriding Flags to allow all window commands\n");
+		
+		Flags = 0;
+	}
 	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
 	LogInfo("  returns result = %x\n", hr);
 
@@ -1285,106 +1238,23 @@ STDMETHODIMP HackerDXGIOutput::GetParent(THIS_
 }
 
 
-
 // -----------------------------------------------------------------------------
 
-STDMETHODIMP_(ULONG) HackerDXGISwapChain::AddRef(THIS)
+STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
+	/* [annotation][in] */
+	_In_  REFIID riid,
+	/* [annotation][retval][out] */
+	_Out_  void **ppDevice)
 {
-	return mOrigSwapChain->AddRef();
-}
+	LogDebug("HackerDXGIDeviceSubObject::GetDevice called with IID: %s \n", NameFromIID(riid).c_str());
 
-STDMETHODIMP_(ULONG) HackerDXGISwapChain::Release(THIS)
-{
-	ULONG ulRef = mOrigSwapChain->Release();
-	LogInfo("HackerDXGISwapChain::Release counter=%d, this=%p\n", ulRef, this);
-
-	if (ulRef <= 0)
-	{
-		LogInfo("  deleting self\n");
-
-		delete this;
-		return 0L;
-	}
-	return ulRef;
-}
-
-STDMETHODIMP HackerDXGISwapChain::SetPrivateData(THIS_
-            /* [annotation][in] */ 
-            _In_  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            _In_reads_bytes_(DataSize)  const void *pData)
-{
-	LogInfo("HackerDXGISwapChain::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	LogInfo("  DataSize = %d\n", DataSize);
-	
-	HRESULT hr = mOrigSwapChain->SetPrivateData(Name, DataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	
+	HRESULT hr = mOrigDeviceSubObject->GetDevice(riid, ppDevice);
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppDevice);
 	return hr;
 }
-        
-STDMETHODIMP HackerDXGISwapChain::SetPrivateDataInterface(THIS_
-            /* [annotation][in] */ 
-            _In_  REFGUID Name,
-            /* [annotation][in] */ 
-            _In_  const IUnknown *pUnknown)
-{
-	LogInfo("HackerDXGISwapChain::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	
-	HRESULT hr = mOrigSwapChain->SetPrivateDataInterface(Name, pUnknown);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGISwapChain::GetPrivateData(THIS_
-            /* [annotation][in] */ 
-            _In_  REFGUID Name,
-            /* [annotation][out][in] */ 
-            _Inout_  UINT *pDataSize,
-            /* [annotation][out] */ 
-            _Out_writes_bytes_(*pDataSize)  void *pData)
-{
-	LogInfo("HackerDXGISwapChain::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	
-	HRESULT hr = mOrigSwapChain->GetPrivateData(Name, pDataSize, pData);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGISwapChain::GetParent(THIS_
-            /* [annotation][in] */ 
-            _In_  REFIID riid,
-            /* [annotation][retval][out] */ 
-            _Out_  void **ppParent)
-{
-	LogInfo("HackerDXGISwapChain::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	
-	HRESULT hr = mOrigSwapChain->GetParent(riid, ppParent);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGISwapChain::GetDevice(THIS_
-            /* [annotation][in] */ 
-            _In_  REFIID riid,
-            /* [annotation][retval][out] */ 
-            _Out_  void **ppDevice)
-{
-	LogInfo("HackerDXGISwapChain::GetDevice called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
 
-	// Get old device pointer.
-	HRESULT hr = mOrigSwapChain->GetDevice(riid, ppDevice);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
+
+// -----------------------------------------------------------------------------
 
 STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,

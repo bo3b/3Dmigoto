@@ -16,7 +16,7 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 #include "IniHandler.h"
-#include "HookedDXGI.h"
+#include "HackerDXGI.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
@@ -621,7 +621,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	UINT FeatureLevels,
 	UINT SDKVersion,
 	DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	IDXGISwapChain **ppSwapChain,
+	HackerDXGISwapChain **ppSwapChain,
 	HackerDevice **ppDevice,
 	D3D_FEATURE_LEVEL *pFeatureLevel,
 	HackerContext **ppImmediateContext)
@@ -655,8 +655,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	ID3D11Device *origDevice = 0;
 	ID3D11DeviceContext *origContext = 0;
+	IDXGISwapChain *origSwapChain = 0;
 	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, &origDevice, pFeatureLevel, &origContext);
+		FeatureLevels, SDKVersion, pSwapChainDesc, &origSwapChain, &origDevice, pFeatureLevel, &origContext);
 
 	// Changed to recognize that >0 DXGISTATUS values are possible, not just S_OK.
 	if (FAILED(ret))
@@ -665,9 +666,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		return ret;
 	}
 
-	LogInfo("  CreateDeviceAndSwapChain returned device handle = %p, context handle = %p\n", origDevice, origContext);
+	LogInfo("  CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", origDevice, origContext, origSwapChain);
 
-	if (!origDevice || !origContext)
+	if (!origDevice || !origContext || !origSwapChain)
 		return ret;
 
 	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
@@ -676,6 +677,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		LogInfo("  error allocating deviceWrap.\n");
 		origDevice->Release();
 		origContext->Release();
+		origSwapChain->Release();
 		return E_OUTOFMEMORY;
 	}
 	if (ppDevice)
@@ -687,26 +689,31 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		LogInfo("  error allocating contextWrap.\n");
 		origDevice->Release();
 		origContext->Release();
+		origSwapChain->Release();
 		return E_OUTOFMEMORY;
 	}
 	if (ppImmediateContext)
 		*ppImmediateContext = contextWrap;
+
+	HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain);
+	if (swapchainWrap == NULL)
+	{
+		LogInfo("  error allocating swapchainWrap. \n");
+		origDevice->Release();
+		origContext->Release();
+		origSwapChain->Release();
+		return E_OUTOFMEMORY;
+	}
+	if (ppSwapChain)
+		*ppSwapChain = swapchainWrap;
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.
 	deviceWrap->SetHackerContext(contextWrap);
 	contextWrap->SetHackerDevice(deviceWrap);
 
-	// Since we are creating a SwapChain here as well, we need to make a Hooked
-	// version in order to get access to Present().  We don't return our version
-	// of the object here, because we are hooking this call, not wrapping.
-	if (ppSwapChain)
-	{
-		HookSwapChain(*ppSwapChain, origDevice, origContext);
-		// attach to device?
-	}
-
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
+	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n", 
+		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
 	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",
 	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
 	return ret;

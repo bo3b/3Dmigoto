@@ -1,3 +1,10 @@
+// 4-23-15 Update:
+//	This class is no longer used, after all that work to figure it out, sigh.
+//  The wrapper for DXGI is needed anyway, because of the secret path through
+//  the queryinterface, so since we have it wrapped for that, it makes sense
+//  to wrap for CreateDeviceAndSwapChain too, and not hook here.
+//  Leaving this here for reference for the time being.
+
 // This class is for a different approach than the wrapping of the system objects
 // like we do with ID3D11Device for example.  When we wrap a COM object like that,
 // it's not a real C++ object, and consequently cannot use the superclass normally,
