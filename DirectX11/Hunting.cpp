@@ -1161,6 +1161,12 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+static void ToggleHunting(HackerDevice *device, void *private_data)
+{
+	G->hunting = !G->hunting;
+	LogInfo("> Hunting toggled to %b \n", G->hunting);
+}
+
 void RegisterHuntingKeyBindings(wchar_t *iniFile)
 {
 	int i;
@@ -1174,6 +1180,9 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	// discovered while playing normally where it may not be easy/fast to
 	// find the effect again later.
 	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", iniFile, FlagConfigReload, NULL, noRepeat, NULL);
+
+	// Let's also allow an easy toggle of hunting itself, for speed and playability.
+	RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", iniFile, ToggleHunting, NULL, noRepeat, NULL);
 
 	if (!G->hunting)
 		return;

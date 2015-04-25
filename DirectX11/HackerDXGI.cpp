@@ -3,6 +3,7 @@
 
 #include "log.h"
 #include "util.h"
+#include "globals.h"
 
 
 bool gAllowWindowCommands = false;
@@ -1252,7 +1253,10 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  Flags = %d\n", Flags);
 
 	// Draw the on-screen overlay text with hunting info, before final Present.
-	mOverlay->DrawOverlay();
+	// But only when hunting is enabled, this will also make it obvious when
+	// hunting is on.
+	if (G->hunting)
+		mOverlay->DrawOverlay();
 
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
