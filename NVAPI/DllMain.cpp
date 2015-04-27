@@ -176,6 +176,13 @@ static void loadDll()
 	if (!nvDLL)
 	{
 		wchar_t sysDir[MAX_PATH];
+
+		// Make sure our d3d11.dll is loaded, so that we get the benefit of the DLLMainHook
+		// In general this is not necessary, but if a game calls nvapi before d3d11 loads
+		// we'll crash.  This makes sure that won't happen.  In the normal case, the 
+		// 3Dmigoto d3d11 is already loaded, and this does nothing.
+		LoadLibrary(L"d3d11.dll");
+
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 		wcscat(sysDir, REAL_NVAPI_DLL);
 		nvDLL = LoadLibrary(sysDir);
@@ -920,6 +927,7 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 			ptr = (NvAPI_Status *)NvAPI_D3D_GetCurrentSLIState;
 			break;
 	}
+	// If it's not on our list of calls to wrap, just pass through.
 	return ptr;
 }
 

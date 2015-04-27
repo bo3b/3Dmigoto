@@ -2309,9 +2309,6 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	LogDebug("HackerContext::ClearRenderTargetView called with RenderTargetView=%p, color=[%f,%f,%f,%f]\n", pRenderTargetView,
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
-	// Update stereo parameter texture.
-	LogDebug("  updating stereo parameter texture.\n");
-
 	if (G->ENABLE_TUNE)
 	{
 		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
@@ -2327,7 +2324,17 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 		}
 	}
 
-	mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, this, mHackerDevice->mStereoTexture, false);
+	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
+	// so we need to check first.
+	if (mHackerDevice->mStereoTexture)
+	{
+		LogDebug("  updating stereo parameter texture.\n");
+		mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, this, mHackerDevice->mStereoTexture, false);
+	}
+	else
+	{
+		LogDebug("  stereo parameter texture missing.\n");
+	}
 
 	mOrigContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
