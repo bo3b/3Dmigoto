@@ -32,6 +32,11 @@ void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 	mHackerDevice = pDevice;
 }
 
+ID3D11DeviceContext* HackerContext::GetOrigContext(void)
+{
+	return mOrigContext;
+}
+
 // -----------------------------------------------------------------------------
 
 UINT64 HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,

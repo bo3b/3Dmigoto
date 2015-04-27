@@ -28,20 +28,22 @@ HackerDXGIObject::HackerDXGIObject(IDXGIObject *pObject)
 	mOrigObject = pObject;
 }
 
-HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+// Worth noting- the device and context for the secrete path are the Hacker 
+// versions, because we need access to their fields later.
+HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIObject(pDXGIDevice)
 {
 	mOrigDXGIDevice = pDXGIDevice;
-	mOrigDevice = pDevice;
-	mOrigContext = pContext;
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
 }
 
-HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIObject(pAdapter)
 {
 	mOrigAdapter = pAdapter;
-	mOrigDevice = pDevice;
-	mOrigContext = pContext;
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
 }
 
 HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
@@ -57,38 +59,38 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 	mOrigDeviceSubObject = pSubObject;
 }
 
-HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIDeviceSubObject(pSwapChain)
 {
 	mOrigSwapChain = pSwapChain;
 
 	// Create Overlay class that will be responsible for drawing any text
 	// info over the game. Using the original Device and Context.
-	mOverlay = new Overlay(pDevice, pContext);
+	mOverlay = new Overlay(pDevice, pContext, this);
 }
 
-HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGISwapChain(pSwapChain, pDevice, pContext)
 {
 	mOrigSwapChain1 = pSwapChain;
 }
 
 
-HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIObject(pFactory)
 {
 	mOrigFactory = pFactory;
-	mOrigDevice = pDevice;
-	mOrigContext = pContext;
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
 }
 
-HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIFactory(pFactory, pDevice, pContext)
 {
 	mOrigFactory1 = pFactory;
 }
 
-HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
+HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIFactory1(pFactory, pDevice, pContext)
 {
 	mOrigFactory2 = pFactory;
@@ -275,7 +277,7 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 		IDXGIAdapter *origAdapter;
 		hr = mOrigDXGIDevice->GetParent(riid, (void**)(&origAdapter));
 
-		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mOrigDevice, mOrigContext);
+		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
 		if (adapterWrap == NULL)
 		{
 			LogInfo("  error allocating dxgiAdapterWrap. \n");
@@ -389,7 +391,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (SUCCEEDED(hr))
 	{
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, mOrigDevice, mOrigContext);
+		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, mHackerDevice, mHackerContext);
 		if (swapchainWrap == NULL)
 		{
 			LogInfo("  error allocating swapchainWrap. \n");
@@ -934,7 +936,7 @@ STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_
 		IDXGIFactory *origFactory;
 		hr = mOrigAdapter->GetParent(riid, (void**)(&origFactory));
 
-		HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory, mOrigDevice, mOrigContext);
+		HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory, mHackerDevice, mHackerContext);
 		if (factoryWrap == NULL)
 		{
 			LogInfo("  error allocating dxgiFactoryWrap. \n");

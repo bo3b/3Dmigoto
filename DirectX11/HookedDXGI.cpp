@@ -56,7 +56,7 @@
 
 #include "log.h"
 #include "DLLMainHook.h"
-#include "Overlay.h"
+//#include "Overlay.h"
 
 
 // -----------------------------------------------------------------------------
@@ -200,7 +200,7 @@ HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
 
 static SIZE_T nHookId = 0;
 
-Overlay *overlay;
+//Overlay *overlay;
 
 
 // -----------------------------------------------------------------------------
@@ -226,7 +226,7 @@ static HRESULT STDMETHODCALLTYPE HookedPresent(
 	HRESULT hr;
 
 	// Draw the on-screen overlay text with hunting info, before final Present.
-	overlay->DrawOverlay();
+	//overlay->DrawOverlay();
 
 	hr = pOrigPresent(This, SyncInterval, Flags);
 
@@ -274,7 +274,7 @@ void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11Devi
 
 	// Create Overlay class that will be responsible for drawing any text
 	// info over the game. Using the original Device and Context.
-	overlay = new Overlay(pDevice, pContext);
+//	overlay = new Overlay(pDevice, pContext);
 
 	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
 }

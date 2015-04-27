@@ -66,7 +66,7 @@ public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerDevice(HackerDevice *pDevice);
-	
+	ID3D11DeviceContext* GetOrigContext();
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
 	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }

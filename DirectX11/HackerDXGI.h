@@ -2,7 +2,17 @@
 
 #include <dxgi1_2.h>
 
+#include "HackerDevice.h"
+#include "HackerContext.h"
 #include "Overlay.h"
+
+
+// Forward references required because of circular references from the
+// other 'Hacker' objects.
+
+class HackerDevice;
+class HackerContext;
+class Overlay;
 
 // -----------------------------------------------------------------------------
 
@@ -73,11 +83,11 @@ class HackerDXGIDevice : public HackerDXGIObject
 {
 private:
 	IDXGIDevice *mOrigDXGIDevice;
-	ID3D11Device *mOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext);
 
 
 	// Override the GetParent so we can wrap objects returned.
@@ -224,11 +234,11 @@ class HackerDXGIAdapter : public HackerDXGIObject
 {
 private:
 	IDXGIAdapter *mOrigAdapter;
-	ID3D11Device *mOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIAdapter(IDXGIAdapter *pAdapter, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
 
 
 	// Override the GetParent so we can wrap objects returned.
@@ -263,7 +273,7 @@ private:
 	IDXGIAdapter1 *mOrigAdapter1;
 
 public:
-	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter);
+	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
 
     STDMETHOD(GetDesc1)(THIS_ 
 	        /* [annotation][out] */ 
@@ -300,7 +310,7 @@ private:
 
 public:
 
-	HackerDXGISwapChain(IDXGISwapChain *pOutput, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext);
 
 	//**** IDXGISwapChain implementation
     STDMETHOD(Present)(THIS_
@@ -363,7 +373,7 @@ private:
 	IDXGISwapChain1 *mOrigSwapChain1;
 
 public:
-	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext);
 
 	STDMETHOD(GetDesc1)(THIS_
             /* [annotation][out] */ 
@@ -418,11 +428,11 @@ class HackerDXGIFactory : public HackerDXGIObject
 {
 protected:
 	IDXGIFactory *mOrigFactory;
-	ID3D11Device *mOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIFactory(IDXGIFactory *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 
 
 	STDMETHOD(EnumAdapters)(THIS_
@@ -461,7 +471,7 @@ private:
 	IDXGIFactory1 *mOrigFactory1;
 
 public:
-	HackerDXGIFactory1(IDXGIFactory1 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGIFactory1(IDXGIFactory1 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 
 	STDMETHOD_(ULONG, AddRef)(THIS);
 	STDMETHOD_(ULONG, Release)(THIS);
@@ -516,7 +526,7 @@ private:
 	IDXGIFactory2 *mOrigFactory2;
 
 public:
-	HackerDXGIFactory2(IDXGIFactory2 *pFactory, ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDXGIFactory2(IDXGIFactory2 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 
 	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
 
