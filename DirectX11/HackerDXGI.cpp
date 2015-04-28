@@ -1305,7 +1305,7 @@ STDMETHODIMP HackerDXGISwapChain::GetFullscreenState(THIS_
             /* [annotation][out] */ 
             _Out_opt_  IDXGIOutput **ppTarget)
 {
-	LogInfo("HackerDXGISwapChain::GetFullscreenState called\n");
+	LogDebug("HackerDXGISwapChain::GetFullscreenState called\n");
 	
 	//IDXGIOutput *origOutput;
 	//HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, &origOutput);
@@ -1317,7 +1317,7 @@ STDMETHODIMP HackerDXGISwapChain::GetFullscreenState(THIS_
 	//}
 
 	HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, ppTarget);
-	LogInfo("  returns result = %x\n", hr);
+	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
         
