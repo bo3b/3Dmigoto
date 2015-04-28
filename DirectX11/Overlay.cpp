@@ -36,6 +36,17 @@ using namespace DirectX::SimpleMath;
 
 // Expected to be called at DXGI::Present() to be the last thing drawn.
 
+// Notes:
+	//1) Active PS location(probably x / N format)
+	//2) Active VS location(x / N format)
+	//3) Current convergence and separation. (convergence, a must)
+	//4) Error state of reload(syntax errors go red or something)
+	//5) Duplicate Mark(maybe yellow text for location, red if Decompile failed)
+
+	//Maybe:
+	//5) Other state, like show_original active.
+	//6) Active toggle override.
+
 void Overlay::DrawOverlay(void)
 {
 
@@ -46,8 +57,24 @@ void Overlay::DrawOverlay(void)
 	float separation, convergence;
 	NvAPI_Stereo_GetSeparation(mStereoHandle, &separation);
 	NvAPI_Stereo_GetConvergence(mStereoHandle, &convergence);
+	
+	// We also want to show the count of active vertex and pixel shaders, and
+	// where we are in the list.  These should all be active from the Globals.
+	// 0 / 0 will mean that we are not actively searching. The position is
+	// zero based, so we'll make it +1 for the humans.
+	size_t vsActive = 0, psActive = 0;
+	size_t vsPosition = 0, psPosition = 0;
 
-
+	if (G->mSelectedVertexShaderPos >= 0)
+	{
+		vsActive = G->mVisitedVertexShaders.size();
+		vsPosition = G->mSelectedVertexShaderPos + 1;
+	}
+	if (G->mSelectedPixelShaderPos >= 0)
+	{
+		psActive = G->mVisitedPixelShaders.size();
+		psPosition = G->mSelectedPixelShaderPos + 1;
+	}
 
 	mSpriteBatch->Begin();
 	{
@@ -59,11 +86,13 @@ void Overlay::DrawOverlay(void)
 
 		Vector2 textPosition(10, float(mResolution.y) / 2);
 
-		swprintf_s(line, maxstring, L" Sep:%5.1f", separation);
+		// Desired format "Sep:85" "Conv:4.5"
+		swprintf_s(line, maxstring, L"Sep:%.0f\nConv:%.1f", separation, convergence);
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
 
-		textPosition.y += mFont->GetLineSpacing();
-		swprintf_s(line, maxstring, L"Conv:%5.1f", convergence);
+		// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
+		textPosition.y += 2.5f * mFont->GetLineSpacing();
+		swprintf_s(line, maxstring, L"VS:%d/%d\nPS:%d/%d", vsPosition, vsActive, psPosition, psActive);
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
 	}
 	mSpriteBatch->End();
