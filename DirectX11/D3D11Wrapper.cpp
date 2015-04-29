@@ -48,13 +48,13 @@ bool InitializeDLL()
 		LogInfo("  NvAPI_Initialize failed: %s\n", errorMessage);
 		return false;
 	}
-	status = CheckStereo();
-	if (status != NVAPI_OK)
-	{
-		NvAPI_GetErrorMessage(status, errorMessage);
-		LogInfo("  *** stereo is disabled: %s  ***\n", errorMessage);
-		return false;
-	}
+	//status = CheckStereo();
+	//if (status != NVAPI_OK)
+	//{
+	//	NvAPI_GetErrorMessage(status, errorMessage);
+	//	LogInfo("  *** stereo is disabled: %s  ***\n", errorMessage);
+	//	return false;
+	//}
 		
 	LogInfo("\n***  D3D11 DLL successfully initialized.  ***\n\n");
 	return true;
