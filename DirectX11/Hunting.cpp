@@ -859,7 +859,7 @@ static void NextPixelShader(HackerDevice *device, void *private_data)
 		std::set<UINT64>::iterator loc = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
 		std::set<UINT64>::iterator end = G->mVisitedPixelShaders.end();
 		bool found = (loc != end);
-		size_t size = G->mVisitedPixelShaders.size();
+		int size = (int) G->mVisitedPixelShaders.size();
 
 		if (!found && size > 0)
 		{
@@ -892,7 +892,7 @@ static void PrevPixelShader(HackerDevice *device, void *private_data)
 		std::set<UINT64>::iterator end = G->mVisitedPixelShaders.end();
 		std::set<UINT64>::iterator front = G->mVisitedPixelShaders.begin();
 		bool found = (loc != end);
-		size_t size = G->mVisitedPixelShaders.size();
+		int size = (int) G->mVisitedPixelShaders.size();
 
 		if (!found && size > 0)
 		{
@@ -951,7 +951,7 @@ static void NextVertexShader(HackerDevice *device, void *private_data)
 		std::set<UINT64>::iterator loc = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
 		std::set<UINT64>::iterator end = G->mVisitedVertexShaders.end();
 		bool found = (loc != end);
-		size_t size = G->mVisitedVertexShaders.size();
+		int size = (int) G->mVisitedVertexShaders.size();
 
 		if (!found && size > 0)
 		{
@@ -982,7 +982,7 @@ static void PrevVertexShader(HackerDevice *device, void *private_data)
 		std::set<UINT64>::iterator end = G->mVisitedVertexShaders.end();
 		std::set<UINT64>::iterator front = G->mVisitedVertexShaders.begin();
 		bool found = (loc != end);
-		size_t size = G->mVisitedVertexShaders.size();
+		int size = (int) G->mVisitedVertexShaders.size();
 
 		if (!found && size > 0)
 		{
