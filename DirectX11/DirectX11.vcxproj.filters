@@ -34,6 +34,7 @@
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="HackerDXGI.h" />
+    <ClInclude Include="..\version.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
