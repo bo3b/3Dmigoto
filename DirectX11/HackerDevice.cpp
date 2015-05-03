@@ -150,6 +150,12 @@ void HackerDevice::SetHackerContext(HackerContext *pHackerContext)
 	mHackerContext = pHackerContext;
 }
 
+void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
+{
+	mHackerSwapChain = pHackerSwapChain;
+}
+
+
 ID3D11Device* HackerDevice::GetOrigDevice()
 {
 	return mOrigDevice;
@@ -158,6 +164,11 @@ ID3D11Device* HackerDevice::GetOrigDevice()
 ID3D11DeviceContext* HackerDevice::GetOrigContext()
 {
 	return mOrigContext;
+}
+
+IDXGISwapChain* HackerDevice::GetOrigSwapChain()
+{
+	return mHackerSwapChain->GetOrigSwapChain();
 }
 
 

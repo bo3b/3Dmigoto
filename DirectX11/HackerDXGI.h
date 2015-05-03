@@ -312,6 +312,8 @@ public:
 
 	HackerDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext);
 
+	IDXGISwapChain* GetOrigSwapChain();
+
 	//**** IDXGISwapChain implementation
     STDMETHOD(Present)(THIS_
             /* [in] */ UINT SyncInterval,

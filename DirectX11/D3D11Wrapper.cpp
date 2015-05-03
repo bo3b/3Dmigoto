@@ -711,6 +711,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	// calls that we want to return the Hacker versions.
 	deviceWrap->SetHackerContext(contextWrap);
 	contextWrap->SetHackerDevice(deviceWrap);
+	deviceWrap->SetHackerSwapChain(swapchainWrap);
 
 	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n", 
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);

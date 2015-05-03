@@ -63,6 +63,7 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 	: HackerDXGIDeviceSubObject(pSwapChain)
 {
 	mOrigSwapChain = pSwapChain;
+	pDevice->SetHackerSwapChain(this);
 
 	// Create Overlay class that will be responsible for drawing any text
 	// info over the game. Using the original Device and Context.
@@ -1245,6 +1246,11 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 
 
 // -----------------------------------------------------------------------------
+
+IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
+{
+	return mOrigSwapChain;
+}
 
 STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,

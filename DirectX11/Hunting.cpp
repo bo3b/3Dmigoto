@@ -3,6 +3,10 @@
 #include <string>
 #include <D3Dcompiler.h>
 
+#include "wrl\client.h"
+#include "ScreenGrab.h"
+#include "wincodec.h"
+
 #include "util.h"
 #include "DecompileHLSL.h"
 #include "Input.h"
@@ -161,6 +165,36 @@ static void DumpUsage()
 
 	}
 }
+
+
+// Make a snapshot of the backbuffer, with the current shader disabled, as a good piece
+// of documentation.  The name will include the hash code, making a direct shader reference.
+//
+// CoInitialize must be called for WIC to work.  We can call it multiple times, it will
+// return the S_FALSE if it's already inited.
+
+// Only makes a black screen dump in Mordor.  In Alien only does half screen.
+// Can't easily use the nvapi version, because it dumps to hardcoded path.
+
+static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
+{
+	wchar_t fullName[MAX_PATH];
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	if (FAILED(hr))
+		LogInfo("*** Overlay call CoInitializeEx failed: %d \n", hr);
+
+	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	if (SUCCEEDED(hr))
+	{
+		wsprintf(fullName, L"%ls\\%I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
+		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer.Get(), GUID_ContainerFormatJpeg, fullName);
+	}
+
+	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d \n", fullName, hr);
+}
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -626,6 +660,10 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	{
 		if (iter.second.hash == hash)
 		{
+			// Whether we succeed or fail on decompile, let's now make a screen shot of the backbuffer
+			// as a good way to remember what the HLSL affects. This will be with it disabled in the picture.
+			SimpleScreenShot(device, hash, iter.second.shaderType);
+
 			asmTextBlob = GetDisassembly(iter.second.byteCode);
 			if (!asmTextBlob)
 				break;
@@ -784,6 +822,9 @@ static void EnableFix(HackerDevice *device, void *private_data)
 	LogInfo("show_original released - switching to replaced shaders\n");
 	G->fix_enabled = true;
 }
+
+
+
 
 static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {

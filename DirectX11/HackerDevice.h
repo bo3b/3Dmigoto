@@ -4,6 +4,7 @@
 
 #include "nvstereo.h"
 #include "HackerContext.h"
+#include "HackerDXGI.h"
 
 
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
@@ -16,6 +17,7 @@ class HackerDevice : public ID3D11Device
 private:
 	ID3D11Device *mOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
+	HackerDXGISwapChain *mHackerSwapChain;
 	HackerContext *mHackerContext;
 
 	// Utility routines
@@ -42,8 +44,10 @@ public:
 	HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerContext(HackerContext *pHackerContext);
+	void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
 	ID3D11Device* GetOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
+	IDXGISwapChain* GetOrigSwapChain();
 
 
 	//static ID3D11Device* GetDirect3DDevice(ID3D11Device *pDevice);
