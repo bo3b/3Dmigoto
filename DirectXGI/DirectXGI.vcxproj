@@ -123,6 +123,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DirectX11\HackerDXGI.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
     <ClInclude Include="DXGIWrapper.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -360,7 +362,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>dxgi</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\WinRT\;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -498,7 +500,6 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3dxgiWrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>Shell32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

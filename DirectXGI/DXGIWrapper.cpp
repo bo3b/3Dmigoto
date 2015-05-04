@@ -20,6 +20,7 @@
 #include "log.h"
 
 
+bool gLogDebug = false;
 FILE *LogFile = 0;
 
 static bool gInitialized = false;
@@ -201,13 +202,13 @@ typedef HRESULT (WINAPI *tDXGIReportAdapterConfiguration)(int a);
 static tDXGIReportAdapterConfiguration _DXGIReportAdapterConfiguration;
 
 // These are the two interesting API entries for the dxgi.dll that we are replacing.
-typedef HRESULT (WINAPI *tCreateDXGIFactory)(const IID *const riid, void **ppFactory);
+typedef HRESULT (WINAPI *tCreateDXGIFactory)(REFIID riid, void **ppFactory);
 static tCreateDXGIFactory _CreateDXGIFactory;
-typedef HRESULT (WINAPI *tCreateDXGIFactory1)(const IID *const riid, void **ppFactory);
+typedef HRESULT(WINAPI *tCreateDXGIFactory1)(REFIID riid, void **ppFactory);
 static tCreateDXGIFactory1 _CreateDXGIFactory1;
 
 // Doesn't exist as a dll export, except for under 8.1
-typedef HRESULT (WINAPI *tCreateDXGIFactory2)(const IID *const riid, void **ppFactory);
+typedef HRESULT(WINAPI *tCreateDXGIFactory2)(REFIID riid, void **ppFactory);
 static tCreateDXGIFactory2 _CreateDXGIFactory2;
 
 static void InitD311()
@@ -302,11 +303,10 @@ HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
 	return (*_DXGIReportAdapterConfiguration)(a);
 }
 
-HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
+HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 {
 	InitD311();
-	LogInfo("CreateDXGIFactory2 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
+	LogInfo("CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
 	
 	LogInfo("  calling original CreateDXGIFactory2 API\n");
 
@@ -319,7 +319,7 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	}
 	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
 
-	HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(origFactory2);
+	HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(origFactory2, NULL, NULL);
 	if (factory2Wrap == NULL)
 	{
 		LogInfo("  error allocating factory2Wrap. \n");
@@ -376,12 +376,10 @@ HRESULT WINAPI CreateDXGIFactory2(const IID *const riid, void **ppFactory)
 	//return ret;
 }
 
-HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
+HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
 	InitD311();
-	LogInfo("CreateDXGIFactory1 called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
-
+	LogInfo("CreateDXGIFactory1 called with riid: %s \n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
 	IDXGIFactory1 *origFactory1;
@@ -393,7 +391,7 @@ HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
 	}
 	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
 
-	HackerDXGIFactory1 *factory1Wrap = new HackerDXGIFactory1(origFactory1);
+	HackerDXGIFactory1 *factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
 	if (factory1Wrap == NULL)
 	{
 		LogInfo("  error allocating factory1Wrap. \n");
@@ -417,12 +415,10 @@ HRESULT WINAPI CreateDXGIFactory1(const IID *const riid, void **ppFactory)
 	//return CreateDXGIFactory2(riid, ppFactory);
 }
 
-HRESULT WINAPI CreateDXGIFactory(const IID *const riid, void **ppFactory)
+HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
 	InitD311();
-	LogInfo("CreateDXGIFactory called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		riid->Data1, riid->Data2, riid->Data3, riid->Data4[0], riid->Data4[1], riid->Data4[2], riid->Data4[3], riid->Data4[4], riid->Data4[5], riid->Data4[6], riid->Data4[7]);
-	
+	LogInfo("CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory API\n");
 
 	IDXGIFactory *origFactory;
@@ -434,7 +430,7 @@ HRESULT WINAPI CreateDXGIFactory(const IID *const riid, void **ppFactory)
 	}
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
 
-	HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory);
+	HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
 	if (factoryWrap == NULL)
 	{
 		LogInfo("  error allocating factoryWrap. \n");

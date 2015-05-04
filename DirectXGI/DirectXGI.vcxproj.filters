@@ -10,5 +10,7 @@
   <ItemGroup>
     <ClInclude Include="DXGIWrapper.h" />
     <ClInclude Include="..\DirectX11\HackerDXGI.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
   </ItemGroup>
 </Project>

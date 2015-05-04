@@ -322,10 +322,25 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
             /* [in] */ UINT Adapter,
             /* [annotation][out] */ 
-            __out IDXGIAdapter **ppAdapter)
+			__out HackerDXGIAdapter **ppAdapter)
 {
 	LogInfo("HackerDXGIFactory::EnumAdapters adapter %d requested\n", Adapter);
-	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, ppAdapter);
+
+	IDXGIAdapter *origAdapter;
+	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, &origAdapter);
+
+	HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
+	if (adapterWrap == NULL)
+	{
+		LogInfo("  error allocating dxgiAdapterWrap. \n");
+		return E_OUTOFMEMORY;
+	}
+
+	// Return the wrapped version which the game will use for follow on calls.
+	if (ppAdapter)
+		*ppAdapter = adapterWrap;
+
+	LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }

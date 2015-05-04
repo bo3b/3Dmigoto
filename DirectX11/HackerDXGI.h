@@ -440,7 +440,7 @@ public:
 	STDMETHOD(EnumAdapters)(THIS_
 		/* [in] */ UINT Adapter,
 		/* [annotation][out] */
-		__out IDXGIAdapter **ppAdapter);
+		__out HackerDXGIAdapter **ppAdapter);
 
 	STDMETHOD(MakeWindowAssociation)(THIS_
 		HWND WindowHandle,
