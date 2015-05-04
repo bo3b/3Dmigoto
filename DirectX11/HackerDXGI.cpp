@@ -195,12 +195,30 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 
 // -----------------------------------------------------------------------------
 
+// Let's wrap GetAdapter as well, it appears that Ori calls this instead of 
+// GetParent, which is their bug, but we need to work around it.
+
 STDMETHODIMP HackerDXGIDevice::GetAdapter(
 	/* [annotation][out] */
-	_Out_  IDXGIAdapter **pAdapter)
+	_Out_  HackerDXGIAdapter **pAdapter)
 {
-	LogInfo("HackerDXGIDevice::GetAdapter called \n");
-	HRESULT hr = mOrigDXGIDevice->GetAdapter(pAdapter);
+	LogInfo("HackerDXGIDevice::GetAdapter called with: %p \n", pAdapter);
+
+	IDXGIAdapter *origAdapter;
+	HRESULT hr = mOrigDXGIDevice->GetAdapter(&origAdapter);
+
+	HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
+	if (adapterWrap == NULL)
+	{
+		LogInfo("  error allocating dxgiAdapterWrap. \n");
+		return E_OUTOFMEMORY;
+	}
+
+	// Return the wrapped version which the game will use for follow on calls.
+	if (pAdapter)
+		*pAdapter = adapterWrap;
+
+	LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -921,6 +939,9 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
 // If the parent request is for the IDXGIFactory, that must mean we are taking the secret
 // path for getting the swap chain.  Return a wrapped version whenever this happens, so
 // we can get access later.
+//
+// Can also ask for Factory1 or Factory2.
+// More details: https://msdn.microsoft.com/en-us/library/windows/apps/hh465096.aspx
 
 STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_
 	/* [annotation][in] */

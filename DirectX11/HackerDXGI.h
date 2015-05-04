@@ -79,6 +79,59 @@ public:
 			  
 // -----------------------------------------------------------------------------
 
+class HackerDXGIAdapter : public HackerDXGIObject
+{
+private:
+	IDXGIAdapter *mOrigAdapter;
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
+
+public:
+	HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
+
+
+	// Override the GetParent so we can wrap objects returned.
+	STDMETHOD(GetParent)(
+		/* [annotation][in] */
+		_In_  REFIID riid,
+		/* [annotation][retval][out] */
+		_Out_  void **ppParent) override;
+
+	STDMETHOD(EnumOutputs)(THIS_
+		/* [in] */ UINT Output,
+		/* [annotation][out][in] */
+		__out IDXGIOutput **ppOutput);
+
+	STDMETHOD(GetDesc)(THIS_
+		/* [annotation][out] */
+		__out DXGI_ADAPTER_DESC *pDesc);
+
+	STDMETHOD(CheckInterfaceSupport)(THIS_
+		/* [annotation][in] */
+		__in  REFGUID InterfaceName,
+		/* [annotation][out] */
+		__out  LARGE_INTEGER *pUMDVersion);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIAdapter1 : public HackerDXGIAdapter
+{
+private:
+	IDXGIAdapter1 *mOrigAdapter1;
+
+public:
+	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
+
+	STDMETHOD(GetDesc1)(THIS_
+		/* [annotation][out] */
+		__out  DXGI_ADAPTER_DESC1 *pDesc);
+};
+
+
+// -----------------------------------------------------------------------------
+
 class HackerDXGIDevice : public HackerDXGIObject
 {
 private:
@@ -99,7 +152,7 @@ public:
 
 	STDMETHOD(GetAdapter)(
 		/* [annotation][out] */
-		_Out_  IDXGIAdapter **pAdapter);
+		_Out_  HackerDXGIAdapter **pAdapter);
 
 	STDMETHOD(CreateSurface)(
 		/* [annotation][in] */
@@ -225,59 +278,6 @@ public:
 	STDMETHOD(GetFrameStatistics)(THIS_
 		/* [annotation][out] */
 		__out  DXGI_FRAME_STATISTICS *pStats);
-};
-
-
-// -----------------------------------------------------------------------------
-
-class HackerDXGIAdapter : public HackerDXGIObject
-{
-private:
-	IDXGIAdapter *mOrigAdapter;
-	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
-
-public:
-	HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
-
-
-	// Override the GetParent so we can wrap objects returned.
-	STDMETHOD(GetParent)(
-		/* [annotation][in] */
-		_In_  REFIID riid,
-		/* [annotation][retval][out] */
-		_Out_  void **ppParent) override;
-
-	STDMETHOD(EnumOutputs)(THIS_
-            /* [in] */ UINT Output,
-            /* [annotation][out][in] */ 
-            __out IDXGIOutput **ppOutput);
-        
-    STDMETHOD(GetDesc)(THIS_
-            /* [annotation][out] */ 
-            __out DXGI_ADAPTER_DESC *pDesc);
-        
-    STDMETHOD(CheckInterfaceSupport)(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID InterfaceName,
-            /* [annotation][out] */ 
-            __out  LARGE_INTEGER *pUMDVersion);
-};
-
-
-// -----------------------------------------------------------------------------
-
-class HackerDXGIAdapter1 : public HackerDXGIAdapter
-{
-private:
-	IDXGIAdapter1 *mOrigAdapter1;
-
-public:
-	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
-
-    STDMETHOD(GetDesc1)(THIS_ 
-	        /* [annotation][out] */ 
-            __out  DXGI_ADAPTER_DESC1 *pDesc);
 };
 
 
