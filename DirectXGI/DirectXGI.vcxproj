@@ -115,15 +115,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="d3dxgiWrapper.cpp" />
-    <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="..\DirectX11\HackerDXGI.cpp" />
+    <ClCompile Include="DXGIWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3dxgiWrapper.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\DirectX11\HackerDXGI.h" />
     <ClInclude Include="DXGIWrapper.h" />
-    <ClInclude Include="HackerDXGI.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{16459E48-9CD1-49FE-8703-D8B275CFCE1E}</ProjectGuid>
@@ -491,7 +491,7 @@
       <PreprocessorDefinitions>_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectX11;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
