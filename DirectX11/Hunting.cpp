@@ -662,7 +662,8 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 		{
 			// Whether we succeed or fail on decompile, let's now make a screen shot of the backbuffer
 			// as a good way to remember what the HLSL affects. This will be with it disabled in the picture.
-			SimpleScreenShot(device, hash, iter.second.shaderType);
+			// ToDo, broken at moment, doesn't make 3D shots.
+			//SimpleScreenShot(device, hash, iter.second.shaderType);
 
 			asmTextBlob = GetDisassembly(iter.second.byteCode);
 			if (!asmTextBlob)
