@@ -1209,7 +1209,8 @@ STDMETHODIMP HackerDXGIOutput::SetPrivateData(THIS_
             /* [annotation][in] */ 
             __in_bcount(DataSize)  const void *pData)
 {
-	LogInfo("HackerDXGIOutput::SetPrivateData called\n");
+	LogInfo("HackerDXGIOutput::SetPrivateData called with IID: %s \n", NameFromIID(Name).c_str());
+
 	HRESULT hr = mOrigOutput->SetPrivateData(Name, DataSize, pData);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1236,7 +1237,8 @@ STDMETHODIMP HackerDXGIOutput::GetPrivateData(THIS_
             /* [annotation][out] */ 
             __out_bcount(*pDataSize)  void *pData)
 {
-	LogInfo("HackerDXGIOutput::GetPrivateData called\n");
+	LogInfo("HackerDXGIOutput::GetPrivateData called with IID: %s \n", NameFromIID(Name).c_str());
+
 	HRESULT hr = mOrigOutput->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1306,7 +1308,8 @@ STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
             /* [annotation][out][in] */ 
             _Out_  void **ppSurface)
 {
-	LogInfo("HackerDXGISwapChain::GetBuffer called \n");
+	LogInfo("HackerDXGISwapChain::GetBuffer called with IID: %s \n", NameFromIID(riid).c_str());
+
 	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
 	LogInfo("  returns %x\n", hr);
 	return hr;
@@ -1490,7 +1493,8 @@ STDMETHODIMP HackerDXGISwapChain1::GetCoreWindow(THIS_
             /* [annotation][out] */ 
             _Out_  void **ppUnk)
 {
-	LogInfo("HackerDXGISwapChain1::GetCoreWindow called\n");
+	LogInfo("HackerDXGISwapChain1::GetCoreWindow called with IID: %s \n", NameFromIID(refiid).c_str());
+
 	HRESULT hr = mOrigSwapChain1->GetCoreWindow(refiid, ppUnk);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
