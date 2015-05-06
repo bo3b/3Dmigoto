@@ -490,8 +490,8 @@ STDMETHODIMP HackerDXGIFactory1::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogInfo("HackerDXGIFactory1::QueryInterface called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
+	LogInfo("HackerDXGIFactory1::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
+
 	HRESULT hr = mOrigFactory1->QueryInterface(riid, ppvObject);
 	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
@@ -935,14 +935,8 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
             /* [annotation][out] */ 
             __out  LARGE_INTEGER *pUMDVersion)
 {
-	LogInfo("HackerDXGIAdapter::CheckInterfaceSupport called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		InterfaceName.Data1, InterfaceName.Data2, InterfaceName.Data3, InterfaceName.Data4[0], InterfaceName.Data4[1], InterfaceName.Data4[2], InterfaceName.Data4[3], 
-		InterfaceName.Data4[4], InterfaceName.Data4[5], InterfaceName.Data4[6], InterfaceName.Data4[7]);
-	if (LogFile && InterfaceName.Data1 == 0x9b7e4c0f && InterfaceName.Data2 == 0x342c && InterfaceName.Data3 == 0x4106 && InterfaceName.Data4[0] == 0xa1 && 
-		InterfaceName.Data4[1] == 0x9f && InterfaceName.Data4[2] == 0x4f && InterfaceName.Data4[3] == 0x27 && InterfaceName.Data4[4] == 0x04 && 
-		InterfaceName.Data4[5] == 0xf6 && InterfaceName.Data4[6] == 0x89 && InterfaceName.Data4[7] == 0xf0)
-		LogInfo("  9b7e4c0f-342c-4106-a19f-4f2704f689f0 = IID_ID3D10Device\n");
-	
+	LogInfo("HackerDXGIAdapter::CheckInterfaceSupport called with IID: %s \n", NameFromIID(InterfaceName).c_str());
+
 	HRESULT hr = mOrigAdapter->CheckInterfaceSupport(InterfaceName, pUMDVersion);
 	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
 	LogInfo("  returns hr=%x\n", hr);
@@ -1227,10 +1221,8 @@ STDMETHODIMP HackerDXGIOutput::SetPrivateDataInterface(THIS_
             /* [annotation][in] */ 
             __in  const IUnknown *pUnknown)
 {
-	LogInfo("HackerDXGIOutput::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		Name.Data1, Name.Data2, Name.Data3, Name.Data4[0], Name.Data4[1], Name.Data4[2], Name.Data4[3], 
-		Name.Data4[4], Name.Data4[5], Name.Data4[6], Name.Data4[7]);
-	
+	LogInfo("HackerDXGIOutput::SetPrivateDataInterface called with IID: %s \n", NameFromIID(Name).c_str());
+
 	HRESULT hr = mOrigOutput->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1256,9 +1248,8 @@ STDMETHODIMP HackerDXGIOutput::GetParent(THIS_
             /* [annotation][retval][out] */ 
             __out  void **ppParent)
 {
-	LogInfo("HackerDXGIOutput::GetParent called with riid=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n", 
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
-	
+	LogInfo("HackerDXGIOutput::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+
 	HRESULT hr = mOrigOutput->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppParent);
 	return hr;
