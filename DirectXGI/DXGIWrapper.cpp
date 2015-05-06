@@ -32,6 +32,7 @@ void InitializeDLL()
 	if (!gInitialized)
 	{
 		gInitialized = true;
+
 		wchar_t dir[MAX_PATH];
 		GetModuleFileName(0, dir, MAX_PATH);
 		wcsrchr(dir, L'\\')[1] = 0;
@@ -59,6 +60,8 @@ void InitializeDLL()
 			LogInfo("\n *** DXGI DLL starting init  -  %s\n\n", LogTime().c_str());
 		}
 
+		gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir) == 1;
+
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
 		int unbuffered = -1;
@@ -76,6 +79,14 @@ void InitializeDLL()
 			LogInfo("  CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
 		}
 
+		if (LogFile)
+		{
+			LogInfo("[Logging]\n");
+			LogInfo("  calls=1\n");
+			LogDebug("  debug=1\n");
+			if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
+		}
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf_s(val, L"%d", &SCREEN_WIDTH);
@@ -90,6 +101,18 @@ void InitializeDLL()
 		if (read) swscanf_s(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			FILTER_REFRESH+0, FILTER_REFRESH+1, FILTER_REFRESH+2, FILTER_REFRESH+3, &FILTER_REFRESH+4,
 			FILTER_REFRESH+5, FILTER_REFRESH+6, FILTER_REFRESH+7, FILTER_REFRESH+8, &FILTER_REFRESH+9);
+
+		if (LogFile)
+		{
+			LogInfo("[Device]\n");
+			if (SCREEN_WIDTH != -1) LogInfo("  width=%d\n", SCREEN_WIDTH);
+			if (SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", SCREEN_HEIGHT);
+			if (SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", SCREEN_REFRESH);
+			if (FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%s\n", FILTER_REFRESH[0]);
+			if (SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
+
+			if (gAllowWindowCommands) LogInfo("  allow_windowcommands=1\n");
+		}
 	}
 
 	LogInfo(" *** DXGI DLL successfully initialized. *** \n\n");
