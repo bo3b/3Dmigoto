@@ -435,7 +435,11 @@ protected:
 
 public:
 	HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext);
+	
 
+	STDMETHOD(QueryInterface)(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override;
 
 	STDMETHOD(EnumAdapters)(THIS_
 		/* [in] */ UINT Adapter,
@@ -475,11 +479,6 @@ private:
 public:
 	HackerDXGIFactory1(IDXGIFactory1 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 
-	STDMETHOD_(ULONG, AddRef)(THIS);
-	STDMETHOD_(ULONG, Release)(THIS);
-	STDMETHOD(QueryInterface(
-		/* [in] */ REFIID riid,
-		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject));
 
 	// ******************* IDXGIFactory methods 
 

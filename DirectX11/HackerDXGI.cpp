@@ -319,6 +319,42 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 
 // -----------------------------------------------------------------------------
 
+// https://msdn.microsoft.com/en-us/library/windows/desktop/hh404556(v=vs.85).aspx
+//
+// We need to override the QueryInterface here, in the case the caller uses
+// IDXGIFactory::QueryInterface to create a IDXGIFactory2.
+//
+// For our purposes, it might make more sense to return an error of E_NOINTERFACE
+// for this request, because the caller must surely be able to handle a downlevel
+// system, and that is better for us in general.
+// 
+// Note that we can expect this QueryInterface to get called for any 
+// HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
+
+STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
+	/* [in] */ REFIID riid,
+	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
+{
+	LogDebug("HackerDXGIFactory::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
+
+	HRESULT hr;
+	if (riid == __uuidof(IDXGIFactory2))
+	{
+		*ppvObject = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(mOrigFactory), mHackerDevice, mHackerContext);
+		if (*ppvObject != NULL)
+			hr = S_OK;
+		else
+			hr = E_OUTOFMEMORY;
+	}
+	else
+	{
+		hr = HackerUnknown::QueryInterface(riid, ppvObject);
+	}
+
+	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
+	return hr;
+}
+
 STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
             /* [in] */ UINT Adapter,
             /* [annotation][out] */ 
@@ -455,47 +491,10 @@ STDMETHODIMP HackerDXGIFactory::CreateSoftwareAdapter(THIS_
 
 // -----------------------------------------------------------------------------
 
-// ToDo: In between state here, where we duplicate the calls to the Factory1
-// objects.  It's not clear at runtime whether they use a vtable that has any
-// correlation to c++ objects, so even though Factory1 subclasses Factory,
-// the calls may not be dispatched to Factory.
-// This was an experiment to see if further wrapping would trigger them to
-// be called, and hence logged, but this did change the runtime at all, as the
-// the games don't use these APIs it appears.
-
-STDMETHODIMP_(ULONG) HackerDXGIFactory1::AddRef(THIS)
-{
-	ULONG ulRef = mOrigFactory1->AddRef();
-	LogInfo("HackerDXGIFactory1::AddRef counter=%d, this=%p \n", ulRef, this);
-	return ulRef;
-}
-
-STDMETHODIMP_(ULONG) HackerDXGIFactory1::Release(THIS)
-{
-	ULONG ulRef = mOrigFactory1->Release();
-	LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
-
-	if (ulRef <= 0)
-	{
-		LogInfo("HackerDXGIFactory::Release counter=%d, this=%p\n", ulRef, this);
-		LogInfo("  deleting self\n");
-
-		delete this;
-		return 0L;
-	}
-	return ulRef;
-}
-
-STDMETHODIMP HackerDXGIFactory1::QueryInterface(THIS_
-	/* [in] */ REFIID riid,
-	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
-{
-	LogInfo("HackerDXGIFactory1::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
-
-	HRESULT hr = mOrigFactory1->QueryInterface(riid, ppvObject);
-	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
-	return hr;
-}
+// We do not need to override the QueryInterface here, in the case the caller uses
+// IDXGIFactory1::QueryInterface to create a IDXGIFactory2.
+// The superclass of HackerDXGIFactory::QueryInterface will be called, as long as
+// we successfully wrapped the factory in the first place.
 
 
 STDMETHODIMP HackerDXGIFactory1::EnumAdapters(THIS_

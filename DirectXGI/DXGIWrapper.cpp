@@ -303,6 +303,11 @@ HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
 	return (*_DXGIReportAdapterConfiguration)(a);
 }
 
+
+// -----------------------------------------------------------------------------
+
+// This is only ever expected to exist or be called on Win8.1 and above.
+
 HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 {
 	InitD311();
@@ -376,6 +381,16 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 	//return ret;
 }
 
+// In the usual insane way that Microsoft loves to design things, you can pass 
+// in a riid=DXGIFactory2 here, in order to get a factory2.  
+// That's right, call CreateDXGIFactory1 to create an IDXGIFactory2.
+//
+// Given that insanity, I'm not sure how far to take these. Should we also
+// look for a DXGIFactory IID here and return just Factory?
+// I'll defer to whether we ever see that in practice.  The logging is pretty
+// comprehensive, so in a case like that it should be clear that we need to
+// add it.  It's better to do that as-needed, rather than try to guess their madness.
+
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
 	InitD311();
@@ -391,7 +406,16 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 	}
 	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
 
-	HackerDXGIFactory1 *factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
+	HackerDXGIFactory1 *factory1Wrap;
+	if (riid == __uuidof(IDXGIFactory2))
+	{
+		factory1Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(origFactory1), NULL, NULL);
+	}
+	else
+	{
+		factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
+	}
+
 	if (factory1Wrap == NULL)
 	{
 		LogInfo("  error allocating factory1Wrap. \n");
@@ -402,17 +426,6 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 		*ppFactory = factory1Wrap;
 
 	return hr;
-
-	//if (_CreateDXGIFactory1)
-	//{
-	//	LogInfo("  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
-	//	
-	//	IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
-	//	return CreateDXGIFactory2(&factory1, ppFactory);
-	//}
-	//LogInfo("  routing call to CreateDXGIFactory2 with original riid\n");
-	//
-	//return CreateDXGIFactory2(riid, ppFactory);
 }
 
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
@@ -430,7 +443,25 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 	}
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
 
-	HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+	// Must also handle the bizarre case of being passed the DXGIFactory2 riid, where we
+	// need to return that Factory2.  This is not likely to be used much yet, as Factory2
+	// requires the evil update under Win7, or 8.0 and above.  
+	// The middle section for Factory1 is probably unnecessary.
+
+	HackerDXGIFactory *factoryWrap;
+	if (riid == __uuidof(IDXGIFactory2))
+	{
+		factoryWrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(origFactory), NULL, NULL);
+	}
+	else if (riid == __uuidof(IDXGIFactory1))
+	{
+		factoryWrap = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(origFactory), NULL, NULL);
+	}
+	else
+	{
+		factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+	}
+
 	if (factoryWrap == NULL)
 	{
 		LogInfo("  error allocating factoryWrap. \n");
@@ -441,25 +472,10 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 		*ppFactory = factoryWrap;
 	
 	return hr;
-
-	//if (_CreateDXGIFactory2)
-	//{
-	//	LogInfo("  routing call to CreateDXGIFactory2 with riid=50c83a1c-e072-4c48-87b0-3630fa36a6d0\n");
-
-	//	IID factory2 = { 0x50c83a1cul, 0xe072, 0x4c48, { 0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0 } };
-	//	return CreateDXGIFactory2(&factory2, ppFactory);
-	//}
-	//if (_CreateDXGIFactory1)
-	//{
-	//	LogInfo("  routing call to CreateDXGIFactory2 with riid=770aae78-f26f-4dba-a829-253c83d1b387\n");
-
-	//	IID factory1 = { 0x770aae78ul, 0xf26f, 0x4dba, { 0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87 } };
-	//	return CreateDXGIFactory2(&factory1, ppFactory);
-	//}
-	//LogInfo("  routing call to CreateDXGIFactory2 with original riid\n");
-
-	//return CreateDXGIFactory2(riid, ppFactory);
 }
+
+
+// -----------------------------------------------------------------------------
 
 int WINAPI D3DKMTGetDeviceState(int a)
 {
