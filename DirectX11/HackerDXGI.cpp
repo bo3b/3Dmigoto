@@ -340,7 +340,7 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 {
 	LogDebug("HackerDXGIFactory::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
 
-	HRESULT hr = mOrigFactory->QueryInterface(riid, ppvObject);
+	HRESULT hr;
 
 	if (riid == __uuidof(IDXGIFactory2))
 	{
@@ -348,6 +348,7 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 		return E_NOINTERFACE;
 
 		// For when we need to return a legit Factory2.  Crashes at present.
+		//hr = mOrigFactory->QueryInterface(riid, ppvObject);
 		//HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject), mHackerDevice, mHackerContext);
 		//LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
 
@@ -358,7 +359,8 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 		//}
 
 		//*ppvObject = factory2Wrap;
-	}
+	} else
+		hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
