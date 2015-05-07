@@ -341,17 +341,15 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	LogDebug("HackerDXGIFactory::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
 
 	HRESULT hr;
-	if (riid == __uuidof(IDXGIFactory2))
+
+	// Do the QueryInterface regardless to make sure ref counting is correct:
+	hr = HackerUnknown::QueryInterface(riid, ppvObject);
+
+	if (hr == S_OK && riid == __uuidof(IDXGIFactory2))
 	{
 		*ppvObject = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(mOrigFactory), mHackerDevice, mHackerContext);
-		if (*ppvObject != NULL)
-			hr = S_OK;
-		else
+		if (*ppvObject == NULL)
 			hr = E_OUTOFMEMORY;
-	}
-	else
-	{
-		hr = HackerUnknown::QueryInterface(riid, ppvObject);
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
