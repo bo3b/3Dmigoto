@@ -106,19 +106,18 @@ HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory, HackerDevice *pD
 STDMETHODIMP_(ULONG) HackerUnknown::AddRef(THIS)
 {
 	ULONG ulRef = mOrigUnknown->AddRef();
-	LogInfo("HackerUnknown::AddRef counter=%d, this=%p \n", ulRef, this);
+	LogInfo("HackerUnknown::AddRef(%s), counter=%d, this=%p \n", typeid(*this).name(), ulRef, this);
 	return ulRef;
 }
 
 STDMETHODIMP_(ULONG) HackerUnknown::Release(THIS)
 {
 	ULONG ulRef = mOrigUnknown->Release();
-	LogInfo("HackerUnknown::Release counter=%d, this=%p \n", ulRef, this);
+	LogInfo("HackerUnknown::Release(%s), counter=%d, this=%p \n", typeid(*this).name(), ulRef, this);
 
 	if (ulRef <= 0)
 	{
-		LogInfo("HackerUnknown::Release counter=%d, this=%p \n", ulRef, this);
-		LogInfo("  deleting self\n");
+		LogInfo("  counter=%d, this=%p, deleting self. \n", ulRef, this);
 
 		delete this;
 		return 0L;
@@ -130,7 +129,7 @@ STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerUnknown::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
+	LogDebug("HackerUnknown::QueryInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 	HRESULT hr = mOrigUnknown->QueryInterface(riid, ppvObject);
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
@@ -146,7 +145,7 @@ STDMETHODIMP HackerDXGIObject::SetPrivateData(THIS_
 	/* [annotation][in] */
 	__in_bcount(DataSize)  const void *pData)
 {
-	LogInfo("HackerDXGIObject::SetPrivateData called with GUID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIObject::SetPrivateData(%s) called with GUID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
 	LogInfo("  DataSize = %d\n", DataSize);
 
 	HRESULT hr = mOrigObject->SetPrivateData(Name, DataSize, pData);
@@ -160,7 +159,7 @@ STDMETHODIMP HackerDXGIObject::SetPrivateDataInterface(THIS_
 	/* [annotation][in] */
 	__in  const IUnknown *pUnknown)
 {
-	LogInfo("HackerDXGIObject::SetPrivateDataInterface called with GUID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIObject::SetPrivateDataInterface(%s) called with GUID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigObject->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns result = %x\n", hr);
@@ -175,7 +174,7 @@ STDMETHODIMP HackerDXGIObject::GetPrivateData(THIS_
 	/* [annotation][out] */
 	__out_bcount(*pDataSize)  void *pData)
 {
-	LogInfo("HackerDXGIObject::GetPrivateData called with GUID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIObject::GetPrivateData(%s) called with GUID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigObject->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
@@ -188,7 +187,7 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	/* [annotation][retval][out] */
 	__out  void **ppParent)
 {
-	LogInfo("HackerDXGIObject::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIObject::GetParent(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigObject->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x\n", hr);
@@ -205,7 +204,7 @@ STDMETHODIMP HackerDXGIDevice::GetAdapter(
 	/* [annotation][out] */
 	_Out_  HackerDXGIAdapter **pAdapter)
 {
-	LogInfo("HackerDXGIDevice::GetAdapter called with: %p \n", pAdapter);
+	LogInfo("HackerDXGIDevice::GetAdapter(%s) called with: %p \n", typeid(*this).name(), pAdapter);
 
 	IDXGIAdapter *origAdapter;
 	HRESULT hr = mOrigDXGIDevice->GetAdapter(&origAdapter);
@@ -236,7 +235,7 @@ STDMETHODIMP HackerDXGIDevice::CreateSurface(
 	/* [annotation][out] */
 	_Out_  IDXGISurface **ppSurface)
 {
-	LogInfo("HackerDXGIDevice::CreateSurface called \n");
+	LogInfo("HackerDXGIDevice::CreateSurface(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigDXGIDevice->CreateSurface(pDesc, NumSurfaces, Usage, pSharedResource, ppSurface);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -249,7 +248,7 @@ STDMETHODIMP HackerDXGIDevice::QueryResourceResidency(
 	_Out_writes_(NumResources)  DXGI_RESIDENCY *pResidencyStatus,
 	/* [in] */ UINT NumResources)
 {
-	LogInfo("HackerDXGIDevice::QueryResourceResidency called \n");
+	LogInfo("HackerDXGIDevice::QueryResourceResidency(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigDXGIDevice->QueryResourceResidency(ppResources, pResidencyStatus, NumResources);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -258,7 +257,7 @@ STDMETHODIMP HackerDXGIDevice::QueryResourceResidency(
 STDMETHODIMP HackerDXGIDevice::SetGPUThreadPriority(
 	/* [in] */ INT Priority)
 {
-	LogInfo("HackerDXGIDevice::SetGPUThreadPriority called \n");
+	LogInfo("HackerDXGIDevice::SetGPUThreadPriority(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigDXGIDevice->SetGPUThreadPriority(Priority);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -268,7 +267,7 @@ STDMETHODIMP HackerDXGIDevice::GetGPUThreadPriority(
 	/* [annotation][retval][out] */
 	_Out_  INT *pPriority)
 {
-	LogInfo("HackerDXGIDevice::GetGPUThreadPriority called \n");
+	LogInfo("HackerDXGIDevice::GetGPUThreadPriority(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigDXGIDevice->GetGPUThreadPriority(pPriority);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -292,7 +291,7 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 {
 	HRESULT hr;
 
-	LogInfo("HackerDXGIDevice::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIDevice::GetParent(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	if (riid == __uuidof(IDXGIAdapter))
 	{
@@ -338,7 +337,7 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerDXGIFactory::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
+	LogDebug("HackerDXGIFactory::QueryInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	HRESULT hr;
 
@@ -371,7 +370,7 @@ STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
             /* [annotation][out] */ 
 			__out HackerDXGIAdapter **ppAdapter)
 {
-	LogInfo("HackerDXGIFactory::EnumAdapters adapter %d requested\n", Adapter);
+	LogInfo("HackerDXGIFactory::EnumAdapters(%s) adapter %d requested\n", typeid(*this).name(), Adapter);
 
 	IDXGIAdapter *origAdapter;
 	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, &origAdapter);
@@ -398,7 +397,7 @@ STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
 {
 	if (LogFile)
 	{
-		LogInfo("HackerDXGIFactory::MakeWindowAssociation called with WindowHandle = %p, Flags = %x\n", WindowHandle, Flags);
+		LogInfo("HackerDXGIFactory::MakeWindowAssociation(%s) called with WindowHandle = %p, Flags = %x\n", typeid(*this).name(), WindowHandle, Flags);
 		if (Flags) LogInfo("  Flags =");
 		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfo(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
 		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfo(" DXGI_MWA_NO_ALT_ENTER");
@@ -422,7 +421,7 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
             /* [annotation][out] */ 
             __out  HWND *pWindowHandle)
 {
-	LogInfo("HackerDXGIFactory::GetWindowAssociation called\n");
+	LogInfo("HackerDXGIFactory::GetWindowAssociation(%s) called\n", typeid(*this).name());
 	HRESULT hr = mOrigFactory->GetWindowAssociation(pWindowHandle);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -439,7 +438,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
             /* [annotation][out] */ 
             __out  HackerDXGISwapChain **ppSwapChain)
 {
-	LogInfo("HackerDXGIFactory::CreateSwapChain called with parameters\n");
+	LogInfo("HackerDXGIFactory::CreateSwapChain(%s) called with parameters\n", typeid(*this).name());
 	LogInfo("  Device = %p\n", pDevice);
 	if (pDesc)
 	{
@@ -493,7 +492,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSoftwareAdapter(THIS_
 	/* [annotation][out] */
 	__out  IDXGIAdapter **ppAdapter)
 {
-	LogInfo("HackerDXGIFactory::CreateSoftwareAdapter called\n");
+	LogInfo("HackerDXGIFactory::CreateSoftwareAdapter(%s) called\n", typeid(*this).name());
 	HRESULT hr = mOrigFactory->CreateSoftwareAdapter(Module, ppAdapter);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -549,7 +548,7 @@ STDMETHODIMP HackerDXGIFactory1::GetWindowAssociation(THIS_
 	/* [annotation][out] */
 	__out  HWND *pWindowHandle)
 {
-	LogInfo("HackerDXGIFactory1::GetWindowAssociation called\n");
+	LogInfo("HackerDXGIFactory1::GetWindowAssociation(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigFactory->GetWindowAssociation(pWindowHandle);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -611,7 +610,7 @@ STDMETHODIMP HackerDXGIFactory1::CreateSoftwareAdapter(THIS_
 	/* [annotation][out] */
 	__out  IDXGIAdapter **ppAdapter)
 {
-	LogInfo("HackerDXGIFactory1::CreateSoftwareAdapter called\n");
+	LogInfo("HackerDXGIFactory1::CreateSoftwareAdapter(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigFactory->CreateSoftwareAdapter(Module, ppAdapter);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -624,7 +623,7 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 	/* [annotation][out] */
 	__out  IDXGIAdapter1 **ppAdapter)
 {
-	LogInfo("HackerDXGIFactory1::EnumAdapters1 called: adapter #%d requested\n", Adapter);
+	LogInfo("HackerDXGIFactory1::EnumAdapters1(%s) called: adapter #%d requested\n", typeid(*this).name(), Adapter);
 
 	HRESULT ret = mOrigFactory1->EnumAdapters1(Adapter, ppAdapter);
 
@@ -680,7 +679,7 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 
 STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 {
-	LogInfo("HackerDXGIFactory1::IsCurrent called\n");
+	LogInfo("HackerDXGIFactory1::IsCurrent(%s) called\n", typeid(*this).name());
 	HRESULT hr = mOrigFactory1->IsCurrent();
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -703,7 +702,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogInfo("HackerDXGIFactory2::CreateSwapChainForHwnd called with parameters\n");
+	LogInfo("HackerDXGIFactory2::CreateSwapChainForHwnd(%s) called with parameters\n", typeid(*this).name());
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  HWND = %p\n", hWnd);
 	if (pDesc) LogInfo("  Stereo = %d\n", pDesc->Stereo);
@@ -752,7 +751,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogInfo("HackerDXGIFactory2::CreateSwapChainForCoreWindow called with parameters\n");
+	LogInfo("HackerDXGIFactory2::CreateSwapChainForCoreWindow(%s) called with parameters\n", typeid(*this).name());
 	LogInfo("  Device = %p\n", pDevice);
 	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
 	if (pDesc) LogInfo("  Height = %d\n", pDesc->Height);
@@ -791,7 +790,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
             /* [annotation][out] */ 
             _Outptr_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogInfo("HackerDXGIFactory2::CreateSwapChainForComposition called with parameters\n");
+	LogInfo("HackerDXGIFactory2::CreateSwapChainForComposition(%s) called with parameters\n", typeid(*this).name());
 	LogInfo("  Device = %p\n", pDevice);
 	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
 	if (pDesc) LogInfo("  Height = %d\n", pDesc->Height);
@@ -823,7 +822,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 
 STDMETHODIMP_(BOOL) HackerDXGIFactory2::IsWindowedStereoEnabled(THIS)
 {
-	LogInfo("HackerDXGIFactory2::IsWindowedStereoEnabled called\n");
+	LogInfo("HackerDXGIFactory2::IsWindowedStereoEnabled(%s) called \n", typeid(*this).name());
 	BOOL ret = mOrigFactory2->IsWindowedStereoEnabled();
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -835,7 +834,7 @@ STDMETHODIMP HackerDXGIFactory2::GetSharedResourceAdapterLuid(THIS_
             /* [annotation] */ 
             _Out_  LUID *pLuid)
 {
-	LogInfo("HackerDXGIFactory2::GetSharedResourceAdapterLuid called\n");
+	LogInfo("HackerDXGIFactory2::GetSharedResourceAdapterLuid(%s) called \n", typeid(*this).name());
 	HRESULT ret = mOrigFactory2->GetSharedResourceAdapterLuid(hResource, pLuid);
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -849,7 +848,7 @@ STDMETHODIMP HackerDXGIFactory2::RegisterStereoStatusWindow(THIS_
             /* [annotation][out] */ 
             _Out_  DWORD *pdwCookie)
 {
-	LogInfo("HackerDXGIFactory2::RegisterStereoStatusWindow called\n");
+	LogInfo("HackerDXGIFactory2::RegisterStereoStatusWindow(%s) called \n", typeid(*this).name());
 	HRESULT ret = mOrigFactory2->RegisterStereoStatusWindow(WindowHandle, wMsg, pdwCookie);
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -861,7 +860,7 @@ STDMETHODIMP HackerDXGIFactory2::RegisterStereoStatusEvent(THIS_
             /* [annotation][out] */ 
             _Out_  DWORD *pdwCookie)
 {
-	LogInfo("HackerDXGIFactory2::RegisterStereoStatusEvent called\n");
+	LogInfo("HackerDXGIFactory2::RegisterStereoStatusEvent(%s) called \n", typeid(*this).name());
 	HRESULT ret = mOrigFactory2->RegisterStereoStatusEvent(hEvent, pdwCookie);
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -871,7 +870,7 @@ STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterStereoStatus(THIS_
             /* [annotation][in] */ 
             _In_  DWORD dwCookie)
 {
-	LogInfo("HackerDXGIFactory2::UnregisterStereoStatus called\n");
+	LogInfo("HackerDXGIFactory2::UnregisterStereoStatus(%s) called \n", typeid(*this).name());
 	mOrigFactory2->UnregisterStereoStatus(dwCookie);
 }
         
@@ -883,7 +882,7 @@ STDMETHODIMP HackerDXGIFactory2::RegisterOcclusionStatusWindow(THIS_
             /* [annotation][out] */ 
             _Out_  DWORD *pdwCookie)
 {
-	LogInfo("HackerDXGIFactory2::RegisterOcclusionStatusWindow called\n");
+	LogInfo("HackerDXGIFactory2::RegisterOcclusionStatusWindow(%s) called \n", typeid(*this).name());
 	HRESULT ret = mOrigFactory2->RegisterOcclusionStatusWindow(WindowHandle, wMsg, pdwCookie);
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -895,7 +894,7 @@ STDMETHODIMP HackerDXGIFactory2::RegisterOcclusionStatusEvent(THIS_
             /* [annotation][out] */ 
             _Out_  DWORD *pdwCookie)
 {
-	LogInfo("HackerDXGIFactory2::RegisterOcclusionStatusEvent called\n");
+	LogInfo("HackerDXGIFactory2::RegisterOcclusionStatusEvent(%s) called \n", typeid(*this).name());
 	HRESULT ret = mOrigFactory2->RegisterOcclusionStatusEvent(hEvent, pdwCookie);
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -905,7 +904,7 @@ STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterOcclusionStatus(THIS_
             /* [annotation][in] */ 
             _In_  DWORD dwCookie)
 {
-	LogInfo("HackerDXGIFactory2::UnregisterOcclusionStatus called\n");
+	LogInfo("HackerDXGIFactory2::UnregisterOcclusionStatus(%s) called \n", typeid(*this).name());
 	mOrigFactory2->UnregisterOcclusionStatus(dwCookie);
 }
         
@@ -917,7 +916,7 @@ STDMETHODIMP HackerDXGIAdapter::EnumOutputs(THIS_
             /* [annotation][out][in] */ 
             __out IDXGIOutput **ppOutput)
 {
-	LogInfo("HackerDXGIAdapter::EnumOutputs called: output #%d requested\n", Output);
+	LogInfo("HackerDXGIAdapter::EnumOutputs(%s) called: output #%d requested\n", typeid(*this).name(), Output);
 	HRESULT hr = mOrigAdapter->EnumOutputs(Output, ppOutput);
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppOutput);
 	return hr;
@@ -927,7 +926,7 @@ STDMETHODIMP HackerDXGIAdapter::GetDesc(THIS_
             /* [annotation][out] */ 
             __out DXGI_ADAPTER_DESC *pDesc)
 {
-	LogInfo("HackerDXGIAdapter::GetDesc called\n");
+	LogInfo("HackerDXGIAdapter::GetDesc(%s) called \n", typeid(*this).name());
 	
 	HRESULT hr = mOrigAdapter->GetDesc(pDesc);
 	if (LogFile && hr == S_OK)
@@ -945,7 +944,7 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
             /* [annotation][out] */ 
             __out  LARGE_INTEGER *pUMDVersion)
 {
-	LogInfo("HackerDXGIAdapter::CheckInterfaceSupport called with IID: %s \n", NameFromIID(InterfaceName).c_str());
+	LogInfo("HackerDXGIAdapter::CheckInterfaceSupport(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(InterfaceName).c_str());
 
 	HRESULT hr = mOrigAdapter->CheckInterfaceSupport(InterfaceName, pUMDVersion);
 	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
@@ -970,7 +969,7 @@ STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_
 {
 	HRESULT hr;
 
-	LogInfo("HackerDXGIAdapter::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIAdapter::GetParent(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	if (riid == __uuidof(IDXGIFactory))
 	{
@@ -1004,7 +1003,7 @@ STDMETHODIMP HackerDXGIAdapter1::GetDesc1(THIS_
 	/* [annotation][out] */
 	__out  DXGI_ADAPTER_DESC1 *pDesc)
 {
-	LogInfo("HackerDXGIAdapter1::GetDesc1 called\n");
+	LogInfo("HackerDXGIAdapter1::GetDesc1(%s) called \n", typeid(*this).name());
 
 	HRESULT hr = mOrigAdapter1->GetDesc1(pDesc);
 	if (LogFile)
@@ -1046,7 +1045,7 @@ STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_
         /* [annotation][out] */ 
         __out  DXGI_OUTPUT_DESC *pDesc)
 {
-	LogInfo("HackerDXGIOutput::GetDesc called\n");
+	LogInfo("HackerDXGIOutput::GetDesc(%s) called \n", typeid(*this).name());
 	
 	HRESULT ret = mOrigOutput->GetDesc(pDesc);
 	if (LogFile)
@@ -1075,7 +1074,7 @@ STDMETHODIMP HackerDXGIOutput::GetDisplayModeList(THIS_
         /* [annotation][out] */ 
         __out_ecount_part_opt(*pNumModes,*pNumModes)  DXGI_MODE_DESC *pDesc)
 {
-	LogInfo("HackerDXGIOutput::GetDisplayModeList called\n");
+	LogInfo("HackerDXGIOutput::GetDisplayModeList(%s) called \n", typeid(*this).name());
 	
 	HRESULT ret = mOrigOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
 	if (ret == S_OK && pDesc)
@@ -1108,7 +1107,7 @@ STDMETHODIMP HackerDXGIOutput::FindClosestMatchingMode(THIS_
         /* [annotation][in] */ 
         __in_opt  IUnknown *pConcernedDevice)
 {
-	if (pModeToMatch) LogInfo("HackerDXGIOutput::FindClosestMatchingMode called: width=%d, height=%d, refresh rate=%f\n", 
+	if (pModeToMatch) LogInfo("HackerDXGIOutput::FindClosestMatchingMode(%s) called: width=%d, height=%d, refresh rate=%f\n", typeid(*this).name(),
 		pModeToMatch->Width, pModeToMatch->Height, (float) pModeToMatch->RefreshRate.Numerator / (float) pModeToMatch->RefreshRate.Denominator);
 	
 	HRESULT hr = mOrigOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
@@ -1129,7 +1128,7 @@ STDMETHODIMP HackerDXGIOutput::FindClosestMatchingMode(THIS_
         
 STDMETHODIMP HackerDXGIOutput::WaitForVBlank(THIS_ )
 {
-	LogInfo("HackerDXGIOutput::WaitForVBlank called\n");
+	LogInfo("HackerDXGIOutput::WaitForVBlank(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->WaitForVBlank();
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1140,7 +1139,7 @@ STDMETHODIMP HackerDXGIOutput::TakeOwnership(THIS_
         __in  IUnknown *pDevice,
         BOOL Exclusive)
 {
-	LogInfo("HackerDXGIOutput::TakeOwnership called\n");
+	LogInfo("HackerDXGIOutput::TakeOwnership(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->TakeOwnership(pDevice, Exclusive);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1148,7 +1147,7 @@ STDMETHODIMP HackerDXGIOutput::TakeOwnership(THIS_
         
 void STDMETHODCALLTYPE HackerDXGIOutput::ReleaseOwnership(void)
 {
-	LogInfo("HackerDXGIOutput::ReleaseOwnership called\n");
+	LogInfo("HackerDXGIOutput::ReleaseOwnership(%s) called \n", typeid(*this).name());
 	return mOrigOutput->ReleaseOwnership();
 }
         
@@ -1156,7 +1155,7 @@ STDMETHODIMP HackerDXGIOutput::GetGammaControlCapabilities(THIS_
         /* [annotation][out] */ 
         __out  DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps)
 {
-	LogInfo("HackerDXGIOutput::GetGammaControlCapabilities called\n");
+	LogInfo("HackerDXGIOutput::GetGammaControlCapabilities(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->GetGammaControlCapabilities(pGammaCaps);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1166,7 +1165,7 @@ STDMETHODIMP HackerDXGIOutput::SetGammaControl(THIS_
         /* [annotation][in] */ 
         __in  const DXGI_GAMMA_CONTROL *pArray)
 {
-	LogInfo("HackerDXGIOutput::SetGammaControl called\n");
+	LogInfo("HackerDXGIOutput::SetGammaControl(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->SetGammaControl(pArray);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1176,7 +1175,7 @@ STDMETHODIMP HackerDXGIOutput::GetGammaControl(THIS_
         /* [annotation][out] */ 
         __out  DXGI_GAMMA_CONTROL *pArray)
 {
-	LogInfo("HackerDXGIOutput::GetGammaControl called\n");
+	LogInfo("HackerDXGIOutput::GetGammaControl(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->GetGammaControl(pArray);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1186,7 +1185,7 @@ STDMETHODIMP HackerDXGIOutput::SetDisplaySurface(THIS_
         /* [annotation][in] */ 
         __in  IDXGISurface *pScanoutSurface)
 {
-	LogInfo("HackerDXGIOutput::SetDisplaySurface called\n");
+	LogInfo("HackerDXGIOutput::SetDisplaySurface(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->SetDisplaySurface(pScanoutSurface);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1196,7 +1195,7 @@ STDMETHODIMP HackerDXGIOutput::GetDisplaySurfaceData(THIS_
         /* [annotation][in] */ 
         __in  IDXGISurface *pDestination)
 {
-	LogInfo("HackerDXGIOutput::GetDisplaySurfaceData called\n");
+	LogInfo("HackerDXGIOutput::GetDisplaySurfaceData(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->GetDisplaySurfaceData(pDestination);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1206,7 +1205,7 @@ STDMETHODIMP HackerDXGIOutput::GetFrameStatistics(THIS_
         /* [annotation][out] */ 
         __out  DXGI_FRAME_STATISTICS *pStats)
 {
-	LogInfo("HackerDXGIOutput::GetFrameStatistics called\n");
+	LogInfo("HackerDXGIOutput::GetFrameStatistics(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigOutput->GetFrameStatistics(pStats);
 	LogInfo("  returns hr=%x\n", hr);
 	return hr;
@@ -1219,7 +1218,7 @@ STDMETHODIMP HackerDXGIOutput::SetPrivateData(THIS_
             /* [annotation][in] */ 
             __in_bcount(DataSize)  const void *pData)
 {
-	LogInfo("HackerDXGIOutput::SetPrivateData called with IID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIOutput::SetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigOutput->SetPrivateData(Name, DataSize, pData);
 	LogInfo("  returns hr=%x\n", hr);
@@ -1232,7 +1231,7 @@ STDMETHODIMP HackerDXGIOutput::SetPrivateDataInterface(THIS_
             /* [annotation][in] */ 
             __in  const IUnknown *pUnknown)
 {
-	LogInfo("HackerDXGIOutput::SetPrivateDataInterface called with IID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIOutput::SetPrivateDataInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigOutput->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns hr=%x\n", hr);
@@ -1247,7 +1246,7 @@ STDMETHODIMP HackerDXGIOutput::GetPrivateData(THIS_
             /* [annotation][out] */ 
             __out_bcount(*pDataSize)  void *pData)
 {
-	LogInfo("HackerDXGIOutput::GetPrivateData called with IID: %s \n", NameFromIID(Name).c_str());
+	LogInfo("HackerDXGIOutput::GetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
 
 	HRESULT hr = mOrigOutput->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns hr=%x\n", hr);
@@ -1260,7 +1259,7 @@ STDMETHODIMP HackerDXGIOutput::GetParent(THIS_
             /* [annotation][retval][out] */ 
             __out  void **ppParent)
 {
-	LogInfo("HackerDXGIOutput::GetParent called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIOutput::GetParent(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigOutput->GetParent(riid, ppParent);
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppParent);
@@ -1276,7 +1275,7 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 	/* [annotation][retval][out] */
 	_Out_  void **ppDevice)
 {
-	LogInfo("HackerDXGIDeviceSubObject::GetDevice called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIDeviceSubObject::GetDevice(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDeviceSubObject->GetDevice(riid, ppDevice);
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppDevice);
@@ -1295,7 +1294,7 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags)
 {
-	LogDebug("HackerDXGISwapChain::Present called with\n");
+	LogDebug("HackerDXGISwapChain::Present(%s) called with\n", typeid(*this).name());
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
@@ -1320,7 +1319,7 @@ STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
             /* [annotation][out][in] */ 
             _Out_  void **ppSurface)
 {
-	LogInfo("HackerDXGISwapChain::GetBuffer called with IID: %s \n", NameFromIID(riid).c_str());
+	LogInfo("HackerDXGISwapChain::GetBuffer(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
 	LogInfo("  returns %x\n", hr);
@@ -1332,7 +1331,7 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
             /* [annotation][in] */ 
             _In_opt_  IDXGIOutput *pTarget)
 {
-	LogInfo("HackerDXGISwapChain::SetFullscreenState called with\n");
+	LogInfo("HackerDXGISwapChain::SetFullscreenState(%s) called with\n", typeid(*this).name());
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %p\n", pTarget);
 
@@ -1353,7 +1352,7 @@ STDMETHODIMP HackerDXGISwapChain::GetFullscreenState(THIS_
             /* [annotation][out] */ 
             _Out_opt_  IDXGIOutput **ppTarget)
 {
-	LogDebug("HackerDXGISwapChain::GetFullscreenState called\n");
+	LogDebug("HackerDXGISwapChain::GetFullscreenState(%s) called \n", typeid(*this).name());
 	
 	//IDXGIOutput *origOutput;
 	//HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, &origOutput);
@@ -1373,7 +1372,7 @@ STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
 {
-	LogInfo("HackerDXGISwapChain::GetDesc called\n");
+	LogInfo("HackerDXGISwapChain::GetDesc(%s) called \n", typeid(*this).name());
 	
 	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
 	if (hr == S_OK)
@@ -1395,7 +1394,7 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
             /* [in] */ DXGI_FORMAT NewFormat,
             /* [in] */ UINT SwapChainFlags)
 {
-	LogInfo("HackerDXGISwapChain::ResizeBuffers called\n");
+	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 	LogInfo("  returns result = %x\n", hr); 
 	return hr;
@@ -1405,7 +1404,7 @@ STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
             /* [annotation][in] */ 
             _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
-	LogInfo("HackerDXGISwapChain::ResizeTarget called\n");
+	LogInfo("HackerDXGISwapChain::ResizeTarget(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1415,7 +1414,7 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppOutput)
 {
-	LogInfo("HackerDXGISwapChain::GetContainingOutput called\n");
+	LogInfo("HackerDXGISwapChain::GetContainingOutput(%s) called \n", typeid(*this).name());
 	
 	//IDXGIOutput *origOutput;
 	//HRESULT hr = mOrigSwapChain->GetContainingOutput(&origOutput);
@@ -1433,7 +1432,7 @@ STDMETHODIMP HackerDXGISwapChain::GetFrameStatistics(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_FRAME_STATISTICS *pStats)
 {
-	LogInfo("HackerDXGISwapChain::GetFrameStatistics called\n");
+	LogInfo("HackerDXGISwapChain::GetFrameStatistics(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain->GetFrameStatistics(pStats);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1443,7 +1442,7 @@ STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
             /* [annotation][out] */ 
             _Out_  UINT *pLastPresentCount)
 {
-	LogInfo("HackerDXGISwapChain::GetLastPresentCount called\n");
+	LogInfo("HackerDXGISwapChain::GetLastPresentCount(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain->GetLastPresentCount(pLastPresentCount);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1457,7 +1456,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetDesc1(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_SWAP_CHAIN_DESC1 *pDesc)
 {
-	LogInfo("HackerDXGISwapChain1::GetDesc1 called\n");
+	LogInfo("HackerDXGISwapChain1::GetDesc1(%s) called \n", typeid(*this).name());
 	
 	HRESULT hr = mOrigSwapChain1->GetDesc1(pDesc);
 	if (hr == S_OK)
@@ -1475,7 +1474,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetFullscreenDesc(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc)
 {
-	LogInfo("HackerDXGISwapChain1::GetFullscreenDesc called\n");
+	LogInfo("HackerDXGISwapChain1::GetFullscreenDesc(%s) called \n", typeid(*this).name());
 	
 	HRESULT hr = mOrigSwapChain1->GetFullscreenDesc(pDesc);
 	if (hr == S_OK)
@@ -1493,7 +1492,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetHwnd(THIS_
             /* [annotation][out] */ 
             _Out_  HWND *pHwnd)
 {
-	LogInfo("HackerDXGISwapChain1::GetHwnd called\n");
+	LogInfo("HackerDXGISwapChain1::GetHwnd(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain1->GetHwnd(pHwnd);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1505,7 +1504,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetCoreWindow(THIS_
             /* [annotation][out] */ 
             _Out_  void **ppUnk)
 {
-	LogInfo("HackerDXGISwapChain1::GetCoreWindow called with IID: %s \n", NameFromIID(refiid).c_str());
+	LogInfo("HackerDXGISwapChain1::GetCoreWindow(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(refiid).c_str());
 
 	HRESULT hr = mOrigSwapChain1->GetCoreWindow(refiid, ppUnk);
 	LogInfo("  returns result = %x\n", hr);
@@ -1518,7 +1517,7 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
             /* [annotation][in] */ 
             _In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
 {
-	LogInfo("HackerDXGISwapChain1::Present1 called\n");
+	LogInfo("HackerDXGISwapChain1::Present1(%s) called \n", typeid(*this).name());
 	LogInfo("  SyncInterval = %d\n", SyncInterval);
 	LogInfo("  PresentFlags = %d\n", PresentFlags);
 	
@@ -1529,7 +1528,7 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
         
 STDMETHODIMP_(BOOL) HackerDXGISwapChain1::IsTemporaryMonoSupported(THIS)
 {
-	LogInfo("HackerDXGISwapChain1::IsTemporaryMonoSupported called\n");
+	LogInfo("HackerDXGISwapChain1::IsTemporaryMonoSupported(%s) called \n", typeid(*this).name());
 	BOOL ret = mOrigSwapChain1->IsTemporaryMonoSupported();
 	LogInfo("  returns %d\n", ret);
 	return ret;
@@ -1539,7 +1538,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetRestrictToOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppRestrictToOutput)
 {
-	LogInfo("HackerDXGISwapChain1::GetRestrictToOutput called\n");
+	LogInfo("HackerDXGISwapChain1::GetRestrictToOutput(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain1->GetRestrictToOutput(ppRestrictToOutput);
 	LogInfo("  returns result = %x, handle = %p \n", hr, *ppRestrictToOutput);
 	return hr;
@@ -1549,7 +1548,7 @@ STDMETHODIMP HackerDXGISwapChain1::SetBackgroundColor(THIS_
             /* [annotation][in] */ 
             _In_  const DXGI_RGBA *pColor)
 {
-	LogInfo("HackerDXGISwapChain1::SetBackgroundColor called\n");
+	LogInfo("HackerDXGISwapChain1::SetBackgroundColor(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain1->SetBackgroundColor(pColor);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1559,7 +1558,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetBackgroundColor(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_RGBA *pColor)
 {
-	LogInfo("HackerDXGISwapChain1::GetBackgroundColor called\n");
+	LogInfo("HackerDXGISwapChain1::GetBackgroundColor(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain1->GetBackgroundColor(pColor);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1569,7 +1568,7 @@ STDMETHODIMP HackerDXGISwapChain1::SetRotation(THIS_
             /* [annotation][in] */ 
             _In_  DXGI_MODE_ROTATION Rotation)
 {
-	LogInfo("HackerDXGISwapChain1::SetRotation called\n");
+	LogInfo("HackerDXGISwapChain1::SetRotation(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain1->SetRotation(Rotation);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1579,7 +1578,7 @@ STDMETHODIMP HackerDXGISwapChain1::GetRotation(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_MODE_ROTATION *pRotation)
 {
-	LogInfo("HackerDXGISwapChain1::GetRotation called\n");
+	LogInfo("HackerDXGISwapChain1::GetRotation(%s) called \n", typeid(*this).name());
 	HRESULT hr = mOrigSwapChain1->GetRotation(pRotation);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
