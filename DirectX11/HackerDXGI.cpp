@@ -47,7 +47,7 @@ HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevi
 }
 
 HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
-	: IDXGIOutput()
+	: HackerDXGIObject(pOutput)
 {
 	mOrigOutput = pOutput;
 }
@@ -326,9 +326,11 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 // We need to override the QueryInterface here, in the case the caller uses
 // IDXGIFactory::QueryInterface to create a IDXGIFactory2.
 //
-// For our purposes, it might make more sense to return an error of E_NOINTERFACE
+// For our purposes, it presently makes more sense to return an error of E_NOINTERFACE
 // for this request, because the caller must surely be able to handle a downlevel
-// system, and that is better for us in general.
+// system, and that is better for us in general. Only early access and beta
+// releases are requiring Factory2, and when wrapping those, we get a crash of
+// some form, that may not be our fault.
 // 
 // Note that we can expect this QueryInterface to get called for any 
 // HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
@@ -344,6 +346,8 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	if (riid == __uuidof(IDXGIFactory2))
 	{
 		// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+		LogInfo("  returns E_NOINTERFACE as error. \n");
+		*ppvObject = NULL;
 		return E_NOINTERFACE;
 
 		// For when we need to return a legit Factory2.  Crashes at present.
@@ -505,117 +509,6 @@ STDMETHODIMP HackerDXGIFactory::CreateSoftwareAdapter(THIS_
 // IDXGIFactory1::QueryInterface to create a IDXGIFactory2.
 // The superclass of HackerDXGIFactory::QueryInterface will be called, as long as
 // we successfully wrapped the factory in the first place.
-
-
-STDMETHODIMP HackerDXGIFactory1::EnumAdapters(THIS_
-	/* [in] */ UINT Adapter,
-	/* [annotation][out] */
-	__out IDXGIAdapter **ppAdapter)
-{
-	LogInfo("HackerDXGIFactory1::EnumAdapters adapter %d requested\n", Adapter);
-	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, ppAdapter);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory1::MakeWindowAssociation(THIS_
-	HWND WindowHandle,
-	UINT Flags)
-{
-	if (LogFile)
-	{
-		LogInfo("HackerDXGIFactory1::MakeWindowAssociation called with WindowHandle = %p, Flags = %x\n", WindowHandle, Flags);
-		if (Flags) LogInfo("  Flags =");
-		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfo(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
-		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfo(" DXGI_MWA_NO_ALT_ENTER");
-		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfo(" DXGI_MWA_NO_PRINT_SCREEN");
-		if (Flags) LogInfo("\n");
-	}
-
-	if (gAllowWindowCommands && Flags)
-	{
-		LogInfo("  overriding Flags to allow all window commands\n");
-		
-		Flags = 0;
-	}
-	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
-	LogInfo("  returns result = %x\n", hr);
-
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory1::GetWindowAssociation(THIS_
-	/* [annotation][out] */
-	__out  HWND *pWindowHandle)
-{
-	LogInfo("HackerDXGIFactory1::GetWindowAssociation(%s) called \n", typeid(*this).name());
-	HRESULT hr = mOrigFactory->GetWindowAssociation(pWindowHandle);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory1::CreateSwapChain(THIS_
-	/* [annotation][in] */
-	__in  IUnknown *pDevice,
-	/* [annotation][in] */
-	__in  DXGI_SWAP_CHAIN_DESC *pDesc,
-	/* [annotation][out] */
-	__out  IDXGISwapChain **ppSwapChain)
-{
-	LogInfo("HackerDXGIFactory1::CreateSwapChain called with parameters\n");
-	LogInfo("  Device = %p\n", pDevice);
-	if (pDesc)
-	{
-		LogInfo("  Windowed = %d\n", pDesc->Windowed);
-		LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
-		LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
-		LogInfo("  Refresh rate = %f\n",
-			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-
-		// Force screen resolution or refresh if specified by d3dx.ini
-		if (SCREEN_REFRESH >= 0)
-		{
-			pDesc->BufferDesc.RefreshRate.Numerator = SCREEN_REFRESH;
-			pDesc->BufferDesc.RefreshRate.Denominator = 1;
-		}
-		if (SCREEN_WIDTH >= 0) pDesc->BufferDesc.Width = SCREEN_WIDTH;
-		if (SCREEN_HEIGHT >= 0) pDesc->BufferDesc.Height = SCREEN_HEIGHT;
-		if (SCREEN_FULLSCREEN >= 0) pDesc->Windowed = !SCREEN_FULLSCREEN;
-	}
-
-	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, ppSwapChain);
-	LogInfo("  return value = %x\n", hr);
-
-	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
-	// can be occluded when we return from creating the real swap chain.  
-	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
-	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
-	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
-	// Same bug fix is applied for the other CreateSwapChain* variants.
-
-	//if (SUCCEEDED(hr))
-	//{
-	//	*ppSwapChain = HackerDXGISwapChain::GetDirectSwapChain(origSwapChain);
-	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
-	//}
-
-	return hr;
-}
-
-STDMETHODIMP HackerDXGIFactory1::CreateSoftwareAdapter(THIS_
-	/* [in] */ HMODULE Module,
-	/* [annotation][out] */
-	__out  IDXGIAdapter **ppAdapter)
-{
-	LogInfo("HackerDXGIFactory1::CreateSoftwareAdapter(%s) called \n", typeid(*this).name());
-	HRESULT hr = mOrigFactory->CreateSoftwareAdapter(Module, ppAdapter);
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
 
 
 STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
@@ -1021,26 +914,6 @@ STDMETHODIMP HackerDXGIAdapter1::GetDesc1(THIS_
 
 // -----------------------------------------------------------------------------
 
-STDMETHODIMP_(ULONG) HackerDXGIOutput::AddRef(THIS)
-{
-	return mOrigOutput->AddRef();
-}
-
-STDMETHODIMP_(ULONG) HackerDXGIOutput::Release(THIS)
-{
-	ULONG ulRef = mOrigOutput->Release();
-	LogInfo("HackerDXGIOutput::Release counter=%d, this=%p\n", ulRef, this);
-
-	if (ulRef <= 0)
-	{
-		LogInfo("  deleting self\n");
-
-		delete this;
-		return 0L;
-	}
-	return ulRef;
-}
-
 STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_ 
         /* [annotation][out] */ 
         __out  DXGI_OUTPUT_DESC *pDesc)
@@ -1211,60 +1084,6 @@ STDMETHODIMP HackerDXGIOutput::GetFrameStatistics(THIS_
 	return hr;
 }
                
-STDMETHODIMP HackerDXGIOutput::SetPrivateData(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [in] */ UINT DataSize,
-            /* [annotation][in] */ 
-            __in_bcount(DataSize)  const void *pData)
-{
-	LogInfo("HackerDXGIOutput::SetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
-
-	HRESULT hr = mOrigOutput->SetPrivateData(Name, DataSize, pData);
-	LogInfo("  returns hr=%x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGIOutput::SetPrivateDataInterface(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][in] */ 
-            __in  const IUnknown *pUnknown)
-{
-	LogInfo("HackerDXGIOutput::SetPrivateDataInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
-
-	HRESULT hr = mOrigOutput->SetPrivateDataInterface(Name, pUnknown);
-	LogInfo("  returns hr=%x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGIOutput::GetPrivateData(THIS_
-            /* [annotation][in] */ 
-            __in  REFGUID Name,
-            /* [annotation][out][in] */ 
-            __inout  UINT *pDataSize,
-            /* [annotation][out] */ 
-            __out_bcount(*pDataSize)  void *pData)
-{
-	LogInfo("HackerDXGIOutput::GetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(Name).c_str());
-
-	HRESULT hr = mOrigOutput->GetPrivateData(Name, pDataSize, pData);
-	LogInfo("  returns hr=%x\n", hr);
-	return hr;
-}
-        
-STDMETHODIMP HackerDXGIOutput::GetParent(THIS_ 
-            /* [annotation][in] */ 
-            __in  REFIID riid,
-            /* [annotation][retval][out] */ 
-            __out  void **ppParent)
-{
-	LogInfo("HackerDXGIOutput::GetParent(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
-
-	HRESULT hr = mOrigOutput->GetParent(riid, ppParent);
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppParent);
-	return hr;
-}
 
 
 // -----------------------------------------------------------------------------

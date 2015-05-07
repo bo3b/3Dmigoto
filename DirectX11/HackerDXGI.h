@@ -1,3 +1,15 @@
+// For this class, we are using the C++ hierarchy to avoid having to duplicate
+// a bunch of boilerplate code.
+//
+// The HackerDXGIFactory descends from HackerDXGIObject for example, and gets
+// the benefit of all of the base class's methods.  I verified that the subclass
+// gets called correctly, even in this odd COM object world.  The COM interface
+// will not support this, but as long as we stay in C++, we get the benefit of
+// inheritance here.
+//
+// That means that any call to Release or Add for example, will call through
+// to the original base class of HackerUnknown, for any of the sub-objects.
+
 #pragma once
 
 #include <dxgi1_2.h>
@@ -182,7 +194,7 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGIOutput : public IDXGIOutput
+class HackerDXGIOutput : public HackerDXGIObject
 {
 private:
 	IDXGIOutput	*mOrigOutput;
@@ -191,41 +203,6 @@ public:
 	HackerDXGIOutput(IDXGIOutput *pOutput);
 
 
-	// ******************* IDirect3DUnknown methods 
-
-	STDMETHOD_(ULONG, AddRef)(THIS);
-	STDMETHOD_(ULONG, Release)(THIS);
-
-	// ******************* IDXGIObject methods
-
-	STDMETHOD(SetPrivateData)(THIS_
-		/* [annotation][in] */
-		__in  REFGUID Name,
-		/* [in] */ UINT DataSize,
-		/* [annotation][in] */
-		__in_bcount(DataSize)  const void *pData);
-
-	STDMETHOD(SetPrivateDataInterface)(THIS_
-		/* [annotation][in] */
-		__in  REFGUID Name,
-		/* [annotation][in] */
-		__in  const IUnknown *pUnknown);
-
-	STDMETHOD(GetPrivateData)(THIS_
-		/* [annotation][in] */
-		__in  REFGUID Name,
-		/* [annotation][out][in] */
-		__inout  UINT *pDataSize,
-		/* [annotation][out] */
-		__out_bcount(*pDataSize)  void *pData);
-
-	STDMETHOD(GetParent)(THIS_
-		/* [annotation][in] */
-		__in  REFIID riid,
-		/* [annotation][retval][out] */
-		__out  void **ppParent);
-
-	// ******************* IDXGIOutput methods 
 	STDMETHOD(GetDesc)(THIS_
 		/* [annotation][out] */
 		__out  DXGI_OUTPUT_DESC *pDesc);
@@ -314,8 +291,8 @@ public:
 
 	IDXGISwapChain* GetOrigSwapChain();
 
-	//**** IDXGISwapChain implementation
-    STDMETHOD(Present)(THIS_
+
+	STDMETHOD(Present)(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags);
         
@@ -377,6 +354,7 @@ private:
 public:
 	HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext);
 
+	
 	STDMETHOD(GetDesc1)(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_SWAP_CHAIN_DESC1 *pDesc);
@@ -428,7 +406,7 @@ public:
 
 class HackerDXGIFactory : public HackerDXGIObject
 {
-protected:
+private:
 	IDXGIFactory *mOrigFactory;
 	HackerDevice *mHackerDevice;
 	HackerContext *mHackerContext;
@@ -437,6 +415,8 @@ public:
 	HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 	
 
+	// Specifically override the QueryInterface here so that we can return an 
+	// error for attempts to create IDXGIFactory2.
 	STDMETHOD(QueryInterface)(
 		/* [in] */ REFIID riid,
 		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override;
@@ -466,7 +446,6 @@ public:
 		/* [in] */ HMODULE Module,
 		/* [annotation][out] */
 		__out  IDXGIAdapter **ppAdapter);
-
 };
 
 // -----------------------------------------------------------------------------
@@ -479,36 +458,6 @@ private:
 public:
 	HackerDXGIFactory1(IDXGIFactory1 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 
-
-	// ******************* IDXGIFactory methods 
-
-	STDMETHOD(EnumAdapters)(THIS_
-		/* [in] */ UINT Adapter,
-		/* [annotation][out] */
-		__out IDXGIAdapter **ppAdapter);
-
-	STDMETHOD(MakeWindowAssociation)(THIS_
-		HWND WindowHandle,
-		UINT Flags);
-
-	STDMETHOD(GetWindowAssociation)(THIS_
-		/* [annotation][out] */
-		__out  HWND *pWindowHandle);
-
-	STDMETHOD(CreateSwapChain)(THIS_
-		/* [annotation][in] */
-		__in  IUnknown *pDevice,
-		/* [annotation][in] */
-		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
-		/* [annotation][out] */
-		__out  IDXGISwapChain **ppSwapChain);
-
-	STDMETHOD(CreateSoftwareAdapter)(THIS_
-		/* [in] */ HMODULE Module,
-		/* [annotation][out] */
-		__out  IDXGIAdapter **ppAdapter);
-
-	// ******************* IDXGIFactory1 methods 
 
 	STDMETHOD(EnumAdapters1)(THIS_
 		/* [in] */ UINT Adapter,
@@ -528,6 +477,7 @@ private:
 
 public:
 	HackerDXGIFactory2(IDXGIFactory2 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
+
 
 	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
 
@@ -609,5 +559,4 @@ public:
 		/* [annotation][out] */
 		_Outptr_  IDXGISwapChain1 **ppSwapChain);
 };
-
 
