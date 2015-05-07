@@ -340,18 +340,24 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 {
 	LogDebug("HackerDXGIFactory::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
 
-	HRESULT hr;
+	HRESULT hr = mOrigFactory->QueryInterface(riid, ppvObject);
+
 	if (riid == __uuidof(IDXGIFactory2))
 	{
-		*ppvObject = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(mOrigFactory), mHackerDevice, mHackerContext);
-		if (*ppvObject != NULL)
-			hr = S_OK;
-		else
-			hr = E_OUTOFMEMORY;
-	}
-	else
-	{
-		hr = HackerUnknown::QueryInterface(riid, ppvObject);
+		// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+		return E_NOINTERFACE;
+
+		// For when we need to return a legit Factory2.  Crashes at present.
+		//HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject), mHackerDevice, mHackerContext);
+		//LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
+
+		//if (factory2Wrap == NULL)
+		//{
+		//	LogInfo("  error allocating factory2Wrap. \n");
+		//	return E_OUTOFMEMORY;
+		//}
+
+		//*ppvObject = factory2Wrap;
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);

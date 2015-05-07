@@ -432,7 +432,12 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 	HackerDXGIFactory1 *factory1Wrap;
 	if (riid == __uuidof(IDXGIFactory2))
 	{
-		factory1Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(origFactory1), NULL, NULL);
+		// At present, there seems to be a problem creating Factory2 correctly, and
+		// we crash. Rather than debug something is barely used today, let's force
+		// the fallback by saying it's not available.
+		return E_NOINTERFACE;
+
+		//factory1Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(origFactory1), NULL, NULL);
 	}
 	else
 	{
@@ -474,7 +479,12 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 	HackerDXGIFactory *factoryWrap;
 	if (riid == __uuidof(IDXGIFactory2))
 	{
-		factoryWrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(origFactory), NULL, NULL);
+		// At present, there seems to be a problem creating Factory2 correctly, and
+		// we crash. Rather than debug something is barely used today, let's force
+		// the fallback by saying it's not available.
+		return E_NOINTERFACE;
+		
+		//factoryWrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(origFactory), NULL, NULL);
 	}
 	else if (riid == __uuidof(IDXGIFactory1))
 	{
