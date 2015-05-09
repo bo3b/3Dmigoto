@@ -26,6 +26,9 @@ class HackerDevice;
 class HackerContext;
 class Overlay;
 
+
+void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc);
+
 // -----------------------------------------------------------------------------
 
 // MIDL_INTERFACE("00000000-0000-0000-C000-000000000046")

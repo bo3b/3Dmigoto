@@ -94,9 +94,8 @@ void InitializeDLL()
 		if (read) swscanf_s(val, L"%d", &SCREEN_HEIGHT);
 		read = GetPrivateProfileString(L"Device", L"refresh_rate", 0, val, MAX_PATH, dir);
 		if (read) swscanf_s(val, L"%d", &SCREEN_REFRESH);
-		read = GetPrivateProfileString(L"Device", L"full_screen", 0, val, MAX_PATH, dir);
-		if (read) swscanf_s(val, L"%d", &SCREEN_FULLSCREEN);
-		gAllowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, dir) == 1;
+		SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, dir) == 1;
+		SCREEN_ALLOW_COMMANDS = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, dir) == 1;
 		read = GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, val, MAX_PATH, dir);
 		if (read) swscanf_s(val, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			FILTER_REFRESH+0, FILTER_REFRESH+1, FILTER_REFRESH+2, FILTER_REFRESH+3, &FILTER_REFRESH+4,
@@ -111,7 +110,7 @@ void InitializeDLL()
 			if (FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%s\n", FILTER_REFRESH[0]);
 			if (SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
 
-			if (gAllowWindowCommands) LogInfo("  allow_windowcommands=1\n");
+			if (SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 		}
 	}
 

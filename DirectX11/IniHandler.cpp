@@ -429,19 +429,23 @@ void LoadConfigFile()
 		if (!G->CHAIN_DLL_PATH) LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
 	}
 
-	// [Device]
-	wchar_t refresh[MAX_PATH] = { 0 };
-
+	// [Device] (DXGI parameters)
 	if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
 		swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
 	if (GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile))
 		swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
 	if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile))
 		swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
-	GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, refresh, MAX_PATH, iniFile);	 // in DXGI dll
-	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile);
+	if (GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH, iniFile))
+	{
+		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+			G->FILTER_REFRESH + 0, G->FILTER_REFRESH + 1, G->FILTER_REFRESH + 2, G->FILTER_REFRESH + 3, 
+			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7, 
+			G->FILTER_REFRESH + 8, G->FILTER_REFRESH + 9);
+	}
+	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile) == 1;
 	G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
-	bool allowWindowCommands = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1; // in DXGI dll
+	G->SCREEN_ALLOW_COMMANDS = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1;
 
 	if (LogFile)
 	{
@@ -449,10 +453,10 @@ void LoadConfigFile()
 		if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
 		if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
 		if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-		if (refresh[0]) LogInfoW(L"  filter_refresh_rate=%s\n", refresh);
+		if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%s\n", G->FILTER_REFRESH[0]);
 		if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
 		if (G->gForceStereo) LogInfo("  force_stereo=1\n");
-		if (allowWindowCommands) LogInfo("  allow_windowcommands=1\n");
+		if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 	}
 
 	// [Stereo]

@@ -167,7 +167,10 @@ struct Globals
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
-	int SCREEN_FULLSCREEN;
+	bool SCREEN_FULLSCREEN;
+	int FILTER_REFRESH[11];
+	bool SCREEN_ALLOW_COMMANDS;
+
 	int marking_mode;
 	bool gForceStereo;
 	bool gCreateStereoProfile;
@@ -308,7 +311,9 @@ struct Globals
 		SCREEN_WIDTH(-1),
 		SCREEN_HEIGHT(-1),
 		SCREEN_REFRESH(-1),
-		SCREEN_FULLSCREEN(-1),
+		SCREEN_FULLSCREEN(false),
+		SCREEN_ALLOW_COMMANDS(false),
+
 		marking_mode(-1),
 		gForceStereo(false),
 		gCreateStereoProfile(false),
@@ -331,6 +336,9 @@ struct Globals
 
 		for (int i = 0; i < 4; i++)
 			gTuneValue[i] = 1.0f;
+
+		for (int i = 0; i < 11; i++)
+			FILTER_REFRESH[i] = 0;
 	}
 };
 

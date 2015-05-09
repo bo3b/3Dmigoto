@@ -1,7 +1,7 @@
 #pragma once
 
-extern bool gAllowWindowCommands;
-extern int SCREEN_FULLSCREEN;
+extern bool SCREEN_ALLOW_COMMANDS;
+extern bool SCREEN_FULLSCREEN;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_REFRESH;

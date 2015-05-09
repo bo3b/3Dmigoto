@@ -551,7 +551,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	HackerContext **ppImmediateContext)
 {
 	InitD311();
-	LogInfo("D3D11CreateDevice called with adapter = %p\n", pAdapter);
+	LogInfo("\n\nD3D11CreateDevice called with adapter = %p \n", pAdapter);
 
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
@@ -606,7 +606,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	deviceWrap->SetHackerContext(contextWrap);
 	contextWrap->SetHackerDevice(deviceWrap);
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n", ret, origDevice, deviceWrap, origContext, contextWrap);
+	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n", ret, origDevice, deviceWrap, origContext, contextWrap);
 	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n", 
 	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
 	return ret;
@@ -627,25 +627,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	HackerContext **ppImmediateContext)
 {
 	InitD311();
-	LogInfo("D3D11CreateDeviceAndSwapChain called with adapter = %p\n", pAdapter);
-	if (pSwapChainDesc) LogInfo("  Windowed = %d\n", pSwapChainDesc->Windowed);
-	if (pSwapChainDesc) LogInfo("  Width = %d\n", pSwapChainDesc->BufferDesc.Width);
-	if (pSwapChainDesc) LogInfo("  Height = %d\n", pSwapChainDesc->BufferDesc.Height);
-	if (pSwapChainDesc) LogInfo("  Refresh rate = %f\n",
-		(float)pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float)pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
+	LogInfo("\n\nD3D11CreateDeviceAndSwapChain called with adapter = %p \n", pAdapter);
 
-	if (G->SCREEN_FULLSCREEN >= 0 && pSwapChainDesc) pSwapChainDesc->Windowed = !G->SCREEN_FULLSCREEN;
-	if (G->SCREEN_REFRESH >= 0 && pSwapChainDesc && !pSwapChainDesc->Windowed)
-	{
-		pSwapChainDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
-		pSwapChainDesc->BufferDesc.RefreshRate.Denominator = 1;
-	}
-	if (G->SCREEN_WIDTH >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Width = G->SCREEN_WIDTH;
-	if (G->SCREEN_HEIGHT >= 0 && pSwapChainDesc) pSwapChainDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-	if (pSwapChainDesc) LogInfo("  calling with parameters width = %d, height = %d, refresh rate = %f, windowed = %d\n",
-		pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height,
-		(float)pSwapChainDesc->BufferDesc.RefreshRate.Numerator / (float)pSwapChainDesc->BufferDesc.RefreshRate.Denominator,
-		pSwapChainDesc->Windowed);
+	ForceDisplayParams(pSwapChainDesc);
 
 #if defined(_DEBUG_LAYER)
 	// If the project is in a debug build, enable the debug layer.
@@ -713,7 +697,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	contextWrap->SetHackerDevice(deviceWrap);
 	deviceWrap->SetHackerSwapChain(swapchainWrap);
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n", 
+	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
+		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
 	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",
 	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());

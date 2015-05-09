@@ -698,7 +698,7 @@ static NvAPI_Status __cdecl NvAPI_D3D1x_CreateSwapChain(StereoHandle hStereoHand
 {
 	if (CallsLogging())
 	{
-		LogInfo("%s - D3D1x_CreateSwapChain called with parameters\n", LogTime().c_str());
+		LogInfo("%s - NVAPI::D3D1x_CreateSwapChain called with parameters\n", LogTime().c_str());
 		LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
 		LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
 		LogInfo("  Refresh rate = %f\n",

@@ -6,14 +6,6 @@
 #include "globals.h"
 
 
-bool gAllowWindowCommands = false;
-int SCREEN_FULLSCREEN = -1;
-int SCREEN_WIDTH = -1;
-int SCREEN_HEIGHT = -1;
-int SCREEN_REFRESH = -1;
-int FILTER_REFRESH[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-
 // -----------------------------------------------------------------------------
 // Constructors:
 
@@ -409,7 +401,7 @@ STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
 		if (Flags) LogInfo("\n");
 	}
 
-	if (gAllowWindowCommands && Flags)
+	if (G->SCREEN_ALLOW_COMMANDS && Flags)
 	{
 		LogInfo("  overriding Flags to allow all window commands\n");
 		
@@ -430,7 +422,51 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
-        
+
+// This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
+// These global parameters come originally from the d3dx.ini, so the user can
+// change them.
+// This is also used by D3D11::CreateSwapChainAndDevice.
+//
+// It might make sense to move this to Utils, where nvapi can access it too.
+
+void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
+{
+	LogInfo("  Windowed = %d \n", pDesc->Windowed);
+	LogInfo("  Width = %d \n", pDesc->BufferDesc.Width);
+	LogInfo("  Height = %d \n", pDesc->BufferDesc.Height);
+	LogInfo("  Refresh rate = %f \n",
+		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+
+	if (pDesc == NULL)
+		return;
+
+	if (G->SCREEN_FULLSCREEN)
+	{
+		pDesc->Windowed = false;
+		LogInfo("->Forcing Windowed to = %d \n", pDesc->Windowed);
+	}
+
+	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
+	{
+		pDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
+		pDesc->BufferDesc.RefreshRate.Denominator = 1;
+		LogInfo("->Forcing refresh rate to = %f \n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
+		LogInfo("->Forcing Width to = %d \n", pDesc->BufferDesc.Width);
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
+		LogInfo("->Forcing Height to = %d \n", pDesc->BufferDesc.Height);
+	}
+}
+
+
 // For any given SwapChain created by the factory here, we want to wrap the SwapChain so that
 // we can get called when Present() is called.
 
@@ -444,24 +480,8 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 {
 	LogInfo("HackerDXGIFactory::CreateSwapChain(%s) called with parameters\n", typeid(*this).name());
 	LogInfo("  Device = %p\n", pDevice);
-	if (pDesc)
-	{
-		LogInfo("  Windowed = %d\n", pDesc->Windowed);
-		LogInfo("  Width = %d\n", pDesc->BufferDesc.Width);
-		LogInfo("  Height = %d\n", pDesc->BufferDesc.Height);
-		LogInfo("  Refresh rate = %f\n",
-			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 
-		// Force screen resolution or refresh if specified by d3dx.ini
-		if (SCREEN_REFRESH >= 0)
-		{
-			pDesc->BufferDesc.RefreshRate.Numerator = SCREEN_REFRESH;
-			pDesc->BufferDesc.RefreshRate.Denominator = 1;
-		}
-		if (SCREEN_WIDTH >= 0) pDesc->BufferDesc.Width = SCREEN_WIDTH;
-		if (SCREEN_HEIGHT >= 0) pDesc->BufferDesc.Height = SCREEN_HEIGHT;
-		if (SCREEN_FULLSCREEN >= 0) pDesc->Windowed = !SCREEN_FULLSCREEN;
-	}
+	ForceDisplayParams(pDesc);
 
 	IDXGISwapChain *origSwapChain = 0;
 	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, &origSwapChain);
@@ -932,11 +952,11 @@ STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_
  
 static bool FilterRate(int rate)
 {
-	if (!FILTER_REFRESH[0]) return false;
+	if (!G->FILTER_REFRESH[0]) return false;
 	int i = 0;
-	while (FILTER_REFRESH[i] && FILTER_REFRESH[i] != rate)
+	while (G->FILTER_REFRESH[i] && G->FILTER_REFRESH[i] != rate)
 		++i;
-	return FILTER_REFRESH[i] == 0;
+	return G->FILTER_REFRESH[i] == 0;
 }
 
 STDMETHODIMP HackerDXGIOutput::GetDisplayModeList(THIS_ 
@@ -959,6 +979,7 @@ STDMETHODIMP HackerDXGIOutput::GetDisplayModeList(THIS_
 			{
 				LogInfo("  Skipping mode: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height, 
 					(float) pDesc[j].RefreshRate.Numerator / (float) pDesc[j].RefreshRate.Denominator);
+				// ToDo: Does this work?  I have no idea why setting width and height to 8 would matter.
 				pDesc[j].Width = 8; pDesc[j].Height = 8;
 			}
 			else
@@ -985,13 +1006,13 @@ STDMETHODIMP HackerDXGIOutput::FindClosestMatchingMode(THIS_
 	
 	HRESULT hr = mOrigOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
 
-	if (pClosestMatch && SCREEN_REFRESH >= 0)
+	if (pClosestMatch && G->SCREEN_REFRESH >= 0)
 	{
-		pClosestMatch->RefreshRate.Numerator = SCREEN_REFRESH;
+		pClosestMatch->RefreshRate.Numerator = G->SCREEN_REFRESH;
 		pClosestMatch->RefreshRate.Denominator = 1;
 	}
-	if (pClosestMatch && SCREEN_WIDTH >= 0) pClosestMatch->Width = SCREEN_WIDTH;
-	if (pClosestMatch && SCREEN_HEIGHT >= 0) pClosestMatch->Height = SCREEN_HEIGHT;
+	if (pClosestMatch && G->SCREEN_WIDTH >= 0) pClosestMatch->Width = G->SCREEN_WIDTH;
+	if (pClosestMatch && G->SCREEN_HEIGHT >= 0) pClosestMatch->Height = G->SCREEN_HEIGHT;
 	if (pClosestMatch) LogInfo("  returning width=%d, height=%d, refresh rate=%f\n", 
 		pClosestMatch->Width, pClosestMatch->Height, (float) pClosestMatch->RefreshRate.Numerator / (float) pClosestMatch->RefreshRate.Denominator);
 	
