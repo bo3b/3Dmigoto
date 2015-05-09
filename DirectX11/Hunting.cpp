@@ -1226,7 +1226,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 static void ToggleHunting(HackerDevice *device, void *private_data)
 {
 	G->hunting = !G->hunting;
-	LogInfo("> Hunting toggled to %b \n", G->hunting);
+	LogInfo("> Hunting toggled to %d \n", G->hunting);
 }
 
 void RegisterHuntingKeyBindings(wchar_t *iniFile)
