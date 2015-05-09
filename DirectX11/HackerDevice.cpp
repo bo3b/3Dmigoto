@@ -2133,18 +2133,9 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
 	if (G->SCISSOR_DISABLE && pRasterizerDesc && pRasterizerDesc->ScissorEnable)
 	{
 		LogDebug("  disabling scissor mode.\n");
-
-		// input is const- so we need to make a copy to change.
-		D3D11_RASTERIZER_DESC rasterizerDesc;
-		memcpy(&pRasterizerDesc, pRasterizerDesc, sizeof(D3D11_RASTERIZER_DESC));
-
-		rasterizerDesc.ScissorEnable = FALSE;
-		hr = mOrigDevice->CreateRasterizerState(&rasterizerDesc, ppRasterizerState);
+		const_cast<D3D11_RASTERIZER_DESC*>(pRasterizerDesc)->ScissorEnable = FALSE;
 	}
-	else
-	{
-		hr = mOrigDevice->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
-	}
+	hr = mOrigDevice->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
 
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
