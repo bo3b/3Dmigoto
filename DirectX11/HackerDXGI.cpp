@@ -56,13 +56,11 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 {
 	mOrigSwapChain = pSwapChain;
 
-#ifndef DXGI_LOGGING
 	pDevice->SetHackerSwapChain(this);
 
 	// Create Overlay class that will be responsible for drawing any text
 	// info over the game. Using the original Device and Context.
 	mOverlay = new Overlay(pDevice, pContext, this);
-#endif
 }
 
 HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
@@ -1138,13 +1136,11 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
-#ifndef DXGI_LOGGING
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
 	if (G->hunting)
 		mOverlay->DrawOverlay();
-#endif
 
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
