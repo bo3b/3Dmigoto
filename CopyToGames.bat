@@ -19,6 +19,10 @@ echo
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\F.E.A.R. 3\" /F /Y
 echo 
 xcopy "%1*.*" "C:\Program Files (x86)\Steam\SteamApps\common\Alien Isolation\" /F /Y
+echo
+xcopy "%1*.*" "T:\Bootleg\Ori and the Blind Forest\" /F /Y
+echo
+xcopy "%1*.*" "C:\Program Files (x86)\Steam\SteamApps\common\DefenseGrid2\" /F /Y
 
 exit
 
@@ -28,4 +32,4 @@ exit
 echo 
 xcopy "%1*.*" "T:\Games\Watch_Dogs\bin"  /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Call of Duty Ghosts\"  /F /Y
-xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64" /F /Y
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64\" /F /Y
