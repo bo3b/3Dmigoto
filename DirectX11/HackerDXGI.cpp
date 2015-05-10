@@ -432,14 +432,14 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
 
 void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 {
+	if (pDesc == NULL)
+		return;
+
 	LogInfo("  Windowed = %d \n", pDesc->Windowed);
 	LogInfo("  Width = %d \n", pDesc->BufferDesc.Width);
 	LogInfo("  Height = %d \n", pDesc->BufferDesc.Height);
 	LogInfo("  Refresh rate = %f \n",
 		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-
-	if (pDesc == NULL)
-		return;
 
 	if (G->SCREEN_FULLSCREEN)
 	{
