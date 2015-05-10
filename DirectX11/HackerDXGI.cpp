@@ -59,7 +59,7 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 	pDevice->SetHackerSwapChain(this);
 
 	// Create Overlay class that will be responsible for drawing any text
-	// info over the game. Using the original Device and Context.
+	// info over the game. Using the Hacker Device and Context we gave the game.
 	mOverlay = new Overlay(pDevice, pContext, this);
 }
 

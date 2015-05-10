@@ -22,6 +22,10 @@ class HackerDXGISwapChain;
 class Overlay
 {
 private:
+	HackerDXGISwapChain *mHackerSwapChain;
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
+
 	DirectX::XMUINT2 mResolution;
 	StereoHandle mStereoHandle;
 	std::unique_ptr<DirectX::SpriteFont> mFont;

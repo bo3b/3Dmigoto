@@ -9,17 +9,24 @@
 #include "SpriteBatch.h"
 #include "nvapi.h"
 
-// We want to use the original device and original context here, because
-// these will be used by DirectXTK to generate VertexShaders and PixelShaders
-// to draw the text, and we don't want to intercept those.
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
+	// Not positive we need all of these references, but let's keep them handy.
+	// We need the context at a minimum.
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
+	mHackerSwapChain = pSwapChain;
+
 	DXGI_SWAP_CHAIN_DESC description;
 	pSwapChain->GetDesc(&description);
 	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
 
 	mStereoHandle = pDevice->mStereoHandle;
+
+	// We want to use the original device and original context here, because
+	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
+	// to draw the text, and we don't want to intercept those.
 
 	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), L"courierbold.spritefont"));
 	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
@@ -49,6 +56,14 @@ using namespace DirectX::SimpleMath;
 
 void Overlay::DrawOverlay(void)
 {
+	// We can be called super early, before a viewport is bound to the 
+	// pipeline.  That's a bug in the game, but we have to work around it.
+	// If there are no viewports, the SpriteBatch will throw an exception.
+	UINT count = 0;
+	mHackerContext->RSGetViewports(&count, NULL);
+	if (count <= 0)
+		return;
+
 
 	// As primary info, we are going to draw both separation and convergence. 
 	// Rather than draw graphic bars, this will just be numeric.  The reason
