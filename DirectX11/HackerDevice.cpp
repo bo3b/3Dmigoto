@@ -1232,9 +1232,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("HackerDevice::SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
-		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+	LogInfo("HackerDevice::SetPrivateDataInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
 
 	return mOrigDevice->SetPrivateDataInterface(guid, pData);
 }

@@ -726,9 +726,7 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	/* [annotation] */
 	__out_bcount_opt(*pDataSize)  void *pData)
 {
-	LogInfo("HackerContext::GetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
-		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+	LogInfo("HackerContext::GetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext->GetPrivateData(guid, pDataSize, pData);
 	LogInfo("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
@@ -744,9 +742,7 @@ STDMETHODIMP HackerContext::SetPrivateData(THIS_
 	/* [annotation] */
 	__in_bcount_opt(DataSize)  const void *pData)
 {
-	LogInfo("HackerContext::SetPrivateData called with GUID = %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
-		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+	LogInfo("HackerContext::SetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
 	LogInfo("  DataSize = %d\n", DataSize);
 
 	HRESULT hr = mOrigContext->SetPrivateData(guid, DataSize, pData);
@@ -761,9 +757,7 @@ STDMETHODIMP HackerContext::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("mOrigContext->SetPrivateDataInterface called with GUID=%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx\n",
-		guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
-		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+	LogInfo("HackerContext::SetPrivateDataInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext->SetPrivateDataInterface(guid, pData);
 	LogInfo("  returns result = %x\n", hr);
