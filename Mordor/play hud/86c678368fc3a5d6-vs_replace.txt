@@ -3,6 +3,8 @@
 
 // Also the red/yellow circle in mini-map when the alarm has sounded.
 
+// Also button frame and text in mission accept/cancel dialog.
+
 cbuffer Constants : register(b0)
 {
   float4 vfuniforms[144] : packoffset(c0);
@@ -42,6 +44,8 @@ void main(
   
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
 
 // Crosshair selection 
 // If we aren't in aim mode, don't change anything, because it affects other items.
@@ -54,7 +58,7 @@ float4 stereo = StereoParams.Load(0);
 // Crosshair selection
 // If we are in aim mode (w=1) then push icon to depth.
 
-if (params.w == 1)
+if (aimMode)
 {  
 //  if (o3.x > -0.08 && o3.x < 0.08 && o3.y > -0.1 && o3.y < 0.1)
   {
@@ -72,7 +76,7 @@ if (params.w == 1)
   // Text in game mode (z=0) will be pushed into screen per usual.
   // When in menu-mode (z=1), we'll skip that push.
 
-  if (params.z == 0)
+  if (playMode)
   {
     o3.x += stereo.x * params.x;
   }
@@ -150,4 +154,4 @@ ret
 // Approximately 17 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-          
+           

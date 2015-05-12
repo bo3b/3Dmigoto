@@ -1,11 +1,8 @@
-// UI - Crosshair
-//  C shaped focus bar on left.
-//  Center dot when out of elf shot.?
+// Checkmark icons in the setup menus.
 
 cbuffer Constants : register(b0)
 {
-  float4 mvp[2] : packoffset(c0);
-  float4 texgen[2] : packoffset(c2);
+  float4x4 vfmuniforms[24] : packoffset(c0);
 }
 
 Texture2D<float4> StereoParams : register(t125);
@@ -13,31 +10,35 @@ Texture1D<float4> IniParams : register(t120);
 
 void main(
   float4 v0 : COLOR0,
-  float4 v1 : SV_Position0,
+  float4 v1 : COLOR1,
+  float4 v2 : SV_Position0,
   out float4 o0 : COLOR0,
-  out float2 o1 : TEXCOORD0,
+  out float4 o1 : COLOR1,
   out float4 o2 : SV_Position0)
 {
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   o0.xyzw = v0.xyzw;
-  o1.x = dot(v1.xyzw, texgen[0].xyzw);
-  o1.y = dot(v1.xyzw, texgen[1].xyzw);
-  o2.x = dot(v1.xyzw, mvp[0].xyzw);
-  o2.y = dot(v1.xyzw, mvp[1].xyzw);
-  o2.zw = float2(0.000000e+000,1.000000e+000);
+  o1.xyzw = v1.xyzw;
+  r0.x = v1.z * 2.550099945e+002 + 1.000000015e-001;
+  r0.x = (uint)r0.x;
+  r0.x = (uint)r0.x << 2;
+  o2.x = dot(v2.xyzw, vfmuniforms[r0.x/4]._m00_m10_m20_m30);
+  o2.y = dot(v2.xyzw, vfmuniforms[r0.x/4]._m01_m11_m21_m31);
+  o2.z = dot(v2.xyzw, vfmuniforms[r0.x/4]._m02_m12_m22_m32);
+  o2.w = dot(v2.xyzw, vfmuniforms[r0.x/4]._m03_m13_m23_m33);
   
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
-  
-// Crosshair selection
-// If we aren't in aim mode, don't change anything, because it affects other items.
+bool aimMode = (params.w == 0);
+bool playMode = (params.z == 0);
 
-if (params.w != 0)
-{  
-//  if(o2.x > -0.08 && o2.x < 0.08 && o2.y > -0.1 && o2.y < 0.1)
-  {
-    o2.x += stereo.x;
-  }
-}  
+//if (!playMode)
+{
+  o2.x += stereo.x;// * params.x;
+}
 
   return;
 }
@@ -52,8 +53,7 @@ if (params.w != 0)
 // cbuffer Constants
 // {
 //
-//   float4 mvp[2];                     // Offset:    0 Size:    32
-//   float4 texgen[2];                  // Offset:   32 Size:    32
+//   float4x4 vfmuniforms[24];          // Offset:    0 Size:  1536
 //
 // }
 //
@@ -71,7 +71,8 @@ if (params.w != 0)
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // COLOR                    0   xyzw        0     NONE   float   xyzw
-// SV_Position              0   xyzw        1     NONE   float   xyzw
+// COLOR                    1   xyzw        1     NONE   float   xyzw
+// SV_Position              0   xyzw        2     NONE   float   xyzw
 //
 //
 // Output signature:
@@ -79,25 +80,29 @@ if (params.w != 0)
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // COLOR                    0   xyzw        0     NONE   float   xyzw
-// TEXCOORD                 0   xy          1     NONE   float   xy  
+// COLOR                    1   xyzw        1     NONE   float   xyzw
 // SV_Position              0   xyzw        2      POS   float   xyzw
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[4], immediateIndexed
+dcl_constantbuffer cb0[96], dynamicIndexed
 dcl_input v0.xyzw
 dcl_input v1.xyzw
+dcl_input v2.xyzw
 dcl_output o0.xyzw
-dcl_output o1.xy
+dcl_output o1.xyzw
 dcl_output_siv o2.xyzw, position
+dcl_temps 1
 mov o0.xyzw, v0.xyzw
-dp4 o1.x, v1.xyzw, cb0[2].xyzw
-dp4 o1.y, v1.xyzw, cb0[3].xyzw
-dp4 o2.x, v1.xyzw, cb0[0].xyzw
-dp4 o2.y, v1.xyzw, cb0[1].xyzw
-mov o2.zw, l(0,0,0,1.000000)
+mov o1.xyzw, v1.xyzw
+mad r0.x, v1.z, l(255.009995), l(0.100000)
+ftou r0.x, r0.x
+ishl r0.x, r0.x, l(2)
+dp4 o2.x, v2.xyzw, cb0[r0.x + 0].xyzw
+dp4 o2.y, v2.xyzw, cb0[r0.x + 1].xyzw
+dp4 o2.z, v2.xyzw, cb0[r0.x + 2].xyzw
+dp4 o2.w, v2.xyzw, cb0[r0.x + 3].xyzw
 ret 
-// Approximately 7 instruction slots used
+// Approximately 10 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    

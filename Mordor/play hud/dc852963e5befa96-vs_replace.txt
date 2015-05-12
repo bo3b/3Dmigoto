@@ -28,8 +28,8 @@ void main(
   
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
-bool aimMode = (params.w == 0);
-bool playMode = (params.z == 0);
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
 
 if (playMode)
 {

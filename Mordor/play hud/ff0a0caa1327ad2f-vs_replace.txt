@@ -38,11 +38,13 @@ void main(
 
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
 
-// Text in game mode (z=0) will be pushed into screen per usual.
-// When in menu-mode (z=1), we'll skip that push.
+// Text in game mode (z=1) will be pushed into screen per usual.
+// When in menu-mode (z=0), we'll skip that push.
 
-if (params.z == 0)
+if (playMode)
 {
   o2.x += stereo.x * params.x;
 }

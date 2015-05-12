@@ -1,12 +1,12 @@
-// Text in UI, specifically in Sauron army detail.
+// Sauron's army text top-left, draws correctly.
 
-// Also on screen text for hud targets, and corner status info. 
+// Also all text in mission dialogs. Looks OK in dialog, but far back.
 
 cbuffer Constants : register(b0)
 {
   float4 cxadd : packoffset(c0);
   float4 cxmul : packoffset(c1);
-  float4 mvp[2] : packoffset(c2);
+  float4x4 mvp : packoffset(c2);
 }
 
 Texture2D<float4> StereoParams : register(t125);
@@ -22,29 +22,18 @@ void main(
 {
   o0.xy = v1.xy;
   o1.xyzw = v0.xyzw * cxmul.xyzw + cxadd.xyzw;
-  o2.x = dot(v2.xyzw, mvp[0].xyzw);
-  o2.y = dot(v2.xyzw, mvp[1].xyzw);
-  o2.zw = float2(0.000000e+000,1.000000e+000);
-
-float4 stereo = StereoParams.Load(0);
+  o2.x = dot(v2.xyzw, mvp._m00_m10_m20_m30);
+  o2.y = dot(v2.xyzw, mvp._m01_m11_m21_m31);
+  o2.z = dot(v2.xyzw, mvp._m02_m12_m22_m32);
+  o2.w = dot(v2.xyzw, mvp._m03_m13_m23_m33);
+  
 float4 params = IniParams.Load(0);
+float4 stereo = StereoParams.Load(0);
 bool aimMode = (params.w == 1);
 bool playMode = (params.z == 1);
 
-// Let's try to see if we can move just the on-screen icons by bounding the
-// edges of the screen where the status icons are.
-
-// if (o3.x > -0.08 && o3.x < 0.08 && o3.y > -0.1 && o3.y < 0.1)
-// {
-// }
-
-// Text in game mode (z=1) will be pushed into screen per usual.
-// When in menu-mode (z=0), we'll skip that push.
-
-if (playMode)
-{
-  o2.x += stereo.x * params.x;
-}
+// Set to max distance?
+o2.x += stereo.x;
 
   return;
 }
@@ -61,7 +50,7 @@ if (playMode)
 //
 //   float4 cxadd;                      // Offset:    0 Size:    16
 //   float4 cxmul;                      // Offset:   16 Size:    16
-//   float4 mvp[2];                     // Offset:   32 Size:    32
+//   float4x4 mvp;                      // Offset:   32 Size:    64
 //
 // }
 //
@@ -93,7 +82,7 @@ if (playMode)
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[4], immediateIndexed
+dcl_constantbuffer cb0[6], immediateIndexed
 dcl_input v0.xyzw
 dcl_input v1.xy
 dcl_input v2.xyzw
@@ -104,9 +93,10 @@ mov o0.xy, v1.xyxx
 mad o1.xyzw, v0.xyzw, cb0[1].xyzw, cb0[0].xyzw
 dp4 o2.x, v2.xyzw, cb0[2].xyzw
 dp4 o2.y, v2.xyzw, cb0[3].xyzw
-mov o2.zw, l(0,0,0,1.000000)
+dp4 o2.z, v2.xyzw, cb0[4].xyzw
+dp4 o2.w, v2.xyzw, cb0[5].xyzw
 ret 
-// Approximately 6 instruction slots used
+// Approximately 7 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  

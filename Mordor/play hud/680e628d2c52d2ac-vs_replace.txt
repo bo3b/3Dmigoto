@@ -1,13 +1,9 @@
-// Mini map lower left.
-// marked as crosshair in Helifax UI.
-// Also the C shaped focus bar, but only when elf-shot is empty.
+// Small blue lines on mini-map. Gollums feet trace. Rare.
+
 
 cbuffer Constants : register(b0)
 {
-  float4 cxadd : packoffset(c0);
-  float4 cxmul : packoffset(c1);
-  float4 mvp[2] : packoffset(c2);
-  float4 texgen[2] : packoffset(c4);
+  float4 vfuniforms[96] : packoffset(c0);
 }
 
 Texture2D<float4> StereoParams : register(t125);
@@ -15,33 +11,36 @@ Texture1D<float4> IniParams : register(t120);
 
 void main(
   float4 v0 : COLOR0,
-  float4 v1 : SV_Position0,
+  float4 v1 : COLOR1,
+  float4 v2 : SV_Position0,
   out float4 o0 : COLOR0,
-  out float4 o1 : TEXCOORD0,
-  out float4 o2 : TEXCOORD1,
-  out float2 o3 : TEXCOORD2,
+  out float4 o1 : COLOR1,
+  out float4 o2 : TEXCOORD0,
+  out float4 o3 : TEXCOORD1,
   out float4 o4 : SV_Position0)
 {
-  o0.xyzw = v0.xyzw;
-  o1.xyzw = cxadd.xyzw;
-  o2.xyzw = cxmul.xyzw;
-  o3.x = dot(v1.xyzw, texgen[0].xyzw);
-  o3.y = dot(v1.xyzw, texgen[1].xyzw);
-  o4.x = dot(v1.xyzw, mvp[0].xyzw);
-  o4.y = dot(v1.xyzw, mvp[1].xyzw);
-  o4.zw = float2(0.000000e+000,1.000000e+000);
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
 
+  o0.xyzw = v0.xyzw;
+  o1.xyzw = v1.xyzw;
+  r0.xyzw = v1.zzzz * float4(1.020040e+003,1.020040e+003,1.020040e+003,1.020040e+003) + float4(2.100000e+000,3.100000e+000,1.000000e-001,1.100000e+000);
+  r0.xyzw = (uint4)r0.xyzw;
+  o2.xyzw = vfuniforms[r0.z].xyzw;
+  o3.xyzw = vfuniforms[r0.w].xyzw;
+  o4.x = dot(v2.xyzw, vfuniforms[r0.x].xyzw);
+  o4.y = dot(v2.xyzw, vfuniforms[r0.y].xyzw);
+  o4.zw = float2(0.000000e+000,1.000000e+000);
+  
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
-  
-// If we aren't in aim mode, don't change anything, because it affects other items.
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
 
-if (params.w != 0)
-{  
-  //if(o4.x > -0.08 && o4.x < 0.08 && o4.y > -0.1 && o4.y < 0.1)
-  {
-    o4.x += stereo.x;
-  }
+if (playMode)
+{
+  o4.x += stereo.x * params.x;
 }
 
   return;
@@ -57,10 +56,7 @@ if (params.w != 0)
 // cbuffer Constants
 // {
 //
-//   float4 cxadd;                      // Offset:    0 Size:    16
-//   float4 cxmul;                      // Offset:   16 Size:    16
-//   float4 mvp[2];                     // Offset:   32 Size:    32
-//   float4 texgen[2];                  // Offset:   64 Size:    32
+//   float4 vfuniforms[96];             // Offset:    0 Size:  1536
 //
 // }
 //
@@ -78,7 +74,8 @@ if (params.w != 0)
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // COLOR                    0   xyzw        0     NONE   float   xyzw
-// SV_Position              0   xyzw        1     NONE   float   xyzw
+// COLOR                    1   xyzw        1     NONE   float   xyzw
+// SV_Position              0   xyzw        2     NONE   float   xyzw
 //
 //
 // Output signature:
@@ -86,31 +83,34 @@ if (params.w != 0)
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // COLOR                    0   xyzw        0     NONE   float   xyzw
-// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
-// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
-// TEXCOORD                 2   xy          3     NONE   float   xy  
+// COLOR                    1   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 0   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        3     NONE   float   xyzw
 // SV_Position              0   xyzw        4      POS   float   xyzw
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[6], immediateIndexed
+dcl_constantbuffer cb0[96], dynamicIndexed
 dcl_input v0.xyzw
 dcl_input v1.xyzw
+dcl_input v2.xyzw
 dcl_output o0.xyzw
 dcl_output o1.xyzw
 dcl_output o2.xyzw
-dcl_output o3.xy
+dcl_output o3.xyzw
 dcl_output_siv o4.xyzw, position
+dcl_temps 1
 mov o0.xyzw, v0.xyzw
-mov o1.xyzw, cb0[0].xyzw
-mov o2.xyzw, cb0[1].xyzw
-dp4 o3.x, v1.xyzw, cb0[4].xyzw
-dp4 o3.y, v1.xyzw, cb0[5].xyzw
-dp4 o4.x, v1.xyzw, cb0[2].xyzw
-dp4 o4.y, v1.xyzw, cb0[3].xyzw
+mov o1.xyzw, v1.xyzw
+mad r0.xyzw, v1.zzzz, l(1020.039978, 1020.039978, 1020.039978, 1020.039978), l(2.100000, 3.100000, 0.100000, 1.100000)
+ftou r0.xyzw, r0.xyzw
+mov o2.xyzw, cb0[r0.z + 0].xyzw
+mov o3.xyzw, cb0[r0.w + 0].xyzw
+dp4 o4.x, v2.xyzw, cb0[r0.x + 0].xyzw
+dp4 o4.y, v2.xyzw, cb0[r0.y + 0].xyzw
 mov o4.zw, l(0,0,0,1.000000)
 ret 
-// Approximately 9 instruction slots used
+// Approximately 10 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  

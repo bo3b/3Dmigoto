@@ -45,13 +45,13 @@ void main(
   
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
-bool aimMode = (params.w == 0);
-bool playMode = (params.z == 0);
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
 
 // Crosshair selection
 // If we aren't in aim mode, don't change anything, because it affects other items.
 
-if (!aimMode)
+if (aimMode)
 {  
   //if(o4.x > -0.08 && o4.x < 0.08 && o4.y > -0.1 && o4.y < 0.1)
   {
@@ -66,8 +66,8 @@ if (!aimMode)
   // {
   // }
 
-  // Text in game mode (z=0) will be pushed into screen per usual.
-  // When in menu-mode (z=1), we'll skip that push.
+  // Text in game mode (z=1) will be pushed into screen per usual.
+  // When in menu-mode (z=0), we'll skip that push.
 
   if (playMode)
   {
