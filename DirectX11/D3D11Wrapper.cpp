@@ -588,6 +588,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	}
 	if (ppDevice)
 		*ppDevice = deviceWrap;
+	LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
 
 	// Create a wrapped version of the original context to return to the game.
 	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
@@ -600,6 +601,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	}
 	if (ppImmediateContext)
 		*ppImmediateContext = contextWrap;
+	LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.
@@ -666,6 +668,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	}
 	if (ppDevice)
 		*ppDevice = deviceWrap;
+	LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
 
 	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
 	if (contextWrap == NULL)
@@ -678,6 +681,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	}
 	if (ppImmediateContext)
 		*ppImmediateContext = contextWrap;
+	LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
 
 	HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
 	if (swapchainWrap == NULL)
@@ -690,6 +694,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	}
 	if (ppSwapChain)
 		*ppSwapChain = swapchainWrap;
+	LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls that we want to return the Hacker versions.

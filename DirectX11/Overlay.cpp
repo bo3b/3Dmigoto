@@ -12,6 +12,8 @@
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
+	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, typeid(*pSwapChain).name());
+
 	// Not positive we need all of these references, but let's keep them handy.
 	// We need the context at a minimum.
 	mHackerDevice = pDevice;
@@ -62,7 +64,10 @@ void Overlay::DrawOverlay(void)
 	UINT count = 0;
 	mHackerContext->RSGetViewports(&count, NULL);
 	if (count <= 0)
+	{
+		LogInfo("Overlay::DrawOverlay called with no valid viewports.");
 		return;
+	}
 
 
 	// As primary info, we are going to draw both separation and convergence. 
