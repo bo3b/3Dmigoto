@@ -164,7 +164,7 @@ static void RemoveHooks()
 // Only do this hooking for known bad scenarios. Like Watch Dogs and Dragon Age Inquistion.  
 // This will only be active if the build target defines HOOK_SYSTEM32, so it's build selectable.
 
-#if (_WIN64 && HOOK_SYSTEM32)
+#if (HOOK_SYSTEM32)
 BOOL WINAPI DllMain(
 	_In_  HINSTANCE hinstDLL,
 	_In_  DWORD fdwReason,
