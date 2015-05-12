@@ -417,6 +417,7 @@ private:
 public:
 	HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext);
 	
+	void SetHackerObjects(IUnknown *pDevice);
 
 	// Specifically override the QueryInterface here so that we can return an 
 	// error for attempts to create IDXGIFactory2.

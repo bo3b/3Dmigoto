@@ -150,6 +150,12 @@ void HackerDevice::SetHackerContext(HackerContext *pHackerContext)
 	mHackerContext = pHackerContext;
 }
 
+HackerContext* HackerDevice::GetHackerContext()
+{
+	LogInfo("HackerDevice::GetHackerContext returns %p \n", mHackerContext);
+	return mHackerContext;
+}
+
 void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
 {
 	mHackerSwapChain = pHackerSwapChain;

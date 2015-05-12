@@ -44,6 +44,7 @@ public:
 	HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerContext(HackerContext *pHackerContext);
+	HackerContext* GetHackerContext();
 	void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
 	ID3D11Device* GetOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();

@@ -51,6 +51,7 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 	mOrigDeviceSubObject = pSubObject;
 }
 
+
 HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIDeviceSubObject(pSwapChain)
 {
@@ -311,6 +312,31 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 
 // -----------------------------------------------------------------------------
 
+// Given an input pDevice, we want to reset our mHackerDevice and mHackerContext
+// references to use that object.  This can happen if the factory is created
+// directly by the game, when no device is available.
+//
+// We really expect that any given input pDevice will already have be successfully
+// wrapped to HackerDevice.
+
+void HackerDXGIFactory::SetHackerObjects(IUnknown *pDevice)
+{
+	try
+	{
+		LogInfo("HackerDXGIFactory::SetHackerObjects(%s) called with device: %s. \n", typeid(*this).name(), typeid(*pDevice).name());
+		if (typeid(*pDevice) == typeid(HackerDevice))
+		{
+			mHackerDevice = static_cast<HackerDevice*>(pDevice);
+			mHackerContext = mHackerDevice->GetHackerContext();
+		}
+	}
+	catch (...)		// typeid throws exception if no RTTI
+	{
+		__debugbreak();
+	}
+}
+
+
 // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404556(v=vs.85).aspx
 //
 // We need to override the QueryInterface here, in the case the caller uses
@@ -352,8 +378,9 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 		//}
 
 		//*ppvObject = factory2Wrap;
-	} else
-		hr = mOrigFactory->QueryInterface(riid, ppvObject);
+	}
+	
+	hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
@@ -465,8 +492,14 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 }
 
 
-// For any given SwapChain created by the factory here, we want to wrap the SwapChain so that
-// we can get called when Present() is called.
+// For any given SwapChain created by the factory here, we want to wrap the 
+// SwapChain so that we can get called when Present() is called.
+//
+// When this is called by a game that creates their swap chain directly from the 
+// Factory object, it's possible that mHackerDevice and mHackerContext are null,
+// because they don't exist when the factory is instantiated.
+// Because of this, we want to check for null, and if so, set those up here, 
+// because we have the input pDevice that we can use to wrap.
 
 STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
             /* [annotation][in] */ 
@@ -493,6 +526,9 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (SUCCEEDED(hr))
 	{
+		if (mHackerDevice == NULL || mHackerContext == NULL)
+			this->SetHackerObjects(pDevice);
+
 		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, mHackerDevice, mHackerContext);
 		if (swapchainWrap == NULL)
 		{
@@ -505,7 +541,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 			*ppSwapChain = swapchainWrap;
 	}
 	
-	LogInfo("  return value = %x, swapchain: %p, swapchain wrap: %p \n", hr, origSwapChain, ppSwapChain);
+	LogInfo("  return value = %x, swapchain: %p, swapchain wrap: %p \n", hr, origSwapChain, *ppSwapChain);
 	return hr;
 }
 
@@ -1125,6 +1161,7 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 
 IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 {
+	LogInfo("HackerDXGISwapChain::GetOrigSwapChain returns %p", mOrigSwapChain);
 	return mOrigSwapChain;
 }
 
@@ -1132,7 +1169,7 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags)
 {
-	LogDebug("HackerDXGISwapChain::Present(%s) called with\n", typeid(*this).name());
+	LogDebug("HackerDXGISwapChain::Present(%s) called %p \n", typeid(*this).name(), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 

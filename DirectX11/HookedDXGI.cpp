@@ -1,9 +1,10 @@
-// 4-23-15 Update:
-//	This class is no longer used, after all that work to figure it out, sigh.
-//  The wrapper for DXGI is needed anyway, because of the secret path through
-//  the queryinterface, so since we have it wrapped for that, it makes sense
-//  to wrap for CreateDeviceAndSwapChain too, and not hook here.
-//  Leaving this here for reference for the time being.
+
+#include "DLLMainHook.h"
+#include "log.h"
+#include "util.h"
+
+#include "HackerDXGI.h"
+
 
 // This class is for a different approach than the wrapping of the system objects
 // like we do with ID3D11Device for example.  When we wrap a COM object like that,
@@ -12,51 +13,10 @@
 // may only care about a 5 calls, but we have to wrap all 150 calls. 
 //
 // Rather than do that with DXGI, this approach will be to singly hook the calls we
-// are interested in, using the Deviare in-proc hooking.  We'll still have an
-// object just for encapsulation, but we won't deliver it back to the game, because
-// it won't be of IDXGI* form.  
-//
-// The hooks need to be installed late, and cannot be installed during DLLMain, because
-// they need to be installed in the COM object vtable itself, and the order cannot be
-// defined that early.  Because the documentation says it's not viable at DLLMain time,
-// we'll install these hooks at InitD311() time, essentially the first call of D3D11.
-// 
-// The piece we care about in DXGI is the swap chain, and we don't otherwise have a
-// good way to access it.  It can be created directly via DXGI, and not through 
-// CreateDeviceAndSwapChain.
-//
-// Not certain, but it seems likely that we only need to hook a given instance of the
-// calls we want, because they are not true objects with attached vtables, they have
-// a non-standard vtable/indexing system, and the main differentiator is the object
-// passed in as 'this'.  
-//
-// After much experimentation and study, it seems clear that we should use the in-proc
-// version of Deviare. I tried to see if Deviare2 would be a match, but they have a 
-// funny event callback mechanism that requires an ATL object connection, and is not
-// really suited for same-process operations.  It's really built with separate
-// processes in mind.
+// are interested in, using the Deviare in-proc hooking.  We'll still create
+// objects for encapsulation, by returning HackerDXGIFactory and HackerDXGIFactory2.
 
-// For this object, we want to use the CINTERFACE, not the C++ interface.
-// The reason is that it allows us easy access to the COM object vtable, which
-// we need to hook in order to override the functions.  Once we include dxgi.h
-// it will be defined with C headers instead.
-//
-// This is a little odd, but it's the way that Detours hooks COM objects, and
-// thus it seems superior to the Nektra approach of groping the vtable directly
-// using constants and void* pointers.
-// 
-// This is only used for .cpp file here, not the .h file, because otherwise other
-// units get compiled with this CINTERFACE, which wrecks their calling out.
 
-#define CINTERFACE
-  #include <dxgi.h>
-#undef CINTERFACE
-
-#include <d3d11.h>
-
-#include "log.h"
-#include "DLLMainHook.h"
-//#include "Overlay.h"
 
 
 // -----------------------------------------------------------------------------
@@ -96,7 +56,235 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 	return hr;
 }
 
+
 // -----------------------------------------------------------------------------
+
+// This serves a dual purpose of defining the interface routine as required by
+// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
+
+HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
+	IDXGISwapChain * This,
+	/* [in] */ UINT SyncInterval,
+	/* [in] */ UINT Flags);
+
+static SIZE_T nHookId = 0;
+
+//Overlay *overlay;
+
+
+// Log both to console using Nektra logging, and using our LogInfo, 
+// in case we are loading so early that our regular log is not ready.
+
+#define DoubleLog(fmt, ...) \
+	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); \
+	if (bLog) NktHookLibHelpers::DebugPrint(fmt, __VA_ARGS__)
+
+
+// -----------------------------------------------------------------------------
+
+typedef HRESULT(WINAPI *lpfnCreateDXGIFactory)(REFIID riid, void **ppFactory);
+SIZE_T nFactory_ID;
+lpfnCreateDXGIFactory fnOrigCreateFactory;
+
+
+// Actual function called by the game for every CreateDXGIFactory they make.
+// This is only called for the in-process game, not system wide.
+//
+// This is our replacement, so that we can return a wrapped factory, which
+// will allow us access to the SwapChain.
+
+static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
+{
+	LogInfo("Hooked_CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("  calling original CreateDXGIFactory API\n");
+
+	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+	if (riid == __uuidof(IDXGIFactory2))
+	{
+		LogInfo("  returns E_NOINTERFACE as error. \n");
+		*ppFactory = NULL;
+		return E_NOINTERFACE;
+	}
+
+	IDXGIFactory *origFactory;
+	HRESULT hr = fnOrigCreateFactory(riid, (void **)&origFactory);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x \n", hr);
+		return hr;
+	}
+	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
+
+	HackerDXGIFactory *factoryWrap;
+	if (riid == __uuidof(IDXGIFactory1))
+		factoryWrap = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(origFactory), NULL, NULL);
+	else
+		factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+
+	// ToDo: this null check is not necessary as it would throw exception.
+	if (factoryWrap == NULL)
+	{
+		LogInfo("  error allocating factoryWrap. \n");
+		origFactory->Release();
+		return E_OUTOFMEMORY;
+	}
+	if (ppFactory)
+		*ppFactory = factoryWrap;
+
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+typedef HRESULT(WINAPI *lpfnCreateDXGIFactory1)(REFIID riid, void **ppFactory1);
+SIZE_T nFactory1_ID; 
+lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
+
+static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
+{
+	LogInfo("  calling original CreateDXGIFactory API\n");
+
+	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+	if (riid == __uuidof(IDXGIFactory2))
+	{
+		LogInfo("  returns E_NOINTERFACE as error. \n");
+		*ppFactory1 = NULL;
+		return E_NOINTERFACE;
+	}
+
+	IDXGIFactory *origFactory;
+	HRESULT hr = fnOrigCreateFactory(riid, (void **)&origFactory);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x \n", hr);
+		return hr;
+	}
+	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
+
+	HackerDXGIFactory *factoryWrap;
+	if (riid == __uuidof(IDXGIFactory1))
+		factoryWrap = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(origFactory), NULL, NULL);
+	else
+		factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+
+	// ToDo: this null check is not necessary as it would throw exception.
+	if (factoryWrap == NULL)
+	{
+		LogInfo("  error allocating factoryWrap. \n");
+		origFactory->Release();
+		return E_OUTOFMEMORY;
+	}
+	if (ppFactory1)
+		*ppFactory1 = factoryWrap;
+
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+
+// Load the dxgi.dll and hook the two calls for CreateFactory.
+
+bool InstallDXGIHooks(void)
+{
+	HINSTANCE hDXGI;
+	LPVOID fnCreateDXGIFactory;
+	LPVOID fnCreateDXGIFactory1;
+	DWORD dwOsErr;
+
+	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
+	LoadLibrary(L"dxgi.dll");
+
+	DoubleLog("Attempting to hook dxgi CreateFactory using Deviare in-proc. \n");
+	cHookMgr.SetEnableDebugOutput(bLog);
+
+	hDXGI = NktHookLibHelpers::GetModuleBaseAddress(L"dxgi.dll");
+	if (hDXGI == NULL)
+	{
+		DoubleLog("  Failed to get dxgi module for CreateFactory hook. \n");
+		return false;
+	}
+
+	fnCreateDXGIFactory = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory");
+	if (fnCreateDXGIFactory == NULL)
+	{
+		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory for dxgi hook. \n");
+		return false;
+	}
+	dwOsErr = cHookMgr.Hook(__out &nFactory_ID, __out(LPVOID*)&(fnOrigCreateFactory),
+		__in fnCreateDXGIFactory, __in Hooked_CreateDXGIFactory);
+	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory using Deviare in-proc: %x \n", dwOsErr);
+	if (dwOsErr != 0)
+		return false;
+
+	fnCreateDXGIFactory1 = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory1");
+	if (fnCreateDXGIFactory1 == NULL)
+	{
+		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory1 for dxgi hook. \n");
+		return false;
+	}
+	dwOsErr = cHookMgr.Hook(__out &nFactory1_ID, __out (LPVOID*)&(fnOrigCreateFactory1),
+		__in fnCreateDXGIFactory1, __in Hooked_CreateDXGIFactory1);
+	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x \n", dwOsErr);
+	if (dwOsErr != 0)
+		return false;
+
+	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc. \n");
+	return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+
+// Some partly obsolete comments, but still maybe worthwhile as thoughts on DXGI.
+
+// The hooks need to be installed late, and cannot be installed during DLLMain, because
+// they need to be installed in the COM object vtable itself, and the order cannot be
+// defined that early.  Because the documentation says it's not viable at DLLMain time,
+// we'll install these hooks at InitD311() time, essentially the first call of D3D11.
+// 
+// The piece we care about in DXGI is the swap chain, and we don't otherwise have a
+// good way to access it.  It can be created directly via DXGI, and not through 
+// CreateDeviceAndSwapChain.
+//
+// Not certain, but it seems likely that we only need to hook a given instance of the
+// calls we want, because they are not true objects with attached vtables, they have
+// a non-standard vtable/indexing system, and the main differentiator is the object
+// passed in as 'this'.  
+//
+// After much experimentation and study, it seems clear that we should use the in-proc
+// version of Deviare. I tried to see if Deviare2 would be a match, but they have a 
+// funny event callback mechanism that requires an ATL object connection, and is not
+// really suited for same-process operations.  It's really built with separate
+// processes in mind.
+
+// For this object, we want to use the CINTERFACE, not the C++ interface.
+// The reason is that it allows us easy access to the COM object vtable, which
+// we need to hook in order to override the functions.  Once we include dxgi.h
+// it will be defined with C headers instead.
+//
+// This is a little odd, but it's the way that Detours hooks COM objects, and
+// thus it seems superior to the Nektra approach of groping the vtable directly
+// using constants and void* pointers.
+// 
+// This is only used for .cpp file here, not the .h file, because otherwise other
+// units get compiled with this CINTERFACE, which wrecks their calling out.
+
+// -----------------------------------------------------------------------------
+
+// Obsolete code that is useful for reference only.
+// This is a technique I created, doesn't exist on the internet.
+
+//#define CINTERFACE
+//#include <dxgi.h>
+//#undef CINTERFACE
+//
+//#include <d3d11.h>
+//
+//#include "log.h"
+//#include "DLLMainHook.h"
+////#include "Overlay.h"
 
 //bool InstallDXGIHooks(void)
 //{
@@ -188,20 +376,50 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 //	
 //}
 
-// -----------------------------------------------------------------------------
 
-// This serves a dual purpose of defining the interface routine as required by
-// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
+// Hook the Present call in the DXGI COM interface.
+// Will only hook once, because there is only one instance
+// of the actual underlying code.
+//
+// The cHookMgr is assumed to already be created and initialized by the
+// C++ runtime, even if we are not hooking in DLLMain.
 
-HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags);
-
-static SIZE_T nHookId = 0;
-
-//Overlay *overlay;
-
+//void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
+//{
+//	DWORD dwOsErr;
+//	HRESULT hr;
+//
+//	if (pOrigPresent != NULL)
+//	{
+//		LogInfo("*** HookSwapChain called again. SwapChain: %p, Device: %p, Context: %p \n", pSwapChain, pDevice, pContext);
+//		return;
+//	}
+//
+//	// Seems like we need to do this in order to init any use of COM here.
+//	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+//	if (hr != NOERROR)
+//		LogInfo("HookSwapChain CoInitialize return error: %d \n", hr);
+//
+//	// The tricky part- fetching the actual address of the original
+//	// DXGI::Present call.
+//	LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
+//
+//	cHookMgr.SetEnableDebugOutput(bLog);
+//
+//	dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
+//	if (dwOsErr)
+//	{
+//		LogInfo("*** HookSwapChain Hook failed: %d \n", dwOsErr);
+//		return;
+//	}
+//
+//
+//	// Create Overlay class that will be responsible for drawing any text
+//	// info over the game. Using the original Device and Context.
+//	//	overlay = new Overlay(pDevice, pContext);
+//
+//	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
+//}
 
 // -----------------------------------------------------------------------------
 
@@ -218,66 +436,20 @@ static SIZE_T nHookId = 0;
 // lpfnPresent to call the original, instead of the alternate approach offered by
 // Deviare.
 
-static HRESULT STDMETHODCALLTYPE HookedPresent(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags)
-{
-	HRESULT hr;
-
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	//overlay->DrawOverlay();
-
-	hr = pOrigPresent(This, SyncInterval, Flags);
-
-	LogDebug("HookedPresent result: %d \n", hr);
-
-	return hr;
-}
-
-// Hook the Present call in the DXGI COM interface.
-// Will only hook once, because there is only one instance
-// of the actual underlying code.
+//static HRESULT STDMETHODCALLTYPE HookedPresent(
+//	IDXGISwapChain * This,
+//	/* [in] */ UINT SyncInterval,
+//	/* [in] */ UINT Flags)
+//{
+//	HRESULT hr;
 //
-// The cHookMgr is assumed to already be created and initialized by the
-// C++ runtime, even if we are not hooking in DLLMain.
-
-void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
-{
-	DWORD dwOsErr;
-	HRESULT hr;
-
-	if (pOrigPresent != NULL)
-	{
-		LogInfo("*** HookSwapChain called again. SwapChain: %p, Device: %p, Context: %p \n", pSwapChain, pDevice, pContext);
-		return;
-	} 
-
-	// Seems like we need to do this in order to init any use of COM here.
-	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	if (hr != NOERROR)
-		LogInfo("HookSwapChain CoInitialize return error: %d \n", hr);
-
-	// The tricky part- fetching the actual address of the original
-	// DXGI::Present call.
-	LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
-
-	cHookMgr.SetEnableDebugOutput(bLog);
-
-	dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
-	if (dwOsErr)
-	{
-		LogInfo("*** HookSwapChain Hook failed: %d \n", dwOsErr);
-		return;
-	}
-
-
-	// Create Overlay class that will be responsible for drawing any text
-	// info over the game. Using the original Device and Context.
-//	overlay = new Overlay(pDevice, pContext);
-
-	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
-}
-
-
+//	// Draw the on-screen overlay text with hunting info, before final Present.
+//	//overlay->DrawOverlay();
+//
+//	hr = pOrigPresent(This, SyncInterval, Flags);
+//
+//	LogDebug("HookedPresent result: %d \n", hr);
+//
+//	return hr;
+//}
 

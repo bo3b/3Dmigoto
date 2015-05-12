@@ -1,6 +1,7 @@
 #include "DLLMainHook.h"
 
 #include "log.h"
+#include "HookedDXGI.h"
 
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
@@ -45,9 +46,6 @@ static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
 	wcscat_s(systemPath, MAX_PATH, L"\\");
 	wcscat_s(systemPath, MAX_PATH, library);
 
-	// This is late enough that we can look for standard logging.
-	LogInfoW(L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
-
 	// Bypass the known expected call from our wrapped d3d11 & nvapi64, where it needs to call to the system to get APIs.
 	// This is a bit of a hack, but if the string comes in as original_d3d11/nvapi64, that's from us, and needs to switch
 	// to the real one. This doesn't need to be case insensitive, because we create the original string, all lower case.
@@ -83,6 +81,9 @@ static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
 	HMODULE module;
+
+	// This is late enough that we can look for standard logging.
+	LogDebugW(L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
 
 	module = _Hooked_LoadLibraryExW(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
 	if (module)
@@ -174,6 +175,7 @@ BOOL WINAPI DllMain(
 	switch (fdwReason)
 	{
 		case DLL_PROCESS_ATTACH:
+			InstallDXGIHooks();
 			result = InstallHooks();
 			break;
 
