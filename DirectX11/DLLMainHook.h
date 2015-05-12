@@ -7,4 +7,4 @@
 extern CNktHookLib cHookMgr;
 extern bool bLog;
 
-
+void InitD311();

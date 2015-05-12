@@ -338,7 +338,7 @@ typedef HRESULT(WINAPI *tD3D11CreateDeviceAndSwapChain)(
 static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
 
 
-static void InitD311()
+void InitD311()
 {
 	if (hD3D11) return;
 

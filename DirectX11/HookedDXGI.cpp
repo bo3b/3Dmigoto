@@ -95,6 +95,7 @@ lpfnCreateDXGIFactory fnOrigCreateFactory;
 
 static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
+	InitD311();
 	LogInfo("Hooked_CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory API\n");
 
@@ -143,6 +144,7 @@ lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
 
 static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
+	InitD311();
 	LogInfo("  calling original CreateDXGIFactory API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
