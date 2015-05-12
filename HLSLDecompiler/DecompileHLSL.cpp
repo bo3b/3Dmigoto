@@ -2562,6 +2562,8 @@ public:
 		char buffer[512];
 		size_t pos = 0;
 		unsigned int iNr = 0;
+		bool skip_shader = false;
+
 		while (pos < size && iNr < shader->psInst.size())
 		{
 			Instruction *instr = &shader->psInst[iNr];
@@ -2598,11 +2600,27 @@ public:
 			//	op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
 			//
 
+			// Some shaders seen in World of Diving contain multiple shader programs.
+			// Ignore any instructions from old shader models that we do not handle to
+			// avoid crashes.
+			if (!strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
+			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4)) {
+				skip_shader = true;
+				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				continue;
+			}
+
 			if (!strncmp(statement, "vs_", 3) ||
 				!strncmp(statement, "ps_", 3) ||
 				!strncmp(statement, "cs_", 3))
 			{
+				skip_shader = false;
 				mShaderType = statement;
+			}
+			else if (skip_shader)
+			{
+				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				continue;
 			}
 			else if (!strcmp(statement, "dcl_immediateConstantBuffer"))
 			{
