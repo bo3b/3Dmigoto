@@ -92,6 +92,9 @@ lpfnCreateDXGIFactory fnOrigCreateFactory;
 //
 // This is our replacement, so that we can return a wrapped factory, which
 // will allow us access to the SwapChain.
+// 
+// The documentation says specifically to NOT mix Factory1 and Factory use,
+// so we will not look for Factory1 here.
 
 static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
@@ -117,10 +120,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
 
 	HackerDXGIFactory *factoryWrap;
-	if (riid == __uuidof(IDXGIFactory1))
-		factoryWrap = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(origFactory), NULL, NULL);
-	else
-		factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+	factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
 
 	// ToDo: this null check is not necessary as it would throw exception.
 	if (factoryWrap == NULL)
@@ -142,10 +142,14 @@ typedef HRESULT(WINAPI *lpfnCreateDXGIFactory1)(REFIID riid, void **ppFactory1);
 SIZE_T nFactory1_ID; 
 lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
 
+// It's not legal to mix Factory1 and Factory in the same app, so we'll not
+// look for Factory here.  Bizarrely though, Factory2 is expected.
+
 static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
 	InitD311();
-	LogInfo("  calling original CreateDXGIFactory API\n");
+	LogInfo("Hooked_CreateDXGIFactory1 called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2))
@@ -155,30 +159,27 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 		return E_NOINTERFACE;
 	}
 
-	IDXGIFactory *origFactory;
-	HRESULT hr = fnOrigCreateFactory(riid, (void **)&origFactory);
+	IDXGIFactory1 *origFactory1;
+	HRESULT hr = fnOrigCreateFactory1(riid, (void **)&origFactory1);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x \n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
 
-	HackerDXGIFactory *factoryWrap;
-	if (riid == __uuidof(IDXGIFactory1))
-		factoryWrap = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(origFactory), NULL, NULL);
-	else
-		factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+	HackerDXGIFactory1 *factory1Wrap;
+	factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
 
 	// ToDo: this null check is not necessary as it would throw exception.
-	if (factoryWrap == NULL)
+	if (factory1Wrap == NULL)
 	{
 		LogInfo("  error allocating factoryWrap. \n");
-		origFactory->Release();
+		origFactory1->Release();
 		return E_OUTOFMEMORY;
 	}
 	if (ppFactory1)
-		*ppFactory1 = factoryWrap;
+		*ppFactory1 = factory1Wrap;
 
 	return hr;
 }
