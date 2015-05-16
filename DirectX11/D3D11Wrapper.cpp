@@ -38,15 +38,45 @@ bool InitializeDLL()
 
 	LoadConfigFile();
 
+
+	// Preload OUR nvapi before we call init.
+#if(_WIN64)
+#define NVAPI_DLL L"nvapi64.dll"
+#else 
+#define NVAPI_DLL L"nvapi.dll"
+#endif
+
+	LoadLibrary(NVAPI_DLL);
+
 	NvAPI_ShortString errorMessage;
 	NvAPI_Status status;
 
+	// Tell our nvapi.dll that it's us calling, and it's OK.
+	NvAPIOverride();
 	status = NvAPI_Initialize();
 	if (status != NVAPI_OK)
 	{
 		NvAPI_GetErrorMessage(status, errorMessage);
 		LogInfo("  NvAPI_Initialize failed: %s\n", errorMessage);
 		return false;
+	}
+
+	// This sequence is to make the force_no_nvapi work.  When the game pCars
+	// starts it calls NvAPI_Initialize that we want to return an error for.
+	// But, the NV stereo driver ALSO calls NvAPI_Initialize, and we need to let
+	// that one go through.  So by calling Stereo_Enable early here, we force
+	// the NV stereo to load and take advantage of the pending NvAPIOverride,
+	// then all subsequent game calls to Initialize will return an error.
+	if (G->gForceNoNvAPI)
+	{
+		NvAPIOverride();
+		status = NvAPI_Stereo_Enable();
+		if (status != NVAPI_OK)
+		{
+			NvAPI_GetErrorMessage(status, errorMessage);
+			LogInfo("  NvAPI_Stereo_Enable failed: %s\n", errorMessage);
+			return false;
+		}
 	}
 	//status = CheckStereo();
 	//if (status != NVAPI_OK)
@@ -710,13 +740,19 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	return ret;
 }
 
+extern "C" NvAPI_Status __cdecl nvapi_QueryInterface(unsigned int offset);
+
 void NvAPIOverride()
 {
-	// Override custom settings.
-	const StereoHandle id1 = (StereoHandle)0x77aa8ebc;
-	float id2 = 1.23f;
-	if (NvAPI_Stereo_GetConvergence(id1, &id2) != 0xeecc34ab)
-	{
-		LogDebug("  overriding NVAPI wrapper failed.\n");
-	}
+	// One shot, override custom settings.
+	NvAPI_Status ret = nvapi_QueryInterface(0xb03bb03b);
+	if (ret != 0xeecc34ab)
+		LogInfo("  overriding NVAPI wrapper failed. \n");
+
+	//const StereoHandle id1 = (StereoHandle)0x77aa8ebc;
+	//float id2 = 1.23f;
+	//if (NvAPI_Stereo_GetConvergence(id1, &id2) != 0xeecc34ab)
+	//{
+	//	LogDebug("  overriding NVAPI wrapper failed.\n");
+	//}
 }

@@ -22,6 +22,9 @@ extern "C"
 	typedef NvAPI_Status *(__cdecl *nvapi_QueryInterfaceType)(unsigned int offset);
 	static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
 
+	typedef NvAPI_Status(__cdecl *tNvAPI_Initialize)(void);
+	static tNvAPI_Initialize _NvAPI_Initialize;
+
 	typedef NvAPI_Status(__cdecl *tNvAPI_Stereo_GetConvergence)(StereoHandle stereoHandle, float *pConvergence);
 	static tNvAPI_Stereo_GetConvergence _NvAPI_Stereo_GetConvergence;
 	typedef NvAPI_Status(__cdecl *tNvAPI_Stereo_SetConvergence)(StereoHandle stereoHandle, float newConvergence);
@@ -118,8 +121,11 @@ extern "C"
 }
 
 static HMODULE nvDLL = 0;
+
+static bool	ForceNoNvAPI = 0;
 static bool NoStereoDisable = 0;
 static bool ForceAutomaticStereo = 0;
+
 static map<float, float> GameConvergenceMap, GameConvergenceMapInv;
 static bool gDirectXOverride = false;
 static int gSurfaceCreateMode = -1;
@@ -128,6 +134,7 @@ static bool UnlockSeparation = false;
 static float UserConvergence = -1, SetConvergence = -1, GetConvergence = -1;
 static float UserSeparation = -1, SetSeparation = -1, GetSeparation = -1;
 
+// ToDo: Reconcile these with the DXGI version.
 static int SCREEN_WIDTH = -1;
 static int SCREEN_HEIGHT = -1;
 static int SCREEN_REFRESH = -1;
@@ -245,12 +252,20 @@ static void loadDll()
 			swscanf_s(valueString, L"%d", &SCREEN_FULLSCREEN);
 
 		// Stereo
+		ForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, sysDir) == 1;
 		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, sysDir) == 1;
-
-		if (CallsLogging()) LogInfo("[Stereo]\n");
 		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir) == 1;
 		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, sysDir);
 		UnlockSeparation = GetPrivateProfileInt(L"Stereo", L"unlock_separation", 0, sysDir) == 1;
+
+		if (CallsLogging()) {
+			LogInfo("[Stereo]\n");
+			LogInfo("  force_no_nvapi=%d \n", ForceNoNvAPI ? 1 : 0);
+			LogInfo("  force_stereo=%d \n", NoStereoDisable ? 1 : 0);
+			LogInfo("  automatic_mode=%d \n", ForceAutomaticStereo ? 1 : 0);
+			LogInfo("  unlock_separation=%d \n", UnlockSeparation ? 1 : 0);
+			LogInfo("  surface_createmode=%d \n", gSurfaceCreateMode);
+		}
 	}
 }
 
@@ -281,16 +296,33 @@ STDAPI DllUnregisterServer(void)
 
 // -----------------------------------------------------------------------------------------------
 
-static NvAPI_Status __cdecl NvAPI_Stereo_GetConvergence(StereoHandle stereoHandle, float *pConvergence)
+// When called to init NvAPI, we'll always allow the init, but if specified in the .ini file we
+// will return an error message to fake out the calling game to think that NvAPI is not available.
+// This will allow us to use NvAPI for stereo management, but force the game into Automatic Mode.
+// This is the equivalent to the technique of editing the .exe to set nvapi->nvbpi.
+
+static NvAPI_Status __cdecl NvAPI_Initialize(void)
 {
-	// Callback from DX wrapper?
-	if ((unsigned int)stereoHandle == 0x77aa8ebc && *pConvergence == 1.23f)
+	if (CallsLogging()) LogInfo("%s - NvAPI_Initialize called. \n", LogTime().c_str());
+
+	NvAPI_Status ret;
+
+	if (gDirectXOverride || !ForceNoNvAPI)
 	{
-		if (CallsLogging()) LogDebug("%s - Callback from DirectX wrapper: override next call.\n", LogTime().c_str());
-		gDirectXOverride = true;
-		return (NvAPI_Status)0xeecc34ab;
+		ret = (*_NvAPI_Initialize)();
+		gDirectXOverride = false;
+	}
+	else 
+	{
+		ret = NVAPI_NO_IMPLEMENTATION;
+		if (CallsLogging()) LogInfo("  NvAPI_Initialize force return err: %d \n", ret);
 	}
 
+	return ret;
+}
+
+static NvAPI_Status __cdecl NvAPI_Stereo_GetConvergence(StereoHandle stereoHandle, float *pConvergence)
+{
 	NvAPI_Status ret = (*_NvAPI_Stereo_GetConvergence)(stereoHandle, pConvergence);
 	if (ConvergenceLogging() && GetConvergence != *pConvergence)
 	{
@@ -442,16 +474,30 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 	}
 	return (*_NvAPI_Stereo_Enable)();
 }
+
+// Some games like pCars will call to see if stereo is enabled and change behavior.
+// We allow the d3dx.ini to force automatic mode by always returning false if specified.
+
 static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 {
+	if (CallsLogging()) 
+		LogInfo("%s - NvAPI_Stereo_IsEnabled called. \n", LogTime().c_str());
+
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
-	if (CallsLogging())
+
+	if (!gDirectXOverride && ForceAutomaticStereo)
 	{
-		LogInfo("%s - NvAPI_Stereo_IsEnabled called. Returns IsStereoEnabled = %d, Result = %d\n", LogTime().c_str(),
-			*pIsStereoEnabled, ret);
+		*pIsStereoEnabled = false;
+		gDirectXOverride = false;
+		if (CallsLogging()) LogInfo("  NvAPI_Stereo_IsEnabled force return false \n");
 	}
+
+	if (CallsLogging())
+		LogInfo("  Returns IsStereoEnabled = %d, Result = %d \n", *pIsStereoEnabled, ret);
+
 	return ret;
 }
+
 static NvAPI_Status __cdecl NvAPI_Stereo_GetStereoSupport(
 	__in NvMonitorHandle hMonitor, __out NVAPI_STEREO_CAPS *pCaps)
 {
@@ -773,6 +819,21 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 	return ret;
 }
 
+// This seems like it might have a reentrancy hole, where a given call sets up to not
+// be overridden, but something else sneaks in and steals it.  
+// In fact, I'm exploiting that for force_no_nvapi because I need the Initialize from
+// the stereo driver to succeed, and call enable_stereo after an EnableOverride, so that
+// the Initialize succeeds.
+
+static NvAPI_Status __cdecl EnableOverride(void)
+{
+	if (CallsLogging()) LogInfo("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped. \n", LogTime().c_str());
+
+	gDirectXOverride = true;
+
+	return (NvAPI_Status)0xeecc34ab;
+}
+
 
 // __declspec(dllexport)
 // Removed this declare spec, because we are using the .def file for declarations.
@@ -784,6 +845,15 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 	NvAPI_Status *ptr = (*nvapi_QueryInterfacePtr)(offset);
 	switch (offset)
 	{
+		// Special signature for being called from d3d11 dll code.
+		case 0xb03bb03b:
+			ptr = (NvAPI_Status *)EnableOverride();
+			break;
+	
+		case 0x0150E828:
+			_NvAPI_Initialize = (tNvAPI_Initialize)ptr;
+			ptr = (NvAPI_Status *)NvAPI_Initialize;
+			break;
 		case 0x4ab00934:
 			_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Stereo_GetConvergence;

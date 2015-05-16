@@ -464,6 +464,7 @@ void LoadConfigFile()
 	G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;
 	G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
 	G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
+	G->gForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, iniFile) == 1;
 
 	if (LogFile)
 	{
@@ -472,6 +473,7 @@ void LoadConfigFile()
 		if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
 		if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
 		if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
+		if (G->gForceNoNvAPI) LogInfo("  force_no_nvapi=1 \n");
 	}
 
 	// [Rendering]

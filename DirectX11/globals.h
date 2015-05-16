@@ -176,6 +176,7 @@ struct Globals
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;
 	int gSurfaceSquareCreateMode;
+	bool gForceNoNvAPI;
 
 	bool hunting;
 	bool fix_enabled;
@@ -319,6 +320,7 @@ struct Globals
 		gCreateStereoProfile(false),
 		gSurfaceCreateMode(-1),
 		gSurfaceSquareCreateMode(-1),
+		gForceNoNvAPI(false),
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0),
 
