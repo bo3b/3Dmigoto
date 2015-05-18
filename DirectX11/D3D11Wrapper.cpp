@@ -418,13 +418,10 @@ void InitD311()
 	{
 		wchar_t sysDir[MAX_PATH];
 		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
-#if (_WIN64 && HOOK_SYSTEM32)
-		// We'll look for this in MainHook to avoid callback to self.		
-		// Must remain all lower case to be matched in MainHook.
+
+		// We'll look for this in DLLMainHook to avoid callback to self.		
+		// Must remain all lower case to be matched in DLLMainHook.
 		wcscat(sysDir, L"\\original_d3d11.dll");
-#else
-		wcscat(sysDir, L"\\d3d11.dll");
-#endif
 
 		if (LogFile)
 		{

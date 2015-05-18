@@ -38,8 +38,18 @@ static struct
 	lpfnIsDebuggerPresent fnIsDebuggerPresent;
 } sIsDebuggerPresent_Hook = { 0, NULL };
 
-static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
-		DWORD dwFlags, LPCWSTR magic_name, LPCWSTR library)
+
+// ----------------------------------------------------------------------------
+
+// Cleanly fetch system directory, as drive may not be C:, and it doesn't have to be
+// "C:\Windows\system32", although that will be the path for both 32 bit and 64 bit OS.
+//
+// This is a common routine to munge the return module for the possible input variants
+// of d3d11.dll, nvapi.dll, nvapi64.dll.  If those are requested from System32, we want
+// to force it back to the game directory so that we are in the load path.
+
+static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
+		DWORD dwFlags, LPCWSTR orig_name, LPCWSTR library)
 {
 	WCHAR systemPath[MAX_PATH];
 	GetSystemDirectoryW(systemPath, ARRAYSIZE(systemPath));
@@ -49,7 +59,7 @@ static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
 	// Bypass the known expected call from our wrapped d3d11 & nvapi64, where it needs to call to the system to get APIs.
 	// This is a bit of a hack, but if the string comes in as original_d3d11/nvapi64, that's from us, and needs to switch
 	// to the real one. This doesn't need to be case insensitive, because we create the original string, all lower case.
-	if (wcsstr(lpLibFileName, magic_name) != NULL)
+	if (wcsstr(lpLibFileName, orig_name) != NULL)
 	{
 		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
 			lpLibFileName, systemPath);
@@ -73,10 +83,10 @@ static HMODULE _Hooked_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile,
 // We want to look for overrides to System32 that we can circumvent.  This only happens
 // in the current process, not system wide.
 //
-// Looking for: nvapi64.dll	LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
-//
-// Cleanly fetch system directory, as drive may not be C:, and it doesn't have to be
-// "C:\Windows\system32", although that will be the path for both 32 bit and 64 bit OS.
+// Looking for: 
+//	LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	LoadLibraryExW("C:\Windows\system32\nvapi.dll", NULL, 0)
+//	LoadLibraryExW("C:\Windows\system32\nvapi64.dll", NULL, 0)
 
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
@@ -85,17 +95,22 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 	// This is late enough that we can look for standard logging.
 	LogDebugW(L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
 
-	module = _Hooked_LoadLibraryExW(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
 	if (module)
 		return module;
 
-	module = _Hooked_LoadLibraryExW(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+	if (module)
+		return module;
+
+	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
 	if (module)
 		return module;
 
 	// Normal unchanged case.
 	return sLoadLibraryExW_Hook.fnLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
+
 
 // Function to be called whenever real IsDebuggerPresent is called, so that we can force it to false.
 
@@ -149,7 +164,7 @@ static bool InstallHooks()
 	//dwOsErr = cHookMgr.Hook(&(sIsDebuggerPresent_Hook.nHookId), (LPVOID*)&(sIsDebuggerPresent_Hook.fnIsDebuggerPresent),
 	//	fnOrigIsDebuggerPresent, Hooked_IsDebuggerPresent);
 
-	if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for IsDebuggerPresent using Deviare in-proc: %x\n", dwOsErr);
+	//if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for IsDebuggerPresent using Deviare in-proc: %x\n", dwOsErr);
 
 
 	return (dwOsErr == 0) ? true : false;
@@ -161,10 +176,13 @@ static void RemoveHooks()
 }
 
 
-// Only do this hooking for known bad scenarios. Like Watch Dogs and Dragon Age Inquistion.  
-// This will only be active if the build target defines HOOK_SYSTEM32, so it's build selectable.
+// Now doing hooking for every build, x32 and x64.  Not positive this is the
+// best idea, but so far it's been stable and does not seem to introduce any
+// problems. The original thought was that this was only useful for some games.
+//
+// The fact that we are hooking to install DXGI now makes this necessary for 
+// all builds.
 
-#if (HOOK_SYSTEM32)
 BOOL WINAPI DllMain(
 	_In_  HINSTANCE hinstDLL,
 	_In_  DWORD fdwReason,
@@ -194,4 +212,3 @@ BOOL WINAPI DllMain(
 
 	return result;
 }
-#endif

@@ -170,12 +170,10 @@ static bool ConvergenceLogging()
 
 // -----------------------------------------------------------------------------------------------
 
-#if (_WIN64 && HOOK_SYSTEM32)
+#if (_WIN64)
 #define REAL_NVAPI_DLL L"\\original_nvapi64.dll"
-#elif(_WIN64)
-#define REAL_NVAPI_DLL L"\\nvapi64.dll"
 #else 
-#define REAL_NVAPI_DLL L"\\nvapi.dll"
+#define REAL_NVAPI_DLL L"\\original_nvapi.dll"
 #endif
 
 static void loadDll()
