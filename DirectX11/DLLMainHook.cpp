@@ -41,35 +41,38 @@ static struct
 
 // ----------------------------------------------------------------------------
 
-// Cleanly fetch system directory, as drive may not be C:, and it doesn't have to be
-// "C:\Windows\system32", although that will be the path for both 32 bit and 64 bit OS.
-//
-// This is a common routine to munge the return module for the possible input variants
-// of d3d11.dll, nvapi.dll, nvapi64.dll.  If those are requested from System32, we want
-// to force it back to the game directory so that we are in the load path.
-
 static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
-		DWORD dwFlags, LPCWSTR orig_name, LPCWSTR library)
+		DWORD dwFlags, LPCWSTR our_name, LPCWSTR library)
 {
-	WCHAR systemPath[MAX_PATH];
-	GetSystemDirectoryW(systemPath, ARRAYSIZE(systemPath));
-	wcscat_s(systemPath, MAX_PATH, L"\\");
-	wcscat_s(systemPath, MAX_PATH, library);
+	WCHAR fullPath[MAX_PATH];
 
-	// Bypass the known expected call from our wrapped d3d11 & nvapi64, where it needs to call to the system to get APIs.
-	// This is a bit of a hack, but if the string comes in as original_d3d11/nvapi64, that's from us, and needs to switch
-	// to the real one. This doesn't need to be case insensitive, because we create the original string, all lower case.
-	if (wcsstr(lpLibFileName, orig_name) != NULL)
+	// We can use System32 for all cases, because it will be properly rerouted
+	// to SysWow64 by LoadLibraryEx itself.
+
+	if (GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath)) == 0)
+		return NULL;
+	wcscat_s(fullPath, MAX_PATH, L"\\");
+	wcscat_s(fullPath, MAX_PATH, library);
+
+	// Bypass the known expected call from our wrapped d3d11 & nvapi, where it needs
+	// to call to the system to get APIs. This is a bit of a hack, but if the string
+	// comes in as original_d3d11/nvapi/nvapi64, that's from us, and needs to switch 
+	// to the real one. The test string should have no path attached.
+	
+	if (_wcsicmp(lpLibFileName, our_name) == 0)
 	{
 		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
-			lpLibFileName, systemPath);
+			lpLibFileName, fullPath);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(systemPath, hFile, dwFlags);
+		return sLoadLibraryExW_Hook.fnLoadLibraryExW(fullPath, hFile, dwFlags);
 	}
 
-	// This is to be case insenstive as we don't know if NVidia will change that and otherwise break it
-	// it with a driver upgrade.  Any direct access to system32\d3d11.dll needs to be reset to us.
-	if (_wcsicmp(lpLibFileName, systemPath) == 0)
+	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
+	// from the system directory, and redirect it to the game folder if so, by stripping
+	// the system path. This is to be case insensitive as we don't know if NVidia will 
+	// change that and otherwise break it it with a driver upgrade. 
+	
+	if (_wcsicmp(lpLibFileName, fullPath) == 0)
 	{
 		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
@@ -82,11 +85,35 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 // Function called for every LoadLibraryExW call once we have hooked it.
 // We want to look for overrides to System32 that we can circumvent.  This only happens
 // in the current process, not system wide.
+// 
+// We need to do two things here.  First, we need to bypass all calls that go
+// directly to the System32 folder, because that will circumvent our wrapping 
+// of the d3d11 and nvapi APIs. The nvapi itself does this specifically as fake
+// security to avoid proxy DLLs like us. 
+// Second, because we are now forcing all LoadLibraryExW calls back to the game
+// folder, we need somehow to allow us access to the original dlls so that we can
+// get the original proc addresses to call.  We do this with the original_* names
+// passed in to this routine.
 //
-// Looking for: 
-//	LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
-//	LoadLibraryExW("C:\Windows\system32\nvapi.dll", NULL, 0)
-//	LoadLibraryExW("C:\Windows\system32\nvapi64.dll", NULL, 0)
+// There three use cases:
+// x32 game on x32 OS
+//	 LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\system32\nvapi.dll", NULL, 0)
+// x64 game on x64 OS
+//	 LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\system32\nvapi64.dll", NULL, 0)
+// x32 game on x64 OS
+//	 LoadLibraryExW("C:\Windows\SysWOW64\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\SysWOW64\nvapi.dll", NULL, 0)
+//
+// To be general and simplify the init, we are going to specifically do the bypass 
+// for all variants, even though we only know of this happening on x64 games.  
+//
+// An important thing to remember here is that System32 is automatically rerouted
+// to SysWow64 by the OS as necessary, so we can use System32 in all cases.
+//
+// It's not clear if we should also hook LoadLibraryW, but we don't have examples
+// where we need that yet.
 
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {

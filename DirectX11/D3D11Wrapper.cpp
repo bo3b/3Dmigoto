@@ -39,7 +39,7 @@ bool InitializeDLL()
 	LoadConfigFile();
 
 
-	// Preload OUR nvapi before we call init.
+	// Preload OUR nvapi before we call init because we need some of our calls.
 #if(_WIN64)
 #define NVAPI_DLL L"nvapi64.dll"
 #else 
@@ -378,11 +378,7 @@ void InitD311()
 	if (!InitializeDLL())
 	{
 		// Failed to init?  Best to exit now, we are sure to crash.
-		BeepFailure2();
-		Sleep(500);
-		BeepFailure2();
-		Sleep(200);
-		ExitProcess(0xc0000135);
+		DoubleBeepExit();
 	}
 
 	
@@ -400,7 +396,7 @@ void InitD311()
 		{
 			char path[MAX_PATH];
 			wcstombs(path, sysDir, MAX_PATH);
-			LogInfo("trying to load %s\n", path);
+			LogInfo("trying to chain load %s\n", path);
 		}
 		hD3D11 = LoadLibrary(sysDir);
 		if (!hD3D11)
@@ -409,33 +405,24 @@ void InitD311()
 			{
 				char path[MAX_PATH];
 				wcstombs(path, G->CHAIN_DLL_PATH, MAX_PATH);
-				LogInfo("load failed. Trying to load %s\n", path);
+				LogInfo("load failed. Trying to chain load %s\n", path);
 			}
 			hD3D11 = LoadLibrary(G->CHAIN_DLL_PATH);
 		}
 	}
 	else
 	{
-		wchar_t sysDir[MAX_PATH];
-		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
-
 		// We'll look for this in DLLMainHook to avoid callback to self.		
 		// Must remain all lower case to be matched in DLLMainHook.
-		wcscat(sysDir, L"\\original_d3d11.dll");
-
-		if (LogFile)
-		{
-			char path[MAX_PATH];
-			wcstombs(path, sysDir, MAX_PATH);
-			LogInfo("trying to load %s\n", path);
-		}
-		hD3D11 = LoadLibrary(sysDir);
+		// We need the system d3d11 in order to find the original proc addresses.
+		// We hook LoadLibraryExW, so we need to use that here.
+		LogInfo("Trying to load original_d3d11.dll \n");
+		hD3D11 = LoadLibraryEx(L"original_d3d11.dll", NULL, 0);
 	}
 	if (hD3D11 == NULL)
 	{
-		LogInfo("LoadLibrary on d3d11.dll failed\n");
-
-		return;
+		LogInfo("*** LoadLibrary on original_d3d11.dll failed. \n");
+		DoubleBeepExit();
 	}
 
 	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");

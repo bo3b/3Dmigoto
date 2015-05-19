@@ -170,27 +170,32 @@ static bool ConvergenceLogging()
 
 // -----------------------------------------------------------------------------------------------
 
-#if (_WIN64)
-#define REAL_NVAPI_DLL L"\\original_nvapi64.dll"
-#else 
-#define REAL_NVAPI_DLL L"\\original_nvapi.dll"
-#endif
-
 static void loadDll()
 {
 	if (!nvDLL)
 	{
-		wchar_t sysDir[MAX_PATH];
-
 		// Make sure our d3d11.dll is loaded, so that we get the benefit of the DLLMainHook
 		// In general this is not necessary, but if a game calls nvapi before d3d11 loads
 		// we'll crash.  This makes sure that won't happen.  In the normal case, the 
 		// 3Dmigoto d3d11 is already loaded, and this does nothing.
 		LoadLibrary(L"d3d11.dll");
 
-		SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
-		wcscat(sysDir, REAL_NVAPI_DLL);
-		nvDLL = LoadLibrary(sysDir);
+		// We need to load the real version of nvapi, in order to get the addresses
+		// of the original routines.  This will be fixed up in DLLMainHook to give us the
+		// original library, while giving every other caller our library from the game folder.
+		// We hook LoadLibraryExW, so we need to use that here.
+#if (_WIN64)
+#define REAL_NVAPI_DLL L"original_nvapi64.dll"
+#else 
+#define REAL_NVAPI_DLL L"original_nvapi.dll"
+#endif
+		LogInfoW(L"Trying to load %s \n", REAL_NVAPI_DLL);
+		nvDLL = LoadLibraryEx(REAL_NVAPI_DLL, NULL, 0);
+		if (nvDLL == NULL)
+		{
+			LogInfoW(L"*** LoadLibrary of %s failed. *** \n", REAL_NVAPI_DLL);
+			DoubleBeepExit();
+		}
 
 		DllCanUnloadNowPtr = (DllCanUnloadNowType)GetProcAddress(nvDLL, "DllCanUnloadNow");
 		DllGetClassObjectPtr = (DllGetClassObjectType)GetProcAddress(nvDLL, "DllGetClassObject");
@@ -198,14 +203,15 @@ static void loadDll()
 		DllUnregisterServerPtr = (DllUnregisterServerType)GetProcAddress(nvDLL, "DllUnregisterServer");
 		nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
 
-		GetModuleFileName(0, sysDir, MAX_PATH);
-		wcsrchr(sysDir, L'\\')[1] = 0;
-		wcscat(sysDir, L"d3dx.ini");
+		wchar_t filename[MAX_PATH];
+		GetModuleFileName(0, filename, MAX_PATH);
+		wcsrchr(filename, L'\\')[1] = 0;
+		wcscat(filename, L"d3dx.ini");
 		for (int i = 1;; ++i)
 		{
 			wchar_t id[] = L"Mapxxx", val[MAX_PATH];
 			_itow_s(i, id + 3, 3, 10);
-			if (!GetPrivateProfileString(L"ConvergenceMap", id, 0, val, MAX_PATH, sysDir))
+			if (!GetPrivateProfileString(L"ConvergenceMap", id, 0, val, MAX_PATH, filename))
 				break;
 			unsigned int fromHx;
 			float from, to;
@@ -214,24 +220,24 @@ static void loadDll()
 			GameConvergenceMap[from] = to;
 			GameConvergenceMapInv[to] = from;
 		}
-		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, sysDir) == 1;
-		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, sysDir) == 1;
-		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, sysDir) == 1;
-		gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, sysDir) == 1;
+		LogConvergence = GetPrivateProfileInt(L"Logging", L"convergence", 0, filename) == 1;
+		LogSeparation = GetPrivateProfileInt(L"Logging", L"separation", 0, filename) == 1;
+		LogCalls = GetPrivateProfileInt(L"Logging", L"calls", 0, filename) == 1;
+		gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, filename) == 1;
 
 		if (CallsLogging()) LogInfo("\nNVapi DLL starting init  -  %s\n\n", LogTime().c_str());
 
 		// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 		// to open active files.
 		int unbuffered = -1;
-		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, sysDir))
+		if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, filename))
 		{
 			unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
 			if (CallsLogging()) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
 		}
 
 		// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
-		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, sysDir))
+		if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, filename))
 		{
 			DWORD one = 0x01;
 			BOOL result = SetProcessAffinityMask(GetCurrentProcess(), one);
@@ -240,21 +246,21 @@ static void loadDll()
 
 		// Device
 		wchar_t valueString[MAX_PATH];
-		if (GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, sysDir))
+		if (GetPrivateProfileString(L"Device", L"width", 0, valueString, MAX_PATH, filename))
 			swscanf_s(valueString, L"%d", &SCREEN_WIDTH);
-		if (GetPrivateProfileString(L"Device", L"height", 0, valueString, MAX_PATH, sysDir))
+		if (GetPrivateProfileString(L"Device", L"height", 0, valueString, MAX_PATH, filename))
 			swscanf_s(valueString, L"%d", &SCREEN_HEIGHT);
-		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, valueString, MAX_PATH, sysDir))
+		if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, valueString, MAX_PATH, filename))
 			swscanf_s(valueString, L"%d", &SCREEN_REFRESH);
-		if (GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, sysDir))
+		if (GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, filename))
 			swscanf_s(valueString, L"%d", &SCREEN_FULLSCREEN);
 
 		// Stereo
-		ForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, sysDir) == 1;
-		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, sysDir) == 1;
-		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, sysDir) == 1;
-		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, sysDir);
-		UnlockSeparation = GetPrivateProfileInt(L"Stereo", L"unlock_separation", 0, sysDir) == 1;
+		ForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, filename) == 1;
+		NoStereoDisable = GetPrivateProfileInt(L"Device", L"force_stereo", 0, filename) == 1;
+		ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, filename) == 1;
+		gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, filename);
+		UnlockSeparation = GetPrivateProfileInt(L"Stereo", L"unlock_separation", 0, filename) == 1;
 
 		if (CallsLogging()) {
 			LogInfo("[Stereo]\n");
