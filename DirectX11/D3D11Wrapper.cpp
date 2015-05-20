@@ -568,9 +568,9 @@ HRESULT WINAPI D3D11CreateDevice(
 	LogInfo("\n\nD3D11CreateDevice called with adapter = %p \n", pAdapter);
 
 #if defined(_DEBUG_LAYER)
-	// If the project is in a debug build, enable the debug layer.
 	Flags |= D3D11_CREATE_DEVICE_DEBUG;
 	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
+	LogInfo("  D3D11CreateDevice _DEBUG_LAYER flags set: %#x \n", Flags);
 #endif
 
 	ID3D11Device *origDevice = 0;
@@ -590,6 +590,21 @@ HRESULT WINAPI D3D11CreateDevice(
 		LogInfo("  failed with HRESULT=%x\n", ret);
 		return ret;
 	}
+
+#if defined(_DEBUG_LAYER)
+	// If we are using the Debug Layer, lets dump the LiveObjectState to show it's working.
+	ID3D11Debug *d3dDebug = nullptr;
+	if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
+	{
+		ID3D11InfoQueue *d3dInfoQueue = nullptr;
+		if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
+		{
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+		}
+	}
+	d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+#endif
 
 	// Create a wrapped version of the original device to return to the game.
 	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
@@ -648,9 +663,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ForceDisplayParams(pSwapChainDesc);
 
 #if defined(_DEBUG_LAYER)
-	// If the project is in a debug build, enable the debug layer.
 	Flags |= D3D11_CREATE_DEVICE_DEBUG;
 	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
+	LogInfo("  D3D11CreateDeviceAndSwapChain _DEBUG_LAYER flags set: %#x \n", Flags);
 #endif
 
 	ID3D11Device *origDevice = 0;
@@ -670,6 +685,21 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	if (!origDevice || !origContext || !origSwapChain)
 		return ret;
+
+#if defined(_DEBUG_LAYER)
+	// If we are using the Debug Layer, lets dump the LiveObjectState to show it's working.
+	ID3D11Debug *d3dDebug = nullptr;
+	if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
+	{
+		ID3D11InfoQueue *d3dInfoQueue = nullptr;
+		if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
+		{
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+		}
+	}
+	d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+#endif
 
 	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
 	if (deviceWrap == NULL)
