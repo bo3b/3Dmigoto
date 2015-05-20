@@ -34,3 +34,4 @@ xcopy "%1*.*" "T:\Games\Watch_Dogs\bin"  /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Call of Duty Ghosts\"  /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64\" /F /Y
 xcopy "%1*.*" "T:\Bootleg\Project CARS\" /F /Y
+xcopy "%1*.*" "T:\Games\The Witcher 3 Wild Hunt\bin\x64\" /F /Y
