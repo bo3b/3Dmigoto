@@ -3247,14 +3247,16 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Minor tweak, but if we reverse the order of Min/Max parameters here, the
+						// recompile comes out identical.
 					case OPCODE_MIN:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3264,7 +3266,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = min(asuint(%s), asuint(%s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = min(asuint(%s), asuint(%s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3274,9 +3276,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3285,9 +3287,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3296,9 +3298,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
