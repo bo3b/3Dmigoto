@@ -1192,7 +1192,7 @@ STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
             /* [annotation][out][in] */ 
             _Out_  void **ppSurface)
 {
-	LogInfo("HackerDXGISwapChain::GetBuffer(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
+	LogDebug("HackerDXGISwapChain::GetBuffer(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
 	LogInfo("  returns %x\n", hr);
