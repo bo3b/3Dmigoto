@@ -2160,23 +2160,26 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DeviceContext **ppDeferredContext)
 {
-	LogInfo("*** Double check context is correct ****\n\n");
-	LogInfo("HackerDevice::CreateDeferredContext called with flags = %x\n", ContextFlags);
+	// This crashes Witcher3, for no obvious reason.
+	// We don't need to wrap Deferred Contexts anyway, so skip for now.
+	//LogInfo("*** Double check context is correct ****\n\n");
+	//LogInfo("HackerDevice::CreateDeferredContext called with flags = %x\n", ContextFlags);
 
-	ID3D11DeviceContext *deferContext = 0;
-	HRESULT ret = -1;
+	//ID3D11DeviceContext *deferContext = 0;
+	//HRESULT ret = -1;
 
-	if (*ppDeferredContext)
-	{
-		ret = mOrigDevice->CreateDeferredContext(ContextFlags, &deferContext);
-		HackerContext *hackerContext = new HackerContext(mOrigDevice, deferContext);
-		hackerContext->SetHackerDevice(this);
-		*ppDeferredContext = hackerContext;
+	//if (*ppDeferredContext)
+	//{
+	//	ret = mOrigDevice->CreateDeferredContext(ContextFlags, &deferContext);
+	//	HackerContext *hackerContext = new HackerContext(mOrigDevice, deferContext);
+	//	hackerContext->SetHackerDevice(this);
+	//	*ppDeferredContext = hackerContext;
 
-		LogInfo("  returns result = %x, handle = %p, wrapper = %s\n", ret, deferContext, typeid(*ppDeferredContext).name());
-		LogInfo("\n*** Double check context is correct ****\n");
-	}
+	//	LogInfo("  returns result = %x, handle = %p, wrapper = %s\n", ret, deferContext, typeid(*ppDeferredContext).name());
+	//	LogInfo("\n*** Double check context is correct ****\n");
+	//}
 
+	HRESULT ret = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
 	return ret;
 }
 
