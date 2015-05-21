@@ -1208,6 +1208,12 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %p\n", pTarget);
 
+	if (G->SCREEN_FULLSCREEN)
+	{
+		Fullscreen = true;
+		LogInfo("->Fullscreen forced = %d \n", Fullscreen);
+	}
+
 	HRESULT hr;
 	//if (pTarget)	
 	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
