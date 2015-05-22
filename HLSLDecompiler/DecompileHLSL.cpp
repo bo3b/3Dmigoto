@@ -2734,10 +2734,12 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2D<float4>";
-						sprintf(buffer, "Texture2D<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mTextureType[bufIndex] = "Texture2D<" + string(format) + ">";
+						sprintf(buffer, "Texture2D<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
@@ -2757,10 +2759,12 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2DArray<float4>";
-						sprintf(buffer, "Texture2DArray<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mTextureType[bufIndex] = "Texture2DArray<" + string(format) + ">";
+						sprintf(buffer, "Texture2DArray<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
@@ -2786,13 +2790,15 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2DMS<float4>";
+						mTextureType[bufIndex] = "Texture2DMS<" + string(format) + ">";
 						if (dim == 0)
-							sprintf(buffer, "Texture2DMS<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+							sprintf(buffer, "Texture2DMS<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
 						else
-							sprintf(buffer, "Texture2DMS<float4,%d> t%d : register(t%d);\n\n", dim, bufIndex, bufIndex);
+							sprintf(buffer, "Texture2DMS<%s,%d> t%d : register(t%d);\n\n", format, dim, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
@@ -2812,16 +2818,18 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "TextureCube<float4>";
-						sprintf(buffer, "TextureCube<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mTextureType[bufIndex] = "TextureCube<" + string(format) + ">";
+						sprintf(buffer, "TextureCube<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
 				}
 			}
-			else if (!strcmp(statement, "dcl_resource_buffer"))
+			else if (!strcmp(statement, "dcl_resource_buffer"))		// dcl_resource_buffer (sint,sint,sint,sint) t2
 			{
 				if (op2[0] == 't')
 				{
@@ -2835,10 +2843,12 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Buffer<float4>";
-						sprintf(buffer, "Buffer<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mTextureType[bufIndex] = "Buffer<" + string(format) + ">";
+						sprintf(buffer, "Buffer<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
