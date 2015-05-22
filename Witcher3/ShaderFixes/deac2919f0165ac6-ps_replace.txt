@@ -37,6 +37,46 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+float4 stereo = StereoParams.Load(0);
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1.xyzw = cb12[1].xyzw;
+a2.xyzw = cb12[2].xyzw;
+a3.xyzw = cb12[3].xyzw;
+a4.xyzw = cb12[4].xyzw;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
   r0.xy = (int2)v0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
   r1.x = t0.Load(r0.xyw).x;
@@ -46,6 +86,26 @@ void main(
   r1.xyzw = cb12[212].xyzw * r1.xxxx + r2.xyzw;
   r1.xyzw = cb12[213].xyzw + r1.xyzw;
   r1.xyz = r1.xyz / r1.www;
+  
+float4 r20, r21;
+r20.xyz = r1.xyz; 
+r20.w = 1.0;
+
+r21.xyzw = cb12[2].xyzw * r20.yyyy;
+r21.xyzw = cb12[1].xyzw * r20.xxxx + r21.xyzw;
+r21.xyzw = cb12[3].xyzw * r20.zzzz + r21.xyzw;
+r21.xyzw = cb12[4].xyzw + r21.xyzw;
+
+r21.xyzw /= r21.wwww;
+
+r21.x -= stereo.x*(r21.z - stereo.y)/cb12[13].x; 
+
+r20.xyzw = b2.xyzw * r21.yyyy;
+r20.xyzw = b1.xyzw * r21.xxxx + r20.xyzw;
+r20.xyzw = b3.xyzw * r21.zzzz + r20.xyzw;
+r20.xyzw = b4.xyzw * r21.wwww + r20.xyzw;
+r1.xyz = r20.xyz / r20.www; 
+
   r1.w = (int)cb3[0].x;
   r1.w = (int)r1.w * 9;
   r2.xyz = cb13[r1.w+58].xyz + -r1.xyz;
@@ -60,7 +120,7 @@ void main(
     r3.w = r3.x / cb13[r1.w+58].w;
     r3.w = r3.w * r3.w;
     r3.w = -r3.w * r3.w + 1.000000000e+000;
-    r3.w = max(0.000000000e+000, r3.w);
+    r3.w = max(r3.w, 0.000000000e+000);
     r3.w = r3.w * r3.w;
     r6.w = r2.w * cb13[r1.w+63].x + 1.000000000e+000;
     r3.w = r3.w / r6.w;
@@ -72,7 +132,10 @@ void main(
     r2.w = cb13[r1.w+62].w * r2.w;
     r2.w = exp2(r2.w);
     r2.w = r3.w * r2.w;
-    r7.xy = int2(2048,4096) & (int2)cb13[r1.w+61].ww;
+//This line is decompiled wrong:    
+	// r7.xy = int2(2048,4096) & (int2)cb13[r1.w+61].ww;
+r7.xy = int2(2048,4096);
+
     r3.z = r3.z == 1.000000;
     r3.w = r3.z ? 1.000000 : 0;
     r3.z = r3.z ? 0.000000000e+000 : 1.000000000e+000;
@@ -111,13 +174,13 @@ void main(
       r1.xyz = r2.www * r1.xyz;
       r2.w = dot(r1.xyz, r3.xzw);
       r2.w = 1.000000000e+000 + -abs(r2.w);
-      r2.w = max(0.000000000e+000, r2.w);
+      r2.w = max(r2.w, 0.000000000e+000);
       r6.w = r2.w * r2.w;
       r6.w = r6.w * r6.w;
       r2.w = r6.w * r2.w;
       r6.w = 1.000000000e+000 + -r5.w;
       r7.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r4.xyz;
-      r8.xyz = max(float3(0.000000e+000,0.000000e+000,0.000000e+000), r7.xyz);
+      r8.xyz = max(r7.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
       r8.xyz = cb13[56].xxx * r8.xyz;
       r8.xyz = r8.xyz * r2.www;
       r2.w = 1.000000000e+000 + cb13[56].z;

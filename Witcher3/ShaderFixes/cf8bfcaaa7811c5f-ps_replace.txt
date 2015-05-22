@@ -39,6 +39,46 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+float4 stereo = StereoParams.Load(0);
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1.xyzw = cb12[1].xyzw;
+a2.xyzw = cb12[2].xyzw;
+a3.xyzw = cb12[3].xyzw;
+a4.xyzw = cb12[4].xyzw;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
   r0.xy = (uint2)v0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
   r1.xyzw = t1.Load(r0.xyw).xyzw;
@@ -60,9 +100,34 @@ void main(
   r4.xyzw = cb12[210].xyzw * v0.xxxx + r4.xyzw;
   r4.xyzw = cb12[212].xyzw * r0.zzzz + r4.xyzw;
   r4.xyzw = cb12[213].xyzw + r4.xyzw;
-  r3.yzw = r4.xyz / r4.www;
+  
+  
+r4.xyz = r4.xyz / r4.www;
+
+float4 r20, r21;
+r20.xyz = r4.xyz; 
+r20.w = 1.0;
+
+r21.xyzw = cb12[2].xyzw * r20.yyyy;
+r21.xyzw = cb12[1].xyzw * r20.xxxx + r21.xyzw;
+r21.xyzw = cb12[3].xyzw * r20.zzzz + r21.xyzw;
+r21.xyzw = cb12[4].xyzw + r21.xyzw;
+
+r21.xyzw /= r21.wwww;
+
+r21.x -= stereo.x*(r21.z - stereo.y)/cb12[13].x; 
+
+r20.xyzw = b2.xyzw * r21.yyyy;
+r20.xyzw = b1.xyzw * r21.xxxx + r20.xyzw;
+r20.xyzw = b3.xyzw * r21.zzzz + r20.xyzw;
+r20.xyzw = b4.xyzw * r21.wwww + r20.xyzw;
+r4.xyz = r20.xyz / r20.www;  
+  
+  
+  
+  r3.yzw = r4.xyz ; // / r4.www;
   r4.xy = (int2)r0.xy ^ int2(2,2);
-  r0.xy = max(-r0.xy, r0.xy);
+  r0.xy = max(r0.xy, -r0.xy);
   r0.xy = (uint2)r0.xy >> int2(1,1);
   r4.zw = -(int2)r0.xy;
   r4.xy = (int2)r4.xy & int2(0,0);
@@ -82,7 +147,7 @@ void main(
   r3.y = -r3.y + r0.z;
   r3.y = saturate(cb13[33].w * r3.y);
   r3.y = cb13[33].z * r3.y;
-  r3.y = max(1.000000047e-003, r3.y);
+  r3.y = max(r3.y, 1.000000047e-003);
   r0.z = r0.z / cb13[34].z;
   r3.z = r0.x < r0.y;
   if (r3.z != 0) {
@@ -119,11 +184,11 @@ void main(
   r0.z = r2.x * 5.000000000e-001 + -r0.z;
   r0.z = -r2.z * 8.100000024e-002 + r0.z;
   r4.z = saturate(5.000000000e-001 + r0.z);
-  r0.z = max(3.000000119e-001, r3.x);
+  r0.z = max(r3.x, 3.000000119e-001);
   r3.x = r0.y * r0.z;
   r0.x = r0.x * r0.w;
-  r2.y = max(r2.y, r2.z);
-  r2.y = max(r2.x, r2.y);
+  r2.y = max(r2.z, r2.y);
+  r2.y = max(r2.y, r2.x);
   r2.y = 2.000000030e-001 < r2.y;
   r2.y = r2.y ? r2.x : 1.199999973e-001;
   r2.y = r2.y + -r2.x;
@@ -442,8 +507,8 @@ mov_sat r4.yz, r0.zzzz
 max r0.z, r1.x, l(0.300000)
 mul r1.x, r0.z, r0.y
 mul r0.x, r0.w, r0.x
-max r1.y, r3.z, r3.y
-max r1.y, r1.y, r3.x
+max r1.y, r3.y, r3.z
+max r1.y, r3.x, r1.y
 lt r1.y, l(0.200000), r1.y
 movc r1.y, r1.y, r3.x, l(0.120000)
 add r1.y, -r3.x, r1.y
