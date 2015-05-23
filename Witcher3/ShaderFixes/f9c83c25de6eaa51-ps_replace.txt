@@ -244,15 +244,15 @@ r1.xyz = r20.xyz / r20.www;
     r0.z = r0.z * 2.550000000e+002 + 5.000000000e-001;
     r0.z = (uint)r0.z;
     r0.z = (int)r0.z & 26;
-    r0.w = (int)0 < (int)cb13[35].x;
+    r0.w = 0 < asint(cb13[35].x);
     if (r0.w != 0) {
-      r0.w = (int)0 < (int)cb13[35].y;
+      r0.w = 0 < asint(cb13[35].y);
       if (r0.w != 0) {
         r2.y = 0.000000000e+000;
         r3.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
         r0.w = 0.000000000e+000;
         while (true) {
-          r1.w = (int)r3.z >= (int)cb13[35].y;
+          r1.w = (int)r3.z >= asint(cb13[35].y);
           r0.w = 0.000000000e+000;
           if (r1.w != 0) break;
           r2.zw = -cb13[r3.z+39].xy + r1.xy;
@@ -322,7 +322,7 @@ r1.xyz = r20.xyz / r20.www;
         r3.xz = float2(0.000000e+000,0.000000e+000);
         r2.z = 0.000000000e+000;
         while (true) {
-          r2.w = (int)r3.z >= (int)cb13[35].x;
+          r2.w = (int)r3.z >= asint(cb13[35].x);
           r2.z = 0.000000000e+000;
           if (r2.w != 0) break;
           r4.xy = -cb13[r3.z+39].xy + r1.xy;
@@ -390,7 +390,7 @@ r1.xyz = r20.xyz / r20.www;
           r3.xyzw = saturate(r3.xyzw / cb13[17].xyzw);
           r1.w = cb13[15].z + -r1.w;
           r1.w = (int)r1.w;
-          r4.y = (int)cb13[15].z;
+          r4.y = asint(cb13[15].z);
           r4.y = (int)r4.y + -1;
           r4.zw = (int2)r0.xy & int2(1,1);
           r5.xy = r4.ww ? float2(1.000000e+000,3.000000e+000) : float2(2.000000e+000,0.000000e+000);
@@ -422,7 +422,7 @@ r1.xyz = r20.xyz / r20.www;
           r2.xy = r0.zz ? cb13[r0.x+19].xx : cb13[r0.x+11].ww;
           r0.y = r0.z ? cb13[r0.x+19].y : 0.000000000e+000;
           r5.z = r0.x;
-          r0.x = (int)cb13[18].x >= (int)1;
+          r0.x = asint(cb13[18].x) >= 1;
           if (r0.x != 0) {
             r0.x = t8.SampleCmpLevelZero(s9_s, r5.xyz, r2.z).x;
             r0.z = -r0.y * 3.703703731e-002 + r2.z;
