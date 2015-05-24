@@ -2804,7 +2804,7 @@ public:
 					}
 				}
 			}
-			else if (!strcmp(statement, "dcl_resource_texturecube"))
+			else if (!strcmp(statement, "dcl_resource_texturecube"))  // array.
 			{
 				if (op2[0] == 't')
 				{
@@ -4317,10 +4317,18 @@ public:
 						{
 							string line = string(c + pos);
 							line = line.substr(0, line.find('\n'));
-							sprintf(buffer, "  Unknown use of GetDimensions for _resinfo: %s\n", line.c_str());
+							sprintf(buffer, "// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix. \n");
+							appendOutput(buffer);
+							sprintf(buffer, "// %s \n", line.c_str());
+							appendOutput(buffer);
+							sprintf(buffer, "// Example for texture2d type, uint return: \n");
+							appendOutput(buffer);
+							sprintf(buffer, "tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z); \n");
+							appendOutput(buffer);
+							sprintf(buffer, "rx = uiDest; \n");
 							appendOutput(buffer);
 
-							logDecompileError("Unknown _resinfo variant: " + line);
+							//logDecompileError("Unknown _resinfo variant: " + line);
 						}
 						break;
 					}
