@@ -1626,7 +1626,7 @@ public:
 				cpos[1] = 0;
 				op[5] = '3';	// now: float3(x,y,z)
 			}
-			else if (!strncmp(textype, "TextureCube", 11))
+			else // if (!strncmp(textype, "TextureCube", 11) || !strncmp(textype, "TextureCubeArray", 11))
 			{
 				// left as: float4(x,y,z,w)
 			}
@@ -2533,7 +2533,27 @@ public:
 		}
 	}
 
-	
+	// Common routine for handling the no header info case for declarations.
+	// This is grim, because we add the '4' to the format by default, as we
+	// cannot determine the actual size of a declaration without reflection data.
+	// It will mostly work, but generate hand-fix errors at times.
+	void CreateRawFormat(string texType, int bufIndex)
+	{
+		char buffer[128];
+		char format[16];
+
+		sprintf(buffer, "t%d", bufIndex);
+		mTextureNames[bufIndex] = buffer;
+
+		sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
+		string form4 = string(format) + "4";	// Grim. Known to fail sometimes.
+		mTextureType[bufIndex] = texType + "<" + form4 + ">";
+
+		sprintf(buffer, "%s t%d : register(t%d);\n\n", mTextureType[bufIndex].c_str(), bufIndex, bufIndex);
+		mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+		mCodeStartPos += strlen(buffer);
+	}
+
 	// General output routine while decoding shader, to automatically apply indenting to HLSL code.
 	// When we see a '{' or '}' we'll increase or decrease the indent.
 	void appendOutput(char* line)
@@ -2720,6 +2740,14 @@ public:
 					}
 				}
 			}
+			// for all of these dcl_resource_texture* variants, if we don't have any header information
+			// available, we try to fall back to the raw text definitions, and use registers instead of
+			// named variable.  A big problem though is that the count is unknown if we have no headers,
+			// so it should be Texture2D<float2> for example, but we only see (float,float,float,float).
+			// With no headers and no reflection this can't be done, so for now we'll set them to <*4> 
+			// as the most common use case. But only for this case where the game is being hostile.
+			// It will probably require hand tuning to correct usage of those texture registers.
+			// Also unlikely to work for the (mixed,mixed,mixed,mixed) case.  <mixed4> will be wrong.
 			else if (!strcmp(statement, "dcl_resource_texture2d"))
 			{
 				if (op2[0] == 't')
@@ -2734,14 +2762,7 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						char format[16];
-						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2D<" + string(format) + ">";
-						sprintf(buffer, "Texture2D<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("Texture2D", bufIndex);
 					}
 				}
 			}
@@ -2759,14 +2780,7 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						char format[16];
-						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2DArray<" + string(format) + ">";
-						sprintf(buffer, "Texture2DArray<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("Texture2DArray", bufIndex);
 					}
 				}
 			}
@@ -2790,21 +2804,24 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						char format[16];
-						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2DMS<" + string(format) + ">";
+
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
+						string form4 = string(format) + "4";
+						mTextureType[bufIndex] = "Texture2DMS<" + form4 + ">";
+
 						if (dim == 0)
-							sprintf(buffer, "Texture2DMS<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
+							sprintf(buffer, "Texture2DMS<%s> t%d : register(t%d);\n\n", form4.c_str(), bufIndex, bufIndex);
 						else
-							sprintf(buffer, "Texture2DMS<%s,%d> t%d : register(t%d);\n\n", format, dim, bufIndex, bufIndex);
+							sprintf(buffer, "Texture2DMS<%s,%d> t%d : register(t%d);\n\n", form4.c_str(), dim, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
 				}
 			}
-			else if (!strcmp(statement, "dcl_resource_texturecube"))  // array.
+			else if (!strcmp(statement, "dcl_resource_texturecube"))
 			{
 				if (op2[0] == 't')
 				{
@@ -2818,14 +2835,25 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						char format[16];
-						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "TextureCube<" + string(format) + ">";
-						sprintf(buffer, "TextureCube<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("TextureCube", bufIndex);
+					}
+				}
+			}
+			else if (!strcmp(statement, "dcl_resource_texturecubearray"))
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture register index: " + string(op2));
+						return;
+					}
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						CreateRawFormat("TextureCubeArray", bufIndex);
 					}
 				}
 			}
@@ -2843,14 +2871,7 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						char format[16];
-						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Buffer<" + string(format) + ">";
-						sprintf(buffer, "Buffer<%s> t%d : register(t%d);\n\n", format, bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("Buffer", bufIndex);
 					}
 				}
 			}
