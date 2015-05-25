@@ -737,15 +737,28 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				if (f != INVALID_HANDLE_VALUE)
 				{
+					FILE *fw;
+
 					LogInfo("    Replacement ASM shader found. Assembling replacement ASM code.\n");
 
 					wstring nameW = val;
-					
+
 					void *start = const_cast<void*>( pShaderBytecode);
 					void *end = (void*)((ptrdiff_t)start + BytecodeLength);
 
 					vector<byte> byteCopy(reinterpret_cast<byte*>(start), reinterpret_cast<byte*>(end));
 					vector<byte> reassembly = assembler(string(nameW.begin(), nameW.end()), byteCopy);
+
+					// Write reassembly binary output for comparison.
+					wsprintf(val, L"%ls\\%08lx%08lx-%ls_reasm.bin", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+					_wfopen_s(&fw, val, L"wb");
+					if (fw) {
+						LogInfoW(L"    storing reassembled binary to %s\n", val);
+						fwrite(pShaderBytecode, 1, BytecodeLength, fw);
+						fclose(fw);
+					} else {
+						LogInfoW(L"    error storing reassembled binary to %s\n", val);
+					}
 
 					// With that cbo object of reassembly, let's re-dissassemble it.
 					ID3DBlob *disassembly;
@@ -760,22 +773,14 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					{
 						// Write reassembly output for comparison.
 						wsprintf(val, L"%ls\\%08lx%08lx-%ls_reasm.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-						FILE *f_reasm;
-						_wfopen_s(&f_reasm, val, L"wb");
-						if (LogFile)
-						{
-							char fileName[MAX_PATH];
-							wcstombs(fileName, val, MAX_PATH);
-							if (f_reasm)
-								LogInfo("    storing reassembly to %s\n", fileName);
-							else
-								LogInfo("    error storing reassembly to %s\n", fileName);
-						}
-						if (f_reasm)
-						{
+						_wfopen_s(&fw, val, L"wb");
+						if (fw) {
+							LogInfoW(L"    storing reassembly to %s\n", val);
 							// Size - 1 to strip NULL terminator
-							fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), f_reasm);
-							fclose(f_reasm);
+							fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), fw);
+							fclose(fw);
+						} else {
+							LogInfoW(L"    error storing reassembly to %s\n", val);
 						}
 					}
 					CloseHandle(f);
