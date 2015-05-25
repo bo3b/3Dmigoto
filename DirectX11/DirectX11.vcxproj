@@ -118,6 +118,9 @@
     <ProjectReference Include="..\BinaryDecompiler\BinaryDecompiler.vcxproj">
       <Project>{258d0ad2-b762-41e3-a0c1-cf831d859da4}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\D3D_Shaders\D3D_Shaders.vcxproj">
+      <Project>{59a9b0c6-8302-48a9-96e0-126fb32fb9ed}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\DirectXTK\DirectXTK_Desktop_2013.vcxproj">
       <Project>{e0b52ae7-e160-4d32-bf3f-910b785e5a8e}</Project>
     </ProjectReference>
@@ -589,7 +592,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc;$(SolutionDir)D3D_Shaders</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -14,6 +14,7 @@
 #include "Globals.h"
 #include "D3D11Wrapper.h"
 #include "SpriteFont.h"
+#include "Assembler.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -693,7 +694,57 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 						}
 					}
 				}
+			} 
+			else	// No HLSL replacement, how about ASM?
+			{
+				wsprintf(val, L"%ls\\%08lx%08lx-%ls.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+				if (f != INVALID_HANDLE_VALUE)
+				{
+					LogInfo("    Replacement ASM shader found. Assembling replacement ASM code.\n");
+
+					wstring nameW = val;
+					
+					void *start = const_cast<void*>( pShaderBytecode);
+					void *end = (void*)((ptrdiff_t)start + BytecodeLength);
+
+					vector<byte> byteCopy(reinterpret_cast<byte*>(start), reinterpret_cast<byte*>(end));
+					vector<byte> reassembly = assembler(string(nameW.begin(), nameW.end()), byteCopy);
+
+					// With that cbo object of reassembly, let's re-dissassemble it.
+					ID3DBlob *disassembly;
+					HRESULT r = D3DDisassemble(reassembly.data(), reassembly.size(),
+						D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS,
+						0, &disassembly);
+					if (r != S_OK)
+					{
+						LogInfo("  disassembly failed.\n");
+					}
+					else
+					{
+						// Write reassembly output for comparison.
+						wsprintf(val, L"%ls\\%08lx%08lx-%ls_reasm.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+						FILE *f;
+						_wfopen_s(&f, val, L"wb");
+						if (LogFile)
+						{
+							char fileName[MAX_PATH];
+							wcstombs(fileName, val, MAX_PATH);
+							if (f)
+								LogInfo("    storing reassembly to %s\n", fileName);
+							else
+								LogInfo("    error storing reassembly to %s\n", fileName);
+						}
+						if (f)
+						{
+							// Size - 1 to strip NULL terminator
+							fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), f);
+							fclose(f);
+						}
+					}
+				}
 			}
+
 		}
 	}
 
