@@ -2975,7 +2975,7 @@ public:
 					case OPCODE_INEG:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
-						sprintf(buffer, "  %s = -asint(%s);\n", writeTarget(op1), ci(op2).c_str());
+						sprintf(buffer, "  %s = -%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3025,7 +3025,7 @@ public:
 						applySwizzle(op2, op3, true);
 						applySwizzle(op2, op4, true);
 						mMulOperand = strncmp(op3, "int", 3) ? op3 : op4;
-						sprintf(buffer, "  %s = asint(%s) * asint(%s);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op2), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3118,10 +3118,10 @@ public:
 						{
 							if (op2[0] == '-') strcpy(op2, op2 + 1);
 							else if (op3[0] == '-') strcpy(op3, op3 + 1);
-							sprintf(buffer, "  %s = (asint(%s) ? -1 : 0) + (asint(%s) ? 1 : 0);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = (%s ? -1 : 0) + (%s ? 1 : 0);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						}
 						else
-							sprintf(buffer, "  %s = asint(%s) + asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3185,7 +3185,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asint(%s) >> asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3194,7 +3194,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asint(%s) << asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3205,7 +3205,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asuint(%s) >> asuint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3318,9 +3318,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(asint(%s), asint(%s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(min(asint(%s), asint(%s)));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3329,9 +3329,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(asint(%s), asint(%s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(max(asint(%s), asint(%s)));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3361,7 +3361,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						applySwizzle(op1, op4, true);
-						sprintf(buffer, "  %s = mad(asint(%s), asint(%s), asint(%s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3370,7 +3370,7 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						applySwizzle(op1, op4, true);
-						sprintf(buffer, "  %s = mad(asuint(%s), asuint(%s), asuint(%s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+						sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op4)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3572,7 +3572,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = asint(%s) != asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = (int)%s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3592,7 +3592,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = asint(%s) == asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = (int)%s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3612,7 +3612,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asint(%s) < asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = (int)%s < (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3622,7 +3622,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asuint(%s) < asuint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = (uint)%s < (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3642,7 +3642,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asint(%s) >= asint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = (int)%s >= (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3652,7 +3652,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = asuint(%s) >= asuint(%s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = (uint)%s >= (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
