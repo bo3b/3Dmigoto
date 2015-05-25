@@ -724,24 +724,25 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					{
 						// Write reassembly output for comparison.
 						wsprintf(val, L"%ls\\%08lx%08lx-%ls_reasm.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-						FILE *f;
-						_wfopen_s(&f, val, L"wb");
+						FILE *f_reasm;
+						_wfopen_s(&f_reasm, val, L"wb");
 						if (LogFile)
 						{
 							char fileName[MAX_PATH];
 							wcstombs(fileName, val, MAX_PATH);
-							if (f)
+							if (f_reasm)
 								LogInfo("    storing reassembly to %s\n", fileName);
 							else
 								LogInfo("    error storing reassembly to %s\n", fileName);
 						}
-						if (f)
+						if (f_reasm)
 						{
 							// Size - 1 to strip NULL terminator
-							fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), f);
-							fclose(f);
+							fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), f_reasm);
+							fclose(f_reasm);
 						}
 					}
+					CloseHandle(f);
 				}
 			}
 
