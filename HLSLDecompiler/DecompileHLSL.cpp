@@ -1752,7 +1752,7 @@ public:
 		}
 	}
 
-	char *convertToInt(char *target)
+	char *_convertToInt(char *target, bool fixupCBs)
 	{
 		char buffer[opcodeSize];
 
@@ -1773,6 +1773,13 @@ public:
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
+		// Fixup for constant buffer reads where the type may not be known due to missing headers:
+		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
+		{
+			sprintf(buffer, "asint(%s)", target);
+			strcpy_s(target, opcodeSize, buffer);
+			return target;
+		}
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
@@ -1786,7 +1793,7 @@ public:
 		return target;
 	}
 
-	char *convertToUInt(char *target)
+	char *_convertToUInt(char *target, bool fixupCBs)
 	{
 		char buffer[opcodeSize];
 
@@ -1809,6 +1816,13 @@ public:
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
+		// Fixup for constant buffer reads where the type may not be known due to missing headers:
+		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
+		{
+			sprintf(buffer, "asuint(%s)", target);
+			strcpy_s(target, opcodeSize, buffer);
+			return target;
+		}
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
@@ -1820,6 +1834,26 @@ public:
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
+	}
+
+	char *convertToInt(char *target)
+	{
+		return _convertToInt(target, true);
+	}
+
+	char *convertToUInt(char *target)
+	{
+		return _convertToUInt(target, true);
+	}
+
+	char *castToInt(char *target)
+	{
+		return _convertToInt(target, false);
+	}
+
+	char *castToUInt(char *target)
+	{
+		return _convertToUInt(target, false);
 	}
 
 	// The boolean check routines had the problem that they only looked for the actual register
@@ -3228,6 +3262,7 @@ public:
 							sprintf(buffer, "  if (%s == 0) %s = 0; else if (%s+%s < 32) { ",
 								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
+							// FIXME: May need fixup for read from constant buffer of unidentified type?
 							sprintf(buffer, "%s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
 							appendOutput(buffer);
 							sprintf(buffer, " } else %s = (uint)%s >> %s;\n",
@@ -3297,7 +3332,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = min(asuint(%s), asuint(%s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3318,9 +3353,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3329,9 +3364,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3484,7 +3519,7 @@ public:
 					case OPCODE_FTOI:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(castToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3492,7 +3527,7 @@ public:
 					case OPCODE_FTOU:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(castToUInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3572,7 +3607,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = (int)%s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3592,7 +3627,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = (int)%s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3612,7 +3647,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (int)%s < (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3622,7 +3657,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (uint)%s < (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3642,7 +3677,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (int)%s >= (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3652,7 +3687,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (uint)%s >= (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3744,6 +3779,7 @@ public:
 							sprintf(op6, "%s.%c", op1, *pop1);
 							if (pop2) sprintf(op7, "%s.%c", op2, *++pop2); else sprintf(op7, "%s", op2);
 							if (pop3) sprintf(op8, "%s.%c", op3, *++pop3); else sprintf(op8, "%s", op3);
+							// FIXME: May need fixup for read from constant buffer of unidentified type
 							sprintf(buffer, "  %s = (int)%s ? %s : %s; %s = (int)%s ? %s : %s;\n",
 								writeTarget(op6), ci(op8).c_str(), ci(GetSuffix(op5, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str(),
 								writeTarget(op7), ci(op8).c_str(), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op5, idx)).c_str());
@@ -3774,6 +3810,7 @@ public:
 
 							// Fails: bitmask.%c = (((1 << %s) - 1) << %s) & 0xffffffff;
 
+							// FIXME: May need fixup for read from constant buffer of unidentified type
 							sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;\n"
 								"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
 								*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(),
