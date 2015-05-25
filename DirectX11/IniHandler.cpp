@@ -516,6 +516,7 @@ void LoadConfigFile()
 	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
 	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
+	G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, iniFile) == 1;
 	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
 	if (LogFile)
@@ -534,6 +535,7 @@ void LoadConfigFile()
 		if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
 		if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
 		if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
+		if (G->EXPORT_BINARY) LogInfo("  export_binary=1\n");
 		if (G->DumpUsage) LogInfo("  dump_usage=1\n");
 	}
 

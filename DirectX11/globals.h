@@ -184,7 +184,7 @@ struct Globals
 	time_t huntTime;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
-	bool EXPORT_SHADERS, EXPORT_FIXED, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
@@ -297,6 +297,7 @@ struct Globals
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
 		EXPORT_FIXED(false),
+		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
 		PRELOAD_SHADERS(false),
 		FIX_SV_Position(false),

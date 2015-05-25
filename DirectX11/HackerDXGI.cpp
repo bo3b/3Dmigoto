@@ -569,6 +569,7 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 	/* [in] */ UINT Adapter,
 	/* [annotation][out] */
 	__out  IDXGIAdapter1 **ppAdapter)
+
 {
 	LogInfo("HackerDXGIFactory1::EnumAdapters1(%s) called: adapter #%d requested\n", typeid(*this).name(), Adapter);
 

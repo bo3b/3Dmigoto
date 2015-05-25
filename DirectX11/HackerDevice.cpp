@@ -490,6 +490,42 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0])
 	{
+		if (G->EXPORT_BINARY) {
+			wsprintf(val, L"%ls\\%08lx%08lx-%ls.bin", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+			HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			bool exists = false;
+			if (f != INVALID_HANDLE_VALUE) {
+				int cnt = 0;
+				while (f != INVALID_HANDLE_VALUE) {
+					// Check if same file.
+					DWORD dataSize = GetFileSize(f, 0);
+					char *buf = new char[dataSize];
+					DWORD readSize;
+					if (!ReadFile(f, buf, dataSize, &readSize, 0) || dataSize != readSize)
+						LogInfo("  Error reading file.\n");
+					CloseHandle(f);
+					if (dataSize == BytecodeLength && !memcmp(pShaderBytecode, buf, dataSize))
+						exists = true;
+					delete [] buf;
+					if (exists)
+						break;
+					wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.bin", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType, ++cnt);
+					f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+				}
+			}
+			if (!exists) {
+				FILE *fw;
+				_wfopen_s(&fw, val, L"wb");
+				if (fw) {
+					LogInfoW(L"    storing original binary shader to %s\n", val);
+					fwrite(pShaderBytecode, 1, BytecodeLength, fw);
+					fclose(fw);
+				} else {
+					LogInfoW(L"    error storing original binary shader to %s\n", val);
+				}
+			}
+		}
+
 		// Export every shader seen as an ASM file.
 		if (G->EXPORT_SHADERS)
 		{
