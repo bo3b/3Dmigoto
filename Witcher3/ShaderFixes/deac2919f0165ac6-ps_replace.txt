@@ -1,4 +1,4 @@
-Texture2D<float4> t5 : register(t5);
+Texture2D<uint4> t5 : register(t5);
 
 Texture2D<float4> t4 : register(t4);
 
@@ -120,7 +120,7 @@ r1.xyz = r20.xyz / r20.www;
     r3.w = r3.x / cb13[r1.w+58].w;
     r3.w = r3.w * r3.w;
     r3.w = -r3.w * r3.w + 1.000000000e+000;
-    r3.w = max(r3.w, 0.000000000e+000);
+    r3.w = max(0.000000000e+000, r3.w);
     r3.w = r3.w * r3.w;
     r6.w = r2.w * cb13[r1.w+63].x + 1.000000000e+000;
     r3.w = r3.w / r6.w;
@@ -132,10 +132,7 @@ r1.xyz = r20.xyz / r20.www;
     r2.w = cb13[r1.w+62].w * r2.w;
     r2.w = exp2(r2.w);
     r2.w = r3.w * r2.w;
-//This line is decompiled wrong:    
-	// r7.xy = int2(2048,4096) & (int2)cb13[r1.w+61].ww;
-r7.xy = int2(2048,4096);
-
+    r7.xy = int2(2048,4096) & asint(cb13[r1.w+61].ww);
     r3.z = r3.z == 1.000000;
     r3.w = r3.z ? 1.000000 : 0;
     r3.z = r3.z ? 0.000000000e+000 : 1.000000000e+000;
@@ -147,7 +144,7 @@ r7.xy = int2(2048,4096);
       r0.x = t5.Load(r0.xyz).y;
       r0.x = (int)r0.x & 2;
       r0.x = r0.x ? 1.000000000e+000 : cb12[71].x;
-      r0.y = 0x80000000 & (int)cb13[r1.w+61].w;
+      r0.y = 0x80000000 & asint(cb13[r1.w+61].w);
       r0.x = r0.y ? r0.x : 1.000000000e+000;
       r0.x = r2.w * r0.x;
       r0.yzw = log2(r4.xyz);
@@ -174,13 +171,13 @@ r7.xy = int2(2048,4096);
       r1.xyz = r2.www * r1.xyz;
       r2.w = dot(r1.xyz, r3.xzw);
       r2.w = 1.000000000e+000 + -abs(r2.w);
-      r2.w = max(r2.w, 0.000000000e+000);
+      r2.w = max(0.000000000e+000, r2.w);
       r6.w = r2.w * r2.w;
       r6.w = r6.w * r6.w;
       r2.w = r6.w * r2.w;
       r6.w = 1.000000000e+000 + -r5.w;
       r7.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r4.xyz;
-      r8.xyz = max(r7.xyz, float3(0.000000e+000,0.000000e+000,0.000000e+000));
+      r8.xyz = max(float3(0.000000e+000,0.000000e+000,0.000000e+000), r7.xyz);
       r8.xyz = cb13[56].xxx * r8.xyz;
       r8.xyz = r8.xyz * r2.www;
       r2.w = 1.000000000e+000 + cb13[56].z;
@@ -497,7 +494,7 @@ ret
 // t2                                texture  float4          2d    2        1
 // t3                                texture  float4          2d    3        1
 // t4                                texture  float4          2d    4        1
-// t5                                texture  float4          2d    5        1
+// t5                                texture   uint4          2d    5        1
 // cb3                               cbuffer      NA          NA    3        1
 // cb12                              cbuffer      NA          NA   12        1
 // cb13                              cbuffer      NA          NA   13        1
@@ -527,7 +524,7 @@ dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
 dcl_resource_texture2d (float,float,float,float) t4
-dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (uint,uint,uint,uint) t5
 dcl_input_ps_siv linear noperspective v0.xy, position
 dcl_output o0.xyzw
 dcl_temps 10
@@ -569,28 +566,28 @@ if_nz r3.z
   mul r2.x, r2.x, cb13[r4.z + 0].w
   exp r2.x, r2.x
   mul r0.w, r0.w, r2.x
-  ftoi r2.x, cb13[r4.w + 0].w
-  and r4.xy, r2.xxxx, l(4096, 2048, 0, 0)
+  and r4.xy, l(4096, 2048, 0, 0), cb13[r4.w + 0].wwww
   itof r4.xy, r4.xyxx
-  eq r3.x, r3.w, l(1.000000)
-  and r5.y, r3.x, l(0x3f800000)
-  movc r5.x, r3.x, l(0), l(1.000000)
+  eq r2.x, r3.w, l(1.000000)
+  and r5.y, r2.x, l(0x3f800000)
+  movc r5.x, r2.x, l(0), l(1.000000)
   ne r3.xw, l(0.000000, 0.000000, 0.000000, 0.000000), r4.xxxy
   movc r3.xw, r3.xxxw, l(1.000000,0,0,1.000000), r5.xxxy
-  mul r3.x, r3.x, r3.w
-  mul r0.w, r0.w, r3.x
-  lt r3.x, l(0.000000), r0.w
-  if_nz r3.x
+  mul r2.x, r3.x, r3.w
+  mul r0.w, r0.w, r2.x
+  lt r2.x, l(0.000000), r0.w
+  if_nz r2.x
     ld_indexable(texture2d)(float,float,float,float) r5.xyzw, r1.xyww, t1.xyzw
     ld_indexable(texture2d)(float,float,float,float) r6.xyzw, r1.xyww, t2.xyzw
     ld_indexable(texture2d)(float,float,float,float) r4.xyz, r1.xyww, t3.xyzw
-    ld_indexable(texture2d)(float,float,float,float) r1.x, r1.xyzw, t5.yxzw
+    ld_indexable(texture2d)(uint,uint,uint,uint) r1.x, r1.xyzw, t5.yxzw
+    utof r1.x, r1.x
     ftoi r1.x, r1.x
     and r1.x, r1.x, l(2)
     itof r1.x, r1.x
     ne r1.x, l(0.000000, 0.000000, 0.000000, 0.000000), r1.x
     movc r1.x, r1.x, l(1.000000), cb12[71].x
-    and r1.y, r2.x, l(0x80000000)
+    and r1.y, l(0x80000000), cb13[r4.w + 0].w
     utof r1.y, r1.y
     ne r1.y, l(0.000000, 0.000000, 0.000000, 0.000000), r1.y
     movc r1.x, r1.y, r1.x, l(1.000000)
