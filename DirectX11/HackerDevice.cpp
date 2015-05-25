@@ -754,7 +754,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					_wfopen_s(&fw, val, L"wb");
 					if (fw) {
 						LogInfoW(L"    storing reassembled binary to %s\n", val);
-						fwrite(pShaderBytecode, 1, BytecodeLength, fw);
+						fwrite(reassembly.data(), 1, reassembly.size(), fw);
 						fclose(fw);
 					} else {
 						LogInfoW(L"    error storing reassembled binary to %s\n", val);
