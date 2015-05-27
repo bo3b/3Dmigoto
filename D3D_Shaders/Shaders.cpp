@@ -7,11 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <direct.h>
-extern "C" {
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-}
+
 using namespace std;
 
 string replace(string str, string before, string after) {
@@ -49,11 +45,9 @@ void assembleAndCompare(string s, vector<DWORD> v) {
 			valid = false;
 		}
 		if (valid) {
-			/*
 			s2 = "!success ";
 			s2.append(s);
-			codeBin[s2] = v;
-			*/
+			// codeBin[s2] = v;
 		} else {
 			s2 = s;
 			s2.append(" orig");
@@ -68,23 +62,19 @@ void assembleAndCompare(string s, vector<DWORD> v) {
 		codeBin[s2] = v;
 	}
 }
-
 void DXBC(string fileName, bool patch = false) {
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
 	DWORD fSize;
-	DWORD size;
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
 	vector<byte> buffer;
 
 	string asmFile = fileName;
 	if (patch) {
-		fileName.erase(fileName.size() - 4, 4);
-		fileName.append(".cbo");
-		fileName = replace(fileName, "PatchAuto", "Dump");
-		fileName = replace(fileName, "Patch", "Dump");
+		fileName.erase(fileName.size() - 3, 3);
+		fileName.append("bin");
 	}
 	buffer = readFile(fileName);
 	byte* pPosition = buffer.data();
@@ -115,8 +105,8 @@ void DXBC(string fileName, bool patch = false) {
 			asmBuffer = (char*)pDissassembly->GetBufferPointer();
 			asmSize = pDissassembly->GetBufferSize();
 			string asmFile = fileName;
-			asmFile.erase(asmFile.size() - 4, 4);
-			asmFile.append(".asm");
+			asmFile.erase(asmFile.size() - 3, 3);
+			asmFile.append("asm");
 			FILE* f;
 			fopen_s(&f, asmFile.c_str(), "wb");
 			fwrite(pDissassembly->GetBufferPointer(), 1, pDissassembly->GetBufferSize(), f);
@@ -147,7 +137,7 @@ void DXBC(string fileName, bool patch = false) {
 					if (patch) {
 						vector<DWORD> ins = assembleIns(s);
 						o.insert(o.end(), ins.begin(), ins.end());
-						o.push_back(0);
+						o.push_back(0); // DWORD Size
 					} else {
 						v.push_back(*codeStart);
 						codeStart += 2;
@@ -200,56 +190,34 @@ void DXBC(string fileName, bool patch = false) {
 	}
 	if (patch) {
 		DWORD* codeStart = (DWORD*)(codeByteStart);
-		auto it = buffer.begin() + chunkOffsets[codeChunk];
+		auto it = buffer.begin() + chunkOffsets[codeChunk] + 8;
 		DWORD codeSize = codeStart[1];
-		buffer.erase(it + 8, it + codeSize + 8);
-		codeStart[1] = 4 * o.size();
+		buffer.erase(it, it + codeSize);
+		DWORD newCodeSize = 4 * o.size();
+		codeStart[1] = newCodeSize;
+		vector<byte> newCode(newCodeSize);
 		o[1] = o.size();
-		vector<byte> newCode(4 * o.size());
-		memcpy(newCode.data(), o.data(), 4 * o.size());
-		buffer.insert(it + 8, newCode.begin(), newCode.end());
+		memcpy(newCode.data(), o.data(), newCodeSize);
+		it = buffer.begin() + chunkOffsets[codeChunk] + 8;
+		buffer.insert(it, newCode.begin(), newCode.end());
 		DWORD* dwordBuffer = (DWORD*)buffer.data();
 		for (DWORD i = codeChunk + 1; i < numChunks; i++) {
-			dwordBuffer[8 + i] += 4 * o.size() - codeSize;
+			dwordBuffer[8 + i] += newCodeSize - codeSize;
 		}
+		dwordBuffer[6] = buffer.size();
 		vector<DWORD> hash = ComputeHash((byte const*)buffer.data() + 20, buffer.size() - 20);
 		dwordBuffer[1] = hash[0];
 		dwordBuffer[2] = hash[1];
 		dwordBuffer[3] = hash[2];
 		dwordBuffer[4] = hash[3];
-		dwordBuffer[6] = buffer.size();
 		string oFile = asmFile;
-		oFile.erase(oFile.size() - 4, 4);
-		oFile.append(".cbo");
+		oFile.erase(oFile.size() - 3, 3);
+		oFile.append("bin");
 		FILE* f;
 		fopen_s(&f, oFile.c_str(), "wb");
 		fwrite(buffer.data(), 1, buffer.size(), f);
 		fclose(f);
 	}
-}
-
-string luaPS(string luaFile, vector<string> lines) {
-	lua_State *L = luaL_newstate();
-	luaL_openlibs(L);
-	int status = luaL_loadfile(L, luaFile.c_str());
-	if (status) {
-		exit(1);
-	}
-	lua_newtable(L);
-	for (DWORD i = 1; i <= lines.size(); i++) {
-		lua_pushnumber(L, i);   /* Push the table index */
-		lua_pushstring(L, lines[i - 1].c_str()); /* Push the cell value */
-		lua_rawset(L, -3);      /* Stores the pair in the table */
-	}
-	lua_setglobal(L, "SText");
-	int result = lua_pcall(L, 0, LUA_MULTRET, 0);
-	if (result) {
-		exit(1);
-	}
-	string newShader(lua_tostring(L, -1));
-	lua_pop(L, 1);
-	lua_close(L);
-	return newShader;
 }
 
 vector<string> enumerateFiles(string pathName, string filter = "") {
@@ -310,6 +278,7 @@ void writeLUT() {
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+
 	int shaderNo = 1;
 	vector<string> gameNames;
 	string pathName;
@@ -317,7 +286,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	vector<string> files2;
 	char* buffer = NULL;
 	buffer = _getcwd(NULL, 0);
-	if (false) {
+	if (true) {
+		/*
 		gameNames.push_back("D:\\Steam\\SteamApps\\common\\Aliens vs Predator");
 		gameNames.push_back("D:\\Spel\\Battlefield Bad Company 2");
 		gameNames.push_back("D:\\Spel\\ANNO 2070");
@@ -330,6 +300,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		gameNames.push_back("D:\\Steam\\SteamApps\\common\\BioShock 2\\MP\\Builds\\Binaries");
 		gameNames.push_back("D:\\Steam\\SteamApps\\common\\BioShock 2\\SP\\Builds\\Binaries");
 		gameNames.push_back("D:\\Steam\\SteamApps\\common\\BioShock Infinite\\Binaries\\Win32");
+		*/
+		gameNames.push_back("F:\\GOG Games\\The Witcher 3 Wild Hunt\\bin\\x64");
 	} else {
 		gameNames.push_back(buffer);
 	}
@@ -337,15 +309,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		string gameName = gameNames[i];
 		cout << gameName << ":" << endl;
 
-		pathName = gameName;
-		pathName.append("\\DumpPS\\");
 		int progress = 0;
-		files = enumerateFiles(pathName, "*.cbo");
-		files2 = enumerateFiles(pathName, "*.asm");
-		if (files.size() > 0 && files.size() != files2.size()) {
-			cout << "ValidPS: ";
+		pathName = gameName;
+		pathName.append("\\Dump\\");
+		files = enumerateFiles(pathName, "*.bin");
+		if (files.size() > 0) {
+			cout << "bin->asm validate: ";
 			for (DWORD i = 0; i < files.size(); i++) {
-				DXBC(files[i]);
+				string fileName = files[i];
+				DXBC(fileName);
+				
 				int newProgress = 50.0 * i / files.size();
 				if (newProgress > progress) {
 					cout << ".";
@@ -355,109 +328,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		cout << endl;
 
-		pathName = gameName;
-		pathName.append("\\DumpVS\\");
-		files = enumerateFiles(pathName, "*.cbo");
-		files2 = enumerateFiles(pathName, "*.asm");
-		if (files.size() > 0 && files.size() != files2.size()) {
-			cout << "ValidVS: ";
-			progress = 0;			
-			for (DWORD i = 0; i < files.size(); i++) {
-				DXBC(files[i]);
-				int newProgress = 50.0 * i / files.size();
-				if (newProgress > progress) {
-					cout << ".";
-					progress++;
-				}
-			}
-			cout << endl;
-		}
-
-		pathName = gameName;
-		string scriptName = pathName;
-		scriptName.append("\\PSscript.lua");
-		vector<byte> lua = readFile(scriptName);
-		if (lua.size() > 0) {
-			bool dirCreated = false;
-			pathName.append("\\DumpPS\\");
-			files = enumerateFiles(pathName, "*.asm");
-			progress = 0;
-			cout << "LuaPS:" << endl;
-			for (DWORD i = 0; i < files.size(); i++) {
-				vector<byte> shader = readFile(files[i]);
-				vector<string> lines = stringToLines((char*)shader.data(), shader.size());
-				string shaderOut = luaPS(scriptName, lines);
-				if (shaderOut.size() > 0) {
-					string fileName = files[i];
-					string newFolder = "PatchAutoPS";
-					int dump = fileName.find("Dump");
-					string pName = fileName.substr(0, dump);
-					string fName = fileName.substr(dump + 7);
-					pName.append(newFolder);
-					if (!dirCreated) {
-						RemoveDirectoryA(pName.c_str());
-						CreateDirectoryA(pName.c_str(), NULL);
-						dirCreated = true;
-					}
-					string newFileName;
-					newFileName.append(pName);
-					newFileName.append("\\");
-					newFileName.append(fName);
-					FILE* f;
-					fopen_s(&f, newFileName.c_str(), "wb");
-					fwrite(shaderOut.data(), 1, shaderOut.size(), f);
-					fclose(f);
-				}
-				int newProgress = 50.0 * i / files.size();
-				if (newProgress > progress) {
-					cout << ".";
-					progress++;
-				}
-			}
-			cout << endl;
-		}
-
 		string patchName;
 		pathName = gameName;
 
+		progress = 0;
 		patchName = pathName;
-		patchName.append("\\PatchAutoPS\\");
-
+		patchName.append("\\Dump\\");
 		files = enumerateFiles(patchName, "*.asm");
 		if (files.size() > 0) {
-			cout << "luaPS asm->cbo:" << endl;
-			for (DWORD j = 0; j < files.size(); j++) {
-				DXBC(files[j], true);
-				int newProgress = 50.0 * j / files.size();
-				if (newProgress > progress) {
-					cout << ".";
-					progress++;
-				}
-			}
-			cout << endl;
-		}
-
-		patchName = pathName;
-		patchName.append("\\PatchPS\\");
-		files = enumerateFiles(patchName, "*.asm");
-		if (files.size() > 0) {
-			cout << "PS asm->cbo:" << endl;
-			for (DWORD i = 0; i < files.size(); i++) {
-				DXBC(files[i], true);
-				int newProgress = 50.0 * i / files.size();
-				if (newProgress > progress) {
-					cout << ".";
-					progress++;
-				}
-			}
-			cout << endl;
-		}
-
-		patchName = pathName;
-		patchName.append("\\PatchVS\\");
-		files = enumerateFiles(patchName, "*.asm");
-		if (files.size() > 0) {
-			cout << "PS asm->cbo:" << endl;
+			cout << "asm->bin: ";
 			for (DWORD i = 0; i < files.size(); i++) {
 				DXBC(files[i], true);
 				int newProgress = 50.0 * i / files.size();
