@@ -34,6 +34,8 @@ void handleSwizzle(string s, token_operand* tOp, bool special = false) {
 		// Swizzle
 		tOp->mode = 1; // Swizzle
 		for (int i = 0; i < 4; i++) {
+			if (s[i] == 'x')
+				tOp->sel |= 0 << (2 * i);
 			if (s[i] == 'y')
 				tOp->sel |= 1 << (2 * i);
 			if (s[i] == 'z')
@@ -332,15 +334,21 @@ map<string, vector<int>> ldMap = {
 	{ "gather4_c_aoffimmi_indexable", { 5, 126, 3 } },
 	{ "gather4_aoffimmi_indexable", { 4, 109, 3 } },
 	{ "gather4_indexable", { 4, 109, 2 } },
+	{ "ld_aoffimmi", { 3, 45, 1 } },
 	{ "ld_aoffimmi_indexable", { 3, 45, 3 }},
 	{ "ld_indexable", { 3, 45, 2 } },
+	{ "ld_raw_indexable", { 3, 165, 2 } },
 	{ "ldms_indexable", { 4, 46, 2 } },
+	{ "ldms_aoffimmi_indexable", { 4, 46, 3 } },
+	{ "sample_aoffimmi", { 4, 69, 1 } },
 	{ "sample_d_indexable", { 6, 73, 2 } },
 	{ "sample_b_indexable", { 5, 74, 2 } },
 	{ "sample_c_indexable", { 5, 70, 2 } },
 	{ "sample_c_lz_indexable", { 5, 71, 2 } },
 	{ "sample_c_lz_aoffimmi", { 5, 71, 1 } },
+	{ "sample_c_lz_aoffimmi_indexable", { 5, 71, 3 } },
 	{ "sample_indexable", { 4, 69, 2 } },
+	{ "sample_aoffimmi_indexable", { 4, 69, 3 } },
 	{ "sample_l_aoffimmi", { 5, 72, 1 } },
 	{ "sample_l_aoffimmi_indexable", { 5, 72, 3 } },
 	{ "sample_l_indexable", { 5, 72, 2 } },
@@ -365,6 +373,7 @@ map<string, vector<int>> insMap = {
 	{ "umul", { 4, 81, 2 } },
 	{ "ubfe", { 4, 138 } },
 	{ "store_structured", { 4, 168 } },
+	{ "ld_structured", { 4, 167 } },
 	{ "add", { 3, 0 } },
 	{ "and", { 3, 1 } },
 	{ "div", { 3, 14 } },
@@ -397,6 +406,7 @@ map<string, vector<int>> insMap = {
 	{ "ushr", { 3, 85 } },
 	{ "xor", { 3, 87 } },
 	{ "store_uav_typed", { 3, 134 } },
+	{ "bfrev", { 2, 141 } },
 	{ "countbits", { 2, 134 } },
 	{ "deriv_rtx", { 2, 11 } },
 	{ "deriv_rtx_coarse", { 2, 122 } },
@@ -423,6 +433,7 @@ map<string, vector<int>> insMap = {
 	{ "rcp", { 2, 129 } },
 	{ "sampleinfo", { 2, 111 } },
 	{ "f16tof32", { 2, 131 } },
+	{ "f32tof16", { 2, 130 } },
 	{ "imm_atomic_alloc", { 2, 178 } },
 	{ "breakc_z", { 1, 3, 0 } },
 	{ "case", { 1, 6 } },
@@ -531,6 +542,13 @@ vector<DWORD> assembleIns(string s) {
 				v.push_back(0x80000202);
 			if (w[c] == "(texturecube)")
 				v.push_back(0x80000182);
+			if (w[c] == "(texturecubearray)")
+				v.push_back(0x80000282);
+			if (w[c] == "(buffer)")
+				v.push_back(0x80000042);
+			if (w[c] == "(raw_buffer)") {
+				v.push_back(0x800002C2);
+			}
 			if (vIns[2] & 4) {
 				string stride = w[1].substr(27);
 				stride = stride.substr(0, stride.size() - 1);
@@ -544,10 +562,33 @@ vector<DWORD> assembleIns(string s) {
 					v.push_back(0x00155543);
 				if (w[startPos - 1] == "(uint,uint,uint,uint)")
 					v.push_back(0x00111103);
+				if (w[startPos - 1] == "(sint,sint,sint,sint)")
+					v.push_back(0x000CCCC3);
+				if (w[startPos - 1] == "(mixed,mixed,mixed,mixed)")
+					v.push_back(0x00199983);
 			}
 		}
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
+	} else if (o == "dcl_resource_raw") {
+		vector<DWORD> os = assembleOp(w[1]);
+		ins->opcode = 161;
+		ins->length = 3;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+	} else if (o == "dcl_resource_buffer") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 88;
+		ins->_11_23 = 1;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
+		if (w[1] == "(sint,sint,sint,sint)")
+			v.push_back(0x3333);
 	} else if (o == "dcl_resource_texture1d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -557,6 +598,8 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 		if (w[1] == "(float,float,float,float)")
 			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture2d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -566,6 +609,8 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 		if (w[1] == "(float,float,float,float)")
 			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture3d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -575,6 +620,8 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 		if (w[1] == "(float,float,float,float)")
 			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texturecube") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -584,6 +631,19 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 		if (w[1] == "(float,float,float,float)")
 			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
+	} else if (o == "dcl_resource_texturecubearray") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 88;
+		ins->_11_23 = 10;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture2darray") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -593,6 +653,8 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 		if (w[1] == "(float,float,float,float)")
 			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture2dms") {
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 88;
@@ -645,10 +707,35 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_globalFlags") {
-		if (w.size() > 1 && w[1] == "refactoringAllowed") {
-			ins->opcode = 106;
-			ins->length = 1;
-			ins->_11_23 = 1;
+		ins->opcode = 106;
+		ins->length = 1;
+		ins->_11_23 = 0;
+		if (w.size() > 1) {
+			string s = w[1];
+			if (s == "refactoringAllowed")
+				ins->_11_23 |= 1;
+			if (s == "forceEarlyDepthStencil")
+				ins->_11_23 |= 4;
+			if (s == "enableRawAndStructuredBuffers")
+				ins->_11_23 |= 8;
+		}
+		if (w.size() > 3) {
+			string s = w[3];
+			if (s == "refactoringAllowed")
+				ins->_11_23 |= 1;
+			if (s == "forceEarlyDepthStencil")
+				ins->_11_23 |= 4;
+			if (s == "enableRawAndStructuredBuffers")
+				ins->_11_23 |= 8;
+		}
+		if (w.size() > 5) {
+			string s = w[5];
+			if (s == "refactoringAllowed")
+				ins->_11_23 |= 1;
+			if (s == "forceEarlyDepthStencil")
+				ins->_11_23 |= 4;
+			if (s == "enableRawAndStructuredBuffers")
+				ins->_11_23 |= 8;
 		}
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {
@@ -704,6 +791,10 @@ vector<DWORD> assembleIns(string s) {
 				os = assembleOp(w[2], true);
 			}
 		}
+		if (w[1] == "constant") {
+			ins->_11_23 = 1;
+			os = assembleOp(w[2], true);
+		}
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -716,6 +807,8 @@ vector<DWORD> assembleIns(string s) {
 				os.push_back(0xA);
 			} else if (w[2] == "is_front_face") {
 				os.push_back(0x9);
+			} else if (w[2] == "primitive_id") {
+				os.push_back(0x7);
 			}
 		}
 		ins->length = 1 + os.size();
@@ -835,9 +928,9 @@ vector<string> stringToLines(char* start, int size) {
 			break;
 		}
 	}
-	for (int i = 0; i < lines.size(); i++) {
+	for (unsigned int i = 0; i < lines.size(); i++) {
 		string s = lines[i];
-		if (s[s.size() - 1] == '\r')
+		if (s.size() > 1 && s[s.size() - 1] == '\r')
 			s.erase(--s.end());
 		lines[i] = s;
 	}
@@ -973,12 +1066,62 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	return hash;
 }
 
-vector<byte> assembler(string asmFile, vector<byte> buffer) {
+string shaderModel(byte* buffer) {
+	DWORD numChunks;
+	vector<DWORD> chunkOffsets;
+
+	byte* pPosition = buffer;
+	pPosition += 28;
+	numChunks = *(DWORD*)pPosition;
+	pPosition += 4;
+	chunkOffsets.resize(numChunks);
+	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
+
+	byte* codeByteStart;
+	int codeChunk = 0;
+	for (DWORD i = 1; i <= numChunks; i++) {
+		codeChunk = numChunks - i;
+		codeByteStart = buffer + chunkOffsets[codeChunk];
+		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
+			break;
+	}
+	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
+	int major = (*codeStart & 0xF0) >> 4;
+	int minor = (*codeStart & 0xF000) >> 12;
+	int shaderType = (*codeStart & 0xFFFF0000) >> 16;
+	string shaderModel = "ps_";
+	if (shaderType == 0x1)
+		shaderModel = "vs_";
+	switch (major) {
+	case 5:
+		shaderModel.append("5_");
+		break;
+	case 4:
+		shaderModel.append("4_");
+		break;
+	case 3:
+		shaderModel.append("3_");
+		break;
+	}
+	switch (minor) {
+	case 0:
+		shaderModel.append("0");
+		break;
+	case 1:
+		shaderModel.append("1");
+		break;
+	case 2:
+		shaderModel.append("2");
+		break;
+	}
+	return shaderModel;
+}
+
+vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
 	DWORD fSize;
-	DWORD size;
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
 
@@ -998,10 +1141,8 @@ vector<byte> assembler(string asmFile, vector<byte> buffer) {
 
 	char* asmBuffer;
 	int asmSize;
-	vector<byte> asmBuf;
-	asmBuf = readFile(asmFile);
-	asmBuffer = (char*)asmBuf.data();
-	asmSize = asmBuf.size();
+	asmBuffer = (char*)asmFile.data();
+	asmSize = asmFile.size();
 	byte* codeByteStart;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
@@ -1047,23 +1188,25 @@ vector<byte> assembler(string asmFile, vector<byte> buffer) {
 		}
 	}
 	codeStart = (DWORD*)(codeByteStart);
-	auto it = buffer.begin() + chunkOffsets[codeChunk];
+	auto it = buffer.begin() + chunkOffsets[codeChunk] + 8;
 	DWORD codeSize = codeStart[1];
-	buffer.erase(it + 8, it + codeSize + 8);
-	codeStart[1] = 4 * o.size();
+	buffer.erase(it, it + codeSize);
+	DWORD newCodeSize = 4 * o.size();
+	codeStart[1] = newCodeSize;
+	vector<byte> newCode(newCodeSize);
 	o[1] = o.size();
-	vector<byte> newCode(4 * o.size());
-	memcpy(newCode.data(), o.data(), 4 * o.size());
-	buffer.insert(it + 8, newCode.begin(), newCode.end());
+	memcpy(newCode.data(), o.data(), newCodeSize);
+	it = buffer.begin() + chunkOffsets[codeChunk] + 8;
+	buffer.insert(it, newCode.begin(), newCode.end());
 	DWORD* dwordBuffer = (DWORD*)buffer.data();
 	for (DWORD i = codeChunk + 1; i < numChunks; i++) {
-		dwordBuffer[8 + i] += 4 * o.size() - codeSize;
+		dwordBuffer[8 + i] += newCodeSize - codeSize;
 	}
+	dwordBuffer[6] = buffer.size();
 	vector<DWORD> hash = ComputeHash((byte const*)buffer.data() + 20, buffer.size() - 20);
 	dwordBuffer[1] = hash[0];
 	dwordBuffer[2] = hash[1];
 	dwordBuffer[3] = hash[2];
 	dwordBuffer[4] = hash[3];
-	dwordBuffer[6] = buffer.size();
 	return buffer;
 }
