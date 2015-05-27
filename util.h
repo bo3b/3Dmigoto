@@ -6,6 +6,10 @@
 
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <D3Dcompiler.h>
+
+#include "version.h"
+#include "log.h"
 
 
 // -----------------------------------------------------------------------------------------------
@@ -324,7 +328,7 @@ static char *TexFormatStr(unsigned int format)
 	if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
 		return DXGIFormats[format];
 	return "UNKNOWN";
-};
+}
 
 // When logging, it's not very helpful to have long sequences of hex instead of
 // the actual names of the objects in question.
@@ -392,5 +396,90 @@ static std::string NameFromIID(IID id)
 	}
 
 	return iidString;
-};
+}
+
+
+// Common routine to handle disassembling binary shaders to asm text.
+// This is used whenever we need the Asm text.
+
+static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength)
+{
+	ID3DBlob *disassembly = nullptr;
+	UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS;
+	string comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+
+	HRESULT r = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(), 
+		__out &disassembly);
+	if (FAILED(r))
+	{
+		LogInfo("  disassembly failed. Error: %x \n", r);
+		return "";
+	}
+
+	// Successfully disassembled into a Blob.  Let's turn it into a C++ std::string
+	// so that we don't have a null byte as a terminator.  If written to a file,
+	// the null bytes otherwise cause Git diffs to fail.
+	string asmText = string(static_cast<char*>(disassembly->GetBufferPointer()));
+
+	disassembly->Release();
+	return asmText;
+}
+
+
+// Create a text file containing text for the string specified.  Can be Asm or HLSL.
+// If the file already exists, return that as an error to avoid overwriting previous work.
+
+// We previously would overwrite the file only after checking if the contents were different,
+// this relaxes that to just being same file name.
+
+static HRESULT CreateTextFile(wchar_t* fullPath, string asmText)
+{
+	FILE *f;
+	
+	_wfopen_s(&f, fullPath, L"rb");
+	if (f)
+	{
+		fclose(f);
+		LogInfoW(L"    CreateTextFile error: file already exists %s \n", fullPath);
+		return 0x800700B7;	
+	}
+
+	_wfopen_s(&f, fullPath, L"wb");
+	if (f)
+	{
+		fwrite(asmText.data(), 1, asmText.size(), f);
+		fclose(f);
+	}
+
+	return S_OK;
+}
+
+// Get shader type from asm, first non-commented line.  CS, PS, VS.
+// Not sure this works on weird Unity variant with embedded types.
+
+
+// Specific variant to name files consistently, so we know they are Asm text.
+// ToDo: Remove all use of the obsolete wsprintf.
+
+static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, string asmText)
+{
+	wchar_t fullPath[MAX_PATH];
+
+	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
+	HRESULT hr = CreateTextFile(fullPath, asmText);
+
+	if (SUCCEEDED(hr))
+		LogInfoW(L"    storing disassembly to %s \n", fullPath);
+	else
+		LogInfoW(L"    error: %x, storing disassembly to %s \n", hr, fullPath);
+
+	return hr;
+}
+
+// Specific variant to name files, so we know they are HLSL text.
+
+static HRESULT CreateHLSLTextFile(UINT64 hash, string hlslText)
+{
+
+}
 

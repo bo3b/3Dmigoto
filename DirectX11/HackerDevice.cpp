@@ -529,64 +529,11 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		// Export every shader seen as an ASM file.
 		if (G->EXPORT_SHADERS)
 		{
-			ID3DBlob *disassembly;
-			HRESULT r = D3DDisassemble(pShaderBytecode, BytecodeLength,
-				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS,
-				0, &disassembly);
-			if (r != S_OK)
+			string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
+
+			if (!asmText.empty())
 			{
-				LogInfo("  disassembly failed.\n");
-			}
-			else
-			{
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls.txt", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-				FILE *f = _wfsopen(val, L"rb", _SH_DENYNO);
-				bool exists = false;
-				if (f)
-				{
-					int cnt = 0;
-					while (f)
-					{
-						// Check if same file.
-						fseek(f, 0, SEEK_END);
-						long dataSize = ftell(f);
-						rewind(f);
-						char *buf = new char[dataSize];
-						fread(buf, 1, dataSize, f);
-						fclose(f);
-						// Considder same file regardless of whether it has a NULL terminator or not
-						// to avoid creating identical asm files if an older version of 3Dmigoto has
-						// previously dumped out the asm file with a NULL terminator.
-						if ((dataSize == disassembly->GetBufferSize() || dataSize == (disassembly->GetBufferSize() - 1))
-							&& !memcmp(disassembly->GetBufferPointer(), buf, disassembly->GetBufferSize() - 1))
-							exists = true;
-						delete buf;
-						if (exists) break;
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.txt", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType, ++cnt);
-						f = _wfsopen(val, L"rb", _SH_DENYNO);
-					}
-				}
-				if (!exists)
-				{
-					FILE *f;
-					_wfopen_s(&f, val, L"wb");
-					if (LogFile)
-					{
-						char fileName[MAX_PATH];
-						wcstombs(fileName, val, MAX_PATH);
-						if (f)
-							LogInfo("    storing disassembly to %s\n", fileName);
-						else
-							LogInfo("    error storing disassembly to %s\n", fileName);
-					}
-					if (f)
-					{
-						// Size - 1 to strip NULL terminator
-						fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), f);
-						fclose(f);
-					}
-				}
-				disassembly->Release();
+				CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, asmText);
 			}
 		}
 
