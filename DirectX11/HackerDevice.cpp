@@ -712,7 +712,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					{
 						// Write reassembly output for comparison.
 						swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType);
-						HRESULT hr = CreateTextFile(val, asmText);
+						HRESULT hr = CreateTextFile(val, asmText, true);
 						if (FAILED(hr)) {
 							LogInfoW(L"    error storing reassembly to %s \n", val);
 						}

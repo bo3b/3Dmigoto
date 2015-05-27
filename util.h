@@ -503,21 +503,25 @@ static string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
 }
 
 // Create a text file containing text for the string specified.  Can be Asm or HLSL.
-// If the file already exists, return that as an error to avoid overwriting previous work.
+// If the file already exists and the caller did not specify overwrite (used
+// for reassembled text), return that as an error to avoid overwriting previous
+// work.
 
 // We previously would overwrite the file only after checking if the contents were different,
 // this relaxes that to just being same file name.
 
-static HRESULT CreateTextFile(wchar_t* fullPath, string asmText)
+static HRESULT CreateTextFile(wchar_t* fullPath, string asmText, bool overwrite)
 {
 	FILE *f;
-	
-	_wfopen_s(&f, fullPath, L"rb");
-	if (f)
-	{
-		fclose(f);
-		LogInfoW(L"    CreateTextFile error: file already exists %s \n", fullPath);
-		return ERROR_FILE_EXISTS;	
+
+	if (!overwrite) {
+		_wfopen_s(&f, fullPath, L"rb");
+		if (f)
+		{
+			fclose(f);
+			LogInfoW(L"    CreateTextFile error: file already exists %s \n", fullPath);
+			return ERROR_FILE_EXISTS;
+		}
 	}
 
 	_wfopen_s(&f, fullPath, L"wb");
@@ -549,7 +553,7 @@ static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wcha
 	wchar_t fullPath[MAX_PATH];
 	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
 
-	HRESULT hr = CreateTextFile(fullPath, asmText);
+	HRESULT hr = CreateTextFile(fullPath, asmText, false);
 
 	if (SUCCEEDED(hr))
 		LogInfoW(L"    storing disassembly to %s \n", fullPath);
