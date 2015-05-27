@@ -665,10 +665,19 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				{
 
 					LogInfo("    Replacement ASM shader found. Assembling replacement ASM code. \n");
+					
+					DWORD srcDataSize = GetFileSize(f, 0);
+					vector<byte> asmTextBytes(srcDataSize);
+					DWORD readSize;
+					FILETIME ftWrite;
+					if (!ReadFile(f, asmTextBytes.data(), srcDataSize, &readSize, 0)
+						|| !GetFileTime(f, NULL, NULL, &ftWrite)
+						|| srcDataSize != readSize)
+						LogInfo("    Error reading file. \n");
 					CloseHandle(f);
-
-					wstring fullPath = val;
-
+					LogInfo("    Asm source code loaded. Size = %d \n", srcDataSize);
+					
+					
 					//void *start = const_cast<void*>(pShaderBytecode);
 					//void *end = (void*)((ptrdiff_t)start + BytecodeLength);
 
@@ -677,7 +686,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 					vector<byte> byteCode(BytecodeLength);
 					memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
-					byteCode = assembler(string(fullPath.begin(), fullPath.end()), byteCode);
+					byteCode = assembler(asmTextBytes, byteCode);
 
 					// Write reassembly binary output for comparison.
 					FILE *fw;
@@ -710,6 +719,11 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 						else {
 							LogInfoW(L"    storing reassembly to %s \n", val);
 						}
+					
+						// Since the re-assembly worked, let's make it the active shader code.
+						pCodeSize = byteCode.size();
+						pCode = new char[pCodeSize];
+						memcpy(pCode, byteCode.data(), pCodeSize); 
 					}
 				}
 			}
