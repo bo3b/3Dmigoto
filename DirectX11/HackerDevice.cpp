@@ -593,10 +593,8 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				LogInfo("    Source code loaded. Size = %d\n", srcDataSize);
 
 				// Disassemble old shader to get shader model.
-				ID3DBlob *disassembly;
-				HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
-					D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
-				if (ret != S_OK)
+				string shaderModel = GetShaderModel(pShaderBytecode, BytecodeLength);
+				if (shaderModel.empty())
 				{
 					LogInfo("    disassembly of original shader failed.\n");
 
@@ -604,19 +602,6 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				}
 				else
 				{
-					// Read shader model. This is the first not commented line.
-					char *pos = (char *)disassembly->GetBufferPointer();
-					char *end = pos + disassembly->GetBufferSize();
-					while (pos[0] == '/' && pos < end)
-					{
-						while (pos[0] != 0x0a && pos < end) pos++;
-						pos++;
-					}
-					// Extract model.
-					char *eol = pos;
-					while (eol[0] != 0x0a && pos < end) eol++;
-					string shaderModel(pos, eol);
-
 					// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
 					foundShaderModel = shaderModel;
 					timeStamp = ftWrite;
@@ -626,10 +611,9 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 					ID3DBlob *pErrorMsgs;
 					ID3DBlob *pCompiledOutput = 0;
-					ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+					HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 					delete srcData; srcData = 0;
-					disassembly->Release();
 					if (pCompiledOutput)
 					{
 						pCodeSize = pCompiledOutput->GetBufferSize();
@@ -675,60 +659,60 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 			} 
 			else	// No HLSL replacement, how about ASM?
 			{
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls.txt", G->SHADER_PATH, hash, shaderType);
 				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				if (f != INVALID_HANDLE_VALUE)
 				{
-					FILE *fw;
 
-					LogInfo("    Replacement ASM shader found. Assembling replacement ASM code.\n");
+					LogInfo("    Replacement ASM shader found. Assembling replacement ASM code. \n");
+					CloseHandle(f);
 
-					wstring nameW = val;
+					wstring fullPath = val;
 
-					void *start = const_cast<void*>( pShaderBytecode);
-					void *end = (void*)((ptrdiff_t)start + BytecodeLength);
+					//void *start = const_cast<void*>(pShaderBytecode);
+					//void *end = (void*)((ptrdiff_t)start + BytecodeLength);
 
-					vector<byte> byteCopy(reinterpret_cast<byte*>(start), reinterpret_cast<byte*>(end));
-					vector<byte> reassembly = assembler(string(nameW.begin(), nameW.end()), byteCopy);
+					//vector<byte> byteCopy(reinterpret_cast<byte*>(start), reinterpret_cast<byte*>(end));
+					//vector<byte> reassembly = assembler(string(fullPath.begin(), fullPath.end()), byteCopy);
+
+					vector<byte> byteCode(BytecodeLength);
+					memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
+					byteCode = assembler(string(fullPath.begin(), fullPath.end()), byteCode);
 
 					// Write reassembly binary output for comparison.
-					wsprintf(val, L"%ls\\%08lx%08lx-%ls_reasm.bin", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+					FILE *fw;
+					swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType);
 					_wfopen_s(&fw, val, L"wb");
-					if (fw) {
+					if (fw) 
+					{
 						LogInfoW(L"    storing reassembled binary to %s\n", val);
-						fwrite(reassembly.data(), 1, reassembly.size(), fw);
+						fwrite(byteCode.data(), 1, byteCode.size(), fw);
 						fclose(fw);
 					} else {
 						LogInfoW(L"    error storing reassembled binary to %s\n", val);
 					}
 
-					// With that cbo object of reassembly, let's re-dissassemble it.
-					ID3DBlob *disassembly;
-					HRESULT r = D3DDisassemble(reassembly.data(), reassembly.size(),
-						D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS,
-						0, &disassembly);
-					if (r != S_OK)
+					// With that cbo object of reassembly, let's re-dissassemble it and write output.
+					// ToDo: remove this after it's all working.  This is just testing, validation.
+					string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
+					if (asmText.empty())
 					{
-						LogInfo("  disassembly failed.\n");
+						LogInfo("  re-disassembly failed. \n");
 					}
 					else
 					{
 						// Write reassembly output for comparison.
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_reasm.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
-						_wfopen_s(&fw, val, L"wb");
-						if (fw) {
-							LogInfoW(L"    storing reassembly to %s\n", val);
-							// Size - 1 to strip NULL terminator
-							fwrite(disassembly->GetBufferPointer(), 1, (disassembly->GetBufferSize() - 1), fw);
-							fclose(fw);
-						} else {
-							LogInfoW(L"    error storing reassembly to %s\n", val);
+						swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType);
+						HRESULT hr = CreateTextFile(val, asmText);
+						if (FAILED(hr)) {
+							LogInfoW(L"    error storing reassembly to %s \n", val);
+						}
+						else {
+							LogInfoW(L"    storing reassembly to %s \n", val);
 						}
 					}
-					CloseHandle(f);
 				}
 			}
-
 		}
 	}
 
@@ -882,19 +866,16 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// comparison between original ASM, and recompiled ASM.
 					if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
 					{
-						HRESULT ret = D3DDisassemble(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(),
-							D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
-						if (ret != S_OK)
+						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize());
+						if (asmText.empty())
 						{
 							LogInfo("    disassembly of recompiled shader failed.\n");
 						}
 						else
 						{
 							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-							// Size - 1 to strip NULL terminator
-							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
+							fwrite(asmText.data(), 1, asmText.size(), fw);
 							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-							disassembly->Release(); disassembly = 0;
 						}
 					}
 
@@ -930,10 +911,8 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	if (G->marking_mode == MARKING_MODE_ZERO)
 	{
 		// Disassemble old shader for fixing.
-		ID3DBlob *disassembly;
-		HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
-			D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
-		if (ret != S_OK)
+		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
+		if (asmText.empty())
 		{
 			LogInfo("    disassembly of original shader failed.\n");
 		}
@@ -947,13 +926,12 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 			bool errorOccurred = false;
 			ParseParameters p;
 			p.bytecode = pShaderBytecode;
-			p.decompiled = (const char *)disassembly->GetBufferPointer();
-			p.decompiledSize = disassembly->GetBufferSize();
+			p.decompiled = asmText.c_str();
+			p.decompiledSize = asmText.size();
 			p.recompileVs = G->FIX_Recompile_VS;
 			p.fixSvPosition = false;
 			p.ZeroOutput = true;
 			const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-			disassembly->Release();
 			if (!decompiledCode.size())
 			{
 				LogInfo("    error while decompiling.\n");
@@ -967,7 +945,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 				ID3DBlob *pErrorMsgs;
 				ID3DBlob *pCompiledOutput = 0;
-				ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+				HRESULT ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
 

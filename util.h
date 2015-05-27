@@ -437,7 +437,9 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 // in Unity games, and the old technique of searching for the first uncommented line
 // would fail.
 
-// Grr.. Commented out for now because of a header file mixup.
+// This is an interesting idea, but doesn't work well here because of project structure.
+// for the moment, let's leave this here, but use the disassemble search approach.
+
 //static string GetShaderModel(const void *pShaderBytecode)
 //{
 //	Shader *shader = DecodeDXBC((uint32_t*)pShaderBytecode);
@@ -478,6 +480,28 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 //	return shaderModel;
 //}
 
+static string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
+{
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
+	if (asmText.empty())
+		return "";
+
+	// Read shader model. This is the first not commented line.
+	char *pos = (char *)asmText.data();
+	char *end = pos + asmText.size();
+	while (pos[0] == '/' && pos < end)
+	{
+		while (pos[0] != 0x0a && pos < end) pos++;
+		pos++;
+	}
+	// Extract model.
+	char *eol = pos;
+	while (eol[0] != 0x0a && pos < end) eol++;
+	string shaderModel(pos, eol);
+
+	return shaderModel;
+}
+
 // Create a text file containing text for the string specified.  Can be Asm or HLSL.
 // If the file already exists, return that as an error to avoid overwriting previous work.
 
@@ -516,14 +540,14 @@ static HRESULT CreateTextFile(wchar_t* fullPath, string asmText)
 static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
 	const void *pShaderBytecode, size_t bytecodeLength)
 {
-	wchar_t fullPath[MAX_PATH];
-	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
-
 	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
 	if (asmText.empty())
 	{
 		return E_OUTOFMEMORY;
 	}
+
+	wchar_t fullPath[MAX_PATH];
+	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
 
 	HRESULT hr = CreateTextFile(fullPath, asmText);
 
