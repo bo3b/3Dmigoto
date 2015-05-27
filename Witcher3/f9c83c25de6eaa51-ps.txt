@@ -445,6 +445,7 @@ if_nz r1.y
 else 
   mov r0.w, l(1.000000)
 endif 
-mov o0.xyzw, r0.wwww
+//mov o0.xyzw, r0.wwww
+mov o0.xyzw, l(0,0,0,0);
 ret 
 // Approximately 0 instruction slots used
