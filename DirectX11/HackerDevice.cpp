@@ -526,15 +526,10 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 			}
 		}
 
-		// Export every shader seen as an ASM file.
+		// Export every shader seen as an ASM text file.
 		if (G->EXPORT_SHADERS)
 		{
-			string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
-
-			if (!asmText.empty())
-			{
-				CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, asmText);
-			}
+			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength);
 		}
 
 		// Read binary compiled shader.

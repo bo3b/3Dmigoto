@@ -174,6 +174,8 @@ static void DoubleBeepExit()
 }
 
 
+// -----------------------------------------------------------------------------------------------
+
 template <class T1, class T2>
 struct EnumName_t {
 	T1 name;
@@ -399,6 +401,8 @@ static std::string NameFromIID(IID id)
 }
 
 
+// -----------------------------------------------------------------------------------------------
+
 // Common routine to handle disassembling binary shaders to asm text.
 // This is used whenever we need the Asm text.
 
@@ -425,6 +429,54 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	return asmText;
 }
 
+// Get the shader model from the binary shader bytecode.
+//
+// This used to disassemble, then search for the text string, but if we are going to
+// do all that work, we might as well use the James-Jones decoder to get it.
+// The other reason to do it this way is that we have seen multiple shader versions
+// in Unity games, and the old technique of searching for the first uncommented line
+// would fail.
+
+// Grr.. Commented out for now because of a header file mixup.
+//static string GetShaderModel(const void *pShaderBytecode)
+//{
+//	Shader *shader = DecodeDXBC((uint32_t*)pShaderBytecode);
+//	if (shader == nullptr)
+//		return "";
+//
+//	string shaderModel;
+//	
+//	switch (shader->eShaderType)
+//	{
+//	case PIXEL_SHADER:
+//		shaderModel = "ps";
+//		break;
+//	case VERTEX_SHADER:
+//		shaderModel = "vs";
+//		break;
+//	case GEOMETRY_SHADER:
+//		shaderModel = "gs";
+//		break;
+//	case HULL_SHADER:
+//		shaderModel = "hs";
+//		break;
+//	case DOMAIN_SHADER:
+//		shaderModel = "ds";
+//		break;
+//	case COMPUTE_SHADER:
+//		shaderModel = "cs";
+//		break;
+//	default:
+//		return "";		// Failure.
+//	}
+//
+//	shaderModel += "_" + shader->ui32MajorVersion;
+//	shaderModel += "_" + shader->ui32MinorVersion;
+//
+//	delete shader;
+//
+//	return shaderModel;
+//}
 
 // Create a text file containing text for the string specified.  Can be Asm or HLSL.
 // If the file already exists, return that as an error to avoid overwriting previous work.
@@ -441,7 +493,7 @@ static HRESULT CreateTextFile(wchar_t* fullPath, string asmText)
 	{
 		fclose(f);
 		LogInfoW(L"    CreateTextFile error: file already exists %s \n", fullPath);
-		return 0x800700B7;	
+		return ERROR_FILE_EXISTS;	
 	}
 
 	_wfopen_s(&f, fullPath, L"wb");
@@ -461,11 +513,18 @@ static HRESULT CreateTextFile(wchar_t* fullPath, string asmText)
 // Specific variant to name files consistently, so we know they are Asm text.
 // ToDo: Remove all use of the obsolete wsprintf.
 
-static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, string asmText)
+static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
+	const void *pShaderBytecode, size_t bytecodeLength)
 {
 	wchar_t fullPath[MAX_PATH];
-
 	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
+
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
+	if (asmText.empty())
+	{
+		return E_OUTOFMEMORY;
+	}
+
 	HRESULT hr = CreateTextFile(fullPath, asmText);
 
 	if (SUCCEEDED(hr))
