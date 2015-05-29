@@ -1204,8 +1204,8 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	// Let's also allow an easy toggle of hunting itself, for speed and playability.
 	RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", iniFile, ToggleHunting, NULL, noRepeat, NULL);
 
-	if (!G->hunting)
-		return;
+	//if (!G->hunting)
+	//	return;
 
 	if (GetPrivateProfileString(L"Hunting", L"repeat_rate", 0, buf, 16, iniFile))
 		repeat = _wtoi(buf);
