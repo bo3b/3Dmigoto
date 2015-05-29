@@ -2182,12 +2182,8 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
 // This method creates a Context, and we want to return a wrapped/hacker
 // version as the result. The method signature requires an 
 // ID3D11DeviceContext, but we return our HackerContext.
-// In general, I do not believe this is how contexts are created- they are
-// usually going to be part of CreateDevice and CreateDeviceAndSwapChain.
 
-// A deferred context is for multithreading part of the drawing and is rarely
-// if ever used.
-// Not positive that the SetHackerDevice using 'this' is correct.
+// A deferred context is for multithreading part of the drawing. 
 
 STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	UINT ContextFlags,
@@ -2217,24 +2213,23 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	return ret;
 }
 
-// Another variant where we want to return a HackerContext instead of the
+// A variant where we want to return a HackerContext instead of the
 // real one.  Creating a new HackerContext is not correct here, because we 
 // need to provide the one created originally with the device.
 
 // This is a main way to get the context when you only have the device.
-// There is only one context per device.
+// There is only one immediate context per device, so if they are requesting
+// it, we need to return them the HackerContext.
 
 STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	/* [annotation] */
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("*** Double check context is correct ****\n\n");
 	LogInfo("HackerDevice::GetImmediateContext called.\n");
 
 	*ppImmediateContext = mHackerContext;
 
-	LogInfo("  returns handle = %p\n", typeid(*ppImmediateContext).name());
-	LogInfo("\n*** Double check context is correct ****\n");
+	LogInfo("  returns handle = %p as %s \n", *ppImmediateContext, typeid(*ppImmediateContext).name());
 
 	// Original code for reference:
 /*	D3D11Base::ID3D11DeviceContext *origContext = 0;
