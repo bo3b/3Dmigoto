@@ -567,7 +567,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	InitD311();
 	LogInfo("\n\nD3D11CreateDevice called with adapter = %p \n", pAdapter);
 
-#if defined(_DEBUG_LAYER)
+#if _DEBUG_LAYER
 	Flags |= D3D11_CREATE_DEVICE_DEBUG;
 	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
 	LogInfo("  D3D11CreateDevice _DEBUG_LAYER flags set: %#x \n", Flags);
@@ -591,7 +591,7 @@ HRESULT WINAPI D3D11CreateDevice(
 		return ret;
 	}
 
-#if defined(_DEBUG_LAYER)
+#if _DEBUG_LAYER
 	// If we are using the Debug Layer, lets dump the LiveObjectState to show it's working.
 	ID3D11Debug *d3dDebug = nullptr;
 	if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
@@ -662,7 +662,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	ForceDisplayParams(pSwapChainDesc);
 
-#if defined(_DEBUG_LAYER)
+#if _DEBUG_LAYER
 	Flags |= D3D11_CREATE_DEVICE_DEBUG;
 	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
 	LogInfo("  D3D11CreateDeviceAndSwapChain _DEBUG_LAYER flags set: %#x \n", Flags);
@@ -686,7 +686,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (!origDevice || !origContext || !origSwapChain)
 		return ret;
 
-#if defined(_DEBUG_LAYER)
+#if _DEBUG_LAYER
 	// If we are using the Debug Layer, lets dump the LiveObjectState to show it's working.
 	ID3D11Debug *d3dDebug = nullptr;
 	if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
