@@ -500,10 +500,19 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 // because they don't exist when the factory is instantiated.
 // Because of this, we want to check for null, and if so, set those up here, 
 // because we have the input pDevice that we can use to wrap.
+//
+// We always expect the pDevice passed in here to be a HackerDevice. If we
+// get one that is not, we have an object leak/bug. It shouldn't be possible to
+// create a ID3D11Device without us wrapping it.
+//
+// When creating the new swap chain, we need to pass the original device, not
+// the wrapped version. For some reason, passing the wrapped version actually
+// succeeds if the "evil" update is installed, which I would not expect.  Without
+// the platform update, it would crash here.
 
 STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
             /* [annotation][in] */ 
-            __in  IUnknown *pDevice,
+			__in  HackerDevice *pDevice,
             /* [annotation][in] */ 
             __in  DXGI_SWAP_CHAIN_DESC *pDesc,
             /* [annotation][out] */ 
@@ -515,9 +524,9 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	ForceDisplayParams(pDesc);
 
 	IDXGISwapChain *origSwapChain = 0;
-	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice, pDesc, &origSwapChain);
+	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice->GetOrigDevice(), pDesc, &origSwapChain);
 
-	// This call can return 0x087A0001, which is DXGI_STATUS_OCCLUDED.  That means that the window
+	// This call can DXGI_STATUS_OCCLUDED.  That means that the window
 	// can be occluded when we return from creating the real swap chain.  
 	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
 	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
@@ -638,7 +647,7 @@ STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][in] */ 
-            _In_  IUnknown *pDevice,
+            _In_  HackerDevice *pDevice,
             /* [annotation][in] */ 
             _In_  HWND hWnd,
             /* [annotation][in] */ 
@@ -672,7 +681,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
 	//hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice->GetOrigDevice(), hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
 	//if (SUCCEEDED(hr))
@@ -689,7 +698,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
             /* [annotation][in] */ 
-            _In_  IUnknown *pDevice,
+			_In_  HackerDevice *pDevice,
             /* [annotation][in] */ 
             _In_  IUnknown *pWindow,
             /* [annotation][in] */ 
@@ -713,7 +722,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
 	//	hr = mOrigFactory->CreateSwapChainForCoreWindow(realDevice, pWindow, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice->GetOrigDevice(), pWindow, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
 	//if (SUCCEEDED(hr))
@@ -730,7 +739,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
             /* [annotation][in] */ 
-            _In_  IUnknown *pDevice,
+			_In_  HackerDevice *pDevice,
             /* [annotation][in] */ 
             _In_ const DXGI_SWAP_CHAIN_DESC1 *pDesc,
             /* [annotation][in] */ 
@@ -763,7 +772,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	//}
 
-	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice->GetOrigDevice(), pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 	return hr;
 }

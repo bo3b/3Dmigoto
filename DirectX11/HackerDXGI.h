@@ -440,7 +440,7 @@ public:
 
 	STDMETHOD(CreateSwapChain)(THIS_
 		/* [annotation][in] */
-		__in  IUnknown *pDevice,
+		__in  HackerDevice *pDevice,
 		/* [annotation][in] */
 		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
 		/* [annotation][out] */
@@ -487,7 +487,7 @@ public:
 
 	STDMETHOD(CreateSwapChainForHwnd)(
 		/* [annotation][in] */
-		_In_  IUnknown *pDevice,
+		_In_  HackerDevice *pDevice,
 		/* [annotation][in] */
 		_In_  HWND hWnd,
 		/* [annotation][in] */
@@ -501,7 +501,7 @@ public:
 
 	STDMETHOD(CreateSwapChainForCoreWindow)(
 		/* [annotation][in] */
-		_In_  IUnknown *pDevice,
+		_In_  HackerDevice *pDevice,
 		/* [annotation][in] */
 		_In_  IUnknown *pWindow,
 		/* [annotation][in] */
@@ -555,7 +555,7 @@ public:
 
 	STDMETHOD(CreateSwapChainForComposition)(
 		/* [annotation][in] */
-		_In_  IUnknown *pDevice,
+		_In_  HackerDevice *pDevice,
 		/* [annotation][in] */
 		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
 		/* [annotation][in] */
