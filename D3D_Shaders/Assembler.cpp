@@ -1117,7 +1117,18 @@ string shaderModel(byte* buffer) {
 	return shaderModel;
 }
 
-vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
+
+// Assemble a shader from text assembly language, and the original shader byte code.
+// Careful, the input bytecode sequence is modified.
+// 
+// Usage example for vector<char> asmText, ID3DBlob *pShader:
+//	vector<byte> byteCode(pShader->GetBufferSize());
+//	memcpy(byteCode.data(), pShader->GetBufferPointer(),pShader->GetBufferSize());
+//	byteCode = assembler(asmText, byteCode);
+//
+// ToDo: A better API would be to return a ID3DBlob since it's D3D data.
+
+vector<byte> assembler(vector<char> asmFile, vector<byte> buffer) {
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
@@ -1141,7 +1152,7 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 
 	char* asmBuffer;
 	int asmSize;
-	asmBuffer = (char*)asmFile.data();
+	asmBuffer = asmFile.data();
 	asmSize = asmFile.size();
 	byte* codeByteStart;
 	int codeChunk = 0;

@@ -5,4 +5,4 @@
 
 // vector<byte> assembler(string asmFile, vector<byte> buffer);
 
-vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer);
+vector<byte> assembler(vector<char> asmFile, vector<byte> buffer);

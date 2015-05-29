@@ -663,11 +663,10 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				if (f != INVALID_HANDLE_VALUE)
 				{
-
 					LogInfo("    Replacement ASM shader found. Assembling replacement ASM code. \n");
 					
 					DWORD srcDataSize = GetFileSize(f, 0);
-					vector<byte> asmTextBytes(srcDataSize);
+					vector<char> asmTextBytes(srcDataSize);
 					DWORD readSize;
 					FILETIME ftWrite;
 					if (!ReadFile(f, asmTextBytes.data(), srcDataSize, &readSize, 0)
@@ -677,53 +676,61 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					CloseHandle(f);
 					LogInfo("    Asm source code loaded. Size = %d \n", srcDataSize);
 					
-					
-					//void *start = const_cast<void*>(pShaderBytecode);
-					//void *end = (void*)((ptrdiff_t)start + BytecodeLength);
-
-					//vector<byte> byteCopy(reinterpret_cast<byte*>(start), reinterpret_cast<byte*>(end));
-					//vector<byte> reassembly = assembler(string(fullPath.begin(), fullPath.end()), byteCopy);
-
-					vector<byte> byteCode(BytecodeLength);
-					memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
-					byteCode = assembler(asmTextBytes, byteCode);
-
-					// Write reassembly binary output for comparison.
-					FILE *fw;
-					swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType);
-					_wfopen_s(&fw, val, L"wb");
-					if (fw) 
+					// Disassemble old shader to get shader model.
+					string shaderModel = GetShaderModel(pShaderBytecode, BytecodeLength);
+					if (shaderModel.empty())
 					{
-						LogInfoW(L"    storing reassembled binary to %s\n", val);
-						fwrite(byteCode.data(), 1, byteCode.size(), fw);
-						fclose(fw);
-					} else {
-						LogInfoW(L"    error storing reassembled binary to %s\n", val);
-					}
-
-					// With that cbo object of reassembly, let's re-dissassemble it and write output.
-					// ToDo: remove this after it's all working.  This is just testing, validation.
-					string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
-					if (asmText.empty())
-					{
-						LogInfo("  re-disassembly failed. \n");
+						LogInfo("    disassembly of original shader failed.\n");
 					}
 					else
 					{
-						// Write reassembly output for comparison.
-						swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType);
-						HRESULT hr = CreateTextFile(val, asmText, true);
-						if (FAILED(hr)) {
-							LogInfoW(L"    error storing reassembly to %s \n", val);
+						// Any ASM shaders are reloading candidates, if moved to ShaderFixes
+						foundShaderModel = shaderModel;
+						timeStamp = ftWrite;
+
+						vector<byte> byteCode(BytecodeLength);
+						memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
+						byteCode = assembler(asmTextBytes, byteCode);
+
+						// Write reassembly binary output for comparison. ToDo: remove after we have validated it works.
+						FILE *fw;
+						swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType);
+						_wfopen_s(&fw, val, L"wb");
+						if (fw)
+						{
+							LogInfoW(L"    storing reassembled binary to %s\n", val);
+							fwrite(byteCode.data(), 1, byteCode.size(), fw);
+							fclose(fw);
 						}
-						else {
-							LogInfoW(L"    storing reassembly to %s \n", val);
+						else 
+						{
+							LogInfoW(L"    error storing reassembled binary to %s\n", val);
 						}
-					
-						// Since the re-assembly worked, let's make it the active shader code.
-						pCodeSize = byteCode.size();
-						pCode = new char[pCodeSize];
-						memcpy(pCode, byteCode.data(), pCodeSize); 
+
+						// With that cso object of reassembly, let's re-dissassemble it and write output.
+						// ToDo: remove this after it's all working.  This is just testing, validation.
+						string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
+						if (asmText.empty())
+						{
+							LogInfo("  re-disassembly failed. \n");
+						}
+						else
+						{
+							// Write reassembly output for comparison.
+							swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType);
+							HRESULT hr = CreateTextFile(val, asmText, true);
+							if (FAILED(hr)) {
+								LogInfoW(L"    error storing reassembly to %s \n", val);
+							}
+							else {
+								LogInfoW(L"    storing reassembly to %s \n", val);
+							}
+
+							// Since the re-assembly worked, let's make it the active shader code.
+							pCodeSize = byteCode.size();
+							pCode = new char[pCodeSize];
+							memcpy(pCode, byteCode.data(), pCodeSize);
+						}
 					}
 				}
 			}

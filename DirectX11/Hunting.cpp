@@ -13,6 +13,7 @@
 #include "Override.h"
 #include "Globals.h"
 #include "IniHandler.h"
+#include "Assembler.h"
 
 
 static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
@@ -302,8 +303,11 @@ static string Decompile(ID3DBlob* pShaderByteCode, string asmText)
 // If the timeStamp has not changed from when it was loaded, skip the recompile, and return false as not an 
 // error, but skipped.  On actual errors, return true so that we bail out.
 
-static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, UINT64 hash, wstring shaderType, FILETIME* timeStamp,
-	_Outptr_ ID3DBlob** pCode)
+// Compile example taken from: http://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
+
+static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, 
+	UINT64 hash, wstring shaderType, ID3DBlob *origByteCode,
+	__out FILETIME* timeStamp, _Outptr_ ID3DBlob** pCode)
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
@@ -319,11 +323,11 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 
 
 	DWORD srcDataSize = GetFileSize(f, 0);
-	char *srcData = new char[srcDataSize];
+	vector<char> srcData(srcDataSize);
 	DWORD readSize;
 	FILETIME curFileTime;
 
-	if (!ReadFile(f, srcData, srcDataSize, &readSize, 0)
+	if (!ReadFile(f, srcData.data(), srcDataSize, &readSize, 0)
 		|| !GetFileTime(f, NULL, NULL, &curFileTime)
 		|| srcDataSize != readSize)
 	{
@@ -341,50 +345,85 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
 	}
 	*timeStamp = curFileTime;
 
-	LogInfo("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
-	LogInfo("    Reload source code loaded. Size = %d\n", srcDataSize);
-	LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel);
-
-
+	// Now that we are sure to be reloading, let's see if it's an ASM file and assemble instead.
 	ID3DBlob* pByteCode = nullptr;
-	ID3DBlob* pErrorMsgs = nullptr;
-	HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
-		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
-
-	delete srcData; srcData = 0;
-
-	// bo3b: pretty sure that we do not need to copy the data. That data is what we need to pass to CreateVertexShader
-	// Example taken from: http://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
-	//char *pCode = 0;
-	//SIZE_T pCodeSize;
-	//if (pCompiledOutput)
-	//{
-	//	pCodeSize = pCompiledOutput->GetBufferSize();
-	//	pCode = new char[pCodeSize];
-	//	memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
-	//	pCompiledOutput->Release(); pCompiledOutput = 0;
-	//}
-
-	LogInfo("    compile result of replacement HLSL shader: %x\n", ret);
-
-	if (LogFile && pErrorMsgs)
+	
+	if (wcsstr(fileName, L"_replace"))
 	{
-		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
-		SIZE_T errSize = pErrorMsgs->GetBufferSize();
-		LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-		fwrite(errMsg, 1, errSize - 1, LogFile);
-		LogInfo("---------------------------------------------- END ----------------------------------------------\n");
-		pErrorMsgs->Release();
-	}
+		LogInfo("   >Replacement shader found. Re-Loading replacement HLSL code from %ls \n", fileName);
+		LogInfo("    Reload source code loaded. Size = %d \n", srcDataSize);
+		LogInfo("    compiling replacement HLSL code with shader model %s \n", shaderModel);
 
-	if (FAILED(ret))
-	{
-		if (pByteCode)
+
+		ID3DBlob* pErrorMsgs = nullptr;
+		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+			"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
+
+		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
+
+		if (LogFile && pErrorMsgs)
 		{
-			pByteCode->Release();
-			pByteCode = 0;
+			LPVOID errMsg = pErrorMsgs->GetBufferPointer();
+			SIZE_T errSize = pErrorMsgs->GetBufferSize();
+			LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+			fwrite(errMsg, 1, errSize - 1, LogFile);
+			LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+			pErrorMsgs->Release();
 		}
-		return true;
+
+		if (FAILED(ret))
+		{
+			if (pByteCode)
+			{
+				pByteCode->Release();
+				pByteCode = 0;
+			}
+			return true;
+		}
+	}
+	else if (wcsstr(fileName, L"_reasm"))
+	{
+		return false;	// Don't reassemble these, and don't error out.
+	} 
+	else
+	{
+		LogInfo("   >Replacement shader found. Re-Loading replacement ASM code from %ls \n", fileName);
+		LogInfo("    Reload source code loaded. Size = %d \n", srcDataSize);
+		LogInfo("    assembling replacement ASM code with shader model %s \n", shaderModel);
+
+		// We need original byte code unchanged, so make a copy.
+		vector<byte> byteCode(origByteCode->GetBufferSize());
+		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
+		byteCode = assembler(srcData, byteCode);
+
+		// ToDo: How we do know when it fails? Error handling. Do we really have to re-disassemble?
+		string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
+		if (asmText.empty())
+		{
+			LogInfo("  *** assembler failed. \n");
+			return true;
+		}
+		else
+		{
+			// Write reassembly output for comparison. ToDo: how long do we need this?
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType.c_str());
+			HRESULT hr = CreateTextFile(fullName, asmText, true);
+			if (FAILED(hr)) {
+				LogInfoW(L"    *** error storing reassembly to %s \n", fullName);
+			}
+			else {
+				LogInfoW(L"    storing reassembly to %s \n", fullName);
+			}
+
+			// Since the re-assembly worked, let's make it the active shader code.
+			HRESULT ret = D3DCreateBlob(byteCode.size(), &pByteCode);
+			if (SUCCEEDED(ret)) {
+				memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
+			} else {
+				LogInfo("    *** failed to allocate new Blob for assemble. \n");
+				return true;
+			}
+		}
 	}
 
 
@@ -512,7 +551,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 			// Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
 			ID3DBlob *pShaderBytecode = NULL;
-			if (!CompileShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, &timeStamp, &pShaderBytecode))
+			if (!RegenerateShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, &pShaderBytecode))
 				continue;
 
 			// If we compiled but got nothing, that's a fatal error we need to report.
@@ -680,11 +719,16 @@ static void RevertMissingShaders()
 	}
 }
 
+// Now that we are adding ASM files to the mix, we need to decide who gets precedence.
+// Given that an ASM file is possibly being used as the more sure approach for a given
+// file, it makes sense to give ASM files precedence, if both files are there.
+// Using the '*' for file match will allow anything with _replace or with no tail to
+// be found.  Since these will use name order, the no tail asm file will come after
+// the hlsl file and replace it.  This dual file scenario is expected to be rare, so
+// not doing anything heroic here to avoid that double load.
 
 static void ReloadFixes(HackerDevice *device, void *private_data)
 {
-	ShaderReloadMap::iterator i;
-
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (G->SHADER_PATH[0])
@@ -693,12 +737,13 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		WIN32_FIND_DATA findFileData;
 		wchar_t fileName[MAX_PATH];
 
-		for (i = G->mReloadedShaders.begin(); i != G->mReloadedShaders.end(); i++)
-			i->second.found = false;
+		for (ShaderReloadMap::iterator iter = G->mReloadedShaders.begin(); iter != G->mReloadedShaders.end(); iter++)
+			iter->second.found = false;
 
-		// Strict file name format, to allow renaming out of the way. "00aa7fa12bbf66b3-ps_replace.txt"
+		// Strict file name format, to allow renaming out of the way. 
+		// "00aa7fa12bbf66b3-ps_replace.txt" or "00aa7fa12bbf66b3-vs.txt"
 		// Will still blow up if the first characters are not hex.
-		wsprintf(fileName, L"%ls\\????????????????-??_replace.txt", G->SHADER_PATH);
+		wsprintf(fileName, L"%ls\\????????????????-??*.txt", G->SHADER_PATH);
 		HANDLE hFind = FindFirstFile(fileName, &findFileData);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
@@ -709,12 +754,13 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 			FindClose(hFind);
 		}
 
+		// Any shaders in the map not visited, we want to revert back to original.
+		RevertMissingShaders();
+
 		if (success)
 		{
 			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
 			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
-
-			RevertMissingShaders();
 		}
 		else
 		{

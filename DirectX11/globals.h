@@ -36,6 +36,7 @@ typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 //	byteCode is the original shader byte code passed in by game, or recompiled by override.
 //	timeStamp allows reloading/recompiling only modified shaders
 //	replacement is either ID3D11VertexShader or ID3D11PixelShader
+//  found is used to revert shaders that are deleted from ShaderFixes
 struct OriginalShaderInfo
 {
 	UINT64 hash;
