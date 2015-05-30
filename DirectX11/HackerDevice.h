@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d11.h>
+#include <d3d11_1.h>
 
 #include "nvstereo.h"
 #include "HackerContext.h"
@@ -11,6 +11,7 @@
 // We need this to allow each to reference the other as needed.
 
 class HackerContext;
+class HackerContext1;
 
 class HackerDevice : public ID3D11Device
 {
@@ -364,4 +365,72 @@ public:
 
 	STDMETHOD_(UINT, GetExceptionMode)(THIS);
 
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerDevice1 : public HackerDevice
+{
+private:
+	ID3D11Device1 *mOrigDevice1;
+	ID3D11DeviceContext1 *mOrigContext1;
+	HackerContext1 *mHackerContext1;
+
+public:
+	HackerDevice1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext);
+
+	void SetHackerContext1(HackerContext1 *pHackerContext);
+
+
+	STDMETHOD_(void, GetImmediateContext1)(
+		/* [annotation] */
+		_Out_  HackerContext1 **ppImmediateContext);
+
+	STDMETHOD(CreateDeferredContext1)(
+		UINT ContextFlags,
+		/* [annotation] */
+		_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext);
+
+	STDMETHOD(CreateBlendState1)(
+		/* [annotation] */
+		_In_  const D3D11_BLEND_DESC1 *pBlendStateDesc,
+		/* [annotation] */
+		_Out_opt_  ID3D11BlendState1 **ppBlendState);
+
+	STDMETHOD(CreateRasterizerState1)(
+		/* [annotation] */
+		_In_  const D3D11_RASTERIZER_DESC1 *pRasterizerDesc,
+		/* [annotation] */
+		_Out_opt_  ID3D11RasterizerState1 **ppRasterizerState);
+
+	STDMETHOD(CreateDeviceContextState)(
+		UINT Flags,
+		/* [annotation] */
+		_In_reads_(FeatureLevels)  const D3D_FEATURE_LEVEL *pFeatureLevels,
+		UINT FeatureLevels,
+		UINT SDKVersion,
+		REFIID EmulatedInterface,
+		/* [annotation] */
+		_Out_opt_  D3D_FEATURE_LEVEL *pChosenFeatureLevel,
+		/* [annotation] */
+		_Out_opt_  ID3DDeviceContextState **ppContextState);
+
+	STDMETHOD(OpenSharedResource1)(
+		/* [annotation] */
+		_In_  HANDLE hResource,
+		/* [annotation] */
+		_In_  REFIID returnedInterface,
+		/* [annotation] */
+		_Out_  void **ppResource);
+
+	STDMETHOD(OpenSharedResourceByName)(
+		/* [annotation] */
+		_In_  LPCWSTR lpName,
+		/* [annotation] */
+		_In_  DWORD dwDesiredAccess,
+		/* [annotation] */
+		_In_  REFIID returnedInterface,
+		/* [annotation] */
+		_Out_  void **ppResource);
 };

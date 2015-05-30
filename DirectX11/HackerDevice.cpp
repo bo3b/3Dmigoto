@@ -292,15 +292,34 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDXGIDevice));
 
 		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this, mHackerContext);
-		if (dxgiDeviceWrap == NULL)
-		{
-			LogInfo("  error allocating dxgiDeviceWrap. \n");
-			return E_OUTOFMEMORY;
-		}
+		// ToDo: Handle memory allocation exceptions
+
 		if (ppvObject)
 			*ppvObject = dxgiDeviceWrap;
 
-		LogInfo("  created HackerDXGIDevice wrapper = %p of %p \n", ppvObject, origDXGIDevice);
+		LogInfo("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*ppvObject).name(), ppvObject, origDXGIDevice);
+	}
+	else if (riid == __uuidof(ID3D11Device1))
+	{
+		ID3D11Device1 *origDevice1;
+		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDevice1));
+
+		ID3D11DeviceContext1 *origContext1;
+		origDevice1->GetImmediateContext1(&origContext1);
+		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
+
+		LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", typeid(*hackerContextWrap1).name(), hackerContextWrap1, origContext1);
+
+		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
+		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+
+		LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", typeid(*hackerDeviceWrap1).name(), hackerDeviceWrap1, origDevice1);
+
+		// ToDo: Handle memory allocation exceptions
+
+		if (ppvObject)
+			*ppvObject = hackerDeviceWrap1;
+
 	}
 	else
 	{
@@ -2261,5 +2280,108 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	*ppImmediateContext = wrapper;
 	LogInfo("  returns handle = %p, wrapper = %p\n", origContext, wrapper);
 */
+}
+
+// -----------------------------------------------------------------------------
+// HackerDevice1 methods.  All other subclassed methods will use HackerDevice methods.
+
+HackerDevice1::HackerDevice1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext)
+	: HackerDevice(pDevice1, pContext)
+{
+	mOrigDevice1 = pDevice1;
+	mOrigContext1 = pContext;
+}
+
+// Save reference to corresponding HackerContext during CreateDevice, needed for GetImmediateContext.
+
+void HackerDevice1::SetHackerContext1(HackerContext1 *pHackerContext)
+{
+	mHackerContext1 = pHackerContext;
+}
+
+
+// Follow the lead for GetImmediateContext and return the wrapped version.
+
+STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
+	/* [annotation] */
+	_Out_  HackerContext1 **ppImmediateContext)
+{
+	LogInfo("HackerDevice::GetImmediateContext1(%s@%p) called. \n", typeid(*this).name(), this);
+
+	*ppImmediateContext = mHackerContext1;
+
+	LogInfo("  returns handle = %p as %s \n", *ppImmediateContext, typeid(*ppImmediateContext).name());
+}
+
+
+// Pretty sure we don't need to wrap DeferredContexts at all, but we'll 
+// still log to see when it's used.
+
+STDMETHODIMP HackerDevice1::CreateDeferredContext1(
+	UINT ContextFlags,
+	/* [annotation] */
+	_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext)
+{
+	LogInfo("HackerDevice1::CreateDeferredContext1(%s@%p) called with flags = %x \n", typeid(*this).name(), this, ContextFlags);
+	HRESULT hr = mOrigDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
+	LogDebug("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDevice1::CreateBlendState1(
+	/* [annotation] */
+	_In_  const D3D11_BLEND_DESC1 *pBlendStateDesc,
+	/* [annotation] */
+	_Out_opt_  ID3D11BlendState1 **ppBlendState)
+{
+	return mOrigDevice1->CreateBlendState1(pBlendStateDesc, ppBlendState);
+}
+
+STDMETHODIMP HackerDevice1::CreateRasterizerState1(
+	/* [annotation] */
+	_In_  const D3D11_RASTERIZER_DESC1 *pRasterizerDesc,
+	/* [annotation] */
+	_Out_opt_  ID3D11RasterizerState1 **ppRasterizerState)
+{
+	return mOrigDevice1->CreateRasterizerState1(pRasterizerDesc, ppRasterizerState);
+}
+
+STDMETHODIMP HackerDevice1::CreateDeviceContextState(
+	UINT Flags,
+	/* [annotation] */
+	_In_reads_(FeatureLevels)  const D3D_FEATURE_LEVEL *pFeatureLevels,
+	UINT FeatureLevels,
+	UINT SDKVersion,
+	REFIID EmulatedInterface,
+	/* [annotation] */
+	_Out_opt_  D3D_FEATURE_LEVEL *pChosenFeatureLevel,
+	/* [annotation] */
+	_Out_opt_  ID3DDeviceContextState **ppContextState)
+{
+	return mOrigDevice1->CreateDeviceContextState(Flags, pFeatureLevels, FeatureLevels, SDKVersion, EmulatedInterface, pChosenFeatureLevel, ppContextState);
+}
+
+STDMETHODIMP HackerDevice1::OpenSharedResource1(
+	/* [annotation] */
+	_In_  HANDLE hResource,
+	/* [annotation] */
+	_In_  REFIID returnedInterface,
+	/* [annotation] */
+	_Out_  void **ppResource)
+{
+	return mOrigDevice1->OpenSharedResource1(hResource, returnedInterface, ppResource);
+}
+
+STDMETHODIMP HackerDevice1::OpenSharedResourceByName(
+	/* [annotation] */
+	_In_  LPCWSTR lpName,
+	/* [annotation] */
+	_In_  DWORD dwDesiredAccess,
+	/* [annotation] */
+	_In_  REFIID returnedInterface,
+	/* [annotation] */
+	_Out_  void **ppResource)
+{
+	return mOrigDevice1->OpenSharedResourceByName(lpName, dwDesiredAccess, returnedInterface, ppResource);
 }
 

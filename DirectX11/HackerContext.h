@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d11.h>
+#include <d3d11_1.h>
 
 #include "Overlay.h"
 #include "HackerDevice.h"
@@ -30,6 +30,7 @@ struct DrawContext
 // We need this to allow each to reference the other as needed.
 
 class HackerDevice;
+class HackerDevice1;
 class Overlay;
 
 
@@ -914,4 +915,227 @@ public:
 		/* [annotation] */
 		__out_opt  ID3D11CommandList **ppCommandList);
 
+};
+
+// -----------------------------------------------------------------------------
+
+class HackerContext1: public HackerContext
+{
+private:
+	ID3D11Device1 *mOrigDevice1;
+	ID3D11DeviceContext1 *mOrigContext1;
+
+public:
+	HackerContext1(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext1);
+
+
+	void STDMETHODCALLTYPE CopySubresourceRegion1(
+		/* [annotation] */
+		_In_  ID3D11Resource *pDstResource,
+		/* [annotation] */
+		_In_  UINT DstSubresource,
+		/* [annotation] */
+		_In_  UINT DstX,
+		/* [annotation] */
+		_In_  UINT DstY,
+		/* [annotation] */
+		_In_  UINT DstZ,
+		/* [annotation] */
+		_In_  ID3D11Resource *pSrcResource,
+		/* [annotation] */
+		_In_  UINT SrcSubresource,
+		/* [annotation] */
+		_In_opt_  const D3D11_BOX *pSrcBox,
+		/* [annotation] */
+		_In_  UINT CopyFlags);
+
+	void STDMETHODCALLTYPE UpdateSubresource1(
+		/* [annotation] */
+		_In_  ID3D11Resource *pDstResource,
+		/* [annotation] */
+		_In_  UINT DstSubresource,
+		/* [annotation] */
+		_In_opt_  const D3D11_BOX *pDstBox,
+		/* [annotation] */
+		_In_  const void *pSrcData,
+		/* [annotation] */
+		_In_  UINT SrcRowPitch,
+		/* [annotation] */
+		_In_  UINT SrcDepthPitch,
+		/* [annotation] */
+		_In_  UINT CopyFlags);
+
+	void STDMETHODCALLTYPE DiscardResource(
+		/* [annotation] */
+		_In_  ID3D11Resource *pResource);
+
+	void STDMETHODCALLTYPE DiscardView(
+		/* [annotation] */
+		_In_  ID3D11View *pResourceView);
+
+	void STDMETHODCALLTYPE VSSetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pFirstConstant,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE HSSetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pFirstConstant,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE DSSetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pFirstConstant,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE GSSetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pFirstConstant,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE PSSetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pFirstConstant,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE CSSetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pFirstConstant,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  const UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE VSGetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pFirstConstant,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE HSGetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pFirstConstant,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE DSGetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pFirstConstant,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE GSGetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pFirstConstant,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE PSGetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pFirstConstant,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE CSGetConstantBuffers1(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pFirstConstant,
+		/* [annotation] */
+		_Out_writes_opt_(NumBuffers)  UINT *pNumConstants);
+
+	void STDMETHODCALLTYPE SwapDeviceContextState(
+		/* [annotation] */
+		_In_  ID3DDeviceContextState *pState,
+		/* [annotation] */
+		_Out_opt_  ID3DDeviceContextState **ppPreviousState);
+
+	void STDMETHODCALLTYPE ClearView(
+		/* [annotation] */
+		_In_  ID3D11View *pView,
+		/* [annotation] */
+		_In_  const FLOAT Color[4],
+		/* [annotation] */
+		_In_reads_opt_(NumRects)  const D3D11_RECT *pRect,
+		UINT NumRects);
+
+	void STDMETHODCALLTYPE DiscardView1(
+		/* [annotation] */
+		_In_  ID3D11View *pResourceView,
+		/* [annotation] */
+		_In_reads_opt_(NumRects)  const D3D11_RECT *pRects,
+		UINT NumRects);
 };
