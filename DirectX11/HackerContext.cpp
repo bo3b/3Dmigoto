@@ -670,7 +670,12 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	return mOrigContext->QueryInterface(riid, ppvObject);
+	LogDebug("HackerContext::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+
+	HRESULT hr = mOrigContext->QueryInterface(riid, ppvObject);
+
+	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
+	return hr;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -691,11 +696,9 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	/* [annotation] */
 	__out  ID3D11Device **ppDevice)
 {
-	*ppDevice = mHackerDevice;
+	LogInfo("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
 
-	LogInfo("*** Double check context is correct ****\n\n");
-	LogInfo("HackerContext::GetDevice return: %s", typeid(*ppDevice).name());
-	LogInfo("\n*** Double check context is correct ****\n");
+	*ppDevice = mHackerDevice;
 
 	// Old version for reference.
 /*	// Map device to wrapper.
@@ -726,7 +729,7 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	/* [annotation] */
 	__out_bcount_opt(*pDataSize)  void *pData)
 {
-	LogInfo("HackerContext::GetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
+	LogInfo("HackerContext::GetPrivateData(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext->GetPrivateData(guid, pDataSize, pData);
 	LogInfo("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
@@ -742,7 +745,7 @@ STDMETHODIMP HackerContext::SetPrivateData(THIS_
 	/* [annotation] */
 	__in_bcount_opt(DataSize)  const void *pData)
 {
-	LogInfo("HackerContext::SetPrivateData(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
+	LogInfo("HackerContext::SetPrivateData(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
 	LogInfo("  DataSize = %d\n", DataSize);
 
 	HRESULT hr = mOrigContext->SetPrivateData(guid, DataSize, pData);
@@ -757,7 +760,7 @@ STDMETHODIMP HackerContext::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("HackerContext::SetPrivateDataInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
+	LogInfo("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext->SetPrivateDataInterface(guid, pData);
 	LogInfo("  returns result = %x\n", hr);

@@ -4,9 +4,10 @@
 #include <wchar.h>
 #include <string>
 
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <D3Dcompiler.h>
+#include <d3d9.h>
 
 #include "version.h"
 #include "log.h"
@@ -344,10 +345,16 @@ static std::string NameFromIID(IID id)
 
 	if (__uuidof(ID3D11Device) == id)
 		return "ID3D11Device";
-
 	if (__uuidof(ID3D10Device) == id)
 		return "ID3D10Device";
+	if (__uuidof(IDirect3DDevice9) == id)
+		return "IDirect3DDevice9";
 
+	if (__uuidof(ID3D11Device1) == id)
+		return "ID3D11Device1";
+	if (__uuidof(ID3D11DeviceContext1) == id)
+		return "ID3D11DeviceContext1";
+	
 	if (__uuidof(ID3D11InfoQueue) == id)
 		return "ID3D11InfoQueue ";
 

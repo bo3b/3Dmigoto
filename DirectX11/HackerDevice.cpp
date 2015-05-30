@@ -273,6 +273,10 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb174535(v=vs.85).aspx
 //
 // This technique is used in Mordor for sure, and very likely others.
+//
+// New addition, we need to also look for QueryInterface casts to different types.
+// In Dragon Age, it seems clear that they are upcasting their ID3D11Device to an
+// ID3D11Device1, and if we don't wrap that, we have an object leak where they can bypass us.
 
 HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
@@ -280,7 +284,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 {
 	HRESULT hr;
 
-	LogDebug("HackerDevice::QueryInterface called with IID: %s \n", NameFromIID(riid).c_str());
+	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	if (riid == __uuidof(IDXGIDevice))
 	{
@@ -1272,7 +1276,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("HackerDevice::SetPrivateDataInterface(%s) called with IID: %s \n", typeid(*this).name(), NameFromIID(guid).c_str());
+	LogInfo("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
 
 	return mOrigDevice->SetPrivateDataInterface(guid, pData);
 }
@@ -2193,7 +2197,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	// This crashes Witcher3, for no obvious reason.
 	// We don't need to wrap Deferred Contexts anyway, so skip for now.
 	//LogInfo("*** Double check context is correct ****\n\n");
-	//LogInfo("HackerDevice::CreateDeferredContext called with flags = %x\n", ContextFlags);
+	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %x \n", typeid(*this).name(), this, ContextFlags);
 
 	//ID3D11DeviceContext *deferContext = 0;
 	//HRESULT ret = -1;
@@ -2209,8 +2213,9 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	//	LogInfo("\n*** Double check context is correct ****\n");
 	//}
 
-	HRESULT ret = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
-	return ret;
+	HRESULT hr = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
+	LogDebug("  returns result = %x\n", hr);
+	return hr;
 }
 
 // A variant where we want to return a HackerContext instead of the
@@ -2225,7 +2230,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	/* [annotation] */
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("HackerDevice::GetImmediateContext called.\n");
+	LogInfo("HackerDevice::GetImmediateContext(%s@%p) called. \n", typeid(*this).name(), this);
 
 	*ppImmediateContext = mHackerContext;
 
