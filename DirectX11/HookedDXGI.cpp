@@ -144,6 +144,7 @@ lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
 
 // It's not legal to mix Factory1 and Factory in the same app, so we'll not
 // look for Factory here.  Bizarrely though, Factory2 is expected.
+// Except that, Dragon Age makes the mistake of calling Factory1 for Factory. D'oh!
 
 static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
@@ -159,6 +160,8 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 		return E_NOINTERFACE;
 	}
 
+	// Call original factory, regardless of what they requested, to keep the
+	// same expected sequence from their perspective.
 	IDXGIFactory1 *origFactory1;
 	HRESULT hr = fnOrigCreateFactory1(riid, (void **)&origFactory1);
 	if (FAILED(hr))
@@ -168,18 +171,26 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	}
 	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
 
-	HackerDXGIFactory1 *factory1Wrap;
-	factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
-
-	// ToDo: this null check is not necessary as it would throw exception.
-	if (factory1Wrap == NULL)
+	// If we were requested to create a DXGIFactory, go ahead and make our wrapper.
+	if (riid == __uuidof(IDXGIFactory))
 	{
-		LogInfo("  error allocating factoryWrap. \n");
-		origFactory1->Release();
-		return E_OUTOFMEMORY;
+		HackerDXGIFactory *factoryWrap;
+		factoryWrap = new HackerDXGIFactory(origFactory1, NULL, NULL);
+		if (ppFactory1)
+			*ppFactory1 = factoryWrap;
+		LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", typeid(*factoryWrap).name(), factoryWrap, origFactory1);
 	}
-	if (ppFactory1)
-		*ppFactory1 = factory1Wrap;
+	else
+	{
+		HackerDXGIFactory1 *factory1Wrap;
+		factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
+		if (ppFactory1)
+			*ppFactory1 = factory1Wrap;
+		LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", typeid(*factory1Wrap).name(), factory1Wrap, origFactory1);
+	}
+
+	// ToDo: Skipped null checks as they would throw exceptions- but
+	// we should handle exceptions.
 
 	return hr;
 }
