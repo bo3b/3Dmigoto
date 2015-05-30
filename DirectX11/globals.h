@@ -182,6 +182,7 @@ struct Globals
 	bool hunting;
 	bool fix_enabled;
 	bool config_reloadable;
+	bool show_original_enabled;
 	time_t huntTime;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
@@ -293,6 +294,7 @@ struct Globals
 		hunting(false),
 		fix_enabled(true),
 		config_reloadable(false),
+		show_original_enabled(false),
 		huntTime(0),
 
 		EXPORT_SHADERS(false),

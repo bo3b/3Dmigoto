@@ -1237,7 +1237,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 
 	RegisterIniKeyBinding(L"Hunting", L"reload_fixes", iniFile, ReloadFixes, NULL, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
+	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);
