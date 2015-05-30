@@ -171,16 +171,19 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	}
 	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
 
+	// This sequence makes Witcher3 crash.  They also send in uuid=IDXGIFactory to this
+	// Factory1 object.  Not supposed to be legal, but apparently the factory will still 
+	// make a Factory1 object.  
 	// If we were requested to create a DXGIFactory, go ahead and make our wrapper.
-	if (riid == __uuidof(IDXGIFactory))
-	{
-		HackerDXGIFactory *factoryWrap;
-		factoryWrap = new HackerDXGIFactory(origFactory1, NULL, NULL);
-		if (ppFactory1)
-			*ppFactory1 = factoryWrap;
-		LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", typeid(*factoryWrap).name(), factoryWrap, origFactory1);
-	}
-	else
+	//if (riid == __uuidof(IDXGIFactory))
+	//{
+	//	HackerDXGIFactory *factoryWrap;
+	//	factoryWrap = new HackerDXGIFactory(origFactory1, NULL, NULL);
+	//	if (ppFactory1)
+	//		*ppFactory1 = factoryWrap;
+	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", typeid(*factoryWrap).name(), factoryWrap, origFactory1);
+	//}
+	//else
 	{
 		HackerDXGIFactory1 *factory1Wrap;
 		factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
