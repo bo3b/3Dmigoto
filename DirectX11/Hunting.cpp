@@ -754,11 +754,11 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 			FindClose(hFind);
 		}
 
-		// Any shaders in the map not visited, we want to revert back to original.
-		RevertMissingShaders();
-
 		if (success)
 		{
+			// Any shaders in the map not visited, we want to revert back to original.
+			RevertMissingShaders();
+
 			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
 			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
 		}
