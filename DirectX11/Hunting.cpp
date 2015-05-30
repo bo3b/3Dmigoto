@@ -497,6 +497,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 	wstring shaderType;		// "vs" or "ps" maybe "gs"
 	FILETIME timeStamp;
 	HRESULT hr = E_FAIL;
+	bool rc = true;
 
 	// Extract hash from first 16 characters of file name so we can look up details by hash
 	wstring ws = fileName;
@@ -545,7 +546,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			{
 				shaderModel = GetShaderModel(shaderCode->GetBufferPointer(), shaderCode->GetBufferSize());
 				if (shaderModel.empty())
-					return false;
+					goto err;
 				G->mReloadedShaders[oldShader].shaderModel = shaderModel;
 			}
 
@@ -556,7 +557,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 			// If we compiled but got nothing, that's a fatal error we need to report.
 			if (pShaderBytecode == NULL)
-				return false;
+				goto err;
 
 			// Update timestamp, since we have an edited file.
 			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
@@ -573,7 +574,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 					(ID3D11PixelShader**)&replacement);
 			}
 			if (FAILED(hr))
-				return false;
+				goto err;
 
 
 			// If we have an older reloaded shader, let's release it to avoid a memory leak.  This only happens after 1st reload.
@@ -590,9 +591,13 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 		}
 	}	// for every registered shader in mReloadedShaders 
 
+out:
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
-	return true;
+	return rc;
+err:
+	rc = false;
+	goto out;
 }
 
 
