@@ -1800,33 +1800,34 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 			LogDebug("  vertex shader %p not found\n", pVertexShader);
 			// G->mCurrentVertexShader = 0;
 		}
-	}
 
-	if (G->hunting && pVertexShader)
-	{
-		// Replacement map.
-		if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
-			if ((G->mSelectedVertexShader == G->mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
-			{
-				ID3D11VertexShader *shader = j->second;
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
-				return;
+		if (G->hunting)
+		{
+			// Replacement map.
+			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+				VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
+				if ((G->mSelectedVertexShader == G->mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
+				{
+					ID3D11VertexShader *shader = j->second;
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+					mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
+					return;
+				}
 			}
-		}
-		if (G->marking_mode == MARKING_MODE_ZERO) {
-			VertexShaderReplacementMap::iterator j = G->mZeroVertexShaders.find(pVertexShader);
-			if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mZeroVertexShaders.end())
-			{
-				ID3D11VertexShader *shader = j->second;
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
-				return;
+			if (G->marking_mode == MARKING_MODE_ZERO) {
+				VertexShaderReplacementMap::iterator j = G->mZeroVertexShaders.find(pVertexShader);
+				if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mZeroVertexShaders.end())
+				{
+					ID3D11VertexShader *shader = j->second;
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+					mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
+					return;
+				}
 			}
 		}
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
+		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
@@ -1837,9 +1838,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 			mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
 		}
-	}
 
-	if (pVertexShader) {
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1966,33 +1965,34 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 		{
 			LogDebug("  pixel shader %p not found\n", pPixelShader);
 		}
-	}
 
-	if (G->hunting && pPixelShader)
-	{
-		// Replacement map.
-		if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
-			if ((G->mSelectedPixelShader == G->mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
-			{
-				ID3D11PixelShader *shader = j->second;
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
-				return;
+		if (G->hunting)
+		{
+			// Replacement map.
+			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+				PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
+				if ((G->mSelectedPixelShader == G->mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
+				{
+					ID3D11PixelShader *shader = j->second;
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+					mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
+					return;
+				}
 			}
-		}
-		if (G->marking_mode == MARKING_MODE_ZERO) {
-			PixelShaderReplacementMap::iterator j = G->mZeroPixelShaders.find(pPixelShader);
-			if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mZeroPixelShaders.end())
-			{
-				ID3D11PixelShader *shader = j->second;
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
-				return;
+			if (G->marking_mode == MARKING_MODE_ZERO) {
+				PixelShaderReplacementMap::iterator j = G->mZeroPixelShaders.find(pPixelShader);
+				if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mZeroPixelShaders.end())
+				{
+					ID3D11PixelShader *shader = j->second;
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+					mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
+					return;
+				}
 			}
 		}
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
+		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
 		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
 		{
@@ -2004,9 +2004,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 			mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
 			return;
 		}
-	}
 
-	if (pPixelShader) {
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
