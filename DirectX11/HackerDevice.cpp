@@ -301,25 +301,44 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	}
 	else if (riid == __uuidof(ID3D11Device1))
 	{
-		ID3D11Device1 *origDevice1;
-		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDevice1));
+		// Well, bizarrely, this approach to upcasting to a ID3D11Device1 is supported on Win7, 
+		// but only if you have the 'evil update', the platform update installed.  Since that
+		// is an optional update, that certainly means that numerous people do not have it 
+		// installed. Ergo, a game developer cannot in good faith just assume that it's there,
+		// and it's very unlikely they would require it. No performance advantage on Win8.
+		// So, that means that a game developer must support a fallback path, even if they
+		// actually want Device1 for some reason.
+		//
+		// Sooo... Current plan is to return an error here, and pretend that the platform
+		// update is not installed, or missing feature on Win8.1.  This will force the game
+		// to use a more compatible path and make our job easier.
+		// This worked in DragonAge, to avoid a crash. Wrapping Device1 also progressed but
+		// adds a ton of undesirable complexity, so let's keep it simpler since we don't 
+		// seem to lose anything. Not features, not performance.
+		
+		LogInfo("  returns E_NOINTERFACE as error. \n");
+		*ppvObject = NULL;
+		return E_NOINTERFACE;
 
-		ID3D11DeviceContext1 *origContext1;
-		origDevice1->GetImmediateContext1(&origContext1);
-		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
+		// Maybe later:
+		//ID3D11Device1 *origDevice1;
+		//hr = mOrigDevice->QueryInterface(riid, (void**)(&origDevice1));
 
-		LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", typeid(*hackerContextWrap1).name(), hackerContextWrap1, origContext1);
+		//ID3D11DeviceContext1 *origContext1;
+		//origDevice1->GetImmediateContext1(&origContext1);
+		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
 
-		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
-		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		//LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", typeid(*hackerContextWrap1).name(), hackerContextWrap1, origContext1);
 
-		LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", typeid(*hackerDeviceWrap1).name(), hackerDeviceWrap1, origDevice1);
+		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
+		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
 
-		// ToDo: Handle memory allocation exceptions
+		//LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", typeid(*hackerDeviceWrap1).name(), hackerDeviceWrap1, origDevice1);
 
-		if (ppvObject)
-			*ppvObject = hackerDeviceWrap1;
+		//// ToDo: Handle memory allocation exceptions
 
+		//if (ppvObject)
+		//	*ppvObject = hackerDeviceWrap1;
 	}
 	else
 	{
