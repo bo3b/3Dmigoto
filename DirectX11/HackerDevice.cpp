@@ -2238,22 +2238,20 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	//LogInfo("*** Double check context is correct ****\n\n");
 	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %x \n", typeid(*this).name(), this, ContextFlags);
 
-	//ID3D11DeviceContext *deferContext = 0;
-	//HRESULT ret = -1;
+	ID3D11DeviceContext *deferContext = NULL;
+	HRESULT hr = -1;
 
-	//if (*ppDeferredContext)
-	//{
-	//	ret = mOrigDevice->CreateDeferredContext(ContextFlags, &deferContext);
-	//	HackerContext *hackerContext = new HackerContext(mOrigDevice, deferContext);
-	//	hackerContext->SetHackerDevice(this);
-	//	*ppDeferredContext = hackerContext;
+	if (ppDeferredContext)
+	{
+		hr = mOrigDevice->CreateDeferredContext(ContextFlags, &deferContext);
+		HackerContext *hackerContext = new HackerContext(mOrigDevice, deferContext);
+		hackerContext->SetHackerDevice(this);
+		*ppDeferredContext = hackerContext;
 
-	//	LogInfo("  returns result = %x, handle = %p, wrapper = %s\n", ret, deferContext, typeid(*ppDeferredContext).name());
-	//	LogInfo("\n*** Double check context is correct ****\n");
-	//}
+		LogInfo("  returns result = %x, handle = %p, wrapper = %s\n", hr, deferContext, typeid(*ppDeferredContext).name());
+		LogInfo("\n*** Double check context is correct ****\n");
+	}
 
-	HRESULT hr = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
-	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
 

@@ -212,7 +212,6 @@ struct Globals
 	bool ENABLE_CRITICAL_SECTION;
 
 	DataBufferMap mDataBuffers;
-	UINT64 mCurrentIndexBuffer;
 	std::set<UINT64> mVisitedIndexBuffers;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedIndexBuffer;
 	unsigned int mSelectedIndexBufferPos;
@@ -225,8 +224,6 @@ struct Globals
 	PreloadVertexShaderMap mPreloadedVertexShaders;			// All shaders that were preloaded as .bin
 	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
 	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
-	UINT64 mCurrentVertexShader;							// Shader currently live in GPU pipeline.
-	ID3D11VertexShader *mCurrentVertexShaderHandle;			// Shader currently live in GPU pipeline.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
@@ -236,8 +233,6 @@ struct Globals
 	PreloadPixelShaderMap mPreloadedPixelShaders;
 	PixelShaderReplacementMap mOriginalPixelShaders;
 	PixelShaderReplacementMap mZeroPixelShaders;
-	UINT64 mCurrentPixelShader;
-	ID3D11PixelShader *mCurrentPixelShaderHandle;
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
@@ -258,10 +253,8 @@ struct Globals
 	std::map<UINT64, struct ResourceInfo> mRenderTargetInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, struct ResourceInfo> mDepthTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<void *> mVisitedRenderTargets;					// std::set is sorted for consistent order while hunting
-	std::vector<void *> mCurrentRenderTargets;
 	void *mSelectedRenderTarget;
 	unsigned int mSelectedRenderTargetPos;
-	void *mCurrentDepthTarget;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
 	std::set<void *> mSelectedRenderTargetSnapshotList;		// std::set so that render targets will be sorted in log when marked
@@ -278,16 +271,10 @@ struct Globals
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(0),
 		mSelectedRenderTarget((void *)1),
-		mCurrentDepthTarget(0),
-		mCurrentPixelShader(0),
-		mCurrentPixelShaderHandle(NULL),
 		mSelectedPixelShader(-1),
 		mSelectedPixelShaderPos(-1),
-		mCurrentVertexShader(0),
-		mCurrentVertexShaderHandle(NULL),
 		mSelectedVertexShader(-1),
 		mSelectedVertexShaderPos(-1),
-		mCurrentIndexBuffer(0),
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
 

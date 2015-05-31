@@ -63,6 +63,15 @@ private:
 	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
 		bool log_new, struct ResourceInfo *resource_info);
 
+	// These are per-context, moved from globals.h:
+	UINT64 mCurrentIndexBuffer;
+	UINT64 mCurrentVertexShader;
+	ID3D11VertexShader *mCurrentVertexShaderHandle;
+	UINT64 mCurrentPixelShader;
+	ID3D11PixelShader *mCurrentPixelShaderHandle;
+	std::vector<void *> mCurrentRenderTargets;
+	void *mCurrentDepthTarget;
+
 public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
