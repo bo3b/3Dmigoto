@@ -100,19 +100,24 @@ void Overlay::DrawOverlay(void)
 	{
 		const int maxstring = 200;
 		wchar_t line[maxstring];
+		Vector2 strSize;
+		Vector2 textPosition;
 
 		// Arbitrary choice, but this wants to draw the text on the left edge of the
 		// screen, where longer lines don't need wrapping or centering concern.
-
-		Vector2 textPosition(10, float(mResolution.y) / 2);
-
-		// Desired format "Sep:85" "Conv:4.5"
-		swprintf_s(line, maxstring, L"Sep:%.0f\nConv:%.1f", separation, convergence);
-		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
+		// Tried that, didn't really like it.  Let's try moving sep/conv at bottom middle,
+		// and shader counts in top middle.
 
 		// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
-		textPosition.y += 2.5f * mFont->GetLineSpacing();
-		swprintf_s(line, maxstring, L"VS:%d/%d\nPS:%d/%d", vsPosition, vsActive, psPosition, psActive);
+		swprintf_s(line, maxstring, L"VS:%d/%d  PS:%d/%d", vsPosition, vsActive, psPosition, psActive);
+		strSize = mFont->MeasureString(line);
+		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
+		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
+
+		// Desired format "Sep:85  Conv:4.5"
+		swprintf_s(line, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+		strSize = mFont->MeasureString(line);
+		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
 	}
 	mSpriteBatch->End();
