@@ -21,6 +21,13 @@ HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContex
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
+
+	mCurrentIndexBuffer = 0;
+	mCurrentVertexShader = 0;
+	mCurrentVertexShaderHandle = NULL;
+	mCurrentPixelShader = 0;
+	mCurrentPixelShaderHandle = NULL;
+	mCurrentDepthTarget = NULL;
 }
 
 
@@ -152,7 +159,7 @@ void HackerContext::RecordShaderResourceUsage()
 			// FIXME: Don't clobber these - it would be useful to
 			// collect a set of all seen resources, e.g. for
 			// matching all textures used by a shader.
-			G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[i] = resource;
+			G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i] = resource;
 		}
 
 		resource = RecordResourceViewStats(vs_views[i]);
@@ -160,7 +167,7 @@ void HackerContext::RecordShaderResourceUsage()
 			// FIXME: Don't clobber these - it would be useful to
 			// collect a set of all seen resources, e.g. for
 			// matching all textures used by a shader.
-			G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[i] = resource;
+			G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i] = resource;
 		}
 	}
 }
@@ -205,7 +212,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mRenderTargets[resource] = hash;
-		G->mCurrentRenderTargets.push_back(resource);
+		mCurrentRenderTargets.push_back(resource);
 		G->mVisitedRenderTargets.insert(resource);
 		G->mRenderTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -247,7 +254,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mRenderTargets[resource] = hash;
-		G->mCurrentDepthTarget = resource;
+		mCurrentDepthTarget = resource;
 		G->mDepthTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -327,7 +334,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	if (!shaderOverride->indexBufferFilter.empty()) {
 		bool found = false;
 		for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
-			if (G->mCurrentIndexBuffer == *l)
+			if (mCurrentIndexBuffer == *l)
 			{
 				found = true;
 				break;
@@ -364,11 +371,11 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 
 	if (shaderOverride->partner_hash) {
 		if (isPixelShader) {
-			if (G->mCurrentVertexShader != shaderOverride->partner_hash)
+			if (mCurrentVertexShader != shaderOverride->partner_hash)
 				use_orig = true;
 		}
 		else {
-			if (G->mCurrentPixelShader != shaderOverride->partner_hash)
+			if (mCurrentPixelShader != shaderOverride->partner_hash)
 				use_orig = true;
 		}
 	}
@@ -377,12 +384,12 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 
 	if (use_orig) {
 		if (isPixelShader) {
-			PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(G->mCurrentPixelShaderHandle);
+			PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(mCurrentPixelShaderHandle);
 			if (i != G->mOriginalPixelShaders.end())
 				data->oldPixelShader = SwitchPSShader(i->second);
 		}
 		else {
-			VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(G->mCurrentVertexShaderHandle);
+			VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(mCurrentVertexShaderHandle);
 			if (i != G->mOriginalVertexShaders.end())
 				data->oldVertexShader = SwitchVSShader(i->second);
 		}
@@ -469,22 +476,22 @@ DrawContext HackerContext::BeforeDraw()
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		{
 			// Stats
-			if (G->mCurrentVertexShader && G->mCurrentPixelShader)
+			if (mCurrentVertexShader && mCurrentPixelShader)
 			{
-				G->mVertexShaderInfo[G->mCurrentVertexShader].PartnerShader.insert(G->mCurrentPixelShader);
-				G->mPixelShaderInfo[G->mCurrentPixelShader].PartnerShader.insert(G->mCurrentVertexShader);
+				G->mVertexShaderInfo[mCurrentVertexShader].PartnerShader.insert(mCurrentPixelShader);
+				G->mPixelShaderInfo[mCurrentPixelShader].PartnerShader.insert(mCurrentVertexShader);
 			}
-			if (G->mCurrentPixelShader) {
-				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-					std::vector<std::set<void *>> &targets = G->mPixelShaderInfo[G->mCurrentPixelShader].RenderTargets;
+			if (mCurrentPixelShader) {
+				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+					std::vector<std::set<void *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
 
 					if (selectedRenderTargetPos >= targets.size())
 						targets.push_back(std::set<void *>());
 
-					targets[selectedRenderTargetPos].insert(G->mCurrentRenderTargets[selectedRenderTargetPos]);
+					targets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
 				}
-				if (G->mCurrentDepthTarget)
-					G->mPixelShaderInfo[G->mCurrentPixelShader].DepthTargets.insert(G->mCurrentDepthTarget);
+				if (mCurrentDepthTarget)
+					G->mPixelShaderInfo[mCurrentPixelShader].DepthTargets.insert(mCurrentDepthTarget);
 			}
 
 			// Maybe make this optional if it turns out to have a
@@ -492,17 +499,17 @@ DrawContext HackerContext::BeforeDraw()
 			RecordShaderResourceUsage();
 
 			// Selection
-			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < G->mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
-				if (G->mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
-			if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
-				G->mCurrentVertexShader == G->mSelectedVertexShader ||
-				G->mCurrentPixelShader == G->mSelectedPixelShader ||
-				selectedRenderTargetPos < G->mCurrentRenderTargets.size())
+			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
+				if (mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
+			if (mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
+				mCurrentVertexShader == G->mSelectedVertexShader ||
+				mCurrentPixelShader == G->mSelectedPixelShader ||
+				selectedRenderTargetPos < mCurrentRenderTargets.size())
 			{
 				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx%08lx, CurrentVertexShader = %08lx%08lx, CurrentPixelShader = %08lx%08lx\n",
-					(UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer,
-					(UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader,
-					(UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
+					(UINT32)(mCurrentIndexBuffer >> 32), (UINT32)mCurrentIndexBuffer,
+					(UINT32)(mCurrentVertexShader >> 32), (UINT32)mCurrentVertexShader,
+					(UINT32)(mCurrentPixelShader >> 32), (UINT32)mCurrentPixelShader);
 
 				// Snapshot render target list.
 				if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
@@ -510,17 +517,17 @@ DrawContext HackerContext::BeforeDraw()
 					G->mSelectedRenderTargetSnapshotList.clear();
 					G->mSelectedRenderTargetSnapshot = G->mSelectedRenderTarget;
 				}
-				G->mSelectedRenderTargetSnapshotList.insert(G->mCurrentRenderTargets.begin(), G->mCurrentRenderTargets.end());
+				G->mSelectedRenderTargetSnapshotList.insert(mCurrentRenderTargets.begin(), mCurrentRenderTargets.end());
 				// Snapshot info.
-				if (G->mCurrentIndexBuffer == G->mSelectedIndexBuffer)
+				if (mCurrentIndexBuffer == G->mSelectedIndexBuffer)
 				{
-					G->mSelectedIndexBuffer_VertexShader.insert(G->mCurrentVertexShader);
-					G->mSelectedIndexBuffer_PixelShader.insert(G->mCurrentPixelShader);
+					G->mSelectedIndexBuffer_VertexShader.insert(mCurrentVertexShader);
+					G->mSelectedIndexBuffer_PixelShader.insert(mCurrentPixelShader);
 				}
-				if (G->mCurrentVertexShader == G->mSelectedVertexShader)
-					G->mSelectedVertexShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
-				if (G->mCurrentPixelShader == G->mSelectedPixelShader)
-					G->mSelectedPixelShader_IndexBuffer.insert(G->mCurrentIndexBuffer);
+				if (mCurrentVertexShader == G->mSelectedVertexShader)
+					G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
+				if (mCurrentPixelShader == G->mSelectedPixelShader)
+					G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
 				if (G->marking_mode == MARKING_MODE_MONO)
 				{
 					data.override = true;
@@ -539,8 +546,8 @@ DrawContext HackerContext::BeforeDraw()
 		return data;
 
 	// Override settings?
-	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(G->mCurrentVertexShader);
-	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(G->mCurrentPixelShader);
+	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(mCurrentVertexShader);
+	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(mCurrentPixelShader);
 
 	if (iVertex != G->mShaderOverrideMap.end())
 		ProcessShaderOverride(&iVertex->second, false, &data, &separationValue, &convergenceValue);
@@ -1781,9 +1788,9 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 		VertexShaderMap::iterator i = G->mVertexShaders.find(pVertexShader);
 		if (i != G->mVertexShaders.end())
 		{
-			G->mCurrentVertexShader = i->second;
-			G->mCurrentVertexShaderHandle = pVertexShader;
-			LogDebug("  vertex shader found: handle = %p, hash = %08lx%08lx\n", pVertexShader, (UINT32)(G->mCurrentVertexShader >> 32), (UINT32)G->mCurrentVertexShader);
+			mCurrentVertexShader = i->second;
+			mCurrentVertexShaderHandle = pVertexShader;
+			LogDebug("  vertex shader found: handle = %p, hash = %08lx%08lx\n", pVertexShader, (UINT32)(mCurrentVertexShader >> 32), (UINT32)mCurrentVertexShader);
 
 			if (G->hunting) {
 				// Add to visited vertex shaders.
@@ -1798,7 +1805,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 		else
 		{
 			LogDebug("  vertex shader %p not found\n", pVertexShader);
-			// G->mCurrentVertexShader = 0;
+			// mCurrentVertexShader = 0;
 		}
 
 		if (G->hunting)
@@ -1806,7 +1813,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 			// Replacement map.
 			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
 				VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
-				if ((G->mSelectedVertexShader == G->mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
+				if ((G->mSelectedVertexShader == mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
 				{
 					ID3D11VertexShader *shader = j->second;
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1816,7 +1823,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 			}
 			if (G->marking_mode == MARKING_MODE_ZERO) {
 				VertexShaderReplacementMap::iterator j = G->mZeroVertexShaders.find(pVertexShader);
-				if (G->mSelectedVertexShader == G->mCurrentVertexShader && j != G->mZeroVertexShaders.end())
+				if (G->mSelectedVertexShader == mCurrentVertexShader && j != G->mZeroVertexShaders.end())
 				{
 					ID3D11VertexShader *shader = j->second;
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1901,7 +1908,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 				// FIXME: Don't clobber these - it would be useful to
 				// collect a set of all seen resources, e.g. for
 				// matching all textures used by a shader.
-				G->mPixelShaderInfo[G->mCurrentPixelShader].ResourceRegisters[pos] = pResource;
+				G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[pos] = pResource;
 			}
 
 		}
@@ -1947,9 +1954,9 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 		PixelShaderMap::iterator i = G->mPixelShaders.find(pPixelShader);
 		if (i != G->mPixelShaders.end())
 		{
-			G->mCurrentPixelShader = i->second;
-			G->mCurrentPixelShaderHandle = pPixelShader;
-			LogDebug("  pixel shader found: handle = %p, hash = %08lx%08lx\n", pPixelShader, (UINT32)(G->mCurrentPixelShader >> 32), (UINT32)G->mCurrentPixelShader);
+			mCurrentPixelShader = i->second;
+			mCurrentPixelShaderHandle = pPixelShader;
+			LogDebug("  pixel shader found: handle = %p, hash = %08lx%08lx\n", pPixelShader, (UINT32)(mCurrentPixelShader >> 32), (UINT32)mCurrentPixelShader);
 
 			if (G->hunting) {
 				// Add to visited pixel shaders.
@@ -1971,7 +1978,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 			// Replacement map.
 			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
 				PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
-				if ((G->mSelectedPixelShader == G->mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
+				if ((G->mSelectedPixelShader == mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
 				{
 					ID3D11PixelShader *shader = j->second;
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1981,7 +1988,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 			}
 			if (G->marking_mode == MARKING_MODE_ZERO) {
 				PixelShaderReplacementMap::iterator j = G->mZeroPixelShaders.find(pPixelShader);
-				if (G->mSelectedPixelShader == G->mCurrentPixelShader && j != G->mZeroPixelShaders.end())
+				if (G->mSelectedPixelShader == mCurrentPixelShader && j != G->mZeroPixelShaders.end())
 				{
 					ID3D11PixelShader *shader = j->second;
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -2096,11 +2103,11 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 			DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);
 			if (i != G->mDataBuffers.end())
 			{
-				G->mCurrentIndexBuffer = i->second;
-				LogDebug("  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(G->mCurrentIndexBuffer >> 32), (UINT32)G->mCurrentIndexBuffer);
+				mCurrentIndexBuffer = i->second;
+				LogDebug("  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(mCurrentIndexBuffer >> 32), (UINT32)mCurrentIndexBuffer);
 
 				// Add to visited index buffers.
-				G->mVisitedIndexBuffers.insert(G->mCurrentIndexBuffer);
+				G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
 
 				// second try to hide index buffer.
 				// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
@@ -2182,7 +2189,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 				// FIXME: Don't clobber these - it would be useful to
 				// collect a set of all seen resources, e.g. for
 				// matching all textures used by a shader.
-				G->mVertexShaderInfo[G->mCurrentVertexShader].ResourceRegisters[pos] = pResource;
+				G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[pos] = pResource;
 			}
 
 		}
@@ -2223,8 +2230,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	if (G->hunting)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mCurrentRenderTargets.clear();
-			G->mCurrentDepthTarget = NULL;
+			mCurrentRenderTargets.clear();
+			mCurrentDepthTarget = NULL;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {
