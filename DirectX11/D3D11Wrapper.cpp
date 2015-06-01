@@ -632,7 +632,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 
-	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p \n",
+	LogInfo("->D3D11CreateDevice returned device handle = %p, context handle = %p \n",
 		origDevice, origContext);
 
 #if _DEBUG_LAYER
@@ -664,7 +664,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (contextWrap != nullptr)
 		contextWrap->SetHackerDevice(deviceWrap);
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n", 
+	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n", 
 		ret, origDevice, deviceWrap, origContext, contextWrap);
 
 	return ret;
@@ -722,7 +722,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
+	LogInfo("->D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
 		origDevice, origContext, origSwapChain);
 
 #if _DEBUG_LAYER
@@ -765,7 +765,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		contextWrap->SetHackerDevice(deviceWrap);
 	}
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
+	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
 		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
 	

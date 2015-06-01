@@ -120,7 +120,7 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 	HMODULE module;
 
 	// This is late enough that we can look for standard logging.
-	LogDebugW(L"Call to Hooked_LoadLibraryExW for: %s.\n", lpLibFileName);
+	LogDebugW(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
 
 	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
 	if (module)
