@@ -155,20 +155,12 @@ void HackerContext::RecordShaderResourceUsage()
 
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		resource = RecordResourceViewStats(ps_views[i]);
-		if (resource) {
-			// FIXME: Don't clobber these - it would be useful to
-			// collect a set of all seen resources, e.g. for
-			// matching all textures used by a shader.
-			G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i] = resource;
-		}
+		if (resource)
+			G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i].insert(resource);
 
 		resource = RecordResourceViewStats(vs_views[i]);
-		if (resource) {
-			// FIXME: Don't clobber these - it would be useful to
-			// collect a set of all seen resources, e.g. for
-			// matching all textures used by a shader.
-			G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i] = resource;
-		}
+		if (resource)
+			G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i].insert(resource);
 	}
 }
 
@@ -1904,12 +1896,8 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 			int pos = StartSlot + i;
 
 			pResource = RecordResourceViewStats(ppShaderResourceViews[i]);
-			if (pResource) {
-				// FIXME: Don't clobber these - it would be useful to
-				// collect a set of all seen resources, e.g. for
-				// matching all textures used by a shader.
-				G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[pos] = pResource;
-			}
+			if (pResource)
+				G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[pos].insert(pResource);
 
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -2185,12 +2173,8 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 			int pos = StartSlot + i;
 
 			pResource = RecordResourceViewStats(ppShaderResourceViews[i]);
-			if (pResource) {
-				// FIXME: Don't clobber these - it would be useful to
-				// collect a set of all seen resources, e.g. for
-				// matching all textures used by a shader.
-				G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[pos] = pResource;
-			}
+			if (pResource)
+				G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[pos].insert(pResource);
 
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
