@@ -197,6 +197,28 @@ public:
 
 // -----------------------------------------------------------------------------
 
+class HackerDXGIDevice1 : public HackerDXGIDevice
+{
+private:
+	IDXGIDevice1 *mOrigDXGIDevice1;
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
+
+public:
+	HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext);
+
+
+	STDMETHOD(SetMaximumFrameLatency)(
+		/* [in] */ UINT MaxLatency);
+
+	STDMETHOD(GetMaximumFrameLatency)(
+		/* [annotation][out] */
+		_Out_  UINT *pMaxLatency);
+};
+
+
+// -----------------------------------------------------------------------------
+
 class HackerDXGIOutput : public HackerDXGIObject
 {
 private:

@@ -20,12 +20,20 @@ HackerDXGIObject::HackerDXGIObject(IDXGIObject *pObject)
 	mOrigObject = pObject;
 }
 
-// Worth noting- the device and context for the secrete path are the Hacker 
+// Worth noting- the device and context for the secret path are the Hacker 
 // versions, because we need access to their fields later.
 HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIObject(pDXGIDevice)
 {
 	mOrigDXGIDevice = pDXGIDevice;
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
+}
+
+HackerDXGIDevice1::HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext)
+	: HackerDXGIDevice(pDXGIDevice, pDevice, pContext)
+{
+	mOrigDXGIDevice1 = pDXGIDevice;
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
 }
@@ -309,6 +317,27 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 	return hr;
 }
 
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIDevice1::SetMaximumFrameLatency(
+	/* [in] */ UINT MaxLatency)
+{
+	LogInfo("HackerDXGIDevice1::SetMaximumFrameLatency(%s@%p) called \n", typeid(*this).name(), this);
+	HRESULT hr = mOrigDXGIDevice1->SetMaximumFrameLatency(MaxLatency);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
+	/* [annotation][out] */
+	_Out_  UINT *pMaxLatency)
+{
+	LogInfo("HackerDXGIDevice1::GetMaximumFrameLatency(%s@%p) called \n", typeid(*this).name(), this);
+	HRESULT hr = mOrigDXGIDevice1->GetMaximumFrameLatency(pMaxLatency);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
 
 // -----------------------------------------------------------------------------
 
