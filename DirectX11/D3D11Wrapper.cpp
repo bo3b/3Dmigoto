@@ -546,211 +546,229 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 
 // -----------------------------------------------------------------------------------------------
 
+// Only where _DEBUG_LAYER=1, typically debug builds.  Set the flags to
+// enable GPU debugging.  This makes the GPU dramatically slower but can
+// catch bogus setup or bad calls to the GPU environment.
+// The prevent threading optimizations can help show if we have a multi-threading problem.
+
+UINT EnableDebugFlags(UINT flags)
+{
+	flags |= D3D11_CREATE_DEVICE_DEBUG;
+	flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
+	LogInfo("  D3D11CreateDevice _DEBUG_LAYER flags set: %#x \n", flags);
+
+	return flags;
+}
+
+
+// Only where _DEBUG_LAYER=1.  This enables the debug layer for the GPU
+// itself, which will show GPU errors, warnings, and leaks in the console output.
+// This call shows that the layer is active, and the initial LiveObjectState.
+// And enable debugger breaks for errors that we might be introducing.
+
+void ShowDebugInfo(ID3D11Device *origDevice)
+{
+	ID3D11Debug *d3dDebug = nullptr;
+	if (origDevice != nullptr)
+	{
+		if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
+		{
+			ID3D11InfoQueue *d3dInfoQueue = nullptr;
+
+			if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
+			{
+				d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+				d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+			}
+		}
+		d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+	}
+}
+
+
 // For creating the device, we need to call the original D3D11CreateDevice in order to initialize
 // Direct3D, and collect the original Device and original Context.  Both of those will be handed
 // off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
 // as needed.  Both Hacker objects need access to both Context and Device, so since both are 
 // created here, it's easy enough to provide them upon instantiation.
+//
+// Now intended to be fully null safe- as games seem to have a lot of variance.
 
 HRESULT WINAPI D3D11CreateDevice(
-	IDXGIAdapter *pAdapter,
-	D3D_DRIVER_TYPE DriverType,
-	HMODULE Software,
-	UINT Flags,
-	const D3D_FEATURE_LEVEL *pFeatureLevels,
-	UINT FeatureLevels,
-	UINT SDKVersion,
-	HackerDevice **ppDevice,
-	D3D_FEATURE_LEVEL *pFeatureLevel,
-	HackerContext **ppImmediateContext)
+	_In_opt_        IDXGIAdapter        *pAdapter,
+					D3D_DRIVER_TYPE     DriverType,
+					HMODULE             Software,
+					UINT                Flags,
+	_In_opt_  const D3D_FEATURE_LEVEL   *pFeatureLevels,
+					UINT                FeatureLevels,
+					UINT                SDKVersion,
+	_Out_opt_       ID3D11Device        **ppDevice,
+	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
+	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
 	InitD311();
-	LogInfo("\n\nD3D11CreateDevice called with adapter = %p \n", pAdapter);
+	LogInfo("\n\n *** D3D11CreateDevice called with  \n");
+	LogInfo("    pAdapter = %p \n", pAdapter);
+	LogInfo("    Flags = %#x \n", Flags);
+	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ? *pFeatureLevels : 0);
+	LogInfo("    ppDevice = %p \n", ppDevice);
+	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel : 0);
+	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
 #if _DEBUG_LAYER
-	Flags |= D3D11_CREATE_DEVICE_DEBUG;
-	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
-	LogInfo("  D3D11CreateDevice _DEBUG_LAYER flags set: %#x \n", Flags);
+	Flags = EnableDebugFlags(Flags);
 #endif
 
-	ID3D11Device *origDevice = 0;
-	ID3D11DeviceContext *origContext = 0;
-
 	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, &origDevice, pFeatureLevel, &origContext);
+		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
-	if (!origDevice || !origContext)
-		return ret;
-
-	// ret from D3D11CreateDevice has the same problem as CreateDeviceAndSwapChain, in that it can return
-	// a value that S_FALSE, which is a positive number.  It's not an error exactly, but it's not S_OK.
-	// The best check here is for FAILED instead, to allow benign errors to continue.
 	if (FAILED(ret))
 	{
 		LogInfo("  failed with HRESULT=%x\n", ret);
 		return ret;
 	}
 
+	// Optional parameters means these might be null.
+	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+
+	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p \n",
+		origDevice, origContext);
+
 #if _DEBUG_LAYER
-	// If we are using the Debug Layer, lets dump the LiveObjectState to show it's working.
-	ID3D11Debug *d3dDebug = nullptr;
-	if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
-	{
-		ID3D11InfoQueue *d3dInfoQueue = nullptr;
-		if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
-		{
-			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-		}
-	}
-	d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+	ShowDebugInfo(origDevice);
 #endif
 
 	// Create a wrapped version of the original device to return to the game.
-	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
-	if (deviceWrap == NULL)
+	HackerDevice *deviceWrap = nullptr;
+	if (ppDevice != nullptr)
 	{
-		LogInfo("  error allocating deviceWrap.\n");
-		origDevice->Release();
-		origContext->Release();
-		return E_OUTOFMEMORY;
-	}
-	if (ppDevice)
+		deviceWrap = new HackerDevice(origDevice, origContext);
 		*ppDevice = deviceWrap;
-	LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
+		LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
+	}
 
 	// Create a wrapped version of the original context to return to the game.
-	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
-	if (contextWrap == NULL)
+	HackerContext *contextWrap = nullptr;
+	if (ppImmediateContext != nullptr)
 	{
-		LogInfo("  error allocating contextWrap.\n");
-		origDevice->Release();
-		origContext->Release();
-		return E_OUTOFMEMORY;
-	}
-	if (ppImmediateContext)
+		contextWrap = new HackerContext(origDevice, origContext);
 		*ppImmediateContext = contextWrap;
-	LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
+		LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
+	}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
-	// calls that we want to return the Hacker versions.
-	deviceWrap->SetHackerContext(contextWrap);
-	contextWrap->SetHackerDevice(deviceWrap);
+	// calls in the Hacker objects where we want to return the Hacker versions.
+	if (deviceWrap != nullptr)
+		deviceWrap->SetHackerContext(contextWrap);
+	if (contextWrap != nullptr)
+		contextWrap->SetHackerDevice(deviceWrap);
 
-	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n", ret, origDevice, deviceWrap, origContext, contextWrap);
-	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n", 
-	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
+	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n", 
+		ret, origDevice, deviceWrap, origContext, contextWrap);
+
 	return ret;
 }
 
+
+// Additional strategy here, after learning from games.  Several games like DragonAge
+// and Watch Dogs pass nullptr for some of these parameters, including the returned
+// ppSwapChain.  Why you would call CreateDeviceAndSwapChain, then pass null is anyone's
+// guess.  Because of that sort of silliness, these routines are now trying to be fully
+// null safe, and never access anything without checking first.
+
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
-	IDXGIAdapter *pAdapter,
-	D3D_DRIVER_TYPE DriverType,
-	HMODULE Software,
-	UINT Flags,
-	const D3D_FEATURE_LEVEL *pFeatureLevels,
-	UINT FeatureLevels,
-	UINT SDKVersion,
-	DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	HackerDXGISwapChain **ppSwapChain,
-	HackerDevice **ppDevice,
-	D3D_FEATURE_LEVEL *pFeatureLevel,
-	HackerContext **ppImmediateContext)
+	_In_opt_        IDXGIAdapter         *pAdapter,
+					D3D_DRIVER_TYPE      DriverType,
+					HMODULE              Software,
+					UINT                 Flags,
+	_In_opt_  const D3D_FEATURE_LEVEL    *pFeatureLevels,
+					UINT                 FeatureLevels,
+					UINT                 SDKVersion,
+	_In_opt_		DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
+	_Out_opt_       IDXGISwapChain		 **ppSwapChain,
+	_Out_opt_       ID3D11Device         **ppDevice,
+	_Out_opt_       D3D_FEATURE_LEVEL    *pFeatureLevel,
+	_Out_opt_       ID3D11DeviceContext  **ppImmediateContext)
 {
 	InitD311();
-	LogInfo("\n\nD3D11CreateDeviceAndSwapChain called with adapter = %p \n", pAdapter);
+	LogInfo("\n\n *** D3D11CreateDeviceAndSwapChain called with \n");
+	LogInfo("    pAdapter = %p \n", pAdapter);
+	LogInfo("    Flags = %#x \n", Flags);
+	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ?  *pFeatureLevels : 0);
+	LogInfo("    pSwapChainDesc = %p \n", pSwapChainDesc);
+	LogInfo("    ppSwapChain = %p \n", ppSwapChain);
+	LogInfo("    ppDevice = %p \n", ppDevice);
+	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
+	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
 	ForceDisplayParams(pSwapChainDesc);
 
 #if _DEBUG_LAYER
-	Flags |= D3D11_CREATE_DEVICE_DEBUG;
-	Flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
-	LogInfo("  D3D11CreateDeviceAndSwapChain _DEBUG_LAYER flags set: %#x \n", Flags);
+	Flags = EnableDebugFlags(Flags);
 #endif
 
-	ID3D11Device *origDevice = 0;
-	ID3D11DeviceContext *origContext = 0;
-	IDXGISwapChain *origSwapChain = 0;
 	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, pSwapChainDesc, &origSwapChain, &origDevice, pFeatureLevel, &origContext);
+		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
 
-	// Changed to recognize that >0 DXGISTATUS values are possible, not just S_OK.
 	if (FAILED(ret))
 	{
 		LogInfo("  failed with HRESULT=%x\n", ret);
 		return ret;
 	}
 
-	LogInfo("  CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", origDevice, origContext, origSwapChain);
+	// Optional parameters means these might be null.
+	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	if (!origDevice || !origContext || !origSwapChain)
-		return ret;
+	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
+		origDevice, origContext, origSwapChain);
 
 #if _DEBUG_LAYER
-	// If we are using the Debug Layer, lets dump the LiveObjectState to show it's working.
-	ID3D11Debug *d3dDebug = nullptr;
-	if (SUCCEEDED(origDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
-	{
-		ID3D11InfoQueue *d3dInfoQueue = nullptr;
-		if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
-		{
-			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-		}
-	}
-	d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+	ShowDebugInfo(origDevice);
 #endif
 
-	HackerDevice *deviceWrap = new HackerDevice(origDevice, origContext);
-	if (deviceWrap == NULL)
+	HackerDevice *deviceWrap = nullptr;
+	if (ppDevice != nullptr)
 	{
-		LogInfo("  error allocating deviceWrap.\n");
-		origDevice->Release();
-		origContext->Release();
-		origSwapChain->Release();
-		return E_OUTOFMEMORY;
-	}
-	if (ppDevice)
+		deviceWrap = new HackerDevice(origDevice, origContext);
 		*ppDevice = deviceWrap;
-	LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
-
-	HackerContext *contextWrap = new HackerContext(origDevice, origContext);
-	if (contextWrap == NULL)
-	{
-		LogInfo("  error allocating contextWrap.\n");
-		origDevice->Release();
-		origContext->Release();
-		origSwapChain->Release();
-		return E_OUTOFMEMORY;
+		LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
 	}
-	if (ppImmediateContext)
+
+	HackerContext *contextWrap = nullptr;
+	if (ppImmediateContext != nullptr)
+	{
+		contextWrap = new HackerContext(origDevice, origContext);
 		*ppImmediateContext = contextWrap;
-	LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
-
-	HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
-	if (swapchainWrap == NULL)
-	{
-		LogInfo("  error allocating swapchainWrap. \n");
-		origDevice->Release();
-		origContext->Release();
-		origSwapChain->Release();
-		return E_OUTOFMEMORY;
+		LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
 	}
-	if (ppSwapChain)
-		*ppSwapChain = swapchainWrap;
-	LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
+
+	HackerDXGISwapChain *swapchainWrap = nullptr;
+	if (ppSwapChain != nullptr)
+	{
+		swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
+		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
+		LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
+	}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
-	// calls that we want to return the Hacker versions.
-	deviceWrap->SetHackerContext(contextWrap);
-	contextWrap->SetHackerDevice(deviceWrap);
-	deviceWrap->SetHackerSwapChain(swapchainWrap);
+	// calls in the Hacker objects where we want to return the Hacker versions.
+	if (deviceWrap != nullptr)
+	{
+		deviceWrap->SetHackerContext(contextWrap);
+		deviceWrap->SetHackerSwapChain(swapchainWrap);
+	}
+	if (contextWrap != nullptr)
+	{
+		contextWrap->SetHackerDevice(deviceWrap);
+	}
 
 	LogInfo("  returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
 		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
-	//LogInfo("  return types: origDevice = %s, deviceWrap = %s, origContext = %s, contextWrap = %s\n",
-	//	typeid(*origDevice).name(), typeid(*deviceWrap).name(), typeid(*origContext).name(), typeid(*contextWrap).name());
+	
 	return ret;
 }
 
