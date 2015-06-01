@@ -2267,7 +2267,12 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	/* [annotation] */
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
+	ID3D11DeviceContext *origContext = NULL;
+
 	LogInfo("HackerDevice::GetImmediateContext(%s@%p) called. \n", typeid(*this).name(), this);
+
+	// We still need to call the original function to make sure the reference counts are correct:
+	mOrigDevice->GetImmediateContext(&origContext);
 
 	*ppImmediateContext = mHackerContext;
 
@@ -2324,7 +2329,12 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	/* [annotation] */
 	_Out_  HackerContext1 **ppImmediateContext)
 {
+	ID3D11DeviceContext1 *origContext1 = NULL;
+
 	LogInfo("HackerDevice::GetImmediateContext1(%s@%p) called. \n", typeid(*this).name(), this);
+
+	// We still need to call the original function to make sure the reference counts are correct:
+	mOrigDevice1->GetImmediateContext1(&origContext1);
 
 	*ppImmediateContext = mHackerContext1;
 
