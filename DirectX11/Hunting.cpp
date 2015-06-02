@@ -89,14 +89,15 @@ static void DumpUsage()
 			}
 			const char *REG_HEADER = "</CalledPixelShaders>\n";
 			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
-			std::map<int, void *>::iterator k;
-			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
-				if (k->second)
-				{
-					UINT64 id = G->mRenderTargets[k->second];
-					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
+			std::map<int, std::set<void *>>::const_iterator k;
+			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
+				std::set<void *>::const_iterator o;
+				for (o = k->second.begin(); o != k->second.end(); o++) {
+					UINT64 id = G->mRenderTargets[*o];
+					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, *o, id);
 					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
+			}
 			const char *FOOTER = "</VertexShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
@@ -113,14 +114,15 @@ static void DumpUsage()
 			}
 			const char *REG_HEADER = "</ParentVertexShaders>\n";
 			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
-			std::map<int, void *>::iterator k;
-			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
-				if (k->second)
-				{
-					UINT64 id = G->mRenderTargets[k->second];
-					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, k->second, id);
+			std::map<int, std::set<void *>>::const_iterator k;
+			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
+				std::set<void *>::const_iterator o;
+				for (o = k->second.begin(); o != k->second.end(); o++) {
+					UINT64 id = G->mRenderTargets[*o];
+					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, *o, id);
 					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
+			}
 			std::vector<std::set<void *>>::iterator m;
 			int pos = 0;
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {

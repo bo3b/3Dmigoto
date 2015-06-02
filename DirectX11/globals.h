@@ -118,7 +118,7 @@ typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;
 struct ShaderInfoData
 {
 	// All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<int, void *> ResourceRegisters;
+	std::map<int, std::set<void *>> ResourceRegisters;
 	std::set<UINT64> PartnerShader;
 	std::vector<std::set<void *>> RenderTargets;
 	std::set<void *> DepthTargets;
