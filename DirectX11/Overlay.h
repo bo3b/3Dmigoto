@@ -25,6 +25,7 @@ private:
 	HackerDXGISwapChain *mHackerSwapChain;
 	HackerDevice *mHackerDevice;
 	HackerContext *mHackerContext;
+	ID3D11DeviceContext *mOverlayContext;
 
 	DirectX::XMUINT2 mResolution;
 	StereoHandle mStereoHandle;

@@ -19,6 +19,13 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
 	mHackerSwapChain = pSwapChain;
+	mOverlayContext = NULL;
+
+	HRESULT hr = mHackerDevice->GetOrigDevice()->CreateDeferredContext(0, &mOverlayContext);
+	if (FAILED(hr)) {
+		LogInfo("Failed to create overlay context: 0x%x\n", hr);
+		return;
+	}
 
 	DXGI_SWAP_CHAIN_DESC description;
 	pSwapChain->GetDesc(&description);
@@ -26,16 +33,20 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 
 	mStereoHandle = pDevice->mStereoHandle;
 
-	// We want to use the original device and original context here, because
+	// We want to use the original device and a dedicated context here, because
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
-	// to draw the text, and we don't want to intercept those.
+	// to draw the text, and we don't want to intercept those. Using a dedicated
+	// context simplifies saving and restoring the pipeline state to avoid the
+	// overlay causing rendering issues in the game.
 
 	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), L"courierbold.spritefont"));
-	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
+	mSpriteBatch.reset(new DirectX::SpriteBatch(mOverlayContext));
 }
 
 Overlay::~Overlay()
 {
+	if (mOverlayContext)
+		mOverlayContext->Release();
 }
 
 
@@ -58,16 +69,36 @@ using namespace DirectX::SimpleMath;
 
 void Overlay::DrawOverlay(void)
 {
+	ID3D11CommandList *commandList = NULL;
+	HRESULT hr;
+	UINT count = 1;
+	D3D11_VIEWPORT viewports[1]; // Only fetching the first one
+	ID3D11RenderTargetView *targets[1];
+
+	if (!mOverlayContext)
+		return;
+
 	// We can be called super early, before a viewport is bound to the 
 	// pipeline.  That's a bug in the game, but we have to work around it.
 	// If there are no viewports, the SpriteBatch will throw an exception.
-	UINT count = 0;
-	mHackerContext->RSGetViewports(&count, NULL);
+	mHackerContext->RSGetViewports(&count, viewports);
 	if (count <= 0)
 	{
 		LogInfo("Overlay::DrawOverlay called with no valid viewports.");
 		return;
 	}
+	mOverlayContext->RSSetViewports(1, viewports);
+
+	// TODO: Could get the back buffer directly from the swap chain, but
+	// would still have to set up a view for it, so for now just get the
+	// render target bound to the immediate context:
+	mHackerContext->OMGetRenderTargets(1, targets, NULL);
+	if (!targets[0]) {
+		LogInfo("Overlay::DrawOverlay called with no render targets.");
+		return;
+	}
+	mOverlayContext->OMSetRenderTargets(1, targets, NULL);
+	targets[0]->Release();
 
 
 	// As primary info, we are going to draw both separation and convergence. 
@@ -121,4 +152,14 @@ void Overlay::DrawOverlay(void)
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
 	}
 	mSpriteBatch->End();
+
+	hr = mOverlayContext->FinishCommandList(FALSE, &commandList);
+	if (FAILED(hr)) {
+		LogInfo("Overlay context FinishCommandList failed: 0x%x", hr);
+		return;
+	}
+
+	mHackerContext->ExecuteCommandList(commandList, FALSE);
+
+	commandList->Release();
 }
