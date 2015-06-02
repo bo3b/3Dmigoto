@@ -385,7 +385,7 @@ public:
 
 	STDMETHOD_(void, GetImmediateContext1)(
 		/* [annotation] */
-		_Out_  HackerContext1 **ppImmediateContext);
+		_Out_  ID3D11DeviceContext1 **ppImmediateContext);
 
 	STDMETHOD(CreateDeferredContext1)(
 		UINT ContextFlags,

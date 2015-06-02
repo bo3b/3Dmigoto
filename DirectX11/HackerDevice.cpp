@@ -22,7 +22,7 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: ID3D11Device(),
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), 
 	mIniResourceView(0), mIniTexture(0), 
-	mZBufferResourceView(0)
+	mZBufferResourceView(0), mHackerContext(0), mHackerSwapChain(0)
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
@@ -277,27 +277,54 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 // New addition, we need to also look for QueryInterface casts to different types.
 // In Dragon Age, it seems clear that they are upcasting their ID3D11Device to an
 // ID3D11Device1, and if we don't wrap that, we have an object leak where they can bypass us.
+//
+// Next up, it seems that we also need to handle a QueryInterface(IDXGIDevice1), as
+// WatchDogs uses that call.  Another oddity: this device is called to return the
+// same device. ID3D11Device->QueryInterface(ID3D11Device).  No idea why, but we
+// need to return our wrapped version.
 
 HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	HRESULT hr;
-
 	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+
+	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
+	if (FAILED(hr))
+	{
+		LogDebug("  failed result = %x for %p \n", hr, ppvObject);
+		return hr;
+	}
+
+	// No need for further checks of null ppvObject, as it could not have successfully
+	// called the original in that case.
 
 	if (riid == __uuidof(IDXGIDevice))
 	{
-		IDXGIDevice *origDXGIDevice;
-		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDXGIDevice));
-
+		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
 		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this, mHackerContext);
-		// ToDo: Handle memory allocation exceptions
-
-		if (ppvObject)
-			*ppvObject = dxgiDeviceWrap;
-
-		LogInfo("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*ppvObject).name(), ppvObject, origDXGIDevice);
+		*ppvObject = dxgiDeviceWrap;
+		LogInfo("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap).name(), dxgiDeviceWrap, origDXGIDevice);
+	}
+	else if (riid == __uuidof(IDXGIDevice1))
+	{
+		IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
+		HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this, mHackerContext);
+		*ppvObject = dxgiDeviceWrap1;
+		LogInfo("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap1).name(), dxgiDeviceWrap1, origDXGIDevice1);
+	}
+	else if (riid == __uuidof(IDXGIDevice2))
+	{
+		// an IDXGIDevice2 can only be created on platform update or above, so let's 
+		// continue the philosophy of returning errors for anything optional.
+		LogInfo("  returns E_NOINTERFACE as error. \n");
+		*ppvObject = NULL;
+		return E_NOINTERFACE;
+	}
+	else if (riid == __uuidof(ID3D11Device))
+	{
+		*ppvObject = this;
+		LogInfo("  return HackerDevice(%s@%p) wrapper of %p \n", typeid(*this).name(), this, mOrigDevice);
 	}
 	else if (riid == __uuidof(ID3D11Device1))
 	{
@@ -340,12 +367,8 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		//if (ppvObject)
 		//	*ppvObject = hackerDeviceWrap1;
 	}
-	else
-	{
-		hr = mOrigDevice->QueryInterface(riid, ppvObject);
-	}
 
-	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
+	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
 	return hr;
 }
 
@@ -2233,24 +2256,26 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DeviceContext **ppDeferredContext)
 {
-	// This crashes Witcher3, for no obvious reason.
-	// We don't need to wrap Deferred Contexts anyway, so skip for now.
-	//LogInfo("*** Double check context is correct ****\n\n");
-	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %x \n", typeid(*this).name(), this, ContextFlags);
+	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %#x, ptr:%p \n", 
+		typeid(*this).name(), this, ContextFlags, ppDeferredContext);
 
-	ID3D11DeviceContext *deferContext = NULL;
-	HRESULT hr = -1;
+	HRESULT hr = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
+	if (FAILED(hr))
+	{
+		LogDebug("  failed result = %x for %p \n", hr, ppDeferredContext);
+		return hr;
+	}
 
 	if (ppDeferredContext)
 	{
-		hr = mOrigDevice->CreateDeferredContext(ContextFlags, &deferContext);
-		HackerContext *hackerContext = new HackerContext(mOrigDevice, deferContext);
+		ID3D11DeviceContext *origContext = static_cast<ID3D11DeviceContext*>(*ppDeferredContext);
+		HackerContext *hackerContext = new HackerContext(mOrigDevice, origContext);
 		hackerContext->SetHackerDevice(this);
 		*ppDeferredContext = hackerContext;
-
-		LogInfo("  returns result = %x, handle = %p, wrapper = %s\n", hr, deferContext, typeid(*ppDeferredContext).name());
-		LogInfo("\n*** Double check context is correct ****\n");
+		LogInfo("  created HackerContext(%s@%p) wrapper of %p \n", typeid(*hackerContext).name(), hackerContext, origContext);
 	}
+
+	LogDebug("  returns result = %x for %p \n", hr, *ppDeferredContext);
 
 	return hr;
 }
@@ -2262,16 +2287,47 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 // This is a main way to get the context when you only have the device.
 // There is only one immediate context per device, so if they are requesting
 // it, we need to return them the HackerContext.
+// 
+// It is apparently possible for poorly written games to call this function
+// with null as the ppImmediateContext. This not an optional parameter, and
+// that call makes no sense, but apparently happens if they pass null to
+// CreateDeviceAndSwapChain for ImmediateContext.  A bug in an older SDK.
+// WatchDogs seems to do this. 
+// 
+// Also worth noting here is that by not calling through to GetImmediateContext
+// we did not properly account for references.
+// "The GetImmediateContext method increments the reference count of the immediate context by one. "
 
 STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	/* [annotation] */
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("HackerDevice::GetImmediateContext(%s@%p) called. \n", typeid(*this).name(), this);
+	LogInfo("HackerDevice::GetImmediateContext(%s@%p) called with:%p \n", 
+		typeid(*this).name(), this, ppImmediateContext);
+
+	if (ppImmediateContext == nullptr)
+	{
+		LogInfo("  *** no return possible, nullptr input. \n");
+		return;
+	}
+
+	// We still need to call the original function to make sure the reference counts are correct:
+	mOrigDevice->GetImmediateContext(ppImmediateContext);
+
+	// It should no longer be possible, but we can conceivably arrive here with
+	// no mHackerContext created.  Based on the original code, it's not a bad
+	// idea to create that HackerContext here.
+	if (mHackerContext == nullptr)
+	{
+		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext \n");
+
+		mHackerContext = new HackerContext(mOrigDevice, *ppImmediateContext);
+		LogInfo("  HackerContext %p created to wrap %p \n", mHackerContext, *ppImmediateContext);
+	}
 
 	*ppImmediateContext = mHackerContext;
-
-	LogInfo("  returns handle = %p as %s \n", *ppImmediateContext, typeid(*ppImmediateContext).name());
+	LogInfo("  returns handle = %p  \n", *ppImmediateContext);
+}
 
 	// Original code for reference:
 /*	D3D11Base::ID3D11DeviceContext *origContext = 0;
@@ -2298,7 +2354,6 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	*ppImmediateContext = wrapper;
 	LogInfo("  returns handle = %p, wrapper = %p\n", origContext, wrapper);
 */
-}
 
 // -----------------------------------------------------------------------------
 // HackerDevice1 methods.  All other subclassed methods will use HackerDevice methods.
@@ -2322,13 +2377,33 @@ void HackerDevice1::SetHackerContext1(HackerContext1 *pHackerContext)
 
 STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	/* [annotation] */
-	_Out_  HackerContext1 **ppImmediateContext)
+	_Out_  ID3D11DeviceContext1 **ppImmediateContext)
 {
-	LogInfo("HackerDevice::GetImmediateContext1(%s@%p) called. \n", typeid(*this).name(), this);
+	LogInfo("HackerDevice1::GetImmediateContext1(%s@%p) called with:%p \n",
+		typeid(*this).name(), this, ppImmediateContext);
 
-	*ppImmediateContext = mHackerContext1;
+	if (ppImmediateContext == nullptr)
+	{
+		LogInfo("  *** no return possible, nullptr input. \n");
+		return;
+	}
 
-	LogInfo("  returns handle = %p as %s \n", *ppImmediateContext, typeid(*ppImmediateContext).name());
+	// We still need to call the original function to make sure the reference counts are correct:
+	mOrigDevice1->GetImmediateContext1(ppImmediateContext);
+
+	// It should no longer be possible, but we can conceivably arrive here with
+	// no mHackerContext created.  Based on the original code, it's not a bad
+	// idea to create that HackerContext here.
+	if (mHackerContext1 == nullptr)
+	{
+		LogInfo("*** HackerContext1 missing at HackerDevice1::GetImmediateContext1 \n");
+
+		mHackerContext1 = new HackerContext1(mOrigDevice1, *ppImmediateContext);
+		LogInfo("  mHackerContext1 %p created to wrap %p \n", mHackerContext1, *ppImmediateContext);
+	}
+
+	*ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(mHackerContext1);
+	LogInfo("  returns handle = %p  \n", *ppImmediateContext);
 }
 
 
