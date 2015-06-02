@@ -20,22 +20,31 @@
 
 HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: ID3D11Device(),
-	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0), 
-	mIniResourceView(0), mIniTexture(0), 
-	mZBufferResourceView(0), mHackerContext(0), mHackerSwapChain(0)
+	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
+	mIniResourceView(0), mIniTexture(0),
+	mZBufferResourceView(0), 
+	mHackerContext(0), mHackerSwapChain(0)
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
+}
 
+// With the addition of full DXGI support, this init sequence is too dangerous
+// to do at object creation time.  The NV CreateHandleFromIUnknown calls back
+// into this device, so we need to have it set up and ready.
+
+HRESULT HackerDevice::CreateStereoAndIniTextures()
+{
 	// Todo: This call will fail if stereo is disabled. Proper notification?
 	NvAPI_Status hr = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
 	if (hr != NVAPI_OK)
 	{
 		mStereoHandle = 0;
-		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d\n", hr);
+		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", hr);
+		return hr;
 	}
 	mParamTextureManager.mStereoHandle = mStereoHandle;
-	LogInfo("  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
+	LogInfo("  created NVAPI stereo handle. Handle = %p \n", mStereoHandle);
 
 	// Override custom settings.
 	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
@@ -43,58 +52,57 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 		NvAPIOverride();
 		LogInfo("  setting custom surface creation mode.\n");
 
-		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
-			(NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceCreateMode))
+		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+		if (hr != NVAPI_OK)
 		{
-			LogInfo("    call failed.\n");
+			LogInfo("    custom surface creation call failed: %d. \n", hr);
+			return hr;
 		}
 	}
+
 	// Create stereo parameter texture.
-	if (mStereoHandle)
+	LogInfo("  creating stereo parameter texture. \n");
+
+	D3D11_TEXTURE2D_DESC desc;
+	memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
+	desc.Width = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexWidth;
+	desc.Height = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexHeight;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexFormat;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+	HRESULT ret = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
+	if (FAILED(ret))
 	{
-		LogInfo("  creating stereo parameter texture.\n");
-
-		D3D11_TEXTURE2D_DESC desc;
-		memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
-		desc.Width = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexWidth;
-		desc.Height = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexHeight;
-		desc.MipLevels = 1;
-		desc.ArraySize = 1;
-		desc.Format = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexFormat;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = 0;
-		HRESULT ret = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
-		if (FAILED(ret))
-		{
-			LogInfo("    call failed with result = %x.\n", ret);
-		}
-		else
-		{
-			LogInfo("    stereo texture created, handle = %p\n", mStereoTexture);
-			LogInfo("  creating stereo parameter resource view.\n");
-
-			// Since we need to bind the texture to a shader input, we also need a resource view.
-			D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-			memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-			descRV.Format = desc.Format;
-			descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			descRV.Texture2D.MostDetailedMip = 0;
-			descRV.Texture2D.MipLevels = -1;
-			ret = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
-			if (FAILED(ret))
-			{
-				LogInfo("    call failed with result = %x.\n", ret);
-			}
-			LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
-		}
+		LogInfo("    call failed with result = %x. \n", ret);
+		return hr;
 	}
+	LogInfo("    stereo texture created, handle = %p \n", mStereoTexture);
 
-	// If constants are specified in the .ini file that need to be sent to shaders, we need to create
-	// the resource view in order to deliver them via SetShaderResources.
+	// Since we need to bind the texture to a shader input, we also need a resource view.
+	LogInfo("  creating stereo parameter resource view. \n");
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
+	memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+	descRV.Format = desc.Format;
+	descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	descRV.Texture2D.MostDetailedMip = 0;
+	descRV.Texture2D.MipLevels = -1;
+	ret = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
+	if (FAILED(ret))
+	{
+		LogInfo("    call failed with result = %x. \n", ret);
+		return ret;
+	}
+	LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
+
+	// If any constants are specified in the .ini file that need to be sent to shaders, we need 
+	// to create the resource view in order to deliver them via SetShaderResources.
 	// Check for depth buffer view.
 	if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
 	{
@@ -112,37 +120,39 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 		desc.Width = 1;												// 1 texel, .rgba as a float4
 		desc.MipLevels = 1;
 		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;	// float4
-		desc.Usage = D3D11_USAGE_DYNAMIC;				// Read/Write access from GPU and CPU
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;		// As resource view, access via t120
+		desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
+		desc.Usage = D3D11_USAGE_DYNAMIC;							// Read/Write access from GPU and CPU
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;				// As resource view, access via t120
 		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
 		desc.MiscFlags = 0;
-		HRESULT ret = mOrigDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
+		ret = mOrigDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
 		if (FAILED(ret))
 		{
 			LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
+			return ret;
 		}
-		else
+		LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
+
+		// Since we need to bind the texture to a shader input, we also need a resource view.
+		// The pDesc is set to NULL so that it will simply use the desc format above.
+		LogInfo("  creating IniParam resource view.\n");
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
+		memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+
+		ret = mOrigDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
+		if (FAILED(ret))
 		{
-			LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
-			LogInfo("  creating IniParam resource view.\n");
-
-			// Since we need to bind the texture to a shader input, we also need a resource view.
-			// The pDesc is set to NULL so that it will simply use the desc format above.
-			D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-			memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-
-			ret = mOrigDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
-			if (FAILED(ret))
-			{
-				LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
-			}
-
-			LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+			LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
+			return ret;
 		}
+
+		LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
 	}
 
+	return ret;
 }
+
 
 // Save reference to corresponding HackerContext during CreateDevice, needed for GetImmediateContext.
 

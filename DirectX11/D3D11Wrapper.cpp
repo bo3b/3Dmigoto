@@ -664,7 +664,10 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (contextWrap != nullptr)
 		contextWrap->SetHackerDevice(deviceWrap);
 
-	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n", 
+	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
+	deviceWrap->CreateStereoAndIniTextures();
+
+	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap);
 
 	return ret;
@@ -764,6 +767,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	{
 		contextWrap->SetHackerDevice(deviceWrap);
 	}
+
+	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
+	ret = deviceWrap->CreateStereoAndIniTextures();
 
 	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
 		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 

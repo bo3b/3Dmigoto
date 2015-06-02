@@ -44,6 +44,7 @@ public:
 
 	HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
+	HRESULT CreateStereoAndIniTextures();
 	void SetHackerContext(HackerContext *pHackerContext);
 	HackerContext* GetHackerContext();
 	void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
