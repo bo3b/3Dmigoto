@@ -56,6 +56,89 @@ using namespace DirectX::SimpleMath;
 	//5) Other state, like show_original active.
 	//6) Active toggle override.
 
+void Overlay::SaveState()
+{
+	// We need to save off everything that DirectTK will clobber and
+	// restore it before returning to the application. This is necessary
+	// to prevent rendering issues in some games like The Long Dark, and
+	// helps avoid introducing pipeline errors in other games like The
+	// Witcher 3.
+
+	memset(&state, 0, sizeof(state));
+
+	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+
+	context->OMGetBlendState(&state.pBlendState, state.BlendFactor, &state.SampleMask);
+	context->OMGetDepthStencilState(&state.pDepthStencilState, &state.StencilRef);
+	context->RSGetState(&state.pRasterizerState);
+	context->PSGetSamplers(0, 1, state.samplers);
+	context->IAGetPrimitiveTopology(&state.topology);
+	context->IAGetInputLayout(&state.pInputLayout);
+	context->VSGetShader(&state.pVertexShader, state.pVSClassInstances, &state.VSNumClassInstances);
+	context->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
+	context->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
+	context->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
+	context->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
+	context->PSGetShaderResources(0, 1, state.pShaderResourceViews);
+}
+
+void Overlay::RestoreState()
+{
+	unsigned i;
+
+	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+
+	context->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
+	if (state.pBlendState)
+		state.pBlendState->Release();
+
+	context->OMSetDepthStencilState(state.pDepthStencilState, state.StencilRef);
+	if (state.pDepthStencilState)
+		state.pDepthStencilState->Release();
+
+	context->RSSetState(state.pRasterizerState);
+	if (state.pRasterizerState)
+		state.pRasterizerState->Release();
+
+	context->PSSetSamplers(0, 1, state.samplers);
+	if (state.samplers[0])
+		state.samplers[0]->Release();
+
+	context->IASetPrimitiveTopology(state.topology);
+
+	context->IASetInputLayout(state.pInputLayout);
+	if (state.pInputLayout)
+		state.pInputLayout->Release();
+
+	context->VSSetShader(state.pVertexShader, state.pVSClassInstances, state.VSNumClassInstances);
+	if (state.pVertexShader)
+		state.pVertexShader->Release();
+	for (i = 0; i < state.VSNumClassInstances; i++)
+		state.pVSClassInstances[i]->Release();
+
+	context->PSSetShader(state.pPixelShader, state.pPSClassInstances, state.PSNumClassInstances);
+	if (state.pPixelShader)
+		state.pPixelShader->Release();
+	for (i = 0; i < state.PSNumClassInstances; i++)
+		state.pPSClassInstances[i]->Release();
+
+	context->IASetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
+	if (state.pVertexBuffers[0])
+		state.pVertexBuffers[0]->Release();
+
+	context->IASetIndexBuffer(state.IndexBuffer, state.Format, state.Offset);
+	if (state.IndexBuffer)
+		state.IndexBuffer->Release();
+
+	context->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
+	if (state.pConstantBuffers[0])
+		state.pConstantBuffers[0]->Release();
+
+	context->PSSetShaderResources(0, 1, state.pShaderResourceViews);
+	if (state.pShaderResourceViews[0])
+		state.pShaderResourceViews[0]->Release();
+}
+
 void Overlay::DrawOverlay(void)
 {
 	// We can be called super early, before a viewport is bound to the 
@@ -96,6 +179,7 @@ void Overlay::DrawOverlay(void)
 		psPosition = G->mSelectedPixelShaderPos + 1;
 	}
 
+	SaveState();
 	mSpriteBatch->Begin();
 	{
 		const int maxstring = 200;
@@ -121,4 +205,5 @@ void Overlay::DrawOverlay(void)
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
 	}
 	mSpriteBatch->End();
+	RestoreState();
 }
