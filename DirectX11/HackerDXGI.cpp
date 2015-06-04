@@ -321,6 +321,11 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 	return hr;
 }
 
+HackerDevice *HackerDXGIDevice::GetHackerDevice()
+{
+	return mHackerDevice;
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -427,20 +432,26 @@ STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
 	LogInfo("HackerDXGIFactory::EnumAdapters(%s@%p) adapter %d requested\n", typeid(*this).name(), this, Adapter);
 
 	IDXGIAdapter *origAdapter;
+	HackerDXGIAdapter *adapterWrap = NULL;
 	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, &origAdapter);
 
-	HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
-	if (adapterWrap == NULL)
-	{
-		LogInfo("  error allocating dxgiAdapterWrap. \n");
-		return E_OUTOFMEMORY;
+	// Check return value before wrapping - don't create a wrapper for
+	// DXGI_ERROR_NOT_FOUND, as that will crash UE4 games.
+	if (SUCCEEDED(hr)) {
+		adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
+		if (adapterWrap == NULL)
+		{
+			LogInfo("  error allocating dxgiAdapterWrap. \n");
+			return E_OUTOFMEMORY;
+		}
+
+		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	}
 
 	// Return the wrapped version which the game will use for follow on calls.
 	if (ppAdapter)
 		*ppAdapter = adapterWrap;
 
-	LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -545,19 +556,31 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 
 STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
             /* [annotation][in] */ 
-			__in  HackerDevice *pDevice,
+			__in  IUnknown *pDevice,
             /* [annotation][in] */ 
             __in  DXGI_SWAP_CHAIN_DESC *pDesc,
             /* [annotation][out] */ 
             __out  HackerDXGISwapChain **ppSwapChain)
 {
+	HackerDevice *device = NULL;
+
 	LogInfo("HackerDXGIFactory::CreateSwapChain(%s@%p) called with parameters\n", typeid(*this).name(), this);
-	LogInfo("  Device = %p\n", pDevice);
+	LogInfo("  Device = (%s@%p)\n", typeid(*pDevice).name(), pDevice);
+
+	// CreateSwapChain could be called with a IDXGIDevice or ID3D11Device
+	if (typeid(*pDevice) == typeid(HackerDevice))
+		device = static_cast<HackerDevice*>(pDevice);
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
+		device = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
+	else {
+		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
+		return E_FAIL;
+	}
 
 	ForceDisplayParams(pDesc);
 
 	IDXGISwapChain *origSwapChain = 0;
-	HRESULT hr = mOrigFactory->CreateSwapChain(pDevice->GetOrigDevice(), pDesc, &origSwapChain);
+	HRESULT hr = mOrigFactory->CreateSwapChain(device->GetOrigDevice(), pDesc, &origSwapChain);
 
 	// This call can DXGI_STATUS_OCCLUDED.  That means that the window
 	// can be occluded when we return from creating the real swap chain.  
@@ -569,7 +592,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	if (SUCCEEDED(hr))
 	{
 		if (mHackerDevice == NULL || mHackerContext == NULL)
-			this->SetHackerObjects(pDevice);
+			this->SetHackerObjects(device);
 
 		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, mHackerDevice, mHackerContext);
 		if (swapchainWrap == NULL)

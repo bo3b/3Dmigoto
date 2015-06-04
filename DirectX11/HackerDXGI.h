@@ -157,6 +157,8 @@ private:
 public:
 	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext);
 
+	HackerDevice *GetHackerDevice();
+
 
 	// Override the GetParent so we can wrap objects returned.
 	STDMETHOD(GetParent)(
@@ -465,7 +467,7 @@ public:
 
 	STDMETHOD(CreateSwapChain)(THIS_
 		/* [annotation][in] */
-		__in  HackerDevice *pDevice,
+		__in  IUnknown *pDevice,
 		/* [annotation][in] */
 		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
 		/* [annotation][out] */
