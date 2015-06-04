@@ -34,30 +34,34 @@ Fixed
 
 Installation
 ------------
-1. Use nvidia inspector to assign the game to the Max Payne 3 profile. Refer to
+1. Some newer drivers are causing issues in this game. Avoid versions 352.86
+   (some instability) and 353.06 (3D does not work at all). 350.12 seems
+   pretty stable and older drivers should also work.
+
+2. Use nvidia inspector to assign the game to the Max Payne 3 profile. Refer to
    [this guide][1] for instructions on how to do this.
 
    [1]: http://helixmod.blogspot.com/2013/03/how-to-change-3d-vision-profile-and.html
 
-2. Unpack zip to Far Cry 4\bin directory
+3. Unpack zip to Far Cry 4\bin directory
 
-3. If game switches to windowed mode after launch, press alt+enter to switch
+4. If game switches to windowed mode after launch, press alt+enter to switch
    back to full screen
 
-4. Set ambient occlusion to HBAO+ or SSAO. HBAO+ looks significantly better
+5. Set ambient occlusion to HBAO+ or SSAO. HBAO+ looks significantly better
    than SSAO, but has some minor artefacts on some surfaces. SSAO may not work
    on earlier versions of the game.
 
-5. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
+6. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
    but shadows will have a 1 frame sync issue, and may appear to lift off the
    ground while walking. SMAA is not recommended.
 
-6. Disable motion blur, as it causes rendering artefacts.
+7. Disable motion blur, as it causes rendering artefacts.
 
-7. If you are using SLI, set terrain to medium or lower to get good
+8. If you are using SLI, set terrain to medium or lower to get good
    performance.
 
-8. If your screen resolution is either 2560x1440 or 3840x2160 and you wish to
+9. If your screen resolution is either 2560x1440 or 3840x2160 and you wish to
    play with SMAA or anti-aliasing disabled, refer to the instructions in [this
    post][2].
 
