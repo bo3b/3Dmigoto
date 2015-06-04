@@ -423,20 +423,26 @@ STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
 	LogInfo("HackerDXGIFactory::EnumAdapters(%s@%p) adapter %d requested\n", typeid(*this).name(), this, Adapter);
 
 	IDXGIAdapter *origAdapter;
+	HackerDXGIAdapter *adapterWrap = NULL;
 	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, &origAdapter);
 
-	HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
-	if (adapterWrap == NULL)
-	{
-		LogInfo("  error allocating dxgiAdapterWrap. \n");
-		return E_OUTOFMEMORY;
+	// Check return value before wrapping - don't create a wrapper for
+	// DXGI_ERROR_NOT_FOUND, as that will crash UE4 games.
+	if (SUCCEEDED(hr)) {
+		adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
+		if (adapterWrap == NULL)
+		{
+			LogInfo("  error allocating dxgiAdapterWrap. \n");
+			return E_OUTOFMEMORY;
+		}
+
+		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	}
 
 	// Return the wrapped version which the game will use for follow on calls.
 	if (ppAdapter)
 		*ppAdapter = adapterWrap;
 
-	LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
