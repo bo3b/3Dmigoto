@@ -27,7 +27,6 @@ private:
 	HackerContext *mHackerContext;
 
 	DirectX::XMUINT2 mResolution;
-	StereoHandle mStereoHandle;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
 

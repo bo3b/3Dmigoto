@@ -24,8 +24,6 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	pSwapChain->GetDesc(&description);
 	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
 
-	mStereoHandle = pDevice->mStereoHandle;
-
 	// We want to use the original device and original context here, because
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
 	// to draw the text, and we don't want to intercept those.
@@ -158,8 +156,8 @@ void Overlay::DrawOverlay(void)
 	// is that convergence is essentially an arbitrary number.
 
 	float separation, convergence;
-	NvAPI_Stereo_GetSeparation(mStereoHandle, &separation);
-	NvAPI_Stereo_GetConvergence(mStereoHandle, &convergence);
+	NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &separation);
+	NvAPI_Stereo_GetConvergence(mHackerDevice->mStereoHandle, &convergence);
 	
 	// We also want to show the count of active vertex and pixel shaders, and
 	// where we are in the list.  These should all be active from the Globals.
