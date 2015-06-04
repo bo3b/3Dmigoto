@@ -308,6 +308,8 @@ class HackerDXGISwapChain : public HackerDXGIDeviceSubObject
 {
 private:
 	IDXGISwapChain *mOrigSwapChain;
+
+	HackerDevice *mHackerDevice;
 	Overlay *mOverlay;
 
 public:
@@ -315,6 +317,7 @@ public:
 	HackerDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext);
 
 	IDXGISwapChain* GetOrigSwapChain();
+	void RunFrameActions();
 
 
 	STDMETHOD(Present)(THIS_

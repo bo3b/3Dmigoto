@@ -2,7 +2,6 @@
 
 #include <d3d11_1.h>
 
-#include "Overlay.h"
 #include "HackerDevice.h"
 #include "Globals.h"
 
@@ -31,7 +30,6 @@ struct DrawContext
 
 class HackerDevice;
 class HackerDevice1;
-class Overlay;
 
 
 // Hierarchy:
@@ -46,8 +44,16 @@ private:
 	ID3D11DeviceContext *mOrigContext;
 	HackerDevice *mHackerDevice;
 
+	// These are per-context, moved from globals.h:
+	UINT64 mCurrentIndexBuffer;
+	UINT64 mCurrentVertexShader;
+	ID3D11VertexShader *mCurrentVertexShaderHandle;
+	UINT64 mCurrentPixelShader;
+	ID3D11PixelShader *mCurrentPixelShaderHandle;
+	std::vector<void *> mCurrentRenderTargets;
+	void *mCurrentDepthTarget;
+
 	// These private methods are utility routines for HackerContext.
-	void RunFrameActions();
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
@@ -63,20 +69,12 @@ private:
 	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
 		bool log_new, struct ResourceInfo *resource_info);
 
-	// These are per-context, moved from globals.h:
-	UINT64 mCurrentIndexBuffer;
-	UINT64 mCurrentVertexShader;
-	ID3D11VertexShader *mCurrentVertexShaderHandle;
-	UINT64 mCurrentPixelShader;
-	ID3D11PixelShader *mCurrentPixelShaderHandle;
-	std::vector<void *> mCurrentRenderTargets;
-	void *mCurrentDepthTarget;
-
 public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
+
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
 	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }

@@ -4,6 +4,9 @@
 #include "log.h"
 #include "util.h"
 #include "globals.h"
+#include "Hunting.h"
+#include "Override.h"
+#include "IniHandler.h"
 
 
 // -----------------------------------------------------------------------------
@@ -65,6 +68,7 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 {
 	mOrigSwapChain = pSwapChain;
 
+	mHackerDevice = pDevice;
 	pDevice->SetHackerSwapChain(this);
 
 	// Create Overlay class that will be responsible for drawing any text
@@ -1204,6 +1208,66 @@ IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 	return mOrigSwapChain;
 }
 
+
+// Called at each DXGI::Present() to give us reliable time to execute user
+// input and hunting commands.
+
+void HackerDXGISwapChain::RunFrameActions()
+{
+	static ULONGLONG last_ticks = 0;
+	ULONGLONG ticks = GetTickCount64();
+
+	// Prevent excessive input processing. XInput added an extreme
+	// performance hit when processing four controllers on every draw call,
+	// so only process input if at least 8ms has passed (approx 125Hz - may
+	// be less depending on timer resolution)
+	if (ticks - last_ticks < 8)
+		return;
+	last_ticks = ticks;
+
+	LogDebug("Running frame actions.  Device: %p\n", mHackerDevice);
+
+	// Regardless of log settings, since this runs every frame, let's flush the log
+	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
+	if (LogFile) fflush(LogFile);
+
+	bool newEvent = DispatchInputEvents(mHackerDevice);
+
+	CurrentTransition.UpdateTransitions(mHackerDevice);
+
+	// The config file is not safe to reload from within the input handler
+	// since it needs to change the key bindings, so it sets this flag
+	// instead and we handle it now.
+	if (G->gReloadConfigPending)
+		ReloadConfig(mHackerDevice);
+
+	// When not hunting most keybindings won't have been registered, but
+	// still skip the below logic that only applies while hunting.
+	if (!G->hunting)
+		return;
+
+	// Update the huntTime whenever we get fresh user input.
+	if (newEvent)
+		G->huntTime = time(NULL);
+
+	// Clear buffers after some user idle time.  This allows the buffers to be
+	// stable during a hunt, and cleared after one minute of idle time.  The idea
+	// is to make the arrays of shaders stable so that hunting up and down the arrays
+	// is consistent, while the user is engaged.  After 1 minute, they are likely onto
+	// some other spot, and we should start with a fresh set, to keep the arrays and
+	// active shader list small for easier hunting.  Until the first keypress, the arrays
+	// are cleared at each thread wake, just like before. 
+	// The arrays will be continually filled by the SetShader sections, but should 
+	// rapidly converge upon all active shaders.
+
+	if (difftime(time(NULL), G->huntTime) > 60) {
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		TimeoutHuntingBuffers();
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+}
+
+
 STDMETHODIMP HackerDXGISwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags)
@@ -1212,12 +1276,16 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
+	// Every presented frame, we want to take some CPU time to run our actions,
+	// which enables hunting, and snapshots, and aiming overrides and other inputs
+	RunFrameActions();
+
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
 	if (G->hunting)
 		mOverlay->DrawOverlay();
-
+	
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
 	LogDebug("  returns %x\n", hr);
@@ -1429,6 +1497,10 @@ STDMETHODIMP HackerDXGISwapChain1::GetCoreWindow(THIS_
 	return hr;
 }
         
+// Not presently used because of our philosophy of only requiring code
+// to work for non-platform update computers.  SwapChain1 requires the 
+// platform update.
+
 STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT PresentFlags,
@@ -1439,6 +1511,16 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
 	LogInfo("  SyncInterval = %d\n", SyncInterval);
 	LogInfo("  PresentFlags = %d\n", PresentFlags);
 	
+	// Every presented frame, we want to take some CPU time to run our actions,
+	// which enables hunting, and snapshots, and aiming overrides and other inputs
+//	RunFrameActions();
+
+	// Draw the on-screen overlay text with hunting info, before final Present.
+	// But only when hunting is enabled, this will also make it obvious when
+	// hunting is on.
+//	if (G->hunting)
+//		mOverlay->DrawOverlay();
+
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;

@@ -12,12 +12,14 @@
 
 class HackerContext;
 class HackerContext1;
+class HackerDXGISwapChain;
 
 class HackerDevice : public ID3D11Device
 {
 private:
 	ID3D11Device *mOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
+
 	HackerDXGISwapChain *mHackerSwapChain;
 	HackerContext *mHackerContext;
 
@@ -33,7 +35,7 @@ private:
 		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
 
 public:
-	//static ThreadSafePointerSet	 m_List;
+	//static ThreadSafePointerSet	 m_List; ToDo: These should all be private.
 	StereoHandle mStereoHandle;
 	nv::stereo::ParamTextureManagerD3D11 mParamTextureManager;
 	ID3D11Texture2D *mStereoTexture;
@@ -46,8 +48,9 @@ public:
 
 	HRESULT CreateStereoAndIniTextures();
 	void SetHackerContext(HackerContext *pHackerContext);
-	HackerContext* GetHackerContext();
 	void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
+
+	HackerContext* GetHackerContext();
 	ID3D11Device* GetOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
 	IDXGISwapChain* GetOrigSwapChain();
