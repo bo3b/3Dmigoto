@@ -1299,16 +1299,16 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
-	// Every presented frame, we want to take some CPU time to run our actions,
-	// which enables hunting, and snapshots, and aiming overrides and other inputs
-	RunFrameActions();
-
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
 	if (G->hunting)
 		mOverlay->DrawOverlay();
 	
+	// Every presented frame, we want to take some CPU time to run our actions,
+	// which enables hunting, and snapshots, and aiming overrides and other inputs
+	RunFrameActions();
+
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
 	LogDebug("  returns %x\n", hr);

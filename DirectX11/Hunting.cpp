@@ -175,9 +175,10 @@ static void DumpUsage()
 //
 // CoInitialize must be called for WIC to work.  We can call it multiple times, it will
 // return the S_FALSE if it's already inited.
-
-// Only makes a black screen dump in Mordor.  In Alien only does half screen.
-// Can't easily use the nvapi version, because it dumps to hardcoded path.
+//
+// ToDo: Presently makes a 2D JPG.  Making a 3D image is hard to know where the other
+// eye's backbuffer will be.  Can't easily use the nvapi version, because it dumps to 
+// hardcoded path, although we can redirect that using nektra hooks.
 
 static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
 {
@@ -191,7 +192,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
-		wsprintf(fullName, L"%ls\\%I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
+		wsprintf(fullName, L"%ls\\%I64x-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
 		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer.Get(), GUID_ContainerFormatJpeg, fullName);
 	}
 
@@ -622,8 +623,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 		{
 			// Whether we succeed or fail on decompile, let's now make a screen shot of the backbuffer
 			// as a good way to remember what the HLSL affects. This will be with it disabled in the picture.
-			// ToDo, broken at moment, doesn't make 3D shots.
-			//SimpleScreenShot(device, hash, iter.second.shaderType);
+			SimpleScreenShot(device, hash, iter.second.shaderType);
 
 			asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize());
 			if (asmText.empty())
@@ -1157,6 +1157,7 @@ void TimeoutHuntingBuffers()
 	G->mSelectedIndexBuffer_PixelShader.clear();
 	G->mSelectedIndexBuffer_VertexShader.clear();
 
+	// ToDo: iterations now work again, but this is still the wrong spot for this.
 #if 0 /* Iterations are broken since we no longer use present() */
 	// This seems totally bogus - shouldn't we be resetting the iteration
 	// on each new frame, not after hunting timeout? This probably worked
