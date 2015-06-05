@@ -547,27 +547,43 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 //
 // We always expect the pDevice passed in here to be a HackerDevice. If we
 // get one that is not, we have an object leak/bug. It shouldn't be possible to
-// create a ID3D11Device without us wrapping it.
+// create a ID3D11Device without us wrapping it. 
+// But.. it looks like it's legitimate to pass an IDXGIDevice as the pDevice
+// here.  So, we need to handle either case.  If the input pDevice is not a
+// wrapped device, then the typeid(*pDevice) will throw an RTTI exception.
 //
 // When creating the new swap chain, we need to pass the original device, not
 // the wrapped version. For some reason, passing the wrapped version actually
 // succeeds if the "evil" update is installed, which I would not expect.  Without
 // the platform update, it would crash here.
+//
+// It's not clear if we should try to handle null inputs for pDevice, even knowing
+// that there is a lot of terrible code out there calling this.
+// Also if we get a non-wrapped pDevice here, the typid(*pdevice) will crash with
+// an RTTI exception, which we could catch.  Not sure how heroic we want to be here.
+// After some thought, current operating philosophy for this routine will be to
+// not wrap these with an exception handler, as we want to know when games do
+// something crazy, and a crash will let us know.  If we were to just catch and
+// release some crazy stuff, it's not likely to work anyway, and a hard/fragile
+// failure is superior in that case.
 
 STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
-            /* [annotation][in] */ 
-			__in  IUnknown *pDevice,
-            /* [annotation][in] */ 
-            __in  DXGI_SWAP_CHAIN_DESC *pDesc,
-            /* [annotation][out] */ 
-            __out  HackerDXGISwapChain **ppSwapChain)
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	HackerDevice *device = NULL;
+	LogInfo("\n *** HackerDXGIFactory::CreateSwapChain(%s@%p) called with parameters \n", typeid(*this).name(), this);
+	LogInfo("  Device = %s@%p \n", typeid(*pDevice).name(), pDevice);
+	LogInfo("  SwapChain = %p \n", ppSwapChain);
+	LogInfo("  Description = %p \n", pDesc);
 
-	LogInfo("HackerDXGIFactory::CreateSwapChain(%s@%p) called with parameters\n", typeid(*this).name(), this);
-	LogInfo("  Device = (%s@%p)\n", typeid(*pDevice).name(), pDevice);
+	ForceDisplayParams(pDesc);
 
 	// CreateSwapChain could be called with a IDXGIDevice or ID3D11Device
+	HackerDevice *device = NULL;
 	if (typeid(*pDevice) == typeid(HackerDevice))
 		device = static_cast<HackerDevice*>(pDevice);
 	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
@@ -577,36 +593,26 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		return E_FAIL;
 	}
 
-	ForceDisplayParams(pDesc);
-
-	IDXGISwapChain *origSwapChain = 0;
-	HRESULT hr = mOrigFactory->CreateSwapChain(device->GetOrigDevice(), pDesc, &origSwapChain);
-
-	// This call can DXGI_STATUS_OCCLUDED.  That means that the window
-	// can be occluded when we return from creating the real swap chain.  
-	// The check below was looking ONLY for S_OK, and that would lead to it skipping the sub-block
-	// which set up ppSwapChain and returned it.  So, ppSwapChain==NULL and it would crash, sometimes.
-	// There are other legitimate DXGI_STATUS results, so checking for SUCCEEDED is the correct way.
-	// Same bug fix is applied for the other CreateSwapChain* variants.
-
-	if (SUCCEEDED(hr))
+	HRESULT hr = mOrigFactory->CreateSwapChain(device->GetOrigDevice(), pDesc, ppSwapChain);
+	if (FAILED(hr))
 	{
-		if (mHackerDevice == NULL || mHackerContext == NULL)
-			this->SetHackerObjects(device);
-
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(origSwapChain, mHackerDevice, mHackerContext);
-		if (swapchainWrap == NULL)
-		{
-			LogInfo("  error allocating swapchainWrap. \n");
-			origSwapChain->Release();
-			return E_OUTOFMEMORY;
-		}
-
-		if (ppSwapChain)
-			*ppSwapChain = swapchainWrap;
+		LogInfo("  failed result = %#x for device:%p, swapchain:%p \n", hr, pDevice, ppSwapChain);
+		return hr;
 	}
-	
-	LogInfo("  return value = %x, swapchain: %p, swapchain wrap: %p \n", hr, origSwapChain, *ppSwapChain);
+
+	if (mHackerDevice == NULL || mHackerContext == NULL)
+		this->SetHackerObjects(device);
+
+	if (ppSwapChain)
+	{
+		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, mHackerDevice, mHackerContext);
+
+		LogInfo("->HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, *ppSwapChain);
+
+		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
+	}
+
+	LogInfo("->return value = %#x \n\n", hr);
 	return hr;
 }
 
@@ -700,6 +706,11 @@ STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 
 
 // -----------------------------------------------------------------------------
+
+// We are no presently doing anything with these create calls, because we don't
+// expect to use them until we are forced to.  They are not available on Win7,
+// so no game dev is likely to target these for awhile.
+// When we do need to update these, use the normal CreateSwapChain as a refernce.
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][in] */ 

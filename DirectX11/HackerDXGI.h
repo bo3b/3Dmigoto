@@ -467,11 +467,11 @@ public:
 
 	STDMETHOD(CreateSwapChain)(THIS_
 		/* [annotation][in] */
-		__in  IUnknown *pDevice,
+		_In_  IUnknown *pDevice,
 		/* [annotation][in] */
-		__in  DXGI_SWAP_CHAIN_DESC *pDesc,
+		_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
 		/* [annotation][out] */
-		__out  HackerDXGISwapChain **ppSwapChain);
+		_Out_  IDXGISwapChain **ppSwapChain);
 
 	STDMETHOD(CreateSoftwareAdapter)(THIS_
 		/* [in] */ HMODULE Module,
