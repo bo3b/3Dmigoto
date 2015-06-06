@@ -312,14 +312,14 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	if (riid == __uuidof(IDXGIDevice))
 	{
 		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
-		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this, mHackerContext);
+		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this);
 		*ppvObject = dxgiDeviceWrap;
 		LogInfo("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap).name(), dxgiDeviceWrap, origDXGIDevice);
 	}
 	else if (riid == __uuidof(IDXGIDevice1))
 	{
 		IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
-		HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this, mHackerContext);
+		HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
 		*ppvObject = dxgiDeviceWrap1;
 		LogInfo("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap1).name(), dxgiDeviceWrap1, origDXGIDevice1);
 	}

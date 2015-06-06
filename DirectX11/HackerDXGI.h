@@ -31,8 +31,6 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc);
 
 // -----------------------------------------------------------------------------
 
-// MIDL_INTERFACE("00000000-0000-0000-C000-000000000046")
-
 class HackerUnknown : public IUnknown
 {
 private:
@@ -98,19 +96,10 @@ class HackerDXGIAdapter : public HackerDXGIObject
 {
 private:
 	IDXGIAdapter *mOrigAdapter;
-	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIAdapter(IDXGIAdapter *pAdapter);
 
-
-	// Override the GetParent so we can wrap objects returned.
-	STDMETHOD(GetParent)(
-		/* [annotation][in] */
-		_In_  REFIID riid,
-		/* [annotation][retval][out] */
-		_Out_  void **ppParent) override;
 
 	STDMETHOD(EnumOutputs)(THIS_
 		/* [in] */ UINT Output,
@@ -137,12 +126,22 @@ private:
 	IDXGIAdapter1 *mOrigAdapter1;
 
 public:
-	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter);
+
 
 	STDMETHOD(GetDesc1)(THIS_
 		/* [annotation][out] */
 		__out  DXGI_ADAPTER_DESC1 *pDesc);
 };
+
+// -----------------------------------------------------------------------------
+
+// Requires evil platform update for Win7, so we are specifically not implementing
+// this at present.  
+
+//class HackerDXGIAdapter2 : public HackerDXGIAdapter1
+//{
+//}
 
 
 // -----------------------------------------------------------------------------
@@ -151,26 +150,19 @@ class HackerDXGIDevice : public HackerDXGIObject
 {
 private:
 	IDXGIDevice *mOrigDXGIDevice;
+
 	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice);
 
 	IDXGIDevice *GetOrigDXGIDevice();
 	HackerDevice *GetHackerDevice();
 
 
-	// Override the GetParent so we can wrap objects returned.
-	STDMETHOD(GetParent)(
-		/* [annotation][in] */
-		_In_  REFIID riid,
-		/* [annotation][retval][out] */
-		_Out_  void **ppParent) override;
-
 	STDMETHOD(GetAdapter)(
 		/* [annotation][out] */
-		_Out_  HackerDXGIAdapter **pAdapter);
+		_Out_  IDXGIAdapter **pAdapter);
 
 	STDMETHOD(CreateSurface)(
 		/* [annotation][in] */
@@ -204,11 +196,11 @@ class HackerDXGIDevice1 : public HackerDXGIDevice
 {
 private:
 	IDXGIDevice1 *mOrigDXGIDevice1;
+
 	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice);
 
 
 	STDMETHOD(SetMaximumFrameLatency)(
@@ -218,6 +210,15 @@ public:
 		/* [annotation][out] */
 		_Out_  UINT *pMaxLatency);
 };
+
+// -----------------------------------------------------------------------------
+
+// Requires evil platform update for Win7, so we are specifically not implementing
+// this at present.  
+
+//class HackerDXGIDevice2 : public HackerDXGIDevice1
+//{
+//}
 
 
 // -----------------------------------------------------------------------------
@@ -377,6 +378,9 @@ public:
 
 // -----------------------------------------------------------------------------
 
+// Requires evil platform update for Win7, so we are specifically not implementing
+// this at present.  Just for logging.
+
 class HackerDXGISwapChain1 : public HackerDXGISwapChain
 {
 private:
@@ -439,13 +443,10 @@ class HackerDXGIFactory : public HackerDXGIObject
 {
 private:
 	IDXGIFactory *mOrigFactory;
-	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
 
 public:
-	HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIFactory(IDXGIFactory *pFactory);
 	
-	void SetHackerObjects(IUnknown *pDevice);
 
 	// Specifically override the QueryInterface here so that we can return an 
 	// error for attempts to create IDXGIFactory2.
@@ -456,7 +457,7 @@ public:
 	STDMETHOD(EnumAdapters)(THIS_
 		/* [in] */ UINT Adapter,
 		/* [annotation][out] */
-		__out HackerDXGIAdapter **ppAdapter);
+		_Out_  IDXGIAdapter **ppAdapter);
 
 	STDMETHOD(MakeWindowAssociation)(THIS_
 		HWND WindowHandle,
@@ -488,7 +489,7 @@ private:
 	IDXGIFactory1 *mOrigFactory1;
 
 public:
-	HackerDXGIFactory1(IDXGIFactory1 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIFactory1(IDXGIFactory1 *pFactory);
 
 
 	STDMETHOD(EnumAdapters1)(THIS_
@@ -502,20 +503,23 @@ public:
 
 // -----------------------------------------------------------------------------
 
+// Requires evil platform update for Win7, so we are specifically not implementing
+// this at present.  Just for logging.
+
 class HackerDXGIFactory2 : public HackerDXGIFactory1
 {
 private:
 	IDXGIFactory2 *mOrigFactory2;
 
 public:
-	HackerDXGIFactory2(IDXGIFactory2 *pFactory, HackerDevice *pDevice, HackerContext *pContext);
+	HackerDXGIFactory2(IDXGIFactory2 *pFactory);
 
 
 	STDMETHOD_(BOOL, IsWindowedStereoEnabled)(THIS);
 
 	STDMETHOD(CreateSwapChainForHwnd)(
 		/* [annotation][in] */
-		_In_  HackerDevice *pDevice,
+		_In_  IUnknown *pDevice,
 		/* [annotation][in] */
 		_In_  HWND hWnd,
 		/* [annotation][in] */
@@ -529,7 +533,7 @@ public:
 
 	STDMETHOD(CreateSwapChainForCoreWindow)(
 		/* [annotation][in] */
-		_In_  HackerDevice *pDevice,
+		_In_  IUnknown *pDevice,
 		/* [annotation][in] */
 		_In_  IUnknown *pWindow,
 		/* [annotation][in] */
@@ -583,7 +587,7 @@ public:
 
 	STDMETHOD(CreateSwapChainForComposition)(
 		/* [annotation][in] */
-		_In_  HackerDevice *pDevice,
+		_In_  IUnknown *pDevice,
 		/* [annotation][in] */
 		_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
 		/* [annotation][in] */

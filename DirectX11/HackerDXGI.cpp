@@ -25,28 +25,30 @@ HackerDXGIObject::HackerDXGIObject(IDXGIObject *pObject)
 
 // Worth noting- the device and context for the secret path are the Hacker 
 // versions, because we need access to their fields later.
-HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext)
+HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice)
 	: HackerDXGIObject(pDXGIDevice)
 {
 	mOrigDXGIDevice = pDXGIDevice;
 	mHackerDevice = pDevice;
-	mHackerContext = pContext;
 }
 
-HackerDXGIDevice1::HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext)
-	: HackerDXGIDevice(pDXGIDevice, pDevice, pContext)
+HackerDXGIDevice1::HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice1, HackerDevice *pDevice)
+	: HackerDXGIDevice(pDXGIDevice1, pDevice)
 {
-	mOrigDXGIDevice1 = pDXGIDevice;
+	mOrigDXGIDevice1 = pDXGIDevice1;
 	mHackerDevice = pDevice;
-	mHackerContext = pContext;
 }
 
-HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter, HackerDevice *pDevice, HackerContext *pContext)
+HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter)
 	: HackerDXGIObject(pAdapter)
 {
 	mOrigAdapter = pAdapter;
-	mHackerDevice = pDevice;
-	mHackerContext = pContext;
+}
+
+HackerDXGIAdapter1::HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter1)
+	: HackerDXGIAdapter(pAdapter1)
+{
+	mOrigAdapter1 = pAdapter1;
 }
 
 HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
@@ -76,31 +78,29 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 	mOverlay = new Overlay(pDevice, pContext, this);
 }
 
-HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
-	: HackerDXGISwapChain(pSwapChain, pDevice, pContext)
+HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain1, HackerDevice *pDevice, HackerContext *pContext)
+	: HackerDXGISwapChain(pSwapChain1, pDevice, pContext)
 {
-	mOrigSwapChain1 = pSwapChain;
+	mOrigSwapChain1 = pSwapChain1;
 }
 
 
-HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory, HackerDevice *pDevice, HackerContext *pContext)
+HackerDXGIFactory::HackerDXGIFactory(IDXGIFactory *pFactory)
 	: HackerDXGIObject(pFactory)
 {
 	mOrigFactory = pFactory;
-	mHackerDevice = pDevice;
-	mHackerContext = pContext;
 }
 
-HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory, HackerDevice *pDevice, HackerContext *pContext)
-	: HackerDXGIFactory(pFactory, pDevice, pContext)
+HackerDXGIFactory1::HackerDXGIFactory1(IDXGIFactory1 *pFactory1)
+	: HackerDXGIFactory(pFactory1)
 {
-	mOrigFactory1 = pFactory;
+	mOrigFactory1 = pFactory1;
 }
 
-HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory, HackerDevice *pDevice, HackerContext *pContext)
-	: HackerDXGIFactory1(pFactory, pDevice, pContext)
+HackerDXGIFactory2::HackerDXGIFactory2(IDXGIFactory2 *pFactory2)
+	: HackerDXGIFactory1(pFactory2)
 {
-	mOrigFactory2 = pFactory;
+	mOrigFactory2 = pFactory2;
 }
 
 
@@ -184,6 +184,18 @@ STDMETHODIMP HackerDXGIObject::GetPrivateData(THIS_
 	return hr;
 }
 
+
+// More details: https://msdn.microsoft.com/en-us/library/windows/apps/hh465096.aspx
+//
+// This is the root class object, expected to be used for HackerDXGIAdapter, and
+// HackerDXGIDevice GetParent() calls.  It would be legitimate for a caller to
+// QueryInterface their objects to get the DXGIObject, and call GetParent, so
+// this should be more robust.
+//
+// If the parent request is for the IDXGIAdapter or IDXGIFactory, that must mean 
+// we are taking the secret path for getting the swap chain.  Return a wrapped version 
+// whenever this happens, so we can get access later.
+
 STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	/* [annotation][in] */
 	__in  REFIID riid,
@@ -193,7 +205,25 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	LogInfo("HackerDXGIObject::GetParent(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigObject->GetParent(riid, ppParent);
-	LogInfo("  returns result = %x\n", hr);
+
+	// Check return value before wrapping - don't create wrappers for error states
+	if (SUCCEEDED(hr) && ppParent)
+	{
+		if (riid == __uuidof(IDXGIAdapter))
+		{
+			HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(static_cast<IDXGIAdapter*>(*ppParent));
+			LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, *ppParent);
+			*ppParent = reinterpret_cast<void*>(adapterWrap);
+		}
+		if (riid == __uuidof(IDXGIFactory))
+		{
+			HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
+			LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, *ppParent);
+			*ppParent = factoryWrap;
+		}
+	}
+
+	LogInfo("  returns result = %#x \n", hr);
 	return hr;
 }
 
@@ -216,26 +246,24 @@ HackerDevice *HackerDXGIDevice::GetHackerDevice()
 
 STDMETHODIMP HackerDXGIDevice::GetAdapter(
 	/* [annotation][out] */
-	_Out_  HackerDXGIAdapter **pAdapter)
+	_Out_  IDXGIAdapter **pAdapter)
 {
 	LogInfo("HackerDXGIDevice::GetAdapter(%s@%p) called with: %p \n", typeid(*this).name(), this, pAdapter);
 
-	IDXGIAdapter *origAdapter;
-	HRESULT hr = mOrigDXGIDevice->GetAdapter(&origAdapter);
+	HRESULT hr = mOrigDXGIDevice->GetAdapter(pAdapter);
 
-	HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
-	if (adapterWrap == NULL)
+	// Check return value before wrapping - don't create wrappers for error states.
+	if (SUCCEEDED(hr) && pAdapter)
 	{
-		LogInfo("  error allocating dxgiAdapterWrap. \n");
-		return E_OUTOFMEMORY;
+		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(*pAdapter);
+
+		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, *pAdapter);
+
+		// Return the wrapped version which the game will use for follow on calls.
+		*pAdapter = reinterpret_cast<IDXGIAdapter*>(adapterWrap);
 	}
 
-	// Return the wrapped version which the game will use for follow on calls.
-	if (pAdapter)
-		*pAdapter = adapterWrap;
-
-	LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
-	LogInfo("  returns result = %x\n", hr);
+	LogInfo("  returns result = %#x \n", hr);
 	return hr;
 }
 
@@ -287,51 +315,6 @@ STDMETHODIMP HackerDXGIDevice::GetGPUThreadPriority(
 	return hr;
 }
 
-// Override of HackerDXGIObject::GetParent, as we are wrapping specific calls
-// expected to call the HackerDXGIDevice to find the DXGIFactory.
-//
-// If the parent request is for the IDXGIAdapter, that must mean we are taking the secret
-// path for getting the swap chain.  Return a wrapped version whenever this happens, so
-// we can get access later.
-// 
-// It might make sense to drop these into the HackerDXGIObject::GetParent call, 
-// and not override these.
-
-STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
-	/* [annotation][in] */
-	__in  REFIID riid,
-	/* [annotation][retval][out] */
-	__out  void **ppParent)
-{
-	HRESULT hr;
-
-	LogInfo("HackerDXGIDevice::GetParent(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
-
-	if (riid == __uuidof(IDXGIAdapter))
-	{
-		IDXGIAdapter *origAdapter;
-		hr = mOrigDXGIDevice->GetParent(riid, (void**)(&origAdapter));
-
-		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
-		if (adapterWrap == NULL)
-		{
-			LogInfo("  error allocating dxgiAdapterWrap. \n");
-			return E_OUTOFMEMORY;
-		}
-		if (ppParent)
-			*ppParent = adapterWrap;
-
-		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
-	}
-	else
-	{
-		hr = mOrigDXGIDevice->GetParent(riid, ppParent);
-	}
-
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
-}
-
 
 // -----------------------------------------------------------------------------
 
@@ -355,31 +338,6 @@ STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
 }
 
 // -----------------------------------------------------------------------------
-
-// Given an input pDevice, we want to reset our mHackerDevice and mHackerContext
-// references to use that object.  This can happen if the factory is created
-// directly by the game, when no device is available.
-//
-// We really expect that any given input pDevice will already have be successfully
-// wrapped to HackerDevice.
-
-void HackerDXGIFactory::SetHackerObjects(IUnknown *pDevice)
-{
-	try
-	{
-		LogInfo("HackerDXGIFactory::SetHackerObjects(%s@%p) called with device: %s. \n", typeid(*this).name(), this, typeid(*pDevice).name());
-		if (typeid(*pDevice) == typeid(HackerDevice))
-		{
-			mHackerDevice = static_cast<HackerDevice*>(pDevice);
-			mHackerContext = mHackerDevice->GetHackerContext();
-		}
-	}
-	catch (...)		// typeid throws exception if no RTTI
-	{
-		__debugbreak();
-	}
-}
-
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404556(v=vs.85).aspx
 //
@@ -412,7 +370,7 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 
 		// For when we need to return a legit Factory2.  Crashes at present.
 		//hr = mOrigFactory->QueryInterface(riid, ppvObject);
-		//HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject), mHackerDevice, mHackerContext);
+		//HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
 		//LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
 
 		//if (factory2Wrap == NULL)
@@ -431,34 +389,27 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 }
 
 STDMETHODIMP HackerDXGIFactory::EnumAdapters(THIS_
-            /* [in] */ UINT Adapter,
-            /* [annotation][out] */ 
-			__out HackerDXGIAdapter **ppAdapter)
+	/* [in] */ UINT Adapter,
+	/* [annotation][out] */
+	_Out_  IDXGIAdapter **ppAdapter)
 {
 	LogInfo("HackerDXGIFactory::EnumAdapters(%s@%p) adapter %d requested\n", typeid(*this).name(), this, Adapter);
 
-	IDXGIAdapter *origAdapter;
-	HackerDXGIAdapter *adapterWrap = NULL;
-	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, &origAdapter);
+	HRESULT hr = mOrigFactory->EnumAdapters(Adapter, ppAdapter);
 
 	// Check return value before wrapping - don't create a wrapper for
 	// DXGI_ERROR_NOT_FOUND, as that will crash UE4 games.
-	if (SUCCEEDED(hr)) {
-		adapterWrap = new HackerDXGIAdapter(origAdapter, mHackerDevice, mHackerContext);
-		if (adapterWrap == NULL)
-		{
-			LogInfo("  error allocating dxgiAdapterWrap. \n");
-			return E_OUTOFMEMORY;
-		}
+	if (SUCCEEDED(hr) && ppAdapter) 
+	{
+		HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(*ppAdapter);
 
-		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, origAdapter);
+		LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, *ppAdapter);
+
+		// Return the wrapped version which the game will use for follow on calls.
+		*ppAdapter = reinterpret_cast<IDXGIAdapter*>(adapterWrap);
 	}
 
-	// Return the wrapped version which the game will use for follow on calls.
-	if (ppAdapter)
-		*ppAdapter = adapterWrap;
-
-	LogInfo("  returns result = %x\n", hr);
+	LogInfo("  returns result = %#x \n", hr);
 	return hr;
 }
         
@@ -613,15 +564,10 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		return hr;
 	}
 
-	if (mHackerDevice == NULL || mHackerContext == NULL)
-		this->SetHackerObjects(hackerDevice);
-
 	if (ppSwapChain)
 	{
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, mHackerDevice, mHackerContext);
-
+		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
 		LogInfo("->HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, *ppSwapChain);
-
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
 
@@ -655,21 +601,26 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 	__out  IDXGIAdapter1 **ppAdapter)
 
 {
-	LogInfo("HackerDXGIFactory1::EnumAdapters1(%s@%p) called: adapter #%d requested\n", typeid(*this).name(), this, Adapter);
+	LogInfo("HackerDXGIFactory1::EnumAdapters1(%s@%p) adapter %d requested\n", typeid(*this).name(), this, Adapter);
 
-	HRESULT ret = mOrigFactory1->EnumAdapters1(Adapter, ppAdapter);
+	HRESULT hr = mOrigFactory1->EnumAdapters1(Adapter, ppAdapter);
 
-	if (SUCCEEDED(ret) && LogFile)
+	// Check return value before wrapping - don't create a wrapper for
+	// DXGI_ERROR_NOT_FOUND, as that will crash UE4 games.
+	if (SUCCEEDED(hr) && ppAdapter)
 	{
-		DXGI_ADAPTER_DESC1 desc;
-		if (SUCCEEDED((*ppAdapter)->GetDesc1(&desc)))
-		{
-			char instance[MAX_PATH];
-			wcstombs(instance, desc.Description, MAX_PATH);
-			LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d, flags=%x\n", instance, desc.DedicatedSystemMemory, desc.DedicatedVideoMemory, desc.Flags);
-		}
+		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(*ppAdapter);
+
+		LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p \n", adapterWrap1, *ppAdapter);
+
+		// Return the wrapped version which the game will use for follow on calls.
+		*ppAdapter = reinterpret_cast<IDXGIAdapter1*>(adapterWrap1);
 	}
-		/*
+
+	LogInfo("  returns result = %#x \n", hr);
+	return hr;
+}
+		/*  Earlier code for reference.
 		IDXGIOutput *output;
 		HRESULT h = S_OK;
 		for (int i = 0; h == S_OK; ++i)
@@ -704,10 +655,6 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 		}
 		}
 		*/
-	
-	LogInfo("  returns result = %x, handle = %p \n", ret, *ppAdapter);
-	return ret;
-}
 
 STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 {
@@ -727,7 +674,7 @@ STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][in] */ 
-            _In_  HackerDevice *pDevice,
+            _In_  IUnknown *pDevice,
             /* [annotation][in] */ 
             _In_  HWND hWnd,
             /* [annotation][in] */ 
@@ -761,7 +708,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
 	//hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice->GetOrigDevice(), hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
 	//if (SUCCEEDED(hr))
@@ -778,7 +725,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
             /* [annotation][in] */ 
-			_In_  HackerDevice *pDevice,
+			_In_  IUnknown *pDevice,
             /* [annotation][in] */ 
             _In_  IUnknown *pWindow,
             /* [annotation][in] */ 
@@ -802,7 +749,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
 	//	hr = mOrigFactory->CreateSwapChainForCoreWindow(realDevice, pWindow, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice->GetOrigDevice(), pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
 	//if (SUCCEEDED(hr))
@@ -819,7 +766,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
             /* [annotation][in] */ 
-			_In_  HackerDevice *pDevice,
+			_In_  IUnknown *pDevice,
             /* [annotation][in] */ 
             _In_ const DXGI_SWAP_CHAIN_DESC1 *pDesc,
             /* [annotation][in] */ 
@@ -852,7 +799,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
 	//}
 
-	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice->GetOrigDevice(), pDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 	return hr;
 }
@@ -986,50 +933,6 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
 	HRESULT hr = mOrigAdapter->CheckInterfaceSupport(InterfaceName, pUMDVersion);
 	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
 	LogInfo("  returns hr=%x\n", hr);
-	return hr;
-}
-
-// expected to call the HackerDXGIAdapter to find the DXGIFactory.
-//
-// If the parent request is for the IDXGIFactory, that must mean we are taking the secret
-// path for getting the swap chain.  Return a wrapped version whenever this happens, so
-// we can get access later.
-//
-// Can also ask for Factory1 or Factory2.
-// More details: https://msdn.microsoft.com/en-us/library/windows/apps/hh465096.aspx
-
-STDMETHODIMP HackerDXGIAdapter::GetParent(THIS_
-	/* [annotation][in] */
-	__in  REFIID riid,
-	/* [annotation][retval][out] */
-	__out  void **ppParent)
-{
-	HRESULT hr;
-
-	LogInfo("HackerDXGIAdapter::GetParent(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
-
-	if (riid == __uuidof(IDXGIFactory))
-	{
-		IDXGIFactory *origFactory;
-		hr = mOrigAdapter->GetParent(riid, (void**)(&origFactory));
-
-		HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(origFactory, mHackerDevice, mHackerContext);
-		if (factoryWrap == NULL)
-		{
-			LogInfo("  error allocating dxgiFactoryWrap. \n");
-			return E_OUTOFMEMORY;
-		}
-		if (ppParent)
-			*ppParent = factoryWrap;
-
-		LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, origFactory);
-	}
-	else
-	{
-		hr = mOrigAdapter->GetParent(riid, ppParent);
-	}
-
-	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
 

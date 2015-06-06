@@ -120,7 +120,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
 
 	HackerDXGIFactory *factoryWrap;
-	factoryWrap = new HackerDXGIFactory(origFactory, NULL, NULL);
+	factoryWrap = new HackerDXGIFactory(origFactory);
 
 	// ToDo: this null check is not necessary as it would throw exception.
 	if (factoryWrap == NULL)
@@ -186,7 +186,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	//else
 	{
 		HackerDXGIFactory1 *factory1Wrap;
-		factory1Wrap = new HackerDXGIFactory1(origFactory1, NULL, NULL);
+		factory1Wrap = new HackerDXGIFactory1(origFactory1);
 		if (ppFactory1)
 			*ppFactory1 = factory1Wrap;
 		LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", typeid(*factory1Wrap).name(), factory1Wrap, origFactory1);
