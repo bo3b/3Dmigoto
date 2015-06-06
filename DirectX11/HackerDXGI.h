@@ -157,6 +157,7 @@ private:
 public:
 	HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice, HackerContext *pContext);
 
+	IDXGIDevice *GetOrigDXGIDevice();
 	HackerDevice *GetHackerDevice();
 
 

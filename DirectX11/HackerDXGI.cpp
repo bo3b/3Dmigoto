@@ -200,6 +200,17 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 
 // -----------------------------------------------------------------------------
 
+IDXGIDevice *HackerDXGIDevice::GetOrigDXGIDevice()
+{
+	return mOrigDXGIDevice;
+}
+
+HackerDevice *HackerDXGIDevice::GetHackerDevice()
+{
+	return mHackerDevice;
+}
+
+
 // Let's wrap GetAdapter as well, it appears that Ori calls this instead of 
 // GetParent, which is their bug, but we need to work around it.
 
@@ -319,11 +330,6 @@ STDMETHODIMP HackerDXGIDevice::GetParent(THIS_
 
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
-}
-
-HackerDevice *HackerDXGIDevice::GetHackerDevice()
-{
-	return mHackerDevice;
 }
 
 
@@ -583,17 +589,24 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	ForceDisplayParams(pDesc);
 
 	// CreateSwapChain could be called with a IDXGIDevice or ID3D11Device
-	HackerDevice *device = NULL;
+	HackerDevice *hackerDevice = NULL;
+	IUnknown *origDevice = NULL;
 	if (typeid(*pDevice) == typeid(HackerDevice))
-		device = static_cast<HackerDevice*>(pDevice);
+	{
+		hackerDevice = static_cast<HackerDevice*>(pDevice);
+		origDevice = hackerDevice->GetOrigDevice();
+	}
 	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
-		device = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
+	{
+		hackerDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetOrigDXGIDevice();
+	}
 	else {
 		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
 		return E_FAIL;
 	}
 
-	HRESULT hr = mOrigFactory->CreateSwapChain(device->GetOrigDevice(), pDesc, ppSwapChain);
+	HRESULT hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed result = %#x for device:%p, swapchain:%p \n", hr, pDevice, ppSwapChain);
@@ -601,7 +614,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	}
 
 	if (mHackerDevice == NULL || mHackerContext == NULL)
-		this->SetHackerObjects(device);
+		this->SetHackerObjects(hackerDevice);
 
 	if (ppSwapChain)
 	{
