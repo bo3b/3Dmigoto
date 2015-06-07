@@ -297,12 +297,12 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+	LogInfo("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
-		LogDebug("  failed result = %x for %p \n", hr, ppvObject);
+		LogInfo("  failed result = %x for %p \n", hr, ppvObject);
 		return hr;
 	}
 
@@ -327,7 +327,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	{
 		// an IDXGIDevice2 can only be created on platform update or above, so let's 
 		// continue the philosophy of returning errors for anything optional.
-		LogInfo("  returns E_NOINTERFACE as error. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIDevice2. \n");
 		*ppvObject = NULL;
 		return E_NOINTERFACE;
 	}
@@ -353,7 +353,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		// adds a ton of undesirable complexity, so let's keep it simpler since we don't 
 		// seem to lose anything. Not features, not performance.
 		
-		LogInfo("  returns E_NOINTERFACE as error. \n");
+		LogInfo("  returns E_NOINTERFACE as error for ID3D11Device1. \n");
 		*ppvObject = NULL;
 		return E_NOINTERFACE;
 
@@ -378,7 +378,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		//	*ppvObject = hackerDeviceWrap1;
 	}
 
-	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
+	LogInfo("  returns result = %x for %p \n", hr, *ppvObject);
 	return hr;
 }
 

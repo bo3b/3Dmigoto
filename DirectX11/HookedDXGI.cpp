@@ -105,7 +105,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2))
 	{
-		LogInfo("  returns E_NOINTERFACE as error. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 		*ppFactory = NULL;
 		return E_NOINTERFACE;
 	}
@@ -155,7 +155,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2))
 	{
-		LogInfo("  returns E_NOINTERFACE as error. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 		*ppFactory1 = NULL;
 		return E_NOINTERFACE;
 	}

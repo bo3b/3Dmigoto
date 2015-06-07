@@ -369,14 +369,14 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerDXGIFactory::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+	LogInfo("HackerDXGIFactory::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	HRESULT hr;
 
 	if (riid == __uuidof(IDXGIFactory2))
 	{
 		// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-		LogInfo("  returns E_NOINTERFACE as error. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 		*ppvObject = NULL;
 		return E_NOINTERFACE;
 
@@ -396,7 +396,7 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	
 	hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
-	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
+	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
 }
 
