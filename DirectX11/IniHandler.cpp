@@ -371,7 +371,7 @@ void LoadConfigFile()
 	{
 		if (!LogFile)
 			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
-		LogInfo("\nD3D11 DLL starting init  -  %s\n\n", LogTime().c_str());
+		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
 
@@ -387,6 +387,12 @@ void LoadConfigFile()
 	{
 		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
 	}
+
+#if _DEBUG
+	// Always force full logging by default in DEBUG builds
+	gLogDebug = true;
+	unbuffered = setvbuf(LogFile, NULL, _IONBF, 0); 
+#endif
 
 	// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
 	BOOL affinity = -1;
