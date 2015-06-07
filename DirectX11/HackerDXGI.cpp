@@ -318,6 +318,18 @@ STDMETHODIMP HackerDXGIDevice::GetGPUThreadPriority(
 
 // -----------------------------------------------------------------------------
 
+IDXGIDevice1 *HackerDXGIDevice1::GetOrigDXGIDevice1()
+{
+	return mOrigDXGIDevice1;
+}
+
+HackerDevice *HackerDXGIDevice1::GetHackerDevice()
+{
+	return mHackerDevice;
+}
+
+
+
 STDMETHODIMP HackerDXGIDevice1::SetMaximumFrameLatency(
 	/* [in] */ UINT MaxLatency)
 {
@@ -551,6 +563,11 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	{
 		hackerDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
 		origDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetOrigDXGIDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice1))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
 	}
 	else {
 		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");

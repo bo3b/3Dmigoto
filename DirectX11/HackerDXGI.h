@@ -202,6 +202,9 @@ private:
 public:
 	HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice);
 
+	IDXGIDevice1 *GetOrigDXGIDevice1();
+	HackerDevice *GetHackerDevice();
+
 
 	STDMETHOD(SetMaximumFrameLatency)(
 		/* [in] */ UINT MaxLatency);
