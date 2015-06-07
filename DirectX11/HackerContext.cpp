@@ -576,6 +576,9 @@ ULONG STDMETHODCALLTYPE HackerContext::AddRef(void)
 }
 
 
+// Must set the reference that the HackerDevice uses to null, because otherwise
+// we see that dead reference reused in GetImmediateContext, in FC4.
+
 STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 {
 	ULONG ulRef = mOrigContext->Release();
@@ -585,6 +588,7 @@ STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 	{
 		LogInfo("  deleting self\n");
 
+		mHackerDevice->SetHackerContext(nullptr);
 		delete this;
 		return 0L;
 	}
