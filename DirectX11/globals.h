@@ -185,6 +185,11 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 
+	bool compute_enabled;
+	bool geometry_enabled;
+	bool tesselation_enabled;
+	bool deferred_enabled;
+
 	unsigned analyse_frame;
 	bool analyse_next_frame;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
@@ -287,6 +292,11 @@ struct Globals
 		config_reloadable(false),
 		show_original_enabled(false),
 		huntTime(0),
+
+		compute_enabled(true),
+		geometry_enabled(true),
+		tesselation_enabled(true),
+		deferred_enabled(true),
 
 		analyse_frame(0),
 		analyse_next_frame(false),

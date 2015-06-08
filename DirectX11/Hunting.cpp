@@ -855,6 +855,53 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	G->analyse_next_frame = true;
 }
 
+static void DisableCS(HackerDevice *device, void *private_data)
+{
+	LogInfo("Disabling dispatch of compute shaders\n");
+	G->compute_enabled = false;
+}
+
+static void EnableCS(HackerDevice *device, void *private_data)
+{
+	LogInfo("Enabling dispatch of compute shaders\n");
+	G->compute_enabled = true;
+}
+
+static void DisableGS(HackerDevice *device, void *private_data)
+{
+	LogInfo("Disabling geometry shaders\n");
+	G->geometry_enabled = false;
+}
+
+static void EnableGS(HackerDevice *device, void *private_data)
+{
+	LogInfo("Enabling geometry shaders\n");
+	G->geometry_enabled = true;
+}
+
+static void DisableTesselation(HackerDevice *device, void *private_data)
+{
+	LogInfo("Disabling tesselation shaders\n");
+	G->tesselation_enabled = false;
+}
+
+static void EnableTesselation(HackerDevice *device, void *private_data)
+{
+	LogInfo("Enabling tesselation shaders\n");
+	G->tesselation_enabled = true;
+}
+
+static void DisableDeferred(HackerDevice *device, void *private_data)
+{
+	LogInfo("Disabling execution of deferred command lists\n");
+	G->deferred_enabled = false;
+}
+
+static void EnableDeferred(HackerDevice *device, void *private_data)
+{
+	LogInfo("Enabling execution of deferred command lists\n");
+	G->deferred_enabled = true;
+}
 
 
 
@@ -1309,6 +1356,12 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", iniFile, AnalyseFrame, NULL, noRepeat, NULL);
+
+	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
+	RegisterIniKeyBinding(L"Hunting", L"kill_compute", iniFile, DisableCS, EnableCS, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"kill_geometry", iniFile, DisableGS, EnableGS, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"kill_tesselation", iniFile, DisableTesselation, EnableTesselation, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", iniFile, DisableDeferred, EnableDeferred, noRepeat, NULL);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);

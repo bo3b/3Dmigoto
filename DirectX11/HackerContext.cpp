@@ -923,7 +923,10 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	 mOrigContext->GSSetShader(pShader, ppClassInstances, NumClassInstances);
+	if (G->geometry_enabled)
+		mOrigContext->GSSetShader(pShader, ppClassInstances, NumClassInstances);
+	else
+		mOrigContext->GSSetShader(NULL, 0, NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::IASetPrimitiveTopology(THIS_
@@ -1056,7 +1059,8 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountZ)
 {
-	 mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	if (G->compute_enabled)
+		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
 
 STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
@@ -1065,7 +1069,8 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	 mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+	if (G->compute_enabled)
+		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 }
 
 STDMETHODIMP_(void) HackerContext::RSSetState(THIS_
@@ -1227,7 +1232,8 @@ STDMETHODIMP_(void) HackerContext::ExecuteCommandList(THIS_
 	__in  ID3D11CommandList *pCommandList,
 	BOOL RestoreContextState)
 {
-	 mOrigContext->ExecuteCommandList(pCommandList, RestoreContextState);
+	if (G->deferred_enabled)
+		mOrigContext->ExecuteCommandList(pCommandList, RestoreContextState);
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetShaderResources(THIS_
@@ -1250,7 +1256,10 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 {
 	LogDebug("HackerContext::HSSetShader called\n");
 
-	 mOrigContext->HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
+	if (G->tesselation_enabled)
+		mOrigContext->HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
+	else
+		mOrigContext->HSSetShader(NULL, 0, NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetSamplers(THIS_
@@ -1295,7 +1304,10 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 {
 	LogDebug("HackerContext::DSSetShader called\n");
 
-	 mOrigContext->DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
+	if (G->tesselation_enabled)
+		mOrigContext->DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
+	else
+		mOrigContext->DSSetShader(NULL, 0, NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::DSSetSamplers(THIS_
