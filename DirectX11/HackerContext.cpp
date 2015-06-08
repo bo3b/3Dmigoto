@@ -1353,6 +1353,8 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 	/* [annotation] */
 	__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts)
 {
+	// TODO: Record stats on unordered access view usage
+
 	 mOrigContext->CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 
@@ -2320,6 +2322,23 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
 	LogDebug("HackerContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
+
+	if (G->hunting)
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			mCurrentRenderTargets.clear();
+			mCurrentDepthTarget = NULL;
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+		if (ppRenderTargetViews) {
+			for (UINT i = 0; i < NumRTVs; ++i)
+				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+		}
+
+		RecordDepthStencil(pDepthStencilView);
+
+		// TODO: Record stats on unordered access views usage between compute & pixel shaders
+	}
 
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
 		UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
