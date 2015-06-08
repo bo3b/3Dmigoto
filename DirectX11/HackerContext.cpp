@@ -12,6 +12,7 @@
 #include "Globals.h"
 
 #include <ScreenGrab.h>
+#include <wincodec.h>
 #include <Strsafe.h>
 
 // -----------------------------------------------------------------------------------------------
@@ -260,6 +261,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	D3D11_BOX srcBox;
 	UINT srcWidth;
 	HRESULT hr;
+	wchar_t *ext;
 
 	resource->GetDesc(&desc);
 
@@ -288,14 +290,18 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	// Might want JPEGs for smaller, easier to work with RGB files, but
-	// that would lose additional channels, which are often used to store
-	// data that we might care about (e.g. transparency, depth buffer,
-	// specular power, or anything else), so for now save DDS files. We
-	// could make this a config item, or automatically decide based on the
-	// texture format:
 	DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
-	// DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
+
+	// Also save a JPS file. This will be missing extra channels (e.g.
+	// transparency, depth buffer, specular power, etc) or bit depth that
+	// can be found in the DDS file, but is generally easier to work with.
+	// It also appears that not all formats will be saved, but that doesn't
+	// really matter since we have the DDS for those:
+	ext = wcsrchr(filename, L'.');
+	if (!ext)
+		return;
+	wcscpy_s(ext, ext - filename + MAX_PATH, L".jps");
+	DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
 
 	stereoResource->Release();
 }
