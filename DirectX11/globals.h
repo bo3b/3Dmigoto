@@ -185,6 +185,10 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 
+	unsigned analyse_frame;
+	bool analyse_next_frame;
+	wchar_t ANALYSIS_PATH[MAX_PATH];
+
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
@@ -284,6 +288,9 @@ struct Globals
 		show_original_enabled(false),
 		huntTime(0),
 
+		analyse_frame(0),
+		analyse_next_frame(false),
+
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
 		EXPORT_FIXED(false),
@@ -323,6 +330,8 @@ struct Globals
 		SHADER_PATH[0] = 0;
 		SHADER_CACHE_PATH[0] = 0;
 		CHAIN_DLL_PATH[0] = 0;
+
+		ANALYSIS_PATH[0] = 0;
 
 		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;

@@ -58,6 +58,9 @@ private:
 	void AfterDraw(DrawContext &data);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *fullName);
+	void DumpResource(ID3D11Resource *resource, int idx);
+	void DumpRenderTargets();
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);

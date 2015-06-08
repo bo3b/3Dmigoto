@@ -11,6 +11,9 @@
 #include "D3D11Wrapper.h"
 #include "Globals.h"
 
+#include <ScreenGrab.h>
+#include <Strsafe.h>
+
 // -----------------------------------------------------------------------------------------------
 
 HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
@@ -246,6 +249,126 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 		mCurrentDepthTarget = resource;
 		G->mDepthTargetInfo[hash] = resource_info;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
+// TODO: Refactor this with StereoScreenShot().
+// Expects the reverse stereo blit to be enabled by the caller
+void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename)
+{
+	ID3D11Texture2D *stereoResource = NULL;
+	D3D11_TEXTURE2D_DESC desc;
+	D3D11_BOX srcBox;
+	UINT srcWidth;
+	HRESULT hr;
+
+	resource->GetDesc(&desc);
+
+	// Intermediate resource should be 2x width to receive a stereo image:
+	srcWidth = desc.Width;
+	desc.Width = srcWidth * 2;
+
+	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &stereoResource);
+	if (FAILED(hr)) {
+		LogInfo("DumpStereoResource failed to create intermediate texture resource: 0x%x \n", hr);
+		return;
+	}
+
+	// Set the source box as per the nvapi documentation:
+	srcBox.left = 0;
+	srcBox.top = 0;
+	srcBox.front = 0;
+	srcBox.right = srcWidth;
+	srcBox.bottom = desc.Height;
+	srcBox.back = 1;
+
+	// Perform the reverse stereo blit:
+	// TODO: Dump out any additional sub-resources from this resource:
+	mOrigContext->CopySubresourceRegion(stereoResource, 0, 0, 0, 0, resource, 0, &srcBox);
+
+	// Needs to be called at some point before SaveXXXTextureToFile:
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
+	// Might want JPEGs for smaller, easier to work with RGB files, but
+	// that would lose additional channels, which are often used to store
+	// data that we might care about (e.g. transparency, depth buffer,
+	// specular power, or anything else), so for now save DDS files. We
+	// could make this a config item, or automatically decide based on the
+	// texture format:
+	DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
+	// DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
+
+	stereoResource->Release();
+}
+
+void HackerContext::DumpResource(ID3D11Resource *resource, int idx)
+{
+	D3D11_RESOURCE_DIMENSION dim;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+
+	resource->GetType(&dim);
+
+	if (idx != -1)
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%I64x-%I64x.dds",
+				G->ANALYSIS_PATH, G->analyse_frame, idx, mCurrentVertexShader, mCurrentPixelShader);
+	else
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%I64x-%I64x.dds",
+				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
+	if (FAILED(hr)) {
+		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		return;
+	}
+
+	switch (dim) {
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			// TODO: Somehow determine if this is a stereo resource
+			// or not and dump it using an appropriate method.
+			DumpStereoResource((ID3D11Texture2D*)resource, filename);
+			break;
+		default:
+			LogInfo("frame analysis: skipped resource of type %i\n", dim);
+			break;
+	}
+}
+
+void HackerContext::DumpRenderTargets()
+{
+	int i;
+	NvAPI_Status nvret;
+
+	// Bail if we are a deferred context, as there will not be anything to
+	// dump out yet. Later we might want to think about ways we could
+	// analyse deferred contexts - a simple approach would be to dump out
+	// the back buffer after executing a command list in the immediate
+	// context, however this would only show the combined result of all the
+	// draw calls from the deferred context, and not the results of the
+	// individual draw operations.
+	//
+	// Another more in-depth approach would be to create the stereo
+	// resources now and issue the reverse blits, then dump them all after
+	// executing the command list. Note that the NVAPI call is not
+	// per-context and therefore may have threading issues, and it's not
+	// clear if it would have to be enabled while submitting the copy
+	// commands in the deferred context, or while playing the command queue
+	// in the immediate context, or both.
+	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return;
+
+	// Enable reverse stereo blit for all resources we are about to dump:
+	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+	if (nvret != NVAPI_OK) {
+		LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+		// Continue anyway, we should still be able to dump in 2D...
+	}
+
+	for (i = 0; i < mCurrentRenderTargets.size(); ++i)
+		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], i);
+	if (mCurrentDepthTarget)
+		DumpResource((ID3D11Resource*)mCurrentDepthTarget, -1);
+
+	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
+
+	G->analyse_frame++;
 }
 
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
@@ -514,6 +637,9 @@ DrawContext HackerContext::BeforeDraw()
 
 void HackerContext::AfterDraw(DrawContext &data)
 {
+	if (G->analyse_frame)
+		DumpRenderTargets();
+
 	if (data.skip)
 		return;
 
