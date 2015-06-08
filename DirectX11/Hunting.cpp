@@ -175,10 +175,6 @@ static void DumpUsage()
 //
 // CoInitialize must be called for WIC to work.  We can call it multiple times, it will
 // return the S_FALSE if it's already inited.
-//
-// ToDo: Presently makes a 2D JPG.  Making a 3D image is hard to know where the other
-// eye's backbuffer will be.  Can't easily use the nvapi version, because it dumps to 
-// hardcoded path, although we can redirect that using nektra hooks.
 
 static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
 {
@@ -197,6 +193,69 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	}
 
 	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d \n", fullName, hr);
+}
+
+// Similar to above, but this version enables the reverse stereo blit in nvapi
+// to get the second back buffer and create a stereo 3D JPS:
+
+static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
+{
+	wchar_t fullName[MAX_PATH];
+	ID3D11Texture2D *backBuffer = NULL;
+	ID3D11Texture2D *stereoBackBuffer = NULL;
+	D3D11_TEXTURE2D_DESC desc;
+	D3D11_BOX srcBox;
+	UINT srcWidth;
+	HRESULT hr;
+	NvAPI_Status nvret;
+
+	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	if (FAILED(hr))
+		return;
+
+	backBuffer->GetDesc(&desc);
+
+	// Intermediate resource should be 2x width to receive a stereo image:
+	srcWidth = desc.Width;
+	desc.Width = srcWidth * 2;
+
+	hr = pDevice->GetOrigDevice()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
+	if (FAILED(hr)) {
+		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x \n", hr);
+		return;
+	}
+
+	nvret = NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
+	if (nvret != NVAPI_OK) {
+		LogInfo("StereoScreenShot failed to enable reverse stereo blit\n");
+		goto out;
+	}
+
+	// Set the source box as per the nvapi documentation:
+	srcBox.left = 0;
+	srcBox.top = 0;
+	srcBox.front = 0;
+	srcBox.right = srcWidth;
+	srcBox.bottom = desc.Height;
+	srcBox.back = 1;
+
+	// NVAPI documentation hasn't been updated to indicate which is the
+	// correct function to use for the reverse stereo blit in DX11...
+	// Fortunately there was really only one possibility, which is:
+	pDevice->GetOrigContext()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
+
+	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	if (FAILED(hr))
+		LogInfo("*** Overlay call CoInitializeEx failed: %d \n", hr);
+
+	wsprintf(fullName, L"%ls\\%I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
+	hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+
+	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d \n", fullName, hr);
+
+	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
+out:
+	stereoBackBuffer->Release();
 }
 
 
@@ -623,7 +682,8 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 		{
 			// Whether we succeed or fail on decompile, let's now make a screen shot of the backbuffer
 			// as a good way to remember what the HLSL affects. This will be with it disabled in the picture.
-			SimpleScreenShot(device, hash, iter.second.shaderType);
+			// SimpleScreenShot(device, hash, iter.second.shaderType);
+			StereoScreenShot(device, hash, iter.second.shaderType);
 
 			asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize());
 			if (asmText.empty())
