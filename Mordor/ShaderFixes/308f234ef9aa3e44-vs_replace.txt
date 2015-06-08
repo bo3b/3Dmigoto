@@ -1,4 +1,8 @@
 //hud
+
+// Subtle ball glow effect
+// Also secondary fire effect
+
 cbuffer _Globals : register(b0)
 {
   float DefaultHeight : packoffset(c0) = float(1.000000e+002);
@@ -50,6 +54,7 @@ cbuffer _Globals : register(b0)
 }
 
 Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
 
 void main(
   float3 v0 : SV_POSITION0,
@@ -80,14 +85,33 @@ void main(
   r0.x = k_vFogSky.w + r0.x;
   
   
+// float4 stereo = StereoParams.Load(0);
+// float4 r23;
+// r23.xyzw = r1.xyzw;
+// if(r23.w==1)
+// {
+ // r23.x -= stereo.x * (r23.w - stereo.y); 
+// }
+  // o0.xyzw = r23.xyzw;
+  
+  o0.xyzw = r1.xyzw;
+  
+float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
-float4 r23;
-r23.xyzw = r1.xyzw;
-if(r23.w==1)
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
+
+// Chosen based on what looks right.  No idea why *50 would work
+// better here.  The first part subtracts the expected driver level
+// stereoization, then we add in 50* the percentage active.
+// This works from -20% to 100% depth, as a good range.
+ 
+if (playMode && (o0.w==1))
 {
- r23.x -= stereo.x * (r23.w - stereo.y); 
+  o0.x -= stereo.x * (o0.w - stereo.y); 
+  o0.x += stereo.x * params.x * 50;
 }
-  o0.xyzw = r23.xyzw;
+
   o1.xyz = v1.xyz;
   o2.xy = v2.xy;
   r0.yz = float2(1.000000e+000,-1.000000e+000) * k_vScene_TexCoordScale.xy;
@@ -372,3 +396,4 @@ ret
 // Approximately 84 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

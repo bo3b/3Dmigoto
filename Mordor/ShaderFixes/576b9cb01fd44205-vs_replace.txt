@@ -1,15 +1,8 @@
-// UI - Crosshair
-//  C shaped focus bar on left.
-//  Center dot when out of elf shot.?
-
-// Also the icons on edge of screen, icons in main display for targets.
-
-// Also boxes around lower right text
+// Bar around mini-map showing focus and elf shot left.
 
 cbuffer Constants : register(b0)
 {
-  float4 mvp[2] : packoffset(c0);
-  float4 texgen[2] : packoffset(c2);
+  float4 vfuniforms[96] : packoffset(c0);
 }
 
 Texture2D<float4> StereoParams : register(t125);
@@ -22,40 +15,39 @@ void main(
   out float2 o1 : TEXCOORD0,
   out float4 o2 : SV_Position0)
 {
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   o0.xyzw = v0.xyzw;
-  o1.x = dot(v1.xyzw, texgen[0].xyzw);
-  o1.y = dot(v1.xyzw, texgen[1].xyzw);
-  o2.x = dot(v1.xyzw, mvp[0].xyzw);
-  o2.y = dot(v1.xyzw, mvp[1].xyzw);
+  r0.xyzw = v0.zzzz * float4(1.020040e+003,1.020040e+003,1.020040e+003,1.020040e+003) + float4(1.000000e-001,1.100000e+000,2.100000e+000,3.100000e+000);
+  r0.xyzw = (uint4)r0.xyzw;
+  o1.x = dot(v1.xyzw, vfuniforms[r0.z].xyzw);
+  o1.y = dot(v1.xyzw, vfuniforms[r0.w].xyzw);
+  o2.x = dot(v1.xyzw, vfuniforms[r0.x].xyzw);
+  o2.y = dot(v1.xyzw, vfuniforms[r0.y].xyzw);
   o2.zw = float2(0.000000e+000,1.000000e+000);
+  
   
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
 bool aimMode = (params.w == 1);
 bool playMode = (params.z == 1);
-  
-// Crosshair selection
-// If we are in aim mode (w=1) then push icon to depth.
-// Because this same shader is used for boxes in lower right, and other icons,
-// we want to also check if the current position is in center of screen.
-// If it's not, we want to let normal play check through, and thus only 
-// affect the crosshair.
 
-if (aimMode && (o2.x > -0.08 && o2.x < 0.08 && o2.y > -0.1 && o2.y < 0.1))
-{
-  o2.x += stereo.x;   // Max depth.
-} 
-else 
-{
+// Let's try to see if we can move just the on-screen icons by bounding the
+// edges of the screen where the status icons are.
+
+// if (o3.x > -0.08 && o3.x < 0.08 && o3.y > -0.1 && o3.y < 0.1)
+// {
+// }
+
 // Text in game mode (z=1) will be pushed into screen per usual.
 // When in menu-mode (z=0), we'll skip that push.
 
-  if (playMode)
-  {
-    o2.x += stereo.x * params.x;
-  }
+if (playMode)
+{
+  o2.x += stereo.x * params.x;
 }
-
   return;
 }
 
@@ -69,8 +61,7 @@ else
 // cbuffer Constants
 // {
 //
-//   float4 mvp[2];                     // Offset:    0 Size:    32
-//   float4 texgen[2];                  // Offset:   32 Size:    32
+//   float4 vfuniforms[96];             // Offset:    0 Size:  1536
 //
 // }
 //
@@ -101,20 +92,22 @@ else
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[4], immediateIndexed
+dcl_constantbuffer cb0[96], dynamicIndexed
 dcl_input v0.xyzw
 dcl_input v1.xyzw
 dcl_output o0.xyzw
 dcl_output o1.xy
 dcl_output_siv o2.xyzw, position
+dcl_temps 1
 mov o0.xyzw, v0.xyzw
-dp4 o1.x, v1.xyzw, cb0[2].xyzw
-dp4 o1.y, v1.xyzw, cb0[3].xyzw
-dp4 o2.x, v1.xyzw, cb0[0].xyzw
-dp4 o2.y, v1.xyzw, cb0[1].xyzw
+mad r0.xyzw, v0.zzzz, l(1020.039978, 1020.039978, 1020.039978, 1020.039978), l(0.100000, 1.100000, 2.100000, 3.100000)
+ftou r0.xyzw, r0.xyzw
+dp4 o1.x, v1.xyzw, cb0[r0.z + 0].xyzw
+dp4 o1.y, v1.xyzw, cb0[r0.w + 0].xyzw
+dp4 o2.x, v1.xyzw, cb0[r0.x + 0].xyzw
+dp4 o2.y, v1.xyzw, cb0[r0.y + 0].xyzw
 mov o2.zw, l(0,0,0,1.000000)
 ret 
-// Approximately 7 instruction slots used
+// Approximately 9 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-      

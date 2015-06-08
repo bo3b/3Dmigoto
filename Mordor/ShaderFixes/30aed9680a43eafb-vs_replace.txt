@@ -1,15 +1,15 @@
-// UI - Crosshair
-//  C shaped focus bar on left.
-//  Center dot when out of elf shot.?
+// Mini map lower left.
+// marked as crosshair in Helifax UI.
+// Also the C shaped focus bar, but only when elf-shot is empty.
 
-// Also the icons on edge of screen, icons in main display for targets.
-
-// Also boxes around lower right text
+// Also, mini icon for HUD target when off screen.
 
 cbuffer Constants : register(b0)
 {
-  float4 mvp[2] : packoffset(c0);
-  float4 texgen[2] : packoffset(c2);
+  float4 cxadd : packoffset(c0);
+  float4 cxmul : packoffset(c1);
+  float4 mvp[2] : packoffset(c2);
+  float4 texgen[2] : packoffset(c4);
 }
 
 Texture2D<float4> StereoParams : register(t125);
@@ -19,40 +19,44 @@ void main(
   float4 v0 : COLOR0,
   float4 v1 : SV_Position0,
   out float4 o0 : COLOR0,
-  out float2 o1 : TEXCOORD0,
-  out float4 o2 : SV_Position0)
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float2 o3 : TEXCOORD2,
+  out float4 o4 : SV_Position0)
 {
   o0.xyzw = v0.xyzw;
-  o1.x = dot(v1.xyzw, texgen[0].xyzw);
-  o1.y = dot(v1.xyzw, texgen[1].xyzw);
-  o2.x = dot(v1.xyzw, mvp[0].xyzw);
-  o2.y = dot(v1.xyzw, mvp[1].xyzw);
-  o2.zw = float2(0.000000e+000,1.000000e+000);
-  
+  o1.xyzw = cxadd.xyzw;
+  o2.xyzw = cxmul.xyzw;
+  o3.x = dot(v1.xyzw, texgen[0].xyzw);
+  o3.y = dot(v1.xyzw, texgen[1].xyzw);
+  o4.x = dot(v1.xyzw, mvp[0].xyzw);
+  o4.y = dot(v1.xyzw, mvp[1].xyzw);
+  o4.zw = float2(0.000000e+000,1.000000e+000);
+
 float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
 bool aimMode = (params.w == 1);
 bool playMode = (params.z == 1);
-  
+
+// If we aren't in aim mode, don't change anything, because it affects other items.
+
 // Crosshair selection
 // If we are in aim mode (w=1) then push icon to depth.
-// Because this same shader is used for boxes in lower right, and other icons,
-// we want to also check if the current position is in center of screen.
-// If it's not, we want to let normal play check through, and thus only 
-// affect the crosshair.
 
-if (aimMode && (o2.x > -0.08 && o2.x < 0.08 && o2.y > -0.1 && o2.y < 0.1))
-{
-  o2.x += stereo.x;   // Max depth.
-} 
-else 
-{
+if (aimMode)
+{  
+//  if(o2.x > -0.08 && o2.x < 0.08 && o2.y > -0.1 && o2.y < 0.1)
+  {
+    o4.x += stereo.x;
+  }
+} else {
+
 // Text in game mode (z=1) will be pushed into screen per usual.
 // When in menu-mode (z=0), we'll skip that push.
 
   if (playMode)
   {
-    o2.x += stereo.x * params.x;
+    o4.x += stereo.x * params.x;
   }
 }
 
@@ -69,8 +73,10 @@ else
 // cbuffer Constants
 // {
 //
-//   float4 mvp[2];                     // Offset:    0 Size:    32
-//   float4 texgen[2];                  // Offset:   32 Size:    32
+//   float4 cxadd;                      // Offset:    0 Size:    16
+//   float4 cxmul;                      // Offset:   16 Size:    16
+//   float4 mvp[2];                     // Offset:   32 Size:    32
+//   float4 texgen[2];                  // Offset:   64 Size:    32
 //
 // }
 //
@@ -96,25 +102,31 @@ else
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // COLOR                    0   xyzw        0     NONE   float   xyzw
-// TEXCOORD                 0   xy          1     NONE   float   xy  
-// SV_Position              0   xyzw        2      POS   float   xyzw
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xy          3     NONE   float   xy  
+// SV_Position              0   xyzw        4      POS   float   xyzw
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[4], immediateIndexed
+dcl_constantbuffer cb0[6], immediateIndexed
 dcl_input v0.xyzw
 dcl_input v1.xyzw
 dcl_output o0.xyzw
-dcl_output o1.xy
-dcl_output_siv o2.xyzw, position
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xy
+dcl_output_siv o4.xyzw, position
 mov o0.xyzw, v0.xyzw
-dp4 o1.x, v1.xyzw, cb0[2].xyzw
-dp4 o1.y, v1.xyzw, cb0[3].xyzw
-dp4 o2.x, v1.xyzw, cb0[0].xyzw
-dp4 o2.y, v1.xyzw, cb0[1].xyzw
-mov o2.zw, l(0,0,0,1.000000)
+mov o1.xyzw, cb0[0].xyzw
+mov o2.xyzw, cb0[1].xyzw
+dp4 o3.x, v1.xyzw, cb0[4].xyzw
+dp4 o3.y, v1.xyzw, cb0[5].xyzw
+dp4 o4.x, v1.xyzw, cb0[2].xyzw
+dp4 o4.y, v1.xyzw, cb0[3].xyzw
+mov o4.zw, l(0,0,0,1.000000)
 ret 
-// Approximately 7 instruction slots used
+// Approximately 9 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-      
+  
