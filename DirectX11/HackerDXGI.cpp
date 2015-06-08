@@ -1181,17 +1181,6 @@ IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 
 void HackerDXGISwapChain::RunFrameActions()
 {
-	static ULONGLONG last_ticks = 0;
-	ULONGLONG ticks = GetTickCount64();
-
-	// Prevent excessive input processing. XInput added an extreme
-	// performance hit when processing four controllers on every draw call,
-	// so only process input if at least 8ms has passed (approx 125Hz - may
-	// be less depending on timer resolution)
-	if (ticks - last_ticks < 8)
-		return;
-	last_ticks = ticks;
-
 	LogDebug("Running frame actions.  Device: %p\n", mHackerDevice);
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
