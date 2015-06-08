@@ -188,7 +188,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
-		wsprintf(fullName, L"%ls\\%I64x-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
+		wsprintf(fullName, L"%ls\\%016I64x-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
 		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer.Get(), GUID_ContainerFormatJpeg, fullName);
 	}
 
@@ -248,7 +248,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d \n", hr);
 
-	wsprintf(fullName, L"%ls\\%I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
+	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
 	hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d \n", fullName, hr);

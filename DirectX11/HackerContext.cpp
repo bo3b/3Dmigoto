@@ -315,10 +315,10 @@ void HackerContext::DumpResource(ID3D11Resource *resource, int idx)
 	resource->GetType(&dim);
 
 	if (idx != -1)
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%I64x-%I64x.dds",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.dds",
 				G->ANALYSIS_PATH, G->analyse_frame, idx, mCurrentVertexShader, mCurrentPixelShader);
 	else
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%I64x-%I64x.dds",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.dds",
 				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
 	if (FAILED(hr)) {
 		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
