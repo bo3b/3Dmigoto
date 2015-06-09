@@ -339,7 +339,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, int idx)
 
 void HackerContext::DumpRenderTargets()
 {
-	int i;
+	UINT i;
 	NvAPI_Status nvret;
 
 	// Bail if we are a deferred context, as there will not be anything to
