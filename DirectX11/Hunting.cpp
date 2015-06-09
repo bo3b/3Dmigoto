@@ -1271,6 +1271,9 @@ void TimeoutHuntingBuffers()
 	G->mSelectedIndexBuffer_VertexShader.clear();
 
 	// ToDo: iterations now work again, but this is still the wrong spot for this.
+	// I'm not sure what this does actually.  If we are clearing the iteration count,
+	// that would break anything coming from the d3dx.ini. If it's for hunting
+	// of the iteration, we are missing the activation piece of that.
 #if 0 /* Iterations are broken since we no longer use present() */
 	// This seems totally bogus - shouldn't we be resetting the iteration
 	// on each new frame, not after hunting timeout? This probably worked

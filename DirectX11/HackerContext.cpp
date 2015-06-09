@@ -426,7 +426,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		data->override = true;
 	data->skip = shaderOverride->skip;
 
-#if 0 /* Iterations are broken since we no longer use present() */
 	// Check iteration.
 	if (!shaderOverride->iterations.empty()) {
 		std::vector<int>::iterator k = shaderOverride->iterations.begin();
@@ -447,7 +446,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			LogDebug("  override skipped\n");
 		}
 	}
-#endif
+
 	// Check index buffer filter.
 	if (!shaderOverride->indexBufferFilter.empty()) {
 		bool found = false;

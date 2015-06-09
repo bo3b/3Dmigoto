@@ -163,7 +163,6 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			LogInfo("  partner=%16llx\n", override->partner_hash);
 		}
 
-#if 0 /* Iterations are broken since we no longer use present() */
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
 			// XXX: This differs from the TextureOverride
@@ -176,7 +175,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
 		}
-#endif
+		
 		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
 		{
 			swscanf_s(setting, L"%16llx", &hash2);
@@ -234,7 +233,6 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			override->format = texFormat;
 			LogInfo("  Format=%d\n", texFormat);
 		}
-#if 0 /* Iterations are broken since we no longer use present() */
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
 			// TODO: This supports more iterations than the
@@ -252,9 +250,8 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 				if (id[j] <= 0) break;
 				override->iterations.push_back(id[j]);
 				LogInfo("  Iteration=%d\n", id[j]);
-	}
-}
-#endif
+			}
+		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }

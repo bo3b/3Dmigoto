@@ -84,9 +84,7 @@ struct ShaderOverride {
 	float separation;
 	float convergence;
 	bool skip;
-#if 0 /* Iterations are broken since we no longer use present() */
 	std::vector<int> iterations; // Only for separation changes, not shaders.
-#endif
 	std::vector<UINT64> indexBufferFilter;
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
@@ -104,9 +102,7 @@ typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 struct TextureOverride {
 	int stereoMode;
 	int format;
-#if 0 /* Iterations are broken since we no longer use present() */
 	std::vector<int> iterations;
-#endif
 
 	TextureOverride() :
 		stereoMode(-1),
