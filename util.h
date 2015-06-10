@@ -216,7 +216,8 @@ inline bool operator || (    bool a, ENUMTYPE b) { return (((int)a) || ((int)b))
 inline bool operator || (ENUMTYPE a,     bool b) { return (((int)a) || ((int)b)); } \
 inline bool operator && (ENUMTYPE a, ENUMTYPE b) { return (((int)a) && ((int)b)); } \
 inline bool operator && (    bool a, ENUMTYPE b) { return (((int)a) && ((int)b)); } \
-inline bool operator && (ENUMTYPE a,     bool b) { return (((int)a) && ((int)b)); }
+inline bool operator && (ENUMTYPE a,     bool b) { return (((int)a) && ((int)b)); } \
+inline bool operator ! (ENUMTYPE a) { return (!((int)a)); }
 
 // Parses an option string of names given by enum_names. The enum used with
 // this function should have an INVALID=0, other flags declared as powers of

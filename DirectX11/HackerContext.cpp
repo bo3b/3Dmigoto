@@ -386,6 +386,20 @@ void HackerContext::DumpRenderTargets()
 	G->analyse_frame++;
 }
 
+void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
+{
+	FLOAT colour[4] = {0,0,0,0};
+
+	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
+		return;
+
+	if (G->frame_analysis_seen_rts.count(target))
+		return;
+
+	G->frame_analysis_seen_rts.insert(target);
+	mOrigContext->ClearRenderTargetView(target, colour);
+}
+
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
 {
 
@@ -2303,8 +2317,10 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumViews; ++i)
+			for (UINT i = 0; i < NumViews; ++i) {
 				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+				FrameAnalysisClearRT(ppRenderTargetViews[i]);
+			}
 		}
 
 		RecordDepthStencil(pDepthStencilView);
@@ -2339,8 +2355,10 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumRTVs; ++i)
+			for (UINT i = 0; i < NumRTVs; ++i) {
 				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+				FrameAnalysisClearRT(ppRenderTargetViews[i]);
+			}
 		}
 
 		RecordDepthStencil(pDepthStencilView);

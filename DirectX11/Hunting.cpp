@@ -854,6 +854,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	if (!G->hunting)
 		return;
 	LogInfo("Turning on analysis for next frame\n");
+	G->frame_analysis_seen_rts.clear();
 	G->analyse_next_frame = true;
 }
 
