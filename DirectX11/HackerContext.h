@@ -59,8 +59,9 @@ private:
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *fullName);
-	void DumpResource(ID3D11Resource *resource, int idx);
+	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
 	void DumpRenderTargets();
+	void DumpUAVs(bool compute);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);

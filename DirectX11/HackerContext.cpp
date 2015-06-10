@@ -312,24 +312,11 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	stereoResource->Release();
 }
 
-void HackerContext::DumpResource(ID3D11Resource *resource, int idx)
+void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 {
 	D3D11_RESOURCE_DIMENSION dim;
-	wchar_t filename[MAX_PATH];
-	HRESULT hr;
 
 	resource->GetType(&dim);
-
-	if (idx != -1)
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.jps",
-				G->ANALYSIS_PATH, G->analyse_frame, idx, mCurrentVertexShader, mCurrentPixelShader);
-	else
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.jps",
-				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
-	if (FAILED(hr)) {
-		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
-		return;
-	}
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
@@ -347,6 +334,8 @@ void HackerContext::DumpRenderTargets()
 {
 	UINT i;
 	NvAPI_Status nvret;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
 
 	// Bail if we are a deferred context, as there will not be anything to
 	// dump out yet. Later we might want to think about ways we could
@@ -373,14 +362,85 @@ void HackerContext::DumpRenderTargets()
 		// Continue anyway, we should still be able to dump in 2D...
 	}
 
-	for (i = 0; i < mCurrentRenderTargets.size(); ++i)
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], i);
-	if (mCurrentDepthTarget)
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, -1);
+	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.jps",
+				G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
+		if (FAILED(hr)) {
+			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+			goto out;
+		}
+		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
+	}
+	if (mCurrentDepthTarget) {
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.jps",
+				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
+		if (FAILED(hr)) {
+			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+			goto out;
+		}
+		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename);
+	}
+
+out:
+	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
+
+	// Pixel shaders can also use UAVs:
+	DumpUAVs(false);
+
+	G->analyse_frame++;
+}
+
+void HackerContext::DumpUAVs(bool compute)
+{
+	UINT i;
+	NvAPI_Status nvret;
+	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
+	ID3D11Resource *resource;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+
+	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return;
+
+	// Enable reverse stereo blit for all resources we are about to dump:
+	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+	if (nvret != NVAPI_OK) {
+		LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+		// Continue anyway, we should still be able to dump in 2D...
+	}
+
+	mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+
+	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i) {
+		if (!uavs[i])
+			continue;
+
+		uavs[i]->GetResource(&resource);
+		if (!resource) {
+			uavs[i]->Release();
+			continue;
+		}
+
+		if (compute) {
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-compute.jps",
+					G->ANALYSIS_PATH, G->analyse_frame, i);
+		} else {
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-%016I64x-%016I64x.jps",
+					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
+		}
+		if (FAILED(hr))
+			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		else
+			DumpResource(resource, filename);
+
+		resource->Release();
+		uavs[i]->Release();
+	}
 
 	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 
-	G->analyse_frame++;
+	if (compute)
+		G->analyse_frame++;
 }
 
 void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
@@ -1112,6 +1172,8 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 {
 	if (G->compute_enabled)
 		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	if (G->analyse_frame)
+		DumpUAVs(true);
 }
 
 STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
@@ -1122,6 +1184,8 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 {
 	if (G->compute_enabled)
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+	if (G->analyse_frame)
+		DumpUAVs(true);
 }
 
 STDMETHODIMP_(void) HackerContext::RSSetState(THIS_
