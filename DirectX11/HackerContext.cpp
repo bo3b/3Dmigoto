@@ -172,9 +172,6 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	struct ResourceInfo resource_info;
 	UINT64 hash = 0;
 
-	if (!target)
-		return;
-
 	target->GetDesc(&desc);
 
 	LogDebug("  View #%d, Format = %d, Is2D = %d\n",
@@ -389,15 +386,47 @@ void HackerContext::DumpRenderTargets()
 void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
 {
 	FLOAT colour[4] = {0,0,0,0};
+	ID3D11Resource *resource = NULL;
 
 	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
 		return;
 
-	if (G->frame_analysis_seen_rts.count(target))
+	// Use the address of the resource rather than the view to determine if
+	// we have seen it before so we don't clear a render target that is
+	// simply used as several different types of views:
+	target->GetResource(&resource);
+	if (!resource)
+		return;
+	resource->Release(); // Don't need the object, only the address
+
+	if (G->frame_analysis_seen_rts.count(resource))
+		return;
+	G->frame_analysis_seen_rts.insert(resource);
+
+	mOrigContext->ClearRenderTargetView(target, colour);
+}
+
+void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
+{
+	UINT values[4] = {0,0,0,0};
+	ID3D11Resource *resource = NULL;
+
+	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
 		return;
 
-	G->frame_analysis_seen_rts.insert(target);
-	mOrigContext->ClearRenderTargetView(target, colour);
+	// Use the address of the resource rather than the view to determine if
+	// we have seen it before so we don't clear a render target that is
+	// simply used as several different types of views:
+	uav->GetResource(&resource);
+	if (!resource)
+		return;
+	resource->Release(); // Don't need the object, only the address
+
+	if (G->frame_analysis_seen_rts.count(resource))
+		return;
+	G->frame_analysis_seen_rts.insert(resource);
+
+	mOrigContext->ClearUnorderedAccessViewUint(uav, values);
 }
 
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
@@ -1375,9 +1404,17 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 	/* [annotation] */
 	__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	// TODO: Record stats on unordered access view usage
+	if (ppUnorderedAccessViews) {
+		// TODO: Record stats on unordered access view usage
+		for (UINT i = 0; i < NumUAVs; ++i) {
+			if (!ppUnorderedAccessViews[i])
+				continue;
+			// TODO: Record stats
+			FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
+		}
+	}
 
-	 mOrigContext->CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+	mOrigContext->CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
@@ -2318,6 +2355,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 
 		if (ppRenderTargetViews) {
 			for (UINT i = 0; i < NumViews; ++i) {
+				if (!ppRenderTargetViews[i])
+					continue;
 				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
 				FrameAnalysisClearRT(ppRenderTargetViews[i]);
 			}
@@ -2354,16 +2393,27 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 			mCurrentDepthTarget = NULL;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
-		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumRTVs; ++i) {
-				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-				FrameAnalysisClearRT(ppRenderTargetViews[i]);
+		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+			if (ppRenderTargetViews) {
+				for (UINT i = 0; i < NumRTVs; ++i) {
+					if (!ppRenderTargetViews[i])
+						continue;
+					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+					FrameAnalysisClearRT(ppRenderTargetViews[i]);
+				}
 			}
+
+			RecordDepthStencil(pDepthStencilView);
 		}
 
-		RecordDepthStencil(pDepthStencilView);
-
-		// TODO: Record stats on unordered access views usage between compute & pixel shaders
+		if (ppUnorderedAccessViews && (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
+			for (UINT i = 0; i < NumUAVs; ++i) {
+				if (!ppUnorderedAccessViews[i])
+					continue;
+				// TODO: Record stats
+				FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
+			}
+		}
 	}
 
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,

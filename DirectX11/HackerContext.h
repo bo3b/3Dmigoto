@@ -62,6 +62,7 @@ private:
 	void DumpResource(ID3D11Resource *resource, int idx);
 	void DumpRenderTargets();
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
+	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
