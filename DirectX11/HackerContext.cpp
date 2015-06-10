@@ -290,18 +290,27 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
+	if ((G->analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
+	    (G->analyse_options & FrameAnalysisOptions::DUMP_RT)) {
+		// save a JPS file. This will be missing extra channels (e.g.
+		// transparency, depth buffer, specular power, etc) or bit depth that
+		// can be found in the DDS file, but is generally easier to work with.
+		//
+		// Not all formats can be saved as JPS with this function - if
+		// only dump_rt was specified (as opposed to dump_rt_jps) we
+		// will dump out DDS files for those instead.
+		hr = DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
+	}
 
-	// Also save a JPS file. This will be missing extra channels (e.g.
-	// transparency, depth buffer, specular power, etc) or bit depth that
-	// can be found in the DDS file, but is generally easier to work with.
-	// It also appears that not all formats will be saved, but that doesn't
-	// really matter since we have the DDS for those:
-	ext = wcsrchr(filename, L'.');
-	if (!ext)
-		return;
-	wcscpy_s(ext, ext - filename + MAX_PATH, L".jps");
-	DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
+
+	if ((G->analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
+	   ((G->analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
+		ext = wcsrchr(filename, L'.');
+		if (!ext)
+			return;
+		wcscpy_s(ext, ext - filename + MAX_PATH, L".dds");
+		DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
+	}
 
 	stereoResource->Release();
 }
@@ -315,10 +324,10 @@ void HackerContext::DumpResource(ID3D11Resource *resource, int idx)
 	resource->GetType(&dim);
 
 	if (idx != -1)
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.dds",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.jps",
 				G->ANALYSIS_PATH, G->analyse_frame, idx, mCurrentVertexShader, mCurrentPixelShader);
 	else
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.dds",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.jps",
 				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
 	if (FAILED(hr)) {
 		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);

@@ -151,6 +151,21 @@ struct ResourceInfo
 	}
 };
 
+enum class FrameAnalysisOptions {
+	INVALID     = 0,
+	DUMP_RT     = 0x1,
+	DUMP_RT_JPS = 0x2,
+	DUMP_RT_DDS = 0x4,
+};
+SENSIBLE_ENUM(FrameAnalysisOptions);
+static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
+	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
+	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
+	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
+	// TODO: More options on the way: Clear render targets, dump texture inputs
+	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
+};
+
 struct Globals
 {
 	bool gInitialized;
@@ -189,6 +204,7 @@ struct Globals
 	unsigned analyse_frame;
 	bool analyse_next_frame;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
+	FrameAnalysisOptions analyse_options;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
@@ -296,6 +312,7 @@ struct Globals
 
 		analyse_frame(0),
 		analyse_next_frame(false),
+		analyse_options(FrameAnalysisOptions::INVALID),
 
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),

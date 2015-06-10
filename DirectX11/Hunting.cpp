@@ -851,6 +851,8 @@ static void EnableFix(HackerDevice *device, void *private_data)
 
 static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
 	LogInfo("Turning on analysis for next frame\n");
 	G->analyse_next_frame = true;
 }
@@ -1314,7 +1316,7 @@ static void ToggleHunting(HackerDevice *device, void *private_data)
 void RegisterHuntingKeyBindings(wchar_t *iniFile)
 {
 	int i;
-	wchar_t buf[16];
+	wchar_t buf[MAX_PATH];
 	int repeat = 8, noRepeat = 0;
 
 	// reload_config is registered even if not hunting - this allows us to
@@ -1359,6 +1361,11 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", iniFile, AnalyseFrame, NULL, noRepeat, NULL);
+	if (GetPrivateProfileString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH, iniFile)) {
+		LogInfoW(L"  analyse_options=%s\n", buf);
+		G->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+			(FrameAnalysisOptionNames, buf);
+	}
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_compute", iniFile, DisableCS, EnableCS, noRepeat, NULL);
