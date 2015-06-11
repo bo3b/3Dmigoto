@@ -858,18 +858,6 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	G->analyse_next_frame = true;
 }
 
-static void DisableCS(HackerDevice *device, void *private_data)
-{
-	LogInfo("Disabling dispatch of compute shaders\n");
-	G->compute_enabled = false;
-}
-
-static void EnableCS(HackerDevice *device, void *private_data)
-{
-	LogInfo("Enabling dispatch of compute shaders\n");
-	G->compute_enabled = true;
-}
-
 static void DisableGS(HackerDevice *device, void *private_data)
 {
 	LogInfo("Disabling geometry shaders\n");
@@ -1152,6 +1140,81 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
+static void NextComputeShader(HackerDevice *device, void *private_data)
+{
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	{
+		std::set<UINT64>::iterator loc = G->mVisitedComputeShaders.find(G->mSelectedComputeShader);
+		std::set<UINT64>::iterator end = G->mVisitedComputeShaders.end();
+		bool found = (loc != end);
+		int size = (int) G->mVisitedComputeShaders.size();
+
+		if (!found && size > 0) {
+			G->mSelectedComputeShaderPos = 0;
+			G->mSelectedComputeShader = *G->mVisitedComputeShaders.begin();
+			LogInfo("> starting at compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
+		} else {
+			loc++;
+			if (loc != end) {
+				G->mSelectedComputeShaderPos++;
+				G->mSelectedComputeShader = *loc;
+			} else {
+				G->mSelectedComputeShaderPos = 0;
+				G->mSelectedComputeShader = *G->mVisitedComputeShaders.begin();
+			}
+			LogInfo("> traversing to next compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
+		}
+	}
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
+static void PrevComputeShader(HackerDevice *device, void *private_data)
+{
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	{
+		std::set<UINT64>::iterator loc = G->mVisitedComputeShaders.find(G->mSelectedComputeShader);
+		std::set<UINT64>::iterator end = G->mVisitedComputeShaders.end();
+		std::set<UINT64>::iterator front = G->mVisitedComputeShaders.begin();
+		bool found = (loc != end);
+		int size = (int) G->mVisitedComputeShaders.size();
+
+		if (!found && size > 0) {
+			G->mSelectedComputeShaderPos = size - 1;
+			G->mSelectedComputeShader = *std::prev(end);
+			LogInfo("> starting at compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
+		} else {
+			if (loc != front) {
+				G->mSelectedComputeShaderPos--;
+				loc--;
+				G->mSelectedComputeShader = *loc;
+			} else {
+				G->mSelectedComputeShaderPos = size - 1;
+				G->mSelectedComputeShader = *std::prev(end);
+			}
+			LogInfo("> traversing to previous compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
+		}
+	}
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
+static void MarkComputeShader(HackerDevice *device, void *private_data)
+{
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	LogInfo(">>>> Compute shader marked: compute shader hash = %016I64x\n", G->mSelectedComputeShader);
+
+	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedComputeShader);
+	if (i != G->mCompiledShaderMap.end())
+		LogInfo("       shader was compiled from source code %s\n", i->second.c_str());
+
+	// TODO: Copy marked shader to ShaderFixes
+	// CopyToFixes(G->mSelectedComputeShader, device);
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+	if (G->DumpUsage)
+		DumpUsage();
+}
+
 static void NextRenderTarget(HackerDevice *device, void *private_data)
 {
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -1264,6 +1327,7 @@ void TimeoutHuntingBuffers()
 	G->mVisitedIndexBuffers.clear();
 	G->mVisitedVertexShaders.clear();
 	G->mVisitedPixelShaders.clear();
+	G->mVisitedComputeShaders.clear();
 
 	// FIXME: Not sure this is the right place to clear these - I think
 	// they should be cleared every frame as they appear to be aimed at
@@ -1299,6 +1363,8 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	G->mSelectedPixelShaderPos = -1;
 	G->mSelectedVertexShader = -1;
 	G->mSelectedVertexShaderPos = -1;
+	G->mSelectedComputeShader = -1;
+	G->mSelectedComputeShaderPos = -1;
 
 	G->mSelectedRenderTargetPos = 0;
 	G->mSelectedRenderTarget = ((void *)1);
@@ -1351,6 +1417,10 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", iniFile, PrevVertexShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", iniFile, MarkVertexShader, NULL, noRepeat, NULL);
 
+	RegisterIniKeyBinding(L"Hunting", L"next_computeshader", iniFile, NextComputeShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_computeshader", iniFile, PrevComputeShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_computeshader", iniFile, MarkComputeShader, NULL, noRepeat, NULL);
+
 	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, noRepeat, NULL);
@@ -1369,7 +1439,6 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	}
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
-	RegisterIniKeyBinding(L"Hunting", L"kill_compute", iniFile, DisableCS, EnableCS, noRepeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"kill_geometry", iniFile, DisableGS, EnableGS, noRepeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"kill_tesselation", iniFile, DisableTesselation, EnableTesselation, noRepeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", iniFile, DisableDeferred, EnableDeferred, noRepeat, NULL);

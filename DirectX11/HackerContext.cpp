@@ -1162,6 +1162,26 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 	 mOrigContext->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
 
+bool HackerContext::BeforeDispatch()
+{
+	if (G->hunting) {
+		// TODO: Collect stats on assigned UAVs
+
+		if (mCurrentComputeShader == G->mSelectedComputeShader) {
+			// TODO: Support for other marking modes
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void HackerContext::AfterDispatch()
+{
+	if (G->analyse_frame)
+		DumpUAVs(true);
+}
+
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountX,
@@ -1170,10 +1190,9 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountZ)
 {
-	if (G->compute_enabled)
+	if (BeforeDispatch())
 		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-	if (G->analyse_frame)
-		DumpUAVs(true);
+	AfterDispatch();
 }
 
 STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
@@ -1182,10 +1201,9 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	if (G->compute_enabled)
+	if (BeforeDispatch())
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
-	if (G->analyse_frame)
-		DumpUAVs(true);
+	AfterDispatch();
 }
 
 STDMETHODIMP_(void) HackerContext::RSSetState(THIS_
@@ -1488,9 +1506,44 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::CSSetShader called\n");
+	LogDebug("HackerContext::CSSetShader called with computeshader handle = %p\n", pComputeShader);
 
-	 mOrigContext->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
+	if (pComputeShader) {
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		ComputeShaderMap::iterator i = G->mComputeShaders.find(pComputeShader);
+		if (i != G->mComputeShaders.end()) {
+			mCurrentComputeShader = i->second;
+			mCurrentComputeShaderHandle = pComputeShader;
+			LogDebug("  compute shader found: handle = %p, hash = %016I64x\n", pComputeShader, mCurrentComputeShader);
+
+			if (G->hunting)
+				G->mVisitedComputeShaders.insert(mCurrentComputeShader);
+		} else {
+			LogDebug("  compute shader %p not found\n", pComputeShader);
+			// mCurrentComputeShader = 0;
+		}
+
+		// TODO: original / zero marking modes & show_original
+
+		// If the shader has been live reloaded from ShaderFixes, use the new one
+		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
+		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pComputeShader);
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
+		{
+			LogDebug("  compute shader replaced by: %p\n", it->second.replacement);
+
+			ID3D11ComputeShader *shader = (ID3D11ComputeShader*)it->second.replacement;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			mOrigContext->CSSetShader(shader, ppClassInstances, NumClassInstances);
+			return;
+		}
+
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+
+	mOrigContext->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
+
+	// TODO: Send stereo texture & ini params to shader as UAVs
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_

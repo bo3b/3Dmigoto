@@ -199,7 +199,6 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 
-	bool compute_enabled;
 	bool geometry_enabled;
 	bool tesselation_enabled;
 	bool deferred_enabled;
@@ -265,8 +264,12 @@ struct Globals
 
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 
-	GeometryShaderMap mGeometryShaders;
 	ComputeShaderMap mComputeShaders;
+	std::set<UINT64> mVisitedComputeShaders;
+	UINT64 mSelectedComputeShader;
+	int mSelectedComputeShaderPos;
+
+	GeometryShaderMap mGeometryShaders;
 	DomainShaderMap mDomainShaders;
 	HullShaderMap mHullShaders;
 
@@ -302,6 +305,8 @@ struct Globals
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
+		mSelectedComputeShader(-1),
+		mSelectedComputeShaderPos(-1),
 
 		hunting(false),
 		fix_enabled(true),
@@ -309,7 +314,6 @@ struct Globals
 		show_original_enabled(false),
 		huntTime(0),
 
-		compute_enabled(true),
 		geometry_enabled(true),
 		tesselation_enabled(true),
 		deferred_enabled(true),
