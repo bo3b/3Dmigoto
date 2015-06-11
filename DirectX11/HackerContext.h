@@ -50,17 +50,24 @@ private:
 	ID3D11VertexShader *mCurrentVertexShaderHandle;
 	UINT64 mCurrentPixelShader;
 	ID3D11PixelShader *mCurrentPixelShaderHandle;
+	UINT64 mCurrentComputeShader;
+	ID3D11ComputeShader *mCurrentComputeShaderHandle;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mCurrentDepthTarget;
 
 	// These private methods are utility routines for HackerContext.
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
+	bool BeforeDispatch();
+	void AfterDispatch();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *fullName);
-	void DumpResource(ID3D11Resource *resource, int idx);
+	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
 	void DumpRenderTargets();
+	void DumpUAVs(bool compute);
+	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
+	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);

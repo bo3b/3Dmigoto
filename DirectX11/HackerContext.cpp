@@ -172,9 +172,6 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	struct ResourceInfo resource_info;
 	UINT64 hash = 0;
 
-	if (!target)
-		return;
-
 	target->GetDesc(&desc);
 
 	LogDebug("  View #%d, Format = %d, Is2D = %d\n",
@@ -290,40 +287,36 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
+	if ((G->analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
+	    (G->analyse_options & FrameAnalysisOptions::DUMP_RT)) {
+		// save a JPS file. This will be missing extra channels (e.g.
+		// transparency, depth buffer, specular power, etc) or bit depth that
+		// can be found in the DDS file, but is generally easier to work with.
+		//
+		// Not all formats can be saved as JPS with this function - if
+		// only dump_rt was specified (as opposed to dump_rt_jps) we
+		// will dump out DDS files for those instead.
+		hr = DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
+	}
 
-	// Also save a JPS file. This will be missing extra channels (e.g.
-	// transparency, depth buffer, specular power, etc) or bit depth that
-	// can be found in the DDS file, but is generally easier to work with.
-	// It also appears that not all formats will be saved, but that doesn't
-	// really matter since we have the DDS for those:
-	ext = wcsrchr(filename, L'.');
-	if (!ext)
-		return;
-	wcscpy_s(ext, ext - filename + MAX_PATH, L".jps");
-	DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
+
+	if ((G->analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
+	   ((G->analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
+		ext = wcsrchr(filename, L'.');
+		if (!ext)
+			return;
+		wcscpy_s(ext, ext - filename + MAX_PATH, L".dds");
+		DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
+	}
 
 	stereoResource->Release();
 }
 
-void HackerContext::DumpResource(ID3D11Resource *resource, int idx)
+void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 {
 	D3D11_RESOURCE_DIMENSION dim;
-	wchar_t filename[MAX_PATH];
-	HRESULT hr;
 
 	resource->GetType(&dim);
-
-	if (idx != -1)
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.dds",
-				G->ANALYSIS_PATH, G->analyse_frame, idx, mCurrentVertexShader, mCurrentPixelShader);
-	else
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.dds",
-				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
-	if (FAILED(hr)) {
-		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
-		return;
-	}
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
@@ -341,6 +334,8 @@ void HackerContext::DumpRenderTargets()
 {
 	UINT i;
 	NvAPI_Status nvret;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
 
 	// Bail if we are a deferred context, as there will not be anything to
 	// dump out yet. Later we might want to think about ways we could
@@ -367,14 +362,131 @@ void HackerContext::DumpRenderTargets()
 		// Continue anyway, we should still be able to dump in 2D...
 	}
 
-	for (i = 0; i < mCurrentRenderTargets.size(); ++i)
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], i);
-	if (mCurrentDepthTarget)
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, -1);
+	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-vs-%016I64x-ps-%016I64x.jps",
+				G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
+		if (FAILED(hr)) {
+			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+			goto out;
+		}
+		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
+	}
+	if (mCurrentDepthTarget) {
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-vs-%016I64x-ps-%016I64x.jps",
+				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
+		if (FAILED(hr)) {
+			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+			goto out;
+		}
+		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename);
+	}
+
+out:
+	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
+
+	// Pixel shaders can also use UAVs:
+	DumpUAVs(false);
+
+	G->analyse_frame++;
+}
+
+void HackerContext::DumpUAVs(bool compute)
+{
+	UINT i;
+	NvAPI_Status nvret;
+	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
+	ID3D11Resource *resource;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+
+	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return;
+
+	// Enable reverse stereo blit for all resources we are about to dump:
+	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+	if (nvret != NVAPI_OK) {
+		LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+		// Continue anyway, we should still be able to dump in 2D...
+	}
+
+	mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+
+	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i) {
+		if (!uavs[i])
+			continue;
+
+		uavs[i]->GetResource(&resource);
+		if (!resource) {
+			uavs[i]->Release();
+			continue;
+		}
+
+		if (compute) {
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-cs-%016I64x.jps",
+					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentComputeShader);
+		} else {
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-vs-%016I64x-ps-%016I64x.jps",
+					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
+		}
+		if (FAILED(hr))
+			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		else
+			DumpResource(resource, filename);
+
+		resource->Release();
+		uavs[i]->Release();
+	}
 
 	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 
-	G->analyse_frame++;
+	if (compute)
+		G->analyse_frame++;
+}
+
+void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
+{
+	FLOAT colour[4] = {0,0,0,0};
+	ID3D11Resource *resource = NULL;
+
+	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
+		return;
+
+	// Use the address of the resource rather than the view to determine if
+	// we have seen it before so we don't clear a render target that is
+	// simply used as several different types of views:
+	target->GetResource(&resource);
+	if (!resource)
+		return;
+	resource->Release(); // Don't need the object, only the address
+
+	if (G->frame_analysis_seen_rts.count(resource))
+		return;
+	G->frame_analysis_seen_rts.insert(resource);
+
+	mOrigContext->ClearRenderTargetView(target, colour);
+}
+
+void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
+{
+	UINT values[4] = {0,0,0,0};
+	ID3D11Resource *resource = NULL;
+
+	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
+		return;
+
+	// Use the address of the resource rather than the view to determine if
+	// we have seen it before so we don't clear a render target that is
+	// simply used as several different types of views:
+	uav->GetResource(&resource);
+	if (!resource)
+		return;
+	resource->Release(); // Don't need the object, only the address
+
+	if (G->frame_analysis_seen_rts.count(resource))
+		return;
+	G->frame_analysis_seen_rts.insert(resource);
+
+	mOrigContext->ClearUnorderedAccessViewUint(uav, values);
 }
 
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
@@ -1055,6 +1167,26 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 	 mOrigContext->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
 
+bool HackerContext::BeforeDispatch()
+{
+	if (G->hunting) {
+		// TODO: Collect stats on assigned UAVs
+
+		if (mCurrentComputeShader == G->mSelectedComputeShader) {
+			// TODO: Support for other marking modes
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void HackerContext::AfterDispatch()
+{
+	if (G->analyse_frame)
+		DumpUAVs(true);
+}
+
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountX,
@@ -1063,8 +1195,9 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountZ)
 {
-	if (G->compute_enabled)
+	if (BeforeDispatch())
 		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	AfterDispatch();
 }
 
 STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
@@ -1073,8 +1206,9 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	if (G->compute_enabled)
+	if (BeforeDispatch())
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+	AfterDispatch();
 }
 
 STDMETHODIMP_(void) HackerContext::RSSetState(THIS_
@@ -1357,9 +1491,17 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 	/* [annotation] */
 	__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	// TODO: Record stats on unordered access view usage
+	if (ppUnorderedAccessViews) {
+		// TODO: Record stats on unordered access view usage
+		for (UINT i = 0; i < NumUAVs; ++i) {
+			if (!ppUnorderedAccessViews[i])
+				continue;
+			// TODO: Record stats
+			FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
+		}
+	}
 
-	 mOrigContext->CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+	mOrigContext->CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
@@ -1369,9 +1511,44 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::CSSetShader called\n");
+	LogDebug("HackerContext::CSSetShader called with computeshader handle = %p\n", pComputeShader);
 
-	 mOrigContext->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
+	if (pComputeShader) {
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		ComputeShaderMap::iterator i = G->mComputeShaders.find(pComputeShader);
+		if (i != G->mComputeShaders.end()) {
+			mCurrentComputeShader = i->second;
+			mCurrentComputeShaderHandle = pComputeShader;
+			LogDebug("  compute shader found: handle = %p, hash = %016I64x\n", pComputeShader, mCurrentComputeShader);
+
+			if (G->hunting)
+				G->mVisitedComputeShaders.insert(mCurrentComputeShader);
+		} else {
+			LogDebug("  compute shader %p not found\n", pComputeShader);
+			// mCurrentComputeShader = 0;
+		}
+
+		// TODO: original / zero marking modes & show_original
+
+		// If the shader has been live reloaded from ShaderFixes, use the new one
+		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
+		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pComputeShader);
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
+		{
+			LogDebug("  compute shader replaced by: %p\n", it->second.replacement);
+
+			ID3D11ComputeShader *shader = (ID3D11ComputeShader*)it->second.replacement;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			mOrigContext->CSSetShader(shader, ppClassInstances, NumClassInstances);
+			return;
+		}
+
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+
+	mOrigContext->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
+
+	// TODO: Send stereo texture & ini params to shader as UAVs
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
@@ -2299,8 +2476,12 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumViews; ++i)
+			for (UINT i = 0; i < NumViews; ++i) {
+				if (!ppRenderTargetViews[i])
+					continue;
 				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+				FrameAnalysisClearRT(ppRenderTargetViews[i]);
+			}
 		}
 
 		RecordDepthStencil(pDepthStencilView);
@@ -2334,14 +2515,27 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 			mCurrentDepthTarget = NULL;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
-		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumRTVs; ++i)
-				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+			if (ppRenderTargetViews) {
+				for (UINT i = 0; i < NumRTVs; ++i) {
+					if (!ppRenderTargetViews[i])
+						continue;
+					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+					FrameAnalysisClearRT(ppRenderTargetViews[i]);
+				}
+			}
+
+			RecordDepthStencil(pDepthStencilView);
 		}
 
-		RecordDepthStencil(pDepthStencilView);
-
-		// TODO: Record stats on unordered access views usage between compute & pixel shaders
+		if (ppUnorderedAccessViews && (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
+			for (UINT i = 0; i < NumUAVs; ++i) {
+				if (!ppUnorderedAccessViews[i])
+					continue;
+				// TODO: Record stats
+				FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
+			}
+		}
 	}
 
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,

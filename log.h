@@ -17,14 +17,14 @@ extern bool gLogDebug;
 // logging framework.
 
 #define LogInfo(fmt, ...) \
-	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__)
+	do { if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); } while (0)
 #define LogInfoW(fmt, ...) \
-	if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__)
+	do { if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__); } while (0)
 
 #define LogDebug(fmt, ...) \
-	if (gLogDebug) LogInfo(fmt, __VA_ARGS__)
+	do { if (gLogDebug) LogInfo(fmt, __VA_ARGS__); } while (0)
 #define LogDebugW(fmt, ...) \
-	if (gLogDebug) LogInfoW(fmt, __VA_ARGS__)
+	do { if (gLogDebug) LogInfoW(fmt, __VA_ARGS__); } while (0)
 
 static string LogTime()
 {

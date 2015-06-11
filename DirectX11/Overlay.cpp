@@ -172,8 +172,8 @@ void Overlay::DrawOverlay(void)
 	// where we are in the list.  These should all be active from the Globals.
 	// 0 / 0 will mean that we are not actively searching. The position is
 	// zero based, so we'll make it +1 for the humans.
-	size_t vsActive = 0, psActive = 0;
-	size_t vsPosition = 0, psPosition = 0;
+	size_t vsActive = 0, psActive = 0, csActive = 0;
+	size_t vsPosition = 0, psPosition = 0, csPosition = 0;
 
 	if (G->mSelectedVertexShaderPos >= 0)
 	{
@@ -184,6 +184,11 @@ void Overlay::DrawOverlay(void)
 	{
 		psActive = G->mVisitedPixelShaders.size();
 		psPosition = G->mSelectedPixelShaderPos + 1;
+	}
+	if (G->mSelectedComputeShaderPos >= 0)
+	{
+		csActive = G->mVisitedComputeShaders.size();
+		csPosition = G->mSelectedComputeShaderPos + 1;
 	}
 
 	SaveState();
@@ -200,7 +205,8 @@ void Overlay::DrawOverlay(void)
 		// and shader counts in top middle.
 
 		// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
-		swprintf_s(line, maxstring, L"VS:%d/%d  PS:%d/%d", vsPosition, vsActive, psPosition, psActive);
+		swprintf_s(line, maxstring, L"VS:%d/%d  PS:%d/%d  CS:%d/%d",
+				vsPosition, vsActive, psPosition, psActive, csPosition, csActive);
 		strSize = mFont->MeasureString(line);
 		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);

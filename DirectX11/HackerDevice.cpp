@@ -2199,48 +2199,56 @@ STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
 
 	HRESULT hr = -1;
 	UINT64 hash;
+	string shaderModel;
+	SIZE_T replaceShaderSize;
+	FILETIME ftWrite;
+	ID3D11ComputeShader *zeroShader = NULL;
+
 	if (pShaderBytecode && ppComputeShader)
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
+		LogInfo("  bytecode hash = %016I64x\n", hash);
 
-		// :todo: Compute shader
-		/*
-		ID3DBlob *replaceShader = ReplaceShader(hash, L"cs", pShaderBytecode, BytecodeLength);
-		if (replaceShader)
-		{
-		// Create the new shader.
-		hr = m_pDevice->CreateComputeShader(replaceShader->GetBufferPointer(),
-		replaceShader->GetBufferSize(), pClassLinkage, ppComputeShader);
-		replaceShader->Release();
-		if (hr == S_OK)
-		{
-		LogInfo("    shader successfully replaced.\n");
+		// TODO: Preload?
+
+		char *replaceShader = ReplaceShader(hash, L"cs", pShaderBytecode, BytecodeLength, replaceShaderSize,
+				shaderModel, ftWrite, (void**)&zeroShader);
+		if (replaceShader) {
+			// Create the new shader.
+			hr = mOrigDevice->CreateComputeShader(replaceShader, replaceShaderSize, pClassLinkage, ppComputeShader);
+			if (SUCCEEDED(hr)) {
+				LogInfo("    shader successfully replaced.\n");
+
+				// TODO: Other variants keep the bytecode around here
+			} else
+				LogInfo("    error replacing shader.\n");
+
+			delete replaceShader; replaceShader = NULL;
 		}
-		else
-		{
-		LogInfo("    error replacing shader.\n");
-		}
-		}
-		*/
+
 	}
-	if (hr != S_OK)
-	{
+
+	if (hr != S_OK) {
 		hr = mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
+
+		// TODO: Keep original shader
 	}
+
 	if (hr == S_OK && ppComputeShader && pShaderBytecode)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 			G->mComputeShaders[*ppComputeShader] = hash;
-			LogDebug("    Compute shader: handle = %p, hash = %08lx%08lx\n",
-				*ppComputeShader, (UINT32)(hash >> 32), (UINT32)hash);
+			LogDebug("    Compute shader: handle = %p, hash = %016I64x\n",
+				*ppComputeShader, hash);
 
 			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 			if (i != G->mCompiledShaderMap.end())
 			{
 				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 			}
+
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 

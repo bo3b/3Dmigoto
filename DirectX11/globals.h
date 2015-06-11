@@ -7,6 +7,7 @@
 #include <set>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "util.h"
 
@@ -152,6 +153,23 @@ struct ResourceInfo
 	}
 };
 
+enum class FrameAnalysisOptions {
+	INVALID     = 0,
+	DUMP_RT     = 0x1,
+	DUMP_RT_JPS = 0x2,
+	DUMP_RT_DDS = 0x4,
+	CLEAR_RT    = 0x8,
+};
+SENSIBLE_ENUM(FrameAnalysisOptions);
+static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
+	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
+	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
+	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
+	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
+	// TODO: More options on the way: Clear render targets, dump texture inputs
+	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
+};
+
 struct Globals
 {
 	bool gInitialized;
@@ -183,7 +201,6 @@ struct Globals
 	bool show_pink_enabled;
 	time_t huntTime;
 
-	bool compute_enabled;
 	bool geometry_enabled;
 	bool tesselation_enabled;
 	bool deferred_enabled;
@@ -191,6 +208,8 @@ struct Globals
 	unsigned analyse_frame;
 	bool analyse_next_frame;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
+	FrameAnalysisOptions analyse_options;
+	std::unordered_set<void*> frame_analysis_seen_rts;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
@@ -248,8 +267,12 @@ struct Globals
 
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 
-	GeometryShaderMap mGeometryShaders;
 	ComputeShaderMap mComputeShaders;
+	std::set<UINT64> mVisitedComputeShaders;
+	UINT64 mSelectedComputeShader;
+	int mSelectedComputeShaderPos;
+
+	GeometryShaderMap mGeometryShaders;
 	DomainShaderMap mDomainShaders;
 	HullShaderMap mHullShaders;
 
@@ -285,6 +308,8 @@ struct Globals
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
+		mSelectedComputeShader(-1),
+		mSelectedComputeShaderPos(-1),
 		mPinkingShader(0),
 
 		hunting(false),
@@ -294,13 +319,13 @@ struct Globals
 		show_pink_enabled(false),
 		huntTime(0),
 
-		compute_enabled(true),
 		geometry_enabled(true),
 		tesselation_enabled(true),
 		deferred_enabled(true),
 
 		analyse_frame(0),
 		analyse_next_frame(false),
+		analyse_options(FrameAnalysisOptions::INVALID),
 
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),

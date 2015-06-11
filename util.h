@@ -206,6 +206,57 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 	return NULL;
 }
 
+// Grant enums sensible powers that were taken away when C++ ignored C
+// MS already defines a macro to do this for bitwise operators, but we also
+// want logical operators to work. Because that would be sensible, duh!
+#define SENSIBLE_ENUM(ENUMTYPE) \
+DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
+inline bool operator || (ENUMTYPE a, ENUMTYPE b) { return (((int)a) || ((int)b)); } \
+inline bool operator || (    bool a, ENUMTYPE b) { return (((int)a) || ((int)b)); } \
+inline bool operator || (ENUMTYPE a,     bool b) { return (((int)a) || ((int)b)); } \
+inline bool operator && (ENUMTYPE a, ENUMTYPE b) { return (((int)a) && ((int)b)); } \
+inline bool operator && (    bool a, ENUMTYPE b) { return (((int)a) && ((int)b)); } \
+inline bool operator && (ENUMTYPE a,     bool b) { return (((int)a) && ((int)b)); } \
+inline bool operator ! (ENUMTYPE a) { return (!((int)a)); }
+
+// Parses an option string of names given by enum_names. The enum used with
+// this function should have an INVALID=0, other flags declared as powers of
+// two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
+// operators. As above, the EnumName_t list must be terminated with {NULL, 0}
+template <class T1, class T2>
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string)
+{
+	wchar_t *ptr = option_string, *cur;
+	T2 ret = T2::INVALID;
+	T2 tmp = T2::INVALID;
+
+	while (*ptr) {
+		// Skip over whitespace:
+		for (; *ptr == L' '; ptr++) {}
+
+		// Mark start of current entry:
+		cur = ptr;
+
+		// Scan until the next whitespace or end of string:
+		for (; *ptr && *ptr != L' '; ptr++) {}
+
+		if (*ptr) {
+			// NULL terminate the current entry and advance pointer:
+			*ptr = L'\0';
+			ptr++;
+		}
+
+		// Lookup the value of the current entry:
+		tmp = lookup_enum_val<T1, T2> (enum_names, cur, T2::INVALID);
+		if (tmp == T2::INVALID) {
+			LogInfoW(L"WARNING: Unknown option: %s\n", cur);
+			BeepFailure2();
+		}
+		ret |= tmp;
+	}
+	return ret;
+}
+
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
 static char *DXGIFormats[] = {
 	"UNKNOWN",
