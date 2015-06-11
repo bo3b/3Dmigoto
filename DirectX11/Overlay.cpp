@@ -156,8 +156,17 @@ void Overlay::DrawOverlay(void)
 	// is that convergence is essentially an arbitrary number.
 
 	float separation, convergence;
-	NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &separation);
-	NvAPI_Stereo_GetConvergence(mHackerDevice->mStereoHandle, &convergence);
+	NvU8 stereo = false;
+	NvAPI_Stereo_IsEnabled(&stereo);
+	if (stereo)
+	{
+		NvAPI_Stereo_IsActivated(mHackerDevice->mStereoHandle, &stereo);
+		if (stereo)
+		{
+			NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &separation);
+			NvAPI_Stereo_GetConvergence(mHackerDevice->mStereoHandle, &convergence);
+		}
+	}
 	
 	// We also want to show the count of active vertex and pixel shaders, and
 	// where we are in the list.  These should all be active from the Globals.
@@ -197,7 +206,10 @@ void Overlay::DrawOverlay(void)
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
 
 		// Desired format "Sep:85  Conv:4.5"
-		swprintf_s(line, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+		if (stereo)
+			swprintf_s(line, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+		else
+			swprintf_s(line, maxstring, L"Stereo disabled");
 		strSize = mFont->MeasureString(line);
 		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
 		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
