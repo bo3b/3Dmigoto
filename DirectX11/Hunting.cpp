@@ -556,7 +556,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 	ID3D11ClassLinkage* classLinkage;
 	ID3DBlob* shaderCode;
 	string shaderModel;
-	wstring shaderType;		// "vs" or "ps" maybe "gs"
+	wstring shaderType;		// "vs", "ps", "cs" maybe "gs"
 	FILETIME timeStamp;
 	HRESULT hr = E_FAIL;
 	bool rc = true;
@@ -634,6 +634,11 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			{
 				hr = device->GetOrigDevice()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**)&replacement);
+			}
+			else if (shaderType.compare(L"cs") == 0)
+			{
+				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
+					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 			}
 			if (FAILED(hr))
 				goto err;
@@ -766,6 +771,7 @@ static void RevertMissingShaders()
 				continue;
 			replacement = j->second;
 		}
+		// TODO: compute shaders
 		else {
 			continue;
 		}
@@ -1206,8 +1212,7 @@ static void MarkComputeShader(HackerDevice *device, void *private_data)
 	if (i != G->mCompiledShaderMap.end())
 		LogInfo("       shader was compiled from source code %s\n", i->second.c_str());
 
-	// TODO: Copy marked shader to ShaderFixes
-	// CopyToFixes(G->mSelectedComputeShader, device);
+	CopyToFixes(G->mSelectedComputeShader, device);
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
