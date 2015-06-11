@@ -590,6 +590,11 @@ DrawContext HackerContext::BeforeDraw()
 				{
 					data.skip = true;
 				}
+				else if (G->marking_mode == MARKING_MODE_PINK)
+				{
+					if (G->mPinkingShader)
+						data.oldPixelShader = SwitchPSShader(G->mPinkingShader);
+				}
 			}
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);

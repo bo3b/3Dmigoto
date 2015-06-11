@@ -14,6 +14,7 @@ const int MARKING_MODE_SKIP = 0;
 const int MARKING_MODE_MONO = 1;
 const int MARKING_MODE_ORIGINAL = 2;
 const int MARKING_MODE_ZERO = 3;
+const int MARKING_MODE_PINK = 4;
 
 // Key is index/vertex buffer, value is hash key.
 typedef std::unordered_map<ID3D11Buffer *, UINT64> DataBufferMap;
@@ -179,6 +180,7 @@ struct Globals
 	bool fix_enabled;
 	bool config_reloadable;
 	bool show_original_enabled;
+	bool show_pink_enabled;
 	time_t huntTime;
 
 	bool compute_enabled;
@@ -242,6 +244,7 @@ struct Globals
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	std::set<UINT64> mSelectedPixelShader_IndexBuffer;		// std::set so that index buffers used with a shader will be sorted in log when marked
+	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 
@@ -282,11 +285,13 @@ struct Globals
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(1),
 		mSelectedIndexBufferPos(0),
+		mPinkingShader(0),
 
 		hunting(false),
 		fix_enabled(true),
 		config_reloadable(false),
 		show_original_enabled(false),
+		show_pink_enabled(false),
 		huntTime(0),
 
 		compute_enabled(true),

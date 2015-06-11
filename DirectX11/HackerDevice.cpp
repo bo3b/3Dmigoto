@@ -150,6 +150,27 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 		LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
 	}
 
+	// Only create special pink mode PixelShader when requested.
+	if (G->marking_mode == MARKING_MODE_PINK)
+	{
+		char* hlsl =
+			"float4 pshader() : SV_Target0"
+			"{"
+			"	return float4(1,0,1,1);"
+			"}";
+
+		ID3D10Blob* blob = NULL;
+		HRESULT hr = D3DCompile(hlsl, strlen(hlsl), "JustPink", NULL, NULL, "pshader", "ps_4_0", 0, 0, &blob, NULL);
+		LogInfo("  Created pink mode pixel shader: %d \n", hr);
+		if (SUCCEEDED(hr))
+		{
+			hr = mOrigDevice->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
+			if (FAILED(hr))
+				LogInfo("  Failed to create pinking pixel shader: %d \n", hr);
+			blob->Release();
+		}
+	}
+
 	return ret;
 }
 

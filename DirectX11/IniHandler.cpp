@@ -648,11 +648,12 @@ void LoadConfigFile()
 		if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
 		if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
 		if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
+		if (!wcscmp(setting, L"pink")) G->marking_mode = MARKING_MODE_PINK;
 		LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
 	}
 
-	RegisterHuntingKeyBindings(iniFile);
 
+	RegisterHuntingKeyBindings(iniFile);
 	RegisterPresetKeyBindings(sections, iniFile);
 
 
