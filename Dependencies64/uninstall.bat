@@ -94,6 +94,7 @@ del d3dx.ini
 del D3D_Shaders.exe
 del D3D_Shaders.pdb
 del D3D_Shaders.ilk
+del D3D_Shaders.lib
 
 del BinaryDecompiler.lib
 
