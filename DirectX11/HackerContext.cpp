@@ -363,7 +363,7 @@ void HackerContext::DumpRenderTargets()
 	}
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-%016I64x-%016I64x.jps",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-vs-%016I64x-ps-%016I64x.jps",
 				G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
 		if (FAILED(hr)) {
 			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
@@ -372,7 +372,7 @@ void HackerContext::DumpRenderTargets()
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
 	}
 	if (mCurrentDepthTarget) {
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-%016I64x-%016I64x.jps",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-vs-%016I64x-ps-%016I64x.jps",
 				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
 		if (FAILED(hr)) {
 			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
@@ -422,10 +422,10 @@ void HackerContext::DumpUAVs(bool compute)
 		}
 
 		if (compute) {
-			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-compute.jps",
-					G->ANALYSIS_PATH, G->analyse_frame, i);
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-cs-%016I64x.jps",
+					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentComputeShader);
 		} else {
-			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-%016I64x-%016I64x.jps",
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-vs-%016I64x-ps-%016I64x.jps",
 					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
 		}
 		if (FAILED(hr))
