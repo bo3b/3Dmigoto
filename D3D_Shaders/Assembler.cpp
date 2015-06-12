@@ -101,14 +101,24 @@ vector<DWORD> assembleOp(string s, bool special = 0) {
 	DWORD value = 0;
 	token_operand* tOp = (token_operand*)&op;
 	tOp->comps_enum = 2; // 4
-	if (s == "oDepth") {
-		v.push_back(0xC001);
+	string bPoint;
+	num = atoi(s.c_str());
+	if (num != 0) {
+		v.push_back(num);
 		return v;
 	}
+	if (s.find('.') != string::npos)
+		bPoint = s.substr(0, s.find('.'));
+	else
+		bPoint = s;
 	if (s == "null") {
 		v.push_back(0xD000);
 		return v;
 	}
+	if (s == "oDepth") {
+		v.push_back(0xC001);
+		return v;
+	}	
 	if (s == "vCoverage") {
 		v.push_back(0x23001);
 		return v;
@@ -119,6 +129,32 @@ vector<DWORD> assembleOp(string s, bool special = 0) {
 	}
 	if (s == "rasterizer.x") {
 		v.push_back(0x0000E00A);
+		return v;
+	}
+	if (bPoint == "vThreadGroupID") {
+		op = 0x21002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.push_back(op);
+		return v;
+	}
+	if (bPoint == "vThreadIDInGroup") {
+		op = 0x22002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.push_back(op);
+		return v;
+	}
+	if (bPoint == "vThreadID") {
+		op = 0x20002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.push_back(op);
+		return v;
+	}
+	if (bPoint == "vThreadIDInGroupFlattened") {
+		op = 0x24002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (bPoint == s)
+			op = 0x24000;
+		v.push_back(op);
 		return v;
 	}
 	if (s[0] == '-') {
@@ -256,6 +292,10 @@ vector<DWORD> assembleOp(string s, bool special = 0) {
 		tOp->file = 6;
 	} else if (s[0] == 't') {
 		tOp->file = 7;
+	} else if (s[0] == 'g') {
+		tOp->file = 0x1F;
+	} else if (s[0] = 'u') {
+		tOp->file = 0x1E;
 	}
 	s.erase(s.begin());
 	tOp->num_indices = 1;
@@ -297,6 +337,16 @@ vector<string> strToWords(string s) {
 			s.erase(--s.end());
 		words[i] = s;
 	}
+	if (words.size() > 1) {
+		s = words[1];
+		if (s.find(")(") < s.size()) {
+			if (s.find('(', 1) < s.size()) {
+				words[1] = s.substr(s.find('(', 1));
+				words.insert(words.begin() + 1, s.substr(0, s.find('(', 1)));
+			}
+		}
+	}
+
 	s = words[0];
 	if (s.find('(') < s.size()) {
 		words[0] = s.substr(s.find('('));
@@ -362,7 +412,7 @@ map<string, vector<int>> insMap = {
 	{ "sample_c_lz", { 5, 71 } },
 	{ "sample_l", { 5, 72 } },
 	{ "bfi", { 5, 140 } },
-	{ "swapc", { 5, 142 } },
+	{ "swapc", { 5, 142, 2 } },
 	{ "imad", { 4, 35 } },
 	{ "imul", { 4, 38, 2 } },
 	{ "ldms", { 4, 46 } },
@@ -371,6 +421,7 @@ map<string, vector<int>> insMap = {
 	{ "sample", { 4, 69 } },
 	{ "udiv", { 4, 78, 2 } },
 	{ "umul", { 4, 81, 2 } },
+	{ "umax", { 3, 83 } },
 	{ "ubfe", { 4, 138 } },
 	{ "store_structured", { 4, 168 } },
 	{ "ld_structured", { 4, 167 } },
@@ -405,7 +456,6 @@ map<string, vector<int>> insMap = {
 	{ "umin", { 3, 84 } },
 	{ "ushr", { 3, 85 } },
 	{ "xor", { 3, 87 } },
-	{ "store_uav_typed", { 3, 134 } },
 	{ "bfrev", { 2, 141 } },
 	{ "countbits", { 2, 134 } },
 	{ "deriv_rtx", { 2, 11 } },
@@ -448,11 +498,49 @@ map<string, vector<int>> insMap = {
 	{ "endswitch", { 0, 23 } },
 	{ "loop", { 0, 48 } },
 	{ "ret", { 0, 62 } },
-
+	{ "continue", { 0, 7 } },
 	{ "dcl_input", { 1, 95 } },
+
+	{ "imm_atomic_and", { 4, 181 } },
+	{ "imm_atomic_exch", { 4, 184 } },
+	{ "imm_atomic_cmp_exch", { 5, 185 } },
+	{ "imm_atomic_iadd", { 4, 180 } },
+	{ "atomic_iadd", { 3, 173, 0 } },
+	{ "ld_raw", { 3, 165 } },
+	{ "store_raw", { 3, 166 } },
+	{ "atomic_umax", { 3, 176, 0 } },
+	{ "atomic_umin", { 3, 177, 0 } },
+	{ "dcl_tgsm_raw", { 2, 159, 0 } },
+	{ "dcl_tgsm_structured", { 3, 160, 0 } },
+	{ "dcl_thread_group", { 3, 155 } },
+	{ "dcl_uav_raw", { 1, 157, 0 } },
+	{ "dcl_uav_structured", { 2, 158, 0 } },
+	{ "firstbit_lo", { 2, 136 } },
 };
 
 vector<DWORD> assembleIns(string s) {
+	DWORD op = 0;
+	shader_ins* ins = (shader_ins*)&op;
+	if (s.find("[precise]") < s.size()) {
+		s.erase(s.find("[precise]"), 9);
+		ins->_11_23 = 3840;
+	}
+	if (s.find("[precise(xyz)]") < s.size()) {
+		s.erase(s.find("[precise(xyz)]"), 14);
+		ins->_11_23 = 1792;
+	}
+	if (s.find("[precise(xy)]") < s.size()) {
+		s.erase(s.find("[precise(xy)]"), 13);
+		ins->_11_23 = 768;
+	}
+	if (s.find("[precise(zw)]") < s.size()) {
+		s.erase(s.find("[precise(zw)]"), 13);
+		ins->_11_23 = 3072;
+	}
+	if (s.find("[precise(x)]") < s.size()) {
+		s.erase(s.find("[precise(x)]"), 12);
+		ins->_11_23 = 256;
+	}
 	vector<DWORD> v;
 	vector<string> w = strToWords(s);
 	string o = w[0];
@@ -469,8 +557,6 @@ vector<DWORD> assembleIns(string s) {
 	bool bSat = o.find("_sat") < o.size();
 	if (bSat)
 		o = o.substr(0, o.find("_sat"));
-	DWORD op = 0;
-	shader_ins* ins = (shader_ins*)&op;
 
 	if (o.substr(0, 3) == "ps_") {
 		op |= 16 * atoi(o.substr(3, 1).c_str());
@@ -481,6 +567,30 @@ vector<DWORD> assembleIns(string s) {
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
+	} else if (o.substr(0, 3) == "cs_") {
+		op |= 0x50050;
+		v.push_back(op);
+	} else if (w[0] == "sync_g_t") {
+		ins->opcode = 190;
+		ins->_11_23 = 3;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "store_uav_typed") {
+		ins->opcode = 134;
+		if (w[1][0] == 'u') {
+			ins->opcode = 164;
+		}
+		int numOps = 3;
+		vector<vector<DWORD>> Os;
+		int numSpecial = 1;
+		for (int i = 0; i < numOps; i++)
+			Os.push_back(assembleOp(w[i + 1], i < numSpecial));
+		ins->length = 1;
+		for (int i = 0; i < numOps; i++)
+			ins->length += Os[i].size();
+		v.push_back(op);
+		for (int i = 0; i < numOps; i++)
+			v.insert(v.end(), Os[i].begin(), Os[i].end());
 	} else if (insMap.find(o) != insMap.end()) {
 		vector<int> vIns = insMap[o];
 		int numOps = vIns[0];
@@ -600,6 +710,17 @@ vector<DWORD> assembleIns(string s) {
 			v.push_back(0x5555);
 		if (w[1] == "(uint,uint,uint,uint)")
 			v.push_back(0x4444);
+	} else if (o == "dcl_uav_typed_texture1d") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 156;
+		ins->_11_23 = 2;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture2d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -611,9 +732,33 @@ vector<DWORD> assembleIns(string s) {
 			v.push_back(0x5555);
 		if (w[1] == "(uint,uint,uint,uint)")
 			v.push_back(0x4444);
+		if (w[1] == "(sint,sint,sint,sint)")
+			v.push_back(0x3333);
+	} else if (o == "dcl_uav_typed_buffer") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 156;
+		ins->_11_23 = 1;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture3d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
+		ins->_11_23 = 5;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
+	} else if (o == "dcl_uav_typed_texture3d") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 156;
 		ins->_11_23 = 5;
 		ins->length = 4;
 		v.push_back(op);
@@ -655,6 +800,28 @@ vector<DWORD> assembleIns(string s) {
 			v.push_back(0x5555);
 		if (w[1] == "(uint,uint,uint,uint)")
 			v.push_back(0x4444);
+	} else if (o == "dcl_uav_typed_texture2d") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 156;
+		ins->_11_23 = 3;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
+	} else if (o == "dcl_uav_typed_texture2darray") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 156;
+		ins->_11_23 = 8;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
 	} else if (o == "dcl_resource_texture2dms") {
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 88;
@@ -666,6 +833,10 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 132;
 		if (w[1] == "(8)")
 			ins->_11_23 = 260;
+		if (w[1] == "(16)")
+			ins->_11_23 = 516;
+		if (w[1] == "(32)")
+			ins->_11_23 = 1028;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -763,6 +934,8 @@ vector<DWORD> assembleIns(string s) {
 			os.push_back(1);
 		else if (w[2] == "clip_distance")
 			os.push_back(2);
+		else if (w[2] == "cull_distance")
+			os.push_back(3);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -813,8 +986,7 @@ vector<DWORD> assembleIns(string s) {
 		}
 		ins->length = 1 + os.size();
 		v.push_back(op);
-		v.insert(v.end(), os.begin(), os.end());
-		
+		v.insert(v.end(), os.begin(), os.end());		
 	} else if (o == "dcl_input_ps_siv") {
 		vector<DWORD> os;
 		ins->opcode = 100;
@@ -832,6 +1004,11 @@ vector<DWORD> assembleIns(string s) {
 						os.push_back(1);
 				}
 			}
+		} else if (w[1] == "constant") {
+			ins->_11_23 = 1;
+			os = assembleOp(w[2], true);
+			if (w[3] == "rendertarget_array_index")
+				os.push_back(4);
 		}
 		ins->length = 1 + os.size();
 		v.push_back(op);
