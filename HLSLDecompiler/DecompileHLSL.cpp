@@ -173,8 +173,8 @@ public:
 	void ParseInputSignature(const char *c, size_t size)
 	{
 		mRemappedInputRegisters.clear();
-		// Write header.
-		const char *inputHeader = "\nvoid main(\n";
+		// Write header.  Extra space handles odd case for no input and no output sections.
+		const char *inputHeader = "\nvoid main( \n";
 		mOutput.insert(mOutput.end(), inputHeader, inputHeader + strlen(inputHeader));
 
 		// Read until header.
@@ -287,6 +287,10 @@ public:
 			int index, slot; format[0] = 0; mask[0] = 0;
 			if (!strncmp(c + pos, "// no Output", strlen("// no Output")))
 				break;
+
+			// Name                 Index   Mask Register SysValue  Format   Used
+			// -------------------- ----- ------ -------- -------- ------- ------
+			// SV_Target                0   xyzw        0   TARGET   float   xyzw
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
 				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
 			if (numRead == 6)
@@ -333,12 +337,15 @@ public:
 			}
 			else if (numRead == 3)
 			{
+				char reg[64];
 				char sysValue[64];
-				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
-				// Write.
 				char buffer[256];
-				sprintf(buffer, "  out %s %s : %s,\n", format, sysValue, name);
+				// Name                 Index   Mask Register SysValue  Format   Used
+				// -------------------- ----- ------ -------- -------- ------- ------
+				// SV_Depth                 0    N/A   oDepth    DEPTH   float    YES
+				numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
+					name, sizeof(name), &index, mask, sizeof(mask), reg, sizeof(reg), sysValue, sizeof(sysValue), format, sizeof(format));
+				sprintf(buffer, "  out %s %s : %s,\n", format, reg, name);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
 			if (numRead != 6)
@@ -3273,6 +3280,14 @@ public:
 						break;
 					}
 
+					case OPCODE_BFREV:
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						sprintf(buffer, "  %s = reversebits(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 					case OPCODE_EXP:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
@@ -3336,6 +3351,71 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+
+						// Missing opcode for UMax, used in Witcher3
+					case OPCODE_UMAX:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
+						// Opcodes found in Witcher3 Compute Shader, manual fix needed.
+					case OPCODE_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						appendOutput(buffer);
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, "// %s\n", line.c_str());
+						appendOutput(buffer);
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break; 
+					}
+					case OPCODE_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						appendOutput(buffer);
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, "// %s\n", line.c_str());
+						appendOutput(buffer);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_IADD:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						appendOutput(buffer);
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, "// %s\n", line.c_str());
+						appendOutput(buffer);
+						sprintf(buffer, "  InterlockedAdd(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IADD:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						appendOutput(buffer);
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, "// %s\n", line.c_str());
+						appendOutput(buffer);
+						sprintf(buffer, "  InterlockedAdd?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+
 
 					case OPCODE_MAX:
 						remapTarget(op1);
@@ -3758,6 +3838,15 @@ public:
 						break;
 					case OPCODE_ENDLOOP:
 						sprintf(buffer, "  }\n");
+						appendOutput(buffer);
+						break;
+					
+						// Found in Witcher3 Compute Shaders 
+					case OPCODE_SYNC:
+						if (!strcmp(statement, "sync_g_t"))
+							sprintf(buffer, "  AllMemoryBarrierWithGroupSync(void);\n");
+						else
+							sprintf(buffer, "  Unknown sync instruction; \n");
 						appendOutput(buffer);
 						break;
 
@@ -4190,10 +4279,22 @@ public:
 						string dst0, srcAddress, srcByteOffset, src0;
 						string swiz;
 
+						ResourceBinding* bindings = shader->sInfo->psResourceBindings;
+						if (bindings == NULL)
+						{
+							sprintf(buffer, "// Missing reflection info for shader. No names possible. \n");
+							appendOutput(buffer);
+							src0 = "no_StructuredBufferName";
+							srcAddress = "no_srcAddressRegister";
+							srcByteOffset = "no_srcByteOffsetName";
+						}
+						else
+						{
+							src0 = bindings->Name;
+							srcAddress = instr->asOperands[1].specialName;
+							srcByteOffset = instr->asOperands[2].specialName;
+						}
 						dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
-						srcAddress = instr->asOperands[1].specialName;
-						srcByteOffset = instr->asOperands[2].specialName;
-						src0 = shader->sInfo->psResourceBindings->Name;
 
 						sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
 						appendOutput(buffer);
@@ -4220,7 +4321,8 @@ public:
 								}
 								//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
 								//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-								sprintf(buffer, "%s.%s = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;\n", dst0.c_str(), swiz.c_str());
+								sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
+									dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
 								appendOutput(buffer);
 							}
 						}
