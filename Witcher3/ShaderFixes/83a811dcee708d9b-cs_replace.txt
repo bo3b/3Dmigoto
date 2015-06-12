@@ -26,11 +26,14 @@ cbuffer cb12 : register(b12)
   float4 cb12[219];
 }
 
+RWTexture2D<float4> u0;
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-void main()
+void main(
+uint3 vThreadGroupID(16,16,1) : SV_GroupThreadID,
+uint3 vThreadIDInGroup : SV_GroupID)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19;
   uint4 bitmask, uiDest;
@@ -796,7 +799,8 @@ void main()
   r1.xyz = r5.xyz * r3.xyz + r1.xyz;
   r1.w = 1.000000000e+000;
 // No code for instruction (needs manual fix):
- store_uav_typed u0.xyzw, r0.xyyy, r1.xyzw
+// store_uav_typed u0.xyzw, r0.xyyy, r1.xyzw
+u0[r0.xy] = r1.xyzw;
   return;
 }
 
