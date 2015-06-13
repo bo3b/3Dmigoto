@@ -118,7 +118,11 @@ vector<DWORD> assembleOp(string s, bool special = 0) {
 	if (s == "oDepth") {
 		v.push_back(0xC001);
 		return v;
-	}	
+	}
+	if (s == "oMask") {
+		v.push_back(0xF000);
+		return v;
+	}
 	if (s == "vCoverage") {
 		v.push_back(0x23001);
 		return v;
@@ -409,8 +413,10 @@ map<string, vector<int>> ldMap = {
 map<string, vector<int>> insMap = {
 	{ "sample_b", { 5, 74 } },
 	{ "sample_c", { 5, 70 } },
+	{ "sample_d", { 6, 73 } },
 	{ "sample_c_lz", { 5, 71 } },
 	{ "sample_l", { 5, 72 } },
+	{ "eval_sample_index", { 3, 204 } },
 	{ "bfi", { 5, 140 } },
 	{ "swapc", { 5, 142, 2 } },
 	{ "imad", { 4, 35 } },
@@ -419,6 +425,8 @@ map<string, vector<int>> insMap = {
 	{ "mad", { 4, 50 } },
 	{ "movc", { 4, 55 } },
 	{ "sample", { 4, 69 } },
+	{ "sampled", { 6, 73 } },
+	{ "gather4", { 4, 109 } },
 	{ "udiv", { 4, 78, 2 } },
 	{ "umul", { 4, 81, 2 } },
 	{ "umax", { 3, 83 } },
@@ -477,6 +485,7 @@ map<string, vector<int>> insMap = {
 	{ "round_ni", { 2, 65 } },
 	{ "round_pi", { 2, 66 } },
 	{ "round_z", { 2, 67 } },
+	{ "round_nz", { 2, 67 } },
 	{ "rsq", { 2, 68 } },
 	{ "sqrt", { 2, 75 } },
 	{ "utof", { 2, 86 } },
@@ -486,9 +495,12 @@ map<string, vector<int>> insMap = {
 	{ "f32tof16", { 2, 130 } },
 	{ "imm_atomic_alloc", { 2, 178 } },
 	{ "breakc_z", { 1, 3, 0 } },
+	{ "breakc_nz", { 1, 3, 0 } },
 	{ "case", { 1, 6 } },
 	{ "discard_z", { 1, 13, 0 } },
+	{ "discard_nz", { 1, 13, 0 } },
 	{ "if_z", { 1, 31, 0 } },
+	{ "if_nz", { 1, 31, 0 } },
 	{ "switch", { 1, 76, 0 } },
 	{ "break", { 0, 2 } },
 	{ "default", { 0, 10 } },
@@ -544,6 +556,10 @@ vector<DWORD> assembleIns(string s) {
 	vector<DWORD> v;
 	vector<string> w = strToWords(s);
 	string o = w[0];
+	if (s.find("_opc") < s.size()) {
+		o = o.substr(0, o.find("_opc"));
+		ins->_11_23 = 4096;
+	}
 	bool bUint = o.find("_uint") < o.size();
 	if (bUint) {
 		o = o.substr(0, o.find("_uint"));
@@ -552,11 +568,9 @@ vector<DWORD> assembleIns(string s) {
 		w[2] = w[2].substr(0, w[2].find("_uint"));
 	}
 	bool bNZ = o.find("_nz") < o.size();
-	if (bNZ)
-		o = o.substr(0, o.find("_nz")).append("_z");
+	bool bZ = o.find("_z") < o.size();
 	bool bSat = o.find("_sat") < o.size();
-	if (bSat)
-		o = o.substr(0, o.find("_sat"));
+	if (bSat) o = o.substr(0, o.find("_sat"));
 
 	if (o.substr(0, 3) == "ps_") {
 		op |= 16 * atoi(o.substr(3, 1).c_str());
@@ -611,6 +625,8 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 4;
 		if (bNZ)
 			ins->_11_23 = 128;
+		if (bZ)
+			ins->_11_23 = 0;
 		ins->length = 1;
 		for (int i = 0; i < numOps; i++)
 			ins->length += Os[i].size();
@@ -959,6 +975,9 @@ vector<DWORD> assembleIns(string s) {
 			} else if (w[2] == "centroid") {
 				ins->_11_23 = 3;
 				os = assembleOp(w[3], true);
+			} else if (w[2] == "sample") {
+				ins->_11_23 = 6;
+				os = assembleOp(w[3], true);
 			} else {
 				ins->_11_23 = 2;
 				os = assembleOp(w[2], true);
@@ -1003,6 +1022,10 @@ vector<DWORD> assembleIns(string s) {
 					if (w[4] == "position")
 						os.push_back(1);
 				}
+			} else if (w[3] == "clip_distance") {
+				os = assembleOp(w[2], true);
+				ins->_11_23 = 2;
+				os.push_back(2);
 			}
 		} else if (w[1] == "constant") {
 			ins->_11_23 = 1;
@@ -1294,18 +1317,7 @@ string shaderModel(byte* buffer) {
 	return shaderModel;
 }
 
-
-// Assemble a shader from text assembly language, and the original shader byte code.
-// Careful, the input bytecode sequence is modified.
-// 
-// Usage example for vector<char> asmText, ID3DBlob *pShader:
-//	vector<byte> byteCode(pShader->GetBufferSize());
-//	memcpy(byteCode.data(), pShader->GetBufferPointer(),pShader->GetBufferSize());
-//	byteCode = assembler(asmText, byteCode);
-//
-// ToDo: A better API would be to return a ID3DBlob since it's D3D data.
-
-vector<byte> assembler(vector<char> asmFile, vector<byte> buffer) {
+vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
@@ -1329,7 +1341,7 @@ vector<byte> assembler(vector<char> asmFile, vector<byte> buffer) {
 
 	char* asmBuffer;
 	int asmSize;
-	asmBuffer = asmFile.data();
+	asmBuffer = (char*)asmFile.data();
 	asmSize = asmFile.size();
 	byte* codeByteStart;
 	int codeChunk = 0;
