@@ -1132,24 +1132,23 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 // Keep the original shader around if it may be needed by a filter in a
 // [ShaderOverride] section, or if hunting is enabled and either the
 // marking_mode=original, or reload_config support is enabled
-void HackerDevice::KeepOriginalShader(UINT64 hash, ID3D11VertexShader *pVertexShader, ID3D11PixelShader *pPixelShader,
+void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
 	const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage)
 {
 	if (!NeedOriginalShader(hash))
 		return;
 
-	LogInfo("    keeping original shader for filtering: %016llx\n", hash);
+	LogInfoW(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		if (pVertexShader) {
+		if (!wcsncmp(shaderType, L"vs", 2)) {
 			ID3D11VertexShader *originalShader;
 			mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalVertexShaders[pVertexShader] = originalShader;
-		}
-		else if (pPixelShader) {
+			G->mOriginalVertexShaders[(ID3D11VertexShader*)pShader] = originalShader;
+		} else if (!wcsncmp(shaderType, L"ps", 2)) {
 			ID3D11PixelShader *originalShader;
 			mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalPixelShaders[pPixelShader] = originalShader;
+			G->mOriginalPixelShaders[(ID3D11PixelShader*)pShader] = originalShader;
 		}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1712,6 +1711,147 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	return hr;
 }
 
+
+// C++ function template of common code shared by all CreateXXXShader functions:
+template <class ID3D11Shader,
+	 typename Shaders,
+	 typename PreloadShaderMap,
+	 typename ReplacementShaderMap,
+	 HRESULT (ID3D11Device::*OrigCreateShader)(THIS_
+			 const void *pShaderBytecode,
+			 SIZE_T BytecodeLength,
+			 ID3D11ClassLinkage *pClassLinkage,
+			 ID3D11Shader **ppShader)
+	 >
+STDMETHODIMP HackerDevice::CreateShader(THIS_
+	/* [annotation] */
+	__in  const void *pShaderBytecode,
+	/* [annotation] */
+	__in  SIZE_T BytecodeLength,
+	/* [annotation] */
+	__in_opt  ID3D11ClassLinkage *pClassLinkage,
+	/* [annotation] */
+	__out_opt  ID3D11Shader **ppShader,
+	wchar_t *shaderType,
+	Shaders *shaders,
+	PreloadShaderMap *preloadedShaders,
+	ReplacementShaderMap *originalShaders,
+	ReplacementShaderMap *zeroShaders
+	)
+{
+	HRESULT hr = -1;
+	UINT64 hash;
+	string shaderModel;
+	SIZE_T replaceShaderSize;
+	FILETIME ftWrite;
+	ID3D11Shader *zeroShader = 0;
+
+	if (pShaderBytecode && ppShader)
+	{
+		// Calculate hash
+		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
+		LogInfo("  bytecode hash = %016I64x\n", hash);
+
+		// Preloaded shader? (Can't use preloaded shaders with class linkage).
+		if (!pClassLinkage)
+		{
+			PreloadShaderMap::iterator i = preloadedShaders->find(hash);
+			if (i != preloadedShaders->end())
+			{
+				*ppShader = i->second;
+				ULONG cnt = (*ppShader)->AddRef();
+				hr = S_OK;
+				LogInfo("    shader assigned by preloaded version. ref counter = %d\n", cnt);
+
+				if (G->marking_mode == MARKING_MODE_ZERO)
+				{
+					char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
+						shaderModel, ftWrite, (void **)&zeroShader);
+					delete replaceShader;
+				}
+				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+			}
+		}
+	}
+	if (hr != S_OK && ppShader && pShaderBytecode)
+	{
+		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
+			shaderModel, ftWrite, (void **)&zeroShader);
+		if (replaceShader)
+		{
+			// Create the new shader.
+			LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
+
+			hr = (mOrigDevice->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+			if (SUCCEEDED(hr))
+			{
+				LogInfo("    shader successfully replaced.\n");
+
+				//if (G->hunting)
+				{
+					// Hunting mode:  keep byteCode around for possible replacement or marking
+					ID3DBlob* blob;
+					D3DCreateBlob(replaceShaderSize, &blob);
+					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite);
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				}
+				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+			}
+			else
+			{
+				LogInfo("    error replacing shader.\n");
+			}
+			delete replaceShader; replaceShader = 0;
+		}
+	}
+	if (hr != S_OK)
+	{
+		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+
+		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
+		// have a copy for every shader seen.
+		//if (G->hunting)
+		{
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+				ID3DBlob* blob;
+				D3DCreateBlob(BytecodeLength, &blob);
+				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite);
+
+				// Also add the original shader to the original shaders
+				// map so that if it is later replaced marking_mode =
+				// original and depth buffer filtering will work:
+				if (originalShaders->count(*ppShader) == 0)
+					(*originalShaders)[*ppShader] = *ppShader;
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		}
+	}
+	if (hr == S_OK && ppShader && pShaderBytecode)
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			(*shaders)[*ppShader] = hash;
+			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
+
+			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
+			{
+				(*zeroShaders)[*ppShader] = zeroShader;
+			}
+
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+
+	LogInfo("  returns result = %x, handle = %p\n", hr, *ppShader);
+
+	return hr;
+}
+
 STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 	/* [annotation] */
 	__in  const void *pShaderBytecode,
@@ -1724,119 +1864,13 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 {
 	LogInfo("HackerDevice::CreateVertexShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
-	HRESULT hr = -1;
-	UINT64 hash;
-	string shaderModel;
-	SIZE_T replaceShaderSize;
-	FILETIME ftWrite;
-	ID3D11VertexShader *zeroShader = 0;
-
-	if (pShaderBytecode && ppVertexShader)
-	{
-		// Calculate hash
-		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		LogInfo("  bytecode hash = %016llx\n", hash);
-		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
-
-		// Preloaded shader? (Can't use preloaded shaders with class linkage).
-		if (!pClassLinkage)
-		{
-			PreloadVertexShaderMap::iterator i = G->mPreloadedVertexShaders.find(hash);
-			if (i != G->mPreloadedVertexShaders.end())
-			{
-				*ppVertexShader = i->second;
-				ULONG cnt = (*ppVertexShader)->AddRef();
-				hr = S_OK;
-				LogInfo("    shader assigned by preloaded version. ref counter = %d\n", cnt);
-
-				if (G->marking_mode == MARKING_MODE_ZERO)
-				{
-					char *replaceShader = ReplaceShader(hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize,
-						shaderModel, ftWrite, (void **)&zeroShader);
-					delete replaceShader;
-				}
-				KeepOriginalShader(hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
-			}
-		}
-	}
-	if (hr != S_OK && ppVertexShader && pShaderBytecode)
-	{
-		ID3D11VertexShader *zeroShader = 0;
-		char *replaceShader = ReplaceShader(hash, L"vs", pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, (void **)&zeroShader);
-		if (replaceShader)
-		{
-			// Create the new shader.
-			LogDebug("    HackerDevice::CreateVertexShader.  Device: %p\n", this);
-
-			hr = mOrigDevice->CreateVertexShader(replaceShader, replaceShaderSize, pClassLinkage, ppVertexShader);
-			if (SUCCEEDED(hr))
-			{
-				LogInfo("    shader successfully replaced.\n");
-
-				//if (G->hunting)
-				{
-					// Hunting mode:  keep byteCode around for possible replacement or marking
-					ID3DBlob* blob;
-					D3DCreateBlob(replaceShaderSize, &blob);
-					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
-					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-						RegisterForReload(*ppVertexShader, hash, L"vs", shaderModel, pClassLinkage, blob, ftWrite);
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				}
-				KeepOriginalShader(hash, *ppVertexShader, NULL, pShaderBytecode, BytecodeLength, pClassLinkage);
-			}
-			else
-			{
-				LogInfo("    error replacing shader.\n");
-			}
-			delete replaceShader; replaceShader = 0;
-		}
-	}
-	if (hr != S_OK)
-	{
-		hr = mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
-
-		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
-		// have a copy for every shader seen.
-		//if (G->hunting)
-		{
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-				ID3DBlob* blob;
-				D3DCreateBlob(BytecodeLength, &blob);
-				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-				RegisterForReload(*ppVertexShader, hash, L"vs", "bin", pClassLinkage, blob, ftWrite);
-
-				// Also add the original shader to the original shaders
-				// map so that if it is later replaced marking_mode =
-				// original and depth buffer filtering will work:
-				if (G->mOriginalVertexShaders.count(*ppVertexShader) == 0)
-					G->mOriginalVertexShaders[*ppVertexShader] = *ppVertexShader;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		}
-	}
-	if (hr == S_OK && ppVertexShader && pShaderBytecode)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mVertexShaders[*ppVertexShader] = hash;
-			LogDebug("    Vertex shader registered: handle = %p, hash = %08lx%08lx\n", *ppVertexShader, (UINT32)(hash >> 32), (UINT32)hash);
-
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
-			{
-				G->mZeroVertexShaders[*ppVertexShader] = zeroShader;
-			}
-
-			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-			if (i != G->mCompiledShaderMap.end())
-			{
-				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppVertexShader);
-
-	return hr;
+	return CreateShader<ID3D11VertexShader,
+		VertexShaderMap,
+		PreloadVertexShaderMap,
+		VertexShaderReplacementMap,
+		&ID3D11Device::CreateVertexShader>
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader,
+			 L"vs", &G->mVertexShaders, &G->mPreloadedVertexShaders, &G->mOriginalVertexShaders, &G->mZeroVertexShaders);
 }
 
 STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
@@ -1944,117 +1978,13 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 {
 	LogInfo("HackerDevice::CreatePixelShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
-	HRESULT hr = -1;
-	UINT64 hash;
-	string shaderModel;
-	SIZE_T replaceShaderSize;
-	FILETIME ftWrite;
-	ID3D11PixelShader *zeroShader = 0;
-
-	if (pShaderBytecode && ppPixelShader)
-	{
-		// Calculate hash
-		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		LogInfo("  bytecode hash = %08lx%08lx\n", (UINT32)(hash >> 32), (UINT32)hash);
-
-		// Preloaded shader? (Can't use preloaded shaders with class linkage).
-		if (!pClassLinkage)
-		{
-			PreloadPixelShaderMap::iterator i = G->mPreloadedPixelShaders.find(hash);
-			if (i != G->mPreloadedPixelShaders.end())
-			{
-				*ppPixelShader = i->second;
-				ULONG cnt = (*ppPixelShader)->AddRef();
-				hr = S_OK;
-				LogInfo("    shader assigned by preloaded version. ref counter = %d\n", cnt);
-
-				if (G->marking_mode == MARKING_MODE_ZERO)
-				{
-					char *replaceShader = ReplaceShader(hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize,
-						shaderModel, ftWrite, (void **)&zeroShader);
-					delete replaceShader;
-				}
-				KeepOriginalShader(hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
-			}
-		}
-	}
-	if (hr != S_OK && ppPixelShader && pShaderBytecode)
-	{
-		char *replaceShader = ReplaceShader(hash, L"ps", pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, (void **)&zeroShader);
-		if (replaceShader)
-		{
-			// Create the new shader.
-			LogDebug("    HackerDevice::CreatePixelShader.  Device: %p\n", this);
-
-			hr = mOrigDevice->CreatePixelShader(replaceShader, replaceShaderSize, pClassLinkage, ppPixelShader);
-			if (SUCCEEDED(hr))
-			{
-				LogInfo("    shader successfully replaced.\n");
-
-				//if (G->hunting)
-				{
-					// Hunting mode:  keep byteCode around for possible replacement or marking
-					ID3DBlob* blob;
-					D3DCreateBlob(replaceShaderSize, &blob);
-					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
-					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-						RegisterForReload(*ppPixelShader, hash, L"ps", shaderModel, pClassLinkage, blob, ftWrite);
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				}
-				KeepOriginalShader(hash, NULL, *ppPixelShader, pShaderBytecode, BytecodeLength, pClassLinkage);
-			}
-			else
-			{
-				LogInfo("    error replacing shader.\n");
-			}
-			delete replaceShader; replaceShader = 0;
-		}
-	}
-	if (hr != S_OK)
-	{
-		hr = mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
-
-		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
-		// have a copy for every shader seen.
-		//if (G->hunting)
-		{
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-				ID3DBlob* blob;
-				D3DCreateBlob(BytecodeLength, &blob);
-				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-				RegisterForReload(*ppPixelShader, hash, L"ps", "bin", pClassLinkage, blob, ftWrite);
-
-				// Also add the original shader to the original shaders
-				// map so that if it is later replaced marking_mode =
-				// original and depth buffer filtering will work:
-				if (G->mOriginalPixelShaders.count(*ppPixelShader) == 0)
-					G->mOriginalPixelShaders[*ppPixelShader] = *ppPixelShader;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		}
-	}
-	if (hr == S_OK && ppPixelShader && pShaderBytecode)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mPixelShaders[*ppPixelShader] = hash;
-			LogDebug("    Pixel shader: handle = %p, hash = %08lx%08lx\n", *ppPixelShader, (UINT32)(hash >> 32), (UINT32)hash);
-
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
-			{
-				G->mZeroPixelShaders[*ppPixelShader] = zeroShader;
-			}
-
-			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-			if (i != G->mCompiledShaderMap.end())
-			{
-				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppPixelShader);
-
-	return hr;
+	return CreateShader<ID3D11PixelShader,
+		PixelShaderMap,
+		PreloadPixelShaderMap,
+		PixelShaderReplacementMap,
+		&ID3D11Device::CreatePixelShader>
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader,
+			 L"ps", &G->mPixelShaders, &G->mPreloadedPixelShaders, &G->mOriginalPixelShaders, &G->mZeroPixelShaders);
 }
 
 STDMETHODIMP HackerDevice::CreateHullShader(THIS_
