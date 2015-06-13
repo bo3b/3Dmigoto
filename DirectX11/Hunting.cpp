@@ -858,8 +858,17 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		HANDLE hFind = FindFirstFile(fileName, &findFileData);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
-			do
-			{
+			do {
+				// Ignore reassembly files (XXX: Should we be strict and whitelist allowed patterns,
+				// or relaxed and blacklist bad patterns in filenames? Pretty sure I saw some code
+				// that treads _bad.txt files as an indication that a shader is bad - do we need
+				// to consider that here?) -DarkStarSword
+				wchar_t *ext = wcsrchr(findFileData.cFileName, L'.');
+				if (ext) {
+					if (!wcsncmp(ext - 6, L"_reasm", 6))
+						continue;
+				}
+
 				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device);
 			} while (FindNextFile(hFind, &findFileData) && success);
 			FindClose(hFind);
