@@ -640,6 +640,21 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 			}
+			// TODO: else if (shaderType.compare(L"gs") == 0)
+			// TODO: {
+			// TODO: 	hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
+			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
+			// TODO: }
+			// TODO: else if (shaderType.compare(L"hs") == 0)
+			// TODO: {
+			// TODO: 	hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
+			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
+			// TODO: }
+			// TODO: else if (shaderType.compare(L"ds") == 0)
+			// TODO: {
+			// TODO: 	hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
+			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
+			// TODO: }
 			if (FAILED(hr))
 				goto err;
 
@@ -771,7 +786,30 @@ static void RevertMissingShaders()
 				continue;
 			replacement = j->second;
 		}
-		// TODO: compute shaders
+		else if (i->second.shaderType.compare(L"cs") == 0) {
+			ComputeShaderReplacementMap::iterator j = G->mOriginalComputeShaders.find((ID3D11ComputeShader*)i->first);
+			if (j == G->mOriginalComputeShaders.end())
+				continue;
+			replacement = j->second;
+		}
+		// TODO: else if (i->second.shaderType.compare(L"gs") == 0) {
+		// TODO: 	GeometryShaderReplacementMap::iterator j = G->mOriginalGeometryShaders.find((ID3D11GeometryShader*)i->first);
+		// TODO: 	if (j == G->mOriginalGeometryShaders.end())
+		// TODO: 		continue;
+		// TODO: 	replacement = j->second;
+		// TODO: }
+		// TODO: else if (i->second.shaderType.compare(L"hs") == 0) {
+		// TODO: 	HullShaderReplacementMap::iterator j = G->mOriginalHullShaders.find((ID3D11HullShader*)i->first);
+		// TODO: 	if (j == G->mOriginalHullShaders.end())
+		// TODO: 		continue;
+		// TODO: 	replacement = j->second;
+		// TODO: }
+		// TODO: else if (i->second.shaderType.compare(L"ds") == 0) {
+		// TODO: 	DomainShaderReplacementMap::iterator j = G->mOriginalDomainShaders.find((ID3D11DomainShader*)i->first);
+		// TODO: 	if (j == G->mOriginalDomainShaders.end())
+		// TODO: 		continue;
+		// TODO: 	replacement = j->second;
+		// TODO: }
 		else {
 			continue;
 		}
