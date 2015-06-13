@@ -1149,6 +1149,22 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 			ID3D11PixelShader *originalShader;
 			mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
 			G->mOriginalPixelShaders[(ID3D11PixelShader*)pShader] = originalShader;
+		} else if (!wcsncmp(shaderType, L"cs", 2)) {
+			ID3D11ComputeShader *originalShader;
+			mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			G->mOriginalComputeShaders[(ID3D11ComputeShader*)pShader] = originalShader;
+		// TODO: } else if (!wcsncmp(shaderType, L"gs", 2)) {
+		// TODO: 	ID3D11GeometryShader *originalShader;
+		// TODO: 	mOrigDevice->CreateGeometryShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		// TODO: 	G->mOriginalGeometryShaders[(ID3D11GeometryShader*)pShader] = originalShader;
+		// TODO: } else if (!wcsncmp(shaderType, L"hs", 2)) {
+		// TODO: 	ID3D11HullShader *originalShader;
+		// TODO: 	mOrigDevice->CreateHullShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		// TODO: 	G->mOriginalHullShaders[(ID3D11HullShader*)pShader] = originalShader;
+		// TODO: } else if (!wcsncmp(shaderType, L"ds", 2)) {
+		// TODO: 	ID3D11DomainShader *originalShader;
+		// TODO: 	mOrigDevice->CreateDomainShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		// TODO: 	G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
 		}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1753,7 +1769,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		LogInfo("  bytecode hash = %016I64x\n", hash);
 
 		// Preloaded shader? (Can't use preloaded shaders with class linkage).
-		if (!pClassLinkage)
+		if (preloadedShaders && !pClassLinkage)
 		{
 			PreloadShaderMap::iterator i = preloadedShaders->find(hash);
 			if (i != preloadedShaders->end())
@@ -1834,7 +1850,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			(*shaders)[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
+			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader && zeroShaders)
 			{
 				(*zeroShaders)[*ppShader] = zeroShader;
 			}
@@ -1884,6 +1900,15 @@ STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
 	__out_opt  ID3D11GeometryShader **ppGeometryShader)
 {
 	LogInfo("HackerDevice::CreateGeometryShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
+
+	// TODO: Replace this whole function with this one template call (once tested!):
+	// return CreateShader<ID3D11GeometryShader,
+	// 	GeometryShaderMap,
+	// 	PreloadGeometryShaderMap,
+	// 	GeometryShaderReplacementMap,
+	// 	&ID3D11Device::CreateGeometryShader>
+	// 		(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader,
+	// 		 L"hs", &G->mGeometryShaders, &G->mPreloadedGeometryShaders, &G->mOriginalGeometryShaders, &G->mZeroGeometryShaders);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -1999,6 +2024,15 @@ STDMETHODIMP HackerDevice::CreateHullShader(THIS_
 {
 	LogInfo("HackerDevice::CreateHullShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
+	// TODO: Replace this whole function with this one template call (once tested!):
+	// return CreateShader<ID3D11HullShader,
+	// 	HullShaderMap,
+	// 	PreloadHullShaderMap,
+	// 	HullShaderReplacementMap,
+	// 	&ID3D11Device::CreateHullShader>
+	// 		(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader,
+	// 		 L"hs", &G->mHullShaders, &G->mPreloadedHullShaders, &G->mOriginalHullShaders, &G->mZeroHullShaders);
+
 	HRESULT hr = -1;
 	UINT64 hash;
 	if (pShaderBytecode && ppHullShader)
@@ -2062,6 +2096,15 @@ STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
 	__out_opt  ID3D11DomainShader **ppDomainShader)
 {
 	LogInfo("HackerDevice::CreateDomainShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
+
+	// TODO: Replace this whole function with this one template call (once tested!):
+	// return CreateShader<ID3D11DomainShader,
+	// 	DomainShaderMap,
+	// 	PreloadDomainShaderMap,
+	// 	DomainShaderReplacementMap,
+	// 	&ID3D11Device::CreateDomainShader>
+	// 		(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader,
+	// 		 L"ds", &G->mDomainShaders, &G->mPreloadedDomainShaders, &G->mOriginalDomainShaders, &G->mZeroDomainShaders);
 
 	HRESULT hr = -1;
 	UINT64 hash;
@@ -2127,64 +2170,17 @@ STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
 {
 	LogInfo("HackerDevice::CreateComputeShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
-	HRESULT hr = -1;
-	UINT64 hash;
-	string shaderModel;
-	SIZE_T replaceShaderSize;
-	FILETIME ftWrite;
-	ID3D11ComputeShader *zeroShader = NULL;
-
-	if (pShaderBytecode && ppComputeShader)
-	{
-		// Calculate hash
-		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		LogInfo("  bytecode hash = %016I64x\n", hash);
-
-		// TODO: Preload?
-
-		char *replaceShader = ReplaceShader(hash, L"cs", pShaderBytecode, BytecodeLength, replaceShaderSize,
-				shaderModel, ftWrite, (void**)&zeroShader);
-		if (replaceShader) {
-			// Create the new shader.
-			hr = mOrigDevice->CreateComputeShader(replaceShader, replaceShaderSize, pClassLinkage, ppComputeShader);
-			if (SUCCEEDED(hr)) {
-				LogInfo("    shader successfully replaced.\n");
-
-				// TODO: Other variants keep the bytecode around here
-			} else
-				LogInfo("    error replacing shader.\n");
-
-			delete replaceShader; replaceShader = NULL;
-		}
-
-	}
-
-	if (hr != S_OK) {
-		hr = mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
-
-		// TODO: Keep original shader
-	}
-
-	if (hr == S_OK && ppComputeShader && pShaderBytecode)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-
-			G->mComputeShaders[*ppComputeShader] = hash;
-			LogDebug("    Compute shader: handle = %p, hash = %016I64x\n",
-				*ppComputeShader, hash);
-
-			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-			if (i != G->mCompiledShaderMap.end())
-			{
-				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-			}
-
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
-	LogInfo("  returns result = %x, handle = %p\n", hr, (ppComputeShader ? *ppComputeShader : NULL));
-
-	return hr;
+	return CreateShader<ID3D11ComputeShader,
+		ComputeShaderMap,
+		PreloadComputeShaderMap,
+		ComputeShaderReplacementMap,
+		&ID3D11Device::CreateComputeShader>
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader,
+			 L"cs",
+			 &G->mComputeShaders,
+			 NULL /* TODO: &G->mPreloadedComputeShaders */,
+			 &G->mOriginalComputeShaders,
+			 NULL /* TODO (if this even makes sense?): &G->mZeroComputeShaders */);
 }
 
 STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
