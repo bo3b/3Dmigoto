@@ -80,6 +80,27 @@ private:
 		bool log_new, struct ResourceInfo *resource_info);
 
 	// Templates to reduce duplicated code:
+	template <class ID3D11Shader,
+		 typename Shaders,
+		 typename ReplacementShaderMap,
+		 void (ID3D11DeviceContext::*OrigSetShader)(THIS_
+				 ID3D11Shader *pShader,
+				 ID3D11ClassInstance *const *ppClassInstances,
+				 UINT NumClassInstances)
+		 >
+	STDMETHODIMP_(void) SetShader(THIS_
+		/* [annotation] */
+		__in_opt ID3D11Shader *pShader,
+		/* [annotation] */
+		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
+		UINT NumClassInstances,
+		Shaders *shaders,
+		ReplacementShaderMap *originalShaders,
+		ReplacementShaderMap *zeroShaders,
+		std::set<UINT64> *visitedShaders,
+		UINT64 selectedShader,
+		UINT64 *currentShaderHash,
+		ID3D11Shader **currentShaderHandle);
 	template <void (ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
 			UINT StartSlot,
 			UINT NumViews,
