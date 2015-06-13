@@ -79,6 +79,13 @@ private:
 	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
 		bool log_new, struct ResourceInfo *resource_info);
 
+	// Templates to reduce duplicated code:
+	template <void (ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+			UINT StartSlot,
+			UINT NumViews,
+			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+	void BindStereoResources();
+
 public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 

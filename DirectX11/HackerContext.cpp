@@ -1511,6 +1511,8 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
+	// TODO: Refactor common code with other XXSetShader functions
+
 	LogDebug("HackerContext::CSSetShader called with computeshader handle = %p\n", pComputeShader);
 
 	if (pComputeShader) {
@@ -1548,7 +1550,7 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 
 	mOrigContext->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
 
-	// TODO: Send stereo texture & ini params to shader as UAVs
+	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
@@ -2016,6 +2018,32 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 
 // -----------------------------------------------------------------------------------------------
 
+template <void (ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+void HackerContext::BindStereoResources()
+{
+	if (!mHackerDevice) {
+		LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+		return;
+	}
+
+	// Set NVidia stereo texture.
+	if (mHackerDevice->mStereoResourceView) {
+		LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+
+		(mOrigContext->*OrigSetShaderResources)(125, 1, &mHackerDevice->mStereoResourceView);
+	}
+
+	// Set constants from ini file if they exist
+	if (mHackerDevice->mIniResourceView) {
+		LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
+
+		(mOrigContext->*OrigSetShaderResources)(120, 1, &mHackerDevice->mIniResourceView);
+	}
+}
+
 // The rest of these methods are all the primary code for the tool, Direct3D calls that we override
 // in order to replace or modify shaders.
 
@@ -2103,30 +2131,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
 	if ((!G->hunting || patchedShader) && pVertexShader)
-	{
-		if (mHackerDevice)
-		{
-			// Set NVidia stereo texture.
-			if (mHackerDevice->mStereoResourceView)
-			{
-				LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-
-				mOrigContext->VSSetShaderResources(125, 1, &mHackerDevice->mStereoResourceView);
-			}
-
-			// Set constants from ini file if they exist
-			if (mHackerDevice->mIniResourceView)
-			{
-				LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
-
-				mOrigContext->VSSetShaderResources(120, 1, &mHackerDevice->mIniResourceView);
-			}
-		}
-		else
-		{
-			LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
-		}
-	}
+		BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
@@ -2264,37 +2269,15 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
-	if ((!G->hunting || patchedShader) && pPixelShader)
-	{
-		HackerDevice *device = mHackerDevice;
+	if ((!G->hunting || patchedShader) && pPixelShader) {
+		BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
 
-		if (device)
+		// Set custom depth texture.
+		if (mHackerDevice->mZBufferResourceView)
 		{
-			// Set NVidia stereo texture.
-			if (device->mStereoResourceView)
-			{
-				LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+			LogDebug("  adding Z buffer to shader resources in slot 126.\n");
 
-				mOrigContext->PSSetShaderResources(125, 1, &device->mStereoResourceView);
-			}
-			// Set constants from ini file if they exist
-			if (device->mIniResourceView)
-			{
-				LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
-
-				mOrigContext->PSSetShaderResources(120, 1, &device->mIniResourceView);
-			}
-			// Set custom depth texture.
-			if (device->mZBufferResourceView)
-			{
-				LogDebug("  adding Z buffer to shader resources in slot 126.\n");
-
-				mOrigContext->PSSetShaderResources(126, 1, &device->mZBufferResourceView);
-			}
-		}
-		else
-		{
-			LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+			mOrigContext->PSSetShaderResources(126, 1, &mHackerDevice->mZBufferResourceView);
 		}
 	}
 }
