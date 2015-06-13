@@ -83,7 +83,7 @@ private:
 	template <class ID3D11Shader,
 		 typename Shaders,
 		 typename ReplacementShaderMap,
-		 void (ID3D11DeviceContext::*OrigSetShader)(THIS_
+		 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
 				 ID3D11Shader *pShader,
 				 ID3D11ClassInstance *const *ppClassInstances,
 				 UINT NumClassInstances)
@@ -101,7 +101,7 @@ private:
 		UINT64 selectedShader,
 		UINT64 *currentShaderHash,
 		ID3D11Shader **currentShaderHandle);
-	template <void (ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+	template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
 			UINT StartSlot,
 			UINT NumViews,
 			ID3D11ShaderResourceView *const *ppShaderResourceViews)>

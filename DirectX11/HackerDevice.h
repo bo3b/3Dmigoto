@@ -39,7 +39,7 @@ private:
 		 typename Shaders,
 		 typename PreloadShaderMap,
 		 typename ReplacementShaderMap,
-		 HRESULT (ID3D11Device::*OrigCreateShader)(THIS_
+		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
 				 const void *pShaderBytecode,
 				 SIZE_T BytecodeLength,
 				 ID3D11ClassLinkage *pClassLinkage,

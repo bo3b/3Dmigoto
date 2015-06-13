@@ -1548,7 +1548,7 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 template <class ID3D11Shader,
 	 typename Shaders,
 	 typename ReplacementShaderMap,
-	 void (ID3D11DeviceContext::*OrigSetShader)(THIS_
+	 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
 			 ID3D11Shader *pShader,
 			 ID3D11ClassInstance *const *ppClassInstances,
 			 UINT NumClassInstances)
@@ -2120,7 +2120,7 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 
 // -----------------------------------------------------------------------------------------------
 
-template <void (ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
 		UINT StartSlot,
 		UINT NumViews,
 		ID3D11ShaderResourceView *const *ppShaderResourceViews)>
