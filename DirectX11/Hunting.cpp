@@ -456,7 +456,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// We need original byte code unchanged, so make a copy.
 		vector<byte> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
-		byteCode = assembler(srcData, byteCode);
+		byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 
 		// ToDo: How we do know when it fails? Error handling. Do we really have to re-disassemble?
 		string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());

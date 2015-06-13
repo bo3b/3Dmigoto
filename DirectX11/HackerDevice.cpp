@@ -786,7 +786,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 						vector<byte> byteCode(BytecodeLength);
 						memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
-						byteCode = assembler(asmTextBytes, byteCode);
+						byteCode = assembler(*reinterpret_cast<vector<byte>*>(&asmTextBytes), byteCode);
 
 						// Write reassembly binary output for comparison. ToDo: remove after we have validated it works.
 						FILE *fw;
