@@ -79,6 +79,34 @@ private:
 	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
 		bool log_new, struct ResourceInfo *resource_info);
 
+	// Templates to reduce duplicated code:
+	template <class ID3D11Shader,
+		 typename Shaders,
+		 typename ReplacementShaderMap,
+		 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
+				 ID3D11Shader *pShader,
+				 ID3D11ClassInstance *const *ppClassInstances,
+				 UINT NumClassInstances)
+		 >
+	STDMETHODIMP_(void) SetShader(THIS_
+		/* [annotation] */
+		__in_opt ID3D11Shader *pShader,
+		/* [annotation] */
+		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
+		UINT NumClassInstances,
+		Shaders *shaders,
+		ReplacementShaderMap *originalShaders,
+		ReplacementShaderMap *zeroShaders,
+		std::set<UINT64> *visitedShaders,
+		UINT64 selectedShader,
+		UINT64 *currentShaderHash,
+		ID3D11Shader **currentShaderHandle);
+	template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+			UINT StartSlot,
+			UINT NumViews,
+			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+	void BindStereoResources();
+
 public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 

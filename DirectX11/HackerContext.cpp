@@ -1039,6 +1039,19 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
+	// TODO: SetShader<ID3D11GeometryShader,
+	// TODO: 	GeometryShaderMap,
+	// TODO: 	GeometryShaderReplacementMap,
+	// TODO: 	&ID3D11DeviceContext::GSSetShader>
+	// TODO: 	(pGeometryShader, ppClassInstances, NumClassInstances,
+	// TODO: 	 &G->mGeometryShaders,
+	// TODO: 	 &G->mOriginalGeometryShaders,
+	// TODO: 	 &G->mZeroGeometryShaders,
+	// TODO: 	 &G->mVisitedGeometryShaders,
+	// TODO: 	 G->mSelectedGeometryShader,
+	// TODO: 	 &mCurrentGeometryShader,
+	// TODO: 	 &mCurrentGeometryShaderHandle);
+
 	if (G->geometry_enabled)
 		mOrigContext->GSSetShader(pShader, ppClassInstances, NumClassInstances);
 	else
@@ -1394,6 +1407,19 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 {
 	LogDebug("HackerContext::HSSetShader called\n");
 
+	// TODO: SetShader<ID3D11HullShader,
+	// TODO: 	HullShaderMap,
+	// TODO: 	HullShaderReplacementMap,
+	// TODO: 	&ID3D11DeviceContext::HSSetShader>
+	// TODO: 	(pHullShader, ppClassInstances, NumClassInstances,
+	// TODO: 	 &G->mHullShaders,
+	// TODO: 	 &G->mOriginalHullShaders,
+	// TODO: 	 &G->mZeroHullShaders,
+	// TODO: 	 &G->mVisitedHullShaders,
+	// TODO: 	 G->mSelectedHullShader,
+	// TODO: 	 &mCurrentHullShader,
+	// TODO: 	 &mCurrentHullShaderHandle);
+
 	if (G->tesselation_enabled)
 		mOrigContext->HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
 	else
@@ -1441,6 +1467,19 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 	UINT NumClassInstances)
 {
 	LogDebug("HackerContext::DSSetShader called\n");
+
+	// TODO: SetShader<ID3D11DomainShader,
+	// TODO: 	DomainShaderMap,
+	// TODO: 	DomainShaderReplacementMap,
+	// TODO: 	&ID3D11DeviceContext::DSSetShader>
+	// TODO: 	(pDomainShader, ppClassInstances, NumClassInstances,
+	// TODO: 	 &G->mDomainShaders,
+	// TODO: 	 &G->mOriginalDomainShaders,
+	// TODO: 	 &G->mZeroDomainShaders,
+	// TODO: 	 &G->mVisitedDomainShaders,
+	// TODO: 	 G->mSelectedDomainShader,
+	// TODO: 	 &mCurrentDomainShader,
+	// TODO: 	 &mCurrentDomainShaderHandle);
 
 	if (G->tesselation_enabled)
 		mOrigContext->DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
@@ -1504,6 +1543,93 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 	mOrigContext->CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 
+
+// C++ function template of common code shared by all XXSetShader functions:
+template <class ID3D11Shader,
+	 typename Shaders,
+	 typename ReplacementShaderMap,
+	 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
+			 ID3D11Shader *pShader,
+			 ID3D11ClassInstance *const *ppClassInstances,
+			 UINT NumClassInstances)
+	 >
+STDMETHODIMP_(void) HackerContext::SetShader(THIS_
+	/* [annotation] */
+	__in_opt ID3D11Shader *pShader,
+	/* [annotation] */
+	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
+	UINT NumClassInstances,
+	Shaders *shaders,
+	ReplacementShaderMap *originalShaders,
+	ReplacementShaderMap *zeroShaders,
+	std::set<UINT64> *visitedShaders,
+	UINT64 selectedShader,
+	UINT64 *currentShaderHash,
+	ID3D11Shader **currentShaderHandle)
+{
+	if (pShader) {
+		// Store as current shader. Need to do this even while
+		// not hunting for ShaderOverride sections.
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+			Shaders::iterator i = shaders->find(pShader);
+			if (i != shaders->end()) {
+				*currentShaderHash = i->second;
+				*currentShaderHandle = pShader;
+				LogDebug("  shader found: handle = %p, hash = %016I64x\n", pShader, *currentShaderHash);
+
+				if (G->hunting && visitedShaders) {
+					// Add to visited shaders.
+					visitedShaders->insert(i->second);
+				}
+
+				// second try to hide index buffer.
+				// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
+				//	pIndexBuffer = 0;
+			} else
+				LogDebug("  shader %p not found\n", pShader);
+
+			if (G->hunting) {
+				// Replacement map.
+				if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+					ReplacementShaderMap::iterator j = originalShaders->find(pShader);
+					if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != originalShaders->end()) {
+						ID3D11Shader *shader = j->second;
+						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+						(mOrigContext->*OrigSetShader)(shader, ppClassInstances, NumClassInstances);
+						return;
+					}
+				}
+				if (G->marking_mode == MARKING_MODE_ZERO) {
+					ReplacementShaderMap::iterator j = zeroShaders->find(pShader);
+					if (selectedShader == *currentShaderHash && j != zeroShaders->end()) {
+						ID3D11Shader *shader = j->second;
+						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+						(mOrigContext->*OrigSetShader)(shader, ppClassInstances, NumClassInstances);
+						return;
+					}
+				}
+			}
+
+			// If the shader has been live reloaded from ShaderFixes, use the new one
+			// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
+			ShaderReloadMap::iterator it = G->mReloadedShaders.find(pShader);
+			if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
+				LogDebug("  shader replaced by: %p\n", it->second.replacement);
+
+				// Todo: It might make sense to Release() the original shader, to recover memory on GPU
+				ID3D11Shader *shader = (ID3D11Shader*)it->second.replacement;
+				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				(mOrigContext->*OrigSetShader)(shader, ppClassInstances, NumClassInstances);
+				return;
+			}
+
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+
+	(mOrigContext->*OrigSetShader)(pShader, ppClassInstances, NumClassInstances);
+}
+
 STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 	/* [annotation] */
 	__in_opt  ID3D11ComputeShader *pComputeShader,
@@ -1513,42 +1639,20 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 {
 	LogDebug("HackerContext::CSSetShader called with computeshader handle = %p\n", pComputeShader);
 
-	if (pComputeShader) {
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		ComputeShaderMap::iterator i = G->mComputeShaders.find(pComputeShader);
-		if (i != G->mComputeShaders.end()) {
-			mCurrentComputeShader = i->second;
-			mCurrentComputeShaderHandle = pComputeShader;
-			LogDebug("  compute shader found: handle = %p, hash = %016I64x\n", pComputeShader, mCurrentComputeShader);
+	SetShader<ID3D11ComputeShader,
+		ComputeShaderMap,
+		ComputeShaderReplacementMap,
+		&ID3D11DeviceContext::CSSetShader>
+		(pComputeShader, ppClassInstances, NumClassInstances,
+		 &G->mComputeShaders,
+		 &G->mOriginalComputeShaders,
+		 NULL /* TODO (if it makes sense): &G->mZeroComputeShaders */,
+		 &G->mVisitedComputeShaders,
+		 G->mSelectedComputeShader,
+		 &mCurrentComputeShader,
+		 &mCurrentComputeShaderHandle);
 
-			if (G->hunting)
-				G->mVisitedComputeShaders.insert(mCurrentComputeShader);
-		} else {
-			LogDebug("  compute shader %p not found\n", pComputeShader);
-			// mCurrentComputeShader = 0;
-		}
-
-		// TODO: original / zero marking modes & show_original
-
-		// If the shader has been live reloaded from ShaderFixes, use the new one
-		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pComputeShader);
-		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
-		{
-			LogDebug("  compute shader replaced by: %p\n", it->second.replacement);
-
-			ID3D11ComputeShader *shader = (ID3D11ComputeShader*)it->second.replacement;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			mOrigContext->CSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
-		}
-
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
-	mOrigContext->CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
-
-	// TODO: Send stereo texture & ini params to shader as UAVs
+	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
@@ -2016,6 +2120,32 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 
 // -----------------------------------------------------------------------------------------------
 
+template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+void HackerContext::BindStereoResources()
+{
+	if (!mHackerDevice) {
+		LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+		return;
+	}
+
+	// Set NVidia stereo texture.
+	if (mHackerDevice->mStereoResourceView) {
+		LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+
+		(mOrigContext->*OrigSetShaderResources)(125, 1, &mHackerDevice->mStereoResourceView);
+	}
+
+	// Set constants from ini file if they exist
+	if (mHackerDevice->mIniResourceView) {
+		LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
+
+		(mOrigContext->*OrigSetShaderResources)(120, 1, &mHackerDevice->mIniResourceView);
+	}
+}
+
 // The rest of these methods are all the primary code for the tool, Direct3D calls that we override
 // in order to replace or modify shaders.
 
@@ -2028,105 +2158,23 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 {
 	LogDebug("HackerContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
 
-	bool patchedShader = false;
-	if (pVertexShader)
-	{
-		// Store as current vertex shader. Need to do this even while
-		// not hunting for ShaderOverride sections.
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		VertexShaderMap::iterator i = G->mVertexShaders.find(pVertexShader);
-		if (i != G->mVertexShaders.end())
-		{
-			mCurrentVertexShader = i->second;
-			mCurrentVertexShaderHandle = pVertexShader;
-			LogDebug("  vertex shader found: handle = %p, hash = %08lx%08lx\n", pVertexShader, (UINT32)(mCurrentVertexShader >> 32), (UINT32)mCurrentVertexShader);
-
-			if (G->hunting) {
-				// Add to visited vertex shaders.
-				G->mVisitedVertexShaders.insert(i->second);
-				patchedShader = true;
-			}
-
-			// second try to hide index buffer.
-			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
-			//	pIndexBuffer = 0;
-		}
-		else
-		{
-			LogDebug("  vertex shader %p not found\n", pVertexShader);
-			// mCurrentVertexShader = 0;
-		}
-
-		if (G->hunting)
-		{
-			// Replacement map.
-			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-				VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find(pVertexShader);
-				if ((G->mSelectedVertexShader == mCurrentVertexShader || !G->fix_enabled) && j != G->mOriginalVertexShaders.end())
-				{
-					ID3D11VertexShader *shader = j->second;
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-					mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
-					return;
-				}
-			}
-			if (G->marking_mode == MARKING_MODE_ZERO) {
-				VertexShaderReplacementMap::iterator j = G->mZeroVertexShaders.find(pVertexShader);
-				if (G->mSelectedVertexShader == mCurrentVertexShader && j != G->mZeroVertexShaders.end())
-				{
-					ID3D11VertexShader *shader = j->second;
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-					mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
-					return;
-				}
-			}
-		}
-
-		// If the shader has been live reloaded from ShaderFixes, use the new one
-		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pVertexShader);
-		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
-		{
-			LogDebug("  vertex shader replaced by: %p\n", it->second.replacement);
-
-			ID3D11VertexShader *shader = (ID3D11VertexShader*)it->second.replacement;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			mOrigContext->VSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
-		}
-
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
-	mOrigContext->VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
+	SetShader<ID3D11VertexShader,
+		VertexShaderMap,
+		VertexShaderReplacementMap,
+		&ID3D11DeviceContext::VSSetShader>
+		(pVertexShader, ppClassInstances, NumClassInstances,
+		 &G->mVertexShaders,
+		 &G->mOriginalVertexShaders,
+		 &G->mZeroVertexShaders,
+		 &G->mVisitedVertexShaders,
+		 G->mSelectedVertexShader,
+		 &mCurrentVertexShader,
+		 &mCurrentVertexShaderHandle);
 
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
-	if ((!G->hunting || patchedShader) && pVertexShader)
-	{
-		if (mHackerDevice)
-		{
-			// Set NVidia stereo texture.
-			if (mHackerDevice->mStereoResourceView)
-			{
-				LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-
-				mOrigContext->VSSetShaderResources(125, 1, &mHackerDevice->mStereoResourceView);
-			}
-
-			// Set constants from ini file if they exist
-			if (mHackerDevice->mIniResourceView)
-			{
-				LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
-
-				mOrigContext->VSSetShaderResources(120, 1, &mHackerDevice->mIniResourceView);
-			}
-		}
-		else
-		{
-			LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
-		}
-	}
+	if (pVertexShader)
+		BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
@@ -2190,111 +2238,30 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 {
 	LogDebug("HackerContext::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
 
-	bool patchedShader = false;
-	if (pPixelShader)
-	{
-		// Store as current pixel shader. Need to do this even while
-		// not hunting for ShaderOverride sections.
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		PixelShaderMap::iterator i = G->mPixelShaders.find(pPixelShader);
-		if (i != G->mPixelShaders.end())
-		{
-			mCurrentPixelShader = i->second;
-			mCurrentPixelShaderHandle = pPixelShader;
-			LogDebug("  pixel shader found: handle = %p, hash = %08lx%08lx\n", pPixelShader, (UINT32)(mCurrentPixelShader >> 32), (UINT32)mCurrentPixelShader);
-
-			if (G->hunting) {
-				// Add to visited pixel shaders.
-				G->mVisitedPixelShaders.insert(i->second);
-				patchedShader = true;
-			}
-
-			// second try to hide index buffer.
-			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
-			//	pIndexBuffer = 0;
-		}
-		else
-		{
-			LogDebug("  pixel shader %p not found\n", pPixelShader);
-		}
-
-		if (G->hunting)
-		{
-			// Replacement map.
-			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-				PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find(pPixelShader);
-				if ((G->mSelectedPixelShader == mCurrentPixelShader || !G->fix_enabled) && j != G->mOriginalPixelShaders.end())
-				{
-					ID3D11PixelShader *shader = j->second;
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-					mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
-					return;
-				}
-			}
-			if (G->marking_mode == MARKING_MODE_ZERO) {
-				PixelShaderReplacementMap::iterator j = G->mZeroPixelShaders.find(pPixelShader);
-				if (G->mSelectedPixelShader == mCurrentPixelShader && j != G->mZeroPixelShaders.end())
-				{
-					ID3D11PixelShader *shader = j->second;
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-					mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
-					return;
-				}
-			}
-		}
-
-		// If the shader has been live reloaded from ShaderFixes, use the new one
-		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pPixelShader);
-		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL)
-		{
-			LogDebug("  pixel shader replaced by: %p\n", it->second.replacement);
-
-			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
-			ID3D11PixelShader *shader = (ID3D11PixelShader*)it->second.replacement;
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-			mOrigContext->PSSetShader(shader, ppClassInstances, NumClassInstances);
-			return;
-		}
-
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
-	mOrigContext->PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
+	SetShader<ID3D11PixelShader,
+		PixelShaderMap,
+		PixelShaderReplacementMap,
+		&ID3D11DeviceContext::PSSetShader>
+		(pPixelShader, ppClassInstances, NumClassInstances,
+		 &G->mPixelShaders,
+		 &G->mOriginalPixelShaders,
+		 &G->mZeroPixelShaders,
+		 &G->mVisitedPixelShaders,
+		 G->mSelectedPixelShader,
+		 &mCurrentPixelShader,
+		 &mCurrentPixelShaderHandle);
 
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
-	if ((!G->hunting || patchedShader) && pPixelShader)
-	{
-		HackerDevice *device = mHackerDevice;
+	if (pPixelShader) {
+		BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
 
-		if (device)
+		// Set custom depth texture.
+		if (mHackerDevice->mZBufferResourceView)
 		{
-			// Set NVidia stereo texture.
-			if (device->mStereoResourceView)
-			{
-				LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+			LogDebug("  adding Z buffer to shader resources in slot 126.\n");
 
-				mOrigContext->PSSetShaderResources(125, 1, &device->mStereoResourceView);
-			}
-			// Set constants from ini file if they exist
-			if (device->mIniResourceView)
-			{
-				LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
-
-				mOrigContext->PSSetShaderResources(120, 1, &device->mIniResourceView);
-			}
-			// Set custom depth texture.
-			if (device->mZBufferResourceView)
-			{
-				LogDebug("  adding Z buffer to shader resources in slot 126.\n");
-
-				mOrigContext->PSSetShaderResources(126, 1, &device->mZBufferResourceView);
-			}
-		}
-		else
-		{
-			LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+			mOrigContext->PSSetShaderResources(126, 1, &mHackerDevice->mZBufferResourceView);
 		}
 	}
 }

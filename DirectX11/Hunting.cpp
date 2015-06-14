@@ -456,7 +456,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// We need original byte code unchanged, so make a copy.
 		vector<byte> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
-		byteCode = assembler(srcData, byteCode);
+		byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 
 		// ToDo: How we do know when it fails? Error handling. Do we really have to re-disassemble?
 		string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
@@ -640,6 +640,21 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 			}
+			// TODO: else if (shaderType.compare(L"gs") == 0)
+			// TODO: {
+			// TODO: 	hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
+			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
+			// TODO: }
+			// TODO: else if (shaderType.compare(L"hs") == 0)
+			// TODO: {
+			// TODO: 	hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
+			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
+			// TODO: }
+			// TODO: else if (shaderType.compare(L"ds") == 0)
+			// TODO: {
+			// TODO: 	hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
+			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
+			// TODO: }
 			if (FAILED(hr))
 				goto err;
 
@@ -771,7 +786,30 @@ static void RevertMissingShaders()
 				continue;
 			replacement = j->second;
 		}
-		// TODO: compute shaders
+		else if (i->second.shaderType.compare(L"cs") == 0) {
+			ComputeShaderReplacementMap::iterator j = G->mOriginalComputeShaders.find((ID3D11ComputeShader*)i->first);
+			if (j == G->mOriginalComputeShaders.end())
+				continue;
+			replacement = j->second;
+		}
+		// TODO: else if (i->second.shaderType.compare(L"gs") == 0) {
+		// TODO: 	GeometryShaderReplacementMap::iterator j = G->mOriginalGeometryShaders.find((ID3D11GeometryShader*)i->first);
+		// TODO: 	if (j == G->mOriginalGeometryShaders.end())
+		// TODO: 		continue;
+		// TODO: 	replacement = j->second;
+		// TODO: }
+		// TODO: else if (i->second.shaderType.compare(L"hs") == 0) {
+		// TODO: 	HullShaderReplacementMap::iterator j = G->mOriginalHullShaders.find((ID3D11HullShader*)i->first);
+		// TODO: 	if (j == G->mOriginalHullShaders.end())
+		// TODO: 		continue;
+		// TODO: 	replacement = j->second;
+		// TODO: }
+		// TODO: else if (i->second.shaderType.compare(L"ds") == 0) {
+		// TODO: 	DomainShaderReplacementMap::iterator j = G->mOriginalDomainShaders.find((ID3D11DomainShader*)i->first);
+		// TODO: 	if (j == G->mOriginalDomainShaders.end())
+		// TODO: 		continue;
+		// TODO: 	replacement = j->second;
+		// TODO: }
 		else {
 			continue;
 		}
@@ -820,8 +858,17 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		HANDLE hFind = FindFirstFile(fileName, &findFileData);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
-			do
-			{
+			do {
+				// Ignore reassembly files (XXX: Should we be strict and whitelist allowed patterns,
+				// or relaxed and blacklist bad patterns in filenames? Pretty sure I saw some code
+				// that treads _bad.txt files as an indication that a shader is bad - do we need
+				// to consider that here?) -DarkStarSword
+				wchar_t *ext = wcsrchr(findFileData.cFileName, L'.');
+				if (ext) {
+					if (!wcsncmp(ext - 6, L"_reasm", 6))
+						continue;
+				}
+
 				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device);
 			} while (FindNextFile(hFind, &findFileData) && success);
 			FindClose(hFind);

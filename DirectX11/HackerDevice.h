@@ -31,8 +31,35 @@ private:
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader);
 	bool NeedOriginalShader(UINT64 hash);
-	void KeepOriginalShader(UINT64 hash, ID3D11VertexShader *pVertexShader, ID3D11PixelShader *pPixelShader,
+	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
 		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
+
+	// Templates of nearly identical functions
+	template <class ID3D11Shader,
+		 typename Shaders,
+		 typename PreloadShaderMap,
+		 typename ReplacementShaderMap,
+		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+				 const void *pShaderBytecode,
+				 SIZE_T BytecodeLength,
+				 ID3D11ClassLinkage *pClassLinkage,
+				 ID3D11Shader **ppShader)
+		 >
+	STDMETHODIMP CreateShader(THIS_
+		/* [annotation] */
+		__in  const void *pShaderBytecode,
+		/* [annotation] */
+		__in  SIZE_T BytecodeLength,
+		/* [annotation] */
+		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		/* [annotation] */
+		__out_opt  ID3D11Shader **ppShader,
+		wchar_t *shaderType,
+		Shaders *shaders,
+		PreloadShaderMap *preloadedShaders,
+		ReplacementShaderMap *originalShaders,
+		ReplacementShaderMap *zeroShaders
+		);
 
 public:
 	//static ThreadSafePointerSet	 m_List; ToDo: These should all be private.

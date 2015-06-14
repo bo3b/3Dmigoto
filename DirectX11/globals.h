@@ -64,9 +64,12 @@ typedef std::unordered_map<ID3D11PixelShader *, UINT64> PixelShaderMap;
 typedef std::unordered_map<UINT64, ID3D11PixelShader *> PreloadPixelShaderMap;
 typedef std::unordered_map<ID3D11PixelShader *, ID3D11PixelShader *> PixelShaderReplacementMap;
 
+typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
+typedef std::unordered_map<UINT64, ID3D11ComputeShader *> PreloadComputeShaderMap; // TODO: Not hooked up yet
+typedef std::unordered_map<ID3D11ComputeShader *, ID3D11ComputeShader *> ComputeShaderReplacementMap;
+
 typedef std::unordered_map<ID3D11HullShader *, UINT64> HullShaderMap;
 typedef std::unordered_map<ID3D11DomainShader *, UINT64> DomainShaderMap;
-typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
 typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
 enum class DepthBufferFilter {
@@ -268,6 +271,7 @@ struct Globals
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 
 	ComputeShaderMap mComputeShaders;
+	ComputeShaderReplacementMap mOriginalComputeShaders;
 	std::set<UINT64> mVisitedComputeShaders;
 	UINT64 mSelectedComputeShader;
 	int mSelectedComputeShaderPos;
