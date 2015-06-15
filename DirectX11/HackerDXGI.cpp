@@ -215,11 +215,23 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 			LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, *ppParent);
 			*ppParent = reinterpret_cast<void*>(adapterWrap);
 		}
-		if (riid == __uuidof(IDXGIFactory))
+		else if (riid == __uuidof(IDXGIAdapter1))
+		{
+			HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(static_cast<IDXGIAdapter1*>(*ppParent));
+			LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p \n", adapterWrap1, *ppParent);
+			*ppParent = reinterpret_cast<void*>(adapterWrap1);
+		}
+		else if (riid == __uuidof(IDXGIFactory))
 		{
 			HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
 			LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, *ppParent);
 			*ppParent = factoryWrap;
+		}
+		else if (riid == __uuidof(IDXGIFactory1))
+		{
+			HackerDXGIFactory1 *factoryWrap1 = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(*ppParent));
+			LogInfo("  created HackerDXGIFactory1 wrapper = %p of %p \n", factoryWrap1, *ppParent);
+			*ppParent = factoryWrap1;
 		}
 	}
 
