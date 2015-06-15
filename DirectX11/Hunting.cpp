@@ -747,6 +747,9 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 static void TakeScreenShot(HackerDevice *wrapped, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("> capturing screenshot\n");
 
 	if (wrapped->mStereoHandle)
@@ -840,6 +843,9 @@ static void RevertMissingShaders()
 
 static void ReloadFixes(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (G->SHADER_PATH[0])
@@ -892,12 +898,18 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 
 static void DisableFix(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("show_original pressed - switching to original shaders\n");
 	G->fix_enabled = false;
 }
 
 static void EnableFix(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("show_original released - switching to replaced shaders\n");
 	G->fix_enabled = true;
 }
@@ -906,6 +918,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
 	if (!G->hunting)
 		return;
+
 	LogInfo("Turning on analysis for next frame\n");
 	G->frame_analysis_seen_rts.clear();
 	G->analyse_next_frame = true;
@@ -913,36 +926,54 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 
 static void DisableGS(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("Disabling geometry shaders\n");
 	G->geometry_enabled = false;
 }
 
 static void EnableGS(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("Enabling geometry shaders\n");
 	G->geometry_enabled = true;
 }
 
 static void DisableTesselation(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("Disabling tesselation shaders\n");
 	G->tesselation_enabled = false;
 }
 
 static void EnableTesselation(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("Enabling tesselation shaders\n");
 	G->tesselation_enabled = true;
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("Disabling execution of deferred command lists\n");
 	G->deferred_enabled = false;
 }
 
 static void EnableDeferred(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	LogInfo("Enabling execution of deferred command lists\n");
 	G->deferred_enabled = true;
 }
@@ -951,6 +982,9 @@ static void EnableDeferred(HackerDevice *device, void *private_data)
 
 static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
 	if (i != G->mVisitedIndexBuffers.end() && ++i != G->mVisitedIndexBuffers.end())
@@ -978,6 +1012,9 @@ static void NextIndexBuffer(HackerDevice *device, void *private_data)
 
 static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
 	if ((i == G->mVisitedIndexBuffers.begin() || G->mSelectedIndexBuffer == 1) && G->mVisitedIndexBuffers.size() != 0) {
@@ -1005,6 +1042,9 @@ static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 
 static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (LogFile)
 	{
 		LogInfo(">>>> Index buffer marked: index buffer hash = %08lx%08lx\n", (UINT32)(G->mSelectedIndexBuffer >> 32), (UINT32)G->mSelectedIndexBuffer);
@@ -1018,6 +1058,9 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 
 static void NextPixelShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<UINT64>::iterator loc = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
@@ -1050,6 +1093,9 @@ static void NextPixelShader(HackerDevice *device, void *private_data)
 
 static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<UINT64>::iterator loc = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
@@ -1083,6 +1129,9 @@ static void PrevPixelShader(HackerDevice *device, void *private_data)
 
 static void MarkPixelShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -1110,6 +1159,9 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 
 static void NextVertexShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<UINT64>::iterator loc = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
@@ -1140,6 +1192,9 @@ static void NextVertexShader(HackerDevice *device, void *private_data)
 
 static void PrevVertexShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<UINT64>::iterator loc = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
@@ -1172,6 +1227,9 @@ static void PrevVertexShader(HackerDevice *device, void *private_data)
 
 static void MarkVertexShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -1195,6 +1253,9 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 
 static void NextComputeShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<UINT64>::iterator loc = G->mVisitedComputeShaders.find(G->mSelectedComputeShader);
@@ -1223,6 +1284,9 @@ static void NextComputeShader(HackerDevice *device, void *private_data)
 
 static void PrevComputeShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<UINT64>::iterator loc = G->mVisitedComputeShaders.find(G->mSelectedComputeShader);
@@ -1252,6 +1316,9 @@ static void PrevComputeShader(HackerDevice *device, void *private_data)
 
 static void MarkComputeShader(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	LogInfo(">>>> Compute shader marked: compute shader hash = %016I64x\n", G->mSelectedComputeShader);
 
@@ -1269,6 +1336,9 @@ static void MarkComputeShader(HackerDevice *device, void *private_data)
 
 static void NextRenderTarget(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
 	if (i != G->mVisitedRenderTargets.end() && ++i != G->mVisitedRenderTargets.end())
@@ -1296,6 +1366,9 @@ static void NextRenderTarget(HackerDevice *device, void *private_data)
 
 static void PrevRenderTarget(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
 	if ((i == G->mVisitedRenderTargets.begin() || G->mSelectedRenderTarget == (void *)1) && G->mVisitedRenderTargets.size() != 0) {
@@ -1339,6 +1412,9 @@ static void LogRenderTarget(void *target, char *log_prefix)
 
 static void MarkRenderTarget(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 	if (LogFile)
 	{
@@ -1358,6 +1434,9 @@ static void TuneUp(HackerDevice *device, void *private_data)
 {
 	int index = (int)private_data;
 
+	if (!G->hunting)
+		return;
+
 	G->gTuneValue[index] += G->gTuneStep;
 	LogInfo("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
@@ -1365,6 +1444,9 @@ static void TuneUp(HackerDevice *device, void *private_data)
 static void TuneDown(HackerDevice *device, void *private_data)
 {
 	int index = (int)private_data;
+
+	if (!G->hunting)
+		return;
 
 	G->gTuneValue[index] -= G->gTuneStep;
 	LogInfo("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
@@ -1407,6 +1489,9 @@ void TimeoutHuntingBuffers()
 // User has requested all shaders be re-enabled
 static void DoneHunting(HackerDevice *device, void *private_data)
 {
+	if (!G->hunting)
+		return;
+
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	TimeoutHuntingBuffers();
