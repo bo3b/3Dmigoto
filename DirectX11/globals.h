@@ -72,6 +72,26 @@ typedef std::unordered_map<ID3D11HullShader *, UINT64> HullShaderMap;
 typedef std::unordered_map<ID3D11DomainShader *, UINT64> DomainShaderMap;
 typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 
+enum class FrameAnalysisOptions {
+	INVALID      = 0,
+	DUMP_RT      = 0x00000001,
+	DUMP_RT_JPS  = 0x00000002,
+	DUMP_RT_DDS  = 0x00000004,
+	DUMP_RT_MASK = 0x00000007,
+	CLEAR_RT     = 0x00000008,
+	PERSIST      = 0x00000010, // Used by shader/texture triggers
+};
+SENSIBLE_ENUM(FrameAnalysisOptions);
+static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
+	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
+	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
+	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
+	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
+	{L"persist", FrameAnalysisOptions::PERSIST},
+	// TODO: More options on the way: Dump texture inputs
+	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
+};
+
 enum class DepthBufferFilter {
 	INVALID = -1,
 	NONE,
@@ -93,13 +113,15 @@ struct ShaderOverride {
 	std::vector<UINT64> indexBufferFilter;
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
+	FrameAnalysisOptions analyse_options;
 
 	ShaderOverride() :
 		separation(FLT_MAX),
 		convergence(FLT_MAX),
 		skip(false),
 		depth_filter(DepthBufferFilter::NONE),
-		partner_hash(0)
+		partner_hash(0),
+		analyse_options(FrameAnalysisOptions::INVALID)
 	{}
 };
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
@@ -108,10 +130,12 @@ struct TextureOverride {
 	int stereoMode;
 	int format;
 	std::vector<int> iterations;
+	FrameAnalysisOptions analyse_options;
 
 	TextureOverride() :
 		stereoMode(-1),
-		format(-1)
+		format(-1),
+		analyse_options(FrameAnalysisOptions::INVALID)
 	{}
 };
 typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;
@@ -156,23 +180,6 @@ struct ResourceInfo
 	}
 };
 
-enum class FrameAnalysisOptions {
-	INVALID     = 0,
-	DUMP_RT     = 0x1,
-	DUMP_RT_JPS = 0x2,
-	DUMP_RT_DDS = 0x4,
-	CLEAR_RT    = 0x8,
-};
-SENSIBLE_ENUM(FrameAnalysisOptions);
-static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
-	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
-	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
-	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
-	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
-	// TODO: More options on the way: Clear render targets, dump texture inputs
-	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
-};
-
 struct Globals
 {
 	bool gInitialized;
@@ -211,7 +218,7 @@ struct Globals
 	unsigned analyse_frame;
 	bool analyse_next_frame;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
-	FrameAnalysisOptions analyse_options;
+	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
@@ -329,7 +336,8 @@ struct Globals
 
 		analyse_frame(0),
 		analyse_next_frame(false),
-		analyse_options(FrameAnalysisOptions::INVALID),
+		def_analyse_options(FrameAnalysisOptions::INVALID),
+		cur_analyse_options(FrameAnalysisOptions::INVALID),
 
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),

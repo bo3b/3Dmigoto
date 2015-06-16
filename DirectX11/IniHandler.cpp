@@ -182,6 +182,12 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			LogInfo("  IndexBufferFilter=%16llx\n", hash2);
 			override->indexBufferFilter.push_back(hash2);
 		}
+
+		if (GetPrivateProfileString(id, L"analyse_options", 0, setting, MAX_PATH, iniFile)) {
+			LogInfoW(L"  analyse_options=%s\n", setting);
+			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+				(FrameAnalysisOptionNames, setting);
+		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -251,6 +257,12 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 				override->iterations.push_back(id[j]);
 				LogInfo("  Iteration=%d\n", id[j]);
 			}
+		}
+
+		if (GetPrivateProfileString(id, L"analyse_options", 0, setting, MAX_PATH, iniFile)) {
+			LogInfoW(L"  analyse_options=%s\n", setting);
+			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+				(FrameAnalysisOptionNames, setting);
 		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);

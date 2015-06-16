@@ -287,8 +287,8 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	if ((G->analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
-	    (G->analyse_options & FrameAnalysisOptions::DUMP_RT)) {
+	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
+	    (analyse_options & FrameAnalysisOptions::DUMP_RT)) {
 		// save a JPS file. This will be missing extra channels (e.g.
 		// transparency, depth buffer, specular power, etc) or bit depth that
 		// can be found in the DDS file, but is generally easier to work with.
@@ -300,8 +300,8 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	}
 
 
-	if ((G->analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
-	   ((G->analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
+	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
+	   ((analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
 		ext = wcsrchr(filename, L'.');
 		if (!ext)
 			return;
@@ -337,24 +337,6 @@ void HackerContext::DumpRenderTargets()
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
-	// Bail if we are a deferred context, as there will not be anything to
-	// dump out yet. Later we might want to think about ways we could
-	// analyse deferred contexts - a simple approach would be to dump out
-	// the back buffer after executing a command list in the immediate
-	// context, however this would only show the combined result of all the
-	// draw calls from the deferred context, and not the results of the
-	// individual draw operations.
-	//
-	// Another more in-depth approach would be to create the stereo
-	// resources now and issue the reverse blits, then dump them all after
-	// executing the command list. Note that the NVAPI call is not
-	// per-context and therefore may have threading issues, and it's not
-	// clear if it would have to be enabled while submitting the copy
-	// commands in the deferred context, or while playing the command queue
-	// in the immediate context, or both.
-	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
-		return;
-
 	// Enable reverse stereo blit for all resources we are about to dump:
 	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
 	if (nvret != NVAPI_OK) {
@@ -383,11 +365,6 @@ void HackerContext::DumpRenderTargets()
 
 out:
 	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
-
-	// Pixel shaders can also use UAVs:
-	DumpUAVs(false);
-
-	G->analyse_frame++;
 }
 
 void HackerContext::DumpUAVs(bool compute)
@@ -398,9 +375,6 @@ void HackerContext::DumpUAVs(bool compute)
 	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-
-	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
-		return;
 
 	// Enable reverse stereo blit for all resources we are about to dump:
 	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
@@ -438,9 +412,6 @@ void HackerContext::DumpUAVs(bool compute)
 	}
 
 	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
-
-	if (compute)
-		G->analyse_frame++;
 }
 
 void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
@@ -448,7 +419,11 @@ void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
 	FLOAT colour[4] = {0,0,0,0};
 	ID3D11Resource *resource = NULL;
 
-	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
+	// FIXME: Do this before each draw call instead of when render targets
+	// are assigned to fix assigned render targets not being cleared, and
+	// work better with frame analysis triggers
+
+	if (!(G->cur_analyse_options & FrameAnalysisOptions::CLEAR_RT))
 		return;
 
 	// Use the address of the resource rather than the view to determine if
@@ -471,7 +446,11 @@ void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
 	UINT values[4] = {0,0,0,0};
 	ID3D11Resource *resource = NULL;
 
-	if (!(G->analyse_options & FrameAnalysisOptions::CLEAR_RT))
+	// FIXME: Do this before each draw/dispatch call instead of when UAVs
+	// are assigned to fix assigned render targets not being cleared, and
+	// work better with frame analysis triggers
+
+	if (!(G->cur_analyse_options & FrameAnalysisOptions::CLEAR_RT))
 		return;
 
 	// Use the address of the resource rather than the view to determine if
@@ -487,6 +466,91 @@ void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
 	G->frame_analysis_seen_rts.insert(resource);
 
 	mOrigContext->ClearUnorderedAccessViewUint(uav, values);
+}
+
+void HackerContext::FrameAnalysisProcessTriggers(bool compute)
+{
+	FrameAnalysisOptions new_options = FrameAnalysisOptions::INVALID;
+	struct ShaderOverride *shaderOverride;
+	struct TextureOverride *textureOverride;
+	UINT64 hash;
+	UINT i;
+
+	// TODO: Trigger on texture inputs
+
+	if (compute) {
+		// TODO: Trigger on current UAVs
+	} else {
+		try {
+			shaderOverride = &G->mShaderOverrideMap.at(mCurrentVertexShader);
+			new_options |= shaderOverride->analyse_options;
+		} catch (std::out_of_range) {}
+
+		try {
+			shaderOverride = &G->mShaderOverrideMap.at(mCurrentPixelShader);
+			new_options |= shaderOverride->analyse_options;
+		} catch (std::out_of_range) {}
+
+		for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
+			try {
+				hash = G->mRenderTargets.at(mCurrentRenderTargets[i]);
+				textureOverride = &G->mTextureOverrideMap.at(hash);
+				new_options |= textureOverride->analyse_options;
+			} catch (std::out_of_range) {}
+		}
+
+		if (mCurrentDepthTarget) {
+			try {
+				hash = G->mRenderTargets[mCurrentDepthTarget];
+				textureOverride = &G->mTextureOverrideMap.at(hash);
+				new_options |= textureOverride->analyse_options;
+			} catch (std::out_of_range) {}
+		}
+	}
+
+	if (!new_options)
+		return;
+
+	analyse_options = new_options;
+
+	if (new_options & FrameAnalysisOptions::PERSIST)
+		G->cur_analyse_options = new_options;
+}
+
+void HackerContext::FrameAnalysisAfterDraw(bool compute)
+{
+	// Bail if we are a deferred context, as there will not be anything to
+	// dump out yet and we don't want to alter the global draw count. Later
+	// we might want to think about ways we could analyse deferred contexts
+	// - a simple approach would be to dump out the back buffer after
+	// executing a command list in the immediate context, however this
+	// would only show the combined result of all the draw calls from the
+	// deferred context, and not the results of the individual draw
+	// operations.
+	//
+	// Another more in-depth approach would be to create the stereo
+	// resources now and issue the reverse blits, then dump them all after
+	// executing the command list. Note that the NVAPI call is not
+	// per-context and therefore may have threading issues, and it's not
+	// clear if it would have to be enabled while submitting the copy
+	// commands in the deferred context, or while playing the command queue
+	// in the immediate context, or both.
+	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return;
+
+	analyse_options = G->cur_analyse_options;
+
+	FrameAnalysisProcessTriggers(compute);
+
+	if (analyse_options & FrameAnalysisOptions::DUMP_RT_MASK) {
+		if (!compute)
+			DumpRenderTargets();
+
+		// UAVs can be used by both pixel shaders and compute shaders:
+		DumpUAVs(compute);
+	}
+
+	G->analyse_frame++;
 }
 
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
@@ -760,7 +824,7 @@ DrawContext HackerContext::BeforeDraw()
 void HackerContext::AfterDraw(DrawContext &data)
 {
 	if (G->analyse_frame)
-		DumpRenderTargets();
+		FrameAnalysisAfterDraw(false);
 
 	if (data.skip)
 		return;
@@ -1194,12 +1258,6 @@ bool HackerContext::BeforeDispatch()
 	return true;
 }
 
-void HackerContext::AfterDispatch()
-{
-	if (G->analyse_frame)
-		DumpUAVs(true);
-}
-
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountX,
@@ -1210,7 +1268,8 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 {
 	if (BeforeDispatch())
 		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-	AfterDispatch();
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(true);
 }
 
 STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
@@ -1221,7 +1280,8 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 {
 	if (BeforeDispatch())
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
-	AfterDispatch();
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(true);
 }
 
 STDMETHODIMP_(void) HackerContext::RSSetState(THIS_

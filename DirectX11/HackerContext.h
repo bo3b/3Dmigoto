@@ -54,6 +54,7 @@ private:
 	ID3D11ComputeShader *mCurrentComputeShaderHandle;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mCurrentDepthTarget;
+	FrameAnalysisOptions analyse_options;
 
 	// These private methods are utility routines for HackerContext.
 	DrawContext BeforeDraw();
@@ -68,6 +69,8 @@ private:
 	void DumpUAVs(bool compute);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
+	void FrameAnalysisProcessTriggers(bool compute);
+	void FrameAnalysisAfterDraw(bool compute);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);

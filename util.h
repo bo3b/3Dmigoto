@@ -207,16 +207,26 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 }
 
 // Grant enums sensible powers that were taken away when C++ ignored C
-// MS already defines a macro to do this for bitwise operators, but we also
-// want logical operators to work. Because that would be sensible, duh!
+// MS already defines a macro DEFINE_ENUM_FLAG_OPERATORS that goes part way,
+// but only does the bitwise operators and returns the result as enum types (so
+// a simple 'if (enum & mask)' will still fail). Really what I want is the
+// namespacing of an enum class that behaves like an int as an enum does. Not
+// sure why C++ had to try to solve two problems at once and in doing so
+// created a brand new problem...
 #define SENSIBLE_ENUM(ENUMTYPE) \
-DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
-inline bool operator || (ENUMTYPE a, ENUMTYPE b) { return (((int)a) || ((int)b)); } \
-inline bool operator || (    bool a, ENUMTYPE b) { return (((int)a) || ((int)b)); } \
-inline bool operator || (ENUMTYPE a,     bool b) { return (((int)a) || ((int)b)); } \
-inline bool operator && (ENUMTYPE a, ENUMTYPE b) { return (((int)a) && ((int)b)); } \
-inline bool operator && (    bool a, ENUMTYPE b) { return (((int)a) && ((int)b)); } \
-inline bool operator && (ENUMTYPE a,     bool b) { return (((int)a) && ((int)b)); } \
+inline int operator | (ENUMTYPE a, ENUMTYPE b) { return (((int)a) | ((int)b)); } \
+inline int operator & (ENUMTYPE a, ENUMTYPE b) { return (((int)a) & ((int)b)); } \
+inline int operator ^ (ENUMTYPE a, ENUMTYPE b) { return (((int)a) ^ ((int)b)); } \
+inline int operator ~ (ENUMTYPE a) { return (~((int)a)); } \
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((int &)a) |= ((int)b)); } \
+inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((int &)a) &= ((int)b)); } \
+inline ENUMTYPE &operator ^= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((int &)a) ^= ((int)b)); } \
+inline bool operator || (ENUMTYPE a,  ENUMTYPE b) { return (((int)a) || ((int)b)); } \
+inline bool operator || (    bool a,  ENUMTYPE b) { return (((int)a) || ((int)b)); } \
+inline bool operator || (ENUMTYPE a,      bool b) { return (((int)a) || ((int)b)); } \
+inline bool operator && (ENUMTYPE a,  ENUMTYPE b) { return (((int)a) && ((int)b)); } \
+inline bool operator && (    bool a,  ENUMTYPE b) { return (((int)a) && ((int)b)); } \
+inline bool operator && (ENUMTYPE a,      bool b) { return (((int)a) && ((int)b)); } \
 inline bool operator ! (ENUMTYPE a) { return (!((int)a)); }
 
 // Parses an option string of names given by enum_names. The enum used with

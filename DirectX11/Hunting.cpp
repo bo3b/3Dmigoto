@@ -920,6 +920,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 		return;
 
 	LogInfo("Turning on analysis for next frame\n");
+	G->cur_analyse_options = G->def_analyse_options;
 	G->frame_analysis_seen_rts.clear();
 	G->analyse_next_frame = true;
 }
@@ -1571,7 +1572,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", iniFile, AnalyseFrame, NULL, noRepeat, NULL);
 	if (GetPrivateProfileString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH, iniFile)) {
 		LogInfoW(L"  analyse_options=%s\n", buf);
-		G->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 			(FrameAnalysisOptionNames, buf);
 	}
 
