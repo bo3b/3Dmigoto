@@ -1,3 +1,4 @@
+// Hairworks depth/transparency shader
 
 cbuffer cbPerFrame : register(b0)
 {
@@ -29,7 +30,11 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  r0.xy = g_msaaWidth * v1.xy + g_msaaTopLeftX;
+// manual fix for decompiler bug:
+  //r0.xy = g_msaaWidth * v1.xy + g_msaaTopLeftX;
+  r0.x = g_msaaWidth * v1.x + g_msaaTopLeftX;
+  r0.y = g_msaaHeight * v1.y + g_msaaTopLeftY;
+
   r0.xy = (int2)r0.xy;
   if (g_emitPartialFragment == 0) {
     r0.z = 0.000000000e+000;
@@ -40,6 +45,14 @@ void main(
   r0.w = 0.000000000e+000;
   r0.x = g_DepthTexture.Load(r0.xyw).x;
   oDepth = r0.x;
+
+// Hairworks is getting the depth information from the right eye only, causing
+// it to incorrectly render transparently in the left eye depending on the
+// information from the right eye's depth buffer. Correct fix would be to work
+// out why t1 in this shader is mono (TextureOverride StereoMode=1 does not
+// work), but for now fake the depth output to remove the transparency.
+oDepth = 1.0;
+
   return;
 }
 
