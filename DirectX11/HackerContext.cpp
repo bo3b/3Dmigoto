@@ -286,7 +286,7 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 }
 
 HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo, D3D11_USAGE usage)
+		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
 	HRESULT hr;
@@ -297,10 +297,16 @@ HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 	if (stereo)
 		desc.Width *= 2;
 
-	// Make this a staging resource to save DirectXTK having to create it's
-	// own staging resource.
-	desc.Usage = usage;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	if (msaa) {
+		// Resolving MSAA requires these flags:
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.CPUAccessFlags = 0;
+	} else {
+		// Make this a staging resource to save DirectXTK having to create it's
+		// own staging resource.
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	}
 
 	// Clear out bind flags that may prevent the copy from working:
 	desc.BindFlags = 0;
@@ -369,11 +375,11 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	D3D11_TEXTURE2D_DESC srcDesc;
 	D3D11_BOX srcBox;
 	HRESULT hr;
-	UINT item, level, index;
+	UINT item, level, index, width, height;
 
 	resource->GetDesc(&srcDesc);
 
-	hr = CreateStagingResource(&stereoResource, srcDesc, true, D3D11_USAGE_STAGING);
+	hr = CreateStagingResource(&stereoResource, srcDesc, true, false);
 	if (FAILED(hr)) {
 		LogInfo("DumpStereoResource failed to create stereo texture: 0x%x \n", hr);
 		return;
@@ -385,7 +391,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 		// since CopySubresourceRegion() will fail if the source and
 		// destination dimensions don't match, so use yet another
 		// intermediate staging resource first.
-		hr = CreateStagingResource(&tmpResource, srcDesc, false, D3D11_USAGE_STAGING);
+		hr = CreateStagingResource(&tmpResource, srcDesc, false, false);
 		if (FAILED(hr)) {
 			LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
 			goto out;
@@ -395,7 +401,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			// Resolve MSAA surfaces. Procedure copied from DirectXTK
 			// These need to have D3D11_USAGE_DEFAULT to resolve,
 			// so we need yet another intermediate texture:
-			hr = CreateStagingResource(&tmpResource2, srcDesc, false, D3D11_USAGE_DEFAULT);
+			hr = CreateStagingResource(&tmpResource2, srcDesc, false, true);
 			if (FAILED(hr)) {
 				LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
 				goto out1;
@@ -427,14 +433,16 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	srcBox.left = 0;
 	srcBox.top = 0;
 	srcBox.front = 0;
-	srcBox.right = srcDesc.Width;
-	srcBox.bottom = srcDesc.Height;
+	srcBox.right = width = srcDesc.Width;
+	srcBox.bottom = height = srcDesc.Height;
 	srcBox.back = 1;
 
 	// Perform the reverse stereo blit on all sub-resources and mip-maps:
 	for (item = 0; item < srcDesc.ArraySize; item++) {
 		for (level = 0; level < srcDesc.MipLevels; level++) {
 			index = D3D11CalcSubresource(level, item, srcDesc.MipLevels);
+			srcBox.right = width >> level;
+			srcBox.bottom = height >> level;
 			mOrigContext->CopySubresourceRegion(stereoResource, index, 0, 0, 0,
 					src, index, &srcBox);
 		}
