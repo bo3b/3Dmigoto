@@ -249,6 +249,42 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo)
+{
+	HRESULT hr;
+	wchar_t *ext;
+
+	ext = wcsrchr(filename, L'.');
+	if (!ext)
+		return;
+
+	// Needs to be called at some point before SaveXXXTextureToFile:
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
+	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
+	    (analyse_options & FrameAnalysisOptions::DUMP_RT)) {
+		// save a JPS file. This will be missing extra channels (e.g.
+		// transparency, depth buffer, specular power, etc) or bit depth that
+		// can be found in the DDS file, but is generally easier to work with.
+		//
+		// Not all formats can be saved as JPS with this function - if
+		// only dump_rt was specified (as opposed to dump_rt_jps) we
+		// will dump out DDS files for those instead.
+		if (stereo)
+			wcscpy_s(ext, ext - filename + MAX_PATH, L".jps");
+		else
+			wcscpy_s(ext, ext - filename + MAX_PATH, L".jpg");
+		hr = DirectX::SaveWICTextureToFile(mOrigContext, resource, GUID_ContainerFormatJpeg, filename);
+	}
+
+
+	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
+	   ((analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
+		wcscpy_s(ext, ext - filename + MAX_PATH, L".dds");
+		DirectX::SaveDDSTextureToFile(mOrigContext, resource, filename);
+	}
+}
+
 // TODO: Refactor this with StereoScreenShot().
 // Expects the reverse stereo blit to be enabled by the caller
 void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename)
@@ -258,7 +294,6 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	D3D11_BOX srcBox;
 	UINT srcWidth;
 	HRESULT hr;
-	wchar_t *ext;
 
 	resource->GetDesc(&desc);
 
@@ -284,30 +319,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	// TODO: Dump out any additional sub-resources from this resource:
 	mOrigContext->CopySubresourceRegion(stereoResource, 0, 0, 0, 0, resource, 0, &srcBox);
 
-	// Needs to be called at some point before SaveXXXTextureToFile:
-	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-
-	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
-	    (analyse_options & FrameAnalysisOptions::DUMP_RT)) {
-		// save a JPS file. This will be missing extra channels (e.g.
-		// transparency, depth buffer, specular power, etc) or bit depth that
-		// can be found in the DDS file, but is generally easier to work with.
-		//
-		// Not all formats can be saved as JPS with this function - if
-		// only dump_rt was specified (as opposed to dump_rt_jps) we
-		// will dump out DDS files for those instead.
-		hr = DirectX::SaveWICTextureToFile(mOrigContext, stereoResource, GUID_ContainerFormatJpeg, filename);
-	}
-
-
-	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
-	   ((analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
-		ext = wcsrchr(filename, L'.');
-		if (!ext)
-			return;
-		wcscpy_s(ext, ext - filename + MAX_PATH, L".dds");
-		DirectX::SaveDDSTextureToFile(mOrigContext, stereoResource, filename);
-	}
+	Dump2DResource(stereoResource, filename, true);
 
 	stereoResource->Release();
 }
@@ -322,7 +334,10 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			// TODO: Somehow determine if this is a stereo resource
 			// or not and dump it using an appropriate method.
-			DumpStereoResource((ID3D11Texture2D*)resource, filename);
+			if (analyse_options & FrameAnalysisOptions::STEREO)
+				DumpStereoResource((ID3D11Texture2D*)resource, filename);
+			else
+				Dump2DResource((ID3D11Texture2D*)resource, filename, false);
 			break;
 		default:
 			LogInfo("frame analysis: skipped resource of type %i\n", dim);
@@ -337,15 +352,17 @@ void HackerContext::DumpRenderTargets()
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
-	// Enable reverse stereo blit for all resources we are about to dump:
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
-	if (nvret != NVAPI_OK) {
-		LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
-		// Continue anyway, we should still be able to dump in 2D...
+	if (analyse_options & FrameAnalysisOptions::STEREO) {
+		// Enable reverse stereo blit for all resources we are about to dump:
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
 	}
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-vs-%016I64x-ps-%016I64x.jps",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-vs-%016I64x-ps-%016I64x.XXX",
 				G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
 		if (FAILED(hr)) {
 			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
@@ -354,7 +371,7 @@ void HackerContext::DumpRenderTargets()
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
 	}
 	if (mCurrentDepthTarget) {
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-vs-%016I64x-ps-%016I64x.jps",
+		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-vs-%016I64x-ps-%016I64x.XXX",
 				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
 		if (FAILED(hr)) {
 			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
@@ -364,7 +381,8 @@ void HackerContext::DumpRenderTargets()
 	}
 
 out:
-	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
+	if (analyse_options & FrameAnalysisOptions::STEREO)
+		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 }
 
 void HackerContext::DumpUAVs(bool compute)
@@ -376,11 +394,13 @@ void HackerContext::DumpUAVs(bool compute)
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
-	// Enable reverse stereo blit for all resources we are about to dump:
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
-	if (nvret != NVAPI_OK) {
-		LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
-		// Continue anyway, we should still be able to dump in 2D...
+	if (analyse_options & FrameAnalysisOptions::STEREO) {
+		// Enable reverse stereo blit for all resources we are about to dump:
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
 	}
 
 	mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
@@ -396,10 +416,10 @@ void HackerContext::DumpUAVs(bool compute)
 		}
 
 		if (compute) {
-			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-cs-%016I64x.jps",
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-cs-%016I64x.XXX",
 					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentComputeShader);
 		} else {
-			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-vs-%016I64x-ps-%016I64x.jps",
+			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-vs-%016I64x-ps-%016I64x.XXX",
 					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
 		}
 		if (FAILED(hr))
@@ -411,7 +431,8 @@ void HackerContext::DumpUAVs(bool compute)
 		uavs[i]->Release();
 	}
 
-	NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
+	if (analyse_options & FrameAnalysisOptions::STEREO)
+		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 }
 
 void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
