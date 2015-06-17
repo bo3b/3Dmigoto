@@ -469,11 +469,9 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			// TODO: Somehow determine if this is a stereo resource
-			// or not and dump it using an appropriate method.
 			if (analyse_options & FrameAnalysisOptions::STEREO)
 				DumpStereoResource((ID3D11Texture2D*)resource, filename);
-			else
+			if (analyse_options & FrameAnalysisOptions::MONO)
 				Dump2DResource((ID3D11Texture2D*)resource, filename, false);
 			break;
 		default:
@@ -699,6 +697,10 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 	analyse_options = G->cur_analyse_options;
 
 	FrameAnalysisProcessTriggers(compute);
+
+	// If neither stereo or mono specified, default to stereo:
+	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
+		analyse_options |= FrameAnalysisOptions::STEREO;
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_RT_MASK) {
 		if (!compute)

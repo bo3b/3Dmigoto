@@ -81,6 +81,8 @@ enum class FrameAnalysisOptions {
 	CLEAR_RT     = 0x00000008,
 	PERSIST      = 0x00000010, // Used by shader/texture triggers
 	STEREO       = 0x00000020,
+	MONO         = 0x00000040,
+	STEREO_MASK  = 0x00000060,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -90,6 +92,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
 	{L"persist", FrameAnalysisOptions::PERSIST},
 	{L"stereo", FrameAnalysisOptions::STEREO},
+	{L"mono", FrameAnalysisOptions::MONO},
 	// TODO: More options on the way: Dump texture inputs
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
