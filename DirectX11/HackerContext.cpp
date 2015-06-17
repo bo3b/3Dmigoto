@@ -286,7 +286,7 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 }
 
 HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo)
+		D3D11_TEXTURE2D_DESC desc, bool stereo, D3D11_USAGE usage)
 {
 	// NOTE: desc is passed by value - this is intentional so we don't
 	// modify desc in the caller
@@ -295,18 +295,52 @@ HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 		desc.Width *= 2;
 
 	// Make this a staging resource to save DirectXTK having to create it's
-	// own staging resource:
-	desc.Usage = D3D11_USAGE_STAGING;
+	// own staging resource.
+	desc.Usage = usage;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
 	// Clear out bind flags that may prevent the copy from working:
 	desc.BindFlags = 0;
 
-	// TODO - resolve MSAA surfaces
-	// desc.SamplerDesc.Count = 1;
-	// desc.SamplerDesc.Quality = 0;
+	// Mip maps requires bind flags, but we set them to 0:
+	// XXX: Possibly want a whilelist instead? DirectXTK only allows
+	// D3D11_RESOURCE_MISC_TEXTURECUBE
+	desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+	// Must resolve MSAA surfaces before the reverse stereo blit:
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
 
 	return mOrigDevice->CreateTexture2D(&desc, NULL, resource);
+}
+
+// From DirectXTK
+static DXGI_FORMAT EnsureNotTypeless( DXGI_FORMAT fmt )
+{
+    // Assumes UNORM or FLOAT; doesn't use UINT or SINT
+    switch( fmt )
+    {
+    case DXGI_FORMAT_R32G32B32A32_TYPELESS: return DXGI_FORMAT_R32G32B32A32_FLOAT;
+    case DXGI_FORMAT_R32G32B32_TYPELESS:    return DXGI_FORMAT_R32G32B32_FLOAT;
+    case DXGI_FORMAT_R16G16B16A16_TYPELESS: return DXGI_FORMAT_R16G16B16A16_UNORM;
+    case DXGI_FORMAT_R32G32_TYPELESS:       return DXGI_FORMAT_R32G32_FLOAT;
+    case DXGI_FORMAT_R10G10B10A2_TYPELESS:  return DXGI_FORMAT_R10G10B10A2_UNORM;
+    case DXGI_FORMAT_R8G8B8A8_TYPELESS:     return DXGI_FORMAT_R8G8B8A8_UNORM;
+    case DXGI_FORMAT_R16G16_TYPELESS:       return DXGI_FORMAT_R16G16_UNORM;
+    case DXGI_FORMAT_R32_TYPELESS:          return DXGI_FORMAT_R32_FLOAT;
+    case DXGI_FORMAT_R8G8_TYPELESS:         return DXGI_FORMAT_R8G8_UNORM;
+    case DXGI_FORMAT_R16_TYPELESS:          return DXGI_FORMAT_R16_UNORM;
+    case DXGI_FORMAT_R8_TYPELESS:           return DXGI_FORMAT_R8_UNORM;
+    case DXGI_FORMAT_BC1_TYPELESS:          return DXGI_FORMAT_BC1_UNORM;
+    case DXGI_FORMAT_BC2_TYPELESS:          return DXGI_FORMAT_BC2_UNORM;
+    case DXGI_FORMAT_BC3_TYPELESS:          return DXGI_FORMAT_BC3_UNORM;
+    case DXGI_FORMAT_BC4_TYPELESS:          return DXGI_FORMAT_BC4_UNORM;
+    case DXGI_FORMAT_BC5_TYPELESS:          return DXGI_FORMAT_BC5_UNORM;
+    case DXGI_FORMAT_B8G8R8A8_TYPELESS:     return DXGI_FORMAT_B8G8R8A8_UNORM;
+    case DXGI_FORMAT_B8G8R8X8_TYPELESS:     return DXGI_FORMAT_B8G8R8X8_UNORM;
+    case DXGI_FORMAT_BC7_TYPELESS:          return DXGI_FORMAT_BC7_UNORM;
+    default:                                return fmt;
+    }
 }
 
 // TODO: Refactor this with StereoScreenShot().
@@ -315,36 +349,59 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 {
 	ID3D11Texture2D *stereoResource = NULL;
 	ID3D11Texture2D *tmpResource = NULL;
+	ID3D11Texture2D *tmpResource2 = NULL;
 	ID3D11Texture2D *src = resource;
 	D3D11_TEXTURE2D_DESC srcDesc;
 	D3D11_BOX srcBox;
 	HRESULT hr;
+	UINT item, level, index;
 
 	resource->GetDesc(&srcDesc);
 
-	hr = CreateStagingResource(&stereoResource, srcDesc, true);
+	hr = CreateStagingResource(&stereoResource, srcDesc, true, D3D11_USAGE_STAGING);
 	if (FAILED(hr)) {
 		LogInfo("DumpStereoResource failed to create stereo texture: 0x%x \n", hr);
 		return;
 	}
 
-	if (srcDesc.SampleDesc.Count > 1) {
-		// FIXME: DirectXTK has code to handle this case,
-		// But I want to understand how sub resources actually work first.
-		// Might be better to dump the stereo from each subresource
-		// just on the off-chance that reveals the source of a one-eye issue?
-		// Does that even make sense?
-		// REMINDER: staging resource to resolve MSAA needs D3D11_USAGE_DEFAULT
-		LogInfo("WARNING: Reverse stereo blit from MSAA surface may cause issues!\n");
-	} else if (srcDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
+	if ((srcDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL) ||
+	    (srcDesc.SampleDesc.Count > 1)) {
 		// Reverse stereo blit won't work on these surfaces directly
 		// since CopySubresourceRegion() will fail if the source and
 		// destination dimensions don't match, so use yet another
 		// intermediate staging resource first.
-		hr = CreateStagingResource(&tmpResource, srcDesc, false);
+		hr = CreateStagingResource(&tmpResource, srcDesc, false, D3D11_USAGE_STAGING);
 		if (FAILED(hr)) {
 			LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
 			goto out;
+		}
+
+		if (srcDesc.SampleDesc.Count > 1) {
+			// Resolve MSAA surfaces. Procedure copied from DirectXTK
+			// These need to have D3D11_USAGE_DEFAULT to resolve,
+			// so we need yet another intermediate texture:
+			hr = CreateStagingResource(&tmpResource2, srcDesc, false, D3D11_USAGE_DEFAULT);
+			if (FAILED(hr)) {
+				LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
+				goto out1;
+			}
+
+			DXGI_FORMAT fmt = EnsureNotTypeless(srcDesc.Format);
+			UINT support = 0;
+
+			hr = mOrigDevice->CheckFormatSupport( fmt, &support );
+			if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
+				LogInfo("DumpStereoResource cannot resolve MSAA format %d\n", fmt);
+				goto out2;
+			}
+
+			for (item = 0; item < srcDesc.ArraySize; item++) {
+				for (level = 0; level < srcDesc.MipLevels; level++) {
+					index = D3D11CalcSubresource(level, item, srcDesc.MipLevels);
+					mOrigContext->ResolveSubresource(tmpResource2, index, src, index, fmt);
+				}
+			}
+			src = tmpResource2;
 		}
 
 		mOrigContext->CopyResource(tmpResource, src);
@@ -359,12 +416,21 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	srcBox.bottom = srcDesc.Height;
 	srcBox.back = 1;
 
-	// Perform the reverse stereo blit:
-	// TODO: Dump out any additional sub-resources from this resource:
-	mOrigContext->CopySubresourceRegion(stereoResource, 0, 0, 0, 0, src, 0, &srcBox);
+	// Perform the reverse stereo blit on all sub-resources and mip-maps:
+	for (item = 0; item < srcDesc.ArraySize; item++) {
+		for (level = 0; level < srcDesc.MipLevels; level++) {
+			index = D3D11CalcSubresource(level, item, srcDesc.MipLevels);
+			mOrigContext->CopySubresourceRegion(stereoResource, index, 0, 0, 0,
+					src, index, &srcBox);
+		}
+	}
 
 	Dump2DResource(stereoResource, filename, true);
 
+out2:
+	if (tmpResource2)
+		tmpResource2->Release();
+out1:
 	if (tmpResource)
 		tmpResource->Release();
 
