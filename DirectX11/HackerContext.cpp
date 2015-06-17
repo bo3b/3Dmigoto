@@ -288,6 +288,9 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, D3D11_USAGE usage)
 {
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
+	HRESULT hr;
+
 	// NOTE: desc is passed by value - this is intentional so we don't
 	// modify desc in the caller
 
@@ -311,7 +314,19 @@ HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 
-	return mOrigDevice->CreateTexture2D(&desc, NULL, resource);
+	// Force surface creation mode to stereo to prevent driver heuristics
+	// interfering. If the original surface was mono that's ok - thaks to
+	// the intermediate stages we'll end up with both eyes the same
+	// (without this one eye would be blank instead, which is arguably
+	// better since it will be immediately obvious, but risks missing the
+	// second perspective if the original resource was actually stereo)
+	NvAPI_Stereo_GetSurfaceCreationMode(mHackerDevice->mStereoHandle, &orig_mode);
+	NvAPI_Stereo_SetSurfaceCreationMode(mHackerDevice->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+
+	hr = mOrigDevice->CreateTexture2D(&desc, NULL, resource);
+
+	NvAPI_Stereo_SetSurfaceCreationMode(mHackerDevice->mStereoHandle, orig_mode);
+	return hr;
 }
 
 // From DirectXTK
