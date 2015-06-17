@@ -64,6 +64,8 @@ private:
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo);
+	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
+		D3D11_TEXTURE2D_DESC desc, bool stereo);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
 	void DumpRenderTargets();

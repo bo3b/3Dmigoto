@@ -285,42 +285,90 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 	}
 }
 
+HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
+		D3D11_TEXTURE2D_DESC desc, bool stereo)
+{
+	// NOTE: desc is passed by value - this is intentional so we don't
+	// modify desc in the caller
+
+	if (stereo)
+		desc.Width *= 2;
+
+	// Make this a staging resource to save DirectXTK having to create it's
+	// own staging resource:
+	desc.Usage = D3D11_USAGE_STAGING;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	// Clear out bind flags that may prevent the copy from working:
+	desc.BindFlags = 0;
+
+	// TODO - resolve MSAA surfaces
+	// desc.SamplerDesc.Count = 1;
+	// desc.SamplerDesc.Quality = 0;
+
+	return mOrigDevice->CreateTexture2D(&desc, NULL, resource);
+}
+
 // TODO: Refactor this with StereoScreenShot().
 // Expects the reverse stereo blit to be enabled by the caller
 void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename)
 {
 	ID3D11Texture2D *stereoResource = NULL;
-	D3D11_TEXTURE2D_DESC desc;
+	ID3D11Texture2D *tmpResource = NULL;
+	ID3D11Texture2D *src = resource;
+	D3D11_TEXTURE2D_DESC srcDesc;
 	D3D11_BOX srcBox;
-	UINT srcWidth;
 	HRESULT hr;
 
-	resource->GetDesc(&desc);
+	resource->GetDesc(&srcDesc);
 
-	// Intermediate resource should be 2x width to receive a stereo image:
-	srcWidth = desc.Width;
-	desc.Width = srcWidth * 2;
-
-	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &stereoResource);
+	hr = CreateStagingResource(&stereoResource, srcDesc, true);
 	if (FAILED(hr)) {
-		LogInfo("DumpStereoResource failed to create intermediate texture resource: 0x%x \n", hr);
+		LogInfo("DumpStereoResource failed to create stereo texture: 0x%x \n", hr);
 		return;
+	}
+
+	if (srcDesc.SampleDesc.Count > 1) {
+		// FIXME: DirectXTK has code to handle this case,
+		// But I want to understand how sub resources actually work first.
+		// Might be better to dump the stereo from each subresource
+		// just on the off-chance that reveals the source of a one-eye issue?
+		// Does that even make sense?
+		// REMINDER: staging resource to resolve MSAA needs D3D11_USAGE_DEFAULT
+		LogInfo("WARNING: Reverse stereo blit from MSAA surface may cause issues!\n");
+	} else if (srcDesc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
+		// Reverse stereo blit won't work on these surfaces directly
+		// since CopySubresourceRegion() will fail if the source and
+		// destination dimensions don't match, so use yet another
+		// intermediate staging resource first.
+		hr = CreateStagingResource(&tmpResource, srcDesc, false);
+		if (FAILED(hr)) {
+			LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
+			goto out;
+		}
+
+		mOrigContext->CopyResource(tmpResource, src);
+		src = tmpResource;
 	}
 
 	// Set the source box as per the nvapi documentation:
 	srcBox.left = 0;
 	srcBox.top = 0;
 	srcBox.front = 0;
-	srcBox.right = srcWidth;
-	srcBox.bottom = desc.Height;
+	srcBox.right = srcDesc.Width;
+	srcBox.bottom = srcDesc.Height;
 	srcBox.back = 1;
 
 	// Perform the reverse stereo blit:
 	// TODO: Dump out any additional sub-resources from this resource:
-	mOrigContext->CopySubresourceRegion(stereoResource, 0, 0, 0, 0, resource, 0, &srcBox);
+	mOrigContext->CopySubresourceRegion(stereoResource, 0, 0, 0, 0, src, 0, &srcBox);
 
 	Dump2DResource(stereoResource, filename, true);
 
+	if (tmpResource)
+		tmpResource->Release();
+
+out:
 	stereoResource->Release();
 }
 
