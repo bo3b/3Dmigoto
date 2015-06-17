@@ -271,16 +271,16 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 		// only dump_rt was specified (as opposed to dump_rt_jps) we
 		// will dump out DDS files for those instead.
 		if (stereo)
-			wcscpy_s(ext, ext - filename + MAX_PATH, L".jps");
+			wcscpy_s(ext, MAX_PATH + filename - ext, L".jps");
 		else
-			wcscpy_s(ext, ext - filename + MAX_PATH, L".jpg");
+			wcscpy_s(ext, MAX_PATH + filename - ext, L".jpg");
 		hr = DirectX::SaveWICTextureToFile(mOrigContext, resource, GUID_ContainerFormatJpeg, filename);
 	}
 
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
 	   ((analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
-		wcscpy_s(ext, ext - filename + MAX_PATH, L".dds");
+		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
 		DirectX::SaveDDSTextureToFile(mOrigContext, resource, filename);
 	}
 }
