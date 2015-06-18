@@ -61,6 +61,7 @@ private:
 	void AfterDraw(DrawContext &data);
 	bool BeforeDispatch();
 	void AfterDispatch();
+	void AssignDummyRenderTarget();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo);

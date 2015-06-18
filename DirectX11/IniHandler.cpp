@@ -188,6 +188,10 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 				(FrameAnalysisOptionNames, setting);
 		}
+
+		override->fake_o0 = GetPrivateProfileInt(id, L"fake_o0", 0, iniFile) == 1;
+		if (override->fake_o0)
+			LogInfo("  fake_o0=1\n");
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
