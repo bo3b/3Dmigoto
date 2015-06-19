@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include <d3d11_1.h>
 
 #include "nvstereo.h"
@@ -36,9 +38,6 @@ private:
 
 	// Templates of nearly identical functions
 	template <class ID3D11Shader,
-		 typename Shaders,
-		 typename PreloadShaderMap,
-		 typename ReplacementShaderMap,
 		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
 				 const void *pShaderBytecode,
 				 SIZE_T BytecodeLength,
@@ -55,10 +54,10 @@ private:
 		/* [annotation] */
 		__out_opt  ID3D11Shader **ppShader,
 		wchar_t *shaderType,
-		Shaders *shaders,
-		PreloadShaderMap *preloadedShaders,
-		ReplacementShaderMap *originalShaders,
-		ReplacementShaderMap *zeroShaders
+		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
+		std::unordered_map<UINT64, ID3D11Shader *> *preloadedShaders,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
 		);
 
 public:

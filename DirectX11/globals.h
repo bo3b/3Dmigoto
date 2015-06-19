@@ -65,12 +65,16 @@ typedef std::unordered_map<UINT64, ID3D11PixelShader *> PreloadPixelShaderMap;
 typedef std::unordered_map<ID3D11PixelShader *, ID3D11PixelShader *> PixelShaderReplacementMap;
 
 typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
-typedef std::unordered_map<UINT64, ID3D11ComputeShader *> PreloadComputeShaderMap; // TODO: Not hooked up yet
 typedef std::unordered_map<ID3D11ComputeShader *, ID3D11ComputeShader *> ComputeShaderReplacementMap;
 
 typedef std::unordered_map<ID3D11HullShader *, UINT64> HullShaderMap;
+typedef std::unordered_map<ID3D11HullShader *, ID3D11HullShader *> HullShaderReplacementMap;
+
 typedef std::unordered_map<ID3D11DomainShader *, UINT64> DomainShaderMap;
+typedef std::unordered_map<ID3D11DomainShader *, ID3D11DomainShader *> DomainShaderReplacementMap;
+
 typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
+typedef std::unordered_map<ID3D11GeometryShader *, ID3D11GeometryShader *> GeometryShaderReplacementMap;
 
 enum class FrameAnalysisOptions {
 	INVALID      = 0,
@@ -218,8 +222,6 @@ struct Globals
 	bool show_pink_enabled;
 	time_t huntTime;
 
-	bool geometry_enabled;
-	bool tesselation_enabled;
 	bool deferred_enabled;
 
 	unsigned analyse_frame;
@@ -291,8 +293,22 @@ struct Globals
 	int mSelectedComputeShaderPos;
 
 	GeometryShaderMap mGeometryShaders;
+	GeometryShaderReplacementMap mOriginalGeometryShaders;
+	std::set<UINT64> mVisitedGeometryShaders;
+	UINT64 mSelectedGeometryShader;
+	int mSelectedGeometryShaderPos;
+
 	DomainShaderMap mDomainShaders;
+	DomainShaderReplacementMap mOriginalDomainShaders;
+	std::set<UINT64> mVisitedDomainShaders;
+	UINT64 mSelectedDomainShader;
+	int mSelectedDomainShaderPos;
+
 	HullShaderMap mHullShaders;
+	HullShaderReplacementMap mOriginalHullShaders;
+	std::set<UINT64> mVisitedHullShaders;
+	UINT64 mSelectedHullShader;
+	int mSelectedHullShaderPos;
 
 	ShaderOverrideMap mShaderOverrideMap;
 	TextureOverrideMap mTextureOverrideMap;
@@ -328,6 +344,12 @@ struct Globals
 		mSelectedIndexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
+		mSelectedGeometryShader(-1),
+		mSelectedGeometryShaderPos(-1),
+		mSelectedDomainShader(-1),
+		mSelectedDomainShaderPos(-1),
+		mSelectedHullShader(-1),
+		mSelectedHullShaderPos(-1),
 		mPinkingShader(0),
 
 		hunting(false),
@@ -337,8 +359,6 @@ struct Globals
 		show_pink_enabled(false),
 		huntTime(0),
 
-		geometry_enabled(true),
-		tesselation_enabled(true),
 		deferred_enabled(true),
 
 		analyse_frame(0),

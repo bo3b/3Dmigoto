@@ -953,6 +953,9 @@ DrawContext HackerContext::BeforeDraw()
 			if (mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
 				mCurrentVertexShader == G->mSelectedVertexShader ||
 				mCurrentPixelShader == G->mSelectedPixelShader ||
+				mCurrentGeometryShader == G->mSelectedGeometryShader ||
+				mCurrentDomainShader == G->mSelectedDomainShader ||
+				mCurrentHullShader == G->mSelectedHullShader ||
 				selectedRenderTargetPos < mCurrentRenderTargets.size())
 			{
 				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx%08lx, CurrentVertexShader = %08lx%08lx, CurrentPixelShader = %08lx%08lx\n",
@@ -1323,23 +1326,15 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	// TODO: SetShader<ID3D11GeometryShader,
-	// TODO: 	GeometryShaderMap,
-	// TODO: 	GeometryShaderReplacementMap,
-	// TODO: 	&ID3D11DeviceContext::GSSetShader>
-	// TODO: 	(pGeometryShader, ppClassInstances, NumClassInstances,
-	// TODO: 	 &G->mGeometryShaders,
-	// TODO: 	 &G->mOriginalGeometryShaders,
-	// TODO: 	 &G->mZeroGeometryShaders,
-	// TODO: 	 &G->mVisitedGeometryShaders,
-	// TODO: 	 G->mSelectedGeometryShader,
-	// TODO: 	 &mCurrentGeometryShader,
-	// TODO: 	 &mCurrentGeometryShaderHandle);
-
-	if (G->geometry_enabled)
-		mOrigContext->GSSetShader(pShader, ppClassInstances, NumClassInstances);
-	else
-		mOrigContext->GSSetShader(NULL, 0, NULL);
+	SetShader<ID3D11GeometryShader, &ID3D11DeviceContext::GSSetShader>
+		(pShader, ppClassInstances, NumClassInstances,
+		 &G->mGeometryShaders,
+		 &G->mOriginalGeometryShaders,
+		 NULL /* TODO: &G->mZeroGeometryShaders */,
+		 &G->mVisitedGeometryShaders,
+		 G->mSelectedGeometryShader,
+		 &mCurrentGeometryShader,
+		 &mCurrentGeometryShaderHandle);
 }
 
 STDMETHODIMP_(void) HackerContext::IASetPrimitiveTopology(THIS_
@@ -1687,23 +1682,15 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 {
 	LogDebug("HackerContext::HSSetShader called\n");
 
-	// TODO: SetShader<ID3D11HullShader,
-	// TODO: 	HullShaderMap,
-	// TODO: 	HullShaderReplacementMap,
-	// TODO: 	&ID3D11DeviceContext::HSSetShader>
-	// TODO: 	(pHullShader, ppClassInstances, NumClassInstances,
-	// TODO: 	 &G->mHullShaders,
-	// TODO: 	 &G->mOriginalHullShaders,
-	// TODO: 	 &G->mZeroHullShaders,
-	// TODO: 	 &G->mVisitedHullShaders,
-	// TODO: 	 G->mSelectedHullShader,
-	// TODO: 	 &mCurrentHullShader,
-	// TODO: 	 &mCurrentHullShaderHandle);
-
-	if (G->tesselation_enabled)
-		mOrigContext->HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
-	else
-		mOrigContext->HSSetShader(NULL, 0, NULL);
+	SetShader<ID3D11HullShader, &ID3D11DeviceContext::HSSetShader>
+		(pHullShader, ppClassInstances, NumClassInstances,
+		 &G->mHullShaders,
+		 &G->mOriginalHullShaders,
+		 NULL /* TODO: &G->mZeroHullShaders */,
+		 &G->mVisitedHullShaders,
+		 G->mSelectedHullShader,
+		 &mCurrentHullShader,
+		 &mCurrentHullShaderHandle);
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetSamplers(THIS_
@@ -1748,23 +1735,15 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 {
 	LogDebug("HackerContext::DSSetShader called\n");
 
-	// TODO: SetShader<ID3D11DomainShader,
-	// TODO: 	DomainShaderMap,
-	// TODO: 	DomainShaderReplacementMap,
-	// TODO: 	&ID3D11DeviceContext::DSSetShader>
-	// TODO: 	(pDomainShader, ppClassInstances, NumClassInstances,
-	// TODO: 	 &G->mDomainShaders,
-	// TODO: 	 &G->mOriginalDomainShaders,
-	// TODO: 	 &G->mZeroDomainShaders,
-	// TODO: 	 &G->mVisitedDomainShaders,
-	// TODO: 	 G->mSelectedDomainShader,
-	// TODO: 	 &mCurrentDomainShader,
-	// TODO: 	 &mCurrentDomainShaderHandle);
-
-	if (G->tesselation_enabled)
-		mOrigContext->DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
-	else
-		mOrigContext->DSSetShader(NULL, 0, NULL);
+	SetShader<ID3D11DomainShader, &ID3D11DeviceContext::DSSetShader>
+		(pDomainShader, ppClassInstances, NumClassInstances,
+		 &G->mDomainShaders,
+		 &G->mOriginalDomainShaders,
+		 NULL /* &G->mZeroDomainShaders */,
+		 &G->mVisitedDomainShaders,
+		 G->mSelectedDomainShader,
+		 &mCurrentDomainShader,
+		 &mCurrentDomainShaderHandle);
 }
 
 STDMETHODIMP_(void) HackerContext::DSSetSamplers(THIS_
@@ -1826,8 +1805,6 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 
 // C++ function template of common code shared by all XXSetShader functions:
 template <class ID3D11Shader,
-	 typename Shaders,
-	 typename ReplacementShaderMap,
 	 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
 			 ID3D11Shader *pShader,
 			 ID3D11ClassInstance *const *ppClassInstances,
@@ -1839,9 +1816,9 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances,
-	Shaders *shaders,
-	ReplacementShaderMap *originalShaders,
-	ReplacementShaderMap *zeroShaders,
+	std::unordered_map<ID3D11Shader *, UINT64> *shaders,
+	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
+	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
 	std::set<UINT64> *visitedShaders,
 	UINT64 selectedShader,
 	UINT64 *currentShaderHash,
@@ -1852,7 +1829,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		// not hunting for ShaderOverride sections.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-			Shaders::iterator i = shaders->find(pShader);
+			std::unordered_map<ID3D11Shader *, UINT64>::iterator i = shaders->find(pShader);
 			if (i != shaders->end()) {
 				*currentShaderHash = i->second;
 				*currentShaderHandle = pShader;
@@ -1872,7 +1849,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			if (G->hunting) {
 				// Replacement map.
 				if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-					ReplacementShaderMap::iterator j = originalShaders->find(pShader);
+					std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = originalShaders->find(pShader);
 					if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != originalShaders->end()) {
 						ID3D11Shader *shader = j->second;
 						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1881,7 +1858,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 					}
 				}
 				if (G->marking_mode == MARKING_MODE_ZERO) {
-					ReplacementShaderMap::iterator j = zeroShaders->find(pShader);
+					std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = zeroShaders->find(pShader);
 					if (selectedShader == *currentShaderHash && j != zeroShaders->end()) {
 						ID3D11Shader *shader = j->second;
 						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1919,10 +1896,7 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 {
 	LogDebug("HackerContext::CSSetShader called with computeshader handle = %p\n", pComputeShader);
 
-	SetShader<ID3D11ComputeShader,
-		ComputeShaderMap,
-		ComputeShaderReplacementMap,
-		&ID3D11DeviceContext::CSSetShader>
+	SetShader<ID3D11ComputeShader, &ID3D11DeviceContext::CSSetShader>
 		(pComputeShader, ppClassInstances, NumClassInstances,
 		 &G->mComputeShaders,
 		 &G->mOriginalComputeShaders,
@@ -2438,10 +2412,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 {
 	LogDebug("HackerContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
 
-	SetShader<ID3D11VertexShader,
-		VertexShaderMap,
-		VertexShaderReplacementMap,
-		&ID3D11DeviceContext::VSSetShader>
+	SetShader<ID3D11VertexShader, &ID3D11DeviceContext::VSSetShader>
 		(pVertexShader, ppClassInstances, NumClassInstances,
 		 &G->mVertexShaders,
 		 &G->mOriginalVertexShaders,
@@ -2518,10 +2489,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 {
 	LogDebug("HackerContext::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
 
-	SetShader<ID3D11PixelShader,
-		PixelShaderMap,
-		PixelShaderReplacementMap,
-		&ID3D11DeviceContext::PSSetShader>
+	SetShader<ID3D11PixelShader, &ID3D11DeviceContext::PSSetShader>
 		(pPixelShader, ppClassInstances, NumClassInstances,
 		 &G->mPixelShaders,
 		 &G->mOriginalPixelShaders,

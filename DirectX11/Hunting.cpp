@@ -639,21 +639,21 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 			}
-			// TODO: else if (shaderType.compare(L"gs") == 0)
-			// TODO: {
-			// TODO: 	hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
-			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
-			// TODO: }
-			// TODO: else if (shaderType.compare(L"hs") == 0)
-			// TODO: {
-			// TODO: 	hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
-			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
-			// TODO: }
-			// TODO: else if (shaderType.compare(L"ds") == 0)
-			// TODO: {
-			// TODO: 	hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
-			// TODO: 		pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
-			// TODO: }
+			else if (shaderType.compare(L"gs") == 0)
+			{
+				hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
+					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
+			}
+			else if (shaderType.compare(L"hs") == 0)
+			{
+				hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
+					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
+			}
+			else if (shaderType.compare(L"ds") == 0)
+			{
+				hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
+					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
+			}
 			if (FAILED(hr))
 				goto err;
 
@@ -794,24 +794,24 @@ static void RevertMissingShaders()
 				continue;
 			replacement = j->second;
 		}
-		// TODO: else if (i->second.shaderType.compare(L"gs") == 0) {
-		// TODO: 	GeometryShaderReplacementMap::iterator j = G->mOriginalGeometryShaders.find((ID3D11GeometryShader*)i->first);
-		// TODO: 	if (j == G->mOriginalGeometryShaders.end())
-		// TODO: 		continue;
-		// TODO: 	replacement = j->second;
-		// TODO: }
-		// TODO: else if (i->second.shaderType.compare(L"hs") == 0) {
-		// TODO: 	HullShaderReplacementMap::iterator j = G->mOriginalHullShaders.find((ID3D11HullShader*)i->first);
-		// TODO: 	if (j == G->mOriginalHullShaders.end())
-		// TODO: 		continue;
-		// TODO: 	replacement = j->second;
-		// TODO: }
-		// TODO: else if (i->second.shaderType.compare(L"ds") == 0) {
-		// TODO: 	DomainShaderReplacementMap::iterator j = G->mOriginalDomainShaders.find((ID3D11DomainShader*)i->first);
-		// TODO: 	if (j == G->mOriginalDomainShaders.end())
-		// TODO: 		continue;
-		// TODO: 	replacement = j->second;
-		// TODO: }
+		else if (i->second.shaderType.compare(L"gs") == 0) {
+			GeometryShaderReplacementMap::iterator j = G->mOriginalGeometryShaders.find((ID3D11GeometryShader*)i->first);
+			if (j == G->mOriginalGeometryShaders.end())
+				continue;
+			replacement = j->second;
+		}
+		else if (i->second.shaderType.compare(L"hs") == 0) {
+			HullShaderReplacementMap::iterator j = G->mOriginalHullShaders.find((ID3D11HullShader*)i->first);
+			if (j == G->mOriginalHullShaders.end())
+				continue;
+			replacement = j->second;
+		}
+		else if (i->second.shaderType.compare(L"ds") == 0) {
+			DomainShaderReplacementMap::iterator j = G->mOriginalDomainShaders.find((ID3D11DomainShader*)i->first);
+			if (j == G->mOriginalDomainShaders.end())
+				continue;
+			replacement = j->second;
+		}
 		else {
 			continue;
 		}
@@ -924,42 +924,6 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	G->analyse_next_frame = true;
 }
 
-static void DisableGS(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	LogInfo("Disabling geometry shaders\n");
-	G->geometry_enabled = false;
-}
-
-static void EnableGS(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	LogInfo("Enabling geometry shaders\n");
-	G->geometry_enabled = true;
-}
-
-static void DisableTesselation(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	LogInfo("Disabling tesselation shaders\n");
-	G->tesselation_enabled = false;
-}
-
-static void EnableTesselation(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	LogInfo("Enabling tesselation shaders\n");
-	G->tesselation_enabled = true;
-}
-
 static void DisableDeferred(HackerDevice *device, void *private_data)
 {
 	if (!G->hunting)
@@ -1030,6 +994,18 @@ static void NextComputeShader(HackerDevice *device, void *private_data)
 {
 	HuntNext<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
 }
+static void NextGeometryShader(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("geometry shader", &G->mVisitedGeometryShaders, &G->mSelectedGeometryShader, &G->mSelectedGeometryShaderPos);
+}
+static void NextDomainShader(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("domain shader", &G->mVisitedDomainShaders, &G->mSelectedDomainShader, &G->mSelectedDomainShaderPos);
+}
+static void NextHullShader(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("hull shader", &G->mVisitedHullShaders, &G->mSelectedHullShader, &G->mSelectedHullShaderPos);
+}
 static void NextRenderTarget(HackerDevice *device, void *private_data)
 {
 	HuntNext<void *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
@@ -1086,6 +1062,18 @@ static void PrevVertexShader(HackerDevice *device, void *private_data)
 static void PrevComputeShader(HackerDevice *device, void *private_data)
 {
 	HuntPrev<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
+}
+static void PrevGeometryShader(HackerDevice *device, void *private_data)
+{
+	HuntPrev<UINT64>("geometry shader", &G->mVisitedGeometryShaders, &G->mSelectedGeometryShader, &G->mSelectedGeometryShaderPos);
+}
+static void PrevDomainShader(HackerDevice *device, void *private_data)
+{
+	HuntPrev<UINT64>("domain shader", &G->mVisitedDomainShaders, &G->mSelectedDomainShader, &G->mSelectedDomainShaderPos);
+}
+static void PrevHullShader(HackerDevice *device, void *private_data)
+{
+	HuntPrev<UINT64>("hull shader", &G->mVisitedHullShaders, &G->mSelectedHullShader, &G->mSelectedHullShaderPos);
 }
 static void PrevRenderTarget(HackerDevice *device, void *private_data)
 {
@@ -1170,6 +1158,27 @@ static void MarkComputeShader(HackerDevice *device, void *private_data)
 	if (!MarkShaderBegin("compute shader", G->mSelectedComputeShader))
 		return;
 	MarkShaderEnd(device, "compute shader", G->mSelectedComputeShader);
+}
+
+static void MarkGeometryShader(HackerDevice *device, void *private_data)
+{
+	if (!MarkShaderBegin("geometry shader", G->mSelectedGeometryShader))
+		return;
+	MarkShaderEnd(device, "geometry shader", G->mSelectedGeometryShader);
+}
+
+static void MarkDomainShader(HackerDevice *device, void *private_data)
+{
+	if (!MarkShaderBegin("domain shader", G->mSelectedDomainShader))
+		return;
+	MarkShaderEnd(device, "domain shader", G->mSelectedDomainShader);
+}
+
+static void MarkHullShader(HackerDevice *device, void *private_data)
+{
+	if (!MarkShaderBegin("hull shader", G->mSelectedHullShader))
+		return;
+	MarkShaderEnd(device, "hull shader", G->mSelectedHullShader);
 }
 
 static void LogRenderTarget(void *target, char *log_prefix)
@@ -1278,6 +1287,12 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	G->mSelectedVertexShaderPos = -1;
 	G->mSelectedComputeShader = -1;
 	G->mSelectedComputeShaderPos = -1;
+	G->mSelectedGeometryShader = -1;
+	G->mSelectedGeometryShaderPos = -1;
+	G->mSelectedDomainShader = -1;
+	G->mSelectedDomainShaderPos = -1;
+	G->mSelectedHullShader = -1;
+	G->mSelectedHullShaderPos = -1;
 
 	G->mSelectedRenderTargetPos = -1;
 	G->mSelectedRenderTarget = ((void *)-1);
@@ -1334,6 +1349,18 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	RegisterIniKeyBinding(L"Hunting", L"previous_computeshader", iniFile, PrevComputeShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"mark_computeshader", iniFile, MarkComputeShader, NULL, noRepeat, NULL);
 
+	RegisterIniKeyBinding(L"Hunting", L"next_geometryshader", iniFile, NextGeometryShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_geometryshader", iniFile, PrevGeometryShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_geometryshader", iniFile, MarkGeometryShader, NULL, noRepeat, NULL);
+
+	RegisterIniKeyBinding(L"Hunting", L"next_domainshader", iniFile, NextDomainShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_domainshader", iniFile, PrevDomainShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_domainshader", iniFile, MarkDomainShader, NULL, noRepeat, NULL);
+
+	RegisterIniKeyBinding(L"Hunting", L"next_hullshader", iniFile, NextHullShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"previous_hullshader", iniFile, PrevHullShader, NULL, repeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"mark_hullshader", iniFile, MarkHullShader, NULL, noRepeat, NULL);
+
 	RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", iniFile, NextRenderTarget, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", iniFile, PrevRenderTarget, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", iniFile, MarkRenderTarget, NULL, noRepeat, NULL);
@@ -1352,8 +1379,6 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	}
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
-	RegisterIniKeyBinding(L"Hunting", L"kill_geometry", iniFile, DisableGS, EnableGS, noRepeat, NULL);
-	RegisterIniKeyBinding(L"Hunting", L"kill_tesselation", iniFile, DisableTesselation, EnableTesselation, noRepeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", iniFile, DisableDeferred, EnableDeferred, noRepeat, NULL);
 
 	for (i = 0; i < 4; i++) {

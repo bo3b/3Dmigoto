@@ -52,6 +52,12 @@ private:
 	ID3D11PixelShader *mCurrentPixelShaderHandle;
 	UINT64 mCurrentComputeShader;
 	ID3D11ComputeShader *mCurrentComputeShaderHandle;
+	UINT64 mCurrentGeometryShader;
+	ID3D11GeometryShader *mCurrentGeometryShaderHandle;
+	UINT64 mCurrentDomainShader;
+	ID3D11DomainShader *mCurrentDomainShaderHandle;
+	UINT64 mCurrentHullShader;
+	ID3D11HullShader *mCurrentHullShaderHandle;
 	std::vector<void *> mCurrentRenderTargets;
 	void *mCurrentDepthTarget;
 	FrameAnalysisOptions analyse_options;
@@ -88,8 +94,6 @@ private:
 
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,
-		 typename Shaders,
-		 typename ReplacementShaderMap,
 		 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
 				 ID3D11Shader *pShader,
 				 ID3D11ClassInstance *const *ppClassInstances,
@@ -101,9 +105,9 @@ private:
 		/* [annotation] */
 		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances,
-		Shaders *shaders,
-		ReplacementShaderMap *originalShaders,
-		ReplacementShaderMap *zeroShaders,
+		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
 		std::set<UINT64> *visitedShaders,
 		UINT64 selectedShader,
 		UINT64 *currentShaderHash,
