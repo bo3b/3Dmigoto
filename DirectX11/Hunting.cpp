@@ -957,12 +957,10 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 		bool found = (loc != end);
 		int size = (int) visited->size();
 
-		if (!found && size > 0) {
-			*selectedPos = 0;
-			*selected = *visited->begin();
-			LogInfo("> starting at %s #%d. Number of %ss in frame: %Iu \n",
-					type, *selectedPos, type, size);
-		} else {
+		if (size == 0)
+			goto out;
+
+		if (found) {
 			loc++;
 			if (loc != end) {
 				(*selectedPos)++;
@@ -973,8 +971,14 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 			}
 			LogInfo("> traversing to next %s #%d. Number of %ss in frame: %Iu \n",
 					type, *selectedPos, type, size);
+		} else {
+			*selectedPos = 0;
+			*selected = *visited->begin();
+			LogInfo("> starting at %s #%d. Number of %ss in frame: %Iu \n",
+					type, *selectedPos, type, size);
 		}
 	}
+out:
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -1026,12 +1030,10 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 		bool found = (loc != end);
 		int size = (int) visited->size();
 
-		if (!found && size > 0) {
-			*selectedPos = size - 1;
-			*selected = *std::prev(end);
-			LogInfo("> starting at %s shader #%d. Number of %s shaders in frame: %Iu \n",
-					type, *selectedPos, type, size);
-		} else {
+		if (size == 0)
+			goto out;
+
+		if (found) {
 			if (loc != front) {
 				(*selectedPos)--;
 				loc--;
@@ -1042,8 +1044,14 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 			}
 			LogInfo("> traversing to previous %s shader #%d. Number of %s shaders in frame: %Iu \n",
 					type, *selectedPos, type, size);
+		} else {
+			*selectedPos = size - 1;
+			*selected = *std::prev(end);
+			LogInfo("> starting at %s shader #%d. Number of %s shaders in frame: %Iu \n",
+					type, *selectedPos, type, size);
 		}
 	}
+out:
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
