@@ -313,12 +313,16 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 // WatchDogs uses that call.  Another oddity: this device is called to return the
 // same device. ID3D11Device->QueryInterface(ID3D11Device).  No idea why, but we
 // need to return our wrapped version.
+// 
+// Initial call needs to be LogDebug, because this is otherwise far to chatty in the
+// log.  That can be kind of misleading, so careful with missing log info. To
+// keep it consistent, all normal cases will be LogDebug, error states are LogInfo.
 
 HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogInfo("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
@@ -335,27 +339,27 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
 		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this);
 		*ppvObject = dxgiDeviceWrap;
-		LogInfo("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap).name(), dxgiDeviceWrap, origDXGIDevice);
+		LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap).name(), dxgiDeviceWrap, origDXGIDevice);
 	}
 	else if (riid == __uuidof(IDXGIDevice1))
 	{
 		IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
 		HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
 		*ppvObject = dxgiDeviceWrap1;
-		LogInfo("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap1).name(), dxgiDeviceWrap1, origDXGIDevice1);
+		LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap1).name(), dxgiDeviceWrap1, origDXGIDevice1);
 	}
 	else if (riid == __uuidof(IDXGIDevice2))
 	{
 		// an IDXGIDevice2 can only be created on platform update or above, so let's 
 		// continue the philosophy of returning errors for anything optional.
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIDevice2. \n");
+		LogDebug("  returns E_NOINTERFACE as error for IDXGIDevice2. \n");
 		*ppvObject = NULL;
 		return E_NOINTERFACE;
 	}
 	else if (riid == __uuidof(ID3D11Device))
 	{
 		*ppvObject = this;
-		LogInfo("  return HackerDevice(%s@%p) wrapper of %p \n", typeid(*this).name(), this, mOrigDevice);
+		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", typeid(*this).name(), this, mOrigDevice);
 	}
 	else if (riid == __uuidof(ID3D11Device1))
 	{
@@ -399,7 +403,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		//	*ppvObject = hackerDeviceWrap1;
 	}
 
-	LogInfo("  returns result = %x for %p \n", hr, *ppvObject);
+	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
 	return hr;
 }
 
@@ -1566,10 +1570,22 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		hashHeight = 1386492276;
 	}
 
-	// Create hash code.
+	// Create hash code.  Wrapped in try/catch because it can crash in Dirt Rally,
+	// because of noncontiguous or non-mapped memory for the texture.  Not sure this
+	// is the best strategy.
 	UINT64 hash = 0;
 	if (pInitialData && pInitialData->pSysMem && pDesc)
-		hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->ArraySize);
+		try
+		{
+			hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->ArraySize);
+		}
+		catch (...)
+		{
+			// Fatal error, but catch it and return null for hash.
+			LogInfo("   ******* Exception caught while calculating Texture2D hash ****** \n");
+			hash = 0;
+		}
+	
 	if (pDesc)
 		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
 	LogDebug("  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
@@ -1632,6 +1648,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			newDesc.Format = (DXGI_FORMAT) textureOverride->format;
 		}
 	}
+
+	// Actual creation:
 	HRESULT hr = mOrigDevice->CreateTexture2D(&newDesc, pInitialData, ppTexture2D);
 	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1)
 	{
@@ -2261,12 +2279,15 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 // Also worth noting here is that by not calling through to GetImmediateContext
 // we did not properly account for references.
 // "The GetImmediateContext method increments the reference count of the immediate context by one. "
+//
+// Fairly common to see this called all the time, so switching to LogDebug for
+// this as a way to trim down normal log.
 
 STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	/* [annotation] */
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("HackerDevice::GetImmediateContext(%s@%p) called with:%p \n", 
+	LogDebug("HackerDevice::GetImmediateContext(%s@%p) called with:%p \n", 
 		typeid(*this).name(), this, ppImmediateContext);
 
 	if (ppImmediateContext == nullptr)
@@ -2290,7 +2311,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	}
 
 	*ppImmediateContext = mHackerContext;
-	LogInfo("  returns handle = %p  \n", *ppImmediateContext);
+	LogDebug("  returns handle = %p  \n", *ppImmediateContext);
 }
 
 	// Original code for reference:
