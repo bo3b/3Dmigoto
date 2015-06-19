@@ -4,6 +4,7 @@
 #include "Overlay.h"
 
 #include <DirectXColors.h>
+#include <StrSafe.h>
 
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
@@ -137,8 +138,24 @@ void Overlay::RestoreState()
 		state.pShaderResourceViews[0]->Release();
 }
 
+static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::set<UINT64> *visited)
+{
+	wchar_t buf[32];
+	size_t size = visited->size();
+	if (!size)
+		return;
+
+	if (++pos == 0)
+		size = 0;
+
+	StringCchPrintf(buf, 32, L"%ls:%d/%d ", type, pos, size);
+	line->append(buf);
+}
+
 void Overlay::DrawOverlay(void)
 {
+	wstring shader_line;
+
 	// We can be called super early, before a viewport is bound to the 
 	// pipeline.  That's a bug in the game, but we have to work around it.
 	// If there are no viewports, the SpriteBatch will throw an exception.
@@ -167,29 +184,17 @@ void Overlay::DrawOverlay(void)
 			NvAPI_Stereo_GetConvergence(mHackerDevice->mStereoHandle, &convergence);
 		}
 	}
-	
+
 	// We also want to show the count of active vertex and pixel shaders, and
 	// where we are in the list.  These should all be active from the Globals.
 	// 0 / 0 will mean that we are not actively searching. The position is
 	// zero based, so we'll make it +1 for the humans.
-	size_t vsActive = 0, psActive = 0, csActive = 0;
-	size_t vsPosition = 0, psPosition = 0, csPosition = 0;
-
-	if (G->mSelectedVertexShaderPos >= 0)
-	{
-		vsActive = G->mVisitedVertexShaders.size();
-		vsPosition = G->mSelectedVertexShaderPos + 1;
-	}
-	if (G->mSelectedPixelShaderPos >= 0)
-	{
-		psActive = G->mVisitedPixelShaders.size();
-		psPosition = G->mSelectedPixelShaderPos + 1;
-	}
-	if (G->mSelectedComputeShaderPos >= 0)
-	{
-		csActive = G->mVisitedComputeShaders.size();
-		csPosition = G->mSelectedComputeShaderPos + 1;
-	}
+	AppendShaderOverlayText(&shader_line, L"VS", G->mSelectedVertexShaderPos, &G->mVisitedVertexShaders);
+	AppendShaderOverlayText(&shader_line, L"PS", G->mSelectedPixelShaderPos, &G->mVisitedPixelShaders);
+	AppendShaderOverlayText(&shader_line, L"CS", G->mSelectedComputeShaderPos, &G->mVisitedComputeShaders);
+	AppendShaderOverlayText(&shader_line, L"GS", G->mSelectedGeometryShaderPos, &G->mVisitedGeometryShaders);
+	AppendShaderOverlayText(&shader_line, L"DS", G->mSelectedDomainShaderPos, &G->mVisitedDomainShaders);
+	AppendShaderOverlayText(&shader_line, L"HS", G->mSelectedHullShaderPos, &G->mVisitedHullShaders);
 
 	SaveState();
 	mSpriteBatch->Begin();
@@ -205,11 +210,9 @@ void Overlay::DrawOverlay(void)
 		// and shader counts in top middle.
 
 		// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
-		swprintf_s(line, maxstring, L"VS:%d/%d  PS:%d/%d  CS:%d/%d",
-				vsPosition, vsActive, psPosition, psActive, csPosition, csActive);
-		strSize = mFont->MeasureString(line);
+		strSize = mFont->MeasureString(shader_line.c_str());
 		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
-		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
+		mFont->DrawString(mSpriteBatch.get(), shader_line.c_str(), textPosition, DirectX::Colors::LimeGreen);
 
 		// Desired format "Sep:85  Conv:4.5"
 		if (stereo)
