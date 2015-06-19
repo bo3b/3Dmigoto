@@ -969,12 +969,12 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 				*selectedPos = 0;
 				*selected = *visited->begin();
 			}
-			LogInfo("> traversing to next %s #%d. Number of %ss in frame: %Iu \n",
+			LogInfo("> traversing to next %s #%d. Number of %ss in frame: %d\n",
 					type, *selectedPos, type, size);
 		} else {
 			*selectedPos = 0;
 			*selected = *visited->begin();
-			LogInfo("> starting at %s #%d. Number of %ss in frame: %Iu \n",
+			LogInfo("> starting at %s #%d. Number of %ss in frame: %d\n",
 					type, *selectedPos, type, size);
 		}
 	}
@@ -1042,12 +1042,12 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 				*selectedPos = size - 1;
 				*selected = *std::prev(end);
 			}
-			LogInfo("> traversing to previous %s shader #%d. Number of %s shaders in frame: %Iu \n",
+			LogInfo("> traversing to previous %s shader #%d. Number of %s shaders in frame: %d\n",
 					type, *selectedPos, type, size);
 		} else {
 			*selectedPos = size - 1;
 			*selected = *std::prev(end);
-			LogInfo("> starting at %s shader #%d. Number of %s shaders in frame: %Iu \n",
+			LogInfo("> starting at %s shader #%d. Number of %s shaders in frame: %d\n",
 					type, *selectedPos, type, size);
 		}
 	}
