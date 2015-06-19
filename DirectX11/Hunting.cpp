@@ -64,6 +64,7 @@ DWORD castStrLen(const char* string)
 }
 
 
+// Expects the caller to have entered the critical section.
 static void DumpUsage()
 {
 	wchar_t dir[MAX_PATH];
@@ -73,7 +74,6 @@ static void DumpUsage()
 	HANDLE f = CreateFile(dir, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f != INVALID_HANDLE_VALUE)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		char buf[256];
 		DWORD written;
 		std::map<UINT64, ShaderInfoData>::iterator i;
@@ -159,7 +159,6 @@ static void DumpUsage()
 			const char *FOOTER = "></DepthTarget>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		CloseHandle(f);
 	}
 	else
@@ -1100,92 +1099,77 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 	if (!G->hunting)
 		return;
 
-	if (LogFile)
-	{
-		LogInfo(">>>> Index buffer marked: index buffer hash = %08lx%08lx\n", (UINT32)(G->mSelectedIndexBuffer >> 32), (UINT32)G->mSelectedIndexBuffer);
-		for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
-			LogInfo("     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-		for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
-			LogInfo("     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-	}
-	if (G->DumpUsage) DumpUsage();
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+	LogInfo(">>>> Index buffer marked: index buffer hash = %016I64x\n", G->mSelectedIndexBuffer);
+	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
+		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
+	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
+		LogInfo("     visited vertex shader hash = %016I64x\n", *i);
+
+	if (G->DumpUsage)
+		DumpUsage();
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+static bool MarkShaderBegin(char *type, UINT64 selected)
+{
+	if (!G->hunting)
+		return false;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+	LogInfo(">>>> %s marked: %s hash = %016I64x\n", type, type, selected);
+
+	return true;
+}
+static void MarkShaderEnd(HackerDevice *device, char *type, UINT64 selected)
+{
+	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
+	if (i != G->mCompiledShaderMap.end())
+		LogInfo("       %s was compiled from source code %s\n", type, i->second.c_str());
+
+	// Copy marked shader to ShaderFixes
+	CopyToFixes(selected, device);
+
+	if (G->DumpUsage)
+		DumpUsage();
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
 
 static void MarkPixelShader(HackerDevice *device, void *private_data)
 {
-	if (!G->hunting)
+	if (!MarkShaderBegin("pixel shader", G->mSelectedPixelShader))
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	if (LogFile)
-	{
-		LogInfo(">>>> Pixel shader marked: pixel shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedPixelShader >> 32), (UINT32)G->mSelectedPixelShader);
-		for (std::set<UINT64>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
-			LogInfo("     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-		for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-			LogInfo("     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-	}
-	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedPixelShader);
-	if (i != G->mCompiledShaderMap.end())
-	{
-		LogInfo("       pixel shader was compiled from source code %s\n", i->second.c_str());
-	}
-	i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
-	if (i != G->mCompiledShaderMap.end())
-	{
-		LogInfo("       vertex shader was compiled from source code %s\n", i->second.c_str());
-	}
-	// Copy marked shader to ShaderFixes
-	CopyToFixes(G->mSelectedPixelShader, device);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	if (G->DumpUsage) DumpUsage();
+	for (std::set<UINT64>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
+		LogInfo("     visited index buffer hash = %016I64x\n", *i);
+	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
+		LogInfo("     visited vertex shader hash = %016I64x\n", *i);
+
+	MarkShaderEnd(device, "pixel shader", G->mSelectedPixelShader);
 }
 
 static void MarkVertexShader(HackerDevice *device, void *private_data)
 {
-	if (!G->hunting)
+	if (!MarkShaderBegin("vertex shader", G->mSelectedVertexShader))
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	if (LogFile)
-	{
-		LogInfo(">>>> Vertex shader marked: vertex shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedVertexShader >> 32), (UINT32)G->mSelectedVertexShader);
-		for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
-			LogInfo("     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-		for (std::set<UINT64>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-			LogInfo("     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
-	}
+	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
+		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
+	for (std::set<UINT64>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
+		LogInfo("     visited index buffer hash = %016I64x\n", *i);
 
-	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
-	if (i != G->mCompiledShaderMap.end())
-	{
-		LogInfo("       shader was compiled from source code %s\n", i->second.c_str());
-	}
-	// Copy marked shader to ShaderFixes
-	CopyToFixes(G->mSelectedVertexShader, device);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	if (G->DumpUsage) DumpUsage();
+	MarkShaderEnd(device, "vertex shader", G->mSelectedVertexShader);
 }
 
 static void MarkComputeShader(HackerDevice *device, void *private_data)
 {
-	if (!G->hunting)
+	if (!MarkShaderBegin("compute shader", G->mSelectedComputeShader))
 		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	LogInfo(">>>> Compute shader marked: compute shader hash = %016I64x\n", G->mSelectedComputeShader);
-
-	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedComputeShader);
-	if (i != G->mCompiledShaderMap.end())
-		LogInfo("       shader was compiled from source code %s\n", i->second.c_str());
-
-	CopyToFixes(G->mSelectedComputeShader, device);
-
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-
-	if (G->DumpUsage)
-		DumpUsage();
+	MarkShaderEnd(device, "compute shader", G->mSelectedComputeShader);
 }
 
 static void LogRenderTarget(void *target, char *log_prefix)
@@ -1210,17 +1194,15 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 		return;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	if (LogFile)
-	{
-		LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
-		for (std::set<void *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
-		{
-			LogRenderTarget(*i, "       ");
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
-	if (G->DumpUsage) DumpUsage();
+	LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
+	for (std::set<void *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
+		LogRenderTarget(*i, "       ");
+
+	if (G->DumpUsage)
+		DumpUsage();
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
