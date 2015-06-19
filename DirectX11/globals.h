@@ -257,7 +257,7 @@ struct Globals
 	DataBufferMap mDataBuffers;
 	std::set<UINT64> mVisitedIndexBuffers;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedIndexBuffer;
-	unsigned int mSelectedIndexBufferPos;
+	int mSelectedIndexBufferPos;
 	std::set<UINT64> mSelectedIndexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedIndexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 
@@ -303,7 +303,7 @@ struct Globals
 	std::map<UINT64, struct ResourceInfo> mDepthTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<void *> mVisitedRenderTargets;					// std::set is sorted for consistent order while hunting
 	void *mSelectedRenderTarget;
-	unsigned int mSelectedRenderTargetPos;
+	int mSelectedRenderTargetPos;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
 	std::set<void *> mSelectedRenderTargetSnapshotList;		// std::set so that render targets will be sorted in log when marked
@@ -318,14 +318,14 @@ struct Globals
 	Globals() :
 		mBlockingMode(false),
 		mSelectedRenderTargetSnapshot(0),
-		mSelectedRenderTargetPos(0),
-		mSelectedRenderTarget((void *)1),
+		mSelectedRenderTargetPos(-1),
+		mSelectedRenderTarget((void *)-1),
 		mSelectedPixelShader(-1),
 		mSelectedPixelShaderPos(-1),
 		mSelectedVertexShader(-1),
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(1),
-		mSelectedIndexBufferPos(0),
+		mSelectedIndexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
 		mPinkingShader(0),

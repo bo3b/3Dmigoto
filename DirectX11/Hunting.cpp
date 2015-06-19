@@ -980,66 +980,120 @@ static void EnableDeferred(HackerDevice *device, void *private_data)
 }
 
 
-
-static void NextIndexBuffer(HackerDevice *device, void *private_data)
+template <typename ItemType>
+static void HuntNext(char *type, std::set<ItemType> *visited,
+		ItemType *selected, int *selectedPos)
 {
 	if (!G->hunting)
 		return;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
-	if (i != G->mVisitedIndexBuffers.end() && ++i != G->mVisitedIndexBuffers.end())
 	{
-		G->mSelectedIndexBuffer = *i;
-		G->mSelectedIndexBufferPos++;
-		LogInfo("> traversing to next index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
-	}
-	if (i == G->mVisitedIndexBuffers.end() && ++G->mSelectedIndexBufferPos < G->mVisitedIndexBuffers.size() && G->mSelectedIndexBufferPos >= 0)
-	{
-		i = G->mVisitedIndexBuffers.begin();
-		std::advance(i, G->mSelectedIndexBufferPos);
-		G->mSelectedIndexBuffer = *i;
-		LogInfo("> last index buffer lost. traversing to next index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
-	}
-	if (i == G->mVisitedIndexBuffers.end() && G->mVisitedIndexBuffers.size() != 0)
-	{
-		G->mSelectedIndexBufferPos = 0;
-		LogInfo("> traversing to index buffer #0. Number of index buffers in frame: %Iu\n", G->mVisitedIndexBuffers.size());
+		std::set<ItemType>::iterator loc = visited->find(*selected);
+		std::set<ItemType>::iterator end = visited->end();
+		bool found = (loc != end);
+		int size = (int) visited->size();
 
-		G->mSelectedIndexBuffer = *G->mVisitedIndexBuffers.begin();
+		if (!found && size > 0) {
+			*selectedPos = 0;
+			*selected = *visited->begin();
+			LogInfo("> starting at %s #%d. Number of %ss in frame: %Iu \n",
+					type, *selectedPos, type, size);
+		} else {
+			loc++;
+			if (loc != end) {
+				(*selectedPos)++;
+				*selected = *loc;
+			} else {
+				*selectedPos = 0;
+				*selected = *visited->begin();
+			}
+			LogInfo("> traversing to next %s #%d. Number of %ss in frame: %Iu \n",
+					type, *selectedPos, type, size);
+		}
+	}
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+}
+
+static void NextIndexBuffer(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+}
+static void NextPixelShader(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
+}
+static void NextVertexShader(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
+}
+static void NextComputeShader(HackerDevice *device, void *private_data)
+{
+	HuntNext<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
+}
+static void NextRenderTarget(HackerDevice *device, void *private_data)
+{
+	HuntNext<void *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
+}
+
+template <typename ItemType>
+static void HuntPrev(char *type, std::set<ItemType> *visited,
+		ItemType *selected, int *selectedPos)
+{
+	if (!G->hunting)
+		return;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	{
+		std::set<ItemType>::iterator loc = visited->find(*selected);
+		std::set<ItemType>::iterator end = visited->end();
+		std::set<ItemType>::iterator front = visited->begin();
+		bool found = (loc != end);
+		int size = (int) visited->size();
+
+		if (!found && size > 0) {
+			*selectedPos = size - 1;
+			*selected = *std::prev(end);
+			LogInfo("> starting at %s shader #%d. Number of %s shaders in frame: %Iu \n",
+					type, *selectedPos, type, size);
+		} else {
+			if (loc != front) {
+				(*selectedPos)--;
+				loc--;
+				*selected = *loc;
+			} else {
+				*selectedPos = size - 1;
+				*selected = *std::prev(end);
+			}
+			LogInfo("> traversing to previous %s shader #%d. Number of %s shaders in frame: %Iu \n",
+					type, *selectedPos, type, size);
+		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	std::set<UINT64>::iterator i = G->mVisitedIndexBuffers.find(G->mSelectedIndexBuffer);
-	if ((i == G->mVisitedIndexBuffers.begin() || G->mSelectedIndexBuffer == 1) && G->mVisitedIndexBuffers.size() != 0) {
-		i = std::prev(G->mVisitedIndexBuffers.end());
-		G->mSelectedIndexBuffer = *i;
-		G->mSelectedIndexBufferPos = (unsigned)G->mVisitedIndexBuffers.size() - 1;
-		LogInfo("> traversing to index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
-	}
-	else if (i != G->mVisitedIndexBuffers.end() && i != G->mVisitedIndexBuffers.begin())
-	{
-		--i;
-		G->mSelectedIndexBuffer = *i;
-		G->mSelectedIndexBufferPos--;
-		LogInfo("> traversing to previous index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
-	}
-	if (i == G->mVisitedIndexBuffers.end() && --G->mSelectedIndexBufferPos < G->mVisitedIndexBuffers.size() && G->mSelectedIndexBufferPos >= 0)
-	{
-		i = G->mVisitedIndexBuffers.begin();
-		std::advance(i, G->mSelectedIndexBufferPos);
-		G->mSelectedIndexBuffer = *i;
-		LogInfo("> last index buffer lost. traversing to previous index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	HuntPrev<UINT64>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 }
+static void PrevPixelShader(HackerDevice *device, void *private_data)
+{
+	HuntPrev<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
+}
+static void PrevVertexShader(HackerDevice *device, void *private_data)
+{
+	HuntPrev<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
+}
+static void PrevComputeShader(HackerDevice *device, void *private_data)
+{
+	HuntPrev<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
+}
+static void PrevRenderTarget(HackerDevice *device, void *private_data)
+{
+	HuntPrev<void *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
+}
+
+
 
 static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 {
@@ -1057,76 +1111,6 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextPixelShader(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	{
-		std::set<UINT64>::iterator loc = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
-		std::set<UINT64>::iterator end = G->mVisitedPixelShaders.end();
-		bool found = (loc != end);
-		int size = (int) G->mVisitedPixelShaders.size();
-
-		if (!found && size > 0)
-		{
-			G->mSelectedPixelShaderPos = 0;
-			G->mSelectedPixelShader = *G->mVisitedPixelShaders.begin();
-			LogInfo("> starting at pixel shader #%d. Number of pixel shaders in frame: %Iu \n", G->mSelectedPixelShaderPos, size);
-		}
-		else {
-			loc++;
-			if (loc != end)
-			{
-				G->mSelectedPixelShaderPos++;
-				G->mSelectedPixelShader = *loc;
-			}
-			else {
-				G->mSelectedPixelShaderPos = 0;
-				G->mSelectedPixelShader = *G->mVisitedPixelShaders.begin();
-			}
-			LogInfo("> traversing to next pixel shader #%d. Number of pixel shaders in frame: %Iu \n", G->mSelectedPixelShaderPos, size);
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-static void PrevPixelShader(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	{
-		std::set<UINT64>::iterator loc = G->mVisitedPixelShaders.find(G->mSelectedPixelShader);
-		std::set<UINT64>::iterator end = G->mVisitedPixelShaders.end();
-		std::set<UINT64>::iterator front = G->mVisitedPixelShaders.begin();
-		bool found = (loc != end);
-		int size = (int) G->mVisitedPixelShaders.size();
-
-		if (!found && size > 0)
-		{
-			G->mSelectedPixelShaderPos = size - 1;
-			G->mSelectedPixelShader = *std::prev(end);
-			LogInfo("> starting at pixel shader #%d. Number of pixel shaders in frame: %Iu \n", G->mSelectedPixelShaderPos, size);
-		}
-		else {
-			if (loc != front)
-			{
-				G->mSelectedPixelShaderPos--;
-				loc--;
-				G->mSelectedPixelShader = *loc;
-			}
-			else {
-				G->mSelectedPixelShaderPos = size - 1;
-				G->mSelectedPixelShader = *std::prev(end);
-			}
-			LogInfo("> traversing to previous pixel shader #%d. Number of pixel shaders in frame: %Iu \n", G->mSelectedPixelShaderPos, size);
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
 
 static void MarkPixelShader(HackerDevice *device, void *private_data)
 {
@@ -1158,74 +1142,6 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextVertexShader(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	{
-		std::set<UINT64>::iterator loc = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
-		std::set<UINT64>::iterator end = G->mVisitedVertexShaders.end();
-		bool found = (loc != end);
-		int size = (int) G->mVisitedVertexShaders.size();
-
-		if (!found && size > 0)
-		{
-			G->mSelectedVertexShaderPos = 0;
-			G->mSelectedVertexShader = *G->mVisitedVertexShaders.begin();
-			LogInfo("> starting at vertex shader #%d. Number of vertex shaders in frame: %Iu \n", G->mSelectedVertexShaderPos, size);
-		} else {
-			loc++;
-			if (loc != end)
-			{
-				G->mSelectedVertexShaderPos++;
-				G->mSelectedVertexShader = *loc;
-			} else {
-				G->mSelectedVertexShaderPos = 0;
-				G->mSelectedVertexShader = *G->mVisitedVertexShaders.begin();
-			}
-			LogInfo("> traversing to next vertex shader #%d. Number of vertex shaders in frame: %Iu \n", G->mSelectedVertexShaderPos, size);
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-static void PrevVertexShader(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	{
-		std::set<UINT64>::iterator loc = G->mVisitedVertexShaders.find(G->mSelectedVertexShader);
-		std::set<UINT64>::iterator end = G->mVisitedVertexShaders.end();
-		std::set<UINT64>::iterator front = G->mVisitedVertexShaders.begin();
-		bool found = (loc != end);
-		int size = (int) G->mVisitedVertexShaders.size();
-
-		if (!found && size > 0)
-		{
-			G->mSelectedVertexShaderPos = size - 1;
-			G->mSelectedVertexShader = *std::prev(end);
-			LogInfo("> starting at vertex shader #%d. Number of vertex shaders in frame: %Iu \n", G->mSelectedVertexShaderPos, size);
-		}
-		else {
-			if (loc != front)
-			{
-				G->mSelectedVertexShaderPos--;
-				loc--;
-				G->mSelectedVertexShader = *loc;
-			} else {
-				G->mSelectedVertexShaderPos = size - 1;	
-				G->mSelectedVertexShader = *std::prev(end);
-			}
-			LogInfo("> traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu \n", G->mSelectedVertexShaderPos, size);
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
 static void MarkVertexShader(HackerDevice *device, void *private_data)
 {
 	if (!G->hunting)
@@ -1252,69 +1168,6 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 	if (G->DumpUsage) DumpUsage();
 }
 
-static void NextComputeShader(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	{
-		std::set<UINT64>::iterator loc = G->mVisitedComputeShaders.find(G->mSelectedComputeShader);
-		std::set<UINT64>::iterator end = G->mVisitedComputeShaders.end();
-		bool found = (loc != end);
-		int size = (int) G->mVisitedComputeShaders.size();
-
-		if (!found && size > 0) {
-			G->mSelectedComputeShaderPos = 0;
-			G->mSelectedComputeShader = *G->mVisitedComputeShaders.begin();
-			LogInfo("> starting at compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
-		} else {
-			loc++;
-			if (loc != end) {
-				G->mSelectedComputeShaderPos++;
-				G->mSelectedComputeShader = *loc;
-			} else {
-				G->mSelectedComputeShaderPos = 0;
-				G->mSelectedComputeShader = *G->mVisitedComputeShaders.begin();
-			}
-			LogInfo("> traversing to next compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-static void PrevComputeShader(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	{
-		std::set<UINT64>::iterator loc = G->mVisitedComputeShaders.find(G->mSelectedComputeShader);
-		std::set<UINT64>::iterator end = G->mVisitedComputeShaders.end();
-		std::set<UINT64>::iterator front = G->mVisitedComputeShaders.begin();
-		bool found = (loc != end);
-		int size = (int) G->mVisitedComputeShaders.size();
-
-		if (!found && size > 0) {
-			G->mSelectedComputeShaderPos = size - 1;
-			G->mSelectedComputeShader = *std::prev(end);
-			LogInfo("> starting at compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
-		} else {
-			if (loc != front) {
-				G->mSelectedComputeShaderPos--;
-				loc--;
-				G->mSelectedComputeShader = *loc;
-			} else {
-				G->mSelectedComputeShaderPos = size - 1;
-				G->mSelectedComputeShader = *std::prev(end);
-			}
-			LogInfo("> traversing to previous compute shader #%d. Number of compute shaders in frame: %Iu \n", G->mSelectedComputeShaderPos, size);
-		}
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
 static void MarkComputeShader(HackerDevice *device, void *private_data)
 {
 	if (!G->hunting)
@@ -1335,71 +1188,11 @@ static void MarkComputeShader(HackerDevice *device, void *private_data)
 		DumpUsage();
 }
 
-static void NextRenderTarget(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
-	if (i != G->mVisitedRenderTargets.end() && ++i != G->mVisitedRenderTargets.end())
-	{
-		G->mSelectedRenderTarget = *i;
-		G->mSelectedRenderTargetPos++;
-		LogInfo("> traversing to next render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
-	}
-	if (i == G->mVisitedRenderTargets.end() && ++G->mSelectedRenderTargetPos < G->mVisitedRenderTargets.size() && G->mSelectedRenderTargetPos >= 0)
-	{
-		i = G->mVisitedRenderTargets.begin();
-		std::advance(i, G->mSelectedRenderTargetPos);
-		G->mSelectedRenderTarget = *i;
-		LogInfo("> last render target lost. traversing to next render target #%d. Number of render targets frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
-	}
-	if (i == G->mVisitedRenderTargets.end() && G->mVisitedRenderTargets.size() != 0)
-	{
-		G->mSelectedRenderTargetPos = 0;
-		LogInfo("> traversing to render target #0. Number of render targets in frame: %Iu\n", G->mVisitedRenderTargets.size());
-
-		G->mSelectedRenderTarget = *G->mVisitedRenderTargets.begin();
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-static void PrevRenderTarget(HackerDevice *device, void *private_data)
-{
-	if (!G->hunting)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-	std::set<void *>::iterator i = G->mVisitedRenderTargets.find(G->mSelectedRenderTarget);
-	if ((i == G->mVisitedRenderTargets.begin() || G->mSelectedRenderTarget == (void *)1) && G->mVisitedRenderTargets.size() != 0) {
-		i = std::prev(G->mVisitedRenderTargets.end());
-		G->mSelectedRenderTarget = *i;
-		G->mSelectedRenderTargetPos = (unsigned)G->mVisitedRenderTargets.size() - 1;
-		LogInfo("> traversing to render targets #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
-	}
-	else if (i != G->mVisitedRenderTargets.end() && i != G->mVisitedRenderTargets.begin())
-	{
-		--i;
-		G->mSelectedRenderTarget = *i;
-		G->mSelectedRenderTargetPos--;
-		LogInfo("> traversing to previous render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
-	}
-	if (i == G->mVisitedRenderTargets.end() && --G->mSelectedRenderTargetPos < G->mVisitedRenderTargets.size() && G->mSelectedRenderTargetPos >= 0)
-	{
-		i = G->mVisitedRenderTargets.begin();
-		std::advance(i, G->mSelectedRenderTargetPos);
-		G->mSelectedRenderTarget = *i;
-		LogInfo("> last render target lost. traversing to previous render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
-	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
 static void LogRenderTarget(void *target, char *log_prefix)
 {
 	char buf[256];
 
-	if (!target || target == (void *)1) {
+	if (!target || target == (void *)-1) {
 		LogInfo("No render target selected for marking\n");
 		return;
 	}
@@ -1504,10 +1297,10 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	G->mSelectedComputeShader = -1;
 	G->mSelectedComputeShaderPos = -1;
 
-	G->mSelectedRenderTargetPos = 0;
-	G->mSelectedRenderTarget = ((void *)1);
-	G->mSelectedIndexBuffer = 1;
-	G->mSelectedIndexBufferPos = 0;
+	G->mSelectedRenderTargetPos = -1;
+	G->mSelectedRenderTarget = ((void *)-1);
+	G->mSelectedIndexBuffer = -1;
+	G->mSelectedIndexBufferPos = -1;
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
