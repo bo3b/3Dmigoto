@@ -573,7 +573,19 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 // For auto-fixed shaders- rather than leave them in ShaderCache, when they are fixed, we'll move them into 
 // ShaderFixes as being live.  
 
-// Only used in CreateVertexShader and CreatePixelShader
+// Only used in CreateXXXShader (Vertex, Pixel, Compute, Geometry, Hull, Domain)
+
+// This whole function is in need of major refactoring. At a quick glance I can
+// see several code paths that will leak objects, and in general it is far,
+// too long and complex - the human brain has between 5 an 9 (typically 7)
+// general purpose registers, but this function requires far more than that to
+// understand. I've added comments to a few objects that can leak, but there's
+// little value in fixing one or two problems without tackling the whole thing,
+// but I need to understand it better before I'm willing to start refactoring
+// it. -DarkStarSword
+//
+// Chapter 6 of the Linux coding style guidelines is worth a read:
+//   https://www.kernel.org/doc/Documentation/CodingStyle
 
 char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader)
@@ -709,7 +721,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// Compile replacement.
 					LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
 
-					ID3DBlob *pErrorMsgs;
+					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;
 					HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
@@ -852,7 +864,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		}
 		else
 		{
-			ID3DBlob *disassembly = 0;
+			ID3DBlob *disassembly = 0; // FIXME: This can leak
 			FILE *fw = 0;
 			string shaderModel = "";
 
@@ -868,6 +880,14 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 			{
 				fclose(fw);
 				return 0;	// Todo: what about zero shader section?
+			}
+
+			// Stop-gap measure to avoid decompiling geometry, hull
+			// and domain shaders as they will almost certainly
+			// cause a crash in the decompiler. Remove this once fixed.
+			if (!wcscmp(shaderType, L"gs") || !wcscmp(shaderType, L"hs") || !wcscmp(shaderType, L"ds")) {
+				LogInfoW(L"    Skipping decompilation of unsupported shader type %ls.\n", shaderType);
+				return 0;
 			}
 
 			// Disassemble old shader for fixing.
@@ -959,7 +979,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				{
 					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
 
-					ID3DBlob *pErrorMsgs;
+					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;
 					ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
@@ -1064,7 +1084,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				// Compile replacement.
 				LogInfo("    compiling zero HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
 
-				ID3DBlob *pErrorMsgs;
+				ID3DBlob *pErrorMsgs; // FIXME: This can leak
 				ID3DBlob *pCompiledOutput = 0;
 				HRESULT ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
