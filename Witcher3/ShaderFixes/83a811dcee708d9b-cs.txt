@@ -35,6 +35,7 @@ dcl_input vThreadGroupID.xy
 dcl_input vThreadIDInGroup.xy
 dcl_temps 23
 dcl_thread_group 16, 16, 1
+dcl_resource_texture2d (float,float,float,float) t125
 imad r0.xy, vThreadGroupID.xyxx, l(16, 16, 0, 0), vThreadIDInGroup.xyxx
 mov r0.zw, l(0,0,0,0)
 ld_indexable(texture2d)(float,float,float,float) r1.x, r0.xyww, t0.xyzw

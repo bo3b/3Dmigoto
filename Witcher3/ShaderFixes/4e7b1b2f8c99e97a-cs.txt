@@ -24,12 +24,11 @@ dcl_constantbuffer cb13[3323], dynamicIndexed
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_uav_typed_texture2d (float,float,float,float) u0
-// dcl_resource_texture2d (float,float,float,float) t125
+dcl_resource_texture2d (float,float,float,float) t125
 dcl_uav_raw u1
 dcl_input vThreadGroupID.xy
 dcl_input vThreadIDInGroup.xy
-dcl_temps 11
-// dcl_temps 22
+dcl_temps 23
 dcl_tgsm_raw g0, 4
 dcl_tgsm_raw g1, 4
 dcl_tgsm_structured g2, 4, 192
@@ -224,6 +223,7 @@ if_nz r1.z
   mad r2.xyzw, cb12[208].xyzw, r1.yyyy, r2.xyzw
   add r2.xyzw, r2.xyzw, cb12[209].xyzw
   div r1.yzw, r2.xxyz, r2.wwww
+
 // Multiply coord by worldToView:
 mul r20.xyzw, cb12[1].xyzw, r1.yyyy
 mad r20.xyzw, cb12[2].xyzw, r1.zzzz, r20.xyzw
@@ -242,6 +242,7 @@ mad r22.xyzw, cb12[10].xyzw, r20.yyyy, r22.xyzw
 mad r22.xyzw, cb12[11].xyzw, r20.zzzz, r22.xyzw
 add r22.xyzw, cb12[12].xyzw, r22.xyzw
 div r1.yzw, r22.xxyz, r22.wwww
+
   mov r0.zw, l(0,0,0,0)
   ld_indexable(texture2d)(float,float,float,float) r0.zw, r0.xyzw, t1.zwxy
   add r2.xyz, r1.yzwy, -cb12[0].xyzx
