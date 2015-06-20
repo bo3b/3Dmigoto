@@ -1,3 +1,5 @@
+// Raindrop splashes (unverified fix)
+
 Texture2D<float4> t24 : register(t24);
 
 Texture2D<float4> t7 : register(t7);
@@ -49,47 +51,6 @@ void main(
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8;
   uint4 bitmask, uiDest;
   float4 fDest;
-
-float4 stereo = StereoParams.Load(0);
-
-//Work out Inverse
-//...Variables
-float4 a1, a2, a3, a4;
-float4 b1, b2, b3, b4;
-float det;
-//...Original Matrix
-a1.xyzw = cb12[1].xyzw;
-a2.xyzw = cb12[2].xyzw;
-a3.xyzw = cb12[3].xyzw;
-a4.xyzw = cb12[4].xyzw;
-//...Determinant
-det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
-det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
-det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
-det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
-//...Inverse Matrix Elements
-b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
-b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
-b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
-b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
-b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
-b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
-b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
-b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
-b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
-b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
-b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
-b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
-b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
-b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
-b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
-b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
-b1.xyzw /= det;
-b2.xyzw /= det;
-b3.xyzw /= det;
-b4.xyzw /= det;
-//End Inverse 
-
   r0.xy = (uint2)v0.xy;
   r1.x = saturate(cb3[2].x);
   r1.y = t6.SampleLevel(s0_s, v1.xy, 0.000000000e+000).x;
@@ -103,25 +64,32 @@ b4.xyzw /= det;
   r2.xyzw = cb12[212].xyzw * r0.zzzz + r2.xyzw;
   r2.xyzw = cb12[213].xyzw + r2.xyzw;
   r2.xyz = r2.zxy / r2.www;
-  
+
+// Losti reported bad raindrops in caves:
+// https://forums.geforce.com/default/topic/546943/3d-vision/the-witcher-3-wild-hunt/post/4569114/#4569114
+// Seems to be due to r2 being in order YZX instead of XYZ - I've switched them
+// below, which seems to have resolved the issue in the cave, but haven't
+// verified this is correct out in the open world
+
 float4 r20, r21;
-r20.xyz = r2.xyz; 
+r20.xyz = r2.yzx;  // Order is weird, guessed from above assignment
 r20.w = 1.0;
 
-r21.xyzw = cb12[2].xyzw * r20.yyyy;
-r21.xyzw = cb12[1].xyzw * r20.xxxx + r21.xyzw;
+r21.xyzw = cb12[1].xyzw * r20.xxxx;
+r21.xyzw = cb12[2].xyzw * r20.yyyy + r21.xyzw;
 r21.xyzw = cb12[3].xyzw * r20.zzzz + r21.xyzw;
 r21.xyzw = cb12[4].xyzw + r21.xyzw;
 
 r21.xyzw /= r21.wwww;
 
+float4 stereo = StereoParams.Load(0);
 r21.x -= stereo.x*(r21.z - stereo.y)/cb12[13].x; 
 
-r20.xyzw = b2.xyzw * r21.yyyy;
-r20.xyzw = b1.xyzw * r21.xxxx + r20.xyzw;
-r20.xyzw = b3.xyzw * r21.zzzz + r20.xyzw;
-r20.xyzw = b4.xyzw * r21.wwww + r20.xyzw;
-r2.xyz = r20.xyz / r20.www; 
+r20.xyzw = cb12[9].xyzw * r21.xxxx;
+r20.xyzw = cb12[10].xyzw * r21.yyyy + r20.xyzw;
+r20.xyzw = cb12[11].xyzw * r21.zzzz + r20.xyzw;
+r20.xyzw = cb12[12].xyzw * r21.wwww + r20.xyzw;
+r2.xyz = r20.zxy / r20.www;  // Restore weird order
 
   r3.xyz = -cb1[8].xyz + r2.yzx;
   r0.w = dot(r3.xyz, r3.xyz);
@@ -130,7 +98,7 @@ r2.xyz = r20.xyz / r20.www;
   r0.w = 4.000000000e+001 < r0.w;
   r0.w = (int)r0.w | (int)r3.x;
   r3.xy = (int2)r0.xy ^ int2(2,2);
-  r3.zw = max(r0.xy, -r0.xy);
+  r3.zw = max((int2)-r0.xy, (int2)r0.xy);
   r3.zw = (uint2)r3.zw >> int2(1,1);
   r4.xy = -(int2)r3.zw;
   r3.xy = r3.xy ? -0.000000 : 0;
@@ -150,7 +118,7 @@ r2.xyz = r20.xyz / r20.www;
   r3.w = r3.z + -r3.w;
   r3.w = saturate(cb13[33].w * r3.w);
   r3.w = cb13[33].z * r3.w;
-  r3.w = max(r3.w, 1.000000047e-003);
+  r3.w = max(1.000000047e-003, r3.w);
   r3.z = r3.z / cb13[34].z;
   r4.x = r3.x < r3.y;
   if (r4.x != 0) {
@@ -271,7 +239,7 @@ r2.xyz = r20.xyz / r20.www;
   r2.z = 9.900000095e-001 + r2.z;
   r2.z = r2.z * r2.z;
   r2.z = r2.z * -4.000000000e+002 + 1.000000000e+000;
-  r2.zw = max(r2.zw, float2(0.000000e+000,0.000000e+000));
+  r2.zw = max(float2(0.000000e+000,0.000000e+000), r2.zw);
   r2.z = r2.w + r2.z;
   r2.z = r2.z * r6.z;
   r2.z = r2.z * r0.z;
@@ -931,3 +899,4 @@ ret
 // Approximately 222 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
