@@ -77,6 +77,8 @@ private:
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
 	void DumpRenderTargets();
 	void DumpUAVs(bool compute);
+	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size,
+		bool compute, bool uav, bool depth, int idx);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);

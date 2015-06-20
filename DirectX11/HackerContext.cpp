@@ -480,6 +480,47 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 	}
 }
 
+HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size,
+		bool compute, bool uav, bool depth, int idx)
+{
+	wchar_t *pos;
+	size_t rem;
+	HRESULT hr;
+
+	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\%06i", G->ANALYSIS_PATH, G->analyse_frame);
+
+	if (uav)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-u%i", idx);
+	else if (depth)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-oD");
+	else
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-o%i", idx);
+
+	if (compute) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs-%016I64x", mCurrentComputeShader);
+	} else {
+		if (mCurrentVertexShader)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs-%016I64x", mCurrentVertexShader);
+		if (mCurrentHullShader)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-hs-%016I64x", mCurrentHullShader);
+		if (mCurrentDomainShader)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ds-%016I64x", mCurrentDomainShader);
+		if (mCurrentGeometryShader)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-gs-%016I64x", mCurrentGeometryShader);
+		if (mCurrentPixelShader)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps-%016I64x", mCurrentPixelShader);
+	}
+
+	hr = StringCchPrintfW(pos, rem, L".XXX");
+	if (FAILED(hr)) {
+		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		// Could create a shorter filename without hashes if this
+		// becomes a problem in practice
+	}
+
+	return hr;
+}
+
 void HackerContext::DumpRenderTargets()
 {
 	UINT i;
@@ -497,21 +538,15 @@ void HackerContext::DumpRenderTargets()
 	}
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-%i-vs-%016I64x-ps-%016I64x.XXX",
-				G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
-		if (FAILED(hr)) {
-			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, false, i);
+		if (FAILED(hr))
 			goto out;
-		}
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
 	}
 	if (mCurrentDepthTarget) {
-		hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-D-vs-%016I64x-ps-%016I64x.XXX",
-				G->ANALYSIS_PATH, G->analyse_frame, mCurrentVertexShader, mCurrentPixelShader);
-		if (FAILED(hr)) {
-			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, true, 0);
+		if (FAILED(hr))
 			goto out;
-		}
 		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename);
 	}
 
@@ -550,16 +585,8 @@ void HackerContext::DumpUAVs(bool compute)
 			continue;
 		}
 
-		if (compute) {
-			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-cs-%016I64x.XXX",
-					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentComputeShader);
-		} else {
-			hr = StringCchPrintfW(filename, MAX_PATH, L"%ls\\%06i-UAV%i-vs-%016I64x-ps-%016I64x.XXX",
-					G->ANALYSIS_PATH, G->analyse_frame, i, mCurrentVertexShader, mCurrentPixelShader);
-		}
-		if (FAILED(hr))
-			LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
-		else
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, true, false, i);
+		if (SUCCEEDED(hr))
 			DumpResource(resource, filename);
 
 		resource->Release();
