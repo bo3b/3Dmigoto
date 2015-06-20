@@ -22,13 +22,24 @@ HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContex
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
+	mHackerDevice = NULL;
 
 	mCurrentIndexBuffer = 0;
 	mCurrentVertexShader = 0;
 	mCurrentVertexShaderHandle = NULL;
 	mCurrentPixelShader = 0;
 	mCurrentPixelShaderHandle = NULL;
+	mCurrentComputeShader = 0;
+	mCurrentComputeShaderHandle = NULL;
+	mCurrentGeometryShader = 0;
+	mCurrentGeometryShaderHandle = NULL;
+	mCurrentDomainShader = 0;
+	mCurrentDomainShaderHandle = NULL;
+	mCurrentHullShader = 0;
+	mCurrentHullShaderHandle = NULL;
 	mCurrentDepthTarget = NULL;
+
+	analyse_options = FrameAnalysisOptions::INVALID;
 }
 
 
