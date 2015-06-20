@@ -654,9 +654,9 @@ void LoadConfigFile()
 
 	// [Hunting]
 	LogInfo("[Hunting]\n");
-	G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
+	G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile);
 	if (G->hunting)
-		LogInfo("  hunting=1\n");
+		LogInfo("  hunting=%u\n", G->hunting);
 
 	G->marking_mode = MARKING_MODE_SKIP;
 	if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {

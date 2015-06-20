@@ -1242,7 +1242,7 @@ void HackerDXGISwapChain::RunFrameActions()
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.
-	if (!G->hunting)
+	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
 	if (G->analyse_frame)
@@ -1284,7 +1284,7 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
-	if (G->hunting)
+	if (G->hunting == HUNTING_MODE_ENABLED)
 		mOverlay->DrawOverlay();
 	
 	// Every presented frame, we want to take some CPU time to run our actions,
@@ -1523,7 +1523,7 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
-//	if (G->hunting)
+//	if (G->hunting == HUNTING_MODE_ENABLED)
 //		mOverlay->DrawOverlay();
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);

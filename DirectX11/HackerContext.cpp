@@ -957,7 +957,7 @@ DrawContext HackerContext::BeforeDraw()
 	data.skip = G->mBlockingMode; // mBlockingMode doesn't appear that it can ever be set - hardcoded hack?
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
-	if (G->hunting)
+	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
 		UINT selectedRenderTargetPos;
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -1499,7 +1499,7 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 
 bool HackerContext::BeforeDispatch()
 {
-	if (G->hunting) {
+	if (G->hunting == HUNTING_MODE_ENABLED) {
 		// TODO: Collect stats on assigned UAVs
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
@@ -1873,7 +1873,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 				*currentShaderHandle = pShader;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", pShader, *currentShaderHash);
 
-				if (G->hunting && visitedShaders) {
+				if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
 					// Add to visited shaders.
 					visitedShaders->insert(i->second);
 				}
@@ -1884,7 +1884,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			} else
 				LogDebug("  shader %p not found\n", pShader);
 
-			if (G->hunting) {
+			if (G->hunting == HUNTING_MODE_ENABLED) {
 				// Replacement map.
 				if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
 					std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = originalShaders->find(pShader);
@@ -2484,7 +2484,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 
 	// Resolve resource from resource view.
 	// This is possibly no longer required as we collect stats on draw calls
-	if (G->hunting && ppShaderResourceViews)
+	if ((G->hunting == HUNTING_MODE_ENABLED) && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (UINT i = 0; i < NumViews; ++i)
@@ -2597,24 +2597,25 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 {
 	LogDebug("HackerContext::IASetIndexBuffer called\n");
 
-	if (G->hunting && pIndexBuffer)
-	{
+	if (pIndexBuffer) {
 		// Store as current index buffer.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);
-			if (i != G->mDataBuffers.end())
-			{
+			if (i != G->mDataBuffers.end()) {
 				mCurrentIndexBuffer = i->second;
 				LogDebug("  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(mCurrentIndexBuffer >> 32), (UINT32)mCurrentIndexBuffer);
 
-				// Add to visited index buffers.
-				G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
+				if (G->hunting == HUNTING_MODE_ENABLED) {
+					// Add to visited index buffers.
+					G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
+				}
 
 				// second try to hide index buffer.
 				// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
 				//	pIndexBuffer = 0;
+			} else {
+				LogDebug("  index buffer %p not found\n", pIndexBuffer);
 			}
-			else LogDebug("  index buffer %p not found\n", pIndexBuffer);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2677,7 +2678,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 
 	// Resolve resource from resource view.
 	// This is possibly no longer required as we collect stats on draw calls
-	if (G->hunting && ppShaderResourceViews)
+	if ((G->hunting == HUNTING_MODE_ENABLED) && ppShaderResourceViews)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		for (UINT i = 0; i < NumViews; ++i)
@@ -2724,8 +2725,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 {
 	LogDebug("HackerContext::OMSetRenderTargets called with NumViews = %d\n", NumViews);
 
-	if (G->hunting)
-	{
+	if (G->hunting == HUNTING_MODE_ENABLED) {
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
@@ -2764,8 +2764,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 {
 	LogDebug("HackerContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
 
-	if (G->hunting)
-	{
+	if (G->hunting == HUNTING_MODE_ENABLED) {
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;

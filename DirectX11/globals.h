@@ -11,6 +11,12 @@
 
 #include "util.h"
 
+enum HuntingMode {
+	HUNTING_MODE_DISABLED = 0,
+	HUNTING_MODE_ENABLED = 1,
+	HUNTING_MODE_SOFT_DISABLED = 2,
+};
+
 const int MARKING_MODE_SKIP = 0;
 const int MARKING_MODE_MONO = 1;
 const int MARKING_MODE_ORIGINAL = 2;
@@ -215,7 +221,7 @@ struct Globals
 	int gSurfaceSquareCreateMode;
 	bool gForceNoNvAPI;
 
-	bool hunting;
+	UINT hunting;
 	bool fix_enabled;
 	bool config_reloadable;
 	bool show_original_enabled;
@@ -352,7 +358,7 @@ struct Globals
 		mSelectedHullShaderPos(-1),
 		mPinkingShader(0),
 
-		hunting(false),
+		hunting(HUNTING_MODE_DISABLED),
 		fix_enabled(true),
 		config_reloadable(false),
 		show_original_enabled(false),
