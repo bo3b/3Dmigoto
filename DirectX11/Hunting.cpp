@@ -1255,6 +1255,9 @@ void TimeoutHuntingBuffers()
 	G->mVisitedVertexShaders.clear();
 	G->mVisitedPixelShaders.clear();
 	G->mVisitedComputeShaders.clear();
+	G->mVisitedGeometryShaders.clear();
+	G->mVisitedDomainShaders.clear();
+	G->mVisitedHullShaders.clear();
 
 	// FIXME: Not sure this is the right place to clear these - I think
 	// they should be cleared every frame as they appear to be aimed at
