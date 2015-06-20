@@ -1,3 +1,5 @@
+// Light shafts
+
 Texture2D<float4> t0 : register(t0);
 
 SamplerState s0_s : register(s0);
@@ -19,6 +21,12 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+// Very simple & common light shaft pattern, was able to find the correct
+// constant pretty easily with trial & error:
+float4 stereo = StereoParams.Load(0);
+float2 origin = cb3[4].xy;
+origin.x += stereo.x / 2;
+
   r0.xyzw = trunc(cb3[3].zwxy);
   r0.xy = v0.xy + -r0.xy;
   r1.xy = float2(5.000000e-001,5.000000e-001) + r0.zw;
@@ -30,7 +38,7 @@ void main(
   r0.xy = float2(5.000000e-001,5.000000e-001) + r0.xy;
   r0.xy = r0.xy / cb3[0].xy;
   r0.zw = r1.zw + -r1.xy;
-  r2.xy = cb3[4].xy * r0.zw + r1.xy;
+  r2.xy = origin * r0.zw + r1.xy;
   r3.x = cb3[0].x / cb3[0].y;
   r2.zw = -r2.xy + r0.xy;
   r3.y = 1.000000000e+000;
