@@ -2,21 +2,37 @@ Texture2D<float4> t1 : register(t1);
 
 Texture2D<float4> t0 : register(t0);
 
-cbuffer cb13 : register(b13)
-{
-  float4 cb13[3323];
-}
-
 cbuffer cb12 : register(b12)
 {
   float4 cb12[210];
 }
 
+cbuffer cb13 : register(b13)
+{
+  float4 cb13[3323];
+}
+
+RWTexture2D<float4> u0 : register(u0);  // dcl_uav_typed_texture2d (float,float,float,float) u0
+RWByteAddressBuffer u1: register(u1);   // dcl_uav_raw u1
+
+
+// groupshared is how we get g* registers
+groupshared uint g0;                    // dcl_tgsm_raw g0, 4
+groupshared uint g1;
+groupshared uint g2[192];               // dcl_tgsm_structured g2, 4, 192
+groupshared uint g3;
+groupshared uint g4[192];
+groupshared uint g5;
+
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-void main()
+
+[numthreads(16, 16, 1)]                 // dcl_thread_group 16, 16, 1
+void main(
+uint3 vThreadGroupID : SV_GroupThreadID,  // dcl_input vThreadGroupID.xy
+uint3 vThreadIDInGroup : SV_GroupID)      // dcl_input vThreadIDInGroup.xy
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
   uint4 bitmask, uiDest;
@@ -30,32 +46,47 @@ void main()
   r1.y = t0.Load(r2.xyz).x;
   r1.z = r1.y * cb12[22].x + cb12[22].y;
   if (r1.x == 0) {
-  // No code for instruction (needs manual fix):
-     store_raw g3.x, l(0), l(0)
-    [0].0 = g2.x;
-    [0].0 = g4.x;
-  // No code for instruction (needs manual fix):
-     store_raw g5.x, l(0), l(0)
-  // No code for instruction (needs manual fix):
-     store_raw g0.x, l(0), l(340282346638528860000000000000000000000.000000)
-  // No code for instruction (needs manual fix):
-     store_raw g1.x, l(0), l(0)
-  }
-  AllMemoryBarrierWithGroupSync(void);
-  // Needs manual fix for instruction: 
-// atomic_umin g0, l(0), r1.z
-  InterlockedMin(dest, value, orig_value);
-  // Needs manual fix for instruction: 
-// atomic_umax g1, l(0), r1.z
-  InterlockedMax(dest, value, orig_value);
-  AllMemoryBarrierWithGroupSync(void);
 // No code for instruction (needs manual fix):
- ld_raw r1.w, l(0), g0.xxxx
+// store_raw g3.x, l(0), l(0)
+g3.x = 0;
+// store_structured g2.x, l(0), l(0), l(0)
+g2[0] = 0;
+// store_structured g4.x, l(0), l(0), l(0)
+g4[0] = 0;
+// No code for instruction (needs manual fix):
+// store_raw g5.x, l(0), l(0)
+g5.x = 0;  
+// No code for instruction (needs manual fix):
+// store_raw g0.x, l(0), l(340282346638528860000000000000000000000.000000)
+g0.x = asuint(3.4028234E38);  
+// No code for instruction (needs manual fix):
+// store_raw g1.x, l(0), l(0)
+g1.x = 0;  
+  }
+  
+  GroupMemoryBarrierWithGroupSync();    // sync_g_t
+  
+// Needs manual fix for instruction: 
+// atomic_umin g0, l(0), r1.z
+InterlockedMin((uint)g0.x, (uint)r1.z);
+// Needs manual fix for instruction: 
+// atomic_umax g1, l(0), r1.z
+InterlockedMax((uint)g1, (uint)r1.z);
+
+  GroupMemoryBarrierWithGroupSync();
+  
+// No code for instruction (needs manual fix):
+// ld_raw r1.w, l(0), g0.xxxx
+r1.w = g0.x;
+
   r1.w = r1.w * cb12[21].x + cb12[21].y;
   r1.w = max(9.999999747e-005, r1.w);
   r2.z = 1.000000e+000 / r1.w;
+  
 // No code for instruction (needs manual fix):
- ld_raw r1.w, l(0), g1.xxxx
+// ld_raw r1.w, l(0), g1.xxxx
+r1.w = g1.x;
+
   r1.w = r1.w * cb12[21].x + cb12[21].y;
   r1.w = max(9.999999747e-005, r1.w);
   r2.x = 1.000000e+000 / r1.w;
@@ -192,26 +223,30 @@ void main()
     r5.x = (int)r5.x & 31;
     r5.x = (int)r5.x == 31;
     if (r5.x != 0) {
-      // Needs manual fix for instruction: 
-    //     imm_atomic_iadd r6.x, g5, l(0), l(1)
-      InterlockedAdd?(dest, value, orig_value);
+
+// Needs manual fix for instruction: 
+//  imm_atomic_iadd r6.x, g5, l(0), l(1)
+InterlockedAdd((uint)g5, 1, r6.x);
+
       r5.x = (uint)r6.x < 192;
       if (r5.x != 0) {
-        [r6.x].0 = g4.x;
+// store_structured g4.x, r6.x, l(0), r1.w
+g4[r6.x + 0].x = r1.w;
       }
     }
     if (r5.y != 0) {
-      // Needs manual fix for instruction: 
-    //     imm_atomic_iadd r5.x, g3, l(0), l(1)
-      InterlockedAdd?(dest, value, orig_value);
+// Needs manual fix for instruction: 
+//     imm_atomic_iadd r5.x, g3, l(0), l(1)
+InterlockedAdd((uint)g3, 1, r5.x);
       r5.y = (uint)r5.x < 192;
       if (r5.y != 0) {
-        [r5.x].0 = g2.x;
+// store_structured g2.x, r5.x, l(0), r1.w
+g2[r5.x + 0].x = r1.w;
       }
     }
     r1.w = (int)r1.w + 256;
   }
-  AllMemoryBarrierWithGroupSync(void);
+  GroupMemoryBarrierWithGroupSync();
   r1.z = r1.z < 1.000000000e+000;
   if (r1.z != 0) {
     r1.zw = r0.xy;
@@ -289,8 +324,11 @@ void main()
     r2.yzw = cb12[1].xyz * r1.yyy + r2.yzw;
     r1.yzw = cb12[3].xyz * r1.www + r2.yzw;
     r3.xyz = cb12[4].xyz + r1.yzw;
-  // No code for instruction (needs manual fix):
-     ld_raw r1.y, l(0), g3.xxxx
+    
+// No code for instruction (needs manual fix):
+// ld_raw r1.y, l(0), g3.xxxx
+r1.y = g3.x;
+
     r0.w = -r0.w * 1.562500000e-002 + 1.000000000e+000;
     r3.w = 1.000000000e+000;
     r4.xzw = float3(0.000000e+000,0.000000e+000,0.000000e+000);
@@ -299,10 +337,12 @@ void main()
     while (true) {
       r1.w = (uint)r1.z >= (uint)r1.y;
       if (r1.w != 0) break;
-    // Missing reflection info for shader. No names possible. 
-    // Known bad code for instruction (needs manual fix):
-    //     ld_structured r1.w, r1.z, l(0), g2.xxxx
-    r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      
+// Missing reflection info for shader. No names possible. 
+// Known bad code for instruction (needs manual fix):
+//     ld_structured r1.w, r1.z, l(0), g2.xxxx
+r1.w = g2[r1.z + 0].x;
+
       r1.w = (int)r1.w * 5;
       r6.x = dot(r3.xyzw, cb13[r1.w+2363].xyzw);
       r6.y = dot(r3.xyzw, cb13[r1.w+2364].xyzw);
@@ -354,28 +394,37 @@ void main()
     r2.xy = float2(1.000000e+000,1.000000e+000);
   }
   r2.z = 0.000000000e+000;
+  
 // No code for instruction (needs manual fix):
- store_uav_typed u0.xyzw, r0.xyyy, r2.zzxy
+// store_uav_typed u0.xyzw, r0.xyyy, r2.zzxy
+u0[r0.xy] = r2.zzxy;
+
   r0.x = (uint)r1.x < 192;
   if (r0.x != 0) {
     r0.xy = vThreadGroupID.yx;
     r0.x = r0.x * cb12[24].z + r0.y;
     r0.x = (uint)r0.x;
     r0.x = mad((int)r0.x, 192, (int)r1.x);
-  // No code for instruction (needs manual fix):
-     ld_raw r0.y, l(0), g5.xxxx
+    
+// No code for instruction (needs manual fix):
+// ld_raw r0.y, l(0), g5.xxxx
+r0.y = g5.x;
+
     r0.y = (uint)r1.x < (uint)r0.y;
     if (r0.y != 0) {
-    // Missing reflection info for shader. No names possible. 
-    // Known bad code for instruction (needs manual fix):
-    //     ld_structured r0.y, r1.x, l(0), g4.xxxx
-    r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    
+// Missing reflection info for shader. No names possible. 
+// Known bad code for instruction (needs manual fix):
+//     ld_structured r0.y, r1.x, l(0), g4.xxxx
+r0.y = g4[r1.x + 0].x;
+
     } else {
       r0.y = 192;
     }
     r0.x = (uint)r0.x << 2;
-  // No code for instruction (needs manual fix):
-     store_raw u1.x, r0.x, r0.y
+// No code for instruction (needs manual fix):
+// store_raw u1.x, r0.x, r0.y
+u1.Store(r0.x, r0.y);
   }
   return;
 }
