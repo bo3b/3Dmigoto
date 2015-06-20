@@ -1920,6 +1920,9 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			}
 
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	} else {
+		*currentShaderHash = 0;
+		*currentShaderHandle = NULL;
 	}
 
 	(mOrigContext->*OrigSetShader)(pShader, ppClassInstances, NumClassInstances);
