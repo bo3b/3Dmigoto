@@ -3844,7 +3844,7 @@ public:
 						// Found in Witcher3 Compute Shaders 
 					case OPCODE_SYNC:
 						if (!strcmp(statement, "sync_g_t"))
-							sprintf(buffer, "  AllMemoryBarrierWithGroupSync(void);\n");
+							sprintf(buffer, "  GroupMemoryBarrierWithGroupSync();\n");
 						else
 							sprintf(buffer, "  Unknown sync instruction; \n");
 						appendOutput(buffer);
