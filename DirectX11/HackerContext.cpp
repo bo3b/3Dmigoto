@@ -1503,8 +1503,8 @@ bool HackerContext::BeforeDispatch()
 		// TODO: Collect stats on assigned UAVs
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
-			// TODO: Support for other marking modes
-			return false;
+			if (G->marking_mode == MARKING_MODE_SKIP)
+				return false;
 		}
 	}
 
