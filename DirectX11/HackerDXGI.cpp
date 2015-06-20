@@ -73,9 +73,14 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 	mHackerDevice = pDevice;
 	pDevice->SetHackerSwapChain(this);
 
-	// Create Overlay class that will be responsible for drawing any text
-	// info over the game. Using the Hacker Device and Context we gave the game.
-	mOverlay = new Overlay(pDevice, pContext, this);
+	try {
+		// Create Overlay class that will be responsible for drawing any text
+		// info over the game. Using the Hacker Device and Context we gave the game.
+		mOverlay = new Overlay(pDevice, pContext, this);
+	} catch (...) {
+		LogInfo("Failed to create overlay. Check if courierbold.spritefont is installed\n");
+		mOverlay = NULL;
+	}
 }
 
 HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain1, HackerDevice *pDevice, HackerContext *pContext)
@@ -1284,7 +1289,7 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
-	if (G->hunting == HUNTING_MODE_ENABLED)
+	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
 		mOverlay->DrawOverlay();
 	
 	// Every presented frame, we want to take some CPU time to run our actions,
@@ -1523,7 +1528,7 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
 	// Draw the on-screen overlay text with hunting info, before final Present.
 	// But only when hunting is enabled, this will also make it obvious when
 	// hunting is on.
-//	if (G->hunting == HUNTING_MODE_ENABLED)
+//	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
 //		mOverlay->DrawOverlay();
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);

@@ -13,6 +13,8 @@
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
+	wchar_t filename[MAX_PATH];
+
 	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, typeid(*pSwapChain).name());
 
 	// Not positive we need all of these references, but let's keep them handy.
@@ -29,7 +31,14 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
 	// to draw the text, and we don't want to intercept those.
 
-	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), L"courierbold.spritefont"));
+	// Some games like The Witcher 3 change their working directory, which
+	// causes a crash when we can't find the courierbold.spritefont, so
+	// search for it relative to the executable:
+	GetModuleFileName(0, filename, MAX_PATH);
+	wcsrchr(filename, L'\\')[1] = 0;
+	wcscat(filename, L"courierbold.spritefont");
+
+	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), filename));
 	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
 }
 
