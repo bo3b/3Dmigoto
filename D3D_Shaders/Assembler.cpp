@@ -120,7 +120,7 @@ vector<DWORD> assembleOp(string s, bool special = 0) {
 		return v;
 	}
 	if (s == "oMask") {
-		v.push_back(0xF000);
+		v.push_back(0xF001);
 		return v;
 	}
 	if (s == "vCoverage") {
@@ -384,6 +384,11 @@ DWORD parseAoffimmi(DWORD start, string o) {
 	return aoffimmi;
 }
 
+map<string, vector<DWORD>> hackMap = {
+	{ "dcl_output oMask",
+	{ 0x02000065, 0x0000F000 } },
+};
+
 map<string, vector<int>> ldMap = {
 	{ "gather4_c_aoffimmi_indexable", { 5, 126, 3 } },
 	{ "gather4_aoffimmi_indexable", { 4, 109, 3 } },
@@ -512,6 +517,7 @@ map<string, vector<int>> insMap = {
 	{ "ret", { 0, 62 } },
 	{ "continue", { 0, 7 } },
 	{ "dcl_input", { 1, 95 } },
+	{ "dcl_output", { 1, 101 } },
 
 	{ "imm_atomic_and", { 4, 181 } },
 	{ "imm_atomic_exch", { 4, 184 } },
@@ -531,6 +537,10 @@ map<string, vector<int>> insMap = {
 };
 
 vector<DWORD> assembleIns(string s) {
+	if (hackMap.find(s) != hackMap.end()) {
+		auto v = hackMap[s];
+		return v;
+	}
 	DWORD op = 0;
 	shader_ins* ins = (shader_ins*)&op;
 	if (s.find("[precise]") < s.size()) {
@@ -934,12 +944,6 @@ vector<DWORD> assembleIns(string s) {
 			else if (w[2] == "immediateIndexed")
 				ins->_11_23 = 0;
 		}
-		ins->length = 1 + os.size();
-		v.push_back(op);
-		v.insert(v.end(), os.begin(), os.end());
-	} else if (o == "dcl_output") {
-		vector<DWORD> os = assembleOp(w[1], true);
-		ins->opcode = 101;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
