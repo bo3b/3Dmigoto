@@ -842,9 +842,6 @@ static void RevertMissingShaders()
 
 static void ReloadFixes(HackerDevice *device, void *private_data)
 {
-	if (G->hunting != HUNTING_MODE_ENABLED)
-		return;
-
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (G->SHADER_PATH[0])
