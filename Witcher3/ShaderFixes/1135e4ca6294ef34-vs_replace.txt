@@ -1,3 +1,5 @@
+// skybox - Moon
+
 cbuffer cb12 : register(b12)
 {
   float4 cb12[193];
@@ -197,6 +199,11 @@ void main(
   o2.zw = r0.xy;
   o3.w = r0.z;
   o4.xyz = r1.xyz;
+
+// Move moon to infinity:
+float4 stereo = StereoParams.Load(0);
+o6.x += stereo.x * stereo.y;
+
   return;
 }
 
