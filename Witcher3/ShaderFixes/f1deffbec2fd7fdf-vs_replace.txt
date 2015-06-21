@@ -1,3 +1,5 @@
+// Skybox - sun + blue sky
+
 cbuffer cb2 : register(b2)
 {
   float4 cb2[6];
@@ -51,6 +53,10 @@ void main(
   r1.xyzw = cb2[2].xyzw * cb1[3].zzzz + r1.xyzw;
   r1.xyzw = cb1[3].wwww * float4(0.000000e+000,0.000000e+000,0.000000e+000,1.000000e+000) + r1.xyzw;
   o2.w = dot(r0.xyzw, r1.xyzw);
+
+float4 stereo = StereoParams.Load(0);
+o2.x += stereo.x * stereo.y;
+
   return;
 }
 
