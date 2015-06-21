@@ -457,6 +457,23 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
 		byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 
+		// Write reassembly binary output for comparison. ToDo: remove after we have
+		// resolved the disassembler precision issue and validated everything works.
+		FILE *fw;
+		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType.c_str());
+		_wfopen_s(&fw, fullName, L"wb");
+		if (fw)
+		{
+			LogInfoW(L"    storing reassembled binary to %s\n", fullName);
+			fwrite(byteCode.data(), 1, byteCode.size(), fw);
+			fclose(fw);
+		}
+		else
+		{
+			LogInfoW(L"    error storing reassembled binary to %s\n", fullName);
+		}
+
+
 		// ToDo: How we do know when it fails? Error handling. Do we really have to re-disassemble?
 		string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
 		if (asmText.empty())

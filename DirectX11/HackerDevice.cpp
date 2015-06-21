@@ -804,7 +804,8 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 						memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 						byteCode = assembler(*reinterpret_cast<vector<byte>*>(&asmTextBytes), byteCode);
 
-						// Write reassembly binary output for comparison. ToDo: remove after we have validated it works.
+						// Write reassembly binary output for comparison. ToDo: remove after we have
+						// resolved the disassembler precision issue and validated everything works.
 						FILE *fw;
 						swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType);
 						_wfopen_s(&fw, val, L"wb");
