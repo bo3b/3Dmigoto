@@ -13,6 +13,7 @@
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="HookedDXGI.cpp" />
     <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="FrameAnalysis.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />

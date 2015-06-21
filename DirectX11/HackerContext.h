@@ -70,6 +70,19 @@ private:
 	void AssignDummyRenderTarget();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
+	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
+	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
+	void RecordDepthStencil(ID3D11DepthStencilView *target);
+	void RecordShaderResourceUsage();
+	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
+	void* RecordResourceViewStats(ID3D11ShaderResourceView *view);
+	UINT64 GetTexture2DHash(ID3D11Texture2D *texture,
+		bool log_new, struct ResourceInfo *resource_info);
+	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
+		bool log_new, struct ResourceInfo *resource_info);
+
+	// Functions for the frame analysis. Would be good to split this out,
+	// but it's pretty tightly coupled to the context at the moment:
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo);
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
@@ -83,16 +96,6 @@ private:
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
 	void FrameAnalysisAfterDraw(bool compute);
-	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
-	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
-	void RecordDepthStencil(ID3D11DepthStencilView *target);
-	void RecordShaderResourceUsage();
-	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-	void* RecordResourceViewStats(ID3D11ShaderResourceView *view);
-	UINT64 GetTexture2DHash(ID3D11Texture2D *texture,
-		bool log_new, struct ResourceInfo *resource_info);
-	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
-		bool log_new, struct ResourceInfo *resource_info);
 
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,
