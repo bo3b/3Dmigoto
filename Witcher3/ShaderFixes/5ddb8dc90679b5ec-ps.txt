@@ -89,14 +89,14 @@ round_ni r5.yzw, r5.yyzw
 ftoi r5.yzw, r5.yyzw
 imad r6.xyz, r5.yzwy, cb10[28].zzzz, r4.wwww
 imad r5.xyz, r5.yzwy, cb10[28].zzzz, r5.xxxx
-mul r2.zw, r1.xxxy, l(0.000000, 0.000000, 0.000488, 0.000488)
+mul r2.zw, r1.xxxy, l(0.000000, 0.000000, 0.00048828125, 0.00048828125)
 ld_indexable(buffer)(float,float,float,float) r7.xyz, r6.xxxx, t4.xyzw
 ld_indexable(buffer)(float,float,float,float) r8.xyz, r6.yyyy, t4.xyzw
 ld_indexable(buffer)(float,float,float,float) r9.xyz, r6.zzzz, t4.xyzw
 mul r8.xyz, r2.wwww, r8.xyzx
 mad r7.xyz, r2.yyyy, r7.xyzx, r8.xyzx
 add r1.x, -r2.y, l(1.000000)
-mad r1.x, -r1.y, l(0.000488), r1.x
+mad r1.x, -r1.y, l(0.00048828125), r1.x
 mad r7.xyz, r1.xxxx, r9.xyzx, r7.xyzx
 ld_indexable(buffer)(float,float,float,float) r8.xyz, r6.xxxx, t5.xyzw
 ld_indexable(buffer)(float,float,float,float) r6.xyw, r6.yyyy, t5.xywz
@@ -140,7 +140,7 @@ lt r1.x, cb10[38].x, l(0.500000)
 dp2 r1.y, v2.xxxx, cb10[38].xxxx
 add r2.w, l(1.000000), -cb10[38].x
 add r2.w, r2.w, r2.w
-add r9.xy, v2.xxxx, l(-1.000000, 0.000000, 0.000000, 0.000000)
+add r9.xy, v2.xxxx, l(-1.000000, 0.00000001, 0.000000, 0.000000)
 mad r2.w, r2.w, r9.x, l(1.000000)
 movc r1.x, r1.x, r1.y, r2.w
 add r1.y, l(0.001000), cb10[38].y
@@ -310,7 +310,7 @@ if_nz r1.y
       ige r1.y, cb13[18].x, l(1)
       if_nz r1.y
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r1.y, r11.xyzx, t8.xxxx, s9, r9.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.263354, 0.039654, -0.717202, 0.368303), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.2633539, 0.03965382, -0.7172024, 0.3683033), r11.xyxy
         mov r13.xy, r12.xyxx
         mov r13.z, r11.z
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
@@ -318,95 +318,95 @@ if_nz r1.y
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.019953, -0.398839, -0.440994, -0.221010), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.01995306, -0.3988392, -0.4409938, -0.221010), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.220039, 0.294345, -0.767566, -0.148275), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.2200392, 0.2943448, -0.7675657, -0.1482753), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.238102, 0.547106, 0.217303, -0.134588), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.2381019, 0.5471062, 0.2173031, -0.1345879), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.638777, 0.756134, -0.161414, 0.977652), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.6387774, 0.7561339, -0.1614144, 0.9776521), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.215632, 0.612341, 0.232888, 0.945287), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.2156319, 0.6123413, 0.2328875, 0.9452872), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.944064, 0.123608, -0.740824, -0.507683), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.9440644, 0.1236077, -0.7408237, -0.507683), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.411302, -0.890597, -0.248643, -0.621399), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.4113019, -0.8905967, -0.2486429, -0.6213993), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.696785, 0.264494, 0.539436, 0.817321), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.696785, 0.2644937, 0.5394363, 0.8173215), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.615121, -0.149864, 0.093653, -0.781748), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.6151208, -0.149864, 0.09365336, -0.7817475), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.276807, -0.489597, 0.663918, -0.600717), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.2768067, -0.4895968, 0.6639181, -0.6007172), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.388037, -0.895089, 0.991614, -0.079392), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.3880369, -0.8950894, 0.9916144, -0.07939152), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.783185, 0.602935, 0.899860, -0.398354), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.7831848, 0.6029348, 0.8998603, -0.3983543), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r1.y, r1.y, r7.w
-        mul r1.y, r1.y, l(0.037037)
+        mul r1.y, r1.y, l(0.037037037)
         mul r1.y, r1.y, r1.y
       else 
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r11.xyzx, t8.xxxx, s9, r9.w
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.507721, -0.617090, -0.051549, -0.750810), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.5077208, -0.6170899, -0.05154902, -0.7508098), r11.xyxy
         mov r13.xy, r12.xyxx
         mov r13.z, r11.z
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
@@ -414,42 +414,42 @@ if_nz r1.y
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.764104, 0.200915, 0.007285, -0.205947), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.7641042, 0.2009152, 0.007284774, -0.205947), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.366204, 0.732380, -0.923958, -0.255964), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.366204, 0.7323797, -0.9239582, -0.2559643), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.286924, 0.278053, 0.772301, 0.157333), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(-0.286924, 0.278053, 0.7723012, 0.1573329), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.378513, 0.405220, 0.463022, -0.691462), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.378513, 0.4052199, 0.4630217, -0.6914619), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r9.x, r13.xyzx, t8.xxxx, s9, r9.w
         add r7.w, r7.w, r9.x
-        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.423523, 0.863028, 0.855864, -0.338255), r11.xyxy
+        mad r12.xyzw, cb13[r5.w + 11].wwww, l(0.423523, 0.863028, 0.8558643, -0.3382554), r11.xyxy
         mov r13.xy, r12.xyxx
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r5.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r5.w, r5.w, r7.w
         mov r13.xy, r12.zwzz
         sample_c_lz_indexable(texture2darray)(float,float,float,float) r7.w, r13.xyzx, t8.xxxx, s9, r9.w
         add r5.w, r5.w, r7.w
-        mul r5.w, r5.w, l(0.076923)
+        mul r5.w, r5.w, l(0.07692308)
         mul r1.y, r5.w, r5.w
       endif 
       itof r5.w, r6.w
@@ -497,7 +497,7 @@ if_nz r1.y
   add r5.w, cb13[0].z, l(-0.250000)
   mul_sat r5.w, r5.w, l(10.000000)
   add r3.w, r3.w, l(-100.000000)
-  mul_sat r3.w, r3.w, l(0.006667)
+  mul_sat r3.w, r3.w, l(0.006666667)
   add r4.w, -r1.y, r4.w
   mad r1.y, r3.w, r4.w, r1.y
   mad r1.y, -r5.w, r1.y, l(1.000000)
@@ -625,10 +625,10 @@ loop
   if_nz r8.w
     ushr r8.w, cb13[r8.z + 2366].w, l(16)
     utof r8.w, r8.w
-    mul r8.w, r8.w, l(0.000015)
+    mul r8.w, r8.w, l(0.000015259022)
     and r9.w, l(0x0000ffff), cb13[r8.z + 2366].w
     utof r9.w, r9.w
-    mul r9.w, r9.w, l(0.000015)
+    mul r9.w, r9.w, l(0.000015259022)
     dp3 r10.w, r14.xyzx, r14.xyzx
     sqrt r10.w, r10.w
     add r10.w, -r10.w, l(1.000000)
@@ -641,7 +641,7 @@ loop
     ge r8.w, r8.w, r6.w
     and r8.w, r8.w, l(0x3f800000)
     mul r15.x, r8.w, r9.w
-    min r15.y, r14.y, l(0.998037)
+    min r15.y, r14.y, l(0.9980373)
     mul r15.zw, r14.xxxx, cb13[r8.z + 2367].yyyz
     movc r14.xyzw, r10.wwww, r12.xyzw, r15.xyzw
     max r13.xyzw, r14.xyzw, r13.xyzw
@@ -826,7 +826,7 @@ loop
     lt r17.w, l(0.000000), r16.x
     if_nz r17.w
       mad r15.xw, r15.xxxw, r16.xxxx, r17.yyyz
-      mul r18.xy, r15.xwxx, l(0.000977, 0.000977, 0.000000, 0.000000)
+      mul r18.xy, r15.xwxx, l(0.0009765625, 0.0009765625, 0.000000, 0.000000)
       sample_l_indexable(texture2darray)(float,float,float,float) r15.x, r18.xyzx, t9.xyzw, s10, l(0.000000)
       mad r15.x, -r15.y, l(0.990000), r15.x
       mul r15.x, r15.x, l(144.269501)
@@ -928,11 +928,11 @@ mul r8.xyz, r1.yyyy, r8.xyzx
 dp3 r1.y, r7.xyzx, r8.xyzx
 add r1.z, -|r1.y|, l(1.000000)
 sqrt r1.z, r1.z
-mad r7.w, |r1.y|, l(-0.018729), l(0.074261)
-mad r7.w, r7.w, |r1.y|, l(-0.212114)
-mad r7.w, r7.w, |r1.y|, l(1.570729)
+mad r7.w, |r1.y|, l(-0.0187293), l(0.074261)
+mad r7.w, r7.w, |r1.y|, l(-0.2121144)
+mad r7.w, r7.w, |r1.y|, l(1.5707288)
 mul r8.x, r1.z, r7.w
-mad r8.x, r8.x, l(-2.000000), l(3.141593)
+mad r8.x, r8.x, l(-2.000000), l(3.1415927)
 lt r1.y, r1.y, -r1.y
 and r1.y, r1.y, r8.x
 mad r1.y, r7.w, r1.z, r1.y
@@ -946,11 +946,11 @@ mul r8.xyz, r0.wwww, r8.xyzx
 dp3 r0.w, r7.xyzx, r8.xyzx
 add r1.z, -|r0.w|, l(1.000000)
 sqrt r1.z, r1.z
-mad r7.x, |r0.w|, l(-0.018729), l(0.074261)
-mad r7.x, r7.x, |r0.w|, l(-0.212114)
-mad r7.x, r7.x, |r0.w|, l(1.570729)
+mad r7.x, |r0.w|, l(-0.0187293), l(0.074261)
+mad r7.x, r7.x, |r0.w|, l(-0.2121144)
+mad r7.x, r7.x, |r0.w|, l(1.5707288)
 mul r7.y, r1.z, r7.x
-mad r7.y, r7.y, l(-2.000000), l(3.141593)
+mad r7.y, r7.y, l(-2.000000), l(3.1415927)
 lt r0.w, r0.w, -r0.w
 and r0.w, r0.w, r7.y
 mad r0.w, r7.x, r1.z, r0.w
@@ -971,11 +971,11 @@ max r1.w, r1.w, l(0.001000)
 div r7.zw, r7.zzzw, r1.wwww
 add r7.xyzw, r7.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
 movc r1.yw, r1.yyyy, r7.xxxy, r7.zzzw
-mad r1.yw, r1.yyyw, l(0.000000, 0.666667, 0.000000, 0.666667), l(0.000000, 0.166667, 0.000000, 0.166667)
+mad r1.yw, r1.yyyw, l(0.000000, 0.6666666, 0.000000, 0.6666666), l(0.000000, 0.16666667, 0.000000, 0.16666667)
 itof r7.x, r1.z
 mov r7.y, l(0)
 add r1.yz, r1.yywy, r7.xxyx
-mul r7.xy, r1.yzyy, l(0.500000, 0.142857, 0.000000, 0.000000)
+mul r7.xy, r1.yzyy, l(0.500000, 0.14285715, 0.0000000, 0.000000)
 mul r1.yzw, r0.yyyy, cb12[114].xxyz
 mad r1.yzw, cb12[113].xxyz, r0.xxxx, r1.yyzw
 mad r1.yzw, cb12[115].xxyz, r0.zzzz, r1.yyzw
@@ -1001,7 +1001,7 @@ if_nz r8.y
   mad r1.y, r2.y, r1.y, l(0.000010)
   mul r1.z, r1.z, cb12[117].x
   itof r1.w, cb12[122].x
-  mad r7.z, r1.w, l(0.142857), r7.y
+  mad r7.z, r1.w, l(0.14285715), r7.y
   sample_l_indexable(texture2d)(float,float,float,float) r8.yzw, r7.xzxx, t22.wxyz, s11, l(0.000000)
   mul r8.yzw, r1.zzzz, r8.yyzw
   mul r9.xzw, r3.yyyy, cb12[119].xxyz
@@ -1034,13 +1034,13 @@ if_nz r8.y
   div r12.xy, r12.zwzz, r1.wwww
   add r12.xy, r12.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
   movc r9.xz, r2.yyyy, r9.xxzx, r12.xxyx
-  mad r9.xz, r9.xxzx, l(0.666667, 0.000000, 0.666667, 0.000000), l(0.166667, 0.000000, 0.166667, 0.000000)
+  mad r9.xz, r9.xxzx, l(0.6666666, 0.000000, 0.6666666, 0.000000), l(0.16666667, 0.000000, 0.16666667, 0.000000)
   itof r12.y, cb12[122].x
   itof r12.z, r7.z
   mov r12.xw, l(0,0,0,0)
   add r9.xz, r9.xxzx, r12.zzwz
   add r9.xz, r9.xxzx, r12.xxyx
-  mul r9.xz, r9.xxzx, l(0.500000, 0.000000, 0.142857, 0.000000)
+  mul r9.xz, r9.xxzx, l(0.500000, 0.000000, 0.14285715, 0.000000)
   sample_l_indexable(texture2d)(float,float,float,float) r9.xzw, r9.xzxx, t23.xwyz, s11, r0.w
   mul r9.xzw, r1.zzzz, r9.xxzw
 else 
@@ -1075,7 +1075,7 @@ if_nz r1.z
     mad r1.y, r1.w, r2.y, r1.y
     mul r1.w, r7.z, cb12[129].x
     itof r2.y, cb12[134].x
-    mad r7.w, r2.y, l(0.142857), r7.y
+    mad r7.w, r2.y, l(0.14285715), r7.y
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r7.xwxx, t22.xyzw, s11, l(0.000000)
     mad r8.yzw, r1.wwww, r12.xxyz, r8.yyzw
     mul r12.xyz, r3.yyyy, cb12[131].xyzx
@@ -1107,13 +1107,13 @@ if_nz r1.z
     div r12.zw, r14.zzzw, r2.yyyy
     add r12.xyzw, r12.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
     movc r12.xy, r7.zzzz, r12.xyxx, r12.zwzz
-    mad r12.xy, r12.xyxx, l(0.666667, 0.666667, 0.000000, 0.000000), l(0.166667, 0.166667, 0.000000, 0.000000)
+    mad r12.xy, r12.xyxx, l(0.6666666, 0.6666666, 0.000000, 0.000000), l(0.16666667, 0.16666667, 0.000000, 0.000000)
     itof r14.y, cb12[134].x
     itof r14.z, r7.w
     mov r14.xw, l(0,0,0,0)
     add r7.zw, r12.xxxy, r14.zzzw
     add r7.zw, r7.zzzw, r14.xxxy
-    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r7.zwzz, t23.xyzw, s11, r0.w
     mad r9.xzw, r1.wwww, r12.xxyz, r9.xxzw
   endif 
@@ -1146,7 +1146,7 @@ if_nz r1.z
     mad r1.y, r1.w, r2.y, r1.y
     mul r1.w, r7.z, cb12[141].x
     itof r2.y, cb12[146].x
-    mad r12.y, r2.y, l(0.142857), r7.y
+    mad r12.y, r2.y, l(0.14285715), r7.y
     mov r12.x, r7.x
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r12.xyxx, t22.xyzw, s11, l(0.000000)
     mad r8.yzw, r1.wwww, r12.xxyz, r8.yyzw
@@ -1179,13 +1179,13 @@ if_nz r1.z
     div r12.zw, r14.zzzw, r2.yyyy
     add r12.xyzw, r12.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
     movc r12.xy, r7.zzzz, r12.xyxx, r12.zwzz
-    mad r12.xy, r12.xyxx, l(0.666667, 0.666667, 0.000000, 0.000000), l(0.166667, 0.166667, 0.000000, 0.000000)
+    mad r12.xy, r12.xyxx, l(0.6666666, 0.6666666, 0.000000, 0.000000), l(0.16666667, 0.16666667, 0.000000, 0.000000)
     itof r14.y, cb12[146].x
     itof r14.z, r7.w
     mov r14.xw, l(0,0,0,0)
     add r7.zw, r12.xxxy, r14.zzzw
     add r7.zw, r7.zzzw, r14.xxxy
-    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r7.zwzz, t23.xyzw, s11, r0.w
     mad r9.xzw, r1.wwww, r12.xxyz, r9.xxzw
   endif 
@@ -1218,7 +1218,7 @@ if_nz r1.z
     mad r1.y, r1.w, r2.y, r1.y
     mul r1.w, r7.z, cb12[153].x
     itof r2.y, cb12[158].x
-    mad r12.y, r2.y, l(0.142857), r7.y
+    mad r12.y, r2.y, l(0.14285715), r7.y
     mov r12.x, r7.x
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r12.xyxx, t22.xyzw, s11, l(0.000000)
     mad r8.yzw, r1.wwww, r12.xxyz, r8.yyzw
@@ -1251,13 +1251,13 @@ if_nz r1.z
     div r12.zw, r14.zzzw, r2.yyyy
     add r12.xyzw, r12.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
     movc r12.xy, r7.zzzz, r12.xyxx, r12.zwzz
-    mad r12.xy, r12.xyxx, l(0.666667, 0.666667, 0.000000, 0.000000), l(0.166667, 0.166667, 0.000000, 0.000000)
+    mad r12.xy, r12.xyxx, l(0.6666666, 0.6666666, 0.000000, 0.000000), l(0.16666667, 0.16666667, 0.000000, 0.000000)
     itof r14.y, cb12[158].x
     itof r14.z, r7.w
     mov r14.xw, l(0,0,0,0)
     add r7.zw, r12.xxxy, r14.zzzw
     add r7.zw, r7.zzzw, r14.xxxy
-    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r7.zwzz, t23.xyzw, s11, r0.w
     mad r9.xzw, r1.wwww, r12.xxyz, r9.xxzw
   endif 
@@ -1290,7 +1290,7 @@ if_nz r1.z
     mad r1.y, r1.w, r2.y, r1.y
     mul r1.w, r7.z, cb12[165].x
     itof r2.y, cb12[170].x
-    mad r12.y, r2.y, l(0.142857), r7.y
+    mad r12.y, r2.y, l(0.14285715), r7.y
     mov r12.x, r7.x
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r12.xyxx, t22.xyzw, s11, l(0.000000)
     mad r8.yzw, r1.wwww, r12.xxyz, r8.yyzw
@@ -1323,13 +1323,13 @@ if_nz r1.z
     div r12.zw, r14.zzzw, r2.yyyy
     add r12.xyzw, r12.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
     movc r12.xy, r7.zzzz, r12.xyxx, r12.zwzz
-    mad r12.xy, r12.xyxx, l(0.666667, 0.666667, 0.000000, 0.000000), l(0.166667, 0.166667, 0.000000, 0.000000)
+    mad r12.xy, r12.xyxx, l(0.6666666, 0.6666666, 0.000000, 0.000000), l(0.16666667, 0.16666667, 0.000000, 0.000000)
     itof r14.y, cb12[170].x
     itof r14.z, r7.w
     mov r14.xw, l(0,0,0,0)
     add r7.zw, r12.xxxy, r14.zzzw
     add r7.zw, r7.zzzw, r14.xxxy
-    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+    mul r7.zw, r7.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r7.zwzz, t23.xyzw, s11, r0.w
     mad r9.xzw, r1.wwww, r12.xxyz, r9.xxzw
   endif 
@@ -1362,7 +1362,7 @@ if_nz r1.z
     mad r1.y, r1.z, r1.w, r1.y
     mul r1.z, r2.y, cb12[177].x
     itof r1.w, cb12[182].x
-    mad r12.y, r1.w, l(0.142857), r7.y
+    mad r12.y, r1.w, l(0.14285715), r7.y
     mov r12.x, r7.x
     sample_l_indexable(texture2d)(float,float,float,float) r12.xyz, r12.xyxx, t22.xyzw, s11, l(0.000000)
     mad r8.yzw, r1.zzzz, r12.xxyz, r8.yyzw
@@ -1396,13 +1396,13 @@ if_nz r1.z
     div r12.xy, r12.zwzz, r0.zzzz
     add r12.xy, r12.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
     movc r0.xz, r0.xxxx, r7.zzwz, r12.xxyx
-    mad r0.xz, r0.xxzx, l(0.666667, 0.000000, 0.666667, 0.000000), l(0.166667, 0.000000, 0.166667, 0.000000)
+    mad r0.xz, r0.xxzx, l(0.6666666, 0.000000, 0.6666666, 0.000000), l(0.16666667, 0.000000, 0.16666667, 0.000000)
     itof r12.y, cb12[182].x
     itof r12.z, r0.y
     mov r12.xw, l(0,0,0,0)
     add r0.xy, r0.xzxx, r12.zwzz
     add r0.xy, r0.xyxx, r12.xyxx
-    mul r0.xy, r0.xyxx, l(0.500000, 0.142857, 0.000000, 0.000000)
+    mul r0.xy, r0.xyxx, l(0.500000, 0.14285715, 0.000000, 0.000000)
     sample_l_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t23.xyzw, s11, r0.w
     mad r9.xzw, r1.zzzz, r0.xxyz, r9.xxzw
   endif 
@@ -1414,7 +1414,7 @@ if_nz r0.x
   mad r1.y, r0.x, cb12[99].x, r1.y
   mul r0.x, r0.y, cb12[105].x
   itof r0.y, cb12[110].x
-  mad r7.y, r0.y, l(0.142857), r7.y
+  mad r7.y, r0.y, l(0.14285715), r7.y
   sample_l_indexable(texture2d)(float,float,float,float) r7.xyz, r7.xyxx, t22.xyzw, s11, l(0.000000)
   mad r8.yzw, r0.xxxx, r7.xxyz, r8.yyzw
   lt r0.y, r3.z, l(0.000000)
@@ -1429,13 +1429,13 @@ if_nz r0.x
   div r3.xy, r7.zwzz, r2.yyyy
   add r3.xy, r3.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
   movc r1.zw, r0.yyyy, r1.zzzw, r3.xxxy
-  mad r1.zw, r1.zzzw, l(0.000000, 0.000000, 0.666667, 0.666667), l(0.000000, 0.000000, 0.166667, 0.166667)
+  mad r1.zw, r1.zzzw, l(0.000000, 0.000000, 0.6666666, 0.6666666), l(0.000000, 0.000000, 0.16666667, 0.16666667)
   itof r7.y, cb12[110].x
   itof r7.z, r0.z
   mov r7.xw, l(0,0,0,0)
   add r0.yz, r1.zzwz, r7.zzwz
   add r0.yz, r0.yyzy, r7.xxyx
-  mul r0.yz, r0.yyzy, l(0.000000, 0.500000, 0.142857, 0.000000)
+  mul r0.yz, r0.yyzy, l(0.000000, 0.500000, 0.14285715, 0.000000)
   sample_l_indexable(texture2d)(float,float,float,float) r0.yzw, r0.yzyy, t23.wxyz, s11, r0.w
   mad r9.xzw, r0.xxxx, r0.yyzw, r9.xxzw
 endif 
@@ -1595,7 +1595,7 @@ mad r0.xyz, r0.wwww, r1.xyzx, r0.xyzx
 add r1.xyz, -r0.xyzx, r4.xyzx
 mad r0.xyz, r4.wwww, r1.xyzx, r0.xyzx
 max o0.xyz, r0.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
-add r0.x, l(0.000000), cb10[39].w
+add r0.x, l(0.00000001), cb10[39].w
 div_sat r0.x, r9.y, r0.x
 add r0.y, l(1.000000), -cb10[29].z
 mul o0.w, r0.y, r0.x
