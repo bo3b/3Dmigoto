@@ -1,3 +1,5 @@
+// Decals - dirt path
+
 Texture2D<float4> t7 : register(t7);
 
 Texture2D<float4> t4 : register(t4);
@@ -47,14 +49,97 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+float4 stereo = StereoParams.Load(0);
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 d1, d2, d3, d4;
+float det;
+// float det;
+//...Original Matrix
+a1.xyzw = cb12[210].xyzw;
+a2.xyzw = cb12[211].xyzw;
+a3.xyzw = cb12[212].xyzw;
+a4.xyzw = cb12[213].xyzw;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+d1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+d1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+d1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+d1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+d2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+d2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+d2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+d2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+d3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+d3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+d3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+d3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+d4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+d4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+d4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+d4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+d1.xyzw /= det;
+d2.xyzw /= det;
+d3.xyzw /= det;
+d4.xyzw /= det;
+//End Inverse
+
   r0.xy = (uint2)v0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
   r0.z = t7.Load(r0.xyz).x;
   r0.xy = r0.xy;
+
+float4 r20, r21;
+
+//...Transform to World
+r2.xyzw = cb12[211].xyzw * r0.yyyy;
+r2.xyzw = cb12[210].xyzw * r0.xxxx + r2.xyzw;
+r2.xyzw = cb12[212].xyzw * r0.zzzz + r2.xyzw;
+r2.xyzw = cb12[213].xyzw + r2.xyzw;
+r2.xyz = r2.xyz / r2.www;
+
+
+//...forward project to Screen
+r20.xyz = r2.xyz;
+r20.w = 1.0;
+
+r21.xyzw = cb12[2].xyzw * r20.yyyy;
+r21.xyzw = cb12[1].xyzw * r20.xxxx + r21.xyzw;
+r21.xyzw = cb12[3].xyzw * r20.zzzz + r21.xyzw;
+r21.xyzw = cb12[4].xyzw + r21.xyzw;
+
+r21.xyzw /= r21.wwww;
+
+//...Stereo correct
+r21.x -= stereo.x*(r21.z - stereo.y)/cb12[13].x;
+
+
+//...back project to World from screen
+r20.xyzw = cb12[10].xyzw * r21.yyyy;
+r20.xyzw = cb12[9].xyzw * r21.xxxx + r20.xyzw;
+r20.xyzw = cb12[11].xyzw * r21.zzzz + r20.xyzw;
+r20.xyzw = cb12[12].xyzw * r21.wwww + r20.xyzw;
+r20.xyz = r20.xyz / r20.www;
+
+//...Forward project back to where it came from...
+r0.xyzw = d2.xyzw * r20.yyyy;
+r0.xyzw = d1.xyzw * r20.xxxx + r0.xyzw;
+r0.xyzw = d3.xyzw * r20.zzzz + r0.xyzw;
+r0.xyzw = d4.xyzw + r0.xyzw;
+r0.xyz = r0.xyz / r0.www;
+
+
   r1.xyz = cb12[211].xyw * r0.yyy;
   r0.xyw = cb12[210].xyw * r0.xxx + r1.xyz;
   r0.xyz = cb12[212].xyw * r0.zzz + r0.xyw;
   r0.xyz = cb12[213].xyw + r0.xyz;
+
   r0.xy = r0.xy / r0.zz;
   r0.xy = -v5.xy + r0.xy;
   r0.x = dot(r0.xy, r0.xy);
