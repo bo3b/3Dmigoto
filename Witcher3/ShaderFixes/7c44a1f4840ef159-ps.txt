@@ -138,7 +138,7 @@ if_nz r3.z
     lt r6.y, l(0.000000), r6.w
     if_nz r6.y
       mad r6.yw, r7.xxxy, r6.wwww, r7.zzzw
-      mul r8.xy, r6.ywyy, l(0.000977, 0.000977, 0.000000, 0.000000)
+      mul r8.xy, r6.ywyy, l(0.0009765625, 0.0009765625, 0.000000, 0.000000)
       sample_l_indexable(texture2darray)(float,float,float,float) r6.y, r8.xyzx, t9.yxzw, s10, l(0.000000)
       mad r6.y, -r0.w, l(0.990000), r6.y
       mul r6.y, r6.y, l(144.269501)
@@ -212,7 +212,7 @@ if_nz r3.z
     add r0.xyz, r0.xyzx, r8.xyzx
     add r8.xyz, -r0.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
     mul r8.xyz, r6.zzzz, r8.xyzx
-    mul r8.xyz, r8.xyzx, l(0.318310, 0.318310, 0.318310, 0.000000)
+    mul r8.xyz, r8.xyzx, l(0.31830987, 0.31830987, 0.31830987, 0.000000)
     lt r2.w, l(0.000000), r4.w
     if_nz r2.w
       add r2.w, r0.w, l(1.000000)

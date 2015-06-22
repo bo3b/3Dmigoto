@@ -124,7 +124,7 @@ div r4.xyz, r22.xyz, r22.wwww
       add r11.xyz, r8.xyzx, r11.xyzx
       add r12.xyz, -r11.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
       mul r12.xyz, r9.zzzz, r12.xyzx
-      mul r12.xyz, r12.xyzx, l(0.318310, 0.318310, 0.318310, 0.000000)
+      mul r12.xyz, r12.xyzx, l(0.31830987, 0.31830987, 0.31830987, 0.000000)
       lt r1.x, l(0.000000), r1.y
       if_nz r1.x
         add r1.x, r1.w, l(1.000000)
@@ -230,11 +230,11 @@ div r4.xyz, r22.xyz, r22.wwww
   min r1.x, r1.w, r1.x
   add r1.w, -|r1.x|, l(1.000000)
   sqrt r1.w, r1.w
-  mad r2.y, |r1.x|, l(-0.018729), l(0.074261)
-  mad r2.y, r2.y, |r1.x|, l(-0.212114)
-  mad r2.y, r2.y, |r1.x|, l(1.570729)
+  mad r2.y, |r1.x|, l(-0.0187293), l(0.074261)
+  mad r2.y, r2.y, |r1.x|, l(-0.2121144)
+  mad r2.y, r2.y, |r1.x|, l(1.5707288)
   mul r3.w, r1.w, r2.y
-  mad r3.w, r3.w, l(-2.000000), l(3.141593)
+  mad r3.w, r3.w, l(-2.000000), l(3.1415927)
   lt r1.x, r1.x, -r1.x
   and r1.x, r1.x, r3.w
   mad r1.x, r2.y, r1.w, r1.x
@@ -257,11 +257,11 @@ div r4.xyz, r22.xyz, r22.wwww
   div r14.zw, r14.zzzw, r1.zzzz
   add r14.xyzw, r14.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
   movc r1.zw, r1.wwww, r14.xxxy, r14.zzzw
-  mad r1.zw, r1.zzzw, l(0.000000, 0.000000, 0.666667, 0.666667), l(0.000000, 0.000000, 0.166667, 0.166667)
+  mad r1.zw, r1.zzzw, l(0.000000, 0.000000, 0.6666666, 0.6666666), l(0.000000, 0.000000, 0.16666667, 0.16666667)
   itof r14.x, r2.y
   mov r14.y, l(0)
   add r1.zw, r1.zzzw, r14.xxxy
-  mul r14.xy, r1.zwzz, l(0.500000, 0.142857, 0.000000, 0.000000)
+  mul r14.xy, r1.zwzz, l(0.500000, 0.14285715, 0.000000, 0.000000)
   mul r15.xyz, r4.yyyy, cb12[114].xyzx
   mad r15.xyz, cb12[113].xyzx, r4.xxxx, r15.xyzx
   mad r15.xyz, cb12[115].xyzx, r4.zzzz, r15.xyzx
@@ -292,7 +292,7 @@ div r4.xyz, r22.xyz, r22.wwww
     mad r1.w, r1.w, r2.y, l(0.000010)
     mul r2.y, r2.z, cb12[117].x
     itof r2.z, cb12[122].x
-    mad r14.z, r2.z, l(0.142857), r14.y
+    mad r14.z, r2.z, l(0.14285715), r14.y
     sample_l_indexable(texture2d)(float,float,float,float) r15.xyz, r14.xzxx, t6.xyzw, s6, l(0.000000)
     mul r15.xyz, r2.yyyy, r15.xyzx
     mul r16.xyz, r13.yyyy, cb12[119].xyzx
@@ -324,13 +324,13 @@ div r4.xyz, r22.xyz, r22.wwww
     div r16.zw, r17.zzzw, r2.zzzz
     add r16.xyzw, r16.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
     movc r16.xy, r3.wwww, r16.xyxx, r16.zwzz
-    mad r16.xy, r16.xyxx, l(0.666667, 0.666667, 0.000000, 0.000000), l(0.166667, 0.166667, 0.000000, 0.000000)
+    mad r16.xy, r16.xyxx, l(0.6666666, 0.6666666, 0.000000, 0.000000), l(0.16666667, 0.16666667, 0.000000, 0.000000)
     itof r17.y, cb12[122].x
     itof r17.z, r4.w
     mov r17.xw, l(0,0,0,0)
     add r16.xy, r16.xyxx, r17.zwzz
     add r16.xy, r16.xyxx, r17.xyxx
-    mul r16.xy, r16.xyxx, l(0.500000, 0.142857, 0.000000, 0.000000)
+    mul r16.xy, r16.xyxx, l(0.500000, 0.14285715, 0.000000, 0.000000)
     sample_l_indexable(texture2d)(float,float,float,float) r16.xyz, r16.xyxx, t7.xyzw, s6, r1.x
     mul r16.xyz, r2.yyyy, r16.xyzx
   else 
@@ -370,7 +370,7 @@ div r4.xyz, r22.xyz, r22.wwww
       mad r1.w, r2.z, r3.w, r1.w
       mul r2.z, r4.w, cb12[129].x
       itof r3.w, cb12[134].x
-      mad r14.w, r3.w, l(0.142857), r14.y
+      mad r14.w, r3.w, l(0.14285715), r14.y
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r14.xwxx, t6.xyzw, s6, l(0.000000)
       mad r15.xyz, r2.zzzz, r17.xyzx, r15.xyzx
       mul r17.xyz, r13.yyyy, cb12[131].xyzx
@@ -403,13 +403,13 @@ div r4.xyz, r22.xyz, r22.wwww
       div r17.xy, r18.zwzz, r3.wwww
       add r17.xy, r17.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
       movc r14.zw, r4.wwww, r14.zzzw, r17.xxxy
-      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.666667, 0.666667), l(0.000000, 0.000000, 0.166667, 0.166667)
+      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.6666666, 0.6666666), l(0.000000, 0.000000, 0.16666667, 0.16666667)
       itof r17.y, cb12[134].x
       itof r17.z, r5.w
       mov r17.xw, l(0,0,0,0)
       add r14.zw, r14.zzzw, r17.zzzw
       add r14.zw, r14.zzzw, r17.xxxy
-      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r14.zwzz, t7.xyzw, s6, r1.x
       mad r16.xyz, r2.zzzz, r17.xyzx, r16.xyzx
     endif 
@@ -447,7 +447,7 @@ div r4.xyz, r22.xyz, r22.wwww
       mad r1.w, r2.z, r3.w, r1.w
       mul r2.z, r4.w, cb12[141].x
       itof r3.w, cb12[146].x
-      mad r17.y, r3.w, l(0.142857), r14.y
+      mad r17.y, r3.w, l(0.14285715), r14.y
       mov r17.x, r14.x
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r17.xyxx, t6.xyzw, s6, l(0.000000)
       mad r15.xyz, r2.zzzz, r17.xyzx, r15.xyzx
@@ -481,13 +481,13 @@ div r4.xyz, r22.xyz, r22.wwww
       div r17.xy, r18.zwzz, r3.wwww
       add r17.xy, r17.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
       movc r14.zw, r4.wwww, r14.zzzw, r17.xxxy
-      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.666667, 0.666667), l(0.000000, 0.000000, 0.166667, 0.166667)
+      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.6666666, 0.6666666), l(0.000000, 0.000000, 0.16666667, 0.16666667)
       itof r17.y, cb12[146].x
       itof r17.z, r5.w
       mov r17.xw, l(0,0,0,0)
       add r14.zw, r14.zzzw, r17.zzzw
       add r14.zw, r14.zzzw, r17.xxxy
-      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r14.zwzz, t7.xyzw, s6, r1.x
       mad r16.xyz, r2.zzzz, r17.xyzx, r16.xyzx
     endif 
@@ -525,7 +525,7 @@ div r4.xyz, r22.xyz, r22.wwww
       mad r1.w, r2.z, r3.w, r1.w
       mul r2.z, r4.w, cb12[153].x
       itof r3.w, cb12[158].x
-      mad r17.y, r3.w, l(0.142857), r14.y
+      mad r17.y, r3.w, l(0.14285715), r14.y
       mov r17.x, r14.x
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r17.xyxx, t6.xyzw, s6, l(0.000000)
       mad r15.xyz, r2.zzzz, r17.xyzx, r15.xyzx
@@ -559,13 +559,13 @@ div r4.xyz, r22.xyz, r22.wwww
       div r17.xy, r18.zwzz, r3.wwww
       add r17.xy, r17.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
       movc r14.zw, r4.wwww, r14.zzzw, r17.xxxy
-      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.666667, 0.666667), l(0.000000, 0.000000, 0.166667, 0.166667)
+      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.6666666, 0.6666666), l(0.000000, 0.000000, 0.16666667, 0.16666667)
       itof r17.y, cb12[158].x
       itof r17.z, r5.w
       mov r17.xw, l(0,0,0,0)
       add r14.zw, r14.zzzw, r17.zzzw
       add r14.zw, r14.zzzw, r17.xxxy
-      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r14.zwzz, t7.xyzw, s6, r1.x
       mad r16.xyz, r2.zzzz, r17.xyzx, r16.xyzx
     endif 
@@ -603,7 +603,7 @@ div r4.xyz, r22.xyz, r22.wwww
       mad r1.w, r2.z, r3.w, r1.w
       mul r2.z, r4.w, cb12[165].x
       itof r3.w, cb12[170].x
-      mad r17.y, r3.w, l(0.142857), r14.y
+      mad r17.y, r3.w, l(0.14285715), r14.y
       mov r17.x, r14.x
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r17.xyxx, t6.xyzw, s6, l(0.000000)
       mad r15.xyz, r2.zzzz, r17.xyzx, r15.xyzx
@@ -637,13 +637,13 @@ div r4.xyz, r22.xyz, r22.wwww
       div r17.xy, r18.zwzz, r3.wwww
       add r17.xy, r17.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
       movc r14.zw, r4.wwww, r14.zzzw, r17.xxxy
-      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.666667, 0.666667), l(0.000000, 0.000000, 0.166667, 0.166667)
+      mad r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.6666666, 0.6666666), l(0.000000, 0.000000, 0.16666667, 0.16666667)
       itof r17.y, cb12[170].x
       itof r17.z, r5.w
       mov r17.xw, l(0,0,0,0)
       add r14.zw, r14.zzzw, r17.zzzw
       add r14.zw, r14.zzzw, r17.xxxy
-      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.142857)
+      mul r14.zw, r14.zzzw, l(0.000000, 0.000000, 0.500000, 0.14285715)
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r14.zwzz, t7.xyzw, s6, r1.x
       mad r16.xyz, r2.zzzz, r17.xyzx, r16.xyzx
     endif 
@@ -681,7 +681,7 @@ div r4.xyz, r22.xyz, r22.wwww
       mad r1.w, r1.z, r2.y, r1.w
       mul r1.z, r2.z, cb12[177].x
       itof r2.y, cb12[182].x
-      mad r17.y, r2.y, l(0.142857), r14.y
+      mad r17.y, r2.y, l(0.14285715), r14.y
       mov r17.x, r14.x
       sample_l_indexable(texture2d)(float,float,float,float) r17.xyz, r17.xyxx, t6.xyzw, s6, l(0.000000)
       mad r15.xyz, r1.zzzz, r17.xyzx, r15.xyzx
@@ -714,13 +714,13 @@ div r4.xyz, r22.xyz, r22.wwww
       div r4.zw, r17.zzzw, r2.yyyy
       add r4.xyzw, r4.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
       movc r2.yz, r2.zzzz, r4.xxyx, r4.zzwz
-      mad r2.yz, r2.yyzy, l(0.000000, 0.666667, 0.666667, 0.000000), l(0.000000, 0.166667, 0.166667, 0.000000)
+      mad r2.yz, r2.yyzy, l(0.000000, 0.6666666, 0.6666666, 0.000000), l(0.000000, 0.16666667, 0.16666667, 0.000000)
       itof r4.y, cb12[182].x
       itof r4.z, r3.w
       mov r4.xw, l(0,0,0,0)
       add r2.yz, r2.yyzy, r4.zzwz
       add r2.yz, r2.yyzy, r4.xxyx
-      mul r2.yz, r2.yyzy, l(0.000000, 0.500000, 0.142857, 0.000000)
+      mul r2.yz, r2.yyzy, l(0.000000, 0.500000, 0.14285715, 0.000000)
       sample_l_indexable(texture2d)(float,float,float,float) r4.xyz, r2.yzyy, t7.xyzw, s6, r1.x
       mad r16.xyz, r1.zzzz, r4.xyzx, r16.xyzx
     endif 
@@ -732,7 +732,7 @@ div r4.xyz, r22.xyz, r22.wwww
     mad r1.w, r1.z, cb12[99].x, r1.w
     mul r1.z, r2.y, cb12[105].x
     itof r2.y, cb12[110].x
-    mad r14.y, r2.y, l(0.142857), r14.y
+    mad r14.y, r2.y, l(0.14285715), r14.y
     sample_l_indexable(texture2d)(float,float,float,float) r4.xyz, r14.xyxx, t6.xyzw, s6, l(0.000000)
     mad r15.xyz, r1.zzzz, r4.xyzx, r15.xyzx
     lt r2.y, r13.z, l(0.000000)
@@ -746,13 +746,13 @@ div r4.xyz, r22.xyz, r22.wwww
     div r4.zw, r4.zzzw, r3.wwww
     add r4.xyzw, r4.xyzw, l(0.500000, 0.500000, 0.500000, 0.500000)
     movc r4.xy, r2.yyyy, r4.xyxx, r4.zwzz
-    mad r4.xy, r4.xyxx, l(0.666667, 0.666667, 0.000000, 0.000000), l(0.166667, 0.166667, 0.000000, 0.000000)
+    mad r4.xy, r4.xyxx, l(0.6666666, 0.6666666, 0.000000, 0.000000), l(0.16666667, 0.16666667, 0.000000, 0.000000)
     itof r13.y, cb12[110].x
     itof r13.z, r2.z
     mov r13.xw, l(0,0,0,0)
     add r2.yz, r4.xxyx, r13.zzwz
     add r2.yz, r2.yyzy, r13.xxyx
-    mul r2.yz, r2.yyzy, l(0.000000, 0.500000, 0.142857, 0.000000)
+    mul r2.yz, r2.yyzy, l(0.000000, 0.500000, 0.14285715, 0.000000)
     sample_l_indexable(texture2d)(float,float,float,float) r4.xyz, r2.yzyy, t7.xyzw, s6, r1.x
     mad r16.xyz, r1.zzzz, r4.xyzx, r16.xyzx
   endif 
