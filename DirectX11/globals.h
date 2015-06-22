@@ -130,6 +130,7 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
 	bool fake_o0;
+	int depth_input;
 
 	ShaderOverride() :
 		separation(FLT_MAX),
@@ -138,7 +139,8 @@ struct ShaderOverride {
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
 		analyse_options(FrameAnalysisOptions::INVALID),
-		fake_o0(false)
+		fake_o0(false),
+		depth_input(0)
 	{}
 };
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;

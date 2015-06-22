@@ -311,7 +311,7 @@ void HackerContext::AssignDummyRenderTarget()
 
 	if (depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2D &&
 	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMS &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY &&
+	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DARRAY &&
 	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY) {
 		goto out;
 	}
@@ -337,6 +337,97 @@ void HackerContext::AssignDummyRenderTarget()
 
 	mOrigContext->OMSetRenderTargets(1, &resource_view, depth_view);
 
+
+	resource_view->Release();
+out2:
+	resource->Release();
+out1:
+	depth_resource->Release();
+out:
+	depth_view->Release();
+}
+
+// Copy a depth buffer into an input slot of the shader.
+// Currently just copies the active depth target - in the future we will
+// likely want to be able to copy the depth buffer from elsewhere (especially
+// as not all games will have the depth buffer set while drawing UI elements).
+// It might also be a good idea to find strategies to reduce the number of
+// copies, e.g. by limiting the copy to once per frame, or reusing a resource
+// that the game already copied the depth information to.
+void HackerContext::AssignDepthInput(int slot, bool isPixelShader)
+{
+	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
+	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
+	D3D11_TEXTURE2D_DESC desc;
+	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11Texture2D *depth_resource = NULL;
+	ID3D11Texture2D *resource = NULL;
+	HRESULT hr;
+
+	mOrigContext->OMGetRenderTargets(0, NULL, &depth_view);
+	if (!depth_view) {
+		LogInfo("AssignDepthInput: No depth view\n");
+		return;
+	}
+
+	depth_view->GetResource((ID3D11Resource**)&depth_resource);
+	if (!depth_resource) {
+		LogInfo("AssignDepthInput: Can't get depth resource\n");
+		goto out;
+	}
+
+	depth_view->GetDesc(&depth_view_desc);
+	depth_resource->GetDesc(&desc);
+
+	// Adjust desc to suit a shader resource:
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	resource_view_desc.Format = EnsureNotTypeless(desc.Format);
+	switch (depth_view_desc.ViewDimension) {
+		case D3D11_DSV_DIMENSION_TEXTURE2D:
+			resource_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			resource_view_desc.Texture2D.MostDetailedMip = 0;
+			resource_view_desc.Texture2D.MipLevels = desc.MipLevels;
+			break;
+		case D3D11_DSV_DIMENSION_TEXTURE2DMS:
+			resource_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+			break;
+		case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
+			resource_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+			resource_view_desc.Texture2DArray.MostDetailedMip = 0;
+			resource_view_desc.Texture2DArray.MipLevels = desc.MipLevels;
+			resource_view_desc.Texture2DArray.FirstArraySlice = 0;
+			resource_view_desc.Texture2DArray.ArraySize = desc.ArraySize;
+			break;
+		case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
+			resource_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY;
+			resource_view_desc.Texture2DMSArray.FirstArraySlice = 0;
+			resource_view_desc.Texture2DMSArray.ArraySize = desc.ArraySize;
+			break;
+		default:
+			LogInfo("AssignDepthInput: Depth view not a Texture2D\n");
+			goto out1;
+	}
+
+	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &resource);
+	if (FAILED(hr)) {
+		LogInfo("AssignDepthInput: Error creating texture: 0x%x\n", hr);
+		goto out1;
+	}
+
+	mOrigContext->CopyResource(resource, depth_resource);
+
+	hr = mOrigDevice->CreateShaderResourceView(resource, &resource_view_desc, &resource_view);
+	if (FAILED(hr)) {
+		LogInfo("AssignDepthInput: Error creating resource view: 0x%x\n", hr);
+		goto out2;
+	}
+
+	if (isPixelShader)
+		mOrigContext->PSSetShaderResources(slot, 1, &resource_view);
+	else
+		mOrigContext->VSSetShaderResources(slot, 1, &resource_view);
 
 	resource_view->Release();
 out2:
@@ -449,6 +540,9 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	} else {
 		if (shaderOverride->fake_o0)
 			AssignDummyRenderTarget();
+
+		if (shaderOverride->depth_input)
+			AssignDepthInput(shaderOverride->depth_input, isPixelShader);
 	}
 
 }
