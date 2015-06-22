@@ -7,6 +7,71 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
+// Depth buffer copied to this input with 3Dmigoto:
+Texture2D<float> DepthBuffer : register(t110);
+
+static const float near = 0.2; // Guess based on convergence, refined with trial & error
+static const float far = 1024; // Guess based on bringing mountains to screen depth with high convergence
+static const int steps = 255;
+
+float world_z_from_depth_buffer(float x, float y)
+{
+	uint width, height;
+	float z;
+
+	DepthBuffer.GetDimensions(width, height);
+
+	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
+	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
+	z = DepthBuffer.Load(int3(x, y, 0));
+	if (z == 1)
+		return 0;
+
+	// Derive world Z from depth buffer. This is a kluge since I don't know
+	// the correct scaling, and the Z buffer seems to be (1 - what I expected).
+	// Might be able to determine the correct way to scale it from other shaders.
+	return far*near/(((1-z)*near) + (far*z));
+}
+
+float adjust_from_depth_buffer(float x, float y)
+{
+	float4 stereo = StereoParams.Load(0);
+	float separation = stereo.x; float convergence = stereo.y;
+	float old_offset, offset, w, sampled_w, distance;
+	uint i;
+
+	// Based on my stereo crosshair code developed for Miasmata
+
+	// Stereo cursor: To improve the accuracy of the stereo cursor, we start at the
+	// near clipping plane and work our way towards center + separation (ideally
+	// we would loop one pixel at a time, but as the loop counts must be constant
+	// we can't do that here, so we just choose a granuality in i0 and c227.
+	// Alternatively we could loop one pixel at a time with a hardcoded maximum
+	// number of pixels)
+
+	offset = (near - convergence) * separation;	// Z = X offset from center
+	distance = separation - offset;			// Total distance to cover (separation - starting X offset)
+
+	old_offset = offset;
+	for (i = 0; i < 255; i++) {
+		offset += distance / 255.0;
+
+		// Calculate W for this adjustment amount:
+		w = (separation * convergence) / (separation - offset);
+
+		sampled_w = world_z_from_depth_buffer(x + offset, y);
+		if (sampled_w == 0)
+			return 0;
+
+		// If the sampled depth is closer than the calculated depth, exit the loop:
+		if (w > sampled_w)
+			break;
+
+		old_offset = offset;
+	}
+
+	return old_offset;
+}
 void main(
   float4 v0 : SV_Position0,
   out float4 o0 : SV_Position0)
@@ -17,7 +82,12 @@ void main(
  
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-o0.x -= stereo.x*(params.x);   
+if (params.z == 1)
+	o0.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
+else if (params.z == 2)
+	o0.x += adjust_from_depth_buffer(o0.x, o0.y);
+else
+	o0.x -= stereo.x*(params.x);  
   
   return;
 }
@@ -70,3 +140,4 @@ ret
 // Approximately 4 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
