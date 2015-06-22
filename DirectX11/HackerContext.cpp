@@ -354,7 +354,7 @@ out:
 // It might also be a good idea to find strategies to reduce the number of
 // copies, e.g. by limiting the copy to once per frame, or reusing a resource
 // that the game already copied the depth information to.
-void HackerContext::AssignDepthInput(int slot, bool isPixelShader)
+void HackerContext::AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader)
 {
 	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
 	D3D11_TEXTURE2D_DESC desc;
@@ -377,47 +377,72 @@ void HackerContext::AssignDepthInput(int slot, bool isPixelShader)
 	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DARRAY &&
 	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY) {
 		LogDebug("AssignDepthInput: Depth view not a Texture2D\n");
-		goto out;
+		goto err_depth_view;
 	}
 
 	depth_view->GetResource((ID3D11Resource**)&depth_resource);
 	if (!depth_resource) {
 		LogDebug("AssignDepthInput: Can't get depth resource\n");
-		goto out;
+		goto err_depth_view;
 	}
 
 	depth_resource->GetDesc(&desc);
 
-	// Adjust desc to suit a shader resource:
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.Format = EnsureNotTypeless(desc.Format);
+	if (desc.Width == shaderOverride->depth_width && desc.Height == shaderOverride->depth_height) {
+		mOrigContext->CopyResource(shaderOverride->depth_resource, depth_resource);
+	} else {
+		// Adjust desc to suit a shader resource:
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		desc.Format = EnsureNotTypeless(desc.Format);
 
-	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &resource);
-	if (FAILED(hr)) {
-		LogDebug("AssignDepthInput: Error creating texture: 0x%x\n", hr);
-		goto out1;
+		hr = mOrigDevice->CreateTexture2D(&desc, NULL, &resource);
+		if (FAILED(hr)) {
+			LogDebug("AssignDepthInput: Error creating texture: 0x%x\n", hr);
+			goto err_depth_resource;
+		}
+
+		mOrigContext->CopyResource(resource, depth_resource);
+
+		hr = mOrigDevice->CreateShaderResourceView(resource, NULL, &resource_view);
+		if (FAILED(hr)) {
+			LogDebug("AssignDepthInput: Error creating resource view: 0x%x\n", hr);
+			goto err_resource;
+		}
+
+		if (isPixelShader)
+			mOrigContext->PSSetShaderResources(shaderOverride->depth_input, 1, &resource_view);
+		else
+			mOrigContext->VSSetShaderResources(shaderOverride->depth_input, 1, &resource_view);
+
+		if (G->ENABLE_CRITICAL_SECTION)
+			EnterCriticalSection(&G->mCriticalSection);
+
+		if (shaderOverride->depth_resource) {
+			shaderOverride->depth_resource->Release();
+			shaderOverride->depth_view->Release();
+		}
+
+		shaderOverride->depth_resource = resource;
+		shaderOverride->depth_view = resource_view;
+		shaderOverride->depth_width = desc.Width;
+		shaderOverride->depth_height = desc.Height;
+
+		if (G->ENABLE_CRITICAL_SECTION)
+			LeaveCriticalSection(&G->mCriticalSection);
+
+		resource_view->Release();
 	}
 
-	mOrigContext->CopyResource(resource, depth_resource);
-
-	hr = mOrigDevice->CreateShaderResourceView(resource, NULL, &resource_view);
-	if (FAILED(hr)) {
-		LogDebug("AssignDepthInput: Error creating resource view: 0x%x\n", hr);
-		goto out2;
-	}
-
-	if (isPixelShader)
-		mOrigContext->PSSetShaderResources(slot, 1, &resource_view);
-	else
-		mOrigContext->VSSetShaderResources(slot, 1, &resource_view);
-
-	resource_view->Release();
-out2:
-	resource->Release();
-out1:
 	depth_resource->Release();
-out:
+	depth_view->Release();
+return;
+
+err_resource:
+	resource->Release();
+err_depth_resource:
+	depth_resource->Release();
+err_depth_view:
 	depth_view->Release();
 }
 
@@ -525,7 +550,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			AssignDummyRenderTarget();
 
 		if (shaderOverride->depth_input)
-			AssignDepthInput(shaderOverride->depth_input, isPixelShader);
+			AssignDepthInput(shaderOverride, isPixelShader);
 	}
 
 }

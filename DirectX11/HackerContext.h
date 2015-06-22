@@ -67,7 +67,7 @@ private:
 	void AfterDraw(DrawContext &data);
 	bool BeforeDispatch();
 	void AfterDispatch();
-	void AssignDepthInput(int slot, bool isPixelShader);
+	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
