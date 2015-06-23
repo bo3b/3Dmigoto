@@ -388,8 +388,15 @@ void HackerContext::AssignDepthInput(ShaderOverride *shaderOverride, bool isPixe
 
 	depth_resource->GetDesc(&desc);
 
+	// FIXME: Move cache to context, limit copy to once per frame
+
 	if (desc.Width == shaderOverride->depth_width && desc.Height == shaderOverride->depth_height) {
 		mOrigContext->CopyResource(shaderOverride->depth_resource, depth_resource);
+
+		if (isPixelShader)
+			mOrigContext->PSSetShaderResources(shaderOverride->depth_input, 1, &shaderOverride->depth_view);
+		else
+			mOrigContext->VSSetShaderResources(shaderOverride->depth_input, 1, &shaderOverride->depth_view);
 	} else {
 		// Adjust desc to suit a shader resource:
 		desc.Usage = D3D11_USAGE_DEFAULT;
@@ -430,8 +437,6 @@ void HackerContext::AssignDepthInput(ShaderOverride *shaderOverride, bool isPixe
 
 		if (G->ENABLE_CRITICAL_SECTION)
 			LeaveCriticalSection(&G->mCriticalSection);
-
-		resource_view->Release();
 	}
 
 	depth_resource->Release();
