@@ -1,3 +1,4 @@
+//Green Magic Lamp
 TextureCubeArray<float4> t10 : register(t10);
 
 Texture2DArray<float4> t9 : register(t9);
@@ -41,6 +42,9 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+float4 stereo = StereoParams.Load(0);
+float4 r20, r21, r22, r23;
+
   r0.xy = (int2)v0.xy;
   r0.zw = float2(0.000000e+000,0.000000e+000);
   r1.x = t0.Load(r0.xyw).x;
@@ -50,6 +54,26 @@ void main(
   r1.xyzw = cb12[212].xyzw * r1.xxxx + r2.xyzw;
   r1.xyzw = cb12[213].xyzw + r1.xyzw;
   r1.xyz = r1.xyz / r1.www;
+  
+r20.xyz = r1.xyz;
+r20.w = 1.0;
+
+r21.xyzw = cb12[2].xyzw * r20.yyyy;
+r21.xyzw = cb12[1].xyzw * r20.xxxx + r21.xyzw;
+r21.xyzw = cb12[3].xyzw * r20.zzzz + r21.xyzw;
+r21.xyzw = cb12[4].xyzw + r21.xyzw;
+
+r21.xyzw /= r21.wwww;
+r22.xyzw = r21.xyzw;
+
+r21.x -= stereo.x*(r21.z - stereo.y)/cb12[13].x; 
+
+r20.xyzw = cb12[10].xyzw * r21.yyyy;
+r20.xyzw = cb12[9].xyzw * r21.xxxx + r20.xyzw;
+r20.xyzw = cb12[11].xyzw * r21.zzzz + r20.xyzw;
+r20.xyzw = cb12[12].xyzw * r21.wwww + r20.xyzw;
+r1.xyz = r20.xyz / r20.www;   
+  
   r1.w = (int)cb3[0].x;
   r1.w = (int)r1.w * 9;
   r2.xyz = cb13[r1.w+58].xyz + -r1.xyz;
