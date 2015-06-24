@@ -103,7 +103,7 @@ r22.xyzw = r21.xyzw;
 
 
 //correct reflections
-r22.x -= 0.4*stereo.x*(r22.z - stereo.y)*cb12[13].x; //The 0.4 is a fudge parameter
+// r22.x -= 0.1*stereo.x*(r22.z - stereo.y)/cb12[13].x; //The 0.4 is a fudge parameter
 
 r20.xyzw = cb12[10].xyzw * r22.yyyy;
 r20.xyzw = cb12[9].xyzw * r22.xxxx + r20.xyzw;
