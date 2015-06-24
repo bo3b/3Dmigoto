@@ -59,7 +59,11 @@ if_nz r2.y
   mul r1.xy, r1.xyxx, cb3[8].zwzz
   ftou r3.xy, r1.xyxx
   mov r3.zw, l(0,0,0,0)
+
+// Affects reflection placement:
   ld_indexable(texture2d)(float,float,float,float) r1.x, r3.xyzw, t4.xyzw
+//mov r1.x, l(0.0)
+
   eq r1.y, cb12[22].y, l(1.000000)
   max r2.w, r0.z, r1.x
   min r0.z, r0.z, r1.x
@@ -333,9 +337,13 @@ mad r19.xyz, r19.xyzx, -r19.wwww, r20.xyzx
         mul r6.z, r5.w, r6.x
         mad r2.x, r5.w, r6.x, r2.x
         mul r5.w, r6.z, cb12[129].x
-        mul r12.xyz, r4.yyyy, cb12[131].xyzx
-        mad r12.xyz, cb12[130].xyzx, r4.xxxx, r12.xyzx
-        mad r12.xyz, cb12[132].xyzx, r4.zzzz, r12.xyzx
+
+// Use corrected coordinate around here for reflections in caves
+// FIXME: This should not be an infinite adjustment from r19!
+
+        mul r12.xyz, r19.yyyy, cb12[131].xyzx
+        mad r12.xyz, cb12[130].xyzx, r19.xxxx, r12.xyzx
+        mad r12.xyz, cb12[132].xyzx, r19.zzzz, r12.xyzx
         mul r13.xyz, r3.yyyy, cb12[131].xyzx
         mad r13.xyz, cb12[130].xyzx, r3.xxxx, r13.xyzx
         mad r13.xyz, cb12[132].xyzx, r3.zzzz, r13.xyzx
@@ -346,7 +354,9 @@ mad r19.xyz, r19.xyzx, -r19.wwww, r20.xyzx
         max r12.xyz, r12.xyzx, r14.xyzx
         min r6.x, r12.z, r12.y
         min r6.x, r6.x, r12.x
-        mad r12.xyz, r4.xyzx, r6.xxxx, r3.xyzx
+
+        mad r12.xyz, r19.xyzx, r6.xxxx, r3.xyzx
+
         add r12.xyz, r12.xyzx, -cb12[123].yzwy
         dp3 r6.x, r12.xyzx, r12.xyzx
         rsq r6.x, r6.x
@@ -394,9 +404,13 @@ mad r19.xyz, r19.xyzx, -r19.wwww, r20.xyzx
         mul r6.z, r5.w, r6.x
         mad r2.x, r5.w, r6.x, r2.x
         mul r5.w, r6.z, cb12[141].x
-        mul r12.xyz, r4.yyyy, cb12[143].xyzx
-        mad r12.xyz, cb12[142].xyzx, r4.xxxx, r12.xyzx
-        mad r12.xyz, cb12[144].xyzx, r4.zzzz, r12.xyzx
+
+// Use corrected coordinates around here for reflections of torches
+// FIXME: This should not be an infinite adjustment from r19!
+
+        mul r12.xyz, r19.yyyy, cb12[143].xyzx
+        mad r12.xyz, cb12[142].xyzx, r19.xxxx, r12.xyzx
+        mad r12.xyz, cb12[144].xyzx, r19.zzzz, r12.xyzx
         mul r13.xyz, r3.yyyy, cb12[143].xyzx
         mad r13.xyz, cb12[142].xyzx, r3.xxxx, r13.xyzx
         mad r13.xyz, cb12[144].xyzx, r3.zzzz, r13.xyzx
@@ -407,7 +421,9 @@ mad r19.xyz, r19.xyzx, -r19.wwww, r20.xyzx
         max r12.xyz, r12.xyzx, r14.xyzx
         min r6.x, r12.z, r12.y
         min r6.x, r6.x, r12.x
-        mad r12.xyz, r4.xyzx, r6.xxxx, r3.xyzx
+
+        mad r12.xyz, r19.xyzx, r6.xxxx, r3.xyzx
+
         add r12.xyz, r12.xyzx, -cb12[135].yzwy
         dp3 r6.x, r12.xyzx, r12.xyzx
         rsq r6.x, r6.x
