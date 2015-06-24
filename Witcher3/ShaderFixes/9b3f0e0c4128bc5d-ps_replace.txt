@@ -89,7 +89,7 @@ r21.xyzw /= r21.wwww;
 r22.xyzw = r21.xyzw;
 
 //Correct for yellow spot
-r22.x -= 1.8*stereo.x*(r22.z - stereo.y)/cb12[13].x; //Not sure why the "2" is necessary, but it is...
+r22.x -= 1.8*stereo.x*(r22.z - stereo.y)/cb12[13].x; //The "2" is a fudge paramter
 
 r20.xyzw = cb12[10].xyzw * r22.yyyy;
 r20.xyzw = cb12[9].xyzw * r22.xxxx + r20.xyzw;
@@ -102,8 +102,8 @@ r21.xyzw /= r21.wwww;
 r22.xyzw = r21.xyzw;
 
 
-//correctr relfections
-r22.x -= 0.5*stereo.x*(r22.z - stereo.y)/cb12[13].x; //Not sure why the "2" is necessary, but it is...
+//correct reflections
+r22.x -= 0.4*stereo.x*(r22.z - stereo.y)*cb12[13].x; //The 0.4 is a fudge parameter
 
 r20.xyzw = cb12[10].xyzw * r22.yyyy;
 r20.xyzw = cb12[9].xyzw * r22.xxxx + r20.xyzw;
@@ -128,6 +128,8 @@ r6.xyz = -cb12[0].xyz + r27.xyz;			//CORRECTED for yellow spot
     r0.z = dot(r6.zz, r4.zz);
     r24.xyz = r4.xyz * -r0.zzz + r6.xyz;	
 
+	r24.xyz = float3(0,0,0);
+	
 r6.xyz = -cb12[0].xyz + r26.xyz;			//CORRECTED for reflection
 
     r0.z = dot(r6.xyz, r6.xyz);
@@ -145,7 +147,7 @@ r6.xyz = -cb12[0].xyz + r3.xyz;			//UNCORRECTED
     r4.xyz = r4.xyz * -r0.zzz + r6.xyz;
 	
 	
-    r6.xyz = cb12[2].xyz * r25.yyy;				//CORRECTED
+    r6.xyz = cb12[2].xyz * r25.yyy;				//REFLECTION CORRECTED
     r6.xyz = cb12[1].xyz * r25.xxx + r6.xyz;
     r6.xyz = cb12[3].xyz * r25.zzz + r6.xyz;
     r6.xyw = r6.xyz * float3(1.000000e+002,1.000000e+002,1.000000e+002) + r5.xyz;
@@ -424,7 +426,7 @@ r6.xyz = -cb12[0].xyz + r3.xyz;			//UNCORRECTED
           r6.z = r6.x * r5.w;
           r2.x = r5.w * r6.x + r2.x;
           r5.w = cb12[141].x * r6.z;
-          r12.xyz = cb12[143].xyz * r24.yyy;			//CORRCETED
+          r12.xyz = cb12[143].xyz * r24.yyy;			//YELLOW SPOT Remove if r4->0
           r12.xyz = cb12[142].xyz * r24.xxx + r12.xyz;
           r12.xyz = cb12[144].xyz * r24.zzz + r12.xyz;
           r13.xyz = cb12[143].xyz * r3.yyy;
@@ -437,7 +439,7 @@ r6.xyz = -cb12[0].xyz + r3.xyz;			//UNCORRECTED
           r12.xyz = max(r14.xyz, r12.xyz);
           r6.x = min(r12.y, r12.z);
           r6.x = min(r12.x, r6.x);
-       r12.xyz = r24.xyz * r6.xxx + r3.xyz;						//MOVES THE BIG YELLOW LIGHT
+       r12.xyz = r4.xyz * r6.xxx + r3.xyz;						//MOVES THE BIG YELLOW LIGHT if r4->r24
           r12.xyz = -cb12[135].yzw + r12.xyz;
           r6.x = dot(r12.xyz, r12.xyz);
           r6.x = rsqrt(r6.x);
