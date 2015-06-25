@@ -214,16 +214,22 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	size_t rem;
 	HRESULT hr;
 
-	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\%06i", G->ANALYSIS_PATH, G->analyse_frame);
+	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
+
+	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG))
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
 
 	if (uav)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-u%i", idx);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"u%i", idx);
 	else if (depth)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-oD");
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"oD");
 	else if (shader_type)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-t%i", idx);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"t%i", idx);
 	else
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-o%i", idx);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"o%i", idx);
+
+	if (analyse_options & FrameAnalysisOptions::FILENAME_REG)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%06i", G->analyse_frame);
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%016I64x", hash);
 
