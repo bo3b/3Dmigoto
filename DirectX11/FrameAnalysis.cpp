@@ -17,8 +17,8 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_JPS) ||
-	    (analyse_options & FrameAnalysisOptions::DUMP_RT)) {
+	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
+	    (analyse_options & FrameAnalysisOptions::DUMP_XXX)) {
 		// save a JPS file. This will be missing extra channels (e.g.
 		// transparency, depth buffer, specular power, etc) or bit depth that
 		// can be found in the DDS file, but is generally easier to work with.
@@ -34,8 +34,8 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 	}
 
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_RT_DDS) ||
-	   ((analyse_options & FrameAnalysisOptions::DUMP_RT) && FAILED(hr))) {
+	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
+	   ((analyse_options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
 		DirectX::SaveDDSTextureToFile(mOrigContext, resource, filename);
 	}
@@ -207,8 +207,8 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 	}
 }
 
-HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size,
-		bool compute, bool uav, bool depth, int idx)
+HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
+		bool uav, bool depth, char shader_type, int idx, UINT64 hash)
 {
 	wchar_t *pos;
 	size_t rem;
@@ -220,22 +220,26 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size,
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-u%i", idx);
 	else if (depth)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-oD");
+	else if (shader_type)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-t%i", idx);
 	else
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-o%i", idx);
 
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%016I64x", hash);
+
 	if (compute) {
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs-%016I64x", mCurrentComputeShader);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs=%016I64x", mCurrentComputeShader);
 	} else {
-		if (mCurrentVertexShader)
-			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs-%016I64x", mCurrentVertexShader);
-		if (mCurrentHullShader)
-			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-hs-%016I64x", mCurrentHullShader);
-		if (mCurrentDomainShader)
-			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ds-%016I64x", mCurrentDomainShader);
-		if (mCurrentGeometryShader)
-			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-gs-%016I64x", mCurrentGeometryShader);
-		if (mCurrentPixelShader)
-			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps-%016I64x", mCurrentPixelShader);
+		if (mCurrentVertexShader && (!shader_type || shader_type == 'v'))
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs=%016I64x", mCurrentVertexShader);
+		if (mCurrentHullShader && (!shader_type || shader_type == 'h'))
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-hs=%016I64x", mCurrentHullShader);
+		if (mCurrentDomainShader && (!shader_type || shader_type == 'd'))
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ds=%016I64x", mCurrentDomainShader);
+		if (mCurrentGeometryShader && (!shader_type || shader_type == 'g'))
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-gs=%016I64x", mCurrentGeometryShader);
+		if (mCurrentPixelShader && (!shader_type || shader_type == 'p'))
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps=%016I64x", mCurrentPixelShader);
 	}
 
 	hr = StringCchPrintfW(pos, rem, L".XXX");
@@ -248,57 +252,123 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size,
 	return hr;
 }
 
+void HackerContext::_DumpTextures(char shader_type,
+	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
+{
+	ID3D11Resource *resource;
+	D3D11_RESOURCE_DIMENSION dim;
+	wchar_t filename[MAX_PATH];
+	UINT64 hash;
+	HRESULT hr;
+	UINT i;
+
+	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+		if (!views[i])
+			continue;
+
+		views[i]->GetResource(&resource);
+		if (!resource) {
+			views[i]->Release();
+			continue;
+		}
+
+		resource->GetType(&dim);
+
+		try {
+			switch (dim) {
+				case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+					hash = G->mTexture2D_ID.at((ID3D11Texture2D *)resource);
+					break;
+				default:
+					hash = 0;
+			}
+		} catch (std::out_of_range) {
+			hash = 0;
+		}
+
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, false, shader_type, i, hash);
+		if (SUCCEEDED(hr))
+			DumpResource(resource, filename);
+
+		resource->Release();
+		views[i]->Release();
+	}
+}
+
+void HackerContext::DumpTextures(bool compute)
+{
+	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+
+	if (compute) {
+		if (mCurrentComputeShader) {
+			CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			_DumpTextures('c', views);
+		}
+	} else {
+		if (mCurrentVertexShader) {
+			VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			_DumpTextures('v', views);
+		}
+		if (mCurrentHullShader) {
+			HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			_DumpTextures('h', views);
+		}
+		if (mCurrentDomainShader) {
+			DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			_DumpTextures('d', views);
+		}
+		if (mCurrentGeometryShader) {
+			GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			_DumpTextures('g', views);
+		}
+		if (mCurrentPixelShader) {
+			PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			_DumpTextures('p', views);
+		}
+	}
+}
+
 void HackerContext::DumpRenderTargets()
 {
 	UINT i;
-	NvAPI_Status nvret;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-
-	if (analyse_options & FrameAnalysisOptions::STEREO) {
-		// Enable reverse stereo blit for all resources we are about to dump:
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
-		if (nvret != NVAPI_OK) {
-			LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
-			// Continue anyway, we should still be able to dump in 2D...
-		}
-	}
+	UINT64 hash;
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, false, i);
+		try {
+			hash = G->mRenderTargets.at(mCurrentRenderTargets[i]);
+		} catch (std::out_of_range) {
+			hash = 0;
+		}
+
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, false, NULL, i, hash);
 		if (FAILED(hr))
-			goto out;
+			return;
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
 	}
 	if (mCurrentDepthTarget) {
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, true, 0);
+		try {
+			hash = G->mRenderTargets.at(mCurrentDepthTarget);
+		} catch (std::out_of_range) {
+			hash = 0;
+		}
+
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, true, NULL, 0, hash);
 		if (FAILED(hr))
-			goto out;
+			return;
 		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename);
 	}
-
-out:
-	if (analyse_options & FrameAnalysisOptions::STEREO)
-		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 }
 
 void HackerContext::DumpUAVs(bool compute)
 {
 	UINT i;
-	NvAPI_Status nvret;
 	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
 	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-
-	if (analyse_options & FrameAnalysisOptions::STEREO) {
-		// Enable reverse stereo blit for all resources we are about to dump:
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
-		if (nvret != NVAPI_OK) {
-			LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
-			// Continue anyway, we should still be able to dump in 2D...
-		}
-	}
+	UINT64 hash;
 
 	mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 
@@ -312,16 +382,19 @@ void HackerContext::DumpUAVs(bool compute)
 			continue;
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, true, false, i);
+		try {
+			hash = G->mRenderTargets.at(resource);
+		} catch (std::out_of_range) {
+			hash = 0;
+		}
+
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, true, false, NULL, i, hash);
 		if (SUCCEEDED(hr))
 			DumpResource(resource, filename);
 
 		resource->Release();
 		uavs[i]->Release();
 	}
-
-	if (analyse_options & FrameAnalysisOptions::STEREO)
-		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 }
 
 void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
@@ -429,6 +502,8 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 
 void HackerContext::FrameAnalysisAfterDraw(bool compute)
 {
+	NvAPI_Status nvret;
+
 	// Bail if we are a deferred context, as there will not be anything to
 	// dump out yet and we don't want to alter the global draw count. Later
 	// we might want to think about ways we could analyse deferred contexts
@@ -456,12 +531,31 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
 		analyse_options |= FrameAnalysisOptions::STEREO;
 
+	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
+	    (analyse_options & FrameAnalysisOptions::STEREO)) {
+		// Enable reverse stereo blit for all resources we are about to dump:
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
+	}
+
+
+	if (analyse_options & FrameAnalysisOptions::DUMP_TEX_MASK)
+		DumpTextures(compute);
+
 	if (analyse_options & FrameAnalysisOptions::DUMP_RT_MASK) {
 		if (!compute)
 			DumpRenderTargets();
 
 		// UAVs can be used by both pixel shaders and compute shaders:
 		DumpUAVs(compute);
+	}
+
+	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
+	    (analyse_options & FrameAnalysisOptions::STEREO)) {
+		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 	}
 
 	G->analyse_frame++;

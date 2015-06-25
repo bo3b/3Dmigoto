@@ -89,10 +89,13 @@ private:
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
+	void _DumpTextures(char shader_type,
+		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
+	void DumpTextures(bool compute);
 	void DumpRenderTargets();
 	void DumpUAVs(bool compute);
-	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size,
-		bool compute, bool uav, bool depth, int idx);
+	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
+			bool uav, bool depth, char shader_type, int idx, UINT64 hash);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
