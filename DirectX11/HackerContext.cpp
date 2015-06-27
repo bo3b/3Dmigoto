@@ -985,6 +985,9 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 		 G->mSelectedGeometryShader,
 		 &mCurrentGeometryShader,
 		 &mCurrentGeometryShaderHandle);
+
+	if (pShader)
+		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::IASetPrimitiveTopology(THIS_
@@ -1341,6 +1344,9 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 		 G->mSelectedHullShader,
 		 &mCurrentHullShader,
 		 &mCurrentHullShaderHandle);
+
+	if (pHullShader)
+		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetSamplers(THIS_
@@ -1394,6 +1400,9 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 		 G->mSelectedDomainShader,
 		 &mCurrentDomainShader,
 		 &mCurrentDomainShaderHandle);
+
+	if (pDomainShader)
+		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::DSSetSamplers(THIS_
@@ -1559,7 +1568,8 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 		 &mCurrentComputeShader,
 		 &mCurrentComputeShaderHandle);
 
-	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
+	if (pComputeShader)
+		BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
