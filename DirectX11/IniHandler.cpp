@@ -1,6 +1,7 @@
 #include "IniHandler.h"
 
 #include <string>
+#include <strsafe.h>
 
 #include "log.h"
 #include "Globals.h"
@@ -377,7 +378,7 @@ void LoadConfigFile()
 	wchar_t iniFile[MAX_PATH];
 	wchar_t setting[MAX_PATH];
 	IniSections sections;
-	IniSections::iterator lower, upper, i;
+	int i;
 
 	G->gInitialized = true;
 
@@ -695,39 +696,46 @@ void LoadConfigFile()
 	// stof will crash if passed FLT_MAX, hence the extra check.
 	// We use FLT_MAX instead of the more logical INFINITY, because Microsoft *always* generates 
 	// warnings, even for simple comparisons. And NaN comparisons are similarly broken.
-	G->iniParams.x = 0;
-	G->iniParams.y = 0;
-	G->iniParams.z = 0;
-	G->iniParams.w = 0;
-	if (GetPrivateProfileString(L"Constants", L"x", L"FLT_MAX", setting, MAX_PATH, iniFile))
-	{
-		if (wcscmp(setting, L"FLT_MAX") != 0)
-			G->iniParams.x = stof(setting);
-	}
-	if (GetPrivateProfileString(L"Constants", L"y", L"FLT_MAX", setting, MAX_PATH, iniFile))
-	{
-		if (wcscmp(setting, L"FLT_MAX") != 0)
-			G->iniParams.y = stof(setting);
-	}
-	if (GetPrivateProfileString(L"Constants", L"z", L"FLT_MAX", setting, MAX_PATH, iniFile))
-	{
-		if (wcscmp(setting, L"FLT_MAX") != 0)
-			G->iniParams.z = stof(setting);
-	}
-	if (GetPrivateProfileString(L"Constants", L"w", L"FLT_MAX", setting, MAX_PATH, iniFile))
-	{
-		if (wcscmp(setting, L"FLT_MAX") != 0)
-			G->iniParams.w = stof(setting);
-	}
+	LogInfo("[Constants]\n");
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		wchar_t buf[8];
 
-	if (LogFile &&
-		(G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
-	{
-		LogInfo("[Constants]\n");
-		LogInfo("  x=%#.2g\n", G->iniParams.x);
-		LogInfo("  y=%#.2g\n", G->iniParams.y);
-		LogInfo("  z=%#.2g\n", G->iniParams.z);
-		LogInfo("  w=%#.2g\n", G->iniParams.w);
+		G->iniParams[i].x = 0;
+		G->iniParams[i].y = 0;
+		G->iniParams[i].z = 0;
+		G->iniParams[i].w = 0;
+		StringCchPrintf(buf, 8, L"x%.0i", i);
+		if (GetPrivateProfileString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0) {
+				G->iniParams[i].x = stof(setting);
+				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].x);
+			}
+		}
+		StringCchPrintf(buf, 8, L"y%.0i", i);
+		if (GetPrivateProfileString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0) {
+				G->iniParams[i].y = stof(setting);
+				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].y);
+			}
+		}
+		StringCchPrintf(buf, 8, L"z%.0i", i);
+		if (GetPrivateProfileString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0) {
+				G->iniParams[i].z = stof(setting);
+				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].z);
+			}
+		}
+		StringCchPrintf(buf, 8, L"w%.0i", i);
+		if (GetPrivateProfileString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH, iniFile))
+		{
+			if (wcscmp(setting, L"FLT_MAX") != 0) {
+				G->iniParams[i].w = stof(setting);
+				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].w);
+			}
+		}
 	}
 }
 

@@ -11,6 +11,11 @@
 
 #include "util.h"
 
+// Defines the maximum number of four component ini params we support.
+// Potential trade off on flexibility vs overhead, but unless we increase it
+// above 256 (4k page) it is unlikely to be significant.
+const int INI_PARAMS_SIZE = 8;
+
 enum HuntingMode {
 	HUNTING_MODE_DISABLED = 0,
 	HUNTING_MODE_ENABLED = 1,
@@ -286,7 +291,7 @@ struct Globals
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
 
-	DirectX::XMFLOAT4 iniParams;
+	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
 
 	SwapChainInfo mSwapChainInfo;
 
@@ -416,8 +421,6 @@ struct Globals
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
 
-		iniParams{ FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX },
-
 		ENABLE_CRITICAL_SECTION(false),
 		SCREEN_WIDTH(-1),
 		SCREEN_HEIGHT(-1),
@@ -439,6 +442,8 @@ struct Globals
 		gLogInput(false)
 
 	{
+		int i;
+
 		SHADER_PATH[0] = 0;
 		SHADER_CACHE_PATH[0] = 0;
 		CHAIN_DLL_PATH[0] = 0;
@@ -448,11 +453,18 @@ struct Globals
 		mSwapChainInfo.width = -1;
 		mSwapChainInfo.height = -1;
 
-		for (int i = 0; i < 4; i++)
+		for (i = 0; i < 4; i++)
 			gTuneValue[i] = 1.0f;
 
-		for (int i = 0; i < 11; i++)
+		for (i = 0; i < 11; i++)
 			FILTER_REFRESH[i] = 0;
+
+		for (i = 0; i < INI_PARAMS_SIZE; i++) {
+			iniParams[i].x = FLT_MAX;
+			iniParams[i].y = FLT_MAX;
+			iniParams[i].z = FLT_MAX;
+			iniParams[i].w = FLT_MAX;
+		}
 	}
 };
 

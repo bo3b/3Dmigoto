@@ -104,7 +104,11 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 	// If any constants are specified in the .ini file that need to be sent to shaders, we need 
 	// to create the resource view in order to deliver them via SetShaderResources.
 	// Check for depth buffer view.
-	if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
+	//
+	// No longer making this conditional. We are pretty well dependent on
+	// the ini params these days and not creating this view might cause
+	// issues with config reload.
+	// if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
 	{
 		D3D11_TEXTURE1D_DESC desc;
 		memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
@@ -115,9 +119,9 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 		// Stuff the constants read from the .ini file into the subresource data structure, so 
 		// we can init the texture with them.
 		initialData.pSysMem = &G->iniParams;
-		initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * 1;	// only one 4 element struct 
+		initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
 
-		desc.Width = 1;												// 1 texel, .rgba as a float4
+		desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
 		desc.MipLevels = 1;
 		desc.ArraySize = 1;
 		desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4

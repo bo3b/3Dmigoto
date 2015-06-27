@@ -48,27 +48,28 @@ private:
 	TransitionType transition_type, release_transition_type;
 
 public:
-	DirectX::XMFLOAT4 mOverrideParams;
+	DirectX::XMFLOAT4 mOverrideParams[INI_PARAMS_SIZE];
 	float mOverrideSeparation;
 	float mOverrideConvergence;
 
-	DirectX::XMFLOAT4 mSavedParams;
+	DirectX::XMFLOAT4 mSavedParams[INI_PARAMS_SIZE];
 	float mUserSeparation;
 	float mUserConvergence;
 
 	Override();
-	Override(float x, float y, float z, float w, float separation,
+	Override(DirectX::XMFLOAT4 *params, float separation,
 		 float convergence, int transition, int release_transition,
 		 TransitionType transition_type,
 		 TransitionType release_transition_type) :
-		mOverrideParams({x, y, z, w}),
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
 		transition(transition),
 		release_transition(release_transition),
 		transition_type(transition_type),
 		release_transition_type(release_transition_type)
-	{}
+	{
+		memcpy(&mOverrideParams, params, sizeof(DirectX::XMFLOAT4[INI_PARAMS_SIZE]));
+	}
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
 
@@ -91,12 +92,12 @@ public:
 		Override(),
 		type(type)
 	{}
-	KeyOverride(KeyOverrideType type, float x, float y, float z,
-			float w, float separation, float convergence,
+	KeyOverride(KeyOverrideType type, DirectX::XMFLOAT4 *params,
+			float separation, float convergence,
 			int transition, int release_transition,
 			TransitionType transition_type,
 			TransitionType release_transition_type) :
-		Override(x, y, z, w, separation, convergence, transition,
+		Override(params, separation, convergence, transition,
 				release_transition, transition_type,
 				release_transition_type),
 		type(type)
@@ -141,12 +142,14 @@ struct OverrideTransitionParam
 class OverrideTransition
 {
 public:
-	OverrideTransitionParam x, y, z, w, separation, convergence;
+	OverrideTransitionParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
+	OverrideTransitionParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
+	OverrideTransitionParam separation, convergence;
 
 	void ScheduleTransition(HackerDevice *wrapper,
 			float target_separation, float target_convergence,
-			float target_x, float target_y, float target_z,
-			float target_w, int time, TransitionType transition_type);
+			DirectX::XMFLOAT4 *targets,
+			int time, TransitionType transition_type);
 	void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
 	void Stop();
 };
@@ -172,7 +175,9 @@ public:
 class OverrideGlobalSave
 {
 public:
-	OverrideGlobalSaveParam x, y, z, w, separation, convergence;
+	OverrideGlobalSaveParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
+	OverrideGlobalSaveParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
+	OverrideGlobalSaveParam separation, convergence;
 
 	void Reset(HackerDevice* wrapper);
 	void Save(HackerDevice *wrapper, Override *preset);
