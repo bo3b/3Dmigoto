@@ -21,7 +21,7 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DecompileHLSL.h">
+    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +32,7 @@
     <ClCompile Include="Assembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DecompileHLSL.cpp">
+    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
