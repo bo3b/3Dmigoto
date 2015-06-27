@@ -83,16 +83,25 @@ typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 typedef std::unordered_map<ID3D11GeometryShader *, ID3D11GeometryShader *> GeometryShaderReplacementMap;
 
 enum class FrameAnalysisOptions {
-	INVALID      = 0,
-	DUMP_RT      = 0x00000001,
-	DUMP_RT_JPS  = 0x00000002,
-	DUMP_RT_DDS  = 0x00000004,
-	DUMP_RT_MASK = 0x00000007,
-	CLEAR_RT     = 0x00000008,
-	PERSIST      = 0x00000010, // Used by shader/texture triggers
-	STEREO       = 0x00000020,
-	MONO         = 0x00000040,
-	STEREO_MASK  = 0x00000060,
+	INVALID       = 0,
+	DUMP_RT       = 0x00000001,
+	DUMP_RT_JPS   = 0x00000002,
+	DUMP_RT_DDS   = 0x00000004,
+	DUMP_RT_MASK  = 0x00000007,
+	CLEAR_RT      = 0x00000008,
+	DUMP_TEX      = 0x00000010,
+	DUMP_TEX_JPS  = 0x00000020,
+	DUMP_TEX_DDS  = 0x00000040,
+	DUMP_TEX_MASK = 0x00000070,
+	DUMP_XXX      = 0x00000011,
+	DUMP_XXX_JPS  = 0x00000022,
+	DUMP_XXX_DDS  = 0x00000044,
+	DUMP_XXX_MASK = 0x00000077,
+	PERSIST       = 0x00000080, // Used by shader/texture triggers
+	STEREO        = 0x00000100,
+	MONO          = 0x00000200,
+	STEREO_MASK   = 0x00000600,
+	FILENAME_REG  = 0x00000800,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -100,10 +109,13 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
 	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
 	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
+	{L"dump_tex", FrameAnalysisOptions::DUMP_TEX},
+	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
+	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
 	{L"persist", FrameAnalysisOptions::PERSIST},
 	{L"stereo", FrameAnalysisOptions::STEREO},
 	{L"mono", FrameAnalysisOptions::MONO},
-	// TODO: More options on the way: Dump texture inputs
+	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
