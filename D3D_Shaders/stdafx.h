@@ -39,4 +39,5 @@ struct token_operand
 vector<DWORD> assembleIns(string s);
 vector<byte> readFile(string fileName);
 vector<DWORD> ComputeHash(byte const* input, DWORD size);
-vector<string> stringToLines(char* start, int size);
+vector<string> stringToLines(const char* start, int size);
+DWORD strToDWORD(string s);
