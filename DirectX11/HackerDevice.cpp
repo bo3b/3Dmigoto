@@ -35,6 +35,8 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 
 HRESULT HackerDevice::CreateStereoAndIniTextures()
 {
+	LogInfo("HackerDevice::CreateStereoAndIniTextures(%s@%p) called.  \n", typeid(*this).name(), this);
+
 	// Todo: This call will fail if stereo is disabled. Proper notification?
 	NvAPI_Status hr = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
 	if (hr != NVAPI_OK)
@@ -883,14 +885,6 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				return 0;	// Todo: what about zero shader section?
 			}
 
-			// Stop-gap measure to avoid decompiling geometry, hull
-			// and domain shaders as they will almost certainly
-			// cause a crash in the decompiler. Remove this once fixed.
-			if (!wcscmp(shaderType, L"gs") || !wcscmp(shaderType, L"hs") || !wcscmp(shaderType, L"ds")) {
-				LogInfoW(L"    Skipping decompilation of unsupported shader type %ls.\n", shaderType);
-				return 0;
-			}
-
 			// Disassemble old shader for fixing.
 			HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
 				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
@@ -1510,7 +1504,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (pDesc) LogDebug("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
-	// Preload shaders?
+	// Preload shaders? 
+	// ToDo: This really doesn't belong here as a late-binding. Maybe move to CreateStereoAndIniTextures.
 	if (G->PRELOAD_SHADERS && G->mPreloadedVertexShaders.empty() && G->mPreloadedPixelShaders.empty())
 	{
 		LogInfo("  preloading custom shaders.\n");
