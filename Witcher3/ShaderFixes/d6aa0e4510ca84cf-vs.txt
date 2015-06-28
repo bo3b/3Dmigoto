@@ -50,7 +50,7 @@ dcl_output o4.xyz
 dcl_output o5.xyz
 dcl_output o6.xyz
 // dcl_temps 14
-dcl_temps 23
+dcl_temps 24
 mul r0.xyzw, cb1[0].yyyy, cb2[1].xyzw
 mad r0.xyzw, cb2[0].xyzw, cb1[0].xxxx, r0.xyzw
 mad r0.xyzw, cb2[2].xyzw, cb1[0].zzzz, r0.xyzw

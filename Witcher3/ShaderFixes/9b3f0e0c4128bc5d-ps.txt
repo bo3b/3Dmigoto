@@ -40,7 +40,9 @@ dcl_input_ps_siv linear noperspective v0.xy, position
 dcl_output o0.xyzw
 dcl_output o1.xyzw
 // TODO: Reduce this for more efficient GPU usage (4096 is max possible)
-dcl_temps 4096
+// But for now it's easier to use a high register count so that the register
+// numbers are easy to match up between the copied code and the original
+dcl_temps 2012
 ftou r0.xy, v0.xyxx
 utof r1.xy, r0.xyxx
 add r1.zw, r1.xxxy, l(0.000000, 0.000000, 0.500000, 0.500000)

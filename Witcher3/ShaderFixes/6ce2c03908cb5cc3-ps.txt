@@ -55,7 +55,7 @@ dcl_input_ps linear v5.xyz
 dcl_input_ps linear v6.xyz
 dcl_output o0.xyzw
 // dcl_temps 25
-dcl_temps 28
+dcl_temps 29
 ftou r0.xy, v0.xyxx
 dp3 r1.x, v2.xyzx, v2.xyzx
 add r1.x, r1.x, l(-1.000000)

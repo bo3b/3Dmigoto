@@ -32,7 +32,7 @@ dcl_input_ps_siv linear noperspective v0.xy, position
 dcl_input_ps linear v1.xyz
 dcl_output o0.xyzw
 // dcl_temps 4
-dcl_temps 22
+dcl_temps 23
 mad r0.x, cb6[6].w, l(0.500000), l(-0.500000)
 ftou r1.xy, v0.xyxx
 utof r0.yz, r1.xxyx
