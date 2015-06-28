@@ -212,11 +212,10 @@
       <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)Redist\D3D\x86\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
-"$(SolutionDir)7zip\7za" a ..\Debug\3Dmigoto-Debug-V_alpha.zip "..\Debug\*.dll" "..\Debug\d3dx.ini" "..\Debug\uninstall.bat"
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
-      <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
+</Command>
+      <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -238,11 +237,10 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\D3DCompile*.DLL” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
-      <Message>Copy all non-build dlls, and default d3dx.ini. Leaves all pdb and debug files, and doesn't zip a release.</Message>
+      <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -269,14 +267,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       </IgnoreSpecificDefaultLibraries>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)Redist\D3D\x86\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
-"$(SolutionDir)7zip\7za" a ..\Release\3Dmigoto-V_alpha.zip -tzip "..\Release\*.dll" "..\Release\d3dx.ini" "..\Release\uninstall.bat"
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
+      <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
@@ -301,12 +297,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)Redist\D3D\x86\d3dcompiler_46.DLL” “$(TargetDir)” /E /Y
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy all non-build dlls, and default d3dx.ini. </Message>
+      <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -333,13 +329,12 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       </DelayLoadDLLs>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\D3DCompile*.DLL” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy all non-build dlls, and default d3dx.ini. Delete unwanted files. zip-up, to make complete tool.</Message>
+      <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
@@ -366,12 +361,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       </DelayLoadDLLs>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\D3DCompile*.DLL” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies64\*.*" "$(TargetDir)"  /E /Y
+      <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy all non-build dlls, and default d3dx.ini. </Message>
+      <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
