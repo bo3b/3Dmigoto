@@ -1,0 +1,114 @@
+The Witcher 3: Wild Hunt
+========================
+A fix by mike_ar69 & DarkStarSword
+Assembler and alternate wrapper by Flugan
+3DMigoto improvements by Bo3b and DarkStarSword
+Profile by Helifax
+Special thanks to everyone on the forum who helped out with testing!
+
+Fixed
+-----
+- Lights
+- Shadows
+- Global illumination
+- Specular highlights
+- Environmental reflections
+- Decals
+- UI Depth adjustment added (cycle with ~ key)
+- Hairworks MSAA one-eye transparency
+- Hairworks glitch at specific depth from camera
+- Hairworks shadows
+- Light shafts
+- Sun & moon depth
+- Sun & moon reflection in water
+- Approximate fix for water environment reflection probes (Note that an SLI bug
+  affects these - see below)
+- Approximate fix for direct reflections on water
+
+Installation
+------------
+1. Use driver 350.12, 352.86 or 353.06 (Note that 352.86 and 353.06 are known
+   to cause issues in other games, and 350.12 may be more stable).
+
+2. Install Helifax' custom profile for The Witcher 3 (especially important if
+   using driver 350.12, but recommended regardless). Note that you will have to
+   repeat this any time you reinstall the nvidia drivers (instructions
+   summarised from [here][1]):
+
+[1]: https://forums.geforce.com/default/topic/841696/3d-vision/the-witcher-3-correct-3d-vision-nvidia-profile-cm-mode-included-/post/4562951/#4562951
+
+    1. Download Geforce 3D Profile Manager.exe attached to [this page][2]
+
+[2]: http://nvidia.custhelp.com/app/answers/detail/a_id/2625/kw/Profile
+
+    2. In Geforce 3D Profile Manager, choose "Export SLI Profiles" and save the
+       NVIDIA Profiles.txt somewhere.
+
+    3. Open NVIDIA Profiles.txt in notepad and search for "Witcher 3". Remove
+       the existing profile and replace it with this one:
+
+            Profile "The Witcher 3"
+                ShowOn GeForce
+                ProfileType Application
+                Executable "witcher3.exe"
+                Executable "witcher3release.exe"
+                Setting ID_0x00a06946 = 0x780020F5
+                Setting ID_0x1033cec2 = 0x00000002
+                Setting ID_0x1033dcd3 = 0x00000004
+                Setting ID_0x70092d4a = 0xb19c3533 InternalSettingFlag=V0
+                Setting ID_0x701eb457 = 0x2241ab21 InternalSettingFlag=V0
+                Setting ID_0x702442fc = 0x1c22fe24 InternalSettingFlag=V0
+                SettingString ID_0x7049c7ec = "웪ꑌ" InternalSettingFlag=V0
+                SettingString ID_0x7051e5f5 = "籪鸙" InternalSettingFlag=V0
+                Setting ID_0x708db8c5 = 0x5c3300b3 InternalSettingFlag=V0
+                Setting ID_0x708db8c5 = 0x3FF13DD9 UserSpecified=true
+                Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
+                SettingString ID_0x70b5603f = "榛鳈⏙ꢗ" InternalSettingFlag=V0
+                Setting ID_0x70edb381 = 0x24208b6c InternalSettingFlag=V0
+                Setting ID_0x70f8e408 = 0x80b671f3 InternalSettingFlag=V0
+                Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
+                Setting ID_0x709adada = 0x37f58357 InternalSettingFlag=V0
+            EndProfile
+
+    4. In Geforce 3D Profile Manager, choose "Import SLI Profiles" and select
+       the modified NVIDIA Profiles.txt
+
+3. Extract [3Dfix-Witcher3-1.0.zip][3] into the game directory. If done correctly,
+   the d3d11.dll file should be in the same directory as witcher3.exe.
+
+    - There will shortly be an alternate version of the fix available using
+      Project Flugan, which may be more stable in some cases. Please check back
+      soon for the link.
+
+[3]: https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.0.zip
+
+4. Launch the game, and disable compatibility mode with Ctrl+Alt+F11 (check the
+   green text to confirm that it is disabled - you should only need to do this
+   once).
+
+Keys and Configuration
+----------------------
+~: Cycles UI depth between several presets. You may customise the default depth
+   by editing the d3dx.ini and adjusting x under [Constants]. Negative numbers
+   go into the screen, positive numbers will pop out. To customise the presets
+   on the ~ key, find the [KeyHUD] section and adjust the list as desired.
+
+When raining, raindrops will land on the camera. If you find this distracting
+you can disable it by editing the d3dx.ini file and setting x1 under
+[Constants] to 1.
+
+Known Issues
+------------
+- Sometimes after dying and loading a previous save the game may crash, or the
+  3D may glitch out. If this happens, restart the game.
+
+- Possibly related to the above, sometimes HBAO+ may stop working correctly. If
+  you see a false ambient occlusion shadow appear to the right of objects, you
+  can press F11 to quickly disable HBAO+ without having to use the menus. This
+  is often an indicator that the 3D is going to die or that the game may even
+  crash soon, so it is recommended to save your game and restart as soon as
+  possible.
+
+- On SLI systems, water in certain areas may display an incorrect reflection
+  (e.g. reflecting clouds from the sky while underground). These false
+  reflections can be disabled by pressing F3.
