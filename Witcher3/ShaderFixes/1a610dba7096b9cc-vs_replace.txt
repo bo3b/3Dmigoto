@@ -36,8 +36,12 @@ void main(
   o4.xy = r0.xx * float2(0.000000e+000,1.000000e+000) + r0.yz;
   o4.z = 1.000000000e+000 + -cb1[14].x;
   o4.w = 1.000000000e+000;
-  
-  o0=0;
+
+// Disable if x1 is set
+float4 params = IniParams.Load(int2(1,0));
+if (params.x == 1)
+	o0=0;
+
   return;
 }
 
