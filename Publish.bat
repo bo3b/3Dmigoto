@@ -72,6 +72,7 @@ echo === Deep Cleaning Output Directories ===
 @echo on
 RMDIR ".\x32\Zip Release\" /S /Q
 RMDIR ".\x64\Zip Release\" /S /Q
+RMDIR ".\Zip Release\" /S /Q
 @echo off
 
 
