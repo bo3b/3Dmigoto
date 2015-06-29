@@ -146,50 +146,50 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\WinRT\;$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\WinRT;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSdkDir_80)Lib\win8\um\x64</LibraryPath>
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(VC_LibraryPath_x64)</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\WinRT\;$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86);$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\WinRT;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSdkDir_80)Lib\win8\um\x64</LibraryPath>
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(VC_LibraryPath_x64)</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>d3d11</TargetName>
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
+    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(VC_LibraryPath_x64)</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -198,7 +198,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG_LAYER=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -209,7 +209,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
@@ -223,7 +223,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG_LAYER=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -234,7 +234,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
@@ -250,7 +250,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc;$(SolutionDir)D3D_Shaders</AdditionalIncludeDirectories>
@@ -262,7 +262,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
@@ -270,8 +270,6 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -282,7 +280,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc;$(SolutionDir)D3D_Shaders</AdditionalIncludeDirectories>
@@ -294,14 +292,12 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -312,7 +308,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc;$(SolutionDir)D3D_Shaders</AdditionalIncludeDirectories>
@@ -324,16 +320,12 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxgi.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <DelayLoadDLLs>
-      </DelayLoadDLLs>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -344,7 +336,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)\DirectXTK\Inc;$(SolutionDir)D3D_Shaders</AdditionalIncludeDirectories>
@@ -356,16 +348,12 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;dinput8.lib;dxguid.lib;comctl32.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <DelayLoadDLLs>
-      </DelayLoadDLLs>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir_80)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
 xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
 </Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
