@@ -41,11 +41,16 @@ Installation
 
 [2]: http://nvidia.custhelp.com/app/answers/detail/a_id/2625/kw/Profile
 
-    2. In Geforce 3D Profile Manager, choose "Export SLI Profiles" and save the
+    2. In the "C:\ProgramData\NVIDIA Corporation\Drs" folder delete the
+       nvdrssel.bin file (It will get automatically generated on profile
+       import).
+
+    3. In Geforce 3D Profile Manager, choose "Export SLI Profiles" and save the
        NVIDIA Profiles.txt somewhere.
 
-    3. Open NVIDIA Profiles.txt in notepad and search for "Witcher 3". Remove
-       the existing profile and replace it with this one:
+    4. Open NVIDIA Profiles.txt in notepad (other editors may corrupt the
+       file's non-standard encoding) and search for "Witcher 3". Remove the
+       existing profile and replace it with this one:
 
             Profile "The Witcher 3"
                 ShowOn GeForce
@@ -70,7 +75,10 @@ Installation
                 Setting ID_0x709adada = 0x37f58357 InternalSettingFlag=V0
             EndProfile
 
-    4. In Geforce 3D Profile Manager, choose "Import SLI Profiles" and select
+    5. In the "C:\ProgramData\NVIDIA Corporation\Drs" folder delete the
+       nvdrssel.bin file. (if it got generated).
+
+    6. In Geforce 3D Profile Manager, choose "Import SLI Profiles" and select
        the modified NVIDIA Profiles.txt
 
 3. Extract [3Dfix-Witcher3-1.0.zip][3] into the game directory. If done correctly,
@@ -82,9 +90,15 @@ Installation
 
 [3]: https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.0.zip
 
-4. Launch the game, and disable compatibility mode with Ctrl+Alt+F11 (check the
-   green text to confirm that it is disabled - you should only need to do this
-   once).
+4. Make sure that "Enable advanced in-game settings" is enabled in the NVIDIA
+   control panel under Set Up Stereoscopic 3D -> Set keyboard shortcuts.
+
+5. Launch the game. If 3D does not kick in change the video settings to
+   exclusive full screen mode (This setting has a tendency to reset from time
+   to time, so this step may need to be repeated on occasion).
+
+6. Disable compatibility mode with Ctrl+Alt+F11 (check the green text to
+   confirm that it is disabled - you should only need to do this once).
 
 Keys and Configuration
 ----------------------
