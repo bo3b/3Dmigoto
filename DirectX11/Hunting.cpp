@@ -3,7 +3,6 @@
 #include <string>
 #include <D3Dcompiler.h>
 
-#include "wrl\client.h"
 #include "ScreenGrab.h"
 #include "wincodec.h"
 
@@ -178,7 +177,7 @@ static void DumpUsage()
 static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
 {
 	wchar_t fullName[MAX_PATH];
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+	ID3D11Texture2D *backBuffer;
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
@@ -188,7 +187,8 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (SUCCEEDED(hr))
 	{
 		wsprintf(fullName, L"%ls\\%016I64x-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
-		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer.Get(), GUID_ContainerFormatJpeg, fullName);
+		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
+		backBuffer->Release();
 	}
 
 	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d \n", fullName, hr);

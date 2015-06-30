@@ -169,3 +169,4 @@ $RECYCLE.BIN/
 
 # Vim swap files
 .*.swp
+*.nvuser

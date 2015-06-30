@@ -70,8 +70,9 @@ echo(
 echo(
 echo === Deep Cleaning Output Directories ===
 @echo on
-RMDIR ".\Zip Release\" /S /Q
+RMDIR ".\x32\Zip Release\" /S /Q
 RMDIR ".\x64\Zip Release\" /S /Q
+RMDIR ".\Zip Release\" /S /Q
 @echo off
 
 
@@ -123,10 +124,10 @@ echo(
 echo === Move builds to target zip directory ===
 echo(
 MKDIR ".\Zip Release\x32\"
-MOVE ".\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
-MOVE ".\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
-MOVE ".\Zip Release\*.dll"  ".\Zip Release\x32\"
-MOVE ".\Zip Release\courierbold.spritefont"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\courierbold.spritefont"  ".\Zip Release\x32\"
 
 echo(
 MKDIR ".\Zip Release\x64\"
