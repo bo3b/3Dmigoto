@@ -812,3 +812,42 @@ HRESULT WINAPI D3DReflectCode(GUID *interfaceId,
 	LogInfo("D3DReflectCode called\n"); 
 	
 	return (*_D3DReflectCode)(interfaceId, unknown, pSrcData, SrcDataSize);
+}
+
+
+// We need to get control as early as possible in order to pre-load our 
+// d3d11 and nvapi64 dlls.  This will get called at static load time to
+// get us hooked into place.  
+//
+// Be Careful of the restrictions on this entry point. No LogInfo e.g.
+
+BOOL WINAPI DllMain(
+	_In_  HINSTANCE hinstDLL,
+	_In_  DWORD fdwReason,
+	_In_  LPVOID lpvReserved)
+{
+	bool result = true;
+
+	switch (fdwReason)
+	{
+	case DLL_PROCESS_ATTACH:
+	{
+		wchar_t sysDir[MAX_PATH] = L"d3d11.dll";
+		hD3D11 = LoadLibrary(sysDir);
+		break;
+	}
+
+	case DLL_PROCESS_DETACH:
+		break;
+
+	case DLL_THREAD_ATTACH:
+		// Do thread-specific initialization.
+		break;
+
+	case DLL_THREAD_DETACH:
+		// Do thread-specific cleanup.
+		break;
+	}
+
+	return result;
+}
