@@ -91,6 +91,10 @@ del courierbold.spritefont
 del XInput9_1_0.dll
 del d3dx.ini
 
+del DirectXTK.lib
+del DirectXTK.pdb
+del DirectXTK.ilk
+
 del D3D_Shaders.exe
 del D3D_Shaders.pdb
 del D3D_Shaders.ilk
