@@ -3973,7 +3973,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build Tools", "Build Tools"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{83DCC342-4199-4E03-B720-80E5EDF18500}"
 	ProjectSection(SolutionItems) = preProject
-		Dependencies\courierbold.spritefont = Dependencies\courierbold.spritefont
 		Dependencies\d3dx.ini = Dependencies\d3dx.ini
 		Dependencies\uninstall.bat = Dependencies\uninstall.bat
 	EndProjectSection

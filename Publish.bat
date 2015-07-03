@@ -127,14 +127,12 @@ MKDIR ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
-MOVE ".\x32\Zip Release\courierbold.spritefont"  ".\Zip Release\x32\"
 
 echo(
 MKDIR ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\d3dx.ini"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
-MOVE ".\x64\Zip Release\courierbold.spritefont"  ".\Zip Release\x64\"
 
 echo(
 echo(
