@@ -13,8 +13,6 @@
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
-	wchar_t filename[MAX_PATH];
-
 	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, typeid(*pSwapChain).name());
 	LogInfo("  on HackerDevice: %p, HackerContext: %p \n", pDevice, pContext);
 
@@ -28,18 +26,19 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	pSwapChain->GetDesc(&description);
 	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
 
+	// The courierbold.spritefont is now included as binary resource data attached
+	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
+	// to avoid having to drag around the font file.
+	HMODULE handle = GetModuleHandle(L"d3d11.dll");
+	HRSRC rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
+	HGLOBAL rcData = LoadResource(handle, rc);
+	DWORD fontSize = SizeofResource(handle, rc);
+	uint8_t const* fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
+
 	// We want to use the original device and original context here, because
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
 	// to draw the text, and we don't want to intercept those.
-
-	// Some games like The Witcher 3 change their working directory, which
-	// causes a crash when we can't find the courierbold.spritefont, so
-	// search for it relative to the executable:
-	GetModuleFileName(0, filename, MAX_PATH);
-	wcsrchr(filename, L'\\')[1] = 0;
-	wcscat(filename, L"courierbold.spritefont");
-
-	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), filename));
+	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), fontBlob, fontSize));
 	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
 }
 

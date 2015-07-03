@@ -14,6 +14,11 @@
 #endif
 #endif
 
+// Used for embedded font resource for overlay
+#define SPRITEFONT					256
+#define IDR_COURIERBOLD				101
+
+
 // Actual version, name, copyright information that is built into the dlls.
 // This is what an end-user will see when they look at dll properties.
 // The VERSION_MAJOR and VERSION_MINOR are hand edited when versions are to change.
