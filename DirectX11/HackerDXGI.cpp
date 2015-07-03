@@ -1188,7 +1188,7 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 
 IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 {
-	LogInfo("HackerDXGISwapChain::GetOrigSwapChain returns %p", mOrigSwapChain);
+	LogInfo("HackerDXGISwapChain::GetOrigSwapChain returns %p \n", mOrigSwapChain);
 	return mOrigSwapChain;
 }
 

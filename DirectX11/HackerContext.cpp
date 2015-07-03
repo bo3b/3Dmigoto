@@ -1023,14 +1023,16 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	 mOrigContext->Begin(pAsync);
+	LogDebug("HackerContext::Begin(%s@%p) \n", typeid(*this).name(), this);
+	
+	mOrigContext->Begin(pAsync);
 }
 
 STDMETHODIMP_(void) HackerContext::End(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	LogDebug("HackerContext::End called\n");
+	LogDebug("HackerContext::End(%s@%p) \n", typeid(*this).name(), this);
 
 	 mOrigContext->End(pAsync);
 }
