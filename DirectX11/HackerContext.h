@@ -88,14 +88,18 @@ private:
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
+	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
+	void _DumpCBs(char shader_type,
+		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
 	void _DumpTextures(char shader_type,
 		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
+	void DumpCBs(bool compute);
 	void DumpTextures(bool compute);
 	void DumpRenderTargets();
 	void DumpUAVs(bool compute);
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			bool uav, bool depth, char shader_type, int idx, UINT64 hash);
+			wchar_t *reg, char shader_type, int idx, UINT64 hash, wchar_t *ext);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);

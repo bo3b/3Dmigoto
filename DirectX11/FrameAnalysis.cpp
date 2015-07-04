@@ -108,7 +108,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 
 	hr = CreateStagingResource(&stereoResource, srcDesc, true, false);
 	if (FAILED(hr)) {
-		LogInfo("DumpStereoResource failed to create stereo texture: 0x%x \n", hr);
+		LogInfo("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
 		return;
 	}
 
@@ -120,7 +120,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 		// intermediate staging resource first.
 		hr = CreateStagingResource(&tmpResource, srcDesc, false, false);
 		if (FAILED(hr)) {
-			LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
+			LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
 			goto out;
 		}
 
@@ -130,7 +130,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			// so we need yet another intermediate texture:
 			hr = CreateStagingResource(&tmpResource2, srcDesc, false, true);
 			if (FAILED(hr)) {
-				LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x \n", hr);
+				LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
 				goto out1;
 			}
 
@@ -188,6 +188,41 @@ out:
 	stereoResource->Release();
 }
 
+void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename)
+{
+	D3D11_BUFFER_DESC desc;
+	D3D11_MAPPED_SUBRESOURCE map;
+	ID3D11Buffer *staging = NULL;
+	HRESULT hr;
+	FILE *fd = NULL;
+
+	_wfopen_s(&fd, filename, L"wb");
+	if (!fd)
+		return;
+
+	buffer->GetDesc(&desc);
+
+	desc.Usage = D3D11_USAGE_STAGING;
+	desc.BindFlags = 0;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	hr = mOrigDevice->CreateBuffer(&desc, NULL, &staging);
+	if (FAILED(hr)) {
+		LogInfo("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
+		goto out_close;
+	}
+
+	mOrigContext->CopyResource(staging, buffer);
+
+	mOrigContext->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	fwrite(map.pData, 1, desc.ByteWidth, fd);
+	mOrigContext->Unmap(staging, 0);
+
+	staging->Release();
+out_close:
+	fclose(fd);
+}
+
 void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 {
 	D3D11_RESOURCE_DIMENSION dim;
@@ -195,6 +230,9 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 	resource->GetType(&dim);
 
 	switch (dim) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			DumpBuffer((ID3D11Buffer*)resource, filename);
+			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
 				DumpStereoResource((ID3D11Texture2D*)resource, filename);
@@ -208,7 +246,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 }
 
 HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-		bool uav, bool depth, char shader_type, int idx, UINT64 hash)
+		wchar_t *reg, char shader_type, int idx, UINT64 hash, wchar_t *ext)
 {
 	wchar_t *pos;
 	size_t rem;
@@ -219,36 +257,38 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG))
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
 
-	if (uav)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"u%i", idx);
-	else if (depth)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"oD");
-	else if (shader_type)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"t%i", idx);
-	else
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"o%i", idx);
+	if (shader_type)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%cs-", shader_type);
+
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%ls", reg);
+	if (idx != -1)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i", idx);
 
 	if (analyse_options & FrameAnalysisOptions::FILENAME_REG)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%06i", G->analyse_frame);
 
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%016I64x", hash);
+	if (hash)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%016I64x", hash);
 
 	if (compute) {
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs=%016I64x", mCurrentComputeShader);
 	} else {
-		if (mCurrentVertexShader && (!shader_type || shader_type == 'v'))
+		if (mCurrentVertexShader)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs=%016I64x", mCurrentVertexShader);
-		if (mCurrentHullShader && (!shader_type || shader_type == 'h'))
+		if (mCurrentHullShader)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-hs=%016I64x", mCurrentHullShader);
-		if (mCurrentDomainShader && (!shader_type || shader_type == 'd'))
+		if (mCurrentDomainShader)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ds=%016I64x", mCurrentDomainShader);
-		if (mCurrentGeometryShader && (!shader_type || shader_type == 'g'))
+		if (mCurrentGeometryShader)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-gs=%016I64x", mCurrentGeometryShader);
-		if (mCurrentPixelShader && (!shader_type || shader_type == 'p'))
+		if (mCurrentPixelShader)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps=%016I64x", mCurrentPixelShader);
 	}
 
-	hr = StringCchPrintfW(pos, rem, L".XXX");
+	if (ext)
+		hr = StringCchPrintfW(pos, rem, L"%ls", ext);
+	else
+		hr = StringCchPrintfW(pos, rem, L".XXX");
 	if (FAILED(hr)) {
 		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
 		// Could create a shorter filename without hashes if this
@@ -256,6 +296,25 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	}
 
 	return hr;
+}
+
+void HackerContext::_DumpCBs(char shader_type,
+	ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT])
+{
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+	UINT i;
+
+	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+		if (!buffers[i])
+			continue;
+
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0, L".cb");
+		if (SUCCEEDED(hr))
+			DumpResource(buffers[i], filename);
+
+		buffers[i]->Release();
+	}
 }
 
 void HackerContext::_DumpTextures(char shader_type,
@@ -292,12 +351,45 @@ void HackerContext::_DumpTextures(char shader_type,
 			hash = 0;
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, false, shader_type, i, hash);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash, NULL);
 		if (SUCCEEDED(hr))
 			DumpResource(resource, filename);
 
 		resource->Release();
 		views[i]->Release();
+	}
+}
+
+void HackerContext::DumpCBs(bool compute)
+{
+	ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+
+	if (compute) {
+		if (mCurrentComputeShader) {
+			CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			_DumpCBs('c', buffers);
+		}
+	} else {
+		if (mCurrentVertexShader) {
+			VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			_DumpCBs('v', buffers);
+		}
+		if (mCurrentHullShader) {
+			HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			_DumpCBs('h', buffers);
+		}
+		if (mCurrentDomainShader) {
+			DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			_DumpCBs('d', buffers);
+		}
+		if (mCurrentGeometryShader) {
+			GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			_DumpCBs('g', buffers);
+		}
+		if (mCurrentPixelShader) {
+			PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			_DumpCBs('p', buffers);
+		}
 	}
 }
 
@@ -348,7 +440,7 @@ void HackerContext::DumpRenderTargets()
 			hash = 0;
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, false, NULL, i, hash);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, hash, NULL);
 		if (FAILED(hr))
 			return;
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
@@ -360,7 +452,7 @@ void HackerContext::DumpRenderTargets()
 			hash = 0;
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, false, true, NULL, 0, hash);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, hash, NULL);
 		if (FAILED(hr))
 			return;
 		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename);
@@ -394,7 +486,7 @@ void HackerContext::DumpUAVs(bool compute)
 			hash = 0;
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, true, false, NULL, i, hash);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash, NULL);
 		if (SUCCEEDED(hr))
 			DumpResource(resource, filename);
 
@@ -547,6 +639,9 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 		}
 	}
 
+
+	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
+		DumpCBs(compute);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_TEX_MASK)
 		DumpTextures(compute);
