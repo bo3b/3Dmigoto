@@ -86,12 +86,12 @@ echo(
 echo(
 echo === Building Win32 target ===
 echo(
-MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=Win32 /v:minimal
+MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=Win32 /v:minimal /target:rebuild
 echo(
 echo(
 echo === Building x64 target ===
 echo(
-MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:minimal
+MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:minimal /target:rebuild
 
 
 REM -----------------------------------------------------------------------------
