@@ -182,7 +182,7 @@ void Overlay::InitDrawState()
 	mHackerContext->OMSetRenderTargets(1, &backbuffer, NULL);
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
-	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, mResolution.x, mResolution.y);
+	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
 	mHackerContext->RSSetViewports(1, &openView);
 }
 
