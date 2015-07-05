@@ -1312,7 +1312,7 @@ STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
 	LogDebug("HackerDXGISwapChain::GetBuffer(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
-	LogInfo("  returns %x\n", hr);
+	LogDebug("  returns %x \n", hr);
 	return hr;
 }
         
