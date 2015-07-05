@@ -64,17 +64,24 @@ using namespace DirectX::SimpleMath;
 	//5) Other state, like show_original active.
 	//6) Active toggle override.
 
+
+// We need to save off everything that DirectTK will clobber and
+// restore it before returning to the application. This is necessary
+// to prevent rendering issues in some games like The Long Dark, and
+// helps avoid introducing pipeline errors in other games like The
+// Witcher 3.
+// Only saving and restoring the first RenderTarget, as the only one
+// we change for drawing overlay.
+
 void Overlay::SaveState()
 {
-	// We need to save off everything that DirectTK will clobber and
-	// restore it before returning to the application. This is necessary
-	// to prevent rendering issues in some games like The Long Dark, and
-	// helps avoid introducing pipeline errors in other games like The
-	// Witcher 3.
-
 	memset(&state, 0, sizeof(state));
 
 	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+
+	context->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
+	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+	context->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
 
 	context->OMGetBlendState(&state.pBlendState, state.BlendFactor, &state.SampleMask);
 	context->OMGetDepthStencilState(&state.pDepthStencilState, &state.StencilRef);
@@ -93,9 +100,16 @@ void Overlay::SaveState()
 void Overlay::RestoreState()
 {
 	unsigned i;
-
 	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
 
+	context->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
+	if (state.pRenderTargetView)
+		state.pRenderTargetView->Release();
+	if (state.pDepthStencilView)
+		state.pDepthStencilView->Release();
+
+	context->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
+	
 	context->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
 	if (state.pBlendState)
 		state.pBlendState->Release();
@@ -147,6 +161,31 @@ void Overlay::RestoreState()
 		state.pShaderResourceViews[0]->Release();
 }
 
+// We can't trust the game to have a proper drawing environment for DirectXTK.
+//
+// For two games we know of (Batman Arkham Knight and Project Cars) we were not
+// getting an overlay, because apparently the rendertarget was left in an odd
+// state.  This adds an init to be certain that the rendertarget is the backbuffer
+// so that the overlay is drawn. 
+
+void Overlay::InitDrawState()
+{
+	ID3D11Texture2D *pBackBuffer;
+	mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+
+	// use the back buffer address to create the render target
+	ID3D11RenderTargetView *backbuffer;
+	mHackerDevice->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+	pBackBuffer->Release();
+
+	// set the first render target as the back buffer, with no stencil
+	mHackerContext->OMSetRenderTargets(1, &backbuffer, NULL);
+
+	// Make sure there is at least one open viewport for DirectXTK to use.
+	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, mResolution.x, mResolution.y);
+	mHackerContext->RSSetViewports(1, &openView);
+}
+
 static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::set<UINT64> *visited)
 {
 	wchar_t buf[32];
@@ -161,21 +200,12 @@ static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::
 	line->append(buf);
 }
 
+
+// -----------------------------------------------------------------------------
+
 void Overlay::DrawOverlay(void)
 {
 	wstring shader_line;
-
-	// We can be called super early, before a viewport is bound to the 
-	// pipeline.  That's a bug in the game, but we have to work around it.
-	// If there are no viewports, the SpriteBatch will throw an exception.
-	UINT count = 0;
-	mHackerContext->RSGetViewports(&count, NULL);
-	if (count <= 0)
-	{
-		LogInfo("Overlay::DrawOverlay called with no valid viewports.");
-		return;
-	}
-
 
 	// As primary info, we are going to draw both separation and convergence. 
 	// Rather than draw graphic bars, this will just be numeric.  The reason
@@ -205,33 +235,40 @@ void Overlay::DrawOverlay(void)
 	AppendShaderOverlayText(&shader_line, L"DS", G->mSelectedDomainShaderPos, &G->mVisitedDomainShaders);
 	AppendShaderOverlayText(&shader_line, L"HS", G->mSelectedHullShaderPos, &G->mVisitedHullShaders);
 
+	// Since some games did not like having us change their drawing state from
+	// SpriteBatch, we now save and restore all state information for the GPU
+	// around our drawing.  
 	SaveState();
-	mSpriteBatch->Begin();
 	{
-		const int maxstring = 200;
-		wchar_t line[maxstring];
-		Vector2 strSize;
-		Vector2 textPosition;
+		InitDrawState();
 
-		// Arbitrary choice, but this wants to draw the text on the left edge of the
-		// screen, where longer lines don't need wrapping or centering concern.
-		// Tried that, didn't really like it.  Let's try moving sep/conv at bottom middle,
-		// and shader counts in top middle.
+		mSpriteBatch->Begin();
+		{
+			const int maxstring = 200;
+			wchar_t line[maxstring];
+			Vector2 strSize;
+			Vector2 textPosition;
 
-		// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
-		strSize = mFont->MeasureString(shader_line.c_str());
-		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
-		mFont->DrawString(mSpriteBatch.get(), shader_line.c_str(), textPosition, DirectX::Colors::LimeGreen);
+			// Arbitrary choice, but this wants to draw the text on the left edge of the
+			// screen, where longer lines don't need wrapping or centering concern.
+			// Tried that, didn't really like it.  Let's try moving sep/conv at bottom middle,
+			// and shader counts in top middle.
 
-		// Desired format "Sep:85  Conv:4.5"
-		if (stereo)
-			swprintf_s(line, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
-		else
-			swprintf_s(line, maxstring, L"Stereo disabled");
-		strSize = mFont->MeasureString(line);
-		textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
-		mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
+			// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
+			strSize = mFont->MeasureString(shader_line.c_str());
+			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
+			mFont->DrawString(mSpriteBatch.get(), shader_line.c_str(), textPosition, DirectX::Colors::LimeGreen);
+
+			// Desired format "Sep:85  Conv:4.5"
+			if (stereo)
+				swprintf_s(line, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+			else
+				swprintf_s(line, maxstring, L"Stereo disabled");
+			strSize = mFont->MeasureString(line);
+			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
+			mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
+		}
+		mSpriteBatch->End();
 	}
-	mSpriteBatch->End();
 	RestoreState();
 }

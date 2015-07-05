@@ -38,6 +38,12 @@ private:
 		FLOAT BlendFactor[4];
 		UINT SampleMask;
 
+		ID3D11RenderTargetView  *pRenderTargetView;
+		ID3D11DepthStencilView  *pDepthStencilView;
+
+		D3D11_VIEWPORT pViewPorts[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+		UINT RSNumViewPorts;
+
 		ID3D11DepthStencilState *pDepthStencilState;
 		UINT StencilRef;
 
@@ -72,6 +78,7 @@ private:
 
 	void SaveState();
 	void RestoreState();
+	void InitDrawState();
 
 
 public:
