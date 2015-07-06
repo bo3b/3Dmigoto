@@ -2978,7 +2978,20 @@ public:
 				{
 
 					case OPCODE_ITOF:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
 					case OPCODE_UTOF:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 					case OPCODE_MOV:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
