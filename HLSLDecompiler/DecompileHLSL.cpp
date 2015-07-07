@@ -4401,6 +4401,8 @@ public:
 						break;
 
 						// The GetDimensions can also see a 4 parameter version in the immediate case. 
+						// https://msdn.microsoft.com/en-us/library/windows/desktop/hh447214(v=vs.85).aspx
+						//
 						// resinfo[_uint|_rcpFloat] dest[.mask], srcMipLevel.select_component, srcResource[.swizzle]
 						// In different variants based on input texture, becomes:
 						// void Object.GetDimensions(UINT MipLevel, typeX Width, typeX Height, typeX Elements, typeX Depth, typeX NumberOfLevels, typeX NumberOfSamples);
@@ -4419,6 +4421,9 @@ public:
 						// We don't want to knowingly generate code that compiles, but has errors.  Includes _rcpFloat as unknown.
 						//
 						// This also added new ResInfo parsing that was not in our older BinaryCompiler.
+						//
+						// bindInfo is zeroed out, and GetResourceFromBindingPoint fails when the headers have been stripped.
+						// With no reflection information, we are left with only the text.
 					case OPCODE_RESINFO:
 					{
 						remapTarget(op1);
@@ -4429,14 +4434,64 @@ public:
 						Operand texture = instr->asOperands[2];
 						RESINFO_RETURN_TYPE returnType = instr->eResInfoReturnType;
 						int texReg = texture.ui32RegisterNumber;
-						ResourceBinding *bindInfo;
+						ResourceBinding bindInfo;
+						ResourceBinding *bindInfoPtr = &bindInfo;
+
+						memset(&bindInfo, 0, sizeof(bindInfo));
+						bool bindStripped;
+						bindStripped = (GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfoPtr) == 0);
+
+						if (bindStripped)
+						{
+							// In the case where the reflection information has been stripped from the headers,
+							// we are left with only the text line itself.  Try to parse the text for variants 
+							// we know, and add them to the bindInfo.
+							//
+							// e.g. from Batman and Witcher3:
+							//  resinfo_indexable(texture2d)(float,float,float,float)_uint r1.yw, l(0), t3.zxwy 
+
+							string line = string(c + pos);
+							line = line.substr(0, line.find('\n'));
+
+							char texType[opcodeSize];
+							char retType[opcodeSize];
+							int numInfo = sscanf_s(line.c_str(), "resinfo_indexable(%[^)]%s", texType, opcodeSize, retType, opcodeSize) ;
+
+							bool isConstant = (!strcmp(op2, "l(0),"));
+
+							if ((numInfo == 2) && isConstant)
+							{
+								constZero.eType = OPERAND_TYPE_IMMEDIATE32;
+								constZero.afImmediates[0] = 0;
+
+								if (!strcmp(texType, "texture2d"))
+									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2D;
+								else if (!strcmp(texType, "texture2dms"))
+									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS;
+								else if (!strcmp(texType, "texture2darray"))
+									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY;
+
+								bindInfoPtr->Name = string(op3, strrchr(op3, '.'));
+
+								if (strstr(retType, "_uint"))
+									returnType = RESINFO_INSTRUCTION_RETURN_UINT;
+								else
+									returnType = RESINFO_INSTRUCTION_RETURN_FLOAT;
+
+								texture.eType = OPERAND_TYPE_RESOURCE;
+
+								bindStripped = false;
+							}
+						}
 
 						// We only presently handle the float and _uint return types, and the const 0 mode. 
 						// And the texture2d and textures2dms types. That's all we've seen so far.
+						// This same output sequence is used for both a normal parse case, and the stripped header case.
+
 						if ((constZero.eType == OPERAND_TYPE_IMMEDIATE32) && (constZero.afImmediates[0] == 0)
 							&& (returnType == RESINFO_INSTRUCTION_RETURN_UINT || returnType == RESINFO_INSTRUCTION_RETURN_FLOAT)
-							&& GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfo)
-							&& texture.eType == OPERAND_TYPE_RESOURCE)
+							&& texture.eType == OPERAND_TYPE_RESOURCE
+							&& !bindStripped)
 						{
 							//string out1, out2, out3;
 
@@ -4454,30 +4509,30 @@ public:
 							//	out3 = "fDst0.x";
 							//}
 
-							if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2D)
+							if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2D)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
 								else
-									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
-							else if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS)
+							else if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
 								else
-									sprintf(buffer, "  %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
-							else if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY)
+							else if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z, uiDest.w);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z, uiDest.w);\n", bindInfoPtr->Name.c_str());
 								else
-									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z, fDest.w);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z, fDest.w);\n", bindInfoPtr->Name.c_str());
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
@@ -4506,6 +4561,7 @@ public:
 						}
 						if (unknownVariant)
 						{
+							// Completely new variant, write out the reminder.
 							string line = string(c + pos);
 							line = line.substr(0, line.find('\n'));
 							sprintf(buffer, "// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix. \n");
