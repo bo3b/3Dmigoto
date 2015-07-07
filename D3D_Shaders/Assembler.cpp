@@ -105,6 +105,20 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		v.push_back(num);
 		return v;
 	}
+	if (s[0] == '-') {
+		s.erase(s.begin());
+		tOp->extended = 1;
+		ext |= 0x41;
+	}
+	if (s[0] == '|') {
+		s.erase(s.begin());
+		s.erase(s.end() - 1);
+		tOp->extended = 1;
+		ext |= 0x81;
+	}
+	if (tOp->extended) {
+		v.push_back(ext);
+	}
 	if (s.find('.') != string::npos)
 		bPoint = s.substr(0, s.find('.'));
 	else
@@ -115,6 +129,10 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 	}
 	if (s == "oDepth") {
 		v.push_back(0xC001);
+		return v;
+	}
+	if (s == "oDepthLE") {
+		v.push_back(0x27001);
 		return v;
 	}
 	if (s == "vOutputControlPointID") {
@@ -129,6 +147,16 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		v.push_back(0xB001);
 		return v;
 	}
+	if (bPoint == "vForkInstanceID") {
+		bool ext = tOp->extended;
+		op = 0x17002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (bPoint == s)
+			op = 0x17001;
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), op);
+		return v;
+	}
 	if (bPoint == "vCoverage") {
 		op = 0x23002;
 		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
@@ -136,13 +164,15 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		return v;
 	}
 	if (bPoint == "vDomain") {
+		bool ext = tOp->extended;
 		op = 0x1C002;
 		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), op);
 		return v;
 	}
-	if (s == "rasterizer") {
-		op = 0x1C002;
+	if (bPoint == "rasterizer") {
+		op = 0xE002;
 		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
 		v.push_back(op);
 		return v;
@@ -160,37 +190,31 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		return v;
 	}
 	if (bPoint == "vThreadID") {
+		bool ext = tOp->extended;
 		op = 0x20002;
 		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), op);
 		return v;
 	}
 	if (bPoint == "vThreadIDInGroupFlattened") {
+		bool ext = tOp->extended;
 		op = 0x24002;
 		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
 		if (bPoint == s)
 			op = 0x24001;
-		v.push_back(op);
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), op);
 		return v;
 	}
-	if (s[0] == '-') {
-		s.erase(s.begin());
-		tOp->extended = 1;
-		ext |= 0x41;
-	}
-	if (s[0] == '|') {
-		s.erase(s.begin());
-		s.erase(s.end() - 1);
-		tOp->extended = 1;
-		ext |= 0x81;
-	}
-	if (tOp->extended) {
-		v.push_back(ext);
-	}
-	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b' || s[0] == 'c' && s[1] == 'b' || s[0] == 'x' || s[0] == 'v') {
+	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b' || s[0] == 'c' && s[1] == 'b' || s[0] == 'x' || s[0] == 'o' || s[0] == 'v') {
 		tOp->num_indices = 2;
 		if (s[0] == 'x') {
 			tOp->file = 3;
+			s.erase(s.begin());
+		} else if (s[0] == 'o') {
+			tOp->file = 2;
+			tOp->num_indices = 1;
 			s.erase(s.begin());
 		} else if (s[0] == 'v' && s[1] == 'p' && s[2] == 'c') {
 			tOp->file = 0x1B;
@@ -218,9 +242,12 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 					string swizzle = s.substr(s.find('.', s.find("+")) + 1);
 					handleSwizzle(swizzle, tOp);
 					tOp->index0_repr = 2;
+					int iAdd = atoi(sAdd.c_str());
+					if (iAdd) tOp->index0_repr = 3;
 					v.insert(v.begin(), op);
+					if (iAdd) v.push_back(iAdd);
 					v.push_back(reg[0]);
-					v.push_back(atoi(sAdd.c_str()));
+					v.push_back(reg[1]);
 					v.push_back(atoi(index1.c_str()));
 					return v;
 				}
@@ -341,8 +368,6 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		return v;
 	} else if (s[0] == 'r') {
 		tOp->file = 0;
-	} else if (s[0] == 'o') {
-		tOp->file = 2;
 	} else if (s[0] == 's') {
 		tOp->file = 6;
 	} else if (s[0] == 't') {
@@ -422,16 +447,12 @@ DWORD parseAoffimmi(DWORD start, string o) {
 }
 
 map<string, vector<DWORD>> hackMap = {
-	{ "mad r3.xyz, cb0[14].wwww, r3.xyzx, cb0[13].xyzx",
-	{ 0x0C000032, 0x00100072, 0x00000003, 0x80208FF6, 0x00000001, 0x00000000, 0x0000000E, 0x00100246, 0x00000003, 0x00208246, 0x00000000, 0x0000000D } },
-	{ "mad r4.xyz, cb0[14].wwww, r0.xyzx, cb0[13].xyzx",
-	{ 0x0C000032, 0x00100072, 0x00000004, 0x80208FF6, 0x00000001, 0x00000000, 0x0000000E, 0x00100246, 0x00000000, 0x00208246, 0x00000000, 0x0000000D } },
-	{ "dcl_output oDepth",
-	{ 0x02000065, 0x0000C001 } },
+	{ "dcl_output oMask", { 0x02000065, 0x0000F000 } },
 };
 
 map<string, vector<int>> ldMap = {
 	{ "gather4_c_aoffimmi_indexable", { 5, 126, 3 } },
+	{ "gather4_c_indexable", { 5, 126, 2 } },
 	{ "gather4_aoffimmi_indexable", { 4, 109, 3 } },
 	{ "gather4_indexable", { 4, 109, 2 } },
 	{ "ld_aoffimmi", { 3, 45, 1 } },
@@ -455,6 +476,7 @@ map<string, vector<int>> ldMap = {
 	{ "resinfo_indexable", { 3, 61, 2 } },
 	{ "ld_structured_indexable", { 4, 167, 6 } },
 	{ "ld_uav_typed_indexable", { 3, 163, 2 } },
+	{ "bufinfo_indexable", { 2, 121, 6 } },
 };
 
 map<string, vector<int>> insMap = {
@@ -557,11 +579,15 @@ map<string, vector<int>> insMap = {
 	{ "endswitch", { 0, 23 } },
 	{ "loop", { 0, 48 } },
 	{ "ret", { 0, 62 } },
+	{ "emit", { 0, 19 } },
 	{ "continue", { 0, 7 } },
+	{ "continuec_z", { 1, 8, 0 } },
+	{ "continuec_nz", { 1, 8, 0 } },
 	{ "imm_atomic_and", { 4, 181 } },
 	{ "imm_atomic_exch", { 4, 184 } },
 	{ "imm_atomic_cmp_exch", { 5, 185 } },
 	{ "imm_atomic_iadd", { 4, 180 } },
+	{ "imm_atomic_consume", { 2, 179 } },
 	{ "atomic_iadd", { 3, 173, 0 } },
 	{ "ld_raw", { 3, 165 } },
 	{ "store_raw", { 3, 166 } },
@@ -576,6 +602,8 @@ map<string, vector<int>> insMap = {
 	{ "dcl_uav_raw", { 1, 157, 0 } },
 	{ "dcl_uav_structured", { 2, 158, 0 } },
 	{ "firstbit_lo", { 2, 136 } },
+	{ "firstbit_hi", { 2, 135 } },
+	{ "ibfe", { 4, 139 } },
 };
 
 vector<DWORD> assembleIns(string s) {
@@ -680,6 +708,11 @@ vector<DWORD> assembleIns(string s) {
 		ins->_11_23 = 3;
 		ins->length = 1;
 		v.push_back(op);
+	} else if (w[0] == "sync_uglobal") {
+		ins->opcode = 190;
+		ins->_11_23 = 8;
+		ins->length = 1;
+		v.push_back(op);
 	} else if (w[0] == "store_uav_typed") {
 		ins->opcode = 134;
 		if (w[1][0] == 'u') {
@@ -742,10 +775,14 @@ vector<DWORD> assembleIns(string s) {
 				c = 2;
 			if (w[c] == "(texture1d)")
 				v.push_back(0x80000082);
+			if (w[c] == "(texture1darray)")
+				v.push_back(0x800001C2);
 			if (w[c] == "(texture2d)")
 				v.push_back(0x800000C2);
 			if (w[c] == "(texture2dms)")
 				v.push_back(0x80000102);
+			if (w[c] == "(texture2dmsarray)")
+				v.push_back(0x80000242);
 			if (w[c] == "(texture3d)")
 				v.push_back(0x80000142);
 			if (w[c] == "(texture2darray)")
@@ -756,9 +793,8 @@ vector<DWORD> assembleIns(string s) {
 				v.push_back(0x80000282);
 			if (w[c] == "(buffer)")
 				v.push_back(0x80000042);
-			if (w[c] == "(raw_buffer)") {
+			if (w[c] == "(raw_buffer)")
 				v.push_back(0x800002C2);
-			}
 			if (vIns[2] & 4) {
 				string stride = w[1].substr(27);
 				stride = stride.substr(0, stride.size() - 1);
@@ -776,6 +812,8 @@ vector<DWORD> assembleIns(string s) {
 					v.push_back(0x000CCCC3);
 				if (w[startPos - 1] == "(mixed,mixed,mixed,mixed)")
 					v.push_back(0x00199983);
+				if (w[startPos - 1] == "(unorm,unorm,unorm,unorm)")
+					v.push_back(0x00044443);
 			}
 		}
 		for (int i = 0; i < numOps; i++)
@@ -793,9 +831,6 @@ vector<DWORD> assembleIns(string s) {
 		vector<DWORD> os = assembleOp(w[1], 1);
 		ins->opcode = 101;
 		ins->length = 1 + os.size();
-		// Should sort special value for text constants.
-		if ((os[0] & 0xFF0) == 0)
-			os[0] -= 1;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_raw") {
@@ -821,6 +856,17 @@ vector<DWORD> assembleIns(string s) {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
 		ins->_11_23 = 2;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[1] == "(float,float,float,float)")
+			v.push_back(0x5555);
+		if (w[1] == "(uint,uint,uint,uint)")
+			v.push_back(0x4444);
+	} else if (o == "dcl_resource_texture1darray") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 88;
+		ins->_11_23 = 7;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -962,6 +1008,20 @@ vector<DWORD> assembleIns(string s) {
 			v.push_back(0x5555);
 		if (w[2] == "(uint,uint,uint,uint)")
 			v.push_back(0x4444);
+	} else if (o == "dcl_resource_texture2dmsarray") {
+		vector<DWORD> os = assembleOp(w[3]);
+		ins->opcode = 88;
+		if (w[1] == "(2)")
+			ins->_11_23 = 73;
+		if (w[1] == "(4)")
+			ins->_11_23 = 137;
+		if (w[1] == "(8)")
+			ins->_11_23 = 265;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		if (w[2] == "(unorm,unorm,unorm,unorm)")
+			v.push_back(0x1111);
 	} else if (o == "dcl_indexrange") {
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 91;
@@ -1053,21 +1113,29 @@ vector<DWORD> assembleIns(string s) {
 		else if (w[2] == "viewport_array_index")
 			os.push_back(5);
 		else if (w[2] == "finalQuadUeq0EdgeTessFactor")
-			os.push_back(0xB);
+			os.push_back(11);
 		else if (w[2] == "finalQuadVeq0EdgeTessFactor")
-			os.push_back(0xC);
+			os.push_back(12);
 		else if (w[2] == "finalQuadUeq1EdgeTessFactor")
-			os.push_back(0xD);
+			os.push_back(13);
 		else if (w[2] == "finalQuadVeq1EdgeTessFactor")
-			os.push_back(0xE);
+			os.push_back(14);
 		else if (w[2] == "finalQuadUInsideTessFactor")
-			os.push_back(0xF);
+			os.push_back(15);
 		else if (w[2] == "finalQuadVInsideTessFactor")
-			os.push_back(0x10);
+			os.push_back(16);
+		else if (w[2] == "finalTriUeq0EdgeTessFactor")
+			os.push_back(17);
+		else if (w[2] == "finalTriVeq0EdgeTessFactor")
+			os.push_back(18);
+		else if (w[2] == "finalTriWeq0EdgeTessFactor")
+			os.push_back(19);
+		else if (w[2] == "finalTriInsideTessFactor")
+			os.push_back(20);
 		else if (w[2] == "finalLineDetailTessFactor")
-			os.push_back(0x15);
+			os.push_back(21);
 		else if (w[2] == "finalLineDensityTessFactor")
-			os.push_back(0x16);
+			os.push_back(22);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1211,6 +1279,8 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 1;
 		if (w[1] == "partitioning_integer")
 			ins->_11_23 = 1;
+		else if (w[1] == "partitioning_fractional_odd")
+			ins->_11_23 = 3;
 		else if (w[1] == "partitioning_fractional_even")
 			ins->_11_23 = 4;
 		v.push_back(op);
@@ -1219,6 +1289,8 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 1;
 		if (w[1] == "output_line")
 			ins->_11_23 = 2;
+		else if (w[1] == "output_triangle_cw")
+			ins->_11_23 = 3;
 		else if (w[1] == "output_triangle_ccw")
 			ins->_11_23 = 4;
 		v.push_back(op);
@@ -1227,6 +1299,8 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 1;
 		if (w[1] == "domain_isoline")
 			ins->_11_23 = 1;
+		else if (w[1] == "domain_tri")
+			ins->_11_23 = 2;
 		else if (w[1] == "domain_quad")
 			ins->_11_23 = 3;
 		v.push_back(op);
@@ -1290,6 +1364,12 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 1 + os.size() - 1;
 		v.push_back(op);
 		v.insert(v.end(), os.begin() + 1, os.end());
+	} else if (o == "dcl_hs_fork_phase_instance_count") {
+		vector<DWORD> os = assembleOp(w[1]);
+		ins->opcode = 153;
+		ins->length = 1 + os.size();
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
 	}
 
 	/*
