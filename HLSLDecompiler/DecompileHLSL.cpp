@@ -2862,6 +2862,24 @@ public:
 					}
 				}
 			}
+			else if (!strcmp(statement, "dcl_resource_texture3d"))
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture register index: " + string(op2));
+						return;
+					}
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						CreateRawFormat("Texture3D", bufIndex);
+					}
+				}
+			}
 			else if (!strcmp(statement, "dcl_resource_texturecube"))
 			{
 				if (op2[0] == 't')
