@@ -1181,6 +1181,54 @@ STDMETHODIMP_(void) HackerContext::RSSetScissorRects(THIS_
 	 mOrigContext->RSSetScissorRects(NumRects, pRects);
 }
 
+/*
+ * Used for CryEngine games like Lichdom that copy a 2D rectangle from the
+ * colour render target to a texture as an input for transparent refraction
+ * effects. Expands the rectange to the full width.
+ */
+bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
+		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
+		UINT *replaceDstX, D3D11_BOX *replaceBox)
+{
+	ID3D11Texture2D *srcTex = (ID3D11Texture2D*)pSrcResource;
+	ID3D11Texture2D *dstTex = (ID3D11Texture2D*)pDstResource;
+	D3D11_TEXTURE2D_DESC srcDesc, dstDesc;
+	D3D11_RESOURCE_DIMENSION srcDim, dstDim;
+	UINT64 srcHash, dstHash;
+	TextureOverrideMap::iterator i;
+
+	if (!pSrcResource || !pDstResource || !pSrcBox)
+		return false;
+
+	pSrcResource->GetType(&srcDim);
+	pDstResource->GetType(&dstDim);
+	if (srcDim != dstDim || srcDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+		return false;
+
+	srcTex->GetDesc(&srcDesc);
+	dstTex->GetDesc(&dstDesc);
+	srcHash = GetTexture2DHash(srcTex, false, NULL);
+	dstHash = GetTexture2DHash(dstTex, false, NULL);
+
+	LogDebug("CopySubresourceRegion %016I64x (%u:%u x %u:%u / %u x %u) -> %016I64x (%u x %u / %u x %u)\n",
+			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom,
+			srcDesc.Width, srcDesc.Height, dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
+
+	i = G->mTextureOverrideMap.find(dstHash);
+	if (i == G->mTextureOverrideMap.end())
+		return false;
+
+	if (!i->second.expand_region_copy)
+		return false;
+
+	memcpy(replaceBox, pSrcBox, sizeof(D3D11_BOX));
+	*replaceDstX = 0;
+	replaceBox->left = 0;
+	replaceBox->right = dstDesc.Width;
+
+	return true;
+}
+
 STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pDstResource,
@@ -1199,7 +1247,13 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	/* [annotation] */
 	__in_opt  const D3D11_BOX *pSrcBox)
 {
-	 mOrigContext->CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ,
+	D3D11_BOX replaceSrcBox;
+	UINT replaceDstX = DstX;
+
+	if (ExpandRegionCopy(pDstResource, DstX, DstY, pSrcResource, pSrcBox, &replaceDstX, &replaceSrcBox))
+		pSrcBox = &replaceSrcBox;
+
+	 mOrigContext->CopySubresourceRegion(pDstResource, DstSubresource, replaceDstX, DstY, DstZ,
 		pSrcResource, SrcSubresource, pSrcBox);
 }
 

@@ -67,6 +67,9 @@ private:
 	void AfterDraw(DrawContext &data);
 	bool BeforeDispatch();
 	void AfterDispatch();
+	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
+		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
+		UINT *replaceDstX, D3D11_BOX *replaceBox);
 	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
