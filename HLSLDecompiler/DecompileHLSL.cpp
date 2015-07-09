@@ -1952,13 +1952,13 @@ public:
 			if (!strncmp(op, "l(1.#INF00", strlen("l(1.#INF00")) || abs(oldValue - o.afImmediates[0]) < 0.1)
 			{
 				if (o.iNumComponents == 4)
-					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
+					sprintf_s(op, opcodeSize, "l(%.9g,%.9g,%.9g,%.9g)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
 				else if (o.iNumComponents == 3)
-					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
+					sprintf_s(op, opcodeSize, "l(%.9g,%.9g,%.9g)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
 				else if (o.iNumComponents == 2)
-					sprintf_s(op, opcodeSize, "l(%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1]);
+					sprintf_s(op, opcodeSize, "l(%.9g,%.9g)", o.afImmediates[0], o.afImmediates[1]);
 				else if (o.iNumComponents == 1)
-					sprintf_s(op, opcodeSize, "l(%.9e)", o.afImmediates[0]);
+					sprintf_s(op, opcodeSize, "l(%.9g)", o.afImmediates[0]);
 			}
 		}
 		return op;
