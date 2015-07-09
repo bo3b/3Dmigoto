@@ -1584,10 +1584,32 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// Get screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
-	if (hashWidth == G->mSwapChainInfo.width && hashHeight == G->mSwapChainInfo.height)
-	{
-		hashWidth = 1386492276;
-		hashHeight = 1386492276;
+	if (pDesc) {
+		if (pDesc->Width == G->mSwapChainInfo.width && pDesc->Height == G->mSwapChainInfo.height)
+		{
+			hashWidth = 1386492276;
+			hashHeight = 1386492276;
+		}
+		else if (pDesc->Width == G->mSwapChainInfo.width * 2 && pDesc->Height == G->mSwapChainInfo.height * 2)
+		{
+			hashWidth = 1108431669;
+			hashHeight = 1108431669;
+		}
+		else if (pDesc->Width == G->mSwapChainInfo.width * 4 && pDesc->Height == G->mSwapChainInfo.height * 4)
+		{
+			hashWidth = 1167952304;
+			hashHeight = 1167952304;
+		}
+		else if (pDesc->Width == G->mSwapChainInfo.width * 8 && pDesc->Height == G->mSwapChainInfo.height * 8)
+		{
+			hashWidth = 3503946005;
+			hashHeight = 3503946005;
+		}
+		else if (pDesc->Width == G->mSwapChainInfo.width / 2 && pDesc->Height == G->mSwapChainInfo.height / 2)
+		{
+			hashWidth = 1599678497;
+			hashHeight = 1599678497;
+		}
 	}
 
 	// Create hash code.  Wrapped in try/catch because it can crash in Dirt Rally,

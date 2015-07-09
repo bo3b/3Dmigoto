@@ -605,6 +605,11 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
 
+	if (pDesc) {
+		G->mSwapChainInfo.width = pDesc->BufferDesc.Width;
+		G->mSwapChainInfo.height = pDesc->BufferDesc.Height;
+	}
+
 	LogInfo("->return value = %#x \n\n", hr);
 	return hr;
 }
@@ -745,15 +750,17 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
-	//if (SUCCEEDED(hr))
-	//{
+	if (SUCCEEDED(hr)) {
 	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	//}
-	
+		if (pDesc) {
+			G->mSwapChainInfo.width = pDesc->Width;
+			G->mSwapChainInfo.height = pDesc->Height;
+		}
+	}
+
 	return hr;
 }
 
@@ -786,14 +793,16 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
-	//if (SUCCEEDED(hr))
-	//{
+	if (SUCCEEDED(hr)) {
 	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	//}
+		if (pDesc) {
+			G->mSwapChainInfo.width = pDesc->Width;
+			G->mSwapChainInfo.height = pDesc->Height;
+		}
+	}
 
 	return hr;
 }
@@ -824,16 +833,19 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 	//	hr = mOrigFactory->CreateSwapChainForComposition(realDevice, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
 	//LogInfo("  return value = %x\n", hr);
 
-	//if (SUCCEEDED(hr))
-	//{
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
+
+	if (SUCCEEDED(hr)) {
 	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	//}
+		if (pDesc) {
+			G->mSwapChainInfo.width = pDesc->Width;
+			G->mSwapChainInfo.height = pDesc->Height;
+		}
+	}
 
-	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 	return hr;
 }
@@ -1392,6 +1404,12 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", typeid(*this).name(), this);
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+	if (SUCCEEDED(hr)) {
+		G->mSwapChainInfo.width = Width;
+		G->mSwapChainInfo.height = Height;
+	}
+
 	LogInfo("  returns result = %x\n", hr); 
 	return hr;
 }
