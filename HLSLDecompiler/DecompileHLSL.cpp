@@ -1061,13 +1061,13 @@ public:
 							if (useInt)
 								sprintf(buffer, "%i,", in[i]);
 							else
-								sprintf(buffer, "%e,", v[i]);
+								sprintf(buffer, "%.9g,", v[i]);
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
 						if (useInt)
 							sprintf(buffer, "%i);\n", in[numRead - 1]);
 						else
-							sprintf(buffer, "%e);\n", v[numRead - 1]);
+							sprintf(buffer, "%.9g);\n", v[numRead - 1]);
 
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						while (c[pos] != 0x0a && pos < size) pos++; pos++;
@@ -1148,7 +1148,7 @@ public:
 				}
 				if (pos == 1)
 				{
-					sprintf(right2, "%e", args[idx[0]]);
+					sprintf(right2, "%.9g", args[idx[0]]);
 				}
 				else
 				{
@@ -1168,7 +1168,7 @@ public:
 					{
 						sprintf(right2, "float%d(", pos);
 						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%e,", args[idx[i]]);
+							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%.9g,", args[idx[i]]);
 						right2[strlen(right2) - 1] = 0;
 						strcat(right2, ")");
 					}
