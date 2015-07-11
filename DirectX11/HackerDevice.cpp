@@ -1220,26 +1220,6 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
 	return mOrigDevice->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
-static void UpdateResolutionFromResource(ID3D11Resource *pResource)
-{
-	ID3D11Texture2D *tex = (ID3D11Texture2D*)pResource;
-	D3D11_TEXTURE2D_DESC desc;
-	D3D11_RESOURCE_DIMENSION dim;
-
-	pResource->GetType(&dim);
-	if (dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
-		return;
-
-	tex->GetDesc(&desc);
-
-	/* A square resolution probably indicates this is a shadow map, ignore it */
-	if (desc.Width == desc.Height)
-		return;
-
-	G->mResolutionInfo.width = desc.Width;
-	G->mResolutionInfo.height = desc.Height;
-}
-
 static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hashWidth, int *hashHeight)
 {
 	if (width == G->mResolutionInfo.width && height == G->mResolutionInfo.height) {
@@ -1268,9 +1248,6 @@ STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
-	if (pResource && G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL)
-		UpdateResolutionFromResource(pResource);
-
 	return mOrigDevice->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
 }
 
@@ -1624,6 +1601,15 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		}
 	}
 
+	// Rectangular depth stencil texture may indicate the game's
+	// resolution, for games that upscale to their swap chains:
+	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
+	    pDesc->Width != pDesc->Height) {
+		G->mResolutionInfo.width = pDesc->Width;
+		G->mResolutionInfo.height = pDesc->Height;
+	}
+
 	// Get screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
@@ -1743,6 +1729,15 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->MipLevels, pInitialData);
 	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
+
+	// Rectangular depth stencil texture may indicate the game's
+	// resolution, for games that upscale to their swap chains:
+	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
+	    pDesc->Width != pDesc->Height) {
+		G->mResolutionInfo.width = pDesc->Width;
+		G->mResolutionInfo.height = pDesc->Height;
+	}
 
 	// Get screen resolution.
 	int hashWidth = 0;
