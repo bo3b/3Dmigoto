@@ -1601,11 +1601,11 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		}
 	}
 
-	// Rectangular depth stencil texture may indicate the game's
-	// resolution, for games that upscale to their swap chains:
+	// Rectangular depth stencil textures of at least 640x480 may indicate
+	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    pDesc->Width != pDesc->Height) {
+	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
@@ -1732,11 +1732,11 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
-	// Rectangular depth stencil texture may indicate the game's
-	// resolution, for games that upscale to their swap chains:
+	// Rectangular depth stencil textures of at least 640x480 may indicate
+	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    pDesc->Width != pDesc->Height) {
+	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
