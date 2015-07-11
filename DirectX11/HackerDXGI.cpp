@@ -1388,18 +1388,18 @@ STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
 {
-	LogInfo("HackerDXGISwapChain::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
+	LogDebug("HackerDXGISwapChain::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
 	
 	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
 	if (hr == S_OK)
 	{
-		if (pDesc) LogInfo("  returns Windowed = %d\n", pDesc->Windowed);
-		if (pDesc) LogInfo("  returns Width = %d\n", pDesc->BufferDesc.Width);
-		if (pDesc) LogInfo("  returns Height = %d\n", pDesc->BufferDesc.Height);
-		if (pDesc) LogInfo("  returns Refresh rate = %f\n", 
+		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
+		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
+		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
+		if (pDesc) LogDebug("  returns Refresh rate = %f\n", 
 			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
 	}
-	LogInfo("  returns result = %x\n", hr);
+	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
         
@@ -1438,7 +1438,7 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppOutput)
 {
-	LogInfo("HackerDXGISwapChain::GetContainingOutput(%s@%p) called \n", typeid(*this).name(), this);
+	LogDebug("HackerDXGISwapChain::GetContainingOutput(%s@%p) called \n", typeid(*this).name(), this);
 	
 	//IDXGIOutput *origOutput;
 	//HRESULT hr = mOrigSwapChain->GetContainingOutput(&origOutput);
@@ -1448,7 +1448,7 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
 	//}
 
 	HRESULT hr = mOrigSwapChain->GetContainingOutput(ppOutput);
-	LogInfo("  returns result = %x, handle = %p \n", hr, *ppOutput);
+	LogDebug("  returns result = %x, handle = %p \n", hr, *ppOutput);
 	return hr;
 }
         
