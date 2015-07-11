@@ -377,7 +377,7 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 
 void LoadConfigFile()
 {
-	wchar_t iniFile[MAX_PATH];
+	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 	wchar_t setting[MAX_PATH];
 	IniSections sections;
 	int i;
@@ -386,7 +386,9 @@ void LoadConfigFile()
 
 	GetModuleFileName(0, iniFile, MAX_PATH);
 	wcsrchr(iniFile, L'\\')[1] = 0;
+	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
+	wcscat(logFilename, L"d3d11_log.txt");
 
 	// Log all settings that are _enabled_, in order, 
 	// so that there is no question what settings we are using.
@@ -395,7 +397,7 @@ void LoadConfigFile()
 	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
 	{
 		if (!LogFile)
-			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
+			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
 		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
@@ -408,7 +410,7 @@ void LoadConfigFile()
 	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 	// to open active files.
 	int unbuffered = -1;
-	if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
+	if (LogFile && GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
 	{
 		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
 	}
