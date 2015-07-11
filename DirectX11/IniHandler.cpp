@@ -490,6 +490,17 @@ void LoadConfigFile()
 		if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 	}
 
+	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {
+		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
+			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
+		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
+			LogInfoW(L"  WARNING: Unknown get_resolution_from %s\n", setting);
+			BeepFailure2();
+		} else
+			LogInfoW(L"  get_resolution_from=%s\n", setting);
+	} else
+		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
+
 	// [Stereo]
 	bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll
 	G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;

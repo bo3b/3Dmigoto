@@ -1220,6 +1220,46 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
 	return mOrigDevice->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
+static void UpdateResolutionFromResource(ID3D11Resource *pResource)
+{
+	ID3D11Texture2D *tex = (ID3D11Texture2D*)pResource;
+	D3D11_TEXTURE2D_DESC desc;
+	D3D11_RESOURCE_DIMENSION dim;
+
+	pResource->GetType(&dim);
+	if (dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+		return;
+
+	tex->GetDesc(&desc);
+
+	/* A square resolution probably indicates this is a shadow map, ignore it */
+	if (desc.Width == desc.Height)
+		return;
+
+	G->mResolutionInfo.width = desc.Width;
+	G->mResolutionInfo.height = desc.Height;
+}
+
+static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hashWidth, int *hashHeight)
+{
+	if (width == G->mResolutionInfo.width && height == G->mResolutionInfo.height) {
+		*hashWidth = 1386492276;
+		*hashHeight = 1386492276;
+	} else if (width == G->mResolutionInfo.width * 2 && height == G->mResolutionInfo.height * 2) {
+		*hashWidth = 1108431669;
+		*hashHeight = 1108431669;
+	} else if (width == G->mResolutionInfo.width * 4 && height == G->mResolutionInfo.height * 4) {
+		*hashWidth = 1167952304;
+		*hashHeight = 1167952304;
+	} else if (width == G->mResolutionInfo.width * 8 && height == G->mResolutionInfo.height * 8) {
+		*hashWidth = 3503946005;
+		*hashHeight = 3503946005;
+	} else if (width == G->mResolutionInfo.width / 2 && height == G->mResolutionInfo.height / 2) {
+		*hashWidth = 1599678497;
+		*hashHeight = 1599678497;
+	}
+}
+
 STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pResource,
@@ -1228,6 +1268,9 @@ STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
+	if (pResource && G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL)
+		UpdateResolutionFromResource(pResource);
+
 	return mOrigDevice->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
 }
 
@@ -1584,33 +1627,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// Get screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
-	if (pDesc) {
-		if (pDesc->Width == G->mSwapChainInfo.width && pDesc->Height == G->mSwapChainInfo.height)
-		{
-			hashWidth = 1386492276;
-			hashHeight = 1386492276;
-		}
-		else if (pDesc->Width == G->mSwapChainInfo.width * 2 && pDesc->Height == G->mSwapChainInfo.height * 2)
-		{
-			hashWidth = 1108431669;
-			hashHeight = 1108431669;
-		}
-		else if (pDesc->Width == G->mSwapChainInfo.width * 4 && pDesc->Height == G->mSwapChainInfo.height * 4)
-		{
-			hashWidth = 1167952304;
-			hashHeight = 1167952304;
-		}
-		else if (pDesc->Width == G->mSwapChainInfo.width * 8 && pDesc->Height == G->mSwapChainInfo.height * 8)
-		{
-			hashWidth = 3503946005;
-			hashHeight = 3503946005;
-		}
-		else if (pDesc->Width == G->mSwapChainInfo.width / 2 && pDesc->Height == G->mSwapChainInfo.height / 2)
-		{
-			hashWidth = 1599678497;
-			hashHeight = 1599678497;
-		}
-	}
+	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
+		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
 	// Create hash code.  Wrapped in try/catch because it can crash in Dirt Rally,
 	// because of noncontiguous or non-mapped memory for the texture.  Not sure this
@@ -1729,11 +1747,8 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// Get screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
-	if (hashWidth == G->mSwapChainInfo.width && hashHeight == G->mSwapChainInfo.height)
-	{
-		hashWidth = 1386492276;
-		hashHeight = 1386492276;
-	}
+	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
+		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
 	// Create hash code.
 	UINT64 hash = 0;

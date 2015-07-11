@@ -605,9 +605,9 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
 
-	if (pDesc) {
-		G->mSwapChainInfo.width = pDesc->BufferDesc.Width;
-		G->mSwapChainInfo.height = pDesc->BufferDesc.Height;
+	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
 	}
 
 	LogInfo("->return value = %#x \n\n", hr);
@@ -755,9 +755,9 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) {
-			G->mSwapChainInfo.width = pDesc->Width;
-			G->mSwapChainInfo.height = pDesc->Height;
+		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
 		}
 	}
 
@@ -798,9 +798,9 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) {
-			G->mSwapChainInfo.width = pDesc->Width;
-			G->mSwapChainInfo.height = pDesc->Height;
+		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
 		}
 	}
 
@@ -840,9 +840,9 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc) {
-			G->mSwapChainInfo.width = pDesc->Width;
-			G->mSwapChainInfo.height = pDesc->Height;
+		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
 		}
 	}
 
@@ -1405,9 +1405,9 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", typeid(*this).name(), this);
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-	if (SUCCEEDED(hr)) {
-		G->mSwapChainInfo.width = Width;
-		G->mSwapChainInfo.height = Height;
+	if (SUCCEEDED(hr) && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+		G->mResolutionInfo.width = Width;
+		G->mResolutionInfo.height = Height;
 	}
 
 	LogInfo("  returns result = %x\n", hr); 

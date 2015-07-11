@@ -205,9 +205,28 @@ struct ShaderInfoData
 	std::vector<std::set<void *>> RenderTargets;
 	std::set<void *> DepthTargets;
 };
-struct SwapChainInfo
+
+enum class GetResolutionFrom {
+	INVALID       = -1,
+	SWAP_CHAIN,
+	DEPTH_STENCIL,
+};
+static EnumName_t<wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
+	{L"swap_chain", GetResolutionFrom::SWAP_CHAIN},
+	{L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL},
+	{NULL, GetResolutionFrom::INVALID} // End of list marker
+};
+
+struct ResolutionInfo
 {
 	int width, height;
+	GetResolutionFrom from;
+
+	ResolutionInfo() :
+		from(GetResolutionFrom::INVALID),
+		width(-1),
+		height(-1)
+	{}
 };
 
 struct ResourceInfo
@@ -297,7 +316,7 @@ struct Globals
 
 	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
 
-	SwapChainInfo mSwapChainInfo;
+	ResolutionInfo mResolutionInfo;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
@@ -453,9 +472,6 @@ struct Globals
 		CHAIN_DLL_PATH[0] = 0;
 
 		ANALYSIS_PATH[0] = 0;
-
-		mSwapChainInfo.width = -1;
-		mSwapChainInfo.height = -1;
 
 		for (i = 0; i < 4; i++)
 			gTuneValue[i] = 1.0f;
