@@ -1608,6 +1608,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	    pDesc->Width != pDesc->Height) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
+		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
 	// Get screen resolution.
@@ -1737,6 +1739,8 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	    pDesc->Width != pDesc->Height) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
+		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
 	// Get screen resolution.

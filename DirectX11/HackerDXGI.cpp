@@ -608,6 +608,8 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
 		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
 		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
 	LogInfo("->return value = %#x \n\n", hr);
@@ -758,6 +760,8 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
 			G->mResolutionInfo.width = pDesc->Width;
 			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
 		}
 	}
 
@@ -801,6 +805,8 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
 			G->mResolutionInfo.width = pDesc->Width;
 			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
 		}
 	}
 
@@ -843,6 +849,8 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
 			G->mResolutionInfo.width = pDesc->Width;
 			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
 		}
 	}
 
@@ -1408,6 +1416,8 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 	if (SUCCEEDED(hr) && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
 		G->mResolutionInfo.width = Width;
 		G->mResolutionInfo.height = Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
 	LogInfo("  returns result = %x\n", hr); 
