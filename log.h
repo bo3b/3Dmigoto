@@ -16,11 +16,6 @@ extern bool gLogDebug;
 // probably not worth doing so unless we were switching to use a central
 // logging framework.
 
-// DISABLE_LOGGING is a stopgap measure to get D3D_Shaders from Project Flugan
-// to compile, which is not using this logging infrastracture, but now includes
-// some of our HLSL decompiler, which does want these defined.
-#ifndef DISABLE_LOGGING
-
 #define LogInfo(fmt, ...) \
 	do { if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); } while (0)
 #define LogInfoW(fmt, ...) \
@@ -30,15 +25,6 @@ extern bool gLogDebug;
 	do { if (gLogDebug) LogInfo(fmt, __VA_ARGS__); } while (0)
 #define LogDebugW(fmt, ...) \
 	do { if (gLogDebug) LogInfoW(fmt, __VA_ARGS__); } while (0)
-
-#else // DISABLE_LOGGING
-
-#define LogInfo(...) do {} while (0)
-#define LogInfoW(...) do {} while (0)
-#define LogDebug(...) do {} while (0)
-#define LogDebugW(...) do {} while (0)
-
-#endif // DISABLE_LOGGING
 
 static string LogTime()
 {
