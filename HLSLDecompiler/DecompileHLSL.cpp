@@ -170,8 +170,100 @@ public:
 		return DT_Unknown;
 	}
 
+	// This is to fix a specific problem seen with Batman, where the fxc compiler
+	// is aggressive and packs the input down to a single float4, where it should
+	// be two float2's. This is going to fix only this specific case, because there
+	// are other times when the packing is right.
+	// We'll do this by reading ahead a full line, and seeing if the upcoming
+	// sequence is of the form:
+	// Name                 Index   Mask Register SysValue  Format   Used
+	// -------------------- ----- ------ -------- -------- ------- ------
+	// TEXCOORD                 0   xy          0     NONE   float   xy  
+	// TEXCOORD                 1   xy          1     NONE   float   xy  
+	//
+	// The goal is to switch from outputing:
+	//		float2 v0 : TEXCOORD0,
+	//		float2 v1 : TEXCOORD1,
+	// to:
+	//		float4 v0 : TEXCOORD0,	// change packing to float4 if different texcoord
+	//		float2 v1 : TEXCOORD1,
+	//
+	// This is only going to be done for TEXCOORD.  I've looked at examples of 
+	// outputs like SV_TARGET, where fxc could have packed them, but it did not.
+	// Adding the extra parts there creates spurious warnings, so for now, 
+	// we'll only do TEXCOORD as a known problem.
+	// This does also unfortunately create warnings for the TEXCOORD outputs, but
+	// I was unable to find any other way to avoid the fxc packing optimization.
+
+	bool SkipPacking(const char *c, map<string, DataType> inUse)
+	{
+		char name[256], mask[16], sysvalue[16], format[16];
+		int index, reg1, reg2; format[0] = 0; mask[0] = 0;
+		size_t pos = 0;
+
+		int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+			name, sizeof(name), &index, mask, sizeof(mask), &reg1, sysvalue, sizeof(sysvalue), format, sizeof(format));
+		if (numRead != 6)
+			return false;
+		if (strcmp(name, "TEXCOORD") != 0)
+			return false;
+
+		// Any v* register already active needs to be skipped, to allow the 
+		// normal packing to succeed.  input:v1.xy + w1.zw. or output:o1.xy + p1.zw
+		if (inUse.find(string("v" + to_string(reg1))) != inUse.end())
+			return false;
+		if (inUse.find(string("o" + to_string(reg1))) != inUse.end())
+			return false;
+
+		// skip pointer in order to parse next line
+		while (c[pos] != 0x0a && pos < 200) pos++; pos++;	
+
+		numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+			name, sizeof(name), &index, mask, sizeof(mask), &reg2, sysvalue, sizeof(sysvalue), format, sizeof(format));
+		if (numRead != 6)
+			return false;
+		if (strcmp(name, "TEXCOORD") != 0)
+			return false;
+
+		string line1, line2;
+		if (gLogDebug)
+		{
+			line1 = string(c + 0);
+			line1 = line1.substr(0, line1.find('\n'));
+			line2 = string(c + pos);
+			line2 = line2.substr(0, line2.find('\n'));
+		}
+
+		// The key aspect is whether we are supposed to use a different Register.
+		if (reg1 == reg2)
+		{
+			LogDebug("    SkipPacking false for v%d==v%d \n", reg1, reg2);
+			LogDebug("      %s \n", line1.c_str());
+			LogDebug("      %s \n", line2.c_str());
+			return false;
+		}
+
+		LogDebug("    SkipPacking true for: \n");
+		LogDebug("      %s \n", line1.c_str());
+		LogDebug("      %s \n", line2.c_str());
+
+		return true;
+	}
+
+
+	// Input signature:
+	//
+	// Name                 Index   Mask Register SysValue  Format   Used
+	// -------------------- ----- ------ -------- -------- ------- ------
+	// TEXCOORD                 0   xy          0     NONE   float   xy  
+	// TEXCOORD                 1   xy          1     NONE   float   xy  
+	// COLOR                    3   xyz         2     NONE   float   xyz 
+
 	void ParseInputSignature(const char *c, size_t size)
 	{
+		// DataType is not used here, just a convenience for calling SkipPacking.
+		map<string, DataType> usedInputRegisters;
+
 		mRemappedInputRegisters.clear();
 		// Write header.  Extra space handles odd case for no input and no output sections.
 		const char *inputHeader = "\nvoid main( \n";
@@ -196,7 +288,6 @@ public:
 			while (c[pos] != 0x0a && pos < size) pos++; pos++;
 		}
 		// Read list.
-		set<string> usedInputRegisters;
 		while (pos < size)
 		{
 			char name[256], mask[16], format[16], format2[16];
@@ -211,15 +302,18 @@ public:
 				return;
 			}
 			// finish type.
-			if (strlen(mask) > 1)
-				sprintf(format2, "%s%d", format, strlen(mask));
+			if (SkipPacking(c + pos, usedInputRegisters))
+				sprintf(format2, "%s%d", format, 4);				// force to float4
 			else
-				strcpy(format2, format);
+				if (strlen(mask) > 1)
+					sprintf(format2, "%s%d", format, strlen(mask));	// e.g. float2
+				else
+					strcpy(format2, format);
 			// Already used?
 			char registerName[32];
 			sprintf(registerName, "v%d", slot);
 			string regNameStr = registerName;
-			set<string>::iterator i = usedInputRegisters.find(regNameStr);
+			map<string, DataType>::iterator i = usedInputRegisters.find(regNameStr);
 			if (i != usedInputRegisters.end())
 			{
 				sprintf(registerName, "w%d.", slot);
@@ -244,7 +338,7 @@ public:
 			}
 			else
 			{
-				usedInputRegisters.insert(regNameStr);
+				usedInputRegisters[regNameStr] = TranslateType(format2);
 			}
 			// Write.
 			char buffer[256];
@@ -296,10 +390,13 @@ public:
 			if (numRead == 6)
 			{
 				// finish type.
-				if (strlen(mask) > 1)
-					sprintf(format2, "%s%d", format, strlen(mask));
+				if (SkipPacking(c + pos, mOutputRegisterType))
+					sprintf(format2, "%s%d", format, 4);				// force to float4
 				else
-					strcpy(format2, format);
+					if (strlen(mask) > 1)
+						sprintf(format2, "%s%d", format, strlen(mask));	// e.g. float2
+					else
+						strcpy(format2, format);
 				// Already used?
 				char registerName[32];
 				sprintf(registerName, "o%d", slot);

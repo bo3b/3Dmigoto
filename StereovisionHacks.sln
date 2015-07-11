@@ -3977,6 +3977,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencie
 		Dependencies\uninstall.bat = Dependencies\uninstall.bat
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Batman", "Batman", "{2E0F59CC-A1FA-49CE-A8A7-727A042D77B3}"
+	ProjectSection(SolutionItems) = preProject
+		Batman\5a410d6a9d1fbfb4-cs_replace.txt = Batman\5a410d6a9d1fbfb4-cs_replace.txt
+		Batman\5ccaeb706c713d9a-ps_replace.txt = Batman\5ccaeb706c713d9a-ps_replace.txt
+		Batman\e97e6bfbe7452692-ps_replace.txt = Batman\e97e6bfbe7452692-ps_replace.txt
+		Batman\edbe6336cc9f9cb1-ps_replace.txt = Batman\edbe6336cc9f9cb1-ps_replace.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -4135,5 +4143,6 @@ Global
 		{8C63D7F0-AA10-40E2-85E5-017F2A02CFBC} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{09915712-7D63-41F9-8110-D5667F1F9FCF} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{83DCC342-4199-4E03-B720-80E5EDF18500} = {1693604A-42AF-4848-B892-D1540FB17FDE}
+		{2E0F59CC-A1FA-49CE-A8A7-727A042D77B3} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
 	EndGlobalSection
 EndGlobal
