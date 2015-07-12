@@ -100,6 +100,7 @@ private:
 	void DumpCBs(bool compute);
 	void DumpTextures(bool compute);
 	void DumpRenderTargets();
+	void DumpDepthStencilTargets();
 	void DumpUAVs(bool compute);
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 			wchar_t *reg, char shader_type, int idx, UINT64 hash, wchar_t *ext);

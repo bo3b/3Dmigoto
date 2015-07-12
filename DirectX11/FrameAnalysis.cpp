@@ -445,6 +445,14 @@ void HackerContext::DumpRenderTargets()
 			return;
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
 	}
+}
+
+void HackerContext::DumpDepthStencilTargets()
+{
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+	UINT64 hash;
+
 	if (mCurrentDepthTarget) {
 		try {
 			hash = G->mRenderTargets.at(mCurrentDepthTarget);
@@ -653,6 +661,9 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 		// UAVs can be used by both pixel shaders and compute shaders:
 		DumpUAVs(compute);
 	}
+
+	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
+		DumpDepthStencilTargets();
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {
