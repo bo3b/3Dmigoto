@@ -111,7 +111,9 @@ enum class FrameAnalysisOptions {
 	STEREO          = 0x00001000,
 	MONO            = 0x00002000,
 	STEREO_MASK     = 0x00003000,
-	DUMP_CB         = 0x00004000,
+	DUMP_CB_BIN     = 0x00004000,
+	DUMP_CB_TXT     = 0x00008000,
+	DUMP_CB_MASK    = 0x0000c000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -129,7 +131,8 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"stereo", FrameAnalysisOptions::STEREO},
 	{L"mono", FrameAnalysisOptions::MONO},
 	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
-	{L"dump_cb", FrameAnalysisOptions::DUMP_CB},
+	{L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN},
+	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 

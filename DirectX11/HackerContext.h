@@ -93,7 +93,9 @@ private:
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
 			FrameAnalysisOptions type_mask);
-	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename);
+	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size);
+	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
 			FrameAnalysisOptions type_mask);
 	void _DumpCBs(char shader_type,
@@ -106,7 +108,7 @@ private:
 	void DumpDepthStencilTargets();
 	void DumpUAVs(bool compute);
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, UINT64 hash, wchar_t *ext);
+			wchar_t *reg, char shader_type, int idx, UINT64 hash);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
