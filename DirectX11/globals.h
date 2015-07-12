@@ -197,12 +197,14 @@ struct TextureOverride {
 	std::vector<int> iterations;
 	FrameAnalysisOptions analyse_options;
 	bool expand_region_copy;
+	bool deny_cpu_read;
 
 	TextureOverride() :
 		stereoMode(-1),
 		format(-1),
 		analyse_options(FrameAnalysisOptions::INVALID),
-		expand_region_copy(false)
+		expand_region_copy(false),
+		deny_cpu_read(false)
 	{}
 };
 typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;

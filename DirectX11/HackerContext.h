@@ -62,6 +62,10 @@ private:
 	void *mCurrentDepthTarget;
 	FrameAnalysisOptions analyse_options;
 
+	// Used for deny_cpu_read texture override
+	typedef std::unordered_map<ID3D11Resource *, void *> DeniedMap;
+	DeniedMap mDeniedMaps;
+
 	// These private methods are utility routines for HackerContext.
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
@@ -70,6 +74,10 @@ private:
 	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
 		UINT *replaceDstX, D3D11_BOX *replaceBox);
+	HRESULT MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
+			D3D11_MAP MapType, UINT MapFlags,
+			D3D11_MAPPED_SUBRESOURCE *pMappedResource);
+	void FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource);
 	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
