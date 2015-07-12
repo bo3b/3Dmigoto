@@ -441,7 +441,10 @@ adj_r0.xyz = adj_r0.xyz / r2.yyy;
   r1.w = dot(r3.xyz, r3.xyz);
   r1.w = rsqrt(r1.w);
   r3.xyz = r3.xyz * r1.www;
-  r3.w = dot(r3.xzy, r0.xyz);
+
+// Use adjusted position to fix environment map reflection with texture quality >= high:
+  r3.w = dot(r3.xzy, adj_r0.xyz);
+
   r3.xyzw = _BRDFHighQuality ? r3.xyzw : r10.xyzw;
   r1.w = r3.w + r3.w;
 
