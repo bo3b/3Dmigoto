@@ -5,8 +5,10 @@
 #include <wincodec.h>
 #include <Strsafe.h>
 
-void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo)
+void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
+		*filename, bool stereo, FrameAnalysisOptions type_mask)
 {
+	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	HRESULT hr;
 	wchar_t *ext;
 
@@ -17,8 +19,8 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
-	    (analyse_options & FrameAnalysisOptions::DUMP_XXX)) {
+	if ((options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
+	    (options & FrameAnalysisOptions::DUMP_XXX)) {
 		// save a JPS file. This will be missing extra channels (e.g.
 		// transparency, depth buffer, specular power, etc) or bit depth that
 		// can be found in the DDS file, but is generally easier to work with.
@@ -34,8 +36,8 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 	}
 
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
-	   ((analyse_options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
+	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
+	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
 		DirectX::SaveDDSTextureToFile(mOrigContext, resource, filename);
 	}
@@ -93,7 +95,8 @@ HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 
 // TODO: Refactor this with StereoScreenShot().
 // Expects the reverse stereo blit to be enabled by the caller
-void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename)
+void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
+		FrameAnalysisOptions type_mask)
 {
 	ID3D11Texture2D *stereoResource = NULL;
 	ID3D11Texture2D *tmpResource = NULL;
@@ -175,7 +178,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 		}
 	}
 
-	Dump2DResource(stereoResource, filename, true);
+	Dump2DResource(stereoResource, filename, true, type_mask);
 
 out2:
 	if (tmpResource2)
@@ -223,7 +226,8 @@ out_close:
 	fclose(fd);
 }
 
-void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
+void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
+		FrameAnalysisOptions type_mask)
 {
 	D3D11_RESOURCE_DIMENSION dim;
 
@@ -235,9 +239,9 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename)
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
-				DumpStereoResource((ID3D11Texture2D*)resource, filename);
+				DumpStereoResource((ID3D11Texture2D*)resource, filename, type_mask);
 			if (analyse_options & FrameAnalysisOptions::MONO)
-				Dump2DResource((ID3D11Texture2D*)resource, filename, false);
+				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask);
 			break;
 		default:
 			LogInfo("frame analysis: skipped resource of type %i\n", dim);
@@ -311,7 +315,7 @@ void HackerContext::_DumpCBs(char shader_type,
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0, L".cb");
 		if (SUCCEEDED(hr))
-			DumpResource(buffers[i], filename);
+			DumpResource(buffers[i], filename, FrameAnalysisOptions::INVALID);
 
 		buffers[i]->Release();
 	}
@@ -353,7 +357,7 @@ void HackerContext::_DumpTextures(char shader_type,
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash, NULL);
 		if (SUCCEEDED(hr))
-			DumpResource(resource, filename);
+			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_TEX_MASK);
 
 		resource->Release();
 		views[i]->Release();
@@ -443,7 +447,7 @@ void HackerContext::DumpRenderTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, hash, NULL);
 		if (FAILED(hr))
 			return;
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename);
+		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename, FrameAnalysisOptions::DUMP_RT_MASK);
 	}
 }
 
@@ -463,7 +467,7 @@ void HackerContext::DumpDepthStencilTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, hash, NULL);
 		if (FAILED(hr))
 			return;
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename);
+		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK);
 	}
 }
 
@@ -496,7 +500,7 @@ void HackerContext::DumpUAVs(bool compute)
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash, NULL);
 		if (SUCCEEDED(hr))
-			DumpResource(resource, filename);
+			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_RT_MASK);
 
 		resource->Release();
 		uavs[i]->Release();

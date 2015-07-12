@@ -87,12 +87,15 @@ private:
 
 	// Functions for the frame analysis. Would be good to split this out,
 	// but it's pretty tightly coupled to the context at the moment:
-	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo);
+	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
+			bool stereo, FrameAnalysisOptions type_mask);
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
-	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
 	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename);
-	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
+	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
 	void _DumpCBs(char shader_type,
 		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
 	void _DumpTextures(char shader_type,
