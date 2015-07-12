@@ -31,6 +31,7 @@ Fixed
 - Decals
 - Sun/moon glow
 - Fog
+- Simulated fur
 
 Installation
 ------------
@@ -73,9 +74,6 @@ Known Issues
 - Windows & doors of buildings sometimes appear brighter than they should.
 
 - Soft shadows create a box shaped artefact.
-
-- Simulated fur glitches a little when very close to the camera, but otherwise
-  looks fine.
 
 Notes
 -----
