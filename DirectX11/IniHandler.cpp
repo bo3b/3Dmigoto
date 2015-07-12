@@ -91,6 +91,31 @@ void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
+static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
+		ParamOverride *override, wchar_t component, int index)
+{
+	wchar_t buf[MAX_PATH], param_name[8];
+	int ret;
+
+	StringCchPrintf(param_name, 8, L"%lc%.0i", component, index);
+	if (!GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini))
+		return;
+
+	ret = swscanf_s(buf, L"%f", &override->val);
+	if (ret != 0 && ret != EOF) {
+		override->type = ParamOverrideType::VALUE;
+		LogInfoW(L"  %ls=%#.2g\n", param_name, override->val);
+		return;
+	}
+
+	override->type = lookup_enum_val<wchar_t *, ParamOverrideType>
+		(ParamOverrideTypeNames, buf, ParamOverrideType::INVALID);
+	if (override->type == ParamOverrideType::INVALID) {
+		LogInfoW(L"  WARNING: Unknown %ls \"%s\"\n", param_name, buf);
+		BeepFailure2();
+	} else
+		LogInfoW(L"  %ls=%s\n", param_name, buf);
+}
 
 void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 {
@@ -99,6 +124,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 	const wchar_t *id;
 	ShaderOverride *override;
 	UINT64 hash, hash2;
+	int j;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -201,6 +227,13 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			LogInfo("  depth_input out of range!\n");
 			override->depth_input = 0;
 			BeepFailure2();
+		}
+
+		for (j = 0; j < INI_PARAMS_SIZE; j++) {
+			ParseParamOverride(id, iniFile, &override->x[j], L'x', j);
+			ParseParamOverride(id, iniFile, &override->y[j], L'y', j);
+			ParseParamOverride(id, iniFile, &override->z[j], L'z', j);
+			ParseParamOverride(id, iniFile, &override->w[j], L'w', j);
 		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);

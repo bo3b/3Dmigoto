@@ -149,6 +149,51 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 	{NULL, DepthBufferFilter::INVALID} // End of list marker
 };
 
+enum class ParamOverrideType {
+	INVALID,
+	VALUE,
+	RT_WIDTH,
+	RT_HEIGHT,
+	RES_WIDTH,
+	RES_HEIGHT,
+	// TODO:
+	// DEPTH_ACTIVE
+	// VERTEX_SHADER    (how best to pass these in?
+	// HULL_SHADER       Maybe the low/hi 32bits of hash? Or all 64bits split in two?
+	// DOMAIN_SHADER     Maybe an index or some other mapping? Perhaps something like Helix mod's texture CRCs?
+	// GEOMETRY_SHADER   Or... maybe don't bother! We can already achieve this by setting the value in
+	// PIXEL_SHADER      the partner shaders instead! Limiting to a single draw call would be helpful)
+	// TEXTURE (same question as shader, should also specify which texture slot of which shader type to check)
+	// etc.
+};
+static EnumName_t<wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
+	{L"rt_width", ParamOverrideType::RT_WIDTH},
+	{L"rt_height", ParamOverrideType::RT_HEIGHT},
+	{L"res_width", ParamOverrideType::RES_WIDTH},
+	{L"res_height", ParamOverrideType::RES_HEIGHT},
+	{NULL, ParamOverrideType::INVALID} // End of list marker
+};
+struct ParamOverride {
+	ParamOverrideType type;
+	float val;
+
+	// TODO: Ability to override value until:
+	// a) From now on
+	// b) Single draw call only
+	// c) Until end of this frame (e.g. mark when post processing starts)
+	// d) Until end of next frame (e.g. for scene detection)
+	// Since the duration of the convergence and separation settings are
+	// not currently consistent between [ShaderOverride] and [Key] sections
+	// we could also make this apply to them to make it consistent, but
+	// still allow for the existing behaviour for the fixes that depend on
+	// it (like DG2).
+
+	ParamOverride() :
+		type(ParamOverrideType::INVALID),
+		val(FLT_MAX)
+	{}
+};
+
 struct ShaderOverride {
 	float separation;
 	float convergence;
@@ -164,6 +209,8 @@ struct ShaderOverride {
 	ID3D11Texture2D *depth_resource = NULL;
 	ID3D11ShaderResourceView *depth_view = NULL;
 	UINT depth_width, depth_height;
+
+	ParamOverride x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE], z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
 
 	ShaderOverride() :
 		separation(FLT_MAX),

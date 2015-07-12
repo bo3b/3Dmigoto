@@ -25,6 +25,18 @@ struct DrawContext
 };
 
 
+// Used to avoid querying the render target dimensions twice in the common case
+// we are going to store both width & height in separate ini params:
+struct ParamOverrideCache {
+	float rt_width, rt_height;
+
+	ParamOverrideCache() :
+		rt_width(-1),
+		rt_height(-1)
+	{}
+};
+
+
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
 
@@ -80,6 +92,8 @@ private:
 	void FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource);
 	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
+	void ProcessParamRTSize(ParamOverrideCache *cache);
+	bool ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);

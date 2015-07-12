@@ -451,10 +451,76 @@ err_depth_view:
 	depth_view->Release();
 }
 
+void HackerContext::ProcessParamRTSize(ParamOverrideCache *cache)
+{
+	D3D11_RENDER_TARGET_VIEW_DESC view_desc;
+	D3D11_TEXTURE2D_DESC res_desc;
+	ID3D11RenderTargetView *view = NULL;
+	ID3D11Resource *res = NULL;
+	ID3D11Texture2D *tex = NULL;
+
+	if (cache->rt_width != -1)
+		return;
+
+	mOrigContext->OMGetRenderTargets(1, &view, NULL);
+	if (!view)
+		return;
+
+	view->GetDesc(&view_desc);
+
+	if (view_desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2D &&
+	    view_desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMS)
+		goto out_release_view;
+
+	view->GetResource(&res);
+	if (!res)
+		goto out_release_view;
+
+	tex = (ID3D11Texture2D *)res;
+	tex->GetDesc(&res_desc);
+
+	cache->rt_width = (float)res_desc.Width;
+	cache->rt_height = (float)res_desc.Height;
+
+	tex->Release();
+out_release_view:
+	view->Release();
+}
+
+bool HackerContext::ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache)
+{
+	switch (override->type) {
+		case ParamOverrideType::INVALID:
+			return false;
+		case ParamOverrideType::VALUE:
+			*dest = override->val;
+			return true;
+		case ParamOverrideType::RT_WIDTH:
+			ProcessParamRTSize(cache);
+			*dest = cache->rt_width;
+			return true;
+		case ParamOverrideType::RT_HEIGHT:
+			ProcessParamRTSize(cache);
+			*dest = cache->rt_height;
+			return true;
+		case ParamOverrideType::RES_WIDTH:
+			*dest = (float)G->mResolutionInfo.width;
+			return true;
+		case ParamOverrideType::RES_HEIGHT:
+			*dest = (float)G->mResolutionInfo.height;
+			return true;
+	}
+	return false;
+}
+
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ParamOverrideCache cache;
+	bool update_params = false;
 	bool use_orig = false;
+	int i;
 
 	LogDebug("  override found for shader\n");
 
@@ -535,6 +601,18 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			if (mCurrentPixelShader != shaderOverride->partner_hash)
 				use_orig = true;
 		}
+	}
+
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		update_params |= ProcessParamOverride(&G->iniParams[i].x, &shaderOverride->x[i], &cache);
+		update_params |= ProcessParamOverride(&G->iniParams[i].y, &shaderOverride->y[i], &cache);
+		update_params |= ProcessParamOverride(&G->iniParams[i].z, &shaderOverride->z[i], &cache);
+		update_params |= ProcessParamOverride(&G->iniParams[i].w, &shaderOverride->w[i], &cache);
+	}
+	if (update_params) {
+		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
 	}
 
 	// TODO: Add render target filters, texture filters, etc.
