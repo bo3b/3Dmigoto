@@ -890,7 +890,7 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	/* [annotation] */
 	__out  ID3D11Device **ppDevice)
 {
-	LogInfo("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
+	LogDebug("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
 
 	*ppDevice = mHackerDevice;
 
