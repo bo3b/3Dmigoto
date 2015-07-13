@@ -1220,6 +1220,26 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
 	return mOrigDevice->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
+static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hashWidth, int *hashHeight)
+{
+	if (width == G->mResolutionInfo.width && height == G->mResolutionInfo.height) {
+		*hashWidth = 1386492276;
+		*hashHeight = 1386492276;
+	} else if (width == G->mResolutionInfo.width * 2 && height == G->mResolutionInfo.height * 2) {
+		*hashWidth = 1108431669;
+		*hashHeight = 1108431669;
+	} else if (width == G->mResolutionInfo.width * 4 && height == G->mResolutionInfo.height * 4) {
+		*hashWidth = 1167952304;
+		*hashHeight = 1167952304;
+	} else if (width == G->mResolutionInfo.width * 8 && height == G->mResolutionInfo.height * 8) {
+		*hashWidth = 3503946005;
+		*hashHeight = 3503946005;
+	} else if (width == G->mResolutionInfo.width / 2 && height == G->mResolutionInfo.height / 2) {
+		*hashWidth = 1599678497;
+		*hashHeight = 1599678497;
+	}
+}
+
 STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pResource,
@@ -1581,14 +1601,22 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		}
 	}
 
+	// Rectangular depth stencil textures of at least 640x480 may indicate
+	// the game's resolution, for games that upscale to their swap chains:
+	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
+	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
+		G->mResolutionInfo.width = pDesc->Width;
+		G->mResolutionInfo.height = pDesc->Height;
+		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
 	// Get screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
-	if (hashWidth == G->mSwapChainInfo.width && hashHeight == G->mSwapChainInfo.height)
-	{
-		hashWidth = 1386492276;
-		hashHeight = 1386492276;
-	}
+	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
+		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
 	// Create hash code.  Wrapped in try/catch because it can crash in Dirt Rally,
 	// because of noncontiguous or non-mapped memory for the texture.  Not sure this
@@ -1704,14 +1732,22 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 
+	// Rectangular depth stencil textures of at least 640x480 may indicate
+	// the game's resolution, for games that upscale to their swap chains:
+	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
+	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
+		G->mResolutionInfo.width = pDesc->Width;
+		G->mResolutionInfo.height = pDesc->Height;
+		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
 	// Get screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
-	if (hashWidth == G->mSwapChainInfo.width && hashHeight == G->mSwapChainInfo.height)
-	{
-		hashWidth = 1386492276;
-		hashHeight = 1386492276;
-	}
+	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
+		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
 	// Create hash code.
 	UINT64 hash = 0;

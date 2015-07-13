@@ -25,6 +25,18 @@ struct DrawContext
 };
 
 
+// Used to avoid querying the render target dimensions twice in the common case
+// we are going to store both width & height in separate ini params:
+struct ParamOverrideCache {
+	float rt_width, rt_height;
+
+	ParamOverrideCache() :
+		rt_width(-1),
+		rt_height(-1)
+	{}
+};
+
+
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
 
@@ -62,6 +74,10 @@ private:
 	void *mCurrentDepthTarget;
 	FrameAnalysisOptions analyse_options;
 
+	// Used for deny_cpu_read texture override
+	typedef std::unordered_map<ID3D11Resource *, void *> DeniedMap;
+	DeniedMap mDeniedMaps;
+
 	// These private methods are utility routines for HackerContext.
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
@@ -70,8 +86,14 @@ private:
 	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
 		UINT *replaceDstX, D3D11_BOX *replaceBox);
+	HRESULT MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
+			D3D11_MAP MapType, UINT MapFlags,
+			D3D11_MAPPED_SUBRESOURCE *pMappedResource);
+	void FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource);
 	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
+	void ProcessParamRTSize(ParamOverrideCache *cache);
+	bool ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
@@ -87,12 +109,17 @@ private:
 
 	// Functions for the frame analysis. Would be good to split this out,
 	// but it's pretty tightly coupled to the context at the moment:
-	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename, bool stereo);
+	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
+			bool stereo, FrameAnalysisOptions type_mask);
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
-	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
-	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename);
-	void DumpResource(ID3D11Resource *resource, wchar_t *filename);
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
+	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size);
+	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
+	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
 	void _DumpCBs(char shader_type,
 		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
 	void _DumpTextures(char shader_type,
@@ -100,9 +127,10 @@ private:
 	void DumpCBs(bool compute);
 	void DumpTextures(bool compute);
 	void DumpRenderTargets();
+	void DumpDepthStencilTargets();
 	void DumpUAVs(bool compute);
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, UINT64 hash, wchar_t *ext);
+			wchar_t *reg, char shader_type, int idx, UINT64 hash);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);

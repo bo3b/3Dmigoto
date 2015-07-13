@@ -706,6 +706,15 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
+	// Workaround for UPlay (systemdetection64.dll) and Origin (IGO32.dll)
+	// that create a DX10 device that in turn calls in here and crashes
+	// during the original _D3D11CreateDeviceAndSwapChain():
+	if (FeatureLevels == 1 && pFeatureLevels && pFeatureLevels[0] == D3D_FEATURE_LEVEL_10_0) {
+		LogInfo("  WARNING: FAILING CREATION OF FEATURE LEVEL 10.0 DEVICE!\n");
+		return E_INVALIDARG;
+	}
+
+
 	ForceDisplayParams(pSwapChainDesc);
 
 #if _DEBUG_LAYER

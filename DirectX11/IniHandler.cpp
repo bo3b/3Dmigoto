@@ -91,6 +91,31 @@ void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
+static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
+		ParamOverride *override, wchar_t component, int index)
+{
+	wchar_t buf[MAX_PATH], param_name[8];
+	int ret;
+
+	StringCchPrintf(param_name, 8, L"%lc%.0i", component, index);
+	if (!GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini))
+		return;
+
+	ret = swscanf_s(buf, L"%f", &override->val);
+	if (ret != 0 && ret != EOF) {
+		override->type = ParamOverrideType::VALUE;
+		LogInfoW(L"  %ls=%#.2g\n", param_name, override->val);
+		return;
+	}
+
+	override->type = lookup_enum_val<wchar_t *, ParamOverrideType>
+		(ParamOverrideTypeNames, buf, ParamOverrideType::INVALID);
+	if (override->type == ParamOverrideType::INVALID) {
+		LogInfoW(L"  WARNING: Unknown %ls \"%s\"\n", param_name, buf);
+		BeepFailure2();
+	} else
+		LogInfoW(L"  %ls=%s\n", param_name, buf);
+}
 
 void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 {
@@ -99,6 +124,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 	const wchar_t *id;
 	ShaderOverride *override;
 	UINT64 hash, hash2;
+	int j;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -202,6 +228,13 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			override->depth_input = 0;
 			BeepFailure2();
 		}
+
+		for (j = 0; j < INI_PARAMS_SIZE; j++) {
+			ParseParamOverride(id, iniFile, &override->x[j], L'x', j);
+			ParseParamOverride(id, iniFile, &override->y[j], L'y', j);
+			ParseParamOverride(id, iniFile, &override->z[j], L'z', j);
+			ParseParamOverride(id, iniFile, &override->w[j], L'w', j);
+		}
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -280,6 +313,7 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 		}
 
 		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
+		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -377,7 +411,7 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 
 void LoadConfigFile()
 {
-	wchar_t iniFile[MAX_PATH];
+	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 	wchar_t setting[MAX_PATH];
 	IniSections sections;
 	int i;
@@ -386,7 +420,9 @@ void LoadConfigFile()
 
 	GetModuleFileName(0, iniFile, MAX_PATH);
 	wcsrchr(iniFile, L'\\')[1] = 0;
+	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
+	wcscat(logFilename, L"d3d11_log.txt");
 
 	// Log all settings that are _enabled_, in order, 
 	// so that there is no question what settings we are using.
@@ -395,7 +431,7 @@ void LoadConfigFile()
 	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
 	{
 		if (!LogFile)
-			LogFile = _fsopen("d3d11_log.txt", "w", _SH_DENYNO);
+			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
 		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
@@ -408,7 +444,7 @@ void LoadConfigFile()
 	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 	// to open active files.
 	int unbuffered = -1;
-	if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
+	if (LogFile && GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
 	{
 		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
 	}
@@ -489,6 +525,17 @@ void LoadConfigFile()
 		if (G->gForceStereo) LogInfo("  force_stereo=1\n");
 		if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 	}
+
+	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {
+		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
+			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
+		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
+			LogInfoW(L"  WARNING: Unknown get_resolution_from %s\n", setting);
+			BeepFailure2();
+		} else
+			LogInfoW(L"  get_resolution_from=%s\n", setting);
+	} else
+		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	// [Stereo]
 	bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll

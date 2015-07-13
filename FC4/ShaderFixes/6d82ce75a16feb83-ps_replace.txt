@@ -816,7 +816,10 @@ r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
   r0.w = dot(r7.xyz, r7.xyz);
   r0.w = rsqrt(r0.w);
   r7.xyz = r7.xyz * r0.www;
-  r7.w = dot(r7.xzy, r0.xyz);
+
+// Use adjusted position to fix environment map reflection with texture quality >= high:
+  r7.w = dot(r7.xzy, adj_r0.xyz);
+
   r7.xyzw = _BRDFHighQuality ? r7.xyzw : r16.xyzw;
   r0.w = r7.w + r7.w;
 

@@ -29,8 +29,9 @@ Fixed
 - Underwater caustics
 - Halos around lights
 - Decals
-- Moon glow
+- Sun/moon glow
 - Fog
+- Simulated fur
 
 Installation
 ------------
@@ -61,14 +62,6 @@ Installation
 8. If you are using SLI, set terrain to medium or lower to get good
    performance.
 
-9. If your screen resolution is either 2560x1440 or 3840x2160 and you wish to
-   play with SMAA or anti-aliasing disabled, refer to the instructions in [this
-   post][2].
-
-[2]: https://forums.geforce.com/default/topic/789514/3d-vision/far-cry-4-3d-screenshots-/post/4492434/#4492434
-
-
-
 Known Issues
 ------------
 - Shangri-La missions are reportedly broken with SLI for some users. Currently
@@ -81,12 +74,6 @@ Known Issues
 - Windows & doors of buildings sometimes appear brighter than they should.
 
 - Soft shadows create a box shaped artefact.
-
-- Simulated fur glitches a little when very close to the camera, but otherwise
-  looks fine.
-
-- Moon glow reflection is not quite right (I could either fix the reflection,
-  or the glow in the sky... I chose the later).
 
 Notes
 -----

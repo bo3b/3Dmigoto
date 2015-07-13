@@ -605,6 +605,13 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
 
+	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
 	LogInfo("->return value = %#x \n\n", hr);
 	return hr;
 }
@@ -745,15 +752,19 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
-	//if (SUCCEEDED(hr))
-	//{
+	if (SUCCEEDED(hr)) {
 	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	//}
-	
+		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
+
 	return hr;
 }
 
@@ -786,14 +797,18 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
 	HRESULT	hr = mOrigFactory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 
-	//if (SUCCEEDED(hr))
-	//{
+	if (SUCCEEDED(hr)) {
 	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	//}
+		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
 
 	return hr;
 }
@@ -824,16 +839,21 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
 	//	hr = mOrigFactory->CreateSwapChainForComposition(realDevice, pDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
 	//LogInfo("  return value = %x\n", hr);
 
-	//if (SUCCEEDED(hr))
-	//{
+	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
+
+	if (SUCCEEDED(hr)) {
 	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
 	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
 	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
 	//	(*ppSwapChain)->m_RealDevice = realDevice;
-	//	if (pDesc) SendScreenResolution(pDevice, pDesc->Width, pDesc->Height);
-	//}
+		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
 
-	HRESULT	hr = mOrigFactory2->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
 	LogInfo("  return value = %x\n", hr);
 	return hr;
 }
@@ -1368,18 +1388,18 @@ STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
             /* [annotation][out] */ 
             _Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
 {
-	LogInfo("HackerDXGISwapChain::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
+	LogDebug("HackerDXGISwapChain::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
 	
 	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
 	if (hr == S_OK)
 	{
-		if (pDesc) LogInfo("  returns Windowed = %d\n", pDesc->Windowed);
-		if (pDesc) LogInfo("  returns Width = %d\n", pDesc->BufferDesc.Width);
-		if (pDesc) LogInfo("  returns Height = %d\n", pDesc->BufferDesc.Height);
-		if (pDesc) LogInfo("  returns Refresh rate = %f\n", 
+		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
+		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
+		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
+		if (pDesc) LogDebug("  returns Refresh rate = %f\n", 
 			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
 	}
-	LogInfo("  returns result = %x\n", hr);
+	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
         
@@ -1392,6 +1412,14 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", typeid(*this).name(), this);
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+	if (SUCCEEDED(hr) && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+		G->mResolutionInfo.width = Width;
+		G->mResolutionInfo.height = Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
 	LogInfo("  returns result = %x\n", hr); 
 	return hr;
 }
@@ -1410,7 +1438,7 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppOutput)
 {
-	LogInfo("HackerDXGISwapChain::GetContainingOutput(%s@%p) called \n", typeid(*this).name(), this);
+	LogDebug("HackerDXGISwapChain::GetContainingOutput(%s@%p) called \n", typeid(*this).name(), this);
 	
 	//IDXGIOutput *origOutput;
 	//HRESULT hr = mOrigSwapChain->GetContainingOutput(&origOutput);
@@ -1420,7 +1448,7 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
 	//}
 
 	HRESULT hr = mOrigSwapChain->GetContainingOutput(ppOutput);
-	LogInfo("  returns result = %x, handle = %p \n", hr, *ppOutput);
+	LogDebug("  returns result = %x, handle = %p \n", hr, *ppOutput);
 	return hr;
 }
         

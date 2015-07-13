@@ -1,11 +1,4 @@
-// atmosphere glow around moon
-
-// NOTE: The reflection of this glow is off (needs += separation instead of
-// -= separation), but this shader doesn't have access to _ViewportSize, so
-// there is currently no way to tell which one it is rendering.
-
-// Later once we support render target filtering in 3Dmigoto itself we can fix
-// this properly, but until then it's only a minor issue.
+// atmosphere glow around sun/moon
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -25,11 +18,23 @@ void main(
   o0.xyzw = r0.xyzw;
   o1.xyzw = r0.xyzw;
 
-// Push glow around moon to sky box depth (infinity):
+// Push glow around moon to sky box depth (infinity). This shader is used for
+// both the glow in the sky and the reflection, which need opposite
+// adjustments. Unlike other reflection shaders it doesn't have access to
+// _ViewportSize for filtering, so we pass the render target size & screen
+// resolution in from 3DMigoto instead
+
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
 
-o1.x -= separation;
+float4 rt_filter = IniParams.Load(int2(1, 0));
+if (rt_filter.x == rt_filter.z && rt_filter.y == rt_filter.w) {
+	// Matches screen resolution means sun/moon glow in sky
+	o1.x -= separation;
+} else {
+	// No match means it's the reflection of sun/moon glow
+	o1.x += separation;
+}
 
   return;
 }

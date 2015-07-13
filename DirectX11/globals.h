@@ -88,26 +88,32 @@ typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 typedef std::unordered_map<ID3D11GeometryShader *, ID3D11GeometryShader *> GeometryShaderReplacementMap;
 
 enum class FrameAnalysisOptions {
-	INVALID       = 0,
-	DUMP_RT       = 0x00000001,
-	DUMP_RT_JPS   = 0x00000002,
-	DUMP_RT_DDS   = 0x00000004,
-	DUMP_RT_MASK  = 0x00000007,
-	CLEAR_RT      = 0x00000008,
-	DUMP_TEX      = 0x00000010,
-	DUMP_TEX_JPS  = 0x00000020,
-	DUMP_TEX_DDS  = 0x00000040,
-	DUMP_TEX_MASK = 0x00000070,
-	DUMP_XXX      = 0x00000011,
-	DUMP_XXX_JPS  = 0x00000022,
-	DUMP_XXX_DDS  = 0x00000044,
-	DUMP_XXX_MASK = 0x00000077,
-	PERSIST       = 0x00000080, // Used by shader/texture triggers
-	STEREO        = 0x00000100,
-	MONO          = 0x00000200,
-	STEREO_MASK   = 0x00000600,
-	FILENAME_REG  = 0x00000800,
-	DUMP_CB       = 0x00001000,
+	INVALID         = 0,
+	DUMP_RT         = 0x00000001,
+	DUMP_RT_JPS     = 0x00000002,
+	DUMP_RT_DDS     = 0x00000004,
+	DUMP_RT_MASK    = 0x00000007,
+	CLEAR_RT        = 0x00000008,
+	DUMP_DEPTH      = 0x00000010,
+	DUMP_DEPTH_JPS  = 0x00000020,
+	DUMP_DEPTH_DDS  = 0x00000040,
+	DUMP_DEPTH_MASK = 0x00000070,
+	FILENAME_REG    = 0x00000080,
+	DUMP_TEX        = 0x00000100,
+	DUMP_TEX_JPS    = 0x00000200,
+	DUMP_TEX_DDS    = 0x00000400,
+	DUMP_TEX_MASK   = 0x00000700,
+	DUMP_XXX        = 0x00000111,
+	DUMP_XXX_JPS    = 0x00000222,
+	DUMP_XXX_DDS    = 0x00000444,
+	DUMP_XXX_MASK   = 0x00000777,
+	PERSIST         = 0x00000800, // Used by shader/texture triggers
+	STEREO          = 0x00001000,
+	MONO            = 0x00002000,
+	STEREO_MASK     = 0x00003000,
+	DUMP_CB_BIN     = 0x00004000,
+	DUMP_CB_TXT     = 0x00008000,
+	DUMP_CB_MASK    = 0x0000c000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -115,6 +121,9 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
 	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
 	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
+	{L"dump_depth", FrameAnalysisOptions::DUMP_DEPTH},
+	{L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS}, // Doesn't work yet
+	{L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS},
 	{L"dump_tex", FrameAnalysisOptions::DUMP_TEX},
 	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
 	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
@@ -122,7 +131,8 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"stereo", FrameAnalysisOptions::STEREO},
 	{L"mono", FrameAnalysisOptions::MONO},
 	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
-	{L"dump_cb", FrameAnalysisOptions::DUMP_CB},
+	{L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN},
+	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
@@ -137,6 +147,51 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 	{L"depth_active", DepthBufferFilter::DEPTH_ACTIVE},
 	{L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE},
 	{NULL, DepthBufferFilter::INVALID} // End of list marker
+};
+
+enum class ParamOverrideType {
+	INVALID,
+	VALUE,
+	RT_WIDTH,
+	RT_HEIGHT,
+	RES_WIDTH,
+	RES_HEIGHT,
+	// TODO:
+	// DEPTH_ACTIVE
+	// VERTEX_SHADER    (how best to pass these in?
+	// HULL_SHADER       Maybe the low/hi 32bits of hash? Or all 64bits split in two?
+	// DOMAIN_SHADER     Maybe an index or some other mapping? Perhaps something like Helix mod's texture CRCs?
+	// GEOMETRY_SHADER   Or... maybe don't bother! We can already achieve this by setting the value in
+	// PIXEL_SHADER      the partner shaders instead! Limiting to a single draw call would be helpful)
+	// TEXTURE (same question as shader, should also specify which texture slot of which shader type to check)
+	// etc.
+};
+static EnumName_t<wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
+	{L"rt_width", ParamOverrideType::RT_WIDTH},
+	{L"rt_height", ParamOverrideType::RT_HEIGHT},
+	{L"res_width", ParamOverrideType::RES_WIDTH},
+	{L"res_height", ParamOverrideType::RES_HEIGHT},
+	{NULL, ParamOverrideType::INVALID} // End of list marker
+};
+struct ParamOverride {
+	ParamOverrideType type;
+	float val;
+
+	// TODO: Ability to override value until:
+	// a) From now on
+	// b) Single draw call only
+	// c) Until end of this frame (e.g. mark when post processing starts)
+	// d) Until end of next frame (e.g. for scene detection)
+	// Since the duration of the convergence and separation settings are
+	// not currently consistent between [ShaderOverride] and [Key] sections
+	// we could also make this apply to them to make it consistent, but
+	// still allow for the existing behaviour for the fixes that depend on
+	// it (like DG2).
+
+	ParamOverride() :
+		type(ParamOverrideType::INVALID),
+		val(FLT_MAX)
+	{}
 };
 
 struct ShaderOverride {
@@ -154,6 +209,8 @@ struct ShaderOverride {
 	ID3D11Texture2D *depth_resource = NULL;
 	ID3D11ShaderResourceView *depth_view = NULL;
 	UINT depth_width, depth_height;
+
+	ParamOverride x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE], z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
 
 	ShaderOverride() :
 		separation(FLT_MAX),
@@ -187,12 +244,14 @@ struct TextureOverride {
 	std::vector<int> iterations;
 	FrameAnalysisOptions analyse_options;
 	bool expand_region_copy;
+	bool deny_cpu_read;
 
 	TextureOverride() :
 		stereoMode(-1),
 		format(-1),
 		analyse_options(FrameAnalysisOptions::INVALID),
-		expand_region_copy(false)
+		expand_region_copy(false),
+		deny_cpu_read(false)
 	{}
 };
 typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;
@@ -205,9 +264,28 @@ struct ShaderInfoData
 	std::vector<std::set<void *>> RenderTargets;
 	std::set<void *> DepthTargets;
 };
-struct SwapChainInfo
+
+enum class GetResolutionFrom {
+	INVALID       = -1,
+	SWAP_CHAIN,
+	DEPTH_STENCIL,
+};
+static EnumName_t<wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
+	{L"swap_chain", GetResolutionFrom::SWAP_CHAIN},
+	{L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL},
+	{NULL, GetResolutionFrom::INVALID} // End of list marker
+};
+
+struct ResolutionInfo
 {
 	int width, height;
+	GetResolutionFrom from;
+
+	ResolutionInfo() :
+		from(GetResolutionFrom::INVALID),
+		width(-1),
+		height(-1)
+	{}
 };
 
 struct ResourceInfo
@@ -297,7 +375,7 @@ struct Globals
 
 	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
 
-	SwapChainInfo mSwapChainInfo;
+	ResolutionInfo mResolutionInfo;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
@@ -453,9 +531,6 @@ struct Globals
 		CHAIN_DLL_PATH[0] = 0;
 
 		ANALYSIS_PATH[0] = 0;
-
-		mSwapChainInfo.width = -1;
-		mSwapChainInfo.height = -1;
 
 		for (i = 0; i < 4; i++)
 			gTuneValue[i] = 1.0f;

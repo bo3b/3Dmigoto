@@ -171,6 +171,11 @@ static void DoubleBeepExit()
 	Sleep(500);
 	BeepFailure2();
 	Sleep(200);
+	if (LogFile) {
+		// Make sure the log is written out so we see the failure message
+		fclose(LogFile);
+		LogFile = 0;
+	}
 	ExitProcess(0xc0000135);
 }
 

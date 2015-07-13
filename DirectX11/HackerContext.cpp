@@ -451,10 +451,76 @@ err_depth_view:
 	depth_view->Release();
 }
 
+void HackerContext::ProcessParamRTSize(ParamOverrideCache *cache)
+{
+	D3D11_RENDER_TARGET_VIEW_DESC view_desc;
+	D3D11_TEXTURE2D_DESC res_desc;
+	ID3D11RenderTargetView *view = NULL;
+	ID3D11Resource *res = NULL;
+	ID3D11Texture2D *tex = NULL;
+
+	if (cache->rt_width != -1)
+		return;
+
+	mOrigContext->OMGetRenderTargets(1, &view, NULL);
+	if (!view)
+		return;
+
+	view->GetDesc(&view_desc);
+
+	if (view_desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2D &&
+	    view_desc.ViewDimension != D3D11_RTV_DIMENSION_TEXTURE2DMS)
+		goto out_release_view;
+
+	view->GetResource(&res);
+	if (!res)
+		goto out_release_view;
+
+	tex = (ID3D11Texture2D *)res;
+	tex->GetDesc(&res_desc);
+
+	cache->rt_width = (float)res_desc.Width;
+	cache->rt_height = (float)res_desc.Height;
+
+	tex->Release();
+out_release_view:
+	view->Release();
+}
+
+bool HackerContext::ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache)
+{
+	switch (override->type) {
+		case ParamOverrideType::INVALID:
+			return false;
+		case ParamOverrideType::VALUE:
+			*dest = override->val;
+			return true;
+		case ParamOverrideType::RT_WIDTH:
+			ProcessParamRTSize(cache);
+			*dest = cache->rt_width;
+			return true;
+		case ParamOverrideType::RT_HEIGHT:
+			ProcessParamRTSize(cache);
+			*dest = cache->rt_height;
+			return true;
+		case ParamOverrideType::RES_WIDTH:
+			*dest = (float)G->mResolutionInfo.width;
+			return true;
+		case ParamOverrideType::RES_HEIGHT:
+			*dest = (float)G->mResolutionInfo.height;
+			return true;
+	}
+	return false;
+}
+
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ParamOverrideCache cache;
+	bool update_params = false;
 	bool use_orig = false;
+	int i;
 
 	LogDebug("  override found for shader\n");
 
@@ -535,6 +601,18 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			if (mCurrentPixelShader != shaderOverride->partner_hash)
 				use_orig = true;
 		}
+	}
+
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		update_params |= ProcessParamOverride(&G->iniParams[i].x, &shaderOverride->x[i], &cache);
+		update_params |= ProcessParamOverride(&G->iniParams[i].y, &shaderOverride->y[i], &cache);
+		update_params |= ProcessParamOverride(&G->iniParams[i].z, &shaderOverride->z[i], &cache);
+		update_params |= ProcessParamOverride(&G->iniParams[i].w, &shaderOverride->w[i], &cache);
+	}
+	if (update_params) {
+		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
 	}
 
 	// TODO: Add render target filters, texture filters, etc.
@@ -812,7 +890,7 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	/* [annotation] */
 	__out  ID3D11Device **ppDevice)
 {
-	LogInfo("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
+	LogDebug("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
 
 	*ppDevice = mHackerDevice;
 
@@ -903,6 +981,81 @@ STDMETHODIMP_(void) HackerContext::VSSetConstantBuffers(THIS_
 	mOrigContext->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
 
+HRESULT HackerContext::MapDenyCPURead(
+	ID3D11Resource *pResource,
+	UINT Subresource,
+	D3D11_MAP MapType,
+	UINT MapFlags,
+	D3D11_MAPPED_SUBRESOURCE *pMappedResource)
+{
+	ID3D11Texture2D *tex = (ID3D11Texture2D*)pResource;
+	D3D11_TEXTURE2D_DESC desc;
+	D3D11_RESOURCE_DIMENSION dim;
+	UINT64 hash;
+	TextureOverrideMap::iterator i;
+	HRESULT hr;
+	UINT replace_size;
+	void *replace;
+
+	if (!pResource || (MapType != D3D11_MAP_READ && MapType != D3D11_MAP_READ_WRITE))
+		return E_FAIL;
+
+	pResource->GetType(&dim);
+	if (dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+		return E_FAIL;
+
+	tex->GetDesc(&desc);
+	hash = GetTexture2DHash(tex, false, NULL);
+
+	LogDebug("Map Texture2D %016I64x (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
+			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
+
+	// Currently only replacing first subresource to simplify map type, and
+	// only on read access as it is unclear how to handle a read/write access.
+	// Still log others in case we find we need them later.
+	if (Subresource != 0 || MapType != D3D11_MAP_READ)
+		return E_FAIL;
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		return E_FAIL;
+
+	if (!i->second.deny_cpu_read)
+		return E_FAIL;
+
+	// TODO: We can probably skip the original map call altogether avoiding
+	// the latency so long as the D3D11_MAPPED_SUBRESOURCE we return is sane.
+	hr = mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
+
+	if (SUCCEEDED(hr) && pMappedResource->pData) {
+		replace_size = pMappedResource->RowPitch * desc.Height;
+		replace = malloc(replace_size);
+		memset(replace, 0, replace_size);
+		mDeniedMaps[pResource] = replace;
+		LogDebug("deny_cpu_read replaced mapping from 0x%p with %u bytes of 0s at 0x%p\n",
+				pMappedResource->pData, replace_size, replace);
+		pMappedResource->pData = replace;
+	}
+
+	return hr;
+}
+
+void HackerContext::FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource)
+{
+	if (Subresource != 0)
+		return;
+
+	DeniedMap::iterator i;
+	i = mDeniedMaps.find(pResource);
+	if (i == mDeniedMaps.end())
+		return;
+
+	LogDebug("deny_cpu_read freeing map at 0x%p\n", i->second);
+
+	free(i->second);
+	mDeniedMaps.erase(i);
+}
+
 STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pResource,
@@ -915,6 +1068,10 @@ STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
+	HRESULT hr = MapDenyCPURead(pResource, Subresource, MapType, MapFlags, pMappedResource);
+	if (SUCCEEDED(hr))
+		return hr;
+
 	return mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
 }
 
@@ -924,6 +1081,7 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	/* [annotation] */
 	__in  UINT Subresource)
 {
+	FreeDeniedMapping(pResource, Subresource);
 	 mOrigContext->Unmap(pResource, Subresource);
 }
 
