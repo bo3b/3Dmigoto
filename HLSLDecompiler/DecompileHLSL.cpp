@@ -4558,8 +4558,8 @@ public:
 						ResourceBinding *bindInfoPtr = &bindInfo;
 
 						memset(&bindInfo, 0, sizeof(bindInfo));
-						bool bindStripped;
-						bindStripped = (GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfoPtr) == 0);
+						int bindstate = GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfoPtr);
+						bool bindStripped = (bindstate == 0);
 
 						if (bindStripped)
 						{
@@ -4570,19 +4570,16 @@ public:
 							// e.g. from Batman and Witcher3:
 							//  resinfo_indexable(texture2d)(float,float,float,float)_uint r1.yw, l(0), t3.zxwy 
 
-							string line = string(c + pos);
-							line = line.substr(0, line.find('\n'));
-
 							char texType[opcodeSize];
 							char retType[opcodeSize];
-							int numInfo = sscanf_s(line.c_str(), "resinfo_indexable(%[^)]%s", texType, opcodeSize, retType, opcodeSize) ;
+							int numInfo = sscanf_s(statement, "resinfo_indexable(%[^)])%s", texType, opcodeSize, retType, opcodeSize) ;
 
 							bool isConstant = (!strcmp(op2, "l(0),"));
 
 							if ((numInfo == 2) && isConstant)
 							{
 								constZero.eType = OPERAND_TYPE_IMMEDIATE32;
-								constZero.afImmediates[0] = 0;
+								constZero.afImmediates[0] = 0.0;
 
 								if (!strcmp(texType, "texture2d"))
 									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2D;
@@ -4608,7 +4605,7 @@ public:
 						// And the texture2d and textures2dms types. That's all we've seen so far.
 						// This same output sequence is used for both a normal parse case, and the stripped header case.
 
-						if ((constZero.eType == OPERAND_TYPE_IMMEDIATE32) && (constZero.afImmediates[0] == 0)
+						if ((constZero.eType == OPERAND_TYPE_IMMEDIATE32) && (constZero.afImmediates[0] == 0.0)
 							&& (returnType == RESINFO_INSTRUCTION_RETURN_UINT || returnType == RESINFO_INSTRUCTION_RETURN_FLOAT)
 							&& texture.eType == OPERAND_TYPE_RESOURCE
 							&& !bindStripped)
@@ -4693,6 +4690,9 @@ public:
 							sprintf(buffer, "tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z); \n");
 							appendOutput(buffer);
 							sprintf(buffer, "rx = uiDest; \n");
+							appendOutput(buffer);
+
+							sprintf(buffer, " state=%d, constZero.eType=%d, returnType=%d, texture.eType=%d, afImmediates[0]=%f \n", bindstate, constZero.eType, returnType, texture.eType, constZero.afImmediates[0]);
 							appendOutput(buffer);
 
 							//logDecompileError("Unknown _resinfo variant: " + line);
