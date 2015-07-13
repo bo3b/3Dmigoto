@@ -1538,6 +1538,15 @@ public:
 			op1, opcodeSize, op2, opcodeSize, op3, opcodeSize, op4, opcodeSize, op5, opcodeSize, op6, opcodeSize, op7, opcodeSize, op8, opcodeSize,
 			op9, opcodeSize, op10, opcodeSize, op11, opcodeSize, op12, opcodeSize, op13, opcodeSize, op14, opcodeSize, op15, opcodeSize);
 
+		// Cull the [precise] from any instruction using it by moving down all opcodes to recreate
+		// the instruction, minus the 'precise'.  ToDo: add 'precise' keyword to output variable.
+		// e.g. mov [precise(xy)] r1.xy, v1.xyxx
+		// to   mov r1.xy, v1.xyxx
+		if (!strncmp(op1, "[precise", strlen("[precise")))
+		{
+			strcpy(op1, op2); strcpy(op2, op3); strcpy(op3, op4); strcpy(op4, op5); strcpy(op5, op6); strcpy(op6, op7); strcpy(op7, op8); strcpy(op8, op9); strcpy(op9, op10); strcpy(op10, op11); strcpy(op11, op12);
+		}
+
 		// Was previously a subroutine to CollectBrackets, but generated a lot of warnings, so putting it inline allows
 		// the automatic CRT_SECURE macros to find the sizes.
 		//  CollectBrackets(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
@@ -3066,6 +3075,18 @@ public:
 				sprintf(buffer, "  float4 %s[%d];\n", varName, numIndex);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
+			else if (!strcmp(statement, "dcl_input"))
+			{
+				// Can have 'vCoverage' variable implicitly defined, 
+				// not in input signature when reflection is stripped.
+				if (!strcmp(op1, "vCoverage"))
+				{
+					char *pos = strstr(mOutput.data(), "void main(");
+					while (*pos != 0x0a) pos++; pos++;
+					sprintf(buffer, "  uint vCoverage : SV_Coverage,\n");
+					mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buffer, buffer + strlen(buffer));
+				}
+			}
 			else if (!strcmp(statement, "dcl_temps"))
 			{
 				const char *varDecl = "  float4 ";
@@ -3086,6 +3107,8 @@ public:
 			else if (!strncmp(statement, "dcl_", 4))
 			{
 				// Other declarations.
+				//sprintf(buffer, "  // unknown dcl_  %s \n", statement);
+				//mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
 			else
 			{
