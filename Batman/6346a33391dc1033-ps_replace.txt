@@ -1,4 +1,6 @@
 // Example shader using 'vCoverage' variable.
+//
+// Hand fixed to generate vCoverage input.  (no documentation, just a guess.)
 
 Texture2D<float4> t9 : register(t9);
 
@@ -65,6 +67,7 @@ void main(
   float3 v7 : TEXCOORD8,
   float3 v8 : SPRAY_VELOCIY_WS_POS0,
   float3 v9 : SPRAY_VELOCIY_PREV_WS_POS0,
+  uint vCoverage : SV_Coverage, 
   out float3 o0 : SV_TARGET0,
   out float3 o1 : SV_TARGET1,
   out float4 o2 : SV_TARGET2,
