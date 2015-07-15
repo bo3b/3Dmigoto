@@ -752,11 +752,6 @@ void LoadConfigFile()
 	RegisterPresetKeyBindings(sections, iniFile);
 
 
-	// Todo: Not sure this is best spot.
-	G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
-	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%f", &G->gTuneStep);
-
 	ParseShaderOverrideSections(sections, iniFile);
 	ParseTextureOverrideSections(sections, iniFile);
 

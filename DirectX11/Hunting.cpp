@@ -1411,6 +1411,14 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", iniFile, DisableDeferred, EnableDeferred, noRepeat, NULL);
 
+	G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
+	if (G->ENABLE_TUNE)
+		LogInfo("  tune_enable=1\n");
+	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, buf, MAX_PATH, iniFile)) {
+		swscanf_s(buf, L"%f", &G->gTuneStep);
+		LogInfo("  tune_step=%f\n", G->gTuneStep);
+	}
+
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);
 		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, repeat, (void*)i);
