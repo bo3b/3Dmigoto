@@ -196,7 +196,7 @@ static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::
 	if (++pos == 0)
 		size = 0;
 
-	StringCchPrintf(buf, 32, L"%ls:%d/%d ", type, pos, size);
+	StringCchPrintf(buf, 32, L"%ls:%d/%Iu ", type, pos, size);
 	line->append(buf);
 }
 

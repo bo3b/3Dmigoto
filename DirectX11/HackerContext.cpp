@@ -1099,6 +1099,10 @@ HRESULT HackerContext::MapDenyCPURead(
 	if (SUCCEEDED(hr) && pMappedResource->pData) {
 		replace_size = pMappedResource->RowPitch * desc.Height;
 		replace = malloc(replace_size);
+		if (!replace) {
+			LogDebug("deny_cpu_read out of memory\n");
+			return E_OUTOFMEMORY;
+		}
 		memset(replace, 0, replace_size);
 		mDeniedMaps[pResource] = replace;
 		LogDebug("deny_cpu_read replaced mapping from 0x%p with %u bytes of 0s at 0x%p\n",

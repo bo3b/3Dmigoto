@@ -497,7 +497,7 @@ static std::string NameFromIID(IID id)
 
 	std::string iidString;
 	wchar_t wiid[128];
-	if (SUCCEEDED(StringFromGUID2(id, wiid, sizeof(wiid))))
+	if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
 	{
 		std::wstring convert = std::wstring(wiid);
 		iidString = std::string(convert.begin(), convert.end());

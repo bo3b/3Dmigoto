@@ -110,7 +110,7 @@ static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
 	}
 
 	// Try parsing setting as "<shader type>s-t<testure slot>" for texture filtering
-	ret = swscanf_s(buf, L"%lcs-t%u", &override->shader_type, &override->texture_slot);
+	ret = swscanf_s(buf, L"%lcs-t%u", &override->shader_type, 1, &override->texture_slot);
 	if (ret == 2 && override->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		switch(override->shader_type) {
 			case L'v': case L'h': case L'd': case L'g': case L'p':
@@ -540,7 +540,7 @@ void LoadConfigFile()
 		if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
 		if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
 		if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-		if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%s\n", G->FILTER_REFRESH[0]);
+		if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%d\n", G->FILTER_REFRESH[0]);
 		if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
 		if (G->gForceStereo) LogInfo("  force_stereo=1\n");
 		if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
