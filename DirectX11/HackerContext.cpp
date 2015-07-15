@@ -487,6 +487,71 @@ out_release_view:
 	view->Release();
 }
 
+float HackerContext::ProcessParamTextureFilter(ParamOverride *override)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+	ID3D11ShaderResourceView *view;
+	ID3D11Resource *resource = NULL;
+	TextureOverrideMap::iterator i;
+	UINT64 hash = 0;
+	float filter_index = 0;
+
+	switch (override->shader_type) {
+		case L'v':
+			VSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'h':
+			HSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'd':
+			DSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'g':
+			GSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'p':
+			PSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		default:
+			// Should not happen
+			return filter_index;
+	}
+	if (!view)
+		return filter_index;
+
+
+	view->GetResource(&resource);
+	if (!resource)
+		goto out_release_view;
+
+	view->GetDesc(&desc);
+
+	switch (desc.ViewDimension) {
+		case D3D11_SRV_DIMENSION_TEXTURE2D:
+		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
+		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
+			hash = GetTexture2DHash((ID3D11Texture2D *)resource, false, NULL);
+			break;
+		case D3D11_SRV_DIMENSION_TEXTURE3D:
+			hash = GetTexture3DHash((ID3D11Texture3D *)resource, false, NULL);
+			break;
+	}
+	if (!hash)
+		goto out_release_resource;
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		goto out_release_resource;
+
+	filter_index = i->second.filter_index;
+
+out_release_resource:
+	resource->Release();
+out_release_view:
+	view->Release();
+	return filter_index;
+}
+
 bool HackerContext::ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache)
 {
 	switch (override->type) {
@@ -508,6 +573,9 @@ bool HackerContext::ProcessParamOverride(float *dest, ParamOverride *override, P
 			return true;
 		case ParamOverrideType::RES_HEIGHT:
 			*dest = (float)G->mResolutionInfo.height;
+			return true;
+		case ParamOverrideType::TEXTURE:
+			*dest = ProcessParamTextureFilter(override);
 			return true;
 	}
 	return false;
@@ -731,6 +799,7 @@ DrawContext HackerContext::BeforeDraw()
 		return data;
 
 	// Override settings?
+	// TODO: Process other types of shaders
 	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(mCurrentVertexShader);
 	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(mCurrentPixelShader);
 

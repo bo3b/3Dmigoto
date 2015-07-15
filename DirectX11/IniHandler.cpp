@@ -101,6 +101,7 @@ static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
 	if (!GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini))
 		return;
 
+	// Try parsing setting as a float
 	ret = swscanf_s(buf, L"%f", &override->val);
 	if (ret != 0 && ret != EOF) {
 		override->type = ParamOverrideType::VALUE;
@@ -108,6 +109,20 @@ static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
 		return;
 	}
 
+	// Try parsing setting as "<shader type>s-t<testure slot>" for texture filtering
+	ret = swscanf_s(buf, L"%lcs-t%u", &override->shader_type, &override->texture_slot);
+	if (ret == 2 && override->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+		switch(override->shader_type) {
+			case L'v': case L'h': case L'd': case L'g': case L'p':
+				override->type = ParamOverrideType::TEXTURE;
+				LogInfoW(L"  %ls=%lcs-t%u\n", param_name,
+						override->shader_type,
+						override->texture_slot);
+				return;
+		}
+	}
+
+	// Check special keywords
 	override->type = lookup_enum_val<wchar_t *, ParamOverrideType>
 		(ParamOverrideTypeNames, buf, ParamOverrideType::INVALID);
 	if (override->type == ParamOverrideType::INVALID) {
@@ -310,6 +325,11 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			LogInfoW(L"  analyse_options=%s\n", setting);
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 				(FrameAnalysisOptionNames, setting);
+		}
+
+		if (GetPrivateProfileString(id, L"filter_index", 0, setting, MAX_PATH, iniFile)) {
+			swscanf_s(setting, L"%f", &override->filter_index);
+			LogInfo("  filter_index=%f\n", override->filter_index);
 		}
 
 		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
