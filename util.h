@@ -523,7 +523,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	string comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
 
 	HRESULT r = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(), 
-		__out &disassembly);
+		&disassembly);
 	if (FAILED(r))
 	{
 		LogInfo("  disassembly failed. Error: %x \n", r);
