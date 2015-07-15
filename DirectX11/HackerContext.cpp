@@ -554,31 +554,35 @@ out_release_view:
 
 bool HackerContext::ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache)
 {
+	float orig = *dest;
+
 	switch (override->type) {
 		case ParamOverrideType::INVALID:
 			return false;
 		case ParamOverrideType::VALUE:
 			*dest = override->val;
-			return true;
+			break;
 		case ParamOverrideType::RT_WIDTH:
 			ProcessParamRTSize(cache);
 			*dest = cache->rt_width;
-			return true;
+			break;
 		case ParamOverrideType::RT_HEIGHT:
 			ProcessParamRTSize(cache);
 			*dest = cache->rt_height;
-			return true;
+			break;
 		case ParamOverrideType::RES_WIDTH:
 			*dest = (float)G->mResolutionInfo.width;
-			return true;
+			break;
 		case ParamOverrideType::RES_HEIGHT:
 			*dest = (float)G->mResolutionInfo.height;
-			return true;
+			break;
 		case ParamOverrideType::TEXTURE:
 			*dest = ProcessParamTextureFilter(override);
-			return true;
+			break;
+		default:
+			return false;
 	}
-	return false;
+	return (*dest != orig);
 }
 
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
