@@ -29,8 +29,9 @@ Fixed
 - Underwater caustics
 - Halos around lights
 - Decals
-- Moon glow
+- Sun/moon glow
 - Fog
+- Simulated fur
 
 Installation
 ------------
@@ -73,12 +74,6 @@ Known Issues
 - Windows & doors of buildings sometimes appear brighter than they should.
 
 - Soft shadows create a box shaped artefact.
-
-- Simulated fur glitches a little when very close to the camera, but otherwise
-  looks fine.
-
-- Moon glow reflection is not quite right (I could either fix the reflection,
-  or the glow in the sky... I chose the later).
 
 Notes
 -----

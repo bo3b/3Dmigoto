@@ -13,7 +13,7 @@ extern "C"
 {
 	typedef HRESULT(__stdcall *DllCanUnloadNowType)(void);
 	static DllCanUnloadNowType DllCanUnloadNowPtr;
-	typedef HRESULT(__stdcall *DllGetClassObjectType)(void);
+	typedef HRESULT(__stdcall *DllGetClassObjectType)(REFCLSID rclsid, REFIID riid, LPVOID FAR* ppv);
 	static DllGetClassObjectType DllGetClassObjectPtr;
 	typedef HRESULT(__stdcall *DllRegisterServerType)(void);
 	static DllRegisterServerType DllRegisterServerPtr;
@@ -211,7 +211,7 @@ static void LoadConfigFile()
 		from = *reinterpret_cast<float *>(&fromHx);
 		GameConvergenceMap[from] = to;
 		GameConvergenceMapInv[to] = from;
-		LogInfo("  %s=from %08x to %f\n", id, fromHx, to);
+		LogInfoW(L"  %ls=from %08x to %f\n", id, fromHx, to);
 	}
 
 	// Device
@@ -295,7 +295,7 @@ STDAPI DllGetClassObject(
 	)
 {
 	loadDll();
-	return (*DllGetClassObjectPtr)();
+	return (*DllGetClassObjectPtr)(rclsid, riid, ppv);
 }
 STDAPI DllRegisterServer(void)
 {

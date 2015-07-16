@@ -9,7 +9,7 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	HRESULT hr;
+	HRESULT hr = E_FAIL;
 	wchar_t *ext;
 
 	ext = wcsrchr(filename, L'.');
