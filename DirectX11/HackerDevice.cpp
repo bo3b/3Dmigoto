@@ -14,7 +14,7 @@
 #include "Globals.h"
 #include "D3D11Wrapper.h"
 #include "SpriteFont.h"
-#include "Assembler.h"
+#include "D3D_Shaders\stdafx.h"
 
 // -----------------------------------------------------------------------------------------------
 
