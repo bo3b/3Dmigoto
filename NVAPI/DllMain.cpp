@@ -498,10 +498,11 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 
-	if (!gDirectXOverride && ForceAutomaticStereo)
-	{
-		*pIsStereoEnabled = false;
+	if (gDirectXOverride) {
+		LogCall("  Stereo_IsEnabled called from DirectX wrapper.\n");
 		gDirectXOverride = false;
+	} else if (ForceAutomaticStereo) {
+		*pIsStereoEnabled = false;
 		LogCall("  NvAPI_Stereo_IsEnabled force return false \n");
 	}
 

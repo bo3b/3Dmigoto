@@ -6,6 +6,7 @@
 #include <DirectXColors.h>
 #include <StrSafe.h>
 
+#include "D3D11Wrapper.h"
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
 #include "nvapi.h"
@@ -213,6 +214,7 @@ void Overlay::DrawOverlay(void)
 
 	float separation, convergence;
 	NvU8 stereo = false;
+	NvAPIOverride();
 	NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
 	{
