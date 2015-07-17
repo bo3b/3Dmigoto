@@ -264,16 +264,34 @@ static void loadDll()
 	// original library, while giving every other caller our library from the game folder.
 	// We hook LoadLibraryExW, so we need to use that here.
 #if (_WIN64)
-#define REAL_NVAPI_DLL L"original_nvapi64.dll"
+#define REAL_NVAPI_DLL L"nvapi64.dll"
 #else
-#define REAL_NVAPI_DLL L"original_nvapi.dll"
+#define REAL_NVAPI_DLL L"nvapi.dll"
 #endif
-	LogDebugW(L"Trying to load %s \n", REAL_NVAPI_DLL);
-	nvDLL = LoadLibraryEx(REAL_NVAPI_DLL, NULL, 0);
+	LogDebugW(L"Trying to load original_%s \n", REAL_NVAPI_DLL);
+	nvDLL = LoadLibraryEx(L"original_" REAL_NVAPI_DLL, NULL, 0);
 	if (nvDLL == NULL)
 	{
-		LogInfoW(L"*** LoadLibrary of %s failed. *** \n", REAL_NVAPI_DLL);
-		DoubleBeepExit();
+		wchar_t libPath[MAX_PATH];
+		LogInfoW(L"*** LoadLibrary of original_%s failed. *** \n", REAL_NVAPI_DLL);
+
+		// Redirected load failed. Maybe 3DMigoto isn't loaded, or maybe something
+		// (like Origin's IGO32.dll hook in ntdll.dll LdrLoadDll) is interfering
+		// with our hook.Fall back to using the full path after suppressing
+		// 3DMigoto's redirect to make sure we don't get a reference to ourselves:
+
+		LoadLibraryEx(L"SUPPRESS_3DMIGOTO_REDIRECT", NULL, 0);
+
+		if (GetSystemDirectoryW(libPath, ARRAYSIZE(libPath))) {
+			wcscat_s(libPath, MAX_PATH, L"\\" REAL_NVAPI_DLL);
+			LogInfoW(L"Trying to load %ls\n", libPath);
+			nvDLL = LoadLibraryEx(libPath, NULL, 0);
+			if (nvDLL == NULL)
+			{
+				LogInfoW(L"*** LoadLibrary of %ls failed. *** \n", libPath);
+				DoubleBeepExit();
+			}
+		}
 	}
 
 	DllCanUnloadNowPtr = (DllCanUnloadNowType)GetProcAddress(nvDLL, "DllCanUnloadNow");
