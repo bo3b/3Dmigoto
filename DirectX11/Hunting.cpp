@@ -12,7 +12,7 @@
 #include "Override.h"
 #include "Globals.h"
 #include "IniHandler.h"
-#include "Assembler.h"
+#include "D3D_Shaders\stdafx.h"
 
 
 static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
