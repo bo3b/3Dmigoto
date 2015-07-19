@@ -1,4 +1,4 @@
-// Reflected object shader (unverified)
+// Patchy snow on ground in North East (e.g. just outside fortress) + Reflected object shader (unverified)
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -138,7 +138,42 @@ if (_ViewportSize.x == 640 && _ViewportSize.y == 360 /* Low quality water */
   r0.z = sqrt(r0.w);
   o6.xyz = r0.xyz;
   r0.w = 0.000000000e+000 < r0.z;
-  r1.z = -r0.w;
+
+// Decompiler turned this:
+//  itof r1.z, -r0.w
+// Into this:
+//  r1.z = -r0.w;
+// Which compiled back into this:
+//  movc r1.y, r0.w, l(-1.000000), l(-0.000000)
+// And did not match the original visually (noticed with show_original).
+// Can't work out the HLSL to reproduce the original code...
+// Eventually worked out that removing the negation produces the same visual
+// result as the original, and I believe this is due to differences in the
+// result of boolean operations in assembly vs HLSL:
+//
+// In assembly:
+//    r0.w = 0 < r0.z;
+// means r0.w will contain either 0x00000000 or 0xffffffff.
+// -r0.w in the itof instruction will treat r0.w as a signed integer and
+// take the 2's complement:
+//   0x00000000 -> 0xffffffff + 1 = 0x00000000
+//   0xffffffff -> 0x00000000 + 1 = 0x00000001
+// then convert that to a float:
+//   0x00000000 -> 0x00000000
+//   0x00000001 -> 0x3f800000 (1.0)
+//
+// But, in HLSL a boolean operation works differently:
+//    r0.w = 0 < r0.z;
+// will result in r0.w containing either 0 or 1, which differs from
+// assembly, and from there on everything is backwards, the 2's complement:
+//   0x00000000 -> 0xffffffff + 1 = 0x00000000
+//   0x00000001 -> 0xfffffffe + 1 = 0xffffffff
+// then convert that to a float:
+//   0x00000000 -> 0x00000000
+//   0xffffffff -> 0xbf800000 (-1.0)
+
+  r1.z = r0.w;
+
   r1.xy = float2(0.000000e+000,0.000000e+000);
   r2.xyz = r1.xyz * r0.zxy;
   r1.xyz = r0.yzx * r1.yzy + -r2.xyz;
