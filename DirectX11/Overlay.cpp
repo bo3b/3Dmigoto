@@ -6,6 +6,7 @@
 #include <DirectXColors.h>
 #include <StrSafe.h>
 
+#include "D3D11Wrapper.h"
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
 #include "nvapi.h"
@@ -196,7 +197,7 @@ static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::
 	if (++pos == 0)
 		size = 0;
 
-	StringCchPrintf(buf, 32, L"%ls:%d/%d ", type, pos, size);
+	StringCchPrintf(buf, 32, L"%ls:%d/%Iu ", type, pos, size);
 	line->append(buf);
 }
 
@@ -213,6 +214,7 @@ void Overlay::DrawOverlay(void)
 
 	float separation, convergence;
 	NvU8 stereo = false;
+	NvAPIOverride();
 	NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
 	{

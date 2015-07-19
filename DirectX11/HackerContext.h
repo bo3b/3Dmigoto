@@ -93,6 +93,7 @@ private:
 	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
 	void ProcessParamRTSize(ParamOverrideCache *cache);
+	float ProcessParamTextureFilter(ParamOverride *override);
 	bool ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);

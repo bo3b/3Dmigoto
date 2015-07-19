@@ -13,6 +13,7 @@
 #include "D3DCompiler.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 using namespace std;
 
@@ -41,3 +42,7 @@ vector<byte> readFile(string fileName);
 vector<DWORD> ComputeHash(byte const* input, DWORD size);
 vector<string> stringToLines(const char* start, int size);
 DWORD strToDWORD(string s);
+string convertF(DWORD original);
+vector<byte> disassembler(vector<byte> buffer);
+vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer);
+void writeLUT();

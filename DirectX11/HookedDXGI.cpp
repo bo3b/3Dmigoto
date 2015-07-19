@@ -228,8 +228,8 @@ bool InstallDXGIHooks(void)
 		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory for dxgi hook. \n");
 		return false;
 	}
-	dwOsErr = cHookMgr.Hook(__out &nFactory_ID, __out(LPVOID*)&(fnOrigCreateFactory),
-		__in fnCreateDXGIFactory, __in Hooked_CreateDXGIFactory);
+	dwOsErr = cHookMgr.Hook(&nFactory_ID, (LPVOID*)&(fnOrigCreateFactory),
+		fnCreateDXGIFactory, Hooked_CreateDXGIFactory);
 	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory using Deviare in-proc: %x \n", dwOsErr);
 	if (dwOsErr != 0)
 		return false;
@@ -240,8 +240,8 @@ bool InstallDXGIHooks(void)
 		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory1 for dxgi hook. \n");
 		return false;
 	}
-	dwOsErr = cHookMgr.Hook(__out &nFactory1_ID, __out (LPVOID*)&(fnOrigCreateFactory1),
-		__in fnCreateDXGIFactory1, __in Hooked_CreateDXGIFactory1);
+	dwOsErr = cHookMgr.Hook(&nFactory1_ID, (LPVOID*)&(fnOrigCreateFactory1),
+		fnCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
 	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x \n", dwOsErr);
 	if (dwOsErr != 0)
 		return false;

@@ -12,7 +12,7 @@
 #include "Override.h"
 #include "Globals.h"
 #include "IniHandler.h"
-#include "Assembler.h"
+#include "D3D_Shaders\stdafx.h"
 
 
 static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
@@ -1410,6 +1410,14 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", iniFile, DisableDeferred, EnableDeferred, noRepeat, NULL);
+
+	G->ENABLE_TUNE = GetPrivateProfileInt(L"Hunting", L"tune_enable", 0, iniFile) == 1;
+	if (G->ENABLE_TUNE)
+		LogInfo("  tune_enable=1\n");
+	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, buf, MAX_PATH, iniFile)) {
+		swscanf_s(buf, L"%f", &G->gTuneStep);
+		LogInfo("  tune_step=%f\n", G->gTuneStep);
+	}
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%i_up", i + 1);

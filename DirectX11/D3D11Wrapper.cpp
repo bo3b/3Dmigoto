@@ -418,10 +418,28 @@ void InitD311()
 		// We hook LoadLibraryExW, so we need to use that here.
 		LogInfo("Trying to load original_d3d11.dll \n");
 		hD3D11 = LoadLibraryEx(L"original_d3d11.dll", NULL, 0);
+		if (hD3D11 == NULL)
+		{
+			wchar_t libPath[MAX_PATH];
+			LogInfo("*** LoadLibrary on original_d3d11.dll failed. \n");
+
+			// Redirected load failed. Something (like Origin's IGO32.dll
+			// hook in ntdll.dll LdrLoadDll) is interfering with our hook.
+			// Fall back to using the full path after suppressing 3DMigoto's
+			// redirect to make sure we don't get a reference to ourselves:
+
+			LoadLibraryEx(L"SUPPRESS_3DMIGOTO_REDIRECT", NULL, 0);
+
+			if (GetSystemDirectoryW(libPath, ARRAYSIZE(libPath))) {
+				wcscat_s(libPath, MAX_PATH, L"\\d3d11.dll");
+				LogInfoW(L"Trying to load %ls\n", libPath);
+				hD3D11 = LoadLibraryEx(libPath, NULL, 0);
+			}
+		}
 	}
 	if (hD3D11 == NULL)
 	{
-		LogInfo("*** LoadLibrary on original_d3d11.dll failed. \n");
+		LogInfo("*** LoadLibrary on original or chained d3d11.dll failed.\n");
 		DoubleBeepExit();
 	}
 

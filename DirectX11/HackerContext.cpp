@@ -487,30 +487,102 @@ out_release_view:
 	view->Release();
 }
 
+float HackerContext::ProcessParamTextureFilter(ParamOverride *override)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+	ID3D11ShaderResourceView *view;
+	ID3D11Resource *resource = NULL;
+	TextureOverrideMap::iterator i;
+	UINT64 hash = 0;
+	float filter_index = 0;
+
+	switch (override->shader_type) {
+		case L'v':
+			VSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'h':
+			HSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'd':
+			DSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'g':
+			GSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		case L'p':
+			PSGetShaderResources(override->texture_slot, 1, &view);
+			break;
+		default:
+			// Should not happen
+			return filter_index;
+	}
+	if (!view)
+		return filter_index;
+
+
+	view->GetResource(&resource);
+	if (!resource)
+		goto out_release_view;
+
+	view->GetDesc(&desc);
+
+	switch (desc.ViewDimension) {
+		case D3D11_SRV_DIMENSION_TEXTURE2D:
+		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
+		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
+			hash = GetTexture2DHash((ID3D11Texture2D *)resource, false, NULL);
+			break;
+		case D3D11_SRV_DIMENSION_TEXTURE3D:
+			hash = GetTexture3DHash((ID3D11Texture3D *)resource, false, NULL);
+			break;
+	}
+	if (!hash)
+		goto out_release_resource;
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		goto out_release_resource;
+
+	filter_index = i->second.filter_index;
+
+out_release_resource:
+	resource->Release();
+out_release_view:
+	view->Release();
+	return filter_index;
+}
+
 bool HackerContext::ProcessParamOverride(float *dest, ParamOverride *override, ParamOverrideCache *cache)
 {
+	float orig = *dest;
+
 	switch (override->type) {
 		case ParamOverrideType::INVALID:
 			return false;
 		case ParamOverrideType::VALUE:
 			*dest = override->val;
-			return true;
+			break;
 		case ParamOverrideType::RT_WIDTH:
 			ProcessParamRTSize(cache);
 			*dest = cache->rt_width;
-			return true;
+			break;
 		case ParamOverrideType::RT_HEIGHT:
 			ProcessParamRTSize(cache);
 			*dest = cache->rt_height;
-			return true;
+			break;
 		case ParamOverrideType::RES_WIDTH:
 			*dest = (float)G->mResolutionInfo.width;
-			return true;
+			break;
 		case ParamOverrideType::RES_HEIGHT:
 			*dest = (float)G->mResolutionInfo.height;
-			return true;
+			break;
+		case ParamOverrideType::TEXTURE:
+			*dest = ProcessParamTextureFilter(override);
+			break;
+		default:
+			return false;
 	}
-	return false;
+	return (*dest != orig);
 }
 
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
@@ -731,6 +803,7 @@ DrawContext HackerContext::BeforeDraw()
 		return data;
 
 	// Override settings?
+	// TODO: Process other types of shaders
 	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(mCurrentVertexShader);
 	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(mCurrentPixelShader);
 
@@ -1030,6 +1103,10 @@ HRESULT HackerContext::MapDenyCPURead(
 	if (SUCCEEDED(hr) && pMappedResource->pData) {
 		replace_size = pMappedResource->RowPitch * desc.Height;
 		replace = malloc(replace_size);
+		if (!replace) {
+			LogDebug("deny_cpu_read out of memory\n");
+			return E_OUTOFMEMORY;
+		}
 		memset(replace, 0, replace_size);
 		mDeniedMaps[pResource] = replace;
 		LogDebug("deny_cpu_read replaced mapping from 0x%p with %u bytes of 0s at 0x%p\n",

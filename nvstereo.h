@@ -80,7 +80,7 @@ namespace nv
 		pathInfo = (NV_DISPLAYCONFIG_PATH_INFO*)malloc(pathCount * sizeof(NV_DISPLAYCONFIG_PATH_INFO));
 		if (!pathInfo)
 		{
-			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n", ret);
+			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n");
 			return;
 		}
 
@@ -94,7 +94,7 @@ namespace nv
 			pathInfo[i].sourceModeInfo = (NV_DISPLAYCONFIG_SOURCE_MODE_INFO*)malloc(sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
 			if (pathInfo[i].sourceModeInfo == NULL)
 			{
-				LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n", ret);
+				LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n");
 				return;
 			}
 			memset(pathInfo[i].sourceModeInfo, 0, sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));

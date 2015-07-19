@@ -971,7 +971,7 @@ STDMETHODIMP HackerDXGIAdapter::GetDesc(THIS_
 	{
 		char s[MAX_PATH];
 		wcstombs(s, pDesc->Description, MAX_PATH);
-		LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory);
+		LogInfo("  returns adapter: %s, sysmem=%Iu, vidmem=%Iu\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory);
 	}
 	return hr;
 }
@@ -1006,7 +1006,7 @@ STDMETHODIMP HackerDXGIAdapter1::GetDesc1(THIS_
 		if (hr == S_OK)
 		{
 			wcstombs(s, pDesc->Description, MAX_PATH);
-			LogInfo("  returns adapter: %s, sysmem=%d, vidmem=%d, flags=%x\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory, pDesc->Flags);
+			LogInfo("  returns adapter: %s, sysmem=%Iu, vidmem=%Iu, flags=%x\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory, pDesc->Flags);
 		}
 	}
 	return hr;

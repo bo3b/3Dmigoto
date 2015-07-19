@@ -118,21 +118,36 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
 	HMODULE module;
+	static bool hook_enabled = true;
 
 	// This is late enough that we can look for standard logging.
 	LogDebugW(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
 
-	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
-	if (module)
-		return module;
+	if (_wcsicmp(lpLibFileName, L"SUPPRESS_3DMIGOTO_REDIRECT") == 0) {
+		// Something (like Origin's IGO32.dll hook in ntdll.dll
+		// LdrLoadDll) is interfering with our hook and the caller is
+		// about to attempt the load again using the full path. Disable
+		// our redirect for the next call to make sure we don't give
+		// them a reference to themselves. Subsequent calls will be
+		// armed again in case we still need the redirect.
+		hook_enabled = false;
+		return NULL;
+	}
 
-	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
-	if (module)
-		return module;
+	if (hook_enabled) {
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+		if (module)
+			return module;
 
-	module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
-	if (module)
-		return module;
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+		if (module)
+			return module;
+
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
+		if (module)
+			return module;
+	} else
+		hook_enabled = true;
 
 	// Normal unchanged case.
 	return sLoadLibraryExW_Hook.fnLoadLibraryExW(lpLibFileName, hFile, dwFlags);

@@ -14,6 +14,7 @@
     <ClCompile Include="HookedDXGI.cpp" />
     <ClCompile Include="HackerDXGI.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
+    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />

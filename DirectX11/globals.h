@@ -156,6 +156,12 @@ enum class ParamOverrideType {
 	RT_HEIGHT,
 	RES_WIDTH,
 	RES_HEIGHT,
+	TEXTURE,	// Needs shader type and slot number specified in
+			// [ShaderOverride]. [TextureOverride] sections can
+			// specify filter_index=N to define the value passed in
+			// here. Special values for no [TextureOverride]
+			// section = 0.0, or [TextureOverride] with no
+			// filter_index = 1.0
 	// TODO:
 	// DEPTH_ACTIVE
 	// VERTEX_SHADER    (how best to pass these in?
@@ -163,7 +169,6 @@ enum class ParamOverrideType {
 	// DOMAIN_SHADER     Maybe an index or some other mapping? Perhaps something like Helix mod's texture CRCs?
 	// GEOMETRY_SHADER   Or... maybe don't bother! We can already achieve this by setting the value in
 	// PIXEL_SHADER      the partner shaders instead! Limiting to a single draw call would be helpful)
-	// TEXTURE (same question as shader, should also specify which texture slot of which shader type to check)
 	// etc.
 };
 static EnumName_t<wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
@@ -176,6 +181,10 @@ static EnumName_t<wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
 struct ParamOverride {
 	ParamOverrideType type;
 	float val;
+
+	// For texture filters:
+	wchar_t shader_type;
+	unsigned texture_slot;
 
 	// TODO: Ability to override value until:
 	// a) From now on
@@ -190,7 +199,9 @@ struct ParamOverride {
 
 	ParamOverride() :
 		type(ParamOverrideType::INVALID),
-		val(FLT_MAX)
+		val(FLT_MAX),
+		shader_type(NULL),
+		texture_slot(INT_MAX)
 	{}
 };
 
@@ -245,13 +256,15 @@ struct TextureOverride {
 	FrameAnalysisOptions analyse_options;
 	bool expand_region_copy;
 	bool deny_cpu_read;
+	float filter_index;
 
 	TextureOverride() :
 		stereoMode(-1),
 		format(-1),
 		analyse_options(FrameAnalysisOptions::INVALID),
 		expand_region_copy(false),
-		deny_cpu_read(false)
+		deny_cpu_read(false),
+		filter_index(1.0)
 	{}
 };
 typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;
