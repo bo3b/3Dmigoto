@@ -25,6 +25,8 @@ echo
 xcopy "%1*.*" "C:\Program Files (x86)\Steam\SteamApps\common\DefenseGrid2\" /F /Y
 echo
 xcopy "%1*.*" "T:\Bootleg\DiRT Rally\" /F /Y
+echo
+xcopy "%1*.*" "T:\Games\Crysis 3\Bin32\" /F /Y
 
 exit
 
@@ -38,3 +40,4 @@ xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64\" /F /Y
 xcopy "%1*.*" "T:\Bootleg\Project CARS\" /F /Y
 xcopy "%1*.*" "T:\Games\The Witcher 3 Wild Hunt\bin\x64\" /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Metal Gear Solid Ground Zeroes\" /F /Y
+xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Batman Arkham Knight\Binaries\Win64\" /F /Y
