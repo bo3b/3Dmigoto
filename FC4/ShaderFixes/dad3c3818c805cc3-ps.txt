@@ -789,7 +789,7 @@ if_nz r1.x
       mul r5.xy, r1.yyyy, r5.xyxx
     endif 
     mul r6.xyzw, r5.xyxy, l(-0.520550, -0.845855, -0.751771, -0.655454)
-    mul r7.xyzw, cb0[81].xxxx, l(-7.199902, -8.579733, -2.582341, -6.140668)
+    mul r7.xyzw, cb0[81].xxxx, l(-7.1999016, -8.579733, -2.5823414, -6.140668)
     exp r7.xyzw, r7.xyzw
     div r1.x, r1.x, cb0[81].y
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
@@ -813,7 +813,7 @@ if_nz r1.x
     mad r2.w, r2.w, r7.y, r4.w
     add r5.zw, r7.zzzw, r7.xxxy
     mul r6.xyzw, r5.xyxy, l(-0.792431, 0.102304, -0.761083, 0.412305)
-    mul r7.xyzw, cb0[81].xxxx, l(-2.314786, -2.895267, -3.050395, -3.991754)
+    mul r7.xyzw, cb0[81].xxxx, l(-2.3147864, -2.8952672, -3.0503955, -3.991754)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -837,7 +837,7 @@ if_nz r1.x
     mad r2.w, r4.w, r7.w, r2.w
     add r5.zw, r7.zzzw, r5.zzzw
     mul r6.xyzw, r5.xyxy, l(-0.355834, -0.579066, -0.233941, -0.868254)
-    mul r7.xyzw, cb0[81].xxxx, l(-1.642316, -3.310693, -1.565460, -0.724846)
+    mul r7.xyzw, cb0[81].xxxx, l(-1.642316, -3.3106933, -1.5654596, -0.72484636)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -861,7 +861,7 @@ if_nz r1.x
     mad r2.w, r4.w, r7.w, r2.w
     add r5.zw, r7.zzzw, r5.zzzw
     mul r6.xyzw, r5.xyxy, l(-0.273454, 0.421808, -0.400938, 0.315500)
-    mul r7.xyzw, cb0[81].xxxx, l(-1.007788, -1.029699, -1.712442, -6.181365)
+    mul r7.xyzw, cb0[81].xxxx, l(-1.007788, -1.0296992, -1.7124417, -6.181365)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -885,7 +885,7 @@ if_nz r1.x
     mad r2.w, r4.w, r7.w, r2.w
     add r5.zw, r7.zzzw, r5.zzzw
     mul r6.xyzw, r5.xyxy, l(0.099781, -0.965326, 0.334974, -0.915804)
-    mul r7.xyzw, cb0[81].xxxx, l(-5.081637, -5.330224, -0.879165, -0.595332)
+    mul r7.xyzw, cb0[81].xxxx, l(-5.0816374, -5.330224, -0.8791655, -0.5953323)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -909,7 +909,7 @@ if_nz r1.x
     mad r2.w, r4.w, r7.w, r2.w
     add r5.zw, r7.zzzw, r5.zzzw
     mul r6.xyzw, r5.xyxy, l(0.211989, 0.381204, 0.086743, 0.147352)
-    mul r7.xyzw, cb0[81].xxxx, l(-0.826702, -0.270535, -6.513790, -6.920564)
+    mul r7.xyzw, cb0[81].xxxx, l(-0.82670176, -0.27053544, -6.5137897, -6.9205637)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -933,7 +933,7 @@ if_nz r1.x
     mad r2.w, r4.w, r7.w, r2.w
     add r5.zw, r7.zzzw, r5.zzzw
     mul r6.xyzw, r5.xyxy, l(0.736900, -0.656468, 0.891683, -0.428688)
-    mul r7.xyzw, cb0[81].xxxx, l(-6.254303, -6.557017, -8.892467, -1.433095)
+    mul r7.xyzw, cb0[81].xxxx, l(-6.2543025, -6.557017, -8.892467, -1.4330953)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -957,7 +957,7 @@ if_nz r1.x
     mad r2.w, r4.w, r7.w, r2.w
     add r5.zw, r7.zzzw, r5.zzzw
     mul r6.xyzw, r5.xyxy, l(0.799534, 0.458109, 0.757355, 0.646281)
-    mul r7.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.056620, -5.628084)
+    mul r7.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.0566196, -5.628084)
     exp r7.xyzw, r7.xyzw
     add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
     mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -990,7 +990,7 @@ if_nz r1.x
     ge r4.w, cb0[81].z, |r4.w|
     if_z r4.w
       mul r6.xyzw, r5.xyxy, l(-0.787474, -0.350792, -0.570386, 0.425458)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.858026, -1.793787, -2.966564, -2.513609)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.858026, -1.7937871, -2.9665642, -2.513609)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1014,7 +1014,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(-0.324060, -0.739428, -0.322221, -0.427310)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.375736, -1.105263, -0.803204, -0.611408)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.3757355, -1.1052635, -0.8032037, -0.6114082)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1038,7 +1038,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(-0.072165, 0.478476, -0.261705, 0.807197)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.954242, -2.723195, -1.619569, -3.852466)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.9542424, -2.7231953, -1.6195691, -3.8524659)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1062,7 +1062,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(0.481411, -0.639601, 0.292735, -0.375278)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.325746, -0.932221, -0.230742, -1.124923)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.325746, -0.9322206, -0.23074219, -1.1249231)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1086,7 +1086,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(0.341249, 0.283087, 0.458700, 0.693847)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.845245, -2.571431, -1.463586, -2.534699)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.845245, -2.5714314, -1.4635863, -2.5346994)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1110,7 +1110,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(0.514875, -0.455643, 0.876284, 0.285730)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.678242, -3.674688, -2.041839, -2.845550)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.6782416, -3.6746879, -2.0418394, -2.8455503)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1134,7 +1134,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(-0.865207, -0.079617, -0.753249, -0.188573)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.930848, -2.161618, -1.428795, -4.456054)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.9308476, -2.1616182, -1.428795, -4.4560537)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1158,7 +1158,7 @@ if_nz r1.x
       mad r2.w, r6.x, r7.w, r2.w
       add r5.zw, r7.zzzw, r5.zzzw
       mul r6.xyzw, r5.xyxy, l(-0.205326, -0.616743, -0.048028, -0.608357)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.514670, -1.359379, -0.454479, -0.786625)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.5146705, -1.3593787, -0.45447928, -0.7866251)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1195,7 +1195,7 @@ if_nz r1.x
     endif 
     if_z r1.y
       mul r6.xyzw, r5.xyxy, l(-0.016320, 0.269958, -0.249026, 0.143399)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.454923, -0.488760, -3.003686, -2.199383)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.4549229, -0.48875976, -3.0036857, -2.1993828)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1225,7 +1225,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(0.176208, -0.821267, 0.137687, -0.001624)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.643474, -0.213732, -0.532697, -0.526723)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.6434739, -0.21373248, -0.53269684, -0.52672297)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1251,7 +1251,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(0.438788, 0.053885, 0.126562, 0.851497)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.841881, -2.845301, -4.226611, -3.857164)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.84188086, -2.8453014, -4.2266107, -3.8571641)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1277,7 +1277,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(0.837432, -0.101072, 0.734523, 0.189552)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.675851, -2.050424, -3.108611, -1.781085)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.6758509, -2.0504239, -3.1086113, -1.7810845)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1303,7 +1303,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(-0.555554, -0.298719, -0.045759, -0.871110)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.437416, -2.969294, -0.427929, -0.981529)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.4374161, -2.969294, -0.42792886, -0.981529)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1329,7 +1329,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(-0.112210, 0.041340, 0.138922, -0.628008)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.183741, -1.486772, -1.469493, -0.856197)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.18374099, -1.4867721, -1.4694933, -0.8561975)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1355,7 +1355,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(0.256567, 0.651665, 0.135182, 0.525159)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.738663, -1.127459, -1.987747, -1.304964)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.7386627, -1.1274586, -1.9877468, -1.304964)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -1381,7 +1381,7 @@ if_nz r1.x
       mad r4.w, r5.w, r7.w, r4.w
       add r5.z, r7.w, r5.z
       mul r6.xyzw, r5.xyxy, l(0.605768, 0.074079, -0.582759, -0.120620)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.359493, -1.304402, -1.390656, -1.563919)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.3594928, -1.304402, -1.3906555, -1.5639188)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2067,7 +2067,7 @@ else
         mul r4.zw, r1.yyyy, r4.zzzw
       endif 
       mul r5.xyzw, r4.zwzw, l(-0.520550, -0.845855, -0.751771, -0.655454)
-      mul r6.xyzw, cb0[81].xxxx, l(-7.199902, -8.579733, -2.582341, -6.140668)
+      mul r6.xyzw, cb0[81].xxxx, l(-7.1999016, -8.579733, -2.5823414, -6.140668)
       exp r6.xyzw, r6.xyzw
       div r1.x, r1.x, cb0[81].y
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
@@ -2091,7 +2091,7 @@ else
       mad r3.w, r3.w, r6.y, r5.x
       add r5.xy, r6.zwzz, r6.xyxx
       mul r6.xyzw, r4.zwzw, l(-0.792431, 0.102304, -0.761083, 0.412305)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.314786, -2.895267, -3.050395, -3.991754)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.3147864, -2.8952672, -3.0503955, -3.991754)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2115,7 +2115,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(-0.355834, -0.579066, -0.233941, -0.868254)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.642316, -3.310693, -1.565460, -0.724846)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.642316, -3.3106933, -1.5654596, -0.72484636)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2139,7 +2139,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(-0.273454, 0.421808, -0.400938, 0.315500)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.007788, -1.029699, -1.712442, -6.181365)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.007788, -1.0296992, -1.7124417, -6.181365)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2163,7 +2163,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.099781, -0.965326, 0.334974, -0.915804)
-      mul r7.xyzw, cb0[81].xxxx, l(-5.081637, -5.330224, -0.879165, -0.595332)
+      mul r7.xyzw, cb0[81].xxxx, l(-5.0816374, -5.330224, -0.8791655, -0.5953323)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2187,7 +2187,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.211989, 0.381204, 0.086743, 0.147352)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.826702, -0.270535, -6.513790, -6.920564)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.82670176, -0.27053544, -6.5137897, -6.9205637)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2211,7 +2211,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.736900, -0.656468, 0.891683, -0.428688)
-      mul r7.xyzw, cb0[81].xxxx, l(-6.254303, -6.557017, -8.892467, -1.433095)
+      mul r7.xyzw, cb0[81].xxxx, l(-6.2543025, -6.557017, -8.892467, -1.4330953)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2235,7 +2235,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.799534, 0.458109, 0.757355, 0.646281)
-      mul r7.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.056620, -5.628084)
+      mul r7.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.0566196, -5.628084)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2268,7 +2268,7 @@ else
       ge r5.z, cb0[81].z, |r5.z|
       if_z r5.z
         mul r6.xyzw, r4.zwzw, l(-0.787474, -0.350792, -0.570386, 0.425458)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.858026, -1.793787, -2.966564, -2.513609)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.858026, -1.7937871, -2.9665642, -2.513609)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2292,7 +2292,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.324060, -0.739428, -0.322221, -0.427310)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.375736, -1.105263, -0.803204, -0.611408)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.3757355, -1.1052635, -0.8032037, -0.6114082)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2316,7 +2316,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.072165, 0.478476, -0.261705, 0.807197)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.954242, -2.723195, -1.619569, -3.852466)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.9542424, -2.7231953, -1.6195691, -3.8524659)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2340,7 +2340,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(0.481411, -0.639601, 0.292735, -0.375278)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.325746, -0.932221, -0.230742, -1.124923)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.325746, -0.9322206, -0.23074219, -1.1249231)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2364,7 +2364,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(0.341249, 0.283087, 0.458700, 0.693847)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.845245, -2.571431, -1.463586, -2.534699)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.845245, -2.5714314, -1.4635863, -2.5346994)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2388,7 +2388,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(0.514875, -0.455643, 0.876284, 0.285730)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.678242, -3.674688, -2.041839, -2.845550)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.6782416, -3.6746879, -2.0418394, -2.8455503)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2412,7 +2412,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.865207, -0.079617, -0.753249, -0.188573)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.930848, -2.161618, -1.428795, -4.456054)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.9308476, -2.1616182, -1.428795, -4.4560537)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2436,7 +2436,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.205326, -0.616743, -0.048028, -0.608357)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.514670, -1.359379, -0.454479, -0.786625)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.5146705, -1.3593787, -0.45447928, -0.7866251)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2473,7 +2473,7 @@ else
       endif 
       if_z r1.y
         mul r5.xyzw, r4.zwzw, l(-0.016320, 0.269958, -0.249026, 0.143399)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.454923, -0.488760, -3.003686, -2.199383)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.4549229, -0.48875976, -3.0036857, -2.1993828)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r1.xxxx, r7.xyzw, r6.xyzw
@@ -2503,7 +2503,7 @@ else
         mad r5.x, r5.z, r6.w, r5.x
         add r5.y, r6.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.176208, -0.821267, 0.137687, -0.001624)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.643474, -0.213732, -0.532697, -0.526723)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.6434739, -0.21373248, -0.53269684, -0.52672297)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2529,7 +2529,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.438788, 0.053885, 0.126562, 0.851497)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.841881, -2.845301, -4.226611, -3.857164)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.84188086, -2.8453014, -4.2266107, -3.8571641)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2555,7 +2555,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.837432, -0.101072, 0.734523, 0.189552)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.675851, -2.050424, -3.108611, -1.781085)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.6758509, -2.0504239, -3.1086113, -1.7810845)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2581,7 +2581,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(-0.555554, -0.298719, -0.045759, -0.871110)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.437416, -2.969294, -0.427929, -0.981529)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.4374161, -2.969294, -0.42792886, -0.981529)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2607,7 +2607,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(-0.112210, 0.041340, 0.138922, -0.628008)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.183741, -1.486772, -1.469493, -0.856197)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.18374099, -1.4867721, -1.4694933, -0.8561975)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2633,7 +2633,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.256567, 0.651665, 0.135182, 0.525159)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.738663, -1.127459, -1.987747, -1.304964)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.7386627, -1.1274586, -1.9877468, -1.304964)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -2659,7 +2659,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.605768, 0.074079, -0.582759, -0.120620)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.359493, -1.304402, -1.390656, -1.563919)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.3594928, -1.304402, -1.3906555, -1.5639188)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3344,7 +3344,7 @@ else
         mul r4.zw, r1.yyyy, r4.zzzw
       endif 
       mul r5.xyzw, r4.zwzw, l(-0.520550, -0.845855, -0.751771, -0.655454)
-      mul r6.xyzw, cb0[81].xxxx, l(-7.199902, -8.579733, -2.582341, -6.140668)
+      mul r6.xyzw, cb0[81].xxxx, l(-7.1999016, -8.579733, -2.5823414, -6.140668)
       exp r6.xyzw, r6.xyzw
       div r1.x, r1.x, cb0[81].y
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
@@ -3368,7 +3368,7 @@ else
       mad r3.w, r3.w, r6.y, r5.x
       add r5.xy, r6.zwzz, r6.xyxx
       mul r6.xyzw, r4.zwzw, l(-0.792431, 0.102304, -0.761083, 0.412305)
-      mul r7.xyzw, cb0[81].xxxx, l(-2.314786, -2.895267, -3.050395, -3.991754)
+      mul r7.xyzw, cb0[81].xxxx, l(-2.3147864, -2.8952672, -3.0503955, -3.991754)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3392,7 +3392,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(-0.355834, -0.579066, -0.233941, -0.868254)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.642316, -3.310693, -1.565460, -0.724846)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.642316, -3.3106933, -1.5654596, -0.72484636)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3416,7 +3416,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(-0.273454, 0.421808, -0.400938, 0.315500)
-      mul r7.xyzw, cb0[81].xxxx, l(-1.007788, -1.029699, -1.712442, -6.181365)
+      mul r7.xyzw, cb0[81].xxxx, l(-1.007788, -1.0296992, -1.7124417, -6.181365)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3440,7 +3440,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.099781, -0.965326, 0.334974, -0.915804)
-      mul r7.xyzw, cb0[81].xxxx, l(-5.081637, -5.330224, -0.879165, -0.595332)
+      mul r7.xyzw, cb0[81].xxxx, l(-5.0816374, -5.330224, -0.8791655, -0.5953323)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3464,7 +3464,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.211989, 0.381204, 0.086743, 0.147352)
-      mul r7.xyzw, cb0[81].xxxx, l(-0.826702, -0.270535, -6.513790, -6.920564)
+      mul r7.xyzw, cb0[81].xxxx, l(-0.82670176, -0.27053544, -6.5137897, -6.9205637)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3488,7 +3488,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.736900, -0.656468, 0.891683, -0.428688)
-      mul r7.xyzw, cb0[81].xxxx, l(-6.254303, -6.557017, -8.892467, -1.433095)
+      mul r7.xyzw, cb0[81].xxxx, l(-6.2543025, -6.557017, -8.892467, -1.4330953)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3512,7 +3512,7 @@ else
       mad r3.w, r5.z, r7.w, r3.w
       add r5.xy, r7.zwzz, r5.xyxx
       mul r6.xyzw, r4.zwzw, l(0.799534, 0.458109, 0.757355, 0.646281)
-      mul r7.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.056620, -5.628084)
+      mul r7.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.0566196, -5.628084)
       exp r7.xyzw, r7.xyzw
       add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3545,7 +3545,7 @@ else
       ge r5.z, cb0[81].z, |r5.z|
       if_z r5.z
         mul r6.xyzw, r4.zwzw, l(-0.787474, -0.350792, -0.570386, 0.425458)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.858026, -1.793787, -2.966564, -2.513609)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.858026, -1.7937871, -2.9665642, -2.513609)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3569,7 +3569,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.324060, -0.739428, -0.322221, -0.427310)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.375736, -1.105263, -0.803204, -0.611408)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.3757355, -1.1052635, -0.8032037, -0.6114082)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3593,7 +3593,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.072165, 0.478476, -0.261705, 0.807197)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.954242, -2.723195, -1.619569, -3.852466)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.9542424, -2.7231953, -1.6195691, -3.8524659)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3617,7 +3617,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(0.481411, -0.639601, 0.292735, -0.375278)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.325746, -0.932221, -0.230742, -1.124923)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.325746, -0.9322206, -0.23074219, -1.1249231)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3641,7 +3641,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(0.341249, 0.283087, 0.458700, 0.693847)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.845245, -2.571431, -1.463586, -2.534699)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.845245, -2.5714314, -1.4635863, -2.5346994)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3665,7 +3665,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(0.514875, -0.455643, 0.876284, 0.285730)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.678242, -3.674688, -2.041839, -2.845550)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.6782416, -3.6746879, -2.0418394, -2.8455503)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3689,7 +3689,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.865207, -0.079617, -0.753249, -0.188573)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.930848, -2.161618, -1.428795, -4.456054)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.9308476, -2.1616182, -1.428795, -4.4560537)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3713,7 +3713,7 @@ else
         mad r3.w, r5.w, r7.w, r3.w
         add r5.xy, r7.zwzz, r5.xyxx
         mul r6.xyzw, r4.zwzw, l(-0.205326, -0.616743, -0.048028, -0.608357)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.514670, -1.359379, -0.454479, -0.786625)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.5146705, -1.3593787, -0.45447928, -0.7866251)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3750,7 +3750,7 @@ else
       endif 
       if_z r1.y
         mul r5.xyzw, r4.zwzw, l(-0.016320, 0.269958, -0.249026, 0.143399)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.454923, -0.488760, -3.003686, -2.199383)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.4549229, -0.48875976, -3.0036857, -2.1993828)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r1.xxxx, r7.xyzw, r6.xyzw
@@ -3780,7 +3780,7 @@ else
         mad r5.x, r5.z, r6.w, r5.x
         add r5.y, r6.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.176208, -0.821267, 0.137687, -0.001624)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.643474, -0.213732, -0.532697, -0.526723)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.6434739, -0.21373248, -0.53269684, -0.52672297)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3806,7 +3806,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.438788, 0.053885, 0.126562, 0.851497)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.841881, -2.845301, -4.226611, -3.857164)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.84188086, -2.8453014, -4.2266107, -3.8571641)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3832,7 +3832,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.837432, -0.101072, 0.734523, 0.189552)
-        mul r7.xyzw, cb0[81].xxxx, l(-2.675851, -2.050424, -3.108611, -1.781085)
+        mul r7.xyzw, cb0[81].xxxx, l(-2.6758509, -2.0504239, -3.1086113, -1.7810845)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3858,7 +3858,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(-0.555554, -0.298719, -0.045759, -0.871110)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.437416, -2.969294, -0.427929, -0.981529)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.4374161, -2.969294, -0.42792886, -0.981529)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3884,7 +3884,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(-0.112210, 0.041340, 0.138922, -0.628008)
-        mul r7.xyzw, cb0[81].xxxx, l(-0.183741, -1.486772, -1.469493, -0.856197)
+        mul r7.xyzw, cb0[81].xxxx, l(-0.18374099, -1.4867721, -1.4694933, -0.8561975)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3910,7 +3910,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.256567, 0.651665, 0.135182, 0.525159)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.738663, -1.127459, -1.987747, -1.304964)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.7386627, -1.1274586, -1.9877468, -1.304964)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -3936,7 +3936,7 @@ else
         mad r5.x, r5.z, r7.w, r5.x
         add r5.y, r7.w, r5.y
         mul r6.xyzw, r4.zwzw, l(0.605768, 0.074079, -0.582759, -0.120620)
-        mul r7.xyzw, cb0[81].xxxx, l(-1.359493, -1.304402, -1.390656, -1.563919)
+        mul r7.xyzw, cb0[81].xxxx, l(-1.3594928, -1.304402, -1.3906555, -1.5639188)
         exp r7.xyzw, r7.xyzw
         add r8.xyzw, -r7.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r7.xyzw, r1.xxxx, r8.xyzw, r7.xyzw
@@ -4598,7 +4598,7 @@ else
         mul r2.xy, r1.xxxx, r2.xyxx
       endif 
       mul r5.xyzw, r2.xyxy, l(-0.520550, -0.845855, -0.751771, -0.655454)
-      mul r6.xyzw, cb0[81].xxxx, l(-7.199902, -8.579733, -2.582341, -6.140668)
+      mul r6.xyzw, cb0[81].xxxx, l(-7.1999016, -8.579733, -2.5823414, -6.140668)
       exp r6.xyzw, r6.xyzw
       div r0.w, r0.w, cb0[81].y
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
@@ -4622,7 +4622,7 @@ else
       mad r1.z, r1.z, r6.y, r1.w
       add r4.zw, r6.zzzw, r6.xxxy
       mul r5.xyzw, r2.xyxy, l(-0.792431, 0.102304, -0.761083, 0.412305)
-      mul r6.xyzw, cb0[81].xxxx, l(-2.314786, -2.895267, -3.050395, -3.991754)
+      mul r6.xyzw, cb0[81].xxxx, l(-2.3147864, -2.8952672, -3.0503955, -3.991754)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4646,7 +4646,7 @@ else
       mad r1.z, r1.w, r6.w, r1.z
       add r4.zw, r6.zzzw, r4.zzzw
       mul r5.xyzw, r2.xyxy, l(-0.355834, -0.579066, -0.233941, -0.868254)
-      mul r6.xyzw, cb0[81].xxxx, l(-1.642316, -3.310693, -1.565460, -0.724846)
+      mul r6.xyzw, cb0[81].xxxx, l(-1.642316, -3.3106933, -1.5654596, -0.72484636)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4670,7 +4670,7 @@ else
       mad r1.z, r1.w, r6.w, r1.z
       add r4.zw, r6.zzzw, r4.zzzw
       mul r5.xyzw, r2.xyxy, l(-0.273454, 0.421808, -0.400938, 0.315500)
-      mul r6.xyzw, cb0[81].xxxx, l(-1.007788, -1.029699, -1.712442, -6.181365)
+      mul r6.xyzw, cb0[81].xxxx, l(-1.007788, -1.0296992, -1.7124417, -6.181365)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4694,7 +4694,7 @@ else
       mad r1.z, r1.w, r6.w, r1.z
       add r4.zw, r6.zzzw, r4.zzzw
       mul r5.xyzw, r2.xyxy, l(0.099781, -0.965326, 0.334974, -0.915804)
-      mul r6.xyzw, cb0[81].xxxx, l(-5.081637, -5.330224, -0.879165, -0.595332)
+      mul r6.xyzw, cb0[81].xxxx, l(-5.0816374, -5.330224, -0.8791655, -0.5953323)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4718,7 +4718,7 @@ else
       mad r1.z, r1.w, r6.w, r1.z
       add r4.zw, r6.zzzw, r4.zzzw
       mul r5.xyzw, r2.xyxy, l(0.211989, 0.381204, 0.086743, 0.147352)
-      mul r6.xyzw, cb0[81].xxxx, l(-0.826702, -0.270535, -6.513790, -6.920564)
+      mul r6.xyzw, cb0[81].xxxx, l(-0.82670176, -0.27053544, -6.5137897, -6.9205637)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4742,7 +4742,7 @@ else
       mad r1.z, r1.w, r6.w, r1.z
       add r4.zw, r6.zzzw, r4.zzzw
       mul r5.xyzw, r2.xyxy, l(0.736900, -0.656468, 0.891683, -0.428688)
-      mul r6.xyzw, cb0[81].xxxx, l(-6.254303, -6.557017, -8.892467, -1.433095)
+      mul r6.xyzw, cb0[81].xxxx, l(-6.2543025, -6.557017, -8.892467, -1.4330953)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4766,7 +4766,7 @@ else
       mad r1.z, r1.w, r6.w, r1.z
       add r4.zw, r6.zzzw, r4.zzzw
       mul r5.xyzw, r2.xyxy, l(0.799534, 0.458109, 0.757355, 0.646281)
-      mul r6.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.056620, -5.628084)
+      mul r6.xyzw, cb0[81].xxxx, l(-3.670727, -7.835936, -7.0566196, -5.628084)
       exp r6.xyzw, r6.xyzw
       add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
       mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4799,7 +4799,7 @@ else
       ge r1.w, cb0[81].z, |r1.w|
       if_z r1.w
         mul r5.xyzw, r2.xyxy, l(-0.787474, -0.350792, -0.570386, 0.425458)
-        mul r6.xyzw, cb0[81].xxxx, l(-2.858026, -1.793787, -2.966564, -2.513609)
+        mul r6.xyzw, cb0[81].xxxx, l(-2.858026, -1.7937871, -2.9665642, -2.513609)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4823,7 +4823,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(-0.324060, -0.739428, -0.322221, -0.427310)
-        mul r6.xyzw, cb0[81].xxxx, l(-2.375736, -1.105263, -0.803204, -0.611408)
+        mul r6.xyzw, cb0[81].xxxx, l(-2.3757355, -1.1052635, -0.8032037, -0.6114082)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4847,7 +4847,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(-0.072165, 0.478476, -0.261705, 0.807197)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.954242, -2.723195, -1.619569, -3.852466)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.9542424, -2.7231953, -1.6195691, -3.8524659)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4871,7 +4871,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(0.481411, -0.639601, 0.292735, -0.375278)
-        mul r6.xyzw, cb0[81].xxxx, l(-2.325746, -0.932221, -0.230742, -1.124923)
+        mul r6.xyzw, cb0[81].xxxx, l(-2.325746, -0.9322206, -0.23074219, -1.1249231)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4895,7 +4895,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(0.341249, 0.283087, 0.458700, 0.693847)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.845245, -2.571431, -1.463586, -2.534699)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.845245, -2.5714314, -1.4635863, -2.5346994)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4919,7 +4919,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(0.514875, -0.455643, 0.876284, 0.285730)
-        mul r6.xyzw, cb0[81].xxxx, l(-1.678242, -3.674688, -2.041839, -2.845550)
+        mul r6.xyzw, cb0[81].xxxx, l(-1.6782416, -3.6746879, -2.0418394, -2.8455503)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4943,7 +4943,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(-0.865207, -0.079617, -0.753249, -0.188573)
-        mul r6.xyzw, cb0[81].xxxx, l(-2.930848, -2.161618, -1.428795, -4.456054)
+        mul r6.xyzw, cb0[81].xxxx, l(-2.9308476, -2.1616182, -1.428795, -4.4560537)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -4967,7 +4967,7 @@ else
         mad r1.z, r2.z, r6.w, r1.z
         add r4.zw, r6.zzzw, r4.zzzw
         mul r5.xyzw, r2.xyxy, l(-0.205326, -0.616743, -0.048028, -0.608357)
-        mul r6.xyzw, cb0[81].xxxx, l(-1.514670, -1.359379, -0.454479, -0.786625)
+        mul r6.xyzw, cb0[81].xxxx, l(-1.5146705, -1.3593787, -0.45447928, -0.7866251)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5003,7 +5003,7 @@ else
       endif 
       if_z r1.x
         mul r5.xyzw, r2.xyxy, l(-0.016320, 0.269958, -0.249026, 0.143399)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.454923, -0.488760, -3.003686, -2.199383)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.4549229, -0.48875976, -3.0036857, -2.1993828)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5033,7 +5033,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(0.176208, -0.821267, 0.137687, -0.001624)
-        mul r6.xyzw, cb0[81].xxxx, l(-2.643474, -0.213732, -0.532697, -0.526723)
+        mul r6.xyzw, cb0[81].xxxx, l(-2.6434739, -0.21373248, -0.53269684, -0.52672297)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5059,7 +5059,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(0.438788, 0.053885, 0.126562, 0.851497)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.841881, -2.845301, -4.226611, -3.857164)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.84188086, -2.8453014, -4.2266107, -3.8571641)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5085,7 +5085,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(0.837432, -0.101072, 0.734523, 0.189552)
-        mul r6.xyzw, cb0[81].xxxx, l(-2.675851, -2.050424, -3.108611, -1.781085)
+        mul r6.xyzw, cb0[81].xxxx, l(-2.6758509, -2.0504239, -3.1086113, -1.7810845)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5111,7 +5111,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(-0.555554, -0.298719, -0.045759, -0.871110)
-        mul r6.xyzw, cb0[81].xxxx, l(-1.437416, -2.969294, -0.427929, -0.981529)
+        mul r6.xyzw, cb0[81].xxxx, l(-1.4374161, -2.969294, -0.42792886, -0.981529)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5137,7 +5137,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(-0.112210, 0.041340, 0.138922, -0.628008)
-        mul r6.xyzw, cb0[81].xxxx, l(-0.183741, -1.486772, -1.469493, -0.856197)
+        mul r6.xyzw, cb0[81].xxxx, l(-0.18374099, -1.4867721, -1.4694933, -0.8561975)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5163,7 +5163,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(0.256567, 0.651665, 0.135182, 0.525159)
-        mul r6.xyzw, cb0[81].xxxx, l(-1.738663, -1.127459, -1.987747, -1.304964)
+        mul r6.xyzw, cb0[81].xxxx, l(-1.7386627, -1.1274586, -1.9877468, -1.304964)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
@@ -5189,7 +5189,7 @@ else
         mad r1.w, r3.w, r6.w, r1.w
         add r2.z, r6.w, r2.z
         mul r5.xyzw, r2.xyxy, l(0.605768, 0.074079, -0.582759, -0.120620)
-        mul r6.xyzw, cb0[81].xxxx, l(-1.359493, -1.304402, -1.390656, -1.563919)
+        mul r6.xyzw, cb0[81].xxxx, l(-1.3594928, -1.304402, -1.3906555, -1.5639188)
         exp r6.xyzw, r6.xyzw
         add r7.xyzw, -r6.xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
         mad r6.xyzw, r0.wwww, r7.xyzw, r6.xyzw
