@@ -1196,10 +1196,10 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 	/* [annotation][retval][out] */
 	_Out_  void **ppDevice)
 {
-	LogInfo("HackerDXGIDeviceSubObject::GetDevice(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+	LogDebug("HackerDXGIDeviceSubObject::GetDevice(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDeviceSubObject->GetDevice(riid, ppDevice);
-	LogInfo("  returns result = %x, handle = %p\n", hr, *ppDevice);
+	LogDebug("  returns result = %x, handle = %p\n", hr, *ppDevice);
 	return hr;
 }
 
