@@ -73,8 +73,6 @@ Known Issues
 
 - Windows & doors of buildings sometimes appear brighter than they should.
 
-- Soft shadows create a box shaped artefact.
-
 Notes
 -----
 If you find any rendering issues please post on [the forum thread][3], and be
