@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX9", "DirectX9\DirectX9.vcxproj", "{4265C0D8-8671-49C0-8EB5-EB940FD08482}"
 EndProject
@@ -10,12 +10,17 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX11", "DirectX11\DirectX11.vcxproj", "{92A679C7-A67F-4B16-B055-7A2F4C23DD80}"
 	ProjectSection(ProjectDependencies) = postProject
 		{374CBD29-E904-48E5-BF6F-A464B1EDCA86} = {374CBD29-E904-48E5-BF6F-A464B1EDCA86}
+		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED} = {59A9B0C6-8302-48A9-96E0-126FB32FB9ED}
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4} = {258D0AD2-B762-41E3-A0C1-CF831D859DA4}
+		{E0B52AE7-E160-4D32-BF3F-910B785E5A8E} = {E0B52AE7-E160-4D32-BF3F-910B785E5A8E}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXGI", "DirectXGI\DirectXGI.vcxproj", "{16459E48-9CD1-49FE-8703-D8B275CFCE1E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NVAPI", "NVAPI\NVAPI.vcxproj", "{374CBD29-E904-48E5-BF6F-A464B1EDCA86}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E0B52AE7-E160-4D32-BF3F-910B785E5A8E} = {E0B52AE7-E160-4D32-BF3F-910B785E5A8E}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3DCompiler_42", "D3DCompiler_42\D3DCompiler_42.vcxproj", "{6B6A1EF6-CDED-4BC9-B32D-8C0AB051F620}"
 EndProject
@@ -30,6 +35,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BinaryDecompiler", "BinaryDecompiler\BinaryDecompiler.vcxproj", "{258D0AD2-B762-41E3-A0C1-CF831D859DA4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1693604A-42AF-4848-B892-D1540FB17FDE}"
+	ProjectSection(SolutionItems) = preProject
+		Performance2.psess = Performance2.psess
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D_Shaders", "D3D_Shaders\D3D_Shaders.vcxproj", "{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}"
 EndProject
@@ -4144,5 +4152,8 @@ Global
 		{09915712-7D63-41F9-8110-D5667F1F9FCF} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{83DCC342-4199-4E03-B720-80E5EDF18500} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{2E0F59CC-A1FA-49CE-A8A7-727A042D77B3} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal
