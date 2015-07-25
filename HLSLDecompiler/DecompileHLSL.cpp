@@ -932,8 +932,11 @@ public:
 					continue;
 				}
 				// Read declaration.
+				// With very long names, the disassembled code can have no space at the end, like:
+				//   float2 __0RealtimeReflMul__1EnvCubeReflMul__2__3;// Offset:   96 Size:     8
+				// This caused the %s %s to fail, so now looking specifically for required semicolon.
 				char type[16]; type[0] = 0;
-				numRead = sscanf_s(c + pos, "// %s %s", type, sizeof(type), name, sizeof(name));
+				numRead = sscanf_s(c + pos, "// %s %[^;]", type, sizeof(type), name, sizeof(name));
 				if (numRead != 2)
 				{
 					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -947,20 +950,13 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf_s(c + pos, "// %s %s %s", buffer, sizeof(buffer), type, sizeof(type), name, sizeof(name));
+					numRead = sscanf_s(c + pos, "// %s %s %[^;]", buffer, sizeof(buffer), type, sizeof(type), name, sizeof(name));
 					if (numRead != 3)
 					{
 						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 						return;
 					}
 				}
-				char *endStatement = strchr(name, ';');
-				if (!endStatement)
-				{
-					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
-					return;
-				}
-				*endStatement = 0;
 				pos += 2;
 				while (c[pos] != '/' && pos < size) pos++;
 				int offset = 0;
