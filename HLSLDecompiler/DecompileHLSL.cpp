@@ -2817,9 +2817,13 @@ public:
 						logDecompileError("Error parsing buffer size: " + string(op1));
 						return;
 					}
-					CBufferData::iterator i = mCBufferData.find((bufIndex << 16) + 0 * 16);
-					// Create if not existing.
-					if (i == mCBufferData.end())
+					// In the case where headers have been stripped, we will not have any CBufferNames,
+					// but we will have these dcl_constantbuffer declarations.  We are now using
+					// the absence of any mCBufferNames as indication that we have stripped headers,
+					// and create the fake cb2 style names as the best we can do.  
+					// Not sure this will work in all cases, because the offsets into the buffer are
+					// not required to be zero for the first element, but we have no other info here.
+					if (mCBufferNames.empty())
 					{
 						BufferEntry e;
 						e.bt = DT_float4;
