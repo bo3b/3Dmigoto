@@ -804,13 +804,15 @@ DrawContext HackerContext::BeforeDraw()
 
 	// Override settings?
 	// TODO: Process other types of shaders
-	ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(mCurrentVertexShader);
-	ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(mCurrentPixelShader);
+	if (!G->mShaderOverrideMap.empty()) {
+		ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(mCurrentVertexShader);
+		ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(mCurrentPixelShader);
 
-	if (iVertex != G->mShaderOverrideMap.end())
-		ProcessShaderOverride(&iVertex->second, false, &data, &separationValue, &convergenceValue);
-	if (iPixel != G->mShaderOverrideMap.end())
-		ProcessShaderOverride(&iPixel->second, true, &data, &separationValue, &convergenceValue);
+		if (iVertex != G->mShaderOverrideMap.end())
+			ProcessShaderOverride(&iVertex->second, false, &data, &separationValue, &convergenceValue);
+		if (iPixel != G->mShaderOverrideMap.end())
+			ProcessShaderOverride(&iPixel->second, true, &data, &separationValue, &convergenceValue);
+	}
 
 	if (data.override) {
 		HackerDevice *device = mHackerDevice;
@@ -1077,6 +1079,9 @@ HRESULT HackerContext::MapDenyCPURead(
 	if (dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
 		return E_FAIL;
 
+	if (G->mTextureOverrideMap.empty())
+		return E_FAIL;
+
 	tex->GetDesc(&desc);
 	hash = GetTexture2DHash(tex, false, NULL);
 
@@ -1122,6 +1127,9 @@ void HackerContext::FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresourc
 	if (Subresource != 0)
 		return;
 
+	if (G->mTextureOverrideMap.empty())
+		return;
+
 	DeniedMap::iterator i;
 	i = mDeniedMaps.find(pResource);
 	if (i == mDeniedMaps.end())
@@ -1159,7 +1167,7 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	__in  UINT Subresource)
 {
 	FreeDeniedMapping(pResource, Subresource);
-	 mOrigContext->Unmap(pResource, Subresource);
+	mOrigContext->Unmap(pResource, Subresource);
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetConstantBuffers(THIS_
@@ -1768,7 +1776,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances,
-	std::unordered_map<ID3D11Shader *, UINT64> *shaders,
+	std::unordered_map<ID3D11Shader *, UINT64> *registered,
 	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
 	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
 	std::set<UINT64> *visitedShaders,
@@ -1778,67 +1786,58 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 {
 	if (pShader) {
 		// Store as current shader. Need to do this even while
-		// not hunting for ShaderOverride sections.
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-
-			std::unordered_map<ID3D11Shader *, UINT64>::iterator i = shaders->find(pShader);
-			if (i != shaders->end()) {
+		// not hunting for ShaderOverride section in BeforeDraw
+		// As an optimization, we can skip the lookup if there are no ShaderOverride
+		// The lookup/find takes measurable amounts of CPU time.
+		if (!G->mShaderOverrideMap.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
+			std::unordered_map<ID3D11Shader *, UINT64>::iterator i = registered->find(pShader);
+			if (i != registered->end()) {
 				*currentShaderHash = i->second;
 				*currentShaderHandle = pShader;
-				LogDebug("  shader found: handle = %p, hash = %016I64x\n", pShader, *currentShaderHash);
+				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
 				if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
-					// Add to visited shaders.
+					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 					visitedShaders->insert(i->second);
+					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
-
-				// second try to hide index buffer.
-				// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
-				//	pIndexBuffer = 0;
-			} else
+			}
+			else
 				LogDebug("  shader %p not found\n", pShader);
+		}
 
-			if (G->hunting == HUNTING_MODE_ENABLED) {
-				// Replacement map.
-				if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-					std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = originalShaders->find(pShader);
-					if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != originalShaders->end()) {
-						ID3D11Shader *shader = j->second;
-						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-						(mOrigContext->*OrigSetShader)(shader, ppClassInstances, NumClassInstances);
-						return;
-					}
-				}
-				if (G->marking_mode == MARKING_MODE_ZERO) {
-					std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = zeroShaders->find(pShader);
-					if (selectedShader == *currentShaderHash && j != zeroShaders->end()) {
-						ID3D11Shader *shader = j->second;
-						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-						(mOrigContext->*OrigSetShader)(shader, ppClassInstances, NumClassInstances);
-						return;
-					}
+		// If the shader has been live reloaded from ShaderFixes, use the new one
+		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
+		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pShader);
+		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
+			LogDebug("  shader replaced by: %p\n", it->second.replacement);
+
+			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
+			pShader = (ID3D11Shader*)it->second.replacement;
+		}
+
+		if (G->hunting == HUNTING_MODE_ENABLED) {
+			// Replacement map.
+			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+				std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = originalShaders->find(pShader);
+				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != originalShaders->end()) {
+					pShader = j->second;
 				}
 			}
-
-			// If the shader has been live reloaded from ShaderFixes, use the new one
-			// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-			ShaderReloadMap::iterator it = G->mReloadedShaders.find(pShader);
-			if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
-				LogDebug("  shader replaced by: %p\n", it->second.replacement);
-
-				// Todo: It might make sense to Release() the original shader, to recover memory on GPU
-				ID3D11Shader *shader = (ID3D11Shader*)it->second.replacement;
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-				(mOrigContext->*OrigSetShader)(shader, ppClassInstances, NumClassInstances);
-				return;
+			if (G->marking_mode == MARKING_MODE_ZERO) {
+				std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = zeroShaders->find(pShader);
+				if (selectedShader == *currentShaderHash && j != zeroShaders->end()) {
+					pShader = j->second;
+				}
 			}
+		}
 
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	} else {
 		*currentShaderHash = 0;
 		*currentShaderHandle = NULL;
 	}
 
+	// Call through to original XXSetShader, but pShader may have been replaced.
 	(mOrigContext->*OrigSetShader)(pShader, ppClassInstances, NumClassInstances);
 }
 
@@ -2512,7 +2511,7 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 {
 	LogDebug("HackerContext::IASetIndexBuffer called\n");
 
-	if (pIndexBuffer) {
+	if (pIndexBuffer && !G->mDataBuffers.empty()) {
 		// Store as current index buffer.
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);

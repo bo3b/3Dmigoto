@@ -1601,6 +1601,20 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		}
 	}
 
+	// In the case where there is in fact nothing to be done with a texture hash,
+	// no texture overrides, let's not calculate it, because it can use measurable 
+	// amounts of CPU time.  In GTA5 I measured this as avg frame rates 55 vs. 48.
+	//
+	// If we are hunting mode, we need all the hashes for ShaderUsages.
+	if (G->mTextureOverrideMap.empty() && !G->hunting && (G->gSurfaceSquareCreateMode == -1))
+	{
+		HRESULT hr = mOrigDevice->CreateTexture2D(pDesc, pInitialData, ppTexture2D);
+		if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
+
+		return hr;
+	}
+
+
 	// Rectangular depth stencil textures of at least 640x480 may indicate
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
