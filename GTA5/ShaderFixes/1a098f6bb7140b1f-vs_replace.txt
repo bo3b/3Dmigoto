@@ -1,0 +1,786 @@
+
+cbuffer rage_matrices : register(b1)
+{
+  row_major float4x4 gWorld : packoffset(c0);
+  row_major float4x4 gWorldView : packoffset(c4);
+  row_major float4x4 gWorldViewProj : packoffset(c8);
+  row_major float4x4 gViewInverse : packoffset(c12);
+}
+
+cbuffer rage_clipplanes : register(b0)
+{
+  float4 ClipPlanes : packoffset(c0);
+}
+
+cbuffer lighting_globals : register(b3)
+{
+  float4 gDirectionalLight : packoffset(c0);
+  float4 gDirectionalColour : packoffset(c1);
+  int gNumForwardLights : packoffset(c2);
+  float4 gLightPositionAndInvDistSqr[8] : packoffset(c3);
+  float4 gLightDirectionAndFalloffExponent[8] : packoffset(c11);
+  float4 gLightColourAndCapsuleExtent[8] : packoffset(c19);
+  float gLightConeScale[8] : packoffset(c27);
+  float gLightConeOffset[8] : packoffset(c35);
+  float4 gLightNaturalAmbient0 : packoffset(c43);
+  float4 gLightNaturalAmbient1 : packoffset(c44);
+  float4 gLightArtificialIntAmbient0 : packoffset(c45);
+  float4 gLightArtificialIntAmbient1 : packoffset(c46);
+  float4 gLightArtificialExtAmbient0 : packoffset(c47);
+  float4 gLightArtificialExtAmbient1 : packoffset(c48);
+  float4 gDirectionalAmbientColour : packoffset(c49);
+  float4 globalFogParams[5] : packoffset(c50);
+  float4 globalFogColor : packoffset(c55);
+  float4 globalFogColorE : packoffset(c56);
+  float4 globalFogColorN : packoffset(c57);
+  float4 globalFogColorMoon : packoffset(c58);
+  float4 gReflectionTweaks : packoffset(c59);
+}
+
+cbuffer clouds_locals : register(b4)
+{
+  float3 gSkyColor : packoffset(c0);
+  float3 gEastMinusWestColor : packoffset(c1);
+  float3 gWestColor : packoffset(c2);
+  float3 gSunDirection : packoffset(c3);
+  float3 gSunColor : packoffset(c4);
+  float3 gCloudColor : packoffset(c5);
+  float3 gAmbientColor : packoffset(c6);
+  float3 gBounceColor : packoffset(c7);
+  float4 gDensityShiftScale : packoffset(c8);
+  float4 gScatterG_GSquared_PhaseMult_Scale : packoffset(c9);
+  float4 gPiercingLightPower_Strength_NormalStrength_Thickness : packoffset(c10);
+  float3 gScaleDiffuseFillAmbient : packoffset(c11);
+  float3 gWrapLighting_MSAARef : packoffset(c12);
+  float4 gNearFarQMult : packoffset(c13);
+  float3 gAnimCombine : packoffset(c14);
+  float3 gAnimSculpt : packoffset(c15);
+  float3 gAnimBlendWeights : packoffset(c16);
+  float4 gUVOffset[2] : packoffset(c17);
+  row_major float4x4 gCloudViewProj : packoffset(c19);
+  float4 gCameraPos : packoffset(c23);
+  float2 gUVOffset1 : packoffset(c24);
+  float2 gUVOffset2 : packoffset(c24.z);
+  float2 gUVOffset3 : packoffset(c25);
+  float2 gRescaleUV1 : packoffset(c25.z);
+  float2 gRescaleUV2 : packoffset(c26);
+  float2 gRescaleUV3 : packoffset(c26.z);
+  float gSoftParticleRange : packoffset(c27);
+  float gEnvMapAlphaScale : packoffset(c27.y);
+  float2 cloudLayerAnimScale1 : packoffset(c27.z);
+  float2 cloudLayerAnimScale2 : packoffset(c28);
+  float2 cloudLayerAnimScale3 : packoffset(c28.z);
+  float4 cloudBillboardParams : packoffset(c29);
+}
+Texture2D<float4> StereoParmsTexture : register(t20);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float3 v0 : POSITION0,
+  float4 v1 : COLOR0,
+  float4 v2 : TEXCOORD0,
+  float2 v3 : TEXCOORD1,
+  out float4 o0 : TEXCOORD0,
+  out float4 o1 : TEXCOORD1,
+  out float4 o2 : TEXCOORD2,
+  out float4 o3 : TEXCOORD3,
+  out float4 o4 : TEXCOORD4,
+  out float4 o5 : TEXCOORD5,
+  out float4 o6 : TEXCOORD6,
+  out float4 o7 : TEXCOORD7,
+  out float4 o8 : TEXCOORD8,
+  out float4 o9 : TEXCOORD9,
+  out float4 o10 : SV_Position0,
+  out float4 o11 : SV_ClipDistance0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = cloudBillboardParams.xy * v3.xy;
+  r0.xzw = gViewInverse._m00_m01_m02 * r0.xxx;
+  r1.xyz = -gViewInverse._m10_m11_m12 * r0.yyy;
+  r2.xy = float2(-0.5,-0.5) + v2.xy;
+  r0.xyz = r2.xxx * r0.xzw + v0.xyz;
+  r0.xyz = r2.yyy * r1.xyz + r0.xyz;
+  r0.w = dot(r0.xyz, gWorld._m10_m11_m12);
+  r1.xyz = gWorld._m10_m11_m12 * r0.www;
+  r2.xyzw = gWorldViewProj._m10_m11_m12_m13 * r0.wwww;
+  r0.w = dot(r0.xyz, gWorld._m00_m01_m02);
+  r0.x = dot(r0.xyz, gWorld._m20_m21_m22);
+  r1.xyz = r0.www * gWorld._m00_m01_m02 + r1.xyz;
+  r2.xyzw = r0.wwww * gWorldViewProj._m00_m01_m02_m03 + r2.xyzw;
+  r2.xyzw = r0.xxxx * gWorldViewProj._m20_m21_m22_m23 + r2.xyzw;
+  r0.xyz = r0.xxx * gWorld._m20_m21_m22 + r1.xyz;
+  r0.xyz = gWorld._m30_m31_m32 + r0.xyz;
+  r1.xyzw = gWorldViewProj._m30_m31_m32_m33 + r2.xyzw;
+  o11.x = dot(r1.xyzw, ClipPlanes.xyzw);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r1.w = sqrt(r0.w);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r0.xyz * r0.www;
+  r1.xyz = r0.xyz / r1.www;
+  o0.xyzw = r1.xyzw;
+  o1.xyz = gViewInverse._m20_m21_m22;
+  o1.w = v1.w;
+  o2.xyz = gViewInverse._m00_m01_m02;
+  o2.w = v1.y;
+  r3.xyz = gViewInverse._m21_m22_m20 * gViewInverse._m02_m00_m01;
+  r3.xyz = gViewInverse._m01_m02_m00 * gViewInverse._m22_m20_m21 + -r3.xyz;
+  o3.xyz = gViewInverse._m03_m03_m03 * r3.xyz;
+  o3.w = v1.z;
+  r3.xy = v2.zw * gRescaleUV1.xy + gUVOffset1.xy;
+  o4.xy = gUVOffset[0].xy * cloudLayerAnimScale1.xy + r3.xy;
+  r3.xy = v2.zw * gRescaleUV2.xy + gUVOffset2.xy;
+  o5.xy = gUVOffset[0].zw * cloudLayerAnimScale2.xy + r3.xy;
+  r3.xy = v2.zw * gRescaleUV3.xy + gUVOffset3.xy;
+  o5.zw = gUVOffset[1].xy * cloudLayerAnimScale3.xy + r3.xy;
+  r3.xyz = gCloudViewProj._m10_m11_m13 * r0.yyy;
+  r0.xyw = r0.xxx * gCloudViewProj._m00_m01_m03 + r3.xyz;
+  r0.xyw = r0.zzz * gCloudViewProj._m20_m21_m23 + r0.xyw;
+  r0.xyw = gCloudViewProj._m30_m31_m33 + r0.xyw;
+  r3.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
+  r2.w = -r3.y + r0.w;
+  r2.w = r3.x * r2.w + r0.x;
+  r3.xy = float2(0.5,0.5) * r0.wy;
+  o6.x = r2.w * 0.5 + r3.x;
+  o6.y = r0.w * 0.5 + -r3.y;
+  o6.zw = r0.ww;
+  r2.w = dot(-r1.xyz, gSunDirection.xyz);
+  r3.xyz = -r2.www * gSunDirection.xyz + -r1.xyz;
+  r1.x = dot(r1.xyz, gSunDirection.xyz);
+  r1.y = dot(r3.xyz, r3.xyz);
+  r1.y = rsqrt(r1.y);
+  o7.xyz = r3.xyz * r1.yyy;
+  r1.y = saturate(r1.x);
+  r1.y = log2(r1.y);
+  r1.y = gPiercingLightPower_Strength_NormalStrength_Thickness.x * r1.y;
+  o7.w = exp2(r1.y);
+  r1.y = dot(r1.xx, gScatterG_GSquared_PhaseMult_Scale.xx);
+  r1.x = r1.x * r1.x + 1;
+  r1.z = 1 + gScatterG_GSquared_PhaseMult_Scale.y;
+  r1.y = r1.z + -r1.y;
+  r1.y = log2(abs(r1.y));
+  r1.y = 1.5 * r1.y;
+  r1.y = exp2(r1.y);
+  r1.x = r1.x / r1.y;
+  r1.x = gScatterG_GSquared_PhaseMult_Scale.z * r1.x;
+  r1.xyz = gSunColor.xyz * r1.xxx;
+  o8.xyz = gScatterG_GSquared_PhaseMult_Scale.www * r1.xyz;
+  r1.x = saturate(dot(r2.xyz, globalFogParams[3].xyz));
+  r1.y = saturate(dot(r2.xyz, globalFogParams[4].xyz));
+  r1.y = log2(r1.y);
+  r1.y = globalFogParams[4].w * r1.y;
+  r1.y = exp2(r1.y);
+  r1.x = log2(r1.x);
+  r1.x = globalFogParams[3].w * r1.x;
+  r1.x = exp2(r1.x);
+  r2.xyz = globalFogColorMoon.xyz + -globalFogColorE.xyz;
+  r2.xyz = r1.yyy * r2.xyz + globalFogColorE.xyz;
+  r3.xyz = globalFogColor.xyz + -r2.xyz;
+  r1.xyz = r1.xxx * r3.xyz + r2.xyz;
+  r1.xyz = -globalFogColorN.xyz + r1.xyz;
+  r2.x = -globalFogParams[0].x + r1.w;
+  r2.x = max(0, r2.x);
+  r2.y = -globalFogParams[1].z * r2.x;
+  r2.y = 1.44269502 * r2.y;
+  r2.y = exp2(r2.y);
+  r2.y = 1 + -r2.y;
+  r1.xyz = r2.yyy * r1.xyz + globalFogColorN.xyz;
+  r1.w = r2.x / r1.w;
+  r2.x = globalFogParams[1].w * r2.x;
+  r0.z = r1.w * r0.z;
+  r1.w = 0.00999999978 < abs(r0.z);
+  r0.z = globalFogParams[2].z * r0.z;
+  r2.y = -1.44269502 * r0.z;
+  r2.y = exp2(r2.y);
+  r2.y = 1 + -r2.y;
+  r0.z = r2.y / r0.z;
+  r0.z = r1.w ? r0.z : 1;
+  r0.z = r2.x * r0.z;
+  r0.z = min(1, r0.z);
+  r0.z = 1.44269502 * r0.z;
+  r0.z = exp2(r0.z);
+  r0.z = min(1, r0.z);
+  r0.z = 1 + -r0.z;
+  r0.z = saturate(globalFogParams[2].y * r0.z);
+  r1.w = 1 + -v1.x;
+  r0.z = max(r1.w, r0.z);
+  r1.xyz = r1.xyz * r0.zzz;
+  r0.z = 1 + -r0.z;
+  r2.x = globalFogParams[2].w * r1.w;
+  r1.w = -r1.w * globalFogParams[2].w + 1;
+  r3.x = globalFogColor.w * r2.x;
+  r3.y = globalFogColorE.w * r2.x;
+  r3.z = globalFogColorN.w * r2.x;
+  o9.xyz = r1.xyz * r1.www + r3.xyz;
+  o9.w = r1.w * r0.z;
+  r0.z = 0 != gCameraPos.w;
+  o10.z = r0.z ? 0 : r0.w;
+  o10.xyw = r0.xyw;
+  o11.yzw = float3(0,0,0);
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer rage_clipplanes
+// {
+//
+//   float4 ClipPlanes;                 // Offset:    0 Size:    16
+//
+// }
+//
+// cbuffer lighting_globals
+// {
+//
+//   float4 gDirectionalLight;          // Offset:    0 Size:    16 [unused]
+//   float4 gDirectionalColour;         // Offset:   16 Size:    16 [unused]
+//   int gNumForwardLights;             // Offset:   32 Size:     4 [unused]
+//   float4 gLightPositionAndInvDistSqr[8];// Offset:   48 Size:   128 [unused]
+//   float4 gLightDirectionAndFalloffExponent[8];// Offset:  176 Size:   128 [unused]
+//   float4 gLightColourAndCapsuleExtent[8];// Offset:  304 Size:   128 [unused]
+//   float gLightConeScale[8];          // Offset:  432 Size:   116 [unused]
+//   float gLightConeOffset[8];         // Offset:  560 Size:   116 [unused]
+//   float4 gLightNaturalAmbient0;      // Offset:  688 Size:    16 [unused]
+//   float4 gLightNaturalAmbient1;      // Offset:  704 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient0;// Offset:  720 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient1;// Offset:  736 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient0;// Offset:  752 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient1;// Offset:  768 Size:    16 [unused]
+//   float4 gDirectionalAmbientColour;  // Offset:  784 Size:    16 [unused]
+//   float4 globalFogParams[5];         // Offset:  800 Size:    80
+//   float4 globalFogColor;             // Offset:  880 Size:    16
+//   float4 globalFogColorE;            // Offset:  896 Size:    16
+//   float4 globalFogColorN;            // Offset:  912 Size:    16
+//   float4 globalFogColorMoon;         // Offset:  928 Size:    16
+//   float4 gReflectionTweaks;          // Offset:  944 Size:    16 [unused]
+//
+// }
+//
+// cbuffer clouds_locals
+// {
+//
+//   float3 gSkyColor;                  // Offset:    0 Size:    12 [unused]
+//   float3 gEastMinusWestColor;        // Offset:   16 Size:    12 [unused]
+//   float3 gWestColor;                 // Offset:   32 Size:    12 [unused]
+//   float3 gSunDirection;              // Offset:   48 Size:    12
+//   float3 gSunColor;                  // Offset:   64 Size:    12
+//   float3 gCloudColor;                // Offset:   80 Size:    12 [unused]
+//   float3 gAmbientColor;              // Offset:   96 Size:    12 [unused]
+//   float3 gBounceColor;               // Offset:  112 Size:    12 [unused]
+//   float4 gDensityShiftScale;         // Offset:  128 Size:    16 [unused]
+//   float4 gScatterG_GSquared_PhaseMult_Scale;// Offset:  144 Size:    16
+//   float4 gPiercingLightPower_Strength_NormalStrength_Thickness;// Offset:  160 Size:    16
+//   float3 gScaleDiffuseFillAmbient;   // Offset:  176 Size:    12 [unused]
+//   float3 gWrapLighting_MSAARef;      // Offset:  192 Size:    12 [unused]
+//   float4 gNearFarQMult;              // Offset:  208 Size:    16 [unused]
+//   float3 gAnimCombine;               // Offset:  224 Size:    12 [unused]
+//   float3 gAnimSculpt;                // Offset:  240 Size:    12 [unused]
+//   float3 gAnimBlendWeights;          // Offset:  256 Size:    12 [unused]
+//   float4 gUVOffset[2];               // Offset:  272 Size:    32
+//   row_major float4x4 gCloudViewProj; // Offset:  304 Size:    64
+//   float4 gCameraPos;                 // Offset:  368 Size:    16
+//   float2 gUVOffset1;                 // Offset:  384 Size:     8
+//   float2 gUVOffset2;                 // Offset:  392 Size:     8
+//   float2 gUVOffset3;                 // Offset:  400 Size:     8
+//   float2 gRescaleUV1;                // Offset:  408 Size:     8
+//   float2 gRescaleUV2;                // Offset:  416 Size:     8
+//   float2 gRescaleUV3;                // Offset:  424 Size:     8
+//   float gSoftParticleRange;          // Offset:  432 Size:     4 [unused]
+//   float gEnvMapAlphaScale;           // Offset:  436 Size:     4 [unused]
+//   float2 cloudLayerAnimScale1;       // Offset:  440 Size:     8
+//   float2 cloudLayerAnimScale2;       // Offset:  448 Size:     8
+//   float2 cloudLayerAnimScale3;       // Offset:  456 Size:     8
+//   float4 cloudBillboardParams;       // Offset:  464 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// StereoParmsTexture                texture  float4          2d   20        1
+// rage_clipplanes                   cbuffer      NA          NA    0        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// lighting_globals                  cbuffer      NA          NA    3        1
+// clouds_locals                     cbuffer      NA          NA    4        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyz         0     NONE   float   xyz 
+// COLOR                    0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 0   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 1   xy          3     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 3   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 4   xy          4     NONE   float   xy  
+// TEXCOORD                 5   xyzw        5     NONE   float   xyzw
+// TEXCOORD                 6   xyzw        6     NONE   float   xyzw
+// TEXCOORD                 7   xyzw        7     NONE   float   xyzw
+// TEXCOORD                 8   xyz         8     NONE   float   xyz 
+// TEXCOORD                 9   xyzw        9     NONE   float   xyzw
+// SV_Position              0   xyzw       10      POS   float   xyzw
+// SV_ClipDistance          0   xyzw       11  CLIPDST   float   xyzw
+//
+vs_4_0
+dcl_constantbuffer cb1[15], immediateIndexed
+dcl_constantbuffer cb0[1], immediateIndexed
+dcl_constantbuffer cb3[59], immediateIndexed
+dcl_constantbuffer cb4[30], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input v0.xyz
+dcl_input v1.xyzw
+dcl_input v2.xyzw
+dcl_input v3.xy
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyzw
+dcl_output o4.xy
+dcl_output o5.xyzw
+dcl_output o6.xyzw
+dcl_output o7.xyzw
+dcl_output o8.xyz
+dcl_output o9.xyzw
+dcl_output_siv o10.xyzw, position
+dcl_output_siv o11.xyzw, clip_distance
+dcl_temps 4
+mul r0.xy, v3.xyxx, cb4[29].xyxx
+mul r0.xzw, r0.xxxx, cb1[12].xxyz
+mul r1.xyz, r0.yyyy, -cb1[13].xyzx
+add r2.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+mad r0.xyz, r2.xxxx, r0.xzwx, v0.xyzx
+mad r0.xyz, r2.yyyy, r1.xyzx, r0.xyzx
+dp3 r0.w, r0.xyzx, cb1[1].xyzx
+mul r1.xyz, r0.wwww, cb1[1].xyzx
+mul r2.xyzw, r0.wwww, cb1[9].xyzw
+dp3 r0.w, r0.xyzx, cb1[0].xyzx
+dp3 r0.x, r0.xyzx, cb1[2].xyzx
+mad r1.xyz, r0.wwww, cb1[0].xyzx, r1.xyzx
+mad r2.xyzw, r0.wwww, cb1[8].xyzw, r2.xyzw
+mad r2.xyzw, r0.xxxx, cb1[10].xyzw, r2.xyzw
+mad r0.xyz, r0.xxxx, cb1[2].xyzx, r1.xyzx
+add r0.xyz, r0.xyzx, cb1[3].xyzx
+add r1.xyzw, r2.xyzw, cb1[11].xyzw
+dp4 o11.x, r1.xyzw, cb0[0].xyzw
+dp3 r0.w, r0.xyzx, r0.xyzx
+sqrt r1.w, r0.w
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, r0.xyzx
+div r1.xyz, r0.xyzx, r1.wwww
+mov o0.xyzw, r1.xyzw
+mov o1.xyz, cb1[14].xyzx
+mov o1.w, v1.w
+mov o2.xyz, cb1[12].xyzx
+mov o2.w, v1.y
+mul r3.xyz, cb1[12].zxyz, cb1[14].yzxy
+mad r3.xyz, cb1[12].yzxy, cb1[14].zxyz, -r3.xyzx
+mul o3.xyz, r3.xyzx, cb1[12].wwww
+mov o3.w, v1.z
+mad r3.xy, v2.zwzz, cb4[25].zwzz, cb4[24].xyxx
+mad o4.xy, cb4[17].xyxx, cb4[27].zwzz, r3.xyxx
+mad r3.xy, v2.zwzz, cb4[26].xyxx, cb4[24].zwzz
+mad o5.xy, cb4[17].zwzz, cb4[28].xyxx, r3.xyxx
+mad r3.xy, v2.zwzz, cb4[26].zwzz, cb4[25].xyxx
+mad o5.zw, cb4[18].xxxy, cb4[28].zzzw, r3.xxxy
+mul r3.xyz, r0.yyyy, cb4[20].xywx
+mad r0.xyw, r0.xxxx, cb4[19].xyxw, r3.xyxz
+mad r0.xyw, r0.zzzz, cb4[21].xyxw, r0.xyxw
+add r0.xyw, r0.xyxw, cb4[22].xyxw
+ld r3.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r2.w, r0.w, -r3.y
+mad r2.w, r3.x, r2.w, r0.x
+mul r3.xy, r0.wyww, l(0.500000, 0.500000, 0.000000, 0.000000)
+mad o6.x, r2.w, l(0.500000), r3.x
+mad o6.y, r0.w, l(0.500000), -r3.y
+mov o6.zw, r0.wwww
+dp3 r2.w, -r1.xyzx, cb4[3].xyzx
+mad r3.xyz, -r2.wwww, cb4[3].xyzx, -r1.xyzx
+dp3 r1.x, r1.xyzx, cb4[3].xyzx
+dp3 r1.y, r3.xyzx, r3.xyzx
+rsq r1.y, r1.y
+mul o7.xyz, r1.yyyy, r3.xyzx
+mov_sat r1.y, r1.x
+log r1.y, r1.y
+mul r1.y, r1.y, cb4[10].x
+exp o7.w, r1.y
+dp2 r1.y, r1.xxxx, cb4[9].xxxx
+mad r1.x, r1.x, r1.x, l(1.000000)
+add r1.z, cb4[9].y, l(1.000000)
+add r1.y, -r1.y, r1.z
+log r1.y, |r1.y|
+mul r1.y, r1.y, l(1.500000)
+exp r1.y, r1.y
+div r1.x, r1.x, r1.y
+mul r1.x, r1.x, cb4[9].z
+mul r1.xyz, r1.xxxx, cb4[4].xyzx
+mul o8.xyz, r1.xyzx, cb4[9].wwww
+dp3_sat r1.x, r2.xyzx, cb3[53].xyzx
+dp3_sat r1.y, r2.xyzx, cb3[54].xyzx
+log r1.y, r1.y
+mul r1.y, r1.y, cb3[54].w
+exp r1.y, r1.y
+log r1.x, r1.x
+mul r1.x, r1.x, cb3[53].w
+exp r1.x, r1.x
+add r2.xyz, -cb3[56].xyzx, cb3[58].xyzx
+mad r2.xyz, r1.yyyy, r2.xyzx, cb3[56].xyzx
+add r3.xyz, -r2.xyzx, cb3[55].xyzx
+mad r1.xyz, r1.xxxx, r3.xyzx, r2.xyzx
+add r1.xyz, r1.xyzx, -cb3[57].xyzx
+add r2.x, r1.w, -cb3[50].x
+max r2.x, r2.x, l(0.000000)
+mul r2.y, r2.x, -cb3[51].z
+mul r2.y, r2.y, l(1.442695)
+exp r2.y, r2.y
+add r2.y, -r2.y, l(1.000000)
+mad r1.xyz, r2.yyyy, r1.xyzx, cb3[57].xyzx
+div r1.w, r2.x, r1.w
+mul r2.x, r2.x, cb3[51].w
+mul r0.z, r0.z, r1.w
+lt r1.w, l(0.010000), |r0.z|
+mul r0.z, r0.z, cb3[52].z
+mul r2.y, r0.z, l(-1.442695)
+exp r2.y, r2.y
+add r2.y, -r2.y, l(1.000000)
+div r0.z, r2.y, r0.z
+movc r0.z, r1.w, r0.z, l(1.000000)
+mul r0.z, r0.z, r2.x
+min r0.z, r0.z, l(1.000000)
+mul r0.z, r0.z, l(1.442695)
+exp r0.z, r0.z
+min r0.z, r0.z, l(1.000000)
+add r0.z, -r0.z, l(1.000000)
+mul_sat r0.z, r0.z, cb3[52].y
+add r1.w, -v1.x, l(1.000000)
+max r0.z, r0.z, r1.w
+mul r1.xyz, r0.zzzz, r1.xyzx
+add r0.z, -r0.z, l(1.000000)
+mul r2.x, r1.w, cb3[52].w
+mad r1.w, -r1.w, cb3[52].w, l(1.000000)
+mul r3.x, r2.x, cb3[55].w
+mul r3.y, r2.x, cb3[56].w
+mul r3.z, r2.x, cb3[57].w
+mad o9.xyz, r1.xyzx, r1.wwww, r3.xyzx
+mul o9.w, r0.z, r1.w
+ne r0.z, l(0.000000, 0.000000, 0.000000, 0.000000), cb4[23].w
+movc o10.z, r0.z, l(0), r0.w
+mov o10.xyw, r0.xyxw
+mov o11.yzw, l(0,0,0,0)
+ret 
+// Approximately 123 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.16384
+//
+//   using 3Dmigoto v1.1.36 on Fri Jul 31 21:34:55 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer rage_clipplanes
+// {
+//
+//   float4 ClipPlanes;                 // Offset:    0 Size:    16
+//
+// }
+//
+// cbuffer lighting_globals
+// {
+//
+//   float4 gDirectionalLight;          // Offset:    0 Size:    16 [unused]
+//   float4 gDirectionalColour;         // Offset:   16 Size:    16 [unused]
+//   int gNumForwardLights;             // Offset:   32 Size:     4 [unused]
+//   float4 gLightPositionAndInvDistSqr[8];// Offset:   48 Size:   128 [unused]
+//   float4 gLightDirectionAndFalloffExponent[8];// Offset:  176 Size:   128 [unused]
+//   float4 gLightColourAndCapsuleExtent[8];// Offset:  304 Size:   128 [unused]
+//   float gLightConeScale[8];          // Offset:  432 Size:   116 [unused]
+//   float gLightConeOffset[8];         // Offset:  560 Size:   116 [unused]
+//   float4 gLightNaturalAmbient0;      // Offset:  688 Size:    16 [unused]
+//   float4 gLightNaturalAmbient1;      // Offset:  704 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient0;// Offset:  720 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient1;// Offset:  736 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient0;// Offset:  752 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient1;// Offset:  768 Size:    16 [unused]
+//   float4 gDirectionalAmbientColour;  // Offset:  784 Size:    16 [unused]
+//   float4 globalFogParams[5];         // Offset:  800 Size:    80
+//   float4 globalFogColor;             // Offset:  880 Size:    16
+//   float4 globalFogColorE;            // Offset:  896 Size:    16
+//   float4 globalFogColorN;            // Offset:  912 Size:    16
+//   float4 globalFogColorMoon;         // Offset:  928 Size:    16
+//   float4 gReflectionTweaks;          // Offset:  944 Size:    16 [unused]
+//
+// }
+//
+// cbuffer clouds_locals
+// {
+//
+//   float3 gSkyColor;                  // Offset:    0 Size:    12 [unused]
+//   float3 gEastMinusWestColor;        // Offset:   16 Size:    12 [unused]
+//   float3 gWestColor;                 // Offset:   32 Size:    12 [unused]
+//   float3 gSunDirection;              // Offset:   48 Size:    12
+//   float3 gSunColor;                  // Offset:   64 Size:    12
+//   float3 gCloudColor;                // Offset:   80 Size:    12 [unused]
+//   float3 gAmbientColor;              // Offset:   96 Size:    12 [unused]
+//   float3 gBounceColor;               // Offset:  112 Size:    12 [unused]
+//   float4 gDensityShiftScale;         // Offset:  128 Size:    16 [unused]
+//   float4 gScatterG_GSquared_PhaseMult_Scale;// Offset:  144 Size:    16
+//   float4 gPiercingLightPower_Strength_NormalStrength_Thickness;// Offset:  160 Size:    16
+//   float3 gScaleDiffuseFillAmbient;   // Offset:  176 Size:    12 [unused]
+//   float3 gWrapLighting_MSAARef;      // Offset:  192 Size:    12 [unused]
+//   float4 gNearFarQMult;              // Offset:  208 Size:    16 [unused]
+//   float3 gAnimCombine;               // Offset:  224 Size:    12 [unused]
+//   float3 gAnimSculpt;                // Offset:  240 Size:    12 [unused]
+//   float3 gAnimBlendWeights;          // Offset:  256 Size:    12 [unused]
+//   float4 gUVOffset[2];               // Offset:  272 Size:    32
+//   row_major float4x4 gCloudViewProj; // Offset:  304 Size:    64
+//   float4 gCameraPos;                 // Offset:  368 Size:    16
+//   float2 gUVOffset1;                 // Offset:  384 Size:     8
+//   float2 gUVOffset2;                 // Offset:  392 Size:     8
+//   float2 gUVOffset3;                 // Offset:  400 Size:     8
+//   float2 gRescaleUV1;                // Offset:  408 Size:     8
+//   float2 gRescaleUV2;                // Offset:  416 Size:     8
+//   float2 gRescaleUV3;                // Offset:  424 Size:     8
+//   float gSoftParticleRange;          // Offset:  432 Size:     4 [unused]
+//   float gEnvMapAlphaScale;           // Offset:  436 Size:     4 [unused]
+//   float2 cloudLayerAnimScale1;       // Offset:  440 Size:     8
+//   float2 cloudLayerAnimScale2;       // Offset:  448 Size:     8
+//   float2 cloudLayerAnimScale3;       // Offset:  456 Size:     8
+//   float4 cloudBillboardParams;       // Offset:  464 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// StereoParmsTexture                texture  float4          2d   20        1
+// rage_clipplanes                   cbuffer      NA          NA    0        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// lighting_globals                  cbuffer      NA          NA    3        1
+// clouds_locals                     cbuffer      NA          NA    4        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyz         0     NONE   float   xyz 
+// COLOR                    0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 0   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 1   xy          3     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 3   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 4   xyzw        4     NONE   float   xy  
+// TEXCOORD                 5   xyzw        5     NONE   float   xyzw
+// TEXCOORD                 6   xyzw        6     NONE   float   xyzw
+// TEXCOORD                 7   xyzw        7     NONE   float   xyzw
+// TEXCOORD                 8   xyzw        8     NONE   float   xyz 
+// TEXCOORD                 9   xyzw        9     NONE   float   xyzw
+// SV_Position              0   xyzw       10      POS   float   xyzw
+// SV_ClipDistance          0   xyzw       11  CLIPDST   float   xyzw
+//
+vs_4_0
+dcl_constantbuffer cb1[15], immediateIndexed
+dcl_constantbuffer cb0[1], immediateIndexed
+dcl_constantbuffer cb3[59], immediateIndexed
+dcl_constantbuffer cb4[30], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input v0.xyz
+dcl_input v1.xyzw
+dcl_input v2.xyzw
+dcl_input v3.xy
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyzw
+dcl_output o4.xy
+dcl_output o5.xyzw
+dcl_output o6.xyzw
+dcl_output o7.xyzw
+dcl_output o8.xyz
+dcl_output o9.xyzw
+dcl_output_siv o10.xyzw, position
+dcl_output_siv o11.xyzw, clip_distance
+dcl_temps 4
+mul r0.xy, v3.xyxx, cb4[29].xyxx
+mul r0.xzw, r0.xxxx, cb1[12].xxyz
+mul r1.xyz, r0.yyyy, -cb1[13].xyzx
+add r2.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+mad r0.xyz, r2.xxxx, r0.xzwx, v0.xyzx
+mad r0.xyz, r2.yyyy, r1.xyzx, r0.xyzx
+dp3 r0.w, r0.xyzx, cb1[1].xyzx
+mul r1.xyz, r0.wwww, cb1[1].xyzx
+mul r2.xyzw, r0.wwww, cb1[9].xyzw
+dp3 r0.w, r0.xyzx, cb1[0].xyzx
+dp3 r0.x, r0.xyzx, cb1[2].xyzx
+mad r1.xyz, r0.wwww, cb1[0].xyzx, r1.xyzx
+mad r2.xyzw, r0.wwww, cb1[8].xyzw, r2.xyzw
+mad r2.xyzw, r0.xxxx, cb1[10].xyzw, r2.xyzw
+mad r0.xyz, r0.xxxx, cb1[2].xyzx, r1.xyzx
+add r0.xyz, r0.xyzx, cb1[3].xyzx
+add r1.xyzw, r2.xyzw, cb1[11].xyzw
+dp4 o11.x, r1.xyzw, cb0[0].xyzw
+dp3 r0.w, r0.xyzx, r0.xyzx
+sqrt r1.w, r0.w
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, r0.xyzx
+div r1.xyz, r0.xyzx, r1.wwww
+mov o0.xyzw, r1.xyzw
+mov o1.xyz, cb1[14].xyzx
+mov o1.w, v1.w
+mov o2.xyz, cb1[12].xyzx
+mov o2.w, v1.y
+mul r3.xyz, cb1[12].zxyz, cb1[14].yzxy
+mad r3.xyz, cb1[12].yzxy, cb1[14].zxyz, -r3.xyzx
+mul o3.xyz, r3.xyzx, cb1[12].wwww
+mov o3.w, v1.z
+mad r3.xy, v2.zwzz, cb4[25].zwzz, cb4[24].xyxx
+mad o4.xy, cb4[17].xyxx, cb4[27].zwzz, r3.xyxx
+mad r3.xy, v2.zwzz, cb4[26].xyxx, cb4[24].zwzz
+mad o5.xy, cb4[17].zwzz, cb4[28].xyxx, r3.xyxx
+mad r3.xy, v2.zwzz, cb4[26].zwzz, cb4[25].xyxx
+mad o5.zw, cb4[18].xxxy, cb4[28].zzzw, r3.xxxy
+mul r3.xyz, r0.yyyy, cb4[20].xywx
+mad r0.xyw, r0.xxxx, cb4[19].xyxw, r3.xyxz
+mad r0.xyw, r0.zzzz, cb4[21].xyxw, r0.xyxw
+add r0.xyw, r0.xyxw, cb4[22].xyxw
+ld r3.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r2.w, r0.w, -r3.y
+mad r2.w, r3.x, r2.w, r0.x
+mul r3.xy, r0.wyww, l(0.500000, 0.500000, 0.000000, 0.000000)
+mad o6.x, r2.w, l(0.500000), r3.x
+mad o6.y, r0.w, l(0.500000), -r3.y
+mov o6.zw, r0.wwww
+dp3 r2.w, -r1.xyzx, cb4[3].xyzx
+mad r3.xyz, -r2.wwww, cb4[3].xyzx, -r1.xyzx
+dp3 r1.x, r1.xyzx, cb4[3].xyzx
+dp3 r1.y, r3.xyzx, r3.xyzx
+rsq r1.y, r1.y
+mul o7.xyz, r1.yyyy, r3.xyzx
+mov_sat r1.y, r1.x
+log r1.y, r1.y
+mul r1.y, r1.y, cb4[10].x
+exp o7.w, r1.y
+dp2 r1.y, r1.xxxx, cb4[9].xxxx
+mad r1.x, r1.x, r1.x, l(1.000000)
+add r1.z, l(1.000000), cb4[9].y
+add r1.y, -r1.y, r1.z
+log r1.y, |r1.y|
+mul r1.y, r1.y, l(1.500000)
+exp r1.y, r1.y
+div r1.x, r1.x, r1.y
+mul r1.x, r1.x, cb4[9].z
+mul r1.xyz, r1.xxxx, cb4[4].xyzx
+mul o8.xyz, r1.xyzx, cb4[9].wwww
+dp3_sat r1.x, r2.xyzx, cb3[53].xyzx
+dp3_sat r1.y, r2.xyzx, cb3[54].xyzx
+log r1.y, r1.y
+mul r1.y, r1.y, cb3[54].w
+exp r1.y, r1.y
+log r1.x, r1.x
+mul r1.x, r1.x, cb3[53].w
+exp r1.x, r1.x
+add r2.xyz, -cb3[56].xyzx, cb3[58].xyzx
+mad r2.xyz, r1.yyyy, r2.xyzx, cb3[56].xyzx
+add r3.xyz, -r2.xyzx, cb3[55].xyzx
+mad r1.xyz, r1.xxxx, r3.xyzx, r2.xyzx
+add r1.xyz, r1.xyzx, -cb3[57].xyzx
+add r2.x, r1.w, -cb3[50].x
+max r2.x, r2.x, l(0.000000)
+mul r2.y, r2.x, -cb3[51].z
+mul r2.y, r2.y, l(1.442695)
+exp r2.y, r2.y
+add r2.y, -r2.y, l(1.000000)
+mad r1.xyz, r2.yyyy, r1.xyzx, cb3[57].xyzx
+div r1.w, r2.x, r1.w
+mul r2.x, r2.x, cb3[51].w
+mul r0.z, r0.z, r1.w
+lt r1.w, l(0.010000), |r0.z|
+mul r0.z, r0.z, cb3[52].z
+mul r2.y, r0.z, l(-1.442695)
+exp r2.y, r2.y
+add r2.y, -r2.y, l(1.000000)
+div r0.z, r2.y, r0.z
+movc r0.z, r1.w, r0.z, l(1.000000)
+mul r0.z, r0.z, r2.x
+min r0.z, r0.z, l(1.000000)
+mul r0.z, r0.z, l(1.442695)
+exp r0.z, r0.z
+min r0.z, r0.z, l(1.000000)
+add r0.z, -r0.z, l(1.000000)
+mul_sat r0.z, r0.z, cb3[52].y
+add r1.w, -v1.x, l(1.000000)
+max r0.z, r0.z, r1.w
+mul r1.xyz, r0.zzzz, r1.xyzx
+add r0.z, -r0.z, l(1.000000)
+mul r2.x, r1.w, cb3[52].w
+mad r1.w, -r1.w, cb3[52].w, l(1.000000)
+mul r3.x, r2.x, cb3[55].w
+mul r3.y, r2.x, cb3[56].w
+mul r3.z, r2.x, cb3[57].w
+mad o9.xyz, r1.xyzx, r1.wwww, r3.xyzx
+mul o9.w, r0.z, r1.w
+ne r0.z, l(0.000000), cb4[23].w
+movc o10.z, r0.z, l(0), r0.w
+mov o10.xyw, r0.xyxw
+mov o11.yzw, l(0,0,0,0)
+ret 
+// Approximately 123 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

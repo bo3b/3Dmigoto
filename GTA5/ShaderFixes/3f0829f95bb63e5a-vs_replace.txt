@@ -1,0 +1,470 @@
+
+cbuffer rage_matrices : register(b1)
+{
+  row_major float4x4 gWorld : packoffset(c0);
+  row_major float4x4 gWorldView : packoffset(c4);
+  row_major float4x4 gWorldViewProj : packoffset(c8);
+  row_major float4x4 gViewInverse : packoffset(c12);
+}
+
+cbuffer lighting_globals : register(b3)
+{
+  float4 gDirectionalLight : packoffset(c0);
+  float4 gDirectionalColour : packoffset(c1);
+  int gNumForwardLights : packoffset(c2);
+  float4 gLightPositionAndInvDistSqr[8] : packoffset(c3);
+  float4 gLightDirectionAndFalloffExponent[8] : packoffset(c11);
+  float4 gLightColourAndCapsuleExtent[8] : packoffset(c19);
+  float gLightConeScale[8] : packoffset(c27);
+  float gLightConeOffset[8] : packoffset(c35);
+  float4 gLightNaturalAmbient0 : packoffset(c43);
+  float4 gLightNaturalAmbient1 : packoffset(c44);
+  float4 gLightArtificialIntAmbient0 : packoffset(c45);
+  float4 gLightArtificialIntAmbient1 : packoffset(c46);
+  float4 gLightArtificialExtAmbient0 : packoffset(c47);
+  float4 gLightArtificialExtAmbient1 : packoffset(c48);
+  float4 gDirectionalAmbientColour : packoffset(c49);
+  float4 globalFogParams[5] : packoffset(c50);
+  float4 globalFogColor : packoffset(c55);
+  float4 globalFogColorE : packoffset(c56);
+  float4 globalFogColorN : packoffset(c57);
+  float4 globalFogColorMoon : packoffset(c58);
+  float4 gReflectionTweaks : packoffset(c59);
+}
+
+cbuffer deferred_volume_locals : register(b0)
+{
+  float4 deferredVolumePosition : packoffset(c0);
+  float4 deferredVolumeDirection : packoffset(c1);
+  float4 deferredVolumeTangentXAndShaftRadius : packoffset(c2);
+  float4 deferredVolumeTangentYAndShaftLength : packoffset(c3);
+  float4 deferredVolumeColour : packoffset(c4);
+  float4 deferredVolumeShaftPlanes[3] : packoffset(c5);
+  float4 deferredVolumeShaftGradient : packoffset(c8);
+  float4 deferredVolumeShaftGradientColourInv : packoffset(c9);
+  row_major float4x4 deferredVolumeShaftCompositeMtx : packoffset(c10);
+}
+Texture2D<float4> StereoParmsTexture : register(t20);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float3 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = float2(-0.5,-0.5) + v0.xy;
+  r0.xzw = deferredVolumeTangentXAndShaftRadius.xyz * r0.xxx + deferredVolumePosition.xyz;
+  r0.xyz = deferredVolumeTangentYAndShaftLength.xyz * r0.yyy + r0.xzw;
+  r1.xyz = deferredVolumeTangentYAndShaftLength.www * deferredVolumeDirection.xyz;
+  r0.xyz = r1.xyz * v0.zzz + r0.xyz;
+  r1.xyzw = deferredVolumeShaftCompositeMtx._m10_m11_m12_m13 * r0.yyyy;
+  r1.xyzw = r0.xxxx * deferredVolumeShaftCompositeMtx._m00_m01_m02_m03 + r1.xyzw;
+  r1.xyzw = r0.zzzz * deferredVolumeShaftCompositeMtx._m20_m21_m22_m23 + r1.xyzw;
+  o0.xyzw = deferredVolumeShaftCompositeMtx._m30_m31_m32_m33 + r1.xyzw;
+  o1.xyz = r0.xyz;
+  r1.xyz = gWorldViewProj._m10_m11_m13 * r0.yyy;
+  r1.xyz = r0.xxx * gWorldViewProj._m00_m01_m03 + r1.xyz;
+  r1.xyz = r0.zzz * gWorldViewProj._m20_m21_m23 + r1.xyz;
+  r0.xyz = -gViewInverse._m30_m31_m32 + r0.xyz;
+  r1.xyz = gWorldViewProj._m30_m31_m33 + r1.xyz;
+  r2.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
+  r0.w = -r2.y + r1.z;
+  r0.w = r2.x * r0.w + r1.x;
+  r2.x = r0.w + r1.z;
+  r2.y = r1.z + -r1.y;
+  o2.w = r1.z;
+  o2.xy = float2(0.5,0.5) * r2.xy;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = sqrt(r0.w);
+  r1.x = -globalFogParams[0].x + r0.w;
+  r1.x = max(0, r1.x);
+  r0.w = r1.x / r0.w;
+  r0.w = r0.z * r0.w;
+  r1.y = globalFogParams[2].z * r0.w;
+  r0.w = 0.00999999978 < abs(r0.w);
+  r1.z = -1.44269502 * r1.y;
+  r1.z = exp2(r1.z);
+  r1.z = 1 + -r1.z;
+  r1.y = r1.z / r1.y;
+  r0.w = r0.w ? r1.y : 1;
+  r1.y = globalFogParams[1].w * r1.x;
+  r1.x = -globalFogParams[2].x + r1.x;
+  r1.x = max(0, r1.x);
+  r1.x = globalFogParams[1].x * r1.x;
+  r1.x = 1.44269502 * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = 1 + -r1.x;
+  r0.w = r1.y * r0.w;
+  r0.w = min(1, r0.w);
+  r0.w = 1.44269502 * r0.w;
+  r0.w = exp2(r0.w);
+  r0.w = min(1, r0.w);
+  r0.w = 1 + -r0.w;
+  r1.y = -r0.w * globalFogParams[2].y + 1;
+  r0.w = globalFogParams[2].y * r0.w;
+  r1.y = globalFogParams[1].y * r1.y;
+  r0.w = saturate(r1.y * r1.x + r0.w);
+  o2.z = 1 + -r0.w;
+  r1.xyz = gViewInverse._m30_m31_m32;
+  r1.w = 1;
+  r0.w = dot(r1.xyzw, deferredVolumeShaftPlanes[0].xyzw);
+  o3.x = -r0.w;
+  r0.w = dot(r1.xyzw, deferredVolumeShaftPlanes[1].xyzw);
+  r1.x = dot(r1.xyzw, deferredVolumeShaftPlanes[2].xyzw);
+  o3.z = -r1.x;
+  o3.y = -r0.w;
+  o4.x = dot(r0.xyz, deferredVolumeShaftPlanes[0].xyz);
+  o4.y = dot(r0.xyz, deferredVolumeShaftPlanes[1].xyz);
+  o4.z = dot(r0.xyz, deferredVolumeShaftPlanes[2].xyz);
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64 [unused]
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer lighting_globals
+// {
+//
+//   float4 gDirectionalLight;          // Offset:    0 Size:    16 [unused]
+//   float4 gDirectionalColour;         // Offset:   16 Size:    16 [unused]
+//   int gNumForwardLights;             // Offset:   32 Size:     4 [unused]
+//   float4 gLightPositionAndInvDistSqr[8];// Offset:   48 Size:   128 [unused]
+//   float4 gLightDirectionAndFalloffExponent[8];// Offset:  176 Size:   128 [unused]
+//   float4 gLightColourAndCapsuleExtent[8];// Offset:  304 Size:   128 [unused]
+//   float gLightConeScale[8];          // Offset:  432 Size:   116 [unused]
+//   float gLightConeOffset[8];         // Offset:  560 Size:   116 [unused]
+//   float4 gLightNaturalAmbient0;      // Offset:  688 Size:    16 [unused]
+//   float4 gLightNaturalAmbient1;      // Offset:  704 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient0;// Offset:  720 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient1;// Offset:  736 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient0;// Offset:  752 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient1;// Offset:  768 Size:    16 [unused]
+//   float4 gDirectionalAmbientColour;  // Offset:  784 Size:    16 [unused]
+//   float4 globalFogParams[5];         // Offset:  800 Size:    80
+//   float4 globalFogColor;             // Offset:  880 Size:    16 [unused]
+//   float4 globalFogColorE;            // Offset:  896 Size:    16 [unused]
+//   float4 globalFogColorN;            // Offset:  912 Size:    16 [unused]
+//   float4 globalFogColorMoon;         // Offset:  928 Size:    16 [unused]
+//   float4 gReflectionTweaks;          // Offset:  944 Size:    16 [unused]
+//
+// }
+//
+// cbuffer deferred_volume_locals
+// {
+//
+//   float4 deferredVolumePosition;     // Offset:    0 Size:    16
+//   float4 deferredVolumeDirection;    // Offset:   16 Size:    16
+//   float4 deferredVolumeTangentXAndShaftRadius;// Offset:   32 Size:    16
+//   float4 deferredVolumeTangentYAndShaftLength;// Offset:   48 Size:    16
+//   float4 deferredVolumeColour;       // Offset:   64 Size:    16 [unused]
+//   float4 deferredVolumeShaftPlanes[3];// Offset:   80 Size:    48
+//   float4 deferredVolumeShaftGradient;// Offset:  128 Size:    16 [unused]
+//   float4 deferredVolumeShaftGradientColourInv;// Offset:  144 Size:    16 [unused]
+//   row_major float4x4 deferredVolumeShaftCompositeMtx;// Offset:  160 Size:    64
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// StereoParmsTexture                texture  float4          2d   20        1
+// deferred_volume_locals            cbuffer      NA          NA    0        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// lighting_globals                  cbuffer      NA          NA    3        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyz         0     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyz         1     NONE   float   xyz 
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+//
+vs_4_0
+dcl_constantbuffer cb1[16], immediateIndexed
+dcl_constantbuffer cb3[53], immediateIndexed
+dcl_constantbuffer cb0[14], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input v0.xyz
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyz
+dcl_output o2.xyzw
+dcl_output o3.xyz
+dcl_output o4.xyz
+dcl_temps 3
+add r0.xy, v0.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+mad r0.xzw, cb0[2].xxyz, r0.xxxx, cb0[0].xxyz
+mad r0.xyz, cb0[3].xyzx, r0.yyyy, r0.xzwx
+mul r1.xyz, cb0[1].xyzx, cb0[3].wwww
+mad r0.xyz, r1.xyzx, v0.zzzz, r0.xyzx
+mul r1.xyzw, r0.yyyy, cb0[11].xyzw
+mad r1.xyzw, r0.xxxx, cb0[10].xyzw, r1.xyzw
+mad r1.xyzw, r0.zzzz, cb0[12].xyzw, r1.xyzw
+add o0.xyzw, r1.xyzw, cb0[13].xyzw
+mov o1.xyz, r0.xyzx
+mul r1.xyz, r0.yyyy, cb1[9].xywx
+mad r1.xyz, r0.xxxx, cb1[8].xywx, r1.xyzx
+mad r1.xyz, r0.zzzz, cb1[10].xywx, r1.xyzx
+add r0.xyz, r0.xyzx, -cb1[15].xyzx
+add r1.xyz, r1.xyzx, cb1[11].xywx
+ld r2.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r0.w, r1.z, -r2.y
+mad r0.w, r2.x, r0.w, r1.x
+add r2.x, r1.z, r0.w
+add r2.y, -r1.y, r1.z
+mov o2.w, r1.z
+mul o2.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+dp3 r0.w, r0.xyzx, r0.xyzx
+sqrt r0.w, r0.w
+add r1.x, r0.w, -cb3[50].x
+max r1.x, r1.x, l(0.000000)
+div r0.w, r1.x, r0.w
+mul r0.w, r0.w, r0.z
+mul r1.y, r0.w, cb3[52].z
+lt r0.w, l(0.010000), |r0.w|
+mul r1.z, r1.y, l(-1.442695)
+exp r1.z, r1.z
+add r1.z, -r1.z, l(1.000000)
+div r1.y, r1.z, r1.y
+movc r0.w, r0.w, r1.y, l(1.000000)
+mul r1.y, r1.x, cb3[51].w
+add r1.x, r1.x, -cb3[52].x
+max r1.x, r1.x, l(0.000000)
+mul r1.x, r1.x, cb3[51].x
+mul r1.x, r1.x, l(1.442695)
+exp r1.x, r1.x
+add r1.x, -r1.x, l(1.000000)
+mul r0.w, r0.w, r1.y
+min r0.w, r0.w, l(1.000000)
+mul r0.w, r0.w, l(1.442695)
+exp r0.w, r0.w
+min r0.w, r0.w, l(1.000000)
+add r0.w, -r0.w, l(1.000000)
+mad r1.y, -r0.w, cb3[52].y, l(1.000000)
+mul r0.w, r0.w, cb3[52].y
+mul r1.y, r1.y, cb3[51].y
+mad_sat r0.w, r1.y, r1.x, r0.w
+add o2.z, -r0.w, l(1.000000)
+mov r1.xyz, cb1[15].xyzx
+mov r1.w, l(1.000000)
+dp4 r0.w, r1.xyzw, cb0[5].xyzw
+mov o3.x, -r0.w
+dp4 r0.w, r1.xyzw, cb0[6].xyzw
+dp4 r1.x, r1.xyzw, cb0[7].xyzw
+mov o3.z, -r1.x
+mov o3.y, -r0.w
+dp3 o4.x, r0.xyzx, cb0[5].xyzx
+dp3 o4.y, r0.xyzx, cb0[6].xyzx
+dp3 o4.z, r0.xyzx, cb0[7].xyzx
+ret 
+// Approximately 65 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.16384
+//
+//   using 3Dmigoto v1.1.36 on Fri Jul 31 21:35:06 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64 [unused]
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer lighting_globals
+// {
+//
+//   float4 gDirectionalLight;          // Offset:    0 Size:    16 [unused]
+//   float4 gDirectionalColour;         // Offset:   16 Size:    16 [unused]
+//   int gNumForwardLights;             // Offset:   32 Size:     4 [unused]
+//   float4 gLightPositionAndInvDistSqr[8];// Offset:   48 Size:   128 [unused]
+//   float4 gLightDirectionAndFalloffExponent[8];// Offset:  176 Size:   128 [unused]
+//   float4 gLightColourAndCapsuleExtent[8];// Offset:  304 Size:   128 [unused]
+//   float gLightConeScale[8];          // Offset:  432 Size:   116 [unused]
+//   float gLightConeOffset[8];         // Offset:  560 Size:   116 [unused]
+//   float4 gLightNaturalAmbient0;      // Offset:  688 Size:    16 [unused]
+//   float4 gLightNaturalAmbient1;      // Offset:  704 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient0;// Offset:  720 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient1;// Offset:  736 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient0;// Offset:  752 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient1;// Offset:  768 Size:    16 [unused]
+//   float4 gDirectionalAmbientColour;  // Offset:  784 Size:    16 [unused]
+//   float4 globalFogParams[5];         // Offset:  800 Size:    80
+//   float4 globalFogColor;             // Offset:  880 Size:    16 [unused]
+//   float4 globalFogColorE;            // Offset:  896 Size:    16 [unused]
+//   float4 globalFogColorN;            // Offset:  912 Size:    16 [unused]
+//   float4 globalFogColorMoon;         // Offset:  928 Size:    16 [unused]
+//   float4 gReflectionTweaks;          // Offset:  944 Size:    16 [unused]
+//
+// }
+//
+// cbuffer deferred_volume_locals
+// {
+//
+//   float4 deferredVolumePosition;     // Offset:    0 Size:    16
+//   float4 deferredVolumeDirection;    // Offset:   16 Size:    16
+//   float4 deferredVolumeTangentXAndShaftRadius;// Offset:   32 Size:    16
+//   float4 deferredVolumeTangentYAndShaftLength;// Offset:   48 Size:    16
+//   float4 deferredVolumeColour;       // Offset:   64 Size:    16 [unused]
+//   float4 deferredVolumeShaftPlanes[3];// Offset:   80 Size:    48
+//   float4 deferredVolumeShaftGradient;// Offset:  128 Size:    16 [unused]
+//   float4 deferredVolumeShaftGradientColourInv;// Offset:  144 Size:    16 [unused]
+//   row_major float4x4 deferredVolumeShaftCompositeMtx;// Offset:  160 Size:    64
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// StereoParmsTexture                texture  float4          2d   20        1
+// deferred_volume_locals            cbuffer      NA          NA    0        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// lighting_globals                  cbuffer      NA          NA    3        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyz         0     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyzw        1     NONE   float   xyz 
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+//
+vs_4_0
+dcl_constantbuffer cb1[16], immediateIndexed
+dcl_constantbuffer cb3[53], immediateIndexed
+dcl_constantbuffer cb0[14], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input v0.xyz
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyz
+dcl_output o2.xyzw
+dcl_output o3.xyz
+dcl_output o4.xyz
+dcl_temps 3
+add r0.xy, v0.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+mad r0.xzw, cb0[2].xxyz, r0.xxxx, cb0[0].xxyz
+mad r0.xyz, cb0[3].xyzx, r0.yyyy, r0.xzwx
+mul r1.xyz, cb0[1].xyzx, cb0[3].wwww
+mad r0.xyz, r1.xyzx, v0.zzzz, r0.xyzx
+mul r1.xyzw, r0.yyyy, cb0[11].xyzw
+mad r1.xyzw, r0.xxxx, cb0[10].xyzw, r1.xyzw
+mad r1.xyzw, r0.zzzz, cb0[12].xyzw, r1.xyzw
+add o0.xyzw, r1.xyzw, cb0[13].xyzw
+mov o1.xyz, r0.xyzx
+mul r1.xyz, r0.yyyy, cb1[9].xywx
+mad r1.xyz, r0.xxxx, cb1[8].xywx, r1.xyzx
+mad r1.xyz, r0.zzzz, cb1[10].xywx, r1.xyzx
+add r0.xyz, r0.xyzx, -cb1[15].xyzx
+add r1.xyz, r1.xyzx, cb1[11].xywx
+ld r2.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r0.w, r1.z, -r2.y
+mad r0.w, r2.x, r0.w, r1.x
+add r2.x, r1.z, r0.w
+add r2.y, -r1.y, r1.z
+mov o2.w, r1.z
+mul o2.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+dp3 r0.w, r0.xyzx, r0.xyzx
+sqrt r0.w, r0.w
+add r1.x, r0.w, -cb3[50].x
+max r1.x, r1.x, l(0.000000)
+div r0.w, r1.x, r0.w
+mul r0.w, r0.w, r0.z
+mul r1.y, r0.w, cb3[52].z
+lt r0.w, l(0.010000), |r0.w|
+mul r1.z, r1.y, l(-1.442695)
+exp r1.z, r1.z
+add r1.z, -r1.z, l(1.000000)
+div r1.y, r1.z, r1.y
+movc r0.w, r0.w, r1.y, l(1.000000)
+mul r1.y, r1.x, cb3[51].w
+add r1.x, r1.x, -cb3[52].x
+max r1.x, r1.x, l(0.000000)
+mul r1.x, r1.x, cb3[51].x
+mul r1.x, r1.x, l(1.442695)
+exp r1.x, r1.x
+add r1.x, -r1.x, l(1.000000)
+mul r0.w, r0.w, r1.y
+min r0.w, r0.w, l(1.000000)
+mul r0.w, r0.w, l(1.442695)
+exp r0.w, r0.w
+min r0.w, r0.w, l(1.000000)
+add r0.w, -r0.w, l(1.000000)
+mad r1.y, -r0.w, cb3[52].y, l(1.000000)
+mul r0.w, r0.w, cb3[52].y
+mul r1.y, r1.y, cb3[51].y
+mad_sat r0.w, r1.y, r1.x, r0.w
+add o2.z, -r0.w, l(1.000000)
+mov r1.xyz, cb1[15].xyzx
+mov r1.w, l(1.000000)
+dp4 r0.w, r1.xyzw, cb0[5].xyzw
+mov o3.x, -r0.w
+dp4 r0.w, r1.xyzw, cb0[7].xyzw
+dp4 r1.x, r1.xyzw, cb0[6].xyzw
+mov o3.y, -r1.x
+mov o3.z, -r0.w
+dp3 o4.x, r0.xyzx, cb0[5].xyzx
+dp3 o4.y, r0.xyzx, cb0[6].xyzx
+dp3 o4.z, r0.xyzx, cb0[7].xyzx
+ret 
+// Approximately 65 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

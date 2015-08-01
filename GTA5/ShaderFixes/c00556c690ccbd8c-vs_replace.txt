@@ -54,25 +54,23 @@ Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
 void main( 
-  float4 v0 : POSITION0,
-  float2 v1 : TEXCOORD0,
-  float4 v2 : COLOR0,
+  int4 v0 : POSITION0,
   out float4 o0 : SV_Position0,
-  out float2 o1 : TEXCOORD0,
-  out float4 o2 : COLOR0)
+  out float2 o1 : TEXCOORD0)
 {
-  float4 r0,r1,r2;
+  float4 r0,r1,r2,r3;
   uint4 bitmask, uiDest;
   float4 fDest;
 
   r0.xyzw = StereoReticuleDistTexture.Load(float4(0,0,0,0)).xyzw;
   r0.y = UIStereoFlag == 1.000000;
-  r0.z = dot(v0.xyzw, UIPosMtx[0].xyzw);
-  r0.w = dot(v0.xyzw, UIPosMtx[1].xyzw);
-  r1.xyzw = gWorldViewProj._m10_m11_m12_m13 * r0.wwww;
-  r1.xyzw = r0.zzzz * gWorldViewProj._m00_m01_m02_m03 + r1.xyzw;
-  r1.xyzw = v0.zzzz * gWorldViewProj._m20_m21_m22_m23 + r1.xyzw;
-  r1.xyzw = v0.wwww * gWorldViewProj._m30_m31_m32_m33 + r1.xyzw;
+  r1.xyzw = (int4)v0.xyzw;
+  r0.z = dot(r1.xyzw, UIPosMtx[0].xyzw);
+  r0.w = dot(r1.xyzw, UIPosMtx[1].xyzw);
+  r2.xyzw = gWorldViewProj._m10_m11_m12_m13 * r0.wwww;
+  r2.xyzw = r0.zzzz * gWorldViewProj._m00_m01_m02_m03 + r2.xyzw;
+  r2.xyzw = r1.zzzz * gWorldViewProj._m20_m21_m22_m23 + r2.xyzw;
+  r2.xyzw = r1.wwww * gWorldViewProj._m30_m31_m32_m33 + r2.xyzw;
   r0.z = UIStereoFlag + UIStereoFlag;
   r0.z = r0.z >= -r0.z;
   r0.zw = r0.zz ? float2(2,0.5) : float2(-2,-0.5);
@@ -83,42 +81,42 @@ void main(
   r0.w = 0 < UIStereoFlag;
   r0.z = r0.w ? r0.z : 0;
   if (r0.z != 0) {
-    r2.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
-    r0.z = -r2.y + r1.w;
-    r0.z = r2.x * r0.z;
-    r1.x = -r0.z * gStereoParams1.x + r1.x;
+    r3.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
+    r0.z = -r3.y + r2.w;
+    r0.z = r3.x * r0.z;
+    r2.x = -r0.z * gStereoParams1.x + r2.x;
   }
   r0.z = 0 != gStereoParams.w;
   r0.y = (int)r0.z | (int)r0.y;
-  r0.z = r1.w != 0.000000;
+  r0.z = r2.w != 0.000000;
   r0.y = r0.z ? r0.y : 0;
   r0.z = 0 < r0.x;
   r0.y = r0.z ? r0.y : 0;
   if (r0.y != 0) {
-    r0.y = r0.x / r1.w;
-    o0.xyzw = r1.xyzw * r0.yyyy;
+    r0.y = r0.x / r2.w;
+    o0.xyzw = r2.xyzw * r0.yyyy;
   } else {
     r0.y = gStereoParams.x == 1.000000;
     r0.x = r0.x == 0.000000;
-    r0.z = r1.w != 1.000000;
+    r0.z = r2.w != 1.000000;
     r0.x = r0.z ? r0.x : 0;
     r0.x = r0.x ? r0.y : 0;
     if (r0.x != 0) {
       r0.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
-      r0.y = r1.w + -r0.y;
-      r1.x = -r0.x * r0.y + r1.x;
+      r0.y = r2.w + -r0.y;
+      r2.x = -r0.x * r0.y + r2.x;
     } else {
       r0.x = 0 != gStereoParams.y;
       if (r0.x != 0) {
         r0.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
-        r0.y = r1.w + -r0.y;
-        r1.x = r0.x * r0.y + r1.x;
+        r0.y = r2.w + -r0.y;
+        r2.x = r0.x * r0.y + r2.x;
       }
     }
-    o0.xyzw = r1.xyzw;
+    o0.xyzw = r2.xyzw;
   }
-  o2.xyzw = v2.zyxw;
-  o1.xy = v1.xy;
+  o1.x = dot(r1.xyzw, UITex0Mtx[0].xyzw);
+  o1.y = dot(r1.xyzw, UITex0Mtx[1].xyzw);
   return;
 }
 
@@ -174,7 +172,7 @@ void main(
 // {
 //
 //   float4 UIPosMtx[2];                // Offset:    0 Size:    32
-//   float4 UITex0Mtx[2];               // Offset:   32 Size:    32 [unused]
+//   float4 UITex0Mtx[2];               // Offset:   32 Size:    32
 //   float4 UITex1Mtx[2];               // Offset:   64 Size:    32 [unused]
 //   float4 UIColor;                    // Offset:   96 Size:    16 [unused]
 //   float4 UIColorXformOffset;         // Offset:  112 Size:    16 [unused]
@@ -201,9 +199,7 @@ void main(
 //
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
-// POSITION                 0   xyzw        0     NONE   float   xyzw
-// TEXCOORD                 0   xy          1     NONE   float   xy  
-// COLOR                    0   xyzw        2     NONE   float   xyzw
+// POSITION                 0   xyzw        0     NONE     int   xyzw
 //
 //
 // Output signature:
@@ -212,7 +208,6 @@ void main(
 // -------------------- ----- ------ -------- -------- ------- ------
 // SV_Position              0   xyzw        0      POS   float   xyzw
 // TEXCOORD                 0   xy          1     NONE   float   xy  
-// COLOR                    0   xyzw        2     NONE   float   xyzw
 //
 vs_4_0
 dcl_constantbuffer cb1[12], immediateIndexed
@@ -221,20 +216,18 @@ dcl_constantbuffer cb11[10], immediateIndexed
 dcl_resource_texture2d (float,float,float,float) t20
 dcl_resource_texture2d (float,float,float,float) t21
 dcl_input v0.xyzw
-dcl_input v1.xy
-dcl_input v2.xyzw
 dcl_output_siv o0.xyzw, position
 dcl_output o1.xy
-dcl_output o2.xyzw
-dcl_temps 3
+dcl_temps 4
 ld r0.xyzw, l(0, 0, 0, 0), t21.xyzw
 eq r0.y, cb11[9].y, l(1.000000)
-dp4 r0.z, v0.xyzw, cb11[0].xyzw
-dp4 r0.w, v0.xyzw, cb11[1].xyzw
-mul r1.xyzw, r0.wwww, cb1[9].xyzw
-mad r1.xyzw, r0.zzzz, cb1[8].xyzw, r1.xyzw
-mad r1.xyzw, v0.zzzz, cb1[10].xyzw, r1.xyzw
-mad r1.xyzw, v0.wwww, cb1[11].xyzw, r1.xyzw
+itof r1.xyzw, v0.xyzw
+dp4 r0.z, r1.xyzw, cb11[0].xyzw
+dp4 r0.w, r1.xyzw, cb11[1].xyzw
+mul r2.xyzw, r0.wwww, cb1[9].xyzw
+mad r2.xyzw, r0.zzzz, cb1[8].xyzw, r2.xyzw
+mad r2.xyzw, r1.zzzz, cb1[10].xyzw, r2.xyzw
+mad r2.xyzw, r1.wwww, cb1[11].xyzw, r2.xyzw
 add r0.z, cb11[9].y, cb11[9].y
 ge r0.z, r0.z, -r0.z
 movc r0.zw, r0.zzzz, l(0,0,2.000000,0.500000), l(0,0,-2.000000,-0.500000)
@@ -245,43 +238,43 @@ eq r0.z, r0.z, l(0.000000)
 lt r0.w, l(0.000000), cb11[9].y
 and r0.z, r0.w, r0.z
 if_nz r0.z
-  ld r2.xyzw, l(0, 0, 0, 0), t20.xyzw
-  add r0.z, r1.w, -r2.y
-  mul r0.z, r0.z, r2.x
-  mad r1.x, -r0.z, cb2[23].x, r1.x
+  ld r3.xyzw, l(0, 0, 0, 0), t20.xyzw
+  add r0.z, r2.w, -r3.y
+  mul r0.z, r0.z, r3.x
+  mad r2.x, -r0.z, cb2[23].x, r2.x
 endif 
 ne r0.z, l(0.000000, 0.000000, 0.000000, 0.000000), cb2[22].w
 or r0.y, r0.z, r0.y
-ne r0.z, r1.w, l(0.000000)
+ne r0.z, r2.w, l(0.000000)
 and r0.y, r0.z, r0.y
 lt r0.z, l(0.000000), r0.x
 and r0.y, r0.z, r0.y
 if_nz r0.y
-  div r0.y, r0.x, r1.w
-  mul o0.xyzw, r0.yyyy, r1.xyzw
+  div r0.y, r0.x, r2.w
+  mul o0.xyzw, r0.yyyy, r2.xyzw
 else 
   eq r0.y, cb2[22].x, l(1.000000)
   eq r0.x, r0.x, l(0.000000)
-  ne r0.z, r1.w, l(1.000000)
+  ne r0.z, r2.w, l(1.000000)
   and r0.x, r0.z, r0.x
   and r0.x, r0.x, r0.y
   if_nz r0.x
     ld r0.xyzw, l(0, 0, 0, 0), t20.xyzw
-    add r0.y, -r0.y, r1.w
-    mad r1.x, -r0.x, r0.y, r1.x
+    add r0.y, -r0.y, r2.w
+    mad r2.x, -r0.x, r0.y, r2.x
   else 
     ne r0.x, l(0.000000, 0.000000, 0.000000, 0.000000), cb2[22].y
     if_nz r0.x
       ld r0.xyzw, l(0, 0, 0, 0), t20.xyzw
-      add r0.y, -r0.y, r1.w
-      mad r1.x, r0.x, r0.y, r1.x
+      add r0.y, -r0.y, r2.w
+      mad r2.x, r0.x, r0.y, r2.x
     endif 
   endif 
-  mov o0.xyzw, r1.xyzw
+  mov o0.xyzw, r2.xyzw
 endif 
-mov o2.xyzw, v2.zyxw
-mov o1.xy, v1.xyxx
+dp4 o1.x, r1.xyzw, cb11[2].xyzw
+dp4 o1.y, r1.xyzw, cb11[3].xyzw
 ret 
-// Approximately 55 instruction slots used
+// Approximately 56 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

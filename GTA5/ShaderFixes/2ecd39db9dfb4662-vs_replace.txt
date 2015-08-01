@@ -34,8 +34,7 @@ void main(
   r0.xyzw = gWorldViewProj._m30_m31_m32_m33 + r0.xyzw;
   r1.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
   r1.y = -r1.y + r0.w;
-  r1.x = dot(r1.xx, r1.yy);
-  o0.x = r1.x + r0.x;
+  o0.x = r1.x * r1.y + r0.x;
   o0.yzw = r0.yzw;
   o1.xyzw = v2.xyzw;
   o2.xy = v1.xy;
@@ -115,8 +114,7 @@ mad r0.xyzw, v0.zzzz, cb1[10].xyzw, r0.xyzw
 add r0.xyzw, r0.xyzw, cb1[11].xyzw
 ld r1.xyzw, l(0, 0, 0, 0), t20.xyzw
 add r1.y, r0.w, -r1.y
-dp2 r1.x, r1.xxxx, r1.yyyy
-add o0.x, r0.x, r1.x
+mad o0.x, r1.x, r1.y, r0.x
 mov o0.yzw, r0.yyzw
 mov o1.xyzw, v2.xyzw
 mov o2.xy, v1.xyxx
@@ -126,7 +124,7 @@ mad r0.xyzw, v0.zzzz, cb1[2].xyzw, r0.xyzw
 add o3.xyzw, r0.xyzw, cb1[3].xyzw
 mov o4.x, v5.x
 ret 
-// Approximately 17 instruction slots used
+// Approximately 16 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -201,8 +199,7 @@ mad r0.xyzw, v0.zzzz, cb1[10].xyzw, r0.xyzw
 add r0.xyzw, r0.xyzw, cb1[11].xyzw
 ld r1.xyzw, l(0, 0, 0, 0), t20.xyzw
 add r1.y, r0.w, -r1.y
-dp2 r1.x, r1.xxxx, r1.yyyy
-add o0.x, r0.x, r1.x
+mad o0.x, r1.x, r1.y, r0.x
 mov o0.yzw, r0.yyzw
 mov o1.xyzw, v2.xyzw
 mov o2.xy, v1.xyxx
@@ -212,6 +209,6 @@ mad r0.xyzw, v0.zzzz, cb1[2].xyzw, r0.xyzw
 add o3.xyzw, r0.xyzw, cb1[3].xyzw
 mov o4.x, v5.x
 ret 
-// Approximately 17 instruction slots used
+// Approximately 16 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
