@@ -172,19 +172,19 @@ void Overlay::RestoreState()
 void Overlay::InitDrawState()
 {
 	ID3D11Texture2D *pBackBuffer;
-	mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	mHackerSwapChain->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 
 	// use the back buffer address to create the render target
 	ID3D11RenderTargetView *backbuffer;
-	mHackerDevice->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+	mHackerDevice->GetOrigDevice()->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
 	pBackBuffer->Release();
 
 	// set the first render target as the back buffer, with no stencil
-	mHackerContext->OMSetRenderTargets(1, &backbuffer, NULL);
+	mHackerContext->GetOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
-	mHackerContext->RSSetViewports(1, &openView);
+	mHackerContext->GetOrigContext()->RSSetViewports(1, &openView);
 }
 
 static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::set<UINT64> *visited)
