@@ -494,19 +494,19 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 
 static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 {
-	LogCall("%s - NvAPI_Stereo_IsEnabled called. \n", LogTime().c_str());
+	if (gLogDebug) LogCall("%s - NvAPI_Stereo_IsEnabled called. \n", LogTime().c_str());
 
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 
 	if (gDirectXOverride) {
-		LogCall("  Stereo_IsEnabled called from DirectX wrapper.\n");
+		if (gLogDebug) LogCall("  Stereo_IsEnabled called from DirectX wrapper.\n");
 		gDirectXOverride = false;
 	} else if (ForceAutomaticStereo) {
 		*pIsStereoEnabled = false;
 		LogCall("  NvAPI_Stereo_IsEnabled force return false \n");
 	}
 
-	LogCall("  Returns IsStereoEnabled = %d, Result = %d \n", *pIsStereoEnabled, ret);
+	if (gLogDebug) LogCall("  Returns IsStereoEnabled = %d, Result = %d \n", *pIsStereoEnabled, ret);
 
 	return ret;
 }
@@ -760,7 +760,7 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 
 static NvAPI_Status __cdecl EnableOverride(void)
 {
-	LogCall("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped. \n", LogTime().c_str());
+	if (gLogDebug) LogCall("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped. \n", LogTime().c_str());
 
 	gDirectXOverride = true;
 
