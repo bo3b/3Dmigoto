@@ -601,7 +601,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 	FrameAnalysisOptions new_options = FrameAnalysisOptions::INVALID;
 	struct ShaderOverride *shaderOverride;
 	struct TextureOverride *textureOverride;
-	UINT64 hash;
+	uint32_t hash;
 	UINT i;
 
 	// TODO: Trigger on texture inputs

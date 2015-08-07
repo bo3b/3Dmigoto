@@ -92,8 +92,8 @@ static void DumpUsage()
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<void *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					UINT64 id = G->mRenderTargets[*o];
-					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, *o, id);
+					uint32_t id = G->mRenderTargets[*o];
+					sprintf(buf, "  <Register id=%d handle=%p>%08lx</Register>\n", k->first, *o, id);
 					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			}
@@ -117,8 +117,8 @@ static void DumpUsage()
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<void *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					UINT64 id = G->mRenderTargets[*o];
-					sprintf(buf, "  <Register id=%d handle=%p>%016llx</Register>\n", k->first, *o, id);
+					uint32_t id = G->mRenderTargets[*o];
+					sprintf(buf, "  <Register id=%d handle=%p>%08lx</Register>\n", k->first, *o, id);
 					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			}
@@ -127,23 +127,23 @@ static void DumpUsage()
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
 				std::set<void *>::const_iterator o;
 				for (o = (*m).begin(); o != (*m).end(); o++) {
-					UINT64 id = G->mRenderTargets[*o];
-					sprintf(buf, "  <RenderTarget id=%d handle=%p>%016llx</RenderTarget>\n", pos, *o, id);
+					uint32_t id = G->mRenderTargets[*o];
+					sprintf(buf, "  <RenderTarget id=%d handle=%p>%08lx</RenderTarget>\n", pos, *o, id);
 					WriteFile(f, buf, castStrLen(buf), &written, 0);
 				}
 			}
 			std::set<void *>::iterator n;
 			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				UINT64 id = G->mRenderTargets[*n];
-				sprintf(buf, "  <DepthTarget handle=%p>%016llx</DepthTarget>\n", *n, id);
+				uint32_t id = G->mRenderTargets[*n];
+				sprintf(buf, "  <DepthTarget handle=%p>%08lx</DepthTarget>\n", *n, id);
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
-		std::map<UINT64, struct ResourceInfo>::iterator j;
+		std::map<uint32_t, struct ResourceInfo>::iterator j;
 		for (j = G->mRenderTargetInfo.begin(); j != G->mRenderTargetInfo.end(); j++) {
-			_snprintf_s(buf, 256, 256, "<RenderTarget hash=%016llx ", j->first);
+			_snprintf_s(buf, 256, 256, "<RenderTarget hash=%08lx ", j->first);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			StrRenderTarget(buf, 256, j->second);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -151,7 +151,7 @@ static void DumpUsage()
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
 		for (j = G->mDepthTargetInfo.begin(); j != G->mDepthTargetInfo.end(); j++) {
-			_snprintf_s(buf, 256, 256, "<DepthTarget hash=%016llx ", j->first);
+			_snprintf_s(buf, 256, 256, "<DepthTarget hash=%08lx ", j->first);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			StrRenderTarget(buf, 256, j->second);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -998,7 +998,7 @@ out:
 
 static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {
-	HuntNext<UINT64>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+	HuntNext<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 }
 static void NextPixelShader(HackerDevice *device, void *private_data)
 {
@@ -1071,7 +1071,7 @@ out:
 
 static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
-	HuntPrev<UINT64>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+	HuntPrev<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 }
 static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
@@ -1154,10 +1154,10 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 	if (!MarkShaderBegin("pixel shader", G->mSelectedPixelShader))
 		return;
 
-	for (std::set<UINT64>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
+	for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
 		LogInfo("     visited index buffer hash = %016I64x\n", *i);
 	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-		LogInfo("     visited vertex shader hash = %016I64x\n", *i);
+		LogInfo("     visited vertex shader hash = %08lx \n", *i);
 
 	MarkShaderEnd(device, "pixel shader", G->mSelectedPixelShader);
 }
@@ -1167,10 +1167,10 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 	if (!MarkShaderBegin("vertex shader", G->mSelectedVertexShader))
 		return;
 
+	for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
+		LogInfo("     visited index buffer hash = %08lx \n", *i);
 	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
 		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
-	for (std::set<UINT64>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-		LogInfo("     visited index buffer hash = %016I64x\n", *i);
 
 	MarkShaderEnd(device, "vertex shader", G->mSelectedVertexShader);
 }
@@ -1207,15 +1207,16 @@ static void LogRenderTarget(void *target, char *log_prefix)
 {
 	char buf[256];
 
-	if (!target || target == (void *)-1) {
+	if (!target || target == (void *)-1) 
+	{
 		LogInfo("No render target selected for marking\n");
 		return;
 	}
 
-	UINT64 hash = G->mRenderTargets[target];
+	uint32_t hash = G->mRenderTargets[target];
 	struct ResourceInfo &info = G->mRenderTargetInfo[hash];
 	StrRenderTarget(buf, 256, info);
-	LogInfo("%srender target handle = %p, hash = %.16llx, %s\n",
+	LogInfo("%srender target handle = %p, hash = %08lx, %s\n",
 		log_prefix, target, hash, buf);
 }
 

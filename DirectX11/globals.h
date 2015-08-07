@@ -29,7 +29,7 @@ const int MARKING_MODE_ZERO = 3;
 const int MARKING_MODE_PINK = 4;
 
 // Key is index/vertex buffer, value is hash key.
-typedef std::unordered_map<ID3D11Buffer *, UINT64> DataBufferMap;
+typedef std::unordered_map<ID3D11Buffer *, uint32_t> DataBufferMap;
 
 // Source compiled shaders.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
@@ -267,7 +267,7 @@ struct TextureOverride {
 		filter_index(1.0)
 	{}
 };
-typedef std::unordered_map<UINT64, struct TextureOverride> TextureOverrideMap;
+typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
 
 struct ShaderInfoData
 {
@@ -378,7 +378,7 @@ struct Globals
 	std::string BackProject_Vector1, BackProject_Vector2;
 	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
 	std::string MatrixPos_ID1, MatrixPos_MUL1;
-	UINT64 ZBufferHashToInject;
+	uint32_t ZBufferHashToInject;
 	bool FIX_SV_Position;
 	bool FIX_Light_Position;
 	bool FIX_Recompile_VS;
@@ -394,8 +394,8 @@ struct Globals
 	bool ENABLE_CRITICAL_SECTION;
 
 	DataBufferMap mDataBuffers;
-	std::set<UINT64> mVisitedIndexBuffers;					// std::set is sorted for consistent order while hunting
-	UINT64 mSelectedIndexBuffer;
+	std::set<uint32_t> mVisitedIndexBuffers;				// std::set is sorted for consistent order while hunting
+	uint32_t mSelectedIndexBuffer;
 	int mSelectedIndexBufferPos;
 	std::set<UINT64> mSelectedIndexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedIndexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
@@ -409,7 +409,7 @@ struct Globals
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
-	std::set<UINT64> mSelectedVertexShader_IndexBuffer;		// std::set so that index buffers used with a shader will be sorted in log when marked
+	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
 	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
 	PreloadPixelShaderMap mPreloadedPixelShaders;
@@ -418,7 +418,7 @@ struct Globals
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
-	std::set<UINT64> mSelectedPixelShader_IndexBuffer;		// std::set so that index buffers used with a shader will be sorted in log when marked
+	std::set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
@@ -451,20 +451,20 @@ struct Globals
 	TextureOverrideMap mTextureOverrideMap;
 
 	// Statistics
-	std::unordered_map<void *, UINT64> mRenderTargets;
-	std::map<UINT64, struct ResourceInfo> mRenderTargetInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<UINT64, struct ResourceInfo> mDepthTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::set<void *> mVisitedRenderTargets;					// std::set is sorted for consistent order while hunting
+	std::unordered_map<void *, uint32_t> mRenderTargets;
+	std::map<uint32_t, struct ResourceInfo> mRenderTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<uint32_t, struct ResourceInfo> mDepthTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<void *> mVisitedRenderTargets;						// std::set is sorted for consistent order while hunting
 	void *mSelectedRenderTarget;
 	int mSelectedRenderTargetPos;
 	// Snapshot of all targets for selection.
 	void *mSelectedRenderTargetSnapshot;
-	std::set<void *> mSelectedRenderTargetSnapshotList;		// std::set so that render targets will be sorted in log when marked
+	std::set<void *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
 	// Relations
-	std::unordered_map<ID3D11Texture2D *, UINT64> mTexture2D_ID;
-	std::unordered_map<ID3D11Texture3D *, UINT64> mTexture3D_ID;
-	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::unordered_map<ID3D11Texture2D *, uint32_t> mTexture2D_ID;
+	std::unordered_map<ID3D11Texture3D *, uint32_t> mTexture3D_ID;
+	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	bool mBlockingMode;
 

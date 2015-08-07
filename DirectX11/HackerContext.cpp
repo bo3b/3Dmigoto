@@ -54,12 +54,12 @@ ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 
 // -----------------------------------------------------------------------------
 
-UINT64 HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,
+uint32_t HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,
 	bool log_new, struct ResourceInfo *resource_info)
 {
 
 	D3D11_TEXTURE2D_DESC desc;
-	std::unordered_map<ID3D11Texture2D *, UINT64>::iterator j;
+	std::unordered_map<ID3D11Texture2D *, uint32_t>::iterator j;
 
 	texture->GetDesc(&desc);
 
@@ -70,7 +70,8 @@ UINT64 HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,
 	if (j != G->mTexture2D_ID.end())
 		return j->second;
 
-	if (log_new) {
+	if (log_new) 
+	{
 		// TODO: Refactor with LogRenderTarget()
 		LogDebug("    Unknown render target:\n");
 		LogDebug("    Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
@@ -79,15 +80,18 @@ UINT64 HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,
 			desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
+	// TODO: if it's not found, do we really want to be creating this partial
+	//  hash off of just the description? It's not ever going to match the 
+	// real texture, so wouldn't it be better to return 0?
 	return CalcTexture2DDescHash(&desc, 0, 0, 0);
 }
 
-UINT64 HackerContext::GetTexture3DHash(ID3D11Texture3D *texture,
+uint32_t HackerContext::GetTexture3DHash(ID3D11Texture3D *texture,
 	bool log_new, struct ResourceInfo *resource_info)
 {
 
 	D3D11_TEXTURE3D_DESC desc;
-	std::unordered_map<ID3D11Texture3D *, UINT64>::iterator j;
+	std::unordered_map<ID3D11Texture3D *, uint32_t>::iterator j;
 
 	texture->GetDesc(&desc);
 
@@ -107,6 +111,8 @@ UINT64 HackerContext::GetTexture3DHash(ID3D11Texture3D *texture,
 			desc.Format, desc.Usage, desc.BindFlags, desc.CPUAccessFlags, desc.MiscFlags);
 	}
 
+	// TODO: if it's not found, do we really want to be creating this partial
+	//  hash off of just the description? 
 	return CalcTexture3DDescHash(&desc, 0, 0, 0);
 }
 
@@ -117,7 +123,7 @@ void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
-	UINT64 hash = 0;
+	uint32_t hash = 0;
 
 	if (!view)
 		return NULL;
@@ -128,7 +134,8 @@ void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 
 	view->GetDesc(&desc);
 
-	switch (desc.ViewDimension) {
+	switch (desc.ViewDimension) 
+	{
 		case D3D11_SRV_DIMENSION_TEXTURE2D:
 		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
 		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
@@ -177,7 +184,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	D3D11_RENDER_TARGET_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
 	struct ResourceInfo resource_info;
-	UINT64 hash = 0;
+	uint32_t hash = 0;
 
 	target->GetDesc(&desc);
 
@@ -222,7 +229,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 	ID3D11Resource *resource = NULL;
 	ID3D11Texture2D *texture;
 	struct ResourceInfo resource_info;
-	UINT64 hash = 0;
+	uint32_t hash = 0;
 
 	if (!target)
 		return;
@@ -493,7 +500,7 @@ float HackerContext::ProcessParamTextureFilter(ParamOverride *override)
 	ID3D11ShaderResourceView *view;
 	ID3D11Resource *resource = NULL;
 	TextureOverrideMap::iterator i;
-	UINT64 hash = 0;
+	uint32_t hash = 0;
 	float filter_index = 0;
 
 	switch (override->shader_type) {
@@ -758,10 +765,8 @@ DrawContext HackerContext::BeforeDraw()
 				mCurrentHullShader == G->mSelectedHullShader ||
 				selectedRenderTargetPos < mCurrentRenderTargets.size())
 			{
-				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx%08lx, CurrentVertexShader = %08lx%08lx, CurrentPixelShader = %08lx%08lx\n",
-					(UINT32)(mCurrentIndexBuffer >> 32), (UINT32)mCurrentIndexBuffer,
-					(UINT32)(mCurrentVertexShader >> 32), (UINT32)mCurrentVertexShader,
-					(UINT32)(mCurrentPixelShader >> 32), (UINT32)mCurrentPixelShader);
+				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
+					mCurrentIndexBuffer, mCurrentVertexShader, mCurrentPixelShader);
 
 				// Snapshot render target list.
 				if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
@@ -1066,7 +1071,7 @@ HRESULT HackerContext::MapDenyCPURead(
 	ID3D11Texture2D *tex = (ID3D11Texture2D*)pResource;
 	D3D11_TEXTURE2D_DESC desc;
 	D3D11_RESOURCE_DIMENSION dim;
-	UINT64 hash;
+	uint32_t hash;
 	TextureOverrideMap::iterator i;
 	HRESULT hr;
 	UINT replace_size;
@@ -1085,7 +1090,7 @@ HRESULT HackerContext::MapDenyCPURead(
 	tex->GetDesc(&desc);
 	hash = GetTexture2DHash(tex, false, NULL);
 
-	LogDebug("Map Texture2D %016I64x (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
+	LogDebug("Map Texture2D %08lx (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
 			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
 
 	// Currently only replacing first subresource to simplify map type, and
@@ -1437,7 +1442,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	ID3D11Texture2D *dstTex = (ID3D11Texture2D*)pDstResource;
 	D3D11_TEXTURE2D_DESC srcDesc, dstDesc;
 	D3D11_RESOURCE_DIMENSION srcDim, dstDim;
-	UINT64 srcHash, dstHash;
+	uint32_t srcHash, dstHash;
 	TextureOverrideMap::iterator i;
 
 	if (!pSrcResource || !pDstResource || !pSrcBox)
@@ -1453,9 +1458,9 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	srcHash = GetTexture2DHash(srcTex, false, NULL);
 	dstHash = GetTexture2DHash(dstTex, false, NULL);
 
-	LogDebug("CopySubresourceRegion %016I64x (%u:%u x %u:%u / %u x %u) -> %016I64x (%u x %u / %u x %u)\n",
-			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom,
-			srcDesc.Width, srcDesc.Height, dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
+	LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
+			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
+			dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
 
 	i = G->mTextureOverrideMap.find(dstHash);
 	if (i == G->mTextureOverrideMap.end())
@@ -2517,7 +2522,7 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 			DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);
 			if (i != G->mDataBuffers.end()) {
 				mCurrentIndexBuffer = i->second;
-				LogDebug("  index buffer found: handle = %p, hash = %08lx%08lx\n", pIndexBuffer, (UINT32)(mCurrentIndexBuffer >> 32), (UINT32)mCurrentIndexBuffer);
+				LogDebug("  index buffer found: handle = %p, hash = %08lx \n", pIndexBuffer, mCurrentIndexBuffer);
 
 				if (G->hunting == HUNTING_MODE_ENABLED) {
 					// Add to visited index buffers.

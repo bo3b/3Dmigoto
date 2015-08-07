@@ -57,7 +57,7 @@ private:
 	HackerDevice *mHackerDevice;
 
 	// These are per-context, moved from globals.h:
-	UINT64 mCurrentIndexBuffer;
+	uint32_t mCurrentIndexBuffer;
 	UINT64 mCurrentVertexShader;
 	ID3D11VertexShader *mCurrentVertexShaderHandle;
 	UINT64 mCurrentPixelShader;
@@ -103,9 +103,9 @@ private:
 	void RecordShaderResourceUsage();
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
 	void* RecordResourceViewStats(ID3D11ShaderResourceView *view);
-	UINT64 GetTexture2DHash(ID3D11Texture2D *texture,
+	uint32_t GetTexture2DHash(ID3D11Texture2D *texture,
 		bool log_new, struct ResourceInfo *resource_info);
-	UINT64 GetTexture3DHash(ID3D11Texture3D *texture,
+	uint32_t GetTexture3DHash(ID3D11Texture3D *texture,
 		bool log_new, struct ResourceInfo *resource_info);
 
 	// Functions for the frame analysis. Would be good to split this out,
