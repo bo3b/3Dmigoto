@@ -1470,32 +1470,39 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Buffer **ppBuffer)
 {
-	/*
-	LogInfo("ID3D11Device::CreateBuffer called\n");
-	LogInfo("  ByteWidth = %d\n", pDesc->ByteWidth);
-	LogInfo("  Usage = %d\n", pDesc->Usage);
-	LogInfo("  BindFlags = %x\n", pDesc->BindFlags);
-	LogInfo("  CPUAccessFlags = %x\n", pDesc->CPUAccessFlags);
-	LogInfo("  MiscFlags = %x\n", pDesc->MiscFlags);
-	LogInfo("  StructureByteStride = %d\n", pDesc->StructureByteStride);
-	LogInfo("  InitialData = %p\n", pInitialData);
-	*/
+	LogDebug("ID3D11Device::CreateBuffer called\n");
+	LogDebug("  ByteWidth = %d\n", pDesc->ByteWidth);
+	LogDebug("  Usage = %d\n", pDesc->Usage);
+	LogDebug("  BindFlags = %x\n", pDesc->BindFlags);
+	LogDebug("  CPUAccessFlags = %x\n", pDesc->CPUAccessFlags);
+	LogDebug("  MiscFlags = %x\n", pDesc->MiscFlags);
+	LogDebug("  StructureByteStride = %d\n", pDesc->StructureByteStride);
+	LogDebug("  InitialData = %p\n", pInitialData);
+
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
 	if (hr == S_OK && ppBuffer && G->hunting)
 	{
-		UINT64 hash = 0;
+		// TODO: this follows the old form of creating a hash even if the
+		// input of pInitialData is null.  Is this what we want though?
+		// It seems like just using very small data like ByteWidth, Stride
+		// and Flags can very easily lead to collisions because of identical
+		// buffer types.
+		// Does it make more sense to skip adding those buffers to the 
+		// mDataBuffers as something we really cannot find later, or is
+		// fairly likely to have collisions unrelated to hash?
+
+		// Create hash from the raw buffer data, but also include
+		// the pDesc data as a unique fingerprint for a buffer.
+		uint32_t hash = 0;
+		if (pDesc)
+			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 		if (pInitialData && pInitialData->pSysMem)
-			hash = fnv_64_buf(pInitialData->pSysMem, pDesc->ByteWidth);
-		hash ^= pDesc->ByteWidth; hash *= FNV_64_PRIME;
-		hash ^= pDesc->Usage; hash *= FNV_64_PRIME;
-		hash ^= pDesc->BindFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->CPUAccessFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->MiscFlags; hash *= FNV_64_PRIME;
-		hash ^= pDesc->StructureByteStride;
+			hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
+
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mDataBuffers[*ppBuffer] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		LogDebug("    Buffer registered: handle = %p, hash = %08lx%08lx\n", *ppBuffer, (UINT32)(hash >> 32), (UINT32)hash);
+		LogDebug("    Buffer registered: handle = %p, hash = %08lx \n", *ppBuffer, hash);
 	}
 	return hr;
 }
@@ -1632,39 +1639,34 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
 		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
-	// Create hash code.  Wrapped in try/catch because it can crash in Dirt Rally,
-	// because of noncontiguous or non-mapped memory for the texture.  Not sure this
-	// is the best strategy.
-	UINT64 hash = 0;
-	if (pInitialData && pInitialData->pSysMem && pDesc)
-		try
-		{
-			hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->ArraySize);
-		}
-		catch (...)
-		{
-			// Fatal error, but catch it and return null for hash.
-			LogInfo("   ******* Exception caught while calculating Texture2D hash ****** \n");
-			hash = 0;
-		}
-	
+	// Hash based on raw texture data
+	// TODO: are we sure we want to add a hash in the zero data case, with 
+	// much higher potential for collisions?  Also, seems like it would actually
+	// make far more sense for us to wrap these texture objects and return
+	// them to the game.  Avoid the hash altogether.
+	uint32_t hash = 0;
 	if (pDesc)
 		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
-	LogDebug("  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	if (pInitialData && pInitialData->pSysMem && pDesc)
+		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
+	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
+
 
 	// Override custom settings?
 	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
 	D3D11_TEXTURE2D_DESC newDesc = *pDesc;
 
 	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
-	if (i != G->mTextureOverrideMap.end()) {
+	if (i != G->mTextureOverrideMap.end()) 
+	{
 		textureOverride = &i->second;
 
 		override = true;
 		if (textureOverride->stereoMode != -1)
 			newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
 		// Check iteration.
-		if (!textureOverride->iterations.empty()) {
+		if (!textureOverride->iterations.empty()) 
+		{
 			std::vector<int>::iterator k = textureOverride->iterations.begin();
 			int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
 			LogInfo("  current iteration = %d\n", currentIteration);
@@ -1679,9 +1681,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 				}
 			}
 			if (!override)
-			{
 				LogInfo("  override skipped\n");
-			}
 		}
 	}
 
@@ -1699,9 +1699,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			LogInfo("  setting custom surface creation mode.\n");
 
 			if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-			{
 				LogInfo("    call failed.\n");
-			}
 		}
 		if (textureOverride && textureOverride->format != -1)
 		{
@@ -1716,19 +1714,18 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1)
 	{
 		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-		{
 			LogInfo("    restore call failed.\n");
-		}
 	}
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture.
-	if (ppTexture2D)
+	if (hr == S_OK && ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mTexture2D_ID[*ppTexture2D] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
+
 	return hr;
 }
 
@@ -1763,13 +1760,14 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
 		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
-	// Create hash code.
-	UINT64 hash = 0;
-	if (pInitialData && pInitialData->pSysMem)
-		hash = fnv_64_buf(pInitialData->pSysMem, pDesc->Width / 2 * pDesc->Height * pDesc->Depth);
+	// Create hash code from raw texture data and description.
+	// Initial data is optional, so we might have zero data to add to the hash there.
+	uint32_t hash = 0;
 	if (pDesc)
 		hash = CalcTexture3DDescHash(pDesc, hash, hashWidth, hashHeight);
-	LogInfo("  InitialData = %p, hash = %08lx%08lx\n", pInitialData, (UINT32)(hash >> 32), (UINT32)hash);
+	if (pInitialData && pInitialData->pSysMem && pDesc)
+		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->Depth);
+	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
 
@@ -1801,10 +1799,10 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		unordered_map<ID3D11Texture2D *, UINT64>::iterator i = G->mTexture2D_ID.find((ID3D11Texture2D *) pResource);
+		unordered_map<ID3D11Texture2D *, uint32_t>::iterator i = G->mTexture2D_ID.find((ID3D11Texture2D *) pResource);
 		if (i != G->mTexture2D_ID.end() && i->second == G->ZBufferHashToInject)
 		{
-			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx%08lx\n", *ppSRView, (UINT32)(i->second >> 32), (UINT32)i->second);
+			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second);
 
 			mZBufferResourceView = *ppSRView;
 		}
