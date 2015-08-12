@@ -1518,6 +1518,7 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
 
+
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__in  const D3D11_TEXTURE2D_DESC *pDesc,
@@ -1534,6 +1535,14 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
 	if (pDesc) LogDebug("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
+	if (pInitialData && pInitialData->pSysMem)
+	{
+		LogDebug("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
+		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
+		for (size_t i = 0; i < 16; i++)
+			LogDebug(" %02hX", hex[i]);
+		LogDebug("\n");
+	}
 
 	// Preload shaders? 
 	// ToDo: This really doesn't belong here as a late-binding. Maybe move to CreateStereoAndIniTextures.
@@ -1644,11 +1653,26 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// much higher potential for collisions?  Also, seems like it would actually
 	// make far more sense for us to wrap these texture objects and return
 	// them to the game.  Avoid the hash altogether.
+	
+	// Need the address of the data in the map, because otherwise we have mystery
+	// textures that weren't logged or seen.  So, in degenerate cases, we need
+	// to still add them, just as zero.
+	// Also, we see duplicate hashes happen, sort-of collisions.  These don't
+	// happen because of hash miscalculation, they are literally exactly the
+	// same data. Like a fully black texture screen size, shows up multiple times
+	// and calculates to same hash.
+	// We also see the handle itself get reused. That suggests that maybe we ought
+	// to be tracking Release operations as well, and taking them back out.
+	// We don't want ones with only pDesc available, as they are super easy to 
+	// duplicate/collide. Rather than rely only on that data, we'll set to zero too,
+	// as a degenerate case.
+
 	uint32_t hash = 0;
-	if (pDesc)
-		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
 	if (pInitialData && pInitialData->pSysMem && pDesc)
+	{
+		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
 		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
+	}
 	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 
@@ -1718,11 +1742,28 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	}
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
-	// Register texture.
+	// Register texture. Every one seen. Bad ones will have hash equal to zero.
 	if (hr == S_OK && ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mTexture2D_ID[*ppTexture2D] = hash;
+		{
+			for (auto &tex : G->mTexture2D_ID)
+			{
+				if (tex.second == hash)
+				{
+					LogInfo("***  mTexture2D_ID hash collision ***  handle = %p, hash = %08lx \n", *ppTexture2D, hash);
+					break;
+				}
+			}
+
+			pair<unordered_map<ID3D11Texture2D *, uint32_t>::iterator, bool> p;
+			p = G->mTexture2D_ID.insert(std::pair<ID3D11Texture2D *, uint32_t>(*ppTexture2D, hash));
+
+			if (!p.second)
+				LogInfo("***  mTexture2D_ID handle reused for new hash ***  handle = %p, hash = %08lx \n", *ppTexture2D, hash);
+			
+			LogInfo("  size of mTexture2D_ID map: %d \n", G->mTexture2D_ID.size());
+		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
