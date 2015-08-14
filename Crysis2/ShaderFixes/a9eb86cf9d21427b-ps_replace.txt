@@ -1,0 +1,346 @@
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[3] : packoffset(c0);
+}
+
+cbuffer PER_INSTANCE : register(b1)
+{
+  float4 Ambient : packoffset(c0);
+  float4 AvgFogVolumeContrib : packoffset(c1);
+  float4 AlphaTest : packoffset(c2);
+}
+
+cbuffer PER_MATERIAL : register(b4)
+{
+  float4 MatDifColor : packoffset(c0);
+  float4 MatSpecColor : packoffset(c1);
+  float4 MatEmissiveColor : packoffset(c2);
+  float3 __0FresnelScale__1FresnelPower__2FresnelBias__3 : packoffset(c4);
+  float4 __0DetailBumpTillingU__1DetailBumpTillingV__2DetailBumpScale__3DetailBlendAmount : packoffset(c6);
+  float4 DirtTint : packoffset(c8);
+  float4 __0DirtStrength__1DirtGlossFactor__2DirtMapAlphaInfluence__3DirtTiling : packoffset(c9);
+}
+
+cbuffer PER_LIGHT : register(b5)
+{
+  float4 LDiffuses0 : packoffset(c0);
+  float4 WorldLightsPos0 : packoffset(c1);
+  float4 ShadowChanMasks0 : packoffset(c2);
+  float4 LDiffuses1 : packoffset(c3);
+  float4 WorldLightsPos1 : packoffset(c4);
+  float4 ShadowChanMasks1 : packoffset(c5);
+  float4 LDiffuses2 : packoffset(c6);
+  float4 WorldLightsPos2 : packoffset(c7);
+  float4 ShadowChanMasks2 : packoffset(c8);
+  float4 LDiffuses3 : packoffset(c9);
+  float4 WorldLightsPos3 : packoffset(c10);
+  float4 ShadowChanMasks3 : packoffset(c11);
+}
+SamplerState diffuseMapSampler_s_s : register(s0);
+SamplerState dirtMapSampler_s_s : register(s2);
+SamplerState sceneSpecularAccSampler_s_s : register(s10);
+SamplerState decalsAccSampler_s_s : register(s11);
+SamplerState sceneNormalsSampler_s_s : register(s12);
+SamplerState sceneDiffuseAccSampler_s_s : register(s13);
+SamplerState sceneNormalsBentSampler_s_s : register(s14);
+Texture2D<float4> diffuseMapSampler : register(t0);
+Texture2D<float4> dirtMapSampler : register(t2);
+Texture2D<float4> sceneSpecularAccSampler : register(t10);
+Texture2D<float4> decalsAccSampler : register(t11);
+Texture2D<float4> sceneNormalsSampler : register(t12);
+Texture2D<float4> sceneDiffuseAccSampler : register(t13);
+Texture2D<float4> sceneNormalsBentSampler : register(t14);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : COLOR0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = MatSpecColor.w * 0.159154996 + 0.318309993;
+  r0.y = MatSpecColor.w + 9.99999997e-007;
+  r0.z = dot(-v2.xyz, -v2.xyz);
+  r0.z = rsqrt(r0.z);
+  r1.xyz = -v2.xyz * r0.zzz + cb3[2].xyz;
+  r2.xyz = -v2.xyz * r0.zzz;
+  r0.z = dot(r1.xyz, r1.xyz);
+  r0.z = rsqrt(r0.z);
+  r1.xyz = r1.xyz * r0.zzz;
+  r0.zw = v3.xy / v3.ww;
+  r3.xyzw = sceneNormalsSampler.Sample(sceneNormalsSampler_s_s, r0.zw).xyzw;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.w = 1 + -r3.w;
+  r2.w = dot(r3.xyz, r3.xyz);
+  r2.w = rsqrt(r2.w);
+  r3.xyz = r3.xyz * r2.www;
+  r1.x = saturate(dot(r3.xyz, r1.xyz));
+  r1.x = log2(r1.x);
+  r0.y = r1.x * r0.y;
+  r0.y = exp2(r0.y);
+  r0.x = r0.x * r0.y;
+  r0.y = dot(cb3[2].xyz, r3.xyz);
+  r1.x = saturate(dot(r2.xyz, r3.xyz));
+  r1.x = 1.00100005 + -r1.x;
+  r1.x = log2(r1.x);
+  r1.x = __0FresnelScale__1FresnelPower__2FresnelBias__3.y * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = __0FresnelScale__1FresnelPower__2FresnelBias__3.x * r1.x + __0FresnelScale__1FresnelPower__2FresnelBias__3.z;
+  r2.xyzw = sceneNormalsBentSampler.Sample(sceneNormalsBentSampler_s_s, r0.zw).xyzw;
+  r2.xyz = r2.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.y = saturate(dot(cb3[2].xyz, r2.xyz));
+  r1.y = saturate(-r1.y + r0.y);
+  r1.y = sqrt(r1.y);
+  r1.y = r1.y * r2.w;
+  r1.y = saturate(AlphaTest.z * r1.y);
+  r1.y = 1 + -r1.y;
+  r0.y = saturate(r1.y * r0.y);
+  r0.x = r0.x * r0.y;
+  r2.xyz = LDiffuses0.xyz * r0.yyy;
+  r2.xyz = r2.xyz * r1.www;
+  r3.xyz = LDiffuses0.xyz * LDiffuses0.www;
+  r3.xyz = r3.xyz * r0.xxx;
+  r1.yzw = r3.xyz * r1.www;
+  r3.xyz = sceneSpecularAccSampler.Sample(sceneSpecularAccSampler_s_s, r0.zw).xyz;
+  r1.yzw = r3.xyz * cb3[1].www + r1.yzw;
+  r0.xy = __0DirtStrength__1DirtGlossFactor__2DirtMapAlphaInfluence__3DirtTiling.ww * v1.xy;
+  r3.xyzw = dirtMapSampler.Sample(dirtMapSampler_s_s, r0.xy).xyzw;
+  r0.x = -1 + r3.w;
+  r0.x = __0DirtStrength__1DirtGlossFactor__2DirtMapAlphaInfluence__3DirtTiling.z * r0.x + 1;
+  r0.x = __0DirtStrength__1DirtGlossFactor__2DirtMapAlphaInfluence__3DirtTiling.x * r0.x;
+  r0.y = 1 + -v4.w;
+  r0.x = r0.x * r0.y;
+  r4.xyzw = diffuseMapSampler.Sample(diffuseMapSampler_s_s, v1.xy).xyzw;
+  r0.y = r4.w * __0DirtStrength__1DirtGlossFactor__2DirtMapAlphaInfluence__3DirtTiling.y + -r4.w;
+  r0.y = r0.x * r0.y + r4.w;
+  r1.yzw = r1.yzw * r0.yyy;
+  r1.yzw = MatSpecColor.xyz * r1.yzw;
+  r1.xyz = r1.yzw * r1.xxx;
+  r5.xyz = sceneDiffuseAccSampler.Sample(sceneDiffuseAccSampler_s_s, r0.zw).xyz;
+  r6.xyzw = decalsAccSampler.Sample(decalsAccSampler_s_s, r0.zw).xyzw;
+  r0.yzw = r5.xyz * cb3[1].www + r2.xyz;
+  r0.yzw = MatEmissiveColor.xyz + r0.yzw;
+  r2.xyz = r3.xyz * DirtTint.xyz + -r4.xyz;
+  r2.xyz = r0.xxx * r2.xyz + r4.xyz;
+  o0.w = r4.w;
+  r2.xyz = MatDifColor.xyz * r2.xyz;
+  r3.xyz = r6.xyz * r6.xyz;
+  r0.x = 1 + -r6.w;
+  r2.xyz = r2.xyz * r0.xxx + r3.xyz;
+  r0.xyz = r2.xyz * r0.yzw + r1.xyz;
+  o0.xyz = cb3[2].www * r0.xyz;
+  
+  o0 = 0;
+  
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
+//
+//   using 3Dmigoto v1.1.34 on Wed Aug 05 10:50:22 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer cb3
+// {
+//
+//   float4 cb3[3];                     // Offset:    0 Size:    48
+//
+// }
+//
+// cbuffer PER_INSTANCE
+// {
+//
+//   float4 Ambient;                    // Offset:    0 Size:    16 [unused]
+//   float4 AvgFogVolumeContrib;        // Offset:   16 Size:    16 [unused]
+//   float4 AlphaTest;                  // Offset:   32 Size:    16
+//
+// }
+//
+// cbuffer PER_MATERIAL
+// {
+//
+//   float4 MatDifColor;                // Offset:    0 Size:    16
+//   float4 MatSpecColor;               // Offset:   16 Size:    16
+//   float4 MatEmissiveColor;           // Offset:   32 Size:    16
+//   float3 __0FresnelScale__1FresnelPower__2FresnelBias__3;// Offset:   64 Size:    12
+//   float4 __0DetailBumpTillingU__1DetailBumpTillingV__2DetailBumpScale__3DetailBlendAmount;// Offset:   96 Size:    16 [unused]
+//   float4 DirtTint;                   // Offset:  128 Size:    16
+//   float4 __0DirtStrength__1DirtGlossFactor__2DirtMapAlphaInfluence__3DirtTiling;// Offset:  144 Size:    16
+//
+// }
+//
+// cbuffer PER_LIGHT
+// {
+//
+//   float4 LDiffuses0;                 // Offset:    0 Size:    16
+//   float4 WorldLightsPos0;            // Offset:   16 Size:    16 [unused]
+//   float4 ShadowChanMasks0;           // Offset:   32 Size:    16 [unused]
+//   float4 LDiffuses1;                 // Offset:   48 Size:    16 [unused]
+//   float4 WorldLightsPos1;            // Offset:   64 Size:    16 [unused]
+//   float4 ShadowChanMasks1;           // Offset:   80 Size:    16 [unused]
+//   float4 LDiffuses2;                 // Offset:   96 Size:    16 [unused]
+//   float4 WorldLightsPos2;            // Offset:  112 Size:    16 [unused]
+//   float4 ShadowChanMasks2;           // Offset:  128 Size:    16 [unused]
+//   float4 LDiffuses3;                 // Offset:  144 Size:    16 [unused]
+//   float4 WorldLightsPos3;            // Offset:  160 Size:    16 [unused]
+//   float4 ShadowChanMasks3;           // Offset:  176 Size:    16 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// diffuseMapSampler_s               sampler      NA          NA    0        1
+// dirtMapSampler_s                  sampler      NA          NA    2        1
+// sceneSpecularAccSampler_s         sampler      NA          NA   10        1
+// decalsAccSampler_s                sampler      NA          NA   11        1
+// sceneNormalsSampler_s             sampler      NA          NA   12        1
+// sceneDiffuseAccSampler_s          sampler      NA          NA   13        1
+// sceneNormalsBentSampler_s         sampler      NA          NA   14        1
+// diffuseMapSampler                 texture  float4          2d    0        1
+// dirtMapSampler                    texture  float4          2d    2        1
+// sceneSpecularAccSampler           texture  float4          2d   10        1
+// decalsAccSampler                  texture  float4          2d   11        1
+// sceneNormalsSampler               texture  float4          2d   12        1
+// sceneDiffuseAccSampler            texture  float4          2d   13        1
+// sceneNormalsBentSampler           texture  float4          2d   14        1
+// PER_INSTANCE                      cbuffer      NA          NA    1        1
+// cb3                               cbuffer      NA          NA    3        1
+// PER_MATERIAL                      cbuffer      NA          NA    4        1
+// PER_LIGHT                         cbuffer      NA          NA    5        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xy  
+// TEXCOORD                 1   xyzw        2     NONE   float   xyz 
+// TEXCOORD                 2   xyzw        3     NONE   float   xy w
+// COLOR                    0   xyzw        4     NONE   float      w
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb3[3], immediateIndexed
+dcl_constantbuffer cb1[3], immediateIndexed
+dcl_constantbuffer cb4[10], immediateIndexed
+dcl_constantbuffer cb5[1], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s10, mode_default
+dcl_sampler s11, mode_default
+dcl_sampler s12, mode_default
+dcl_sampler s13, mode_default
+dcl_sampler s14, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t10
+dcl_resource_texture2d (float,float,float,float) t11
+dcl_resource_texture2d (float,float,float,float) t12
+dcl_resource_texture2d (float,float,float,float) t13
+dcl_resource_texture2d (float,float,float,float) t14
+dcl_input_ps linear v1.xy
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xyw
+dcl_input_ps linear v4.w
+dcl_output o0.xyzw
+dcl_temps 7
+mad r0.x, cb4[1].w, l(0.159155), l(0.318310)
+add r0.y, l(0.000001), cb4[1].w
+dp3 r0.z, -v2.xyzx, -v2.xyzx
+rsq r0.z, r0.z
+mad r1.xyz, -v2.xyzx, r0.zzzz, cb3[2].xyzx
+mul r2.xyz, r0.zzzz, -v2.xyzx
+dp3 r0.z, r1.xyzx, r1.xyzx
+rsq r0.z, r0.z
+mul r1.xyz, r0.zzzz, r1.xyzx
+div r0.zw, v3.xxxy, v3.wwww
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.zwzz, t12.xyzw, s12
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+add r1.w, -r3.w, l(1.000000)
+dp3 r2.w, r3.xyzx, r3.xyzx
+rsq r2.w, r2.w
+mul r3.xyz, r2.wwww, r3.xyzx
+dp3_sat r1.x, r3.xyzx, r1.xyzx
+log r1.x, r1.x
+mul r0.y, r0.y, r1.x
+exp r0.y, r0.y
+mul r0.x, r0.y, r0.x
+dp3 r0.y, cb3[2].xyzx, r3.xyzx
+dp3_sat r1.x, r2.xyzx, r3.xyzx
+add r1.x, -r1.x, l(1.001000)
+log r1.x, r1.x
+mul r1.x, r1.x, cb4[4].y
+exp r1.x, r1.x
+mad r1.x, cb4[4].x, r1.x, cb4[4].z
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r0.zwzz, t14.xyzw, s14
+mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3_sat r1.y, cb3[2].xyzx, r2.xyzx
+add_sat r1.y, r0.y, -r1.y
+sqrt r1.y, r1.y
+mul r1.y, r2.w, r1.y
+mul_sat r1.y, r1.y, cb1[2].z
+add r1.y, -r1.y, l(1.000000)
+mul_sat r0.y, r0.y, r1.y
+mul r0.x, r0.y, r0.x
+mul r2.xyz, r0.yyyy, cb5[0].xyzx
+mul r2.xyz, r1.wwww, r2.xyzx
+mul r3.xyz, cb5[0].wwww, cb5[0].xyzx
+mul r3.xyz, r0.xxxx, r3.xyzx
+mul r1.yzw, r1.wwww, r3.xxyz
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, r0.zwzz, t10.xyzw, s10
+mad r1.yzw, r3.xxyz, cb3[1].wwww, r1.yyzw
+mul r0.xy, v1.xyxx, cb4[9].wwww
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.xyxx, t2.xyzw, s2
+add r0.x, r3.w, l(-1.000000)
+mad r0.x, cb4[9].z, r0.x, l(1.000000)
+mul r0.x, r0.x, cb4[9].x
+add r0.y, -v4.w, l(1.000000)
+mul r0.x, r0.y, r0.x
+sample_indexable(texture2d)(float,float,float,float) r4.xyzw, v1.xyxx, t0.xyzw, s0
+mad r0.y, r4.w, cb4[9].y, -r4.w
+mad r0.y, r0.x, r0.y, r4.w
+mul r1.yzw, r0.yyyy, r1.yyzw
+mul r1.yzw, r1.yyzw, cb4[1].xxyz
+mul r1.xyz, r1.xxxx, r1.yzwy
+sample_indexable(texture2d)(float,float,float,float) r5.xyz, r0.zwzz, t13.xyzw, s13
+sample_indexable(texture2d)(float,float,float,float) r6.xyzw, r0.zwzz, t11.xyzw, s11
+mad r0.yzw, r5.xxyz, cb3[1].wwww, r2.xxyz
+add r0.yzw, r0.yyzw, cb4[2].xxyz
+mad r2.xyz, r3.xyzx, cb4[8].xyzx, -r4.xyzx
+mad r2.xyz, r0.xxxx, r2.xyzx, r4.xyzx
+mov o0.w, r4.w
+mul r2.xyz, r2.xyzx, cb4[0].xyzx
+mul r3.xyz, r6.xyzx, r6.xyzx
+add r0.x, -r6.w, l(1.000000)
+mad r2.xyz, r2.xyzx, r0.xxxx, r3.xyzx
+mad r0.xyz, r2.xyzx, r0.yzwy, r1.xyzx
+mul o0.xyz, r0.xyzx, cb3[2].wwww
+ret 
+// Approximately 72 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

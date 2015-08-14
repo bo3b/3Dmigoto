@@ -1,0 +1,329 @@
+//Halo
+cbuffer PER_BATCH : register(b0)
+{
+  float Time : packoffset(c0);
+  float4 _WaveFreq : packoffset(c1);
+  float4 _WaveLevels : packoffset(c2);
+  float4 _WaveVtxPhases : packoffset(c3);
+  float4 _WaveAmp : packoffset(c4);
+  float4 _WaveInfoX : packoffset(c5);
+  float4 _InstancingParams : packoffset(c6);
+}
+
+cbuffer PER_INSTANCE : register(b1)
+{
+  row_major float3x4 ObjWorldMatrix : packoffset(c0);
+  float4 BendInfo : packoffset(c3);
+  float4 ViewPos : packoffset(c4);
+}
+
+cbuffer PER_FRAME : register(b3)
+{
+  row_major float4x4 g_VS_ViewProjMatr : packoffset(c0);
+  float4 g_VS_SkyColor : packoffset(c5);
+  float4 g_VS_WorldViewPos : packoffset(c6);
+  float4 g_VS_AnimGenParams : packoffset(c8);
+  row_major float4x4 g_VS_ViewProjZeroMatr : packoffset(c10);
+}
+
+cbuffer PER_MATERIAL : register(b4)
+{
+  float4 MatDifColor : packoffset(c0);
+  float3 __0bendDetailFrequency__1bendDetailLeafAmplitude__2bendDetailBranchAmplitude__3 : packoffset(c2);
+  float4 __0AnimFrequency__1AnimAmplitudeWav0__2AnimPhase__3AnimAmplitudeWav2 : packoffset(c3);
+  float4 __0__1BeamLength__2OrigLength__3OrigWidth : packoffset(c4);
+  float4 __0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor : packoffset(c5);
+  float4 StartColor : packoffset(c6);
+  float4 EndColor : packoffset(c7);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : POSITION0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : COLOR0,
+  float4 v3 : TANGENT0,
+  float4 v4 : BINORMAL0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = float3(1.40129846e-045,9.99999997e-007,1.40129846e-045) + v3.zxy;
+  r1.xyz = float3(1.40129846e-045,1.40129846e-045,-9.99999997e-007) + v4.yzx;
+  r0.xyz = r1.xyz * r0.xyz;
+  r1.xyz = float3(1.40129846e-045,1.40129846e-045,9.99999997e-007) + v3.yzx;
+  r2.xyz = float3(1.40129846e-045,-9.99999997e-007,1.40129846e-045) + v4.zxy;
+  r0.xyz = r1.xyz * r2.xyz + -r0.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.xyz = v3.www * r0.xyz;
+  r0.w = __0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor.y + -__0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor.x;
+  r1.xyz = float3(1,1,1) / __0__1BeamLength__2OrigLength__3OrigWidth.zww;
+  r1.yzw = v0.xyz * r1.xyz;
+  r1.x = saturate(-v0.x * r1.x + 1);
+  r0.w = r1.y * r0.w + __0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor.x;
+  r2.yz = r1.zw * r0.ww;
+  r1.z = r1.y * __0__1BeamLength__2OrigLength__3OrigWidth.y + r2.y;
+  r0.w = r1.w * r0.w + r1.z;
+  r0.w = r0.w * _WaveInfoX.w + _WaveInfoX.x;
+  r0.w = 3.1415925 * r0.w;
+  r0.w = sin(r0.w);
+  r0.w = r0.w * _WaveInfoX.y + _WaveInfoX.z;
+  r2.x = __0__1BeamLength__2OrigLength__3OrigWidth.y * r1.y;
+  r2.xyz = r0.xzy * r0.www + r2.xzy;
+  r3.w = -g_VS_WorldViewPos.x + ObjWorldMatrix._m03;
+  r3.xyz = ObjWorldMatrix._m00_m01_m02;
+  r2.w = 1;
+  r3.x = dot(r3.xzyw, r2.xyzw);
+  r4.w = -g_VS_WorldViewPos.y + ObjWorldMatrix._m13;
+  r4.xyz = ObjWorldMatrix._m10_m11_m12;
+  r3.y = dot(r4.xzyw, r2.xyzw);
+  r4.w = -g_VS_WorldViewPos.z + ObjWorldMatrix._m23;
+  r4.xyz = ObjWorldMatrix._m20_m21_m22;
+  r3.z = dot(r4.xzyw, r2.xyzw);
+  r3.w = 1;
+  r4.x = dot(g_VS_ViewProjZeroMatr._m00_m01_m02_m03, r3.xyzw);
+  r4.y = dot(g_VS_ViewProjZeroMatr._m10_m11_m12_m13, r3.xyzw);
+  r4.z = dot(g_VS_ViewProjZeroMatr._m20_m21_m22_m23, r3.xyzw);
+  r4.w = dot(g_VS_ViewProjZeroMatr._m30_m31_m32_m33, r3.xyzw);
+  o0.xyzw = r4.xyzw;
+  
+    float4 stereo = StereoParams.Load(0);
+  r4.x += stereo.x * (r4.w - stereo.y);
+  
+  r1.zw = r4.xy * float2(1,-1) + r4.ww;
+  o2.zw = r4.zw;
+  o2.xy = float2(0.5,0.5) * r1.zw;
+  o1.xyzw = v1.xyzw;
+  r3.xyz = StartColor.xyz + float3(-1,-1,-1);
+  r3.xyz = g_VS_SkyColor.www * r3.xyz + float3(1,1,1);
+  r3.xyz = StartColor.xyz * r3.xyz;
+  r3.xyz = r3.xyz * r1.xxx;
+  r3.w = StartColor.w * r1.x;
+  r1.xzw = EndColor.xyz + float3(-1,-1,-1);
+  r1.xzw = g_VS_SkyColor.www * r1.xzw + float3(1,1,1);
+  r1.xzw = EndColor.xyz * r1.xzw;
+  r4.xyz = r1.xzw * r1.yyy;
+  r4.w = EndColor.w * r1.y;
+  r1.xyzw = r4.xyzw + r3.xyzw;
+  r3.xyz = MatDifColor.xyz + float3(-1,-1,-1);
+  r3.xyz = g_VS_SkyColor.www * r3.xyz + float3(1,1,1);
+  r3.xyz = MatDifColor.xyz * r3.xyz;
+  r1.xyz = r3.xyz * r1.xyz;
+  r1.xyzw = __0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor.zzzz * r1.xyzw;
+  r3.xyz = ViewPos.xyz + -r2.xzy;
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r0.x = dot(r3.xyz, r0.xyz);
+  r0.x = r0.x * r0.x;
+  r0.x = saturate(__0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor.w * r0.x);
+  r0.y = -1 + r0.x;
+  r0.y = g_VS_SkyColor.w * r0.y + 1;
+  r0.x = r0.x * r0.y;
+  o3.xyzw = r1.xyzw * r0.xxxx;
+  r0.x = r2.y;
+  r0.y = 0.0500000007 * Time;
+  o4.z = dot(r0.xy, float2(0.100000001,1));
+  r2.yw = float2(0.100000001,0.150000006) * Time;
+  o4.x = dot(r2.xy, float2(0.0500000007,1));
+  o4.y = dot(r2.zw, float2(0.0500000007,1));
+  o4.w = 0;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.27.952.3022
+//
+//   using 3Dmigoto v1.1.34 on Tue Aug 04 21:46:55 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_BATCH
+// {
+//
+//   float Time;                        // Offset:    0 Size:     4
+//   float4 _WaveFreq;                  // Offset:   16 Size:    16 [unused]
+//   float4 _WaveLevels;                // Offset:   32 Size:    16 [unused]
+//   float4 _WaveVtxPhases;             // Offset:   48 Size:    16 [unused]
+//   float4 _WaveAmp;                   // Offset:   64 Size:    16 [unused]
+//   float4 _WaveInfoX;                 // Offset:   80 Size:    16
+//   float4 _InstancingParams;          // Offset:   96 Size:    16 [unused]
+//
+// }
+//
+// cbuffer PER_INSTANCE
+// {
+//
+//   row_major float3x4 ObjWorldMatrix; // Offset:    0 Size:    48
+//   float4 BendInfo;                   // Offset:   48 Size:    16 [unused]
+//   float4 ViewPos;                    // Offset:   64 Size:    16
+//
+// }
+//
+// cbuffer PER_FRAME
+// {
+//
+//   row_major float4x4 g_VS_ViewProjMatr;// Offset:    0 Size:    64 [unused]
+//   float4 g_VS_SkyColor;              // Offset:   80 Size:    16
+//   float4 g_VS_WorldViewPos;          // Offset:   96 Size:    16
+//   float4 g_VS_AnimGenParams;         // Offset:  128 Size:    16 [unused]
+//   row_major float4x4 g_VS_ViewProjZeroMatr;// Offset:  160 Size:    64
+//
+// }
+//
+// cbuffer PER_MATERIAL
+// {
+//
+//   float4 MatDifColor;                // Offset:    0 Size:    16
+//   float3 __0bendDetailFrequency__1bendDetailLeafAmplitude__2bendDetailBranchAmplitude__3;// Offset:   32 Size:    12 [unused]
+//   float4 __0AnimFrequency__1AnimAmplitudeWav0__2AnimPhase__3AnimAmplitudeWav2;// Offset:   48 Size:    16 [unused]
+//   float4 __0__1BeamLength__2OrigLength__3OrigWidth;// Offset:   64 Size:    16
+//   float4 __0StartRadius__1EndRadius__2FinalMultiplier__3viewDependencyFactor;// Offset:   80 Size:    16
+//   float4 StartColor;                 // Offset:   96 Size:    16
+//   float4 EndColor;                   // Offset:  112 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// PER_BATCH                         cbuffer      NA          NA    0        1
+// PER_INSTANCE                      cbuffer      NA          NA    1        1
+// PER_FRAME                         cbuffer      NA          NA    3        1
+// PER_MATERIAL                      cbuffer      NA          NA    4        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyzw        0     NONE   float   xyz 
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// COLOR                    0   xyzw        2     NONE   float       
+// TANGENT                  0   xyzw        3     NONE   float   xyzw
+// BINORMAL                 0   xyzw        4     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyzw        1     NONE   float   xyzw
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        3     NONE   float   xyzw
+// TEXCOORD                 3   xyzw        4     NONE   float   xyzw
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[6], immediateIndexed
+dcl_constantbuffer cb1[5], immediateIndexed
+dcl_constantbuffer cb3[14], immediateIndexed
+dcl_constantbuffer cb4[8], immediateIndexed
+dcl_input v0.xyz
+dcl_input v1.xyzw
+dcl_input v3.xyzw
+dcl_input v4.xyz
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyzw
+dcl_output o4.xyzw
+dcl_temps 5
+add r0.xyz, v3.zxyz, l(0.000000, 0.000001, 0.000000, 0.000000)
+add r1.xyz, v4.yzxy, l(0.000000, 0.000000, -0.000001, 0.000000)
+mul r0.xyz, r0.xyzx, r1.xyzx
+add r1.xyz, v3.yzxy, l(0.000000, 0.000000, 0.000001, 0.000000)
+add r2.xyz, v4.zxyz, l(0.000000, -0.000001, 0.000000, 0.000000)
+mad r0.xyz, r1.xyzx, r2.xyzx, -r0.xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+mul r0.xyz, r0.xyzx, v3.wwww
+add r0.w, -cb4[5].x, cb4[5].y
+div r1.xyz, l(1.000000, 1.000000, 1.000000, 1.000000), cb4[4].zwwz
+mul r1.yzw, r1.xxyz, v0.xxyz
+mad_sat r1.x, -v0.x, r1.x, l(1.000000)
+mad r0.w, r1.y, r0.w, cb4[5].x
+mul r2.yz, r0.wwww, r1.zzwz
+mad r1.z, r1.y, cb4[4].y, r2.y
+mad r0.w, r1.w, r0.w, r1.z
+mad r0.w, r0.w, cb0[5].w, cb0[5].x
+mul r0.w, r0.w, l(3.141593)
+sincos r0.w, null, r0.w
+mad r0.w, r0.w, cb0[5].y, cb0[5].z
+mul r2.x, r1.y, cb4[4].y
+mad r2.xyz, r0.xzyx, r0.wwww, r2.xzyx
+add r3.w, cb1[0].w, -cb3[6].x
+mov r3.xyz, cb1[0].xyzx
+mov r2.w, l(1.000000)
+dp4 r3.x, r3.xzyw, r2.xyzw
+add r4.w, cb1[1].w, -cb3[6].y
+mov r4.xyz, cb1[1].xyzx
+dp4 r3.y, r4.xzyw, r2.xyzw
+add r4.w, cb1[2].w, -cb3[6].z
+mov r4.xyz, cb1[2].xyzx
+dp4 r3.z, r4.xzyw, r2.xyzw
+mov r3.w, l(1.000000)
+dp4 r4.x, cb3[10].xyzw, r3.xyzw
+dp4 r4.y, cb3[11].xyzw, r3.xyzw
+dp4 r4.z, cb3[12].xyzw, r3.xyzw
+dp4 r4.w, cb3[13].xyzw, r3.xyzw
+mov o0.xyzw, r4.xyzw
+mad r1.zw, r4.xxxy, l(0.000000, 0.000000, 1.000000, -1.000000), r4.wwww
+mov o2.zw, r4.zzzw
+mul o2.xy, r1.zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+mov o1.xyzw, v1.xyzw
+add r3.xyz, l(-1.000000, -1.000000, -1.000000, 0.000000), cb4[6].xyzx
+mad r3.xyz, cb3[5].wwww, r3.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+mul r3.xyz, r3.xyzx, cb4[6].xyzx
+mul r3.xyz, r1.xxxx, r3.xyzx
+mul r3.w, r1.x, cb4[6].w
+add r1.xzw, l(-1.000000, 0.000000, -1.000000, -1.000000), cb4[7].xxyz
+mad r1.xzw, cb3[5].wwww, r1.xxzw, l(1.000000, 0.000000, 1.000000, 1.000000)
+mul r1.xzw, r1.xxzw, cb4[7].xxyz
+mul r4.xyz, r1.yyyy, r1.xzwx
+mul r4.w, r1.y, cb4[7].w
+add r1.xyzw, r3.xyzw, r4.xyzw
+add r3.xyz, l(-1.000000, -1.000000, -1.000000, 0.000000), cb4[0].xyzx
+mad r3.xyz, cb3[5].wwww, r3.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+mul r3.xyz, r3.xyzx, cb4[0].xyzx
+mul r1.xyz, r1.xyzx, r3.xyzx
+mul r1.xyzw, r1.xyzw, cb4[5].zzzz
+add r3.xyz, -r2.xzyx, cb1[4].xyzx
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r3.xyz, r0.wwww, r3.xyzx
+dp3 r0.x, r3.xyzx, r0.xyzx
+mul r0.x, r0.x, r0.x
+mul_sat r0.x, r0.x, cb4[5].w
+add r0.y, r0.x, l(-1.000000)
+mad r0.y, cb3[5].w, r0.y, l(1.000000)
+mul r0.x, r0.y, r0.x
+mul o3.xyzw, r0.xxxx, r1.xyzw
+mov r0.x, r2.y
+mul r0.y, cb0[0].x, l(0.050000)
+dp2 o4.z, r0.xyxx, l(0.100000, 1.000000, 0.000000, 0.000000)
+mul r2.yw, cb0[0].xxxx, l(0.000000, 0.100000, 0.000000, 0.150000)
+dp2 o4.x, r2.xyxx, l(0.050000, 1.000000, 0.000000, 0.000000)
+dp2 o4.y, r2.zwzz, l(0.050000, 1.000000, 0.000000, 0.000000)
+mov o4.w, l(0)
+ret 
+// Approximately 79 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
