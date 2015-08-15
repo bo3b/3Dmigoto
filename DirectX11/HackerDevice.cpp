@@ -16,6 +16,60 @@
 #include "SpriteFont.h"
 #include "D3D_Shaders\stdafx.h"
 
+
+// -----------------------------------------------------------------------------------------------
+
+// This special case of texture resolution is to improve the behavior of special 
+// full-screen textures.  Textures can be created dynamically of course, and some
+// are set to full screen resolution.  Full screen resolution can vary between
+// users and we want a way to have a stable texture hash, even while the screen
+// resolution is varying.  
+//
+// This function will modify the hashWidth and hashHeight values actually used
+// in the hash calculation to be magic numbers, really just constants.  That 
+// will make the hash predictable and match, even if the screen resolution changes.
+//
+// The other variants are for *2, *4, *8, /2, as other textures seen with specific
+// resolutions, but are also dynamic based on screen resolution, like 2x or 1/2 the
+// resolution.  
+//
+// ToDo: It might make more sense to avoid this altogether, and have the shaderhacker
+// specify their desired texture in the d3dx.ini file by parameters, not by a single
+// hash.  That would be a sequence found via the ShaderUsages that would specify all
+// the parameters in something like the D3D11_TEXTURE2D_DESC.
+// If this seems like an OK way to go, what about other interesting magic combos like
+// 1.5x (720p->1080p), maybe 1080p specifically. 720/1080=2/3.
+// Would it maybe make more sense to just do all the logical screen combos instead?
+
+static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hashWidth, int *hashHeight)
+{
+	if (width == G->mResolutionInfo.width && height == G->mResolutionInfo.height) {
+		*hashWidth = 'SRES';
+		*hashHeight = 'SRES';
+	}
+	else if (width == G->mResolutionInfo.width * 2 && height == G->mResolutionInfo.height * 2) {
+		*hashWidth = 'SR*2';
+		*hashHeight = 'SR*2';
+	}
+	else if (width == G->mResolutionInfo.width * 4 && height == G->mResolutionInfo.height * 4) {
+		*hashWidth = 'SR*4';
+		*hashHeight = 'SR*4';
+	}
+	else if (width == G->mResolutionInfo.width * 8 && height == G->mResolutionInfo.height * 8) {
+		*hashWidth = 'SR*8';
+		*hashHeight = 'SR*8';
+	}
+	else if (width == G->mResolutionInfo.width / 2 && height == G->mResolutionInfo.height / 2) {
+		*hashWidth = 'SR/2';
+		*hashHeight = 'SR/2';
+	}
+	else {
+		*hashWidth = width;
+		*hashHeight = height;
+	}
+	LogInfo("  resolution: %d, %d \n", *hashWidth, *hashHeight);
+}
+
 // -----------------------------------------------------------------------------------------------
 
 HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
@@ -1220,26 +1274,6 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
 	return mOrigDevice->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
-static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hashWidth, int *hashHeight)
-{
-	if (width == G->mResolutionInfo.width && height == G->mResolutionInfo.height) {
-		*hashWidth = 1386492276;
-		*hashHeight = 1386492276;
-	} else if (width == G->mResolutionInfo.width * 2 && height == G->mResolutionInfo.height * 2) {
-		*hashWidth = 1108431669;
-		*hashHeight = 1108431669;
-	} else if (width == G->mResolutionInfo.width * 4 && height == G->mResolutionInfo.height * 4) {
-		*hashWidth = 1167952304;
-		*hashHeight = 1167952304;
-	} else if (width == G->mResolutionInfo.width * 8 && height == G->mResolutionInfo.height * 8) {
-		*hashWidth = 3503946005;
-		*hashHeight = 3503946005;
-	} else if (width == G->mResolutionInfo.width / 2 && height == G->mResolutionInfo.height / 2) {
-		*hashWidth = 1599678497;
-		*hashHeight = 1599678497;
-	}
-}
-
 STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pResource,
@@ -1519,6 +1553,92 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 }
 
 
+// This will calculate the hash for any Texture2D we see.  The reason to have this
+// be a standalone routine is to isolate the debug code here for debug only builds.
+// We can keep this validation code as debug-only builds. 
+
+std::unordered_map<ID3D11Texture2D *, UINT64> mFNVHashMap;
+
+
+// Temporary routine just for hash validation.  This will be excised from the code
+// later but exist in the project history if we want to reuse it.
+
+void CalcFNVHash(const D3D11_SUBRESOURCE_DATA *initialData, const D3D11_TEXTURE2D_DESC *desc,
+	ID3D11Texture2D **ppTexture2D, int hash_width, int hash_height)
+{
+	// Create hash code.  This is the old way of doing it using fnv_64_buf.  We
+	// can compare these results in terms of collisions with the new variant.
+
+	UINT64 hash = 0;
+	if (initialData && initialData->pSysMem && desc)
+		try
+		{
+			hash = fnv_64_buf(initialData->pSysMem, desc->Width / 2 * desc->Height * desc->ArraySize);
+		}
+		catch (...)
+		{
+			// Fatal error, but catch it and return null for hash.
+			LogInfo("   ******* Exception caught while calculating CalcFNVHash hash ****** \n");
+			hash = 0;
+		}
+
+	if (desc)
+	{
+		// It concerns me that CreateTextureND can use an override if it
+		// matches screen resolution, but when we record render target / shader
+		// resource stats we don't use the same override.
+		//
+		// For textures made with CreateTextureND and later used as a render
+		// target it's probably fine since the hash will still be stored, but
+		// it could be a problem if we need the hash of a render target not
+		// created directly with that. I don't know enough about the DX11 API
+		// to know if this is an issue, but it might be worth using the screen
+		// resolution override in all cases. -DarkStarSword
+		hash ^= hash_width;
+		hash *= FNV_64_PRIME;
+
+		hash ^= hash_height;
+		hash *= FNV_64_PRIME;
+
+		hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
+		hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
+		hash ^= desc->Format; hash *= FNV_64_PRIME;
+		hash ^= desc->SampleDesc.Count;
+		hash ^= desc->SampleDesc.Quality;
+		hash ^= desc->Usage; hash *= FNV_64_PRIME;
+		hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
+		hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
+		hash ^= desc->MiscFlags;
+
+	}
+	LogInfo("  CalcFNVHash InitialData = %p, hash = %016llx \n", initialData, hash);
+
+	// Register hash. Every one seen.
+	if (ppTexture2D)
+	{
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		{
+			for (auto &tex : mFNVHashMap)
+			{
+				if (tex.second == hash)
+				{
+					LogInfo("***  CalcFNVHash hash collision ***  handle = %p, hash = %016llx \n", *ppTexture2D, hash);
+					break;
+				}
+			}
+
+			pair<unordered_map<ID3D11Texture2D *, UINT64>::iterator, bool> p;
+			p = mFNVHashMap.insert(std::pair<ID3D11Texture2D *, UINT64>(*ppTexture2D, hash));
+
+			if (!p.second)
+				LogInfo("***  CalcFNVHash handle reused for new hash ***  handle = %p, hash = %016llx \n", *ppTexture2D, hash);
+
+			LogInfo("  size of mFNVHashMap map: %d \n", mFNVHashMap.size());
+		}
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	}
+}
+
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__in  const D3D11_TEXTURE2D_DESC *pDesc,
@@ -1530,18 +1650,18 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	TextureOverride *textureOverride = NULL;
 	bool override = false;
 
-	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
-	if (pDesc) LogDebug("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+	LogInfo("HackerDevice::CreateTexture2D called with parameters\n");
+	if (pDesc) LogInfo("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
-	if (pDesc) LogDebug("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 	if (pInitialData && pInitialData->pSysMem)
 	{
-		LogDebug("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
+		LogInfo("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
 		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
 		for (size_t i = 0; i < 16; i++)
-			LogDebug(" %02hX", hex[i]);
-		LogDebug("\n");
+			LogInfo(" %02hX", hex[i]);
+		LogInfo("\n");
 	}
 
 	// Preload shaders? 
@@ -1642,39 +1762,35 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
-	// Get screen resolution.
+	// Override width/height if they match screen resolution.
 	int hashWidth = 0;
 	int hashHeight = 0;
 	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
 		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
 
 	// Hash based on raw texture data
-	// TODO: are we sure we want to add a hash in the zero data case, with 
-	// much higher potential for collisions?  Also, seems like it would actually
-	// make far more sense for us to wrap these texture objects and return
-	// them to the game.  Avoid the hash altogether.
-	
-	// Need the address of the data in the map, because otherwise we have mystery
-	// textures that weren't logged or seen.  So, in degenerate cases, we need
-	// to still add them, just as zero.
+	// TODO: Wrap these texture objects and return them to the game.
+	//  That would avoid the hash lookup later.
+
+	// We are using both pDesc and pInitialData if it exists.  Even in the 
+	// pInitialData=0 case, we still need to make a hash, as these are often
+	// hashes that are created on the fly, filled in later. So, even though all
+	// we have to go on is the easily duplicated pDesc, we'll still use it and
+	// accept that we might get collisions.
+
 	// Also, we see duplicate hashes happen, sort-of collisions.  These don't
 	// happen because of hash miscalculation, they are literally exactly the
 	// same data. Like a fully black texture screen size, shows up multiple times
 	// and calculates to same hash.
 	// We also see the handle itself get reused. That suggests that maybe we ought
 	// to be tracking Release operations as well, and taking them back out.
-	// We don't want ones with only pDesc available, as they are super easy to 
-	// duplicate/collide. Rather than rely only on that data, we'll set to zero too,
-	// as a degenerate case.
 
 	uint32_t hash = 0;
 	if (pInitialData && pInitialData->pSysMem && pDesc)
-	{
-		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
 		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
-	}
-	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
-
+	if (pDesc)
+		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
+	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 	// Override custom settings?
 	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
@@ -1765,6 +1881,9 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			LogInfo("  size of mTexture2D_ID map: %d \n", G->mTexture2D_ID.size());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+		// Debug only code for validation of hashing.
+		CalcFNVHash(pInitialData, pDesc, ppTexture2D, hashWidth, hashHeight);
 	}
 
 	return hr;

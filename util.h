@@ -74,7 +74,7 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
 // -----------------------------------------------------------------------------------------------
 
 static uint32_t CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc,
-	uint32_t initial_hash, UINT override_width, UINT override_height)
+	uint32_t initial_hash, UINT hash_width, UINT hash_height)
 {
 	// It concerns me that CreateTextureND can use an override if it
 	// matches screen resolution, but when we record render target / shader
@@ -95,8 +95,8 @@ static uint32_t CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc,
 
 	UINT saveWidth = desc->Width;
 	UINT saveHeight = desc->Height;
-	desc->Width = override_width;
-	desc->Height = override_height;
+	desc->Width = hash_width;
+	desc->Height = hash_height;
 
 	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE2D_DESC));
 	
@@ -107,7 +107,7 @@ static uint32_t CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc,
 }
 
 static uint32_t CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc,
-	uint32_t initial_hash, UINT override_width, UINT override_height)
+	uint32_t initial_hash, UINT hash_width, UINT hash_height)
 {
 	// Same comment as in CalcTexture2DDescHash above - concerned about
 	// inconsistent use of these resolution overrides
@@ -116,8 +116,8 @@ static uint32_t CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc,
 
 	UINT saveWidth = desc->Width;
 	UINT saveHeight = desc->Height;
-	desc->Width = override_width;
-	desc->Height = override_height;
+	desc->Width = hash_width;
+	desc->Height = hash_height;
 
 	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE3D_DESC));
 
