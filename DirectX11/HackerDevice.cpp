@@ -1553,92 +1553,6 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 }
 
 
-// This will calculate the hash for any Texture2D we see.  The reason to have this
-// be a standalone routine is to isolate the debug code here for debug only builds.
-// We can keep this validation code as debug-only builds. 
-
-std::unordered_map<ID3D11Texture2D *, UINT64> mFNVHashMap;
-
-
-// Temporary routine just for hash validation.  This will be excised from the code
-// later but exist in the project history if we want to reuse it.
-
-void CalcFNVHash(const D3D11_SUBRESOURCE_DATA *initialData, const D3D11_TEXTURE2D_DESC *desc,
-	ID3D11Texture2D **ppTexture2D, int hash_width, int hash_height)
-{
-	// Create hash code.  This is the old way of doing it using fnv_64_buf.  We
-	// can compare these results in terms of collisions with the new variant.
-
-	UINT64 hash = 0;
-	if (initialData && initialData->pSysMem && desc)
-		try
-		{
-			hash = fnv_64_buf(initialData->pSysMem, desc->Width / 2 * desc->Height * desc->ArraySize);
-		}
-		catch (...)
-		{
-			// Fatal error, but catch it and return null for hash.
-			LogInfo("   ******* Exception caught while calculating CalcFNVHash hash ****** \n");
-			hash = 0;
-		}
-
-	if (desc)
-	{
-		// It concerns me that CreateTextureND can use an override if it
-		// matches screen resolution, but when we record render target / shader
-		// resource stats we don't use the same override.
-		//
-		// For textures made with CreateTextureND and later used as a render
-		// target it's probably fine since the hash will still be stored, but
-		// it could be a problem if we need the hash of a render target not
-		// created directly with that. I don't know enough about the DX11 API
-		// to know if this is an issue, but it might be worth using the screen
-		// resolution override in all cases. -DarkStarSword
-		hash ^= hash_width;
-		hash *= FNV_64_PRIME;
-
-		hash ^= hash_height;
-		hash *= FNV_64_PRIME;
-
-		hash ^= desc->MipLevels; hash *= FNV_64_PRIME;
-		hash ^= desc->ArraySize; hash *= FNV_64_PRIME;
-		hash ^= desc->Format; hash *= FNV_64_PRIME;
-		hash ^= desc->SampleDesc.Count;
-		hash ^= desc->SampleDesc.Quality;
-		hash ^= desc->Usage; hash *= FNV_64_PRIME;
-		hash ^= desc->BindFlags; hash *= FNV_64_PRIME;
-		hash ^= desc->CPUAccessFlags; hash *= FNV_64_PRIME;
-		hash ^= desc->MiscFlags;
-
-	}
-	LogInfo("  CalcFNVHash InitialData = %p, hash = %016llx \n", initialData, hash);
-
-	// Register hash. Every one seen.
-	if (ppTexture2D)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		{
-			for (auto &tex : mFNVHashMap)
-			{
-				if (tex.second == hash)
-				{
-					LogInfo("***  CalcFNVHash hash collision ***  handle = %p, hash = %016llx \n", *ppTexture2D, hash);
-					break;
-				}
-			}
-
-			pair<unordered_map<ID3D11Texture2D *, UINT64>::iterator, bool> p;
-			p = mFNVHashMap.insert(std::pair<ID3D11Texture2D *, UINT64>(*ppTexture2D, hash));
-
-			if (!p.second)
-				LogInfo("***  CalcFNVHash handle reused for new hash ***  handle = %p, hash = %016llx \n", *ppTexture2D, hash);
-
-			LogInfo("  size of mFNVHashMap map: %d \n", mFNVHashMap.size());
-		}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-}
-
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__in  const D3D11_TEXTURE2D_DESC *pDesc,
@@ -1881,9 +1795,6 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			LogInfo("  size of mTexture2D_ID map: %d \n", G->mTexture2D_ID.size());
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-
-		// Debug only code for validation of hashing.
-		CalcFNVHash(pInitialData, pDesc, ppTexture2D, hashWidth, hashHeight);
 	}
 
 	return hr;
