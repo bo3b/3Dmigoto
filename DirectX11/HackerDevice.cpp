@@ -1752,7 +1752,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// same data. Like a fully black texture screen size, shows up multiple times
 	// and calculates to same hash.
 	// We also see the handle itself get reused. That suggests that maybe we ought
-	// to be tracking Release operations as well, and taking them back out.
+	// to be tracking Release operations as well, and removing them from the map.
 
 	uint32_t hash = 0;
 	if (pInitialData && pInitialData->pSysMem && pDesc)
@@ -1827,27 +1827,12 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	}
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
-	// Register texture. Every one seen. Bad ones will have hash equal to zero.
+	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		{
-			for (auto &tex : G->mTexture2D_ID)
-			{
-				if (tex.second == hash)
-				{
-					LogInfo("***  mTexture2D_ID hash collision ***  handle = %p, hash = %08lx \n", *ppTexture2D, hash);
-					break;
-				}
-			}
-
-			pair<unordered_map<ID3D11Texture2D *, uint32_t>::iterator, bool> p;
-			p = G->mTexture2D_ID.insert(std::pair<ID3D11Texture2D *, uint32_t>(*ppTexture2D, hash));
-
-			if (!p.second)
-				LogInfo("***  mTexture2D_ID handle reused for new hash ***  handle = %p, hash = %08lx \n", *ppTexture2D, hash);
-			
-			LogInfo("  size of mTexture2D_ID map: %d \n", G->mTexture2D_ID.size());
+			G->mTexture2D_ID[*ppTexture2D] = hash;
 		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
