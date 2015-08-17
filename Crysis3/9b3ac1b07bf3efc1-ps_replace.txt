@@ -1,0 +1,262 @@
+// Fixed warning for SampleGrad.
+
+// For some reason it did not pick up names out of cb2, cb3, and created defaults.
+// Maybe length of the substruct names like __0DetailNormalsScale__1NormalsScale__2__3
+// Also maybe not packoffset variant.
+//
+// Seems to maybe be that the lines are so long that we had no space separator for name
+// versus the comments on the same line in ASM.
+
+cbuffer PER_BATCH : register(b0)
+{
+  float4 vfViewPos : packoffset(c0);
+  float4 cFogColorDensity : packoffset(c1);
+  float3 vfSunDir : packoffset(c2);
+  float4 volFogShadowDarkening : packoffset(c3);
+  float4 PS_WorldViewPos : packoffset(c4);
+  float3 vfColGradDelta : packoffset(c5);
+  float4 vfRampParams : packoffset(c6);
+  float4 vfColGradRadial : packoffset(c7);
+  float4 vfParams : packoffset(c8);
+  float4 PS_NearFarClipDist : packoffset(c9);
+  float4 vfColGradParams : packoffset(c10);
+  float4 volFogShadowDarkeningSunAmb : packoffset(c11);
+  float4 PS_ScreenSize : packoffset(c12);
+  float3 CameraFrontVector : packoffset(c13);
+  float3 vfColGradBase : packoffset(c14);
+  float4 PS_HPosScale : packoffset(c15);
+}
+
+cbuffer PER_INSTANCE : register(b1)
+{
+  row_major float4x4 mViewProj : packoffset(c0);
+}
+
+cbuffer PER_FRAME : register(b2)
+{
+  float4 g_PS_SunLightDir : packoffset(c2);
+}
+
+cbuffer PER_MATERIAL : register(b3)
+{
+  float4 MatSpecColor : packoffset(c1);
+  float2 __0RealtimeReflMul__1EnvCubeReflMul__2__3 : packoffset(c6);
+  float2 __0DetailNormalsScale__1NormalsScale__2__3 : packoffset(c7);
+  float4 __0__1__2__3EnvCubeScale : packoffset(c8);
+  float4 __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling : packoffset(c9);
+}
+SamplerState sceneDepthSampler_s : register(s0);
+SamplerState RefractionSampler_s : register(s1);
+SamplerState ReflSampler_s : register(s2);
+SamplerState WaterNormalsSampler_s : register(s3);
+SamplerState volFogShadowSampler_s : register(s4);
+Texture2D<float4> WaterNormalsSampler : register(t0);
+Texture2D<float4> RefractionSampler : register(t1);
+Texture2D<float4> sceneDepthSampler : register(t2);
+Texture2D<float4> ReflSampler : register(t3);
+Texture2D<float4> volFogShadowSampler : register(t4);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = float2(0.25,0.25) * v1.xy;
+  r0.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r0.xy).xyw;
+  r0.xyz = r0.xyz * float3(0.150000006,0.150000006,0.100000001) + float3(-0.075000003,-0.075000003,-0.0500000007);
+  r0.w = dot(v3.xyz, v3.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v3.xyz * r0.www;
+  r0.xyzw = r1.xyxy * r0.zzzz + r0.xyxy;
+  r2.xy = v1.xy * float2(1,1) + r0.zw;
+  r2.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r2.xy).xyw;
+  r2.xyz = r2.xyz * float3(0.150000006,0.150000006,0.100000001) + float3(-0.075000003,-0.075000003,-0.0500000007);
+  r2.xyzw = r1.xyxy * r2.zzzz + r2.xyxy;
+  r0.xyzw = r2.xyzw + r0.xyzw;
+  r2.xy = float2(0.5,0.5) * v1.zw;
+  r1.w = __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.w * __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.z;
+  r2.xy = r2.xy / r1.ww;
+  r1.w = r1.w + r1.w;
+  r2.xy = r2.xy * r1.ww + r0.xy;
+  r2.xy = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r2.xy).xy;
+  r2.xy = r2.xy * float2(2,2) + float2(-1,-1);
+  r3.xyzw = v1.xyxy / __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.wwww;
+  r4.xyzw = __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.wwww * float4(0.25,0.25,1,1);
+  r0.xyzw = r3.xyzw * r4.xyzw + r0.xyzw;
+  r3.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r0.xy).xyz;
+  r0.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r0.zw).xyz;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r0.xyz = r0.xyz * float3(2,2,2) + r3.xyz;
+  r0.xy = r2.xy * __0DetailNormalsScale__1NormalsScale__2__3.xx + r0.xy;
+  r0.xyz = float3(-1,-1,-1) + r0.xyz;
+  r0.xy = __0DetailNormalsScale__1NormalsScale__2__3.yy * r0.xy;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r0.xyz * r0.www + float3(-0,-0,-1);
+  r0.xyz = r0.xyz * r0.www;
+  r2.xyz = r2.xyz * float3(0.300000012,0.300000012,0.300000012) + float3(0,0,1);
+  r3.xyz = PS_WorldViewPos.xyz + -v5.xyz;
+  r0.w = dot(r3.xyz, r2.xyz);
+  r0.w = r0.w + r0.w;
+  r2.xyz = r2.xyz * -r0.www + r3.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www + v5.xyz;
+  r2.w = 1;
+  r3.x = dot(mViewProj._m00_m01_m02_m03, r2.xyzw);
+  r3.y = dot(mViewProj._m10_m11_m12_m13, r2.xyzw);
+  r0.w = dot(mViewProj._m30_m31_m32_m33, r2.xyzw);
+  r2.xy = r3.xy / r0.ww;
+  r3.xyz = v5.xyz;
+  r3.w = 1;
+  r4.x = dot(mViewProj._m00_m01_m02_m03, r3.xyzw);
+  r4.y = dot(mViewProj._m10_m11_m12_m13, r3.xyzw);
+  r0.w = dot(mViewProj._m30_m31_m32_m33, r3.xyzw);
+  r2.zw = r4.xy / r0.ww;
+  r2.xy = r2.xy + -r2.zw;
+  r0.w = dot(r2.xy, r2.xy);
+  r0.w = rsqrt(r0.w);
+  r2.xy = r2.xy * r0.ww;
+  r2.xy = PS_HPosScale.xy * r2.xy;
+  r0.w = 0.5 * PS_ScreenSize.y;
+  r0.w = log2(r0.w);
+  r0.w = -4 + r0.w;
+  r0.w = -MatSpecColor.w * r0.w + r0.w;
+  r2.xy = r2.xy * r0.ww;
+  r2.xy = PS_ScreenSize.ww * r2.xy;
+  r2.xy = float2(64,64) * r2.xy;
+  r2.zw = v2.xy / v2.ww;
+  r0.w = sceneDepthSampler.Sample(sceneDepthSampler_s, r2.zw).x;
+  r1.w = r0.w * PS_NearFarClipDist.y + -v2.w;
+  r0.w = PS_NearFarClipDist.y * r0.w;
+  r1.w = saturate(__0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.x * r1.w);
+  r3.xy = r1.ww * r0.xy;
+  r0.x = dot(r1.xyz, r0.xyz);
+  r0.y = dot(r1.xyz, CameraFrontVector.xyz);
+  r0.x = -r0.x * v3.w + 1;
+  r1.xy = v2.zz * r3.xy;
+  r3.xw = float2(0.150000006,0.150000006);
+  r3.yz = PS_HPosScale.yx;
+  r3.xy = r3.xy * r1.xy;
+  r3.xy = r3.xy * r3.zw + r2.zw;
+  r0.z = -r1.y * r3.w + 1;
+  r4.z = -r0.z * PS_HPosScale.y + 1;
+  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r3.xy).x;
+  r0.z = PS_NearFarClipDist.y * r0.z;
+  r0.z = v2.w < r0.z;
+  r0.z = r0.z ? 1.000000 : 0;
+  r1.z = 0.150000006 * r1.x;
+  r1.xy = PS_HPosScale.xy * r1.xy;
+  r4.x = r1.z * r3.z;
+  r3.xy = r4.xz * r0.zz + r2.zw;
+  r3.xyzw = ReflSampler.SampleGrad(ReflSampler_s, r3.xy, r2.xy, float2(0,0)).xyzw;
+  r0.z = r3.w * r3.w;
+  r0.z = 32 * r0.z;
+  r3.xyz = r3.xyz * r0.zzz;
+  r3.xyz = r3.xyz / g_PS_SunLightDir.www;
+  r2.xy = r1.xy * float2(0.0985000059,0.0985000059) + r2.zw;
+  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r2.xy).x;
+  r4.z = PS_NearFarClipDist.y * r0.z;
+  r5.xyzw = r1.xyxy * float4(0.102499999,0.102499999,0.100000001,0.100000001) + r2.zwzw;
+  r1.xy = float2(0.100000001,0.100000001) * r1.xy;
+  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r5.zw).x;
+  r1.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r5.xy).x;
+  r4.y = PS_NearFarClipDist.y * r0.z;
+  r4.x = PS_NearFarClipDist.y * r1.z;
+  r0.z = r1.z * PS_NearFarClipDist.y + -r0.w;
+  r4.xyz = v2.www < r4.xyz;
+  r4.xyz = r4.xyz ? 1.000000 : 0;
+  r2.xy = r4.xx * r1.xy;
+  r2.xy = r2.xy * float2(1.02499998,1.02499998) + r2.zw;
+  r5.x = RefractionSampler.Sample(RefractionSampler_s, r2.xy).x;
+  r2.xy = r4.zz * r1.xy;
+  r1.xy = r1.xy * r4.yy + r2.zw;
+  r0.z = r4.x * r0.z + r0.w;
+  r5.y = RefractionSampler.Sample(RefractionSampler_s, r1.xy).y;
+  r1.xy = r2.xy * float2(0.985000014,0.985000014) + r2.zw;
+  r0.w = volFogShadowSampler.Sample(volFogShadowSampler_s, r2.zw).w;
+  r5.z = RefractionSampler.Sample(RefractionSampler_s, r1.xy).z;
+  r1.xyz = r5.xyz / g_PS_SunLightDir.www;
+  r1.xyz = -cFogColorDensity.xyz + r1.xyz;
+  r2.x = dot(v3.xyz, CameraFrontVector.xyz);
+  r0.z = -r2.x + r0.z;
+  r0.z = max(0, r0.z);
+  r0.z = -cFogColorDensity.w * r0.z;
+  r0.y = r0.z / r0.y;
+  r0.y = exp2(r0.y);
+  r0.y = min(1, r0.y);
+  r1.xyz = r0.yyy * r1.xyz + cFogColorDensity.xyz;
+  r2.xyz = r3.xyz + -r1.xyz;
+  r0.y = r0.x * r0.x;
+  r0.y = r0.y * r0.y;
+  r0.x = r0.x * r0.y;
+  r0.x = saturate(r0.x * 0.949999988 + 0.0500000007);
+  r0.y = saturate(-0.330000013 + v2.w);
+  r0.y = r1.w * r0.y;
+  r0.x = r0.x * r0.y;
+  r1.xyz = r0.xxx * r2.xyz + r1.xyz;
+  r0.x = saturate(v5.z * vfColGradParams.x + vfColGradParams.y);
+  r0.z = 2 + -r0.x;
+  r0.x = r0.x * r0.z;
+  r2.xyz = r0.xxx * vfColGradDelta.xyz + vfColGradBase.xyz;
+  r0.x = dot(-v3.xyz, -v3.xyz);
+  r0.z = rsqrt(r0.x);
+  r0.x = sqrt(r0.x);
+  r3.xyz = -v3.xyz * r0.zzz;
+  r0.z = dot(r3.xyz, vfSunDir.xyz);
+  r0.z = r0.z * -vfColGradParams.z + vfColGradParams.z;
+  r0.z = exp2(r0.z);
+  r1.w = saturate(vfColGradRadial.w * r0.x);
+  r1.w = log2(r1.w);
+  r1.w = vfColGradParams.w * r1.w;
+  r1.w = exp2(r1.w);
+  r0.z = r1.w * r0.z;
+  r3.xyz = vfColGradRadial.xyz * r0.zzz;
+  r4.xy = saturate(r0.ww * volFogShadowDarkeningSunAmb.xz + volFogShadowDarkeningSunAmb.yw);
+  r3.xyz = r4.xxx * r3.xyz;
+  r2.xyz = r2.xyz * r4.yyy + r3.xyz;
+  r3.xyz = volFogShadowDarkening.xxx * r2.xyz;
+  r2.xyz = -r2.xyz * volFogShadowDarkening.xxx + r2.xyz;
+  r2.xyz = r0.www * r2.xyz + r3.xyz;
+  r2.xyz = r2.xyz + -r1.xyz;
+  r0.yzw = r0.yyy * r2.xyz + r1.xyz;
+  r1.xyz = r1.xyz + -r0.yzw;
+  r1.w = vfParams.x * -v3.z;
+  r2.x = 1.44269502 * r1.w;
+  r2.x = exp2(r2.x);
+  r2.x = -1 + r2.x;
+  r2.x = r2.x / r1.w;
+  r1.w = 0.00999999978 < abs(r1.w);
+  r1.w = r1.w ? r2.x : 1;
+  r2.x = vfParams.y * r0.x;
+  r0.x = saturate(r0.x * vfRampParams.x + vfRampParams.y);
+  r1.w = r2.x * r1.w;
+  r1.w = exp2(-r1.w);
+  r1.w = min(1, r1.w);
+  r1.w = 1 + -r1.w;
+  r2.x = 2 + -r0.x;
+  r0.x = r2.x * r0.x;
+  r0.x = r0.x * vfRampParams.z + vfRampParams.w;
+  r0.x = -r1.w * r0.x + 1;
+  r0.x = saturate(max(vfParams.w, r0.x));
+  r0.xyz = r0.xxx * r1.xyz + r0.yzw;
+  o0.xyz = g_PS_SunLightDir.www * r0.xyz;
+  o0.w = 1;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+D:\GAMES\Crysis 3\wrapper1349(165,13-82): warning X3206: 'SampleGrad': implicit truncation of vector type
+D:\GAMES\Crysis 3\wrapper1349(165,13-82): warning X3206: 'SampleGrad': implicit truncation of vector type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
