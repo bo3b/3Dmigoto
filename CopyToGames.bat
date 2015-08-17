@@ -36,8 +36,8 @@ exit
 echo 
 xcopy "%1*.*" "T:\Games\Watch_Dogs\bin"  /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Call of Duty Ghosts\"  /F /Y
-xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64\" /F /Y
 xcopy "%1*.*" "T:\Bootleg\Project CARS\" /F /Y
 xcopy "%1*.*" "T:\Games\The Witcher 3 Wild Hunt\bin\x64\" /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Metal Gear Solid Ground Zeroes\" /F /Y
 xcopy "%1*.*" "T:\SteamLibrary\SteamApps\common\Batman Arkham Knight\Binaries\Win64\" /F /Y
+xcopy "%1*.*" "C:\Program Files\Rockstar Games\Grand Theft Auto V\" /F /Y
