@@ -13,7 +13,7 @@ Texture1D<float4> IniParams : register(t120);
 void main( 
   float3 v0 : TEXCOORD10,
   float4 v1 : TEXCOORD11,
-  float2 v2 : TEXCOORD0,
+  float2 v2[2] : TEXCOORD0, // dcl_indexrange
   float2 v3 : TEXCOORD1,
   float4 v4 : TEXCOORD6,
   out float4 o0 : SV_TARGET0)
@@ -22,7 +22,7 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  float4 v[2] = { v0,v1 };
+  // float2 v2[2] = { v0,v1 };
   r0.xyz = ddx_coarse(v4.zxy);
   r1.xyz = ddy_coarse(v4.yzx);
   r2.xyz = r1.xyz * r0.xyz;
@@ -34,12 +34,24 @@ void main(
   r0.z = cb0[40].y;
   r0.w = 0.000000000e+000;
   while (true) {
+// loop 
+  // ilt r1.x, r0.w, r0.y
+  // ilt r1.y, r0.w, l(16)
+  // and r1.x, r1.y, r1.x
+  // breakc_z r1.x
+    // Exactly identical generation
+    // r1.x = (asint(r0.w) < asint(r0.y)) ? (int)-1 : 0; //(int)r0.w < (int)r0.y;
+    // r1.y = (asint(r0.w) < asint(16)) ? (int)-1 : 0; //(int)r0.w < 16;
+    // r1.x = int(r1.x) & int(r1.y); //r1.y ? r1.x : 0;
+    // if (int(r1.x) == 0) break;
+
     r1.x = (int)r0.w < (int)r0.y;
     r1.y = (int)r0.w < 16;
     r1.x = r1.y ? r1.x : 0;
     if (r1.x == 0) break;
+
     r1.x = (int)cb0[r0.w+41].z;
-    r1.xy = cb0[r0.w+41].yx * v[r1.x+2].yx;
+    r1.xy = cb0[r0.w+41].yx * v2[r1.x+2].yx;
     r1.zw = ddx_coarse(r1.yx);
     r1.xy = ddy_coarse(r1.xy);
     r1.y = r1.w * r1.y;
