@@ -1577,22 +1577,13 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
 	if (hr == S_OK && ppBuffer && G->hunting)
 	{
-		// TODO: this follows the old form of creating a hash even if the
-		// input of pInitialData is null.  Is this what we want though?
-		// It seems like just using very small data like ByteWidth, Stride
-		// and Flags can very easily lead to collisions because of identical
-		// buffer types.
-		// Does it make more sense to skip adding those buffers to the 
-		// mDataBuffers as something we really cannot find later, or is
-		// fairly likely to have collisions unrelated to hash?
-
-		// Create hash from the raw buffer data, but also include
+		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
 		uint32_t hash = 0;
+		if (pInitialData && pInitialData->pSysMem && pDesc)
+			hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
 		if (pDesc)
 			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
-		if (pInitialData && pInitialData->pSysMem)
-			hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
 
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mDataBuffers[*ppBuffer] = hash;
@@ -1625,18 +1616,18 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	TextureOverride *textureOverride = NULL;
 	bool override = false;
 
-	LogInfo("HackerDevice::CreateTexture2D called with parameters\n");
-	if (pDesc) LogInfo("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
+	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
+	if (pDesc) LogDebug("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
 		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
-	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
+	if (pDesc) LogDebug("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 	if (pInitialData && pInitialData->pSysMem)
 	{
-		LogInfo("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
+		LogDebug("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
 		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
 		for (size_t i = 0; i < 16; i++)
-			LogInfo(" %02hX", hex[i]);
-		LogInfo("\n");
+			LogDebug(" %02hX", hex[i]);
+		LogDebug("\n");
 	}
 
 	// Preload shaders? 
@@ -1759,7 +1750,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
 	if (pDesc)
 		hash = CalcTexture2DDescHash(hash, pDesc);
-	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
+	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 	// Override custom settings?
 	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
@@ -1831,9 +1822,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (hr == S_OK && ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		{
 			G->mTexture2D_ID[*ppTexture2D] = hash;
-		}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
