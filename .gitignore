@@ -9,6 +9,7 @@
 *.tlog
 *.lastbuildstate
 *.res
+*.vsps
 
 # Project specific ignores
 /7zip/7-zip.chm
