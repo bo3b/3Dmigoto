@@ -1,4 +1,4 @@
-//Bushes
+//Bushes 3
 cbuffer rage_matrices : register(b1)
 {
   row_major float4x4 gWorld : packoffset(c0);
@@ -90,7 +90,7 @@ Texture3D<float4> SfxWindSampler3D : register(t2);
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-void main(
+void main( 
   float3 v0 : POSITION0,
   float3 v1 : NORMAL0,
   float4 v2 : COLOR0,
@@ -99,8 +99,8 @@ void main(
   float4 v5 : TANGENT0,
   out float4 o0 : SV_Position0,
   out float4 o1 : TEXCOORD0,
-  out float3 o2 : TEXCOORD1,
-  out float3 o3 : TEXCOORD2,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
   out float3 o4 : TEXCOORD3)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10;
@@ -118,22 +118,22 @@ void main(
   o4.xyz = v5.www * r2.xyz;
   r0.w = dot(branchBendEtc_UnderWaterTransition.xyz, v0.xyz);
   r0.w = saturate(branchBendEtc_UnderWaterTransition.w + r0.w);
-  r1.w = 0.000000000e+000 < r0.w;
+  r1.w = 0 < r0.w;
   if (r1.w != 0) {
     r1.w = saturate(umGlobalParams.z * branchBendEtc_WindSpeedSoftClamp.z);
-    r1.w = 1.000000000e+000 + -r1.w;
+    r1.w = 1 + -r1.w;
     r2.x = branchBendEtc_WindVector[1].w * globalScalars2.x;
     r2.y = branchBendEtc_WindVector[2].w * globalScalars2.x;
     r2.xy = v2.yy + r2.xy;
     r2.xy = branchBendEtc_WindVector[3].ww + r2.xy;
     r2.xy = frac(r2.xy);
-    r2.xy = float2(-5.000000e-001,-5.000000e-001) + r2.xy;
-    r2.xy = -abs(r2.xy) * float2(2.000000e+000,2.000000e+000) + float2(1.000000e+000,1.000000e+000);
+    r2.xy = float2(-0.5,-0.5) + r2.xy;
+    r2.xy = -abs(r2.xy) * float2(2,2) + float2(1,1);
     r2.zw = r2.xy * r2.xy;
-    r2.xy = -r2.xy * float2(2.000000e+000,2.000000e+000) + float2(3.000000e+000,3.000000e+000);
+    r2.xy = -r2.xy * float2(2,2) + float2(3,3);
     r2.xy = r2.zw * r2.xy;
-    r2.xy = r2.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
-    r2.zw = float2(1.000000e+000,1.000000e+000) + -r2.yx;
+    r2.xy = r2.xy * float2(2,2) + float2(-1,-1);
+    r2.zw = float2(1,1) + -r2.yx;
     r3.x = r2.w * r2.z;
     r2.zw = r2.xy * r2.zw;
     r2.x = r2.x * r2.y;
@@ -144,48 +144,48 @@ void main(
     r3.xyz = branchBendEtc_SfxWindEvalModulation.xyz * globalScalars2.xxx + v2.yyy;
     r3.xyz = branchBendEtc_WindVector[3].www + r3.xyz;
     r3.xyz = frac(r3.xyz);
-    r3.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r3.xyz;
-    r3.xyz = -abs(r3.xyz) * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(1.000000e+000,1.000000e+000,1.000000e+000);
+    r3.xyz = float3(-0.5,-0.5,-0.5) + r3.xyz;
+    r3.xyz = -abs(r3.xyz) * float3(2,2,2) + float3(1,1,1);
     r4.xyz = r3.xyz * r3.xyz;
-    r3.xyz = -r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(3.000000e+000,3.000000e+000,3.000000e+000);
+    r3.xyz = -r3.xyz * float3(2,2,2) + float3(3,3,3);
     r3.xyz = r4.xyz * r3.xyz;
     r2.w = r3.x + r3.x;
-    r3.w = 0.000000000e+000 < branchBendEtc_AABBInfo[0].w;
-    if (r3.w != 0) {
-      r3.xyz = r3.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
-      r3.xyz = r3.xyz * branchBendEtc_SfxWindEvalModulation.www + v0.xyz;
-      r3.xyz = -branchBendEtc_AABBInfo[0].xyz + r3.xyz;
-      r3.xyz = branchBendEtc_AABBInfo[1].xyz * r3.xyz;
-      r3.xyzw = SfxWindSampler3D.SampleLevel(SfxWindSampler3D_s, r3.xyz, 0.000000000e+000).xyzw;
-    } else {
-      r3.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-    }
-    r3.w = 1.000000000e+000 + -branchBendEtc_SfxWindValueModulation.x;
+    r3.w = 0 < branchBendEtc_AABBInfo[0].w;
+    //if (r3.w != 0) {
+    //  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+    //  r3.xyz = r3.xyz * branchBendEtc_SfxWindEvalModulation.www + v0.xyz;
+    //  r3.xyz = -branchBendEtc_AABBInfo[0].xyz + r3.xyz;
+    //  r3.xyz = branchBendEtc_AABBInfo[1].xyz * r3.xyz;
+    //  r3.xyzw = SfxWindSampler3D.SampleLevel(SfxWindSampler3D_s, r3.xyz, 0).xyzw;
+    //} else {
+      r3.xyz = float3(0,0,0);
+    //}
+    r3.w = 1 + -branchBendEtc_SfxWindValueModulation.x;
     r2.w = branchBendEtc_SfxWindValueModulation.x * r2.w;
-    r2.w = r2.w * 5.000000000e-001 + r3.w;
+    r2.w = r2.w * 0.5 + r3.w;
     r2.xyz = r2.www * r3.xyz + r2.xyz;
-    r2.w = max(v2.z, v2.x);
+    r2.w = max(v2.x, v2.z);
     r2.xyz = r2.www * r2.xyz;
     r2.xyz = r2.xyz * r1.www;
     r3.x = dot(gWorld._m00_m01_m02, r2.xyz);
     r3.y = dot(gWorld._m10_m11_m12, r2.xyz);
     r3.z = dot(gWorld._m20_m21_m22, r2.xyz);
     r2.x = dot(v0.xyz, v0.xyz);
-    r2.yzw = float3(1.000000e-003,0.000000e+000,0.000000e+000) + abs(r3.xyz);
+    r2.yzw = float3(0.00100000005,0,0) + abs(r3.xyz);
     r2.y = dot(r2.yzw, r2.yzw);
     r2.xy = sqrt(r2.xy);
     r2.zw = branchBendEtc_WindSpeedSoftClamp.xy * r1.ww;
     r1.w = -branchBendEtc_WindSpeedSoftClamp.x * r1.w + r2.y;
-    r1.w = max(r1.w, 0.000000000e+000);
+    r1.w = max(0, r1.w);
     r1.w = r1.w / r2.w;
-    r1.w = -1.442695022e+000 * r1.w;
+    r1.w = -1.44269502 * r1.w;
     r1.w = exp2(r1.w);
-    r1.w = 1.000000000e+000 + -r1.w;
+    r1.w = 1 + -r1.w;
     r1.w = r2.w * r1.w + r2.z;
     r1.w = r1.w / r2.y;
     r2.y = r2.z >= r2.y;
     r2.y = r2.y ? 1.000000 : 0;
-    r2.z = 1.000000000e+000 + -r1.w;
+    r2.z = 1 + -r1.w;
     r1.w = r2.z * r2.y + r1.w;
     r2.yzw = r3.xyz * r1.www + v0.xyz;
     r1.w = dot(r2.yzw, r2.yzw);
@@ -195,24 +195,24 @@ void main(
   } else {
     r2.xyz = v0.xyz;
   }
-  r1.w = r0.w < 1.000000000e+000;
+  r1.w = r0.w < 1;
   r3.xyz = umGlobalParams.xxy * v2.xxz;
   r3.xyz = umGlobalOverrideParams.xxy * r3.xyz;
   r2.w = _worldPlayerPos_umGlobalPhaseShift.w + v2.y;
-  r2.w = 6.283185005e+000 * abs(r2.w);
+  r2.w = 6.28318501 * abs(r2.w);
   r4.xyz = umGlobalParams.zzw * umGlobalOverrideParams.zzw;
   r4.xyz = globalScalars2.xxx * r4.xyz + r2.www;
   r4.xyz = sin(r4.xyz);
   r3.xyz = r4.xyz * r3.xyz + v0.xyz;
   r3.xyz = r1.www ? r3.xyz : v0.xyz;
-  r1.w = 1.000000000e+000 + -r0.w;
+  r1.w = 1 + -r0.w;
   r2.xyz = r2.xyz * r0.www;
   r2.xyz = r1.www * r3.xyz + r2.xyz;
   r3.xyz = _globalEntityScale.zzz * gWorld._m00_m01_m02;
   r4.xyz = _globalEntityScale.zzz * gWorld._m10_m11_m12;
   r5.xyz = _globalEntityScale.www * gWorld._m20_m21_m22;
   r6.xyz = _globalEntityScale.xxy * r2.xyz;
-  r6.w = 1.000000000e+000;
+  r6.w = 1;
   r7.x = r3.x;
   r7.y = r4.x;
   r7.z = r5.x;
@@ -230,9 +230,9 @@ void main(
   r8.z = dot(r6.xyzw, r10.xyzw);
   r6.xyz = -_worldPlayerPos_umGlobalPhaseShift.xyz + r8.xyz;
   r0.w = dot(r6.xyz, r6.xyz);
-  r1.w = 5.625000000e-001 + -r0.w;
-  r1.w = 1.777777791e+000 * r1.w;
-  r1.w = max(r1.w, 0.000000000e+000);
+  r1.w = 0.5625 + -r0.w;
+  r1.w = 1.77777779 * r1.w;
+  r1.w = max(0, r1.w);
   r0.w = rsqrt(r0.w);
   r6.xy = r6.xy * r0.ww;
   r6.xy = r6.xy * r1.ww;
@@ -245,7 +245,7 @@ void main(
   r2.xyz = bPlayerCollEnabled ? r8.xyz : r2.xyz;
   if (bVehTreeColl0Enabled != 0) {
     r6.xyz = _globalEntityScale.xxy * r2.xyz;
-    r6.w = 1.000000000e+000;
+    r6.w = 1;
     r7.x = dot(r6.xyzw, r7.xyzw);
     r7.y = dot(r6.xyzw, r9.xyzw);
     r0.w = dot(r6.xyzw, r10.xyzw);
@@ -264,10 +264,10 @@ void main(
     r6.xy = r6.xy * v2.xx + r7.xy;
     r3.w = _vecvehColl0[2].w + -r0.w;
     r0.w = r2.w * r3.w + r0.w;
-    r2.w = 5.000000000e-001 * _vecvehColl0[2].x;
+    r2.w = 0.5 * _vecvehColl0[2].x;
     r2.w = r2.w * r2.w;
     r1.w = r1.w < r2.w;
-    r2.w = -2.500000000e-001 + _vecvehColl0[2].w;
+    r2.w = -0.25 + _vecvehColl0[2].w;
     r6.z = r1.w ? r2.w : r0.w;
     if (bVehTreeColl1Enabled != 0) {
       r7.xy = -_vecvehColl1[0].xy + r6.xy;
@@ -285,10 +285,10 @@ void main(
       r6.xy = r7.xy * v2.xx + r6.xy;
       r2.w = _vecvehColl1[2].w + -r6.z;
       r1.w = r1.w * r2.w + r6.z;
-      r2.w = 5.000000000e-001 * _vecvehColl1[2].x;
+      r2.w = 0.5 * _vecvehColl1[2].x;
       r2.w = r2.w * r2.w;
       r0.w = r0.w < r2.w;
-      r2.w = -2.500000000e-001 + _vecvehColl1[2].w;
+      r2.w = -0.25 + _vecvehColl1[2].w;
       r6.z = r0.w ? r2.w : r1.w;
     }
     if (bVehTreeColl2Enabled != 0) {
@@ -307,10 +307,10 @@ void main(
       r6.xy = r7.xy * v2.xx + r6.xy;
       r2.w = _vecvehColl2[2].w + -r6.z;
       r1.w = r1.w * r2.w + r6.z;
-      r2.w = 5.000000000e-001 * _vecvehColl2[2].x;
+      r2.w = 0.5 * _vecvehColl2[2].x;
       r2.w = r2.w * r2.w;
       r0.w = r0.w < r2.w;
-      r2.w = -2.500000000e-001 + _vecvehColl2[2].w;
+      r2.w = -0.25 + _vecvehColl2[2].w;
       r6.z = r0.w ? r2.w : r1.w;
     }
     if (bVehTreeColl3Enabled != 0) {
@@ -329,10 +329,10 @@ void main(
       r6.xy = r7.xy * v2.xx + r6.xy;
       r2.w = _vecvehColl3[2].w + -r6.z;
       r1.w = r1.w * r2.w + r6.z;
-      r2.w = 5.000000000e-001 * _vecvehColl3[2].x;
+      r2.w = 0.5 * _vecvehColl3[2].x;
       r2.w = r2.w * r2.w;
       r0.w = r0.w < r2.w;
-      r2.w = -2.500000000e-001 + _vecvehColl3[2].w;
+      r2.w = -0.25 + _vecvehColl3[2].w;
       r6.z = r0.w ? r2.w : r1.w;
     }
     r6.xyz = -gWorld._m30_m31_m32 + r6.xyz;
@@ -356,6 +356,8 @@ void main(
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//   using 3Dmigoto v1.1.36 on Sat Aug 08 07:25:19 2015
 //
 //
 // Buffer Definitions: 
@@ -763,4 +765,3 @@ ret
 // Approximately 244 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-      
