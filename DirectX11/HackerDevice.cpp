@@ -17,6 +17,10 @@
 #include "D3D_Shaders\stdafx.h"
 
 
+// ToDo: I'd really rather not have these standalone utilities here, this file should
+// ideally be only HackerDevice and it's methods.  Because of our spaghetti Globals+Utils,
+// it gets too involved to move these out right now.
+
 // -----------------------------------------------------------------------------------------------
 
 // This special case of texture resolution is to improve the behavior of special 
@@ -37,12 +41,22 @@
 // specify their desired texture in the d3dx.ini file by parameters, not by a single
 // hash.  That would be a sequence found via the ShaderUsages that would specify all
 // the parameters in something like the D3D11_TEXTURE2D_DESC.
+// The only drawback here is to make it more complicated for the shaderhacker, having
+// to specify the little niggly bits, and requiring them to understand and look for 
+// the alternate sizes. 
+//
 // If this seems like an OK way to go, what about other interesting magic combos like
 // 1.5x (720p->1080p), maybe 1080p specifically. 720/1080=2/3.
 // Would it maybe make more sense to just do all the logical screen combos instead?
 
-static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hashWidth, int *hashHeight)
+static void AdjustForConstResolution(UINT *hashWidth, UINT *hashHeight)
 {
+	int width = *hashWidth;
+	int height = *hashHeight;
+
+	if (G->mResolutionInfo.from == GetResolutionFrom::INVALID)
+		return;
+
 	if (width == G->mResolutionInfo.width && height == G->mResolutionInfo.height) {
 		*hashWidth = 'SRES';
 		*hashHeight = 'SRES';
@@ -63,11 +77,58 @@ static void CheckSpecialCaseTextureResolution(UINT width, UINT height, int *hash
 		*hashWidth = 'SR/2';
 		*hashHeight = 'SR/2';
 	}
-	else {
-		*hashWidth = width;
-		*hashHeight = height;
-	}
-	LogInfo("  resolution: %d, %d \n", *hashWidth, *hashHeight);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc)
+{
+	// It concerns me that CreateTextureND can use an override if it
+	// matches screen resolution, but when we record render target / shader
+	// resource stats we don't use the same override.
+	//
+	// For textures made with CreateTextureND and later used as a render
+	// target it's probably fine since the hash will still be stored, but
+	// it could be a problem if we need the hash of a render target not
+	// created directly with that. I don't know enough about the DX11 API
+	// to know if this is an issue, but it might be worth using the screen
+	// resolution override in all cases. -DarkStarSword
+
+	// Based on that concern, and the need to have a pointer to the 
+	// D3D11_TEXTURE2D_DESC struct for hash calculation, let's go ahead
+	// and use the resolution override always.
+
+	D3D11_TEXTURE2D_DESC* desc = const_cast<D3D11_TEXTURE2D_DESC*>(const_desc);
+
+	UINT saveWidth = desc->Width;
+	UINT saveHeight = desc->Height;
+	AdjustForConstResolution(&desc->Width, &desc->Height);
+
+	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE2D_DESC));
+
+	desc->Width = saveWidth;
+	desc->Height = saveHeight;
+
+	return hash;
+}
+
+uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc)
+{
+	// Same comment as in CalcTexture2DDescHash above - concerned about
+	// inconsistent use of these resolution overrides
+
+	D3D11_TEXTURE3D_DESC* desc = const_cast<D3D11_TEXTURE3D_DESC*>(const_desc);
+
+	UINT saveWidth = desc->Width;
+	UINT saveHeight = desc->Height;
+	AdjustForConstResolution(&desc->Width, &desc->Height);
+
+	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE3D_DESC));
+
+	desc->Width = saveWidth;
+	desc->Height = saveHeight;
+
+	return hash;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1676,12 +1737,6 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
-	// Override width/height if they match screen resolution.
-	int hashWidth = 0;
-	int hashHeight = 0;
-	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
-		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
-
 	// Hash based on raw texture data
 	// TODO: Wrap these texture objects and return them to the game.
 	//  That would avoid the hash lookup later.
@@ -1703,7 +1758,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (pInitialData && pInitialData->pSysMem && pDesc)
 		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
 	if (pDesc)
-		hash = CalcTexture2DDescHash(pDesc, hash, hashWidth, hashHeight);
+		hash = CalcTexture2DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 	// Override custom settings?
@@ -1825,19 +1880,13 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
-	// Get screen resolution.
-	int hashWidth = 0;
-	int hashHeight = 0;
-	if (pDesc && G->mResolutionInfo.from != GetResolutionFrom::INVALID)
-		CheckSpecialCaseTextureResolution(pDesc->Width, pDesc->Height, &hashWidth, &hashHeight);
-
 	// Create hash code from raw texture data and description.
 	// Initial data is optional, so we might have zero data to add to the hash there.
 	uint32_t hash = 0;
-	if (pDesc)
-		hash = CalcTexture3DDescHash(pDesc, hash, hashWidth, hashHeight);
 	if (pInitialData && pInitialData->pSysMem && pDesc)
 		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->Depth);
+	if (pDesc)
+		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);

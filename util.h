@@ -73,62 +73,6 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
 
 // -----------------------------------------------------------------------------------------------
 
-static uint32_t CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc,
-	uint32_t initial_hash, UINT hash_width, UINT hash_height)
-{
-	// It concerns me that CreateTextureND can use an override if it
-	// matches screen resolution, but when we record render target / shader
-	// resource stats we don't use the same override.
-	//
-	// For textures made with CreateTextureND and later used as a render
-	// target it's probably fine since the hash will still be stored, but
-	// it could be a problem if we need the hash of a render target not
-	// created directly with that. I don't know enough about the DX11 API
-	// to know if this is an issue, but it might be worth using the screen
-	// resolution override in all cases. -DarkStarSword
-
-	// Based on that concern, and the need to have a pointer to the 
-	// D3D11_TEXTURE2D_DESC struct for hash calculation, let's go ahead
-	// and use the resolution override always.
-
-	D3D11_TEXTURE2D_DESC* desc = const_cast<D3D11_TEXTURE2D_DESC*>(const_desc);
-
-	UINT saveWidth = desc->Width;
-	UINT saveHeight = desc->Height;
-	desc->Width = hash_width;
-	desc->Height = hash_height;
-
-	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE2D_DESC));
-	
-	desc->Width = saveWidth;
-	desc->Height = saveHeight;
-
-	return hash;
-}
-
-static uint32_t CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc,
-	uint32_t initial_hash, UINT hash_width, UINT hash_height)
-{
-	// Same comment as in CalcTexture2DDescHash above - concerned about
-	// inconsistent use of these resolution overrides
-
-	D3D11_TEXTURE3D_DESC* desc = const_cast<D3D11_TEXTURE3D_DESC*>(const_desc);
-
-	UINT saveWidth = desc->Width;
-	UINT saveHeight = desc->Height;
-	desc->Width = hash_width;
-	desc->Height = hash_height;
-
-	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE3D_DESC));
-
-	desc->Width = saveWidth;
-	desc->Height = saveHeight;
-
-	return hash;
-}
-
-// -----------------------------------------------------------------------------------------------
-
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
 static char *RightStripA(char *buf)

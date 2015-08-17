@@ -83,7 +83,8 @@ uint32_t HackerContext::GetTexture2DHash(ID3D11Texture2D *texture,
 	// TODO: if it's not found, do we really want to be creating this partial
 	//  hash off of just the description? It's not ever going to match the 
 	// real texture, so wouldn't it be better to return 0?
-	return CalcTexture2DDescHash(&desc, 0, 0, 0);
+	// Without possible pIntialData in the hash, returning this would seem to be misleading.
+	return CalcTexture2DDescHash(0, &desc);
 }
 
 uint32_t HackerContext::GetTexture3DHash(ID3D11Texture3D *texture,
@@ -113,7 +114,7 @@ uint32_t HackerContext::GetTexture3DHash(ID3D11Texture3D *texture,
 
 	// TODO: if it's not found, do we really want to be creating this partial
 	//  hash off of just the description? 
-	return CalcTexture3DDescHash(&desc, 0, 0, 0);
+	return CalcTexture3DDescHash(0, &desc);
 }
 
 // Records the hash of this shader resource view for later lookup. Returns the
