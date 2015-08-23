@@ -131,7 +131,7 @@ private:
 	void DumpDepthStencilTargets();
 	void DumpUAVs(bool compute);
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, UINT64 hash);
+			wchar_t *reg, char shader_type, int idx, uint32_t hash);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);

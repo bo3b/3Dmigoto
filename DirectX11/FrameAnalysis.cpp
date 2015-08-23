@@ -288,7 +288,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 }
 
 HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-		wchar_t *reg, char shader_type, int idx, UINT64 hash)
+		wchar_t *reg, char shader_type, int idx, uint32_t hash)
 {
 	wchar_t *pos;
 	size_t rem;
@@ -310,7 +310,7 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%06i", G->analyse_frame);
 
 	if (hash)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%016I64x", hash);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%08x", hash);
 
 	if (compute) {
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs=%016I64x", mCurrentComputeShader);
@@ -362,7 +362,7 @@ void HackerContext::_DumpTextures(char shader_type,
 	ID3D11Resource *resource;
 	D3D11_RESOURCE_DIMENSION dim;
 	wchar_t filename[MAX_PATH];
-	UINT64 hash;
+	uint32_t hash;
 	HRESULT hr;
 	UINT i;
 
@@ -470,7 +470,7 @@ void HackerContext::DumpRenderTargets()
 	UINT i;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	UINT64 hash;
+	uint32_t hash;
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
 		try {
@@ -490,7 +490,7 @@ void HackerContext::DumpDepthStencilTargets()
 {
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	UINT64 hash;
+	uint32_t hash;
 
 	if (mCurrentDepthTarget) {
 		try {
@@ -513,7 +513,7 @@ void HackerContext::DumpUAVs(bool compute)
 	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	UINT64 hash;
+	uint32_t hash;
 
 	mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 
