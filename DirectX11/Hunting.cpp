@@ -1111,7 +1111,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-	LogInfo(">>>> Index buffer marked: index buffer hash = %016I64x\n", G->mSelectedIndexBuffer);
+	LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
 		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
@@ -1155,9 +1155,9 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 		return;
 
 	for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
-		LogInfo("     visited index buffer hash = %016I64x\n", *i);
+		LogInfo("     visited index buffer hash = %08x\n", *i);
 	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-		LogInfo("     visited vertex shader hash = %08lx \n", *i);
+		LogInfo("     visited vertex shader hash = %016I64x \n", *i);
 
 	MarkShaderEnd(device, "pixel shader", G->mSelectedPixelShader);
 }
