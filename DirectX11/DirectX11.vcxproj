@@ -44,9 +44,11 @@
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
+    <ClCompile Include="HackerBuffer.cpp" />
     <ClCompile Include="HackerContext.cpp" />
     <ClCompile Include="HackerDevice.cpp" />
     <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="HackerUnknown.cpp" />
     <ClCompile Include="HookedDXGI.cpp" />
     <ClCompile Include="Hunting.cpp" />
     <ClCompile Include="IniHandler.cpp" />
@@ -66,9 +68,11 @@
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="Globals.h" />
+    <ClInclude Include="HackerBuffer.h" />
     <ClInclude Include="HackerContext.h" />
     <ClInclude Include="HackerDevice.h" />
     <ClInclude Include="HackerDXGI.h" />
+    <ClInclude Include="HackerUnknown.h" />
     <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="IniHandler.h" />
