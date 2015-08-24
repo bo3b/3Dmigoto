@@ -14,6 +14,8 @@
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
 
+#include "D3D11Wrapper.h"
+
 
 static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
 {
@@ -859,6 +861,9 @@ static void RevertMissingShaders()
 
 static void ReloadFixes(HackerDevice *device, void *private_data)
 {
+	LogInfo(">> Dumping debug layer info:");
+	ShowDebugInfo(device->GetOrigDevice());
+
 	LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
 
 	if (G->SHADER_PATH[0])

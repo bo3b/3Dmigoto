@@ -1589,6 +1589,10 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 			G->mDataBuffers[*ppBuffer] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		LogDebug("    Buffer registered: handle = %p, hash = %08lx \n", *ppBuffer, hash);
+
+		char bufferName[128];
+		sprintf_s(bufferName, "0x%08lx", hash);
+		SetDebugName(*ppBuffer, bufferName);
 	}
 	return hr;
 }
@@ -1824,6 +1828,10 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mTexture2D_ID[*ppTexture2D] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+		char textureName[128];
+		sprintf_s(textureName, "0x%08lx", hash);
+		SetDebugName(*ppTexture2D, textureName);
 	}
 
 	return hr;
@@ -1871,6 +1879,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mTexture3D_ID[*ppTexture3D] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+		char textureName[128];
+		sprintf_s(textureName, "0x%08lx", hash);
+		SetDebugName(*ppTexture3D, textureName);
 	}
 
 	LogInfo("  returns result = %x\n", hr);
@@ -2038,6 +2050,12 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+		wstring wtype(shaderType);
+		string type(wtype.begin(), wtype.end());
+		char shaderName[128];
+		sprintf_s(shaderName, "%s: 0x%016llx", type.c_str(), hash);
+		SetDebugName(*ppShader, shaderName);
 	}
 
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppShader);
