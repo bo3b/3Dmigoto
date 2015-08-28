@@ -459,8 +459,14 @@ static std::string NameFromIID(IID id)
 	if (__uuidof(IDXGIObject) == id)
 		return "IDXGIObject";
 
+	if (__uuidof(ID3D11Texture1D) == id)
+		return "ID3D11Texture1D";
 	if (__uuidof(ID3D11Texture2D) == id)	// Used to fetch backbuffer
 		return "ID3D11Texture2D";
+	if (__uuidof(ID3D11Texture3D) == id)
+		return "ID3D11Texture3D";
+	if (__uuidof(ID3D11Buffer) == id)
+		return "ID3D11Buffer";
 
 	// For unknown IIDs lets return the hex string.
 	// Converting from wchar_t to string using stackoverflow suggestion.

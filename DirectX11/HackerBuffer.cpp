@@ -82,6 +82,12 @@ HackerResource::~HackerResource()
 {
 }
 
+ID3D11Resource* HackerResource::GetOrigResource()
+{
+	return mOrigResource;
+}
+
+
 STDMETHODIMP_(void) HackerResource::GetType(
 	/* [annotation] */
 	_Out_  D3D11_RESOURCE_DIMENSION *pResourceDimension)
@@ -106,6 +112,12 @@ STDMETHODIMP_(UINT) HackerResource::GetEvictionPriority(void)
 	return priority;
 }
 
+
+// -----------------------------------------------------------------------------
+
+// We are making an override of all 4 types, Texture1D, Texture2D, Texture3D,
+// and Buffer, because those all descend from ID3D11Resource, and we need to
+// be able to just use the Resource parent when necessary- like in SetShaderResource.
 
 // -----------------------------------------------------------------------------
 
@@ -138,3 +150,119 @@ STDMETHODIMP_(void) HackerBuffer::GetDesc(
 		LogInfo("  returns StructureByteStride = %d \n", pDesc->StructureByteStride);
 	}
 }
+
+
+// Need to override the QueryInterface for the HackerBuffer, so we can return
+// our version, not the original.
+
+HRESULT STDMETHODCALLTYPE HackerBuffer::QueryInterface(
+	/* [in] */ REFIID riid,
+	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
+{
+	LogDebug("HackerBuffer::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+
+	HRESULT hr = mOrigBuffer->QueryInterface(riid, ppvObject);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed result = %x for %p \n", hr, ppvObject);
+		return hr;
+	}
+
+	// No need for further checks of null ppvObject, as it could not have successfully
+	// called the original in that case.
+
+	if (riid == __uuidof(ID3D11Buffer))
+	{
+		*ppvObject = this;
+		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", typeid(*this).name(), this, mOrigBuffer);
+	}
+
+	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+HackerTexture1D::HackerTexture1D(ID3D11Texture1D *pTexture1D)
+	: HackerResource(pTexture1D)
+{
+	mOrigTexture1D = pTexture1D;
+}
+
+
+HackerTexture1D::~HackerTexture1D()
+{
+}
+
+STDMETHODIMP_(void) HackerTexture1D::GetDesc(
+	/* [annotation] */
+	_Out_  D3D11_TEXTURE1D_DESC *pDesc)
+{
+	LogInfo("HackerTexture1D::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
+
+	mOrigTexture1D->GetDesc(pDesc);
+
+	//if (pDesc)
+	//{
+	//	LogInfo("  returns ByteWidth = %d \n", pDesc->ByteWidth);
+	//}
+}
+
+
+// -----------------------------------------------------------------------------
+
+HackerTexture2D::HackerTexture2D(ID3D11Texture2D *pTexture2D)
+	: HackerResource(pTexture2D)
+{
+	mOrigTexture2D = pTexture2D;
+}
+
+
+HackerTexture2D::~HackerTexture2D()
+{
+}
+
+STDMETHODIMP_(void) HackerTexture2D::GetDesc(
+	/* [annotation] */
+	_Out_  D3D11_TEXTURE2D_DESC *pDesc)
+{
+	LogInfo("HackerTexture2D::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
+
+	mOrigTexture2D->GetDesc(pDesc);
+
+	//if (pDesc)
+	//{
+	//	LogInfo("  returns ByteWidth = %d \n", pDesc->ByteWidth);
+	//}
+}
+
+
+// -----------------------------------------------------------------------------
+
+HackerTexture3D::HackerTexture3D(ID3D11Texture3D *pTexture3D)
+	: HackerResource(pTexture3D)
+{
+	mOrigTexture3D = pTexture3D;
+}
+
+
+HackerTexture3D::~HackerTexture3D()
+{
+}
+
+STDMETHODIMP_(void) HackerTexture3D::GetDesc(
+	/* [annotation] */
+	_Out_  D3D11_TEXTURE3D_DESC *pDesc)
+{
+	LogInfo("HackerTexture3D::GetDesc(%s@%p) called \n", typeid(*this).name(), this);
+
+	mOrigTexture3D->GetDesc(pDesc);
+
+	//if (pDesc)
+	//{
+	//	LogInfo("  returns ByteWidth = %d \n", pDesc->ByteWidth);
+	//}
+}
+
+

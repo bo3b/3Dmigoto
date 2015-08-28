@@ -56,6 +56,7 @@ private:
 public:
 	HackerResource(ID3D11Resource *pResource);
 	~HackerResource();
+	ID3D11Resource* GetOrigResource();
 
 	virtual void STDMETHODCALLTYPE GetType(
 		/* [annotation] */
@@ -81,8 +82,68 @@ public:
 	HackerBuffer(ID3D11Buffer *pBuffer);
 	~HackerBuffer();
 
+	HRESULT STDMETHODCALLTYPE HackerBuffer::QueryInterface(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override;
+		
+	virtual void STDMETHODCALLTYPE GetDesc(
+	/* [annotation] */
+	_Out_  D3D11_BUFFER_DESC *pDesc);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerTexture1D :
+	public HackerResource
+{
+private:
+	ID3D11Texture1D *mOrigTexture1D;
+
+public:
+	HackerTexture1D(ID3D11Texture1D *pTexture1D);
+	~HackerTexture1D();
+
 	virtual void STDMETHODCALLTYPE GetDesc(
 		/* [annotation] */
-		_Out_  D3D11_BUFFER_DESC *pDesc);
+		_Out_  D3D11_TEXTURE1D_DESC *pDesc);
 };
+
+
+// -----------------------------------------------------------------------------
+
+class HackerTexture2D :
+	public HackerResource
+{
+private:
+	ID3D11Texture2D *mOrigTexture2D;
+
+public:
+	HackerTexture2D(ID3D11Texture2D *pTexture2D);
+	~HackerTexture2D();
+
+	virtual void STDMETHODCALLTYPE GetDesc(
+		/* [annotation] */
+		_Out_  D3D11_TEXTURE2D_DESC *pDesc);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerTexture3D :
+	public HackerResource
+{
+private:
+	ID3D11Texture3D *mOrigTexture3D;
+
+public:
+	HackerTexture3D(ID3D11Texture3D *pTexture3D);
+	~HackerTexture3D();
+
+	virtual void STDMETHODCALLTYPE GetDesc(
+		/* [annotation] */
+		_Out_  D3D11_TEXTURE3D_DESC *pDesc);
+};
+
+
 

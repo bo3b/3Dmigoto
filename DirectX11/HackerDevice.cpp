@@ -3,6 +3,7 @@
 
 #include "HackerDevice.h"
 #include "HackerDXGI.h"
+#include "HackerBuffer.h"
 
 #include <D3Dcompiler.h>
 
@@ -1575,7 +1576,24 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	LogDebug("  InitialData = %p\n", pInitialData);
 
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
-	if (hr == S_OK && ppBuffer && G->hunting)
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	// Create a wrapped version of the original buffer to return to the game
+	// so that we can monitor the use and release of it.
+	ID3D11Buffer *origBuffer = ppBuffer ? *ppBuffer : nullptr;
+	HackerBuffer *bufferWrap = nullptr;
+	if (ppBuffer != nullptr)
+	{
+		bufferWrap = new HackerBuffer(origBuffer);
+		*ppBuffer = reinterpret_cast<ID3D11Buffer*>(bufferWrap);
+		LogInfo("  HackerBuffer %p created to wrap %p \n", bufferWrap, origBuffer);
+	}
+	
+	if (ppBuffer && G->hunting)
 	{
 		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
@@ -1605,7 +1623,27 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture1D **ppTexture1D)
 {
-	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
+	HRESULT hr = mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	// Create a wrapped version of the original Texture1D to return to the game
+	// so that we can monitor the use and release of it.  Even though we don't
+	// see or use these, we need to have the ID3D11Resource parent work in other calls.
+	ID3D11Texture1D *origTexture1D = ppTexture1D ? *ppTexture1D : nullptr;
+	HackerTexture1D *texture1DWrap = nullptr;
+	if (ppTexture1D != nullptr)
+	{
+		texture1DWrap = new HackerTexture1D(origTexture1D);
+		*ppTexture1D = reinterpret_cast<ID3D11Texture1D*>(texture1DWrap);
+		LogInfo("  HackerTexture1D %p created to wrap %p \n", texture1DWrap, origTexture1D);
+	}
+
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
 }
 
 
@@ -1707,20 +1745,6 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		}
 	}
 
-	// In the case where there is in fact nothing to be done with a texture hash,
-	// no texture overrides, let's not calculate it, because it can use measurable 
-	// amounts of CPU time.  In GTA5 I measured this as avg frame rates 55 vs. 48.
-	//
-	// If we are hunting mode, we need all the hashes for ShaderUsages.
-	if (G->mTextureOverrideMap.empty() && !G->hunting && (G->gSurfaceSquareCreateMode == -1))
-	{
-		HRESULT hr = mOrigDevice->CreateTexture2D(pDesc, pInitialData, ppTexture2D);
-		if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
-
-		return hr;
-	}
-
-
 	// Rectangular depth stencil textures of at least 640x480 may indicate
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
@@ -1815,7 +1839,24 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 
 	// Actual creation:
 	HRESULT hr = mOrigDevice->CreateTexture2D(&newDesc, pInitialData, ppTexture2D);
-	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1)
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	// Create a wrapped version of the original Texture2D to return to the game
+	// so that we can monitor the use and release of it.
+	ID3D11Texture2D *origTexture2D = ppTexture2D ? *ppTexture2D : nullptr;
+	HackerTexture2D *texture2DWrap = nullptr;
+	if (ppTexture2D != nullptr)
+	{
+		texture2DWrap = new HackerTexture2D(origTexture2D);
+		*ppTexture2D = reinterpret_cast<ID3D11Texture2D*>(texture2DWrap);
+		LogInfo("  HackerTexture2D %p created to wrap %p \n", texture2DWrap, origTexture2D);
+	}
+
+	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
 	{
 		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
 			LogInfo("    restore call failed.\n");
@@ -1823,7 +1864,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture. Every one seen.
-	if (hr == S_OK && ppTexture2D)
+	if (ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mTexture2D_ID[*ppTexture2D] = hash;
@@ -1872,9 +1913,25 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
 
 	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	// Create a wrapped version of the original Texture3D to return to the game
+	// so that we can monitor the use and release of it.
+	ID3D11Texture3D *origTexture3D = ppTexture3D ? *ppTexture3D : nullptr;
+	HackerTexture3D *texture3DWrap = nullptr;
+	if (ppTexture3D != nullptr)
+	{
+		texture3DWrap = new HackerTexture3D(origTexture3D);
+		*ppTexture3D = reinterpret_cast<ID3D11Texture3D*>(texture3DWrap);
+		LogInfo("  HackerTexture3D %p created to wrap %p \n", texture3DWrap, origTexture3D);
+	}
 
 	// Register texture.
-	if (hr == S_OK && ppTexture3D)
+	if (ppTexture3D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mTexture3D_ID[*ppTexture3D] = hash;
@@ -1900,12 +1957,14 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 {
 	LogDebug("HackerDevice::CreateShaderResourceView called\n");
 
-	HRESULT hr = mOrigDevice->CreateShaderResourceView(pResource, pDesc, ppSRView);
+	ID3D11Resource *origResource = reinterpret_cast<HackerResource*>(pResource)->GetOrigResource();
+
+	HRESULT hr = mOrigDevice->CreateShaderResourceView(origResource, pDesc, ppSRView);
 
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		unordered_map<ID3D11Texture2D *, uint32_t>::iterator i = G->mTexture2D_ID.find((ID3D11Texture2D *) pResource);
+		unordered_map<ID3D11Texture2D *, uint32_t>::iterator i = G->mTexture2D_ID.find((ID3D11Texture2D *)origResource);
 		if (i != G->mTexture2D_ID.end() && i->second == G->ZBufferHashToInject)
 		{
 			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second);

@@ -1159,6 +1159,8 @@ STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
+	LogDebug("HackerContext::Map(%s@%p) called \n", typeid(*this).name(), this);
+
 	HRESULT hr = MapDenyCPURead(pResource, Subresource, MapType, MapFlags, pMappedResource);
 	if (SUCCEEDED(hr))
 		return hr;
@@ -1172,6 +1174,8 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	/* [annotation] */
 	__in  UINT Subresource)
 {
+	LogDebug("HackerContext::Unmap(%s@%p) called \n", typeid(*this).name(), this);
+
 	FreeDeniedMapping(pResource, Subresource);
 	mOrigContext->Unmap(pResource, Subresource);
 }
@@ -1496,6 +1500,8 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	/* [annotation] */
 	__in_opt  const D3D11_BOX *pSrcBox)
 {
+	LogDebug("HackerContext::CopySubresourceRegion(%s@%p) called \n", typeid(*this).name(), this);
+
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
