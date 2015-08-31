@@ -1,6 +1,10 @@
 //hud
 
 // Glow effect, left edge of screen during combos.
+//
+// Also glow ball behind runes in rune selection screens.
+//
+// Also glow on pickup items after killing captains.
 
 cbuffer _Globals : register(b0)
 {
@@ -104,7 +108,7 @@ bool playMode = (params.z == 1);
  
 if (playMode && (o0.w == 0))
 {
-o0.x -= stereo.x * (o0.w - stereo.y); 
+  o0.x -= stereo.x * (o0.w - stereo.y); 
   o0.x += stereo.x * params.x * 50;
 }
 
@@ -386,4 +390,4 @@ ret
 // Approximately 84 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- 
+   

@@ -2,6 +2,12 @@
 
 // Subtle ball glow effect
 // Also secondary fire effect
+//
+// Also half of a tertiary effect behind runes on rune selection screen.
+//
+// And glow around pickups after killing captains.
+// 
+// And small glow effect over heads of captains in Sauron's Army.
 
 cbuffer _Globals : register(b0)
 {
@@ -109,7 +115,12 @@ bool playMode = (params.z == 1);
 if (playMode && (o0.w==1))
 {
   o0.x -= stereo.x * (o0.w - stereo.y); 
-  o0.x += stereo.x * params.x * 50;
+}
+else if (!playMode)   // run selection screen
+{
+  // o0.x -= stereo.x * (o0.w - stereo.y); 
+  // o0.x += stereo.x * params.x * 50;
+  o0.x += stereo.x * 0.85;
 }
 
   o1.xyz = v1.xyz;
@@ -396,4 +407,4 @@ ret
 // Approximately 84 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- 
+     

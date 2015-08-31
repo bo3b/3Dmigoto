@@ -99,7 +99,7 @@ bool playMode = (params.z == 1);
 if (!playMode)
 {
   // Line in Sauron's Army screen
-  o0.x += stereo.x * params.x;
+  o0.x += stereo.x * 0.85;
 }
 else
 {
@@ -405,4 +405,4 @@ ret
 // Approximately 84 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  
+   

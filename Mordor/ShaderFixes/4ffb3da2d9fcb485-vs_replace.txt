@@ -1,4 +1,6 @@
 // Small arrow icon on hud targets
+//
+// Also the x for death threats in Sauron's Army screen.
 
 cbuffer _Globals : register(b0)
 {
@@ -68,6 +70,11 @@ bool playMode = (params.z == 1);
 if (playMode)
 {
   o0.x += stereo.x * params.x;
+}
+else
+{
+  // In Sauron army, set the x to a fixed depth
+  o0.x += stereo.x * 0.85;
 }
 
   return;
@@ -159,4 +166,4 @@ ret
 // Approximately 9 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- 
+  
