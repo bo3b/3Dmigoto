@@ -29,7 +29,7 @@ typedef std::set<wstring, WStringInsensitiveLess> IniSections;
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
 // be used to iterate over all elements in the sections set that begin with a
 // given prefix.
-IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
+static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
 {
 	IniSections::iterator i;
 
@@ -41,7 +41,7 @@ IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
 	return sections.end();
 }
 
-void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
+static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 {
 	KeyOverrideType type;
 	wchar_t key[MAX_PATH];
@@ -132,7 +132,7 @@ static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
 		LogInfoW(L"  %ls=%s\n", param_name, buf);
 }
 
-void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
+static void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
@@ -256,7 +256,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 
 
 
-void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
+static void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
