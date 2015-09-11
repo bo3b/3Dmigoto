@@ -22,8 +22,9 @@ struct WStringInsensitiveLess {
 	}
 };
 
-// std::set is used so this is sorted for iterating over a prefix:
+// std::set/map is used so this is sorted for iterating over a prefix:
 typedef std::set<wstring, WStringInsensitiveLess> IniSections;
+typedef std::map<wstring, wstring, WStringInsensitiveLess> IniSection;
 
 // Returns an iterator to the first element in a set that does not begin with
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
@@ -40,6 +41,88 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 
 	return sections.end();
 }
+
+static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t *iniFile)
+{
+	wchar_t *buf, *kptr, *vptr;
+	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSection
+	// returns 0 instead of the documented (buf_size - 2) in that case.
+	int buf_size = 256;
+	DWORD result;
+
+	key_vals.clear();
+
+	while (true) {
+		buf = new wchar_t[buf_size];
+		if (!buf)
+			return;
+
+		result = GetPrivateProfileSection(section, buf, buf_size, iniFile);
+		if (result != buf_size - 2)
+			break;
+
+		delete[] buf;
+		buf_size <<= 1;
+	}
+
+	for (kptr = buf; *kptr; kptr++) {
+		for (vptr = kptr; *vptr && *vptr != L'='; vptr++) {}
+		if (*vptr != L'=') {
+			LogInfoW(L"WARNING: Malformed line in d3dx.ini: [%s] \"%s\"\n", section, kptr);
+			BeepFailure2();
+			kptr = vptr;
+			continue;
+		}
+
+		*vptr = L'\0';
+		vptr++;
+
+		if (key_vals.count(kptr)) {
+			LogInfoW(L"WARNING: Duplicate key found in d3dx.ini: [%s] %s\n", section, kptr);
+			BeepFailure2();
+		}
+		key_vals[kptr] = vptr;
+		for (kptr = vptr; *kptr; kptr++) {}
+	}
+
+	delete[] buf;
+}
+
+static void GetIniSections(IniSections &sections, wchar_t *iniFile)
+{
+	wchar_t *buf, *ptr;
+	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSectionNames
+	// returns 0 instead of the documented (buf_size - 2) in that case.
+	int buf_size = 256;
+	DWORD result;
+
+	sections.clear();
+
+	while (true) {
+		buf = new wchar_t[buf_size];
+		if (!buf)
+			return;
+
+		result = GetPrivateProfileSectionNames(buf, buf_size, iniFile);
+		if (result != buf_size - 2)
+			break;
+
+		delete[] buf;
+		buf_size <<= 1;
+	}
+
+	for (ptr = buf; *ptr; ptr++) {
+		if (sections.count(ptr)) {
+			LogInfoW(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
+			BeepFailure2();
+		}
+		sections.insert(ptr);
+		for (; *ptr; ptr++) {}
+	}
+
+	delete[] buf;
+}
+
 
 static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 {
@@ -337,41 +420,6 @@ static void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-static void GetIniSections(IniSections &sections, wchar_t *iniFile)
-{
-	wchar_t *buf, *ptr;
-	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSectionNames
-	// returns 0 instead of the documented (buf_size - 2) in that case.
-	int buf_size = 256;
-	DWORD result;
-
-	sections.clear();
-
-	while (true) {
-		buf = new wchar_t[buf_size];
-		if (!buf)
-			return;
-
-		result = GetPrivateProfileSectionNames(buf, buf_size, iniFile);
-		if (result != buf_size - 2)
-			break;
-
-		delete[] buf;
-		buf_size <<= 1;
-	}
-
-	for (ptr = buf; *ptr; ptr++) {
-		if (sections.count(ptr)) {
-			LogInfoW(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
-			BeepFailure2();
-		}
-		sections.insert(ptr);
-		for (; *ptr; ptr++) {}
-	}
-
-	delete[] buf;
 }
 
 // Check the Stereo availability. If stereo is disabled we otherwise will crash 
