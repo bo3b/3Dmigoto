@@ -95,6 +95,7 @@ static void GetIniSections(IniSections &sections, wchar_t *iniFile)
 	// returns 0 instead of the documented (buf_size - 2) in that case.
 	int buf_size = 256;
 	DWORD result;
+	IniSection section;
 
 	sections.clear();
 
@@ -117,6 +118,12 @@ static void GetIniSections(IniSections &sections, wchar_t *iniFile)
 			BeepFailure2();
 		}
 		sections.insert(ptr);
+
+		// Call GetIniSection to warn about any malformed lines or
+		// duplicate keys in the section, discarding the result.
+		GetIniSection(section, ptr, iniFile);
+		section.clear();
+
 		for (; *ptr; ptr++) {}
 	}
 
