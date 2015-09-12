@@ -22,9 +22,13 @@ struct WStringInsensitiveLess {
 	}
 };
 
-// std::set/map is used so this is sorted for iterating over a prefix:
+// std::set is used so this is sorted for iterating over a prefix:
 typedef std::set<wstring, WStringInsensitiveLess> IniSections;
-typedef std::map<wstring, wstring, WStringInsensitiveLess> IniSection;
+
+// Whereas settings within a section are in the same order they were in the ini
+// file. This will become more important as shader overrides gains more
+// functionality and dependencies between different features form:
+typedef std::vector<std::pair<wstring, wstring>> IniSection;
 
 // Returns an iterator to the first element in a set that does not begin with
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
@@ -49,6 +53,7 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	// returns 0 instead of the documented (buf_size - 2) in that case.
 	int buf_size = 256;
 	DWORD result;
+	IniSections keys;
 
 	key_vals.clear();
 
@@ -77,11 +82,12 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 		*vptr = L'\0';
 		vptr++;
 
-		if (key_vals.count(kptr)) {
+		if (keys.count(kptr)) {
 			LogInfoW(L"WARNING: Duplicate key found in d3dx.ini: [%s] %s\n", section, kptr);
 			BeepFailure2();
 		}
-		key_vals[kptr] = vptr;
+		keys.insert(kptr);
+		key_vals.emplace_back(kptr, vptr);
 		for (kptr = vptr; *kptr; kptr++) {}
 	}
 
