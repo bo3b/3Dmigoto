@@ -2091,6 +2091,9 @@ STDMETHODIMP HackerDevice::CreateGeometryShaderWithStreamOutput(THIS_
 {
 	LogInfo("HackerDevice::CreateGeometryShaderWithStreamOutput called.\n");
 
+	// TODO: This is another call that can create geometry and/or vertex
+	// shaders - hook them up and allow them to be overridden as well.
+
 	HRESULT hr = mOrigDevice->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
 		NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
 	LogInfo("  returns result = %x, handle = %p\n", hr, (ppGeometryShader ? *ppGeometryShader : NULL));
