@@ -3573,6 +3573,19 @@ public:
 						appendOutput(buffer);
 						break;
 					}
+					case OPCODE_IMM_ATOMIC_ALLOC:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						appendOutput(buffer);
+						const char *eolPos = strchr(c + pos, '\n');
+						ptrdiff_t len = eolPos - (c + pos);
+						std::string line(c + pos, len);
+						sprintf(buffer, "// %s\n", line.c_str());
+						appendOutput(buffer);
+						sprintf(buffer, "  InterlockedExchange ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
 
 
 					case OPCODE_MAX:
