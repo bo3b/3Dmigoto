@@ -40,6 +40,7 @@ using namespace std;
 enum DataType
 {
 	DT_bool,
+	DT_bool4,
 	DT_float,
 	DT_float2,
 	DT_float3,
@@ -158,6 +159,7 @@ public:
 		if (!strcmp(name, "float1")) return DT_float;
 		if (!strcmp(name, "float")) return DT_float;
 		if (!strcmp(name, "bool")) return DT_bool;
+		if (!strcmp(name, "bool4")) return DT_bool4;
 		if (!strcmp(name, "uint4")) return DT_uint4;
 		if (!strcmp(name, "uint3")) return DT_uint3;
 		if (!strcmp(name, "uint2")) return DT_uint2;
@@ -749,6 +751,7 @@ public:
 			case DT_uint3:
 			case DT_int3:
 				return 12;
+			case DT_bool4:
 			case DT_float4:
 			case DT_uint4:
 			case DT_int4:
@@ -1011,7 +1014,7 @@ public:
 				// possible uses of those offsets in the ASM code.
 				size_t ep = e.Name.find('[');
 				if (ep != string::npos &&
-					(e.bt == DT_bool || 
+					(e.bt == DT_bool || e.bt == DT_bool4 ||
 					e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 ||
 					e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
 					e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4 ||
@@ -1027,7 +1030,7 @@ public:
 					if (e.bt == DT_float || e.bt == DT_bool || e.bt == DT_uint || e.bt == DT_int) counter = 4;
 					else if (e.bt == DT_float2 || e.bt == DT_uint2 || e.bt == DT_int2) counter = 8;
 					else if (e.bt == DT_float3 || e.bt == DT_uint3 || e.bt == DT_int3) counter = 12;
-					else if (e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
+					else if (e.bt == DT_bool4 || e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
 					else if (e.bt == DT_float4x2 || e.bt == DT_float2x4) counter = 16 * 2;
 					else if (e.bt == DT_float3x3 || e.bt == DT_float4x3) counter = 16 * 3;
 					else if (e.bt == DT_float3x4 || e.bt == DT_float4x4) counter = 16 * 4;
@@ -1108,8 +1111,12 @@ public:
 				for (int i = -1; i < structLevel; ++i) structSpacing += "  ";
 				if (!strncmp(c + pos, defaultid, strlen(defaultid)))
 				{
+					// No idea what an assignment to a bool4 would look like in ASM, so let's just log if we see
+					// this, and fix it later.
+					if (e.bt == DT_bool4)
+						logDecompileError("*** assignment to bool4, unknown syntax \n");
 					// For bool values, the usual conversion by %e creates QNAN, so handle them specifically. (e.g. = 0xffffffff)
-					if (e.bt == DT_bool)
+					else if (e.bt == DT_bool)
 					{
 						unsigned int bHex = 0;
 						numRead = sscanf_s(c + pos, "// = 0x%lx", &bHex);
