@@ -1,5 +1,6 @@
 #include "IniHandler.h"
 
+#include <algorithm>
 #include <string>
 #include <strsafe.h>
 
@@ -228,7 +229,44 @@ static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
 		LogInfoW(L"  %ls=%s\n", param_name, buf);
 }
 
-static void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
+// This tries to parse each line in a [ShaderOverride] section in order.
+static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, ShaderOverride *override)
+{
+	IniSection section;
+	IniSection::iterator entry;
+	wstring *key, *val;
+
+	GetIniSection(section, id, iniFile);
+	for (entry = section.begin(); entry < section.end(); entry++) {
+		key = &entry->first;
+		val = &entry->second;
+
+		// Convert key to lower case since ini files are supposed to be
+		// case insensitive:
+		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
+
+		// Skip any entries that are parsed elsewhere:
+		// TODO: Perhaps merge all the parsing code in here so there's
+		// only one place to worry about
+		if (!key->compare(L"hash")
+		 || !key->compare(L"separation")
+		 || !key->compare(L"convergence")
+		 || !key->compare(L"handling")
+		 || !key->compare(L"depth_filter")
+		 || !key->compare(L"partner")
+		 || !key->compare(L"iteration")
+		 || !key->compare(L"indexbufferfilter")
+		 || !key->compare(L"analyse_options")
+		 || !key->compare(L"fake_o0")
+		 || !key->compare(L"depth_input"))
+			continue;
+
+		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->data(), val->data());
+		BeepFailure2();
+	}
+}
+
+static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
@@ -346,6 +384,8 @@ static void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
 			ParseParamOverride(id, iniFile, &override->z[j], L'z', j);
 			ParseParamOverride(id, iniFile, &override->w[j], L'w', j);
 		}
+
+		ParseShaderOverrideCommands(id, iniFile, override);
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }

@@ -10,6 +10,13 @@
 #include <unordered_set>
 
 #include "util.h"
+#include "ShaderOverrideCommands.h"
+
+// Resolve circular include dependency between Globals.h ->
+// ShaderOverrideCommands.h -> HackerContext.h -> Globals.h
+class ShaderOverrideCommand;
+typedef std::vector<std::unique_ptr<ShaderOverrideCommand>> ShaderOverrideCommandList;
+
 
 // Defines the maximum number of four component ini params we support.
 // Potential trade off on flexibility vs overhead, but unless we increase it
@@ -222,6 +229,7 @@ struct ShaderOverride {
 	UINT depth_width, depth_height;
 
 	ParamOverride x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE], z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
+	ShaderOverrideCommandList command_list;
 
 	ShaderOverride() :
 		separation(FLT_MAX),

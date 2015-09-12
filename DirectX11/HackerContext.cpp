@@ -695,6 +695,8 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
 	}
 
+	RunShaderOverrideCommandList(mHackerDevice, this, &shaderOverride->command_list);
+
 	// TODO: Add render target filters, texture filters, etc.
 
 	if (use_orig) {
