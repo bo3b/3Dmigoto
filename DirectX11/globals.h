@@ -156,62 +156,6 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 	{NULL, DepthBufferFilter::INVALID} // End of list marker
 };
 
-enum class ParamOverrideType {
-	INVALID,
-	VALUE,
-	RT_WIDTH,
-	RT_HEIGHT,
-	RES_WIDTH,
-	RES_HEIGHT,
-	TEXTURE,	// Needs shader type and slot number specified in
-			// [ShaderOverride]. [TextureOverride] sections can
-			// specify filter_index=N to define the value passed in
-			// here. Special values for no [TextureOverride]
-			// section = 0.0, or [TextureOverride] with no
-			// filter_index = 1.0
-	// TODO:
-	// DEPTH_ACTIVE
-	// VERTEX_SHADER    (how best to pass these in?
-	// HULL_SHADER       Maybe the low/hi 32bits of hash? Or all 64bits split in two?
-	// DOMAIN_SHADER     Maybe an index or some other mapping? Perhaps something like Helix mod's texture CRCs?
-	// GEOMETRY_SHADER   Or... maybe don't bother! We can already achieve this by setting the value in
-	// PIXEL_SHADER      the partner shaders instead! Limiting to a single draw call would be helpful)
-	// etc.
-};
-static EnumName_t<wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
-	{L"rt_width", ParamOverrideType::RT_WIDTH},
-	{L"rt_height", ParamOverrideType::RT_HEIGHT},
-	{L"res_width", ParamOverrideType::RES_WIDTH},
-	{L"res_height", ParamOverrideType::RES_HEIGHT},
-	{NULL, ParamOverrideType::INVALID} // End of list marker
-};
-struct ParamOverride {
-	ParamOverrideType type;
-	float val;
-
-	// For texture filters:
-	wchar_t shader_type;
-	unsigned texture_slot;
-
-	// TODO: Ability to override value until:
-	// a) From now on
-	// b) Single draw call only
-	// c) Until end of this frame (e.g. mark when post processing starts)
-	// d) Until end of next frame (e.g. for scene detection)
-	// Since the duration of the convergence and separation settings are
-	// not currently consistent between [ShaderOverride] and [Key] sections
-	// we could also make this apply to them to make it consistent, but
-	// still allow for the existing behaviour for the fixes that depend on
-	// it (like DG2).
-
-	ParamOverride() :
-		type(ParamOverrideType::INVALID),
-		val(FLT_MAX),
-		shader_type(NULL),
-		texture_slot(INT_MAX)
-	{}
-};
-
 struct ShaderOverride {
 	float separation;
 	float convergence;
@@ -228,7 +172,6 @@ struct ShaderOverride {
 	ID3D11ShaderResourceView *depth_view = NULL;
 	UINT depth_width, depth_height;
 
-	ParamOverride x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE], z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
 	ShaderOverrideCommandList command_list;
 
 	ShaderOverride() :

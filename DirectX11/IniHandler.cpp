@@ -188,47 +188,6 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
-static void ParseParamOverride(const wchar_t *section, LPCWSTR ini,
-		ParamOverride *override, wchar_t component, int index)
-{
-	wchar_t buf[MAX_PATH], param_name[8];
-	int ret;
-
-	StringCchPrintf(param_name, 8, L"%lc%.0i", component, index);
-	if (!GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini))
-		return;
-
-	// Try parsing setting as a float
-	ret = swscanf_s(buf, L"%f", &override->val);
-	if (ret != 0 && ret != EOF) {
-		override->type = ParamOverrideType::VALUE;
-		LogInfoW(L"  %ls=%#.2g\n", param_name, override->val);
-		return;
-	}
-
-	// Try parsing setting as "<shader type>s-t<testure slot>" for texture filtering
-	ret = swscanf_s(buf, L"%lcs-t%u", &override->shader_type, 1, &override->texture_slot);
-	if (ret == 2 && override->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		switch(override->shader_type) {
-			case L'v': case L'h': case L'd': case L'g': case L'p':
-				override->type = ParamOverrideType::TEXTURE;
-				LogInfoW(L"  %ls=%lcs-t%u\n", param_name,
-						override->shader_type,
-						override->texture_slot);
-				return;
-		}
-	}
-
-	// Check special keywords
-	override->type = lookup_enum_val<wchar_t *, ParamOverrideType>
-		(ParamOverrideTypeNames, buf, ParamOverrideType::INVALID);
-	if (override->type == ParamOverrideType::INVALID) {
-		LogInfoW(L"  WARNING: Unknown %ls \"%s\"\n", param_name, buf);
-		BeepFailure2();
-	} else
-		LogInfoW(L"  %ls=%s\n", param_name, buf);
-}
-
 // This tries to parse each line in a [ShaderOverride] section in order.
 static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, ShaderOverride *override)
 {
@@ -261,6 +220,9 @@ static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, Sha
 		 || !key->compare(L"depth_input"))
 			continue;
 
+		if (ParseShaderOverrideIniParamOverride(key, val, &override->command_list))
+			continue;
+
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->data(), val->data());
 		BeepFailure2();
 	}
@@ -273,7 +235,6 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 	const wchar_t *id;
 	ShaderOverride *override;
 	UINT64 hash, hash2;
-	int j;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -376,13 +337,6 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			LogInfo("  depth_input out of range!\n");
 			override->depth_input = 0;
 			BeepFailure2();
-		}
-
-		for (j = 0; j < INI_PARAMS_SIZE; j++) {
-			ParseParamOverride(id, iniFile, &override->x[j], L'x', j);
-			ParseParamOverride(id, iniFile, &override->y[j], L'y', j);
-			ParseParamOverride(id, iniFile, &override->z[j], L'z', j);
-			ParseParamOverride(id, iniFile, &override->w[j], L'w', j);
 		}
 
 		ParseShaderOverrideCommands(id, iniFile, override);
