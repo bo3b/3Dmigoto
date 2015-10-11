@@ -375,13 +375,6 @@ void InitD311()
 	G = new Globals();
 	InitializeCriticalSection(&G->mCriticalSection);
 
-	if (!InitializeDLL())
-	{
-		// Failed to init?  Best to exit now, we are sure to crash.
-		DoubleBeepExit();
-	}
-
-	
 
 	// Chain through to the either the original DLL in the system, or to a proxy
 	// DLL with the same interface, specified in the d3dx.ini file.
