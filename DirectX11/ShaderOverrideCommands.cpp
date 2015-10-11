@@ -679,8 +679,16 @@ static ResourceType* CreateCompatibleTexture(
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
 	desc.CPUAccessFlags = 0;
+#if 0
+	// Didn't seem to work - got an invalid argument error from
+	// CreateTexture2D. Could be that the existing view used a format
+	// incompatible with the bind flags (e.g. depth+stencil formats can't
+	// be used in a shader resource).
 	if (format)
 		desc.Format = format;
+#else
+	desc.Format = EnsureNotTypeless(desc.Format);
+#endif
 	// XXX: Any changes needed in desc.MiscFlags?
 
 	hr = (device->*CreateTexture)(&desc, NULL, &tex);
