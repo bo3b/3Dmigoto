@@ -248,11 +248,11 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 		goto check_shader_type;
 	}
 
-	// TODO: ret = swscanf_s(target, L"%lcs-t%u%n", &shader_type, 1, &slot, &len);
-	// TODO: if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-	// TODO: 	type = ResourceCopyTargetType::SHADER_RESOURCE;
-	// TODO:	goto check_shader_type;
-	// TODO: }
+	ret = swscanf_s(target, L"%lcs-t%u%n", &shader_type, 1, &slot, &len);
+	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+		type = ResourceCopyTargetType::SHADER_RESOURCE;
+	       goto check_shader_type;
+	}
 
 	// TODO: ret = swscanf_s(target, L"%lcs-s%u%n", &shader_type, 1, &slot, &len);
 	// TODO: if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT) {
@@ -375,9 +375,12 @@ bail:
 	return false;
 }
 
-ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContext)
+ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContext, ID3D11View **view)
 {
+	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
+	ID3D11ShaderResourceView *resource_view = NULL;
+	*view = NULL;
 
 	switch(type) {
 	case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -408,8 +411,41 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 		}
 		break;
 
-	// TODO: case ResourceCopyTargetType::SHADER_RESOURCE:
-	// TODO: 	break;
+	case ResourceCopyTargetType::SHADER_RESOURCE:
+		switch(shader_type) {
+		case L'v':
+			mOrigContext->VSGetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'h':
+			mOrigContext->HSGetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'd':
+			mOrigContext->DSGetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'g':
+			mOrigContext->GSGetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'p':
+			mOrigContext->PSGetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'c':
+			mOrigContext->CSGetShaderResources(slot, 1, &resource_view);
+			break;
+		default:
+			// Should not happen
+			return NULL;
+		}
+
+		if (!resource_view)
+			return NULL;
+
+		resource_view->GetResource(&res);
+		if (!res)
+			goto fail;
+
+		*view = resource_view;
+		return res;
+
 	// TODO: case ResourceCopyTargetType::SAMPLER: // Not an ID3D11Resource, need to think about this one
 	// TODO: 	break;
 	// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
@@ -428,12 +464,20 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 	// TODO: 	break;
 	}
 
+fail:
+	if (res)
+		res->Release();
+	if (buf)
+		buf->Release();
+	if (resource_view)
+		resource_view->Release();
 	return NULL;
 }
 
-void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res)
+void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res, ID3D11View *view)
 {
 	ID3D11Buffer *buf = NULL;
+	ID3D11ShaderResourceView *resource_view = NULL;
 
 	switch(type) {
 	case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -465,8 +509,33 @@ void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Re
 		}
 		break;
 
-	// TODO: case ResourceCopyTargetType::SHADER_RESOURCE:
-	// TODO: 	break;
+	case ResourceCopyTargetType::SHADER_RESOURCE:
+		resource_view = (ID3D11ShaderResourceView*)view;
+		switch(shader_type) {
+		case L'v':
+			mOrigContext->VSSetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'h':
+			mOrigContext->HSSetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'd':
+			mOrigContext->DSSetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'g':
+			mOrigContext->GSSetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'p':
+			mOrigContext->PSSetShaderResources(slot, 1, &resource_view);
+			break;
+		case L'c':
+			mOrigContext->CSSetShaderResources(slot, 1, &resource_view);
+			break;
+		default:
+			// Should not happen
+			return;
+		}
+		break;
+
 	// TODO: case ResourceCopyTargetType::SAMPLER: // Not an ID3D11Resource, need to think about this one
 	// TODO: 	break;
 	// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
@@ -491,13 +560,15 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext,
 {
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
+	ID3D11View *src_view = NULL;
+	ID3D11View *dst_view = NULL;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
-		dst.SetResource(mOrigContext, NULL);
+		dst.SetResource(mOrigContext, NULL, NULL);
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigContext);
+	src_resource = src.GetResource(mOrigContext, &src_view);
 	if (!src_resource) {
 		LogDebug("Resource copy error: Source was NULL\n");
 		return;
@@ -511,9 +582,18 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext,
 	// 	cached_resource = dst_resource;
 	// } else {
 		dst_resource = src_resource;
+		if (src_view) {
+			if (src.type == dst.type)
+				dst_view = src_view;
+			// TODO:
+			// else
+			// 	dst_view = CreateCompatibleView(src_view, dst_usage);
+		}
 	// }
 
-	dst.SetResource(mOrigContext, dst_resource);
+	dst.SetResource(mOrigContext, dst_resource, dst_view);
 
 	src_resource->Release();
+	if (src_view)
+		src_view->Release();
 }
