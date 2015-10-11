@@ -88,6 +88,9 @@ static float ProcessParamTextureFilter(HackerContext *mHackerContext,
 		case L'p':
 			mOrigContext->PSGetShaderResources(override->texture_slot, 1, &view);
 			break;
+		case L'c':
+			mOrigContext->CSGetShaderResources(override->texture_slot, 1, &view);
+			break;
 		default:
 			// Should not happen
 			return filter_index;
@@ -218,7 +221,7 @@ bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
 	if (ret == 2 && len1 == val->length() &&
 			param->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		switch(param->shader_type) {
-			case L'v': case L'h': case L'd': case L'g': case L'p':
+			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
 				param->type = ParamOverrideType::TEXTURE;
 				goto success;
 			default:
