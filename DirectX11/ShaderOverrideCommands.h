@@ -101,9 +101,63 @@ public:
 	void run(HackerContext*, ID3D11DeviceContext*, ShaderOverrideState*) override;
 };
 
+enum class ResourceCopyTargetType {
+	INVALID,
+	EMPTY,
+	CONSTANT_BUFFER,
+	// TODO: SHADER_RESOURCE,
+	// TODO: SAMPLER, // Not really a resource, but might still be useful
+	// TODO: VERTEX_BUFFER,
+	// TODO: INDEX_BUFFER,
+	// TODO: STREAM_OUTPUT,
+	// TODO: RENDER_TARGET,
+	// TODO: DEPTH_STENCIL_TARGET,
+	// TODO: UNORDERED_ACCESS_VIEW,
+	// TODO: CUSTOM_RESOURCE,
+};
+
+class ResourceCopyTarget {
+public:
+	ResourceCopyTargetType type;
+	wchar_t shader_type;
+	unsigned slot;
+
+	ResourceCopyTarget() :
+		type(ResourceCopyTargetType::INVALID),
+		shader_type(L'\0'),
+		slot(0)
+	{}
+
+	bool ParseTarget(const wchar_t *target, bool allow_null);
+	ID3D11Resource *GetResource(ID3D11DeviceContext *mOrigContext);
+	void SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res);
+};
+
+enum class ResourceCopyOperationType {
+	AUTO,
+	COPY,
+	REFERENCE,
+};
+
+class ResourceCopyOperation : public ShaderOverrideCommand {
+public:
+	ResourceCopyTarget src;
+	ResourceCopyTarget dst;
+	ResourceCopyOperationType copy_type;
+
+	ResourceCopyOperation() :
+		copy_type(ResourceCopyOperationType::AUTO)
+	{}
+
+	void run(HackerContext*, ID3D11DeviceContext*, ShaderOverrideState*) override;
+};
+
+
 void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		ShaderOverrideCommandList *command_list);
 
 bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
+		ShaderOverrideCommandList *command_list);
+bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 		ShaderOverrideCommandList *command_list);

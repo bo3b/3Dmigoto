@@ -235,3 +235,285 @@ bail:
 	delete param;
 	return false;
 }
+
+
+bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
+{
+	int ret, len;
+	size_t length = wcslen(target);
+
+	ret = swscanf_s(target, L"%lcs-cb%u%n", &shader_type, 1, &slot, &len);
+	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+		type = ResourceCopyTargetType::CONSTANT_BUFFER;
+		goto check_shader_type;
+	}
+
+	// TODO: ret = swscanf_s(target, L"%lcs-t%u%n", &shader_type, 1, &slot, &len);
+	// TODO: if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::SHADER_RESOURCE;
+	// TODO:	goto check_shader_type;
+	// TODO: }
+
+	// TODO: ret = swscanf_s(target, L"%lcs-s%u%n", &shader_type, 1, &slot, &len);
+	// TODO: if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::SAMPLER;
+	// TODO:	goto check_shader_type;
+	// TODO: }
+
+	// TODO: ret = swscanf_s(target, L"o%u%n", &slot, &len);
+	// TODO: if (ret == 1 && len == length && slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::RENDER_TARGET;
+	// TODO: 	return true;
+	// TODO: }
+
+	// TODO: if (!wcscmp(target, L"oD")) {
+	// TODO: 	type = ResourceCopyTargetType::DEPTH_STENCIL_TARGET;
+	// TODO: 	return true;
+	// TODO: }
+
+	// TODO: ret = swscanf_s(target, L"u%u%n", &slot, &len);
+	// TODO: // XXX: On Win8 D3D11_1_UAV_SLOT_COUNT (64) is the limit instead. Use
+	// TODO: // the lower amount for now to enforce compatibility.
+	// TODO: if (ret == 1 && len == length && slot < D3D11_PS_CS_UAV_REGISTER_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
+	// TODO: 	return true;
+	// TODO: }
+
+	// TODO: ret = swscanf_s(target, L"vb%u%n", &slot, &len);
+	// TODO: if (ret == 1 && len == length && slot < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::VERTEX_BUFFER;
+	// TODO: 	return true;
+	// TODO: }
+
+	// TODO: if (!wcscmp(target, L"ib")) {
+	// TODO: 	type = ResourceCopyTargetType::INDEX_BUFFER;
+	// TODO: 	return true;
+	// TODO: }
+
+	// TODO: ret = swscanf_s(target, L"so%u%n", &slot, &len);
+	// TODO: if (ret == 1 && len == length && slot < D3D11_SO_STREAM_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::STREAM_OUTPUT;
+	// TODO: 	return true;
+	// TODO: }
+
+	if (allow_null && !wcscmp(target, L"null")) {
+		type = ResourceCopyTargetType::EMPTY;
+		return true;
+	}
+
+	return false;
+
+check_shader_type:
+	switch(shader_type) {
+		case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+			return true;
+	}
+	return false;
+}
+
+
+bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
+		ShaderOverrideCommandList *command_list)
+{
+	ResourceCopyOperation *operation = new ResourceCopyOperation();
+	const wchar_t *src_ptr = val->data();
+
+	if (!operation->dst.ParseTarget(key->data(), false))
+		goto bail;
+
+	// TODO:
+	// if (!val->compare(0, 5, L"copy ")) {
+	// 	operation->copy_type = ResourceCopyOperationType::COPY;
+	// 	src_ptr += 5;
+	// } else
+	if (!val->compare(0, 10, L"reference ")) {
+		operation->copy_type = ResourceCopyOperationType::REFERENCE;
+		src_ptr += 10;
+	} else if (!val->compare(0, 4, L"ref ")) {
+		operation->copy_type = ResourceCopyOperationType::REFERENCE;
+		src_ptr += 4;
+	}
+
+	if (!operation->src.ParseTarget(src_ptr, true))
+		goto bail;
+
+	if (operation->copy_type == ResourceCopyOperationType::AUTO) {
+		// If the copy method was not speficied make a guess.
+		// References aren't always safe (e.g. a resource can't be both
+		// an input and an output), and a resource may not have been
+		// created with the right usage flags, so we'll err on the side
+		// of doing a full copy if we aren't fairly sure.
+		//
+		// If we're merely copying a resource from one shader to
+		// another without changnig the usage (e.g. giving the vertex
+		// shader access to a constant buffer or texture from the pixel
+		// shader) a reference is probably safe (unless the game
+		// reassigns it to a different usage later and doesn't know
+		// that our reference is still bound somewhere), but it would
+		// not be safe to give a vertex shader access to the depth
+		// buffer of the output merger stage, for example.
+		//
+		// TODO: If we are copying a resource into a custom resource
+		// (e.g. for use from another draw call), do a full copy by
+		// default in case the game alters the original.
+		// if (dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		// 	operation->copy_type = ResourceCopyOperationType::COPY;
+		// else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		// 	operation->copy_type = ResourceCopyOperationType::REFERENCE;
+		// else
+		if (operation->src.type == operation->dst.type)
+			operation->copy_type = ResourceCopyOperationType::REFERENCE;
+		else
+			operation->copy_type = ResourceCopyOperationType::COPY;
+	}
+
+	LogInfoW(L"  %ls=%s\n", key->data(), val->data());
+	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(operation));
+	return true;
+bail:
+	delete operation;
+	return false;
+}
+
+ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContext)
+{
+	ID3D11Buffer *buf = NULL;
+
+	switch(type) {
+	case ResourceCopyTargetType::CONSTANT_BUFFER:
+		// FIXME: On win8 (or with evil update?), we should use
+		// Get/SetConstantBuffers1 and copy the offset into the buffer as well
+		switch(shader_type) {
+		case L'v':
+			mOrigContext->VSGetConstantBuffers(slot, 1, &buf);
+			return buf;
+		case L'h':
+			mOrigContext->HSGetConstantBuffers(slot, 1, &buf);
+			return buf;
+		case L'd':
+			mOrigContext->DSGetConstantBuffers(slot, 1, &buf);
+			return buf;
+		case L'g':
+			mOrigContext->GSGetConstantBuffers(slot, 1, &buf);
+			return buf;
+		case L'p':
+			mOrigContext->PSGetConstantBuffers(slot, 1, &buf);
+			return buf;
+		case L'c':
+			mOrigContext->CSGetConstantBuffers(slot, 1, &buf);
+			return buf;
+		default:
+			// Should not happen
+			return NULL;
+		}
+		break;
+
+	// TODO: case ResourceCopyTargetType::SHADER_RESOURCE:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::SAMPLER: // Not an ID3D11Resource, need to think about this one
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::INDEX_BUFFER:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::RENDER_TARGET:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::CUSTOM_RESOURCE:
+	// TODO: 	break;
+	}
+
+	return NULL;
+}
+
+void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res)
+{
+	ID3D11Buffer *buf = NULL;
+
+	switch(type) {
+	case ResourceCopyTargetType::CONSTANT_BUFFER:
+		// FIXME: On win8 (or with evil update?), we should use
+		// Get/SetConstantBuffers1 and copy the offset into the buffer as well
+		buf = (ID3D11Buffer*)res;
+		switch(shader_type) {
+		case L'v':
+			mOrigContext->VSSetConstantBuffers(slot, 1, &buf);
+			return;
+		case L'h':
+			mOrigContext->HSSetConstantBuffers(slot, 1, &buf);
+			return;
+		case L'd':
+			mOrigContext->DSSetConstantBuffers(slot, 1, &buf);
+			return;
+		case L'g':
+			mOrigContext->GSSetConstantBuffers(slot, 1, &buf);
+			return;
+		case L'p':
+			mOrigContext->PSSetConstantBuffers(slot, 1, &buf);
+			return;
+		case L'c':
+			mOrigContext->CSSetConstantBuffers(slot, 1, &buf);
+			return;
+		default:
+			// Should not happen
+			return;
+		}
+		break;
+
+	// TODO: case ResourceCopyTargetType::SHADER_RESOURCE:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::SAMPLER: // Not an ID3D11Resource, need to think about this one
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::INDEX_BUFFER:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::RENDER_TARGET:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+	// TODO: 	break;
+	// TODO: case ResourceCopyTargetType::CUSTOM_RESOURCE:
+	// TODO: 	break;
+	}
+}
+
+void ResourceCopyOperation::run(HackerContext *mHackerContext,
+		ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
+{
+	ID3D11Resource *src_resource = NULL;
+	ID3D11Resource *dst_resource = NULL;
+
+	if (src.type == ResourceCopyTargetType::EMPTY) {
+		dst.SetResource(mOrigContext, NULL);
+		return;
+	}
+
+	src_resource = src.GetResource(mOrigContext);
+	if (!src_resource) {
+		LogDebug("Resource copy error: Source was NULL\n");
+		return;
+	}
+
+	// TODO:
+	// if (copy_type == ResourceCopyOperationType::COPY) {
+	// 	if (!ResourceIsCompatible(src_resource, cached_resource)
+	// 		dst_resource = CreateCompatibleResource(src_resource, dst_usage);
+	// 	CopyResource(dst_resource, src_resource);
+	// 	cached_resource = dst_resource;
+	// } else {
+		dst_resource = src_resource;
+	// }
+
+	dst.SetResource(mOrigContext, dst_resource);
+
+	src_resource->Release();
+}
