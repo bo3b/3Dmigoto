@@ -6,11 +6,12 @@ void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
 {
 	ShaderOverrideCommandList::iterator i;
 	ShaderOverrideState state;
+	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
 	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 	for (i = command_list->begin(); i < command_list->end(); i++) {
-		(*i)->run(mHackerContext, mOrigContext, &state);
+		(*i)->run(mHackerContext, mOrigDevice, mOrigContext, &state);
 	}
 
 	if (state.update_params) {
@@ -123,7 +124,7 @@ out_release_view:
 	return filter_index;
 }
 
-void ParamOverride::run(HackerContext *mHackerContext,
+void ParamOverride::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);
@@ -260,16 +261,16 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 	// TODO:	goto check_shader_type;
 	// TODO: }
 
-	// TODO: ret = swscanf_s(target, L"o%u%n", &slot, &len);
-	// TODO: if (ret == 1 && len == length && slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT) {
-	// TODO: 	type = ResourceCopyTargetType::RENDER_TARGET;
-	// TODO: 	return true;
-	// TODO: }
+	ret = swscanf_s(target, L"o%u%n", &slot, &len);
+	if (ret == 1 && len == length && slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT) {
+		type = ResourceCopyTargetType::RENDER_TARGET;
+		return true;
+	}
 
-	// TODO: if (!wcscmp(target, L"oD")) {
-	// TODO: 	type = ResourceCopyTargetType::DEPTH_STENCIL_TARGET;
-	// TODO: 	return true;
-	// TODO: }
+	if (!wcscmp(target, L"oD")) {
+		type = ResourceCopyTargetType::DEPTH_STENCIL_TARGET;
+		return true;
+	}
 
 	// TODO: ret = swscanf_s(target, L"u%u%n", &slot, &len);
 	// TODO: // XXX: On Win8 D3D11_1_UAV_SLOT_COUNT (64) is the limit instead. Use
@@ -321,12 +322,10 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 	if (!operation->dst.ParseTarget(key->data(), false))
 		goto bail;
 
-	// TODO:
-	// if (!val->compare(0, 5, L"copy ")) {
-	// 	operation->copy_type = ResourceCopyOperationType::COPY;
-	// 	src_ptr += 5;
-	// } else
-	if (!val->compare(0, 10, L"reference ")) {
+	if (!val->compare(0, 5, L"copy ")) {
+		operation->copy_type = ResourceCopyOperationType::COPY;
+		src_ptr += 5;
+	} else if (!val->compare(0, 10, L"reference ")) {
 		operation->copy_type = ResourceCopyOperationType::REFERENCE;
 		src_ptr += 10;
 	} else if (!val->compare(0, 4, L"ref ")) {
@@ -380,6 +379,10 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
 	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11DepthStencilView *depth_view = NULL;
+	unsigned i;
+
 	*view = NULL;
 
 	switch(type) {
@@ -440,8 +443,10 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 			return NULL;
 
 		resource_view->GetResource(&res);
-		if (!res)
-			goto fail;
+		if (!res) {
+			resource_view->Release();
+			return NULL;
+		}
 
 		*view = resource_view;
 		return res;
@@ -454,23 +459,50 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 	// TODO: 	break;
 	// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
 	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::RENDER_TARGET:
-	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-	// TODO: 	break;
+
+	case ResourceCopyTargetType::RENDER_TARGET:
+		mOrigContext->OMGetRenderTargets(slot + 1, render_view, NULL);
+
+		// Release any views we aren't after:
+		for (i = 0; i < slot; i++) {
+			if (render_view[i]) {
+				render_view[i]->Release();
+				render_view[i] = NULL;
+			}
+		}
+
+		if (!render_view[slot])
+			return NULL;
+
+		render_view[slot]->GetResource(&res);
+		if (!res) {
+			render_view[slot]->Release();
+			return NULL;
+		}
+
+		*view = render_view[slot];
+		return res;
+
+	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+		mOrigContext->OMGetRenderTargets(0, NULL, &depth_view);
+		if (!depth_view)
+			return NULL;
+
+		depth_view->GetResource(&res);
+		if (!res) {
+			depth_view->Release();
+			return NULL;
+		}
+
+		*view = depth_view;
+		return res;
+
 	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 	// TODO: 	break;
 	// TODO: case ResourceCopyTargetType::CUSTOM_RESOURCE:
 	// TODO: 	break;
 	}
 
-fail:
-	if (res)
-		res->Release();
-	if (buf)
-		buf->Release();
-	if (resource_view)
-		resource_view->Release();
 	return NULL;
 }
 
@@ -478,6 +510,9 @@ void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Re
 {
 	ID3D11Buffer *buf = NULL;
 	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11DepthStencilView *depth_view = NULL;
+	int i;
 
 	switch(type) {
 	case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -544,10 +579,29 @@ void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Re
 	// TODO: 	break;
 	// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
 	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::RENDER_TARGET:
-	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-	// TODO: 	break;
+
+	case ResourceCopyTargetType::RENDER_TARGET:
+	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+		// XXX: HERE BE UNTESTED CODE PATHS!
+		mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
+		if (type == ResourceCopyTargetType::RENDER_TARGET) {
+			if (render_view[slot])
+				render_view[slot]->Release();
+			render_view[slot] = (ID3D11RenderTargetView*)view;
+		} else {
+			if (depth_view)
+				depth_view->Release();
+			depth_view = (ID3D11DepthStencilView*)view;
+		}
+		mOrigContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
+
+		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+			if (render_view[i])
+				render_view[i]->Release();
+		}
+		depth_view->Release();
+		break;
+
 	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 	// TODO: 	break;
 	// TODO: case ResourceCopyTargetType::CUSTOM_RESOURCE:
@@ -555,13 +609,199 @@ void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Re
 	}
 }
 
-void ResourceCopyOperation::run(HackerContext *mHackerContext,
+D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
+{
+	switch(type) {
+		case ResourceCopyTargetType::CONSTANT_BUFFER:
+			return D3D11_BIND_CONSTANT_BUFFER;
+		case ResourceCopyTargetType::SHADER_RESOURCE:
+			return D3D11_BIND_SHADER_RESOURCE;
+		// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
+		// TODO: 	return D3D11_BIND_VERTEX_BUFFER;
+		// TODO: case ResourceCopyTargetType::INDEX_BUFFER:
+		// TODO: 	return D3D11_BIND_INDEX_BUFFER;
+		// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
+		// TODO: 	return D3D11_BIND_STREAM_OUTPUT;
+		case ResourceCopyTargetType::RENDER_TARGET:
+			return D3D11_BIND_RENDER_TARGET;
+		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+			return D3D11_BIND_DEPTH_STENCIL;
+		// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+		// TODO: 	return D3D11_BIND_UNORDERED_ACCESS;
+	}
+
+	// Shouldn't happen. No return value makes sense, so raise an exception
+	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
+}
+
+static ID3D11Buffer *CreateCompatibleBuffer(
+		ID3D11Buffer *src_resource,
+		D3D11_BIND_FLAG bind_flags,
+		ID3D11Device *device)
+{
+	HRESULT hr;
+	D3D11_BUFFER_DESC desc;
+	ID3D11Buffer *buffer = NULL;
+
+	src_resource->GetDesc(&desc);
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	desc.CPUAccessFlags = 0;
+	// XXX: Any changes needed in desc.MiscFlags?
+
+	hr = device->CreateBuffer(&desc, NULL, &buffer);
+	if (FAILED(hr)) {
+		LogInfo("Resource copy CreateCompatibleBuffer failed: 0x%x\n", hr);
+		return NULL;
+	}
+
+	return buffer;
+}
+
+template <typename ResourceType,
+	 typename DescType,
+	HRESULT (__stdcall ID3D11Device::*CreateTexture)(THIS_
+	      const DescType *pDesc,
+	      const D3D11_SUBRESOURCE_DATA *pInitialData,
+	      ResourceType **ppTexture)
+	>
+static ResourceType* CreateCompatibleTexture(
+		ResourceType *src_resource,
+		D3D11_BIND_FLAG bind_flags,
+		DXGI_FORMAT format,
+		ID3D11Device *device)
+{
+	HRESULT hr;
+	DescType desc;
+	ResourceType *tex = NULL;
+
+	src_resource->GetDesc(&desc);
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	desc.CPUAccessFlags = 0;
+	if (format)
+		desc.Format = format;
+	// XXX: Any changes needed in desc.MiscFlags?
+
+	hr = (device->*CreateTexture)(&desc, NULL, &tex);
+	if (FAILED(hr)) {
+		LogInfo("Resource copy CreateCompatibleTexture failed: 0x%x\n", hr);
+		return NULL;
+	}
+
+	return tex;
+}
+
+static DXGI_FORMAT GetViewFormat(ResourceCopyTargetType type, ID3D11View *view)
+{
+	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view = NULL;
+	ID3D11DepthStencilView *depth_view = NULL;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
+	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
+	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
+
+	if (!view)
+		return DXGI_FORMAT_UNKNOWN;
+
+	switch (type) {
+		case ResourceCopyTargetType::SHADER_RESOURCE:
+			resource_view = (ID3D11ShaderResourceView*)view;
+			resource_view->GetDesc(&resource_view_desc);
+			return resource_view_desc.Format;
+		case ResourceCopyTargetType::RENDER_TARGET:
+			render_view = (ID3D11RenderTargetView*)view;
+			render_view->GetDesc(&render_view_desc);
+			return render_view_desc.Format;
+		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+			depth_view = (ID3D11DepthStencilView*)view;
+			depth_view->GetDesc(&depth_view_desc);
+			return depth_view_desc.Format;
+		// TODO: ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+	}
+
+	return DXGI_FORMAT_UNKNOWN;
+}
+
+static ID3D11Resource* CreateCompatibleResource(
+		ResourceCopyTarget *src,
+		ResourceCopyTarget *dst,
+		ID3D11Resource *src_resource,
+		ID3D11View *src_view,
+		ID3D11Device *device)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_BIND_FLAG bind_flags = dst->BindFlags();
+	DXGI_FORMAT format = GetViewFormat(src->type, src_view);
+	ID3D11Resource *res = NULL;
+
+	src_resource->GetType(&dimension);
+	switch (dimension) {
+		case D3D11_RESOURCE_DIMENSION_UNKNOWN:
+			return NULL;
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			return CreateCompatibleBuffer((ID3D11Buffer*)src_resource, bind_flags, device);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			return CreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
+				((ID3D11Texture1D*)src_resource, bind_flags, format, device);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			return CreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
+				((ID3D11Texture2D*)src_resource, bind_flags, format, device);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			return CreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
+				((ID3D11Texture3D*)src_resource, bind_flags, format, device);
+	}
+
+	return NULL;
+}
+
+static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
+		ID3D11Resource *resource, ID3D11Device *device)
+{
+	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view = NULL;
+	ID3D11DepthStencilView *depth_view = NULL;
+	HRESULT hr;
+
+	// For now just creating a view of the whole resource to simplify
+	// things. If/when we find a game that needs a view of a subresource we
+	// can think about handling that case then.
+
+	switch (dst->type) {
+		case ResourceCopyTargetType::SHADER_RESOURCE:
+			hr = device->CreateShaderResourceView(resource, NULL, &resource_view);
+			if (SUCCEEDED(hr))
+				return resource_view;
+			LogInfo("Resource copy CreateCompatibleView failed for shader resource view: 0x%x\n", hr);
+			break;
+		case ResourceCopyTargetType::RENDER_TARGET:
+			hr = device->CreateRenderTargetView(resource, NULL, &render_view);
+			if (SUCCEEDED(hr))
+				return render_view;
+			LogInfo("Resource copy CreateCompatibleView failed for render target view: 0x%x\n", hr);
+			break;
+		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+			hr = device->CreateDepthStencilView(resource, NULL, &depth_view);
+			if (SUCCEEDED(hr))
+				return depth_view;
+			LogInfo("Resource copy CreateCompatibleView failed for depth/stencil view: 0x%x\n", hr);
+			break;
+		// TODO: ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+	}
+	return NULL;
+}
+
+void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
 {
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
+
+	bool release_resource = false;
+	bool release_view = false;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL);
@@ -574,24 +814,43 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext,
 		return;
 	}
 
-	// TODO:
-	// if (copy_type == ResourceCopyOperationType::COPY) {
-	// 	if (!ResourceIsCompatible(src_resource, cached_resource)
-	// 		dst_resource = CreateCompatibleResource(src_resource, dst_usage);
-	// 	CopyResource(dst_resource, src_resource);
-	// 	cached_resource = dst_resource;
-	// } else {
-		dst_resource = src_resource;
-		if (src_view) {
-			if (src.type == dst.type)
-				dst_view = src_view;
-			// TODO:
-			// else
-			// 	dst_view = CreateCompatibleView(src_view, dst_usage);
+	if (copy_type == ResourceCopyOperationType::COPY) {
+		// TODO: if (!ResourceIsCompatible(src_resource, cached_resource) {
+		// TODO:	 if (cached_resource)
+		// TODO:		cached_resource->Release();
+		// TODO:	 if (cached_view)
+		// TODO:		cached_view->Release();
+		dst_resource = CreateCompatibleResource(&src, &dst, src_resource, src_view, mOrigDevice);
+		if (!dst_resource) {
+			LogInfo("Resource copy error: Could not create destination resource\n");
+			goto out_release;
 		}
-	// }
+		release_resource = true; // TODO: Not once we cache it
+
+		mOrigContext->CopyResource(dst_resource, src_resource);
+		// TODO: cached_resource = dst_resource;
+	} else {
+		dst_resource = src_resource;
+		if (src_view && (src.type == dst.type))
+			dst_view = src_view;
+	}
+
+	if (!dst_view) {
+		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice);
+		// Not checking for NULL return as view's are not applicable to
+		// all types. TODO: Check for legitimate failures.
+		release_view = true; // TODO: Not once we cache it
+		// TODO: cached_view = dst_view;
+	}
 
 	dst.SetResource(mOrigContext, dst_resource, dst_view);
+
+out_release:
+	if (release_resource && dst_resource)
+		dst_resource->Release();
+
+	if (release_view && dst_view)
+		dst_view->Release();
 
 	src_resource->Release();
 	if (src_view)

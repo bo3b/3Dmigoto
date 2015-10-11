@@ -30,7 +30,7 @@ class ShaderOverrideCommand {
 public:
 	virtual ~ShaderOverrideCommand() {};
 
-	virtual void run(HackerContext*, ID3D11DeviceContext*, ShaderOverrideState*) = 0;
+	virtual void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) = 0;
 };
 
 // Using vector of pointers to allow mixed types, and unique_ptr to handle
@@ -98,7 +98,7 @@ public:
 		texture_slot(INT_MAX)
 	{}
 
-	void run(HackerContext*, ID3D11DeviceContext*, ShaderOverrideState*) override;
+	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) override;
 };
 
 enum class ResourceCopyTargetType {
@@ -110,8 +110,8 @@ enum class ResourceCopyTargetType {
 	// TODO: VERTEX_BUFFER,
 	// TODO: INDEX_BUFFER,
 	// TODO: STREAM_OUTPUT,
-	// TODO: RENDER_TARGET,
-	// TODO: DEPTH_STENCIL_TARGET,
+	RENDER_TARGET,
+	DEPTH_STENCIL_TARGET,
 	// TODO: UNORDERED_ACCESS_VIEW,
 	// TODO: CUSTOM_RESOURCE,
 };
@@ -131,6 +131,7 @@ public:
 	bool ParseTarget(const wchar_t *target, bool allow_null);
 	ID3D11Resource *GetResource(ID3D11DeviceContext *mOrigContext, ID3D11View **view);
 	void SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res, ID3D11View *view);
+	D3D11_BIND_FLAG BindFlags();
 };
 
 enum class ResourceCopyOperationType {
@@ -149,7 +150,7 @@ public:
 		copy_type(ResourceCopyOperationType::AUTO)
 	{}
 
-	void run(HackerContext*, ID3D11DeviceContext*, ShaderOverrideState*) override;
+	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) override;
 };
 
 
