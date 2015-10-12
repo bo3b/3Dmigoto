@@ -333,15 +333,6 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		if (override->fake_o0)
 			LogInfo("  fake_o0=1\n");
 
-		override->depth_input = GetPrivateProfileInt(id, L"depth_input", 0, iniFile);
-		if (override->depth_input)
-			LogInfo("  depth_input=%d\n", override->depth_input);
-		if (override->depth_input >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-			LogInfo("  depth_input out of range!\n");
-			override->depth_input = 0;
-			BeepFailure2();
-		}
-
 		ParseShaderOverrideCommands(id, iniFile, override);
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);

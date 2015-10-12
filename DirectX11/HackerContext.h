@@ -78,7 +78,6 @@ private:
 			D3D11_MAP MapType, UINT MapFlags,
 			D3D11_MAPPED_SUBRESOURCE *pMappedResource);
 	void FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource);
-	void AssignDepthInput(ShaderOverride *shaderOverride, bool isPixelShader);
 	void AssignDummyRenderTarget();
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);

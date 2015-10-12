@@ -167,11 +167,6 @@ struct ShaderOverride {
 	FrameAnalysisOptions analyse_options;
 	bool fake_o0;
 
-	int depth_input;
-	ID3D11Texture2D *depth_resource = NULL;
-	ID3D11ShaderResourceView *depth_view = NULL;
-	UINT depth_width, depth_height;
-
 	ShaderOverrideCommandList command_list;
 
 	ShaderOverride() :
@@ -181,22 +176,8 @@ struct ShaderOverride {
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
 		analyse_options(FrameAnalysisOptions::INVALID),
-		fake_o0(false),
-		depth_input(0),
-		depth_resource(NULL),
-		depth_view(NULL),
-		depth_width(0),
-		depth_height(0)
+		fake_o0(false)
 	{}
-
-	~ShaderOverride()
-	{
-		if (depth_resource)
-			depth_resource->Release();
-
-		if (depth_view)
-			depth_view->Release();
-	}
 };
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 
