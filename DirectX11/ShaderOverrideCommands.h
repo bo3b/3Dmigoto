@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
@@ -101,6 +102,25 @@ public:
 	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) override;
 };
 
+class CustomResource
+{
+public:
+	ID3D11Resource *resource;
+	ID3D11View *view;
+
+	D3D11_BIND_FLAG bind_flags;
+
+	UINT stride;
+	UINT offset;
+	DXGI_FORMAT format;
+
+	CustomResource();
+	~CustomResource();
+};
+
+typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
+extern CustomResources customResources;
+
 enum class ResourceCopyTargetType {
 	INVALID,
 	EMPTY,
@@ -113,7 +133,7 @@ enum class ResourceCopyTargetType {
 	RENDER_TARGET,
 	DEPTH_STENCIL_TARGET,
 	// TODO: UNORDERED_ACCESS_VIEW,
-	// TODO: CUSTOM_RESOURCE,
+	CUSTOM_RESOURCE,
 };
 
 class ResourceCopyTarget {
@@ -121,11 +141,13 @@ public:
 	ResourceCopyTargetType type;
 	wchar_t shader_type;
 	unsigned slot;
+	CustomResource *custom_resource;
 
 	ResourceCopyTarget() :
 		type(ResourceCopyTargetType::INVALID),
 		shader_type(L'\0'),
-		slot(0)
+		slot(0),
+		custom_resource(NULL)
 	{}
 
 	bool ParseTarget(const wchar_t *target, bool allow_null);

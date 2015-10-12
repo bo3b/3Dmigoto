@@ -1,5 +1,9 @@
 #include "ShaderOverrideCommands.h"
 
+#include <algorithm>
+
+CustomResources customResources;
+
 void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		ShaderOverrideCommandList *command_list)
@@ -238,10 +242,29 @@ bail:
 }
 
 
+CustomResource::CustomResource() :
+	resource(NULL),
+	view(NULL),
+	bind_flags((D3D11_BIND_FLAG)0),
+	stride(0),
+	offset(0),
+	format(DXGI_FORMAT_UNKNOWN)
+{}
+
+CustomResource::~CustomResource()
+{
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
+}
+
+
 bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 {
 	int ret, len;
 	size_t length = wcslen(target);
+	CustomResources::iterator res;
 
 	ret = swscanf_s(target, L"%lcs-cb%u%n", &shader_type, 1, &slot, &len);
 	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
@@ -302,6 +325,21 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 		return true;
 	}
 
+	if (length >= 9 && !_wcsnicmp(target, L"resource", 8)) {
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		wstring resource_id(target);
+		std::transform(resource_id.begin(), resource_id.end(), resource_id.begin(), ::towlower);
+
+		res = customResources.find(resource_id);
+		if (res == customResources.end())
+			return false;
+
+		custom_resource = &res->second;
+		type = ResourceCopyTargetType::CUSTOM_RESOURCE;
+		return true;
+	}
+
 	return false;
 
 check_shader_type:
@@ -357,18 +395,31 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 		// not be safe to give a vertex shader access to the depth
 		// buffer of the output merger stage, for example.
 		//
-		// TODO: If we are copying a resource into a custom resource
-		// (e.g. for use from another draw call), do a full copy by
-		// default in case the game alters the original.
-		// if (dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-		// 	operation->options |= ResourceCopyOptions::COPY;
-		// else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-		// 	operation->options |= ResourceCopyOptions::REFERENCE;
-		// else
-		if (operation->src.type == operation->dst.type)
+		// If we are copying a resource into a custom resource (e.g.
+		// for use from another draw call), do a full copy by default
+		// in case the game alters the original.
+		if (operation->dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+			operation->options |= ResourceCopyOptions::COPY;
+		else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+			operation->options |= ResourceCopyOptions::REFERENCE;
+		else if (operation->src.type == operation->dst.type)
 			operation->options |= ResourceCopyOptions::REFERENCE;
 		else
 			operation->options |= ResourceCopyOptions::COPY;
+	}
+
+	// FIXME: If custom resources are copied to other custom resources by
+	// reference that are in turn bound to the pipeline we may not
+	// propagate all the bind flags correctly depending on the order
+	// everything is parsed. We'd need to construct a dependency graph
+	// to fix this, but it's not clear that this combination would really
+	// be used in practice, so for now this will do.
+	// FIXME: The constant buffer bind flag can't be combined with others
+	if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
+			(operation->options & ResourceCopyOptions::REFERENCE)) {
+		// Fucking C++ making this line 3x longer than it should be:
+		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
+			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
 	}
 
 	LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
@@ -529,8 +580,17 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 
 	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::CUSTOM_RESOURCE:
-	// TODO: 	break;
+
+	case ResourceCopyTargetType::CUSTOM_RESOURCE:
+		*stride = custom_resource->stride;
+		*offset = custom_resource->offset;
+		*format = custom_resource->format;
+		if (custom_resource->view)
+			custom_resource->view->AddRef();
+		*view = custom_resource->view;
+		if (custom_resource->resource)
+			custom_resource->resource->AddRef();
+		return custom_resource->resource;
 	}
 
 	return NULL;
@@ -664,8 +724,24 @@ void ResourceCopyTarget::SetResource(
 
 	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::CUSTOM_RESOURCE:
-	// TODO: 	break;
+
+	case ResourceCopyTargetType::CUSTOM_RESOURCE:
+		custom_resource->stride = stride;
+		custom_resource->offset = offset;
+		custom_resource->format = format;
+
+		if (custom_resource->view)
+			custom_resource->view->Release();
+		custom_resource->view = view;
+		if (custom_resource->view)
+			custom_resource->view->AddRef();
+
+		if (custom_resource->resource)
+			custom_resource->resource->Release();
+		custom_resource->resource = res;
+		if (custom_resource->resource)
+			custom_resource->resource->AddRef();
+		break;
 	}
 }
 
@@ -688,6 +764,8 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_DEPTH_STENCIL;
 		// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 		// TODO: 	return D3D11_BIND_UNORDERED_ACCESS;
+		case ResourceCopyTargetType::CUSTOM_RESOURCE:
+			return custom_resource->bind_flags;
 	}
 
 	// Shouldn't happen. No return value makes sense, so raise an exception
@@ -955,6 +1033,12 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		}
 		return;
 	}
+
+	// TODO: If copying to a custom resource, we could use the resource &
+	// view in the custom resource direcly instead of cached_resource &
+	// cached_view, which could reduce the number of extra resources we
+	// have floating around if copying something to a single custom
+	// resource from multiple shaders.
 
 	if (options & ResourceCopyOptions::COPY) {
 		RecreateCompatibleResource(&src, &dst, src_resource, &cached_resource, src_view, &cached_view, mOrigDevice);

@@ -188,6 +188,31 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
+static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wstring resource_id;
+
+	customResources.clear();
+
+	lower = sections.lower_bound(wstring(L"Resource"));
+	upper = prefix_upper_bound(sections, wstring(L"Resource"));
+	for (i = lower; i != upper; i++) {
+		LogInfoW(L"[%s]\n", i->c_str());
+
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		resource_id = *i;
+		std::transform(resource_id.begin(), resource_id.end(), resource_id.begin(), ::towlower);
+
+		// Empty Resource sections are valid (think of them as a
+		// sort of variable declaration), so explicitly construct a
+		// CustomResource for each one. Use the [] operator so the
+		// default constructor will be used:
+		customResources[resource_id];
+	}
+}
+
 // This tries to parse each line in a [ShaderOverride] section in order.
 static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, ShaderOverride *override)
 {
@@ -800,7 +825,7 @@ void LoadConfigFile()
 	RegisterHuntingKeyBindings(iniFile);
 	RegisterPresetKeyBindings(sections, iniFile);
 
-
+	ParseResourceSections(sections, iniFile);
 	ParseShaderOverrideSections(sections, iniFile);
 	ParseTextureOverrideSections(sections, iniFile);
 
