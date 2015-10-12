@@ -338,27 +338,6 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 	if (!src_ptr)
 		goto bail;
 
-	// TODO: Add support for more behaviour modifiers, here's a few ideas
-	// off the top of my head - I don't intend to implement all these
-	// unless we have a proven need for them or maybe if they are trivial
-	// and have real potential to be useful later. For now they are just
-	// food for thought:
-	//
-	// stereo - Set driver heuristic when creating a resource for a copy operation
-	// mono - Set driver heuristic when creating a resource for a copy operation
-	// reverse_stereo_blit - Use reverse stereo blit to copy both left + right eyes into a single resource
-	// res_format= - override DXGI Format when creating a resource
-	// view_format= - override DXGI Format when creating a view
-	// restore - back up whatever resource was previously assigned and restore it afterwards
-	// persist - leave resource assigned after the draw call
-	// once_per_frame - only perform this particular operation at most once per frame
-	// if_dest_is_null - only perform the operation if the destination is not currently assigned
-	// if_dest_is_compatible - only perform the operation if the destination exists, and is compatible with the source
-	// if_dest_is_null_or_incompatible - only perform the operation if the destination is not currently assigned, or is incompatible
-	// copy_subresource_region=... - Use copy_subresource_region instead of copy_resource
-	// mip_map, array, etc. - create a view that exposes only part of the resource
-	// overwrite - instead of creating a new resource for a copy operation, overwrite the resource already assigned to the destination (if it exists and is compatible)
-
 	if (!operation->src.ParseTarget(src_ptr, true))
 		goto bail;
 
