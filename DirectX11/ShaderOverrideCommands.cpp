@@ -317,21 +317,27 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 		ShaderOverrideCommandList *command_list)
 {
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
-	const wchar_t *src_ptr = val->data();
+	wchar_t buf[MAX_PATH];
+	wchar_t *src_ptr = NULL;
 
 	if (!operation->dst.ParseTarget(key->data(), false))
 		goto bail;
 
-	if (!val->compare(0, 5, L"copy ")) {
-		operation->copy_type = ResourceCopyOperationType::COPY;
-		src_ptr += 5;
-	} else if (!val->compare(0, 10, L"reference ")) {
-		operation->copy_type = ResourceCopyOperationType::REFERENCE;
-		src_ptr += 10;
-	} else if (!val->compare(0, 4, L"ref ")) {
-		operation->copy_type = ResourceCopyOperationType::REFERENCE;
-		src_ptr += 4;
-	}
+	// parse_enum_option_string replaces spaces with NULLs, so it can't
+	// operate on the buffer in the wstring directly. I could potentially
+	// change it to work without modifying the string, but for now it's
+	// easier to just make a copy of the string:
+	if (val->length() >= MAX_PATH)
+		goto bail;
+	val->copy(buf, MAX_PATH, 0);
+	buf[val->length()] = L'\0';
+
+	operation->options = parse_enum_option_string<wchar_t *, ResourceCopyOptions>
+		(ResourceCopyOptionNames, buf, &src_ptr);
+
+	if (!src_ptr)
+		goto bail;
+
 	// TODO: Add support for more behaviour modifiers, here's a few ideas
 	// off the top of my head - I don't intend to implement all these
 	// unless we have a proven need for them or maybe if they are trivial
@@ -358,7 +364,7 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 	if (!operation->src.ParseTarget(src_ptr, true))
 		goto bail;
 
-	if (operation->copy_type == ResourceCopyOperationType::AUTO) {
+	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {
 		// If the copy method was not speficied make a guess.
 		// References aren't always safe (e.g. a resource can't be both
 		// an input and an output), and a resource may not have been
@@ -378,14 +384,14 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 		// (e.g. for use from another draw call), do a full copy by
 		// default in case the game alters the original.
 		// if (dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-		// 	operation->copy_type = ResourceCopyOperationType::COPY;
+		// 	operation->options |= ResourceCopyOptions::COPY;
 		// else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-		// 	operation->copy_type = ResourceCopyOperationType::REFERENCE;
+		// 	operation->options |= ResourceCopyOptions::REFERENCE;
 		// else
 		if (operation->src.type == operation->dst.type)
-			operation->copy_type = ResourceCopyOperationType::REFERENCE;
+			operation->options |= ResourceCopyOptions::REFERENCE;
 		else
-			operation->copy_type = ResourceCopyOperationType::COPY;
+			operation->options |= ResourceCopyOptions::COPY;
 	}
 
 	LogInfoW(L"  %ls=%s\n", key->data(), val->data());
@@ -929,7 +935,7 @@ static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
 }
 
 ResourceCopyOperation::ResourceCopyOperation() :
-	copy_type(ResourceCopyOperationType::AUTO),
+	options(ResourceCopyOptions::INVALID),
 	cached_resource(NULL),
 	cached_view(NULL)
 {}
@@ -965,7 +971,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		return;
 	}
 
-	if (copy_type == ResourceCopyOperationType::COPY) {
+	if (options & ResourceCopyOptions::COPY) {
 		RecreateCompatibleResource(&src, &dst, src_resource, &cached_resource, src_view, &cached_view, mOrigDevice);
 		if (!cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");

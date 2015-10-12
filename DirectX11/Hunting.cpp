@@ -1406,7 +1406,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	if (GetPrivateProfileString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH, iniFile)) {
 		LogInfoW(L"  analyse_options=%s\n", buf);
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-			(FrameAnalysisOptionNames, buf);
+			(FrameAnalysisOptionNames, buf, NULL);
 	}
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:

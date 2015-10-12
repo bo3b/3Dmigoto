@@ -145,17 +145,25 @@ public:
 	D3D11_BIND_FLAG BindFlags();
 };
 
-enum class ResourceCopyOperationType {
-	AUTO,
-	COPY,
-	REFERENCE,
+enum class ResourceCopyOptions {
+	INVALID         = 0,
+	COPY            = 0x00000001,
+	REFERENCE       = 0x00000002,
+	COPY_TYPE_MASK  = 0x00000003,
+};
+SENSIBLE_ENUM(ResourceCopyOptions);
+static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
+	{L"copy", ResourceCopyOptions::COPY},
+	{L"ref", ResourceCopyOptions::REFERENCE},
+	{L"reference", ResourceCopyOptions::REFERENCE},
+	{NULL, ResourceCopyOptions::INVALID} // End of list marker
 };
 
 class ResourceCopyOperation : public ShaderOverrideCommand {
 public:
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
-	ResourceCopyOperationType copy_type;
+	ResourceCopyOptions options;
 
 	ID3D11Resource *cached_resource;
 	ID3D11View *cached_view;

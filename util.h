@@ -200,12 +200,20 @@ inline bool operator ! (ENUMTYPE a) { return (!((int)a)); }
 // this function should have an INVALID=0, other flags declared as powers of
 // two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
 // operators. As above, the EnumName_t list must be terminated with {NULL, 0}
+//
+// If you wish to parse an option string that contains exactly one unrecognised
+// argument, provide a pointer to a pointer in the 'unrecognised' field and the
+// unrecognised option will be returned. Multiple unrecognised options are
+// still considered errors.
 template <class T1, class T2>
-static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string)
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
 {
-	wchar_t *ptr = option_string, *cur;
+	T1 ptr = option_string, cur;
 	T2 ret = T2::INVALID;
 	T2 tmp = T2::INVALID;
+
+	if (unrecognised)
+		*unrecognised = NULL;
 
 	while (*ptr) {
 		// Skip over whitespace:
@@ -226,8 +234,12 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 opt
 		// Lookup the value of the current entry:
 		tmp = lookup_enum_val<T1, T2> (enum_names, cur, T2::INVALID);
 		if (tmp == T2::INVALID) {
-			LogInfoW(L"WARNING: Unknown option: %s\n", cur);
-			BeepFailure2();
+			if (unrecognised && !(*unrecognised)) {
+				*unrecognised = cur;
+			} else {
+				LogInfoW(L"WARNING: Unknown option: %s\n", cur);
+				BeepFailure2();
+			}
 		}
 		ret |= tmp;
 	}

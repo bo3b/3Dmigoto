@@ -326,7 +326,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		if (GetPrivateProfileString(id, L"analyse_options", 0, setting, MAX_PATH, iniFile)) {
 			LogInfoW(L"  analyse_options=%s\n", setting);
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-				(FrameAnalysisOptionNames, setting);
+				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
 		override->fake_o0 = GetPrivateProfileInt(id, L"fake_o0", 0, iniFile) == 1;
@@ -409,7 +409,7 @@ static void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 		if (GetPrivateProfileString(id, L"analyse_options", 0, setting, MAX_PATH, iniFile)) {
 			LogInfoW(L"  analyse_options=%s\n", setting);
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-				(FrameAnalysisOptionNames, setting);
+				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
 		if (GetPrivateProfileString(id, L"filter_index", 0, setting, MAX_PATH, iniFile)) {
