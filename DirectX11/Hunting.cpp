@@ -302,7 +302,7 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
 
 	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-	fwrite(asmText.data(), 1, asmText.size(), fw);
+	fwrite(asmText.c_str(), 1, asmText.size(), fw);
 	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
 	fclose(fw);

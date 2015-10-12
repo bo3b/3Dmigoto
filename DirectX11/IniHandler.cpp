@@ -226,7 +226,7 @@ static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, Sha
 		if (ParseShaderOverrideResourceCopyDirective(key, val, &override->command_list))
 			continue;
 
-		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->data(), val->data());
+		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
 		BeepFailure2();
 	}
 }

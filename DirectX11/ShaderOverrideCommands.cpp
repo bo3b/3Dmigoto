@@ -172,7 +172,7 @@ bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
 	ParamOverride *param = new ParamOverride();
 
 	// Parse key
-	ret = swscanf_s(key->data(), L"%lc%n%u%n", &component, 1, &len1, &param->param_idx, &len2);
+	ret = swscanf_s(key->c_str(), L"%lc%n%u%n", &component, 1, &len1, &param->param_idx, &len2);
 
 	// May or may not have matched index. Make sure entire string was
 	// matched either way and check index is valid if it was matched:
@@ -203,14 +203,14 @@ bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
 	}
 
 	// Try parsing value as a float
-	ret = swscanf_s(val->data(), L"%f%n", &param->val, &len1);
+	ret = swscanf_s(val->c_str(), L"%f%n", &param->val, &len1);
 	if (ret != 0 && ret != EOF && len1 == val->length()) {
 		param->type = ParamOverrideType::VALUE;
 		goto success;
 	}
 
 	// Try parsing value as "<shader type>s-t<testure slot>" for texture filtering
-	ret = swscanf_s(val->data(), L"%lcs-t%u%n", &param->shader_type, 1, &param->texture_slot, &len1);
+	ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &param->shader_type, 1, &param->texture_slot, &len1);
 	if (ret == 2 && len1 == val->length() &&
 			param->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		switch(param->shader_type) {
@@ -224,12 +224,12 @@ bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
 
 	// Check special keywords
 	param->type = lookup_enum_val<const wchar_t *, ParamOverrideType>
-		(ParamOverrideTypeNames, val->data(), ParamOverrideType::INVALID);
+		(ParamOverrideTypeNames, val->c_str(), ParamOverrideType::INVALID);
 	if (param->type == ParamOverrideType::INVALID)
 		goto bail;
 
 success:
-	LogInfoW(L"  %ls=%s\n", key->data(), val->data());
+	LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(param));
 	return true;
 bail:
@@ -320,7 +320,7 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
 
-	if (!operation->dst.ParseTarget(key->data(), false))
+	if (!operation->dst.ParseTarget(key->c_str(), false))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -371,7 +371,7 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 			operation->options |= ResourceCopyOptions::COPY;
 	}
 
-	LogInfoW(L"  %ls=%s\n", key->data(), val->data());
+	LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(operation));
 	return true;
 bail:
