@@ -216,8 +216,7 @@ static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, Sha
 		 || !key->compare(L"iteration")
 		 || !key->compare(L"indexbufferfilter")
 		 || !key->compare(L"analyse_options")
-		 || !key->compare(L"fake_o0")
-		 || !key->compare(L"depth_input"))
+		 || !key->compare(L"fake_o0"))
 			continue;
 
 		if (ParseShaderOverrideIniParamOverride(key, val, &override->command_list))
