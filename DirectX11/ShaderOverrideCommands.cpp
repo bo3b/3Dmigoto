@@ -280,22 +280,22 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 	// TODO: 	return true;
 	// TODO: }
 
-	// TODO: ret = swscanf_s(target, L"vb%u%n", &slot, &len);
-	// TODO: if (ret == 1 && len == length && slot < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT) {
-	// TODO: 	type = ResourceCopyTargetType::VERTEX_BUFFER;
-	// TODO: 	return true;
-	// TODO: }
+	ret = swscanf_s(target, L"vb%u%n", &slot, &len);
+	if (ret == 1 && len == length && slot < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT) {
+		type = ResourceCopyTargetType::VERTEX_BUFFER;
+		return true;
+	}
 
-	// TODO: if (!wcscmp(target, L"ib")) {
-	// TODO: 	type = ResourceCopyTargetType::INDEX_BUFFER;
-	// TODO: 	return true;
-	// TODO: }
+	if (!wcscmp(target, L"ib")) {
+		type = ResourceCopyTargetType::INDEX_BUFFER;
+		return true;
+	}
 
-	// TODO: ret = swscanf_s(target, L"so%u%n", &slot, &len);
-	// TODO: if (ret == 1 && len == length && slot < D3D11_SO_STREAM_COUNT) {
-	// TODO: 	type = ResourceCopyTargetType::STREAM_OUTPUT;
-	// TODO: 	return true;
-	// TODO: }
+	ret = swscanf_s(target, L"so%u%n", &slot, &len);
+	if (ret == 1 && len == length && slot < D3D11_SO_STREAM_COUNT) {
+		type = ResourceCopyTargetType::STREAM_OUTPUT;
+		return true;
+	}
 
 	if (allow_null && !wcscmp(target, L"null")) {
 		type = ResourceCopyTargetType::EMPTY;
@@ -396,16 +396,20 @@ bail:
 	return false;
 }
 
-ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContext, ID3D11View **view)
+ID3D11Resource *ResourceCopyTarget::GetResource(
+		ID3D11DeviceContext *mOrigContext,
+		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
+		UINT *stride,        // Used by vertex buffers
+		UINT *offset,        // Used by vertex & index buffers
+		DXGI_FORMAT *format) // Used by index buffers
 {
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
+	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
 	unsigned i;
-
-	*view = NULL;
 
 	switch(type) {
 	case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -475,12 +479,33 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 
 	// TODO: case ResourceCopyTargetType::SAMPLER: // Not an ID3D11Resource, need to think about this one
 	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
-	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::INDEX_BUFFER:
-	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
-	// TODO: 	break;
+
+	case ResourceCopyTargetType::VERTEX_BUFFER:
+		// TODO: If copying this to a constant buffer, provide some
+		// means to get the strides + offsets from within the shader.
+		// Perhaps as an IniParam, or in another constant buffer?
+		mOrigContext->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
+		return buf;
+
+	case ResourceCopyTargetType::INDEX_BUFFER:
+		// TODO: Similar comment as vertex buffers above, provide a
+		// means for a shader to get format + offset.
+		mOrigContext->IAGetIndexBuffer(&buf, format, offset);
+		return buf;
+
+	case ResourceCopyTargetType::STREAM_OUTPUT:
+		// XXX: Does not give us the offset
+		mOrigContext->SOGetTargets(slot + 1, so_bufs);
+
+		// Release any buffers we aren't after:
+		for (i = 0; i < slot; i++) {
+			if (so_bufs[i]) {
+				so_bufs[i]->Release();
+				so_bufs[i] = NULL;
+			}
+		}
+
+		return so_bufs[slot];
 
 	case ResourceCopyTargetType::RENDER_TARGET:
 		mOrigContext->OMGetRenderTargets(slot + 1, render_view, NULL);
@@ -528,9 +553,16 @@ ID3D11Resource *ResourceCopyTarget::GetResource(ID3D11DeviceContext *mOrigContex
 	return NULL;
 }
 
-void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res, ID3D11View *view)
+void ResourceCopyTarget::SetResource(
+		ID3D11DeviceContext *mOrigContext,
+		ID3D11Resource *res,
+		ID3D11View *view,
+		UINT stride,
+		UINT offset,
+		DXGI_FORMAT format)
 {
 	ID3D11Buffer *buf = NULL;
+	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
@@ -595,12 +627,35 @@ void ResourceCopyTarget::SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Re
 
 	// TODO: case ResourceCopyTargetType::SAMPLER: // Not an ID3D11Resource, need to think about this one
 	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
-	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::INDEX_BUFFER:
-	// TODO: 	break;
-	// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
-	// TODO: 	break;
+
+	case ResourceCopyTargetType::VERTEX_BUFFER:
+		buf = (ID3D11Buffer*)res;
+		mOrigContext->IASetVertexBuffers(slot, 1, &buf, &stride, &offset);
+		return;
+
+	case ResourceCopyTargetType::INDEX_BUFFER:
+		buf = (ID3D11Buffer*)res;
+		mOrigContext->IASetIndexBuffer(buf, format, offset);
+		break;
+
+	case ResourceCopyTargetType::STREAM_OUTPUT:
+		// XXX: HERE BE UNTESTED CODE PATHS!
+		buf = (ID3D11Buffer*)res;
+		mOrigContext->SOGetTargets(D3D11_SO_STREAM_COUNT, so_bufs);
+		if (so_bufs[slot])
+			so_bufs[slot]->Release();
+		so_bufs[slot] = buf;
+		// XXX: We set offsets to NULL here. We should really preserve
+		// them, but I'm not sure how to get their original values,
+		// so... too bad. Probably will never even use this anyway.
+		mOrigContext->SOSetTargets(D3D11_SO_STREAM_COUNT, so_bufs, NULL);
+
+		for (i = 0; i < D3D11_SO_STREAM_COUNT; i++) {
+			if (so_bufs[i])
+				so_bufs[i]->Release();
+		}
+
+		break;
 
 	case ResourceCopyTargetType::RENDER_TARGET:
 	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
@@ -638,12 +693,12 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_CONSTANT_BUFFER;
 		case ResourceCopyTargetType::SHADER_RESOURCE:
 			return D3D11_BIND_SHADER_RESOURCE;
-		// TODO: case ResourceCopyTargetType::VERTEX_BUFFER:
-		// TODO: 	return D3D11_BIND_VERTEX_BUFFER;
-		// TODO: case ResourceCopyTargetType::INDEX_BUFFER:
-		// TODO: 	return D3D11_BIND_INDEX_BUFFER;
-		// TODO: case ResourceCopyTargetType::STREAM_OUTPUT:
-		// TODO: 	return D3D11_BIND_STREAM_OUTPUT;
+		case ResourceCopyTargetType::VERTEX_BUFFER:
+			return D3D11_BIND_VERTEX_BUFFER;
+		case ResourceCopyTargetType::INDEX_BUFFER:
+			return D3D11_BIND_INDEX_BUFFER;
+		case ResourceCopyTargetType::STREAM_OUTPUT:
+			return D3D11_BIND_STREAM_OUTPUT;
 		case ResourceCopyTargetType::RENDER_TARGET:
 			return D3D11_BIND_RENDER_TARGET;
 		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
@@ -829,16 +884,19 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
+	UINT stride = 0;
+	UINT offset = 0;
+	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
 
 	bool release_resource = false;
 	bool release_view = false;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
-		dst.SetResource(mOrigContext, NULL, NULL);
+		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigContext, &src_view);
+	src_resource = src.GetResource(mOrigContext, &src_view, &stride, &offset, &ib_fmt);
 	if (!src_resource) {
 		LogDebug("Resource copy error: Source was NULL\n");
 		return;
@@ -873,7 +931,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		// TODO: cached_view = dst_view;
 	}
 
-	dst.SetResource(mOrigContext, dst_resource, dst_view);
+	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, ib_fmt);
 
 out_release:
 	if (release_resource && dst_resource)

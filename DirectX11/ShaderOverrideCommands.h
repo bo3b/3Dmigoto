@@ -107,9 +107,9 @@ enum class ResourceCopyTargetType {
 	CONSTANT_BUFFER,
 	SHADER_RESOURCE,
 	// TODO: SAMPLER, // Not really a resource, but might still be useful
-	// TODO: VERTEX_BUFFER,
-	// TODO: INDEX_BUFFER,
-	// TODO: STREAM_OUTPUT,
+	VERTEX_BUFFER,
+	INDEX_BUFFER,
+	STREAM_OUTPUT,
 	RENDER_TARGET,
 	DEPTH_STENCIL_TARGET,
 	// TODO: UNORDERED_ACCESS_VIEW,
@@ -129,8 +129,19 @@ public:
 	{}
 
 	bool ParseTarget(const wchar_t *target, bool allow_null);
-	ID3D11Resource *GetResource(ID3D11DeviceContext *mOrigContext, ID3D11View **view);
-	void SetResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *res, ID3D11View *view);
+	ID3D11Resource *GetResource(
+			ID3D11DeviceContext *mOrigContext,
+			ID3D11View **view,
+			UINT *stride,
+			UINT *offset,
+			DXGI_FORMAT *format);
+	void SetResource(
+			ID3D11DeviceContext *mOrigContext,
+			ID3D11Resource *res,
+			ID3D11View *view,
+			UINT stride,
+			UINT offset,
+			DXGI_FORMAT format);
 	D3D11_BIND_FLAG BindFlags();
 };
 
