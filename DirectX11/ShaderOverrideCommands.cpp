@@ -711,24 +711,36 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
 }
 
-static ID3D11Buffer *CreateCompatibleBuffer(
+static ID3D11Buffer *RecreateCompatibleBuffer(
 		ID3D11Buffer *src_resource,
+		ID3D11Buffer *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
 		ID3D11Device *device)
 {
 	HRESULT hr;
-	D3D11_BUFFER_DESC desc;
+	D3D11_BUFFER_DESC old_desc;
+	D3D11_BUFFER_DESC new_desc;
 	ID3D11Buffer *buffer = NULL;
 
-	src_resource->GetDesc(&desc);
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = bind_flags;
-	desc.CPUAccessFlags = 0;
-	// XXX: Any changes needed in desc.MiscFlags?
+	src_resource->GetDesc(&new_desc);
+	new_desc.Usage = D3D11_USAGE_DEFAULT;
+	new_desc.BindFlags = bind_flags;
+	new_desc.CPUAccessFlags = 0;
+	// XXX: Any changes needed in new_desc.MiscFlags?
 
-	hr = device->CreateBuffer(&desc, NULL, &buffer);
+	if (dst_resource) {
+		// If destination already exists and the description is
+		// identical we don't need to recreate it.
+		dst_resource->GetDesc(&old_desc);
+		if (!memcmp(&old_desc, &new_desc, sizeof(D3D11_BUFFER_DESC)))
+			return NULL;
+		LogInfo("RecreateCompatibleBuffer: Recreating cached resource\n");
+	} else
+		LogInfo("RecreateCompatibleBuffer: Creating cached resource\n");
+
+	hr = device->CreateBuffer(&new_desc, NULL, &buffer);
 	if (FAILED(hr)) {
-		LogInfo("Resource copy CreateCompatibleBuffer failed: 0x%x\n", hr);
+		LogInfo("Resource copy RecreateCompatibleBuffer failed: 0x%x\n", hr);
 		return NULL;
 	}
 
@@ -742,35 +754,47 @@ template <typename ResourceType,
 	      const D3D11_SUBRESOURCE_DATA *pInitialData,
 	      ResourceType **ppTexture)
 	>
-static ResourceType* CreateCompatibleTexture(
+static ResourceType* RecreateCompatibleTexture(
 		ResourceType *src_resource,
+		ResourceType *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
 		DXGI_FORMAT format,
 		ID3D11Device *device)
 {
 	HRESULT hr;
-	DescType desc;
+	DescType old_desc;
+	DescType new_desc;
 	ResourceType *tex = NULL;
 
-	src_resource->GetDesc(&desc);
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = bind_flags;
-	desc.CPUAccessFlags = 0;
+	src_resource->GetDesc(&new_desc);
+	new_desc.Usage = D3D11_USAGE_DEFAULT;
+	new_desc.BindFlags = bind_flags;
+	new_desc.CPUAccessFlags = 0;
 #if 0
 	// Didn't seem to work - got an invalid argument error from
 	// CreateTexture2D. Could be that the existing view used a format
 	// incompatible with the bind flags (e.g. depth+stencil formats can't
 	// be used in a shader resource).
 	if (format)
-		desc.Format = format;
+		new_desc.Format = format;
 #else
-	desc.Format = EnsureNotTypeless(desc.Format);
+	new_desc.Format = EnsureNotTypeless(new_desc.Format);
 #endif
-	// XXX: Any changes needed in desc.MiscFlags?
+	// XXX: Any changes needed in new_desc.MiscFlags?
 
-	hr = (device->*CreateTexture)(&desc, NULL, &tex);
+	if (dst_resource) {
+		// If destination already exists and the description is
+		// identical we don't need to recreate it.
+		dst_resource->GetDesc(&old_desc);
+		if (!memcmp(&old_desc, &new_desc, sizeof(DescType)))
+			return NULL;
+		LogInfo("RecreateCompatibleTexture: Recreating cached resource\n");
+	} else
+		LogInfo("RecreateCompatibleTexture: Creating cached resource\n");
+
+	hr = (device->*CreateTexture)(&new_desc, NULL, &tex);
 	if (FAILED(hr)) {
-		LogInfo("Resource copy CreateCompatibleTexture failed: 0x%x\n", hr);
+		LogInfo("Resource copy RecreateCompatibleTexture failed: 0x%x\n", hr);
 		return NULL;
 	}
 
@@ -809,36 +833,63 @@ static DXGI_FORMAT GetViewFormat(ResourceCopyTargetType type, ID3D11View *view)
 	return DXGI_FORMAT_UNKNOWN;
 }
 
-static ID3D11Resource* CreateCompatibleResource(
+static void RecreateCompatibleResource(
 		ResourceCopyTarget *src,
 		ResourceCopyTarget *dst,
 		ID3D11Resource *src_resource,
+		ID3D11Resource **dst_resource,
 		ID3D11View *src_view,
+		ID3D11View **dst_view,
 		ID3D11Device *device)
 {
-	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_RESOURCE_DIMENSION src_dimension;
+	D3D11_RESOURCE_DIMENSION dst_dimension;
 	D3D11_BIND_FLAG bind_flags = dst->BindFlags();
 	DXGI_FORMAT format = GetViewFormat(src->type, src_view);
 	ID3D11Resource *res = NULL;
 
-	src_resource->GetType(&dimension);
-	switch (dimension) {
-		case D3D11_RESOURCE_DIMENSION_UNKNOWN:
-			return NULL;
-		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			return CreateCompatibleBuffer((ID3D11Buffer*)src_resource, bind_flags, device);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-			return CreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				((ID3D11Texture1D*)src_resource, bind_flags, format, device);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			return CreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				((ID3D11Texture2D*)src_resource, bind_flags, format, device);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			return CreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				((ID3D11Texture3D*)src_resource, bind_flags, format, device);
+	src_resource->GetType(&src_dimension);
+	if (*dst_resource) {
+		(*dst_resource)->GetType(&dst_dimension);
+		if (src_dimension != dst_dimension) {
+			LogInfo("RecreateCompatibleResource: Resource type changed\n");
+
+			(*dst_resource)->Release();
+			if (*dst_view)
+				(*dst_view)->Release();
+
+			*dst_resource = NULL;
+			*dst_view = NULL;
+		}
 	}
 
-	return NULL;
+	switch (src_dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, bind_flags, device);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
+				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format, device);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
+				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format, device);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
+				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format, device);
+			break;
+	}
+
+	if (res) {
+		if (*dst_resource)
+			(*dst_resource)->Release();
+		if (*dst_view)
+			(*dst_view)->Release();
+
+		*dst_resource = res;
+		*dst_view = NULL;
+	}
 }
 
 static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
@@ -877,6 +928,21 @@ static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
 	return NULL;
 }
 
+ResourceCopyOperation::ResourceCopyOperation() :
+	copy_type(ResourceCopyOperationType::AUTO),
+	cached_resource(NULL),
+	cached_view(NULL)
+{}
+
+ResourceCopyOperation::~ResourceCopyOperation()
+{
+	if (cached_resource)
+		cached_resource->Release();
+
+	if (cached_view)
+		cached_view->Release();
+}
+
 void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
 {
@@ -887,9 +953,6 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	UINT stride = 0;
 	UINT offset = 0;
 	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
-
-	bool release_resource = false;
-	bool release_view = false;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
@@ -903,43 +966,33 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	}
 
 	if (copy_type == ResourceCopyOperationType::COPY) {
-		// TODO: if (!ResourceIsCompatible(src_resource, cached_resource) {
-		// TODO:	 if (cached_resource)
-		// TODO:		cached_resource->Release();
-		// TODO:	 if (cached_view)
-		// TODO:		cached_view->Release();
-		dst_resource = CreateCompatibleResource(&src, &dst, src_resource, src_view, mOrigDevice);
-		if (!dst_resource) {
-			LogInfo("Resource copy error: Could not create destination resource\n");
+		RecreateCompatibleResource(&src, &dst, src_resource, &cached_resource, src_view, &cached_view, mOrigDevice);
+		if (!cached_resource) {
+			LogInfo("Resource copy error: Could not create/update destination resource\n");
 			goto out_release;
 		}
-		release_resource = true; // TODO: Not once we cache it
+		dst_resource = cached_resource;
+		dst_view = cached_view;
 
 		mOrigContext->CopyResource(dst_resource, src_resource);
-		// TODO: cached_resource = dst_resource;
 	} else {
 		dst_resource = src_resource;
 		if (src_view && (src.type == dst.type))
 			dst_view = src_view;
+		else
+			dst_view = cached_view;
 	}
 
 	if (!dst_view) {
 		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice);
 		// Not checking for NULL return as view's are not applicable to
 		// all types. TODO: Check for legitimate failures.
-		release_view = true; // TODO: Not once we cache it
-		// TODO: cached_view = dst_view;
+		cached_view = dst_view;
 	}
 
 	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, ib_fmt);
 
 out_release:
-	if (release_resource && dst_resource)
-		dst_resource->Release();
-
-	if (release_view && dst_view)
-		dst_view->Release();
-
 	src_resource->Release();
 	if (src_view)
 		src_view->Release();

@@ -157,9 +157,11 @@ public:
 	ResourceCopyTarget dst;
 	ResourceCopyOperationType copy_type;
 
-	ResourceCopyOperation() :
-		copy_type(ResourceCopyOperationType::AUTO)
-	{}
+	ID3D11Resource *cached_resource;
+	ID3D11View *cached_view;
+
+	ResourceCopyOperation();
+	~ResourceCopyOperation();
 
 	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) override;
 };
