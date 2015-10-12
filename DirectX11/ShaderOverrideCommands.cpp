@@ -352,8 +352,6 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 	// restore - back up whatever resource was previously assigned and restore it afterwards
 	// persist - leave resource assigned after the draw call
 	// once_per_frame - only perform this particular operation at most once per frame
-	// even_if_null - if the source is NULL still go through with the operation
-	// unless_null - don't go through with the operation if the source is NULL
 	// if_dest_is_null - only perform the operation if the destination is not currently assigned
 	// if_dest_is_compatible - only perform the operation if the destination exists, and is compatible with the source
 	// if_dest_is_null_or_incompatible - only perform the operation if the destination is not currently assigned, or is incompatible
@@ -967,7 +965,15 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 
 	src_resource = src.GetResource(mOrigContext, &src_view, &stride, &offset, &ib_fmt);
 	if (!src_resource) {
-		LogDebug("Resource copy error: Source was NULL\n");
+		LogDebug("Resource copy: Source was NULL\n");
+		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
+			// Still set destination to NULL - if we are copying a
+			// resource we generally expect it to be there, and
+			// this will make errors more obvious if we copy
+			// something that doesn't exist. This behaviour can be
+			// overridden with the unless_null keyword.
+			dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
+		}
 		return;
 	}
 

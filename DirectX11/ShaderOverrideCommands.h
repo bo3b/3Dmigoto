@@ -150,12 +150,14 @@ enum class ResourceCopyOptions {
 	COPY            = 0x00000001,
 	REFERENCE       = 0x00000002,
 	COPY_TYPE_MASK  = 0x00000003,
+	UNLESS_NULL     = 0x00000004,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
 static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"copy", ResourceCopyOptions::COPY},
 	{L"ref", ResourceCopyOptions::REFERENCE},
 	{L"reference", ResourceCopyOptions::REFERENCE},
+	{L"unless_null", ResourceCopyOptions::UNLESS_NULL},
 	{NULL, ResourceCopyOptions::INVALID} // End of list marker
 };
 
