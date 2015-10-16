@@ -3,7 +3,7 @@ The Witcher 3: Wild Hunt
 A fix by mike_ar69 & DarkStarSword
 Assembler and alternate wrapper by Flugan
 3DMigoto improvements by Bo3b and DarkStarSword
-Profile by Helifax
+Profile and 1.10 update by Helifax
 Special thanks to everyone on the forum who helped out with testing!
 
 Fixed
@@ -81,14 +81,11 @@ Installation
     6. In Geforce 3D Profile Manager, choose "Import SLI Profiles" and select
        the modified NVIDIA Profiles.txt
 
-3. Extract [3Dfix-Witcher3-1.0.zip][3] into the game directory. If done correctly,
-   the d3d11.dll file should be in the same directory as witcher3.exe.
+3. Extract [3Dfix-Witcher3-1.10.zip][3] into the game directory. If done
+   correctly, the d3d11.dll file should be in the same directory as
+   witcher3.exe.
 
-    - There will shortly be an alternate version of the fix available using
-      Project Flugan, which may be more stable in some cases. Please check back
-      soon for the link.
-
-[3]: https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.0.zip
+[3]: https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.10.zip
 
 4. Make sure that "Enable advanced in-game settings" is enabled in the NVIDIA
    control panel under Set Up Stereoscopic 3D -> Set keyboard shortcuts.
