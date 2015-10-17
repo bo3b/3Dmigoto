@@ -196,7 +196,7 @@ out:
  * try to use the reflection information in the shaders to add names and
  * correct types.
  */
-void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size, int idx)
+void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size, char type, int idx)
 {
 	FILE *fd = NULL;
 	char *components = "xyzw";
@@ -209,14 +209,42 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 
 	for (i = 0; i < size/16; i++) {
 		for (c = 0; c < 4; c++)
-			fprintf(fd, "cb%i[%d].%c: %.9g\n", idx, i, components[c], buf[i*4+c]);
+			fprintf(fd, "%cb%i[%d].%c: %.9g\n", type, idx, i, components[c], buf[i*4+c]);
+	}
+
+	fclose(fd);
+}
+
+void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size, DXGI_FORMAT format)
+{
+	FILE *fd = NULL;
+	short *buf16 = (short*)map->pData;
+	int *buf32 = (int*)map->pData;
+	UINT i;
+
+	_wfopen_s(&fd, filename, L"w");
+	if (!fd)
+		return;
+
+	switch(format) {
+	case DXGI_FORMAT_R16_UINT:
+		for (i = 0; i < size / 2; i++)
+			fprintf(fd, "%u\n", buf16[i]);
+		break;
+	case DXGI_FORMAT_R32_UINT:
+		for (i = 0; i < size / 4; i++)
+			fprintf(fd, "%u\n", buf32[i]);
+		break;
+	default:
+		// Illegal format for an index buffer
+		break;
 	}
 
 	fclose(fd);
 }
 
 void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-		FrameAnalysisOptions type_mask, int idx)
+		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	D3D11_BUFFER_DESC desc;
@@ -262,7 +290,12 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
-		DumpBufferTxt(filename, &map, desc.ByteWidth, idx);
+		if (options & FrameAnalysisOptions::DUMP_CB_TXT)
+			DumpBufferTxt(filename, &map, desc.ByteWidth, 'c', idx);
+		else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
+			DumpBufferTxt(filename, &map, desc.ByteWidth, 'v', idx);
+		else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
+			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt);
 	}
 
 out_unmap:
@@ -271,7 +304,7 @@ out_unmap:
 }
 
 void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
-		FrameAnalysisOptions type_mask, int idx)
+		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt)
 {
 	D3D11_RESOURCE_DIMENSION dim;
 
@@ -279,7 +312,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx);
+			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx, ib_fmt);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
@@ -356,7 +389,7 @@ void HackerContext::_DumpCBs(char shader_type,
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0);
 		if (SUCCEEDED(hr))
-			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_CB_MASK, i);
+			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_CB_MASK, i, DXGI_FORMAT_UNKNOWN);
 
 		buffers[i]->Release();
 	}
@@ -398,7 +431,7 @@ void HackerContext::_DumpTextures(char shader_type,
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash);
 		if (SUCCEEDED(hr))
-			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_TEX_MASK, i);
+			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_TEX_MASK, i, DXGI_FORMAT_UNKNOWN);
 
 		resource->Release();
 		views[i]->Release();
@@ -454,7 +487,7 @@ void HackerContext::DumpVBs()
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0);
 		if (SUCCEEDED(hr))
-			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_VB_MASK, i);
+			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_VB_MASK, i, DXGI_FORMAT_UNKNOWN);
 
 		buffers[i]->Release();
 	}
@@ -465,15 +498,16 @@ void HackerContext::DumpIB()
 	ID3D11Buffer *buffer = NULL;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
+	DXGI_FORMAT format;
 
 	// TODO: Dump format + offset as well
-	IAGetIndexBuffer(&buffer, NULL, NULL);
+	IAGetIndexBuffer(&buffer, &format, NULL);
 	if (!buffer)
 		return;
 
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0);
 	if (SUCCEEDED(hr))
-		DumpResource(buffer, filename, FrameAnalysisOptions::DUMP_IB_MASK, -1);
+		DumpResource(buffer, filename, FrameAnalysisOptions::DUMP_IB_MASK, -1, format);
 
 	buffer->Release();
 }
@@ -528,7 +562,7 @@ void HackerContext::DumpRenderTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, hash);
 		if (FAILED(hr))
 			return;
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename, FrameAnalysisOptions::DUMP_RT_MASK, i);
+		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename, FrameAnalysisOptions::DUMP_RT_MASK, i, DXGI_FORMAT_UNKNOWN);
 	}
 }
 
@@ -548,7 +582,7 @@ void HackerContext::DumpDepthStencilTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, hash);
 		if (FAILED(hr))
 			return;
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK, -1);
+		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK, -1, DXGI_FORMAT_UNKNOWN);
 	}
 }
 
@@ -584,7 +618,7 @@ void HackerContext::DumpUAVs(bool compute)
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash);
 		if (SUCCEEDED(hr))
-			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_RT_MASK, i);
+			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_RT_MASK, i, DXGI_FORMAT_UNKNOWN);
 
 		resource->Release();
 		uavs[i]->Release();
