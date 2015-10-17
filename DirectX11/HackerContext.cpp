@@ -554,15 +554,34 @@ DrawContext HackerContext::BeforeDraw()
 		return data;
 
 	// Override settings?
-	// TODO: Process other types of shaders
 	if (!G->mShaderOverrideMap.empty()) {
-		ShaderOverrideMap::iterator iVertex = G->mShaderOverrideMap.find(mCurrentVertexShader);
-		ShaderOverrideMap::iterator iPixel = G->mShaderOverrideMap.find(mCurrentPixelShader);
+		ShaderOverrideMap::iterator i;
 
-		if (iVertex != G->mShaderOverrideMap.end())
-			ProcessShaderOverride(&iVertex->second, false, &data, &separationValue, &convergenceValue);
-		if (iPixel != G->mShaderOverrideMap.end())
-			ProcessShaderOverride(&iPixel->second, true, &data, &separationValue, &convergenceValue);
+		i = G->mShaderOverrideMap.find(mCurrentVertexShader);
+		if (i != G->mShaderOverrideMap.end())
+			ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+
+		if (mCurrentHullShader) {
+			i = G->mShaderOverrideMap.find(mCurrentHullShader);
+			if (i != G->mShaderOverrideMap.end())
+				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+		}
+
+		if (mCurrentDomainShader) {
+			i = G->mShaderOverrideMap.find(mCurrentDomainShader);
+			if (i != G->mShaderOverrideMap.end())
+				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+		}
+
+		if (mCurrentGeometryShader) {
+			i = G->mShaderOverrideMap.find(mCurrentGeometryShader);
+			if (i != G->mShaderOverrideMap.end())
+				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+		}
+
+		i = G->mShaderOverrideMap.find(mCurrentPixelShader);
+		if (i != G->mShaderOverrideMap.end())
+			ProcessShaderOverride(&i->second, true, &data, &separationValue, &convergenceValue);
 	}
 
 	if (data.override) {
@@ -1118,6 +1137,20 @@ bool HackerContext::BeforeDispatch()
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
 			if (G->marking_mode == MARKING_MODE_SKIP)
 				return false;
+		}
+
+		// Override settings?
+		if (!G->mShaderOverrideMap.empty()) {
+			ShaderOverrideMap::iterator i;
+
+			i = G->mShaderOverrideMap.find(mCurrentComputeShader);
+			if (i != G->mShaderOverrideMap.end()) {
+				// XXX: Not using ProcessShaderOverride() as a
+				// lot of it's logic doesn't really apply to
+				// compute shaders. The main thing we care
+				// about is the command list, so just run that:
+				RunShaderOverrideCommandList(mHackerDevice, this, &i->second.command_list);
+			}
 		}
 	}
 
