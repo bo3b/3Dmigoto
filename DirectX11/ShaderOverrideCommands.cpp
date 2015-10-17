@@ -295,13 +295,17 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 		return true;
 	}
 
-	// TODO: ret = swscanf_s(target, L"u%u%n", &slot, &len);
-	// TODO: // XXX: On Win8 D3D11_1_UAV_SLOT_COUNT (64) is the limit instead. Use
-	// TODO: // the lower amount for now to enforce compatibility.
-	// TODO: if (ret == 1 && len == length && slot < D3D11_PS_CS_UAV_REGISTER_COUNT) {
-	// TODO: 	type = ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
-	// TODO: 	return true;
-	// TODO: }
+	ret = swscanf_s(target, L"%lcs-u%u%n", &shader_type, 1, &slot, &len);
+	// XXX: On Win8 D3D11_1_UAV_SLOT_COUNT (64) is the limit instead. Use
+	// the lower amount for now to enforce compatibility.
+	if (ret == 2 && len == length && slot < D3D11_PS_CS_UAV_REGISTER_COUNT) {
+		// These views are only valid for pixel and compute shaders:
+		if (shader_type == L'p' || shader_type == L'c') {
+			type = ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
+			return true;
+		}
+		return false;
+	}
 
 	ret = swscanf_s(target, L"vb%u%n", &slot, &len);
 	if (ret == 1 && len == length && slot < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT) {
@@ -443,6 +447,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
 	unsigned i;
 
 	switch(type) {
@@ -578,8 +583,33 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		*view = depth_view;
 		return res;
 
-	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-	// TODO: 	break;
+	case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+		// XXX: HERE BE UNTESTED CODE PATHS!
+		switch(shader_type) {
+		case L'p':
+			// XXX: Not clear if the start slot is ok like this from the docs?
+			// Particularly, what happens if we retrieve a subsequent UAV?
+			mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, slot, 1, &unordered_view);
+			break;
+		case L'c':
+			mOrigContext->CSGetUnorderedAccessViews(slot, 1, &unordered_view);
+			break;
+		default:
+			// Should not happen
+			return NULL;
+		}
+
+		if (!unordered_view)
+			return NULL;
+
+		unordered_view->GetResource(&res);
+		if (!res) {
+			unordered_view->Release();
+			return NULL;
+		}
+
+		*view = unordered_view;
+		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
 		*stride = custom_resource->stride;
@@ -609,6 +639,8 @@ void ResourceCopyTarget::SetResource(
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
+	UINT uav_counter = -1; // TODO: Allow this to be set
 	int i;
 
 	switch(type) {
@@ -722,8 +754,25 @@ void ResourceCopyTarget::SetResource(
 		depth_view->Release();
 		break;
 
-	// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-	// TODO: 	break;
+	case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+		// XXX: HERE BE UNTESTED CODE PATHS!
+		unordered_view = (ID3D11UnorderedAccessView*)view;
+		switch(shader_type) {
+		case L'p':
+			// XXX: Not clear if this will unbind other UAVs or not?
+			// TODO: Allow pUAVInitialCounts to optionally be set
+			mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
+				NULL, NULL, slot, 1, &unordered_view, &uav_counter);
+			return;
+		case L'c':
+			// TODO: Allow pUAVInitialCounts to optionally be set
+			mOrigContext->CSSetUnorderedAccessViews(slot, 1, &unordered_view, &uav_counter);
+			return;
+		default:
+			// Should not happen
+			return;
+		}
+		break;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
 		custom_resource->stride = stride;
@@ -762,8 +811,8 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_RENDER_TARGET;
 		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
 			return D3D11_BIND_DEPTH_STENCIL;
-		// TODO: case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-		// TODO: 	return D3D11_BIND_UNORDERED_ACCESS;
+		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
 	}
@@ -867,10 +916,12 @@ static DXGI_FORMAT GetViewFormat(ResourceCopyTargetType type, ID3D11View *view)
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view = NULL;
 	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
 	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
 	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
 
 	if (!view)
 		return DXGI_FORMAT_UNKNOWN;
@@ -888,7 +939,10 @@ static DXGI_FORMAT GetViewFormat(ResourceCopyTargetType type, ID3D11View *view)
 			depth_view = (ID3D11DepthStencilView*)view;
 			depth_view->GetDesc(&depth_view_desc);
 			return depth_view_desc.Format;
-		// TODO: ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+			unordered_view = (ID3D11UnorderedAccessView*)view;
+			unordered_view->GetDesc(&unordered_view_desc);
+			return unordered_view_desc.Format;
 	}
 
 	return DXGI_FORMAT_UNKNOWN;
@@ -959,6 +1013,7 @@ static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view = NULL;
 	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
 	HRESULT hr;
 
 	// For now just creating a view of the whole resource to simplify
@@ -984,7 +1039,13 @@ static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
 				return depth_view;
 			LogInfo("Resource copy CreateCompatibleView failed for depth/stencil view: 0x%x\n", hr);
 			break;
-		// TODO: ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+			// TODO Support buffer UAV flags for append, counter and raw buffers.
+			hr = device->CreateUnorderedAccessView(resource, NULL, &unordered_view);
+			if (SUCCEEDED(hr))
+				return unordered_view;
+			LogInfo("Resource copy CreateCompatibleView failed for unordered access view: 0x%x\n", hr);
+			break;
 	}
 	return NULL;
 }
