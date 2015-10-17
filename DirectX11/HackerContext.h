@@ -106,6 +106,8 @@ private:
 	void _DumpTextures(char shader_type,
 		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
 	void DumpCBs(bool compute);
+	void DumpVBs();
+	void DumpIB();
 	void DumpTextures(bool compute);
 	void DumpRenderTargets();
 	void DumpDepthStencilTargets();

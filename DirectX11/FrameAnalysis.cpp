@@ -245,8 +245,14 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	mOrigContext->CopyResource(staging, buffer);
 	mOrigContext->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 
-	if (options & FrameAnalysisOptions::DUMP_CB_BIN) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".cb");
+	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
+		if (options & FrameAnalysisOptions::DUMP_CB_BIN)
+			wcscpy_s(ext, MAX_PATH + filename - ext, L".cb");
+		else if (options & FrameAnalysisOptions::DUMP_VB_BIN)
+			wcscpy_s(ext, MAX_PATH + filename - ext, L".vb");
+		else if (options & FrameAnalysisOptions::DUMP_IB_BIN)
+			wcscpy_s(ext, MAX_PATH + filename - ext, L".ib");
+
 		_wfopen_s(&fd, filename, L"wb");
 		if (!fd)
 			goto out_unmap;
@@ -254,7 +260,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		fclose(fd);
 	}
 
-	if (options & FrameAnalysisOptions::DUMP_CB_TXT) {
+	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
 		DumpBufferTxt(filename, &map, desc.ByteWidth);
 	}
@@ -430,6 +436,46 @@ void HackerContext::DumpCBs(bool compute)
 			_DumpCBs('p', buffers);
 		}
 	}
+}
+
+void HackerContext::DumpVBs()
+{
+	ID3D11Buffer *buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+	UINT i;
+
+	// TODO: Dump strides + offsets as well
+	IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, NULL, NULL);
+
+	for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+		if (!buffers[i])
+			continue;
+
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0);
+		if (SUCCEEDED(hr))
+			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_VB_MASK);
+
+		buffers[i]->Release();
+	}
+}
+
+void HackerContext::DumpIB()
+{
+	ID3D11Buffer *buffer = NULL;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+
+	// TODO: Dump format + offset as well
+	IAGetIndexBuffer(&buffer, NULL, NULL);
+	if (!buffer)
+		return;
+
+	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0);
+	if (SUCCEEDED(hr))
+		DumpResource(buffer, filename, FrameAnalysisOptions::DUMP_IB_MASK);
+
+	buffer->Release();
 }
 
 void HackerContext::DumpTextures(bool compute)
@@ -709,6 +755,14 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
 		DumpCBs(compute);
+
+	if (!compute) {
+		if (analyse_options & FrameAnalysisOptions::DUMP_VB_MASK)
+			DumpVBs();
+
+		if (analyse_options & FrameAnalysisOptions::DUMP_IB_MASK)
+			DumpIB();
+	}
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_TEX_MASK)
 		DumpTextures(compute);

@@ -121,6 +121,14 @@ enum class FrameAnalysisOptions {
 	DUMP_CB_BIN     = 0x00004000,
 	DUMP_CB_TXT     = 0x00008000,
 	DUMP_CB_MASK    = 0x0000c000,
+	DUMP_VB_BIN     = 0x00010000,
+	DUMP_VB_TXT     = 0x00020000,
+	DUMP_VB_MASK    = 0x00030000,
+	DUMP_IB_BIN     = 0x00040000,
+	DUMP_IB_TXT     = 0x00080000,
+	DUMP_IB_MASK    = 0x000c0000,
+	DUMP_XX_BIN     = 0x00054000,
+	DUMP_XX_TXT     = 0x000a8000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -140,6 +148,10 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
 	{L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN},
 	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
+	{L"dump_vb", FrameAnalysisOptions::DUMP_VB_BIN},
+	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
+	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
+	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
