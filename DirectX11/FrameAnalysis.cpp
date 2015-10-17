@@ -196,7 +196,7 @@ out:
  * try to use the reflection information in the shaders to add names and
  * correct types.
  */
-void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size)
+void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size, int idx)
 {
 	FILE *fd = NULL;
 	char *components = "xyzw";
@@ -209,14 +209,14 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 
 	for (i = 0; i < size/16; i++) {
 		for (c = 0; c < 4; c++)
-			fprintf(fd, "cbX[%d].%c: %.9g\n", i, components[c], buf[i*4+c]);
+			fprintf(fd, "cb%i[%d].%c: %.9g\n", idx, i, components[c], buf[i*4+c]);
 	}
 
 	fclose(fd);
 }
 
 void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-		FrameAnalysisOptions type_mask)
+		FrameAnalysisOptions type_mask, int idx)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	D3D11_BUFFER_DESC desc;
@@ -262,7 +262,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
-		DumpBufferTxt(filename, &map, desc.ByteWidth);
+		DumpBufferTxt(filename, &map, desc.ByteWidth, idx);
 	}
 
 out_unmap:
@@ -271,7 +271,7 @@ out_unmap:
 }
 
 void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
-		FrameAnalysisOptions type_mask)
+		FrameAnalysisOptions type_mask, int idx)
 {
 	D3D11_RESOURCE_DIMENSION dim;
 
@@ -279,7 +279,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask);
+			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
@@ -356,7 +356,7 @@ void HackerContext::_DumpCBs(char shader_type,
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0);
 		if (SUCCEEDED(hr))
-			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_CB_MASK);
+			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_CB_MASK, i);
 
 		buffers[i]->Release();
 	}
@@ -398,7 +398,7 @@ void HackerContext::_DumpTextures(char shader_type,
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash);
 		if (SUCCEEDED(hr))
-			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_TEX_MASK);
+			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_TEX_MASK, i);
 
 		resource->Release();
 		views[i]->Release();
@@ -454,7 +454,7 @@ void HackerContext::DumpVBs()
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0);
 		if (SUCCEEDED(hr))
-			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_VB_MASK);
+			DumpResource(buffers[i], filename, FrameAnalysisOptions::DUMP_VB_MASK, i);
 
 		buffers[i]->Release();
 	}
@@ -473,7 +473,7 @@ void HackerContext::DumpIB()
 
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0);
 	if (SUCCEEDED(hr))
-		DumpResource(buffer, filename, FrameAnalysisOptions::DUMP_IB_MASK);
+		DumpResource(buffer, filename, FrameAnalysisOptions::DUMP_IB_MASK, -1);
 
 	buffer->Release();
 }
@@ -528,7 +528,7 @@ void HackerContext::DumpRenderTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, hash);
 		if (FAILED(hr))
 			return;
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename, FrameAnalysisOptions::DUMP_RT_MASK);
+		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename, FrameAnalysisOptions::DUMP_RT_MASK, i);
 	}
 }
 
@@ -548,7 +548,7 @@ void HackerContext::DumpDepthStencilTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, hash);
 		if (FAILED(hr))
 			return;
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK);
+		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK, -1);
 	}
 }
 
@@ -584,7 +584,7 @@ void HackerContext::DumpUAVs(bool compute)
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash);
 		if (SUCCEEDED(hr))
-			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_RT_MASK);
+			DumpResource(resource, filename, FrameAnalysisOptions::DUMP_RT_MASK, i);
 
 		resource->Release();
 		uavs[i]->Release();

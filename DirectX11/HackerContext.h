@@ -96,11 +96,11 @@ private:
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
 			FrameAnalysisOptions type_mask);
-	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size);
+	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map, UINT size, int idx);
 	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-			FrameAnalysisOptions type_mask);
+			FrameAnalysisOptions type_mask, int idx);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask);
+			FrameAnalysisOptions type_mask, int idx);
 	void _DumpCBs(char shader_type,
 		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
 	void _DumpTextures(char shader_type,
