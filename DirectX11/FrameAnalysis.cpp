@@ -607,10 +607,30 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 	// TODO: Trigger on texture inputs
 
 	if (compute) {
+		try {
+			shaderOverride = &G->mShaderOverrideMap.at(mCurrentComputeShader);
+			new_options |= shaderOverride->analyse_options;
+		} catch (std::out_of_range) {}
+
 		// TODO: Trigger on current UAVs
 	} else {
 		try {
 			shaderOverride = &G->mShaderOverrideMap.at(mCurrentVertexShader);
+			new_options |= shaderOverride->analyse_options;
+		} catch (std::out_of_range) {}
+
+		try {
+			shaderOverride = &G->mShaderOverrideMap.at(mCurrentHullShader);
+			new_options |= shaderOverride->analyse_options;
+		} catch (std::out_of_range) {}
+
+		try {
+			shaderOverride = &G->mShaderOverrideMap.at(mCurrentDomainShader);
+			new_options |= shaderOverride->analyse_options;
+		} catch (std::out_of_range) {}
+
+		try {
+			shaderOverride = &G->mShaderOverrideMap.at(mCurrentGeometryShader);
 			new_options |= shaderOverride->analyse_options;
 		} catch (std::out_of_range) {}
 
