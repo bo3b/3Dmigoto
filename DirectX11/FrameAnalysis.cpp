@@ -561,7 +561,10 @@ void HackerContext::DumpUAVs(bool compute)
 	HRESULT hr;
 	uint32_t hash;
 
-	mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+	if (compute)
+		mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+	else
+		mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 
 	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i) {
 		if (!uavs[i])
