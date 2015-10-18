@@ -213,14 +213,19 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
-// This tries to parse each line in a [ShaderOverride] section in order.
-static void ParseShaderOverrideCommandList(const wchar_t *id, wchar_t *iniFile, ShaderOverride *override)
+// This tries to parse each line in a section in order as part of a command
+// list. A list of keys that may be parsed elsewhere can be passed in so that
+// it can warn about unrecognised keys.
+static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		wchar_t *whitelist[])
 {
 	IniSection section;
 	IniSection::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
 	CommandList *command_list;
+	int i;
 
 	GetIniSection(section, id, iniFile);
 	for (entry = section.begin(); entry < section.end(); entry++) {
@@ -231,26 +236,21 @@ static void ParseShaderOverrideCommandList(const wchar_t *id, wchar_t *iniFile, 
 		// case insensitive:
 		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
 
-		// Skip any entries that are parsed elsewhere:
-		// TODO: Perhaps merge all the parsing code in here so there's
-		// only one place to worry about
-		if (!key->compare(L"hash")
-		 || !key->compare(L"separation")
-		 || !key->compare(L"convergence")
-		 || !key->compare(L"handling")
-		 || !key->compare(L"depth_filter")
-		 || !key->compare(L"partner")
-		 || !key->compare(L"iteration")
-		 || !key->compare(L"indexbufferfilter")
-		 || !key->compare(L"analyse_options")
-		 || !key->compare(L"fake_o0"))
-			continue;
+		// Skip any whitelisted entries that are parsed elsewhere.
+		if (whitelist) {
+			for (i = 0; whitelist[i]; i++) {
+				if (!key->compare(whitelist[i]))
+					break;
+			}
+			if (whitelist[i])
+				continue;
+		}
 
-		command_list = &override->command_list;
+		command_list = pre_command_list;
 		key_ptr = key->c_str();
 		if (!key->compare(0, 5, L"post ")) {
 			key_ptr += 5;
-			command_list = &override->post_command_list;
+			command_list = post_command_list;
 		}
 
 		if (ParseCommandListIniParamOverride(key_ptr, val, command_list))
@@ -267,6 +267,21 @@ log_continue:
 	}
 }
 
+// List of keys in [ShaderOverride] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *ShaderOverrideIniKeys[] = {
+	L"hash",
+	L"separation",
+	L"convergence",
+	L"handling",
+	L"depth_filter",
+	L"partner",
+	L"iteration",
+	L"indexbufferfilter",
+	L"analyse_options",
+	L"fake_o0",
+	NULL
+};
 static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 {
 	IniSections::iterator lower, upper, i;
@@ -369,7 +384,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		if (override->fake_o0)
 			LogInfo("  fake_o0=1\n");
 
-		ParseShaderOverrideCommandList(id, iniFile, override);
+		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
