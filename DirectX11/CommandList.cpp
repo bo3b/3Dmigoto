@@ -780,17 +780,26 @@ void ResourceCopyTarget::SetResource(
 		custom_resource->offset = offset;
 		custom_resource->format = format;
 
-		if (custom_resource->view)
-			custom_resource->view->Release();
-		custom_resource->view = view;
-		if (custom_resource->view)
-			custom_resource->view->AddRef();
+		// If we are passed our own resource (might happen if the
+		// resource is used directly in the run() function, or if
+		// someone assigned a resource to itself), don't needlessly
+		// AddRef() and Release(), and definitely don't Release()
+		// before AddRef()
+		if (custom_resource->view != view) {
+			if (custom_resource->view)
+				custom_resource->view->Release();
+			custom_resource->view = view;
+			if (custom_resource->view)
+				custom_resource->view->AddRef();
+		}
 
-		if (custom_resource->resource)
-			custom_resource->resource->Release();
-		custom_resource->resource = res;
-		if (custom_resource->resource)
-			custom_resource->resource->AddRef();
+		if (custom_resource->resource != res) {
+			if (custom_resource->resource)
+				custom_resource->resource->Release();
+			custom_resource->resource = res;
+			if (custom_resource->resource)
+				custom_resource->resource->AddRef();
+		}
 		break;
 	}
 }
@@ -1071,8 +1080,10 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 {
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
+	ID3D11Resource **pp_cached_resource = &cached_resource;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
+	ID3D11View **pp_cached_view = &cached_view;
 	UINT stride = 0;
 	UINT offset = 0;
 	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
@@ -1096,20 +1107,24 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		return;
 	}
 
-	// TODO: If copying to a custom resource, we could use the resource &
-	// view in the custom resource direcly instead of cached_resource &
-	// cached_view, which could reduce the number of extra resources we
-	// have floating around if copying something to a single custom
-	// resource from multiple shaders.
+	if (dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+		// If we're copying to a custom resource, use the resource &
+		// view in the CustomResource directly as the cache instead of
+		// the cache in the ResourceCopyOperation. This will reduce the
+		// number of extra resources we have floating around if copying
+		// something to a single custom resource from multiple shaders.
+		pp_cached_resource = &dst.custom_resource->resource;
+		pp_cached_view = &dst.custom_resource->view;
+	}
 
 	if (options & ResourceCopyOptions::COPY) {
-		RecreateCompatibleResource(&src, &dst, src_resource, &cached_resource, src_view, &cached_view, mOrigDevice);
-		if (!cached_resource) {
+		RecreateCompatibleResource(&src, &dst, src_resource, pp_cached_resource, src_view, pp_cached_view, mOrigDevice);
+		if (!*pp_cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");
 			goto out_release;
 		}
-		dst_resource = cached_resource;
-		dst_view = cached_view;
+		dst_resource = *pp_cached_resource;
+		dst_view = *pp_cached_view;
 
 		mOrigContext->CopyResource(dst_resource, src_resource);
 	} else {
@@ -1117,14 +1132,14 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		if (src_view && (src.type == dst.type))
 			dst_view = src_view;
 		else
-			dst_view = cached_view;
+			dst_view = *pp_cached_view;
 	}
 
 	if (!dst_view) {
 		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice);
 		// Not checking for NULL return as view's are not applicable to
 		// all types. TODO: Check for legitimate failures.
-		cached_view = dst_view;
+		*pp_cached_view = dst_view;
 	}
 
 	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, ib_fmt);
