@@ -248,9 +248,11 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 
 		command_list = pre_command_list;
 		key_ptr = key->c_str();
-		if (!key->compare(0, 5, L"post ")) {
-			key_ptr += 5;
-			command_list = post_command_list;
+		if (post_command_list) {
+			if (!key->compare(0, 5, L"post ")) {
+				key_ptr += 5;
+				command_list = post_command_list;
+			}
 		}
 
 		if (ParseCommandListIniParamOverride(key_ptr, val, command_list))
@@ -856,6 +858,10 @@ void LoadConfigFile()
 	ParseResourceSections(sections, iniFile);
 	ParseShaderOverrideSections(sections, iniFile);
 	ParseTextureOverrideSections(sections, iniFile);
+
+	LogInfo("[Present]\n");
+	G->present_command_list.clear();
+	ParseCommandList(L"Present", iniFile, &G->present_command_list, NULL, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.

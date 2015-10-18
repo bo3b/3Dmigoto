@@ -71,6 +71,7 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 	mOrigSwapChain = pSwapChain;
 
 	mHackerDevice = pDevice;
+	mHackerContext = pContext;
 	pDevice->SetHackerSwapChain(this);
 
 	try {
@@ -1258,6 +1259,8 @@ void HackerDXGISwapChain::RunFrameActions()
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
 	CurrentTransition.UpdateTransitions(mHackerDevice);
+
+	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list);
 
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag

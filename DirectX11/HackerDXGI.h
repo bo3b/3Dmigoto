@@ -317,6 +317,7 @@ private:
 	IDXGISwapChain *mOrigSwapChain;
 
 	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
 	Overlay *mOverlay;
 
 public:

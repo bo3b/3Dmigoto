@@ -334,6 +334,7 @@ struct Globals
 	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
 
 	ResolutionInfo mResolutionInfo;
+	CommandList present_command_list;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
