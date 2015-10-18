@@ -584,7 +584,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-		// XXX: HERE BE UNTESTED CODE PATHS!
 		switch(shader_type) {
 		case L'p':
 			// XXX: Not clear if the start slot is ok like this from the docs?

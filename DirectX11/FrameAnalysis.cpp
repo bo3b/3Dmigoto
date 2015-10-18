@@ -274,12 +274,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	mOrigContext->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 
 	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
-		if (options & FrameAnalysisOptions::DUMP_CB_BIN)
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".cb");
-		else if (options & FrameAnalysisOptions::DUMP_VB_BIN)
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".vb");
-		else if (options & FrameAnalysisOptions::DUMP_IB_BIN)
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".ib");
+		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
 
 		_wfopen_s(&fd, filename, L"wb");
 		if (!fd)

@@ -127,8 +127,8 @@ enum class FrameAnalysisOptions {
 	DUMP_IB_BIN     = 0x00040000,
 	DUMP_IB_TXT     = 0x00080000,
 	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x00054000,
-	DUMP_XX_TXT     = 0x000a8000,
+	DUMP_XX_BIN     = 0x00054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
+	DUMP_XX_TXT     = 0x000a8000, // Not including SRVs, RTs or UAVs for now
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
