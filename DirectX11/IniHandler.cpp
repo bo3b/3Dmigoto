@@ -9,6 +9,46 @@
 #include "Override.h"
 #include "Hunting.h"
 
+// List all the section prefixes which may contain a command list here and
+// whether they are a prefix or an exact match. Listing a section here will not
+// automatically treat it as a command list (call ParseCommandList on it to do
+// that), but will mean that it will not be checked for duplicate keys (since
+// it is legal for a command list to contain duplicate keys).
+//
+// Keys within these sections that are not part of the command list must be
+// explicitly whitelisted, and these keys will be checked for duplicates by
+// ParseCommandList.
+//
+// ParseCommandList will terminate the program if it is called on a section not
+// listed here to make sure we never forget to update this.
+struct CommandListSection {
+	wchar_t *section;
+	bool prefix;
+};
+static CommandListSection CommandListSections[] = {
+	{L"ShaderOverride", true},
+	{L"TextureOverride", true},
+	{L"Present", false},
+};
+
+bool IsCommandListSection(const wchar_t *section)
+{
+	size_t len;
+	int i;
+
+	for (i = 0; i < ARRAYSIZE(CommandListSections); i++) {
+		if (CommandListSections[i].prefix) {
+			len = wcslen(CommandListSections[i].section);
+			if (!_wcsnicmp(section, CommandListSections[i].section, len))
+				return true;
+		} else {
+			if (!_wcsicmp(section, CommandListSections[i].section))
+				return true;
+		}
+	}
+
+	return false;
+}
 
 // Case insensitive version of less comparitor. This is used to create case
 // insensitive sets of section names in the ini so we can detect duplicate
@@ -55,6 +95,14 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	int buf_size = 256;
 	DWORD result;
 	IniSections keys;
+	bool warn_duplicates = true;
+
+	// Sections that utilise a command list are allowed to have duplicate
+	// keys, while other sections are not. The command list parser will
+	// still check for duplicate keys that are not part of the command
+	// list.
+	if (IsCommandListSection(section))
+		warn_duplicates = false;
 
 	key_vals.clear();
 
@@ -83,11 +131,13 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 		*vptr = L'\0';
 		vptr++;
 
-		if (keys.count(kptr)) {
-			LogInfoW(L"WARNING: Duplicate key found in d3dx.ini: [%s] %s\n", section, kptr);
-			BeepFailure2();
+		if (warn_duplicates) {
+			if (keys.count(kptr)) {
+				LogInfoW(L"WARNING: Duplicate key found in d3dx.ini: [%s] %s\n", section, kptr);
+				BeepFailure2();
+			}
+			keys.insert(kptr);
 		}
-		keys.insert(kptr);
 		key_vals.emplace_back(kptr, vptr);
 		for (kptr = vptr; *kptr; kptr++) {}
 	}
@@ -230,7 +280,8 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 
 // This tries to parse each line in a section in order as part of a command
 // list. A list of keys that may be parsed elsewhere can be passed in so that
-// it can warn about unrecognised keys.
+// it can warn about unrecognised keys and detect duplicate keys that aren't
+// part of the command list.
 static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		wchar_t *whitelist[])
@@ -240,7 +291,15 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 	wstring *key, *val;
 	const wchar_t *key_ptr;
 	CommandList *command_list, *explicit_command_list = NULL;
+	IniSections whitelisted_keys;
 	int i;
+
+	// Safety check to make sure we are keeping the command list section
+	// list up to date:
+	if (!IsCommandListSection(id)) {
+		LogInfoW(L"BUG: ParseCommandList() called on a section not in the CommandListSections list: %s\n", id);
+		DoubleBeepExit();
+	}
 
 	GetIniSection(section, id, iniFile);
 	for (entry = section.begin(); entry < section.end(); entry++) {
@@ -257,8 +316,20 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 				if (!key->compare(whitelist[i]))
 					break;
 			}
-			if (whitelist[i])
+			if (whitelist[i]) {
+				// Entry is whitelisted and will be parsed
+				// elsewhere. Sections with command lists are
+				// allowed duplicate keys *except for these
+				// whitelisted entries*, so check for
+				// duplicates here:
+				if (whitelisted_keys.count(key->c_str())) {
+					LogInfoW(L"WARNING: Duplicate non-command list key found in d3dx.ini: [%s] %s\n", id, key->c_str());
+					BeepFailure2();
+				}
+				whitelisted_keys.insert(key->c_str());
+
 				continue;
+			}
 		}
 
 		command_list = pre_command_list;
