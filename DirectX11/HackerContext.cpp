@@ -1138,19 +1138,19 @@ bool HackerContext::BeforeDispatch()
 			if (G->marking_mode == MARKING_MODE_SKIP)
 				return false;
 		}
+	}
 
-		// Override settings?
-		if (!G->mShaderOverrideMap.empty()) {
-			ShaderOverrideMap::iterator i;
+	// Override settings?
+	if (!G->mShaderOverrideMap.empty()) {
+		ShaderOverrideMap::iterator i;
 
-			i = G->mShaderOverrideMap.find(mCurrentComputeShader);
-			if (i != G->mShaderOverrideMap.end()) {
-				// XXX: Not using ProcessShaderOverride() as a
-				// lot of it's logic doesn't really apply to
-				// compute shaders. The main thing we care
-				// about is the command list, so just run that:
-				RunShaderOverrideCommandList(mHackerDevice, this, &i->second.command_list);
-			}
+		i = G->mShaderOverrideMap.find(mCurrentComputeShader);
+		if (i != G->mShaderOverrideMap.end()) {
+			// XXX: Not using ProcessShaderOverride() as a
+			// lot of it's logic doesn't really apply to
+			// compute shaders. The main thing we care
+			// about is the command list, so just run that:
+			RunShaderOverrideCommandList(mHackerDevice, this, &i->second.command_list);
 		}
 	}
 
