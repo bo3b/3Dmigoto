@@ -347,8 +347,9 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			}
 		}
 
-		// TODO: make this a list and/or add a way to pass in an
-		// identifier for the partner shader
+		// Simple partner shader filtering. Deprecated - more advanced
+		// filtering can be achieved by setting an ini param in the
+		// partner's [ShaderOverride] section.
 		if (GetPrivateProfileString(id, L"partner", 0, setting, MAX_PATH, iniFile)) {
 			swscanf_s(setting, L"%16llx", &override->partner_hash);
 			LogInfo("  partner=%16llx\n", override->partner_hash);
