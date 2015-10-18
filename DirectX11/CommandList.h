@@ -114,6 +114,8 @@ public:
 	UINT offset;
 	DXGI_FORMAT format;
 
+	bool is_null;
+
 	CustomResource();
 	~CustomResource();
 };

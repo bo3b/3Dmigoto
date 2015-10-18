@@ -251,7 +251,8 @@ CustomResource::CustomResource() :
 	bind_flags((D3D11_BIND_FLAG)0),
 	stride(0),
 	offset(0),
-	format(DXGI_FORMAT_UNKNOWN)
+	format(DXGI_FORMAT_UNKNOWN),
+	is_null(true)
 {}
 
 CustomResource::~CustomResource()
@@ -616,6 +617,15 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		*stride = custom_resource->stride;
 		*offset = custom_resource->offset;
 		*format = custom_resource->format;
+
+		if (custom_resource->is_null) {
+			// Optimisation to allow the resource to be set to null
+			// without throwing away the cache so we don't
+			// endlessly create & destroy temporary resources.
+			*view = NULL;
+			return NULL;
+		}
+
 		if (custom_resource->view)
 			custom_resource->view->AddRef();
 		*view = custom_resource->view;
@@ -779,6 +789,16 @@ void ResourceCopyTarget::SetResource(
 		custom_resource->stride = stride;
 		custom_resource->offset = offset;
 		custom_resource->format = format;
+
+
+		if (res == NULL && view == NULL) {
+			// Optimisation to allow the resource to be set to null
+			// without throwing away the cache so we don't
+			// endlessly create & destroy temporary resources.
+			custom_resource->is_null = true;
+			return;
+		}
+		custom_resource->is_null = false;
 
 		// If we are passed our own resource (might happen if the
 		// resource is used directly in the run() function, or if
