@@ -335,6 +335,7 @@ struct Globals
 
 	ResolutionInfo mResolutionInfo;
 	CommandList present_command_list;
+	unsigned frame_no;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
@@ -461,6 +462,8 @@ struct Globals
 		DumpUsage(false),
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
+
+		frame_no(0),
 
 		ENABLE_CRITICAL_SECTION(false),
 		SCREEN_WIDTH(-1),

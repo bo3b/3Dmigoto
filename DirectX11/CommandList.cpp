@@ -248,11 +248,14 @@ bail:
 CustomResource::CustomResource() :
 	resource(NULL),
 	view(NULL),
+	is_null(true),
 	bind_flags((D3D11_BIND_FLAG)0),
 	stride(0),
 	offset(0),
 	format(DXGI_FORMAT_UNKNOWN),
-	is_null(true)
+	max_copies_per_frame(0),
+	frame_no(0),
+	copies_this_frame(0)
 {}
 
 CustomResource::~CustomResource()
@@ -1135,6 +1138,14 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		// something to a single custom resource from multiple shaders.
 		pp_cached_resource = &dst.custom_resource->resource;
 		pp_cached_view = &dst.custom_resource->view;
+
+		if (dst.custom_resource->max_copies_per_frame) {
+			if (dst.custom_resource->frame_no != G->frame_no) {
+				dst.custom_resource->frame_no = G->frame_no;
+				dst.custom_resource->copies_this_frame = 0;
+			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame)
+				return;
+		}
 	}
 
 	if (options & ResourceCopyOptions::COPY) {

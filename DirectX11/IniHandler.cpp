@@ -192,6 +192,7 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wstring resource_id;
+	CustomResource *custom_resource;
 
 	customResources.clear();
 
@@ -209,7 +210,12 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 		// sort of variable declaration), so explicitly construct a
 		// CustomResource for each one. Use the [] operator so the
 		// default constructor will be used:
-		customResources[resource_id];
+		custom_resource = &customResources[resource_id];
+
+		custom_resource->max_copies_per_frame =
+			GetPrivateProfileInt(i->c_str(), L"max_copies_per_frame", 0, iniFile);
+		if (custom_resource->max_copies_per_frame)
+			LogInfo("  max_copies_per_frame=%d\n", custom_resource->max_copies_per_frame);
 	}
 }
 

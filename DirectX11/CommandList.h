@@ -107,6 +107,7 @@ class CustomResource
 public:
 	ID3D11Resource *resource;
 	ID3D11View *view;
+	bool is_null;
 
 	D3D11_BIND_FLAG bind_flags;
 
@@ -114,7 +115,9 @@ public:
 	UINT offset;
 	DXGI_FORMAT format;
 
-	bool is_null;
+	int max_copies_per_frame;
+	unsigned frame_no;
+	int copies_this_frame;
 
 	CustomResource();
 	~CustomResource();
