@@ -28,13 +28,7 @@ float world_z_from_depth_buffer(float x, float y)
 	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
 	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
 	z = DepthBuffer.Load(int3(x, y, 0));
-	if (z == 1)
-		return 0;
-
-	// Derive world Z from depth buffer. This is a kluge since I don't know
-	// the correct scaling, and the Z buffer seems to be (1 - what I expected).
-	// Might be able to determine the correct way to scale it from other shaders.
-	return far*near/(((1-z)*near) + (far*z));
+	return z;
 }
 
 float adjust_from_depth_buffer(float x, float y)
