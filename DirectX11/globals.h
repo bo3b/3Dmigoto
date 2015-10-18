@@ -10,12 +10,12 @@
 #include <unordered_set>
 
 #include "util.h"
-#include "ShaderOverrideCommands.h"
+#include "CommandList.h"
 
 // Resolve circular include dependency between Globals.h ->
-// ShaderOverrideCommands.h -> HackerContext.h -> Globals.h
-class ShaderOverrideCommand;
-typedef std::vector<std::unique_ptr<ShaderOverrideCommand>> ShaderOverrideCommandList;
+// CommandList.h -> HackerContext.h -> Globals.h
+class CommandListCommand;
+typedef std::vector<std::unique_ptr<CommandListCommand>> CommandList;
 
 
 // Defines the maximum number of four component ini params we support.
@@ -179,8 +179,8 @@ struct ShaderOverride {
 	FrameAnalysisOptions analyse_options;
 	bool fake_o0;
 
-	ShaderOverrideCommandList command_list;
-	ShaderOverrideCommandList post_command_list;
+	CommandList command_list;
+	CommandList post_command_list;
 
 	ShaderOverride() :
 		separation(FLT_MAX),

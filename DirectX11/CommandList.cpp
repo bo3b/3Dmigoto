@@ -1,15 +1,15 @@
-#include "ShaderOverrideCommands.h"
+#include "CommandList.h"
 
 #include <algorithm>
 
 CustomResources customResources;
 
-void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
+void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
-		ShaderOverrideCommandList *command_list)
+		CommandList *command_list)
 {
-	ShaderOverrideCommandList::iterator i;
-	ShaderOverrideState state;
+	CommandList::iterator i;
+	CommandListState state;
 	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
 	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -26,7 +26,7 @@ void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
 }
 
 
-static void ProcessParamRTSize(ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
+static void ProcessParamRTSize(ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
 	D3D11_RENDER_TARGET_VIEW_DESC view_desc;
 	D3D11_TEXTURE2D_DESC res_desc;
@@ -132,7 +132,7 @@ out_release_view:
 }
 
 void ParamOverride::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
-		ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
+		ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);
 
@@ -171,8 +171,8 @@ void ParamOverride::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice
 // y2 = ps-t0 (use parameter for texture filtering based on texture slot of shader type)
 // z3 = rt_width / rt_height (set parameter to render target width/height)
 // w4 = res_width / res_height (set parameter to resolution width/height)
-bool ParseShaderOverrideIniParamOverride(const wchar_t *key, wstring *val,
-		ShaderOverrideCommandList *command_list)
+bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
+		CommandList *command_list)
 {
 	int ret, len1, len2;
 	size_t length = wcslen(key);
@@ -237,7 +237,7 @@ bool ParseShaderOverrideIniParamOverride(const wchar_t *key, wstring *val,
 		goto bail;
 
 success:
-	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(param));
+	command_list->push_back(std::unique_ptr<CommandListCommand>(param));
 	return true;
 bail:
 	delete param;
@@ -358,8 +358,8 @@ check_shader_type:
 }
 
 
-bool ParseShaderOverrideResourceCopyDirective(const wchar_t *key, wstring *val,
-		ShaderOverrideCommandList *command_list)
+bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
+		CommandList *command_list)
 {
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
@@ -429,7 +429,7 @@ bool ParseShaderOverrideResourceCopyDirective(const wchar_t *key, wstring *val,
 			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
 	}
 
-	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(operation));
+	command_list->push_back(std::unique_ptr<CommandListCommand>(operation));
 	return true;
 bail:
 	delete operation;
@@ -1067,7 +1067,7 @@ ResourceCopyOperation::~ResourceCopyOperation()
 }
 
 void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
-		ID3D11DeviceContext *mOrigContext, ShaderOverrideState *state)
+		ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;

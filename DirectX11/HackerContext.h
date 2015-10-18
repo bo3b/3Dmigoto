@@ -13,7 +13,7 @@ struct DrawContext
 	float oldConvergence;
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
-	ShaderOverrideCommandList *post_commands[5];
+	CommandList *post_commands[5];
 
 	DrawContext() :
 		skip(false),
@@ -29,7 +29,7 @@ struct DrawContext
 
 struct DispatchContext
 {
-	ShaderOverrideCommandList *post_commands;
+	CommandList *post_commands;
 
 	DispatchContext() :
 		post_commands(NULL)

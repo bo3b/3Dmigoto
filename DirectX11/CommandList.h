@@ -11,7 +11,7 @@
 class HackerDevice;
 class HackerContext;
 
-struct ShaderOverrideState {
+struct CommandListState {
 	// Used to avoid querying the render target dimensions twice in the
 	// common case we are going to store both width & height in separate
 	// ini params:
@@ -20,23 +20,23 @@ struct ShaderOverrideState {
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
 
-	ShaderOverrideState() :
+	CommandListState() :
 		rt_width(-1),
 		rt_height(-1),
 		update_params(false)
 	{}
 };
 
-class ShaderOverrideCommand {
+class CommandListCommand {
 public:
-	virtual ~ShaderOverrideCommand() {};
+	virtual ~CommandListCommand() {};
 
-	virtual void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) = 0;
+	virtual void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) = 0;
 };
 
 // Using vector of pointers to allow mixed types, and unique_ptr to handle
 // destruction of each object:
-typedef std::vector<std::unique_ptr<ShaderOverrideCommand>> ShaderOverrideCommandList;
+typedef std::vector<std::unique_ptr<CommandListCommand>> CommandList;
 
 enum class ParamOverrideType {
 	INVALID,
@@ -67,7 +67,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"res_height", ParamOverrideType::RES_HEIGHT},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
-class ParamOverride : public ShaderOverrideCommand {
+class ParamOverride : public CommandListCommand {
 public:
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
@@ -99,7 +99,7 @@ public:
 		texture_slot(INT_MAX)
 	{}
 
-	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) override;
+	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
 class CustomResource
@@ -204,7 +204,7 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 // overwrite - instead of creating a new resource for a copy operation, overwrite the resource already assigned to the destination (if it exists and is compatible)
 
 
-class ResourceCopyOperation : public ShaderOverrideCommand {
+class ResourceCopyOperation : public CommandListCommand {
 public:
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
@@ -216,15 +216,15 @@ public:
 	ResourceCopyOperation();
 	~ResourceCopyOperation();
 
-	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, ShaderOverrideState*) override;
+	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
 
-void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
+void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
-		ShaderOverrideCommandList *command_list);
+		CommandList *command_list);
 
-bool ParseShaderOverrideIniParamOverride(const wchar_t *key, wstring *val,
-		ShaderOverrideCommandList *command_list);
-bool ParseShaderOverrideResourceCopyDirective(const wchar_t *key, wstring *val,
-		ShaderOverrideCommandList *command_list);
+bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
+		CommandList *command_list);
+bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
+		CommandList *command_list);

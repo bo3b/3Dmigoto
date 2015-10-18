@@ -53,7 +53,7 @@
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
-    <ClCompile Include="ShaderOverrideCommands.cpp" />
+    <ClCompile Include="CommandList.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -76,7 +76,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />
-    <ClInclude Include="ShaderOverrideCommands.h" />
+    <ClInclude Include="CommandList.h" />
     <ClInclude Include="vkeys.h" />
   </ItemGroup>
   <ItemGroup>

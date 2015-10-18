@@ -214,13 +214,13 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 }
 
 // This tries to parse each line in a [ShaderOverride] section in order.
-static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, ShaderOverride *override)
+static void ParseShaderOverrideCommandList(const wchar_t *id, wchar_t *iniFile, ShaderOverride *override)
 {
 	IniSection section;
 	IniSection::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
-	ShaderOverrideCommandList *command_list;
+	CommandList *command_list;
 
 	GetIniSection(section, id, iniFile);
 	for (entry = section.begin(); entry < section.end(); entry++) {
@@ -253,10 +253,10 @@ static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, Sha
 			command_list = &override->post_command_list;
 		}
 
-		if (ParseShaderOverrideIniParamOverride(key_ptr, val, command_list))
+		if (ParseCommandListIniParamOverride(key_ptr, val, command_list))
 			goto log_continue;
 
-		if (ParseShaderOverrideResourceCopyDirective(key_ptr, val, command_list))
+		if (ParseCommandListResourceCopyDirective(key_ptr, val, command_list))
 			goto log_continue;
 
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
@@ -369,7 +369,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		if (override->fake_o0)
 			LogInfo("  fake_o0=1\n");
 
-		ParseShaderOverrideCommands(id, iniFile, override);
+		ParseShaderOverrideCommandList(id, iniFile, override);
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }

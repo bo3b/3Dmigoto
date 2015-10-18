@@ -441,7 +441,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		}
 	}
 
-	RunShaderOverrideCommandList(mHackerDevice, this, &shaderOverride->command_list);
+	RunCommandList(mHackerDevice, this, &shaderOverride->command_list);
 
 	// TODO: Add render target filters, texture filters, etc.
 
@@ -639,7 +639,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i])
-			RunShaderOverrideCommandList(mHackerDevice, this, data.post_commands[i]);
+			RunCommandList(mHackerDevice, this, data.post_commands[i]);
 	}
 
 	if (data.override) {
@@ -1168,7 +1168,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 			// lot of it's logic doesn't really apply to
 			// compute shaders. The main thing we care
 			// about is the command list, so just run that:
-			RunShaderOverrideCommandList(mHackerDevice, this, &i->second.command_list);
+			RunCommandList(mHackerDevice, this, &i->second.command_list);
 		}
 	}
 
@@ -1181,7 +1181,7 @@ void HackerContext::AfterDispatch(DispatchContext *context)
 		FrameAnalysisAfterDraw(true);
 
 	if (context->post_commands)
-		RunShaderOverrideCommandList(mHackerDevice, this, context->post_commands);
+		RunCommandList(mHackerDevice, this, context->post_commands);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
