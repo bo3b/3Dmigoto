@@ -171,21 +171,22 @@ void ParamOverride::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice
 // y2 = ps-t0 (use parameter for texture filtering based on texture slot of shader type)
 // z3 = rt_width / rt_height (set parameter to render target width/height)
 // w4 = res_width / res_height (set parameter to resolution width/height)
-bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
+bool ParseShaderOverrideIniParamOverride(const wchar_t *key, wstring *val,
 		ShaderOverrideCommandList *command_list)
 {
 	int ret, len1, len2;
+	size_t length = wcslen(key);
 	wchar_t component;
 	ParamOverride *param = new ParamOverride();
 
 	// Parse key
-	ret = swscanf_s(key->c_str(), L"%lc%n%u%n", &component, 1, &len1, &param->param_idx, &len2);
+	ret = swscanf_s(key, L"%lc%n%u%n", &component, 1, &len1, &param->param_idx, &len2);
 
 	// May or may not have matched index. Make sure entire string was
 	// matched either way and check index is valid if it was matched:
-	if (ret == 1 && len1 == key->length()) {
+	if (ret == 1 && len1 == length) {
 		param->param_idx = 0;
-	} else if (ret == 2 && len2 == key->length()) {
+	} else if (ret == 2 && len2 == length) {
 		if (param->param_idx >= INI_PARAMS_SIZE)
 			goto bail;
 	} else {
@@ -236,7 +237,6 @@ bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
 		goto bail;
 
 success:
-	LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(param));
 	return true;
 bail:
@@ -358,14 +358,14 @@ check_shader_type:
 }
 
 
-bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
+bool ParseShaderOverrideResourceCopyDirective(const wchar_t *key, wstring *val,
 		ShaderOverrideCommandList *command_list)
 {
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
 
-	if (!operation->dst.ParseTarget(key->c_str(), false))
+	if (!operation->dst.ParseTarget(key, false))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -429,7 +429,6 @@ bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
 			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
 	}
 
-	LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	command_list->push_back(std::unique_ptr<ShaderOverrideCommand>(operation));
 	return true;
 bail:

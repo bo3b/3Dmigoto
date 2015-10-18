@@ -180,6 +180,7 @@ struct ShaderOverride {
 	bool fake_o0;
 
 	ShaderOverrideCommandList command_list;
+	ShaderOverrideCommandList post_command_list;
 
 	ShaderOverride() :
 		separation(FLT_MAX),

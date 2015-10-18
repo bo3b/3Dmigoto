@@ -558,30 +558,40 @@ DrawContext HackerContext::BeforeDraw()
 		ShaderOverrideMap::iterator i;
 
 		i = G->mShaderOverrideMap.find(mCurrentVertexShader);
-		if (i != G->mShaderOverrideMap.end())
+		if (i != G->mShaderOverrideMap.end()) {
+			data.post_commands[0] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+		}
 
 		if (mCurrentHullShader) {
 			i = G->mShaderOverrideMap.find(mCurrentHullShader);
-			if (i != G->mShaderOverrideMap.end())
+			if (i != G->mShaderOverrideMap.end()) {
+				data.post_commands[1] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+			}
 		}
 
 		if (mCurrentDomainShader) {
 			i = G->mShaderOverrideMap.find(mCurrentDomainShader);
-			if (i != G->mShaderOverrideMap.end())
+			if (i != G->mShaderOverrideMap.end()) {
+				data.post_commands[2] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+			}
 		}
 
 		if (mCurrentGeometryShader) {
 			i = G->mShaderOverrideMap.find(mCurrentGeometryShader);
-			if (i != G->mShaderOverrideMap.end())
+			if (i != G->mShaderOverrideMap.end()) {
+				data.post_commands[3] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+			}
 		}
 
 		i = G->mShaderOverrideMap.find(mCurrentPixelShader);
-		if (i != G->mShaderOverrideMap.end())
+		if (i != G->mShaderOverrideMap.end()) {
+			data.post_commands[4] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, true, &data, &separationValue, &convergenceValue);
+		}
 	}
 
 	if (data.override) {
@@ -619,11 +629,18 @@ DrawContext HackerContext::BeforeDraw()
 
 void HackerContext::AfterDraw(DrawContext &data)
 {
+	int i;
+
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(false);
 
 	if (data.skip)
 		return;
+
+	for (i = 0; i < 5; i++) {
+		if (data.post_commands[i])
+			RunShaderOverrideCommandList(mHackerDevice, this, data.post_commands[i]);
+	}
 
 	if (data.override) {
 		if (mHackerDevice->mStereoHandle) {
@@ -1129,7 +1146,7 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 	 mOrigContext->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
 
-bool HackerContext::BeforeDispatch()
+bool HackerContext::BeforeDispatch(DispatchContext *context)
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		// TODO: Collect stats on assigned UAVs
@@ -1146,6 +1163,7 @@ bool HackerContext::BeforeDispatch()
 
 		i = G->mShaderOverrideMap.find(mCurrentComputeShader);
 		if (i != G->mShaderOverrideMap.end()) {
+			context->post_commands = &i->second.post_command_list;
 			// XXX: Not using ProcessShaderOverride() as a
 			// lot of it's logic doesn't really apply to
 			// compute shaders. The main thing we care
@@ -1157,6 +1175,15 @@ bool HackerContext::BeforeDispatch()
 	return true;
 }
 
+void HackerContext::AfterDispatch(DispatchContext *context)
+{
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(true);
+
+	if (context->post_commands)
+		RunShaderOverrideCommandList(mHackerDevice, this, context->post_commands);
+}
+
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountX,
@@ -1165,10 +1192,11 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountZ)
 {
-	if (BeforeDispatch())
+	DispatchContext context;
+
+	if (BeforeDispatch(&context))
 		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(true);
+	AfterDispatch(&context);
 }
 
 STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
@@ -1177,10 +1205,11 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	if (BeforeDispatch())
+	DispatchContext context;
+
+	if (BeforeDispatch(&context))
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(true);
+	AfterDispatch(&context);
 }
 
 STDMETHODIMP_(void) HackerContext::RSSetState(THIS_

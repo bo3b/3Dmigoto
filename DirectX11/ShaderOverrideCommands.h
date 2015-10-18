@@ -224,7 +224,7 @@ void RunShaderOverrideCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		ShaderOverrideCommandList *command_list);
 
-bool ParseShaderOverrideIniParamOverride(wstring *key, wstring *val,
+bool ParseShaderOverrideIniParamOverride(const wchar_t *key, wstring *val,
 		ShaderOverrideCommandList *command_list);
-bool ParseShaderOverrideResourceCopyDirective(wstring *key, wstring *val,
+bool ParseShaderOverrideResourceCopyDirective(const wchar_t *key, wstring *val,
 		ShaderOverrideCommandList *command_list);

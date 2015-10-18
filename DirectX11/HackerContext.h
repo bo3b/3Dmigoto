@@ -13,6 +13,7 @@ struct DrawContext
 	float oldConvergence;
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
+	ShaderOverrideCommandList *post_commands[5];
 
 	DrawContext() :
 		skip(false),
@@ -21,6 +22,17 @@ struct DrawContext
 		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL)
+	{
+		memset(post_commands, 0, sizeof(post_commands));
+	}
+};
+
+struct DispatchContext
+{
+	ShaderOverrideCommandList *post_commands;
+
+	DispatchContext() :
+		post_commands(NULL)
 	{}
 };
 
@@ -69,8 +81,8 @@ private:
 	// These private methods are utility routines for HackerContext.
 	DrawContext BeforeDraw();
 	void AfterDraw(DrawContext &data);
-	bool BeforeDispatch();
-	void AfterDispatch();
+	bool BeforeDispatch(DispatchContext *context);
+	void AfterDispatch(DispatchContext *context);
 	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
 		UINT *replaceDstX, D3D11_BOX *replaceBox);

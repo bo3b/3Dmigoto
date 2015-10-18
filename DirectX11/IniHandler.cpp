@@ -219,6 +219,8 @@ static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, Sha
 	IniSection section;
 	IniSection::iterator entry;
 	wstring *key, *val;
+	const wchar_t *key_ptr;
+	ShaderOverrideCommandList *command_list;
 
 	GetIniSection(section, id, iniFile);
 	for (entry = section.begin(); entry < section.end(); entry++) {
@@ -244,14 +246,24 @@ static void ParseShaderOverrideCommands(const wchar_t *id, wchar_t *iniFile, Sha
 		 || !key->compare(L"fake_o0"))
 			continue;
 
-		if (ParseShaderOverrideIniParamOverride(key, val, &override->command_list))
-			continue;
+		command_list = &override->command_list;
+		key_ptr = key->c_str();
+		if (!key->compare(0, 5, L"post ")) {
+			key_ptr += 5;
+			command_list = &override->post_command_list;
+		}
 
-		if (ParseShaderOverrideResourceCopyDirective(key, val, &override->command_list))
-			continue;
+		if (ParseShaderOverrideIniParamOverride(key_ptr, val, command_list))
+			goto log_continue;
+
+		if (ParseShaderOverrideResourceCopyDirective(key_ptr, val, command_list))
+			goto log_continue;
 
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
 		BeepFailure2();
+		break;
+log_continue:
+		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	}
 }
 
