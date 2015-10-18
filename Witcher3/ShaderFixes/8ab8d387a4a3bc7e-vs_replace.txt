@@ -93,6 +93,14 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
+
+// Only adjust UI element depth when being drawn to the screen to fix slight
+// misalignment issue on mouse cursor and some icons that are drawn to an
+// offscreen buffer first:
+float4 rt_filter = IniParams.Load(int2(2,0));
+if (rt_filter.x != rt_filter.z || rt_filter.y != rt_filter.w)
+  return;
+
 if (params.z == 1)
 	o2.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
 else if (params.z == 2)

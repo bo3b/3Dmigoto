@@ -92,17 +92,20 @@ void main(
   r0.xyzw = (uint4)r0.xyzw;
   o2.x = dot(v0.xyzw, vfuniforms[r0.z].xyzw);
   o2.y = dot(v0.xyzw, vfuniforms[r0.w].xyzw);
-  
-// Huh? Why are we adjusting the texcoord?
-// If we're trying to compensate for a slight misalignment between some icons it's due to them
-// being drawn to a tiny offscreen buffer first (noticed with frame analysis)
-float4 stereo = StereoParams.Load(0);
-float4 params = IniParams.Load(0);
-o2.x -= stereo.x*(0.5*params.x);    
-  
+
   o3.x = dot(v0.xyzw, vfuniforms[r0.x].xyzw);
   o3.y = dot(v0.xyzw, vfuniforms[r0.y].xyzw);
   o3.zw = float2(0.000000e+000,1.000000e+000);
+
+float4 stereo = StereoParams.Load(0);
+float4 params = IniParams.Load(0);
+
+// Only adjust UI element depth when being drawn to the screen to fix slight
+// misalignment issue on mouse cursor and some icons that are drawn to an
+// offscreen buffer first:
+float4 rt_filter = IniParams.Load(int2(2,0));
+if (rt_filter.x != rt_filter.z || rt_filter.y != rt_filter.w)
+  return;
 
 if (params.z == 1)
 	o3.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
