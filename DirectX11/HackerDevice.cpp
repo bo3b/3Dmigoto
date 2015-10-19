@@ -607,7 +607,7 @@ void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileD
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mPreloadedVertexShaders[keyHash] = pVertexShader;
-		//if (G->hunting)
+		if (G->hunting)
 		{
 			ID3DBlob* blob;
 			D3DCreateBlob(bytecodeLength, &blob);
@@ -671,7 +671,7 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		G->mPreloadedPixelShaders[hash] = pPixelShader;
-		//if (G->hunting)
+		if (G->hunting)
 		{
 			ID3DBlob* blob;
 			D3DCreateBlob(bytecodeLength, &blob);
@@ -1965,7 +1965,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			{
 				LogInfo("    shader successfully replaced.\n");
 
-				//if (G->hunting)
+				if (G->hunting)
 				{
 					// Hunting mode:  keep byteCode around for possible replacement or marking
 					ID3DBlob* blob;
@@ -1990,7 +1990,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen.
-		//if (G->hunting)
+		if (G->hunting)
 		{
 			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 				ID3DBlob* blob;
