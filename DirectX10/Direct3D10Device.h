@@ -981,7 +981,7 @@ static DrawContext BeforeDraw(D3D10Wrapper::ID3D10Device *device)
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
-	data.skip = G->mBlockingMode; // mBlockingMode doesn't appear that it can ever be set - hardcoded hack?
+	data.skip = false;
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting)
@@ -2103,9 +2103,6 @@ static void RegisterForReload(D3D10Base::ID3D10DeviceChild* ppShader,
 static char *ReplaceShader(D3D10Base::ID3D10Device *realDevice, UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader)
 {
-	if (G->mBlockingMode)
-		return 0;
-
 	foundShaderModel = "";
 	timeStamp = { 0 };
 

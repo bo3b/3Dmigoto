@@ -301,7 +301,6 @@ struct Globals
 	bool fix_enabled;
 	bool config_reloadable;
 	bool show_original_enabled;
-	bool show_pink_enabled;
 	time_t huntTime;
 
 	bool deferred_enabled;
@@ -413,10 +412,7 @@ struct Globals
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
-	bool mBlockingMode;
-
 	Globals() :
-		mBlockingMode(false),
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(-1),
 		mSelectedRenderTarget((void *)-1),
@@ -440,7 +436,6 @@ struct Globals
 		fix_enabled(true),
 		config_reloadable(false),
 		show_original_enabled(false),
-		show_pink_enabled(false),
 		huntTime(0),
 
 		deferred_enabled(true),

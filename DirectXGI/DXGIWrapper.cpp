@@ -24,7 +24,6 @@ bool gLogDebug = false;
 FILE *LogFile = 0;
 
 static bool gInitialized = false;
-static bool mBlockingMode = false;
 
 
 void InitializeDLL()

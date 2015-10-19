@@ -469,7 +469,7 @@ DrawContext HackerContext::BeforeDraw()
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
-	data.skip = G->mBlockingMode; // mBlockingMode doesn't appear that it can ever be set - hardcoded hack?
+	data.skip = false;
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)

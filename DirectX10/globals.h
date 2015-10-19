@@ -258,10 +258,7 @@ struct Globals
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo; // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
-	bool mBlockingMode;
-
 	Globals() :
-		mBlockingMode(false),
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(0),
 		mSelectedRenderTarget((void *)1),
