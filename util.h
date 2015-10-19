@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <wchar.h>
 #include <string>
+#include <vector>
 
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
@@ -12,6 +13,8 @@
 #include "version.h"
 #include "log.h"
 #include "crc32c.h"
+
+#include "D3D_Shaders\stdafx.h"
 
 
 
@@ -490,27 +493,53 @@ static std::string NameFromIID(IID id)
 // Common routine to handle disassembling binary shaders to asm text.
 // This is used whenever we need the Asm text.
 
+// Old version directly using D3DDisassemble, suffers from precision issues due
+// to bug in MS's disassembler that always prints floats with %f, which does
+// not have sufficient precision to reproduce a 32bit floating point value
+// exactly. Might still be useful for comparison:
+// static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength)
+// {
+// 	ID3DBlob *disassembly = nullptr;
+// 	UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS;
+// 	string comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+//
+// 	HRESULT r = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(),
+// 		&disassembly);
+// 	if (FAILED(r))
+// 	{
+// 		LogInfo("  disassembly failed. Error: %x \n", r);
+// 		return "";
+// 	}
+//
+// 	// Successfully disassembled into a Blob.  Let's turn it into a C++ std::string
+// 	// so that we don't have a null byte as a terminator.  If written to a file,
+// 	// the null bytes otherwise cause Git diffs to fail.
+// 	string asmText = string(static_cast<char*>(disassembly->GetBufferPointer()));
+//
+// 	disassembly->Release();
+// 	return asmText;
+// }
+
+// New version using Flugan's wrapper around D3DDisassemble to replace the
+// problematic %f floating point values with %.9e, which is enough that a 32bit
+// floating point value will be reproduced exactly:
 static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength)
 {
-	ID3DBlob *disassembly = nullptr;
-	UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS;
-	string comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+	string comments;
+	vector<byte> byteCode(BytecodeLength);
+	vector<byte> disassembly;
+	HRESULT r;
 
-	HRESULT r = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(), 
-		&disassembly);
-	if (FAILED(r))
-	{
+	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
+
+	r = disassembler(&byteCode, &disassembly, comments.c_str());
+	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x \n", r);
 		return "";
 	}
 
-	// Successfully disassembled into a Blob.  Let's turn it into a C++ std::string
-	// so that we don't have a null byte as a terminator.  If written to a file,
-	// the null bytes otherwise cause Git diffs to fail.
-	string asmText = string(static_cast<char*>(disassembly->GetBufferPointer()));
-
-	disassembly->Release();
-	return asmText;
+	return string(disassembly.begin(), disassembly.end());
 }
 
 // Get the shader model from the binary shader bytecode.
