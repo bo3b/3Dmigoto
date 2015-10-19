@@ -1597,6 +1597,8 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 	UINT64 *currentShaderHash,
 	ID3D11Shader **currentShaderHandle)
 {
+	ID3D11Shader *repl_shader = pShader;
+
 	if (pShader) {
 		// Store as current shader. Need to do this even while
 		// not hunting for ShaderOverride section in BeforeDraw
@@ -1626,7 +1628,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			LogDebug("  shader replaced by: %p\n", it->second.replacement);
 
 			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
-			pShader = (ID3D11Shader*)it->second.replacement;
+			repl_shader = (ID3D11Shader*)it->second.replacement;
 		}
 
 		if (G->hunting == HUNTING_MODE_ENABLED) {
@@ -1634,13 +1636,13 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
 				std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = originalShaders->find(pShader);
 				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != originalShaders->end()) {
-					pShader = j->second;
+					repl_shader = j->second;
 				}
 			}
 			if (G->marking_mode == MARKING_MODE_ZERO) {
 				std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = zeroShaders->find(pShader);
 				if (selectedShader == *currentShaderHash && j != zeroShaders->end()) {
-					pShader = j->second;
+					repl_shader = j->second;
 				}
 			}
 		}
@@ -1651,7 +1653,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 	}
 
 	// Call through to original XXSetShader, but pShader may have been replaced.
-	(mOrigContext->*OrigSetShader)(pShader, ppClassInstances, NumClassInstances);
+	(mOrigContext->*OrigSetShader)(repl_shader, ppClassInstances, NumClassInstances);
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
