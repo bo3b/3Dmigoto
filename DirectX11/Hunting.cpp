@@ -1407,7 +1407,8 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 		LogInfoW(L"  analyse_options=%s\n", buf);
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 			(FrameAnalysisOptionNames, buf, NULL);
-	}
+	} else
+		G->def_analyse_options = FrameAnalysisOptions::INVALID;
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", iniFile, DisableDeferred, EnableDeferred, noRepeat, NULL);
