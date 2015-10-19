@@ -43,6 +43,6 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size);
 vector<string> stringToLines(const char* start, int size);
 DWORD strToDWORD(string s);
 string convertF(DWORD original);
-vector<byte> disassembler(vector<byte> buffer);
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment);
 vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer);
 void writeLUT();

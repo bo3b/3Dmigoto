@@ -277,7 +277,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 	return ret;
 }
 
-vector<byte> disassembler(vector<byte> buffer) {
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment) {
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
@@ -285,7 +285,7 @@ vector<byte> disassembler(vector<byte> buffer) {
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
 
-	byte* pPosition = buffer.data();
+	byte* pPosition = buffer->data();
 	std::memcpy(fourcc, pPosition, 4);
 	pPosition += 4;
 	std::memcpy(fHash, pPosition, 16);
@@ -302,17 +302,19 @@ vector<byte> disassembler(vector<byte> buffer) {
 	char* asmBuffer;
 	int asmSize;
 	vector<byte> asmBuf;
-	ID3DBlob* pDissassembly;
-	HRESULT ok = D3DDisassemble(buffer.data(), buffer.size(), 0, NULL, &pDissassembly);
-	if (ok == S_OK) {
-		asmBuffer = (char*)pDissassembly->GetBufferPointer();
-		asmSize = pDissassembly->GetBufferSize();
-	}
+	ID3DBlob* pDissassembly = NULL;
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+	if (FAILED(ok))
+		return ok;
+
+	asmBuffer = (char*)pDissassembly->GetBufferPointer();
+	asmSize = pDissassembly->GetBufferSize();
+
 	byte* codeByteStart;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
 		codeChunk = numChunks - i;
-		codeByteStart = buffer.data() + chunkOffsets[numChunks - i];
+		codeByteStart = buffer->data() + chunkOffsets[numChunks - i];
 		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
 			break;
 	}
@@ -396,14 +398,17 @@ vector<byte> disassembler(vector<byte> buffer) {
 			}
 		}
 	}
-	vector<byte> ret;
+	ret->clear();
 	for (int i = 0; i < lines.size(); i++) {
 		for (int j = 0; j < lines[i].size(); j++) {
-			ret.insert(ret.end(), lines[i][j]);
+			ret->insert(ret->end(), lines[i][j]);
 		}
-		ret.insert(ret.end(), '\n');
+		ret->insert(ret->end(), '\n');
 	}
-	return ret;
+
+	pDissassembly->Release();
+
+	return S_OK;
 }
 
 void handleSwizzle(string s, token_operand* tOp, bool special = false) {

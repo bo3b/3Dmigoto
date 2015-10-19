@@ -73,7 +73,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			for (DWORD i = 0; i < files.size(); i++) {
 				string fileName = files[i];
 
-				auto ASM = disassembler(readFile(fileName));
+				vector<byte> ASM;
+				disassembler(&readFile(fileName), &ASM, NULL);
 
 				fileName.erase(fileName.size() - 3, 3);
 				fileName.append("txt");
@@ -132,7 +133,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			for (DWORD i = 0; i < files.size(); i++) {
 				string fileName = files[i];
 
-				auto ASM = disassembler(readFile(fileName));
+				vector<byte> ASM;
+				disassembler(&readFile(fileName), &ASM, NULL);
 
 				fileName.erase(fileName.size() - 3, 3);
 				fileName.append("txt");
