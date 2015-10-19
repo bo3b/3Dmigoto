@@ -272,7 +272,7 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 	}
 
 	// Only create special pink mode PixelShader when requested.
-	if (G->marking_mode == MARKING_MODE_PINK)
+	if (G->hunting && (G->marking_mode == MARKING_MODE_PINK || G->config_reloadable))
 	{
 		char* hlsl =
 			"float4 pshader() : SV_Target0"
