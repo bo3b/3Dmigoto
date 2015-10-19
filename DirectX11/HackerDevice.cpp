@@ -1247,8 +1247,7 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	ShaderOverride *shaderOverride;
 	ShaderOverrideMap::iterator i;
 
-	// if (G->hunting && ... - hunting may now be soft-enabled via key binding
-	if (G->marking_mode == MARKING_MODE_ORIGINAL || G->config_reloadable || G->show_original_enabled)
+	if (G->hunting && (G->marking_mode == MARKING_MODE_ORIGINAL || G->config_reloadable || G->show_original_enabled))
 		return true;
 
 	i = G->mShaderOverrideMap.find(hash);
@@ -1260,6 +1259,9 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 		(shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE)) {
 		return true;
 	}
+
+	if (shaderOverride->partner_hash)
+		return true;
 
 	return false;
 }
