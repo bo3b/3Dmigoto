@@ -8,6 +8,13 @@
 //
 // While still part of the overal project, this is a subpiece not shipped
 // with game fixes.
+// 
+// 11-7-15: Reviving this subproject because Dying Light uses an odd loading
+//	technique that winds up loading dxgi.dll *before* we ever get our first
+//	instruction in d3d11 hooking.  So we cannot hook dxgi before it gets the
+//	wrong one, and leads to not being able to use the overlay or advanced features.
+//
+//	This will just be a loader, like the D3D_Compiler46, not required.
 
 #include <Windows.h>
 #include <stdio.h>
@@ -15,7 +22,7 @@
 #include <dxgi1_2.h>
 
 #include "DXGIWrapper.h"
-#include "HackerDXGI.h"
+//#include "HackerDXGI.h"
 
 #include "log.h"
 
@@ -86,6 +93,9 @@ void InitializeDLL()
 			if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
 		}
 
+		/* Skipped for now.  Maybe revive if we want to make this the wrapper once again.
+			Right now this override work is done inside of HackerDXGI, and loaded by IniParams.
+
 		wchar_t val[MAX_PATH];
 		int read = GetPrivateProfileString(L"Device", L"width", 0, val, MAX_PATH, dir);
 		if (read) swscanf_s(val, L"%d", &SCREEN_WIDTH);
@@ -111,6 +121,7 @@ void InitializeDLL()
 
 			if (SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 		}
+		*/
 	}
 
 	LogInfo(" *** DXGI DLL successfully initialized. *** \n\n");
@@ -186,7 +197,8 @@ typedef struct D3D10DDIARG_OPENADAPTER
   };
 } D3D10DDIARG_OPENADAPTER;
 
-static HMODULE hD3D11 = 0;
+static HMODULE hDXGI = 0;
+
 typedef HRESULT (WINAPI *tD3DKMTQueryAdapterInfo)(_D3DKMT_QUERYADAPTERINFO *);
 static tD3DKMTQueryAdapterInfo _D3DKMTQueryAdapterInfo;
 typedef HRESULT (WINAPI *tOpenAdapter10)(D3D10DDIARG_OPENADAPTER *adapter);
@@ -232,68 +244,84 @@ static tCreateDXGIFactory1 _CreateDXGIFactory1;
 typedef HRESULT(WINAPI *tCreateDXGIFactory2)(REFIID riid, void **ppFactory);
 static tCreateDXGIFactory2 _CreateDXGIFactory2;
 
-static void InitD311()
+static void InitDXGI()
 {
-	if (hD3D11) return;
+	if (hDXGI) return;
 	InitializeDLL();
+
+	// It's OK to get the system dxgi.dll here, as most games do not ship with
+	// a dxgi.dll.
 	wchar_t sysDir[MAX_PATH];
 	SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 	wcscat(sysDir, L"\\dxgi.dll");
-	hD3D11 = LoadLibrary(sysDir);	
-    if (hD3D11 == NULL)
+	hDXGI = LoadLibrary(sysDir);	
+    if (hDXGI == NULL)
     {
         LogInfo("\n *** LoadLibrary on dxgi.dll failed *** \n\n");
         
         return;
     }
 
-	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo) GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
-	_OpenAdapter10 = (tOpenAdapter10) GetProcAddress(hD3D11, "OpenAdapter10");
-	_OpenAdapter10_2 = (tOpenAdapter10_2) GetProcAddress(hD3D11, "OpenAdapter10_2");
-	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState) GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
-	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc) GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
-	_D3DKMTOpenResource = (tD3DKMTOpenResource) GetProcAddress(hD3D11, "D3DKMTOpenResource");
-	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo) GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
-	_DXGIDumpJournal = (tDXGIDumpJournal) GetProcAddress(hD3D11, "DXGIDumpJournal");
-	_DXGID3D10CreateDevice = (tDXGID3D10CreateDevice) GetProcAddress(hD3D11, "DXGID3D10CreateDevice");
-	_DXGID3D10CreateLayeredDevice = (tDXGID3D10CreateLayeredDevice) GetProcAddress(hD3D11, "DXGID3D10CreateLayeredDevice");
-	_DXGID3D10RegisterLayers = (tDXGID3D10RegisterLayers) GetProcAddress(hD3D11, "DXGID3D10RegisterLayers");
-	_DXGIReportAdapterConfiguration = (tDXGIReportAdapterConfiguration) GetProcAddress(hD3D11, "DXGIReportAdapterConfiguration");
-	_CreateDXGIFactory = (tCreateDXGIFactory) GetProcAddress(hD3D11, "CreateDXGIFactory");
-	_CreateDXGIFactory1 = (tCreateDXGIFactory1) GetProcAddress(hD3D11, "CreateDXGIFactory1");
+	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo) GetProcAddress(hDXGI, "D3DKMTQueryAdapterInfo");
+	_OpenAdapter10 = (tOpenAdapter10) GetProcAddress(hDXGI, "OpenAdapter10");
+	_OpenAdapter10_2 = (tOpenAdapter10_2) GetProcAddress(hDXGI, "OpenAdapter10_2");
+	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState) GetProcAddress(hDXGI, "D3DKMTGetDeviceState");
+	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc) GetProcAddress(hDXGI, "D3DKMTOpenAdapterFromHdc");
+	_D3DKMTOpenResource = (tD3DKMTOpenResource) GetProcAddress(hDXGI, "D3DKMTOpenResource");
+	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo) GetProcAddress(hDXGI, "D3DKMTQueryResourceInfo");
+	_DXGIDumpJournal = (tDXGIDumpJournal) GetProcAddress(hDXGI, "DXGIDumpJournal");
+	_DXGID3D10CreateDevice = (tDXGID3D10CreateDevice) GetProcAddress(hDXGI, "DXGID3D10CreateDevice");
+	_DXGID3D10CreateLayeredDevice = (tDXGID3D10CreateLayeredDevice) GetProcAddress(hDXGI, "DXGID3D10CreateLayeredDevice");
+	_DXGID3D10RegisterLayers = (tDXGID3D10RegisterLayers) GetProcAddress(hDXGI, "DXGID3D10RegisterLayers");
+	_DXGIReportAdapterConfiguration = (tDXGIReportAdapterConfiguration) GetProcAddress(hDXGI, "DXGIReportAdapterConfiguration");
+	_CreateDXGIFactory = (tCreateDXGIFactory) GetProcAddress(hDXGI, "CreateDXGIFactory");
+	_CreateDXGIFactory1 = (tCreateDXGIFactory1) GetProcAddress(hDXGI, "CreateDXGIFactory1");
 
 	// 8.1 only
-	_CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hD3D11, "CreateDXGIFactory2");
+	_CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hDXGI, "CreateDXGIFactory2");
+
+	// Loader for d3d11, for the case where this dxgi.dll is used as preloader for 3Dmigoto,
+	// in games that have unusual launch sequences.
+	wchar_t workingDir[MAX_PATH];
+	GetModuleFileName(0, workingDir, MAX_PATH);
+	wcsrchr(workingDir, L'\\')[1] = 0;
+	wcscat(workingDir, L"d3d11.dll");
+	HMODULE hD3D11 = 0;
+	hD3D11 = LoadLibrary(workingDir);
+	if (!hD3D11)
+	{
+		LogInfo("LoadLibrary on d3d11.dll wrapper failed\n");
+	}
 }
 
 HRESULT WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
-	InitD311();
+	InitDXGI();
 	return (*_D3DKMTQueryAdapterInfo)(info);
 }
 
 HRESULT WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
-	InitD311();
+	InitDXGI();
 	return (*_OpenAdapter10)(adapter);
 }
 
 HRESULT WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
-	InitD311();
+	InitDXGI();
 	return (*_OpenAdapter10_2)(adapter);
 }
 
 void WINAPI DXGIDumpJournal(void (__stdcall *function)(const char *))
 {
-	InitD311();
+	InitDXGI();
 	(*_DXGIDumpJournal)(function);
 }
 
 HRESULT WINAPI DXGID3D10CreateDevice(HMODULE d3d10core, IDXGIFactory *factory,
 	IDXGIAdapter *adapter, UINT flags, void *unknown0, void **device)
 {
-	InitD311();
+	InitDXGI();
 	return (*_DXGID3D10CreateDevice)(d3d10core, factory, adapter, flags, unknown0, device);
 }
 
@@ -302,36 +330,58 @@ HRESULT WINAPI DXGID3D10CreateDevice(HMODULE d3d10core, IDXGIFactory *factory,
 // internet can say, but this one is missing any interface info, and probably will not work.
 HRESULT WINAPI DXGID3D10CreateLayeredDevice(int a, int b, int c, int d, int e)
 {
-	InitD311();
+	InitDXGI();
 	return (*_DXGID3D10CreateLayeredDevice)(a, b, c, d, e);
 }
 
 HRESULT WINAPI DXGID3D10GetLayeredDeviceSize(const void *pLayers, UINT NumLayers)
 {
-	InitD311();
+	InitDXGI();
 	return (*_DXGID3D10GetLayeredDeviceSize)(pLayers, NumLayers);
 }
 
 HRESULT WINAPI DXGID3D10RegisterLayers(const struct dxgi_device_layer *layers, UINT layer_count)
 {
-	InitD311();
+	InitDXGI();
 	return (*_DXGID3D10RegisterLayers)(layers, layer_count);
 }
 
 HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
 {
-	InitD311();
+	InitDXGI();
 	return (*_DXGIReportAdapterConfiguration)(a);
 }
 
+
+HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
+{
+	InitDXGI();
+	return (*_CreateDXGIFactory)(riid, ppFactory);
+}
+
+HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
+{
+	InitDXGI();
+	return (*_CreateDXGIFactory1)(riid, ppFactory);
+}
+
+HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
+{
+	InitDXGI();
+	return (*_CreateDXGIFactory2)(riid, ppFactory);
+}
 
 // -----------------------------------------------------------------------------
 
 // This is only ever expected to exist or be called on Win8.1 and above.
 
+
+/* Commented out for now- we might want to go back to this wrapping strategy,
+	but the hooking is already being done for DXGI from d3d11.
+
 HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
-{
-	InitD311();
+	{
+	InitDXGI();
 	LogInfo("CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
 	
 	LogInfo("  calling original CreateDXGIFactory2 API\n");
@@ -401,6 +451,7 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 	//
 	//return ret;
 }
+*/
 
 // In the usual insane way that Microsoft loves to design things, you can pass 
 // in a riid=DXGIFactory2 here, in order to get a factory2.  
@@ -412,9 +463,10 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 // comprehensive, so in a case like that it should be clear that we need to
 // add it.  It's better to do that as-needed, rather than try to guess their madness.
 
+/*
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
-	InitD311();
+	InitDXGI();
 	LogInfo("CreateDXGIFactory1 called with riid: %s \n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
@@ -456,7 +508,7 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
-	InitD311();
+	InitDXGI();
 	LogInfo("CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory API\n");
 
@@ -504,31 +556,31 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 	
 	return hr;
 }
-
+*/
 
 // -----------------------------------------------------------------------------
 
 int WINAPI D3DKMTGetDeviceState(int a)
 {
-	InitD311();
+	InitDXGI();
 	return (*_D3DKMTGetDeviceState)(a);
 }
 
 int WINAPI D3DKMTOpenAdapterFromHdc(int a)
 {
-	InitD311();
+	InitDXGI();
 	return (*_D3DKMTOpenAdapterFromHdc)(a);
 }
 
 int WINAPI D3DKMTOpenResource(int a)
 {
-	InitD311();
+	InitDXGI();
 	return (*_D3DKMTOpenResource)(a);
 }
 
 int WINAPI D3DKMTQueryResourceInfo(int a)
 {
-	InitD311();
+	InitDXGI();
 	return (*_D3DKMTQueryResourceInfo)(a);
 }
 
@@ -640,3 +692,40 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //		LogInfo("    notification successful.\n");
 //	}
 //}
+
+// We need to get control as early as possible in order to pre-load our 
+// d3d11 and nvapi64 dlls.  This will get called at static load time to
+// get us hooked into place.  
+//
+// Be Careful of the restrictions on this entry point. No LogInfo e.g.
+
+BOOL WINAPI DllMain(
+	_In_  HINSTANCE hinstDLL,
+	_In_  DWORD fdwReason,
+	_In_  LPVOID lpvReserved)
+{
+	bool result = true;
+
+	switch (fdwReason)
+	{
+	case DLL_PROCESS_ATTACH:
+	{
+		wchar_t localPath[MAX_PATH] = L"d3d11.dll";
+		LoadLibrary(localPath);
+		break;
+	}
+
+	case DLL_PROCESS_DETACH:
+		break;
+
+	case DLL_THREAD_ATTACH:
+		// Do thread-specific initialization.
+		break;
+
+	case DLL_THREAD_DETACH:
+		// Do thread-specific cleanup.
+		break;
+	}
+
+	return result;
+}

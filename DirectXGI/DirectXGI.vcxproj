@@ -115,14 +115,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\DirectX11\HackerDXGI.cpp" />
     <ClCompile Include="DXGIWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3dxgiWrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\DirectX11\HackerDXGI.h" />
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="DXGIWrapper.h" />
@@ -368,7 +366,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>dxgi</TargetName>
-    <IncludePath>$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSdkDir_80)Lib\win8\um\x64</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

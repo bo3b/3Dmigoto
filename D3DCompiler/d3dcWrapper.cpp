@@ -293,25 +293,25 @@ static void InitC46()
 {
 	if (hC46) return;
 	InitializeDLL();
-	wchar_t sysDir[MAX_PATH];
-	GetModuleFileName(0, sysDir, MAX_PATH);
-	wcsrchr(sysDir, L'\\')[1] = 0;
-	wcscat(sysDir, L"D3DCompiler_" COMPILER_DLL_VERSIONL L"_org.dll");
-	hC46 = LoadLibrary(sysDir);	
+
+	wchar_t workingDir[MAX_PATH];
+	GetModuleFileName(0, workingDir, MAX_PATH);
+	wcsrchr(workingDir, L'\\')[1] = 0;
+	wcscat(workingDir, L"D3DCompiler_" COMPILER_DLL_VERSIONL L"_org.dll");
+	hC46 = LoadLibrary(workingDir);	
     if (!hC46)
     {
         LogInfo("LoadLibrary on D3DCompiler_" COMPILER_DLL_VERSION "_org.dll failed\n");
         
         return;
     }
-	GetModuleFileName(0, sysDir, MAX_PATH);
-	wcsrchr(sysDir, L'\\')[1] = 0;
-	wcscat(sysDir, L"d3d11.dll");
-	hD3D11 = LoadLibrary(sysDir);	
+	GetModuleFileName(0, workingDir, MAX_PATH);
+	wcsrchr(workingDir, L'\\')[1] = 0;
+	wcscat(workingDir, L"d3d11.dll");
+	hD3D11 = LoadLibrary(workingDir);	
     if (!hD3D11)
     {
         LogInfo("LoadLibrary on d3d11.dll wrapper failed\n");
-        
     }
 
 	// d3d11 bridge
@@ -832,8 +832,8 @@ BOOL WINAPI DllMain(
 	{
 	case DLL_PROCESS_ATTACH:
 	{
-		wchar_t sysDir[MAX_PATH] = L"d3d11.dll";
-		hD3D11 = LoadLibrary(sysDir);
+		wchar_t localPath[MAX_PATH] = L"d3d11.dll";
+		hD3D11 = LoadLibrary(localPath);
 		break;
 	}
 
