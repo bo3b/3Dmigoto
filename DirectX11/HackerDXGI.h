@@ -101,6 +101,12 @@ public:
 	HackerDXGIAdapter(IDXGIAdapter *pAdapter);
 
 
+	// Specifically override the QueryInterface here so that we can return a 
+	// wrapped HackerDXGIAdapter1 for a COM type-coercion.
+	STDMETHOD(QueryInterface)(
+		/* [in] */ REFIID riid,
+		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override;
+
 	STDMETHOD(EnumOutputs)(THIS_
 		/* [in] */ UINT Output,
 		/* [annotation][out][in] */

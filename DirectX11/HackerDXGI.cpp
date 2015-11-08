@@ -950,6 +950,56 @@ STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterOcclusionStatus(THIS_
 
 // -----------------------------------------------------------------------------
 
+// Handle the upcasting/type coercion from a IDXGIAdapter to IDXGIAdapter1.  
+// If it's a request for IDXGIAdapter2, return an error as that requires the
+// evil update, and we return errors for that (at present)
+
+STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
+	/* [in] */ REFIID riid,
+	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
+{
+	LogDebug("HackerDXGIAdapter::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+
+	HRESULT hr = mOrigAdapter->QueryInterface(riid, ppvObject);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed result = %x for %p \n", hr, ppvObject);
+		return hr;
+	}
+
+	// No need for further checks of null ppvObject, as it could not have successfully
+	// called the original in that case.
+
+	if (riid == __uuidof(IDXGIAdapter1))
+	{
+		IDXGIAdapter1 *origAdapter1 = static_cast<IDXGIAdapter1*>(*ppvObject);
+		HackerDXGIAdapter1 *dxgiAdapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
+		*ppvObject = dxgiAdapterWrap1;
+		LogDebug("  created HackerDXGIAdapter1(%s@%p) wrapper of %p \n", typeid(*dxgiAdapterWrap1).name(), dxgiAdapterWrap1, origAdapter1);
+	}
+	else if (riid == __uuidof(IDXGIAdapter2))
+	{
+		// Well, bizarrely, this approach to upcasting to a IDXGIAdapter1 is supported on Win7, 
+		// but only if you have the 'evil update', the platform update installed.  Since that
+		// is an optional update, that certainly means that numerous people do not have it 
+		// installed. Ergo, a game developer cannot in good faith just assume that it's there,
+		// and it's very unlikely they would require it. No performance advantage on Win8.
+		// So, that means that a game developer must support a fallback path, even if they
+		// actually want Device1 for some reason.
+		//
+		// Sooo... Current plan is to return an error here, and pretend that the platform
+		// update is not installed, or missing feature on Win8.1.  This will force the game
+		// to use a more compatible path and make our job easier.
+
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+		*ppvObject = NULL;
+		return E_NOINTERFACE;
+	}
+
+	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
+	return hr;
+}
+
 STDMETHODIMP HackerDXGIAdapter::EnumOutputs(THIS_
             /* [in] */ UINT Output,
             /* [annotation][out][in] */ 
