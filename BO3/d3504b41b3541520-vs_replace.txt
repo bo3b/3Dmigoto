@@ -115,31 +115,36 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=24)(mixed,mixed,mixed,mixed) r0.x, l(0), l(12), t4.xxxx
-r0.x = modelInstanceBuffer[]..swiz;
+// Manual fix:
+//ld_structured_indexable(structured_buffer, stride=24)(mixed,mixed,mixed,mixed) r0.x, l(0), l(12), t4.xxxx
+// r0.x is destination and swizzle
+// t4.xxxx = modelInstanceBuffer
+// First param of "l(0)" means the index into the texture is 0, so "modelInstance[0]"
+// Second param of "l(12)" is for the struct name.  In this case 12 offset = "worldMatrix"
+r0.x = modelInstanceBuffer[0].worldMatrix.x;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t5.xyzw
-r1.x = modelInstanceBuffer[]..swiz;
-r1.y = modelInstanceBuffer[]..swiz;
-r1.z = modelInstanceBuffer[]..swiz;
-r1.w = modelInstanceBuffer[]..swiz;
+// Manual fix:
+//ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t5.xyzw
+// r1.xyzw is destination and swizzle
+// t5.xyzw = boneMatrixBuffer
+// First param of "r0.x" means the index into the texture is r0.x, so "boneMatrixBuffer[r0.x]"
+// Second param of "l(0)" is for the struct name.  In this case 0 offset = "mat[0]" 
+r1.xyzw = boneMatrixBuffer[r0.x].mat[0].xyzw;
+
   r2.x = r1.w;
 
-  // Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r3.xyzw, r0.x, l(16), t5.xyzw
-r3.x = modelInstanceBuffer[]..swiz;
-r3.y = modelInstanceBuffer[]..swiz;
-r3.z = modelInstanceBuffer[]..swiz;
-r3.w = modelInstanceBuffer[]..swiz;
+  // Manual fix:
+//ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r3.xyzw, r0.x, l(16), t5.xyzw
+// r3.xyzw is destination and swizzle
+// t5.xyzw = boneMatrixBuffer
+// First param of "r0.x" means the index into the texture is r0.x, so "boneMatrixBuffer[r0.x]"
+// Second param of "l(16)" is for the struct name.  
+//    In this case 16 offset = "mat[1]", because each array element is float4x4, which is 16 bytes.
+r3.xyzw = boneMatrixBuffer[r0.x].mat[1].xyzw;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r0.xyzw, r0.x, l(32), t5.xyzw
-r0.x = modelInstanceBuffer[]..swiz;
-r0.y = modelInstanceBuffer[]..swiz;
-r0.z = modelInstanceBuffer[]..swiz;
-r0.w = modelInstanceBuffer[]..swiz;
+// Manual fix:
+//ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r0.xyzw, r0.x, l(32), t5.xyzw
+r0.xyzw = boneMatrixBuffer[r0.x].mat[2].xyzw;
 
   r2.y = r3.w;
   r2.z = r0.w;
