@@ -2275,18 +2275,32 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 		return;
 	}
 
+	// XXX: We might need to add locking here if one thread can call
+	// GetImmediateContext() while another calls Release on the same
+	// immediate context. Thought this might have been necessary to
+	// eliminate a race in Far Cry 4, but that turned out to be due to the
+	// HackerContext not having a link back to the HackerDevice, and the
+	// same device was not being accessed from multiple threads so there
+	// was no race.
+
 	// We still need to call the original function to make sure the reference counts are correct:
 	mOrigDevice->GetImmediateContext(ppImmediateContext);
 
-	// It should no longer be possible, but we can conceivably arrive here with
-	// no mHackerContext created.  Based on the original code, it's not a bad
-	// idea to create that HackerContext here.
+	// we can arrive here with no mHackerContext created if one was not
+	// requested from CreateDevice/CreateDeviceFromSwapChain. In that case
+	// we need to wrap the immediate context now:
 	if (mHackerContext == nullptr)
 	{
 		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext \n");
 
 		mHackerContext = new HackerContext(mOrigDevice, *ppImmediateContext);
+		mHackerContext->SetHackerDevice(this);
 		LogInfo("  HackerContext %p created to wrap %p \n", mHackerContext, *ppImmediateContext);
+	}
+	else if (mHackerContext->GetOrigContext() != *ppImmediateContext)
+	{
+		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
+				mHackerContext, mHackerContext->GetOrigContext(), *ppImmediateContext);
 	}
 
 	*ppImmediateContext = mHackerContext;
@@ -2363,6 +2377,9 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 		LogInfo("*** HackerContext1 missing at HackerDevice1::GetImmediateContext1 \n");
 
 		mHackerContext1 = new HackerContext1(mOrigDevice1, *ppImmediateContext);
+		// FIXME:
+		// mHackerContext1->SetHackerDevice1(this);
+		// mHackerContext1->SetHackerDevice(mOrigDevice);
 		LogInfo("  mHackerContext1 %p created to wrap %p \n", mHackerContext1, *ppImmediateContext);
 	}
 

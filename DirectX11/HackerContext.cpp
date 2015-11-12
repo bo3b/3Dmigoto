@@ -713,8 +713,13 @@ STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 	{
 		LogInfo("  deleting self\n");
 
-		if (mHackerDevice != nullptr)
-			mHackerDevice->SetHackerContext(nullptr);
+		if (mHackerDevice != nullptr) {
+			if (mHackerDevice->GetHackerContext() == this) {
+				LogInfo("  clearing mHackerDevice->mHackerContext\n");
+				mHackerDevice->SetHackerContext(nullptr);
+			}
+		} else
+			LogInfo("HackerContext::Release - mHackerDevice is NULL\n");
 
 		delete this;
 		return 0L;
