@@ -1631,6 +1631,242 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
 
+static UINT CompressedFormatBlockSize(DXGI_FORMAT Format)
+{
+	switch (Format) {
+		case DXGI_FORMAT_BC1_TYPELESS:
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+		case DXGI_FORMAT_BC4_TYPELESS:
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+			return 8;
+
+		case DXGI_FORMAT_BC2_TYPELESS:
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+		case DXGI_FORMAT_BC3_TYPELESS:
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+		case DXGI_FORMAT_BC5_TYPELESS:
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+		case DXGI_FORMAT_BC6H_TYPELESS:
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+		case DXGI_FORMAT_BC7_TYPELESS:
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return 16;
+	}
+
+	return 0;
+}
+
+static size_t Texture2DLength(
+	const D3D11_TEXTURE2D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	UINT level)
+{
+	UINT block_size, padded_width, padded_height;
+
+	// We might simply be able to use SysMemSlicePitch. The documentation
+	// indicates that it has "no meaning" for a 2D texture, but then in the
+	// Remarks section indicates that it should be set to "the size of the
+	// entire 2D surface in bytes"... but somehow I don't trust it - after
+	// all, we don't set it when creating the stereo texture and that works!
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476220(v=vs.85).aspx
+
+	// At the moment we are only using the first mip-map level, but this
+	// should work if we wanted to use another:
+	UINT mip_width = max(pDesc->Width >> level, 1);
+	UINT mip_height = max(pDesc->Height >> level, 1);
+
+	block_size = CompressedFormatBlockSize(pDesc->Format);
+
+	if (!block_size) {
+		// Uncompressed texture - use the SysMemPitch to get
+		// the width (including any padding) in bytes.
+		return pInitialData->SysMemPitch * mip_height;
+	}
+
+	// In the case of compressed textures, we can't necessarily rely on
+	// SysMemPitch because "lines" are meaningless until the texture has
+	// been decompressed. Instead use the mip-map width + height padded to
+	// a multiple of 4 with the 4x4 block size.
+
+	padded_width = (mip_width + 3) & ~0x3;
+	padded_height = (mip_height + 3) & ~0x3;
+
+	return padded_width * padded_height / 16 * block_size;
+}
+
+static size_t Texture3DLength(
+	const D3D11_TEXTURE3D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	UINT level)
+{
+	UINT block_size, padded_width, padded_height;
+
+	// At the moment we are only using the first mip-map level, but this
+	// should work if we wanted to use another:
+	UINT mip_width = max(pDesc->Width >> level, 1);
+	UINT mip_height = max(pDesc->Height >> level, 1);
+	UINT mip_depth = max(pDesc->Depth >> level, 1);
+
+	block_size = CompressedFormatBlockSize(pDesc->Format);
+
+	if (!block_size) {
+		// Uncompressed texture - use the SysMemSlicePitch to get the
+		// width*height (including any padding) in bytes.
+		return pInitialData->SysMemSlicePitch * mip_depth;
+	}
+
+	// Not sure if SysMemSlicePitch is reliable for compressed 3D textures.
+	// Use the mip-map width, height + depth padded to a multiple of 4 with
+	// the 4x4 block size.
+
+	padded_width = (mip_width + 3) & ~0x3;
+	padded_height = (mip_height + 3) & ~0x3;
+
+	return padded_width * padded_height * mip_depth / 16 * block_size;
+}
+
+
+static uint32_t CalcTexture2DDataHash(
+	const D3D11_TEXTURE2D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	uint32_t hash = 0;
+	size_t length_v12;
+	size_t length;
+	UINT item, level = 0, index;
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// In 3DMigoto v1.2, this is what we were using as the length of the
+	// buffer in bytes. Unfortunately this is not right since pDesc->Width
+	// is in texels, not bytes, and if pDesc->ArraySize was greater than 1
+	// it signifies that there are additional separate buffers to consider,
+	// while we treated it as making the first buffer longer. Additionally,
+	// compressed textures complicate the buffer size calculation further.
+	//
+	// The result is that we might not consider the entire buffer when
+	// calculating the hash (which may not be ideal, but it is generally
+	// acceptable), or we might overflow the buffer. If we overflow we
+	// might get an exception if there is nothing mapped after the buffer
+	// (which we catch and log), but we could just as easily process
+	// gargage after the buffer as being part of the texture, which would
+	// lead to us creating unpredictable hashes.
+	length_v12 = pDesc->Width * pDesc->Height * pDesc->ArraySize;
+
+	// Compare the old broken length to the length of just the first item.
+	// If the broken length is shorter, we will just use that and skip
+	// considering additional entries in the array. While not ideal, this
+	// will minimise the pain of changing the texture hash so soon after
+	// the last time.
+	//
+	// TODO: We might consider an ini setting to disable this fallback for
+	// new games, or possibly to force it for old games.
+	length = Texture2DLength(pDesc, &pInitialData[0], 0);
+	LogDebug("  Texture2D length: %u bad v1.2.1 length: %u\n", length, length_v12);
+	if (length_v12 <= length) {
+		if (length_v12 < length || pDesc->ArraySize > 1) {
+			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
+		}
+		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
+	}
+
+	// If we are here it means the old length had overflowed the buffer,
+	// which means we could not rely on it being a consistent value unless
+	// we got lucky and the memory following the buffer was always
+	// consistent (and even if we did, can we be sure every player will,
+	// and that it won't change when the game is updated?).
+	//
+	// In that case, let's do it right... and hopefully this will be the
+	// last time we need to change this.
+
+	LogDebug("  Using 3DMigoto v1.2.9+ Texture2D CRC calculation\n");
+
+	for (item = 0; item < pDesc->ArraySize; item++) {
+		// We could potentially consider multiple mip-map levels, but
+		// they are unlikely to differentiate any textures that the
+		// main mip-map level alone could not, and few games hand them
+		// to us anyway. Alternatively, using only a smaller mip-map
+		// could potentially be used to improve performance if the
+		// largest mip-map level was enormous (but again, only if the
+		// game actually handed them to us).
+		// for (level = 0; level < pDesc->MipLevels; level++) {
+
+		index = D3D11CalcSubresource(level, item, pDesc->MipLevels);
+		length = Texture2DLength(pDesc, &pInitialData[index], level);
+		hash = crc32c_hw(hash, pInitialData[index].pSysMem, length);
+	}
+
+	return hash;
+}
+
+static uint32_t CalcTexture3DDataHash(
+	const D3D11_TEXTURE3D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	uint32_t hash = 0;
+	size_t length_v12;
+	size_t length;
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// In 3DMigoto v1.2, this is what we were using as the length of the
+	// buffer in bytes. Unfortunately this is not right since pDesc->Width
+	// is in texels, not bytes. Additionally, compressed textures
+	// complicate the buffer size calculation further.
+	//
+	// The result is that we might not consider the entire buffer when
+	// calculating the hash (which may not be ideal, but it is generally
+	// acceptable), or we might overflow the buffer. If we overflow we
+	// might get an exception if there is nothing mapped after the buffer
+	// (which we catch and log), but we could just as easily process
+	// gargage after the buffer as being part of the texture, which would
+	// lead to us creating unpredictable hashes.
+	length_v12 = pDesc->Width * pDesc->Height * pDesc->Depth;
+
+	// Compare the old broken length to the actual length. If the broken
+	// length is shorter, we will just use that. While not ideal, this will
+	// minimise the pain of changing the texture hash so soon after the
+	// last time.
+	//
+	// TODO: We might consider an ini setting to disable this fallback for
+	// new games, or possibly to force it for old games.
+	length = Texture3DLength(pDesc, &pInitialData[0], 0);
+	LogDebug("  Texture3D length: %u bad v1.2.1 length: %u\n", length, length_v12);
+	if (length_v12 <= length) {
+		if (length_v12 < length) {
+			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture3D CRC calculation\n");
+		}
+		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
+	}
+
+	// If we are here it means the old length had overflowed the buffer,
+	// which means we could not rely on it being a consistent value unless
+	// we got lucky and the memory following the buffer was always
+	// consistent (and even if we did, can we be sure every player will,
+	// and that it won't change when the game is updated?).
+	//
+	// In that case, let's do it right... and hopefully this will be the
+	// last time we need to change this.
+
+	LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
+
+	// As above, we could potentially consider multiple mip-map levels blah
+	// blah blah... Difference is, there can only be one array entry in a
+	// 3D texture
+
+	hash = crc32c_hw(hash, pInitialData[0].pSysMem, length);
+
+	return hash;
+}
 
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
@@ -1650,7 +1886,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 	if (pInitialData && pInitialData->pSysMem)
 	{
-		LogDebug("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
+		LogDebug("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
+				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
 		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
 		for (size_t i = 0; i < 16; i++)
 			LogDebug(" %02hX", hex[i]);
@@ -1758,9 +1995,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// We also see the handle itself get reused. That suggests that maybe we ought
 	// to be tracking Release operations as well, and removing them from the map.
 
-	uint32_t hash = 0;
-	if (pInitialData && pInitialData->pSysMem && pDesc)
-		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
+	uint32_t hash = CalcTexture2DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture2DDescHash(hash, pDesc);
 	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
@@ -1855,6 +2090,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->MipLevels, pInitialData);
 	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
+	if (pInitialData && pInitialData->pSysMem) {
+		LogInfo("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u\n",
+				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
+	}
 
 	// Rectangular depth stencil textures of at least 640x480 may indicate
 	// the game's resolution, for games that upscale to their swap chains:
@@ -1869,9 +2108,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 
 	// Create hash code from raw texture data and description.
 	// Initial data is optional, so we might have zero data to add to the hash there.
-	uint32_t hash = 0;
-	if (pInitialData && pInitialData->pSysMem && pDesc)
-		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->Depth);
+	uint32_t hash = CalcTexture3DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
