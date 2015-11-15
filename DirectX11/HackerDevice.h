@@ -38,6 +38,10 @@ private:
 	bool NeedOriginalShader(UINT64 hash);
 	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
 		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
+	HRESULT CreateStereoParamResources();
+	HRESULT CreateIniParamResources();
+	void CreatePinkHuntingResources();
+	HRESULT SetGlobalNVSurfaceCreationMode();
 
 	// Templates of nearly identical functions
 	template <class ID3D11Shader,
@@ -75,7 +79,7 @@ public:
 
 	HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
-	HRESULT CreateStereoAndIniTextures();
+	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
 	void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
 

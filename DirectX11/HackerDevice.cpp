@@ -144,38 +144,21 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	mOrigContext = pContext;
 }
 
-// With the addition of full DXGI support, this init sequence is too dangerous
-// to do at object creation time.  The NV CreateHandleFromIUnknown calls back
-// into this device, so we need to have it set up and ready.
-
-HRESULT HackerDevice::CreateStereoAndIniTextures()
+HRESULT HackerDevice::CreateStereoParamResources()
 {
-	LogInfo("HackerDevice::CreateStereoAndIniTextures(%s@%p) called.  \n", typeid(*this).name(), this);
+	HRESULT hr;
+	NvAPI_Status nvret;
 
 	// Todo: This call will fail if stereo is disabled. Proper notification?
-	NvAPI_Status hr = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
-	if (hr != NVAPI_OK)
+	nvret = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
+	if (nvret != NVAPI_OK)
 	{
 		mStereoHandle = 0;
-		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", hr);
-		return hr;
+		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", nvret);
+		return nvret;
 	}
 	mParamTextureManager.mStereoHandle = mStereoHandle;
 	LogInfo("  created NVAPI stereo handle. Handle = %p \n", mStereoHandle);
-
-	// Override custom settings.
-	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
-	{
-		NvAPIOverride();
-		LogInfo("  setting custom surface creation mode.\n");
-
-		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
-		if (hr != NVAPI_OK)
-		{
-			LogInfo("    custom surface creation call failed: %d. \n", hr);
-			return hr;
-		}
-	}
 
 	// Create stereo parameter texture.
 	LogInfo("  creating stereo parameter texture. \n");
@@ -193,10 +176,10 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
-	HRESULT ret = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
-	if (FAILED(ret))
+	hr = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
+	if (FAILED(hr))
 	{
-		LogInfo("    call failed with result = %x. \n", ret);
+		LogInfo("    call failed with result = %x. \n", hr);
 		return hr;
 	}
 	LogInfo("    stereo texture created, handle = %p \n", mStereoTexture);
@@ -210,67 +193,71 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 	descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	descRV.Texture2D.MostDetailedMip = 0;
 	descRV.Texture2D.MipLevels = -1;
-	ret = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
-	if (FAILED(ret))
+	hr = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
+	if (FAILED(hr))
 	{
-		LogInfo("    call failed with result = %x. \n", ret);
-		return ret;
+		LogInfo("    call failed with result = %x. \n", hr);
+		return hr;
 	}
-	LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
 
-	// If any constants are specified in the .ini file that need to be sent to shaders, we need 
-	// to create the resource view in order to deliver them via SetShaderResources.
-	// Check for depth buffer view.
-	//
+	LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
+	return S_OK;
+}
+
+HRESULT HackerDevice::CreateIniParamResources()
+{
 	// No longer making this conditional. We are pretty well dependent on
 	// the ini params these days and not creating this view might cause
 	// issues with config reload.
-	// if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
+
+	HRESULT ret;
+	D3D11_SUBRESOURCE_DATA initialData;
+	D3D11_TEXTURE1D_DESC desc;
+	memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
+
+	LogInfo("  creating .ini constant parameter texture.\n");
+
+	// Stuff the constants read from the .ini file into the subresource data structure, so 
+	// we can init the texture with them.
+	initialData.pSysMem = &G->iniParams;
+	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
+
+	desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
+	desc.Usage = D3D11_USAGE_DYNAMIC;							// Read/Write access from GPU and CPU
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;				// As resource view, access via t120
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
+	desc.MiscFlags = 0;
+	ret = mOrigDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
+	if (FAILED(ret))
 	{
-		D3D11_TEXTURE1D_DESC desc;
-		memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
-		D3D11_SUBRESOURCE_DATA initialData;
+		LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
+		return ret;
+	}
+	LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
 
-		LogInfo("  creating .ini constant parameter texture.\n");
+	// Since we need to bind the texture to a shader input, we also need a resource view.
+	// The pDesc is set to NULL so that it will simply use the desc format above.
+	LogInfo("  creating IniParam resource view.\n");
 
-		// Stuff the constants read from the .ini file into the subresource data structure, so 
-		// we can init the texture with them.
-		initialData.pSysMem = &G->iniParams;
-		initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
+	D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
+	memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 
-		desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
-		desc.MipLevels = 1;
-		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
-		desc.Usage = D3D11_USAGE_DYNAMIC;							// Read/Write access from GPU and CPU
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;				// As resource view, access via t120
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
-		desc.MiscFlags = 0;
-		ret = mOrigDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
-		if (FAILED(ret))
-		{
-			LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
-			return ret;
-		}
-		LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
-
-		// Since we need to bind the texture to a shader input, we also need a resource view.
-		// The pDesc is set to NULL so that it will simply use the desc format above.
-		LogInfo("  creating IniParam resource view.\n");
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-		memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-
-		ret = mOrigDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
-		if (FAILED(ret))
-		{
-			LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
-			return ret;
-		}
-
-		LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+	ret = mOrigDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
+	if (FAILED(ret))
+	{
+		LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
+		return ret;
 	}
 
+	LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+	return S_OK;
+}
+
+void HackerDevice::CreatePinkHuntingResources()
+{
 	// Only create special pink mode PixelShader when requested.
 	if (G->hunting && (G->marking_mode == MARKING_MODE_PINK || G->config_reloadable))
 	{
@@ -291,8 +278,48 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 			blob->Release();
 		}
 	}
+}
 
-	return ret;
+HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
+{
+	HRESULT hr;
+
+	// Override custom settings.
+	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
+	{
+		NvAPIOverride();
+		LogInfo("  setting custom surface creation mode.\n");
+
+		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+		if (hr != NVAPI_OK)
+		{
+			LogInfo("    custom surface creation call failed: %d. \n", hr);
+			return hr;
+		}
+	}
+
+	return S_OK;
+}
+
+
+// With the addition of full DXGI support, this init sequence is too dangerous
+// to do at object creation time.  The NV CreateHandleFromIUnknown calls back
+// into this device, so we need to have it set up and ready.
+
+void HackerDevice::Create3DMigotoResources()
+{
+	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.  \n", typeid(*this).name(), this);
+
+	// XXX: Ignoring the return values for now because so do our callers.
+	// If we want to change this, keep in mind that failures in
+	// CreateStereoParamResources and SetGlobalNVSurfaceCreationMode should
+	// be considdered non-fatal, as stereo could be disabled in the control
+	// panel, or we could be on an AMD or Intel card.
+
+	CreateStereoParamResources();
+	CreateIniParamResources();
+	CreatePinkHuntingResources();
+	SetGlobalNVSurfaceCreationMode();
 }
 
 
@@ -1630,7 +1657,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	}
 
 	// Preload shaders? 
-	// ToDo: This really doesn't belong here as a late-binding. Maybe move to CreateStereoAndIniTextures.
+	// ToDo: This really doesn't belong here as a late-binding. Maybe move to Create3DMigotoResources.
 	if (G->PRELOAD_SHADERS && G->mPreloadedVertexShaders.empty() && G->mPreloadedPixelShaders.empty())
 	{
 		LogInfo("  preloading custom shaders.\n");
