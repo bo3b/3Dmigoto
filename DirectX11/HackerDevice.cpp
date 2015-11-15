@@ -388,7 +388,8 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 	
 	if (ulRef <= 0)
 	{
-		LogInfo("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
+		if (!gLogDebug)
+			LogInfo("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
 		LogInfo("  deleting self\n");
 
 		if (mStereoHandle)
