@@ -148,7 +148,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 
 			for (item = 0; item < srcDesc.ArraySize; item++) {
 				for (level = 0; level < srcDesc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, srcDesc.MipLevels);
+					index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
 					mOrigContext->ResolveSubresource(tmpResource2, index, src, index, fmt);
 				}
 			}
@@ -170,7 +170,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 	// Perform the reverse stereo blit on all sub-resources and mip-maps:
 	for (item = 0; item < srcDesc.ArraySize; item++) {
 		for (level = 0; level < srcDesc.MipLevels; level++) {
-			index = D3D11CalcSubresource(level, item, srcDesc.MipLevels);
+			index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
 			srcBox.right = width >> level;
 			srcBox.bottom = height >> level;
 			mOrigContext->CopySubresourceRegion(stereoResource, index, 0, 0, 0,

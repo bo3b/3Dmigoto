@@ -1799,7 +1799,7 @@ static uint32_t CalcTexture2DDataHash(
 		// game actually handed them to us).
 		// for (level = 0; level < pDesc->MipLevels; level++) {
 
-		index = D3D11CalcSubresource(level, item, pDesc->MipLevels);
+		index = D3D11CalcSubresource(level, item, max(pDesc->MipLevels, 1));
 		length = Texture2DLength(pDesc, &pInitialData[index], level);
 		hash = crc32c_hw(hash, pInitialData[index].pSysMem, length);
 	}
