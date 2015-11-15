@@ -759,6 +759,11 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 {
 	LogDebug("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
 
+	// Fix ref counting bug that slowly eats away at the device until we
+	// crash. In FC4 this can happen after about 10 minutes, or when
+	// running in windowed mode during launch.
+	mHackerDevice->AddRef();
+
 	*ppDevice = mHackerDevice;
 
 	// Old version for reference.
