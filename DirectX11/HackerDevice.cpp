@@ -144,38 +144,21 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	mOrigContext = pContext;
 }
 
-// With the addition of full DXGI support, this init sequence is too dangerous
-// to do at object creation time.  The NV CreateHandleFromIUnknown calls back
-// into this device, so we need to have it set up and ready.
-
-HRESULT HackerDevice::CreateStereoAndIniTextures()
+HRESULT HackerDevice::CreateStereoParamResources()
 {
-	LogInfo("HackerDevice::CreateStereoAndIniTextures(%s@%p) called.  \n", typeid(*this).name(), this);
+	HRESULT hr;
+	NvAPI_Status nvret;
 
 	// Todo: This call will fail if stereo is disabled. Proper notification?
-	NvAPI_Status hr = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
-	if (hr != NVAPI_OK)
+	nvret = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
+	if (nvret != NVAPI_OK)
 	{
 		mStereoHandle = 0;
-		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", hr);
-		return hr;
+		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", nvret);
+		return nvret;
 	}
 	mParamTextureManager.mStereoHandle = mStereoHandle;
 	LogInfo("  created NVAPI stereo handle. Handle = %p \n", mStereoHandle);
-
-	// Override custom settings.
-	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
-	{
-		NvAPIOverride();
-		LogInfo("  setting custom surface creation mode.\n");
-
-		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
-		if (hr != NVAPI_OK)
-		{
-			LogInfo("    custom surface creation call failed: %d. \n", hr);
-			return hr;
-		}
-	}
 
 	// Create stereo parameter texture.
 	LogInfo("  creating stereo parameter texture. \n");
@@ -193,10 +176,10 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
-	HRESULT ret = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
-	if (FAILED(ret))
+	hr = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
+	if (FAILED(hr))
 	{
-		LogInfo("    call failed with result = %x. \n", ret);
+		LogInfo("    call failed with result = %x. \n", hr);
 		return hr;
 	}
 	LogInfo("    stereo texture created, handle = %p \n", mStereoTexture);
@@ -210,67 +193,71 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 	descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	descRV.Texture2D.MostDetailedMip = 0;
 	descRV.Texture2D.MipLevels = -1;
-	ret = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
-	if (FAILED(ret))
+	hr = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
+	if (FAILED(hr))
 	{
-		LogInfo("    call failed with result = %x. \n", ret);
-		return ret;
+		LogInfo("    call failed with result = %x. \n", hr);
+		return hr;
 	}
-	LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
 
-	// If any constants are specified in the .ini file that need to be sent to shaders, we need 
-	// to create the resource view in order to deliver them via SetShaderResources.
-	// Check for depth buffer view.
-	//
+	LogInfo("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
+	return S_OK;
+}
+
+HRESULT HackerDevice::CreateIniParamResources()
+{
 	// No longer making this conditional. We are pretty well dependent on
 	// the ini params these days and not creating this view might cause
 	// issues with config reload.
-	// if ((G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
+
+	HRESULT ret;
+	D3D11_SUBRESOURCE_DATA initialData;
+	D3D11_TEXTURE1D_DESC desc;
+	memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
+
+	LogInfo("  creating .ini constant parameter texture.\n");
+
+	// Stuff the constants read from the .ini file into the subresource data structure, so 
+	// we can init the texture with them.
+	initialData.pSysMem = &G->iniParams;
+	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
+
+	desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
+	desc.Usage = D3D11_USAGE_DYNAMIC;							// Read/Write access from GPU and CPU
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;				// As resource view, access via t120
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
+	desc.MiscFlags = 0;
+	ret = mOrigDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
+	if (FAILED(ret))
 	{
-		D3D11_TEXTURE1D_DESC desc;
-		memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
-		D3D11_SUBRESOURCE_DATA initialData;
+		LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
+		return ret;
+	}
+	LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
 
-		LogInfo("  creating .ini constant parameter texture.\n");
+	// Since we need to bind the texture to a shader input, we also need a resource view.
+	// The pDesc is set to NULL so that it will simply use the desc format above.
+	LogInfo("  creating IniParam resource view.\n");
 
-		// Stuff the constants read from the .ini file into the subresource data structure, so 
-		// we can init the texture with them.
-		initialData.pSysMem = &G->iniParams;
-		initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
+	D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
+	memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 
-		desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
-		desc.MipLevels = 1;
-		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
-		desc.Usage = D3D11_USAGE_DYNAMIC;							// Read/Write access from GPU and CPU
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;				// As resource view, access via t120
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;				// allow CPU access for hotkeys
-		desc.MiscFlags = 0;
-		ret = mOrigDevice->CreateTexture1D(&desc, &initialData, &mIniTexture);
-		if (FAILED(ret))
-		{
-			LogInfo("    CreateTexture1D call failed with result = %x.\n", ret);
-			return ret;
-		}
-		LogInfo("    IniParam texture created, handle = %p\n", mIniTexture);
-
-		// Since we need to bind the texture to a shader input, we also need a resource view.
-		// The pDesc is set to NULL so that it will simply use the desc format above.
-		LogInfo("  creating IniParam resource view.\n");
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-		memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-
-		ret = mOrigDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
-		if (FAILED(ret))
-		{
-			LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
-			return ret;
-		}
-
-		LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+	ret = mOrigDevice->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
+	if (FAILED(ret))
+	{
+		LogInfo("   CreateShaderResourceView call failed with result = %x.\n", ret);
+		return ret;
 	}
 
+	LogInfo("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+	return S_OK;
+}
+
+void HackerDevice::CreatePinkHuntingResources()
+{
 	// Only create special pink mode PixelShader when requested.
 	if (G->hunting && (G->marking_mode == MARKING_MODE_PINK || G->config_reloadable))
 	{
@@ -291,8 +278,48 @@ HRESULT HackerDevice::CreateStereoAndIniTextures()
 			blob->Release();
 		}
 	}
+}
 
-	return ret;
+HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
+{
+	HRESULT hr;
+
+	// Override custom settings.
+	if (mStereoHandle && G->gSurfaceCreateMode >= 0)
+	{
+		NvAPIOverride();
+		LogInfo("  setting custom surface creation mode.\n");
+
+		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+		if (hr != NVAPI_OK)
+		{
+			LogInfo("    custom surface creation call failed: %d. \n", hr);
+			return hr;
+		}
+	}
+
+	return S_OK;
+}
+
+
+// With the addition of full DXGI support, this init sequence is too dangerous
+// to do at object creation time.  The NV CreateHandleFromIUnknown calls back
+// into this device, so we need to have it set up and ready.
+
+void HackerDevice::Create3DMigotoResources()
+{
+	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.  \n", typeid(*this).name(), this);
+
+	// XXX: Ignoring the return values for now because so do our callers.
+	// If we want to change this, keep in mind that failures in
+	// CreateStereoParamResources and SetGlobalNVSurfaceCreationMode should
+	// be considdered non-fatal, as stereo could be disabled in the control
+	// panel, or we could be on an AMD or Intel card.
+
+	CreateStereoParamResources();
+	CreateIniParamResources();
+	CreatePinkHuntingResources();
+	SetGlobalNVSurfaceCreationMode();
 }
 
 
@@ -361,7 +388,8 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 	
 	if (ulRef <= 0)
 	{
-		LogInfo("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
+		if (!gLogDebug)
+			LogInfo("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
 		LogInfo("  deleting self\n");
 
 		if (mStereoHandle)
@@ -1603,6 +1631,242 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
 
+static UINT CompressedFormatBlockSize(DXGI_FORMAT Format)
+{
+	switch (Format) {
+		case DXGI_FORMAT_BC1_TYPELESS:
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+		case DXGI_FORMAT_BC4_TYPELESS:
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+			return 8;
+
+		case DXGI_FORMAT_BC2_TYPELESS:
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+		case DXGI_FORMAT_BC3_TYPELESS:
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+		case DXGI_FORMAT_BC5_TYPELESS:
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+		case DXGI_FORMAT_BC6H_TYPELESS:
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+		case DXGI_FORMAT_BC7_TYPELESS:
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return 16;
+	}
+
+	return 0;
+}
+
+static size_t Texture2DLength(
+	const D3D11_TEXTURE2D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	UINT level)
+{
+	UINT block_size, padded_width, padded_height;
+
+	// We might simply be able to use SysMemSlicePitch. The documentation
+	// indicates that it has "no meaning" for a 2D texture, but then in the
+	// Remarks section indicates that it should be set to "the size of the
+	// entire 2D surface in bytes"... but somehow I don't trust it - after
+	// all, we don't set it when creating the stereo texture and that works!
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476220(v=vs.85).aspx
+
+	// At the moment we are only using the first mip-map level, but this
+	// should work if we wanted to use another:
+	UINT mip_width = max(pDesc->Width >> level, 1);
+	UINT mip_height = max(pDesc->Height >> level, 1);
+
+	block_size = CompressedFormatBlockSize(pDesc->Format);
+
+	if (!block_size) {
+		// Uncompressed texture - use the SysMemPitch to get
+		// the width (including any padding) in bytes.
+		return pInitialData->SysMemPitch * mip_height;
+	}
+
+	// In the case of compressed textures, we can't necessarily rely on
+	// SysMemPitch because "lines" are meaningless until the texture has
+	// been decompressed. Instead use the mip-map width + height padded to
+	// a multiple of 4 with the 4x4 block size.
+
+	padded_width = (mip_width + 3) & ~0x3;
+	padded_height = (mip_height + 3) & ~0x3;
+
+	return padded_width * padded_height / 16 * block_size;
+}
+
+static size_t Texture3DLength(
+	const D3D11_TEXTURE3D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	UINT level)
+{
+	UINT block_size, padded_width, padded_height;
+
+	// At the moment we are only using the first mip-map level, but this
+	// should work if we wanted to use another:
+	UINT mip_width = max(pDesc->Width >> level, 1);
+	UINT mip_height = max(pDesc->Height >> level, 1);
+	UINT mip_depth = max(pDesc->Depth >> level, 1);
+
+	block_size = CompressedFormatBlockSize(pDesc->Format);
+
+	if (!block_size) {
+		// Uncompressed texture - use the SysMemSlicePitch to get the
+		// width*height (including any padding) in bytes.
+		return pInitialData->SysMemSlicePitch * mip_depth;
+	}
+
+	// Not sure if SysMemSlicePitch is reliable for compressed 3D textures.
+	// Use the mip-map width, height + depth padded to a multiple of 4 with
+	// the 4x4 block size.
+
+	padded_width = (mip_width + 3) & ~0x3;
+	padded_height = (mip_height + 3) & ~0x3;
+
+	return padded_width * padded_height * mip_depth / 16 * block_size;
+}
+
+
+static uint32_t CalcTexture2DDataHash(
+	const D3D11_TEXTURE2D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	uint32_t hash = 0;
+	size_t length_v12;
+	size_t length;
+	UINT item, level = 0, index;
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// In 3DMigoto v1.2, this is what we were using as the length of the
+	// buffer in bytes. Unfortunately this is not right since pDesc->Width
+	// is in texels, not bytes, and if pDesc->ArraySize was greater than 1
+	// it signifies that there are additional separate buffers to consider,
+	// while we treated it as making the first buffer longer. Additionally,
+	// compressed textures complicate the buffer size calculation further.
+	//
+	// The result is that we might not consider the entire buffer when
+	// calculating the hash (which may not be ideal, but it is generally
+	// acceptable), or we might overflow the buffer. If we overflow we
+	// might get an exception if there is nothing mapped after the buffer
+	// (which we catch and log), but we could just as easily process
+	// gargage after the buffer as being part of the texture, which would
+	// lead to us creating unpredictable hashes.
+	length_v12 = pDesc->Width * pDesc->Height * pDesc->ArraySize;
+
+	// Compare the old broken length to the length of just the first item.
+	// If the broken length is shorter, we will just use that and skip
+	// considering additional entries in the array. While not ideal, this
+	// will minimise the pain of changing the texture hash so soon after
+	// the last time.
+	//
+	// TODO: We might consider an ini setting to disable this fallback for
+	// new games, or possibly to force it for old games.
+	length = Texture2DLength(pDesc, &pInitialData[0], 0);
+	LogDebug("  Texture2D length: %u bad v1.2.1 length: %u\n", length, length_v12);
+	if (length_v12 <= length) {
+		if (length_v12 < length || pDesc->ArraySize > 1) {
+			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
+		}
+		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
+	}
+
+	// If we are here it means the old length had overflowed the buffer,
+	// which means we could not rely on it being a consistent value unless
+	// we got lucky and the memory following the buffer was always
+	// consistent (and even if we did, can we be sure every player will,
+	// and that it won't change when the game is updated?).
+	//
+	// In that case, let's do it right... and hopefully this will be the
+	// last time we need to change this.
+
+	LogDebug("  Using 3DMigoto v1.2.9+ Texture2D CRC calculation\n");
+
+	for (item = 0; item < pDesc->ArraySize; item++) {
+		// We could potentially consider multiple mip-map levels, but
+		// they are unlikely to differentiate any textures that the
+		// main mip-map level alone could not, and few games hand them
+		// to us anyway. Alternatively, using only a smaller mip-map
+		// could potentially be used to improve performance if the
+		// largest mip-map level was enormous (but again, only if the
+		// game actually handed them to us).
+		// for (level = 0; level < pDesc->MipLevels; level++) {
+
+		index = D3D11CalcSubresource(level, item, max(pDesc->MipLevels, 1));
+		length = Texture2DLength(pDesc, &pInitialData[index], level);
+		hash = crc32c_hw(hash, pInitialData[index].pSysMem, length);
+	}
+
+	return hash;
+}
+
+static uint32_t CalcTexture3DDataHash(
+	const D3D11_TEXTURE3D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	uint32_t hash = 0;
+	size_t length_v12;
+	size_t length;
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// In 3DMigoto v1.2, this is what we were using as the length of the
+	// buffer in bytes. Unfortunately this is not right since pDesc->Width
+	// is in texels, not bytes. Additionally, compressed textures
+	// complicate the buffer size calculation further.
+	//
+	// The result is that we might not consider the entire buffer when
+	// calculating the hash (which may not be ideal, but it is generally
+	// acceptable), or we might overflow the buffer. If we overflow we
+	// might get an exception if there is nothing mapped after the buffer
+	// (which we catch and log), but we could just as easily process
+	// gargage after the buffer as being part of the texture, which would
+	// lead to us creating unpredictable hashes.
+	length_v12 = pDesc->Width * pDesc->Height * pDesc->Depth;
+
+	// Compare the old broken length to the actual length. If the broken
+	// length is shorter, we will just use that. While not ideal, this will
+	// minimise the pain of changing the texture hash so soon after the
+	// last time.
+	//
+	// TODO: We might consider an ini setting to disable this fallback for
+	// new games, or possibly to force it for old games.
+	length = Texture3DLength(pDesc, &pInitialData[0], 0);
+	LogDebug("  Texture3D length: %u bad v1.2.1 length: %u\n", length, length_v12);
+	if (length_v12 <= length) {
+		if (length_v12 < length) {
+			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture3D CRC calculation\n");
+		}
+		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
+	}
+
+	// If we are here it means the old length had overflowed the buffer,
+	// which means we could not rely on it being a consistent value unless
+	// we got lucky and the memory following the buffer was always
+	// consistent (and even if we did, can we be sure every player will,
+	// and that it won't change when the game is updated?).
+	//
+	// In that case, let's do it right... and hopefully this will be the
+	// last time we need to change this.
+
+	LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
+
+	// As above, we could potentially consider multiple mip-map levels blah
+	// blah blah... Difference is, there can only be one array entry in a
+	// 3D texture
+
+	hash = crc32c_hw(hash, pInitialData[0].pSysMem, length);
+
+	return hash;
+}
 
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
@@ -1622,7 +1886,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
 	if (pInitialData && pInitialData->pSysMem)
 	{
-		LogDebug("  pInitialData = %p->%p ", pInitialData, pInitialData->pSysMem);
+		LogDebug("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
+				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
 		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
 		for (size_t i = 0; i < 16; i++)
 			LogDebug(" %02hX", hex[i]);
@@ -1630,7 +1895,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	}
 
 	// Preload shaders? 
-	// ToDo: This really doesn't belong here as a late-binding. Maybe move to CreateStereoAndIniTextures.
+	// ToDo: This really doesn't belong here as a late-binding. Maybe move to Create3DMigotoResources.
 	if (G->PRELOAD_SHADERS && G->mPreloadedVertexShaders.empty() && G->mPreloadedPixelShaders.empty())
 	{
 		LogInfo("  preloading custom shaders.\n");
@@ -1730,9 +1995,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// We also see the handle itself get reused. That suggests that maybe we ought
 	// to be tracking Release operations as well, and removing them from the map.
 
-	uint32_t hash = 0;
-	if (pInitialData && pInitialData->pSysMem && pDesc)
-		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->ArraySize);
+	uint32_t hash = CalcTexture2DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture2DDescHash(hash, pDesc);
 	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
@@ -1827,6 +2090,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->MipLevels, pInitialData);
 	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
 		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
+	if (pInitialData && pInitialData->pSysMem) {
+		LogInfo("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u\n",
+				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
+	}
 
 	// Rectangular depth stencil textures of at least 640x480 may indicate
 	// the game's resolution, for games that upscale to their swap chains:
@@ -1841,9 +2108,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 
 	// Create hash code from raw texture data and description.
 	// Initial data is optional, so we might have zero data to add to the hash there.
-	uint32_t hash = 0;
-	if (pInitialData && pInitialData->pSysMem && pDesc)
-		hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->Width * pDesc->Height * pDesc->Depth);
+	uint32_t hash = CalcTexture3DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
