@@ -751,8 +751,6 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 // The previous version of this call would fetch the HackerDevice from a list
 // and thus this new approach may be broken.
 
-// Todo: Be sure this works
-
 STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	/* [annotation] */
 	__out  ID3D11Device **ppDevice)
@@ -762,29 +760,13 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	// Fix ref counting bug that slowly eats away at the device until we
 	// crash. In FC4 this can happen after about 10 minutes, or when
 	// running in windowed mode during launch.
-	mHackerDevice->AddRef();
+	
+	// Follow our rule of always calling the original call first to ensure that
+	// any side-effects (including ref counting) are activated.
+	mOrigContext->GetDevice(ppDevice);
 
+	// Return our wrapped device though.
 	*ppDevice = mHackerDevice;
-
-	// Old version for reference.
-/*	// Map device to wrapper.
-	HackerDevice *wrapper = (HackerDevice*)HackerDevice::GetDirect3DDevice(origDevice);
-
-	if (!wrapper)
-	{
-		LogInfo("ID3D11DeviceContext::GetDevice called");
-		LogInfo("  can't find wrapper for parent device. Returning original device handle = %p\n", origDevice);
-
-		// Get original device pointer
-		ID3D11Device *origDevice;
-		ID3D11DeviceContext::GetDevice(&origDevice);
-
-		*ppDevice = (ID3D11Device *)origDevice;
-		return;
-	}
-
-	*ppDevice = wrapper;
-*/
 }
 
 STDMETHODIMP HackerContext::GetPrivateData(THIS_
@@ -900,6 +882,8 @@ HRESULT HackerContext::MapDenyCPURead(
 
 	// TODO: We can probably skip the original map call altogether avoiding
 	// the latency so long as the D3D11_MAPPED_SUBRESOURCE we return is sane.
+	// Best to call original in case their are unknown side-effects, including
+	// other wrappers who expect to get called.
 	hr = mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
 
 	if (SUCCEEDED(hr) && pMappedResource->pData) {
