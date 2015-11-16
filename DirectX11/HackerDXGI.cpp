@@ -636,6 +636,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSoftwareAdapter(THIS_
 // The superclass of HackerDXGIFactory::QueryInterface will be called, as long as
 // we successfully wrapped the factory in the first place.
 
+// Factory1 IS required for Win7 with no platform update installed.
 
 STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 	/* [in] */ UINT Adapter,
@@ -713,6 +714,17 @@ STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 // expect to use them until we are forced to.  They are not available on Win7,
 // so no game dev is likely to target these for awhile.
 // When we do need to update these, use the normal CreateSwapChain as a refernce.
+//
+// No support for IDXGIFactory2, IDXGIFactory3, IDXGIFactory4 on our target platform
+// of Win7 with no evil update installed.  This is the optional update, and as of
+// 11-15-15, about 50% of gamers are still using Win7. So, it's not unreasonable 
+// to force an older code path that the game has to support anyway.  No game dev
+// can afford to skip 50% of the market.  
+//
+// Ignoring these, and returning errors simplifies our job.
+//
+// IDXGIFactory3 requires Win8.1
+// IDXGIFactory4 requires Win10
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][in] */ 
@@ -1530,6 +1542,15 @@ STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
 
 
 // -----------------------------------------------------------------------------
+
+// The IDXGISwapChain1 is an unsupported variant from our current design goals.
+// IDXGISwapChain1, IDXGISwapChain2, IDXGISwapChain3 all require at least Win7 with
+// the 'evil' update installed. That update is optional, hence not required by 
+// game devs for their games. We push them back to older code paths for simplicity,
+// because there is no apparent advantage (yet) to the new features.
+//
+// IDXGISwapChain2 requires Win8.1
+// IDXGISwapChain3 requires Win10
 
 STDMETHODIMP HackerDXGISwapChain1::GetDesc1(THIS_
             /* [annotation][out] */ 
