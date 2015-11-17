@@ -1,3 +1,8 @@
+// Clipped interior mask part 1/2
+// This shader clears a 2D rectangle surrounding buildings with open windows
+// and doors. A later shader will draw the mask
+// VS 492c73b915631923 - clear rectangle to avoid stale data from previous frame
+// VS 438efe85d344ddd3 - draw mask on windows
 
 cbuffer CDeferredInteriorAmbientProvider : register(b0)
 {
@@ -39,7 +44,11 @@ void main(
   float4 v0 : POSITION0,
   out float4 o0 : SV_Position0,
   out float2 o1 : TEXCOORD0,
-  out float2 p1 : TEXCOORD1)
+  out float2 p1 : TEXCOORD1,
+
+uint id : SV_VertexID
+
+  )
 {
   float4 r0;
   uint4 bitmask, uiDest;
@@ -47,10 +56,30 @@ void main(
 
   o0.zw = float2(0,1);
   r0.xy = v0.xy * _QuadParams.xy + _QuadParams.zw;
+
+// Adjust the bounds of the 2D rectangle to make sure it is covered in 3D:
+
+// Approach 1 - expand rectangle, put it's depth at infinity. Works fine unless
+// someone is playing with a lot of pop-out
+// float4 stereo = StereoParams.Load(0);
+// if ((stereo.z == 1 && (id == 0 || id == 1)) ||  // Left side in left eye
+//     (stereo.z == -1 && (id == 2 || id == 3))) { // Right side in right eye
+// 	// Adjust bounding box:
+// 	r0.x += stereo.x * 2;
+// }
+
+// Approach 2 - move left side to screen left, move right side to screen right
+// Works regardless of pop-out
+if (id == 0 || id == 1) // Left side
+	r0.x = -1;
+else // Right side
+	r0.x = 1;
+
   o0.xy = r0.xy;
   r0.xy = r0.xy * float2(0.5,-0.5) + float2(0.5,0.5);
   p1.xy = _SrcTexHalfPixelOffset.zw + r0.xy;
   o1.xy = r0.xy;
+
   return;
 }
 

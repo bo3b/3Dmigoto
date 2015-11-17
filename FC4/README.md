@@ -67,8 +67,6 @@ Known Issues
 - Repair tool flame is misaligned, and can't be fixed without breaking other
   flames.
 
-- Windows & doors of buildings sometimes appear brighter than they should.
-
 Notes
 -----
 If you find any rendering issues please post on [the forum thread][3], and be
