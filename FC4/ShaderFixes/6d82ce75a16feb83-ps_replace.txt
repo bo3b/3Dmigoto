@@ -696,7 +696,10 @@ r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
           r5.w = dot(r6.xyz, r6.xyz);
           r5.w = rsqrt(r5.w);
           r6.xyz = r6.xyz * r5.www;
-          r5.w = dot(r6.xzy, r0.xyz);
+
+	  // Necessary to improve specular highlight accuracy, esp. fringing on tree leaves
+          r5.w = dot(r6.xzy, adj_r0.xyz);
+
           r7.w = 1.000000000e+000 + -r5.w;
           r8.w = r7.w * r7.w;
           r8.w = r8.w * r8.w;
@@ -1760,4 +1763,5 @@ ret
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 J:\SteamLibrary\steamapps\common\Far Cry 4\wrapper1349(289,13-39): error X3018: invalid subscript 'xyzw'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
  

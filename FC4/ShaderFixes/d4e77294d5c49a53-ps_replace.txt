@@ -707,7 +707,10 @@ r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
           r1.w = dot(r6.xyz, r6.xyz);
           r1.w = rsqrt(r1.w);
           r6.xyz = r6.xyz * r1.www;
-          r1.w = dot(r6.xzy, r0.xyz);
+
+	  // Necessary to improve specular highlight accuracy, esp. fringing on tree leaves
+          r1.w = dot(r6.xzy, adj_r0.xyz);
+
           r5.w = 1.000000000e+000 + -r1.w;
           r6.w = r5.w * r5.w;
           r6.w = r6.w * r6.w;
