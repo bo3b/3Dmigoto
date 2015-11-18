@@ -53,13 +53,9 @@ Installation
    than SSAO, but has some minor artefacts on some surfaces. SSAO may not work
    on earlier versions of the game.
 
-6. Set Anti-Aliasing to MSAA or TXAA if your machine can handle it. Off works,
-   but shadows will have a 1 frame sync issue, and may appear to lift off the
-   ground while walking. SMAA is not recommended.
+6. Disable motion blur, as it causes rendering artefacts.
 
-7. Disable motion blur, as it causes rendering artefacts.
-
-8. If you are using SLI, set terrain to medium or lower to get good
+7. If you are using SLI, set terrain to medium or lower to get good
    performance.
 
 Known Issues
