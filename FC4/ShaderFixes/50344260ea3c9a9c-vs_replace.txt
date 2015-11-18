@@ -21,24 +21,72 @@ cbuffer CSceneFireUiPrimitiveParameterProvider : register(b0)
   float _Time : packoffset(c41.y);
 }
 
+// Copied from lighting shaders b0 with 3DMigoto
+cbuffer CViewportShaderParameterProvider : register(b13)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
+// W Buffer copied from the HBAO+ depth shader:
+//Texture2D<float> WBuffer : register(t110);
 
-// Depth buffer copied to this input with 3Dmigoto:
-Texture2D<float> DepthBuffer : register(t110);
+// Depth buffer copied from other shaders to this input with 3Dmigoto:
+Texture2D<float4> ZBuffer : register(t110);
 
 float world_z_from_depth_buffer(float x, float y)
 {
 	uint width, height;
 	float z;
 
-	DepthBuffer.GetDimensions(width, height);
+	ZBuffer.GetDimensions(width, height);
 
 	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
 	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
-	z = DepthBuffer.Load(int3(x, y, 0));
-	return z;
+	z = ZBuffer.Load(int3(x, y, 0)).x;
+
+	// Z buffer scaling copied from the lighting shaders:
+	float4 r0;
+	r0.x = _DepthScale.y * z + _DepthScale.x;
+	r0.x = 1.000000e+000 / r0.x;
+	r0.y = _CameraDistances.x * _CameraDistances.y;
+	r0.x = _CameraDistances.z * r0.x;
+	return r0.x;
 }
 
 float adjust_from_depth_buffer(float x, float y)
