@@ -97,6 +97,8 @@ cbuffer Unlit : register(b5)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
+#include <ShaderFixes/crosshair.hlsl>
+
 void main(
   int4 v0 : position0,
   int2 v1 : texcoord0,
@@ -181,9 +183,9 @@ if (scope_depth == -1) {
 	// Use standard stereo correction to align with weapon sight:
 	o0.x += separation * (o0.w - convergence);
 } else {
-	// Adjust to a fixed depth. Since W already has the depth of the sight
-	// (not 1), we need to multiply the adjustment by W:
-	o0.x += separation * scope_depth * o0.w;
+	// Adjust based on depth buffer. Since W already has the depth of the
+	// sight (not 1), we need to multiply the adjustment by W:
+	o0.x += adjust_from_depth_buffer(0,0) * o0.w;
 }
 
   return;
