@@ -45,14 +45,17 @@ std::string Decompile(_TCHAR* asmFileName)
 	wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
 	string utf8AsmFileName = convert.to_bytes(asmFileName);
 
-	vector<byte> asmCode;
+	/*vector<byte> asmCode;
 	asmCode = readFile(utf8AsmFileName);
 
 	const MOJOSHADER_parseData * parseData = MOJOSHADER_assemble(utf8AsmFileName.c_str(), (const char *)asmCode.data(), asmCode.size(), NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL);
 	if (parseData->errors != NULL)
 	{
 		return string();
-	}
+	}*/
+
+	vector<byte> bcCode;
+	assembler(utf8AsmFileName, bcCode);
 
 	FILE * bcFile = NULL;
 	char bcFileName[260];
@@ -62,12 +65,12 @@ std::string Decompile(_TCHAR* asmFileName)
 
 	if (!fopen_s(&bcFile, bcFileName, "wb"))
 	{
-		fwrite(parseData->bytecode, 1, parseData->bytecode_len, bcFile);
+		fwrite(&bcCode[0], 1, bcCode.size(), bcFile);
 		fclose(bcFile);
 	}
 
-	ID3DBlob * blob = NULL;
-	HRESULT hr = D3DDisassemble(parseData->bytecode, parseData->bytecode_len, 0, NULL, &blob);
+	/*ID3DBlob * blob = NULL;
+	HRESULT hr = D3DDisassemble(&bcCode[0], bcCode.size(), 0, NULL, &blob);
 
 	if (blob == NULL)
 	{
@@ -85,7 +88,7 @@ std::string Decompile(_TCHAR* asmFileName)
 	{
 		fwrite(blob->GetBufferPointer(), 1, blob->GetBufferSize() - 1, recreateAsmFile);
 		fclose(recreateAsmFile);
-	}
+	}*/
 
 
 
@@ -98,7 +101,7 @@ std::string Decompile(_TCHAR* asmFileName)
 
 	// Set all to zero, so we only init the ones we are using here.
 	ParseParameters p = {};
-	p.bytecode = parseData->bytecode;
+	p.bytecode = &bcCode[0];
 	p.decompiled = (const char *)asmBuffer.data();
 	p.decompiledSize = asmBuffer.size();
 

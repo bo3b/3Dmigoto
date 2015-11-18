@@ -973,7 +973,58 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	return hash;
 }
 
+#define FOURCC(a, b, c, d) ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8) | ((uint32_t)(uint8_t)(c) << 16) | ((uint32_t)(uint8_t)(d) << 24 ))
+static enum { FOURCC_DXBC = FOURCC('D', 'X', 'B', 'C') }; //DirectX byte code
+static enum { FOURCC_SHDR = FOURCC('S', 'H', 'D', 'R') }; //Shader model 4 code
+static enum { FOURCC_SHEX = FOURCC('S', 'H', 'E', 'X') }; //Shader model 5 code
+static enum { FOURCC_RDEF = FOURCC('R', 'D', 'E', 'F') }; //Resource definition (e.g. constant buffers)
+static enum { FOURCC_ISGN = FOURCC('I', 'S', 'G', 'N') }; //Input signature
+static enum { FOURCC_IFCE = FOURCC('I', 'F', 'C', 'E') }; //Interface (for dynamic linking)
+static enum { FOURCC_OSGN = FOURCC('O', 'S', 'G', 'N') }; //Output signature
+
+static enum { FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1') }; //Input signature with Stream and MinPrecision
+static enum { FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1') }; //Output signature with Stream and MinPrecision
+
+typedef struct DXBCContainerHeaderTAG
+{
+	unsigned fourcc;
+	uint32_t unk[4];
+	uint32_t one;
+	uint32_t totalSize;
+	uint32_t chunkCount;
+} DXBCContainerHeader;
+
+typedef struct DXBCChunkHeaderTAG
+{
+	unsigned fourcc;
+	unsigned size;
+} DXBCChunkHeader;
+
+typedef struct DXBCCodeHeaderTAG
+{
+	unsigned short version;
+	unsigned short type;
+	unsigned size;  //Number of DWORDs in the chunk
+} DXBCCodeHeader;
+
 void assembler(string asmFile, vector<byte> & bc) {
+
+	vector<byte> byteCode;
+	byteCode.resize(sizeof(DXBCContainerHeader) + 4 + sizeof(DXBCChunkHeader));
+
+	DXBCContainerHeaderTAG * fileHeader = (DXBCContainerHeader *)&byteCode[0];
+	fileHeader->fourcc = FOURCC_DXBC;
+	fileHeader->chunkCount = 1;
+	fileHeader->one = 0;
+
+	DWORD * chunkOffsets = (DWORD *)&byteCode[sizeof(DXBCContainerHeader)];
+	chunkOffsets[0] = sizeof(DXBCContainerHeader) + 4;
+
+	DXBCChunkHeader * chunkHeader = (DXBCChunkHeader *)&byteCode[sizeof(DXBCContainerHeader) + 4];
+	chunkHeader->fourcc = FOURCC_SHDR;
+
+
+
 	char* asmBuffer;
 	int asmSize;
 	vector<byte> asmBuf;
@@ -982,11 +1033,11 @@ void assembler(string asmFile, vector<byte> & bc) {
 	asmSize = asmBuf.size();
 
 	vector<string> lines = stringToLines(asmBuffer, asmSize);
-
 	bool codeStarted = false;
 	bool multiLine = false;
 	string s2;
 	vector<DWORD> o;
+
 	for (DWORD i = 0; i < lines.size(); i++) {
 		string s = lines[i];
 		if (memcmp(s.c_str(), "//", 2) != 0) {
@@ -998,26 +1049,51 @@ void assembler(string asmFile, vector<byte> & bc) {
 					o.insert(o.end(), ins.begin(), ins.end());
 					o.push_back(0);
 				}
-			} else if (s.find("{ {") < s.size()) {
+			}
+			else if (s.find("{ {") < s.size()) {
 				s2 = s;
 				multiLine = true;
-			} else if (s.find("} }") < s.size()) {
+			}
+			else if (s.find("} }") < s.size()) {
 				s2.append("\n");
 				s2.append(s);
 				s = s2;
 				multiLine = false;
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
-			} else if (multiLine) {
+			}
+			else if (multiLine) {
 				s2.append("\n");
 				s2.append(s);
-			} else if (s.size() > 0) {
+			}
+			else if (s.size() > 0) {
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
 			}
 		}
 	}
 
-	bc.resize(4 * o.size());
-	memcpy(bc.data(), o.data(), 4 * o.size());
+	chunkHeader->size = 4 * o.size();
+	fileHeader->totalSize = byteCode.size() + chunkHeader->size;
+
+	DXBCCodeHeader * codeHeader = (DXBCCodeHeader *)&o[0];
+	codeHeader->size = o.size();
+
+	vector<byte> newCode(4 * o.size());
+	memcpy(newCode.data(), o.data(), 4 * o.size());
+
+	byteCode.insert(byteCode.end(), newCode.begin(), newCode.end());
+
+	vector<DWORD> hash = ComputeHash((byte const*)byteCode.data() + 20, byteCode.size() - 20);
+
+	fileHeader = (DXBCContainerHeader *)&byteCode[0];
+
+	fileHeader->unk[0] = hash[0];
+	fileHeader->unk[1] = hash[1];
+	fileHeader->unk[2] = hash[2];
+	fileHeader->unk[3] = hash[3];
+
+
+
+	byteCode.swap(bc);
 }

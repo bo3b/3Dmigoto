@@ -890,7 +890,7 @@ public:
 					}
 				}
 				// Struct definition?
-				if (strstr(buffer, " struct\n") || strstr(buffer, " struct "))
+				if (strstr(buffer, " struct\n") || strstr(buffer, " struct ") || strstr(buffer, "//   struct\r\n"))
 				{
 					++structLevel;
 					mOutput.insert(mOutput.end(), '\n');
@@ -910,6 +910,7 @@ public:
 					const char *structHeader2 = "{\n";
 					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
 					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					while (c[pos] != 0x0a && pos < size) pos++; pos++;	//跳过struct下面一行"//   {\r\n"
 					continue;
 				}
 				if (strstr(buffer, " }"))
@@ -1303,7 +1304,7 @@ public:
 				}
 				if (pos == 1)
 				{
-					sprintf(right2, "%e", args[idx[0]]);
+					sprintf(right2, "%.6f", args[idx[0]]);
 				}
 				else
 				{
@@ -1323,14 +1324,14 @@ public:
 					{
 						sprintf(right2, "float%d(", pos);
 						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%e,", args[idx[i]]);
+							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%.6f,", args[idx[i]]);
 						right2[strlen(right2) - 1] = 0;
 						strcat(right2, ")");
 					}
 				}
 			}
 		}
-		else if (right[0] == 'c')
+		else if (right[0] == 'c' && right[1] != 'b')	//dx9的常量寄存器，c开头
 		{
 
 			char * result = strrchr(right, '.');
@@ -2170,13 +2171,13 @@ public:
 			if (!strncmp(op, "l(1.#INF00", strlen("l(1.#INF00")) || abs(oldValue - o.afImmediates[0]) < 0.1)
 			{
 				if (o.iNumComponents == 4)
-					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
+					sprintf_s(op, opcodeSize, "l(%.6f, %.6f, %.6f, %.6f)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
 				else if (o.iNumComponents == 3)
-					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
+					sprintf_s(op, opcodeSize, "l(%.6f, %.6f, %.6f)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
 				else if (o.iNumComponents == 2)
-					sprintf_s(op, opcodeSize, "l(%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1]);
+					sprintf_s(op, opcodeSize, "l(%.6f, %.6f)", o.afImmediates[0], o.afImmediates[1]);
 				else if (o.iNumComponents == 1)
-					sprintf_s(op, opcodeSize, "l(%.9e)", o.afImmediates[0]);
+					sprintf_s(op, opcodeSize, "l(%.6f)", o.afImmediates[0]);
 			}
 		}
 		return op;
