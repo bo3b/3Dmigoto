@@ -858,18 +858,47 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
-		ID3D11Device *device)
+		ID3D11Device *device,
+		UINT offset,
+		UINT *cb_src_size,
+		UINT *cb_dst_size)
 {
 	HRESULT hr;
 	D3D11_BUFFER_DESC old_desc;
 	D3D11_BUFFER_DESC new_desc;
 	ID3D11Buffer *buffer = NULL;
+	UINT dst_size;
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
 	new_desc.CPUAccessFlags = 0;
 	// XXX: Any changes needed in new_desc.MiscFlags?
+
+	if (bind_flags & D3D11_BIND_CONSTANT_BUFFER) {
+		// Constant buffers have additional limitations. The size must
+		// be a multiple of 16, so round up if necessary, and it cannot
+		// be larger than 4096 x 4 component x 4 byte constants.
+		dst_size = (new_desc.ByteWidth + 15) & ~0xf;
+		dst_size = min(dst_size, D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16);
+
+		// If the size of the new resource doesn't match the old or
+		// there is an offset we will have to perform a region copy
+		// instead of a regular copy:
+		if (offset || dst_size != new_desc.ByteWidth) {
+			// It might be temping to take the offset into account
+			// here and make the buffer only as large as it need to
+			// be, but it's possible that the source offset might
+			// change much more often than the source buffer (just
+			// a guess), which could potentially lead us to
+			// constantly recreating the destination buffer.
+
+			// Note down the size of the source and destination:
+			*cb_src_size = new_desc.ByteWidth;
+			*cb_dst_size = dst_size;
+			new_desc.ByteWidth = dst_size;
+		}
+	}
 
 	if (dst_resource) {
 		// If destination already exists and the description is
@@ -1007,7 +1036,10 @@ static void RecreateCompatibleResource(
 		ID3D11View *src_view,
 		ID3D11View **dst_view,
 		ID3D11Device *device,
-		bool resolve_msaa)
+		bool resolve_msaa,
+		UINT offset,
+		UINT *cb_src_size,
+		UINT *cb_dst_size)
 {
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
@@ -1032,7 +1064,7 @@ static void RecreateCompatibleResource(
 
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, bind_flags, device);
+			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, bind_flags, device, offset, cb_src_size, cb_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -1152,6 +1184,32 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	}
 }
 
+static void SpecialCopyConstantBuffer(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
+		ID3D11DeviceContext *mOrigContext, UINT *offset, UINT src_size, UINT dst_size)
+{
+	// We are copying a buffer for use in a constant buffer and the size of
+	// the original buffer did not meet the constraints of a constant
+	// buffer.
+	D3D11_BOX src_box;
+
+	// We want to copy from the offset to the end of the source buffer, but
+	// cap it to the destination size to avoid "undefined behaviour". Keep
+	// in mind that this is "right", not "size":
+	src_box.left = *offset;
+	src_box.right = min(src_size, *offset + dst_size);
+
+	src_box.top = 0;
+	src_box.bottom = 1;
+	src_box.front = 0;
+	src_box.back = 1;
+
+	mOrigContext->CopySubresourceRegion(dst_resource, 0, 0, 0, 0, src_resource, 0, &src_box);
+
+	// We have effectively removed the offset during the region copy, so
+	// set it to 0 to make sure nothing will try to use it again elsewhere:
+	*offset = 0;
+}
+
 void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
@@ -1165,6 +1223,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	UINT offset = 0;
 	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
 	bool resolve_msaa = !!(options & ResourceCopyOptions::RESOLVE_MSAA);
+	UINT cb_src_size = 0, cb_dst_size = 0;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
@@ -1206,7 +1265,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	if (options & ResourceCopyOptions::COPY) {
 		RecreateCompatibleResource(&src, &dst, src_resource,
 			pp_cached_resource, src_view, pp_cached_view,
-			mOrigDevice, resolve_msaa);
+			mOrigDevice, resolve_msaa, offset, &cb_src_size, &cb_dst_size);
 
 		if (!*pp_cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");
@@ -1217,6 +1276,8 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 
 		if (resolve_msaa)
 			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
+		else if (cb_dst_size)
+			SpecialCopyConstantBuffer(dst_resource, src_resource, mOrigContext, &offset, cb_src_size, cb_dst_size);
 		else
 			mOrigContext->CopyResource(dst_resource, src_resource);
 	} else {
