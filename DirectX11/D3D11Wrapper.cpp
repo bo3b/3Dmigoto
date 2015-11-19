@@ -606,6 +606,32 @@ void ShowDebugInfo(ID3D11Device *origDevice)
 // created here, it's easy enough to provide them upon instantiation.
 //
 // Now intended to be fully null safe- as games seem to have a lot of variance.
+//
+// Any request for greater than 11.0 DX needs an E_INVALIDARG return, to match the
+// documented behavior. We want to return an error for any higher level requests,
+// at least for the time being, to avoid having to implement all the possible
+// variants past 11.0, with nothing to show for it.  There's no performance or
+// graphic advantage at present, and game devs need to support Win7, no evil-update
+// until the market shrinks, or there is some compelling advance.
+// Feature level D3D_FEATURE_LEVEL_11_1 requires Win8 (WDDM 1.2)
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476875(v=vs.85).aspx
+//
+// Also, when we are called with down-level requests, we need to not wrap the objects
+// and not generate iniParams or StereoTextures, because a bunch of features are 
+// missing there, and can cause problems.  FarCry4 hangs on Win10 because they
+// call with pFeatureLevels=9.2.  As seen in the link, CreateTexture1D does not
+// exist in 9.x, so it's not legal to call that with a 9.x Device.  We will 
+// assume that they don't plan to use that device for the game, and will look
+// only for a DX11 device. No point in supporting DX10 here, too few games to matter.
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476150(v=vs.85).aspx#ID3D11Device_CreateTexture1D
+//
+// So current approach is to just force an error for any request that is not 11.0.
+// That seems pretty heavy handed, but testing this technique worked on 15 games,
+// half x32, half x64.  And fixes a hang in FC4 on Win10, and makes Watch_Dogs work.
+// We'd expect this to make games error out, but it's actually working very well
+// during testing.  If this proves problematic later, it's probably worth keeping
+// it as a .ini option to force this mode.
+// (Can be an array. We are looking only at first element. Seems OK.)
 
 HRESULT WINAPI D3D11CreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
@@ -624,9 +650,18 @@ HRESULT WINAPI D3D11CreateDevice(
 	LogInfo("    pAdapter = %p \n", pAdapter);
 	LogInfo("    Flags = %#x \n", Flags);
 	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ? *pFeatureLevels : 0);
+	LogInfo("    FeatureLevels = %d \n", FeatureLevels);
 	LogInfo("    ppDevice = %p \n", ppDevice);
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel : 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
+
+	// Error out if we aren't looking for D3D_FEATURE_LEVEL_11_0. It can be null, 
+	// which will default to level 11.0 
+	if ((pFeatureLevels) && (*pFeatureLevels != D3D_FEATURE_LEVEL_11_0))
+	{
+		LogInfo("->Feature level != 11.0: %x, returning E_INVALIDARG \n", *pFeatureLevels);
+		return E_INVALIDARG;
+	}
 
 #if _DEBUG_LAYER
 	Flags = EnableDebugFlags(Flags);
@@ -637,7 +672,7 @@ HRESULT WINAPI D3D11CreateDevice(
 
 	if (FAILED(ret))
 	{
-		LogInfo("  failed with HRESULT=%x\n", ret);
+		LogInfo("->failed with HRESULT=%x\n", ret);
 		return ret;
 	}
 
@@ -645,7 +680,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 
-	LogInfo("->D3D11CreateDevice returned device handle = %p, context handle = %p \n",
+	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p \n",
 		origDevice, origContext);
 
 #if _DEBUG_LAYER
@@ -681,7 +716,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
 
-	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n",
+	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap);
 
 	return ret;
@@ -693,6 +728,8 @@ HRESULT WINAPI D3D11CreateDevice(
 // ppSwapChain.  Why you would call CreateDeviceAndSwapChain, then pass null is anyone's
 // guess.  Because of that sort of silliness, these routines are now trying to be fully
 // null safe, and never access anything without checking first.
+// 
+// See notes in CreateDevice.
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_In_opt_        IDXGIAdapter         *pAdapter,
@@ -713,20 +750,20 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    pAdapter = %p \n", pAdapter);
 	LogInfo("    Flags = %#x \n", Flags);
 	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ?  *pFeatureLevels : 0);
+	LogInfo("    FeatureLevels = %d \n", FeatureLevels);
 	LogInfo("    pSwapChainDesc = %p \n", pSwapChainDesc);
 	LogInfo("    ppSwapChain = %p \n", ppSwapChain);
 	LogInfo("    ppDevice = %p \n", ppDevice);
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
-	// Workaround for UPlay (systemdetection64.dll) and Origin (IGO32.dll)
-	// that create a DX10 device that in turn calls in here and crashes
-	// during the original _D3D11CreateDeviceAndSwapChain():
-	if (FeatureLevels == 1 && pFeatureLevels && pFeatureLevels[0] == D3D_FEATURE_LEVEL_10_0) {
-		LogInfo("  WARNING: FAILING CREATION OF FEATURE LEVEL 10.0 DEVICE!\n");
+	// Error out if we aren't looking for D3D_FEATURE_LEVEL_11_0. It can be null, 
+	// which will default to level 11.0 
+	if ((pFeatureLevels) && (*pFeatureLevels != D3D_FEATURE_LEVEL_11_0))
+	{
+		LogInfo("->Feature level != 11.0: %x, returning E_INVALIDARG \n", *pFeatureLevels);
 		return E_INVALIDARG;
 	}
-
 
 	ForceDisplayParams(pSwapChainDesc);
 
@@ -748,7 +785,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	LogInfo("->D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
+	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
 		origDevice, origContext, origSwapChain);
 
 #if _DEBUG_LAYER
@@ -792,7 +829,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
 
-	LogInfo("->returns result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
 		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
 	
