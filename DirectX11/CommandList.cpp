@@ -890,6 +890,19 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	return buffer;
 }
 
+// MSAA resolving only makes sense for Texture2D types, and the SampleDesc
+// entry only exists in those. Use template specialisation so we don't have to
+// duplicate the entire RecreateCompatibleTexture() routine for such a small
+// difference.
+template <typename DescType>
+static void Texture2DDescResolveMSAA(DescType *desc) {}
+template <>
+static void Texture2DDescResolveMSAA(D3D11_TEXTURE2D_DESC *desc)
+{
+	desc->SampleDesc.Count = 1;
+	desc->SampleDesc.Quality = 0;
+}
+
 template <typename ResourceType,
 	 typename DescType,
 	HRESULT (__stdcall ID3D11Device::*CreateTexture)(THIS_
@@ -902,7 +915,8 @@ static ResourceType* RecreateCompatibleTexture(
 		ResourceType *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
 		DXGI_FORMAT format,
-		ID3D11Device *device)
+		ID3D11Device *device,
+		bool resolve_msaa)
 {
 	HRESULT hr;
 	DescType old_desc;
@@ -923,6 +937,10 @@ static ResourceType* RecreateCompatibleTexture(
 #else
 	new_desc.Format = EnsureNotTypeless(new_desc.Format);
 #endif
+
+	if (resolve_msaa)
+		Texture2DDescResolveMSAA(&new_desc);
+
 	// XXX: Any changes needed in new_desc.MiscFlags?
 
 	if (dst_resource) {
@@ -988,7 +1006,8 @@ static void RecreateCompatibleResource(
 		ID3D11Resource **dst_resource,
 		ID3D11View *src_view,
 		ID3D11View **dst_view,
-		ID3D11Device *device)
+		ID3D11Device *device,
+		bool resolve_msaa)
 {
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
@@ -1017,15 +1036,15 @@ static void RecreateCompatibleResource(
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format, device);
+				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format, device, false);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format, device);
+				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format, device, resolve_msaa);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format, device);
+				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format, device, false);
 			break;
 	}
 
@@ -1098,6 +1117,41 @@ ResourceCopyOperation::~ResourceCopyOperation()
 		cached_view->Release();
 }
 
+static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext)
+{
+	UINT item, level, index, support;
+	D3D11_RESOURCE_DIMENSION dst_dimension;
+	ID3D11Texture2D *src, *dst;
+	D3D11_TEXTURE2D_DESC desc;
+	DXGI_FORMAT fmt;
+	HRESULT hr;
+
+	dst_resource->GetType(&dst_dimension);
+	if (dst_dimension != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+		return;
+
+	src = (ID3D11Texture2D*)src_resource;
+	dst = (ID3D11Texture2D*)dst_resource;
+
+	dst->GetDesc(&desc);
+	fmt = EnsureNotTypeless(desc.Format);
+
+	hr = mOrigDevice->CheckFormatSupport( fmt, &support );
+	if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
+		// TODO: Implement a fallback using a SM5 shader to resolve it
+		LogInfo("Resource copy cannot resolve MSAA format %d\n", fmt);
+		return;
+	}
+
+	for (item = 0; item < desc.ArraySize; item++) {
+		for (level = 0; level < desc.MipLevels; level++) {
+			index = D3D11CalcSubresource(level, item, max(desc.MipLevels, 1));
+			mOrigContext->ResolveSubresource(dst, index, src, index, fmt);
+		}
+	}
+}
+
 void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
@@ -1110,6 +1164,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	UINT stride = 0;
 	UINT offset = 0;
 	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
+	bool resolve_msaa = !!(options & ResourceCopyOptions::RESOLVE_MSAA);
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
@@ -1149,7 +1204,10 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	}
 
 	if (options & ResourceCopyOptions::COPY) {
-		RecreateCompatibleResource(&src, &dst, src_resource, pp_cached_resource, src_view, pp_cached_view, mOrigDevice);
+		RecreateCompatibleResource(&src, &dst, src_resource,
+			pp_cached_resource, src_view, pp_cached_view,
+			mOrigDevice, resolve_msaa);
+
 		if (!*pp_cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");
 			goto out_release;
@@ -1157,7 +1215,10 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		dst_resource = *pp_cached_resource;
 		dst_view = *pp_cached_view;
 
-		mOrigContext->CopyResource(dst_resource, src_resource);
+		if (resolve_msaa)
+			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
+		else
+			mOrigContext->CopyResource(dst_resource, src_resource);
 	} else {
 		dst_resource = src_resource;
 		if (src_view && (src.type == dst.type))

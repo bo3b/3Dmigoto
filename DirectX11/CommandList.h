@@ -178,6 +178,7 @@ enum class ResourceCopyOptions {
 	REFERENCE       = 0x00000002,
 	COPY_TYPE_MASK  = 0x00000003,
 	UNLESS_NULL     = 0x00000004,
+	RESOLVE_MSAA    = 0x00000008,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
 static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
@@ -185,6 +186,14 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"ref", ResourceCopyOptions::REFERENCE},
 	{L"reference", ResourceCopyOptions::REFERENCE},
 	{L"unless_null", ResourceCopyOptions::UNLESS_NULL},
+
+	// This one currently depends on device support for resolving the
+	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
+	// currently has no fallback, so we can't rely on it - don't encourage
+	// people to use it and don't document it. TODO: Implement a fallback
+	// using a shader to resolve any unsupported formats.
+	{L"resolve_msaa", ResourceCopyOptions::RESOLVE_MSAA},
+
 	{NULL, ResourceCopyOptions::INVALID} // End of list marker
 };
 // TODO: Add support for more behaviour modifiers, here's a few ideas

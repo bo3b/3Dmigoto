@@ -21,79 +21,49 @@ cbuffer CSceneFireUiPrimitiveParameterProvider : register(b0)
   float _Time : packoffset(c41.y);
 }
 
+// Copied from lighting shaders b0 with 3DMigoto
+cbuffer CViewportShaderParameterProvider : register(b13)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-
-// Depth buffer copied to this input with 3Dmigoto:
-Texture2D<float> DepthBuffer : register(t110);
-
-float world_z_from_depth_buffer(float x, float y)
-{
-	uint width, height;
-	float z;
-
-	DepthBuffer.GetDimensions(width, height);
-
-	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
-	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
-	z = DepthBuffer.Load(int3(x, y, 0));
-	return z;
-}
-
-float adjust_from_depth_buffer(float x, float y)
-{
-	float4 stereo = StereoParams.Load(0);
-	float separation = stereo.x; float convergence = stereo.y;
-	float old_offset, offset, w, sampled_w, distance;
-	uint i;
-
-	// Stereo cursor: To improve the accuracy of the stereo cursor, we
-	// sample a number of points on the depth buffer, starting at the near
-	// clipping plane and working towards original x + separation.
-	//
-	// You can think of this as a line in three dimensional space that
-	// starts at each eye and stretches out towards infinity. We sample 255
-	// points along this line (evenly spaced in the X axis) and compare
-	// with the depth buffer to find where the line is first intersected.
-	//
-	// Note: The reason for sampling 255 points came from a restriction in
-	// DX9/SM3 where loops had to run a constant number of iterations and
-	// there was no way to set that number from within the shader itself.
-	// I'm not sure if the same restriction applies in DX11 with SM4/5 - if
-	// it doesn't, we could change this to check each pixel instead for
-	// better accuracy.
-	//
-	// Based on DarkStarSword's stereo crosshair code originally developed
-	// for Miasmata, adapted to Unity, then translated to HLSL.
-
-	offset = -convergence * separation;	// Z = X offset from center
-	distance = separation - offset;	// Total distance to cover (separation - starting X offset)
-
-	old_offset = offset;
-	for (i = 0; i < 255; i++) {
-		offset += distance / 255.0;
-
-		// Calculate depth for this point on the line:
-		w = (separation * convergence) / (separation - offset);
-
-		sampled_w = world_z_from_depth_buffer(x + offset, y);
-		if (sampled_w == 0)
-			return 0;
-
-		// If the sampled depth is closer than the calculated depth,
-		// we have found something that intersects the line, so exit
-		// the loop and return the last point that was not intersected:
-		if (w > sampled_w)
-			break;
-
-		old_offset = offset;
-	}
-
-	return old_offset;
-}
-
-
+#include <ShaderFixes/crosshair.hlsl>
 
 void main(
   float2 v0 : position0,
@@ -138,7 +108,13 @@ if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
 	    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
 		o0.x += separation * hud_depth * 2;
 	}
-} else if (tex_filter == 3) {
+} else if (tex_filter == 3 && (
+		matches_corner(v1, 0.0185470581, 0.0341720581, 0.986338615, 0.994151115) /* Line crosshair (most weapons) */
+	     || matches_corner(v1, 0.821269989, 0.852519989, 0.689431667, 0.751931667) /* Dot crosshair (e.g. repair tool) */
+	     )) {
+	// Matched crosshair texture AND texture coordinates
+	o0.x += adjust_from_depth_buffer(0,0);
+} else if (tex_filter == 4) {
 	o0.x += adjust_from_depth_buffer(0,0);
 } else {
 	o0.x += separation * hud_depth;
