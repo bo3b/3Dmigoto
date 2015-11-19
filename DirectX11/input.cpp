@@ -8,6 +8,50 @@
 #include "util.h"
 #include "vkeys.h"
 
+// Set a function pointer to the xinput get state call. By default, set it to
+// XInputGetState() in whichever xinput we are linked to (xinput9_1_0.dll). If
+// the d3dx.ini is using the guide button we will try to switch to either
+// xinput 1.3 or 1.4 to get access to the undocumented XInputGetStateEx() call.
+// We can't rely on these existing on Win7 though, so if we fail to load them
+// don't treat it as fatal and continue using the original one.
+static HMODULE xinput_lib;
+typedef DWORD (WINAPI *tXInputGetState)(DWORD dwUserIndex, XINPUT_STATE* pState);
+static tXInputGetState _XInputGetState = XInputGetState;
+
+static void SwitchToXinpuGetStateEx()
+{
+	tXInputGetState XInputGetStateEx;
+
+	if (xinput_lib)
+		return;
+
+	// 3DMigoto is linked against xinput9_1_0.dll, but that version does
+	// not export XInputGetStateEx to get the guide button. Try loading
+	// xinput 1.3 and 1.4, which both support this functionality.
+	xinput_lib = LoadLibrary(L"xinput1_3.dll");
+	if (xinput_lib) {
+		LogInfo("Loaded xinput1_3.dll for guide button support\n");
+	} else {
+		xinput_lib = LoadLibrary(L"xinput1_4.dll");
+		if (xinput_lib) {
+			LogInfo("Loaded xinput1_4.dll for guide button support\n");
+		} else {
+			LogInfo("ERROR: Unable to load xinput 1.3 or 1.4: Guide button will not be available\n");
+			return;
+		}
+	}
+
+	// Unnamed and undocumented exports FTW
+	int XInputGetStateExOrdinal = 100;
+	XInputGetStateEx = (tXInputGetState)GetProcAddress(xinput_lib, (LPCSTR)XInputGetStateExOrdinal);
+	if (!XInputGetStateEx) {
+		LogInfo("ERROR: Unable to get XInputGetStateEx: Guide button will not be available\n");
+		return;
+	}
+
+	_XInputGetState = XInputGetStateEx;
+}
+
 class KeyParseError: public exception {} keyParseError;
 
 void InputListener::UpEvent(HackerDevice *device)
@@ -205,7 +249,7 @@ static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
 	{L"B", XINPUT_GAMEPAD_B},
 	{L"X", XINPUT_GAMEPAD_X},
 	{L"Y", XINPUT_GAMEPAD_Y},
-	{L"GUIDE", 0x400}, /* Placeholder for now - need to use undocumented XInputGetStateEx call */
+	{L"GUIDE", 0x400}, /* Requires undocumented XInputGetStateEx call in xinput 1.3 / 1.4 */
 };
 
 // This function is parsing strings with formats such as:
@@ -246,6 +290,10 @@ XInputButton::XInputButton(wchar_t *keyName) :
 			break;
 		}
 	}
+
+	if (!_wcsicmp(keyName, L"GUIDE"))
+		SwitchToXinpuGetStateEx();
+
 	if (button)
 		return;
 
@@ -361,9 +409,8 @@ bool DispatchInputEvents(HackerDevice *device)
 		if (!XInputState[j].connected && ((now == last_time) || (now % 4 != j)))
 			continue;
 
-		// TODO: Use undocumented XInputGetStateEx so we can also read the guide button
 		XInputState[j].connected =
-			(XInputGetState(j, &XInputState[j].state) == ERROR_SUCCESS);
+			(_XInputGetState(j, &XInputState[j].state) == ERROR_SUCCESS);
 	}
 
 	last_time = now;
