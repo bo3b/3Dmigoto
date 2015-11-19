@@ -60,10 +60,107 @@ cbuffer CViewportShaderParameterProvider : register(b13)
   float3 _EnvironmentMapColorScale : packoffset(c57);
 }
 
+// XXX CAUTION XXX: Omitting the static breaks everything:
+static const uint vb_stride = 20;
+
+// Would be nice if I could use this struct somehow, but thanks to a) padding
+// and b) fxc I can't find a way to do so and end up with a working shader:
+// struct vb_entry
+// {
+//   float2 vb_position;
+//   float2 vb_texcoord;
+//   // Don't be fooled by the float4 in the input signature - in
+//   // the vertex buffer this is just a single 4 byte value:
+//   float color0;
+// };
+
+// Current vertex buffer copied into a constant buffer with 3DMigoto
+cbuffer VertexBuffer : register(b11)
+{
+	// It would be lovely if I could just make an array of the above
+	// struct, but thanks to HLSL padding rules I can't. Each struct in the
+	// array would be padded to 32 bytes (multiple of 16 bytes).
+
+	// Additionally, we have to use an array of four component floats here
+	// to make sure HLSL doesn't try to insert any additional padding.
+
+	// Instead, I'll manually calculate the offsets when I look this up.
+
+	// For HLSL padding rules, see here:
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509632(v=vs.85).aspx
+
+	float4 vb_raw[4096];
+}
+
+float lookup_vb_offset(uint off)
+{
+	uint idx = off / 4;
+	uint component = off % 4;
+
+	// Is there a more direct way to do this?
+	switch (component) {
+		case 0:
+			return vb_raw[idx].x;
+		case 1:
+			return vb_raw[idx].y;
+		case 2:
+			return vb_raw[idx].z;
+		case 3:
+			return vb_raw[idx].w;
+	}
+}
+
+
+float2 lookup_vertex_position(uint id)
+{
+	uint off = id * vb_stride / 4;
+
+	return float2(lookup_vb_offset(off), lookup_vb_offset(off+1));
+}
+
+float2 find_quad_center(uint id)
+{
+	id = id / 6 * 6;
+
+	float2 pos1 = lookup_vertex_position(id);
+	float2 pos2 = lookup_vertex_position(id + 2);
+
+	return (pos1 + pos2) / 2;
+}
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
 #include <ShaderFixes/crosshair.hlsl>
+
+float4 calc_pos(float2 v0)
+{
+// Copy of the first hunk of code from the shader that calculates the output
+// position
+  float4 r0,r1,o0;
+  r0.xy = v0.xy;
+  r0.zw = float2(1.000000e+000,1.000000e+000);
+  r1.x = dot(r0.xyww, _Transform._m00_m10_m20_m30);
+  r1.y = dot(r0.xyww, _Transform._m01_m11_m21_m31);
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  o0.xy = float2(1.000000e+000,-1.000000e+000) * r1.xy;
+  o0.z = dot(r0.xyww, _Transform._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, _Transform._m03_m13_m23_m33);
+  return o0;
+}
+
+bool is_yellow_arrow(float2 v1) {
+	// This icon is not as simple as a bounding box... think it's two
+	// separate triangles?
+	return ((v1.x == 0.561442554 || v1.x == 0.623961031 ||
+		 v1.x == 0.561448753 || v1.x == 0.62396722) &&
+		(v1.y == 0.361364365 || v1.y == 0.486409545 ||
+		 v1.y == 0.361369759 || v1.y == 0.486414939));
+}
+
+bool is_minimap(float2 o0) {
+	return (o0.x < -0.55 && o0.y < -0.3);
+}
 
 void main(
   float2 v0 : position0,
@@ -77,6 +174,7 @@ void main(
 
   )
 {
+
   float4 r0,r1;
   uint4 bitmask;
   r0.xy = v0.xy;
@@ -97,6 +195,11 @@ float4 filter = IniParams.Load(int2(2,0));
 float separation = stereo.x; float convergence = stereo.y;
 float hud_depth = params.x; float tex_filter = filter.x; float partner_filter = filter.y;
 
+if (params.w == 0) {
+	// Depth buffer did not get copied. We are in a menu, so don't adjust the UI.
+	return;
+}
+
 if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
 	// Vignette around the map based on texture, pixel shader and X
 	// coordinate at far left/right of screen. Want to expand this
@@ -114,6 +217,23 @@ if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
 	     )) {
 	// Matched crosshair texture AND texture coordinates
 	o0.x += adjust_from_depth_buffer(0,0);
+} else if (tex_filter == 3 && is_yellow_arrow(v1)) {
+	// Some other floating HUD element. Use the vertex buffer to locate the
+	// center of the icon and use that as the point to adjust it from.
+	// TODO: Might be better to use the minimum adjustment out of all four
+	// corners?
+	float2 ipos = find_quad_center(id);
+	float4 opos = calc_pos(ipos);
+	o0.x += adjust_from_depth_buffer(opos.x, opos.y);
+} else if (is_minimap(o0)) {
+	// TODO: Depth test to make sure it isn't below scenery
+	// Need to match all shaders and textures that create it
+	o0.x += separation * hud_depth;
+} else if (tex_filter == 5) {
+	// Another floating HUD icon
+	float2 ipos = find_quad_center(id);
+	float4 opos = calc_pos(ipos);
+	o0.x += adjust_from_depth_buffer(opos.x, opos.y);
 } else if (tex_filter == 4) {
 	o0.x += adjust_from_depth_buffer(0,0);
 } else {
