@@ -519,6 +519,9 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			return NULL;
 		}
 
+		// TODO: For buffer type resources, get the stride, offset and
+		// format from the description
+
 		*view = resource_view;
 		return res;
 
@@ -572,6 +575,9 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			return NULL;
 		}
 
+		// TODO: For buffer type resources, get the stride, offset and
+		// format from the description
+
 		*view = render_view[slot];
 		return res;
 
@@ -585,6 +591,9 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			depth_view->Release();
 			return NULL;
 		}
+
+		// TODO: For buffer type resources, get the stride, offset and
+		// format from the description
 
 		*view = depth_view;
 		return res;
@@ -612,6 +621,9 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			unordered_view->Release();
 			return NULL;
 		}
+
+		// TODO: For buffer type resources, get the stride, offset and
+		// format from the description
 
 		*view = unordered_view;
 		return res;
@@ -859,9 +871,11 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ID3D11Buffer *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
 		ID3D11Device *device,
+		UINT stride,
 		UINT offset,
-		UINT *cb_src_size,
-		UINT *cb_dst_size)
+		UINT *buf_src_size,
+		UINT *buf_dst_size,
+		bool coerce_structured)
 {
 	HRESULT hr;
 	D3D11_BUFFER_DESC old_desc;
@@ -870,10 +884,13 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	UINT dst_size;
 
 	src_resource->GetDesc(&new_desc);
+	*buf_src_size = new_desc.ByteWidth;
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
 	new_desc.CPUAccessFlags = 0;
-	// XXX: Any changes needed in new_desc.MiscFlags?
+
+	// TODO: Add a keyword to allow raw views:
+	// D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
 
 	if (bind_flags & D3D11_BIND_CONSTANT_BUFFER) {
 		// Constant buffers have additional limitations. The size must
@@ -894,8 +911,24 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 			// constantly recreating the destination buffer.
 
 			// Note down the size of the source and destination:
-			*cb_src_size = new_desc.ByteWidth;
-			*cb_dst_size = dst_size;
+			*buf_dst_size = dst_size;
+			new_desc.ByteWidth = dst_size;
+		}
+	} else if (coerce_structured) {
+		new_desc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		new_desc.StructureByteStride = stride;
+
+		// A structured buffer needs to be a multiple of it's stride,
+		// which may not be the case if we're converting a buffer to
+		// one. Round it down:
+		dst_size = new_desc.ByteWidth / stride * stride;
+		// For now always using the region copy if there's an offset.
+		// We might not need to do that if the offset is aligned to the
+		// stride (although we would need to recreate the view every
+		// time it changed), but for now it seems safest to use the
+		// region copy method whenever there is an offset:
+		if (offset || dst_size != new_desc.ByteWidth) {
+			*buf_dst_size = dst_size;
 			new_desc.ByteWidth = dst_size;
 		}
 	}
@@ -909,6 +942,13 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		LogInfo("RecreateCompatibleBuffer: Recreating cached resource\n");
 	} else
 		LogInfo("RecreateCompatibleBuffer: Creating cached resource\n");
+
+	LogDebug("  ByteWidth = %d\n", new_desc.ByteWidth);
+	LogDebug("  Usage = %d\n", new_desc.Usage);
+	LogDebug("  BindFlags = %x\n", new_desc.BindFlags);
+	LogDebug("  CPUAccessFlags = %x\n", new_desc.CPUAccessFlags);
+	LogDebug("  MiscFlags = %x\n", new_desc.MiscFlags);
+	LogDebug("  StructureByteStride = %d\n", new_desc.StructureByteStride);
 
 	hr = device->CreateBuffer(&new_desc, NULL, &buffer);
 	if (FAILED(hr)) {
@@ -1037,9 +1077,11 @@ static void RecreateCompatibleResource(
 		ID3D11View **dst_view,
 		ID3D11Device *device,
 		bool resolve_msaa,
+		UINT stride,
 		UINT offset,
-		UINT *cb_src_size,
-		UINT *cb_dst_size)
+		UINT *buf_src_size,
+		UINT *buf_dst_size,
+		bool coerce_structured)
 {
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
@@ -1064,7 +1106,8 @@ static void RecreateCompatibleResource(
 
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, bind_flags, device, offset, cb_src_size, cb_dst_size);
+			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, bind_flags,
+					device, stride, offset, buf_src_size, buf_dst_size, coerce_structured);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -1091,13 +1134,81 @@ static void RecreateCompatibleResource(
 	}
 }
 
-static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
-		ID3D11Resource *resource, ID3D11Device *device)
+// TODO: Function template to handle all view types
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutSRVDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *desc,
+		ID3D11Resource *resource,
+		UINT stride,
+		UINT offset,
+		UINT buf_src_size,
+		bool coerce_structured)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+
+	// In the case of a texture we can get away without specifying a view
+	// description and DirectX will use the resource description to create
+	// a view of the entire resource.
+	//
+	// TODO: Also handle BUFFEREX
+	resource->GetType(&dimension);
+	if (dimension != D3D11_RESOURCE_DIMENSION_BUFFER)
+		return NULL;
+
+	desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+
+	// In the case of a buffer type resource we must specify the
+	// description as DirectX doesn't have enough information from the
+	// buffer alone to create a view.
+
+	if (coerce_structured) {
+		desc->Format = DXGI_FORMAT_UNKNOWN;
+		// The documentation on the buffer part of the description is
+		// misleading.
+		//
+		// There are two unions with two possible parameters each which
+		// are documented in MSDN, but DX11 never uses ElementWidth
+		// (which is determined by either the format, or buffer's
+		// StructureByteStride), only NumElements.
+		//
+		// My reading of FirstElement/ElementOffset sound like they are
+		// the same thing, but one is in bytes and the other is in
+		// elements - only the names seem backwards compared to the
+		// description in the documentation. Research suggests DX11
+		// only uses multiples of the element size (since it's a union,
+		// it shouldn't matter which name we use).
+		//
+		// XXX: At the moment we are relying on the region copy to have
+		// knocked out the offset for us. We could alternatively do it
+		// here (and the below should work), but we would need to
+		// create a new view every time the offset changes.
+		desc->Buffer.FirstElement = offset / stride;
+		desc->Buffer.NumElements = (buf_src_size - offset) / stride;
+		LogDebug("  FirstElement = %d\n", desc->Buffer.FirstElement);
+		LogDebug("  NumElements = %d\n", desc->Buffer.NumElements);
+	}
+
+	// There are a lot of different things we could do with buffer
+	// resources, and for now this only covers the structured buffer case.
+	// TODO: Handle copying from one type of view to a different type
+	// TODO: Handle copying index buffer (with a format) to a view
+
+	return NULL;
+}
+
+static ID3D11View* CreateCompatibleView(
+		ResourceCopyTarget *dst,
+		ID3D11Resource *resource,
+		ID3D11Device *device,
+		UINT stride,
+		UINT offset,
+		UINT buf_src_size,
+		bool coerce_structured)
 {
 	ID3D11ShaderResourceView *resource_view = NULL;
 	ID3D11RenderTargetView *render_view = NULL;
 	ID3D11DepthStencilView *depth_view = NULL;
 	ID3D11UnorderedAccessView *unordered_view = NULL;
+	D3D11_SHADER_RESOURCE_VIEW_DESC resource_desc;
 	HRESULT hr;
 
 	// For now just creating a view of the whole resource to simplify
@@ -1106,7 +1217,9 @@ static ID3D11View* CreateCompatibleView(ResourceCopyTarget *dst,
 
 	switch (dst->type) {
 		case ResourceCopyTargetType::SHADER_RESOURCE:
-			hr = device->CreateShaderResourceView(resource, NULL, &resource_view);
+			D3D11_SHADER_RESOURCE_VIEW_DESC *desc;
+			desc = FillOutSRVDesc(&resource_desc, resource, stride, offset, buf_src_size, coerce_structured);
+			hr = device->CreateShaderResourceView(resource, desc, &resource_view);
 			if (SUCCEEDED(hr))
 				return resource_view;
 			LogInfo("Resource copy CreateCompatibleView failed for shader resource view: 0x%x\n", hr);
@@ -1184,8 +1297,9 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	}
 }
 
-static void SpecialCopyConstantBuffer(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
-		ID3D11DeviceContext *mOrigContext, UINT *offset, UINT src_size, UINT dst_size)
+static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
+		ID3D11DeviceContext *mOrigContext, UINT stride, UINT *offset,
+		UINT buf_src_size, UINT buf_dst_size, bool coerce_structured)
 {
 	// We are copying a buffer for use in a constant buffer and the size of
 	// the original buffer did not meet the constraints of a constant
@@ -1196,7 +1310,13 @@ static void SpecialCopyConstantBuffer(ID3D11Resource *dst_resource,ID3D11Resourc
 	// cap it to the destination size to avoid "undefined behaviour". Keep
 	// in mind that this is "right", not "size":
 	src_box.left = *offset;
-	src_box.right = min(src_size, *offset + dst_size);
+	src_box.right = min(buf_src_size, *offset + buf_dst_size);
+
+	if (coerce_structured) {
+		// If we are copying to a structured resource, the source box
+		// must be a multiple of the stride, so round it down:
+		src_box.right = (src_box.right - src_box.left) / stride * stride + src_box.left;
+	}
 
 	src_box.top = 0;
 	src_box.bottom = 1;
@@ -1210,6 +1330,39 @@ static void SpecialCopyConstantBuffer(ID3D11Resource *dst_resource,ID3D11Resourc
 	*offset = 0;
 }
 
+static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
+		UINT offset, DXGI_FORMAT format, D3D11_BIND_FLAG bind_flags)
+{
+	// If we are copying a vertex buffer into a shader resource we need to
+	// convert it into a structured buffer, which requires a flag set when
+	// creating the new resource as well as changes in the view.
+	//
+	// This function tries to detect this situation without explicitly
+	// checking that the source was a vertex buffer - that way, similar
+	// situations should work as well, such as when using an intermediate
+	// resource.
+
+	// If we are copying from a resource that had a view we will use it's
+	// description to work out what we need to do (or we will, once I write
+	// that code)
+	if (view)
+		return false;
+
+	// If we know the format there's no need to be structured
+	if (format != DXGI_FORMAT_UNKNOWN)
+		return false;
+
+	// We need to know the stride to be structured:
+	if (stride == 0)
+		return false;
+
+	// Structured buffers only make sense for certain views:
+	return !!(bind_flags & (D3D11_BIND_SHADER_RESOURCE |
+			D3D11_BIND_RENDER_TARGET |
+			D3D11_BIND_DEPTH_STENCIL |
+			D3D11_BIND_UNORDERED_ACCESS));
+}
+
 void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
@@ -1221,16 +1374,17 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	ID3D11View **pp_cached_view = &cached_view;
 	UINT stride = 0;
 	UINT offset = 0;
-	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
+	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	bool resolve_msaa = !!(options & ResourceCopyOptions::RESOLVE_MSAA);
-	UINT cb_src_size = 0, cb_dst_size = 0;
+	UINT buf_src_size = 0, buf_dst_size = 0;
+	bool coerce_structured = false;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigContext, &src_view, &stride, &offset, &ib_fmt);
+	src_resource = src.GetResource(mOrigContext, &src_view, &stride, &offset, &format);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -1263,9 +1417,12 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	}
 
 	if (options & ResourceCopyOptions::COPY) {
+		coerce_structured = IsCoersionToStructuredBufferRequired(src_view, stride, offset, format, dst.BindFlags());
+
 		RecreateCompatibleResource(&src, &dst, src_resource,
 			pp_cached_resource, src_view, pp_cached_view,
-			mOrigDevice, resolve_msaa, offset, &cb_src_size, &cb_dst_size);
+			mOrigDevice, resolve_msaa, stride, offset,
+			&buf_src_size, &buf_dst_size, coerce_structured);
 
 		if (!*pp_cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");
@@ -1274,12 +1431,15 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		dst_resource = *pp_cached_resource;
 		dst_view = *pp_cached_view;
 
-		if (resolve_msaa)
+		if (resolve_msaa) {
 			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
-		else if (cb_dst_size)
-			SpecialCopyConstantBuffer(dst_resource, src_resource, mOrigContext, &offset, cb_src_size, cb_dst_size);
-		else
+		} else if (buf_dst_size) {
+			SpecialCopyBufferRegion(dst_resource, src_resource,
+					mOrigContext, stride, &offset,
+					buf_src_size, buf_dst_size, coerce_structured);
+		} else {
 			mOrigContext->CopyResource(dst_resource, src_resource);
+		}
 	} else {
 		dst_resource = src_resource;
 		if (src_view && (src.type == dst.type))
@@ -1289,13 +1449,13 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	}
 
 	if (!dst_view) {
-		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice);
+		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice, stride, offset, buf_src_size, coerce_structured);
 		// Not checking for NULL return as view's are not applicable to
 		// all types. TODO: Check for legitimate failures.
 		*pp_cached_view = dst_view;
 	}
 
-	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, ib_fmt);
+	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, format);
 
 out_release:
 	src_resource->Release();
