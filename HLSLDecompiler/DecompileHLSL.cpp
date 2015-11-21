@@ -1196,6 +1196,15 @@ public:
 	void applySwizzle(const char *left, char *right, bool useInt = false)
 	{
 		char right2[opcodeSize];
+
+		if (strlen(right) == 0) {
+			// If we have been called without a second parameter
+			// for any reason, bail out now before we corrupt the
+			// heap later
+			logDecompileError("applySwizzle called with no second parameter: " + string(left));
+			return;
+		}
+
 		if (right[strlen(right) - 1] == ',') right[strlen(right) - 1] = 0;
 
 		// Strip sign and absolute, so they can be re-added at the end.
@@ -1278,6 +1287,15 @@ public:
 		else
 		{
 			strPos = strrchr(right, '.') + 1;
+			if (strPos == (const char *)1) {
+				// If there's no '.' in the string, strrchr
+				// will have returned a NULL pointer. If we
+				// were to continue we would write a 0 to a
+				// random location since right2[1-right] will
+				// run off the start of the buffer.
+				logDecompileError("applySwizzle 2nd parameter missing '.': " + string(right));
+				return;
+			}
 			strncpy(right2, right, strPos - right);
 			right2[strPos - right] = 0;
 			pos = strlen(right2);
@@ -3301,6 +3319,16 @@ public:
 					}
 
 					case OPCODE_ADD:
+						// OPCODE_ADD is 0. Therefore, it is possible for us to
+						// arrive here if the line has simply not been parsed.
+						// Let's make sure we are actually parsing an 'add' before
+						// we go any further. Only check first three characters
+						// since we still want add_sat to parse.
+						if (strncmp(statement, "add", 3)) {
+							logDecompileError("No opcode: " + string(statement));
+							return;
+						}
+
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
