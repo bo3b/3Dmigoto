@@ -5,6 +5,7 @@
 #include "stdio.h"
 #include "internal_includes/reflect.h"
 #include "internal_includes/debug.h"
+#include "log.h"
 
 #define FOURCC(a, b, c, d) ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8) | ((uint32_t)(uint8_t)(c) << 16) | ((uint32_t)(uint8_t)(d) << 24 ))
 static enum {FOURCC_DXBC = FOURCC('D', 'X', 'B', 'C')}; //DirectX byte code
@@ -43,6 +44,8 @@ static uint64_t instructionID = 0;
 #else
 #define osSprintf(dest, size, src) sprintf(dest, src)
 #endif
+
+class DecompileError: public std::exception {} decompileError;
 
 void DecodeNameToken(const uint32_t* pui32NameToken, Operand* psOperand)
 {
@@ -1091,8 +1094,12 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
 		case OPCODE_MSAD:
         default:
         {
-			ASSERT(0);
-            break;
+            // We can hit this in practice in shaders with unsupported
+            // instructions (particularly domain, geometry & hull shaders).
+            // Throw an explicit exception now, otherwise we will continue to
+            // use the uninitialised ui32NumOperands and process garbage.
+            LogInfo("    error parsing shader> unsupported opcode %i\n", eOpcode);
+            throw decompileError;
         }
     }
 
@@ -1195,7 +1202,13 @@ const uint32_t* DecodeHullShaderForkPhase(const uint32_t* pui32Tokens, Shader* p
 	Declaration* psDecl;
     psDecl = new Declaration[ui32ShaderLength];
 
-    ASSERT(ui32ForkPhaseIndex < MAX_FORK_PHASES);
+    // Hit this in FC4 - changed the assert to an exception to make sure we
+    // don't access past the end of any buffers
+    //ASSERT(ui32ForkPhaseIndex < MAX_FORK_PHASES);
+    if (ui32ForkPhaseIndex >= MAX_FORK_PHASES) {
+            LogInfo("    DecodeHullShaderForkPhase: ui32ForkPhaseIndex too large: %u\n", ui32ForkPhaseIndex);
+            throw decompileError;
+    }
 
     psShader->ui32ForkPhaseCount++;
 
