@@ -60,70 +60,29 @@ cbuffer CViewportShaderParameterProvider : register(b13)
   float3 _EnvironmentMapColorScale : packoffset(c57);
 }
 
-// XXX CAUTION XXX: Omitting the static breaks everything:
-static const uint vb_stride = 20;
-
-// Would be nice if I could use this struct somehow, but thanks to a) padding
-// and b) fxc I can't find a way to do so and end up with a working shader:
-// struct vb_entry
-// {
-//   float2 vb_position;
-//   float2 vb_texcoord;
-//   // Don't be fooled by the float4 in the input signature - in
-//   // the vertex buffer this is just a single 4 byte value:
-//   float color0;
-// };
-
-// Current vertex buffer copied into a constant buffer with 3DMigoto
-cbuffer VertexBuffer : register(b11)
+// Structure of the vertex buffer - this essentially matches the input
+// signature of the shader, but the formats won't be interpreted the same since
+// that relies on the input assembler layout. In this case that means we can't
+// use a float4 for the color0 entry, as that would mean 4x4 byte values, but
+// in the vertex buffer it's only 4x1 byte values. Since we don't actually care
+// about it, just use a float so that the size matches.
+struct vb_entry
 {
-	// It would be lovely if I could just make an array of the above
-	// struct, but thanks to HLSL padding rules I can't. Each struct in the
-	// array would be padded to 32 bytes (multiple of 16 bytes).
+  float2 vb_position;
+  float2 vb_texcoord;
+  // Don't be fooled by the float4 in the input signature - in
+  // the vertex buffer this is just a single 4 byte value:
+  float color0;
+};
 
-	// Additionally, we have to use an array of four component floats here
-	// to make sure HLSL doesn't try to insert any additional padding.
-
-	// Instead, I'll manually calculate the offsets when I look this up.
-
-	// For HLSL padding rules, see here:
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509632(v=vs.85).aspx
-
-	float4 vb_raw[4096];
-}
-
-float lookup_vb_offset(uint off)
-{
-	uint idx = off / 4;
-	uint component = off % 4;
-
-	// Is there a more direct way to do this?
-	switch (component) {
-		case 0:
-			return vb_raw[idx].x;
-		case 1:
-			return vb_raw[idx].y;
-		case 2:
-			return vb_raw[idx].z;
-		case 3:
-			return vb_raw[idx].w;
-	}
-}
-
-
-float2 lookup_vertex_position(uint id)
-{
-	uint off = id * vb_stride / 4;
-
-	return float2(lookup_vb_offset(off), lookup_vb_offset(off+1));
-}
+StructuredBuffer<struct vb_entry> vb_struct : register(t100);
 
 float2 find_quad_center(uint id)
 {
 	id = id / 6 * 6;
 
-	float2 pos1 = lookup_vertex_position(id);
-	float2 pos2 = lookup_vertex_position(id + 2);
+	float2 pos1 = vb_struct[id].vb_position;
+	float2 pos2 = vb_struct[id + 2].vb_position;
 
 	return (pos1 + pos2) / 2;
 }
