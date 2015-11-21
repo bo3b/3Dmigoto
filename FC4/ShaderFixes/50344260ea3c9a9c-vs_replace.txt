@@ -155,22 +155,33 @@ float separation = stereo.x; float convergence = stereo.y;
 float hud_depth = params.x; float tex_filter = filter.x; float partner_filter = filter.y;
 
 if (params.w == 0) {
-	// Depth buffer did not get copied. We are in a menu, so don't adjust the UI.
+	// Depth buffer did not get copied, which means we are in a menu. Only
+	// consider the vignette adjustment for the map, and otherwise just
+	// adjust to the standard UI depth (avoids icons on the map being
+	// misaligned):
+
+	if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
+		// Vignette around the map based on texture, pixel shader and X
+		// coordinate at far left/right of screen. Want to expand this
+		// horizontally so that it still moves to hud_depth, but fills up the
+		// expanded stereo screen.  Move the left side of right eye left, and
+		// the right side of the left eye right to stretch the effect.
+		// SV_VertexID tells us which side we are on:
+		if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
+		    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
+			o0.x += separation * hud_depth * 2;
+		}
+	} else {
+		o0.x += separation * hud_depth;
+	}
 	return;
 }
 
-if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
-	// Vignette around the map based on texture, pixel shader and X
-	// coordinate at far left/right of screen. Want to expand this
-	// horizontally so that it still moves to hud_depth, but fills up the
-	// expanded stereo screen.  Move the left side of right eye left, and
-	// the right side of the left eye right to stretch the effect.
-	// SV_VertexID tells us which side we are on:
-	if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
-	    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
-		o0.x += separation * hud_depth * 2;
-	}
-} else if (tex_filter == 3 && (
+// We are in-game (or possibly in the shop with previews on, or possibly in the
+// main menu in certain circumstances), so we can use the depth buffer to
+// adjust various UI elements:
+
+if (tex_filter == 3 && (
 		matches_corner(v1, 0.0185470581, 0.0341720581, 0.986338615, 0.994151115) /* Line crosshair (most weapons) */
 	     || matches_corner(v1, 0.821269989, 0.852519989, 0.689431667, 0.751931667) /* Dot crosshair (e.g. repair tool) */
 	     )) {

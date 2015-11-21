@@ -45,15 +45,9 @@ void main(
   o2.xy = v0.xy;
   o2.zw = v1.xy;
 
-float4 params = IniParams.Load(0);
-if (params.w == 0) {
-	// Depth buffer did not get copied. We are in a menu, so don't adjust the UI.
-	return;
-}
-
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
-float hud_depth = params.x;
+float hud_depth = IniParams.Load(0).x;
 o0.x += separation * hud_depth;
 
   return;
