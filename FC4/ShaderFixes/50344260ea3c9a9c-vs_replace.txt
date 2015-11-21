@@ -116,19 +116,33 @@ float4 calc_pos(float2 v0)
 // nearest integer to get them in texels before comparison.
 //
 // You can find the coordinates by using frame analysis of the vertex buffer
+// Keep in mind that the texture dumped out by frame analysis is 2x the real
+// width (since it has no way to know that it is a mono texture)
 bool matches_corner(float2 texcoord, uint left, uint right, uint top, uint bottom)
 {
 	// Texture dimensions are hardcoded for now - if I need to do this
 	// check using a second texture of different size I'll need to either
 	// use a separate function, or copy the texture in here and call
 	// GetDimensions on it to work it out at runtime.
-	uint2 t = round(texcoord * float2(2048, 512));
+	uint2 t = round(texcoord * float2(1024, 512));
 
 	return ((t.x == left || t.x == right) && (t.y == top || t.y == bottom));
 }
+bool matches_corner2(float2 texcoord, uint left, uint right, uint top, uint bottom)
+{
+	uint2 t = round(texcoord * float2(512, 512));
+	return ((t.x == left || t.x == right) && (t.y == top || t.y == bottom));
+}
+
+bool is_in_circle_icon(float2 texcoord, uint id)
+{
+	// Look up the *previous* quad in the vertex buffer:
+	id = id / 6 * 6 - 6;
+	return (round(vb_struct[id].vb_texcoord * 512) == 1);
+}
 
 bool is_minimap(float2 o0) {
-	return (o0.x < -0.55 && o0.y < -0.3);
+	return (o0.x < -0.6 && o0.y < -0.3);
 }
 
 void main(
@@ -170,35 +184,36 @@ if (params.w == 0) {
 	// adjust to the standard UI depth (avoids icons on the map being
 	// misaligned):
 
-	if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
-		// Vignette around the map based on texture, pixel shader and X
-		// coordinate at far left/right of screen. Want to expand this
-		// horizontally so that it still moves to hud_depth, but fills up the
-		// expanded stereo screen.  Move the left side of right eye left, and
-		// the right side of the left eye right to stretch the effect.
-		// SV_VertexID tells us which side we are on:
-		if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
-		    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
-			o0.x += separation * hud_depth * 2;
-		}
-	} else {
+	// if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
+	// 	// Vignette around the map based on texture, pixel shader and X
+	// 	// coordinate at far left/right of screen. Want to expand this
+	// 	// horizontally so that it still moves to hud_depth, but fills up the
+	// 	// expanded stereo screen.  Move the left side of right eye left, and
+	// 	// the right side of the left eye right to stretch the effect.
+	// 	// SV_VertexID tells us which side we are on:
+	// 	if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
+	// 	    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
+	// 		o0.x += separation * hud_depth * 2;
+	// 	}
+	// } else {
 		o0.x += separation * hud_depth;
-	}
+	// }
 	return;
 }
 
 // We are in-game (or possibly in the shop with previews on, or possibly in the
-// main menu in certain circumstances), so we can use the depth buffer to
+// main menu under certain circumstances), so we can use the depth buffer to
 // adjust various UI elements:
 
 if (tex_filter == 3 && (
-		matches_corner(v1, 38, 70, 505, 509) /* Line crosshair (most weapons) */
-	     || matches_corner(v1, 1682, 1746, 353, 385) /* Dot crosshair (e.g. repair tool) */
+		matches_corner(v1, 19, 35, 505, 509) /* Line crosshair (most weapons) */
+	     || matches_corner(v1, 841, 873, 353, 385) /* Dot crosshair (e.g. repair tool) */
 	     )) {
 	// Matched crosshair texture AND texture coordinates
 	o0.x += adjust_from_depth_buffer(0,0);
 } else if (tex_filter == 3 && (
-	        matches_corner(v1, 1150, 1278, 185, 249) /* Yellow arrow */
+	        matches_corner(v1, 575, 639, 185, 249) /* Yellow arrow */
+	     || matches_corner(v1, 575, 639, 119, 183) /* White arrow */
 	     )) {
 	// Some other floating HUD element. Use the vertex buffer to locate the
 	// center of the icon and use that as the point to adjust it from.
@@ -207,18 +222,41 @@ if (tex_filter == 3 && (
 	float2 ipos = find_quad_center(id);
 	float4 opos = calc_pos(ipos);
 	o0.x += adjust_from_depth_buffer(opos.x, opos.y);
-} else if (is_minimap(o0)) {
-	// TODO: Depth test to make sure it isn't below scenery
-	// Need to match all shaders and textures that create it
-	o0.x += separation * hud_depth;
-} else if (tex_filter == 5) {
+} else if (tex_filter == 5 && (
+
+	        matches_corner2(v1, 1, 129, 1, 129) /* Pulsing Circle around floating HUD elements */
+
+#if 1
+	     || matches_corner2(v1, 307, 339, 443, 475) /* Race mission */
+#else
+		// The above method would get annoying. I have two ideas to
+		// simplify this. Here's the first attempt that doesn't need
+		// any new features in 3DMigoto as it looks up the previous
+		// icon to see if it was the pulsating circle, but
+		// unfortunately is not reliable as there is 1 frame per pulse
+		// where the circle is not drawn:
+		|| is_in_circle_icon(v1, id)
+
+		// The second idea I have is to inject a new texture via
+		// 3DMigoto where I can paint different colours over the
+		// whitelisted icons so that the shader can simply sample them
+		// to determine what to do.
+#endif
+
+	     )) {
 	// Another floating HUD icon
 	float2 ipos = find_quad_center(id);
 	float4 opos = calc_pos(ipos);
-	o0.x += adjust_from_depth_buffer(opos.x, opos.y);
-} else if (tex_filter == 4) {
+	if (is_minimap(opos)) {
+		// TODO: Depth test to make sure it isn't below scenery
+		// Need to match all shaders and textures that create it
+		o0.x += separation * hud_depth;
+	} else {
+		o0.x += adjust_from_depth_buffer(opos.x, opos.y);
+	}
+} else if (tex_filter == 4) { // Rocket launcher targeting HUD - treat as crosshair
 	o0.x += adjust_from_depth_buffer(0,0);
-} else {
+} else { // Anything else - use fixed HUD depth adjustment
 	o0.x += separation * hud_depth;
 }
 
