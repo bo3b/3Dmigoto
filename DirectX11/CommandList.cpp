@@ -1134,65 +1134,114 @@ static void RecreateCompatibleResource(
 	}
 }
 
-// TODO: Function template to handle all view types
-static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutSRVDesc(
-		D3D11_SHADER_RESOURCE_VIEW_DESC *desc,
+template <typename DescType>
+static void FillOutStructuredBufferDescCommon(DescType *desc, UINT stride,
+		UINT offset, UINT buf_src_size)
+{
+	desc->Format = DXGI_FORMAT_UNKNOWN;
+	// The documentation on the buffer part of the description is
+	// misleading.
+	//
+	// There are two unions with two possible parameters each which
+	// are documented in MSDN, but DX11 never uses ElementWidth
+	// (which is determined by either the format, or buffer's
+	// StructureByteStride), only NumElements.
+	//
+	// My reading of FirstElement/ElementOffset sound like they are
+	// the same thing, but one is in bytes and the other is in
+	// elements - only the names seem backwards compared to the
+	// description in the documentation. Research suggests DX11
+	// only uses multiples of the element size (since it's a union,
+	// it shouldn't matter which name we use).
+	//
+	// XXX: At the moment we are relying on the region copy to have
+	// knocked out the offset for us. We could alternatively do it
+	// here (and the below should work), but we would need to
+	// create a new view every time the offset changes.
+	desc->Buffer.FirstElement = offset / stride;
+	desc->Buffer.NumElements = (buf_src_size - offset) / stride;
+}
+
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutStructuredBufferDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *desc, UINT stride,
+		UINT offset, UINT buf_src_size)
+{
+	// TODO: Also handle BUFFEREX for raw buffers
+	desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+
+	FillOutStructuredBufferDescCommon<D3D11_SHADER_RESOURCE_VIEW_DESC>(desc, stride, offset, buf_src_size);
+	return desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutStructuredBufferDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *desc, UINT stride,
+		UINT offset, UINT buf_src_size)
+{
+	desc->ViewDimension = D3D11_RTV_DIMENSION_BUFFER;
+
+	FillOutStructuredBufferDescCommon<D3D11_RENDER_TARGET_VIEW_DESC>(desc, stride, offset, buf_src_size);
+	return desc;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutStructuredBufferDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *desc, UINT stride,
+		UINT offset, UINT buf_src_size)
+{
+	desc->ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	// TODO Support buffer UAV flags for append, counter and raw buffers.
+	desc->Buffer.Flags = 0;
+
+	FillOutStructuredBufferDescCommon<D3D11_UNORDERED_ACCESS_VIEW_DESC>(desc, stride, offset, buf_src_size);
+	return desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutStructuredBufferDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *desc, UINT stride,
+		UINT offset, UINT buf_src_size)
+{
+	// Depth views don't support buffers:
+	return NULL;
+}
+
+template <typename ViewType,
+	 typename DescType,
+	 HRESULT (__stdcall ID3D11Device::*CreateView)(THIS_
+			 ID3D11Resource *pResource,
+			 const DescType *pDesc,
+			 ViewType **ppView)
+	>
+static ID3D11View* _CreateCompatibleView(
 		ID3D11Resource *resource,
+		ID3D11Device *device,
 		UINT stride,
 		UINT offset,
 		UINT buf_src_size,
 		bool coerce_structured)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
+	ViewType *view = NULL;
+	DescType desc, *pDesc = NULL;
+	HRESULT hr;
 
-	// In the case of a texture we can get away without specifying a view
-	// description and DirectX will use the resource description to create
-	// a view of the entire resource.
-	//
-	// TODO: Also handle BUFFEREX
 	resource->GetType(&dimension);
-	if (dimension != D3D11_RESOURCE_DIMENSION_BUFFER)
-		return NULL;
+	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
+		// In the case of a buffer type resource we must specify the
+		// description as DirectX doesn't have enough information from the
+		// buffer alone to create a view.
 
-	desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+		if (coerce_structured)
+			pDesc = FillOutStructuredBufferDesc(&desc, stride, offset, buf_src_size);
 
-	// In the case of a buffer type resource we must specify the
-	// description as DirectX doesn't have enough information from the
-	// buffer alone to create a view.
-
-	if (coerce_structured) {
-		desc->Format = DXGI_FORMAT_UNKNOWN;
-		// The documentation on the buffer part of the description is
-		// misleading.
-		//
-		// There are two unions with two possible parameters each which
-		// are documented in MSDN, but DX11 never uses ElementWidth
-		// (which is determined by either the format, or buffer's
-		// StructureByteStride), only NumElements.
-		//
-		// My reading of FirstElement/ElementOffset sound like they are
-		// the same thing, but one is in bytes and the other is in
-		// elements - only the names seem backwards compared to the
-		// description in the documentation. Research suggests DX11
-		// only uses multiples of the element size (since it's a union,
-		// it shouldn't matter which name we use).
-		//
-		// XXX: At the moment we are relying on the region copy to have
-		// knocked out the offset for us. We could alternatively do it
-		// here (and the below should work), but we would need to
-		// create a new view every time the offset changes.
-		desc->Buffer.FirstElement = offset / stride;
-		desc->Buffer.NumElements = (buf_src_size - offset) / stride;
-		LogDebug("  FirstElement = %d\n", desc->Buffer.FirstElement);
-		LogDebug("  NumElements = %d\n", desc->Buffer.NumElements);
+		// There are a lot of different things we could do with buffer
+		// resources, and for now this only covers the structured buffer case.
+		// TODO: Handle copying from one type of view to a different type
+		// TODO: Handle copying index buffer (with a format) to a view
 	}
 
-	// There are a lot of different things we could do with buffer
-	// resources, and for now this only covers the structured buffer case.
-	// TODO: Handle copying from one type of view to a different type
-	// TODO: Handle copying index buffer (with a format) to a view
+	hr = (device->*CreateView)(resource, pDesc, &view);
+	if (FAILED(hr)) {
+		LogInfo("Resource copy CreateCompatibleView failed: %x\n", hr);
+		return NULL;
+	}
 
-	return NULL;
+	return view;
 }
 
 static ID3D11View* CreateCompatibleView(
@@ -1204,45 +1253,27 @@ static ID3D11View* CreateCompatibleView(
 		UINT buf_src_size,
 		bool coerce_structured)
 {
-	ID3D11ShaderResourceView *resource_view = NULL;
-	ID3D11RenderTargetView *render_view = NULL;
-	ID3D11DepthStencilView *depth_view = NULL;
-	ID3D11UnorderedAccessView *unordered_view = NULL;
-	D3D11_SHADER_RESOURCE_VIEW_DESC resource_desc;
-	HRESULT hr;
-
-	// For now just creating a view of the whole resource to simplify
-	// things. If/when we find a game that needs a view of a subresource we
-	// can think about handling that case then.
-
 	switch (dst->type) {
 		case ResourceCopyTargetType::SHADER_RESOURCE:
-			D3D11_SHADER_RESOURCE_VIEW_DESC *desc;
-			desc = FillOutSRVDesc(&resource_desc, resource, stride, offset, buf_src_size, coerce_structured);
-			hr = device->CreateShaderResourceView(resource, desc, &resource_view);
-			if (SUCCEEDED(hr))
-				return resource_view;
-			LogInfo("Resource copy CreateCompatibleView failed for shader resource view: 0x%x\n", hr);
-			break;
+			return _CreateCompatibleView<ID3D11ShaderResourceView,
+			       D3D11_SHADER_RESOURCE_VIEW_DESC,
+			       &ID3D11Device::CreateShaderResourceView>
+				       (resource, device, stride, offset, buf_src_size, coerce_structured);
 		case ResourceCopyTargetType::RENDER_TARGET:
-			hr = device->CreateRenderTargetView(resource, NULL, &render_view);
-			if (SUCCEEDED(hr))
-				return render_view;
-			LogInfo("Resource copy CreateCompatibleView failed for render target view: 0x%x\n", hr);
-			break;
+			return _CreateCompatibleView<ID3D11RenderTargetView,
+			       D3D11_RENDER_TARGET_VIEW_DESC,
+			       &ID3D11Device::CreateRenderTargetView>
+				       (resource, device, stride, offset, buf_src_size, coerce_structured);
 		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-			hr = device->CreateDepthStencilView(resource, NULL, &depth_view);
-			if (SUCCEEDED(hr))
-				return depth_view;
-			LogInfo("Resource copy CreateCompatibleView failed for depth/stencil view: 0x%x\n", hr);
-			break;
+			return _CreateCompatibleView<ID3D11DepthStencilView,
+			       D3D11_DEPTH_STENCIL_VIEW_DESC,
+			       &ID3D11Device::CreateDepthStencilView>
+				       (resource, device, stride, offset, buf_src_size, coerce_structured);
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-			// TODO Support buffer UAV flags for append, counter and raw buffers.
-			hr = device->CreateUnorderedAccessView(resource, NULL, &unordered_view);
-			if (SUCCEEDED(hr))
-				return unordered_view;
-			LogInfo("Resource copy CreateCompatibleView failed for unordered access view: 0x%x\n", hr);
-			break;
+			return _CreateCompatibleView<ID3D11UnorderedAccessView,
+			       D3D11_UNORDERED_ACCESS_VIEW_DESC,
+			       &ID3D11Device::CreateUnorderedAccessView>
+				       (resource, device, stride, offset, buf_src_size, coerce_structured);
 	}
 	return NULL;
 }
