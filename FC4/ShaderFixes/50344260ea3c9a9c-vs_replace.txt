@@ -108,13 +108,23 @@ float4 calc_pos(float2 v0)
   return o0;
 }
 
-bool is_yellow_arrow(float2 v1) {
-	// This icon is not as simple as a bounding box... think it's two
-	// separate triangles?
-	return ((v1.x == 0.561442554 || v1.x == 0.623961031 ||
-		 v1.x == 0.561448753 || v1.x == 0.62396722) &&
-		(v1.y == 0.361364365 || v1.y == 0.486409545 ||
-		 v1.y == 0.361369759 || v1.y == 0.486414939));
+
+// This function checks if the passed in texture coordinate matches any of the
+// corners of the passed in bounding box of the desired icon on the texture.
+// The game doesn't use consistent floating point values for the texture
+// coordinates, therefore we multiply them by the texture size and round to the
+// nearest integer to get them in texels before comparison.
+//
+// You can find the coordinates by using frame analysis of the vertex buffer
+bool matches_corner(float2 texcoord, uint left, uint right, uint top, uint bottom)
+{
+	// Texture dimensions are hardcoded for now - if I need to do this
+	// check using a second texture of different size I'll need to either
+	// use a separate function, or copy the texture in here and call
+	// GetDimensions on it to work it out at runtime.
+	uint2 t = round(texcoord * float2(2048, 512));
+
+	return ((t.x == left || t.x == right) && (t.y == top || t.y == bottom));
 }
 
 bool is_minimap(float2 o0) {
@@ -182,12 +192,14 @@ if (params.w == 0) {
 // adjust various UI elements:
 
 if (tex_filter == 3 && (
-		matches_corner(v1, 0.0185470581, 0.0341720581, 0.986338615, 0.994151115) /* Line crosshair (most weapons) */
-	     || matches_corner(v1, 0.821269989, 0.852519989, 0.689431667, 0.751931667) /* Dot crosshair (e.g. repair tool) */
+		matches_corner(v1, 38, 70, 505, 509) /* Line crosshair (most weapons) */
+	     || matches_corner(v1, 1682, 1746, 353, 385) /* Dot crosshair (e.g. repair tool) */
 	     )) {
 	// Matched crosshair texture AND texture coordinates
 	o0.x += adjust_from_depth_buffer(0,0);
-} else if (tex_filter == 3 && is_yellow_arrow(v1)) {
+} else if (tex_filter == 3 && (
+	        matches_corner(v1, 1150, 1278, 185, 249) /* Yellow arrow */
+	     )) {
 	// Some other floating HUD element. Use the vertex buffer to locate the
 	// center of the icon and use that as the point to adjust it from.
 	// TODO: Might be better to use the minimum adjustment out of all four

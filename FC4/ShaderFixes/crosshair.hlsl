@@ -75,14 +75,3 @@ float adjust_from_depth_buffer(float x, float y)
 
 	return old_offset;
 }
-
-
-// This function checks if the passed in texture coordinate matches any of the
-// corners of the passed in bounding box of the desired icon on the texture.
-// These coordinates need to be exact - use frame analysis of the vertex buffer
-// to determine them.
-bool matches_corner(float2 texcoord, float left, float right, float top, float bottom)
-{
-	return ((texcoord.x == left || texcoord.x == right)
-	     && (texcoord.y == top || texcoord.y == bottom));
-}
