@@ -2781,6 +2781,9 @@ public:
 			}
 
 			if (!strncmp(statement, "vs_", 3) ||
+				!strncmp(statement, "hs_", 3) ||
+				!strncmp(statement, "ds_", 3) ||
+				!strncmp(statement, "gs_", 3) ||
 				!strncmp(statement, "ps_", 3) ||
 				!strncmp(statement, "cs_", 3))
 			{
@@ -4842,6 +4845,9 @@ public:
 				return;
 			}
 			if (!strncmp(statement, "vs_", 3) ||
+				!strncmp(statement, "hs_", 3) ||
+				!strncmp(statement, "ds_", 3) ||
+				!strncmp(statement, "gs_", 3) ||
 				!strncmp(statement, "ps_", 3) ||
 				!strncmp(statement, "cs_", 3))
 			{
