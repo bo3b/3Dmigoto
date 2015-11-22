@@ -16,6 +16,7 @@ struct CommandListState {
 	// common case we are going to store both width & height in separate
 	// ini params:
 	float rt_width, rt_height;
+	UINT VertexCount, IndexCount, InstanceCount;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -51,13 +52,11 @@ enum class ParamOverrideType {
 			// here. Special values for no [TextureOverride]
 			// section = 0.0, or [TextureOverride] with no
 			// filter_index = 1.0
+	VERTEX_COUNT,
+	INDEX_COUNT,
+	INSTANCE_COUNT,
 	// TODO:
 	// DEPTH_ACTIVE
-	// VERTEX_SHADER    (how best to pass these in?
-	// HULL_SHADER       Maybe the low/hi 32bits of hash? Or all 64bits split in two?
-	// DOMAIN_SHADER     Maybe an index or some other mapping? Perhaps something like Helix mod's texture CRCs?
-	// GEOMETRY_SHADER   Or... maybe don't bother! We can already achieve this by setting the value in
-	// PIXEL_SHADER      the partner shaders instead! Limiting to a single draw call would be helpful)
 	// etc.
 };
 static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
@@ -65,6 +64,9 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"rt_height", ParamOverrideType::RT_HEIGHT},
 	{L"res_width", ParamOverrideType::RES_WIDTH},
 	{L"res_height", ParamOverrideType::RES_HEIGHT},
+	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
+	{L"index_count", ParamOverrideType::INDEX_COUNT},
+	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {
@@ -242,7 +244,8 @@ public:
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
-		CommandList *command_list);
+		CommandList *command_list,
+		UINT VertexCount, UINT IndexCount, UINT InstanceCount);
 
 bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		CommandList *command_list);

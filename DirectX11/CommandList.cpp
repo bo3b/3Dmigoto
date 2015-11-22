@@ -8,13 +8,18 @@ CustomResources customResources;
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
-		CommandList *command_list)
+		CommandList *command_list,
+		UINT VertexCount, UINT IndexCount, UINT InstanceCount)
 {
 	CommandList::iterator i;
 	CommandListState state;
 	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
 	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+
+	state.VertexCount = VertexCount;
+	state.IndexCount = IndexCount;
+	state.InstanceCount = InstanceCount;
 
 	for (i = command_list->begin(); i < command_list->end(); i++) {
 		(*i)->run(mHackerContext, mOrigDevice, mOrigContext, &state);
@@ -161,6 +166,15 @@ void ParamOverride::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice
 		case ParamOverrideType::TEXTURE:
 			*dest = ProcessParamTextureFilter(mHackerContext,
 					mOrigContext, this);
+			break;
+		case ParamOverrideType::VERTEX_COUNT:
+			*dest = (float)state->VertexCount;
+			break;
+		case ParamOverrideType::INDEX_COUNT:
+			*dest = (float)state->IndexCount;
+			break;
+		case ParamOverrideType::INSTANCE_COUNT:
+			*dest = (float)state->InstanceCount;
 			break;
 		default:
 			return;

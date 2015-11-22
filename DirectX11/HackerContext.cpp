@@ -441,7 +441,8 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		}
 	}
 
-	RunCommandList(mHackerDevice, this, &shaderOverride->command_list);
+	RunCommandList(mHackerDevice, this, &shaderOverride->command_list,
+			data->VertexCount, data->IndexCount, data->InstanceCount);
 
 	// TODO: Add render target filters, texture filters, etc.
 
@@ -463,9 +464,8 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 
 }
 
-DrawContext HackerContext::BeforeDraw()
+void HackerContext::BeforeDraw(DrawContext &data)
 {
-	DrawContext data;
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
@@ -551,7 +551,7 @@ DrawContext HackerContext::BeforeDraw()
 	}
 
 	if (!G->fix_enabled)
-		return data;
+		return;
 
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
@@ -624,7 +624,7 @@ DrawContext HackerContext::BeforeDraw()
 			}
 		}
 	}
-	return data;
+	return;
 }
 
 void HackerContext::AfterDraw(DrawContext &data)
@@ -638,8 +638,10 @@ void HackerContext::AfterDraw(DrawContext &data)
 		return;
 
 	for (i = 0; i < 5; i++) {
-		if (data.post_commands[i])
-			RunCommandList(mHackerDevice, this, data.post_commands[i]);
+		if (data.post_commands[i]) {
+			RunCommandList(mHackerDevice, this, data.post_commands[i],
+					data.VertexCount, data.IndexCount, data.InstanceCount);
+		}
 	}
 
 	if (data.override) {
@@ -1162,7 +1164,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 			// lot of it's logic doesn't really apply to
 			// compute shaders. The main thing we care
 			// about is the command list, so just run that:
-			RunCommandList(mHackerDevice, this, &i->second.command_list);
+			RunCommandList(mHackerDevice, this, &i->second.command_list, 0, 0, 0);
 		}
 	}
 
@@ -1175,7 +1177,7 @@ void HackerContext::AfterDispatch(DispatchContext *context)
 		FrameAnalysisAfterDraw(true);
 
 	if (context->post_commands)
-		RunCommandList(mHackerDevice, this, context->post_commands);
+		RunCommandList(mHackerDevice, this, context->post_commands, 0, 0, 0);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -2289,7 +2291,8 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	LogDebug("HackerContext::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n",
 		IndexCount, StartIndexLocation, BaseVertexLocation);
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(0, IndexCount, 0);
+	BeforeDraw(c);
 	if (!c.skip)
 		 mOrigContext->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
 	AfterDraw(c);
@@ -2304,7 +2307,8 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	LogDebug("HackerContext::Draw called with VertexCount = %d, StartVertexLocation = %d\n",
 		VertexCount, StartVertexLocation);
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(VertexCount, 0, 0);
+	BeforeDraw(c);
 	if (!c.skip)
 		 mOrigContext->Draw(VertexCount, StartVertexLocation);
 	AfterDraw(c);
@@ -2358,7 +2362,8 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	LogDebug("HackerContext::DrawIndexedInstanced called with IndexCountPerInstance = %d, InstanceCount = %d\n",
 		IndexCountPerInstance, InstanceCount);
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount);
+	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
 		BaseVertexLocation, StartInstanceLocation);
@@ -2378,7 +2383,8 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	LogDebug("HackerContext::DrawInstanced called with VertexCountPerInstance = %d, InstanceCount = %d\n",
 		VertexCountPerInstance, InstanceCount);
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount);
+	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 	AfterDraw(c);
@@ -2522,7 +2528,8 @@ STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
 	LogDebug("HackerContext::DrawAuto called\n");
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(0, 0, 0);
+	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawAuto();
 	AfterDraw(c);
@@ -2536,7 +2543,8 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 {
 	LogDebug("HackerContext::DrawIndexedInstancedIndirect called\n");
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(0, 0, 0);
+	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
@@ -2550,7 +2558,8 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 {
 	LogDebug("HackerContext::DrawInstancedIndirect called\n");
 
-	DrawContext c = BeforeDraw();
+	DrawContext c = DrawContext(0, 0, 0);
+	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);

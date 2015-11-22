@@ -14,14 +14,18 @@ struct DrawContext
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
 	CommandList *post_commands[5];
+	UINT VertexCount, IndexCount, InstanceCount;
 
-	DrawContext() :
+	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount) :
 		skip(false),
 		override(false),
 		oldSeparation(FLT_MAX),
 		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
-		oldPixelShader(NULL)
+		oldPixelShader(NULL),
+		VertexCount(VertexCount),
+		IndexCount(IndexCount),
+		InstanceCount(InstanceCount)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
 	}
@@ -79,7 +83,7 @@ private:
 	DeniedMap mDeniedMaps;
 
 	// These private methods are utility routines for HackerContext.
-	DrawContext BeforeDraw();
+	void BeforeDraw(DrawContext &data);
 	void AfterDraw(DrawContext &data);
 	bool BeforeDispatch(DispatchContext *context);
 	void AfterDispatch(DispatchContext *context);
