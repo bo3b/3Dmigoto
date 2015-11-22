@@ -87,6 +87,10 @@ float2 find_quad_center(uint id)
 	return (pos1 + pos2) / 2;
 }
 
+;
+Texture2D<float4> IconFilter1 : register(t101);
+Texture2D<float4> IconFilter2 : register(t102);
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
@@ -108,41 +112,35 @@ float4 calc_pos(float2 v0)
   return o0;
 }
 
-
-// This function checks if the passed in texture coordinate matches any of the
-// corners of the passed in bounding box of the desired icon on the texture.
-// The game doesn't use consistent floating point values for the texture
-// coordinates, therefore we multiply them by the texture size and round to the
-// nearest integer to get them in texels before comparison.
-//
-// You can find the coordinates by using frame analysis of the vertex buffer
-// Keep in mind that the texture dumped out by frame analysis is 2x the real
-// width (since it has no way to know that it is a mono texture)
-bool matches_corner(float2 texcoord, uint left, uint right, uint top, uint bottom)
-{
-	// Texture dimensions are hardcoded for now - if I need to do this
-	// check using a second texture of different size I'll need to either
-	// use a separate function, or copy the texture in here and call
-	// GetDimensions on it to work it out at runtime.
-	uint2 t = round(texcoord * float2(1024, 512));
-
-	return ((t.x == left || t.x == right) && (t.y == top || t.y == bottom));
-}
-bool matches_corner2(float2 texcoord, uint left, uint right, uint top, uint bottom)
-{
-	uint2 t = round(texcoord * float2(512, 512));
-	return ((t.x == left || t.x == right) && (t.y == top || t.y == bottom));
-}
-
-bool is_in_circle_icon(float2 texcoord, uint id)
-{
-	// Look up the *previous* quad in the vertex buffer:
-	id = id / 6 * 6 - 6;
-	return (round(vb_struct[id].vb_texcoord * 512) == 1);
-}
-
 bool is_minimap(float2 o0) {
 	return (o0.x < -0.6 && o0.y < -0.3);
+}
+
+// This function looks up a texture that has been injected into the game to
+// determine what action to take depending on the icon. It will check the
+// colour of the texel in the center of the icon to make a decision.
+// - Green will adjust the icon from the depth buffer based on it's center
+// - Blue will adjust the icon based on the center of the screen
+// - Anything else will use a fixed HUD depth adjustment
+uint lookup_icon_filter(uint id, Texture2D<float4> IconFilter)
+{
+	uint width, height;
+	id = id / 6 * 6;
+
+	IconFilter.GetDimensions(width, height);
+
+	// Find icon center:
+	float2 coord1 = vb_struct[id].vb_texcoord;
+	float2 coord2 = vb_struct[id + 2].vb_texcoord;
+	uint2 coord = round((coord1 + coord2) / 2 * float2(width, height));
+
+	float4 colour = IconFilter.Load(int3(coord, 0));
+
+	if (all(abs(colour - float4(0, 1, 0, 1)) <= 1/512))
+		return 1;
+	if (all(abs(colour - float4(0, 0, 1, 1)) <= 1/512))
+		return 2;
+	return 0;
 }
 
 void main(
@@ -205,59 +203,35 @@ if (params.w == 0) {
 // main menu under certain circumstances), so we can use the depth buffer to
 // adjust various UI elements:
 
-if (tex_filter == 3 && (
-		matches_corner(v1, 19, 35, 505, 509) /* Line crosshair (most weapons) */
-	     || matches_corner(v1, 841, 873, 353, 385) /* Dot crosshair (e.g. repair tool) */
-	     )) {
-	// Matched crosshair texture AND texture coordinates
-	o0.x += adjust_from_depth_buffer(0,0);
-} else if (tex_filter == 3 && (
-	        matches_corner(v1, 575, 639, 185, 249) /* Yellow arrow */
-	     || matches_corner(v1, 575, 639, 119, 183) /* White arrow */
-	     )) {
-	// Some other floating HUD element. Use the vertex buffer to locate the
-	// center of the icon and use that as the point to adjust it from.
-	// TODO: Might be better to use the minimum adjustment out of all four
-	// corners?
-	float2 ipos = find_quad_center(id);
-	float4 opos = calc_pos(ipos);
-	o0.x += adjust_from_depth_buffer(opos.x, opos.y);
-} else if (tex_filter == 5 && (
+uint action = 0;
+float4 icon_center = calc_pos(find_quad_center(id));
 
-	        matches_corner2(v1, 1, 129, 1, 129) /* Pulsing Circle around floating HUD elements */
-
-#if 1
-	     || matches_corner2(v1, 307, 339, 443, 475) /* Race mission */
-#else
-		// The above method would get annoying. I have two ideas to
-		// simplify this. Here's the first attempt that doesn't need
-		// any new features in 3DMigoto as it looks up the previous
-		// icon to see if it was the pulsating circle, but
-		// unfortunately is not reliable as there is 1 frame per pulse
-		// where the circle is not drawn:
-		|| is_in_circle_icon(v1, id)
-
-		// The second idea I have is to inject a new texture via
-		// 3DMigoto where I can paint different colours over the
-		// whitelisted icons so that the shader can simply sample them
-		// to determine what to do.
-#endif
-
-	     )) {
-	// Another floating HUD icon
-	float2 ipos = find_quad_center(id);
-	float4 opos = calc_pos(ipos);
-	if (is_minimap(opos)) {
+if (tex_filter == 3) {
+	// Crosshair texture & various other icons
+	action = lookup_icon_filter(id, IconFilter1);
+} else if (tex_filter == 5) {
+	// Various HUD icons
+	if (is_minimap(icon_center)) {
 		// TODO: Depth test to make sure it isn't below scenery
 		// Need to match all shaders and textures that create it
-		o0.x += separation * hud_depth;
+		action = 0;
 	} else {
-		o0.x += adjust_from_depth_buffer(opos.x, opos.y);
+		action = lookup_icon_filter(id, IconFilter2);
 	}
 } else if (tex_filter == 4) { // Rocket launcher targeting HUD - treat as crosshair
+	action = 2;
+}
+
+switch (action) {
+case 1:
+	o0.x += adjust_from_depth_buffer(icon_center.x, icon_center.y);
+	break;
+case 2:
 	o0.x += adjust_from_depth_buffer(0,0);
-} else { // Anything else - use fixed HUD depth adjustment
+	break;
+default:
 	o0.x += separation * hud_depth;
+	break;
 }
 
   return;
