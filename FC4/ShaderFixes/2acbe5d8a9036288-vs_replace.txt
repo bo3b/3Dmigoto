@@ -21,8 +21,84 @@ cbuffer CSceneFireUiPrimitiveParameterProvider : register(b0)
   float _Time : packoffset(c41.y);
 }
 
+// Copied from lighting shaders b0 with 3DMigoto
+cbuffer CViewportShaderParameterProvider : register(b13)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
+
+// Structure of the vertex buffer
+struct vb_entry
+{
+  float2 vb_position;
+  float2 vb_texcoord;
+};
+
+StructuredBuffer<struct vb_entry> vb_struct : register(t100);
+
+float2 find_text_center()
+{
+	int vertex_count = int(IniParams.Load(int2(2, 0)).z);
+
+	float2 pos1 = vb_struct[0].vb_position;
+	float2 pos2 = vb_struct[vertex_count - 1].vb_position;
+
+	return (pos1 + pos2) / 2;
+}
+
+float4 calc_pos(float2 v0)
+{
+// Copy of the first hunk of code from the shader that calculates the output
+// position
+  float4 r0,r1,o0;
+  r0.xy = v0.xy;
+  r0.zw = float2(1.000000e+000,1.000000e+000);
+  r1.x = dot(r0.xyww, _Transform._m00_m10_m20_m30);
+  r1.y = dot(r0.xyww, _Transform._m01_m11_m21_m31);
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  o0.xy = float2(1.000000e+000,-1.000000e+000) * r1.xy;
+  o0.z = dot(r0.xyww, _Transform._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, _Transform._m03_m13_m23_m33);
+  return o0;
+}
+
+#include <ShaderFixes/crosshair.hlsl>
 
 void main(
   float2 v0 : position0,
@@ -47,8 +123,15 @@ void main(
 
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
-float hud_depth = IniParams.Load(0).x;
-o0.x += separation * hud_depth;
+float4 params = IniParams.Load(0);
+float partner = IniParams.Load(int2(2,0)).y;
+
+// if (partner == 2 && params.w == 1) {
+// 	float2 center = calc_pos(find_text_center());
+// 	o0.x += adjust_from_depth_buffer(center.x, center.y);
+// } else {
+	o0.x += separation * params.x;
+// }
 
   return;
 }
@@ -130,4 +213,5 @@ mov o2.zw, v1.xxxy
 ret 
 // Approximately 12 instruction slots used
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 
  

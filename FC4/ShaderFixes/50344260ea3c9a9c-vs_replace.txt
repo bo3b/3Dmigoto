@@ -77,6 +77,15 @@ struct vb_entry
 
 StructuredBuffer<struct vb_entry> vb_struct : register(t100);
 
+Texture2D<float4> IconFilter1 : register(t101);
+Texture2D<float4> IconFilter2 : register(t102);
+Texture2D<float4> HudMask : register(t105);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+#include <ShaderFixes/crosshair.hlsl>
+
 float2 find_quad_center(uint id)
 {
 	id = id / 6 * 6;
@@ -87,33 +96,37 @@ float2 find_quad_center(uint id)
 	return (pos1 + pos2) / 2;
 }
 
-;
-Texture2D<float4> IconFilter1 : register(t101);
-Texture2D<float4> IconFilter2 : register(t102);
-
-Texture2D<float4> StereoParams : register(t125);
-Texture1D<float4> IniParams : register(t120);
-
-#include <ShaderFixes/crosshair.hlsl>
-
-float4 calc_pos(float2 v0)
+bool is_fullscreen()
 {
-// Copy of the first hunk of code from the shader that calculates the output
-// position
-  float4 r0,r1,o0;
-  r0.xy = v0.xy;
-  r0.zw = float2(1.000000e+000,1.000000e+000);
-  r1.x = dot(r0.xyww, _Transform._m00_m10_m20_m30);
-  r1.y = dot(r0.xyww, _Transform._m01_m11_m21_m31);
-  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
-  o0.xy = float2(1.000000e+000,-1.000000e+000) * r1.xy;
-  o0.z = dot(r0.xyww, _Transform._m02_m12_m22_m32);
-  o0.w = dot(r0.xyzw, _Transform._m03_m13_m23_m33);
-  return o0;
+	int2 resolution = int2(round(IniParams.Load(int2(1, 0)).zw));
+	int vertex_count = int(round(IniParams.Load(int2(2, 0)).z));
+
+	if (vertex_count != 6)
+		return false;
+
+	float2 bl = vb_struct[0].vb_position;
+	float2 tl = vb_struct[1].vb_position;
+	float2 tr = vb_struct[2].vb_position;
+	float2 br = vb_struct[4].vb_position;
+
+	return all(abs(tl) <= float2(1,1)) &&
+		abs(tr - float2(resolution.x, 0)) <= float2(1,1) &&
+		abs(bl - float2(0, resolution.y)) <= float2(1,1) &&
+		abs(br - float2(resolution.x, resolution.y)) <= float2(1,1);
 }
 
-bool is_minimap(float2 o0) {
-	return (o0.x < -0.6 && o0.y < -0.3);
+bool in_floating_icon_region(float2 o0)
+{
+	uint width, height;
+	HudMask.GetDimensions(width, height);
+
+	uint2 coord = round((o0 / 2 + 0.5) * float2(width, height));
+
+	float4 colour = HudMask.Load(int3(coord, 0));
+
+	if (all(abs(colour - float4(0, 1, 0, 1)) <= 1/512))
+		return 1;
+	return 0;
 }
 
 // This function looks up a texture that has been injected into the game to
@@ -141,6 +154,22 @@ uint lookup_icon_filter(uint id, Texture2D<float4> IconFilter)
 	if (all(abs(colour - float4(0, 0, 1, 1)) <= 1/512))
 		return 2;
 	return 0;
+}
+
+float4 calc_pos(float2 v0)
+{
+// Copy of the first hunk of code from the shader that calculates the output
+// position
+  float4 r0,r1,o0;
+  r0.xy = v0.xy;
+  r0.zw = float2(1.000000e+000,1.000000e+000);
+  r1.x = dot(r0.xyww, _Transform._m00_m10_m20_m30);
+  r1.y = dot(r0.xyww, _Transform._m01_m11_m21_m31);
+  r1.xy = r1.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  o0.xy = float2(1.000000e+000,-1.000000e+000) * r1.xy;
+  o0.z = dot(r0.xyww, _Transform._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, _Transform._m03_m13_m23_m33);
+  return o0;
 }
 
 void main(
@@ -178,24 +207,17 @@ float hud_depth = params.x; float tex_filter = filter.x; float partner_filter = 
 
 if (params.w == 0) {
 	// Depth buffer did not get copied, which means we are in a menu. Only
-	// consider the vignette adjustment for the map, and otherwise just
-	// adjust to the standard UI depth (avoids icons on the map being
-	// misaligned):
+	// consider the adjusting full screen effects (such as the vignette on
+	// the map), and otherwise just adjust to the standard UI depth (avoids
+	// icons on the map being misaligned):
 
-	// if (tex_filter == 2 && partner_filter == 1 && abs(o0.x) >= 0.999) {
-	// 	// Vignette around the map based on texture, pixel shader and X
-	// 	// coordinate at far left/right of screen. Want to expand this
-	// 	// horizontally so that it still moves to hud_depth, but fills up the
-	// 	// expanded stereo screen.  Move the left side of right eye left, and
-	// 	// the right side of the left eye right to stretch the effect.
-	// 	// SV_VertexID tells us which side we are on:
+	// if (is_fullscreen()) { // Causes minor glitches on background in main menu
 	// 	if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
 	// 	    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
 	// 		o0.x += separation * hud_depth * 2;
 	// 	}
-	// } else {
+	// } else
 		o0.x += separation * hud_depth;
-	// }
 	return;
 }
 
@@ -209,15 +231,9 @@ float4 icon_center = calc_pos(find_quad_center(id));
 if (tex_filter == 3) {
 	// Crosshair texture & various other icons
 	action = lookup_icon_filter(id, IconFilter1);
-} else if (tex_filter == 5) {
-	// Various HUD icons
-	if (is_minimap(icon_center)) {
-		// TODO: Depth test to make sure it isn't below scenery
-		// Need to match all shaders and textures that create it
-		action = 0;
-	} else {
-		action = lookup_icon_filter(id, IconFilter2);
-	}
+} else if (tex_filter == 5 && in_floating_icon_region(icon_center)) {
+	// action = lookup_icon_filter(id, IconFilter2);
+	action = 1;
 } else if (tex_filter == 4) { // Rocket launcher targeting HUD - treat as crosshair
 	action = 2;
 }
