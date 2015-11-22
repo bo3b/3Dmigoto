@@ -193,6 +193,7 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 	IniSections::iterator lower, upper, i;
 	wstring resource_id;
 	CustomResource *custom_resource;
+	wchar_t setting[MAX_PATH], path[MAX_PATH];
 
 	customResources.clear();
 
@@ -216,6 +217,14 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			GetPrivateProfileInt(i->c_str(), L"max_copies_per_frame", 0, iniFile);
 		if (custom_resource->max_copies_per_frame)
 			LogInfo("  max_copies_per_frame=%d\n", custom_resource->max_copies_per_frame);
+
+		if (GetPrivateProfileString(i->c_str(), L"filename", 0, setting, MAX_PATH, iniFile)) {
+			LogInfoW(L"  filename=%s\n", setting);
+			GetModuleFileName(0, path, MAX_PATH);
+			wcsrchr(path, L'\\')[1] = 0;
+			wcscat(path, setting);
+			custom_resource->filename = path;
+		}
 	}
 }
 

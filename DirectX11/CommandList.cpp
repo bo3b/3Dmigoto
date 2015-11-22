@@ -1,5 +1,7 @@
 #include "CommandList.h"
 
+#include <DDSTextureLoader.h>
+#include <WICTextureLoader.h>
 #include <algorithm>
 
 CustomResources customResources;
@@ -249,6 +251,7 @@ CustomResource::CustomResource() :
 	resource(NULL),
 	view(NULL),
 	is_null(true),
+	substantiated(false),
 	bind_flags((D3D11_BIND_FLAG)0),
 	stride(0),
 	offset(0),
@@ -264,6 +267,71 @@ CustomResource::~CustomResource()
 		resource->Release();
 	if (view)
 		view->Release();
+}
+
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
+{
+	wstring ext;
+	HRESULT hr;
+
+	// We only allow a custom resource to be substantiated once. Otherwise
+	// we could end up reloading it again if it is later set to null. Also
+	// prevents us from endlessly retrying to load a custom resource from a
+	// file that doesn't exist:
+	if (substantiated)
+		return;
+	substantiated = true;
+
+	// If this custom resource has already been set through other means we
+	// won't overwrite it:
+	if (resource || view)
+		return;
+
+	// If the resource section has enough information to create a resource
+	// we do so the first time it is loaded from. The reason we do it this
+	// late is to make sure we know which device is actually being used to
+	// render the game - FC4 creates about a dozen devices with different
+	// parameters while probing the hardware before it settles on the one
+	// it will actually use.
+
+	// TODO: Support loading raw buffers (may want more ini params to
+	// describe them)
+
+	if (!filename.empty()) {
+		// XXX: We are not creating a view with DirecXTK because
+		// 1) it assumes we want a shader resource view, which is an
+		//    assumption that doesn't fit with the goal of this code to
+		//    allow for arbitrary resource copying, and
+		// 2) we currently won't use the view in a source custom
+		//    resource, even if we are referencing it into a compatible
+		//    slot. We might improve this, and if we do, I don't want
+		//    any surprises caused by a view of the wrong type we
+		//    happen to have created here and forgotten about.
+		// If we do start using the source custom resource's view, we
+		// could do something smart here, like only using it if the
+		// bind_flags indicate it will be used as a shader resource.
+
+		ext = filename.substr(filename.rfind(L"."));
+		if (!_wcsicmp(ext.c_str(), L".dds")) {
+			LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
+			hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice,
+					filename.c_str(), 0,
+					D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+					false, &resource, NULL, NULL);
+		} else {
+			LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
+			hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice,
+					filename.c_str(), 0,
+					D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+					false, &resource, NULL);
+		}
+		if (SUCCEEDED(hr)) {
+			is_null = false;
+			// TODO:
+			// format = ...
+		} else
+			LogInfoW(L"Failed to load custom resource %s: 0x%x\n", filename.c_str(), hr);
+	}
 }
 
 
@@ -441,6 +509,7 @@ bail:
 }
 
 ID3D11Resource *ResourceCopyTarget::GetResource(
+		ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext,
 		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
 		UINT *stride,        // Used by vertex buffers
@@ -629,6 +698,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
+		custom_resource->Substantiate(mOrigDevice);
+
 		*stride = custom_resource->stride;
 		*offset = custom_resource->offset;
 		*format = custom_resource->format;
@@ -1415,7 +1486,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigContext, &src_view, &stride, &offset, &format);
+	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -1477,6 +1548,11 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 			dst_view = src_view;
 		else
 			dst_view = *pp_cached_view;
+		// TODO: If we are referencing to/from a custom resource we
+		// currently don't reference the view, but we could so long as
+		// the bind flags from the original source are compatible with
+		// the bind flags in the final destination. If we implement
+		// this, go read the note in CustomResource::Substantiate()
 	}
 
 	if (!dst_view) {

@@ -119,8 +119,13 @@ public:
 	unsigned frame_no;
 	int copies_this_frame;
 
+	wstring filename;
+	bool substantiated;
+
 	CustomResource();
 	~CustomResource();
+
+	void Substantiate(ID3D11Device *mOrigDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
@@ -157,6 +162,7 @@ public:
 
 	bool ParseTarget(const wchar_t *target, bool allow_null);
 	ID3D11Resource *GetResource(
+			ID3D11Device *mOrigDevice,
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11View **view,
 			UINT *stride,
