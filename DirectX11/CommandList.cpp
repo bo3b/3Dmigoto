@@ -951,16 +951,50 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
 }
 
+static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
+		UINT offset, DXGI_FORMAT format, D3D11_BIND_FLAG bind_flags)
+{
+	// If we are copying a vertex buffer into a shader resource we need to
+	// convert it into a structured buffer, which requires a flag set when
+	// creating the new resource as well as changes in the view.
+	//
+	// This function tries to detect this situation without explicitly
+	// checking that the source was a vertex buffer - that way, similar
+	// situations should work as well, such as when using an intermediate
+	// resource.
+
+	// If we are copying from a resource that had a view we will use it's
+	// description to work out what we need to do (or we will, once I write
+	// that code)
+	if (view)
+		return false;
+
+	// If we know the format there's no need to be structured
+	if (format != DXGI_FORMAT_UNKNOWN)
+		return false;
+
+	// We need to know the stride to be structured:
+	if (stride == 0)
+		return false;
+
+	// Structured buffers only make sense for certain views:
+	return !!(bind_flags & (D3D11_BIND_SHADER_RESOURCE |
+			D3D11_BIND_RENDER_TARGET |
+			D3D11_BIND_DEPTH_STENCIL |
+			D3D11_BIND_UNORDERED_ACCESS));
+}
+
 static ID3D11Buffer *RecreateCompatibleBuffer(
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
+		ID3D11View *src_view,
 		D3D11_BIND_FLAG bind_flags,
 		ID3D11Device *device,
 		UINT stride,
 		UINT offset,
+		DXGI_FORMAT format,
 		UINT *buf_src_size,
-		UINT *buf_dst_size,
-		bool coerce_structured)
+		UINT *buf_dst_size)
 {
 	HRESULT hr;
 	D3D11_BUFFER_DESC old_desc;
@@ -999,7 +1033,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 			*buf_dst_size = dst_size;
 			new_desc.ByteWidth = dst_size;
 		}
-	} else if (coerce_structured) {
+	} else if (IsCoersionToStructuredBufferRequired(src_view, stride, offset, format, bind_flags)) {
 		new_desc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 		new_desc.StructureByteStride = stride;
 
@@ -1016,6 +1050,12 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 			*buf_dst_size = dst_size;
 			new_desc.ByteWidth = dst_size;
 		}
+	} else if (!src_view && offset) {
+		// No source view but we do have an offset - use the region
+		// copy to knock out the offset. We can probably assume the
+		// original resource met all the size and alignment
+		// constraints, so we shouldn't need to resize it.
+		*buf_dst_size = new_desc.ByteWidth;
 	}
 
 	if (dst_resource) {
@@ -1164,14 +1204,13 @@ static void RecreateCompatibleResource(
 		bool resolve_msaa,
 		UINT stride,
 		UINT offset,
+		DXGI_FORMAT format,
 		UINT *buf_src_size,
-		UINT *buf_dst_size,
-		bool coerce_structured)
+		UINT *buf_dst_size)
 {
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
 	D3D11_BIND_FLAG bind_flags = dst->BindFlags();
-	DXGI_FORMAT format = GetViewFormat(src->type, src_view);
 	ID3D11Resource *res = NULL;
 
 	src_resource->GetType(&src_dimension);
@@ -1191,8 +1230,8 @@ static void RecreateCompatibleResource(
 
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, bind_flags,
-					device, stride, offset, buf_src_size, buf_dst_size, coerce_structured);
+			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
+					bind_flags, device, stride, offset, format, buf_src_size, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -1220,10 +1259,9 @@ static void RecreateCompatibleResource(
 }
 
 template <typename DescType>
-static void FillOutStructuredBufferDescCommon(DescType *desc, UINT stride,
+static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 		UINT offset, UINT buf_src_size)
 {
-	desc->Format = DXGI_FORMAT_UNKNOWN;
 	// The documentation on the buffer part of the description is
 	// misleading.
 	//
@@ -1247,26 +1285,26 @@ static void FillOutStructuredBufferDescCommon(DescType *desc, UINT stride,
 	desc->Buffer.NumElements = (buf_src_size - offset) / stride;
 }
 
-static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutStructuredBufferDesc(
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(
 		D3D11_SHADER_RESOURCE_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size)
 {
 	// TODO: Also handle BUFFEREX for raw buffers
 	desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 
-	FillOutStructuredBufferDescCommon<D3D11_SHADER_RESOURCE_VIEW_DESC>(desc, stride, offset, buf_src_size);
+	FillOutBufferDescCommon<D3D11_SHADER_RESOURCE_VIEW_DESC>(desc, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_RENDER_TARGET_VIEW_DESC* FillOutStructuredBufferDesc(
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutBufferDesc(
 		D3D11_RENDER_TARGET_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size)
 {
 	desc->ViewDimension = D3D11_RTV_DIMENSION_BUFFER;
 
-	FillOutStructuredBufferDescCommon<D3D11_RENDER_TARGET_VIEW_DESC>(desc, stride, offset, buf_src_size);
+	FillOutBufferDescCommon<D3D11_RENDER_TARGET_VIEW_DESC>(desc, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutStructuredBufferDesc(
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(
 		D3D11_UNORDERED_ACCESS_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size)
 {
@@ -1274,10 +1312,10 @@ static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutStructuredBufferDesc(
 	// TODO Support buffer UAV flags for append, counter and raw buffers.
 	desc->Buffer.Flags = 0;
 
-	FillOutStructuredBufferDescCommon<D3D11_UNORDERED_ACCESS_VIEW_DESC>(desc, stride, offset, buf_src_size);
+	FillOutBufferDescCommon<D3D11_UNORDERED_ACCESS_VIEW_DESC>(desc, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutStructuredBufferDesc(
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(
 		D3D11_DEPTH_STENCIL_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size)
 {
@@ -1297,8 +1335,8 @@ static ID3D11View* _CreateCompatibleView(
 		ID3D11Device *device,
 		UINT stride,
 		UINT offset,
-		UINT buf_src_size,
-		bool coerce_structured)
+		DXGI_FORMAT format,
+		UINT buf_src_size)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
 	ViewType *view = NULL;
@@ -1311,8 +1349,9 @@ static ID3D11View* _CreateCompatibleView(
 		// description as DirectX doesn't have enough information from the
 		// buffer alone to create a view.
 
-		if (coerce_structured)
-			pDesc = FillOutStructuredBufferDesc(&desc, stride, offset, buf_src_size);
+		desc.Format = format;
+
+		pDesc = FillOutBufferDesc(&desc, stride, offset, buf_src_size);
 
 		// There are a lot of different things we could do with buffer
 		// resources, and for now this only covers the structured buffer case.
@@ -1335,30 +1374,30 @@ static ID3D11View* CreateCompatibleView(
 		ID3D11Device *device,
 		UINT stride,
 		UINT offset,
-		UINT buf_src_size,
-		bool coerce_structured)
+		DXGI_FORMAT format,
+		UINT buf_src_size)
 {
 	switch (dst->type) {
 		case ResourceCopyTargetType::SHADER_RESOURCE:
 			return _CreateCompatibleView<ID3D11ShaderResourceView,
 			       D3D11_SHADER_RESOURCE_VIEW_DESC,
 			       &ID3D11Device::CreateShaderResourceView>
-				       (resource, device, stride, offset, buf_src_size, coerce_structured);
+				       (resource, device, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::RENDER_TARGET:
 			return _CreateCompatibleView<ID3D11RenderTargetView,
 			       D3D11_RENDER_TARGET_VIEW_DESC,
 			       &ID3D11Device::CreateRenderTargetView>
-				       (resource, device, stride, offset, buf_src_size, coerce_structured);
+				       (resource, device, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
 			return _CreateCompatibleView<ID3D11DepthStencilView,
 			       D3D11_DEPTH_STENCIL_VIEW_DESC,
 			       &ID3D11Device::CreateDepthStencilView>
-				       (resource, device, stride, offset, buf_src_size, coerce_structured);
+				       (resource, device, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 			return _CreateCompatibleView<ID3D11UnorderedAccessView,
 			       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 			       &ID3D11Device::CreateUnorderedAccessView>
-				       (resource, device, stride, offset, buf_src_size, coerce_structured);
+				       (resource, device, stride, offset, format, buf_src_size);
 	}
 	return NULL;
 }
@@ -1415,7 +1454,7 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
 		ID3D11DeviceContext *mOrigContext, UINT stride, UINT *offset,
-		UINT buf_src_size, UINT buf_dst_size, bool coerce_structured)
+		UINT buf_src_size, UINT buf_dst_size)
 {
 	// We are copying a buffer for use in a constant buffer and the size of
 	// the original buffer did not meet the constraints of a constant
@@ -1428,7 +1467,7 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	src_box.left = *offset;
 	src_box.right = min(buf_src_size, *offset + buf_dst_size);
 
-	if (coerce_structured) {
+	if (stride) {
 		// If we are copying to a structured resource, the source box
 		// must be a multiple of the stride, so round it down:
 		src_box.right = (src_box.right - src_box.left) / stride * stride + src_box.left;
@@ -1446,37 +1485,96 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	*offset = 0;
 }
 
-static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
-		UINT offset, DXGI_FORMAT format, D3D11_BIND_FLAG bind_flags)
+// Is there already a utility function that does this?
+static UINT dxgi_format_size(DXGI_FORMAT format)
 {
-	// If we are copying a vertex buffer into a shader resource we need to
-	// convert it into a structured buffer, which requires a flag set when
-	// creating the new resource as well as changes in the view.
-	//
-	// This function tries to detect this situation without explicitly
-	// checking that the source was a vertex buffer - that way, similar
-	// situations should work as well, such as when using an intermediate
-	// resource.
-
-	// If we are copying from a resource that had a view we will use it's
-	// description to work out what we need to do (or we will, once I write
-	// that code)
-	if (view)
-		return false;
-
-	// If we know the format there's no need to be structured
-	if (format != DXGI_FORMAT_UNKNOWN)
-		return false;
-
-	// We need to know the stride to be structured:
-	if (stride == 0)
-		return false;
-
-	// Structured buffers only make sense for certain views:
-	return !!(bind_flags & (D3D11_BIND_SHADER_RESOURCE |
-			D3D11_BIND_RENDER_TARGET |
-			D3D11_BIND_DEPTH_STENCIL |
-			D3D11_BIND_UNORDERED_ACCESS));
+	switch (format) {
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return 16;
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return 12;
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R32G32_TYPELESS:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return 8;
+		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+		case DXGI_FORMAT_R16G16_TYPELESS:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return 4;
+		case DXGI_FORMAT_R8G8_TYPELESS:
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+			return 2;
+		case DXGI_FORMAT_R8_TYPELESS:
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_A8_UNORM:
+			return 1;
+		default:
+			return 0;
+	}
 }
 
 void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
@@ -1493,7 +1591,6 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	bool resolve_msaa = !!(options & ResourceCopyOptions::RESOLVE_MSAA);
 	UINT buf_src_size = 0, buf_dst_size = 0;
-	bool coerce_structured = false;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
@@ -1532,13 +1629,16 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		}
 	}
 
-	if (options & ResourceCopyOptions::COPY) {
-		coerce_structured = IsCoersionToStructuredBufferRequired(src_view, stride, offset, format, dst.BindFlags());
+	if (format == DXGI_FORMAT_UNKNOWN)
+		format = GetViewFormat(src.type, src_view);
+	if (!stride)
+		stride = dxgi_format_size(format);
 
+	if (options & ResourceCopyOptions::COPY) {
 		RecreateCompatibleResource(&src, &dst, src_resource,
 			pp_cached_resource, src_view, pp_cached_view,
-			mOrigDevice, resolve_msaa, stride, offset,
-			&buf_src_size, &buf_dst_size, coerce_structured);
+			mOrigDevice, resolve_msaa, stride, offset, format,
+			&buf_src_size, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");
@@ -1552,7 +1652,7 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		} else if (buf_dst_size) {
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					mOrigContext, stride, &offset,
-					buf_src_size, buf_dst_size, coerce_structured);
+					buf_src_size, buf_dst_size);
 		} else {
 			mOrigContext->CopyResource(dst_resource, src_resource);
 		}
@@ -1570,7 +1670,8 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	}
 
 	if (!dst_view) {
-		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice, stride, offset, buf_src_size, coerce_structured);
+		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice,
+				stride, offset, format, buf_src_size);
 		// Not checking for NULL return as view's are not applicable to
 		// all types. TODO: Check for legitimate failures.
 		*pp_cached_view = dst_view;
