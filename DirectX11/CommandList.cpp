@@ -6,12 +6,25 @@
 
 CustomResources customResources;
 
+void _RunCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice,
+		ID3D11DeviceContext *mOrigContext,
+		CommandList *command_list,
+		CommandListState *state)
+{
+	CommandList::iterator i;
+
+	for (i = command_list->begin(); i < command_list->end(); i++) {
+		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state);
+	}
+}
+
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		UINT VertexCount, UINT IndexCount, UINT InstanceCount)
+		UINT VertexCount, UINT IndexCount, UINT InstanceCount, bool post)
 {
-	CommandList::iterator i;
 	CommandListState state;
 	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
 	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
@@ -20,16 +33,149 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	state.VertexCount = VertexCount;
 	state.IndexCount = IndexCount;
 	state.InstanceCount = InstanceCount;
+	state.post = post;
 
-	for (i = command_list->begin(); i < command_list->end(); i++) {
-		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &state);
-	}
+	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, command_list, &state);
 
 	if (state.update_params) {
 		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
 	}
+}
+
+bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	int ret, len1;
+	GeneralCommandListCommand *operation = new GeneralCommandListCommand();
+
+	if (!wcscmp(key, L"checktextureoverride")) {
+		// Parse value as "<shader type>s-t<testure slot>", consistent
+		// with texture filtering and resource copying
+		ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &operation->shader_type, 1, &operation->texture_slot, &len1);
+		if (ret == 2 && len1 == val->length() &&
+				operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+			switch(operation->shader_type) {
+				case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+					goto success;
+				default:
+					goto bail;
+			}
+		}
+	}
+
+
+bail:
+	delete operation;
+	return false;
+
+success:
+	if (explicit_command_list) {
+		// User explicitly specified "pre" or "post", so only add the
+		// command to that list
+		explicit_command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
+	} else {
+		// User did not specify which command list to add it to, so
+		// default to something sensible. For checktextureoverride
+		// directives, it makes the most sense to add it to both so
+		// that pre and post directives in the texture override will
+		// work as expected.
+		//
+		// Using a std::shared_ptr here to handle adding the same
+		// pointer to two lists and have it garbage collected only once
+		// both are destroyed:
+		std::shared_ptr<CommandListCommand> p(operation);
+		pre_command_list->push_back(p);
+		if (post_command_list)
+			post_command_list->push_back(p);
+	}
+	return true;
+}
+
+static TextureOverride* FindTextureOverrideBySlot(HackerContext
+		*mHackerContext, ID3D11DeviceContext *mOrigContext,
+		wchar_t shader_type, unsigned texture_slot)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+	ID3D11ShaderResourceView *view;
+	ID3D11Resource *resource = NULL;
+	TextureOverrideMap::iterator i;
+	TextureOverride *ret = NULL;
+	uint32_t hash = 0;
+
+	switch (shader_type) {
+		case L'v':
+			mOrigContext->VSGetShaderResources(texture_slot, 1, &view);
+			break;
+		case L'h':
+			mOrigContext->HSGetShaderResources(texture_slot, 1, &view);
+			break;
+		case L'd':
+			mOrigContext->DSGetShaderResources(texture_slot, 1, &view);
+			break;
+		case L'g':
+			mOrigContext->GSGetShaderResources(texture_slot, 1, &view);
+			break;
+		case L'p':
+			mOrigContext->PSGetShaderResources(texture_slot, 1, &view);
+			break;
+		case L'c':
+			mOrigContext->CSGetShaderResources(texture_slot, 1, &view);
+			break;
+		default:
+			// Should not happen
+			return NULL;
+	}
+	if (!view)
+		return NULL;
+
+	view->GetResource(&resource);
+	if (!resource)
+		goto out_release_view;
+
+	view->GetDesc(&desc);
+
+	switch (desc.ViewDimension) {
+		case D3D11_SRV_DIMENSION_TEXTURE2D:
+		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
+		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
+			hash = mHackerContext->GetTexture2DHash((ID3D11Texture2D *)resource, false, NULL);
+			break;
+		case D3D11_SRV_DIMENSION_TEXTURE3D:
+			hash = mHackerContext->GetTexture3DHash((ID3D11Texture3D *)resource, false, NULL);
+			break;
+	}
+	if (!hash)
+		goto out_release_resource;
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		goto out_release_resource;
+
+	ret = &i->second;
+
+out_release_resource:
+	resource->Release();
+out_release_view:
+	view->Release();
+	return ret;
+}
+
+void GeneralCommandListCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	TextureOverride *override = FindTextureOverrideBySlot(mHackerContext,
+			mOrigContext, shader_type, texture_slot);
+	if (!override)
+		return;
+
+	if (state->post)
+		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->post_command_list, state);
+	else
+		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->command_list, state);
 }
 
 
@@ -72,70 +218,12 @@ out_release_view:
 static float ProcessParamTextureFilter(HackerContext *mHackerContext,
 		ID3D11DeviceContext *mOrigContext, ParamOverride *override)
 {
-	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
-	ID3D11ShaderResourceView *view;
-	ID3D11Resource *resource = NULL;
-	TextureOverrideMap::iterator i;
-	uint32_t hash = 0;
-	float filter_index = 0;
+	TextureOverride *tex = FindTextureOverrideBySlot(mHackerContext,
+			mOrigContext, override->shader_type, override->texture_slot);
+	if (!tex)
+		return 0;
 
-	switch (override->shader_type) {
-		case L'v':
-			mOrigContext->VSGetShaderResources(override->texture_slot, 1, &view);
-			break;
-		case L'h':
-			mOrigContext->HSGetShaderResources(override->texture_slot, 1, &view);
-			break;
-		case L'd':
-			mOrigContext->DSGetShaderResources(override->texture_slot, 1, &view);
-			break;
-		case L'g':
-			mOrigContext->GSGetShaderResources(override->texture_slot, 1, &view);
-			break;
-		case L'p':
-			mOrigContext->PSGetShaderResources(override->texture_slot, 1, &view);
-			break;
-		case L'c':
-			mOrigContext->CSGetShaderResources(override->texture_slot, 1, &view);
-			break;
-		default:
-			// Should not happen
-			return filter_index;
-	}
-	if (!view)
-		return filter_index;
-
-
-	view->GetResource(&resource);
-	if (!resource)
-		goto out_release_view;
-
-	view->GetDesc(&desc);
-
-	switch (desc.ViewDimension) {
-		case D3D11_SRV_DIMENSION_TEXTURE2D:
-		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-			hash = mHackerContext->GetTexture2DHash((ID3D11Texture2D *)resource, false, NULL);
-			break;
-		case D3D11_SRV_DIMENSION_TEXTURE3D:
-			hash = mHackerContext->GetTexture3DHash((ID3D11Texture3D *)resource, false, NULL);
-			break;
-	}
-	if (!hash)
-		goto out_release_resource;
-
-	i = G->mTextureOverrideMap.find(hash);
-	if (i == G->mTextureOverrideMap.end())
-		goto out_release_resource;
-
-	filter_index = i->second.filter_index;
-
-out_release_resource:
-	resource->Release();
-out_release_view:
-	view->Release();
-	return filter_index;
+	return tex->filter_index;
 }
 
 void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
@@ -254,7 +342,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		goto bail;
 
 success:
-	command_list->push_back(std::unique_ptr<CommandListCommand>(param));
+	command_list->push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
 bail:
 	delete param;
@@ -516,7 +604,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
 			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
 	}
 
-	command_list->push_back(std::unique_ptr<CommandListCommand>(operation));
+	command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
 	return true;
 bail:
 	delete operation;

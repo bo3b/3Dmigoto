@@ -17,6 +17,7 @@ struct CommandListState {
 	// ini params:
 	float rt_width, rt_height;
 	UINT VertexCount, IndexCount, InstanceCount;
+	bool post;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -24,6 +25,10 @@ struct CommandListState {
 	CommandListState() :
 		rt_width(-1),
 		rt_height(-1),
+		VertexCount(0),
+		IndexCount(0),
+		InstanceCount(0),
+		post(false),
 		update_params(false)
 	{}
 };
@@ -35,9 +40,23 @@ public:
 	virtual void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) = 0;
 };
 
-// Using vector of pointers to allow mixed types, and unique_ptr to handle
+// Using vector of pointers to allow mixed types, and shared_ptr to handle
 // destruction of each object:
-typedef std::vector<std::unique_ptr<CommandListCommand>> CommandList;
+typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
+
+class GeneralCommandListCommand : public CommandListCommand {
+public:
+	// For processing command lists in TextureOverride sections:
+	wchar_t shader_type;
+	unsigned texture_slot;
+
+	GeneralCommandListCommand() :
+		shader_type(NULL),
+		texture_slot(INT_MAX)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
 
 enum class ParamOverrideType {
 	INVALID,
@@ -253,8 +272,12 @@ public:
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		UINT VertexCount, UINT IndexCount, UINT InstanceCount);
+		UINT VertexCount, UINT IndexCount, UINT InstanceCount,
+		bool post);
 
+bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list, CommandList *post_command_list);
 bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		CommandList *command_list);
 bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,

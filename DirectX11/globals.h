@@ -15,7 +15,7 @@
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
-typedef std::vector<std::unique_ptr<CommandListCommand>> CommandList;
+typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
 
 // Defines the maximum number of four component ini params we support.
@@ -202,6 +202,9 @@ struct TextureOverride {
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
+
+	CommandList command_list;
+	CommandList post_command_list;
 
 	TextureOverride() :
 		stereoMode(-1),

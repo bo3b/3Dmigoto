@@ -239,7 +239,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 	IniSection::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
-	CommandList *command_list;
+	CommandList *command_list, *explicit_command_list = NULL;
 	int i;
 
 	GetIniSection(section, id, iniFile);
@@ -267,8 +267,15 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 			if (!key->compare(0, 5, L"post ")) {
 				key_ptr += 5;
 				command_list = post_command_list;
+				explicit_command_list = post_command_list;
+			} else if (!key->compare(0, 4, L"pre ")) {
+				key_ptr += 4;
+				explicit_command_list = pre_command_list;
 			}
 		}
+
+		if (ParseCommandListGeneralCommands(key_ptr, val, explicit_command_list, pre_command_list, post_command_list))
+			goto log_continue;
 
 		if (ParseCommandListIniParamOverride(key_ptr, val, command_list))
 			goto log_continue;
@@ -409,7 +416,20 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 
 
 
-static void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
+// List of keys in [TextureOverride] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *TextureOverrideIniKeys[] = {
+	L"hash",
+	L"stereomode",
+	L"format",
+	L"iteration",
+	L"analyse_options",
+	L"filter_index",
+	L"expand_region_copy",
+	L"deny_cpu_read",
+	NULL
+};
+static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
@@ -488,6 +508,8 @@ static void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
 
 		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
 		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
+
+		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
