@@ -22,7 +22,7 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	state.InstanceCount = InstanceCount;
 
 	for (i = command_list->begin(); i < command_list->end(); i++) {
-		(*i)->run(mHackerContext, mOrigDevice, mOrigContext, &state);
+		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &state);
 	}
 
 	if (state.update_params) {
@@ -138,8 +138,9 @@ out_release_view:
 	return filter_index;
 }
 
-void ParamOverride::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
-		ID3D11DeviceContext *mOrigContext, CommandListState *state)
+void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);
 
@@ -1110,7 +1111,8 @@ static ResourceType* RecreateCompatibleTexture(
 		D3D11_BIND_FLAG bind_flags,
 		DXGI_FORMAT format,
 		ID3D11Device *device,
-		bool resolve_msaa)
+		StereoHandle mStereoHandle,
+		ResourceCopyOptions options)
 {
 	HRESULT hr;
 	DescType old_desc;
@@ -1132,7 +1134,11 @@ static ResourceType* RecreateCompatibleTexture(
 	new_desc.Format = EnsureNotTypeless(new_desc.Format);
 #endif
 
-	if (resolve_msaa)
+	if (options & ResourceCopyOptions::STEREO2MONO)
+		new_desc.Width *= 2;
+
+	// TODO: reverse_blit might need to imply resolve_msaa:
+	if (options & ResourceCopyOptions::RESOLVE_MSAA)
 		Texture2DDescResolveMSAA(&new_desc);
 
 	// XXX: Any changes needed in new_desc.MiscFlags?
@@ -1194,24 +1200,28 @@ static DXGI_FORMAT GetViewFormat(ResourceCopyTargetType type, ID3D11View *view)
 }
 
 static void RecreateCompatibleResource(
-		ResourceCopyTarget *src,
 		ResourceCopyTarget *dst,
 		ID3D11Resource *src_resource,
 		ID3D11Resource **dst_resource,
 		ID3D11View *src_view,
 		ID3D11View **dst_view,
 		ID3D11Device *device,
-		bool resolve_msaa,
+		StereoHandle mStereoHandle,
+		ResourceCopyOptions options,
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
 		UINT *buf_src_size,
 		UINT *buf_dst_size)
 {
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
-	D3D11_BIND_FLAG bind_flags = dst->BindFlags();
+	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
 	ID3D11Resource *res = NULL;
+
+	if (dst)
+		bind_flags = dst->BindFlags();
 
 	src_resource->GetType(&src_dimension);
 	if (*dst_resource) {
@@ -1220,11 +1230,29 @@ static void RecreateCompatibleResource(
 			LogInfo("RecreateCompatibleResource: Resource type changed\n");
 
 			(*dst_resource)->Release();
-			if (*dst_view)
+			if (dst_view && *dst_view)
 				(*dst_view)->Release();
 
 			*dst_resource = NULL;
-			*dst_view = NULL;
+			if (dst_view)
+				*dst_view = NULL;
+		}
+	}
+
+	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
+		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+
+		// STEREO2MONO will force the final destination to mono since
+		// it is in the CREATEMODE_MASK, but is not STEREO. It also
+		// creates an additional intermediate resource that will be
+		// forced to STEREO.
+
+		if (options & ResourceCopyOptions::STEREO) {
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+		} else {
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
 	}
 
@@ -1235,26 +1263,33 @@ static void RecreateCompatibleResource(
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format, device, false);
+				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format,
+				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format, device, resolve_msaa);
+				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format,
+				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format, device, false);
+				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format,
+				 device, mStereoHandle, options);
 			break;
 	}
+
+	if (options & ResourceCopyOptions::CREATEMODE_MASK)
+		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	if (res) {
 		if (*dst_resource)
 			(*dst_resource)->Release();
-		if (*dst_view)
+		if (dst_view && *dst_view)
 			(*dst_view)->Release();
 
 		*dst_resource = res;
-		*dst_view = NULL;
+		if (dst_view)
+			*dst_view = NULL;
 	}
 }
 
@@ -1405,7 +1440,8 @@ static ID3D11View* CreateCompatibleView(
 ResourceCopyOperation::ResourceCopyOperation() :
 	options(ResourceCopyOptions::INVALID),
 	cached_resource(NULL),
-	cached_view(NULL)
+	cached_view(NULL),
+	stereo2mono_intermediate(NULL)
 {}
 
 ResourceCopyOperation::~ResourceCopyOperation()
@@ -1450,6 +1486,67 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 			mOrigContext->ResolveSubresource(dst, index, src, index, fmt);
 		}
 	}
+}
+
+static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
+		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext)
+{
+	NvAPI_Status nvret;
+	D3D11_RESOURCE_DIMENSION src_dimension;
+	ID3D11Texture2D *src;
+	D3D11_TEXTURE2D_DESC srcDesc;
+	UINT item, level, index, width, height;
+	D3D11_BOX srcBox;
+	int fallbackside, fallback = 0;
+
+	src_resource->GetType(&src_dimension);
+	if (src_dimension != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
+		// TODO: I think it should be possible to do this with all
+		// resource types (possibly including buffers from the
+		// discovery of the stereo parameters in the cb12 slot), but I
+		// need to test it and make sure it works first
+		LogInfo("Resource copy: Reverse stereo blit not supported on resource type %d\n", src_dimension);
+		return;
+	}
+
+	src = (ID3D11Texture2D*)src_resource;
+	src->GetDesc(&srcDesc);
+
+	// TODO: Resolve MSAA
+	// TODO: Use intermediate resource if copying from a texture with depth buffer bind flags
+
+	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
+	if (nvret != NVAPI_OK) {
+		LogInfo("Resource copying failed to enable reverse stereo blit\n");
+		// Fallback path: Copy 2D resource to both sides of the 2x
+		// width destination (TESTME)
+		fallback = 1;
+	}
+
+	for (fallbackside = 0; fallbackside < 1 + fallback; fallbackside++) {
+
+		// Set the source box as per the nvapi documentation:
+		srcBox.left = 0;
+		srcBox.top = 0;
+		srcBox.front = 0;
+		srcBox.right = width = srcDesc.Width;
+		srcBox.bottom = height = srcDesc.Height;
+		srcBox.back = 1;
+
+		// Perform the reverse stereo blit on all sub-resources and mip-maps:
+		for (item = 0; item < srcDesc.ArraySize; item++) {
+			for (level = 0; level < srcDesc.MipLevels; level++) {
+				index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
+				srcBox.right = width >> level;
+				srcBox.bottom = height >> level;
+				mOrigContext->CopySubresourceRegion(dst_resource, index,
+						fallbackside * srcBox.right, 0, 0,
+						src, index, &srcBox);
+			}
+		}
+	}
+
+	NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, false);
 }
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
@@ -1577,8 +1674,9 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 	}
 }
 
-void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOrigDevice,
-		ID3D11DeviceContext *mOrigContext, CommandListState *state)
+void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
 {
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
@@ -1589,7 +1687,6 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	UINT stride = 0;
 	UINT offset = 0;
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-	bool resolve_msaa = !!(options & ResourceCopyOptions::RESOLVE_MSAA);
 	UINT buf_src_size = 0, buf_dst_size = 0;
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
@@ -1634,10 +1731,11 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 	if (!stride)
 		stride = dxgi_format_size(format);
 
-	if (options & ResourceCopyOptions::COPY) {
-		RecreateCompatibleResource(&src, &dst, src_resource,
+	if (options & ResourceCopyOptions::COPY_MASK) {
+		RecreateCompatibleResource(&dst, src_resource,
 			pp_cached_resource, src_view, pp_cached_view,
-			mOrigDevice, resolve_msaa, stride, offset, format,
+			mOrigDevice, mHackerDevice->mStereoHandle,
+			options, stride, offset, format,
 			&buf_src_size, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
@@ -1647,7 +1745,33 @@ void ResourceCopyOperation::run(HackerContext *mHackerContext, ID3D11Device *mOr
 		dst_resource = *pp_cached_resource;
 		dst_view = *pp_cached_view;
 
-		if (resolve_msaa) {
+		if (options & ResourceCopyOptions::STEREO2MONO) {
+
+			// TODO: Resolve MSAA to an intermediate resource first
+			// if necessary (but keep in mind this may have
+			// compatibility issues without a fallback path)
+
+			// The reverse stereo blit seems to only work if the
+			// destination resource is stereo. This is a bit
+			// bizzare since the whole point of it is to create a
+			// double width mono resource, but there you go.
+			// We use a second intermediate resource that is forced
+			// to stereo and the final destination is forced to
+			// mono - once we have done the reverse blit we use an
+			// ordinary copy to the final mono resource.
+
+			RecreateCompatibleResource(NULL, src_resource,
+				&stereo2mono_intermediate, NULL, NULL,
+				mOrigDevice, mHackerDevice->mStereoHandle,
+				(ResourceCopyOptions)(options | ResourceCopyOptions::STEREO),
+				stride, offset, format, NULL, NULL);
+
+			ReverseStereoBlit(stereo2mono_intermediate, src_resource,
+					mHackerDevice->mStereoHandle, mOrigContext);
+
+			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
+
+		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
 		} else if (buf_dst_size) {
 			SpecialCopyBufferRegion(dst_resource, src_resource,

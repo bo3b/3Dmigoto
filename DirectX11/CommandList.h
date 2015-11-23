@@ -32,7 +32,7 @@ class CommandListCommand {
 public:
 	virtual ~CommandListCommand() {};
 
-	virtual void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) = 0;
+	virtual void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) = 0;
 };
 
 // Using vector of pointers to allow mixed types, and unique_ptr to handle
@@ -101,7 +101,7 @@ public:
 		texture_slot(INT_MAX)
 	{}
 
-	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
 class CustomResource
@@ -184,9 +184,15 @@ enum class ResourceCopyOptions {
 	INVALID         = 0,
 	COPY            = 0x00000001,
 	REFERENCE       = 0x00000002,
-	COPY_TYPE_MASK  = 0x00000003,
 	UNLESS_NULL     = 0x00000004,
 	RESOLVE_MSAA    = 0x00000008,
+	STEREO          = 0x00000010,
+	MONO            = 0x00000020,
+	STEREO2MONO     = 0x00000040,
+
+	COPY_MASK       = 0x00000049, // Anything that implies a copy
+	COPY_TYPE_MASK  = 0x0000004b, // Anything that implies a copy or a reference
+	CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
 static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
@@ -194,6 +200,9 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"ref", ResourceCopyOptions::REFERENCE},
 	{L"reference", ResourceCopyOptions::REFERENCE},
 	{L"unless_null", ResourceCopyOptions::UNLESS_NULL},
+	{L"stereo", ResourceCopyOptions::STEREO},
+	{L"mono", ResourceCopyOptions::MONO},
+	{L"stereo2mono", ResourceCopyOptions::STEREO2MONO},
 
 	// This one currently depends on device support for resolving the
 	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
@@ -210,14 +219,8 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 // and have real potential to be useful later. For now they are just
 // food for thought:
 //
-// stereo - Set driver heuristic when creating a resource for a copy operation
-// mono - Set driver heuristic when creating a resource for a copy operation
-// reverse_stereo_blit - Use reverse stereo blit to copy both left + right eyes into a single resource
 // res_format= - override DXGI Format when creating a resource
 // view_format= - override DXGI Format when creating a view
-// restore - back up whatever resource was previously assigned and restore it afterwards
-// persist - leave resource assigned after the draw call
-// once_per_frame - only perform this particular operation at most once per frame
 // if_dest_is_null - only perform the operation if the destination is not currently assigned
 // if_dest_is_compatible - only perform the operation if the destination exists, and is compatible with the source
 // if_dest_is_null_or_incompatible - only perform the operation if the destination is not currently assigned, or is incompatible
@@ -235,10 +238,15 @@ public:
 	ID3D11Resource *cached_resource;
 	ID3D11View *cached_view;
 
+	// Additional intermediate resources required for certain operations
+	// (TODO: add alternate cache in CustomResource to cut down on extra
+	// copies when copying to a single resource from many sources)
+	ID3D11Resource *stereo2mono_intermediate;
+
 	ResourceCopyOperation();
 	~ResourceCopyOperation();
 
-	void run(HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
 
