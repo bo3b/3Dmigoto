@@ -109,9 +109,12 @@ float adjust_from_stereo2mono_depth_buffer(float x, float y)
 	// make use of 3DMigoto's stereo2mono feature.
 
 	float asep = abs(separation);
+	float min_depth = IniParams.Load(0).y;
 
-	offset = -convergence * asep;	// Z = X offset from center
-	distance = asep - offset;	// Total distance to cover (asep - starting X offset)
+	offset = (min_depth - convergence) * asep;	// Z = X offset from center
+	if (min_depth) // Avoid divide by 0
+		offset /= min_depth;
+	distance = asep - offset;			// Total distance to cover (asep - starting X offset)
 
 	old_offset = offset;
 	for (i = 0; i < 255; i++) {

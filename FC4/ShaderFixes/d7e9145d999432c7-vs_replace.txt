@@ -192,16 +192,23 @@ void main(
 // Push the scope into the screen.
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
-float scope_depth = IniParams.Load(0).y;
 
-if (scope_depth == -1) {
-	// Use standard stereo correction to align with weapon sight:
-	o0.x += separation * (o0.w - convergence);
-} else {
-	// Adjust based on depth buffer. Since W already has the depth of the
-	// sight (not 1), we need to multiply the adjustment by W:
-	o0.x += adjust_from_stereo2mono_depth_buffer(0,0) * o0.w;
-}
+float scope_adjustment, auto_adjustment;
+
+// Use standard stereo correction to align with weapon sight:
+scope_adjustment = separation * (o0.w - convergence);
+
+// Adjust based on depth buffer. Since W already has the depth of the
+// sight (not 1), we need to multiply the adjustment by W:
+auto_adjustment = adjust_from_stereo2mono_depth_buffer(0,0) * o0.w;
+
+// Auto adjust the scope depth, but prevent it coming closer than the weapon
+// sight (noticeable when hiding in bushes):
+if (abs(auto_adjustment) > abs(scope_adjustment))
+	o0.x += auto_adjustment;
+else
+	o0.x += scope_adjustment;
+
 
   return;
 }
