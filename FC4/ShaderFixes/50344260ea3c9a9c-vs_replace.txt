@@ -240,10 +240,10 @@ if (tex_filter == 3) {
 
 switch (action) {
 case 1:
-	o0.x += adjust_from_depth_buffer(icon_center.x, icon_center.y);
+	o0.x += adjust_from_stereo2mono_depth_buffer(icon_center.x, icon_center.y);
 	break;
 case 2:
-	o0.x += adjust_from_depth_buffer(0,0);
+	o0.x += adjust_from_stereo2mono_depth_buffer(0,0);
 	break;
 default:
 	o0.x += separation * hud_depth;

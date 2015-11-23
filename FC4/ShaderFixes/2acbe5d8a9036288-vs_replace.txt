@@ -128,7 +128,7 @@ float partner = IniParams.Load(int2(2,0)).y;
 
 // if (partner == 2 && params.w == 1) {
 // 	float2 center = calc_pos(find_text_center());
-// 	o0.x += adjust_from_depth_buffer(center.x, center.y);
+// 	o0.x += adjust_from_stereo2mono_depth_buffer(center.x, center.y);
 // } else {
 	o0.x += separation * params.x;
 // }

@@ -200,7 +200,7 @@ if (scope_depth == -1) {
 } else {
 	// Adjust based on depth buffer. Since W already has the depth of the
 	// sight (not 1), we need to multiply the adjustment by W:
-	o0.x += adjust_from_depth_buffer(0,0) * o0.w;
+	o0.x += adjust_from_stereo2mono_depth_buffer(0,0) * o0.w;
 }
 
   return;
