@@ -158,6 +158,14 @@ static void DumpUsage()
 			const char *FOOTER = "></DepthTarget>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
+		for (j = G->mShaderResourceInfo.begin(); j != G->mShaderResourceInfo.end(); j++) {
+			_snprintf_s(buf, 256, 256, "<Register hash=%08lx ", j->first);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			StrRenderTarget(buf, 256, j->second);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			const char *FOOTER = "></Register>\n";
+			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
+		}
 		CloseHandle(f);
 	}
 	else

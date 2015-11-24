@@ -123,6 +123,7 @@ uint32_t HackerContext::GetTexture3DHash(ID3D11Texture3D *texture,
 void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+	struct ResourceInfo resource_info;
 	ID3D11Resource *resource = NULL;
 	uint32_t hash = 0;
 
@@ -140,10 +141,10 @@ void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 		case D3D11_SRV_DIMENSION_TEXTURE2D:
 		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
 		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-			hash = GetTexture2DHash((ID3D11Texture2D *)resource, false, NULL);
+			hash = GetTexture2DHash((ID3D11Texture2D *)resource, false, &resource_info);
 			break;
 		case D3D11_SRV_DIMENSION_TEXTURE3D:
-			hash = GetTexture3DHash((ID3D11Texture3D *)resource, false, NULL);
+			hash = GetTexture3DHash((ID3D11Texture3D *)resource, false, &resource_info);
 			break;
 	}
 
@@ -153,6 +154,7 @@ void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mRenderTargets[resource] = hash;
+			G->mShaderResourceInfo[hash] = resource_info;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2207,24 +2209,6 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 
 	mOrigContext->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 
-	// Resolve resource from resource view.
-	// This is possibly no longer required as we collect stats on draw calls
-	if ((G->hunting == HUNTING_MODE_ENABLED) && ppShaderResourceViews)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		for (UINT i = 0; i < NumViews; ++i)
-		{
-			void *pResource;
-			int pos = StartSlot + i;
-
-			pResource = RecordResourceViewStats(ppShaderResourceViews[i]);
-			if (pResource)
-				G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[pos].insert(pResource);
-
-		}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
-
 	/*
 	// Map nvidia texture slot.
 	if (ppShaderResourceViews && NumViews && ppShaderResourceViews[0])
@@ -2402,24 +2386,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
 	mOrigContext->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
-
-	// Resolve resource from resource view.
-	// This is possibly no longer required as we collect stats on draw calls
-	if ((G->hunting == HUNTING_MODE_ENABLED) && ppShaderResourceViews)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		for (UINT i = 0; i < NumViews; ++i)
-		{
-			void *pResource;
-			int pos = StartSlot + i;
-
-			pResource = RecordResourceViewStats(ppShaderResourceViews[i]);
-			if (pResource)
-				G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[pos].insert(pResource);
-
-		}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
 
 	/*
 	// Map nvidia texture slot.
