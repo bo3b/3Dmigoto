@@ -48,7 +48,7 @@ static int StrRenderTarget(char *buf, size_t size, struct ResourceInfo &info)
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			return StrRenderTarget3D(buf, size, &info.tex3d_desc);
 		default:
-			return _snprintf_s(buf, size, size, "type=%i\n", info.type);
+			return _snprintf_s(buf, size, size, "type=%i", info.type);
 	}
 }
 
@@ -62,6 +62,25 @@ DWORD castStrLen(const char* string)
 	return (DWORD)strlen(string);
 }
 
+static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *tag)
+{
+	std::set<uint32_t>::iterator hash;
+	std::unordered_map<uint32_t, struct ResourceInfo>::iterator info;
+	char buf[256];
+	DWORD written; // Really? A >required< "optional" paramter that we don't care about?
+
+	for (hash = hashes->begin(); hash != hashes->end(); hash++) {
+		info = G->mResourceInfo.find(*hash);
+		if (info == G->mResourceInfo.end())
+			continue;
+		_snprintf_s(buf, 256, 256, "<%s hash=%08lx ", tag, info->first);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+		StrRenderTarget(buf, 256, info->second);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+		_snprintf_s(buf, 256, 256, "></%s>\n", tag);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+	}
+}
 
 // Expects the caller to have entered the critical section.
 static void DumpUsage()
@@ -141,31 +160,9 @@ static void DumpUsage()
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
 		}
-		std::map<uint32_t, struct ResourceInfo>::iterator j;
-		for (j = G->mRenderTargetInfo.begin(); j != G->mRenderTargetInfo.end(); j++) {
-			_snprintf_s(buf, 256, 256, "<RenderTarget hash=%08lx ", j->first);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			StrRenderTarget(buf, 256, j->second);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			const char *FOOTER = "></RenderTarget>\n";
-			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
-		}
-		for (j = G->mDepthTargetInfo.begin(); j != G->mDepthTargetInfo.end(); j++) {
-			_snprintf_s(buf, 256, 256, "<DepthTarget hash=%08lx ", j->first);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			StrRenderTarget(buf, 256, j->second);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			const char *FOOTER = "></DepthTarget>\n";
-			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
-		}
-		for (j = G->mShaderResourceInfo.begin(); j != G->mShaderResourceInfo.end(); j++) {
-			_snprintf_s(buf, 256, 256, "<Register hash=%08lx ", j->first);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			StrRenderTarget(buf, 256, j->second);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			const char *FOOTER = "></Register>\n";
-			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
-		}
+		DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
+		DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
+		DumpUsageResourceInfo(f, &G->mShaderResourceInfo, "Register");
 		CloseHandle(f);
 	}
 	else
@@ -1222,7 +1219,7 @@ static void LogRenderTarget(void *target, char *log_prefix)
 	}
 
 	uint32_t hash = G->mRenderTargets[target];
-	struct ResourceInfo &info = G->mRenderTargetInfo[hash];
+	struct ResourceInfo &info = G->mResourceInfo[hash];
 	StrRenderTarget(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, %s\n",
 		log_prefix, target, hash, buf);

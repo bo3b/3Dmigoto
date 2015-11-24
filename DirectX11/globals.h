@@ -403,9 +403,10 @@ struct Globals
 
 	// Statistics
 	std::unordered_map<void *, uint32_t> mRenderTargets;
-	std::map<uint32_t, struct ResourceInfo> mRenderTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<uint32_t, struct ResourceInfo> mDepthTargetInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<uint32_t, struct ResourceInfo> mShaderResourceInfo;	// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::unordered_map<uint32_t, struct ResourceInfo> mResourceInfo;
+	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<void *> mVisitedRenderTargets;						// std::set is sorted for consistent order while hunting
 	void *mSelectedRenderTarget;
 	int mSelectedRenderTargetPos;

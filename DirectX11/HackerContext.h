@@ -172,10 +172,8 @@ public:
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
 
-	uint32_t GetTexture2DHash(ID3D11Texture2D *texture,
-		bool log_new, struct ResourceInfo *resource_info);
-	uint32_t GetTexture3DHash(ID3D11Texture3D *texture,
-		bool log_new, struct ResourceInfo *resource_info);
+	uint32_t GetTexture2DHash(ID3D11Texture2D *texture);
+	uint32_t GetTexture3DHash(ID3D11Texture3D *texture);
 
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
