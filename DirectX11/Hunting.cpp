@@ -19,8 +19,8 @@ static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture2D Width=%u Height=%u MipLevels=%u "
 		"ArraySize=%u RawFormat=%u Format=\"%s\" SampleDesc.Count=%u "
-		"SampleDesc.Quality=%u Usage=%u BindFlags=%u "
-		"CPUAccessFlags=%u MiscFlags=%u",
+		"SampleDesc.Quality=%u Usage=%u BindFlags=0x%x "
+		"CPUAccessFlags=0x%x MiscFlags=0x%x",
 		desc->Width, desc->Height, desc->MipLevels,
 		desc->ArraySize, desc->Format,
 		TexFormatStr(desc->Format), desc->SampleDesc.Count,
@@ -32,8 +32,8 @@ static int StrRenderTarget3D(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
 {
 
 	return _snprintf_s(buf, size, size, "type=Texture3D Width=%u Height=%u Depth=%u "
-		"MipLevels=%u RawFormat=%u Format=\"%s\" Usage=%u BindFlags=%u "
-		"CPUAccessFlags=%u MiscFlags=%u",
+		"MipLevels=%u RawFormat=%u Format=\"%s\" Usage=%u BindFlags=0x%x "
+		"CPUAccessFlags=0x%x MiscFlags=0x%x",
 		desc->Width, desc->Height, desc->Depth,
 		desc->MipLevels, desc->Format,
 		TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
