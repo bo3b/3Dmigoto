@@ -251,6 +251,40 @@ struct ResolutionInfo
 	{}
 };
 
+struct CopySubresourceRegionContamination
+{
+	bool partial;
+	UINT DstX;
+	UINT DstY;
+	UINT DstZ;
+	D3D11_BOX SrcBox;
+
+	CopySubresourceRegionContamination() :
+		partial(false),
+		DstX(0),
+		DstY(0),
+		DstZ(0),
+		SrcBox({0, 0, 0, UINT_MAX, UINT_MAX, UINT_MAX})
+	{}
+
+	void Update(bool partial, UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
+	{
+		this->partial = this->partial || partial;
+		this->DstX = max(this->DstX, DstX);
+		this->DstY = max(this->DstY, DstY);
+		this->DstZ = max(this->DstZ, DstZ);
+		if (SrcBox) {
+			this->SrcBox.left = max(this->SrcBox.left, SrcBox->left);
+			this->SrcBox.top = max(this->SrcBox.top, SrcBox->top);
+			this->SrcBox.front = max(this->SrcBox.front, SrcBox->front);
+
+			this->SrcBox.right = min(this->SrcBox.right, SrcBox->right);
+			this->SrcBox.bottom = min(this->SrcBox.bottom, SrcBox->bottom);
+			this->SrcBox.back = min(this->SrcBox.back, SrcBox->back);
+		}
+	}
+};
+
 struct ResourceInfo
 {
 	D3D11_RESOURCE_DIMENSION type;
@@ -259,8 +293,17 @@ struct ResourceInfo
 		D3D11_TEXTURE3D_DESC tex3d_desc;
 	};
 
+	bool initial_data_used_in_hash;
+	bool hash_contaminated;
+	bool update_contamination;
+	std::unordered_set<uint32_t> copy_contamination;
+	std::unordered_map<uint32_t, CopySubresourceRegionContamination> region_contamination;
+
 	ResourceInfo() :
-		type(D3D11_RESOURCE_DIMENSION_UNKNOWN)
+		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
+		initial_data_used_in_hash(false),
+		hash_contaminated(false),
+		update_contamination(false)
 	{}
 
 	struct ResourceInfo & operator= (D3D11_TEXTURE2D_DESC desc)
@@ -407,6 +450,7 @@ struct Globals
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<uint32_t> mCopiedResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<void *> mVisitedRenderTargets;						// std::set is sorted for consistent order while hunting
 	void *mSelectedRenderTarget;
 	int mSelectedRenderTargetPos;

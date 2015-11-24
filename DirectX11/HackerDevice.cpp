@@ -1995,7 +1995,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// We also see the handle itself get reused. That suggests that maybe we ought
 	// to be tracking Release operations as well, and removing them from the map.
 
-	uint32_t hash = CalcTexture2DDataHash(pDesc, pInitialData);
+	uint32_t data_hash, hash;
+	hash = data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture2DDescHash(hash, pDesc);
 	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
@@ -2073,6 +2074,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			G->mTexture2D_ID[*ppTexture2D] = hash;
 			if (G->hunting && pDesc)
 				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2110,7 +2112,8 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 
 	// Create hash code from raw texture data and description.
 	// Initial data is optional, so we might have zero data to add to the hash there.
-	uint32_t hash = CalcTexture3DDataHash(pDesc, pInitialData);
+	uint32_t data_hash, hash;
+	hash = data_hash = CalcTexture3DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
@@ -2124,6 +2127,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 			G->mTexture3D_ID[*ppTexture3D] = hash;
 			if (G->hunting && pDesc)
 				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 

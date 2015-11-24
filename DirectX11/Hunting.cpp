@@ -65,21 +65,117 @@ DWORD castStrLen(const char* string)
 static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *tag)
 {
 	std::set<uint32_t>::iterator hash;
-	std::unordered_map<uint32_t, struct ResourceInfo>::iterator info;
+	std::unordered_set<uint32_t>::iterator iCopy;
+	std::unordered_map<uint32_t, CopySubresourceRegionContamination>::iterator iRegion;
+	CopySubresourceRegionContamination *region;
+	uint32_t srcHash;
+	struct ResourceInfo *info;
 	char buf[256];
 	DWORD written; // Really? A >required< "optional" paramter that we don't care about?
+	bool nl;
 
 	for (hash = hashes->begin(); hash != hashes->end(); hash++) {
-		info = G->mResourceInfo.find(*hash);
-		if (info == G->mResourceInfo.end())
+		try {
+			info = &G->mResourceInfo.at(*hash);
+		} catch (std::out_of_range) {
 			continue;
-		_snprintf_s(buf, 256, 256, "<%s hash=%08lx ", tag, info->first);
+		}
+		_snprintf_s(buf, 256, 256, "<%s hash=%08lx ", tag, *hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
-		StrRenderTarget(buf, 256, info->second);
+		StrRenderTarget(buf, 256, *info);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
-		_snprintf_s(buf, 256, 256, "></%s>\n", tag);
+
+		if (info->hash_contaminated) {
+			_snprintf_s(buf, 256, 256, " hash_contaminated=true", tag);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+		}
+
+		WriteFile(f, ">", 1, &written, 0);
+		nl = false;
+
+		if (info->update_contamination) {
+			_snprintf_s(buf, 256, 256, "\n  <UpdateSubresource></UpdateSubresource>", tag);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			nl = true;
+		}
+		for (iCopy = info->copy_contamination.begin(); iCopy != info->copy_contamination.end(); iCopy++) {
+			_snprintf_s(buf, 256, 256, "\n  <CopiedFrom>%08lx</CopiedFrom>", *iCopy);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			nl = true;
+		}
+		for (iRegion = info->region_contamination.begin(); iRegion != info->region_contamination.end(); iRegion++) {
+			srcHash = iRegion->first;
+			region = &iRegion->second;
+			if (region->partial) {
+
+				_snprintf_s(buf, 256, 256, "\n  <RegionCopiedFrom partial=true");
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+
+				if (region->DstX || region->DstY || region->DstZ) {
+					_snprintf_s(buf, 256, 256, " DstX=%u DstY=%u DstZ=%u",
+							region->DstX, region->DstY, region->DstZ);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				}
+
+				if (region->SrcBox.left || region->SrcBox.right != UINT_MAX) {
+					_snprintf_s(buf, 256, 256, " SrcLeft=%u SrcRight=%u",
+						region->SrcBox.left, region->SrcBox.right);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				}
+				if (region->SrcBox.top || region->SrcBox.bottom != UINT_MAX) {
+					_snprintf_s(buf, 256, 256, " SrcTop=%u SrcBottom=%u",
+						region->SrcBox.top, region->SrcBox.bottom);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				}
+				if (region->SrcBox.front || region->SrcBox.back != UINT_MAX) {
+					_snprintf_s(buf, 256, 256, " SrcFront=%u SrcBack=%u",
+						region->SrcBox.front, region->SrcBox.back);
+					WriteFile(f, buf, castStrLen(buf), &written, 0);
+				}
+
+				_snprintf_s(buf, 256, 256, ">%08lx</CopiedFrom>", srcHash);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			} else {
+				_snprintf_s(buf, 256, 256, "\n  <RegionCopiedFrom partial=false>%08lx</CopiedFrom>", srcHash);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+			nl = true;
+		}
+
+		if (nl)
+			WriteFile(f, "\n", castStrLen("\n"), &written, 0);
+
+		_snprintf_s(buf, 256, 256, "</%s>\n", tag);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 	}
+}
+
+static void DumpUsageRegister(HANDLE f, char *tag, int id, void *handle, uint32_t hash)
+{
+	char buf[256];
+	DWORD written;
+
+	sprintf(buf, "  <%s", tag);
+	WriteFile(f, buf, castStrLen(buf), &written, 0);
+
+	if (id != -1) {
+		sprintf(buf, " id=%d", id);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+	}
+
+	sprintf(buf, " handle=%p", handle);
+	WriteFile(f, buf, castStrLen(buf), &written, 0);
+
+	try {
+		if (G->mResourceInfo.at(hash).hash_contaminated) {
+			sprintf(buf, " hash_contaminated=true");
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+		}
+	} catch (std::out_of_range) {
+	}
+
+	sprintf(buf, ">%08lx</%s>\n", hash, tag);
+	WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
 // Expects the caller to have entered the critical section.
@@ -90,6 +186,7 @@ static void DumpUsage()
 	wcsrchr(dir, L'\\')[1] = 0;
 	wcscat(dir, L"ShaderUsage.txt");
 	HANDLE f = CreateFile(dir, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
 	if (f != INVALID_HANDLE_VALUE)
 	{
 		char buf[256];
@@ -111,9 +208,7 @@ static void DumpUsage()
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<void *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					uint32_t id = G->mRenderTargets[*o];
-					sprintf(buf, "  <Register id=%d handle=%p>%08lx</Register>\n", k->first, *o, id);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
+					DumpUsageRegister(f, "Register", k->first, *o, G->mRenderTargets[*o]);
 				}
 			}
 			const char *FOOTER = "</VertexShader>\n";
@@ -136,9 +231,7 @@ static void DumpUsage()
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<void *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					uint32_t id = G->mRenderTargets[*o];
-					sprintf(buf, "  <Register id=%d handle=%p>%08lx</Register>\n", k->first, *o, id);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
+					DumpUsageRegister(f, "Register", k->first, *o, G->mRenderTargets[*o]);
 				}
 			}
 			std::vector<std::set<void *>>::iterator m;
@@ -146,16 +239,12 @@ static void DumpUsage()
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
 				std::set<void *>::const_iterator o;
 				for (o = (*m).begin(); o != (*m).end(); o++) {
-					uint32_t id = G->mRenderTargets[*o];
-					sprintf(buf, "  <RenderTarget id=%d handle=%p>%08lx</RenderTarget>\n", pos, *o, id);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
+					DumpUsageRegister(f, "RenderTarget", pos, *o, G->mRenderTargets[*o]);
 				}
 			}
 			std::set<void *>::iterator n;
 			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				uint32_t id = G->mRenderTargets[*n];
-				sprintf(buf, "  <DepthTarget handle=%p>%08lx</DepthTarget>\n", *n, id);
-				WriteFile(f, buf, castStrLen(buf), &written, 0);
+				DumpUsageRegister(f, "DepthTarget", -1, *n, G->mRenderTargets[*n]);
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
@@ -163,6 +252,7 @@ static void DumpUsage()
 		DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
 		DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
 		DumpUsageResourceInfo(f, &G->mShaderResourceInfo, "Register");
+		DumpUsageResourceInfo(f, &G->mCopiedResourceInfo, "CopySource");
 		CloseHandle(f);
 	}
 	else
