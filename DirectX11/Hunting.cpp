@@ -40,7 +40,7 @@ static int StrRenderTarget3D(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
 		desc->CPUAccessFlags, desc->MiscFlags);
 }
 
-static int StrRenderTarget(char *buf, size_t size, struct ResourceInfo &info)
+static int StrRenderTarget(char *buf, size_t size, struct ResourceHashInfo &info)
 {
 	switch (info.type) {
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
@@ -73,7 +73,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 
 	uint32_t srcHash;
 	UINT SrcIdx, SrcMip, DstIdx, DstMip;
-	struct ResourceInfo *info;
+	struct ResourceHashInfo *info;
 	char buf[256];
 	DWORD written; // Really? A >required< "optional" paramter that we don't care about?
 	bool nl;
@@ -244,7 +244,7 @@ void DumpUsage(wchar_t *dir)
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o, G->mResourceID[*o]);
+					DumpUsageRegister(f, "Register", k->first, *o, G->mResources[*o].hash);
 				}
 			}
 			const char *FOOTER = "</VertexShader>\n";
@@ -267,7 +267,7 @@ void DumpUsage(wchar_t *dir)
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o, G->mResourceID[*o]);
+					DumpUsageRegister(f, "Register", k->first, *o, G->mResources[*o].hash);
 				}
 			}
 			std::vector<std::set<ID3D11Resource *>>::iterator m;
@@ -275,12 +275,12 @@ void DumpUsage(wchar_t *dir)
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
 				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = (*m).begin(); o != (*m).end(); o++) {
-					DumpUsageRegister(f, "RenderTarget", pos, *o, G->mResourceID[*o]);
+					DumpUsageRegister(f, "RenderTarget", pos, *o, G->mResources[*o].hash);
 				}
 			}
 			std::set<ID3D11Resource *>::iterator n;
 			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				DumpUsageRegister(f, "DepthTarget", -1, *n, G->mResourceID[*n]);
+				DumpUsageRegister(f, "DepthTarget", -1, *n, G->mResources[*n].hash);
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
@@ -1367,8 +1367,8 @@ static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 		return;
 	}
 
-	uint32_t hash = G->mResourceID[target];
-	struct ResourceInfo &info = G->mResourceInfo[hash];
+	uint32_t hash = G->mResources[target].hash;
+	struct ResourceHashInfo &info = G->mResourceInfo[hash];
 	StrRenderTarget(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, %s\n",
 		log_prefix, target, hash, buf);

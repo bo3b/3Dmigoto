@@ -306,7 +306,8 @@ template<> struct hash<CopySubresourceRegionContaminationMapKey>
 typedef std::map<CopySubresourceRegionContaminationMapKey, CopySubresourceRegionContamination>
 	CopySubresourceRegionContaminationMap;
 
-struct ResourceInfo
+// Tracks info about resources by their hash. Primarily for stat collection:
+struct ResourceHashInfo
 {
 	D3D11_RESOURCE_DIMENSION type;
 	union {
@@ -321,25 +322,31 @@ struct ResourceInfo
 	std::set<uint32_t> copy_contamination;
 	CopySubresourceRegionContaminationMap region_contamination;
 
-	ResourceInfo() :
+	ResourceHashInfo() :
 		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
 		initial_data_used_in_hash(false),
 		hash_contaminated(false)
 	{}
 
-	struct ResourceInfo & operator= (D3D11_TEXTURE2D_DESC desc)
+	struct ResourceHashInfo & operator= (D3D11_TEXTURE2D_DESC desc)
 	{
 		type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
 		tex2d_desc = desc;
 		return *this;
 	}
 
-	struct ResourceInfo & operator= (D3D11_TEXTURE3D_DESC desc)
+	struct ResourceHashInfo & operator= (D3D11_TEXTURE3D_DESC desc)
 	{
 		type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
 		tex3d_desc = desc;
 		return *this;
 	}
+};
+
+// Tracks info about specific resource instances:
+struct ResourceHandleInfo
+{
+	uint32_t hash;
 };
 
 struct Globals
@@ -465,7 +472,8 @@ struct Globals
 	TextureOverrideMap mTextureOverrideMap;
 
 	// Statistics
-	std::unordered_map<uint32_t, struct ResourceInfo> mResourceInfo;
+	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
+	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
@@ -477,7 +485,6 @@ struct Globals
 	ID3D11Resource *mSelectedRenderTargetSnapshot;
 	std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
 	// Relations
-	std::unordered_map<ID3D11Resource *, uint32_t> mResourceID;
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 

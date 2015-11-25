@@ -2071,10 +2071,11 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (hr == S_OK && ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mResourceID[*ppTexture2D] = hash;
-			if (G->hunting && pDesc)
+			G->mResources[*ppTexture2D].hash = hash;
+			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2124,10 +2125,11 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	if (hr == S_OK && ppTexture3D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mResourceID[*ppTexture3D] = hash;
-			if (G->hunting && pDesc)
+			G->mResources[*ppTexture3D].hash = hash;
+			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2151,8 +2153,8 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		unordered_map<ID3D11Resource *, uint32_t>::iterator i = G->mResourceID.find(pResource);
-		if (i != G->mResourceID.end() && i->second == G->ZBufferHashToInject)
+		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
+		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
 			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second);
 

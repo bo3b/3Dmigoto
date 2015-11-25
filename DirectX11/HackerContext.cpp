@@ -56,11 +56,11 @@ ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 
 
 uint32_t HackerContext::GetResourceHash(ID3D11Resource *resource) {
-	std::unordered_map<ID3D11Resource *, uint32_t>::iterator j;
+	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
 
-	j = G->mResourceID.find(resource);
-	if (j != G->mResourceID.end())
-		return j->second;
+	j = G->mResources.find(resource);
+	if (j != G->mResources.end())
+		return j->second.hash;
 
 	// We can get here for a few legitimate reasons where a resource has
 	// not been hashed. 1D and buffer resources are currently not hashed,
@@ -1209,7 +1209,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	return true;
 }
 
-static bool GetResourceInfoFields(struct ResourceInfo *info, UINT subresource,
+static bool GetResourceInfoFields(struct ResourceHashInfo *info, UINT subresource,
 		UINT *width, UINT *height, UINT *depth,
 		UINT *idx, UINT *mip, UINT *array_size)
 {
@@ -1241,7 +1241,7 @@ void HackerContext::MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstS
 		ID3D11Resource *src, UINT srcSubresource, char type,
 		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
 {
-	struct ResourceInfo *dstInfo, *srcInfo = NULL;
+	struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
 	uint32_t srcHash = 0, dstHash = 0;
 	UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
 	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;

@@ -349,7 +349,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 		wchar_t *reg, char shader_type, int idx, uint32_t hash, ID3D11Resource *handle)
 {
-	struct ResourceInfo *info;
+	struct ResourceHashInfo *info;
 	wchar_t *pos;
 	size_t rem;
 	HRESULT hr;
@@ -461,7 +461,7 @@ void HackerContext::_DumpTextures(char shader_type,
 		resource->GetType(&dim);
 
 		try {
-			hash = G->mResourceID.at((ID3D11Texture2D *)resource);
+			hash = G->mResources.at((ID3D11Texture2D *)resource).hash;
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -616,7 +616,7 @@ void HackerContext::DumpRenderTargets()
 		// stat collection by querying the DeviceContext directly like
 		// we do for all other resources
 		try {
-			hash = G->mResourceID.at(mCurrentRenderTargets[i]);
+			hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -646,7 +646,7 @@ void HackerContext::DumpDepthStencilTargets()
 		// stat collection by querying the DeviceContext directly like
 		// we do for all other resources
 		try {
-			hash = G->mResourceID.at(mCurrentDepthTarget);
+			hash = G->mResources.at(mCurrentDepthTarget).hash;
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -685,7 +685,7 @@ void HackerContext::DumpUAVs(bool compute)
 		}
 
 		try {
-			hash = G->mResourceID.at(resource);
+			hash = G->mResources.at(resource).hash;
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -804,7 +804,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 
 		for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
 			try {
-				hash = G->mResourceID.at(mCurrentRenderTargets[i]);
+				hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
 				textureOverride = &G->mTextureOverrideMap.at(hash);
 				new_options |= textureOverride->analyse_options;
 			} catch (std::out_of_range) {}
@@ -812,7 +812,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 
 		if (mCurrentDepthTarget) {
 			try {
-				hash = G->mResourceID[mCurrentDepthTarget];
+				hash = G->mResources.at(mCurrentDepthTarget).hash;
 				textureOverride = &G->mTextureOverrideMap.at(hash);
 				new_options |= textureOverride->analyse_options;
 			} catch (std::out_of_range) {}
