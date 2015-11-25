@@ -349,6 +349,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 		wchar_t *reg, char shader_type, int idx, uint32_t hash, ID3D11Resource *handle)
 {
+	struct ResourceInfo *info;
 	wchar_t *pos;
 	size_t rem;
 	HRESULT hr;
@@ -368,8 +369,23 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	if (analyse_options & FrameAnalysisOptions::FILENAME_REG)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%06i", G->analyse_frame);
 
-	if (hash)
+	if (hash) {
+		try {
+			info = &G->mResourceInfo.at(hash);
+			if (info->hash_contaminated) {
+				StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=!");
+				if (info->update_contamination)
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"U");
+				if (!info->copy_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"C");
+				if (!info->region_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"S");
+				StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"!");
+			}
+		} catch (std::out_of_range) {}
+
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%08x", hash);
+	}
 	if (analyse_options & FrameAnalysisOptions::FILENAME_HANDLE)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
 
