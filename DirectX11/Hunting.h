@@ -6,3 +6,4 @@
 
 void TimeoutHuntingBuffers();
 void RegisterHuntingKeyBindings(wchar_t *iniFile);
+void DumpUsage(wchar_t *dir);

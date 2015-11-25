@@ -179,13 +179,18 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, void *handle, uint32_
 }
 
 // Expects the caller to have entered the critical section.
-static void DumpUsage()
+void DumpUsage(wchar_t *dir)
 {
-	wchar_t dir[MAX_PATH];
-	GetModuleFileName(0, dir, MAX_PATH);
-	wcsrchr(dir, L'\\')[1] = 0;
-	wcscat(dir, L"ShaderUsage.txt");
-	HANDLE f = CreateFile(dir, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	wchar_t path[MAX_PATH];
+	if (dir) {
+		wcscpy(path, dir);
+		wcscat(path, L"\\");
+	} else {
+		GetModuleFileName(0, path, MAX_PATH);
+		wcsrchr(path, L'\\')[1] = 0;
+	}
+	wcscat(path, L"ShaderUsage.txt");
+	HANDLE f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (f != INVALID_HANDLE_VALUE)
 	{
@@ -1024,13 +1029,36 @@ static void EnableFix(HackerDevice *device, void *private_data)
 
 static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
+	wchar_t path[MAX_PATH], subdir[MAX_PATH];
+	time_t ltime;
+	struct tm tm;
+
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	LogInfo("Turning on analysis for next frame\n");
+	time(&ltime);
+	_localtime64_s(&tm, &ltime);
+	wcsftime(subdir, MAX_PATH, L"FrameAnalysis-%Y-%m-%d-%H%M%S", &tm);
+
+	GetModuleFileName(0, path, MAX_PATH);
+	wcsrchr(path, L'\\')[1] = 0;
+	wcscat_s(path, MAX_PATH, subdir);
+
+	LogInfoW(L"Frame analysis directory: %s\n", path);
+
+	// Bail if the analysis directory already exists or can't be created.
+	// This currently limits us to one / second, but that's probably
+	// enough. We can always increase the granuality if needed.
+	if (!CreateDirectory(path, 0)) {
+		LogInfoW(L"Error creating frame analysis directory: %i\n", GetLastError());
+		return;
+	}
+
+	wcscpy(G->ANALYSIS_PATH, path);
+
 	G->cur_analyse_options = G->def_analyse_options;
 	G->frame_analysis_seen_rts.clear();
-	G->analyse_next_frame = true;
+	G->analyse_frame = 1;
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
@@ -1213,7 +1241,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 		LogInfo("     visited vertex shader hash = %016I64x\n", *i);
 
 	if (G->DumpUsage)
-		DumpUsage();
+		DumpUsage(NULL);
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1239,7 +1267,7 @@ static void MarkShaderEnd(HackerDevice *device, char *type, UINT64 selected)
 	CopyToFixes(selected, device);
 
 	if (G->DumpUsage)
-		DumpUsage();
+		DumpUsage(NULL);
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1327,7 +1355,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 		LogRenderTarget(*i, "       ");
 
 	if (G->DumpUsage)
-		DumpUsage();
+		DumpUsage(NULL);
 
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }

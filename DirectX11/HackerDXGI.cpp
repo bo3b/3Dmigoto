@@ -1275,37 +1275,6 @@ IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 	return mOrigSwapChain;
 }
 
-static void StartFrameAnalysis()
-{
-	wchar_t path[MAX_PATH], tmp[MAX_PATH];
-	time_t ltime;
-	struct tm tm;
-
-	G->analyse_next_frame = false;
-
-	time(&ltime);
-	_localtime64_s(&tm, &ltime);
-	wcsftime(tmp, MAX_PATH, L"FrameAnalysis-%Y-%m-%d-%H%M%S", &tm);
-
-	GetModuleFileName(0, path, MAX_PATH);
-	wcsrchr(path, L'\\')[1] = 0;
-	wcscat_s(path, MAX_PATH, tmp);
-
-	LogInfoW(L"Frame analysis directory: %s\n", path);
-
-	// Bail if the analysis directory already exists or can't be created.
-	// This currently limits us to one / second, but that's probably
-	// enough. We can always increase the granuality if needed.
-	if (!CreateDirectory(path, 0)) {
-		LogInfoW(L"Error creating frame analysis directory: %i\n", GetLastError());
-		return;
-	}
-
-	wcscpy(G->ANALYSIS_PATH, path);
-
-	G->analyse_frame = 1;
-}
-
 
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
@@ -1317,6 +1286,12 @@ void HackerDXGISwapChain::RunFrameActions()
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
+
+	if (G->analyse_frame) {
+		G->analyse_frame = 0;
+		if (G->DumpUsage)
+			DumpUsage(G->ANALYSIS_PATH);
+	}
 
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
@@ -1336,12 +1311,6 @@ void HackerDXGISwapChain::RunFrameActions()
 	// still skip the below logic that only applies while hunting.
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
-
-	if (G->analyse_frame)
-		G->analyse_frame = 0;
-
-	if (G->analyse_next_frame)
-		StartFrameAnalysis();
 
 	// Update the huntTime whenever we get fresh user input.
 	if (newEvent)

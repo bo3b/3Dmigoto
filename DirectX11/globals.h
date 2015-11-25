@@ -354,7 +354,6 @@ struct Globals
 	bool deferred_enabled;
 
 	unsigned analyse_frame;
-	bool analyse_next_frame;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
@@ -492,7 +491,6 @@ struct Globals
 		deferred_enabled(true),
 
 		analyse_frame(0),
-		analyse_next_frame(false),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
 
