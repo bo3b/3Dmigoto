@@ -316,15 +316,15 @@ struct ResourceInfo
 
 	bool initial_data_used_in_hash;
 	bool hash_contaminated;
-	bool update_contamination;
-	std::unordered_set<uint32_t> copy_contamination;
+	std::set<UINT> update_contamination;
+	std::set<UINT> map_contamination;
+	std::set<uint32_t> copy_contamination;
 	CopySubresourceRegionContaminationMap region_contamination;
 
 	ResourceInfo() :
 		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
 		initial_data_used_in_hash(false),
-		hash_contaminated(false),
-		update_contamination(false)
+		hash_contaminated(false)
 	{}
 
 	struct ResourceInfo & operator= (D3D11_TEXTURE2D_DESC desc)

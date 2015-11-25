@@ -855,7 +855,20 @@ STDMETHODIMP HackerContext::Map(THIS_
 	if (SUCCEEDED(hr))
 		return hr;
 
-	return mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
+	hr = mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
+
+	if (SUCCEEDED(hr) && pResource) {
+		switch (MapType) {
+		case D3D11_MAP_WRITE:
+		case D3D11_MAP_WRITE_DISCARD:
+		case D3D11_MAP_WRITE_NO_OVERWRITE:
+			if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+				MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
+			}
+		}
+	}
+
+	return hr;
 }
 
 STDMETHODIMP_(void) HackerContext::Unmap(THIS_
@@ -1289,7 +1302,10 @@ void HackerContext::MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstS
 
 	switch (type) {
 		case 'U':
-			dstInfo->update_contamination = true;
+			dstInfo->update_contamination.insert(DstSubresource);
+			break;
+		case 'M':
+			dstInfo->map_contamination.insert(DstSubresource);
 			break;
 		case 'C':
 			dstInfo->copy_contamination.insert(srcHash);

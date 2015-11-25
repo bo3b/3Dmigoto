@@ -374,7 +374,9 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 			info = &G->mResourceInfo.at(hash);
 			if (info->hash_contaminated) {
 				StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=!");
-				if (info->update_contamination)
+				if (!info->map_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"M");
+				if (!info->update_contamination.empty())
 					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"U");
 				if (!info->copy_contamination.empty())
 					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"C");

@@ -65,7 +65,8 @@ DWORD castStrLen(const char* string)
 static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *tag)
 {
 	std::set<uint32_t>::iterator hash;
-	std::unordered_set<uint32_t>::iterator iCopy;
+	std::set<uint32_t>::iterator iCopy;
+	std::set<UINT>::iterator iMU;
 	CopySubresourceRegionContaminationMap::iterator iRegion;
 	CopySubresourceRegionContaminationMap::key_type kRegion;
 	CopySubresourceRegionContamination *region;
@@ -89,15 +90,20 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 
 		if (info->hash_contaminated) {
-			_snprintf_s(buf, 256, 256, " hash_contaminated=true", tag);
+			_snprintf_s(buf, 256, 256, " hash_contaminated=true");
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 		}
 
 		WriteFile(f, ">", 1, &written, 0);
 		nl = false;
 
-		if (info->update_contamination) {
-			_snprintf_s(buf, 256, 256, "\n  <UpdateSubresource></UpdateSubresource>", tag);
+		for (iMU = info->update_contamination.begin(); iMU != info->update_contamination.end(); iMU++) {
+			_snprintf_s(buf, 256, 256, "\n  <UpdateSubresource subresource=%u></UpdateSubresource>", *iMU);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+			nl = true;
+		}
+		for (iMU = info->map_contamination.begin(); iMU != info->map_contamination.end(); iMU++) {
+			_snprintf_s(buf, 256, 256, "\n  <CPUWrite subresource=%u></CPUWrite>", *iMU);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			nl = true;
 		}
