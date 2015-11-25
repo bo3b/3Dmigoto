@@ -74,8 +74,8 @@ private:
 	ID3D11DomainShader *mCurrentDomainShaderHandle;
 	UINT64 mCurrentHullShader;
 	ID3D11HullShader *mCurrentHullShaderHandle;
-	std::vector<void *> mCurrentRenderTargets;
-	void *mCurrentDepthTarget;
+	std::vector<ID3D11Resource *> mCurrentRenderTargets;
+	ID3D11Resource *mCurrentDepthTarget;
 	FrameAnalysisOptions analyse_options;
 
 	// Used for deny_cpu_read texture override
@@ -102,7 +102,7 @@ private:
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
 	void RecordShaderResourceUsage();
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-	void* RecordResourceViewStats(ID3D11ShaderResourceView *view);
+	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
 	void MarkResourceHashContaminated(ID3D11Resource *dest, ID3D11Resource *src, char type,
 		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox);
 
@@ -174,8 +174,6 @@ public:
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
 
-	uint32_t GetTexture2DHash(ID3D11Texture2D *texture);
-	uint32_t GetTexture3DHash(ID3D11Texture3D *texture);
 	uint32_t GetResourceHash(ID3D11Resource *resource);
 
 

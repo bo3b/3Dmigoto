@@ -137,16 +137,7 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 
 	view->GetDesc(&desc);
 
-	switch (desc.ViewDimension) {
-		case D3D11_SRV_DIMENSION_TEXTURE2D:
-		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-			hash = mHackerContext->GetTexture2DHash((ID3D11Texture2D *)resource);
-			break;
-		case D3D11_SRV_DIMENSION_TEXTURE3D:
-			hash = mHackerContext->GetTexture3DHash((ID3D11Texture3D *)resource);
-			break;
-	}
+	hash = mHackerContext->GetResourceHash(resource);
 	if (!hash)
 		goto out_release_resource;
 

@@ -54,68 +54,32 @@ ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 
 // -----------------------------------------------------------------------------
 
-uint32_t HackerContext::GetTexture2DHash(ID3D11Texture2D *texture)
-{
-
-	D3D11_TEXTURE2D_DESC desc;
-	std::unordered_map<ID3D11Texture2D *, uint32_t>::iterator j;
-
-	texture->GetDesc(&desc);
-
-	j = G->mTexture2D_ID.find(texture);
-	if (j != G->mTexture2D_ID.end())
-		return j->second;
-
-	// The only way we should get here is for resources created by 3DMigoto
-	// itself that bypass our CreateTexture2D wrapper. We probably don't
-	// ever need these to be hashed, and if we do we could hash them at the
-	// time of creation. Return a hash of 0 so these are clear to see in
-	// ShaderUsage and frame analysis.
-
-	return 0;
-}
-
-uint32_t HackerContext::GetTexture3DHash(ID3D11Texture3D *texture)
-{
-
-	D3D11_TEXTURE3D_DESC desc;
-	std::unordered_map<ID3D11Texture3D *, uint32_t>::iterator j;
-
-	texture->GetDesc(&desc);
-
-	j = G->mTexture3D_ID.find(texture);
-	if (j != G->mTexture3D_ID.end())
-		return j->second;
-
-	// The only way we should get here is for resources created by 3DMigoto
-	// itself that bypass our CreateTexture3D wrapper. We probably don't
-	// ever need these to be hashed, and if we do we could hash them at the
-	// time of creation. Return a hash of 0 so these are clear to see in
-	// ShaderUsage and frame analysis.
-
-	return 0;
-}
 
 uint32_t HackerContext::GetResourceHash(ID3D11Resource *resource) {
-	D3D11_RESOURCE_DIMENSION dim;
+	std::unordered_map<ID3D11Resource *, uint32_t>::iterator j;
 
-	resource->GetType(&dim);
-	switch (dim) {
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			return GetTexture2DHash((ID3D11Texture2D*)resource);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			return GetTexture3DHash((ID3D11Texture3D*)resource);
-		default:
-			return 0;
-	}
+	j = G->mResourceID.find(resource);
+	if (j != G->mResourceID.end())
+		return j->second;
+
+	// We can get here for a few legitimate reasons where a resource has
+	// not been hashed. 1D and buffer resources are currently not hashed,
+	// resources created by 3DMigoto bypass the CreateTexture wrapper and
+	// are not hashed, and the swap chain's back buffer will not have been
+	// hashed. We used to hash these on demand here, but it's not clear
+	// that we ever needed their hashes - if we ever do we could consider
+	// hashing them at the time of creation instead.
+	//
+	// Return a 0 so it is obvious that this resource has not been hashed.
+
+	return 0;
 }
 
 // Records the hash of this shader resource view for later lookup. Returns the
 // handle to the resource, but be aware that it no longer has a reference and
 // should only be used for map lookups.
-void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
+ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 {
-	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
 	uint32_t hash = 0;
 
@@ -126,26 +90,13 @@ void* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 	if (!resource)
 		return NULL;
 
-	view->GetDesc(&desc);
-
-	switch (desc.ViewDimension) 
-	{
-		case D3D11_SRV_DIMENSION_TEXTURE2D:
-		case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-		case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-			hash = GetTexture2DHash((ID3D11Texture2D *)resource);
-			break;
-		case D3D11_SRV_DIMENSION_TEXTURE3D:
-			hash = GetTexture3DHash((ID3D11Texture3D *)resource);
-			break;
-	}
+	hash = GetResourceHash(resource);
 
 	resource->Release();
 
 	if (hash)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mRenderTargets[resource] = hash;
 			G->mShaderResourceInfo.insert(hash);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -157,7 +108,7 @@ void HackerContext::RecordShaderResourceUsage()
 {
 	ID3D11ShaderResourceView *ps_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11ShaderResourceView *vs_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
-	void *resource;
+	ID3D11Resource *resource;
 	int i;
 
 	mOrigContext->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
@@ -185,29 +136,18 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	LogDebug("  View #%d, Format = %d, Is2D = %d\n",
 		view_num, desc.Format, D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
 
-	switch (desc.ViewDimension) {
-		case D3D11_RTV_DIMENSION_TEXTURE2D:
-		case D3D11_RTV_DIMENSION_TEXTURE2DMS:
-			target->GetResource(&resource);
-			if (!resource)
-				return;
-			hash = GetTexture2DHash((ID3D11Texture2D *)resource);
-			resource->Release();
-			break;
-		case D3D11_RTV_DIMENSION_TEXTURE3D:
-			target->GetResource(&resource);
-			if (!resource)
-				return;
-			hash = GetTexture3DHash((ID3D11Texture3D *)resource);
-			resource->Release();
-			break;
-	}
+	target->GetResource(&resource);
+	if (!resource)
+		return;
+
+	hash = GetResourceHash((ID3D11Texture2D *)resource);
+
+	resource->Release();
 
 	if (!resource)
 		return;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mRenderTargets[resource] = hash;
 		mCurrentRenderTargets.push_back(resource);
 		G->mVisitedRenderTargets.insert(resource);
 		G->mRenderTargetInfo.insert(hash);
@@ -218,7 +158,6 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 {
 	D3D11_DEPTH_STENCIL_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
-	ID3D11Texture2D *texture;
 	uint32_t hash = 0;
 
 	if (!target)
@@ -230,22 +169,11 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	target->GetDesc(&desc);
 
-	switch (desc.ViewDimension) {
-		// TODO: Is it worth recording the type of 2D texture view?
-		// TODO: Maybe for array variants, record all resources in array?
-		case D3D11_DSV_DIMENSION_TEXTURE2D:
-		case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
-		case D3D11_DSV_DIMENSION_TEXTURE2DMS:
-		case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
-			texture = (ID3D11Texture2D *)resource;
-			hash = GetTexture2DHash(texture);
-			break;
-	}
+	hash = GetResourceHash(resource);
 
 	resource->Release();
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mRenderTargets[resource] = hash;
 		mCurrentDepthTarget = resource;
 		G->mDepthTargetInfo.insert(hash);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -472,10 +400,10 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			}
 			if (mCurrentPixelShader) {
 				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-					std::vector<std::set<void *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
+					std::vector<std::set<ID3D11Resource *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
 
 					if (selectedRenderTargetPos >= targets.size())
-						targets.push_back(std::set<void *>());
+						targets.push_back(std::set<ID3D11Resource *>());
 
 					targets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
 				}
@@ -851,7 +779,7 @@ HRESULT HackerContext::MapDenyCPURead(
 		return E_FAIL;
 
 	tex->GetDesc(&desc);
-	hash = GetTexture2DHash(tex);
+	hash = GetResourceHash(tex);
 
 	LogDebug("Map Texture2D %08lx (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
 			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
@@ -1246,8 +1174,8 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 
 	srcTex->GetDesc(&srcDesc);
 	dstTex->GetDesc(&dstDesc);
-	srcHash = GetTexture2DHash(srcTex);
-	dstHash = GetTexture2DHash(dstTex);
+	srcHash = GetResourceHash(srcTex);
+	dstHash = GetResourceHash(dstTex);
 
 	LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 

@@ -209,11 +209,11 @@ void DumpUsage(wchar_t *dir)
 			}
 			const char *REG_HEADER = "</CalledPixelShaders>\n";
 			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
-			std::map<int, std::set<void *>>::const_iterator k;
+			std::map<int, std::set<ID3D11Resource *>>::const_iterator k;
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
-				std::set<void *>::const_iterator o;
+				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o, G->mRenderTargets[*o]);
+					DumpUsageRegister(f, "Register", k->first, *o, G->mResourceID[*o]);
 				}
 			}
 			const char *FOOTER = "</VertexShader>\n";
@@ -232,24 +232,24 @@ void DumpUsage(wchar_t *dir)
 			}
 			const char *REG_HEADER = "</ParentVertexShaders>\n";
 			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
-			std::map<int, std::set<void *>>::const_iterator k;
+			std::map<int, std::set<ID3D11Resource *>>::const_iterator k;
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
-				std::set<void *>::const_iterator o;
+				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o, G->mRenderTargets[*o]);
+					DumpUsageRegister(f, "Register", k->first, *o, G->mResourceID[*o]);
 				}
 			}
-			std::vector<std::set<void *>>::iterator m;
+			std::vector<std::set<ID3D11Resource *>>::iterator m;
 			int pos = 0;
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
-				std::set<void *>::const_iterator o;
+				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = (*m).begin(); o != (*m).end(); o++) {
-					DumpUsageRegister(f, "RenderTarget", pos, *o, G->mRenderTargets[*o]);
+					DumpUsageRegister(f, "RenderTarget", pos, *o, G->mResourceID[*o]);
 				}
 			}
-			std::set<void *>::iterator n;
+			std::set<ID3D11Resource *>::iterator n;
 			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				DumpUsageRegister(f, "DepthTarget", -1, *n, G->mRenderTargets[*n]);
+				DumpUsageRegister(f, "DepthTarget", -1, *n, G->mResourceID[*n]);
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
@@ -1149,7 +1149,7 @@ static void NextHullShader(HackerDevice *device, void *private_data)
 }
 static void NextRenderTarget(HackerDevice *device, void *private_data)
 {
-	HuntNext<void *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
+	HuntNext<ID3D11Resource *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
 }
 
 template <typename ItemType>
@@ -1222,7 +1222,7 @@ static void PrevHullShader(HackerDevice *device, void *private_data)
 }
 static void PrevRenderTarget(HackerDevice *device, void *private_data)
 {
-	HuntPrev<void *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
+	HuntPrev<ID3D11Resource *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
 }
 
 
@@ -1326,17 +1326,17 @@ static void MarkHullShader(HackerDevice *device, void *private_data)
 	MarkShaderEnd(device, "hull shader", G->mSelectedHullShader);
 }
 
-static void LogRenderTarget(void *target, char *log_prefix)
+static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 {
 	char buf[256];
 
-	if (!target || target == (void *)-1) 
+	if (!target || target == (ID3D11Resource *)-1)
 	{
 		LogInfo("No render target selected for marking\n");
 		return;
 	}
 
-	uint32_t hash = G->mRenderTargets[target];
+	uint32_t hash = G->mResourceID[target];
 	struct ResourceInfo &info = G->mResourceInfo[hash];
 	StrRenderTarget(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, %s\n",
@@ -1351,7 +1351,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
-	for (std::set<void *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
+	for (std::set<ID3D11Resource *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
 		LogRenderTarget(*i, "       ");
 
 	if (G->DumpUsage)
@@ -1444,7 +1444,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	G->mSelectedHullShaderPos = -1;
 
 	G->mSelectedRenderTargetPos = -1;
-	G->mSelectedRenderTarget = ((void *)-1);
+	G->mSelectedRenderTarget = ((ID3D11Resource *)-1);
 	G->mSelectedIndexBuffer = -1;
 	G->mSelectedIndexBufferPos = -1;
 

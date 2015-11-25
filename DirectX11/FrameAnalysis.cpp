@@ -443,13 +443,7 @@ void HackerContext::_DumpTextures(char shader_type,
 		resource->GetType(&dim);
 
 		try {
-			switch (dim) {
-				case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-					hash = G->mTexture2D_ID.at((ID3D11Texture2D *)resource);
-					break;
-				default:
-					hash = 0;
-			}
+			hash = G->mResourceID.at((ID3D11Texture2D *)resource);
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -604,7 +598,7 @@ void HackerContext::DumpRenderTargets()
 		// stat collection by querying the DeviceContext directly like
 		// we do for all other resources
 		try {
-			hash = G->mRenderTargets.at(mCurrentRenderTargets[i]);
+			hash = G->mResourceID.at(mCurrentRenderTargets[i]);
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -634,7 +628,7 @@ void HackerContext::DumpDepthStencilTargets()
 		// stat collection by querying the DeviceContext directly like
 		// we do for all other resources
 		try {
-			hash = G->mRenderTargets.at(mCurrentDepthTarget);
+			hash = G->mResourceID.at(mCurrentDepthTarget);
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -673,7 +667,7 @@ void HackerContext::DumpUAVs(bool compute)
 		}
 
 		try {
-			hash = G->mRenderTargets.at(resource);
+			hash = G->mResourceID.at(resource);
 		} catch (std::out_of_range) {
 			hash = 0;
 		}
@@ -792,7 +786,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 
 		for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
 			try {
-				hash = G->mRenderTargets.at(mCurrentRenderTargets[i]);
+				hash = G->mResourceID.at(mCurrentRenderTargets[i]);
 				textureOverride = &G->mTextureOverrideMap.at(hash);
 				new_options |= textureOverride->analyse_options;
 			} catch (std::out_of_range) {}
@@ -800,7 +794,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 
 		if (mCurrentDepthTarget) {
 			try {
-				hash = G->mRenderTargets[mCurrentDepthTarget];
+				hash = G->mResourceID[mCurrentDepthTarget];
 				textureOverride = &G->mTextureOverrideMap.at(hash);
 				new_options |= textureOverride->analyse_options;
 			} catch (std::out_of_range) {}

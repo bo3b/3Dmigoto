@@ -222,10 +222,10 @@ typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
 struct ShaderInfoData
 {
 	// All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<int, std::set<void *>> ResourceRegisters;
+	std::map<int, std::set<ID3D11Resource *>> ResourceRegisters;
 	std::set<UINT64> PartnerShader;
-	std::vector<std::set<void *>> RenderTargets;
-	std::set<void *> DepthTargets;
+	std::vector<std::set<ID3D11Resource *>> RenderTargets;
+	std::set<ID3D11Resource *> DepthTargets;
 };
 
 enum class GetResolutionFrom {
@@ -444,28 +444,26 @@ struct Globals
 	TextureOverrideMap mTextureOverrideMap;
 
 	// Statistics
-	std::unordered_map<void *, uint32_t> mRenderTargets;
 	std::unordered_map<uint32_t, struct ResourceInfo> mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mCopiedResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::set<void *> mVisitedRenderTargets;						// std::set is sorted for consistent order while hunting
-	void *mSelectedRenderTarget;
+	std::set<ID3D11Resource *> mVisitedRenderTargets;						// std::set is sorted for consistent order while hunting
+	ID3D11Resource *mSelectedRenderTarget;
 	int mSelectedRenderTargetPos;
 	// Snapshot of all targets for selection.
-	void *mSelectedRenderTargetSnapshot;
-	std::set<void *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
+	ID3D11Resource *mSelectedRenderTargetSnapshot;
+	std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
 	// Relations
-	std::unordered_map<ID3D11Texture2D *, uint32_t> mTexture2D_ID;
-	std::unordered_map<ID3D11Texture3D *, uint32_t> mTexture3D_ID;
+	std::unordered_map<ID3D11Resource *, uint32_t> mResourceID;
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(-1),
-		mSelectedRenderTarget((void *)-1),
+		mSelectedRenderTarget((ID3D11Resource *)-1),
 		mSelectedPixelShader(-1),
 		mSelectedPixelShaderPos(-1),
 		mSelectedVertexShader(-1),
