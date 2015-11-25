@@ -103,7 +103,8 @@ private:
 	void RecordShaderResourceUsage();
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
 	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
-	void MarkResourceHashContaminated(ID3D11Resource *dest, ID3D11Resource *src, char type,
+	void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
+		ID3D11Resource *src, UINT srcSubresource, char type,
 		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox);
 
 	// Functions for the frame analysis. Would be good to split this out,
