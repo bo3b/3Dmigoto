@@ -8,6 +8,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <tuple>
 
 #include "util.h"
 #include "CommandList.h"
@@ -285,6 +286,26 @@ struct CopySubresourceRegionContamination
 	}
 };
 
+// Create a map that uses a hashable tuple of five integers as they key (Hey C++,
+// this is something Python can do with what? ... 0 lines of boilerplate?)
+typedef std::tuple<uint32_t, UINT, UINT, UINT, UINT> CopySubresourceRegionContaminationMapKey;
+template<> struct hash<CopySubresourceRegionContaminationMapKey>
+{
+	size_t operator()(CopySubresourceRegionContaminationMapKey const &key)
+	{
+		// http://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
+		size_t seed = 0;
+		seed ^= std::hash<uint32_t>()(std::get<0>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<UINT>()(std::get<1>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<UINT>()(std::get<2>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<UINT>()(std::get<3>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<UINT>()(std::get<4>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		return seed;
+	}
+};
+typedef std::map<CopySubresourceRegionContaminationMapKey, CopySubresourceRegionContamination>
+	CopySubresourceRegionContaminationMap;
+
 struct ResourceInfo
 {
 	D3D11_RESOURCE_DIMENSION type;
@@ -297,7 +318,7 @@ struct ResourceInfo
 	bool hash_contaminated;
 	bool update_contamination;
 	std::unordered_set<uint32_t> copy_contamination;
-	std::unordered_map<uint32_t, CopySubresourceRegionContamination> region_contamination;
+	CopySubresourceRegionContaminationMap region_contamination;
 
 	ResourceInfo() :
 		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),

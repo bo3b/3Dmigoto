@@ -1253,11 +1253,12 @@ void HackerContext::MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstS
 			&dstWidth, &dstHeight, &dstDepth,
 			&dstIdx, &dstMip, &dstArraySize);
 
+	// TODO:
 	// We don't care if a mip-map has been updated since we don't hash those.
 	// We could collect info about the copy anyway (below code will work to
 	// do so), but it adds a lot of irrelevant noise to the ShaderUsage.txt
-	if (dstMip)
-		goto out_unlock;
+	// if (dstMip)
+	// 	goto out_unlock;
 
 	if (src) {
 		srcHash = GetResourceHash(src);
@@ -1322,7 +1323,9 @@ void HackerContext::MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstS
 			// single subhash)
 			partial = partial || dstArraySize > 1 || srcArraySize > 1;
 
-			dstInfo->region_contamination[srcHash].Update(partial, DstX, DstY, DstZ, SrcBox);
+			dstInfo->region_contamination[
+					std::make_tuple(srcHash, dstIdx, dstMip, srcIdx, srcMip)
+				].Update(partial, DstX, DstY, DstZ, SrcBox);
 	}
 
 out_unlock:

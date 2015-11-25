@@ -66,9 +66,12 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 {
 	std::set<uint32_t>::iterator hash;
 	std::unordered_set<uint32_t>::iterator iCopy;
-	std::unordered_map<uint32_t, CopySubresourceRegionContamination>::iterator iRegion;
+	CopySubresourceRegionContaminationMap::iterator iRegion;
+	CopySubresourceRegionContaminationMap::key_type kRegion;
 	CopySubresourceRegionContamination *region;
+
 	uint32_t srcHash;
+	UINT SrcIdx, SrcMip, DstIdx, DstMip;
 	struct ResourceInfo *info;
 	char buf[256];
 	DWORD written; // Really? A >required< "optional" paramter that we don't care about?
@@ -104,41 +107,63 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 			nl = true;
 		}
 		for (iRegion = info->region_contamination.begin(); iRegion != info->region_contamination.end(); iRegion++) {
-			srcHash = iRegion->first;
+			kRegion = iRegion->first;
 			region = &iRegion->second;
+
+			srcHash = std::get<0>(kRegion);
+			DstIdx = std::get<1>(kRegion);
+			DstMip = std::get<2>(kRegion);
+			SrcIdx = std::get<3>(kRegion);
+			SrcMip = std::get<4>(kRegion);
+
+			_snprintf_s(buf, 256, 256, "\n  <SubresourceCopiedFrom partial=");
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+
 			if (region->partial) {
-
-				_snprintf_s(buf, 256, 256, "\n  <RegionCopiedFrom partial=true");
-				WriteFile(f, buf, castStrLen(buf), &written, 0);
-
-				if (region->DstX || region->DstY || region->DstZ) {
-					_snprintf_s(buf, 256, 256, " DstX=%u DstY=%u DstZ=%u",
-							region->DstX, region->DstY, region->DstZ);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
-				}
-
-				if (region->SrcBox.left || region->SrcBox.right != UINT_MAX) {
-					_snprintf_s(buf, 256, 256, " SrcLeft=%u SrcRight=%u",
-						region->SrcBox.left, region->SrcBox.right);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
-				}
-				if (region->SrcBox.top || region->SrcBox.bottom != UINT_MAX) {
-					_snprintf_s(buf, 256, 256, " SrcTop=%u SrcBottom=%u",
-						region->SrcBox.top, region->SrcBox.bottom);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
-				}
-				if (region->SrcBox.front || region->SrcBox.back != UINT_MAX) {
-					_snprintf_s(buf, 256, 256, " SrcFront=%u SrcBack=%u",
-						region->SrcBox.front, region->SrcBox.back);
-					WriteFile(f, buf, castStrLen(buf), &written, 0);
-				}
-
-				_snprintf_s(buf, 256, 256, ">%08lx</CopiedFrom>", srcHash);
+				_snprintf_s(buf, 256, 256, "true");
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			} else {
-				_snprintf_s(buf, 256, 256, "\n  <RegionCopiedFrom partial=false>%08lx</CopiedFrom>", srcHash);
+				_snprintf_s(buf, 256, 256, "false");
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
+
+			if (DstIdx || SrcIdx) {
+				_snprintf_s(buf, 256, 256, " DstIdx=%u SrcIdx=%u",
+						DstIdx, SrcIdx);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+
+			if (DstMip || SrcMip) {
+				_snprintf_s(buf, 256, 256, " DstMip=%u SrcMip=%u",
+						DstMip, SrcMip);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+
+			if (region->DstX || region->DstY || region->DstZ) {
+				_snprintf_s(buf, 256, 256, " DstX=%u DstY=%u DstZ=%u",
+						region->DstX, region->DstY, region->DstZ);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+
+			if (region->SrcBox.left || region->SrcBox.right != UINT_MAX) {
+				_snprintf_s(buf, 256, 256, " SrcLeft=%u SrcRight=%u",
+					region->SrcBox.left, region->SrcBox.right);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+			if (region->SrcBox.top || region->SrcBox.bottom != UINT_MAX) {
+				_snprintf_s(buf, 256, 256, " SrcTop=%u SrcBottom=%u",
+					region->SrcBox.top, region->SrcBox.bottom);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+			if (region->SrcBox.front || region->SrcBox.back != UINT_MAX) {
+				_snprintf_s(buf, 256, 256, " SrcFront=%u SrcBack=%u",
+					region->SrcBox.front, region->SrcBox.back);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+
+			_snprintf_s(buf, 256, 256, ">%08lx</SubresourceCopiedFrom>", srcHash);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+
 			nl = true;
 		}
 
