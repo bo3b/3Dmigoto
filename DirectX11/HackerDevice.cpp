@@ -1740,7 +1740,7 @@ static uint32_t CalcTexture2DDataHash(
 	uint32_t hash = 0;
 	size_t length_v12;
 	size_t length;
-	UINT item, level = 0, index;
+	UINT item = 0, level = 0, index;
 
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
@@ -1787,9 +1787,35 @@ static uint32_t CalcTexture2DDataHash(
 	// In that case, let's do it right... and hopefully this will be the
 	// last time we need to change this.
 
-	LogDebug("  Using 3DMigoto v1.2.9+ Texture2D CRC calculation\n");
+	LogDebug("  Using 3DMigoto v1.2.11+ Texture2D CRC calculation\n");
 
-	for (item = 0; item < pDesc->ArraySize; item++) {
+	// We are no longer taking multiple subresources into account in the
+	// hash. We did for a short time between 3DMigoto 1.2.9 and 1.2.10, but
+	// then it was discovered that some games are updating resources which
+	// made matching their hash impossible without tracking the updates.
+	//
+	// This complicates matters if a multi-element resource gets an update
+	// to only a single subresource. In that case, we would have no way to
+	// recalculate the hash from all subresources (well, not unless we pull
+	// the other subresources back from the GPU and kill performance) and
+	// would not be able to track them.
+	//
+	// For now, we are solving this dilemma by only using the hash from the
+	// first subresource for all subresources in the texture. In the
+	// future, we could consider an alternate approach that calculates
+	// individual hashes for each subresource and xors them all together
+	// for the texture as a whole, thereby allowing each subresource to be
+	// tracked individually, but this would be a pretty fundamental change
+	// since we would probably want to change all hashes, not just those of
+	// multi-element resources - so not something we would do unless
+	// necessary.
+	//
+	// 3DMigoto 1.2.9 already changed the hash of multi-element resources,
+	// but none of our fixes were reported broken by that change. Therefore
+	// I am fairly confident that there won't be any impact to this change
+	// either.
+	//
+	//for (item = 0; item < pDesc->ArraySize; item++) {
 		// We could potentially consider multiple mip-map levels, but
 		// they are unlikely to differentiate any textures that the
 		// main mip-map level alone could not, and few games hand them
@@ -1802,7 +1828,7 @@ static uint32_t CalcTexture2DDataHash(
 		index = D3D11CalcSubresource(level, item, max(pDesc->MipLevels, 1));
 		length = Texture2DLength(pDesc, &pInitialData[index], level);
 		hash = crc32c_hw(hash, pInitialData[index].pSysMem, length);
-	}
+	//}
 
 	return hash;
 }
