@@ -751,6 +751,7 @@ void LoadConfigFile()
 	G->PRELOAD_SHADERS = GetPrivateProfileInt(L"Rendering", L"preload_shaders", 0, iniFile) == 1;
 	G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, iniFile) == 1;
 	G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, iniFile) == 1;
+	G->track_texture_updates = GetPrivateProfileInt(L"Rendering", L"track_texture_updates", 0, iniFile) == 1;
 
 	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
 	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
@@ -770,6 +771,7 @@ void LoadConfigFile()
 		if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
 		if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
 		if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
+		if (G->track_texture_updates) LogInfo("  track_texture_updates=1\n");
 
 		if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
 		if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");

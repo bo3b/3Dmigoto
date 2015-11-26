@@ -2,12 +2,12 @@
 
 #include <memory>
 #include <unordered_map>
+#include <d3d11.h>
+#include <DirectXMath.h>
+#include <util.h>
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
-
-// Forward declarations to resolve circular includes (we include Hacker*.h,
-// which includes Globals.h, which includes us):
+// Forward declarations instead of #includes to resolve circular includes (we
+// include Hacker*.h, which includes Globals.h, which includes us):
 class HackerDevice;
 class HackerContext;
 

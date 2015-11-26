@@ -3,6 +3,8 @@
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
 #include <algorithm>
+#include "HackerDevice.h"
+#include "HackerContext.h"
 
 CustomResources customResources;
 
@@ -137,7 +139,7 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 
 	view->GetDesc(&desc);
 
-	hash = mHackerContext->GetResourceHash(resource);
+	hash = GetResourceHash(resource);
 	if (!hash)
 		goto out_release_resource;
 

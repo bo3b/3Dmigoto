@@ -16,9 +16,6 @@ class HackerContext;
 class HackerContext1;
 class HackerDXGISwapChain;
 
-uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc);
-uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc);
-
 class HackerDevice : public ID3D11Device
 {
 private:

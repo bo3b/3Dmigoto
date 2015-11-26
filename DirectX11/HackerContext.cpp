@@ -10,6 +10,7 @@
 #include "HackerDevice.h"
 #include "D3D11Wrapper.h"
 #include "Globals.h"
+#include "ResourceHash.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -54,26 +55,6 @@ ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 
 // -----------------------------------------------------------------------------
 
-
-uint32_t HackerContext::GetResourceHash(ID3D11Resource *resource) {
-	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
-
-	j = G->mResources.find(resource);
-	if (j != G->mResources.end())
-		return j->second.hash;
-
-	// We can get here for a few legitimate reasons where a resource has
-	// not been hashed. 1D and buffer resources are currently not hashed,
-	// resources created by 3DMigoto bypass the CreateTexture wrapper and
-	// are not hashed, and the swap chain's back buffer will not have been
-	// hashed. We used to hash these on demand here, but it's not clear
-	// that we ever needed their hashes - if we ever do we could consider
-	// hashing them at the time of creation instead.
-	//
-	// Return a 0 so it is obvious that this resource has not been hashed.
-
-	return 0;
-}
 
 // Records the hash of this shader resource view for later lookup. Returns the
 // handle to the resource, but be aware that it no longer has a reference and
@@ -857,16 +838,8 @@ STDMETHODIMP HackerContext::Map(THIS_
 
 	hr = mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
 
-	if (SUCCEEDED(hr) && pResource) {
-		switch (MapType) {
-		case D3D11_MAP_WRITE:
-		case D3D11_MAP_WRITE_DISCARD:
-		case D3D11_MAP_WRITE_NO_OVERWRITE:
-			if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
-				MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
-			}
-		}
-	}
+	if (SUCCEEDED(hr))
+		MapTrackResourceHashUpdate(pResource, Subresource, MapType, MapFlags, pMappedResource);
 
 	return hr;
 }
@@ -877,6 +850,7 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	/* [annotation] */
 	__in  UINT Subresource)
 {
+	MapUpdateResourceHash(pResource, Subresource);
 	FreeDeniedMapping(pResource, Subresource);
 	mOrigContext->Unmap(pResource, Subresource);
 }
@@ -1209,145 +1183,6 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	return true;
 }
 
-static bool GetResourceInfoFields(struct ResourceHashInfo *info, UINT subresource,
-		UINT *width, UINT *height, UINT *depth,
-		UINT *idx, UINT *mip, UINT *array_size)
-{
-	UINT mips;
-	switch (info->type) {
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			mips = max(info->tex2d_desc.MipLevels, 1);
-			*idx = subresource / mips;
-			*mip = subresource % mips;
-			*width = max(info->tex2d_desc.Width >> *mip, 1);
-			*height = max(info->tex2d_desc.Height >> *mip, 1);
-			*depth = 1;
-			*array_size = info->tex2d_desc.ArraySize;
-			return true;
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			mips = max(info->tex3d_desc.MipLevels, 1);
-			*idx = subresource / mips;
-			*mip = subresource % mips;
-			*width = max(info->tex3d_desc.Width >> *mip, 1);
-			*height = max(info->tex3d_desc.Height >> *mip, 1);
-			*depth = max(info->tex3d_desc.Depth >> *mip, 1);
-			*array_size = 1;
-			return true;
-	}
-	return false;
-}
-
-void HackerContext::MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
-		ID3D11Resource *src, UINT srcSubresource, char type,
-		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
-{
-	struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
-	uint32_t srcHash = 0, dstHash = 0;
-	UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
-	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
-	bool partial = false;
-
-	if (!dest)
-		return;
-
-	dstHash = GetResourceHash(dest);
-	if (!dstHash)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-
-	try {
-		dstInfo = &G->mResourceInfo.at(dstHash);
-	} catch (std::out_of_range) {
-		goto out_unlock;
-	}
-
-	GetResourceInfoFields(dstInfo, DstSubresource,
-			&dstWidth, &dstHeight, &dstDepth,
-			&dstIdx, &dstMip, &dstArraySize);
-
-	// TODO:
-	// We don't care if a mip-map has been updated since we don't hash those.
-	// We could collect info about the copy anyway (below code will work to
-	// do so), but it adds a lot of irrelevant noise to the ShaderUsage.txt
-	// if (dstMip)
-	// 	goto out_unlock;
-
-	if (src) {
-		srcHash = GetResourceHash(src);
-		G->mCopiedResourceInfo.insert(srcHash);
-
-		try {
-			srcInfo = &G->mResourceInfo.at(srcHash);
-			GetResourceInfoFields(srcInfo, srcSubresource,
-					&srcWidth, &srcHeight, &srcDepth,
-					&srcIdx, &srcMip, &srcArraySize);
-		} catch (std::out_of_range) {
-		}
-	}
-
-	// If the destination had used initial data in the hash calculation
-	// that is now being overridden by something else we have a
-	// contaminated hash. Depending on the game this may be ok, or it may
-	// mean we can't rely on the hashes remaining consistent.
-	//
-	// XXX: Actually, thinking about it we might be better marking it
-	// contaminated if the source used initial data, because if we do
-	// anything to solve this problem that's the hash we would propagate -
-	// but we would also need to propagate new hashes from Map() and
-	// UpdateSubresource() calls, otherwise we just end up with a dynamic
-	// resource hash which is probably not going to identify the texture.
-	if (dstHash != srcHash && dstInfo->initial_data_used_in_hash)
-		dstInfo->hash_contaminated = true;
-
-	switch (type) {
-		case 'U':
-			dstInfo->update_contamination.insert(DstSubresource);
-			break;
-		case 'M':
-			dstInfo->map_contamination.insert(DstSubresource);
-			break;
-		case 'C':
-			dstInfo->copy_contamination.insert(srcHash);
-			break;
-		case 'S':
-
-			// We especially want to know if a region copy copied
-			// the entire texture, or only part of it. This may be
-			// important if we end up changing the hash due to a
-			// copy operation - if it copied the whole resource, we
-			// can just use the hash of the source. If it only
-			// copied a partial resource there's no good answer.
-
-			partial = partial || dstWidth != srcWidth;
-			partial = partial || dstHeight != srcHeight;
-			partial = partial || dstDepth != srcDepth;
-
-			partial = partial || DstX || DstY || DstZ;
-			if (SrcBox) {
-				partial = partial ||
-					(SrcBox->right - SrcBox->left != dstWidth) ||
-					(SrcBox->bottom - SrcBox->top != dstHeight) ||
-					(SrcBox->back - SrcBox->front != dstDepth);
-			}
-
-			// TODO: Need to think about the implications of
-			// copying between textures with > 1 array element.
-			// Might want to reconsider how these are hashed (e.g.
-			// hash each non-mipmap subresource separately and xor
-			// the hashes together so we can efficiently change a
-			// single subhash)
-			partial = partial || dstArraySize > 1 || srcArraySize > 1;
-
-			dstInfo->region_contamination[
-					std::make_tuple(srcHash, dstIdx, dstMip, srcIdx, srcMip)
-				].Update(partial, DstX, DstY, DstZ, SrcBox);
-	}
-
-out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
 STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pDstResource,
@@ -1369,6 +1204,8 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
+	// FIXME: Probably need to make sure the contamination still makes
+	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
 	}
@@ -1378,6 +1215,15 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 
 	 mOrigContext->CopySubresourceRegion(pDstResource, DstSubresource, replaceDstX, DstY, DstZ,
 		pSrcResource, SrcSubresource, pSrcBox);
+
+	// We only update the destination resource hash when the entire
+	// subresource 0 is updated and pSrcBox is NULL. We could check if the
+	// pSrcBox fills the entire resource, but if the game is using pSrcBox
+	// it stands to reason that it won't always fill the entire resource
+	// and the hashes might be less predictable. Possibly something to
+	// enable as an option in the future if there is a proven need.
+	if (G->track_texture_updates && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
+		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
@@ -1386,11 +1232,16 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pSrcResource)
 {
+	// FIXME: Probably need to make sure the contamination still makes
+	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
 	}
 
 	 mOrigContext->CopyResource(pDstResource, pSrcResource);
+
+	if (G->track_texture_updates)
+		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
 STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
@@ -1407,12 +1258,23 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
+	// FIXME: Probably need to make sure the contamination still makes
+	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
 	}
 
 	 mOrigContext->UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch,
 		SrcDepthPitch);
+
+	// We only update the destination resource hash when the entire
+	// subresource 0 is updated and pDstBox is NULL. We could check if the
+	// pDstBox fills the entire resource, but if the game is using pDstBox
+	// it stands to reason that it won't always fill the entire resource
+	// and the hashes might be less predictable. Possibly something to
+	// enable as an option in the future if there is a proven need.
+	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
+		UpdateResourceHashFromCPU(pDstResource, NULL, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyStructureCount(THIS_
@@ -2703,6 +2565,8 @@ void STDMETHODCALLTYPE HackerContext1::UpdateSubresource1(
 	_In_  UINT CopyFlags)
 {
 	mOrigContext1->UpdateSubresource1(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
+
+	// TODO: Track resource hash updates
 }
 
 

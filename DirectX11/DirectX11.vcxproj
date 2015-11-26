@@ -54,6 +54,7 @@
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="ResourceHash.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -77,6 +78,7 @@
     <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="CommandList.h" />
+    <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="vkeys.h" />
   </ItemGroup>
   <ItemGroup>

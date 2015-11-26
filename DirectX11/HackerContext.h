@@ -4,6 +4,7 @@
 
 #include "HackerDevice.h"
 #include "Globals.h"
+#include "ResourceHash.h"
 
 struct DrawContext
 {
@@ -103,9 +104,6 @@ private:
 	void RecordShaderResourceUsage();
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
 	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
-	void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
-		ID3D11Resource *src, UINT srcSubresource, char type,
-		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox);
 
 	// Functions for the frame analysis. Would be good to split this out,
 	// but it's pretty tightly coupled to the context at the moment:
@@ -174,8 +172,6 @@ public:
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
-
-	uint32_t GetResourceHash(ID3D11Resource *resource);
 
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
