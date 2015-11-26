@@ -24,11 +24,15 @@ struct ResourceHandleInfo
 
 	D3D11_MAPPED_SUBRESOURCE map;
 	bool mapped_writable;
+	void *diverted_map;
+	size_t diverted_size;
 
 	ResourceHandleInfo() :
 		hash(0),
 		data_hash(0),
-		mapped_writable(false)
+		mapped_writable(false),
+		diverted_map(NULL),
+		diverted_size(0)
 	{}
 };
 

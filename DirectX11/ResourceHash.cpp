@@ -673,14 +673,19 @@ void MapTrackResourceHashUpdate(
 	UINT MapFlags,
 	D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
+	D3D11_RESOURCE_DIMENSION dim;
 	ResourceHandleInfo *info;
+	bool divert = false;
+	void *replace;
 
 	if (!pResource)
 		return;
 
 	switch (MapType) {
-		case D3D11_MAP_WRITE:
 		case D3D11_MAP_WRITE_DISCARD:
+			divert = true;
+			// Fall through
+		case D3D11_MAP_WRITE:
 		case D3D11_MAP_WRITE_NO_OVERWRITE:
 			break;
 		default:
@@ -707,6 +712,32 @@ void MapTrackResourceHashUpdate(
 		return;
 	}
 
+	if (divert) {
+		pResource->GetType(&dim);
+		switch (dim) {
+			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+				info->diverted_size = pMappedResource->RowPitch * info->desc2D.Height;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+				info->diverted_size = pMappedResource->DepthPitch * info->desc3D.Depth;
+				break;
+			default:
+				return;
+		}
+
+		replace = malloc(info->diverted_size);
+		if (!replace) {
+			LogInfo("MapTrackResourceHashUpdate out of memory\n");
+			return;
+		}
+		memset(replace, 0, info->diverted_size);
+
+		info->diverted_map = pMappedResource->pData;
+		pMappedResource->pData = replace;
+	} else {
+		info->diverted_map = NULL;
+	}
+
 	memcpy(&info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 	info->mapped_writable = true;
 }
@@ -728,14 +759,11 @@ void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource)
 		return;
 	info->mapped_writable = false;
 
-	// TODO: Documentation indicates there is a significant performance
-	// impact of reading from a writable mapping. For WRITE and
-	// WRITE_NO_OVERWRITE we can't do any better since we would need to
-	// read the buffer one way or another, but for WRITE_DISCARD we could
-	// divert the mapping similar to what we do in MapDenyCPURead, then
-	// calculate the CRC from that and memcpy it to the actual mapping.
-	// Hard to predict the performance of either approach without measuring
-	// it.
-
 	UpdateResourceHashFromCPU(pResource, info, info->map.pData, info->map.RowPitch, info->map.DepthPitch);
+
+	// TODO: Measure performance vs. not diverting
+	if (info->diverted_map) {
+		memcpy(info->diverted_map, info->map.pData, info->diverted_size);
+		free(info->map.pData);
+	}
 }
