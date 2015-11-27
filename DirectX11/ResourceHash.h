@@ -57,3 +57,14 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src);
 void MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource,
 	D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE *pMappedResource);
 void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource);
+
+void LogResourceDesc(const D3D11_BUFFER_DESC *desc);
+void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc);
+void LogResourceDesc(const D3D11_TEXTURE2D_DESC *desc);
+void LogResourceDesc(const D3D11_TEXTURE3D_DESC *desc);
+template <typename DescType>
+static void LogDebugResourceDesc(DescType *desc)
+{
+	if (gLogDebug)
+		LogResourceDesc(desc);
+}

@@ -1150,18 +1150,14 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	} else
 		LogInfo("RecreateCompatibleBuffer: Creating cached resource\n");
 
-	LogDebug("  ByteWidth = %d\n", new_desc.ByteWidth);
-	LogDebug("  Usage = %d\n", new_desc.Usage);
-	LogDebug("  BindFlags = %x\n", new_desc.BindFlags);
-	LogDebug("  CPUAccessFlags = %x\n", new_desc.CPUAccessFlags);
-	LogDebug("  MiscFlags = %x\n", new_desc.MiscFlags);
-	LogDebug("  StructureByteStride = %d\n", new_desc.StructureByteStride);
-
 	hr = device->CreateBuffer(&new_desc, NULL, &buffer);
 	if (FAILED(hr)) {
 		LogInfo("Resource copy RecreateCompatibleBuffer failed: 0x%x\n", hr);
+		LogResourceDesc(&new_desc);
 		return NULL;
 	}
+
+	LogDebugResourceDesc(&new_desc);
 
 	return buffer;
 }
@@ -1237,8 +1233,11 @@ static ResourceType* RecreateCompatibleTexture(
 	hr = (device->*CreateTexture)(&new_desc, NULL, &tex);
 	if (FAILED(hr)) {
 		LogInfo("Resource copy RecreateCompatibleTexture failed: 0x%x\n", hr);
+		LogResourceDesc(&new_desc);
 		return NULL;
 	}
+
+	LogDebugResourceDesc(&new_desc);
 
 	return tex;
 }

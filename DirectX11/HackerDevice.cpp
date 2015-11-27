@@ -1484,13 +1484,8 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	__out_opt  ID3D11Buffer **ppBuffer)
 {
 	LogDebug("ID3D11Device::CreateBuffer called\n");
-	LogDebug("  ByteWidth = %d\n", pDesc->ByteWidth);
-	LogDebug("  Usage = %d\n", pDesc->Usage);
-	LogDebug("  BindFlags = %x\n", pDesc->BindFlags);
-	LogDebug("  CPUAccessFlags = %x\n", pDesc->CPUAccessFlags);
-	LogDebug("  MiscFlags = %x\n", pDesc->MiscFlags);
-	LogDebug("  StructureByteStride = %d\n", pDesc->StructureByteStride);
-	LogDebug("  InitialData = %p\n", pInitialData);
+	if (pDesc)
+		LogDebugResourceDesc(pDesc);
 
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
 	if (hr == S_OK && ppBuffer && G->hunting)
@@ -1534,10 +1529,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	bool override = false;
 
 	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
-	if (pDesc) LogDebug("  Width = %d, Height = %d, MipLevels = %d, ArraySize = %d\n",
-		pDesc->Width, pDesc->Height, pDesc->MipLevels, pDesc->ArraySize);
-	if (pDesc) LogDebug("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
-		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
+	if (pDesc)
+		LogDebugResourceDesc(pDesc);
 	if (pInitialData && pInitialData->pSysMem)
 	{
 		LogDebug("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
@@ -1748,10 +1741,8 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	__out_opt  ID3D11Texture3D **ppTexture3D)
 {
 	LogInfo("HackerDevice::CreateTexture3D called with parameters\n");
-	if (pDesc) LogInfo("  Width = %d, Height = %d, Depth = %d, MipLevels = %d, InitialData = %p\n",
-		pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->MipLevels, pInitialData);
-	if (pDesc) LogInfo("  Format = %d, Usage = %x, BindFlags = %x, CPUAccessFlags = %x, MiscFlags = %x\n",
-		pDesc->Format, pDesc->Usage, pDesc->BindFlags, pDesc->CPUAccessFlags, pDesc->MiscFlags);
+	if (pDesc)
+		LogDebugResourceDesc(pDesc);
 	if (pInitialData && pInitialData->pSysMem) {
 		LogInfo("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u\n",
 				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);

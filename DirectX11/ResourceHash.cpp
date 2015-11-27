@@ -4,6 +4,57 @@
 #include "util.h"
 #include "globals.h"
 
+// Overloaded functions to log any kind of resource description (useful to call
+// from templates):
+
+template <typename DescType>
+static void LogResourceDescCommon(DescType *desc)
+{
+	LogInfo("  Usage = %d\n", desc->Usage);
+	LogInfo("  BindFlags = 0x%x\n", desc->BindFlags);
+	LogInfo("  CPUAccessFlags = 0x%x\n", desc->CPUAccessFlags);
+	LogInfo("  MiscFlags = 0x%x\n", desc->MiscFlags);
+}
+
+void LogResourceDesc(const D3D11_BUFFER_DESC *desc)
+{
+	LogInfo("  ByteWidth = %d\n", desc->ByteWidth);
+	LogResourceDescCommon(desc);
+	LogInfo("  StructureByteStride = %d\n", desc->StructureByteStride);
+}
+
+void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc)
+{
+	LogInfo("  Width = %d\n", desc->Width);
+	LogInfo("  MipLevels = %d\n", desc->MipLevels);
+	LogInfo("  ArraySize = %d\n", desc->ArraySize);
+	LogInfo("  Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+	LogResourceDescCommon(desc);
+}
+
+void LogResourceDesc(const D3D11_TEXTURE2D_DESC *desc)
+{
+	LogInfo("  Width = %d\n", desc->Width);
+	LogInfo("  Height = %d\n", desc->Height);
+	LogInfo("  MipLevels = %d\n", desc->MipLevels);
+	LogInfo("  ArraySize = %d\n", desc->ArraySize);
+	LogInfo("  Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+	LogInfo("  SampleDesc.Count = %d\n", desc->SampleDesc.Count);
+	LogInfo("  SampleDesc.Quality = %d\n", desc->SampleDesc.Quality);
+	LogResourceDescCommon(desc);
+}
+
+void LogResourceDesc(const D3D11_TEXTURE3D_DESC *desc)
+{
+	LogInfo("  Width = %d\n", desc->Width);
+	LogInfo("  Height = %d\n", desc->Height);
+	LogInfo("  Depth = %d\n", desc->Depth);
+	LogInfo("  MipLevels = %d\n", desc->MipLevels);
+	LogInfo("  Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+	LogResourceDescCommon(desc);
+}
+
+
 // This special case of texture resolution is to improve the behavior of special 
 // full-screen textures.  Textures can be created dynamically of course, and some
 // are set to full screen resolution.  Full screen resolution can vary between
