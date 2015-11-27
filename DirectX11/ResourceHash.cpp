@@ -751,8 +751,6 @@ void MapTrackResourceHashUpdate(
 			return;
 	}
 
-	// FIXME: Probably need to make sure the contamination still makes
-	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
 	}

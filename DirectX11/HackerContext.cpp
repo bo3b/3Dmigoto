@@ -1210,8 +1210,6 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
-	// FIXME: Probably need to make sure the contamination still makes
-	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
 	}
@@ -1238,8 +1236,6 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pSrcResource)
 {
-	// FIXME: Probably need to make sure the contamination still makes
-	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
 	}
@@ -1264,8 +1260,6 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
-	// FIXME: Probably need to make sure the contamination still makes
-	// sense when we are propagating hashes, may need to move this.
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
 	}
