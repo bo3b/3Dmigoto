@@ -365,6 +365,17 @@ uint32_t CalcTexture2DDataHash(
 	return hash;
 }
 
+uint32_t GetOrigResourceHash(ID3D11Resource *resource)
+{
+	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
+
+	j = G->mResources.find(resource);
+	if (j != G->mResources.end())
+		return j->second.orig_hash;
+
+	return 0;
+}
+
 uint32_t GetResourceHash(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
@@ -488,7 +499,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (!dest)
 		return;
 
-	dstHash = GetResourceHash(dest);
+	dstHash = GetOrigResourceHash(dest);
 	if (!dstHash)
 		return;
 
@@ -504,15 +515,14 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 			&dstWidth, &dstHeight, &dstDepth,
 			&dstIdx, &dstMip, &dstArraySize);
 
-	// TODO:
 	// We don't care if a mip-map has been updated since we don't hash those.
 	// We could collect info about the copy anyway (below code will work to
 	// do so), but it adds a lot of irrelevant noise to the ShaderUsage.txt
-	// if (dstMip)
-	// 	goto out_unlock;
+	if (dstMip)
+		goto out_unlock;
 
 	if (src) {
-		srcHash = GetResourceHash(src);
+		srcHash = GetOrigResourceHash(src);
 		G->mCopiedResourceInfo.insert(srcHash);
 
 		try {
@@ -520,30 +530,28 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 			GetResourceInfoFields(srcInfo, srcSubresource,
 					&srcWidth, &srcHeight, &srcDepth,
 					&srcIdx, &srcMip, &srcArraySize);
+
+			if (dstHash != srcHash && srcInfo->initial_data_used_in_hash) {
+				dstInfo->initial_data_used_in_hash = true;
+				if (!G->track_texture_updates)
+					dstInfo->hash_contaminated = true;
+			}
 		} catch (std::out_of_range) {
 		}
 	}
 
-	// If the destination had used initial data in the hash calculation
-	// that is now being overridden by something else we have a
-	// contaminated hash. Depending on the game this may be ok, or it may
-	// mean we can't rely on the hashes remaining consistent.
-	//
-	// XXX: Actually, thinking about it we might be better marking it
-	// contaminated if the source used initial data, because if we do
-	// anything to solve this problem that's the hash we would propagate -
-	// but we would also need to propagate new hashes from Map() and
-	// UpdateSubresource() calls, otherwise we just end up with a dynamic
-	// resource hash which is probably not going to identify the texture.
-	if (dstHash != srcHash && dstInfo->initial_data_used_in_hash)
-		dstInfo->hash_contaminated = true;
-
 	switch (type) {
 		case 'U':
 			dstInfo->update_contamination.insert(DstSubresource);
+			dstInfo->initial_data_used_in_hash = true;
+			if (!G->track_texture_updates)
+				dstInfo->hash_contaminated = true;
 			break;
 		case 'M':
 			dstInfo->map_contamination.insert(DstSubresource);
+			dstInfo->initial_data_used_in_hash = true;
+			if (!G->track_texture_updates)
+				dstInfo->hash_contaminated = true;
 			break;
 		case 'C':
 			dstInfo->copy_contamination.insert(srcHash);

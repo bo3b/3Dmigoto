@@ -8,7 +8,6 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include <tuple>
 
 #include "util.h"
 #include "CommandList.h"
@@ -253,97 +252,6 @@ struct ResolutionInfo
 	{}
 };
 
-struct CopySubresourceRegionContamination
-{
-	bool partial;
-	UINT DstX;
-	UINT DstY;
-	UINT DstZ;
-	D3D11_BOX SrcBox;
-
-	CopySubresourceRegionContamination() :
-		partial(false),
-		DstX(0),
-		DstY(0),
-		DstZ(0),
-		SrcBox({0, 0, 0, UINT_MAX, UINT_MAX, UINT_MAX})
-	{}
-
-	void Update(bool partial, UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
-	{
-		this->partial = this->partial || partial;
-		this->DstX = max(this->DstX, DstX);
-		this->DstY = max(this->DstY, DstY);
-		this->DstZ = max(this->DstZ, DstZ);
-		if (SrcBox) {
-			this->SrcBox.left = max(this->SrcBox.left, SrcBox->left);
-			this->SrcBox.top = max(this->SrcBox.top, SrcBox->top);
-			this->SrcBox.front = max(this->SrcBox.front, SrcBox->front);
-
-			this->SrcBox.right = min(this->SrcBox.right, SrcBox->right);
-			this->SrcBox.bottom = min(this->SrcBox.bottom, SrcBox->bottom);
-			this->SrcBox.back = min(this->SrcBox.back, SrcBox->back);
-		}
-	}
-};
-
-// Create a map that uses a hashable tuple of five integers as they key (Hey C++,
-// this is something Python can do with what? ... 0 lines of boilerplate?)
-typedef std::tuple<uint32_t, UINT, UINT, UINT, UINT> CopySubresourceRegionContaminationMapKey;
-template<> struct hash<CopySubresourceRegionContaminationMapKey>
-{
-	size_t operator()(CopySubresourceRegionContaminationMapKey const &key)
-	{
-		// http://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
-		size_t seed = 0;
-		seed ^= std::hash<uint32_t>()(std::get<0>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		seed ^= std::hash<UINT>()(std::get<1>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		seed ^= std::hash<UINT>()(std::get<2>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		seed ^= std::hash<UINT>()(std::get<3>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		seed ^= std::hash<UINT>()(std::get<4>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		return seed;
-	}
-};
-typedef std::map<CopySubresourceRegionContaminationMapKey, CopySubresourceRegionContamination>
-	CopySubresourceRegionContaminationMap;
-
-// Tracks info about resources by their hash. Primarily for stat collection:
-struct ResourceHashInfo
-{
-	D3D11_RESOURCE_DIMENSION type;
-	union {
-		D3D11_TEXTURE2D_DESC tex2d_desc;
-		D3D11_TEXTURE3D_DESC tex3d_desc;
-	};
-
-	bool initial_data_used_in_hash;
-	bool hash_contaminated;
-	std::set<UINT> update_contamination;
-	std::set<UINT> map_contamination;
-	std::set<uint32_t> copy_contamination;
-	CopySubresourceRegionContaminationMap region_contamination;
-
-	ResourceHashInfo() :
-		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
-		initial_data_used_in_hash(false),
-		hash_contaminated(false)
-	{}
-
-	struct ResourceHashInfo & operator= (D3D11_TEXTURE2D_DESC desc)
-	{
-		type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
-		tex2d_desc = desc;
-		return *this;
-	}
-
-	struct ResourceHashInfo & operator= (D3D11_TEXTURE3D_DESC desc)
-	{
-		type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
-		tex3d_desc = desc;
-		return *this;
-	}
-};
-
 struct Globals
 {
 	bool gInitialized;
@@ -469,11 +377,14 @@ struct Globals
 
 	// Statistics
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
+
+	// These five items work with the *original* resource hash:
 	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mCopiedResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+
 	std::set<ID3D11Resource *> mVisitedRenderTargets;						// std::set is sorted for consistent order while hunting
 	ID3D11Resource *mSelectedRenderTarget;
 	int mSelectedRenderTargetPos;

@@ -347,7 +347,8 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 }
 
 HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-		wchar_t *reg, char shader_type, int idx, uint32_t hash, ID3D11Resource *handle)
+		wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
+		ID3D11Resource *handle)
 {
 	struct ResourceHashInfo *info;
 	wchar_t *pos;
@@ -371,7 +372,7 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 
 	if (hash) {
 		try {
-			info = &G->mResourceInfo.at(hash);
+			info = &G->mResourceInfo.at(orig_hash);
 			if (info->hash_contaminated) {
 				StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=!");
 				if (!info->map_contamination.empty())
@@ -387,6 +388,9 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 		} catch (std::out_of_range) {}
 
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%08x", hash);
+
+		if (hash != orig_hash)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"(%08x)", orig_hash);
 	}
 	if (analyse_options & FrameAnalysisOptions::FILENAME_HANDLE)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
@@ -427,7 +431,7 @@ void HackerContext::_DumpCBs(char shader_type,
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0, 0, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpResource(buffers[i], filename,
 					FrameAnalysisOptions::DUMP_CB_MASK, i,
@@ -444,7 +448,7 @@ void HackerContext::_DumpTextures(char shader_type,
 	ID3D11Resource *resource;
 	D3D11_RESOURCE_DIMENSION dim;
 	wchar_t filename[MAX_PATH];
-	uint32_t hash;
+	uint32_t hash, orig_hash;
 	HRESULT hr;
 	UINT i;
 
@@ -462,8 +466,9 @@ void HackerContext::_DumpTextures(char shader_type,
 
 		try {
 			hash = G->mResources.at((ID3D11Texture2D *)resource).hash;
+			orig_hash = G->mResources.at((ID3D11Texture2D *)resource).orig_hash;
 		} catch (std::out_of_range) {
-			hash = 0;
+			hash = orig_hash = 0;
 		}
 
 		// TODO: process description to get offset, strides & size for
@@ -471,7 +476,7 @@ void HackerContext::_DumpTextures(char shader_type,
 		// although I have no idea how to determine which of the
 		// entries in the two D3D11_BUFFER_SRV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash, orig_hash, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_TEX_MASK, i,
@@ -538,7 +543,7 @@ void HackerContext::DumpVBs()
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0, 0, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpResource(buffers[i], filename,
 				FrameAnalysisOptions::DUMP_VB_MASK, i,
@@ -561,7 +566,7 @@ void HackerContext::DumpIB()
 	if (!buffer)
 		return;
 
-	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0, buffer);
+	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0, 0, buffer);
 	if (SUCCEEDED(hr)) {
 		DumpResource(buffer, filename,
 				FrameAnalysisOptions::DUMP_IB_MASK, -1,
@@ -609,7 +614,7 @@ void HackerContext::DumpRenderTargets()
 	UINT i;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash;
+	uint32_t hash, orig_hash;
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
 		// TODO: Decouple from HackerContext and remove dependency on
@@ -617,8 +622,9 @@ void HackerContext::DumpRenderTargets()
 		// we do for all other resources
 		try {
 			hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
+			orig_hash = G->mResources.at(mCurrentRenderTargets[i]).orig_hash;
 		} catch (std::out_of_range) {
-			hash = 0;
+			hash = orig_hash = 0;
 		}
 
 		// TODO: process description to get offset, strides & size for
@@ -626,7 +632,8 @@ void HackerContext::DumpRenderTargets()
 		// have no idea how to determine which of the entries in the
 		// two D3D11_BUFFER_RTV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, hash, (ID3D11Resource*)mCurrentRenderTargets[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i,
+				hash, orig_hash, (ID3D11Resource*)mCurrentRenderTargets[i]);
 		if (FAILED(hr))
 			return;
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename,
@@ -639,7 +646,7 @@ void HackerContext::DumpDepthStencilTargets()
 {
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash;
+	uint32_t hash, orig_hash;
 
 	if (mCurrentDepthTarget) {
 		// TODO: Decouple from HackerContext and remove dependency on
@@ -647,11 +654,13 @@ void HackerContext::DumpDepthStencilTargets()
 		// we do for all other resources
 		try {
 			hash = G->mResources.at(mCurrentDepthTarget).hash;
+			orig_hash = G->mResources.at(mCurrentDepthTarget).orig_hash;
 		} catch (std::out_of_range) {
-			hash = 0;
+			hash = orig_hash = 0;
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, hash, (ID3D11Resource*)mCurrentDepthTarget);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1,
+				hash, orig_hash, (ID3D11Resource*)mCurrentDepthTarget);
 		if (FAILED(hr))
 			return;
 		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename,
@@ -667,7 +676,7 @@ void HackerContext::DumpUAVs(bool compute)
 	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash;
+	uint32_t hash, orig_hash;
 
 	if (compute)
 		mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
@@ -686,14 +695,15 @@ void HackerContext::DumpUAVs(bool compute)
 
 		try {
 			hash = G->mResources.at(resource).hash;
+			orig_hash = G->mResources.at(resource).orig_hash;
 		} catch (std::out_of_range) {
-			hash = 0;
+			hash = orig_hash = 0;
 		}
 
 		// TODO: process description to get offset & size for buffer
 		// type UAVs and pass down to dump routines.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash, orig_hash, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_RT_MASK, i,

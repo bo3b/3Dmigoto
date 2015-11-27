@@ -62,7 +62,7 @@ ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 {
 	ID3D11Resource *resource = NULL;
-	uint32_t hash = 0;
+	uint32_t orig_hash = 0;
 
 	if (!view)
 		return NULL;
@@ -71,14 +71,16 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 	if (!resource)
 		return NULL;
 
-	hash = GetResourceHash(resource);
+	// We are using the original resource hash for stat collection - things
+	// get tricky otherwise
+	orig_hash = GetOrigResourceHash(resource);
 
 	resource->Release();
 
-	if (hash)
+	if (orig_hash)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mShaderResourceInfo.insert(hash);
+			G->mShaderResourceInfo.insert(orig_hash);
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -110,7 +112,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 {
 	D3D11_RENDER_TARGET_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
-	uint32_t hash = 0;
+	uint32_t orig_hash = 0;
 
 	target->GetDesc(&desc);
 
@@ -121,7 +123,9 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	if (!resource)
 		return;
 
-	hash = GetResourceHash((ID3D11Texture2D *)resource);
+	// We are using the original resource hash for stat collection - things
+	// get tricky otherwise
+	orig_hash = GetOrigResourceHash((ID3D11Texture2D *)resource);
 
 	resource->Release();
 
@@ -131,7 +135,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		mCurrentRenderTargets.push_back(resource);
 		G->mVisitedRenderTargets.insert(resource);
-		G->mRenderTargetInfo.insert(hash);
+		G->mRenderTargetInfo.insert(orig_hash);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -139,7 +143,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 {
 	D3D11_DEPTH_STENCIL_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
-	uint32_t hash = 0;
+	uint32_t orig_hash = 0;
 
 	if (!target)
 		return;
@@ -150,13 +154,15 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	target->GetDesc(&desc);
 
-	hash = GetResourceHash(resource);
+	// We are using the original resource hash for stat collection - things
+	// get tricky otherwise
+	orig_hash = GetOrigResourceHash(resource);
 
 	resource->Release();
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		mCurrentDepthTarget = resource;
-		G->mDepthTargetInfo.insert(hash);
+		G->mDepthTargetInfo.insert(orig_hash);
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 

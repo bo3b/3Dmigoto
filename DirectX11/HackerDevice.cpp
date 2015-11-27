@@ -1719,6 +1719,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture2D].hash = hash;
+			G->mResources[*ppTexture2D].orig_hash = hash;
 			G->mResources[*ppTexture2D].data_hash = data_hash;
 			if (pDesc)
 				memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
@@ -1774,6 +1775,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture3D].hash = hash;
+			G->mResources[*ppTexture3D].orig_hash = hash;
 			G->mResources[*ppTexture3D].data_hash = data_hash;
 			if (pDesc)
 				memcpy(&G->mResources[*ppTexture3D].desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));

@@ -64,7 +64,7 @@ DWORD castStrLen(const char* string)
 
 static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *tag)
 {
-	std::set<uint32_t>::iterator hash;
+	std::set<uint32_t>::iterator orig_hash;
 	std::set<uint32_t>::iterator iCopy;
 	std::set<UINT>::iterator iMU;
 	CopySubresourceRegionContaminationMap::iterator iRegion;
@@ -78,13 +78,13 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 	DWORD written; // Really? A >required< "optional" paramter that we don't care about?
 	bool nl;
 
-	for (hash = hashes->begin(); hash != hashes->end(); hash++) {
+	for (orig_hash = hashes->begin(); orig_hash != hashes->end(); orig_hash++) {
 		try {
-			info = &G->mResourceInfo.at(*hash);
+			info = &G->mResourceInfo.at(*orig_hash);
 		} catch (std::out_of_range) {
 			continue;
 		}
-		_snprintf_s(buf, 256, 256, "<%s hash=%08lx ", tag, *hash);
+		_snprintf_s(buf, 256, 256, "<%s orig_hash=%08lx ", tag, *orig_hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 		StrRenderTarget(buf, 256, *info);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -181,10 +181,14 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 	}
 }
 
-static void DumpUsageRegister(HANDLE f, char *tag, int id, void *handle, uint32_t hash)
+static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handle)
 {
 	char buf[256];
 	DWORD written;
+	uint32_t hash, orig_hash;
+
+	hash = G->mResources[handle].hash;
+	orig_hash = G->mResources[handle].orig_hash;
 
 	sprintf(buf, "  <%s", tag);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -197,8 +201,13 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, void *handle, uint32_
 	sprintf(buf, " handle=%p", handle);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 
+	if (orig_hash != hash) {
+		sprintf(buf, " orig_hash=%08lx", orig_hash);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+	}
+
 	try {
-		if (G->mResourceInfo.at(hash).hash_contaminated) {
+		if (G->mResourceInfo.at(orig_hash).hash_contaminated) {
 			sprintf(buf, " hash_contaminated=true");
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 		}
@@ -244,7 +253,7 @@ void DumpUsage(wchar_t *dir)
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o, G->mResources[*o].hash);
+					DumpUsageRegister(f, "Register", k->first, *o);
 				}
 			}
 			const char *FOOTER = "</VertexShader>\n";
@@ -267,7 +276,7 @@ void DumpUsage(wchar_t *dir)
 			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o, G->mResources[*o].hash);
+					DumpUsageRegister(f, "Register", k->first, *o);
 				}
 			}
 			std::vector<std::set<ID3D11Resource *>>::iterator m;
@@ -275,12 +284,12 @@ void DumpUsage(wchar_t *dir)
 			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
 				std::set<ID3D11Resource *>::const_iterator o;
 				for (o = (*m).begin(); o != (*m).end(); o++) {
-					DumpUsageRegister(f, "RenderTarget", pos, *o, G->mResources[*o].hash);
+					DumpUsageRegister(f, "RenderTarget", pos, *o);
 				}
 			}
 			std::set<ID3D11Resource *>::iterator n;
 			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				DumpUsageRegister(f, "DepthTarget", -1, *n, G->mResources[*n].hash);
+				DumpUsageRegister(f, "DepthTarget", -1, *n);
 			}
 			const char *FOOTER = "</PixelShader>\n";
 			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
@@ -1368,10 +1377,11 @@ static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 	}
 
 	uint32_t hash = G->mResources[target].hash;
-	struct ResourceHashInfo &info = G->mResourceInfo[hash];
+	uint32_t orig_hash = G->mResources[target].orig_hash;
+	struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
 	StrRenderTarget(buf, 256, info);
-	LogInfo("%srender target handle = %p, hash = %08lx, %s\n",
-		log_prefix, target, hash, buf);
+	LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
+		log_prefix, target, hash, orig_hash, buf);
 }
 
 static void MarkRenderTarget(HackerDevice *device, void *private_data)
