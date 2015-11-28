@@ -1219,6 +1219,12 @@ static ResourceType* RecreateCompatibleTexture(
 		Texture2DDescResolveMSAA(&new_desc);
 
 	// XXX: Any changes needed in new_desc.MiscFlags?
+	//
+	// D3D11_RESOURCE_MISC_GENERATE_MIPS requires specific bind flags (both
+	// shader resource AND render target must be set) and might prevent us
+	// from creating the resource otherwise. Since we don't need to
+	// generate mip-maps just clear it out:
+	new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 	if (dst_resource) {
 		// If destination already exists and the description is
