@@ -1760,6 +1760,18 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 	}
 }
 
+static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
+{
+	ID3D11Resource *tmp_resource = NULL;
+
+	view->GetResource(&tmp_resource);
+	if (!tmp_resource)
+		return false;
+	tmp_resource->Release();
+
+	return (tmp_resource == resource);
+}
+
 void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
@@ -1868,10 +1880,17 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		}
 	} else {
 		dst_resource = src_resource;
-		if (src_view && (src.type == dst.type))
+		if (src_view && (src.type == dst.type)) {
 			dst_view = src_view;
-		else
-			dst_view = *pp_cached_view;
+		} else if (*pp_cached_view) {
+			if (ViewMatchesResource(*pp_cached_view, dst_resource)) {
+				dst_view = *pp_cached_view;
+			} else {
+				LogInfo("Resource copying: Releasing stale view cache\n");
+				(*pp_cached_view)->Release();
+				*pp_cached_view = NULL;
+			}
+		}
 		// TODO: If we are referencing to/from a custom resource we
 		// currently don't reference the view, but we could so long as
 		// the bind flags from the original source are compatible with
