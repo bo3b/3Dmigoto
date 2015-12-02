@@ -27,7 +27,9 @@ Fixed
 
 Installation
 ------------
-1. Use driver 358.50 (known good driver, especially for Windows 10 users)
+1. Use driver 358.87 (Newer drivers may work as well, but this the recommended
+   driver for this game as it is known to work well for a lot of people,
+   including Windows 10 users).
 
 2. Install Helifax' custom profile for The Witcher 3. Note that you will have
    to repeat this any time you reinstall the nvidia drivers (instructions
