@@ -81,12 +81,12 @@ public:
 
 	// Resources.
 	map<string, int> mCBufferNames;
-	
+
 	map<int, string> mSamplerNames;
 	map<int, int>    mSamplerNamesArraySize;
 	map<int, string> mSamplerComparisonNames;
 	map<int, int>    mSamplerComparisonNamesArraySize;
-	
+
 	map<int, string> mTextureNames;
 	map<int, int>    mTextureNamesArraySize;
 	map<int, string> mTextureType;
@@ -128,8 +128,8 @@ public:
 	int nestCount;
 
 
-// Suppress all these warnings, as they are an _int64 mismatch for the aging sscanf, which should
-// accept that in x64, but doesn't.  Requiring int instead.  Not worth altering for a benign warning.
+	// Suppress all these warnings, as they are an _int64 mismatch for the aging sscanf, which should
+	// accept that in x64, but doesn't.  Requiring int instead.  Not worth altering for a benign warning.
 #pragma warning(push)
 #pragma warning(disable: 6328)
 
@@ -218,7 +218,7 @@ public:
 			return false;
 
 		// skip pointer in order to parse next line
-		while (c[pos] != 0x0a && pos < 200) pos++; pos++;	
+		while (c[pos] != 0x0a && pos < 200) pos++; pos++;
 
 		numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
 			name, sizeof(name), &index, mask, sizeof(mask), &reg2, sysvalue, sizeof(sysvalue), format, sizeof(format));
@@ -252,6 +252,58 @@ public:
 		return true;
 	}
 
+	// Looking up the interpolation values for a given input, like 'centroid'
+	// or 'linear centroid'.  These are not found in the text declaration for
+	// Input Signature, so we are fetching them from the already parsed James-
+	// Jones input.  Otherwise we'd need to parse the dcl_input_ps phrases.
+
+	string GetInterpolation(Shader *shader, string vRegister)
+	{
+		string interpolation = "";
+
+		for each(Declaration declaration in shader->psDecl)
+		{
+			if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
+			{
+				int regOut = stoi(vRegister.substr(1));
+				uint32_t binReg = declaration.asOperands[0].ui32RegisterNumber;
+				if (regOut == binReg)
+				{
+					switch (declaration.value.eInterpolation)
+					{
+					case INTERPOLATION_CONSTANT:
+						interpolation = "constant ";
+						break;
+					// Let's skip adding this, as it's the default, and adds noise.
+					//case INTERPOLATION_LINEAR:
+					//	interpolation = "linear ";
+					//	break;
+					case INTERPOLATION_LINEAR_CENTROID:
+						interpolation = "linear centroid ";
+						break;
+					case INTERPOLATION_LINEAR_NOPERSPECTIVE:
+						interpolation = "linear noperspective ";
+						break;
+					case INTERPOLATION_LINEAR_NOPERSPECTIVE_CENTROID:
+						interpolation = "linear noperspective centroid ";
+						break;
+					case INTERPOLATION_LINEAR_SAMPLE:
+						interpolation = "linear sample ";
+						break;
+					case INTERPOLATION_LINEAR_NOPERSPECTIVE_SAMPLE:
+						interpolation = "linear noperspective sample ";
+						break;
+
+					default:
+						break;
+					}
+				}
+			}
+		}
+
+		return interpolation;
+	}
+
 
 	// Input signature:
 	//
@@ -261,7 +313,7 @@ public:
 	// TEXCOORD                 1   xy          1     NONE   float   xy  
 	// COLOR                    3   xyz         2     NONE   float   xyz 
 
-	void ParseInputSignature(const char *c, size_t size)
+	void ParseInputSignature(Shader *shader, const char *c, size_t size)
 	{
 		// DataType is not used here, just a convenience for calling SkipPacking.
 		map<string, DataType> usedInputRegisters;
@@ -342,9 +394,13 @@ public:
 			{
 				usedInputRegisters[regNameStr] = TranslateType(format2);
 			}
-			// Write.
+
+			// Now adding interpolation modifiers like 'centroid' as fetched from James-Jones input
+			string modifier = GetInterpolation(shader, regNameStr);
+
+			// Write, e.g.  centroid  float4 v4 : TEXCOORD2,
 			char buffer[256];
-			sprintf(buffer, "  %s %s : %s%d,\n", format2, regNameStr.c_str(), name, index);
+			sprintf(buffer, "  %s%s %s : %s%d,\n", modifier.c_str(), format2, regNameStr.c_str(), name, index);
 			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			while (c[pos] != 0x0a && pos < size) pos++; pos++;
 			// End?
@@ -4959,7 +5015,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();
 		d.WriteAddOnDeclarations();
-		d.ParseInputSignature(params.decompiled, params.decompiledSize);
+		d.ParseInputSignature(shader, params.decompiled, params.decompiledSize);
 		d.ParseOutputSignature(params.decompiled, params.decompiledSize);
 		if (!params.ZeroOutput)
 		{
