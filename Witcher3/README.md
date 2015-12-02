@@ -27,12 +27,10 @@ Fixed
 
 Installation
 ------------
-1. Use driver 350.12, 352.86 or 353.06 (Note that 352.86 and 353.06 are known
-   to cause issues in other games, and 350.12 may be more stable).
+1. Use driver 358.50 (known good driver, especially for Windows 10 users)
 
-2. Install Helifax' custom profile for The Witcher 3 (especially important if
-   using driver 350.12, but recommended regardless). Note that you will have to
-   repeat this any time you reinstall the nvidia drivers (instructions
+2. Install Helifax' custom profile for The Witcher 3. Note that you will have
+   to repeat this any time you reinstall the nvidia drivers (instructions
    summarised from [here][1]):
 
 [1]: https://forums.geforce.com/default/topic/841696/3d-vision/the-witcher-3-correct-3d-vision-nvidia-profile-cm-mode-included-/post/4562951/#4562951
