@@ -1895,6 +1895,19 @@ public:
 	}
 
 
+	// Convenience routine to calculate just the number of swizzle components.  
+	// Used for _LT, _GT et.al cmp conversions.  Inputs like 'o1.xy', return 2. 
+	
+	string swizCount(char *operand)
+	{
+		if (!operand)
+			return "";
+
+		size_t count = strlen(operand) - (strrchr(operand, '.') - operand) - 1;
+		return (count == 1) ? "" : to_string(count);
+	}
+
+
 	// Only necessary for opcode_AND when used as boolean tests.
 	// Converts literals of the form: l(0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000) to l(1.0, 1.0, 1.0, 1.0)
 
@@ -2060,6 +2073,11 @@ public:
 
 	// Well, another example is a n "and r0.xyzw, r0.yyyy, r2.xyzw" where r0.y is set early. 
 	// This requires at least single component entries in the mBooleanRegisters.
+
+	// 12-5-15: New change to all users of addBoolean, is that they will call a small helper
+	//  routine to do 'cmp', in order to return -1 or 0, instead of the HLSL 1 or 0.  This
+	//  is intended to fix the problems we see where the assembly is using the -1 numerically
+	//  and not as a boolean. 
 
 	void addBoolean(char *arg)
 	{
@@ -3935,7 +3953,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s != %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3945,7 +3963,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s != %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3955,7 +3973,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s == %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3965,7 +3983,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s == %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3975,7 +3993,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s < %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3985,7 +4003,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s < %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3995,7 +4013,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s < %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4005,7 +4023,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s >= %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4015,7 +4033,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s >= %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4025,7 +4043,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp%s(%s >= %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4948,7 +4966,11 @@ public:
 	// Adding .ini declaration, since declaring it doesn't cost anything and saves typing them in later.
 	void WriteAddOnDeclarations()
 	{
-		const char *StereoTextureCode = "\n"
+		const char *Comment = "\n"
+			"// ---- Injected by 3Dmigoto \n";
+		mOutput.insert(mOutput.end(), Comment, Comment + strlen(Comment));
+
+		const char *StereoTextureCode = 
 			"Texture2D<float4> StereoParams : register(t125);\n";
 		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode + strlen(StereoTextureCode));
 		const char *IniTextureCode = 
@@ -4960,6 +4982,21 @@ public:
 			const char *DepthTextureCode = "Texture2D<float4> InjectedDepthTexture : register(t126);\n";
 			mOutput.insert(mOutput.end(), DepthTextureCode, DepthTextureCode + strlen(DepthTextureCode));
 		}
+
+		// Also inject the helper routines of 'cmp' to fix any boolean comparisons.
+		const char *CmpCode = "\n"
+			"int cmp(bool b) { return (b ? -1 : 0); }\n";
+		mOutput.insert(mOutput.end(), CmpCode, CmpCode + strlen(CmpCode));
+		const char *CmpCode2 =
+			"int2 cmp2(bool2 b) { return (b.xy ? -1 : 0); }\n";
+		mOutput.insert(mOutput.end(), CmpCode2, CmpCode2 + strlen(CmpCode2));
+		const char *CmpCode3 =
+			"int3 cmp3(bool3 b) { return (b.xyz ? -1 : 0); }\n";
+		mOutput.insert(mOutput.end(), CmpCode3, CmpCode3 + strlen(CmpCode3));
+		const char *CmpCode4 =
+			"int4 cmp4(bool4 b) { return (b.xyzw ? -1 : 0); }\n"
+			"// ---- \n";
+		mOutput.insert(mOutput.end(), CmpCode4, CmpCode4 + strlen(CmpCode4));
 	}
 };
 
