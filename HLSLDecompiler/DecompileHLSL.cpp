@@ -34,6 +34,7 @@
 
 #include "assert.h"
 #include "log.h"
+#include "version.h"
 
 using namespace std;
 
@@ -4962,41 +4963,38 @@ public:
 		}
 	}
 
+	
 	// The StereoParams are nearly always useful, but the depth buffer texture is rarely used.
 	// Adding .ini declaration, since declaring it doesn't cost anything and saves typing them in later.
-	void WriteAddOnDeclarations()
-	{
-		const char *Comment = "\n"
-			"// ---- Injected by 3Dmigoto \n";
-		mOutput.insert(mOutput.end(), Comment, Comment + strlen(Comment));
+	// Now also pushing this to the top of each HLSL file, and adding a time stamp and version.
 
-		const char *StereoTextureCode = 
-			"Texture2D<float4> StereoParams : register(t125);\n";
-		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode + strlen(StereoTextureCode));
-		const char *IniTextureCode = 
+	void WriteHeaderDeclarations()
+	{
+		string header =
+			"// ---- 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() +
+			"\n";
+
+		header = header + 
+			"Texture2D<float4> StereoParams : register(t125);\n" +
 			"Texture1D<float4> IniParams : register(t120);\n";
-		mOutput.insert(mOutput.end(), IniTextureCode, IniTextureCode + strlen(IniTextureCode));
 
 		if (mZRepair_DepthBuffer)
 		{
-			const char *DepthTextureCode = "Texture2D<float4> InjectedDepthTexture : register(t126);\n";
-			mOutput.insert(mOutput.end(), DepthTextureCode, DepthTextureCode + strlen(DepthTextureCode));
+			header = header + 
+				"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
 		}
 
 		// Also inject the helper routines of 'cmp' to fix any boolean comparisons.
-		const char *CmpCode = "\n"
-			"int cmp(bool b) { return (b ? -1 : 0); }\n";
-		mOutput.insert(mOutput.end(), CmpCode, CmpCode + strlen(CmpCode));
-		const char *CmpCode2 =
-			"int2 cmp2(bool2 b) { return (b.xy ? -1 : 0); }\n";
-		mOutput.insert(mOutput.end(), CmpCode2, CmpCode2 + strlen(CmpCode2));
-		const char *CmpCode3 =
-			"int3 cmp3(bool3 b) { return (b.xyz ? -1 : 0); }\n";
-		mOutput.insert(mOutput.end(), CmpCode3, CmpCode3 + strlen(CmpCode3));
-		const char *CmpCode4 =
-			"int4 cmp4(bool4 b) { return (b.xyzw ? -1 : 0); }\n"
+		header = header +
+			"\n" +
+			"int cmp(bool b) { return (b ? -1 : 0); }\n" +
+			"int2 cmp2(bool2 b) { return (b.xy ? -1 : 0); }\n" +
+			"int3 cmp3(bool3 b) { return (b.xyz ? -1 : 0); }\n" +
+			"int4 cmp4(bool4 b) { return (b.xyzw ? -1 : 0); }\n" +
 			"// ---- \n";
-		mOutput.insert(mOutput.end(), CmpCode4, CmpCode4 + strlen(CmpCode4));
+
+		// using .begin() to insert as first lines in files.
+		mOutput.insert(mOutput.begin(), header.c_str(), header.c_str() + header.length());
 	}
 };
 
@@ -5051,7 +5049,6 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		d.ReadResourceBindings(params.decompiled, params.decompiledSize);
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();
-		d.WriteAddOnDeclarations();
 		d.ParseInputSignature(shader, params.decompiled, params.decompiledSize);
 		d.ParseOutputSignature(params.decompiled, params.decompiledSize);
 		if (!params.ZeroOutput)
@@ -5064,6 +5061,8 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 			d.WriteZeroOutputSignature(params.decompiled, params.decompiledSize);
 		}
 		d.mOutput.push_back('}');
+		d.WriteHeaderDeclarations();
+
 		shaderModel = d.mShaderType;
 		errorOccurred = d.mErrorOccurred;
 		FreeShaderInfo(shader->sInfo);
