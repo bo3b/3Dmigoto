@@ -1896,19 +1896,6 @@ public:
 	}
 
 
-	// Convenience routine to calculate just the number of swizzle components.  
-	// Used for _LT, _GT et.al cmp conversions.  Inputs like 'o1.xy', return 2. 
-	
-	string swizCount(char *operand)
-	{
-		if (!operand)
-			return "";
-
-		size_t count = strlen(operand) - (strrchr(operand, '.') - operand) - 1;
-		return (count == 1) ? "" : to_string(count);
-	}
-
-
 	// Only necessary for opcode_AND when used as boolean tests.
 	// Converts literals of the form: l(0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000) to l(1.0, 1.0, 1.0, 1.0)
 
@@ -2078,7 +2065,7 @@ public:
 	// 12-5-15: New change to all users of addBoolean, is that they will call a small helper
 	//  routine to do 'cmp', in order to return -1 or 0, instead of the HLSL 1 or 0.  This
 	//  is intended to fix the problems we see where the assembly is using the -1 numerically
-	//  and not as a boolean. 
+	//  and not as a boolean.  The helper is now just a macro "#define cmp -" to negate.
 
 	void addBoolean(char *arg)
 	{
@@ -3954,7 +3941,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = cmp%s(%s != %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3964,7 +3951,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = cmp%s(%s != %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3974,7 +3961,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = cmp%s(%s == %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3984,7 +3971,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = cmp%s(%s == %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -3994,7 +3981,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = cmp%s(%s < %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4004,7 +3991,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp%s(%s < %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4014,7 +4001,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp%s(%s < %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4024,7 +4011,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = cmp%s(%s >= %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4034,7 +4021,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp%s(%s >= %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4044,7 +4031,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp%s(%s >= %s);\n", writeTarget(op1), swizCount(op1).c_str(), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4984,13 +4971,17 @@ public:
 				"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
 		}
 
-		// Also inject the helper routines of 'cmp' to fix any boolean comparisons.
+		// Also inject the helper macro of 'cmp' to fix any boolean comparisons.
+		// This is a bit of a hack, but simply adds a "-" in front of the comparison,
+		// which negates the bool comparison from 1:0 to -1:0. 
+		//    r0.y = cmp(0 < r0.x);   becomes
+		//    r0.y = -(0 < r0.x);
+		// This allows us to avoid having helper routines, and needing different
+		// variants for different swizzle sizes, like .xy or .xyz.
+
 		header = header +
 			"\n" +
-			"int cmp(bool b) { return (b ? -1 : 0); }\n" +
-			"int2 cmp2(bool2 b) { return (b.xy ? -1 : 0); }\n" +
-			"int3 cmp3(bool3 b) { return (b.xyz ? -1 : 0); }\n" +
-			"int4 cmp4(bool4 b) { return (b.xyzw ? -1 : 0); }\n" +
+			"#define cmp - \n" +
 			"// ---- \n";
 
 		// using .begin() to insert as first lines in files.
