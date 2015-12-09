@@ -723,6 +723,9 @@ public:
 	void WriteResourceDefinitions()
 	{
 		char buffer[256];
+		sprintf(buffer, "\n");
+		mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
 		for (map<int, string>::iterator i = mSamplerNames.begin(); i != mSamplerNames.end(); ++i)
 		{
 			if (mSamplerNamesArraySize[i->first] == 1)
@@ -4950,26 +4953,15 @@ public:
 		}
 	}
 
-	
+
 	// The StereoParams are nearly always useful, but the depth buffer texture is rarely used.
 	// Adding .ini declaration, since declaring it doesn't cost anything and saves typing them in later.
-	// Now also pushing this to the top of each HLSL file, and adding a time stamp and version.
 
-	void WriteHeaderDeclarations()
+	void WriteAddOnDeclarations()
 	{
-		string header =
-			"// ---- 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() +
-			"\n";
-
-		header = header + 
-			"Texture2D<float4> StereoParams : register(t125);\n" +
-			"Texture1D<float4> IniParams : register(t120);\n";
-
-		if (mZRepair_DepthBuffer)
-		{
-			header = header + 
-				"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
-		}
+		string declaration = 
+			"\n\n"
+			"// 3Dmigoto declarations \n";
 
 		// Also inject the helper macro of 'cmp' to fix any boolean comparisons.
 		// This is a bit of a hack, but simply adds a "-" in front of the comparison,
@@ -4979,12 +4971,34 @@ public:
 		// This allows us to avoid having helper routines, and needing different
 		// variants for different swizzle sizes, like .xy or .xyz.
 
-		header = header +
-			"\n" +
-			"#define cmp - \n" +
-			"// ---- \n";
+		declaration +=
+			"#define cmp - \n";
 
-		// using .begin() to insert as first lines in files.
+		declaration +=
+			"Texture1D<float4> IniParams : register(t120); \n"
+			"Texture2D<float4> StereoParams : register(t125); \n";
+
+		if (mZRepair_DepthBuffer)
+		{
+			declaration +=
+				"Texture2D<float4> InjectedDepthTexture : register(t126); \n";
+		}
+
+		declaration +=
+			"\n";
+
+		mOutput.insert(mOutput.end(), declaration.c_str(), declaration.c_str() + declaration.length());
+	}
+
+
+	// Header for the file, version and time stamp.
+
+	void WriteHeaderDeclarations()
+	{
+		string header =
+			"// ---- 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime();
+
+		// using .begin() to ensure first lines in files.
 		mOutput.insert(mOutput.begin(), header.c_str(), header.c_str() + header.length());
 	}
 };
@@ -5040,6 +5054,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		d.ReadResourceBindings(params.decompiled, params.decompiledSize);
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();
+		d.WriteAddOnDeclarations();
 		d.ParseInputSignature(shader, params.decompiled, params.decompiledSize);
 		d.ParseOutputSignature(params.decompiled, params.decompiledSize);
 		if (!params.ZeroOutput)
