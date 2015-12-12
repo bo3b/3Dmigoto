@@ -3405,18 +3405,20 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// IADD is apparently used by the fxc compiler in some cases like an AND operation.
+						// After boolean operations, it will sum up two boolean operators. Since we are now
+						// passing -1:0 instead of 1:0, it should work to just do the IADD operation, respecting
+						// any negation the source applies. A common sequence, compiler trick is:
+						//  lt r0.y, l(0.000000), r0.x
+						//  lt r0.x, r0.x, l(0.000000)
+						//  iadd r0.x, r0.x, -r0.y
+						//  itof r0.x, r0.x
+						//  mul r0.xyz, r0.xxxx, r1.xzwx
 					case OPCODE_IADD:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						if (isBoolean(op2) && isBoolean(op3))
-						{
-							if (op2[0] == '-') strcpy(op2, op2 + 1);
-							else if (op3[0] == '-') strcpy(op3, op3 + 1);
-							sprintf(buffer, "  %s = (%s ? -1 : 0) + (%s ? 1 : 0);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						}
-						else
-							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
