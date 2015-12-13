@@ -12,6 +12,25 @@
 #include "nvapi.h"
 
 
+// Side note: Not really stoked with C++ string handling.  There are like 4 or
+// 5 different ways to do things, all partly compatible, none a clear winner in
+// terms of simplicity and clarity.  Generally speaking we'd want to use C++
+// wstring and string, but there are no good output formatters.  Maybe the 
+// newer iostream based pieces, but we'd still need to convert.
+//
+// The philosophy here and in other files, is to use whatever the API that we
+// are using wants.  In this case it's a wchar_t* for DrawString, so we'll not
+// do a lot of conversions and different formats, we'll just use wchar_t and its
+// formatters.
+//
+// In particular, we also want to avoid 5 different libraries for string handling,
+// Microsoft has way too many variants.  We'll use the regular C library from
+// the standard c runtime, but use the _s safe versions.
+
+// Max expected on-screen string size, used for buffer safe calls.
+const int maxstring = 200;
+
+
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
 	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, typeid(*pSwapChain).name());
@@ -187,30 +206,52 @@ void Overlay::InitDrawState()
 	mHackerContext->GetOrigContext()->RSSetViewports(1, &openView);
 }
 
-static void AppendShaderOverlayText(wstring *line, wchar_t *type, int pos, std::set<UINT64> *visited)
+// -----------------------------------------------------------------------------
+
+// The active shader will show where we are in each list. / 0 / 0 will mean that we are not 
+// actively searching. 
+
+static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t size)
 {
-	wchar_t buf[32];
-	size_t size = visited->size();
-	if (!size)
+	if (size == 0)
 		return;
 
+	// The position is zero based, so we'll make it +1 for the humans.
 	if (++pos == 0)
 		size = 0;
 
-	StringCchPrintf(buf, 32, L"%ls:%d/%Iu ", type, pos, size);
-	line->append(buf);
+	// Format: "VS:1/15"
+	wchar_t append[maxstring];
+	swprintf_s(append, maxstring, L"%ls:%d/%Iu ", type, pos, size);
+
+	wcscat_s(fullLine, maxstring, append);
 }
 
 
-// -----------------------------------------------------------------------------
+// We also want to show the count of active vertex, pixel, compute, geometry, domain, hull
+// shaders, that are active in the frame.  Any that have a zero count will be stripped, to
+// keep it from being too busy looking.
 
-void Overlay::DrawOverlay(void)
+static void CreateShaderInfoString(wchar_t *counts)
 {
-	wstring shader_line;
+	wcscpy_s(counts, maxstring, L"");
+	AppendShaderText(counts, L"VS", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
+	AppendShaderText(counts, L"PS", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
+	AppendShaderText(counts, L"CS", G->mSelectedComputeShaderPos, G->mVisitedComputeShaders.size());
+	AppendShaderText(counts, L"GS", G->mSelectedGeometryShaderPos, G->mVisitedGeometryShaders.size());
+	AppendShaderText(counts, L"DS", G->mSelectedDomainShaderPos, G->mVisitedDomainShaders.size());
+	AppendShaderText(counts, L"HS", G->mSelectedHullShaderPos, G->mVisitedHullShaders.size());
+}
 
-	// As primary info, we are going to draw both separation and convergence. 
-	// Rather than draw graphic bars, this will just be numeric.  The reason
-	// is that convergence is essentially an arbitrary number.
+
+// Create a string for display on the bottom edge of the screen, that contains the current
+// stereo info of separation and convergence. 
+// Desired format: "Sep:85  Conv:4.5"
+
+static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
+{
+	// Rather than draw graphic bars, this will just be numeric.  Because
+	// convergence is essentially an arbitrary number.
 
 	float separation, convergence;
 	NvU8 stereo = false;
@@ -218,25 +259,23 @@ void Overlay::DrawOverlay(void)
 	NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
 	{
-		NvAPI_Stereo_IsActivated(mHackerDevice->mStereoHandle, &stereo);
+		NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
 		if (stereo)
 		{
-			NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &separation);
-			NvAPI_Stereo_GetConvergence(mHackerDevice->mStereoHandle, &convergence);
+			NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
+			NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
 		}
 	}
 
-	// We also want to show the count of active vertex and pixel shaders, and
-	// where we are in the list.  These should all be active from the Globals.
-	// 0 / 0 will mean that we are not actively searching. The position is
-	// zero based, so we'll make it +1 for the humans.
-	AppendShaderOverlayText(&shader_line, L"VS", G->mSelectedVertexShaderPos, &G->mVisitedVertexShaders);
-	AppendShaderOverlayText(&shader_line, L"PS", G->mSelectedPixelShaderPos, &G->mVisitedPixelShaders);
-	AppendShaderOverlayText(&shader_line, L"CS", G->mSelectedComputeShaderPos, &G->mVisitedComputeShaders);
-	AppendShaderOverlayText(&shader_line, L"GS", G->mSelectedGeometryShaderPos, &G->mVisitedGeometryShaders);
-	AppendShaderOverlayText(&shader_line, L"DS", G->mSelectedDomainShaderPos, &G->mVisitedDomainShaders);
-	AppendShaderOverlayText(&shader_line, L"HS", G->mSelectedHullShaderPos, &G->mVisitedHullShaders);
+	if (stereo)
+		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+	else
+		swprintf_s(info, maxstring, L"Stereo disabled");
+}
 
+
+void Overlay::DrawOverlay(void)
+{
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
 	// around our drawing.  
@@ -246,29 +285,19 @@ void Overlay::DrawOverlay(void)
 
 		mSpriteBatch->Begin();
 		{
-			const int maxstring = 200;
-			wchar_t line[maxstring];
+			wchar_t osdString[maxstring];
 			Vector2 strSize;
 			Vector2 textPosition;
 
-			// Arbitrary choice, but this wants to draw the text on the left edge of the
-			// screen, where longer lines don't need wrapping or centering concern.
-			// Tried that, didn't really like it.  Let's try moving sep/conv at bottom middle,
-			// and shader counts in top middle.
-
-			// Small gap between sep/conv and the shader hunting locations. Format "VS:1/15"
-			strSize = mFont->MeasureString(shader_line.c_str());
+			CreateShaderInfoString(osdString);
+			strSize = mFont->MeasureString(osdString);
 			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
-			mFont->DrawString(mSpriteBatch.get(), shader_line.c_str(), textPosition, DirectX::Colors::LimeGreen);
+			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 
-			// Desired format "Sep:85  Conv:4.5"
-			if (stereo)
-				swprintf_s(line, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
-			else
-				swprintf_s(line, maxstring, L"Stereo disabled");
-			strSize = mFont->MeasureString(line);
+			CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
+			strSize = mFont->MeasureString(osdString);
 			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
-			mFont->DrawString(mSpriteBatch.get(), line, textPosition, DirectX::Colors::LimeGreen);
+			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 		}
 		mSpriteBatch->End();
 	}
