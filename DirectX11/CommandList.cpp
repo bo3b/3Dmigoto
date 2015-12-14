@@ -461,7 +461,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 		return true;
 	}
 
-	if (!wcscmp(target, L"oD")) {
+	if (!wcscmp(target, L"od")) {
 		type = ResourceCopyTargetType::DEPTH_STENCIL_TARGET;
 		return true;
 	}
@@ -500,11 +500,11 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 		return true;
 	}
 
-	if (length >= 9 && !_wcsnicmp(target, L"resource", 8)) {
-		// Convert section name to lower case so our keys will be
-		// consistent in the unordered_map:
+	if (length >= 9 && !wcsncmp(target, L"resource", 8)) {
+		// section name should already have been transformed to lower
+		// case from ParseCommandList, so our keys will be consistent
+		// in the unordered_map:
 		wstring resource_id(target);
-		std::transform(resource_id.begin(), resource_id.end(), resource_id.begin(), ::towlower);
 
 		res = customResources.find(resource_id);
 		if (res == customResources.end())

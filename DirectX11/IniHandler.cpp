@@ -306,9 +306,10 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		key = &entry->first;
 		val = &entry->second;
 
-		// Convert key to lower case since ini files are supposed to be
-		// case insensitive:
+		// Convert key + val to lower case since ini files are supposed
+		// to be case insensitive:
 		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
+		std::transform(val->begin(), val->end(), val->begin(), ::towlower);
 
 		// Skip any whitelisted entries that are parsed elsewhere.
 		if (whitelist) {
