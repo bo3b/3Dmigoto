@@ -200,6 +200,8 @@ typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 struct TextureOverride {
 	int stereoMode;
 	int format;
+	int width;
+	int height;
 	std::vector<int> iterations;
 	FrameAnalysisOptions analyse_options;
 	bool expand_region_copy;
@@ -212,6 +214,8 @@ struct TextureOverride {
 	TextureOverride() :
 		stereoMode(-1),
 		format(-1),
+		width(-1),
+		height(-1),
 		analyse_options(FrameAnalysisOptions::INVALID),
 		expand_region_copy(false),
 		deny_cpu_read(false),

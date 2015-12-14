@@ -494,6 +494,8 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"hash",
 	L"stereomode",
 	L"format",
+	L"width",
+	L"height",
 	L"iteration",
 	L"analyse_options",
 	L"filter_index",
@@ -542,6 +544,14 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		override->format = GetPrivateProfileInt(id, L"Format", -1, iniFile);
 		if (override->format != -1)
 			LogInfo("  Format=%d\n", override->format);
+
+		override->width = GetPrivateProfileInt(id, L"Width", -1, iniFile);
+		if (override->width != -1)
+			LogInfo("  Width=%d\n", override->width);
+
+		override->height = GetPrivateProfileInt(id, L"Height", -1, iniFile);
+		if (override->height != -1)
+			LogInfo("  Height=%d\n", override->height);
 
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
