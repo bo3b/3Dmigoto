@@ -926,25 +926,36 @@ void ResourceCopyTarget::SetResource(
 		break;
 
 	case ResourceCopyTargetType::RENDER_TARGET:
-	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-		// XXX: HERE BE UNTESTED CODE PATHS!
 		mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
-		if (type == ResourceCopyTargetType::RENDER_TARGET) {
-			if (render_view[slot])
-				render_view[slot]->Release();
-			render_view[slot] = (ID3D11RenderTargetView*)view;
-		} else {
-			if (depth_view)
-				depth_view->Release();
-			depth_view = (ID3D11DepthStencilView*)view;
+
+		if (render_view[slot])
+			render_view[slot]->Release();
+		render_view[slot] = (ID3D11RenderTargetView*)view;
+
+		mOrigContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
+
+		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+			if (i != slot && render_view[i])
+				render_view[i]->Release();
 		}
+		if (depth_view)
+			depth_view->Release();
+
+		break;
+
+	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+		mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
+
+		if (depth_view)
+			depth_view->Release();
+		depth_view = (ID3D11DepthStencilView*)view;
+
 		mOrigContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
 
 		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
 			if (render_view[i])
 				render_view[i]->Release();
 		}
-		depth_view->Release();
 		break;
 
 	case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
