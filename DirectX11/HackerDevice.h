@@ -27,7 +27,7 @@ private:
 
 	// Utility routines
 	void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
-		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp);
+		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text);
 	void PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileData);
 	void PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileData);
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,

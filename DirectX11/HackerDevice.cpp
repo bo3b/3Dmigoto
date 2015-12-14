@@ -459,8 +459,8 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 
 // Currently, critical lock must be taken BEFORE this is called.
 
-void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
-		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp)
+	void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
+		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text)
 {
 	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
 
@@ -471,6 +471,7 @@ void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, w
 	G->mReloadedShaders[ppShader].byteCode = byteCode;
 	G->mReloadedShaders[ppShader].timeStamp = timeStamp;
 	G->mReloadedShaders[ppShader].replacement = NULL;
+	G->mReloadedShaders[ppShader].infoText = text;
 }
 
 void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileData)
@@ -531,7 +532,7 @@ void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileD
 			ID3DBlob* blob;
 			D3DCreateBlob(bytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
-			RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite);
+			RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite, L"");
 		}
 		delete pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -595,7 +596,7 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 			ID3DBlob* blob;
 			D3DCreateBlob(bytecodeLength, &blob);
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
-			RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite);
+			RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite, L"");
 		}
 		delete pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
@@ -1900,7 +1901,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite);
+						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, L"test test test");
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -1924,7 +1925,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				ID3DBlob* blob;
 				D3DCreateBlob(BytecodeLength, &blob);
 				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite);
+				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, L"");
 
 				// Also add the original shader to the original shaders
 				// map so that if it is later replaced marking_mode =

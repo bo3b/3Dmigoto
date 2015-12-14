@@ -232,7 +232,7 @@ static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t s
 // shaders, that are active in the frame.  Any that have a zero count will be stripped, to
 // keep it from being too busy looking.
 
-static void CreateShaderInfoString(wchar_t *counts)
+static void CreateShaderCountString(wchar_t *counts)
 {
 	wcscpy_s(counts, maxstring, L"");
 	AppendShaderText(counts, L"VS", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
@@ -241,6 +241,51 @@ static void CreateShaderInfoString(wchar_t *counts)
 	AppendShaderText(counts, L"GS", G->mSelectedGeometryShaderPos, G->mVisitedGeometryShaders.size());
 	AppendShaderText(counts, L"DS", G->mSelectedDomainShaderPos, G->mVisitedDomainShaders.size());
 	AppendShaderText(counts, L"HS", G->mSelectedHullShaderPos, G->mVisitedHullShaders.size());
+}
+
+
+// Need to convert from the current selection, mSelectedVertexShader as hash, and
+// find the OriginalShaderInfo that matches.  This is a linear search instead of a
+// hash lookup, because we don't have the ID3D11DeviceChild*.
+
+static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
+{
+	if (selectedShader != -1)
+	{
+		for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
+		{
+			if (loaded.second.hash == selectedShader)
+			{
+				wcscpy_s(info, maxstring, loaded.second.infoText.c_str());
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+
+// This is for a line of text as info about the currently selected shader.  The line is 
+// pulled out of the header of the HLSL text file, and can be anything.
+// Since there can be multiple shaders selected, VS and PS and HS for example,
+// we'll exit once any string is found, rather than show multiple lines.
+
+static void CreateShaderInfoString(wchar_t *info)
+{
+	wcscpy_s(info, maxstring, L"");
+
+	if (FindInfoText(info, G->mSelectedVertexShader))
+		return;
+	if (FindInfoText(info, G->mSelectedPixelShader))
+		return;
+	if (FindInfoText(info, G->mSelectedComputeShader))
+		return;
+	if (FindInfoText(info, G->mSelectedGeometryShader))
+		return;
+	if (FindInfoText(info, G->mSelectedDomainShader))
+		return;
+	if (FindInfoText(info, G->mSelectedHullShader))
+		return;
 }
 
 
@@ -289,11 +334,18 @@ void Overlay::DrawOverlay(void)
 			Vector2 strSize;
 			Vector2 textPosition;
 
-			CreateShaderInfoString(osdString);
+			// Top of screen
+			CreateShaderCountString(osdString);
 			strSize = mFont->MeasureString(osdString);
 			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
 			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 
+			CreateShaderInfoString(osdString);
+			strSize = mFont->MeasureString(osdString);
+			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10 + strSize.y);
+			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+
+			// Bottom of screen
 			CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
 			strSize = mFont->MeasureString(osdString);
 			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));

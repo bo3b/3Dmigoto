@@ -58,6 +58,7 @@ typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 //	timeStamp allows reloading/recompiling only modified shaders
 //	replacement is either ID3D11VertexShader or ID3D11PixelShader
 //  found is used to revert shaders that are deleted from ShaderFixes
+//  infoText is shown in the OSD when the shader is actively selected.
 struct OriginalShaderInfo
 {
 	UINT64 hash;
@@ -68,6 +69,7 @@ struct OriginalShaderInfo
 	FILETIME timeStamp;
 	ID3D11DeviceChild* replacement;
 	bool found;
+	std::wstring infoText;
 };
 
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
