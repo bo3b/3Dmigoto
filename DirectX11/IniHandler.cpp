@@ -306,9 +306,10 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		key = &entry->first;
 		val = &entry->second;
 
-		// Convert key to lower case since ini files are supposed to be
-		// case insensitive:
+		// Convert key + val to lower case since ini files are supposed
+		// to be case insensitive:
 		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
+		std::transform(val->begin(), val->end(), val->begin(), ::towlower);
 
 		// Skip any whitelisted entries that are parsed elsewhere.
 		if (whitelist) {
@@ -356,7 +357,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
 		BeepFailure2();
-		break;
+		continue;
 log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	}
@@ -493,6 +494,8 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"hash",
 	L"stereomode",
 	L"format",
+	L"width",
+	L"height",
 	L"iteration",
 	L"analyse_options",
 	L"filter_index",
@@ -534,18 +537,22 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		}
 		override = &G->mTextureOverrideMap[hash];
 
-		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-		if (stereoMode >= 0)
-		{
-			override->stereoMode = stereoMode;
-			LogInfo("  StereoMode=%d\n", stereoMode);
-		}
-		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-		if (texFormat >= 0)
-		{
-			override->format = texFormat;
-			LogInfo("  Format=%d\n", texFormat);
-		}
+		override->stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
+		if (override->stereoMode != -1)
+			LogInfo("  StereoMode=%d\n", override->stereoMode);
+
+		override->format = GetPrivateProfileInt(id, L"Format", -1, iniFile);
+		if (override->format != -1)
+			LogInfo("  Format=%d\n", override->format);
+
+		override->width = GetPrivateProfileInt(id, L"Width", -1, iniFile);
+		if (override->width != -1)
+			LogInfo("  Width=%d\n", override->width);
+
+		override->height = GetPrivateProfileInt(id, L"Height", -1, iniFile);
+		if (override->height != -1)
+			LogInfo("  Height=%d\n", override->height);
+
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
 			// TODO: This supports more iterations than the
@@ -578,7 +585,12 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		}
 
 		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
+		if (override->expand_region_copy)
+			LogInfo("  expand_region_copy=1\n");
+
 		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
+		if (override->deny_cpu_read)
+			LogInfo("  deny_cpu_read=1\n");
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}

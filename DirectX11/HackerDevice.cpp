@@ -1704,6 +1704,20 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 
 			newDesc.Format = (DXGI_FORMAT) textureOverride->format;
 		}
+
+		if (textureOverride && textureOverride->width != -1)
+		{
+			LogInfo("  setting custom width to %d\n", textureOverride->width);
+
+			newDesc.Width = textureOverride->width;
+		}
+
+		if (textureOverride && textureOverride->height != -1)
+		{
+			LogInfo("  setting custom height to %d\n", textureOverride->height);
+
+			newDesc.Height = textureOverride->height;
+		}
 	}
 
 	// Actual creation:
