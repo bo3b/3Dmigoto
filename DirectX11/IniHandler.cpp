@@ -357,7 +357,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
 		BeepFailure2();
-		break;
+		continue;
 log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	}
