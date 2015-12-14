@@ -535,18 +535,14 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		}
 		override = &G->mTextureOverrideMap[hash];
 
-		int stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-		if (stereoMode >= 0)
-		{
-			override->stereoMode = stereoMode;
-			LogInfo("  StereoMode=%d\n", stereoMode);
-		}
-		int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-		if (texFormat >= 0)
-		{
-			override->format = texFormat;
-			LogInfo("  Format=%d\n", texFormat);
-		}
+		override->stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
+		if (override->stereoMode != -1)
+			LogInfo("  StereoMode=%d\n", override->stereoMode);
+
+		override->format = GetPrivateProfileInt(id, L"Format", -1, iniFile);
+		if (override->format != -1)
+			LogInfo("  Format=%d\n", override->format);
+
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
 			// TODO: This supports more iterations than the
@@ -579,7 +575,12 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		}
 
 		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
+		if (override->expand_region_copy)
+			LogInfo("  expand_region_copy=1\n");
+
 		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
+		if (override->deny_cpu_read)
+			LogInfo("  deny_cpu_read=1\n");
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}
