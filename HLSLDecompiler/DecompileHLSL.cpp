@@ -4993,11 +4993,13 @@ public:
 	}
 
 
-	// Header for the file, version and time stamp.
+	// Header for the file, version and time stamp.  Skipping first line of file, to allow
+	// it to be used for on-screen comments.
 
 	void WriteHeaderDeclarations()
 	{
 		string header =
+			"/n"
 			"// ---- 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime();
 
 		// using .begin() to ensure first lines in files.

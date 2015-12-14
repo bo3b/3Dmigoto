@@ -272,8 +272,6 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 
 static void CreateShaderInfoString(wchar_t *info)
 {
-	wcscpy_s(info, maxstring, L"");
-
 	if (FindInfoText(info, G->mSelectedVertexShader))
 		return;
 	if (FindInfoText(info, G->mSelectedPixelShader))
@@ -286,6 +284,8 @@ static void CreateShaderInfoString(wchar_t *info)
 		return;
 	if (FindInfoText(info, G->mSelectedHullShader))
 		return;
+
+	wcscpy_s(info, maxstring, L"");
 }
 
 
