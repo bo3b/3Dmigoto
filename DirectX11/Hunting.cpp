@@ -508,7 +508,7 @@ static string Decompile(ID3DBlob* pShaderByteCode, string asmText)
 
 static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, 
 	UINT64 hash, wstring shaderType, ID3DBlob *origByteCode,
-	__out FILETIME* timeStamp, _Outptr_ ID3DBlob** pCode)
+	__out FILETIME* timeStamp, __out wstring &headerLine, _Outptr_ ID3DBlob** pCode)
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
@@ -668,6 +668,11 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		}
 	}
 
+
+	// For success, let's add the first line of text from the file to the OriginalShaderInfo,
+	// so the ShaderHacker can edit the line and reload and have it live.
+	headerLine = std::wstring(srcData.data(), strchr(srcData.data(), '\n'));
+
 	// pCode on return == NULL for error cases, valid if made it this far.
 	*pCode = pByteCode;
 
@@ -713,6 +718,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 	ID3DBlob* shaderCode;
 	string shaderModel;
 	wstring shaderType;		// "vs", "ps", "cs" maybe "gs"
+	wstring headerLine;		// First line of the HLSL file.
 	FILETIME timeStamp;
 	HRESULT hr = E_FAIL;
 	bool rc = true;
@@ -770,7 +776,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 			// Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
 			ID3DBlob *pShaderBytecode = NULL;
-			if (!RegenerateShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, &pShaderBytecode))
+			if (!RegenerateShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, headerLine, &pShaderBytecode))
 				continue;
 
 			// If we compiled but got nothing, that's a fatal error we need to report.
@@ -779,6 +785,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 			// Update timestamp, since we have an edited file.
 			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
+			G->mReloadedShaders[oldShader].infoText = headerLine;
 
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)

@@ -254,7 +254,7 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 	{
 		for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
 		{
-			if (loaded.second.hash == selectedShader)
+			if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 			{
 				wcscpy_s(info, maxstring, loaded.second.infoText.c_str());
 				return true;

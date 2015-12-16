@@ -462,7 +462,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
 		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text)
 {
-	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s\n", hash, shaderType.c_str(), shaderModel.c_str());
+	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %s \n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
 
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
@@ -627,9 +627,22 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 //
 // Chapter 6 of the Linux coding style guidelines is worth a read:
 //   https://www.kernel.org/doc/Documentation/CodingStyle
+//
+// In general I (bo3b) agree, but would hesitate to apply a C style guide to kinda/sorta 
+// C++ code.  A sort of mix of the linux guide and C++ is Google's Style Guide:
+//   https://google.github.io/styleguide/cppguide.html
+// Apparently serious C++ programmers hate it, so that must mean it makes things simpler
+// and clearer. We could stand to even have just a style template in VS that would
+// make everything consistent at a minimum.  I'd say refactoring this sucker is
+// higher value though.
+//
+// I hate to make a bad thing worse, but I need to return yet another parameter here, 
+// the string read from the first line of the HLSL file.  This the logical place for
+// it because the file is already open and read into memory.
 
 char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, void **zeroShader)
+	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
+	void **zeroShader, wstring &headerLine)
 {
 	foundShaderModel = "";
 	timeStamp = { 0 };
@@ -755,6 +768,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
 					foundShaderModel = shaderModel;
 					timeStamp = ftWrite;
+					headerLine = std::wstring(srcData, strchr(srcData, '\n'));
 
 					// Compile replacement.
 					LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
@@ -837,6 +851,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 						// Any ASM shaders are reloading candidates, if moved to ShaderFixes
 						foundShaderModel = shaderModel;
 						timeStamp = ftWrite;
+						headerLine = std::wstring(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
 
 						vector<byte> byteCode(BytecodeLength);
 						memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
@@ -1866,6 +1881,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	SIZE_T replaceShaderSize;
 	FILETIME ftWrite;
 	ID3D11Shader *zeroShader = 0;
+	wstring headerLine = L"";
 
 	if (pShaderBytecode && ppShader)
 	{
@@ -1887,7 +1903,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
 					char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-						shaderModel, ftWrite, (void **)&zeroShader);
+						shaderModel, ftWrite, (void **)&zeroShader, headerLine);
 					delete replaceShader;
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -1897,7 +1913,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	if (hr != S_OK && ppShader && pShaderBytecode)
 	{
 		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, (void **)&zeroShader);
+			shaderModel, ftWrite, (void **)&zeroShader, headerLine);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -1915,7 +1931,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					D3DCreateBlob(replaceShaderSize, &blob);
 					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, L"test test test");
+						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine);
 					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -1939,7 +1955,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				ID3DBlob* blob;
 				D3DCreateBlob(BytecodeLength, &blob);
 				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, L"");
+				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine);
 
 				// Also add the original shader to the original shaders
 				// map so that if it is later replaced marking_mode =
