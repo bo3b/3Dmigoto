@@ -236,6 +236,8 @@ if (tex_filter == 3) {
 	action = 1;
 } else if (tex_filter == 4) { // Rocket launcher targeting HUD / camera - treat as crosshair
 	action = 2;
+} else if (tex_filter == 7) { // Full screen vignette - leave at screen depth
+	action = 3;
 } else if (tex_filter == 6 && filter.w == 1) {
 	// Pure white texture. Might be a highlight on the cross in the camera,
 	// or might be something else (such as the exclamation marks on the DLC
@@ -250,6 +252,8 @@ case 1:
 	break;
 case 2:
 	o0.x += adjust_from_stereo2mono_depth_buffer(0,0);
+	break;
+case 3:
 	break;
 default:
 	o0.x += separation * hud_depth;
