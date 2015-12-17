@@ -256,7 +256,8 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 		{
 			if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 			{
-				wcscpy_s(info, maxstring, loaded.second.infoText.c_str());
+				// Skip past first two characters, which will always be //
+				wcscpy_s(info, maxstring, loaded.second.infoText.c_str() + 2);
 				return true;
 			}
 		}
