@@ -96,23 +96,29 @@ float2 find_quad_center(uint id)
 	return (pos1 + pos2) / 2;
 }
 
-bool is_fullscreen()
+bool is_horiz_fullscreen()
 {
+	// The input position to this shader is in pixels, so rather than use
+	// calc_pos, just use the the screen resolution:
 	int2 resolution = int2(round(IniParams.Load(int2(1, 0)).zw));
-	int vertex_count = int(round(IniParams.Load(int2(2, 0)).z));
 
+	// A full screen effect will always use two trianges:
+	int vertex_count = int(round(IniParams.Load(int2(2, 0)).z));
 	if (vertex_count != 6)
 		return false;
 
+	// Look up the positions of four vertices that should match the corners
+	// (for this game):
 	float2 bl = vb_struct[0].vb_position;
 	float2 tl = vb_struct[1].vb_position;
 	float2 tr = vb_struct[2].vb_position;
 	float2 br = vb_struct[4].vb_position;
 
-	return all(abs(tl) <= float2(1,1)) &&
-		abs(tr - float2(resolution.x, 0)) <= float2(1,1) &&
-		abs(bl - float2(0, resolution.y)) <= float2(1,1) &&
-		abs(br - float2(resolution.x, resolution.y)) <= float2(1,1);
+	// Check that all four corners are are at or beyond the edge of the
+	// screen. Use a threshold of half a pixel to compensate for floating
+	// point error
+	return (abs(float4(tl.x, tr.x - resolution.x,
+		bl.x, br.x - resolution.x)) <= 0.5);
 }
 
 bool in_floating_icon_region(float2 o0)
@@ -211,12 +217,28 @@ if (params.w == 0) {
 	// the map), and otherwise just adjust to the standard UI depth (avoids
 	// icons on the map being misaligned):
 
-	// if (is_fullscreen()) { // Causes minor glitches on background in main menu
-	// 	if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
-	// 	    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
-	// 		o0.x += separation * hud_depth * 2;
-	// 	}
-	// } else
+	if (tex_filter == 2 && is_horiz_fullscreen()) {
+		// This is the vignette around the map. The texture is also
+		// used for things on the menus, so we also check if it is
+		// fullscreen. There are two layers - one is fullscreen, but
+		// the other is only drawn along the top/bottom of the map, so
+		// we only check the x coordinates at the edge of the screen
+		// for fullscreen. We could either:
+		// a) adjust the vignette like the rest of the UI, but then it
+		//    clips at the edges.
+		// b) leave it at screen depth, but then it looks different in
+		//    each eye
+		// c) Adjust only one side in each eye by double the regular
+		//    HUD depth to move it to the same depth as the HUD, but
+		//    stretched so that the clipping is not possible. For some
+		//    reason this creates a bit of a moire effect on my screen
+		//    in the crosstalk between the two eyes on the white
+		//    background, but overall it seems the best option.
+		if ((stereo.z ==  1 && (id == 0 || id == 1 || id == 5)) ||
+		    (stereo.z == -1 && (id == 2 || id == 3 || id == 4))) {
+			o0.x += separation * hud_depth * 2;
+		}
+	} else
 		o0.x += separation * hud_depth;
 	return;
 }
