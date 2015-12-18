@@ -4999,7 +4999,6 @@ public:
 	void WriteHeaderDeclarations()
 	{
 		string header =
-			"\n"
 			"// ---- Created with 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime();
 
 		// using .begin() to ensure first lines in files.
