@@ -126,12 +126,24 @@ float separation = stereo.x; float convergence = stereo.y;
 float4 params = IniParams.Load(0);
 float partner = IniParams.Load(int2(2,0)).y;
 
-// if (partner == 2 && params.w == 1) {
-// 	float2 center = calc_pos(find_text_center());
-// 	o0.x += adjust_from_stereo2mono_depth_buffer(center.x, center.y);
-// } else {
+if (params.w == 1) { // Depth buffer valid
+	if (partner == 2) { // Text
+		float2 center = calc_pos(find_text_center());
+
+		if (in_minimap_region(center)) {
+			o0.x += minimap_adjustment();
+		} else {
+			// o0.x += adjust_from_stereo2mono_depth_buffer(center.x, center.y);
+			o0.x += separation * params.x;
+		}
+	} else if (partner == 3) { // Minimap
+		o0.x += minimap_adjustment();
+	} else {
+		o0.x += separation * params.x;
+	}
+} else {
 	o0.x += separation * params.x;
-// }
+}
 
   return;
 }

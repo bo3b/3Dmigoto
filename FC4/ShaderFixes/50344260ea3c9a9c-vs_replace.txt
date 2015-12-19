@@ -79,7 +79,6 @@ StructuredBuffer<struct vb_entry> vb_struct : register(t100);
 
 Texture2D<float4> IconFilter1 : register(t101);
 Texture2D<float4> IconFilter2 : register(t102);
-Texture2D<float4> HudMask : register(t105);
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -119,20 +118,6 @@ bool is_horiz_fullscreen()
 	// point error
 	return (abs(float4(tl.x, tr.x - resolution.x,
 		bl.x, br.x - resolution.x)) <= 0.5);
-}
-
-bool in_floating_icon_region(float2 o0)
-{
-	uint width, height;
-	HudMask.GetDimensions(width, height);
-
-	uint2 coord = round((o0 / 2 + 0.5) * float2(width, height));
-
-	float4 colour = HudMask.Load(int3(coord, 0));
-
-	if (all(abs(colour - float4(0, 1, 0, 1)) <= 1/512))
-		return 1;
-	return 0;
 }
 
 // This function looks up a texture that has been injected into the game to
@@ -250,7 +235,9 @@ if (params.w == 0) {
 uint action = 0;
 float4 icon_center = calc_pos(find_quad_center(id));
 
-if (tex_filter == 3) {
+if (in_minimap_region(icon_center)) {
+	action = 4;
+} else if (tex_filter == 3) {
 	// Crosshair texture & various other icons
 	action = lookup_icon_filter(id, IconFilter1);
 } else if (tex_filter == 5 && in_floating_icon_region(icon_center)) {
@@ -276,6 +263,9 @@ case 2:
 	o0.x += adjust_from_stereo2mono_depth_buffer(0,0);
 	break;
 case 3:
+	break;
+case 4:
+	o0.x += minimap_adjustment();
 	break;
 default:
 	o0.x += separation * hud_depth;

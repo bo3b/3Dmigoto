@@ -81,6 +81,8 @@ cbuffer CSceneParticleEmitterRenderer_CShaderParameterProvider : register(b3)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
+#include <ShaderFixes/crosshair.hlsl>
+
 void main(
   float4 v0 : position0,
   float4 v1 : color0,
@@ -130,13 +132,23 @@ void main(
   r3.w = dot(r2.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
   o0.z = dot(r2.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
 
-
-//Mike_ar69 - Stereo Shift
-float4 r21;
 float4 stereo = StereoParams.Load(0);
-r21.xyw = r3.xyw;
+float4 filter = IniParams.Load(int2(3,0));
+
+// Depth of the sparks when repairing vehicles is wrong. Use the depth buffer
+// to correct the depth, but since this shader is also responsible for other
+// things (like some candles), only correct it if the repair tool is active in
+// the frame, the fire button is currently being held and the texture matches
+// the sparks or glow.
+if (all(filter.xyz == 1)) {
+	r3.x -= stereo.x * (r3.w - stereo.y);
+	r3.x += adjust_from_stereo2mono_depth_buffer(0,0) * r3.w;
+}
+
+o0.xyw = r3.xyw;
+
+// Halo fix for candles:
 r3.x += stereo.x * (r3.w - stereo.y);
-o0.xyw = r21.xyw;
 
 
   r4.xyzw = _DepthTextureScaleOffset.xyzw * r3.xyww;

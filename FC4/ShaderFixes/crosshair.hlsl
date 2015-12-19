@@ -155,3 +155,38 @@ float adjust_from_stereo2mono_depth_buffer(float x, float y)
 
 	return old_offset * -stereo.z;
 }
+
+Texture2D<float4> HudMask : register(t105);
+float4 hud_mask(float2 o0)
+{
+	uint width, height;
+	HudMask.GetDimensions(width, height);
+
+	// Y coordinates seem to be flipped for texture space:
+	o0.y *= -1;
+
+	uint2 coord = round((o0 / 2 + 0.5) * float2(width, height));
+
+	return HudMask.Load(int3(coord, 0));
+}
+
+bool in_floating_icon_region(float2 o0)
+{
+	return (all(abs(hud_mask(o0) - float4(0, 1, 0, 1)) <= 1/512));
+}
+
+bool in_minimap_region(float2 o0)
+{
+	return (all(abs(hud_mask(o0) - float4(1, 0, 0, 1)) <= 1/512));
+}
+
+float minimap_adjustment()
+{
+	float4 stereo = StereoParams.Load(0);
+	float depth = IniParams.Load(0).z;
+	if (depth == -1) {
+		return adjust_from_stereo2mono_depth_buffer(-0.7, -0.6);
+	} else { // For some reason the else seems mandatory?
+		return stereo.x * depth;
+	}
+}
