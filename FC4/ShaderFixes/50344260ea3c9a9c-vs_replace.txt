@@ -240,7 +240,7 @@ if (in_minimap_region(icon_center)) {
 } else if (tex_filter == 3) {
 	// Crosshair texture & various other icons
 	action = lookup_icon_filter(id, IconFilter1);
-} else if (tex_filter == 5 && in_floating_icon_region(icon_center)) {
+} else if (tex_filter == 5 && in_floating_icon_region(icon_center) && filter.w != 2) {
 	// action = lookup_icon_filter(id, IconFilter2);
 	action = 1;
 } else if (tex_filter == 4) { // Rocket launcher targeting HUD / camera - treat as crosshair
