@@ -9,6 +9,7 @@
 #include <dxgi1_2.h>
 #include <D3Dcompiler.h>
 #include <d3d9.h>
+#include <DirectXMath.h>
 
 #include "version.h"
 #include "log.h"
@@ -16,6 +17,11 @@
 
 #include "D3D_Shaders\stdafx.h"
 
+
+// Defines the maximum number of four component ini params we support.
+// Potential trade off on flexibility vs overhead, but unless we increase it
+// above 256 (4k page) it is unlikely to be significant.
+const int INI_PARAMS_SIZE = 8;
 
 
 // -----------------------------------------------------------------------------------------------
@@ -733,3 +739,42 @@ static HRESULT CreateHLSLTextFile(UINT64 hash, string hlslText)
 
 }
 
+// -----------------------------------------------------------------------------------------------
+
+// Parses the name of one of the IniParam constants: x, y, z, w, x1, y1, ..., z7, w7
+static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFLOAT4::**component)
+{
+	int ret, len1, len2;
+	wchar_t component_chr;
+	size_t length = wcslen(name);
+
+	ret = swscanf_s(name, L"%lc%n%u%n", &component_chr, 1, &len1, idx, &len2);
+
+	// May or may not have matched index. Make sure entire string was
+	// matched either way and check index is valid if it was matched:
+	if (ret == 1 && len1 == length) {
+		*idx = 0;
+	} else if (ret == 2 && len2 == length) {
+		if (*idx >= INI_PARAMS_SIZE)
+			return false;
+	} else {
+		return false;
+	}
+
+	switch (component_chr) {
+		case L'x':
+			*component = &DirectX::XMFLOAT4::x;
+			return true;
+		case L'y':
+			*component = &DirectX::XMFLOAT4::y;
+			return true;
+		case L'z':
+			*component = &DirectX::XMFLOAT4::z;
+			return true;
+		case L'w':
+			*component = &DirectX::XMFLOAT4::w;
+			return true;
+	}
+
+	return false;
+}

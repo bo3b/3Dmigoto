@@ -1,7 +1,6 @@
 #pragma once
 
 #include <d3d11.h>
-#include <DirectXMath.h>
 #include <ctime>
 #include <vector>
 #include <set>
@@ -17,12 +16,6 @@
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
-
-
-// Defines the maximum number of four component ini params we support.
-// Potential trade off on flexibility vs overhead, but unless we increase it
-// above 256 (4k page) it is unlikely to be significant.
-const int INI_PARAMS_SIZE = 8;
 
 enum HuntingMode {
 	HUNTING_MODE_DISABLED = 0,

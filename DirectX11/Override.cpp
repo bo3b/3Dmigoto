@@ -33,6 +33,10 @@ Override::Override()
 	mUserSeparation = FLT_MAX;
 	mUserConvergence = FLT_MAX;
 
+	is_conditional = false;
+	condition_param_idx = 0;
+	condition_param_component = NULL;
+
 	active = false;
 }
 
@@ -104,6 +108,23 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 			BeepFailure2();
 		} else {
 			LogInfoW(L"  release_transition_type=%s\n", buf);
+		}
+	}
+
+	if (GetPrivateProfileString(section, L"condition", 0, buf, MAX_PATH, ini)) {
+		// For now these conditions are just an IniParam being
+		// non-zero. In the future we could implement more complicated
+		// conditionals, perhaps even all the way up to a full logic
+		// expression parser... but for now that's overkill, and
+		// potentially something that might prove more useful to
+		// implement in the command list along with flow control.
+
+		if (!ParseIniParamName(buf, &condition_param_idx, &condition_param_component)) {
+			LogInfoW(L"WARNING: Invalid condition=\"%s\"\n", buf);
+			BeepFailure2();
+		} else {
+			is_conditional = true;
+			LogInfoW(L"  condition=%s\n", buf);
 		}
 	}
 }
@@ -203,6 +224,22 @@ struct KeyOverrideCycleParam
 
 		return val;
 	}
+
+	bool as_ini_param(int *idx, float DirectX::XMFLOAT4::**component)
+	{
+		if (*cur == L'\0') {
+			// Blank entry
+			return false;
+		}
+
+		if (!ParseIniParamName(buf, idx, component)) {
+			LogInfoW(L"WARNING: Invalid condition=\"%s\"\n", buf);
+			BeepFailure2();
+			return false;
+		}
+
+		return true;
+	}
 };
 
 void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
@@ -212,10 +249,15 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	struct KeyOverrideCycleParam separation, convergence;
 	struct KeyOverrideCycleParam transition, release_transition;
 	struct KeyOverrideCycleParam transition_type, release_transition_type;
+	struct KeyOverrideCycleParam condition;
 	bool not_done = true;
 	int i, j;
 	wchar_t buf[8];
 	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
+	bool is_conditional;
+	int condition_param_idx = 0;
+	float DirectX::XMFLOAT4::*condition_param_component = NULL;
+
 
 	for (j = 0; j < INI_PARAMS_SIZE; j++) {
 		StringCchPrintf(buf, 8, L"x%.0i", j);
@@ -233,6 +275,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	GetPrivateProfileString(section, L"release_transition", 0, release_transition.buf, MAX_PATH, ini);
 	GetPrivateProfileString(section, L"transition_type", 0, transition_type.buf, MAX_PATH, ini);
 	GetPrivateProfileString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH, ini);
+	GetPrivateProfileString(section, L"condition", 0, condition.buf, MAX_PATH, ini);
 
 	for (i = 1; not_done; i++) {
 		not_done = false;
@@ -249,6 +292,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		not_done = release_transition.next() || not_done;
 		not_done = transition_type.next() || not_done;
 		not_done = release_transition_type.next() || not_done;
+		not_done = condition.next() || not_done;
 
 		if (!not_done)
 			break;
@@ -269,19 +313,24 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 			params[j].z = z[j].as_float(FLT_MAX);
 			params[j].w = w[j].as_float(FLT_MAX);
 		}
+
+		is_conditional = condition.as_ini_param(&condition_param_idx, &condition_param_component);
+
 		separation.log(L"separation");
 		convergence.log(L"convergence");
 		transition.log(L"transition");
 		release_transition.log(L"release_transition");
 		transition_type.log(L"transition_type");
 		release_transition_type.log(L"release_transition_type");
+		condition.log(L"condition");
 		LogInfo("\n");
 
 		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, params,
 			separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
 			transition.as_int(0), release_transition.as_int(0),
 			transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			release_transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR)));
+			release_transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			is_conditional, condition_param_idx, condition_param_component));
 	}
 }
 
@@ -341,6 +390,11 @@ static void UpdateIniParams(HackerDevice* wrapper,
 
 void Override::Activate(HackerDevice *device)
 {
+	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
+		LogInfo("Skipping override activation: condition not met\n");
+		return;
+	}
+
 	LogInfo("User key activation -->\n");
 
 	CurrentTransition.ScheduleTransition(device,
@@ -365,6 +419,11 @@ void Override::Deactivate(HackerDevice *device)
 
 void Override::Toggle(HackerDevice *device)
 {
+	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
+		LogInfo("Skipping toggle override: condition not met\n");
+		return;
+	}
+
 	active = !active;
 	if (!active) {
 		OverrideSave.Restore(this);

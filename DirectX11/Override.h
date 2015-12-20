@@ -47,6 +47,10 @@ private:
 	int transition, release_transition;
 	TransitionType transition_type, release_transition_type;
 
+	bool is_conditional;
+	int condition_param_idx;
+	float DirectX::XMFLOAT4::*condition_param_component;
+
 public:
 	DirectX::XMFLOAT4 mOverrideParams[INI_PARAMS_SIZE];
 	float mOverrideSeparation;
@@ -60,13 +64,18 @@ public:
 	Override(DirectX::XMFLOAT4 *params, float separation,
 		 float convergence, int transition, int release_transition,
 		 TransitionType transition_type,
-		 TransitionType release_transition_type) :
+		 TransitionType release_transition_type,
+		 bool is_conditional, int condition_param_idx,
+		 float DirectX::XMFLOAT4::*condition_param_component) :
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
 		transition(transition),
 		release_transition(release_transition),
 		transition_type(transition_type),
-		release_transition_type(release_transition_type)
+		release_transition_type(release_transition_type),
+		is_conditional(is_conditional),
+		condition_param_idx(condition_param_idx),
+		condition_param_component(condition_param_component)
 	{
 		memcpy(&mOverrideParams, params, sizeof(DirectX::XMFLOAT4[INI_PARAMS_SIZE]));
 	}
@@ -96,10 +105,14 @@ public:
 			float separation, float convergence,
 			int transition, int release_transition,
 			TransitionType transition_type,
-			TransitionType release_transition_type) :
+			TransitionType release_transition_type,
+			bool is_conditional, int condition_param_idx,
+			float DirectX::XMFLOAT4::*condition_param_component) :
 		Override(params, separation, convergence, transition,
 				release_transition, transition_type,
-				release_transition_type),
+				release_transition_type, is_conditional,
+				condition_param_idx,
+				condition_param_component),
 		type(type)
 	{}
 

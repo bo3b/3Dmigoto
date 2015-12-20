@@ -272,41 +272,11 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		CommandList *command_list)
 {
-	int ret, len1, len2;
-	size_t length = wcslen(key);
-	wchar_t component;
+	int ret, len1;
 	ParamOverride *param = new ParamOverride();
 
-	// Parse key
-	ret = swscanf_s(key, L"%lc%n%u%n", &component, 1, &len1, &param->param_idx, &len2);
-
-	// May or may not have matched index. Make sure entire string was
-	// matched either way and check index is valid if it was matched:
-	if (ret == 1 && len1 == length) {
-		param->param_idx = 0;
-	} else if (ret == 2 && len2 == length) {
-		if (param->param_idx >= INI_PARAMS_SIZE)
-			goto bail;
-	} else {
+	if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
 		goto bail;
-	}
-
-	switch (component) {
-		case L'x':
-			param->param_component = &DirectX::XMFLOAT4::x;
-			break;
-		case L'y':
-			param->param_component = &DirectX::XMFLOAT4::y;
-			break;
-		case L'z':
-			param->param_component = &DirectX::XMFLOAT4::z;
-			break;
-		case L'w':
-			param->param_component = &DirectX::XMFLOAT4::w;
-			break;
-		default:
-			goto bail;
-	}
 
 	// Try parsing value as a float
 	ret = swscanf_s(val->c_str(), L"%f%n", &param->val, &len1);

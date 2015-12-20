@@ -1301,6 +1301,13 @@ void HackerDXGISwapChain::RunFrameActions()
 			DumpUsage(G->ANALYSIS_PATH);
 	}
 
+	// NOTE: Now that key overrides can check an ini param, the ordering of
+	// this and the present_command_list is significant. We might set an
+	// ini param during a frame for scene detection, which is checked on
+	// override activation, then cleared from the command list run on
+	// present. If we ever needed to run the command list before this
+	// point, we should consider making an explicit "pre" command list for
+	// that purpose rather than breaking the existing behaviour.
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
 	CurrentTransition.UpdateTransitions(mHackerDevice);
