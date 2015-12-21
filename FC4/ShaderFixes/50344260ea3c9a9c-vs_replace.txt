@@ -144,6 +144,8 @@ uint lookup_icon_filter(uint id, Texture2D<float4> IconFilter)
 		return 1;
 	if (all(abs(colour - float4(0, 0, 1, 1)) <= 1/512))
 		return 2;
+	if (all(abs(colour - float4(1, 0, 1, 1)) <= 1/512))
+		return 5;
 	return 0;
 }
 
@@ -240,6 +242,16 @@ if (in_minimap_region(icon_center)) {
 } else if (tex_filter == 3) {
 	// Crosshair texture & various other icons
 	action = lookup_icon_filter(id, IconFilter1);
+
+	if (action == 5) {
+		// Circle used for XP award background & targetting grapple
+		// points - only auto adjust when in the middle of the screen:
+		if (in_floating_icon_region(icon_center))
+			action = 1;
+		else
+			action = 0;
+	}
+
 } else if (tex_filter == 5 && in_floating_icon_region(icon_center) && filter.w != 2) {
 	// action = lookup_icon_filter(id, IconFilter2);
 	action = 1;
