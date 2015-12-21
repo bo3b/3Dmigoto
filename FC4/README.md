@@ -28,7 +28,7 @@ that it would be a good choice to showcase many of these new features.
 
 - Automatically adjust various floating icons in the HUD based on the depth
   buffer (new features: same as auto crosshair, access vertex buffers as
-  structured buffers, render target size injection, texture filtering, texture
+  structured buffers, screen size injection, texture filtering, texture
   injection)
 
 - Automatically adjust the camera HUD depth, and leave vignette full screen
