@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 02:21:25 2015
+//Smoke halos - fix world coord
 Texture3D<float4> t1 : register(t1);
 
 Texture3D<float4> t0 : register(t0);
@@ -18,28 +18,23 @@ cbuffer cb0 : register(b0)
 }
 
 
-
-
-// 3Dmigoto declarations
-#define cmp -
-Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
-
+Texture1D<float4> IniParams : register(t120);
 
 void main( 
   float4 v0 : POSITION0,
   float4 v1 : NORMAL0,
   float3 v2 : TANGENT0,
   float2 v3 : BLENDWEIGHT0,
-  float4 v4 : TEXCOORD0,
+  float2 v4 : TEXCOORD0,
   float4 v5 : TEXCOORD1,
   float4 v6 : TEXCOORD3,
-  out float4 o0 : TEXCOORD0,
+  out float2 o0 : TEXCOORD0,
   out float4 o1 : TEXCOORD1,
   out float4 o2 : TEXCOORD2,
   out float4 o3 : TEXCOORD5,
   out float4 o4 : TEXCOORD6,
-  out float4 o5 : TEXCOORD7,
+  out float3 o5 : TEXCOORD7,
   out float4 o6 : TEXCOORD8,
   out float4 o7 : SV_POSITION0)
 {
@@ -47,11 +42,50 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1.xyzw = cb1[0].xyzw;
+a2.xyzw = cb1[1].xyzw;
+a3.xyzw = cb1[2].xyzw;
+a4.xyzw = cb1[3].xyzw;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse   
+  
+  
   float4 x0[4];
-  x0[0].xy = float2(0,0);
-  x0[1].xy = float2(0,1);
-  x0[2].xy = float2(1,1);
-  x0[3].xy = float2(1,0);
+  x0[0].xy = float2(0.000000e+000,0.000000e+000);
+  x0[1].xy = float2(0.000000e+000,1.000000e+000);
+  x0[2].xy = float2(1.000000e+000,1.000000e+000);
+  x0[3].xy = float2(1.000000e+000,0.000000e+000);
   o0.xy = v4.xy;
   o1.xyzw = v5.xyzw;
   o2.xyzw = v6.xyzw;
@@ -65,23 +99,23 @@ void main(
   r1.xyzw = cb0[3].xyzw * v0.wwww + r1.xyzw;
   r0.xyz = r1.xyz + -r0.xyz;
   r0.w = dot(r0.xyz, r0.xyz);
-  r0.w = max(0.00999999978, r0.w);
+  r0.w = max(9.999999776e-003, r0.w);
   r0.w = sqrt(r0.w);
   r0.xyz = r0.xyz / r0.www;
   r2.xyz = cb1[8].zxy + -r1.zxy;
   r0.w = dot(r2.xyz, r2.xyz);
-  r0.w = max(0.00999999978, r0.w);
+  r0.w = max(9.999999776e-003, r0.w);
   r0.w = sqrt(r0.w);
   r2.xyz = r2.xyz / r0.www;
   r3.xyz = r2.xyz * r0.yzx;
   r3.xyz = r2.zxy * r0.zxy + -r3.xyz;
   r0.xyz = cb0[32].yyy * -r0.xyz;
   r2.w = dot(r3.xyz, r3.xyz);
-  r2.w = max(0.00999999978, r2.w);
+  r2.w = max(9.999999776e-003, r2.w);
   r2.w = sqrt(r2.w);
   r3.xyz = r3.xyz / r2.www;
   r3.xyz = cb0[32].yyy * r3.xyz;
-  r3.w = 0;
+  r3.w = 0.000000000e+000;
   sincos(v3.x, r4.x, r5.x);
   r6.xyzw = cb0[23].xyzw * r4.xxxx;
   r6.xyzw = -r5.xxxx * cb0[24].xyzw + r6.xyzw;
@@ -90,7 +124,7 @@ void main(
   r4.yzw = cb0[r2.w+30].yzx * r2.xyz;
   r4.yzw = r2.zxy * cb0[r2.w+30].zxy + -r4.yzw;
   r5.y = dot(r4.yzw, r4.yzw);
-  r5.y = max(0.00999999978, r5.y);
+  r5.y = max(9.999999776e-003, r5.y);
   r5.y = sqrt(r5.y);
   r4.yzw = r4.yzw / r5.yyy;
   r4.yzw = cb0[r2.w+30].www * r4.yzw;
@@ -99,24 +133,24 @@ void main(
   r6.z = (int)r2.w ? cb0[r2.w+30].z : r4.w; r7.z = (int)r2.w ? r4.w : cb0[r2.w+30].z;
   r7.xyz = cb0[32].zzz * r7.xyz;
   r6.xyz = cb0[32].zzz * r6.xyz;
-  r7.w = 0;
+  r7.w = 0.000000000e+000;
   r3.xyzw = r7.xyzw + r3.xyzw;
-  r4.yzw = float3(0,1,0) * r2.xyz;
-  r4.yzw = r2.zxy * float3(1,0,0) + -r4.yzw;
+  r4.yzw = float3(0.000000e+000,1.000000e+000,0.000000e+000) * r2.xyz;
+  r4.yzw = r2.zxy * float3(1.000000e+000,0.000000e+000,0.000000e+000) + -r4.yzw;
   r2.w = dot(r4.yz, r4.yz);
-  r2.w = max(0.00999999978, r2.w);
+  r2.w = max(9.999999776e-003, r2.w);
   r2.w = sqrt(r2.w);
   r4.yzw = r4.yzw / r2.www;
   r5.yzw = r4.wyz * r2.zxy;
   r2.xyz = r4.zwy * r2.xyz + -r5.yzw;
   r2.w = dot(r2.xyz, r2.xyz);
-  r2.w = max(0.00999999978, r2.w);
+  r2.w = max(9.999999776e-003, r2.w);
   r2.w = sqrt(r2.w);
   r2.xyz = r2.xyz / r2.www;
   r7.xyz = r4.xxx * r4.yzw;
   r8.xyz = r5.xxx * r4.yzw;
-  r7.w = 0;
-  r2.w = 0;
+  r7.w = 0.000000000e+000;
+  r2.w = 0.000000000e+000;
   r7.xyzw = r5.xxxx * r2.xyzw + r7.xyzw;
   r3.xyzw = r7.xyzw * cb0[32].wwww + r3.xyzw;
   r4.y = (uint)v3.y;
@@ -127,44 +161,65 @@ void main(
   r1.xyzw = r4.zzzz * r3.xyzw + r1.xyzw;
   r3.xyzw = cb0[23].xyzw * r5.xxxx;
   r3.xyzw = r4.xxxx * cb0[24].xyzw + r3.xyzw;
-  r0.w = 0;
+  r0.w = 0.000000000e+000;
   r0.xyzw = r3.xyzw * cb0[32].xxxx + r0.xyzw;
-  r6.w = 0;
+  r6.w = 0.000000000e+000;
   r0.xyzw = r6.xyzw + r0.xyzw;
-  r8.w = 0;
+  r8.w = 0.000000000e+000;
   r2.xyzw = r4.xxxx * -r2.xyzw + r8.xyzw;
   r0.xyzw = r2.xyzw * cb0[32].wwww + r0.xyzw;
   r0.xyzw = r4.yyyy * r0.xyzw + r1.xyzw;
+  
   o3.xyzw = r0.xyzw;
+  
+float4 r20, r21, r22;
+r20.xyzw = cb1[1].xyzw * r0.yyyy;
+r20.xyzw = cb1[0].xyzw * r0.xxxx + r20.xyzw;
+r20.xyzw = cb1[2].xyzw * r0.zzzz + r20.xyzw;
+r20.xyzw = cb1[3].xyzw * r1.wwww + r20.xyzw;
+  
+float4 s=StereoParams.Load(0);
+r20.x += s.x*(r20.w-s.y); 
+  
+o3.xyzw = b2.xyzw * r20.yyyy;
+o3.xyzw = b1.xyzw * r20.xxxx + o3.xyzw;
+o3.xyzw = b3.xyzw * r20.zzzz + o3.xyzw;
+o3.xyzw = b4.xyzw * r20.wwww + o3.xyzw;  
+  
+
+  
   o4.xyzw = v5.xyzw;
   r1.xyz = cb1[10].xyz + r0.xyz;
   r1.xyz = -cb1[25].xyz + r1.xyz;
-  r1.xyz = r1.xyz * float3(4.88281257e-005,4.88281257e-005,8.13802108e-005) + float3(0.5,0.5,0.5);
-  r1.xyz = t0.SampleLevel(s0_s, r1.xyz, 0).xyz;
+  r1.xyz = r1.xyz * float3(4.882813e-005,4.882813e-005,8.138021e-005) + float3(5.000000e-001,5.000000e-001,5.000000e-001);
+  r1.xyz = t0.SampleLevel(s0_s, r1.xyz, 0.000000000e+000).xyz;
   o5.xyz = r1.xyz;
   r1.xyzw = cb1[1].xyzw * r0.yyyy;
   r1.xyzw = cb1[0].xyzw * r0.xxxx + r1.xyzw;
   r1.xyzw = cb1[2].xyzw * r0.zzzz + r1.xyzw;
   r0.xyzw = cb1[3].xyzw * r0.wwww + r1.xyzw;
-  r1.x = saturate(0.00030048078 * r0.w);
-  r1.x = r1.x * 0.390625 + 0.0078125;
-  r1.yzw = float3(-3328,-19712,-167168) + r0.www;
-  r1.yzw = saturate(float3(6.10351563e-005,1.35633682e-005,7.62939453e-006) * r1.yzw);
-  r1.x = r1.y * 0.234375 + r1.x;
-  r1.x = r1.z * 0.28125 + r1.x;
-  r1.z = r1.w * 0.0625 + r1.x;
+   
+  r1.x = saturate(3.004807804e-004 * r0.w);
+  r1.x = r1.x * 3.906250000e-001 + 7.812500000e-003;
+  r1.yzw = float3(-3.328000e+003,-1.971200e+004,-1.671680e+005) + r0.www;
+  r1.yzw = saturate(float3(6.103516e-005,1.356337e-005,7.629395e-006) * r1.yzw);
+  r1.x = r1.y * 2.343750000e-001 + r1.x;
+  r1.x = r1.z * 2.812500000e-001 + r1.x;
+  r1.z = r1.w * 6.250000000e-002 + r1.x;
   r2.xy = r0.xy / r0.ww;
-  o7.xyzw = r0.xyzw;
-  r1.xy = r2.xy * float2(0.5,-0.5) + float2(0.5,0.5);
-  r0.xyzw = t1.SampleLevel(s1_s, r1.xyz, 0).xyzw;
+o7.xyzw = r0.xyzw;
+  r1.xy = r2.xy * float2(5.000000e-001,-5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r0.xyzw = t1.SampleLevel(s1_s, r1.xyz, 0.000000000e+000).xyzw;
   o6.xyz = r0.xyz * r0.xyz;
   o6.w = r0.w;
   return;
 }
 
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Generated by Microsoft (R) D3D Shader Disassembler
+//
+//   using 3Dmigoto v1.1.30 on Thu Jul 09 23:54:06 2015
 //
 //
 // Input signature:
@@ -331,9 +386,4 @@ ret
 // Approximately 0 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-D:\SteamLibrary\steamapps\common\Batman Arkham Knight\Binaries\Win64\wrapper1349(37,14-15): warning X3578: Output value 'o0' is not completely initialized
-D:\SteamLibrary\steamapps\common\Batman Arkham Knight\Binaries\Win64\wrapper1349(42,14-15): warning X3578: Output value 'o5' is not completely initialized
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  

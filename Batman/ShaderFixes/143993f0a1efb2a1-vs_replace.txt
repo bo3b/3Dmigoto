@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 02:21:33 2015
+//Halos on the sea
 Texture2D<float4> t1 : register(t1);
 
 Texture2D<float4> t0 : register(t0);
@@ -18,13 +18,8 @@ cbuffer cb0 : register(b0)
 }
 
 
-
-
-// 3Dmigoto declarations
-#define cmp -
-Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
-
+Texture1D<float4> IniParams : register(t120);
 
 void main( 
   float v0 : SPLITPOS0,
@@ -50,49 +45,49 @@ void main(
   r1.xyzw = cb0[11].xyxy + r0.xyxy;
   r2.xy = -cb0[18].xy + r1.zw;
   r2.xy = cb0[17].xy * r2.xy;
-  r2.xyz = t1.SampleLevel(s1_s, r2.xy, 0).xyz;
-  r3.xyzw = r2.xyxy * float4(2,2,2,2) + float4(-1,-1,-1,-1);
+  r2.xyz = t1.SampleLevel(s1_s, r2.xy, 0.000000000e+000).xyz;
+  r3.xyzw = r2.xyxy * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-1.000000e+000,-1.000000e+000,-1.000000e+000,-1.000000e+000);
   r4.xyzw = cb0[15].xyzw * cb0[10].xxxx;
   r5.xyzw = cb0[16].xyxy * r4.xxyy;
   r5.xyzw = r1.zwzw * cb0[13].xxyy + r5.xyzw;
-  r6.xy = r3.zw * float2(-0.174999997,-0.174999997) + r5.xy;
-  r6.zw = r3.xy * float2(-0.153125003,-0.153125003) + r5.zw;
+  r6.xy = r3.zw * float2(-1.750000e-001,-1.750000e-001) + r5.xy;
+  r6.zw = r3.xy * float2(-1.531250e-001,-1.531250e-001) + r5.zw;
   r4.xyzw = cb0[16].xyxy * r4.zzww;
   r1.xyzw = r1.xyzw * cb0[13].zzww + r4.xyzw;
-  r4.xy = r3.zw * float2(-0.0437499993,-0.0437499993) + r1.xy;
-  r4.zw = r3.zw * float2(-0.0218749996,-0.0218749996) + r1.zw;
+  r4.xy = r3.zw * float2(-4.375000e-002,-4.375000e-002) + r1.xy;
+  r4.zw = r3.zw * float2(-2.187500e-002,-2.187500e-002) + r1.zw;
   r1.x = dot(r0.xyz, r0.xyz);
   r1.x = sqrt(r1.x);
-  r1.xyz = float3(6.66666674e-005,5.00000024e-005,3.33333337e-005) * r1.xxx;
+  r1.xyz = float3(6.666667e-005,5.000000e-005,3.333333e-005) * r1.xxx;
   r2.xyw = t0.SampleLevel(s0_s, r6.xy, r1.x).xyz;
-  r2.xyw = r2.xyw * float3(2,2,1) + float3(-1,-1,-0);
+  r2.xyw = r2.xyw * float3(2.000000e+000,2.000000e+000,1.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-0.000000e+000);
   r1.xyw = t0.SampleLevel(s0_s, r6.zw, r1.y).xyz;
-  r1.xyw = r1.xyw * float3(2,2,1) + float3(-1,-1,-0);
+  r1.xyw = r1.xyw * float3(2.000000e+000,2.000000e+000,1.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-0.000000e+000);
   r1.xyw = cb0[14].yyy * r1.xyw;
-  r1.xyw = float3(1,1,0.75) * r1.xyw;
+  r1.xyw = float3(1.000000e+000,1.000000e+000,7.500000e-001) * r1.xyw;
   r1.xyw = r2.xyw * cb0[14].xxx + r1.xyw;
   r2.xyw = t0.SampleLevel(s0_s, r4.xy, r1.z).xyz;
-  r2.xyw = r2.xyw * float3(2,2,1) + float3(-1,-1,-0);
+  r2.xyw = r2.xyw * float3(2.000000e+000,2.000000e+000,1.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-0.000000e+000);
   r2.xyw = cb0[14].zzz * r2.xyw;
-  r1.xyw = r2.xyw * float3(1,1,0.5) + r1.xyw;
+  r1.xyw = r2.xyw * float3(1.000000e+000,1.000000e+000,5.000000e-001) + r1.xyw;
   r2.xyw = t0.SampleLevel(s0_s, r4.zw, r1.z).xyz;
-  r2.xyw = r2.xyw * float3(2,2,1) + float3(-1,-1,-0);
+  r2.xyw = r2.xyw * float3(2.000000e+000,2.000000e+000,1.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-0.000000e+000);
   r2.xyw = cb0[14].www * r2.xyw;
-  r1.xyz = r2.xyw * float3(1,1,0.5) + r1.xyw;
+  r1.xyz = r2.xyw * float3(1.000000e+000,1.000000e+000,5.000000e-001) + r1.xyw;
   r1.z = r1.z * r2.z;
   r0.z = -cb0[12].x + r0.z;
   r1.w = cb0[12].y * r1.z;
   r0.z = r1.w * cb0[12].x + r0.z;
   r1.w = r1.z * r1.z;
-  r1.z = -r1.w * r1.z + 1;
+  r1.z = -r1.w * r1.z + 1.000000000e+000;
   r1.z = cb0[12].y * r1.z;
   r1.xy = -cb0[12].xx * r1.xy;
   r1.xy = r1.zz * r1.xy;
-  r1.xy = r1.xy * float2(0.800000012,0.800000012) + r0.xy;
+  r1.xy = r1.xy * float2(8.000000e-001,8.000000e-001) + r0.xy;
   r1.w = r0.z;
-  r0.x = 0;
+  r0.x = 0.000000000e+000;
   while (true) {
-    r0.y = cmp((uint)r0.x >= asuint(cb0[18].w));
+    r0.y = (uint)r0.x >= asuint(cb0[18].w);
     if (r0.y != 0) break;
     r1.z = r1.w;
     r2.xyz = cb0[11].xyz + r1.xyz;
@@ -101,14 +96,14 @@ void main(
     r2.xyw = cb0[r0.y+22].xyz * r2.xxx + r3.xyz;
     r2.xyw = cb0[r0.y+24].xyz * r2.zzz + r2.xyw;
     r2.xyw = cb0[r0.y+25].xyz + r2.xyw;
-    r2.xy = float2(-0.5,-0.5) + r2.xy;
+    r2.xy = float2(-5.000000e-001,-5.000000e-001) + r2.xy;
     r2.xy = abs(r2.xy) + abs(r2.xy);
     r0.y = max(r2.x, r2.y);
-    r1.z = -cb0[r0.x+19].x + 1;
+    r1.z = -cb0[r0.x+19].x + 1.000000000e+000;
     r0.y = -r1.z + r0.y;
     r0.y = saturate(r0.y / cb0[r0.x+19].x);
-    r1.z = 0.5 + -r2.w;
-    r1.z = 0.5 * r1.z;
+    r1.z = 5.000000000e-001 + -r2.w;
+    r1.z = 5.000000000e-001 * r1.z;
     r1.z = -cb0[r0.x+19].y * r1.z + r2.z;
     r1.z = min(r2.z, r1.z);
     r2.x = r2.z + -r1.z;
@@ -121,19 +116,27 @@ void main(
   r2.xyzw = cb1[0].xyzw * r1.xxxx + r2.xyzw;
   r2.xyzw = cb1[2].xyzw * r1.wwww + r2.xyzw;
   r0.xyzw = cb1[3].xyzw * r0.wwww + r2.xyzw;
+  
+float4 s=StereoParams.Load(0);
+float4 r10;
+r10=r0;
+r0.x += s.x*(r0.w-s.y);
+  
   o0.xyzw = r0.xyzw;
   o1.xyzw = r6.xyzw;
   o2.xyzw = r4.xyzw;
   o3.w = r0.w;
   o4.xyz = r1.xyw;
   o4.w = cb0[12].y;
-  o5.xyzw = r0.xyzw;
+o5.xyzw = r10.xyzw;
   return;
 }
 
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Generated by Microsoft (R) D3D Shader Disassembler
+//
+//   using 3Dmigoto v1.1.30 on Fri Jul 10 00:36:34 2015
 //
 //
 // Input signature:
