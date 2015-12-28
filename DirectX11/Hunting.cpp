@@ -459,10 +459,15 @@ static string Decompile(ID3DBlob* pShaderByteCode, string asmText)
 	bool patched = false;
 	string shaderModel;
 	bool errorOccurred = false;
+
+	// TODO: Refactor all parameters we just copy from globals into their
+	// own struct so we don't have to copy all this junk
 	ParseParameters p;
 	p.bytecode = pShaderByteCode->GetBufferPointer();
 	p.decompiled = asmText.c_str();
 	p.decompiledSize = asmText.size();
+	p.StereoParamsReg = G->StereoParamsReg;
+	p.IniParamsReg = G->IniParamsReg;
 	p.recompileVs = G->FIX_Recompile_VS;
 	p.fixSvPosition = G->FIX_SV_Position;
 	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;

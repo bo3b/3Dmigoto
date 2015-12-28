@@ -309,6 +309,8 @@ struct Globals
 	float gTuneValue[4], gTuneStep;
 
 	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
+	int StereoParamsReg;
+	int IniParamsReg;
 
 	ResolutionInfo mResolutionInfo;
 	CommandList present_command_list;
@@ -438,6 +440,9 @@ struct Globals
 		DumpUsage(false),
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
+
+		StereoParamsReg(125),
+		IniParamsReg(120),
 
 		frame_no(0),
 

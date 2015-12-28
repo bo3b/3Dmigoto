@@ -18,6 +18,9 @@ struct ParseParameters
 	const char *decompiled;
 	size_t decompiledSize;
 
+	int StereoParamsReg;
+	int IniParamsReg;
+
 	bool fixSvPosition;
 	bool fixLightPosition;
 	bool recompileVs;

@@ -105,6 +105,9 @@ public:
 	vector<pair<string, string> > mRemappedInputRegisters;
 	set<string> mBooleanRegisters;
 
+	int StereoParamsReg;
+	int IniParamsReg;
+
 	vector<char> mOutput;
 	size_t mCodeStartPos;		// Used as index into buffer, name misleadingly suggests pointer usage.
 	bool mErrorOccurred;
@@ -4976,9 +4979,15 @@ public:
 		declaration +=
 			"#define cmp - \n";
 
-		declaration +=
-			"Texture1D<float4> IniParams : register(t120); \n"
-			"Texture2D<float4> StereoParams : register(t125); \n";
+		if (IniParamsReg >= 0) {
+			declaration +=
+				"Texture1D<float4> IniParams : register(t" + std::to_string(IniParamsReg) + "); \n";
+		}
+
+		if (StereoParamsReg >= 0) {
+			declaration +=
+				"Texture2D<float4> StereoParams : register(t" + std::to_string(StereoParamsReg) + "); \n";
+		}
 
 		if (mZRepair_DepthBuffer)
 		{
@@ -5015,6 +5024,11 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	d.mOutput.reserve(16 * 1024);
 	d.mErrorOccurred = false;
 	d.mShaderType = "unknown";
+
+	// TODO: We should be able do better than copying all this by just
+	// including params in d:
+	d.StereoParamsReg = params.StereoParamsReg;
+	d.IniParamsReg = params.IniParamsReg;
 	d.mFixSvPosition = params.fixSvPosition;
 	d.mRecompileVs = params.recompileVs;
 	d.mPatched = false;

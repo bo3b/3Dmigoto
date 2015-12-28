@@ -848,6 +848,19 @@ void LoadConfigFile()
 	G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, iniFile) == 1;
 	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
 
+	G->StereoParamsReg = GetPrivateProfileInt(L"Rendering", L"stereo_params", 125, iniFile);
+	G->IniParamsReg = GetPrivateProfileInt(L"Rendering", L"ini_params", 120, iniFile);
+	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+		LogInfo("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
+		BeepFailure2();
+		G->StereoParamsReg = -1;
+	}
+	if (G->IniParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+		LogInfo("WARNING: ini_params=%i out of range\n", G->IniParamsReg);
+		BeepFailure2();
+		G->IniParamsReg = -1;
+	}
+
 	if (LogFile)
 	{
 		LogInfo("[Rendering]\n");
@@ -867,6 +880,9 @@ void LoadConfigFile()
 		if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
 		if (G->EXPORT_BINARY) LogInfo("  export_binary=1\n");
 		if (G->DumpUsage) LogInfo("  dump_usage=1\n");
+
+		LogInfo("  stereo_params=%i\n", G->StereoParamsReg);
+		LogInfo("  ini_params=%i\n", G->IniParamsReg);
 	}
 
 

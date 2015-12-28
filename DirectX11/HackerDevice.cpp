@@ -950,10 +950,15 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 				bool patched = false;
 				bool errorOccurred = false;
+
+				// TODO: Refactor all parameters we just copy from globals into their
+				// own struct so we don't have to copy all this junk
 				ParseParameters p;
 				p.bytecode = pShaderBytecode;
 				p.decompiled = (const char *)disassembly->GetBufferPointer();
 				p.decompiledSize = disassembly->GetBufferSize();
+				p.StereoParamsReg = G->StereoParamsReg;
+				p.IniParamsReg = G->IniParamsReg;
 				p.recompileVs = G->FIX_Recompile_VS;
 				p.fixSvPosition = G->FIX_SV_Position;
 				p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;

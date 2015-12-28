@@ -2093,17 +2093,17 @@ void HackerContext::BindStereoResources()
 	}
 
 	// Set NVidia stereo texture.
-	if (mHackerDevice->mStereoResourceView) {
-		LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
+	if (mHackerDevice->mStereoResourceView && G->StereoParamsReg >= 0) {
+		LogDebug("  adding NVidia stereo parameter texture to shader resources in slot %i.\n", G->StereoParamsReg);
 
-		(mOrigContext->*OrigSetShaderResources)(125, 1, &mHackerDevice->mStereoResourceView);
+		(mOrigContext->*OrigSetShaderResources)(G->StereoParamsReg, 1, &mHackerDevice->mStereoResourceView);
 	}
 
 	// Set constants from ini file if they exist
-	if (mHackerDevice->mIniResourceView) {
-		LogDebug("  adding ini constants as texture to shader resources in slot 120.\n");
+	if (mHackerDevice->mIniResourceView && G->IniParamsReg >= 0) {
+		LogDebug("  adding ini constants as texture to shader resources in slot %i.\n", G->IniParamsReg);
 
-		(mOrigContext->*OrigSetShaderResources)(120, 1, &mHackerDevice->mIniResourceView);
+		(mOrigContext->*OrigSetShaderResources)(G->IniParamsReg, 1, &mHackerDevice->mIniResourceView);
 	}
 }
 
@@ -2147,26 +2147,6 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
 	mOrigContext->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
-
-	/*
-	// Map nvidia texture slot.
-	if (ppShaderResourceViews && NumViews && ppShaderResourceViews[0])
-	{
-	ID3D11Device *device = 0;
-	GetDevice(&device);
-	if (device && device->mStereoResourceView)
-	{
-	LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-
-	m_pContext->PSSetShaderResources(125, 1, &device->mStereoResourceView);
-	}
-	else
-	{
-	LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
-	}
-	device->Release();
-	}
-	*/
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
@@ -2325,26 +2305,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
 	mOrigContext->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
-
-	/*
-	// Map nvidia texture slot.
-	if (ppShaderResourceViews && NumViews && ppShaderResourceViews[0])
-	{
-	ID3D11Device *device = 0;
-	GetDevice(&device);
-	if (device && device->mStereoResourceView)
-	{
-	LogDebug("  adding NVidia stereo parameter texture to shader resources in slot 125.\n");
-
-	m_pContext->VSSetShaderResources(125, 1, &device->mStereoResourceView);
-	}
-	else
-	{
-	LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
-	}
-	device->Release();
-	}
-	*/
 }
 
 STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
