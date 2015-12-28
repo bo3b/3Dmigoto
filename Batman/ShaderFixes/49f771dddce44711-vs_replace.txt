@@ -1,4 +1,6 @@
+// Fire in intro
 // ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 02:36:33 2015
+
 Texture3D<float4> t0 : register(t0);
 
 SamplerState s0_s : register(s0);
@@ -134,6 +136,12 @@ void main(
   r1.xyzw = cb1[0].xyzw * r0.xxxx + r1.xyzw;
   r1.xyzw = cb1[2].xyzw * r0.zzzz + r1.xyzw;
   r0.xyzw = cb1[3].xyzw * r0.wwww + r1.xyzw;
+
+// Halo Fix with relocation - DarkStarSword
+o6.xyzw = r0.xyzw;
+float4 stereo = StereoParams.Load(0);
+r0.x += stereo.x * (r0.w - stereo.y);
+
   o3.xyzw = r0.xyzw;
   o4.xyzw = v5.xyzw;
   r1.x = saturate(0.00030048078 * r0.w);
@@ -144,7 +152,7 @@ void main(
   r1.x = r1.z * 0.28125 + r1.x;
   r1.z = r1.w * 0.0625 + r1.x;
   r2.xy = r0.xy / r0.ww;
-  o6.xyzw = r0.xyzw;
+//o6.xyzw = r0.xyzw;
   r1.xy = r2.xy * float2(0.5,-0.5) + float2(0.5,0.5);
   r0.xyzw = t0.SampleLevel(s0_s, r1.xyz, 0).xyzw;
   o5.xyz = r0.xyz * r0.xyz;
