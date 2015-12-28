@@ -243,15 +243,15 @@ public:
 		// The key aspect is whether we are supposed to use a different Register.
 		if (reg1 == reg2)
 		{
-			LogDebug("    SkipPacking false for v%d==v%d \n", reg1, reg2);
-			LogDebug("      %s \n", line1.c_str());
-			LogDebug("      %s \n", line2.c_str());
+			LogDebug("    SkipPacking false for v%d==v%d\n", reg1, reg2);
+			LogDebug("      %s\n", line1.c_str());
+			LogDebug("      %s\n", line2.c_str());
 			return false;
 		}
 
-		LogDebug("    SkipPacking true for: \n");
-		LogDebug("      %s \n", line1.c_str());
-		LogDebug("      %s \n", line2.c_str());
+		LogDebug("    SkipPacking true for:\n");
+		LogDebug("      %s\n", line1.c_str());
+		LogDebug("      %s\n", line2.c_str());
 
 		return true;
 	}
@@ -1177,7 +1177,7 @@ public:
 					// No idea what an assignment to a bool4 would look like in ASM, so let's just log if we see
 					// this, and fix it later.
 					if (e.bt == DT_bool4)
-						logDecompileError("*** assignment to bool4, unknown syntax \n");
+						logDecompileError("*** assignment to bool4, unknown syntax\n");
 					// For bool values, the usual conversion by %e creates QNAN, so handle them specifically. (e.g. = 0xffffffff)
 					else if (e.bt == DT_bool)
 					{
@@ -3203,7 +3203,7 @@ public:
 			else if (!strncmp(statement, "dcl_", 4))
 			{
 				// Other declarations.
-				//sprintf(buffer, "  // unknown dcl_  %s \n", statement);
+				//sprintf(buffer, "  // unknown dcl_  %s\n", statement);
 				//mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
 			else
@@ -3624,7 +3624,7 @@ public:
 						// Opcodes found in Witcher3 Compute Shader, manual fix needed.
 					case OPCODE_ATOMIC_UMAX:
 					{
-						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
@@ -3637,7 +3637,7 @@ public:
 					}
 					case OPCODE_ATOMIC_UMIN:
 					{
-						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
@@ -3650,7 +3650,7 @@ public:
 					}
 					case OPCODE_ATOMIC_IADD:
 					{
-						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
@@ -3663,7 +3663,7 @@ public:
 					}
 					case OPCODE_IMM_ATOMIC_IADD:
 					{
-						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
@@ -3676,7 +3676,7 @@ public:
 					}
 					case OPCODE_IMM_ATOMIC_ALLOC:
 					{
-						sprintf(buffer, "  // Needs manual fix for instruction: \n");
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						const char *eolPos = strchr(c + pos, '\n');
 						ptrdiff_t len = eolPos - (c + pos);
@@ -4118,7 +4118,7 @@ public:
 						if (!strcmp(statement, "sync_g_t"))
 							sprintf(buffer, "  GroupMemoryBarrierWithGroupSync();\n");
 						else
-							sprintf(buffer, "  Unknown sync instruction; \n");
+							sprintf(buffer, "  Unknown sync instruction;\n");
 						appendOutput(buffer);
 						break;
 
@@ -4554,7 +4554,7 @@ public:
 						ResourceBinding* bindings = shader->sInfo->psResourceBindings;
 						if (bindings == NULL)
 						{
-							sprintf(buffer, "// Missing reflection info for shader. No names possible. \n");
+							sprintf(buffer, "// Missing reflection info for shader. No names possible.\n");
 							appendOutput(buffer);
 							src0 = "no_StructuredBufferName";
 							srcAddress = "no_srcAddressRegister";
@@ -4802,18 +4802,18 @@ public:
 							// Completely new variant, write out the reminder.
 							string line = string(c + pos);
 							line = line.substr(0, line.find('\n'));
-							sprintf(buffer, "// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix. \n");
+							sprintf(buffer, "// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix.\n");
 							appendOutput(buffer);
-							sprintf(buffer, "// %s \n", line.c_str());
+							sprintf(buffer, "// %s\n", line.c_str());
 							appendOutput(buffer);
-							sprintf(buffer, "// Example for texture2d type, uint return: \n");
+							sprintf(buffer, "// Example for texture2d type, uint return:\n");
 							appendOutput(buffer);
-							sprintf(buffer, "tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z); \n");
+							sprintf(buffer, "tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n");
 							appendOutput(buffer);
-							sprintf(buffer, "rx = uiDest; \n");
+							sprintf(buffer, "rx = uiDest;\n");
 							appendOutput(buffer);
 
-							sprintf(buffer, " state=%d, constZero.eType=%d, returnType=%d, texture.eType=%d, afImmediates[0]=%f \n", bindstate, constZero.eType, returnType, texture.eType, constZero.afImmediates[0]);
+							sprintf(buffer, " state=%d, constZero.eType=%d, returnType=%d, texture.eType=%d, afImmediates[0]=%f\n", bindstate, constZero.eType, returnType, texture.eType, constZero.afImmediates[0]);
 							appendOutput(buffer);
 
 							//logDecompileError("Unknown _resinfo variant: " + line);
@@ -4966,7 +4966,7 @@ public:
 	{
 		string declaration = 
 			"\n\n"
-			"// 3Dmigoto declarations \n";
+			"// 3Dmigoto declarations\n";
 
 		// Also inject the helper macro of 'cmp' to fix any boolean comparisons.
 		// This is a bit of a hack, but simply adds a "-" in front of the comparison,
@@ -4977,22 +4977,22 @@ public:
 		// variants for different swizzle sizes, like .xy or .xyz.
 
 		declaration +=
-			"#define cmp - \n";
+			"#define cmp -\n";
 
 		if (IniParamsReg >= 0) {
 			declaration +=
-				"Texture1D<float4> IniParams : register(t" + std::to_string(IniParamsReg) + "); \n";
+				"Texture1D<float4> IniParams : register(t" + std::to_string(IniParamsReg) + ");\n";
 		}
 
 		if (StereoParamsReg >= 0) {
 			declaration +=
-				"Texture2D<float4> StereoParams : register(t" + std::to_string(StereoParamsReg) + "); \n";
+				"Texture2D<float4> StereoParams : register(t" + std::to_string(StereoParamsReg) + ");\n";
 		}
 
 		if (mZRepair_DepthBuffer)
 		{
 			declaration +=
-				"Texture2D<float4> InjectedDepthTexture : register(t126); \n";
+				"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
 		}
 
 		declaration +=
