@@ -276,7 +276,10 @@ public:
 					switch (declaration.value.eInterpolation)
 					{
 					case INTERPOLATION_CONSTANT:
-						interpolation = "constant ";
+						// The constant interpolation modifier in assembly means do not
+						// interpolate, which in HLSL uses the nointerpolation modifier.
+						// Seen in Arkham Knight
+						interpolation = "nointerpolation ";
 						break;
 					// Let's skip adding this, as it's the default, and adds noise.
 					//case INTERPOLATION_LINEAR:
