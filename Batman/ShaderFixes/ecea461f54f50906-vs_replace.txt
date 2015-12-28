@@ -1,4 +1,6 @@
-// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 01:59:45 2015
+// Skin - officer face
+// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 03:13:30 2015
+
 cbuffer cb2 : register(b2)
 {
   float4 cb2[768];
@@ -22,6 +24,7 @@ cbuffer cb0 : register(b0)
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
+#include <ShaderFixes/matrix.hlsl>
 
 void main( 
   float4 v0 : POSITION0,
@@ -111,10 +114,23 @@ void main(
   r0.xyzw = cb0[3].xyzw + r0.xyzw;
   r0.xyzw = cb1[9].xyzw + r0.xyzw;
   o6.xyzw = r0.xyzw;
+
+// Need to adjust o6 using the inverse of the cb1[0:3] matrix
+// We can just adjust a copy of o7 below and multiply it by the
+// inverse matrix instead.
+
   r1.xyzw = cb1[1].xyzw * r0.yyyy;
   r1.xyzw = cb1[0].xyzw * r0.xxxx + r1.xyzw;
   r1.xyzw = cb1[2].xyzw * r0.zzzz + r1.xyzw;
   o7.xyzw = cb1[3].xyzw * r0.wwww + r1.xyzw;
+
+matrix im = inverse(cb1[0], cb1[1], cb1[2], cb1[3]);
+
+float4 stereo = StereoParams.Load(0);
+float4 tmp = o7;
+tmp.x += stereo.x * (tmp.w - stereo.y);
+o6 = mul(tmp, im);
+
   return;
 }
 
