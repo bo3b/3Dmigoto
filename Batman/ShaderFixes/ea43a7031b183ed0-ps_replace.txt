@@ -18,6 +18,11 @@ cbuffer cb0 : register(b0)
   float4 cb0[28];
 }
 
+// Copied from CS eb8c3e5e00a6c476 with 3DMigoto to get access to projection matrix:
+cbuffer cb13 : register(b13)
+{
+  matrix projection : packoffset(c6);
+}
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -65,7 +70,7 @@ void main(
 
 //Mike_ar69 - Stereo Shift
 float4 stereo = StereoParams.Load(0);
-r0.x -= stereo.x * (r0.w - stereo.y)*0.935;
+r0.x -= stereo.x * (r0.w - stereo.y)/projection._m00;
 
   r1.xyzw = cb1[16].xyzw * r0.yyyy;
   r1.xyzw = cb1[15].xyzw * r0.xxxx + r1.xyzw;
