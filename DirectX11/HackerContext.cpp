@@ -37,6 +37,7 @@ HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContex
 	mCurrentDepthTarget = NULL;
 
 	analyse_options = FrameAnalysisOptions::INVALID;
+	frame_analysis_log = NULL;
 }
 
 
@@ -624,6 +625,9 @@ STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 			}
 		} else
 			LogInfo("HackerContext::Release - mHackerDevice is NULL\n");
+
+		if (frame_analysis_log)
+			fclose(frame_analysis_log);
 
 		delete this;
 		return 0L;

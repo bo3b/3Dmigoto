@@ -126,6 +126,7 @@ enum class FrameAnalysisOptions {
 	DUMP_XX_BIN     = 0x00054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
 	DUMP_XX_TXT     = 0x000a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
+	LOG             = 0x00200000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -150,6 +151,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
 	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
+	{L"log", FrameAnalysisOptions::LOG},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 

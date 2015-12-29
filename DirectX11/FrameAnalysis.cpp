@@ -4,6 +4,161 @@
 #include <ScreenGrab.h>
 #include <wincodec.h>
 #include <Strsafe.h>
+#include <stdarg.h>
+
+void HackerContext::FrameAnalysisLog(char *fmt, ...)
+{
+	va_list ap;
+	wchar_t filename[MAX_PATH];
+
+	if (!G->analyse_frame) {
+		if (frame_analysis_log)
+			fclose(frame_analysis_log);
+		frame_analysis_log = NULL;
+		return;
+	}
+
+	// Using the global analyse options here as the local copy in the
+	// context is only updated after draw calls. We could potentially
+	// process the triggers here, but this function is intended to log
+	// other calls as well where that wouldn't make sense. We could change
+	// it so that this is called from FrameAnalysisAfterDraw, but we want
+	// to log calls for deferred contexts here as well.
+	if (!(G->cur_analyse_options & FrameAnalysisOptions::LOG))
+		return;
+
+	if (!frame_analysis_log) {
+		// Use the original context to check the type, otherwise we
+		// will recursively call ourselves:
+		if (mOrigContext->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+			swprintf_s(filename, MAX_PATH, L"%ls\\log.txt", G->ANALYSIS_PATH);
+		else
+			swprintf_s(filename, MAX_PATH, L"%ls\\log-0x%p.txt", G->ANALYSIS_PATH, this);
+
+		frame_analysis_log = _wfsopen(filename, L"w", _SH_DENYNO);
+		if (!frame_analysis_log) {
+			LogInfoW(L"Error opening %s\n", filename);
+			return;
+		}
+	}
+
+	fprintf(frame_analysis_log, "%06u ", G->analyse_frame);
+
+	va_start(ap, fmt);
+	vfprintf(frame_analysis_log, fmt, ap);
+	va_end(ap);
+}
+
+static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_name)
+{
+	if (slot_name)
+		fprintf(frame_analysis_log, "       %s:", slot_name);
+	else if (slot != -1)
+		fprintf(frame_analysis_log, "       %u:", slot);
+}
+
+void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
+{
+	uint32_t hash, orig_hash;
+	struct ResourceHashInfo *info;
+
+	if (!resource || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	try {
+		hash = G->mResources.at(resource).hash;
+		orig_hash = G->mResources.at(resource).orig_hash;
+		if (hash)
+			fprintf(frame_analysis_log, " hash=%08I64x", hash);
+		if (orig_hash != hash)
+			fprintf(frame_analysis_log, " orig_hash=%08I64x", orig_hash);
+
+		info = &G->mResourceInfo.at(orig_hash);
+		if (info->hash_contaminated) {
+			fprintf(frame_analysis_log, " hash_contamination=");
+			if (!info->map_contamination.empty())
+				fprintf(frame_analysis_log, "Map,");
+			if (!info->update_contamination.empty())
+				fprintf(frame_analysis_log, "UpdateSubresource,");
+			if (!info->copy_contamination.empty())
+				fprintf(frame_analysis_log, "CopyResource,");
+			if (!info->region_contamination.empty())
+				fprintf(frame_analysis_log, "UpdateSubresourceRegion,");
+		}
+	} catch (std::out_of_range) {
+	}
+
+	fprintf(frame_analysis_log, "\n");
+}
+
+void HackerContext::FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource)
+{
+	if (!resource || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	FrameAnalysisLogSlot(frame_analysis_log, slot, slot_name);
+	fprintf(frame_analysis_log, " resource=0x%p", resource);
+
+	FrameAnalysisLogResourceHash(resource);
+}
+
+void HackerContext::FrameAnalysisLogView(int slot, char *slot_name, ID3D11View *view)
+{
+	ID3D11Resource *resource;
+
+	if (!view || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	FrameAnalysisLogSlot(frame_analysis_log, slot, slot_name);
+	fprintf(frame_analysis_log, " view=0x%p", view);
+
+	view->GetResource(&resource);
+	if (!resource)
+		return;
+
+	FrameAnalysisLogResource(-1, NULL, resource);
+
+	resource->Release();
+}
+
+void HackerContext::FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Resource *const *ppResources)
+{
+	UINT i;
+
+	if (!ppResources || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	for (i = 0; i < len; i++)
+		FrameAnalysisLogResource(start + i, NULL, ppResources[i]);
+}
+
+void HackerContext::FrameAnalysisLogViewArray(UINT start, UINT len, ID3D11View *const *ppViews)
+{
+	UINT i;
+
+	if (!ppViews || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	for (i = 0; i < len; i++)
+		FrameAnalysisLogView(start + i, NULL, ppViews[i]);
+}
+
+void HackerContext::FrameAnalysisLogMiscArray(UINT start, UINT len, void *const *array)
+{
+	UINT i;
+	void *item;
+
+	if (!array || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	for (i = 0; i < len; i++) {
+		item = array[i];
+		if (item) {
+			FrameAnalysisLogSlot(frame_analysis_log, start + i, NULL);
+			fprintf(frame_analysis_log, " handle=0x%p\n", item);
+		}
+	}
+}
 
 void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask)
@@ -858,7 +1013,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 	// clear if it would have to be enabled while submitting the copy
 	// commands in the deferred context, or while playing the command queue
 	// in the immediate context, or both.
-	if (GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+	if (mOrigContext->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
 		return;
 
 	analyse_options = G->cur_analyse_options;
