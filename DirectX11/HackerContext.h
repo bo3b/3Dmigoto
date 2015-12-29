@@ -123,9 +123,9 @@ private:
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
 			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
 			UINT stride, UINT offset);
-	void _DumpCBs(char shader_type,
+	void _DumpCBs(char shader_type, bool compute,
 		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
-	void _DumpTextures(char shader_type,
+	void _DumpTextures(char shader_type, bool compute,
 		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
 	void DumpCBs(bool compute);
 	void DumpVBs();

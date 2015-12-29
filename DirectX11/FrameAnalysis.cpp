@@ -420,7 +420,7 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	return hr;
 }
 
-void HackerContext::_DumpCBs(char shader_type,
+void HackerContext::_DumpCBs(char shader_type, bool compute,
 	ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT])
 {
 	wchar_t filename[MAX_PATH];
@@ -431,7 +431,7 @@ void HackerContext::_DumpCBs(char shader_type,
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"cb", shader_type, i, 0, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"cb", shader_type, i, 0, 0, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpResource(buffers[i], filename,
 					FrameAnalysisOptions::DUMP_CB_MASK, i,
@@ -442,7 +442,7 @@ void HackerContext::_DumpCBs(char shader_type,
 	}
 }
 
-void HackerContext::_DumpTextures(char shader_type,
+void HackerContext::_DumpTextures(char shader_type, bool compute,
 	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
 {
 	ID3D11Resource *resource;
@@ -476,7 +476,7 @@ void HackerContext::_DumpTextures(char shader_type,
 		// although I have no idea how to determine which of the
 		// entries in the two D3D11_BUFFER_SRV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"t", shader_type, i, hash, orig_hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"t", shader_type, i, hash, orig_hash, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_TEX_MASK, i,
@@ -495,28 +495,28 @@ void HackerContext::DumpCBs(bool compute)
 	if (compute) {
 		if (mCurrentComputeShader) {
 			CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
-			_DumpCBs('c', buffers);
+			_DumpCBs('c', compute, buffers);
 		}
 	} else {
 		if (mCurrentVertexShader) {
 			VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
-			_DumpCBs('v', buffers);
+			_DumpCBs('v', compute, buffers);
 		}
 		if (mCurrentHullShader) {
 			HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
-			_DumpCBs('h', buffers);
+			_DumpCBs('h', compute, buffers);
 		}
 		if (mCurrentDomainShader) {
 			DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
-			_DumpCBs('d', buffers);
+			_DumpCBs('d', compute, buffers);
 		}
 		if (mCurrentGeometryShader) {
 			GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
-			_DumpCBs('g', buffers);
+			_DumpCBs('g', compute, buffers);
 		}
 		if (mCurrentPixelShader) {
 			PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
-			_DumpCBs('p', buffers);
+			_DumpCBs('p', compute, buffers);
 		}
 	}
 }
@@ -583,28 +583,28 @@ void HackerContext::DumpTextures(bool compute)
 	if (compute) {
 		if (mCurrentComputeShader) {
 			CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-			_DumpTextures('c', views);
+			_DumpTextures('c', compute, views);
 		}
 	} else {
 		if (mCurrentVertexShader) {
 			VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-			_DumpTextures('v', views);
+			_DumpTextures('v', compute, views);
 		}
 		if (mCurrentHullShader) {
 			HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-			_DumpTextures('h', views);
+			_DumpTextures('h', compute, views);
 		}
 		if (mCurrentDomainShader) {
 			DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-			_DumpTextures('d', views);
+			_DumpTextures('d', compute, views);
 		}
 		if (mCurrentGeometryShader) {
 			GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-			_DumpTextures('g', views);
+			_DumpTextures('g', compute, views);
 		}
 		if (mCurrentPixelShader) {
 			PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-			_DumpTextures('p', views);
+			_DumpTextures('p', compute, views);
 		}
 	}
 }
