@@ -1,4 +1,13 @@
-// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 02:21:09 2015
+// Halos - pass both corrected & uncorrected coords to pixel shaders
+// VS adccc89ecf13f52e
+// <CalledPixelShaders>
+// 025285b3068778f2 23cc849b5ba6bb73 4c117edabdca781a 4f680d5ac9d25d68
+// 583f4af582db9ecc 601c1d433b31b9f7 62d1f1503a6d77db 6435c315c1b6efba
+// 6db23263ef7029d5 84fb92d45b99a989 9236a59885b1c0ab 94b0d7c99ee999dc
+// 976cecccc9565de7 a764f4f68ad7094f a841de3430e42167 b2412911b0a763ca
+// b5f703cc020bc54f bbe1c642b129f0c8 be7338ac2e5da416
+// </CalledPixelShaders>
+
 Texture3D<float4> t0 : register(t0);
 
 SamplerState s0_s : register(s0);
@@ -21,6 +30,7 @@ cbuffer cb0 : register(b0)
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
+#include <ShaderFixes/matrix.hlsl>
 
 void main( 
   float v0 : SPLITPOS0,
@@ -33,7 +43,8 @@ void main(
   out float4 o0 : TEXCOORD10,
   out float4 o1 : TEXCOORD11,
   out float4 o2 : TEXCOORD0,
-  out float4 o3 : TEXCOORD5,
+  out float4 o3_corrected : TEXCOORD5,
+  out float4 o3_uncorrected : TEXCOORD9,
   out float4 o4 : TEXCOORD6,
   out float4 o5 : TEXCOORD8,
   out float4 o6 : SV_POSITION0)
@@ -72,12 +83,20 @@ void main(
   r0.xyzw = cb0[2].xyzw * v2.xxxx + r0.xyzw;
   r0.xyzw = cb0[3].xyzw + r0.xyzw;
   r0.xyzw = cb1[9].xyzw + r0.xyzw;
-  o3.xyzw = r0.xyzw;
+
+o3_uncorrected.xyzw = r0.xyzw;
+
   o4.xyzw = v5.zyxw;
   r1.xyzw = cb1[1].xyzw * r0.yyyy;
   r1.xyzw = cb1[0].xyzw * r0.xxxx + r1.xyzw;
   r1.xyzw = cb1[2].xyzw * r0.zzzz + r1.xyzw;
   r0.xyzw = cb1[3].xyzw * r0.wwww + r1.xyzw;
+  o6.xyzw = r0.xyzw;
+
+float4 stereo = StereoParams.Load(0);
+r0.x += stereo.x * (r0.w - stereo.y);
+o3_corrected = mul(r0, inverse(cb1[0], cb1[1], cb1[2], cb1[3]));
+
   r1.x = saturate(0.00030048078 * r0.w);
   r1.x = r1.x * 0.390625 + 0.0078125;
   r1.yzw = float3(-3328,-19712,-167168) + r0.www;
@@ -86,7 +105,6 @@ void main(
   r1.x = r1.z * 0.28125 + r1.x;
   r1.z = r1.w * 0.0625 + r1.x;
   r2.xy = r0.xy / r0.ww;
-  o6.xyzw = r0.xyzw;
   r1.xy = r2.xy * float2(0.5,-0.5) + float2(0.5,0.5);
   r0.xyzw = t0.SampleLevel(s0_s, r1.xyz, 0).xyzw;
   o5.xyz = r0.xyz * r0.xyz;
