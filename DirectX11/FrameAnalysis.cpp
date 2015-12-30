@@ -685,28 +685,28 @@ void HackerContext::DumpCBs(bool compute)
 
 	if (compute) {
 		if (mCurrentComputeShader) {
-			CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mOrigContext->CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('c', compute, buffers);
 		}
 	} else {
 		if (mCurrentVertexShader) {
-			VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mOrigContext->VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('v', compute, buffers);
 		}
 		if (mCurrentHullShader) {
-			HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mOrigContext->HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('h', compute, buffers);
 		}
 		if (mCurrentDomainShader) {
-			DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mOrigContext->DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('d', compute, buffers);
 		}
 		if (mCurrentGeometryShader) {
-			GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mOrigContext->GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('g', compute, buffers);
 		}
 		if (mCurrentPixelShader) {
-			PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mOrigContext->PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('p', compute, buffers);
 		}
 	}
@@ -728,7 +728,7 @@ void HackerContext::DumpVBs()
 	// (there may be other good reasons to consider wrapping the input
 	// layout if we ever do anything advanced with the vertex buffers).
 
-	IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
+	mOrigContext->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
 
 	for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		if (!buffers[i])
@@ -753,7 +753,7 @@ void HackerContext::DumpIB()
 	DXGI_FORMAT format;
 	UINT offset;
 
-	IAGetIndexBuffer(&buffer, &format, &offset);
+	mOrigContext->IAGetIndexBuffer(&buffer, &format, &offset);
 	if (!buffer)
 		return;
 
@@ -773,28 +773,28 @@ void HackerContext::DumpTextures(bool compute)
 
 	if (compute) {
 		if (mCurrentComputeShader) {
-			CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mOrigContext->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('c', compute, views);
 		}
 	} else {
 		if (mCurrentVertexShader) {
-			VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mOrigContext->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('v', compute, views);
 		}
 		if (mCurrentHullShader) {
-			HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mOrigContext->HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('h', compute, views);
 		}
 		if (mCurrentDomainShader) {
-			DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mOrigContext->DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('d', compute, views);
 		}
 		if (mCurrentGeometryShader) {
-			GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mOrigContext->GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('g', compute, views);
 		}
 		if (mCurrentPixelShader) {
-			PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mOrigContext->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('p', compute, views);
 		}
 	}
