@@ -20,6 +20,7 @@ cbuffer cb13 : register(b13)
   matrix projection : packoffset(c6);
 }
 
+#define cmp -
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
@@ -57,9 +58,9 @@ void main(
   r0.z = -cb1[20].x + r0.z;
   r0.z = r0.z / cb1[20].y;
   r0.w = 1 / r0.w;
-  r1.x = cb0[19].z >= 1;
+  r1.x = cmp(cb0[19].z >= 1);
   r0.z = r1.x ? r0.z : r0.w;
-  r0.w = cb0[19].z < 1;
+  r0.w = cmp(cb0[19].z < 1);
   r0.w = r0.w ? r0.z : 1;
   r0.xy = r0.xy * r0.ww;
 
@@ -76,15 +77,15 @@ r0.x -= stereo.x * (r0.w - stereo.y)/projection._m00;
   r1.xyz = v5.xyz * r0.xxx + r1.xyz;
   r0.xyz = v7.xyz * r0.zzz + r1.xyz;
   r0.xyz = v8.xyz * r0.www + r0.xyz;
-  r1.xyz = r0.xyz < float3(0,0,0);
-  r2.xyz = float3(1,1,1) < r0.xyz;
+  r1.xyz = cmp(r0.xyz < float3(0,0,0));
+  r2.xyz = cmp(float3(1,1,1) < r0.xyz);
   r0.xy = r0.xy * v10.xy + v10.zw;
   r0.x = t1.SampleBias(s0_s, r0.xy, 0).z;
   r0.yzw = (int3)r1.xyz | (int3)r2.xyz;
   r0.y = (int)r0.z | (int)r0.y;
   r0.y = (int)r0.w | (int)r0.y;
   if (r0.y != 0) discard;
-  r0.y = 0 >= r0.x;
+  r0.y = cmp(0 >= r0.x);
   if (r0.y != 0) discard;
   o0.xyzw = float4(0,0,0,0);
   o1.xyzw = float4(0,0,0,0);

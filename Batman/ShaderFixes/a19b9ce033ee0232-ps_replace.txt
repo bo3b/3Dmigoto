@@ -23,6 +23,7 @@ cbuffer cb13 : register(b13)
   matrix projection : packoffset(c6);
 }
 
+#define cmp -
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
@@ -43,11 +44,11 @@ void main(
   float4 fDest;
 
   r0.x = cb0[24].w + -cb0[24].z;
-  r0.y = 0 < r0.x;
-  r0.z = r0.x < 0;
+  r0.y = cmp(0 < r0.x);
+  r0.z = cmp(r0.x < 0);
   r0.x = max(9.99999997e-007, abs(r0.x));
-  r0.y = ((int)r0.y ? -1 : 0) + ((int)r0.z ? 1 : 0);
-  r0.y = (int)r0.y < 0;
+  r0.y = (int)-r0.y + (int)r0.z;
+  r0.y = cmp((int)r0.y < 0);
   r0.y = r0.y ? -1 : 1;
   r0.x = r0.y * r0.x;
   r0.yzw = cb1[21].xyz + v5.xyz;
@@ -99,7 +100,7 @@ r1.x += s.x*(r1.w-s.y); //*0.935; ///cb1[0].x;
   r0.w = r0.w + -r1.w;
   r0.w = saturate(0.000571428565 * r0.w);
   r2.w = r0.w * r0.x;
-  r0.x = 0 >= r2.w;
+  r0.x = cmp(0 >= r2.w);
   if (r0.x != 0) discard;
   t2.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);
   r0.xw = uiDest.xy;
@@ -111,7 +112,7 @@ r1.x += s.x*(r1.w-s.y); //*0.935; ///cb1[0].x;
   r0.x = min(0.999999881, r0.x);
   r0.x = r0.x * cb1[20].z + -cb1[20].w;
   r0.x = 1 / r0.x;
-  r0.x = r1.z < r0.x;
+  r0.x = cmp(r1.z < r0.x);
   r0.x = r0.x ? 1.000000 : 0;
   r0.y = -cb0[27].x * r0.x + 1;
   r0.x = cb0[27].x * r0.x;

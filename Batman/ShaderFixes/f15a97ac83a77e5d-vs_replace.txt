@@ -14,6 +14,7 @@ cbuffer cb0 : register(b0)
 }
 
 
+#define cmp -
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
@@ -170,7 +171,7 @@ b4.xyzw /= det;
   r3.w = dot(r4.xyz, r4.xyz);
   r3.w = rsqrt(r3.w);
   r4.xyz = r4.yzx * r3.www;
-  r6.xy = cb0[26].xx < float2(0.5,1.5);
+  r6.xy = cmp(cb0[26].xx < float2(0.5,1.5));
   r4.xyz = r6.yyy ? r4.xyz : r5.xyz;
   r3.xyz = r6.xxx ? r3.xyz : r4.xyz;
   r4.xy = cb0[1].xz * r3.xx;
@@ -192,9 +193,9 @@ b4.xyzw /= det;
   r4.xyz = r3.xyz * r1.zxy;
   r3.xyz = r1.yzx * r3.yzx + -r4.xyz;
   r3.x = dot(r3.xyz, r0.xyz);
-  r3.y = 0 < r3.x;
-  r3.x = r3.x < 0;
-  r3.x = ((int)r3.y ? -1 : 0) + ((int)r3.x ? 1 : 0);
+  r3.y = cmp(0 < r3.x);
+  r3.x = cmp(r3.x < 0);
+  r3.x = (int)-r3.y + (int)r3.x;
   o1.w = (int)r3.x;
   o2.xy = v4.xy;
   o3.xyzw = v5.xyzw;

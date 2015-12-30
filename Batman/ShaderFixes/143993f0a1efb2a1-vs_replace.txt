@@ -18,6 +18,7 @@ cbuffer cb0 : register(b0)
 }
 
 
+#define cmp -
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
@@ -87,7 +88,7 @@ void main(
   r1.w = r0.z;
   r0.x = 0.000000000e+000;
   while (true) {
-    r0.y = (uint)r0.x >= asuint(cb0[18].w);
+    r0.y = cmp((uint)r0.x >= asuint(cb0[18].w));
     if (r0.y != 0) break;
     r1.z = r1.w;
     r2.xyz = cb0[11].xyz + r1.xyz;

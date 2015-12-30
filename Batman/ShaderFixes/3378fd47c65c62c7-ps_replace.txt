@@ -40,6 +40,7 @@ cbuffer cb13 : register(b13)
   matrix projection : packoffset(c6);
 }
 
+#define cmp -
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
@@ -77,9 +78,9 @@ void main(
   r0.z = -cb1[20].x + r0.z;
   r0.z = r0.z / cb1[20].y;
   r0.w = 1 / r0.w;
-  r1.x = cb0[25].z >= 1;
+  r1.x = cmp(cb0[25].z >= 1);
   r0.z = r1.x ? r0.z : r0.w;
-  r0.w = cb0[25].z < 1;
+  r0.w = cmp(cb0[25].z < 1);
   r0.w = r0.w ? r0.z : 1;
   r0.xy = r0.xy * r0.ww;
 
@@ -97,8 +98,8 @@ r0.x -= stereo.x * (r0.w - stereo.y)/projection._m00;
   r1.xyz = v7.xyz * r0.zzz + r1.xyz;
   r1.xyz = v8.xyz * r0.www + r1.xyz;
   r0.xy = cb0[22].xy + r0.xy;
-  r2.xyz = r1.xyz < float3(0,0,0);
-  r3.xyz = float3(1,1,1) < r1.xyz;
+  r2.xyz = cmp(r1.xyz < float3(0,0,0));
+  r3.xyz = cmp(float3(1,1,1) < r1.xyz);
   r2.xyz = (int3)r2.xyz | (int3)r3.xyz;
   r0.z = (int)r2.y | (int)r2.x;
   r0.z = (int)r2.z | (int)r0.z;
@@ -115,7 +116,7 @@ r0.x -= stereo.x * (r0.w - stereo.y)/projection._m00;
   r0.w = r0.x * r0.x;
   r0.x = -r0.x * 2 + 3;
   r0.x = -r0.w * r0.x + 1;
-  r0.w = 0 >= r0.x;
+  r0.w = cmp(0 >= r0.x);
   r2.w = 0.899999976 * r0.x;
   if (r0.w != 0) discard;
   r2.xyz = float3(0,0,0);
@@ -137,7 +138,7 @@ r0.x -= stereo.x * (r0.w - stereo.y)/projection._m00;
   r4.xyzw = float4(0.00200000009,0,0,0.00200000009) + r4.xyzw;
   r0.w = r1.y * 3 + cb1[31].x;
   r0.xyzw = float4(0.200000003,0.200000003,1,0.75) * r0.xyzw;
-  r1.y = r0.w >= -r0.w;
+  r1.y = cmp(r0.w >= -r0.w);
   r0.w = frac(abs(r0.w));
   r0.w = r1.y ? r0.w : -r0.w;
   r0.w = 1 + -r0.w;

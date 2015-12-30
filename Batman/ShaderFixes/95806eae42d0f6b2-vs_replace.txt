@@ -1,4 +1,5 @@
 //Pause Blur
+#define cmp -
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
