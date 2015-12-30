@@ -1102,6 +1102,9 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 {
 	DispatchContext context;
 
+	FrameAnalysisLog("Dispatch(ThreadGroupCountX:%u, ThreadGroupCountY:%u, ThreadGroupCountZ:%u)\n",
+			ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
 	if (BeforeDispatch(&context))
 		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 	AfterDispatch(&context);
@@ -1114,6 +1117,9 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	__in  UINT AlignedByteOffsetForArgs)
 {
 	DispatchContext context;
+
+	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+			pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (BeforeDispatch(&context))
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
@@ -2195,6 +2201,8 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	/* [annotation] */
 	__in  INT BaseVertexLocation)
 {
+	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u)\n",
+			IndexCount, StartIndexLocation, BaseVertexLocation);
 	LogDebug("HackerContext::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n",
 		IndexCount, StartIndexLocation, BaseVertexLocation);
 
@@ -2211,6 +2219,8 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	/* [annotation] */
 	__in  UINT StartVertexLocation)
 {
+	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
+			VertexCount, StartVertexLocation);
 	LogDebug("HackerContext::Draw called with VertexCount = %d, StartVertexLocation = %d\n",
 		VertexCount, StartVertexLocation);
 
@@ -2266,6 +2276,8 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
+	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
+			IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 	LogDebug("HackerContext::DrawIndexedInstanced called with IndexCountPerInstance = %d, InstanceCount = %d\n",
 		IndexCountPerInstance, InstanceCount);
 
@@ -2287,6 +2299,8 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
+	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
+			VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 	LogDebug("HackerContext::DrawInstanced called with VertexCountPerInstance = %d, InstanceCount = %d\n",
 		VertexCountPerInstance, InstanceCount);
 
@@ -2395,6 +2409,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 
 STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
+	FrameAnalysisLog("DrawAuto()\n");
 	LogDebug("HackerContext::DrawAuto called\n");
 
 	DrawContext c = DrawContext(0, 0, 0);
@@ -2410,6 +2425,8 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
+	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+			pBufferForArgs, AlignedByteOffsetForArgs);
 	LogDebug("HackerContext::DrawIndexedInstancedIndirect called\n");
 
 	DrawContext c = DrawContext(0, 0, 0);
@@ -2425,6 +2442,8 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
+	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+			pBufferForArgs, AlignedByteOffsetForArgs);
 	LogDebug("HackerContext::DrawInstancedIndirect called\n");
 
 	DrawContext c = DrawContext(0, 0, 0);
