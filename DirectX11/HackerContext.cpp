@@ -903,6 +903,10 @@ STDMETHODIMP_(void) HackerContext::IASetVertexBuffers(THIS_
 	/* [annotation] */
 	__in_ecount(NumBuffers)  const UINT *pOffsets)
 {
+	FrameAnalysisLog("IASetVertexBuffers(StartSlot:%u, NumBuffers:%u, ppVertexBuffers:0x%p, pStrides:0x%p, pOffsets:0x%p)\n",
+			StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+	FrameAnalysisLogResourceArray(StartSlot, NumBuffers, (ID3D11Resource *const *)ppVertexBuffers);
+
 	 mOrigContext->IASetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
 
@@ -1080,6 +1084,9 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumBuffers)  const UINT *pOffsets)
 {
+	FrameAnalysisLog("SOSetTargets(NumBuffers:%u, ppSOTargets:0x%p, pOffsets:0x%p)\n",
+			NumBuffers, ppSOTargets, pOffsets);
+	FrameAnalysisLogResourceArray(0, NumBuffers, (ID3D11Resource *const *)ppSOTargets);
 	LogDebug("HackerContext::SOSetTargets called with NumBuffers = %d\n", NumBuffers);
 
 	 mOrigContext->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
@@ -1839,6 +1846,10 @@ STDMETHODIMP_(void) HackerContext::IAGetVertexBuffers(THIS_
 	__out_ecount_opt(NumBuffers)  UINT *pOffsets)
 {
 	 mOrigContext->IAGetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+
+	FrameAnalysisLog("IAGetVertexBuffers(StartSlot:%u, NumBuffers:%u, ppVertexBuffers:0x%p, pStrides:0x%p, pOffsets:0x%p)\n",
+			StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+	FrameAnalysisLogResourceArray(StartSlot, NumBuffers, (ID3D11Resource *const *)ppVertexBuffers);
 }
 
 STDMETHODIMP_(void) HackerContext::IAGetIndexBuffer(THIS_
@@ -1850,6 +1861,9 @@ STDMETHODIMP_(void) HackerContext::IAGetIndexBuffer(THIS_
 	__out_opt  UINT *Offset)
 {
 	 mOrigContext->IAGetIndexBuffer(pIndexBuffer, Format, Offset);
+
+	FrameAnalysisLog("IAGetIndexBuffer(pIndexBuffer:0x%p, Format:0x%p, Offset:0x%p)\n",
+			pIndexBuffer, Format, Offset);
 }
 
 STDMETHODIMP_(void) HackerContext::GSGetConstantBuffers(THIS_
@@ -2026,6 +2040,10 @@ STDMETHODIMP_(void) HackerContext::SOGetTargets(THIS_
 	__out_ecount(NumBuffers)  ID3D11Buffer **ppSOTargets)
 {
 	 mOrigContext->SOGetTargets(NumBuffers, ppSOTargets);
+
+	FrameAnalysisLog("SOGetTargets(NumBuffers:%u, ppSOTargets:0x%p)\n",
+			NumBuffers, ppSOTargets);
+	FrameAnalysisLogResourceArray(0, NumBuffers, (ID3D11Resource *const *)ppSOTargets);
 }
 
 STDMETHODIMP_(void) HackerContext::RSGetState(THIS_
@@ -2432,6 +2450,9 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 	/* [annotation] */
 	__in  UINT Offset)
 {
+	FrameAnalysisLog("IASetIndexBuffer(pIndexBuffer:0x%p, Format:%u, Offset:%u)",
+			pIndexBuffer, Format, Offset);
+	FrameAnalysisLogResourceHash(pIndexBuffer);
 	LogDebug("HackerContext::IASetIndexBuffer called\n");
 
 	mOrigContext->IASetIndexBuffer(pIndexBuffer, Format, Offset);
