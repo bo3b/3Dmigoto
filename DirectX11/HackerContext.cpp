@@ -896,6 +896,9 @@ STDMETHODIMP_(void) HackerContext::IASetInputLayout(THIS_
 	/* [annotation] */
 	__in_opt ID3D11InputLayout *pInputLayout)
 {
+	FrameAnalysisLog("IASetInputLayout(pInputLayout:0x%p)\n",
+			pInputLayout);
+
 	 mOrigContext->IASetInputLayout(pInputLayout);
 }
 
@@ -961,6 +964,9 @@ STDMETHODIMP_(void) HackerContext::IASetPrimitiveTopology(THIS_
 	/* [annotation] */
 	__in D3D11_PRIMITIVE_TOPOLOGY Topology)
 {
+	FrameAnalysisLog("IASetPrimitiveTopology(Topology:%u)\n",
+			Topology);
+
 	 mOrigContext->IASetPrimitiveTopology(Topology);
 }
 
@@ -998,6 +1004,7 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
+	FrameAnalysisLog("Begin(pAsync:0x%p)\n", pAsync);
 	LogDebug("HackerContext::Begin(%s@%p) \n", typeid(*this).name(), this);
 	
 	mOrigContext->Begin(pAsync);
@@ -1007,6 +1014,7 @@ STDMETHODIMP_(void) HackerContext::End(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
+	FrameAnalysisLog("End(pAsync:0x%p)\n", pAsync);
 	LogDebug("HackerContext::End(%s@%p) \n", typeid(*this).name(), this);
 
 	 mOrigContext->End(pAsync);
@@ -1035,6 +1043,9 @@ STDMETHODIMP_(void) HackerContext::SetPredication(THIS_
 	/* [annotation] */
 	__in  BOOL PredicateValue)
 {
+	FrameAnalysisLog("SetPredication(pPredicate:0x%p, PredicateValue:%s)\n",
+			pPredicate, PredicateValue ? "true" : "false");
+
 	return mOrigContext->SetPredication(pPredicate, PredicateValue);
 }
 
@@ -1076,6 +1087,9 @@ STDMETHODIMP_(void) HackerContext::OMSetBlendState(THIS_
 	/* [annotation] */
 	__in  UINT SampleMask)
 {
+	FrameAnalysisLog("OMSetBlendState(pBlendState:0x%p, BlendFactor:0x%p, SampleMask:%u)\n",
+			pBlendState, BlendFactor, SampleMask); // Beware dereferencing optional BlendFactor
+
 	 mOrigContext->OMSetBlendState(pBlendState, BlendFactor, SampleMask);
 }
 
@@ -1085,6 +1099,9 @@ STDMETHODIMP_(void) HackerContext::OMSetDepthStencilState(THIS_
 	/* [annotation] */
 	__in  UINT StencilRef)
 {
+	FrameAnalysisLog("OMSetDepthStencilState(pDepthStencilState:0x%p, StencilRef:%u)\n",
+			pDepthStencilState, StencilRef);
+
 	 mOrigContext->OMSetDepthStencilState(pDepthStencilState, StencilRef);
 }
 
@@ -1180,6 +1197,9 @@ STDMETHODIMP_(void) HackerContext::RSSetState(THIS_
 	/* [annotation] */
 	__in_opt  ID3D11RasterizerState *pRasterizerState)
 {
+	FrameAnalysisLog("RSSetState(pRasterizerState:0x%p)\n",
+			pRasterizerState);
+
 	 mOrigContext->RSSetState(pRasterizerState);
 }
 
@@ -1189,6 +1209,9 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports)
 {
+	FrameAnalysisLog("RSSetViewports(NumViewports:%u, pViewports:0x%p)\n",
+			NumViewports, pViewports);
+
 	 mOrigContext->RSSetViewports(NumViewports, pViewports);
 }
 
@@ -1198,6 +1221,9 @@ STDMETHODIMP_(void) HackerContext::RSSetScissorRects(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumRects)  const D3D11_RECT *pRects)
 {
+	FrameAnalysisLog("RSSetScissorRects(NumRects:%u, pRects:0x%p)\n",
+			NumRects, pRects);
+
 	 mOrigContext->RSSetScissorRects(NumRects, pRects);
 }
 
@@ -1471,6 +1497,9 @@ STDMETHODIMP_(void) HackerContext::ExecuteCommandList(THIS_
 	__in  ID3D11CommandList *pCommandList,
 	BOOL RestoreContextState)
 {
+	FrameAnalysisLog("ExecuteCommandList(pCommandList:0x%p, RestoreContextState:%s)\n",
+			pCommandList, RestoreContextState ? "true" : "false");
+
 	if (G->deferred_enabled)
 		mOrigContext->ExecuteCommandList(pCommandList, RestoreContextState);
 }
@@ -1892,6 +1921,9 @@ STDMETHODIMP_(void) HackerContext::IAGetInputLayout(THIS_
 	__out  ID3D11InputLayout **ppInputLayout)
 {
 	 mOrigContext->IAGetInputLayout(ppInputLayout);
+
+	FrameAnalysisLog("IAGetInputLayout(ppInputLayout:0x%p)\n",
+			ppInputLayout);
 }
 
 STDMETHODIMP_(void) HackerContext::IAGetVertexBuffers(THIS_
@@ -1960,6 +1992,9 @@ STDMETHODIMP_(void) HackerContext::IAGetPrimitiveTopology(THIS_
 	__out  D3D11_PRIMITIVE_TOPOLOGY *pTopology)
 {
 	 mOrigContext->IAGetPrimitiveTopology(pTopology);
+
+	FrameAnalysisLog("IAGetPrimitiveTopology(pTopology:0x%p)\n",
+			pTopology);
 }
 
 STDMETHODIMP_(void) HackerContext::VSGetShaderResources(THIS_
@@ -1999,6 +2034,9 @@ STDMETHODIMP_(void) HackerContext::GetPredication(THIS_
 	__out_opt  BOOL *pPredicateValue)
 {
 	 mOrigContext->GetPredication(ppPredicate, pPredicateValue);
+
+	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)\n",
+			ppPredicate, pPredicateValue);
 }
 
 STDMETHODIMP_(void) HackerContext::GSGetShaderResources(THIS_
@@ -2083,6 +2121,9 @@ STDMETHODIMP_(void) HackerContext::OMGetBlendState(THIS_
 	__out_opt  UINT *pSampleMask)
 {
 	 mOrigContext->OMGetBlendState(ppBlendState, BlendFactor, pSampleMask);
+
+	FrameAnalysisLog("OMGetBlendState(ppBlendState:0x%p, BlendFactor:0x%p, pSampleMask:0x%p)\n",
+			ppBlendState, BlendFactor, pSampleMask);
 }
 
 STDMETHODIMP_(void) HackerContext::OMGetDepthStencilState(THIS_
@@ -2092,6 +2133,9 @@ STDMETHODIMP_(void) HackerContext::OMGetDepthStencilState(THIS_
 	__out_opt  UINT *pStencilRef)
 {
 	 mOrigContext->OMGetDepthStencilState(ppDepthStencilState, pStencilRef);
+
+	FrameAnalysisLog("OMGetDepthStencilState(ppDepthStencilState:0x%p, pStencilRef:0x%p)\n",
+			ppDepthStencilState, pStencilRef);
 }
 
 STDMETHODIMP_(void) HackerContext::SOGetTargets(THIS_
@@ -2112,6 +2156,9 @@ STDMETHODIMP_(void) HackerContext::RSGetState(THIS_
 	__out  ID3D11RasterizerState **ppRasterizerState)
 {
 	 mOrigContext->RSGetState(ppRasterizerState);
+
+	FrameAnalysisLog("RSGetState(ppRasterizerState:0x%p)\n",
+			ppRasterizerState);
 }
 
 STDMETHODIMP_(void) HackerContext::RSGetViewports(THIS_
@@ -2121,6 +2168,9 @@ STDMETHODIMP_(void) HackerContext::RSGetViewports(THIS_
 	__out_ecount_opt(*pNumViewports)  D3D11_VIEWPORT *pViewports)
 {
 	 mOrigContext->RSGetViewports(pNumViewports, pViewports);
+
+	FrameAnalysisLog("RSGetViewports(pNumViewports:0x%p, pViewports:0x%p)\n",
+			pNumViewports, pViewports);
 }
 
 STDMETHODIMP_(void) HackerContext::RSGetScissorRects(THIS_
@@ -2130,6 +2180,9 @@ STDMETHODIMP_(void) HackerContext::RSGetScissorRects(THIS_
 	__out_ecount_opt(*pNumRects)  D3D11_RECT *pRects)
 {
 	 mOrigContext->RSGetScissorRects(pNumRects, pRects);
+
+	FrameAnalysisLog("RSGetScissorRects(pNumRects:0x%p, pRects:0x%p)\n",
+			pNumRects, pRects);
 }
 
 STDMETHODIMP_(void) HackerContext::HSGetShaderResources(THIS_
@@ -2325,11 +2378,15 @@ STDMETHODIMP_(void) HackerContext::CSGetConstantBuffers(THIS_
 
 STDMETHODIMP_(void) HackerContext::ClearState(THIS)
 {
+	FrameAnalysisLog("ClearState()\n");
+
 	 mOrigContext->ClearState();
 }
 
 STDMETHODIMP_(void) HackerContext::Flush(THIS)
 {
+	FrameAnalysisLog("Flush()\n");
+
 	 mOrigContext->Flush();
 }
 
@@ -3138,6 +3195,9 @@ void STDMETHODCALLTYPE HackerContext1::SwapDeviceContextState(
 	/* [annotation] */
 	_Out_opt_  ID3DDeviceContextState **ppPreviousState)
 {
+	FrameAnalysisLog("SwapDeviceContextState(pState:0x%p, ppPreviousState:0x%p)",
+			pState, ppPreviousState);
+
 	mOrigContext1->SwapDeviceContextState(pState, ppPreviousState);
 }
 
