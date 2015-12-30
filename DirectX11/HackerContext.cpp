@@ -1022,7 +1022,11 @@ STDMETHODIMP HackerContext::GetData(THIS_
 	/* [annotation] */
 	__in  UINT GetDataFlags)
 {
-	return mOrigContext->GetData(pAsync, pData, DataSize, GetDataFlags);
+	HRESULT ret = mOrigContext->GetData(pAsync, pData, DataSize, GetDataFlags);
+
+	FrameAnalysisLog("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u\n",
+			pAsync, pData, DataSize, GetDataFlags, ret);
+	return ret;
 }
 
 STDMETHODIMP_(void) HackerContext::SetPredication(THIS_
@@ -2331,12 +2335,18 @@ STDMETHODIMP_(void) HackerContext::Flush(THIS)
 
 STDMETHODIMP_(D3D11_DEVICE_CONTEXT_TYPE) HackerContext::GetType(THIS)
 {
-	return mOrigContext->GetType();
+	D3D11_DEVICE_CONTEXT_TYPE ret = mOrigContext->GetType();
+
+	FrameAnalysisLog("GetType() = %u\n", ret);
+	return ret;
 }
 
 STDMETHODIMP_(UINT) HackerContext::GetContextFlags(THIS)
 {
-	return mOrigContext->GetContextFlags();
+	UINT ret = mOrigContext->GetContextFlags();
+
+	FrameAnalysisLog("GetContextFlags() = %u\n", ret);
+	return ret;
 }
 
 STDMETHODIMP HackerContext::FinishCommandList(THIS_
@@ -2344,7 +2354,10 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11CommandList **ppCommandList)
 {
-	return mOrigContext->FinishCommandList(RestoreDeferredContextState, ppCommandList);
+	HRESULT ret = mOrigContext->FinishCommandList(RestoreDeferredContextState, ppCommandList);
+
+	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p) = %u\n", ppCommandList, ret);
+	return ret;
 }
 
 
