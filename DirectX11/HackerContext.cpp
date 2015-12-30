@@ -1554,6 +1554,10 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 	/* [annotation] */
 	__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts)
 {
+	FrameAnalysisLog("CSSetUnorderedAccessViews(StartSlot:%u, NumUAVs:%u, ppUnorderedAccessViews:0x%p, pUAVInitialCounts:0x%p)\n",
+			StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+	FrameAnalysisLogViewArray(0, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
+
 	if (ppUnorderedAccessViews) {
 		// TODO: Record stats on unordered access view usage
 		for (UINT i = 0; i < NumUAVs; ++i) {
@@ -1925,6 +1929,12 @@ STDMETHODIMP_(void) HackerContext::OMGetRenderTargets(THIS_
 	__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
 	 mOrigContext->OMGetRenderTargets(NumViews, ppRenderTargetViews, ppDepthStencilView);
+
+	FrameAnalysisLog("OMGetRenderTargets(NumViews:%u, ppRenderTargetViews:0x%p, ppDepthStencilView:0x%p)\n",
+			NumViews, ppRenderTargetViews, ppDepthStencilView);
+	FrameAnalysisLogViewArray(0, NumViews, (ID3D11View *const *)ppRenderTargetViews);
+	if (ppDepthStencilView)
+		FrameAnalysisLogView(-1, "D", *ppDepthStencilView);
 }
 
 STDMETHODIMP_(void) HackerContext::OMGetRenderTargetsAndUnorderedAccessViews(THIS_
@@ -1943,6 +1953,14 @@ STDMETHODIMP_(void) HackerContext::OMGetRenderTargetsAndUnorderedAccessViews(THI
 {
 	 mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, ppDepthStencilView,
 		UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
+
+	FrameAnalysisLog("OMGetRenderTargetsAndUnorderedAccessViews(NumRTVs:%i, ppRenderTargetViews:0x%p, ppDepthStencilView:0x%p, UAVStartSlot:%i, NumUAVs:%u, ppUnorderedAccessViews:0x%p)\n",
+			NumRTVs, ppRenderTargetViews, ppDepthStencilView,
+			UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
+	FrameAnalysisLogViewArray(0, NumRTVs, (ID3D11View *const *)ppRenderTargetViews);
+	if (ppDepthStencilView)
+		FrameAnalysisLogView(-1, "D", *ppDepthStencilView);
+	FrameAnalysisLogViewArray(UAVStartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 }
 
 STDMETHODIMP_(void) HackerContext::OMGetBlendState(THIS_
@@ -2132,6 +2150,10 @@ STDMETHODIMP_(void) HackerContext::CSGetUnorderedAccessViews(THIS_
 	__out_ecount(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews)
 {
 	 mOrigContext->CSGetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews);
+
+	FrameAnalysisLog("CSGetUnorderedAccessViews(StartSlot:%u, NumUAVs:%u, ppUnorderedAccessViews:0x%p)\n",
+			StartSlot, NumUAVs, ppUnorderedAccessViews);
+	FrameAnalysisLogViewArray(0, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 }
 
 STDMETHODIMP_(void) HackerContext::CSGetShader(THIS_
@@ -2459,6 +2481,10 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	/* [annotation] */
 	__in_opt ID3D11DepthStencilView *pDepthStencilView)
 {
+	FrameAnalysisLog("OMSetRenderTargets(NumViews:%u, ppRenderTargetViews:0x%p, pDepthStencilView:0x%p)\n",
+			NumViews, ppRenderTargetViews, pDepthStencilView);
+	FrameAnalysisLogViewArray(0, NumViews, (ID3D11View *const *)ppRenderTargetViews);
+	FrameAnalysisLogView(-1, "D", pDepthStencilView);
 	LogDebug("HackerContext::OMSetRenderTargets called with NumViews = %d\n", NumViews);
 
 	if (G->hunting == HUNTING_MODE_ENABLED) {
@@ -2498,6 +2524,13 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	/* [annotation] */
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
+	FrameAnalysisLog("OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs:%i, ppRenderTargetViews:0x%p, pDepthStencilView:0x%p, UAVStartSlot:%i, NumUAVs:%u, ppUnorderedAccessViews:0x%p, pUAVInitialCounts:0x%p)\n",
+			NumRTVs, ppRenderTargetViews, pDepthStencilView,
+			UAVStartSlot, NumUAVs, ppUnorderedAccessViews,
+			pUAVInitialCounts);
+	FrameAnalysisLogViewArray(0, NumRTVs, (ID3D11View *const *)ppRenderTargetViews);
+	FrameAnalysisLogView(-1, "D", pDepthStencilView);
+	FrameAnalysisLogViewArray(UAVStartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 	LogDebug("HackerContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
 
 	if (G->hunting == HUNTING_MODE_ENABLED) {
