@@ -846,6 +846,10 @@ STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
+	FrameAnalysisLog("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)",
+			pResource, Subresource, MapType, MapFlags, pMappedResource);
+	FrameAnalysisLogResourceHash(pResource);
+
 	HRESULT hr = MapDenyCPURead(pResource, Subresource, MapType, MapFlags, pMappedResource);
 	if (SUCCEEDED(hr))
 		return hr;
@@ -864,6 +868,10 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	/* [annotation] */
 	__in  UINT Subresource)
 {
+	FrameAnalysisLog("Unmap(pResource:0x%p, Subresource:%u)",
+			pResource, Subresource);
+	FrameAnalysisLogResourceHash(pResource);
+
 	MapUpdateResourceHash(pResource, Subresource);
 	FreeDeniedMapping(pResource, Subresource);
 	mOrigContext->Unmap(pResource, Subresource);
@@ -1258,6 +1266,11 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
+	FrameAnalysisLog("CopySubresourceRegion(pDstResource:0x%p, DstSubresource:%u, DstX:%u, DstY:%u, DstZ:%u, pSrcResource:0x%p, SrcSubresource:%u, pSrcBox:0x%p)\n",
+			pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
+	FrameAnalysisLogResource(-1, "Src", pSrcResource);
+	FrameAnalysisLogResource(-1, "Dst", pDstResource);
+
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
 	}
@@ -1284,6 +1297,11 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pSrcResource)
 {
+	FrameAnalysisLog("CopyResource(pDstResource:0x%p, pSrcResource:0x%p)\n",
+			pDstResource, pSrcResource);
+	FrameAnalysisLogResource(-1, "Src", pSrcResource);
+	FrameAnalysisLogResource(-1, "Dst", pDstResource);
+
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
 	}
@@ -1308,6 +1326,10 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
+	FrameAnalysisLog("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)",
+			pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
+	FrameAnalysisLogResourceHash(pDstResource);
+
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
 	}
@@ -1333,6 +1355,11 @@ STDMETHODIMP_(void) HackerContext::CopyStructureCount(THIS_
 	/* [annotation] */
 	__in  ID3D11UnorderedAccessView *pSrcView)
 {
+	FrameAnalysisLog("CopyStructureCount(pDstBuffer:0x%p, DstAlignedByteOffset:%u, pSrcView:0x%p)\n",
+			pDstBuffer, DstAlignedByteOffset, pSrcView);
+	FrameAnalysisLogView(-1, "Src", (ID3D11View*)pSrcView);
+	FrameAnalysisLogResource(-1, "Dst", pDstBuffer);
+
 	 mOrigContext->CopyStructureCount(pDstBuffer, DstAlignedByteOffset, pSrcView);
 }
 
@@ -1342,6 +1369,10 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 	/* [annotation] */
 	__in  const UINT Values[4])
 {
+	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p)",
+			pUnorderedAccessView, Values);
+	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
+
 	mOrigContext->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
 }
 
@@ -1351,6 +1382,10 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 	/* [annotation] */
 	__in  const FLOAT Values[4])
 {
+	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p)",
+			pUnorderedAccessView, Values);
+	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
+
 	mOrigContext->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
 }
 
@@ -1364,6 +1399,10 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 	/* [annotation] */
 	__in  UINT8 Stencil)
 {
+	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u)",
+			pDepthStencilView, ClearFlags, Depth, Stencil);
+	FrameAnalysisLogView(-1, NULL, pDepthStencilView);
+
 	mOrigContext->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
 }
 
@@ -1371,6 +1410,10 @@ STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
 	/* [annotation] */
 	__in  ID3D11ShaderResourceView *pShaderResourceView)
 {
+	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p)",
+			pShaderResourceView);
+	FrameAnalysisLogView(-1, NULL, pShaderResourceView);
+
 	 mOrigContext->GenerateMips(pShaderResourceView);
 }
 
@@ -1379,6 +1422,10 @@ STDMETHODIMP_(void) HackerContext::SetResourceMinLOD(THIS_
 	__in  ID3D11Resource *pResource,
 	FLOAT MinLOD)
 {
+	FrameAnalysisLog("SetResourceMinLOD(pResource:0x%p)",
+			pResource);
+	FrameAnalysisLogResourceHash(pResource);
+
 	 mOrigContext->SetResourceMinLOD(pResource, MinLOD);
 }
 
@@ -1386,7 +1433,12 @@ STDMETHODIMP_(FLOAT) HackerContext::GetResourceMinLOD(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pResource)
 {
-	return mOrigContext->GetResourceMinLOD(pResource);
+	FLOAT ret = mOrigContext->GetResourceMinLOD(pResource);
+
+	FrameAnalysisLog("GetResourceMinLOD(pResource:0x%p) = %f",
+			pResource, ret);
+	FrameAnalysisLogResourceHash(pResource);
+	return ret;
 }
 
 STDMETHODIMP_(void) HackerContext::ResolveSubresource(THIS_
@@ -1401,6 +1453,11 @@ STDMETHODIMP_(void) HackerContext::ResolveSubresource(THIS_
 	/* [annotation] */
 	__in  DXGI_FORMAT Format)
 {
+	FrameAnalysisLog("ResolveSubresource(pDstResource:0x%p, DstSubresource:%u, pSrcResource:0x%p, SrcSubresource:%u, Format:%u)\n",
+			pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
+	FrameAnalysisLogResource(-1, "Src", pSrcResource);
+	FrameAnalysisLogResource(-1, "Dst", pDstResource);
+
 	 mOrigContext->ResolveSubresource(pDstResource, DstSubresource, pSrcResource, SrcSubresource,
 		Format);
 }
@@ -2689,6 +2746,9 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	/* [annotation] */
 	__in  const FLOAT ColorRGBA[4])
 {
+	FrameAnalysisLog("ClearRenderTargetView(pRenderTargetView:0x%p, ColorRGBA:0x%p)",
+			pRenderTargetView, ColorRGBA);
+	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
 	LogDebug("HackerContext::ClearRenderTargetView called with RenderTargetView=%p, color=[%f,%f,%f,%f]\n", pRenderTargetView,
 		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
@@ -2756,6 +2816,11 @@ void STDMETHODCALLTYPE HackerContext1::CopySubresourceRegion1(
 	/* [annotation] */
 	_In_  UINT CopyFlags)
 {
+	FrameAnalysisLog("CopySubresourceRegion1(pDstResource:0x%p, DstSubresource:%u, DstX:%u, DstY:%u, DstZ:%u, pSrcResource:0x%p, SrcSubresource:%u, pSrcBox:0x%p, CopyFlags:%u)\n",
+			pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox, CopyFlags);
+	FrameAnalysisLogResource(-1, "Src", pSrcResource);
+	FrameAnalysisLogResource(-1, "Dst", pDstResource);
+
 	mOrigContext1->CopySubresourceRegion1(pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox, CopyFlags);
 }
 
@@ -2775,6 +2840,10 @@ void STDMETHODCALLTYPE HackerContext1::UpdateSubresource1(
 	/* [annotation] */
 	_In_  UINT CopyFlags)
 {
+	FrameAnalysisLog("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)",
+			pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
+	FrameAnalysisLogResourceHash(pDstResource);
+
 	mOrigContext1->UpdateSubresource1(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
 
 	// TODO: Track resource hash updates
@@ -2785,6 +2854,10 @@ void STDMETHODCALLTYPE HackerContext1::DiscardResource(
 	/* [annotation] */
 	_In_  ID3D11Resource *pResource)
 {
+	FrameAnalysisLog("DiscardResource(pResource:0x%p)",
+			pResource);
+	FrameAnalysisLogResourceHash(pResource);
+
 	mOrigContext1->DiscardResource(pResource);
 }
 
@@ -2792,6 +2865,10 @@ void STDMETHODCALLTYPE HackerContext1::DiscardView(
 	/* [annotation] */
 	_In_  ID3D11View *pResourceView)
 {
+	FrameAnalysisLog("DiscardView(pResourceView:0x%p)",
+			pResourceView);
+	FrameAnalysisLogView(-1, NULL, pResourceView);
+
 	mOrigContext1->DiscardView(pResourceView);
 }
 
@@ -3061,6 +3138,10 @@ void STDMETHODCALLTYPE HackerContext1::ClearView(
 	_In_reads_opt_(NumRects)  const D3D11_RECT *pRect,
 	UINT NumRects)
 {
+	FrameAnalysisLog("ClearView(pView:0x%p, Color:0x%p, pRect:0x%p)",
+			pView, Color, pRect);
+	FrameAnalysisLogView(-1, NULL, pView);
+
 	mOrigContext1->ClearView(pView, Color, pRect, NumRects);
 }
 
@@ -3072,5 +3153,9 @@ void STDMETHODCALLTYPE HackerContext1::DiscardView1(
 	_In_reads_opt_(NumRects)  const D3D11_RECT *pRects,
 	UINT NumRects)
 {
+	FrameAnalysisLog("DiscardView1(pResourceView:0x%p, pRects:0x%p)",
+			pResourceView, pRects);
+	FrameAnalysisLogView(-1, NULL, pResourceView);
+
 	mOrigContext1->DiscardView1(pResourceView, pRects, NumRects);
 }
