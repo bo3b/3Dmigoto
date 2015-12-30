@@ -1,4 +1,5 @@
 // Decals - road
+// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 02:14:09 2015
 
 Texture2D<float4> t4 : register(t4);
 
@@ -34,21 +35,26 @@ cbuffer cb13 : register(b13)
   matrix projection : packoffset(c6);
 }
 
-Texture2D<float4> StereoParams : register(t125);
+
+
+// 3Dmigoto declarations
+#define cmp -
 Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
 
 void main( 
   float4 v0 : SV_POSITION0,
-  float3 v1 : TANGENT0,
-  float3 v2 : BINORMAL0,
-  float3 v3 : NORMAL0,
+  nointerpolation float3 v1 : TANGENT0,
+  nointerpolation float3 v2 : BINORMAL0,
+  nointerpolation float3 v3 : NORMAL0,
   float4 v4 : TEXCOORD0,
-  float4 v5 : TEXCOORD4,
-  float4 v6 : TEXCOORD5,
-  float4 v7 : TEXCOORD6,
-  float4 v8 : TEXCOORD7,
+  nointerpolation float4 v5 : TEXCOORD4,
+  nointerpolation float4 v6 : TEXCOORD5,
+  nointerpolation float4 v7 : TEXCOORD6,
+  nointerpolation float4 v8 : TEXCOORD7,
   float4 v9 : TEXCOORD8,
-  float4 v10 : TEXCOORD9,
+  nointerpolation float4 v10 : TEXCOORD9,
   float4 v11 : TEXCOORD10,
   out float4 o0 : SV_TARGET0,
   out float4 o1 : SV_TARGET1,
@@ -73,9 +79,9 @@ float4 s=StereoParams.Load(0);
   r0.z = -cb1[20].x + r0.z;
   r0.z = r0.z / cb1[20].y;
   r0.w = 1 / r0.w;
-  r1.x = cb0[25].z >= 1;
+  r1.x = cmp(cb0[25].z >= 1);
   r0.z = r1.x ? r0.z : r0.w;
-  r0.w = cb0[25].z < 1;
+  r0.w = cmp(cb0[25].z < 1);
   r0.w = r0.w ? r0.z : 1;
   r0.xy = r0.xy * r0.ww;
   
@@ -90,8 +96,8 @@ r0.x -= s.x*(r0.w-s.y) / projection._m00;
   r1.xyz = v7.xyz * r0.zzz + r1.xyz;
   r1.xyz = v8.xyz * r0.www + r1.xyz;
   r0.xyz = cb1[21].xyz + -r0.xyz;
-  r2.xyz = r1.xyz < float3(0,0,0);
-  r3.xyz = float3(1,1,1) < r1.xyz;
+  r2.xyz = cmp(r1.xyz < float3(0,0,0));
+  r3.xyz = cmp(float3(1,1,1) < r1.xyz);
   r2.xyz = (int3)r2.xyz | (int3)r3.xyz;
   r0.w = (int)r2.y | (int)r2.x;
   r0.w = (int)r2.z | (int)r0.w;
@@ -135,10 +141,10 @@ r0.x -= s.x*(r0.w-s.y) / projection._m00;
   r0.xy = r1.xy + r0.xy;
   r1.xyzw = t3.SampleBias(s2_s, r0.xy, 0).xyzw;
   r0.z = r1.w + -r0.w;
-  r0.w = 0 < cb0[22].z;
-  r1.w = cb0[22].z < 0;
-  r0.w = ((int)r0.w ? -1 : 0) + ((int)r1.w ? 1 : 0);
-  r0.w = (int)r0.w < 0;
+  r0.w = cmp(0 < cb0[22].z);
+  r1.w = cmp(cb0[22].z < 0);
+  r0.w = (int)-r0.w + (int)r1.w;
+  r0.w = cmp((int)r0.w < 0);
   r0.w = r0.w ? -1 : 1;
   r1.w = max(9.99999997e-007, abs(cb0[22].z));
   r0.w = r1.w * r0.w;
@@ -147,7 +153,7 @@ r0.x -= s.x*(r0.w-s.y) / projection._m00;
   r0.z = -r0.z * 2 + 3;
   r0.z = r0.w * r0.z;
   r0.z = cb0[23].x * r0.z;
-  r0.w = 0 >= r0.z;
+  r0.w = cmp(0 >= r0.z);
   r0.z = 0.800000012 * r0.z;
   if (r0.w != 0) discard;
   o0.xyzw = float4(0,0,0,0);
@@ -347,3 +353,4 @@ ret
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
   
+ 
