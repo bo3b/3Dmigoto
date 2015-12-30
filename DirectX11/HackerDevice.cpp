@@ -40,8 +40,13 @@ HRESULT HackerDevice::CreateStereoParamResources()
 	HRESULT hr;
 	NvAPI_Status nvret;
 
+	// We use the original device here. Functionally it should not matter
+	// if we use the HackerDevice, but it does result in a lot of noise in
+	// the frame analysis log as every call into nvapi using the
+	// mStereoHandle calls Begin() and End() on the immediate context.
+
 	// Todo: This call will fail if stereo is disabled. Proper notification?
-	nvret = NvAPI_Stereo_CreateHandleFromIUnknown(this, &mStereoHandle);
+	nvret = NvAPI_Stereo_CreateHandleFromIUnknown(mOrigDevice, &mStereoHandle);
 	if (nvret != NVAPI_OK)
 	{
 		mStereoHandle = 0;
