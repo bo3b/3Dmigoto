@@ -960,6 +960,10 @@ STDMETHODIMP_(void) HackerContext::VSSetSamplers(THIS_
 	/* [annotation] */
 	__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers)
 {
+	FrameAnalysisLog("VSSetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
+
 	 mOrigContext->VSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
 
@@ -971,6 +975,10 @@ STDMETHODIMP_(void) HackerContext::PSSetSamplers(THIS_
 	/* [annotation] */
 	__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers)
 {
+	FrameAnalysisLog("PSSetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
+
 	mOrigContext->PSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
 
@@ -1037,6 +1045,10 @@ STDMETHODIMP_(void) HackerContext::GSSetSamplers(THIS_
 	/* [annotation] */
 	__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers)
 {
+	FrameAnalysisLog("GSSetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
+
 	 mOrigContext->GSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
 
@@ -1444,6 +1456,10 @@ STDMETHODIMP_(void) HackerContext::HSSetSamplers(THIS_
 	/* [annotation] */
 	__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
+	FrameAnalysisLog("HSSetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
+
 	 mOrigContext->HSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
 
@@ -1511,6 +1527,10 @@ STDMETHODIMP_(void) HackerContext::DSSetSamplers(THIS_
 	/* [annotation] */
 	__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
+	FrameAnalysisLog("DSSetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
+
 	 mOrigContext->DSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
 
@@ -1686,6 +1706,10 @@ STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
 	/* [annotation] */
 	__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
+	FrameAnalysisLog("CSSetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
+
 	 mOrigContext->CSSetSamplers(StartSlot, NumSamplers, ppSamplers);
 }
 
@@ -1758,6 +1782,10 @@ STDMETHODIMP_(void) HackerContext::PSGetSamplers(THIS_
 	__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
 	 mOrigContext->PSGetSamplers(StartSlot, NumSamplers, ppSamplers);
+
+	FrameAnalysisLog("PSGetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
 }
 
 STDMETHODIMP_(void) HackerContext::VSGetShader(THIS_
@@ -1883,6 +1911,10 @@ STDMETHODIMP_(void) HackerContext::VSGetSamplers(THIS_
 	__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
 	 mOrigContext->VSGetSamplers(StartSlot, NumSamplers, ppSamplers);
+
+	FrameAnalysisLog("VSGetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
 }
 
 STDMETHODIMP_(void) HackerContext::GetPredication(THIS_
@@ -1918,6 +1950,10 @@ STDMETHODIMP_(void) HackerContext::GSGetSamplers(THIS_
 	__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
 	 mOrigContext->GSGetSamplers(StartSlot, NumSamplers, ppSamplers);
+
+	FrameAnalysisLog("GSGetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
 }
 
 STDMETHODIMP_(void) HackerContext::OMGetRenderTargets(THIS_
@@ -2054,6 +2090,10 @@ STDMETHODIMP_(void) HackerContext::HSGetSamplers(THIS_
 	__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
 	 mOrigContext->HSGetSamplers(StartSlot, NumSamplers, ppSamplers);
+
+	FrameAnalysisLog("HSGetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
 }
 
 STDMETHODIMP_(void) HackerContext::HSGetConstantBuffers(THIS_
@@ -2109,6 +2149,10 @@ STDMETHODIMP_(void) HackerContext::DSGetSamplers(THIS_
 	__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
 	 mOrigContext->DSGetSamplers(StartSlot, NumSamplers, ppSamplers);
+
+	FrameAnalysisLog("DSGetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
 }
 
 STDMETHODIMP_(void) HackerContext::DSGetConstantBuffers(THIS_
@@ -2179,6 +2223,10 @@ STDMETHODIMP_(void) HackerContext::CSGetSamplers(THIS_
 	__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
 	 mOrigContext->CSGetSamplers(StartSlot, NumSamplers, ppSamplers);
+
+	FrameAnalysisLog("CSGetSamplers(StartSlot:%u, NumSamplers:%u, ppSamplers:0x%p)\n",
+			StartSlot, NumSamplers, ppSamplers);
+	FrameAnalysisLogMiscArray(StartSlot, NumSamplers, (void *const *)ppSamplers);
 }
 
 STDMETHODIMP_(void) HackerContext::CSGetConstantBuffers(THIS_
