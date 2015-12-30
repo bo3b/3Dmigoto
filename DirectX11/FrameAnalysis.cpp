@@ -175,12 +175,14 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	HRESULT hr = E_FAIL;
+	HRESULT hr = S_OK;
 	wchar_t *ext;
 
 	ext = wcsrchr(filename, L'.');
-	if (!ext)
+	if (!ext) {
+		FALogInfo("Dump2DResource: Filename missing extension\n");
 		return;
+	}
 
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
@@ -205,8 +207,11 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
 	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		DirectX::SaveDDSTextureToFile(mOrigContext, resource, filename);
+		hr = DirectX::SaveDDSTextureToFile(mOrigContext, resource, filename);
 	}
+
+	if (FAILED(hr))
+		FALogInfo("Failed to dump Texture2D: 0x%x\n", hr);
 }
 
 HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
@@ -369,10 +374,13 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 	char *components = "xyzw";
 	float *buf = (float*)map->pData;
 	UINT i, c;
+	errno_t err;
 
-	_wfopen_s(&fd, filename, L"w");
-	if (!fd)
+	err = _wfopen_s(&fd, filename, L"w");
+	if (!fd) {
+		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
+	}
 
 	if (offset)
 		fprintf(fd, "offset: %u\n", offset);
@@ -397,10 +405,13 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	short *buf16 = (short*)map->pData;
 	int *buf32 = (int*)map->pData;
 	UINT i;
+	errno_t err;
 
-	_wfopen_s(&fd, filename, L"w");
-	if (!fd)
+	err = _wfopen_s(&fd, filename, L"w");
+	if (!fd) {
+		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
+	}
 
 	fprintf(fd, "offset: %u\n", offset);
 
@@ -424,6 +435,7 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 		break;
 	default:
 		// Illegal format for an index buffer
+		fprintf(fd, "format %u is illegal\n", format);
 		break;
 	}
 
@@ -441,10 +453,13 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	HRESULT hr;
 	FILE *fd = NULL;
 	wchar_t *ext;
+	errno_t err;
 
 	ext = wcsrchr(filename, L'.');
-	if (!ext)
+	if (!ext) {
+		FALogInfo("DumpBuffer: Filename missing extension\n");
 		return;
+	}
 
 	buffer->GetDesc(&desc);
 
@@ -464,9 +479,11 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
 
-		_wfopen_s(&fd, filename, L"wb");
-		if (!fd)
+		err = _wfopen_s(&fd, filename, L"wb");
+		if (!fd) {
+			FALogInfo("Unable to create %S: %u\n", filename, err);
 			goto out_unmap;
+		}
 		fwrite(map.pData, 1, desc.ByteWidth, fd);
 		fclose(fd);
 	}
@@ -500,14 +517,20 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx, ib_fmt, stride, offset);
 			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			FALogInfo("Skipped dumping Texture1D resource\n");
+			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
 				DumpStereoResource((ID3D11Texture2D*)resource, filename, type_mask);
 			if (analyse_options & FrameAnalysisOptions::MONO)
 				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask);
 			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			FALogInfo("Skipped dumping Texture3D resource\n");
+			break;
 		default:
-			FALogInfo("skipped resource of type %i\n", dim);
+			FALogInfo("Skipped dumping resource of unknown type %i\n", dim);
 			break;
 	}
 }
