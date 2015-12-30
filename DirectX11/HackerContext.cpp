@@ -926,6 +926,9 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 		 &mCurrentGeometryShader,
 		 &mCurrentGeometryShaderHandle);
 
+	FrameAnalysisLog("GSSetShader(pShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
+			pShader, ppClassInstances, NumClassInstances, mCurrentGeometryShader);
+
 	if (pShader)
 		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
 }
@@ -1406,6 +1409,9 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 		 &mCurrentHullShader,
 		 &mCurrentHullShaderHandle);
 
+	FrameAnalysisLog("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
+			pHullShader, ppClassInstances, NumClassInstances, mCurrentHullShader);
+
 	if (pHullShader)
 		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
 }
@@ -1461,6 +1467,9 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 		 G->mSelectedDomainShader,
 		 &mCurrentDomainShader,
 		 &mCurrentDomainShaderHandle);
+
+	FrameAnalysisLog("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
+			pDomainShader, ppClassInstances, NumClassInstances, mCurrentDomainShader);
 
 	if (pDomainShader)
 		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
@@ -1622,6 +1631,9 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 		 &mCurrentComputeShader,
 		 &mCurrentComputeShaderHandle);
 
+	FrameAnalysisLog("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
+			pComputeShader, ppClassInstances, NumClassInstances, mCurrentComputeShader);
+
 	if (pComputeShader)
 		BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
@@ -1681,6 +1693,8 @@ STDMETHODIMP_(void) HackerContext::PSGetShader(THIS_
 	 mOrigContext->PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
 
 	LogDebug("HackerContext::PSGetShader out: %p\n", *ppPixelShader);
+	FrameAnalysisLog("PSGetShader(ppPixelShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
+			ppPixelShader, ppClassInstances, pNumClassInstances, mCurrentPixelShader);
 }
 
 STDMETHODIMP_(void) HackerContext::PSGetSamplers(THIS_
@@ -1706,6 +1720,8 @@ STDMETHODIMP_(void) HackerContext::VSGetShader(THIS_
 
 	// Todo: At GetShader, we need to return the original shader if it's been reloaded.
 	LogDebug("HackerContext::VSGetShader out: %p\n", *ppVertexShader);
+	FrameAnalysisLog("VSGetShader(ppVertexShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
+			ppVertexShader, ppClassInstances, pNumClassInstances, mCurrentVertexShader);
 }
 
 STDMETHODIMP_(void) HackerContext::PSGetConstantBuffers(THIS_
@@ -1772,6 +1788,8 @@ STDMETHODIMP_(void) HackerContext::GSGetShader(THIS_
 	__inout_opt  UINT *pNumClassInstances)
 {
 	 mOrigContext->GSGetShader(ppGeometryShader, ppClassInstances, pNumClassInstances);
+	FrameAnalysisLog("GSGetShader(ppGeometryShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
+			ppGeometryShader, ppClassInstances, pNumClassInstances, mCurrentGeometryShader);
 }
 
 STDMETHODIMP_(void) HackerContext::IAGetPrimitiveTopology(THIS_
@@ -1937,6 +1955,8 @@ STDMETHODIMP_(void) HackerContext::HSGetShader(THIS_
 	__inout_opt  UINT *pNumClassInstances)
 {
 	 mOrigContext->HSGetShader(ppHullShader, ppClassInstances, pNumClassInstances);
+	FrameAnalysisLog("HSGetShader(ppHullShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
+			ppHullShader, ppClassInstances, pNumClassInstances, mCurrentHullShader);
 }
 
 STDMETHODIMP_(void) HackerContext::HSGetSamplers(THIS_
@@ -1981,6 +2001,9 @@ STDMETHODIMP_(void) HackerContext::DSGetShader(THIS_
 	__inout_opt  UINT *pNumClassInstances)
 {
 	 mOrigContext->DSGetShader(ppDomainShader, ppClassInstances, pNumClassInstances);
+
+	FrameAnalysisLog("DSGetShader(ppDomainShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
+			ppDomainShader, ppClassInstances, pNumClassInstances, mCurrentDomainShader);
 }
 
 STDMETHODIMP_(void) HackerContext::DSGetSamplers(THIS_
@@ -2036,6 +2059,9 @@ STDMETHODIMP_(void) HackerContext::CSGetShader(THIS_
 	__inout_opt  UINT *pNumClassInstances)
 {
 	 mOrigContext->CSGetShader(ppComputeShader, ppClassInstances, pNumClassInstances);
+
+	FrameAnalysisLog("CSGetShader(ppComputeShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
+			ppComputeShader, ppClassInstances, pNumClassInstances, mCurrentComputeShader);
 }
 
 STDMETHODIMP_(void) HackerContext::CSGetSamplers(THIS_
@@ -2139,6 +2165,9 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 		 &mCurrentVertexShader,
 		 &mCurrentVertexShaderHandle);
 
+	FrameAnalysisLog("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
+			pVertexShader, ppClassInstances, NumClassInstances, mCurrentVertexShader);
+
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
 	if (pVertexShader)
@@ -2177,6 +2206,9 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 		 G->mSelectedPixelShader,
 		 &mCurrentPixelShader,
 		 &mCurrentPixelShaderHandle);
+
+	FrameAnalysisLog("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
+			pPixelShader, ppClassInstances, NumClassInstances, mCurrentPixelShader);
 
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
