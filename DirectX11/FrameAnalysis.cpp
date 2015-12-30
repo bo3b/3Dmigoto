@@ -54,6 +54,12 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 	va_end(ap);
 }
 
+#define FALogInfo(fmt, ...) { \
+	LogInfo("Frame Analysis: " fmt, __VA_ARGS__); \
+	FrameAnalysisLog(fmt, __VA_ARGS__); \
+} while (0)
+
+
 static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_name)
 {
 	if (slot_name)
@@ -271,7 +277,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 
 	hr = CreateStagingResource(&stereoResource, srcDesc, true, false);
 	if (FAILED(hr)) {
-		LogInfo("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
+		FALogInfo("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
 		return;
 	}
 
@@ -283,7 +289,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 		// intermediate staging resource first.
 		hr = CreateStagingResource(&tmpResource, srcDesc, false, false);
 		if (FAILED(hr)) {
-			LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
+			FALogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
 			goto out;
 		}
 
@@ -293,7 +299,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			// so we need yet another intermediate texture:
 			hr = CreateStagingResource(&tmpResource2, srcDesc, false, true);
 			if (FAILED(hr)) {
-				LogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
+				FALogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
 				goto out1;
 			}
 
@@ -302,7 +308,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 
 			hr = mOrigDevice->CheckFormatSupport( fmt, &support );
 			if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
-				LogInfo("DumpStereoResource cannot resolve MSAA format %d\n", fmt);
+				FALogInfo("DumpStereoResource cannot resolve MSAA format %d\n", fmt);
 				goto out2;
 			}
 
@@ -448,7 +454,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	hr = mOrigDevice->CreateBuffer(&desc, NULL, &staging);
 	if (FAILED(hr)) {
-		LogInfo("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
+		FALogInfo("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
 		return;
 	}
 
@@ -501,7 +507,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask);
 			break;
 		default:
-			LogInfo("frame analysis: skipped resource of type %i\n", dim);
+			FALogInfo("skipped resource of type %i\n", dim);
 			break;
 	}
 }
@@ -572,7 +578,7 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 
 	hr = StringCchPrintfW(pos, rem, L".XXX");
 	if (FAILED(hr)) {
-		LogInfo("frame analysis: failed to create filename: 0x%x\n", hr);
+		FALogInfo("Failed to create filename: 0x%x\n", hr);
 		// Could create a shorter filename without hashes if this
 		// becomes a problem in practice
 	}
@@ -1034,7 +1040,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 		// Enable reverse stereo blit for all resources we are about to dump:
 		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
-			LogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+			FALogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
 			// Continue anyway, we should still be able to dump in 2D...
 		}
 	}
