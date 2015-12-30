@@ -1,3 +1,8 @@
+// Smoke halos - uses both corrected & uncorrected world coords from vertex shader
+// VS 12d7bd0ffecd2f74
+// PS 51706b09de830f6c (turbulant density - needs both corrected & uncorrected)
+// PS fb5f47e7dd64055e (uniform density - only needs corrected)
+
 // ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 01:49:49 2015
 Texture2D<float4> t3 : register(t3);
 
@@ -34,7 +39,8 @@ void main(
   float4 v0 : TEXCOORD0,
   float4 v1 : TEXCOORD1,
   float4 v2 : TEXCOORD2,
-  float4 v3 : TEXCOORD5,
+  float4 v3_corrected : TEXCOORD5,
+  float4 v3_uncorrected : TEXCOORD9,
   float4 v4 : TEXCOORD6,
   float4 v5 : TEXCOORD7,
   float4 v6 : TEXCOORD8,
@@ -46,11 +52,20 @@ void main(
   float4 fDest;
 
   r0.zw = float2(0,0);
-  r1.xyzw = cb1[1].xyzw * v3.yyyy;
-  r1.xyzw = cb1[0].xyzw * v3.xxxx + r1.xyzw;
-  r1.xyzw = cb1[2].xyzw * v3.zzzz + r1.xyzw;
-  r1.xyzw = cb1[3].xyzw * v3.wwww + r1.xyzw;
-  r2.xy = r1.xy / r1.ww;
+
+float4 r1_corrected, r1_uncorrected;
+
+r1_corrected.xyzw = cb1[1].xyzw * v3_corrected.yyyy;
+r1_corrected.xyzw = cb1[0].xyzw * v3_corrected.xxxx + r1_corrected.xyzw;
+r1_corrected.xyzw = cb1[2].xyzw * v3_corrected.zzzz + r1_corrected.xyzw;
+r1_corrected.xyzw = cb1[3].xyzw * v3_corrected.wwww + r1_corrected.xyzw;
+
+r1_uncorrected.xyzw = cb1[1].xyzw * v3_uncorrected.yyyy;
+r1_uncorrected.xyzw = cb1[0].xyzw * v3_uncorrected.xxxx + r1_uncorrected.xyzw;
+r1_uncorrected.xyzw = cb1[2].xyzw * v3_uncorrected.zzzz + r1_uncorrected.xyzw;
+r1_uncorrected.xyzw = cb1[3].xyzw * v3_uncorrected.wwww + r1_uncorrected.xyzw;
+
+  r2.xy = r1_corrected.xy / r1_corrected.ww;
   r2.xy = r2.xy * cb1[19].xy + cb1[19].wz;
   r2.zw = cb0[10].xy * r2.xy;
   r0.xy = (uint2)r2.zw;
@@ -58,9 +73,9 @@ void main(
   r0.x = min(0.999999881, r0.x);
   r0.x = r0.x * cb1[20].z + -cb1[20].w;
   r0.x = 1 / r0.x;
-  r0.x = r0.x + -r1.w;
+  r0.x = r0.x + -r1_uncorrected.w;
   r0.x = saturate(0.0078125 * r0.x);
-  r0.yz = -cb0[16].xy + r1.xy;
+  r0.yz = -cb0[16].xy + r1_uncorrected.xy;
   r0.yz = r0.yz * cb0[18].xy + float2(0.5,0.5);
   r0.yz = float2(0.5,0.5) * r0.yz;
   r0.yz = cb1[31].xx * float2(0.0250000004,0.0250000004) + r0.yz;
@@ -86,7 +101,7 @@ void main(
   r1.x = min(0.999999881, r1.x);
   r1.x = r1.x * cb1[20].z + -cb1[20].w;
   r1.x = 1 / r1.x;
-  r1.x = cmp(r1.z < r1.x);
+  r1.x = cmp(r1_corrected.z < r1.x);
   r1.x = r1.x ? 1.000000 : 0;
   r1.y = -cb0[35].x * r1.x + 1;
   r1.x = cb0[35].x * r1.x;
