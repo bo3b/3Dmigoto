@@ -1022,6 +1022,10 @@ STDMETHODIMP_(void) HackerContext::GSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
+	FrameAnalysisLog("GSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
+
 	 mOrigContext->GSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
 
@@ -1399,6 +1403,10 @@ STDMETHODIMP_(void) HackerContext::HSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
+	FrameAnalysisLog("HSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
+
 	 mOrigContext->HSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
 
@@ -1462,6 +1470,10 @@ STDMETHODIMP_(void) HackerContext::DSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
+	FrameAnalysisLog("DSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
+
 	 mOrigContext->DSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
 
@@ -1525,6 +1537,10 @@ STDMETHODIMP_(void) HackerContext::CSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
+	FrameAnalysisLog("CSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
+
 	 mOrigContext->CSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
 
@@ -1708,6 +1724,10 @@ STDMETHODIMP_(void) HackerContext::PSGetShaderResources(THIS_
 	__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
 	 mOrigContext->PSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+
+	FrameAnalysisLog("PSGetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::PSGetShader(THIS_
@@ -1844,6 +1864,10 @@ STDMETHODIMP_(void) HackerContext::VSGetShaderResources(THIS_
 	__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
 	 mOrigContext->VSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+
+	FrameAnalysisLog("VSGetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::VSGetSamplers(THIS_
@@ -1875,6 +1899,10 @@ STDMETHODIMP_(void) HackerContext::GSGetShaderResources(THIS_
 	__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
 	 mOrigContext->GSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+
+	FrameAnalysisLog("GSGetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::GSGetSamplers(THIS_
@@ -1980,6 +2008,10 @@ STDMETHODIMP_(void) HackerContext::HSGetShaderResources(THIS_
 	__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
 	 mOrigContext->HSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+
+	FrameAnalysisLog("HSGetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::HSGetShader(THIS_
@@ -2030,6 +2062,10 @@ STDMETHODIMP_(void) HackerContext::DSGetShaderResources(THIS_
 	__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
 	 mOrigContext->DSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+
+	FrameAnalysisLog("DSGetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::DSGetShader(THIS_
@@ -2081,6 +2117,10 @@ STDMETHODIMP_(void) HackerContext::CSGetShaderResources(THIS_
 	__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
 	 mOrigContext->CSGetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+
+	FrameAnalysisLog("CSGetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::CSGetUnorderedAccessViews(THIS_
@@ -2230,6 +2270,9 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
+	FrameAnalysisLog("PSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 	LogDebug("HackerContext::PSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
 	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
@@ -2399,6 +2442,9 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 	/* [annotation] */
 	__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
+	FrameAnalysisLog("VSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
+			StartSlot, NumViews, ppShaderResourceViews);
+	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 	LogDebug("HackerContext::VSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
 	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
