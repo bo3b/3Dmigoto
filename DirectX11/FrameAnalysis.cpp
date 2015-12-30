@@ -45,6 +45,8 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 			LogInfoW(L"Error opening %s\n", filename);
 			return;
 		}
+
+		fprintf(frame_analysis_log, "analyse_options: %08x\n", G->cur_analyse_options);
 	}
 
 	fprintf(frame_analysis_log, "%06u ", G->analyse_frame);
@@ -1023,8 +1025,11 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 
 	analyse_options = new_options;
 
-	if (new_options & FrameAnalysisOptions::PERSIST)
+	if (new_options & FrameAnalysisOptions::PERSIST) {
 		G->cur_analyse_options = new_options;
+		FALogInfo("analyse_options (persistent): %08x\n", new_options);
+	} else
+		FALogInfo("analyse_options (one-shot): %08x\n", new_options);
 }
 
 void HackerContext::FrameAnalysisAfterDraw(bool compute)
