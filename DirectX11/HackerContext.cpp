@@ -1005,7 +1005,6 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	__in  ID3D11Asynchronous *pAsync)
 {
 	FrameAnalysisLog("Begin(pAsync:0x%p)\n", pAsync);
-	LogDebug("HackerContext::Begin(%s@%p) \n", typeid(*this).name(), this);
 	
 	mOrigContext->Begin(pAsync);
 }
@@ -1015,7 +1014,6 @@ STDMETHODIMP_(void) HackerContext::End(THIS_
 	__in  ID3D11Asynchronous *pAsync)
 {
 	FrameAnalysisLog("End(pAsync:0x%p)\n", pAsync);
-	LogDebug("HackerContext::End(%s@%p) \n", typeid(*this).name(), this);
 
 	 mOrigContext->End(pAsync);
 }
@@ -1116,7 +1114,6 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 	FrameAnalysisLog("SOSetTargets(NumBuffers:%u, ppSOTargets:0x%p, pOffsets:0x%p)\n",
 			NumBuffers, ppSOTargets, pOffsets);
 	FrameAnalysisLogResourceArray(0, NumBuffers, (ID3D11Resource *const *)ppSOTargets);
-	LogDebug("HackerContext::SOSetTargets called with NumBuffers = %d\n", NumBuffers);
 
 	 mOrigContext->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
@@ -1526,8 +1523,6 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::HSSetShader called\n");
-
 	SetShader<ID3D11HullShader, &ID3D11DeviceContext::HSSetShader>
 		(pHullShader, ppClassInstances, NumClassInstances,
 		 &G->mHullShaders,
@@ -1597,8 +1592,6 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::DSSetShader called\n");
-
 	SetShader<ID3D11DomainShader, &ID3D11DeviceContext::DSSetShader>
 		(pDomainShader, ppClassInstances, NumClassInstances,
 		 &G->mDomainShaders,
@@ -1776,8 +1769,6 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::CSSetShader called with computeshader handle = %p\n", pComputeShader);
-
 	SetShader<ID3D11ComputeShader, &ID3D11DeviceContext::CSSetShader>
 		(pComputeShader, ppClassInstances, NumClassInstances,
 		 &G->mComputeShaders,
@@ -1865,7 +1856,6 @@ STDMETHODIMP_(void) HackerContext::PSGetShader(THIS_
 {
 	 mOrigContext->PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
 
-	LogDebug("HackerContext::PSGetShader out: %p\n", *ppPixelShader);
 	FrameAnalysisLog("PSGetShader(ppPixelShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
 			ppPixelShader, ppClassInstances, pNumClassInstances, mCurrentPixelShader);
 }
@@ -1896,7 +1886,6 @@ STDMETHODIMP_(void) HackerContext::VSGetShader(THIS_
 	 mOrigContext->VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
 
 	// Todo: At GetShader, we need to return the original shader if it's been reloaded.
-	LogDebug("HackerContext::VSGetShader out: %p\n", *ppVertexShader);
 	FrameAnalysisLog("VSGetShader(ppVertexShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p) hash=%016I64x\n",
 			ppVertexShader, ppClassInstances, pNumClassInstances, mCurrentVertexShader);
 }
@@ -2456,8 +2445,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::VSSetShader called with vertexshader handle = %p\n", pVertexShader);
-
 	SetShader<ID3D11VertexShader, &ID3D11DeviceContext::VSSetShader>
 		(pVertexShader, ppClassInstances, NumClassInstances,
 		 &G->mVertexShaders,
@@ -2488,8 +2475,6 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 	FrameAnalysisLog("PSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
-	LogDebug("HackerContext::PSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
-	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
 	mOrigContext->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2501,8 +2486,6 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances)
 {
-	LogDebug("HackerContext::PSSetShader called with pixelshader handle = %p\n", pPixelShader);
-
 	SetShader<ID3D11PixelShader, &ID3D11DeviceContext::PSSetShader>
 		(pPixelShader, ppClassInstances, NumClassInstances,
 		 &G->mPixelShaders,
@@ -2541,8 +2524,6 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 {
 	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u)\n",
 			IndexCount, StartIndexLocation, BaseVertexLocation);
-	LogDebug("HackerContext::DrawIndexed called with IndexCount = %d, StartIndexLocation = %d, BaseVertexLocation = %d\n",
-		IndexCount, StartIndexLocation, BaseVertexLocation);
 
 	DrawContext c = DrawContext(0, IndexCount, 0);
 	BeforeDraw(c);
@@ -2559,8 +2540,6 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 {
 	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
 			VertexCount, StartVertexLocation);
-	LogDebug("HackerContext::Draw called with VertexCount = %d, StartVertexLocation = %d\n",
-		VertexCount, StartVertexLocation);
 
 	DrawContext c = DrawContext(VertexCount, 0, 0);
 	BeforeDraw(c);
@@ -2580,7 +2559,6 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 	FrameAnalysisLog("IASetIndexBuffer(pIndexBuffer:0x%p, Format:%u, Offset:%u)",
 			pIndexBuffer, Format, Offset);
 	FrameAnalysisLogResourceHash(pIndexBuffer);
-	LogDebug("HackerContext::IASetIndexBuffer called\n");
 
 	mOrigContext->IASetIndexBuffer(pIndexBuffer, Format, Offset);
 
@@ -2619,8 +2597,6 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 {
 	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
 			IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
-	LogDebug("HackerContext::DrawIndexedInstanced called with IndexCountPerInstance = %d, InstanceCount = %d\n",
-		IndexCountPerInstance, InstanceCount);
 
 	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount);
 	BeforeDraw(c);
@@ -2642,8 +2618,6 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 {
 	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
 			VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
-	LogDebug("HackerContext::DrawInstanced called with VertexCountPerInstance = %d, InstanceCount = %d\n",
-		VertexCountPerInstance, InstanceCount);
 
 	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount);
 	BeforeDraw(c);
@@ -2663,8 +2637,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 	FrameAnalysisLog("VSSetShaderResources(StartSlot:%u, NumViews:%u, ppShaderResourceViews:0x%p)\n",
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
-	LogDebug("HackerContext::VSSetShaderResources called with StartSlot = %d, NumViews = %d\n", StartSlot, NumViews);
-	if (ppShaderResourceViews && NumViews) LogDebug("  ShaderResourceView[0] handle = %p\n", *ppShaderResourceViews);
 
 	mOrigContext->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2681,7 +2653,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 			NumViews, ppRenderTargetViews, pDepthStencilView);
 	FrameAnalysisLogViewArray(0, NumViews, (ID3D11View *const *)ppRenderTargetViews);
 	FrameAnalysisLogView(-1, "D", pDepthStencilView);
-	LogDebug("HackerContext::OMSetRenderTargets called with NumViews = %d\n", NumViews);
 
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -2727,7 +2698,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	FrameAnalysisLogViewArray(0, NumRTVs, (ID3D11View *const *)ppRenderTargetViews);
 	FrameAnalysisLogView(-1, "D", pDepthStencilView);
 	FrameAnalysisLogViewArray(UAVStartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
-	LogDebug("HackerContext::OMSetRenderTargetsAndUnorderedAccessViews called with NumRTVs = %d, NumUAVs = %d\n", NumRTVs, NumUAVs);
 
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
@@ -2765,7 +2735,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
 	FrameAnalysisLog("DrawAuto()\n");
-	LogDebug("HackerContext::DrawAuto called\n");
 
 	DrawContext c = DrawContext(0, 0, 0);
 	BeforeDraw(c);
@@ -2782,7 +2751,6 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 {
 	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
-	LogDebug("HackerContext::DrawIndexedInstancedIndirect called\n");
 
 	DrawContext c = DrawContext(0, 0, 0);
 	BeforeDraw(c);
@@ -2799,7 +2767,6 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 {
 	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
-	LogDebug("HackerContext::DrawInstancedIndirect called\n");
 
 	DrawContext c = DrawContext(0, 0, 0);
 	BeforeDraw(c);
@@ -2819,8 +2786,6 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	FrameAnalysisLog("ClearRenderTargetView(pRenderTargetView:0x%p, ColorRGBA:0x%p)",
 			pRenderTargetView, ColorRGBA);
 	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
-	LogDebug("HackerContext::ClearRenderTargetView called with RenderTargetView=%p, color=[%f,%f,%f,%f]\n", pRenderTargetView,
-		ColorRGBA[0], ColorRGBA[1], ColorRGBA[2], ColorRGBA[3]);
 
 	if (G->ENABLE_TUNE)
 	{

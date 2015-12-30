@@ -18,11 +18,15 @@ extern bool gLogDebug;
 
 #define LogInfo(fmt, ...) \
 	do { if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); } while (0)
+#define vLogInfo(fmt, va_args) \
+	do { if (LogFile) vfprintf(LogFile, fmt, va_args); } while (0)
 #define LogInfoW(fmt, ...) \
 	do { if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__); } while (0)
 
 #define LogDebug(fmt, ...) \
 	do { if (gLogDebug) LogInfo(fmt, __VA_ARGS__); } while (0)
+#define vLogDebug(fmt, va_args) \
+	do { if (gLogDebug) vLogInfo(fmt, va_args); } while (0)
 #define LogDebugW(fmt, ...) \
 	do { if (gLogDebug) LogInfoW(fmt, __VA_ARGS__); } while (0)
 

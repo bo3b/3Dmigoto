@@ -11,6 +11,11 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 	va_list ap;
 	wchar_t filename[MAX_PATH];
 
+	LogDebug("HackerContext(%s@%p)::", typeid(*this).name(), this);
+	va_start(ap, fmt);
+	vLogDebug(fmt, ap);
+	va_end(ap);
+
 	if (!G->analyse_frame) {
 		if (frame_analysis_log)
 			fclose(frame_analysis_log);
