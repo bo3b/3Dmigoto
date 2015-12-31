@@ -1,6 +1,4 @@
-// Skin - officer face
-// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 03:13:30 2015
-
+// ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 01:32:11 2015
 cbuffer cb2 : register(b2)
 {
   float4 cb2[768];
@@ -13,7 +11,7 @@ cbuffer cb1 : register(b1)
 
 cbuffer cb0 : register(b0)
 {
-  float4 cb0[32];
+  float4 cb0[33];
 }
 
 
@@ -24,7 +22,6 @@ cbuffer cb0 : register(b0)
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
-#include <ShaderFixes/matrix.hlsl>
 
 void main( 
   float4 v0 : POSITION0,
@@ -89,7 +86,7 @@ void main(
   r3.yz = cb0[0].xz * r3.yy + r3.zw;
   r3.xy = cb0[2].xz * r3.xx + r3.yz;
   r0.xyz = r0.xyz * r0.www;
-  o1.w = cb0[23].w * r0.w;
+  o1.w = cb0[24].w * r0.w;
   r0.yw = cb0[1].xz * r0.yy;
   r0.xy = cb0[0].xz * r0.xx + r0.yw;
   r0.xy = cb0[2].xz * r0.zz + r0.xy;
@@ -103,7 +100,9 @@ void main(
   o3.xy = v7.xy;
   o4.xy = v8.xy;
   o5.xyzw = v9.zyxw;
-  r0.xyz = v0.xyz * cb0[31].xyz + cb0[30].xyz;
+  r0.xyz = v0.xyz * cb0[32].xyz + cb0[31].xyz;
+  r3.xyz = v9.zyx * float3(2,-2,2) + float3(-0.995999992,0.995999992,-0.995999992);
+  r0.xyz = cb0[22].zzz * r3.xyz + r0.xyz;
   r0.w = 1;
   r3.x = dot(r0.xyzw, r5.xyzw);
   r3.xyzw = cb0[1].xyzw * r3.xxxx;
@@ -114,23 +113,10 @@ void main(
   r0.xyzw = cb0[3].xyzw + r0.xyzw;
   r0.xyzw = cb1[9].xyzw + r0.xyzw;
   o6.xyzw = r0.xyzw;
-
-// Need to adjust o6 using the inverse of the cb1[0:3] matrix
-// We can just adjust a copy of o7 below and multiply it by the
-// inverse matrix instead.
-
   r1.xyzw = cb1[1].xyzw * r0.yyyy;
   r1.xyzw = cb1[0].xyzw * r0.xxxx + r1.xyzw;
   r1.xyzw = cb1[2].xyzw * r0.zzzz + r1.xyzw;
   o7.xyzw = cb1[3].xyzw * r0.wwww + r1.xyzw;
-
-matrix im = inverse(cb1[0], cb1[1], cb1[2], cb1[3]);
-
-float4 stereo = StereoParams.Load(0);
-float4 tmp = o7;
-tmp.x += stereo.x * (tmp.w - stereo.y);
-o6 = mul(tmp, im);
-
   return;
 }
 
@@ -170,7 +156,7 @@ o6 = mul(tmp, im);
 //
 vs_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[32], immediateIndexed
+dcl_constantbuffer cb0[33], immediateIndexed
 dcl_constantbuffer cb1[10], immediateIndexed
 dcl_constantbuffer cb2[768], dynamicIndexed
 dcl_input v0.xyz
@@ -231,7 +217,7 @@ mul r3.zw, r3.zzzz, cb0[1].xxxz
 mad r3.yz, cb0[0].xxzx, r3.yyyy, r3.zzwz
 mad r3.xy, cb0[2].xzxx, r3.xxxx, r3.yzyy
 mul r0.xyz, r0.wwww, r0.xyzx
-mul o1.w, r0.w, cb0[23].w
+mul o1.w, r0.w, cb0[24].w
 mul r0.yw, r0.yyyy, cb0[1].xxxz
 mad r0.xy, cb0[0].xzxx, r0.xxxx, r0.ywyy
 mad r0.xy, cb0[2].xzxx, r0.zzzz, r0.xyxx
@@ -245,7 +231,9 @@ mov o2.xy, v6.xyxx
 mov o3.xy, v7.xyxx
 mov o4.xy, v8.xyxx
 mov o5.xyzw, v9.zyxw
-mad r0.xyz, v0.xyzx, cb0[31].xyzx, cb0[30].xyzx
+mad r0.xyz, v0.xyzx, cb0[32].xyzx, cb0[31].xyzx
+mad r3.xyz, v9.zyxz, l(2.000000, -2.000000, 2.000000, 0.000000), l(-0.996000, 0.996000, -0.996000, 0.000000)
+mad r0.xyz, cb0[22].zzzz, r3.xyzx, r0.xyzx
 mov r0.w, l(1.000000)
 dp4 r3.x, r0.xyzw, r5.xyzw
 mul r3.xyzw, r3.xxxx, cb0[1].xyzw
