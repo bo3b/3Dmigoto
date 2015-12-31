@@ -93,6 +93,9 @@ o3_uncorrected.xyzw = r0.xyzw;
   r0.xyzw = cb1[3].xyzw * r0.wwww + r1.xyzw;
   o6.xyzw = r0.xyzw;
 
+ 
+float4 r20;
+r20=r0;  
 float4 stereo = StereoParams.Load(0);
 r0.x += stereo.x * (r0.w - stereo.y);
 o3_corrected = mul(r0, inverse(cb1[0], cb1[1], cb1[2], cb1[3]));
@@ -222,3 +225,4 @@ ret
 D:\SteamLibrary\steamapps\common\Batman Arkham Knight\Binaries\Win64\wrapper1349(33,14-15): warning X3578: Output value 'o0' is not completely initialized
 D:\SteamLibrary\steamapps\common\Batman Arkham Knight\Binaries\Win64\wrapper1349(35,14-15): warning X3578: Output value 'o2' is not completely initialized
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+     
