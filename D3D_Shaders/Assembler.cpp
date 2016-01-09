@@ -11,7 +11,7 @@ string convertF(DWORD original) {
 
 	float fOriginal = reinterpret_cast<float &>(original);
 	sprintf_s(buf2, 80, "%.9E", fOriginal);
-	int len = strlen(buf2);
+	size_t len = strlen(buf2);
 	if (buf2[len - 4] == '-') {
 		int exp = atoi(buf2 + len - 3);
 		switch (exp) {
@@ -104,8 +104,8 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 		s.erase(s.begin());
 		numSpaces++;
 	}
-	int lastLiteral = 0;
-	int lastEnd = 0;
+	size_t lastLiteral = 0;
+	size_t lastEnd = 0;
 	vector<DWORD> v2 = assembleIns(s);
 	string sNew = s;
 	string s3;
@@ -239,7 +239,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 			if (v.size() == (v2.size() + 1)) {
 				valid = true;
 				int j = 0;
-				for (int i = 1; i < v2.size() && valid; i++) {
+				for (size_t i = 1; i < v2.size() && valid; i++) {
 					if (v[i + j] != v2[i]) {
 						if (v[i + 1] == 0x1 && (v[i] & 0x7FFFFFFF) == v2[i]) {
 							j = 1;
@@ -300,7 +300,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
 
 	char* asmBuffer;
-	int asmSize;
+	size_t asmSize;
 	vector<byte> asmBuf;
 	ID3DBlob* pDissassembly = NULL;
 	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
@@ -355,14 +355,14 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				DWORD length = *codeStart;
 				v.push_back(*codeStart);
 				codeStart++;
-				for (DWORD i = 2; i < length; i++) {
+				for (DWORD j = 2; j < length; j++) {
 					v.push_back(*codeStart);
 					codeStart++;
 				}
 				string sNew = assembleAndCompare(s, v);
 				auto sLines = stringToLines(sNew.c_str(), sNew.size());
-				int startLine = i - sLines.size() + 1;
-				for (int j = 0; j < sLines.size(); j++) {
+				size_t startLine = i - sLines.size() + 1;
+				for (size_t j = 0; j < sLines.size(); j++) {
 					lines[startLine + j] = sLines[j];
 				}
 				//lines[i] = sNew;
@@ -399,8 +399,8 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 		}
 	}
 	ret->clear();
-	for (int i = 0; i < lines.size(); i++) {
-		for (int j = 0; j < lines[i].size(); j++) {
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = 0; j < lines[i].size(); j++) {
 			ret->insert(ret->end(), lines[i][j]);
 		}
 		ret->insert(ret->end(), '\n');
@@ -655,9 +655,9 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 			}
 			s.erase(s.begin());
 			tOp->num_indices = 1;
-			int start = s.find("][");
+			size_t start = s.find("][");
 			if (start != string::npos) {
-				int end = s.find("]", start + 1);
+				size_t end = s.find("]", start + 1);
 				string index0 = s.substr(s.find("[") + 1, start - 1);
 				string index1 = s.substr(start + 2, end - start - 2);
 				if (index0.find("+") != string::npos) {
@@ -724,8 +724,8 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		}
 		string index;
 		if (hasIndex) {
-			int start = s.find('[');
-			int end = s.find(']', start);
+			size_t start = s.find('[');
+			size_t end = s.find(']', start);
 			index = s.substr(start + 1, end - start - 1);
 		}
 		if (hasIndex) {
@@ -1181,7 +1181,7 @@ vector<DWORD> assembleIns(string s) {
 			Os.push_back(assembleOp(w[i + 1], i < numSpecial));
 		ins->length = 1;
 		for (int i = 0; i < numOps; i++)
-			ins->length += Os[i].size();
+			ins->length += (int)Os[i].size();
 		v.push_back(op);
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
@@ -1203,7 +1203,7 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 |= 0;
 		ins->length = 1;
 		for (int i = 0; i < numOps; i++)
-			ins->length += Os[i].size();
+			ins->length += (int)Os[i].size();
 		v.push_back(op);
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
@@ -1219,7 +1219,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 1 + (vIns[2] & 3);
 		ins->extended = 1;
 		for (int i = 0; i < numOps; i++)
-			ins->length += Os[i].size();
+			ins->length += (int)Os[i].size();
 		v.push_back(op);
 		if (vIns[2] == 3)
 			v.push_back(parseAoffimmi(0x80000001, w[1]));
@@ -1857,13 +1857,13 @@ vector<byte> readFile(string fileName) {
 		int fileSize = ftell(f);
 		buffer.resize(fileSize);
 		fseek(f, 0L, SEEK_SET);
-		int numRead = fread(buffer.data(), 1, buffer.size(), f);
+		size_t numRead = fread(buffer.data(), 1, buffer.size(), f);
 		fclose(f);
 	}
 	return buffer;
 }
 
-vector<string> stringToLines(const char* start, int size) {
+vector<string> stringToLines(const char* start, size_t size) {
 	vector<string> lines;
 	const char* pStart = start;
 	const char* pEnd = pStart;
@@ -2094,7 +2094,7 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
 
 	char* asmBuffer;
-	int asmSize;
+	size_t asmSize;
 	asmBuffer = (char*)asmFile.data();
 	asmSize = asmFile.size();
 	byte* codeByteStart;
@@ -2141,23 +2141,23 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 			}
 		}
 	}
-	codeStart = (DWORD*)(codeByteStart);
+	codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care
 	auto it = buffer.begin() + chunkOffsets[codeChunk] + 8;
-	DWORD codeSize = codeStart[1];
+	size_t codeSize = codeStart[1];
 	buffer.erase(it, it + codeSize);
-	DWORD newCodeSize = 4 * o.size();
-	codeStart[1] = newCodeSize;
+	size_t newCodeSize = 4 * o.size();
+	codeStart[1] = (DWORD)newCodeSize;
 	vector<byte> newCode(newCodeSize);
-	o[1] = o.size();
+	o[1] = (DWORD)o.size();
 	memcpy(newCode.data(), o.data(), newCodeSize);
 	it = buffer.begin() + chunkOffsets[codeChunk] + 8;
 	buffer.insert(it, newCode.begin(), newCode.end());
 	DWORD* dwordBuffer = (DWORD*)buffer.data();
 	for (DWORD i = codeChunk + 1; i < numChunks; i++) {
-		dwordBuffer[8 + i] += newCodeSize - codeSize;
+		dwordBuffer[8 + i] += (DWORD)(newCodeSize - codeSize);
 	}
-	dwordBuffer[6] = buffer.size();
-	vector<DWORD> hash = ComputeHash((byte const*)buffer.data() + 20, buffer.size() - 20);
+	dwordBuffer[6] = (DWORD)buffer.size();
+	vector<DWORD> hash = ComputeHash((byte const*)buffer.data() + 20, (DWORD)buffer.size() - 20);
 	dwordBuffer[1] = hash[0];
 	dwordBuffer[2] = hash[1];
 	dwordBuffer[3] = hash[2];

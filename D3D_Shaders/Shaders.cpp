@@ -48,7 +48,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	vector<string> lines;
 	fopen_s(&f, "gamelist.txt", "rb");
 	if (f) {
-		int fr = ::fread(gamebuffer, 1, 10000, f);
+		size_t fr = ::fread(gamebuffer, 1, 10000, f);
 		fclose(f);
 		lines = stringToLines(gamebuffer, fr);
 	}
@@ -83,7 +83,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				fwrite(ASM.data(), 1, ASM.size(), f);
 				fclose(f);
 				
-				int newProgress = 50.0 * i / files.size();
+				int newProgress = (int)(50.0 * i / files.size());
 				if (newProgress > progress) {
 					cout << ".";
 					progress++;
@@ -115,7 +115,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				fwrite(CBO.data(), 1, CBO.size(), f);
 				fclose(f);
 
-				int newProgress = 50.0 * i / files.size();
+				int newProgress = (int)(50.0 * i / files.size());
 				if (newProgress > progress) {
 					cout << ".";
 					progress++;
@@ -143,7 +143,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				fwrite(ASM.data(), 1, ASM.size(), f);
 				fclose(f);
 
-				int newProgress = 50.0 * i / files.size();
+				int newProgress = (int)(50.0 * i / files.size());
 				if (newProgress > progress) {
 					cout << ".";
 					progress++;
