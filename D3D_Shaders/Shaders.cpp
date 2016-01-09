@@ -44,7 +44,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	char cwd[MAX_PATH];
 	char gamebuffer[10000];
 
-	_getcwd(cwd, MAX_PATH);
+	if (!_getcwd(cwd, MAX_PATH))
+		return 1;
 	vector<string> lines;
 	fopen_s(&f, "gamelist.txt", "rb");
 	if (f) {
@@ -112,8 +113,10 @@ int _tmain(int argc, _TCHAR* argv[])
 				fileName.append("cbo");
 				FILE* f;
 				fopen_s(&f, fileName.c_str(), "wb");
-				fwrite(CBO.data(), 1, CBO.size(), f);
-				fclose(f);
+				if (f) {
+					fwrite(CBO.data(), 1, CBO.size(), f);
+					fclose(f);
+				}
 
 				int newProgress = (int)(50.0 * i / files.size());
 				if (newProgress > progress) {
@@ -140,8 +143,10 @@ int _tmain(int argc, _TCHAR* argv[])
 				fileName.append("txt");
 				FILE* f;
 				fopen_s(&f, fileName.c_str(), "wb");
-				fwrite(ASM.data(), 1, ASM.size(), f);
-				fclose(f);
+				if (f) {
+					fwrite(ASM.data(), 1, ASM.size(), f);
+					fclose(f);
+				}
 
 				int newProgress = (int)(50.0 * i / files.size());
 				if (newProgress > progress) {

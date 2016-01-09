@@ -53,18 +53,24 @@ string convertF(DWORD original) {
 	if (newDWORD != original) {
 		if (failFile == NULL)
 			fopen_s(&failFile, "debug.txt", "wb");
-		FILE *f = failFile;
-		fprintf(f, "%s\n", sLiteral.c_str());
-		fprintf(f, "o:%08X\n", original);
-		fprintf(f, "n:%08X\n", newDWORD);
-		fprintf(f, "\n");
+		if (failFile) {
+			FILE *f = failFile;
+			fprintf(f, "%s\n", sLiteral.c_str());
+			fprintf(f, "o:%08X\n", original);
+			fprintf(f, "n:%08X\n", newDWORD);
+			fprintf(f, "\n");
+		}
 	}
 	return sLiteral;
 }
 
 void writeLUT() {
 	FILE* f;
+
 	fopen_s(&f, "lut.asm", "wb");
+	if (!f)
+		return;
+
 	for (unordered_map<string, vector<DWORD>>::iterator it = codeBin.begin(); it != codeBin.end(); ++it) {
 		fputs(it->first.c_str(), f);
 		fputs(":->", f);
@@ -285,6 +291,9 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
 
+	// TODO: Add robust error checking here (buffer is at least as large as
+	// the header, etc). I've added a check for numChunks < 1 as that
+	// would lead to codeByteStart being used uninitialised
 	byte* pPosition = buffer->data();
 	std::memcpy(fourcc, pPosition, 4);
 	pPosition += 4;
@@ -295,6 +304,8 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	fSize = *(DWORD*)pPosition;
 	pPosition += 4;
 	numChunks = *(DWORD*)pPosition;
+	if (numChunks < 1)
+		return S_FALSE;
 	pPosition += 4;
 	chunkOffsets.resize(numChunks);
 	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
@@ -318,6 +329,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
 			break;
 	}
+	// FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
 	vector<string> lines = stringToLines(asmBuffer, asmSize);
 	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
 	bool codeStarted = false;
@@ -2020,6 +2032,7 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	return hash;
 }
 
+// Dead code (any reason to keep this?)
 string shaderModel(byte* buffer) {
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
@@ -2027,6 +2040,8 @@ string shaderModel(byte* buffer) {
 	byte* pPosition = buffer;
 	pPosition += 28;
 	numChunks = *(DWORD*)pPosition;
+	if (numChunks < 1)
+		throw std::invalid_argument("shaderModel: Bad shader binary");
 	pPosition += 4;
 	chunkOffsets.resize(numChunks);
 	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
@@ -2039,6 +2054,7 @@ string shaderModel(byte* buffer) {
 		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
 			break;
 	}
+	// FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
 	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
 	int major = (*codeStart & 0xF0) >> 4;
 	int minor = (*codeStart & 0xF000) >> 12;
@@ -2079,6 +2095,9 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
 
+	// TODO: Add robust error checking here (buffer is at least as large as
+	// the header, etc). I've added a check for numChunks < 1 as that
+	// would lead to codeByteStart being used uninitialised
 	byte* pPosition = buffer.data();
 	std::memcpy(fourcc, pPosition, 4);
 	pPosition += 4;
@@ -2089,6 +2108,8 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	fSize = *(DWORD*)pPosition;
 	pPosition += 4;
 	numChunks = *(DWORD*)pPosition;
+	if (numChunks < 1)
+		throw std::invalid_argument("assembler: Bad shader binary");
 	pPosition += 4;
 	chunkOffsets.resize(numChunks);
 	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
@@ -2105,6 +2126,7 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
 			break;
 	}
+	// FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
 	vector<string> lines = stringToLines(asmBuffer, asmSize);
 	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
 	bool codeStarted = false;
