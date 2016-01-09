@@ -99,12 +99,14 @@ dcl_resource_texture2d (float,float,float,float) t9
 // might now be in different tiles, which will cause them to clip along the
 // edges between tiles because the new tile won't even consider drawing them.
 // This buffer is populated by the CPU via a Map() call, so we can't fix it in
-// a previous shader. Instead we have to deal with the problem here, which we
-// currently do by merging neighboring tiles together.
+// a previous shader - instead we have to deal with the problem here.
 
 dcl_resource_structured t10, 4 
 
 
+// This structured buffer will replace the t10 buffer passed from the CPU - We
+// add a new loop to the shader to merge lists from neighboring tiles together:
+dcl_tgsm_structured g16, 4, 4104
 
 
 
@@ -150,7 +152,10 @@ dcl_uav_structured_opc u7, 256
 dcl_input vThreadGroupID.xy
 dcl_input vThreadIDInGroup.xy
 dcl_input vThreadID.xy
-dcl_temps 30
+
+// Add 10 extra temps:
+dcl_temps 38
+
 dcl_tgsm_raw g0, 4
 dcl_tgsm_raw g1, 4
 dcl_tgsm_raw g2, 4
@@ -175,10 +180,101 @@ dcl_thread_group 16, 16, 1
 
 // 3DMigoto StereoParams:
 dcl_resource_texture2d (float,float,float,float) t125
-dcl_resource_texture1d (float,float,float,float) t120
 
 ld_indexable(texture2d)(float,float,float,float) r28.xyzw, l(0, 0, 0, 0), t125.xyzw
-ld_indexable(texture1d)(float,float,float,float) r29.xyzw, l(0, 0, 0, 0), t120.xyzw
+
+// TODO: Add a pre-processor
+// #define temp           r29
+// #define tile_x         r30
+// #define tile_idx       r31
+// #define light_list_ptr r32
+// #define num_lights_ptr r33
+// #define num_lights     r34
+// #define light_list_idx r35
+// #define light_id       r36
+// #define finished_lists r37
+
+// Use just the first 4x2 threads in each group (memory is only shared within a
+// group, so every group has to do this) to merge the neighboring lists of
+// lights from the t10 structured buffer together:
+
+// FIXME: This is a framerate killer. The main problem is the accesses to the
+// t10 structured buffer from multiple thread groups creates a lot of
+// contention as the buffer will bounce all over the GPU every iteration :(
+
+ult r29.w, vThreadIDInGroup.y, l(2)
+if_nz r29.w
+  ult r29.w, vThreadIDInGroup.x, l(4)
+  if_nz r29.w
+
+    // x is this tile, y is the tile being merged (or current if just copying)
+    // Left eye merges from the right, right eye merges from the left
+    // XXX: There might still be some circumstances where we need to improve
+    // this, e.g. small monitors where the large tiles are smaller than the max
+    // separation, or when using large amounts of pop-out
+    mov r30.x, vThreadIDInGroup.x
+    ftoi r30.y, r28.z
+    iadd r30.y, r30.x, r30.y
+    imax r30.y, r30.y, l(0)
+    imin r30.y, r30.y, l(3)
+
+    // Tile IDs to copy from and to:
+    imad r31.xy, vThreadIDInGroup.y, l(4), r30.xy
+
+    // Offset of each tile's list of lights in this row:
+    ishl r32.xy, r31.xy, l(9)
+
+    // Number of lights to copy to this tile from each source tile:
+    iadd r33.xy, r31.xy, l(4096)
+    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r34.x, r33.x, l(0), t10.xxxx
+    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r34.y, r33.y, l(0), t10.xxxx
+
+    // Iterate over both lists merging them together:
+    mov r35.xyzw, l(0)
+    loop
+      // Stop once all source lists are exhausted:
+      uge r37.xy, r35.xy, r34.xy
+      and r29.w, r37.x, r37.y
+      breakc_nz r29.w
+
+      // Stop if we hit the maximum size of the destination list:
+      uge r29.w, r35.w, l(512)
+      breakc_nz r29.w
+
+      // Load the lights from the original buffers from unfinished source lists:
+      iadd r29.xy, r32.xy, r35.xy
+      mov r36.xyzw, l(0x7fffffff)
+      if_z r37.x
+        ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r36.x, r29.x, l(0), t10.xxxx
+      endif
+      if_z r37.y
+        ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r36.y, r29.y, l(0), t10.xxxx
+      endif
+
+      // Append the smaller light ID to the destination list:
+      imin r29.x, r36.x, r36.y
+      iadd r29.y, r32.x, r35.w
+      store_structured g16.x, r29.y, l(0), r29.x
+      iadd r35.w, r35.w, l(1)
+
+      // Increment pointers on any source lists that match the minimum value:
+      ieq r29.w, r29.x, r36.x
+      if_nz r29.w
+        iadd r35.x, r35.x, l(1)
+      endif
+      ieq r29.w, r29.x, r36.y
+      if_nz r29.w
+        iadd r35.y, r35.y, l(1)
+      endif
+
+    endloop
+
+    // Write the new list length:
+    iadd r35.w, r35.w, l(-1)
+    store_structured g16.x, r33.x, l(0), r35.w
+
+  endif
+endif
 
 div r0.xyzw, l(2.000000, -2.000000, 0.500000, 0.500000), cb0[10].xyxy
 imad r1.x, vThreadIDInGroup.y, l(16), vThreadIDInGroup.x
@@ -231,10 +327,16 @@ iadd r2.y, r1.x, l(256)
 store_structured g3.x, r2.y, l(0), l(0)
 store_structured g4.x, r1.x, l(0), l(0)
 
+// Make sure that the above list merging code has completed in this thread
+// group before continuing:
+sync_g_t
+
 // This is reading the number of light indexes in each of the 8 sections of the
 // t10 structured buffer:
+
 iadd r1.y, r1.y, l(4096)
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r1.y, r1.y, l(0), t10.xxxx
+//ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r1.y, r1.y, l(0), t10.xxxx
+ld_structured r1.y, r1.y, l(0), g16.xxxx
 
 if_z r1.x
   store_raw g6.x, l(0), l(0)
@@ -488,7 +590,8 @@ loop
   breakc_nz r6.x
   udiv r8.x, r6.x, r5.w, r2.z
   iadd r7.y, r1.z, r8.x
-  ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.y, r7.y, l(0), t10.xxxx
+  //ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.y, r7.y, l(0), t10.xxxx
+  ld_structured r7.y, r7.y, l(0), g16.xxxx
   ld_structured r6.x, r6.x, l(0), g14.xxxx
 
 // Think this is world XYZ and W might be radius?
@@ -567,7 +670,8 @@ loop
     ult r2.w, r8.x, l(32)
     if_nz r2.w
       iadd r2.w, r1.z, r2.z
-      ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r2.w, r2.w, l(0), t10.xxxx
+      //ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r2.w, r2.w, l(0), t10.xxxx
+      ld_structured r2.w, r2.w, l(0), g16.xxxx
       store_structured g5.x, r8.x, l(0), r2.w
     endif 
   endif 
