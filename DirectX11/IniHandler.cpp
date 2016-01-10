@@ -28,6 +28,7 @@ struct CommandListSection {
 static CommandListSection CommandListSections[] = {
 	{L"ShaderOverride", true},
 	{L"TextureOverride", true},
+	{L"CustomShader", true},
 	{L"Present", false},
 };
 
@@ -597,6 +598,66 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+// List of keys in [CustomShader] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *CustomShaderIniKeys[] = {
+	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	NULL
+};
+
+// TODO: Refactor common code with ParseResourceSections
+static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wstring shader_id;
+	CustomShader *custom_shader;
+	wchar_t setting[MAX_PATH];
+	bool failed;
+
+	customShaders.clear();
+
+	lower = sections.lower_bound(wstring(L"CustomShader"));
+	upper = prefix_upper_bound(sections, wstring(L"CustomShader"));
+	for (i = lower; i != upper; i++) {
+		LogInfoW(L"[%s]\n", i->c_str());
+
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		shader_id = *i;
+		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
+
+		// Construct a custom shader in the global list:
+		custom_shader = &customShaders[shader_id];
+
+		failed = false;
+
+		if (GetPrivateProfileString(i->c_str(), L"vs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('v', setting, &shader_id);
+		if (GetPrivateProfileString(i->c_str(), L"hs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('h', setting, &shader_id);
+		if (GetPrivateProfileString(i->c_str(), L"ds", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('d', setting, &shader_id);
+		if (GetPrivateProfileString(i->c_str(), L"gs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('g', setting, &shader_id);
+		if (GetPrivateProfileString(i->c_str(), L"ps", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('p', setting, &shader_id);
+		if (GetPrivateProfileString(i->c_str(), L"cs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('c', setting, &shader_id);
+
+		if (failed) {
+			// Don't want to allow a shader to be run if it had an
+			// error since we are likely to call Draw or Dispatch
+			customShaders.erase(shader_id);
+			continue;
+		}
+
+		// FIXME: Parse these later as these sections can refer to
+		// other CustomShader sections that may not have been parsed
+		// yet:
+		ParseCommandList(i->c_str(), iniFile, &custom_shader->command_list, &custom_shader->post_command_list, CustomShaderIniKeys);
+	}
+}
+
 // Check the Stereo availability. If stereo is disabled we otherwise will crash 
 // when trying to create stereo texture.  This should be more graceful now.
 
@@ -1000,6 +1061,8 @@ void LoadConfigFile()
 	RegisterPresetKeyBindings(sections, iniFile);
 
 	ParseResourceSections(sections, iniFile);
+	ParseCustomShaderSections(sections, iniFile);
+
 	ParseShaderOverrideSections(sections, iniFile);
 	ParseTextureOverrideSections(sections, iniFile);
 

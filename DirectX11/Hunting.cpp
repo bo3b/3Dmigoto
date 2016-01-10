@@ -538,6 +538,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		|| srcDataSize != readSize)
 	{
 		LogInfo("    Error reading txt file.\n");
+		CloseHandle(f);
 
 		return true;
 	}
@@ -560,6 +561,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		LogInfo("    Reload source code loaded. Size = %d \n", srcDataSize);
 		LogInfo("    compiling replacement HLSL code with shader model %s \n", shaderModel);
 
+		// TODO: Add #defines for StereoParams and IniParams
 
 		ID3DBlob* pErrorMsgs = nullptr;
 		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),

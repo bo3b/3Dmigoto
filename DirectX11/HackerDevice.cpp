@@ -778,6 +778,8 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// Compile replacement.
 					LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
 
+					// TODO: Add #defines for StereoParams and IniParams
+
 					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;
 					HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
@@ -1034,6 +1036,8 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				if (!errorOccurred)
 				{
 					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
+
+					// TODO: Add #defines for StereoParams and IniParams
 
 					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;

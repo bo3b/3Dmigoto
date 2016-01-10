@@ -6,7 +6,10 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 
+#include <D3DCompiler.h>
+
 CustomResources customResources;
+CustomShaders customShaders;
 
 void _RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
@@ -22,6 +25,20 @@ void _RunCommandList(HackerDevice *mHackerDevice,
 	}
 }
 
+static void CommandListFlushState(HackerDevice *mHackerDevice,
+		ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+
+	if (state->update_params) {
+		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
+		state->update_params = false;
+	}
+}
+
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
@@ -30,7 +47,6 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	CommandListState state;
 	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
 	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 	state.VertexCount = VertexCount;
 	state.IndexCount = IndexCount;
@@ -38,62 +54,162 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	state.post = post;
 
 	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, command_list, &state);
+	CommandListFlushState(mHackerDevice, mOrigContext, &state);
+}
 
-	if (state.update_params) {
-		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
+static void AddCommandToList(CommandListCommand *command,
+		CommandList *explicit_command_list,
+		CommandList *sensible_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	if (explicit_command_list) {
+		// User explicitly specified "pre" or "post", so only add the
+		// command to that list
+		explicit_command_list->push_back(std::shared_ptr<CommandListCommand>(command));
+	} else if (sensible_command_list) {
+		// User did not specify which command list to add it to, but
+		// the command they specified has a sensible default, so add it
+		// to that list:
+		sensible_command_list->push_back(std::shared_ptr<CommandListCommand>(command));
+	} else {
+		// The command's default is to add it to both lists (e.g. the
+		// checktextureoverride directive will call command lists in
+		// another ini section with both pre and post lists, so the
+		// principal of least unexpected behaviour says we add it to
+		// both so that both those command lists will be called)
+		//
+		// Using a std::shared_ptr here to handle adding the same
+		// pointer to two lists and have it garbage collected only once
+		// both are destroyed:
+		std::shared_ptr<CommandListCommand> p(command);
+		pre_command_list->push_back(p);
+		if (post_command_list)
+			post_command_list->push_back(p);
 	}
+}
+
+static bool ParseCheckTextureOverride(wstring *val, CommandList *explicit_command_list,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	int ret, len1;
+
+	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
+
+	// Parse value as "<shader type>s-t<testure slot>", consistent
+	// with texture filtering and resource copying
+	ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &operation->shader_type, 1, &operation->texture_slot, &len1);
+	if (ret == 2 && len1 == val->length() &&
+			operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+		switch(operation->shader_type) {
+			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+				AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+				return true;
+		}
+	}
+
+	delete operation;
+	return false;
+}
+
+static bool ParseRunShader(wstring *val, CommandList *explicit_command_list,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	RunCustomShaderCommand *operation = new RunCustomShaderCommand();
+	CustomShaders::iterator shader;
+
+	if (!wcsncmp(val->c_str(), L"customshader", 12)) {
+		// Value should already have been transformed to lower
+		// case from ParseCommandList, so our keys will be
+		// consistent in the unordered_map:
+		wstring shader_id(val->c_str());
+
+		shader = customShaders.find(shader_id);
+		if (shader == customShaders.end())
+			goto bail;
+
+		operation->custom_shader = &shader->second;
+		AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+		return true;
+	}
+
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseDrawCommand(const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	DrawCommand *operation = new DrawCommand();
+	int nargs, end = 0;
+
+	if (!wcscmp(key, L"draw")) {
+		operation->type = DrawCommandType::DRAW;
+		nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
+		if (nargs != 2)
+			goto bail;
+	} else if (!wcscmp(key, L"drawauto")) {
+		operation->type = DrawCommandType::DRAW_AUTO;
+	} else if (!wcscmp(key, L"drawindexed")) {
+		operation->type = DrawCommandType::DRAW_INDEXED;
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
+		if (nargs != 3)
+			goto bail;
+	} else if (!wcscmp(key, L"drawindexedinstanced")) {
+		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED;
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %i, %u%n",
+				&operation->args[0], &operation->args[1], &operation->args[2], (INT*)&operation->args[3], &operation->args[4], &end);
+		if (nargs != 5)
+			goto bail;
+	} else if (!wcscmp(key, L"drawinstanced")) {
+		operation->type = DrawCommandType::DRAW_INSTANCED;
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %u%n",
+				&operation->args[0], &operation->args[1], &operation->args[2], &operation->args[3], &end);
+		if (nargs != 5)
+			goto bail;
+	} else if (!wcscmp(key, L"dispatch")) {
+		operation->type = DrawCommandType::DISPATCH;
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %u%n", &operation->args[0], &operation->args[1], &operation->args[2], &end);
+		if (nargs != 3)
+			goto bail;
+	}
+
+	// TODO: } else if (!wcscmp(key, L"drawindexedinstancedindirect")) {
+	// TODO: 	operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT;
+	// TODO: } else if (!wcscmp(key, L"drawinstancedindirect")) {
+	// TODO: 	operation->type = DrawCommandType::DRAW_INSTANCED_INDIRECT;
+	// TODO: } else if (!wcscmp(key, L"dispatchindirect")) {
+	// TODO: 	operation->type = DrawCommandType::DISPATCH_INDIRECT;
+	// TODO: }
+
+
+	if (operation->type == DrawCommandType::INVALID)
+		goto bail;
+
+	if (end != val->length())
+		goto bail;
+
+	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return true;
+
+bail:
+	delete operation;
+	return false;
 }
 
 bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list, CommandList *post_command_list)
 {
-	int ret, len1;
-	GeneralCommandListCommand *operation = new GeneralCommandListCommand();
+	if (!wcscmp(key, L"checktextureoverride"))
+		return ParseCheckTextureOverride(val, explicit_command_list, pre_command_list, post_command_list);
 
-	if (!wcscmp(key, L"checktextureoverride")) {
-		// Parse value as "<shader type>s-t<testure slot>", consistent
-		// with texture filtering and resource copying
-		ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &operation->shader_type, 1, &operation->texture_slot, &len1);
-		if (ret == 2 && len1 == val->length() &&
-				operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-			switch(operation->shader_type) {
-				case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-					goto success;
-				default:
-					goto bail;
-			}
-		}
-	}
+	if (!wcscmp(key, L"run"))
+		return ParseRunShader(val, explicit_command_list, pre_command_list, post_command_list);
 
-
-bail:
-	delete operation;
-	return false;
-
-success:
-	if (explicit_command_list) {
-		// User explicitly specified "pre" or "post", so only add the
-		// command to that list
-		explicit_command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
-	} else {
-		// User did not specify which command list to add it to, so
-		// default to something sensible. For checktextureoverride
-		// directives, it makes the most sense to add it to both so
-		// that pre and post directives in the texture override will
-		// work as expected.
-		//
-		// Using a std::shared_ptr here to handle adding the same
-		// pointer to two lists and have it garbage collected only once
-		// both are destroyed:
-		std::shared_ptr<CommandListCommand> p(operation);
-		pre_command_list->push_back(p);
-		if (post_command_list)
-			post_command_list->push_back(p);
-	}
-	return true;
+	return ParseDrawCommand(key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
 static TextureOverride* FindTextureOverrideBySlot(HackerContext
@@ -156,7 +272,7 @@ out_release_view:
 	return ret;
 }
 
-void GeneralCommandListCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+void CheckTextureOverrideCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
 {
@@ -169,6 +285,313 @@ void GeneralCommandListCommand::run(HackerDevice *mHackerDevice, HackerContext *
 		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->post_command_list, state);
 	else
 		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->command_list, state);
+}
+
+void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	// Ensure IniParams are visible:
+	CommandListFlushState(mHackerDevice, mOrigContext, state);
+
+	switch (type) {
+		case DrawCommandType::DRAW:
+			mOrigContext->Draw(args[0], args[1]);
+			break;
+		case DrawCommandType::DRAW_AUTO:
+			mOrigContext->DrawAuto();
+			break;
+		case DrawCommandType::DRAW_INDEXED:
+			mOrigContext->DrawIndexed(args[0], args[1], (INT)args[2]);
+			break;
+		case DrawCommandType::DRAW_INDEXED_INSTANCED:
+			mOrigContext->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
+			break;
+		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
+		// TODO: 	break;
+		case DrawCommandType::DRAW_INSTANCED:
+			mOrigContext->DrawInstanced(args[0], args[1], args[2], args[3]);
+			break;
+		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
+		// TODO: 	break;
+		case DrawCommandType::DISPATCH:
+			mOrigContext->Dispatch(args[0], args[1], args[2]);
+			break;
+		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
+		// TODO: 	break;
+	}
+}
+
+CustomShader::CustomShader() :
+	vs(NULL), hs(NULL), ds(NULL), gs(NULL), ps(NULL), cs(NULL),
+	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
+	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
+	substantiated(false)
+{
+}
+
+CustomShader::~CustomShader()
+{
+	if (vs)
+		vs->Release();
+	if (hs)
+		hs->Release();
+	if (ds)
+		ds->Release();
+	if (gs)
+		gs->Release();
+	if (ps)
+		ps->Release();
+	if (cs)
+		cs->Release();
+
+	if (vs_bytecode)
+		vs_bytecode->Release();
+	if (hs_bytecode)
+		hs_bytecode->Release();
+	if (ds_bytecode)
+		ds_bytecode->Release();
+	if (gs_bytecode)
+		gs_bytecode->Release();
+	if (ps_bytecode)
+		ps_bytecode->Release();
+	if (cs_bytecode)
+		cs_bytecode->Release();
+}
+
+// This is similar to the other compile routines, but still distinct enough to
+// get it's own function for now - TODO: Refactor out the common code
+bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
+{
+	wchar_t path[MAX_PATH];
+	HANDLE f;
+	DWORD srcDataSize, readSize;
+	vector<char> srcData;
+	HRESULT hr;
+	char shaderModel[7];
+	ID3DBlob **ppBytecode = NULL;
+	ID3DBlob *pErrorMsgs = NULL;
+	string name(wname->begin(), wname->end());
+
+	LogInfo("  %cs=%S\n", type, filename);
+	GetModuleFileName(0, path, MAX_PATH);
+	wcsrchr(path, L'\\')[1] = 0;
+	wcscat(path, filename);
+
+	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE) {
+		LogInfo("    Shader not found: %S\n", path);
+		goto err;
+	}
+
+	srcDataSize = GetFileSize(f, 0);
+	srcData.resize(srcDataSize);
+
+	if (!ReadFile(f, srcData.data(), srcDataSize, &readSize, 0)
+			|| srcDataSize != readSize) {
+		LogInfo("    Error reading HLSL file\n");
+		goto err_close;
+	}
+	CloseHandle(f);
+
+	// Currently always using shader model 5, could allow this to be
+	// overridden in the future:
+	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
+	switch(type) {
+		case 'v':
+			ppBytecode = &vs_bytecode;
+			break;
+		case 'h':
+			ppBytecode = &hs_bytecode;
+			break;
+		case 'd':
+			ppBytecode = &ds_bytecode;
+			break;
+		case 'g':
+			ppBytecode = &gs_bytecode;
+			break;
+		case 'p':
+			ppBytecode = &ps_bytecode;
+			break;
+		case 'c':
+			ppBytecode = &cs_bytecode;
+			break;
+		default:
+			// Should not happen
+			goto err;
+	}
+	// TODO: Add #defines for StereoParams and IniParams. Define a macro
+	// for the type of shader, and maybe allow more defines to be specified
+	// in the ini
+
+	hr = D3DCompile(srcData.data(), srcDataSize, name.c_str(), 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
+
+	if (pErrorMsgs) {
+		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
+		SIZE_T errSize = pErrorMsgs->GetBufferSize();
+		LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+		fwrite(errMsg, 1, errSize - 1, LogFile);
+		LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+		pErrorMsgs->Release();
+	}
+
+	if (FAILED(hr))
+		goto err;
+
+	// TODO: Cache bytecode
+
+	return false;
+err_close:
+	CloseHandle(f);
+err:
+	BeepFailure();
+	return true;
+}
+
+void CustomShader::substantiate(ID3D11Device *mOrigDevice)
+{
+	if (substantiated)
+		return;
+	substantiated = true;
+
+	if (vs_bytecode) {
+		mOrigDevice->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
+		vs_bytecode->Release();
+		vs_bytecode = NULL;
+	}
+	if (hs_bytecode) {
+		mOrigDevice->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
+		hs_bytecode->Release();
+		hs_bytecode = NULL;
+	}
+	if (ds_bytecode) {
+		mOrigDevice->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
+		ds_bytecode->Release();
+		ds_bytecode = NULL;
+	}
+	if (gs_bytecode) {
+		mOrigDevice->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
+		gs_bytecode->Release();
+		gs_bytecode = NULL;
+	}
+	if (ps_bytecode) {
+		mOrigDevice->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
+		ps_bytecode->Release();
+		ps_bytecode = NULL;
+	}
+	if (cs_bytecode) {
+		mOrigDevice->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
+		cs_bytecode->Release();
+		cs_bytecode = NULL;
+	}
+}
+
+struct saved_shader_inst
+{
+	ID3D11ClassInstance *instances[256];
+	UINT num_instances;
+
+	saved_shader_inst() :
+		num_instances(0)
+	{}
+
+	~saved_shader_inst()
+	{
+		UINT i;
+
+		for (i = 0; i < num_instances; i++) {
+			if (instances[i])
+				instances[i]->Release();
+		}
+	}
+};
+
+void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	ID3D11VertexShader *saved_vs = NULL;
+	ID3D11HullShader *saved_hs = NULL;
+	ID3D11DomainShader *saved_ds = NULL;
+	ID3D11GeometryShader *saved_gs = NULL;
+	ID3D11PixelShader *saved_ps = NULL;
+	ID3D11ComputeShader *saved_cs = NULL;
+	bool saved_post;
+
+	custom_shader->substantiate(mOrigDevice);
+
+	saved_shader_inst vs_inst, hs_inst, ds_inst, gs_inst, ps_inst, cs_inst;
+
+	// Assign custom shaders first before running the command lists, and
+	// restore them last. This is so that if someone was injecting a
+	// sequence of pixel shaders that all shared a common vertex shader
+	// we can avoid having to repeatedly save & restore the vertex shader
+	// by calling the next shader in sequence from the command list after
+	// the draw call.
+
+	if (custom_shader->vs) {
+		mOrigContext->VSGetShader(&saved_vs, vs_inst.instances, &vs_inst.num_instances);
+		mOrigContext->VSSetShader(custom_shader->vs, NULL, 0);
+	}
+	if (custom_shader->hs) {
+		mOrigContext->HSGetShader(&saved_hs, hs_inst.instances, &hs_inst.num_instances);
+		mOrigContext->HSSetShader(custom_shader->hs, NULL, 0);
+	}
+	if (custom_shader->ds) {
+		mOrigContext->DSGetShader(&saved_ds, ds_inst.instances, &ds_inst.num_instances);
+		mOrigContext->DSSetShader(custom_shader->ds, NULL, 0);
+	}
+	if (custom_shader->gs) {
+		mOrigContext->GSGetShader(&saved_gs, gs_inst.instances, &gs_inst.num_instances);
+		mOrigContext->GSSetShader(custom_shader->gs, NULL, 0);
+	}
+	if (custom_shader->ps) {
+		mOrigContext->PSGetShader(&saved_ps, ps_inst.instances, &ps_inst.num_instances);
+		mOrigContext->PSSetShader(custom_shader->ps, NULL, 0);
+	}
+	if (custom_shader->cs) {
+		mOrigContext->CSGetShader(&saved_cs, cs_inst.instances, &cs_inst.num_instances);
+		mOrigContext->CSSetShader(custom_shader->cs, NULL, 0);
+	}
+
+	// Run the command lists. This should generally include a draw or
+	// dispatch call, or call out to another command list which does.
+	// The reason for having a post command list is so that people can
+	// write 'ps-t100 = ResourceFoo; post ps-t100 = null' and have it work.
+	saved_post = state->post;
+	state->post = false;
+	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &custom_shader->command_list, state);
+	state->post = true;
+	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &custom_shader->post_command_list, state);
+	state->post = saved_post;
+
+	// Finally restore the original shaders
+	if (custom_shader->vs)
+		mOrigContext->VSSetShader(saved_vs, vs_inst.instances, vs_inst.num_instances);
+	if (custom_shader->hs)
+		mOrigContext->HSSetShader(saved_hs, hs_inst.instances, hs_inst.num_instances);
+	if (custom_shader->ds)
+		mOrigContext->DSSetShader(saved_ds, ds_inst.instances, ds_inst.num_instances);
+	if (custom_shader->gs)
+		mOrigContext->GSSetShader(saved_gs, gs_inst.instances, gs_inst.num_instances);
+	if (custom_shader->ps)
+		mOrigContext->PSSetShader(saved_ps, ps_inst.instances, ps_inst.num_instances);
+	if (custom_shader->cs)
+		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
+
+	if (saved_vs)
+		saved_vs->Release();
+	if (saved_hs)
+		saved_hs->Release();
+	if (saved_ds)
+		saved_ds->Release();
+	if (saved_gs)
+		saved_gs->Release();
+	if (saved_ps)
+		saved_ps->Release();
+	if (saved_cs)
+		saved_cs->Release();
 }
 
 

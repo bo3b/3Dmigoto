@@ -44,15 +44,80 @@ public:
 // destruction of each object:
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
-class GeneralCommandListCommand : public CommandListCommand {
+class CheckTextureOverrideCommand : public CommandListCommand {
 public:
 	// For processing command lists in TextureOverride sections:
 	wchar_t shader_type;
 	unsigned texture_slot;
 
-	GeneralCommandListCommand() :
+	CheckTextureOverrideCommand() :
 		shader_type(NULL),
 		texture_slot(INT_MAX)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
+class CustomShader
+{
+public:
+	ID3D11VertexShader *vs;
+	ID3D11HullShader *hs;
+	ID3D11DomainShader *ds;
+	ID3D11GeometryShader *gs;
+	ID3D11PixelShader *ps;
+	ID3D11ComputeShader *cs;
+
+	ID3DBlob *vs_bytecode, *hs_bytecode, *ds_bytecode;
+	ID3DBlob *gs_bytecode, *ps_bytecode, *cs_bytecode;
+
+	CommandList command_list;
+	CommandList post_command_list;
+
+	bool substantiated;
+
+	CustomShader();
+	~CustomShader();
+
+	bool compile(char type, wchar_t *filename, wstring *wname);
+	void substantiate(ID3D11Device *mOrigDevice);
+};
+
+typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;
+extern CustomShaders customShaders;
+
+class RunCustomShaderCommand : public CommandListCommand {
+public:
+	CustomShader *custom_shader;
+
+	RunCustomShaderCommand() :
+		custom_shader(NULL)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
+enum class DrawCommandType {
+	INVALID,
+	DRAW,
+	DRAW_AUTO,
+	DRAW_INDEXED,
+	DRAW_INDEXED_INSTANCED,
+	DRAW_INDEXED_INSTANCED_INDIRECT,
+	DRAW_INSTANCED,
+	DRAW_INSTANCED_INDIRECT,
+	DISPATCH,
+	DISPATCH_INDIRECT,
+};
+
+class DrawCommand : public CommandListCommand {
+public:
+	DrawCommandType type;
+
+	UINT args[5];
+
+	DrawCommand::DrawCommand() :
+		type(DrawCommandType::INVALID)
 	{}
 
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
