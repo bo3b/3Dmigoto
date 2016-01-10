@@ -270,7 +270,6 @@ if_nz r29.w
     endloop
 
     // Write the new list length:
-    iadd r35.w, r35.w, l(-1)
     store_structured g16.x, r33.x, l(0), r35.w
 
   endif
@@ -516,6 +515,15 @@ mad r10.z, -r28.w, r28.x, r10.z
 
   mul r11.xy, r8.zzzz, r7.yzyy
   mul r7.yz, r9.zzzz, r7.yyzy
+
+add r28.w, r8.z, -r28.y
+div r28.w, r28.w, cb0[6].x
+mad r11.x, -r28.w, r28.x, r11.x
+
+add r28.w, r9.z, -r28.y
+div r28.w, r28.w, cb0[6].x
+mad r7.y, -r28.w, r28.x, r7.y
+
   min r11.zw, r10.zzzw, r10.xxxy
   min r11.zw, r11.xxxy, r11.zzzw
   min r11.zw, r7.yyyz, r11.zzzw
