@@ -766,6 +766,7 @@ CustomResource::CustomResource() :
 	bind_flags((D3D11_BIND_FLAG)0),
 	stride(0),
 	offset(0),
+	buf_size(0),
 	format(DXGI_FORMAT_UNKNOWN),
 	max_copies_per_frame(0),
 	frame_no(0),
@@ -1027,7 +1028,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
 		UINT *stride,        // Used by vertex buffers
 		UINT *offset,        // Used by vertex & index buffers
-		DXGI_FORMAT *format) // Used by index buffers
+		DXGI_FORMAT *format, // Used by index buffers
+		UINT *buf_size)      // Used when creating a view of the buffer
 {
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
@@ -1101,9 +1103,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			return NULL;
 		}
 
-		// TODO: For buffer type resources, get the stride, offset and
-		// format from the description
-
 		*view = resource_view;
 		return res;
 
@@ -1157,9 +1156,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			return NULL;
 		}
 
-		// TODO: For buffer type resources, get the stride, offset and
-		// format from the description
-
 		*view = render_view[slot];
 		return res;
 
@@ -1174,8 +1170,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			return NULL;
 		}
 
-		// TODO: For buffer type resources, get the stride, offset and
-		// format from the description
+		// Depth buffers can't be buffers
 
 		*view = depth_view;
 		return res;
@@ -1204,9 +1199,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			return NULL;
 		}
 
-		// TODO: For buffer type resources, get the stride, offset and
-		// format from the description
-
 		*view = unordered_view;
 		return res;
 
@@ -1216,6 +1208,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		*stride = custom_resource->stride;
 		*offset = custom_resource->offset;
 		*format = custom_resource->format;
+		*buf_size = custom_resource->buf_size;
 
 		if (custom_resource->is_null) {
 			// Optimisation to allow the resource to be set to null
@@ -1242,7 +1235,8 @@ void ResourceCopyTarget::SetResource(
 		ID3D11View *view,
 		UINT stride,
 		UINT offset,
-		DXGI_FORMAT format)
+		DXGI_FORMAT format,
+		UINT buf_size)
 {
 	ID3D11Buffer *buf = NULL;
 	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
@@ -1399,6 +1393,7 @@ void ResourceCopyTarget::SetResource(
 		custom_resource->stride = stride;
 		custom_resource->offset = offset;
 		custom_resource->format = format;
+		custom_resource->buf_size = buf_size;
 
 
 		if (res == NULL && view == NULL) {
@@ -1503,7 +1498,6 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT *buf_src_size,
 		UINT *buf_dst_size)
 {
 	HRESULT hr;
@@ -1513,7 +1507,6 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	UINT dst_size;
 
 	src_resource->GetDesc(&new_desc);
-	*buf_src_size = new_desc.ByteWidth;
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
 	new_desc.CPUAccessFlags = 0;
@@ -1676,43 +1669,6 @@ static ResourceType* RecreateCompatibleTexture(
 	return tex;
 }
 
-static DXGI_FORMAT GetViewFormat(ResourceCopyTargetType type, ID3D11View *view)
-{
-	ID3D11ShaderResourceView *resource_view = NULL;
-	ID3D11RenderTargetView *render_view = NULL;
-	ID3D11DepthStencilView *depth_view = NULL;
-	ID3D11UnorderedAccessView *unordered_view = NULL;
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
-	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
-	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
-
-	if (!view)
-		return DXGI_FORMAT_UNKNOWN;
-
-	switch (type) {
-		case ResourceCopyTargetType::SHADER_RESOURCE:
-			resource_view = (ID3D11ShaderResourceView*)view;
-			resource_view->GetDesc(&resource_view_desc);
-			return resource_view_desc.Format;
-		case ResourceCopyTargetType::RENDER_TARGET:
-			render_view = (ID3D11RenderTargetView*)view;
-			render_view->GetDesc(&render_view_desc);
-			return render_view_desc.Format;
-		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-			depth_view = (ID3D11DepthStencilView*)view;
-			depth_view->GetDesc(&depth_view_desc);
-			return depth_view_desc.Format;
-		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-			unordered_view = (ID3D11UnorderedAccessView*)view;
-			unordered_view->GetDesc(&unordered_view_desc);
-			return unordered_view_desc.Format;
-	}
-
-	return DXGI_FORMAT_UNKNOWN;
-}
-
 static void RecreateCompatibleResource(
 		ResourceCopyTarget *dst,
 		ID3D11Resource *src_resource,
@@ -1725,7 +1681,6 @@ static void RecreateCompatibleResource(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT *buf_src_size,
 		UINT *buf_dst_size)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
@@ -1773,7 +1728,7 @@ static void RecreateCompatibleResource(
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
-					bind_flags, device, stride, offset, format, buf_src_size, buf_dst_size);
+					bind_flags, device, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -2194,6 +2149,94 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 	}
 }
 
+static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
+		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_BUFFER_DESC buf_desc;
+	ID3D11Buffer *buffer;
+
+	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view = NULL;
+	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
+	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
+	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
+
+	// Some of these may already be filled in when getting the resource
+	// (either because it is stored in the pipeline state and retrieved
+	// with the resource, or was stored in a custom resource). If they are
+	// not we will try to fill them in here from either the resource or
+	// view description as they may be necessary later to create a
+	// compatible view or perform a region copy:
+
+	if (!*buf_size || !*stride) {
+		resource->GetType(&dimension);
+		if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
+			buffer = (ID3D11Buffer*)resource;
+			buffer->GetDesc(&buf_desc);
+			if (!*buf_size)
+				*buf_size = buf_desc.ByteWidth;
+
+			if (!*stride)
+				*stride = buf_desc.StructureByteStride;
+		}
+	}
+
+	if (view) {
+		switch (type) {
+			case ResourceCopyTargetType::SHADER_RESOURCE:
+				resource_view = (ID3D11ShaderResourceView*)view;
+				resource_view->GetDesc(&resource_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = resource_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = resource_view_desc.Buffer.FirstElement * *stride;
+				if (!buf_size)
+					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+			case ResourceCopyTargetType::RENDER_TARGET:
+				render_view = (ID3D11RenderTargetView*)view;
+				render_view->GetDesc(&render_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = render_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = render_view_desc.Buffer.FirstElement * *stride;
+				if (!buf_size)
+					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+				depth_view = (ID3D11DepthStencilView*)view;
+				depth_view->GetDesc(&depth_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = depth_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				// Depth stencil buffers cannot be buffers
+				break;
+			case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+				unordered_view = (ID3D11UnorderedAccessView*)view;
+				unordered_view->GetDesc(&unordered_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = unordered_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
+				if (!buf_size)
+					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+		}
+	}
+}
+
 static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
 {
 	ID3D11Resource *tmp_resource = NULL;
@@ -2224,11 +2267,11 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	mHackerContext->FrameAnalysisLog("3DMigoto %S = %S\n", ini_key.c_str(), ini_val.c_str());
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
-		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
+		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format);
+	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -2237,7 +2280,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			// this will make errors more obvious if we copy
 			// something that doesn't exist. This behaviour can be
 			// overridden with the unless_null keyword.
-			dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
+			dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 		}
 		return;
 	}
@@ -2260,17 +2303,13 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		}
 	}
 
-	if (format == DXGI_FORMAT_UNKNOWN)
-		format = GetViewFormat(src.type, src_view);
-	if (!stride)
-		stride = dxgi_format_size(format);
+	FillInMissingInfo(src.type, src_resource, src_view, &stride, &offset, &buf_src_size, &format);
 
 	if (options & ResourceCopyOptions::COPY_MASK) {
 		RecreateCompatibleResource(&dst, src_resource,
 			pp_cached_resource, src_view, pp_cached_view,
 			mOrigDevice, mHackerDevice->mStereoHandle,
-			options, stride, offset, format,
-			&buf_src_size, &buf_dst_size);
+			options, stride, offset, format, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
 			LogInfo("Resource copy error: Could not create/update destination resource\n");
@@ -2298,7 +2337,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 				&stereo2mono_intermediate, NULL, NULL,
 				mOrigDevice, mHackerDevice->mStereoHandle,
 				(ResourceCopyOptions)(options | ResourceCopyOptions::STEREO),
-				stride, offset, format, NULL, NULL);
+				stride, offset, format, NULL);
 
 			ReverseStereoBlit(stereo2mono_intermediate, src_resource,
 					mHackerDevice->mStereoHandle, mOrigContext);
@@ -2342,7 +2381,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		*pp_cached_view = dst_view;
 	}
 
-	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, format);
+	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, format, buf_dst_size);
 
 out_release:
 	src_resource->Release();

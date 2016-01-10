@@ -203,6 +203,7 @@ public:
 
 	UINT stride;
 	UINT offset;
+	UINT buf_size;
 	DXGI_FORMAT format;
 
 	int max_copies_per_frame;
@@ -257,14 +258,16 @@ public:
 			ID3D11View **view,
 			UINT *stride,
 			UINT *offset,
-			DXGI_FORMAT *format);
+			DXGI_FORMAT *format,
+			UINT *buf_size);
 	void SetResource(
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11Resource *res,
 			ID3D11View *view,
 			UINT stride,
 			UINT offset,
-			DXGI_FORMAT format);
+			DXGI_FORMAT format,
+			UINT buf_size);
 	D3D11_BIND_FLAG BindFlags();
 };
 
