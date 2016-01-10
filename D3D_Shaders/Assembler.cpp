@@ -130,7 +130,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 2);
+							string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "{ "
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
 							sBegin.append(sNew.substr(lastEnd));
@@ -142,7 +142,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 2);
+							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
 							sBegin.append(sNew.substr(lastEnd));
@@ -154,7 +154,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 2);
+							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
 							sBegin.append(sNew.substr(lastEnd));
@@ -166,7 +166,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 2);
+							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
 							sBegin.append(sNew.substr(lastEnd));
@@ -180,7 +180,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					lastEnd = sNew.find(")", lastLiteral);
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2);
+						string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "l("
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
 						sBegin.append(sNew.substr(lastEnd));
@@ -192,7 +192,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					lastEnd = sNew.find(",", lastLiteral);
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2);
+						string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "l("
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
 						sBegin.append(sNew.substr(lastEnd));
@@ -203,7 +203,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					lastEnd = sNew.find(",", lastLiteral + 1);
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2);
+						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
 						sBegin.append(sNew.substr(lastEnd));
@@ -214,7 +214,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					lastEnd = sNew.find(",", lastLiteral + 1);
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2);
+						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
 						sBegin.append(sNew.substr(lastEnd));
@@ -225,7 +225,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					lastEnd = sNew.find(")", lastLiteral + 1);
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2);
+						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 						sBegin.append(sLiteral);
 						lastLiteral = sBegin.size();
 						sBegin.append(sNew.substr(lastEnd));
