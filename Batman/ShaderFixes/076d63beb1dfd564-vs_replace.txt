@@ -1,3 +1,8 @@
+// Batman's reflection - apply stereo correction to output position + texcoord
+// 82056f0020d634b0-vs_replace.txt
+// 076d63beb1dfd564-vs_replace.txt
+// d88f567d36ec2e5c-vs_replace.txt
+
 // ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 01:18:56 2015
 cbuffer cb2 : register(b2)
 {
@@ -17,6 +22,7 @@ cbuffer cb0 : register(b0)
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
+#include <ShaderFixes/matrix.hlsl>
 
 void main( 
   float4 v0 : POSITION0,
@@ -114,8 +120,17 @@ void main(
   r1.xyzw = cb0[35].xyzw * r0.zzzz + r1.xyzw;
   r1.xyzw = cb0[36].xyzw * r0.wwww + r1.xyzw;
   o6.xyz = r0.xyz;
+
+// Apply stereo correction to both output position & texcoord:
+float4 stereo = StereoParams.Load(0);
+r1.x += stereo.x * (r1.w - stereo.y);
+
   o5.xyzw = r1.xyzw;
   o7.xyzw = r1.xyzw;
+
+// Not sure if this is necessary or not, didn't notice any difference:
+//o6.xyz = mul(r1, inverse(cb0[32], cb0[33], cb0[34], cb0[35]));
+
   return;
 }
 

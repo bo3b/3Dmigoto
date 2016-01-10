@@ -42,7 +42,7 @@ dcl_resource_texture2d (float,float,float,float) t3
 // AO buffer?:
 dcl_resource_texture2d (float,float,float,float) t4
 
-// Batman?
+// Batman's reflection:
 dcl_resource_texture2d (float,float,float,float) t5
 
 dcl_resource_texture2d (float,float,float,float) t6
