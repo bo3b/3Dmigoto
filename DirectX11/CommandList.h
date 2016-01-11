@@ -46,6 +46,7 @@ typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
 class CheckTextureOverrideCommand : public CommandListCommand {
 public:
+	wstring ini_val;
 	// For processing command lists in TextureOverride sections:
 	wchar_t shader_type;
 	unsigned texture_slot;
@@ -88,6 +89,7 @@ extern CustomShaders customShaders;
 
 class RunCustomShaderCommand : public CommandListCommand {
 public:
+	wstring ini_val;
 	CustomShader *custom_shader;
 
 	RunCustomShaderCommand() :
@@ -155,6 +157,8 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 };
 class ParamOverride : public CommandListCommand {
 public:
+	wstring ini_key, ini_val;
+
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
 
@@ -315,6 +319,8 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 
 class ResourceCopyOperation : public CommandListCommand {
 public:
+	wstring ini_key, ini_val;
+
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
 	ResourceCopyOptions options;

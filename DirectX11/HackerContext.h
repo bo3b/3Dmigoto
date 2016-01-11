@@ -171,7 +171,6 @@ private:
 
 protected:
 	// Protected to allow HackerContext1 access, but not external
-	void FrameAnalysisLog(char *fmt, ...);
 	void FrameAnalysisLogResourceHash(ID3D11Resource *resource);
 	void FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource);
 	void FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Resource *const *ppResources);
@@ -184,6 +183,9 @@ public:
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
+
+	// public to allow CommandList access
+	void FrameAnalysisLog(char *fmt, ...);
 
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);

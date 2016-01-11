@@ -103,6 +103,7 @@ static bool ParseCheckTextureOverride(wstring *val, CommandList *explicit_comman
 			operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		switch(operation->shader_type) {
 			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+				operation->ini_val = *val;
 				AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 				return true;
 		}
@@ -128,6 +129,7 @@ static bool ParseRunShader(wstring *val, CommandList *explicit_command_list,
 		if (shader == customShaders.end())
 			goto bail;
 
+		operation->ini_val = *val;
 		operation->custom_shader = &shader->second;
 		AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 		return true;
@@ -259,6 +261,8 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 	if (!hash)
 		goto out_release_resource;
 
+	mHackerContext->FrameAnalysisLog(" hash=%08llx", hash);
+
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
 		goto out_release_resource;
@@ -276,8 +280,13 @@ void CheckTextureOverrideCommand::run(HackerDevice *mHackerDevice, HackerContext
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
 {
+	mHackerContext->FrameAnalysisLog("3DMigoto checktextureoverride = %S", ini_val.c_str());
+
 	TextureOverride *override = FindTextureOverrideBySlot(mHackerContext,
 			mOrigContext, shader_type, texture_slot);
+
+	mHackerContext->FrameAnalysisLog(" found=%s\n", override ? "true" : "false");
+
 	if (!override)
 		return;
 
@@ -296,25 +305,31 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 
 	switch (type) {
 		case DrawCommandType::DRAW:
+			mHackerContext->FrameAnalysisLog("3DMigoto Draw(%u, %u)\n", args[0], args[1]);
 			mOrigContext->Draw(args[0], args[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
+			mHackerContext->FrameAnalysisLog("3DMigoto DrawAuto()\n");
 			mOrigContext->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
+			mHackerContext->FrameAnalysisLog("3DMigoto DrawIndexed(%u, %u, %i)\n", args[0], args[1], (INT)args[2]);
 			mOrigContext->DrawIndexed(args[0], args[1], (INT)args[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
+			mHackerContext->FrameAnalysisLog("3DMigoto DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", args[0], args[1], args[2], (INT)args[3], args[4]);
 			mOrigContext->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DRAW_INSTANCED:
+			mHackerContext->FrameAnalysisLog("3DMigoto DrawInstanced(%u, %u, %u, %u)\n", args[0], args[1], args[2], args[3]);
 			mOrigContext->DrawInstanced(args[0], args[1], args[2], args[3]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DISPATCH:
+			mHackerContext->FrameAnalysisLog("3DMigoto Dispatch(%u, %u, %u)\n", args[0], args[1], args[2]);
 			mOrigContext->Dispatch(args[0], args[1], args[2]);
 			break;
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
@@ -519,6 +534,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11ComputeShader *saved_cs = NULL;
 	bool saved_post;
 
+	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
+
 	custom_shader->substantiate(mOrigDevice);
 
 	saved_shader_inst vs_inst, hs_inst, ds_inst, gs_inst, ps_inst, cs_inst;
@@ -684,6 +701,9 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 		default:
 			return;
 	}
+
+	mHackerContext->FrameAnalysisLog("3DMigoto %S = %S (%f)\n", ini_key.c_str(), ini_val.c_str(), *dest);
+
 	state->update_params |= (*dest != orig);
 }
 
@@ -728,6 +748,8 @@ bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		goto bail;
 
 success:
+	param->ini_key = key;
+	param->ini_val = *val;
 	command_list->push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
 bail:
@@ -990,6 +1012,8 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
 			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
 	}
 
+	operation->ini_key = key;
+	operation->ini_val = *val;
 	command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
 	return true;
 bail:
@@ -2190,6 +2214,8 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	UINT offset = 0;
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	UINT buf_src_size = 0, buf_dst_size = 0;
+
+	mHackerContext->FrameAnalysisLog("3DMigoto %S = %S\n", ini_key.c_str(), ini_val.c_str());
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN);
