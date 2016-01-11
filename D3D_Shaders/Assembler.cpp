@@ -143,7 +143,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
 							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-							if (sNew[lastLiteral + 1] == " ")
+							if (sNew[lastLiteral + 1] == ' ')
 								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
@@ -157,7 +157,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
 							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-							if (sNew[lastLiteral + 1] == " ")
+							if (sNew[lastLiteral + 1] == ' ')
 								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
@@ -171,7 +171,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 						if (v[i] != v2[i]) {
 							string sLiteral = convertF(v[i]);
 							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-							if (sNew[lastLiteral + 1] == " ")
+							if (sNew[lastLiteral + 1] == ' ')
 								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
 							lastLiteral = sBegin.size();
 							sBegin.append(sLiteral);
@@ -210,7 +210,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
 						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-						if (sNew[lastLiteral + 1] == " ")
+						if (sNew[lastLiteral + 1] == ' ')
 							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
@@ -223,7 +223,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
 						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-						if (sNew[lastLiteral + 1] == " ")
+						if (sNew[lastLiteral + 1] == ' ')
 							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
@@ -236,7 +236,7 @@ string assembleAndCompare(string s, vector<DWORD> v) {
 					if (v[i] != v2[i]) {
 						string sLiteral = convertF(v[i]);
 						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-						if (sNew[lastLiteral + 1] == " ")
+						if (sNew[lastLiteral + 1] == ' ')
 							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
 						sBegin.append(sLiteral);
 						lastLiteral = sBegin.size();
