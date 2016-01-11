@@ -160,9 +160,20 @@ void LogResourceDesc(const D3D11_BUFFER_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE2D_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE3D_DESC *desc);
+void LogResourceDesc(ID3D11Resource *resource);
 template <typename DescType>
 static void LogDebugResourceDesc(DescType *desc)
 {
 	if (gLogDebug)
 		LogResourceDesc(desc);
+}
+void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc);
+void LogViewDesc(const D3D11_RENDER_TARGET_VIEW_DESC *desc);
+void LogViewDesc(const D3D11_DEPTH_STENCIL_VIEW_DESC *desc);
+void LogViewDesc(const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc);
+template <typename DescType>
+static void LogDebugViewDesc(DescType *desc)
+{
+	if (gLogDebug)
+		LogViewDesc(desc);
 }

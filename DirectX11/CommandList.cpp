@@ -1911,8 +1911,14 @@ static ID3D11View* _CreateCompatibleView(
 	hr = (device->*CreateView)(resource, pDesc, &view);
 	if (FAILED(hr)) {
 		LogInfo("Resource copy CreateCompatibleView failed: %x\n", hr);
+		if (pDesc)
+			LogViewDesc(pDesc);
+		LogResourceDesc(resource);
 		return NULL;
 	}
+
+	if (pDesc)
+		LogDebugViewDesc(pDesc);
 
 	return view;
 }
@@ -2316,7 +2322,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			if (ViewMatchesResource(*pp_cached_view, dst_resource)) {
 				dst_view = *pp_cached_view;
 			} else {
-				LogInfo("Resource copying: Releasing stale view cache\n");
+				LogDebug("Resource copying: Releasing stale view cache\n");
 				(*pp_cached_view)->Release();
 				*pp_cached_view = NULL;
 			}
