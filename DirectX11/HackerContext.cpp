@@ -534,9 +534,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 {
 	int i;
 
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(false);
-
 	if (data.skip)
 		return;
 
@@ -546,6 +543,9 @@ void HackerContext::AfterDraw(DrawContext &data)
 					data.VertexCount, data.IndexCount, data.InstanceCount, true);
 		}
 	}
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(false);
 
 	if (data.override) {
 		if (mHackerDevice->mStereoHandle) {
@@ -1149,11 +1149,11 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 
 void HackerContext::AfterDispatch(DispatchContext *context)
 {
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(true);
-
 	if (context->post_commands)
 		RunCommandList(mHackerDevice, this, context->post_commands, 0, 0, 0, true);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(true);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -1166,11 +1166,12 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 {
 	DispatchContext context;
 
+	if (BeforeDispatch(&context))
+		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
 	FrameAnalysisLog("Dispatch(ThreadGroupCountX:%u, ThreadGroupCountY:%u, ThreadGroupCountZ:%u)\n",
 			ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 
-	if (BeforeDispatch(&context))
-		mOrigContext->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 	AfterDispatch(&context);
 }
 
@@ -1182,11 +1183,13 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 {
 	DispatchContext context;
 
-	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
-			pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (BeforeDispatch(&context))
 		mOrigContext->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+
+	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+			pBufferForArgs, AlignedByteOffsetForArgs);
+
 	AfterDispatch(&context);
 }
 
@@ -2522,11 +2525,12 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	/* [annotation] */
 	__in  INT BaseVertexLocation)
 {
+	DrawContext c = DrawContext(0, IndexCount, 0);
+	BeforeDraw(c);
+
 	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u)\n",
 			IndexCount, StartIndexLocation, BaseVertexLocation);
 
-	DrawContext c = DrawContext(0, IndexCount, 0);
-	BeforeDraw(c);
 	if (!c.skip)
 		 mOrigContext->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
 	AfterDraw(c);
@@ -2538,11 +2542,12 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	/* [annotation] */
 	__in  UINT StartVertexLocation)
 {
+	DrawContext c = DrawContext(VertexCount, 0, 0);
+	BeforeDraw(c);
+
 	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
 			VertexCount, StartVertexLocation);
 
-	DrawContext c = DrawContext(VertexCount, 0, 0);
-	BeforeDraw(c);
 	if (!c.skip)
 		 mOrigContext->Draw(VertexCount, StartVertexLocation);
 	AfterDraw(c);
@@ -2595,11 +2600,12 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
+	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount);
+	BeforeDraw(c);
+
 	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
 			IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 
-	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount);
-	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
 		BaseVertexLocation, StartInstanceLocation);
@@ -2616,11 +2622,12 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
+	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount);
+	BeforeDraw(c);
+
 	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
 			VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
-	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount);
-	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 	AfterDraw(c);
@@ -2734,10 +2741,11 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 
 STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
-	FrameAnalysisLog("DrawAuto()\n");
-
 	DrawContext c = DrawContext(0, 0, 0);
 	BeforeDraw(c);
+
+	FrameAnalysisLog("DrawAuto()\n");
+
 	if (!c.skip)
 		mOrigContext->DrawAuto();
 	AfterDraw(c);
@@ -2749,11 +2757,12 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
+	DrawContext c = DrawContext(0, 0, 0);
+	BeforeDraw(c);
+
 	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
-	DrawContext c = DrawContext(0, 0, 0);
-	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
@@ -2765,11 +2774,12 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
+	DrawContext c = DrawContext(0, 0, 0);
+	BeforeDraw(c);
+
 	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
-	DrawContext c = DrawContext(0, 0, 0);
-	BeforeDraw(c);
 	if (!c.skip)
 		mOrigContext->DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
