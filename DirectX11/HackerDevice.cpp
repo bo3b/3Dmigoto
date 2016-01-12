@@ -416,7 +416,10 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	}
 	else if (riid == __uuidof(ID3D11Device))
 	{
-		*ppvObject = this;
+		if (!(G->enable_hooks & EnableHooks::DEVICE)) {
+			// If we are hooking we don't return the wrapped device
+			*ppvObject = this;
+		}
 		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", typeid(*this).name(), this, mOrigDevice);
 	}
 	else if (riid == __uuidof(ID3D11Device1))
@@ -2286,6 +2289,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 
 		mHackerContext = new HackerContext(mOrigDevice, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
+		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
+			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p \n", mHackerContext, *ppImmediateContext);
 	}
 	else if (mHackerContext->GetOrigContext() != *ppImmediateContext)
@@ -2294,7 +2299,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 				mHackerContext, mHackerContext->GetOrigContext(), *ppImmediateContext);
 	}
 
-	*ppImmediateContext = mHackerContext;
+	if (!(G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT))
+		*ppImmediateContext = mHackerContext;
 	LogDebug("  returns handle = %p  \n", *ppImmediateContext);
 }
 

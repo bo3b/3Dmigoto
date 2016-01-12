@@ -686,7 +686,8 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	mOrigContext->GetDevice(ppDevice);
 
 	// Return our wrapped device though.
-	*ppDevice = mHackerDevice;
+	if (!(G->enable_hooks & EnableHooks::DEVICE))
+		*ppDevice = mHackerDevice;
 }
 
 STDMETHODIMP HackerContext::GetPrivateData(THIS_
