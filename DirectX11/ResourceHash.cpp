@@ -18,7 +18,7 @@ static void LogResourceDescCommon(DescType *desc)
 
 void LogResourceDesc(const D3D11_BUFFER_DESC *desc)
 {
-	LogInfo("    Resource Type = Buffer\n");
+	LogInfo("  Resource Type = Buffer\n");
 	LogInfo("    ByteWidth = %d\n", desc->ByteWidth);
 	LogResourceDescCommon(desc);
 	LogInfo("    StructureByteStride = %d\n", desc->StructureByteStride);
