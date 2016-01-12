@@ -5,6 +5,7 @@
 //  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
 #include "HackerContext.h"
+#include "HookedContext.h"
 
 #include "log.h"
 #include "HackerDevice.h"
@@ -52,6 +53,17 @@ void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 {
 	return mOrigContext;
+}
+
+void HackerContext::HookContext()
+{
+	// This will install hooks in the original context (if they have not
+	// already been installed from a prior context) which will call the
+	// equivalent function in this HackerContext. It returns a trampoline
+	// interface which we use in place of mOrigContext to call the real
+	// original context, thereby side stepping the problem that calling the
+	// old mOrigInterface would be hooked and call back into us endlessly:
+	mOrigContext = hook_context(mOrigContext, this);
 }
 
 // -----------------------------------------------------------------------------

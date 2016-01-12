@@ -183,6 +183,7 @@ public:
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
+	void HookContext();
 
 	// public to allow CommandList access
 	void FrameAnalysisLog(char *fmt, ...);

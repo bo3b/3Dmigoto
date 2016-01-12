@@ -47,6 +47,7 @@
     <ClCompile Include="HackerContext.cpp" />
     <ClCompile Include="HackerDevice.cpp" />
     <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="HookedContext.cpp" />
     <ClCompile Include="HookedDXGI.cpp" />
     <ClCompile Include="Hunting.cpp" />
     <ClCompile Include="IniHandler.cpp" />
@@ -71,6 +72,7 @@
     <ClInclude Include="HackerContext.h" />
     <ClInclude Include="HackerDevice.h" />
     <ClInclude Include="HackerDXGI.h" />
+    <ClInclude Include="HookedContext.h" />
     <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="IniHandler.h" />

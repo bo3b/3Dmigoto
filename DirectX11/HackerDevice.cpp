@@ -2205,7 +2205,12 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 		ID3D11DeviceContext *origContext = static_cast<ID3D11DeviceContext*>(*ppDeferredContext);
 		HackerContext *hackerContext = new HackerContext(mOrigDevice, origContext);
 		hackerContext->SetHackerDevice(this);
-		*ppDeferredContext = hackerContext;
+
+		if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
+			hackerContext->HookContext();
+		else
+			*ppDeferredContext = hackerContext;
+
 		LogInfo("  created HackerContext(%s@%p) wrapper of %p \n", typeid(*hackerContext).name(), hackerContext, origContext);
 	}
 

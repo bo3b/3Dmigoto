@@ -18,6 +18,7 @@
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="ResourceHash.cpp" />
+    <ClCompile Include="HookedContext.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -43,6 +44,7 @@
     <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="ResourceHash.h" />
+    <ClInclude Include="HookedContext.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

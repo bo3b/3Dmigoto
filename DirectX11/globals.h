@@ -253,6 +253,18 @@ struct ResolutionInfo
 	{}
 };
 
+enum class EnableHooks {
+	INVALID           = 0,
+	DEFERRED_CONTEXTS = 0x00000001,
+	ALL               = 0x7fffffff,
+};
+SENSIBLE_ENUM(EnableHooks);
+static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
+	{L"deferred_contexts", EnableHooks::DEFERRED_CONTEXTS},
+	{L"all", EnableHooks::ALL},
+	{NULL, EnableHooks::INVALID} // End of list marker
+};
+
 struct Globals
 {
 	bool gInitialized;
@@ -262,6 +274,8 @@ struct Globals
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
+
+	EnableHooks enable_hooks;
 
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
@@ -464,6 +478,7 @@ struct Globals
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0),
 
+		enable_hooks(EnableHooks::INVALID),
 		gInitialized(false),
 		gReloadConfigPending(false),
 		gLogInput(false)

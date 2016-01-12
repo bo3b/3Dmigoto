@@ -800,6 +800,11 @@ void LoadConfigFile()
 	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH, iniFile);
 	if (G->CHAIN_DLL_PATH[0])
 		LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
+	if (GetPrivateProfileString(L"System", L"hook", 0, setting, MAX_PATH, iniFile)) {
+		LogInfoW(L"  hook=%s\n", setting);
+		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
+			(EnableHooksNames, setting, NULL);
+	}
 
 	// [Device] (DXGI parameters)
 	if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
