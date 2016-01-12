@@ -735,10 +735,10 @@ if_nz r3.z
     add_sat r2.y, -r2.y, l(0.750000)
     mul r7.w, r2.y, r2.y
     mul r2.y, r2.y, r7.w
-    mul r14.xy, r2.xxxx, l(0.000244140625,0.000333333330, 0.000000, 0.000000)
+    mul r14.xy, r2.xxxx, l(0.000244140625, 0.000333333330, 0.000000, 0.000000)
     max r2.y, r2.y, r14.y
     mul r14.yz, r8.xxyx, l(0.000000, 0.125000, 0.125000, 0.000000)
-    mad r14.yz, r9.xxyx, l(0.000000,0.0112499995,0.0112499995, 0.000000), r14.yyzy
+    mad r14.yz, r9.xxyx, l(0.000000, 0.0112499995, 0.0112499995, 0.000000), r14.yyzy
     mul r2.y, r2.y, l(10.000000)
     sample_l_indexable(texture2d)(float,float,float,float) r15.xy, r14.yzyy, t8.xwyz, s2, r2.y
     mov r16.xw, cb0[17].xxxy
@@ -832,10 +832,10 @@ mad r0.zw, r2.yyyz, cb0[12].xxxy, r0.zzzw
 gather4_aoffimmi_indexable(-1,-1,0)(texture2d)(float,float,float,float) r2.yz, r0.zwzz, t0.yxzw, s1.x
 gather4_indexable(texture2d)(float,float,float,float) r0.zw, r0.zwzz, t0.ywxz, s1.x
 
-min r0.zw, r0.zzzw, l(0.000000, 0.000000,0.999999881,0.999999881)
+min r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.999999881, 0.999999881)
 mad r0.zw, r0.zzzw, cb1[20].zzzz, -cb1[20].wwww
 div r0.zw, l(1.000000, 1.000000, 1.000000, 1.000000), r0.zzzw
-min r2.yz, r2.yyzy, l(0.000000,0.999999881,0.999999881, 0.000000)
+min r2.yz, r2.yyzy, l(0.000000, 0.999999881, 0.999999881, 0.000000)
 mad r2.yz, r2.yyzy, cb1[20].zzzz, -cb1[20].wwww
 div r2.yz, l(1.000000, 1.000000, 1.000000, 1.000000), r2.yyzy
 iadd r6.xyzw, r3.xyxy, l(0, 1, 1, 0)
@@ -921,7 +921,7 @@ rsq r0.z, r0.z
 mul r7.xyz, r0.zzzz, r6.xyzx
 div r2.yz, l(1.000000, 1.000000, 1.000000, 1.000000), cb0[10].xxyx
 mul r2.yz, r2.yyzy, r2.xxxx
-mul r2.yz, r2.yyzy, l(0.000000,0.00732421875,0.00732421875, 0.000000)
+mul r2.yz, r2.yyzy, l(0.000000, 0.00732421875, 0.00732421875, 0.000000)
 div r2.yz, r2.yyzy, cb0[5].wwww
 max r2.yz, r0.wwww, r2.yyzy
 div r12.xy, r0.wwww, r2.yzyy
@@ -1001,7 +1001,7 @@ if_nz r3.w
   lt r3.w, l(0.000000), r0.y
   if_nz r3.w
     add r6.xyz, r9.xyzx, -cb0[20].xyzx
-    mad r6.xyz, r6.xyzx, l(0.0000488281257,0.0000488281257,0.0000813802108, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+    mad r6.xyz, r6.xyzx, l(0.0000488281257, 0.0000488281257, 0.0000813802108, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
     sample_l_indexable(texture3d)(float,float,float,float) r18.xyzw, r6.xyzx, t18.xyzw, s3, l(0.000000)
     sample_l_indexable(texture3d)(float,float,float,float) r19.xyzw, r6.xyzx, t19.xyzw, s3, l(0.000000)
     sample_l_indexable(texture3d)(float,float,float,float) r6.xyzw, r6.xyzx, t20.xyzw, s3, l(0.000000)
@@ -1013,7 +1013,7 @@ if_nz r3.w
   max r6.xyz, r6.xyzx, l(-1.000000, -1.000000, -1.000000, 0.000000)
   min r6.yzw, r6.xxyz, l(0.000000, 1.000000, 1.000000, 1.000000)
   mov r6.x, l(0.500000)
-  mul r6.xyzw, r6.xyzw, l(0.282094806,-0.488602519,0.488602519,-0.488602519)
+  mul r6.xyzw, r6.xyzw, l(0.282094806, -0.488602519, 0.488602519, -0.488602519)
   dp4 r18.x, r15.xyzw, r6.xyzw
   dp4 r18.y, r16.xyzw, r6.xyzw
   dp4 r18.z, r17.xyzw, r6.xyzw
@@ -1027,7 +1027,7 @@ if_nz r3.w
   max r18.xyz, r18.xyzx, l(-1.000000, -1.000000, -1.000000, 0.000000)
   min r18.yzw, r18.xxyz, l(0.000000, 1.000000, 1.000000, 1.000000)
   mov r18.x, l(0.500000)
-  mul r18.xyzw, r18.xyzw, l(0.282094806,-0.488602519,0.488602519,-0.488602519)
+  mul r18.xyzw, r18.xyzw, l(0.282094806, -0.488602519, 0.488602519, -0.488602519)
   dp4 r19.x, r15.xyzw, r18.xyzw
   dp4 r19.y, r16.xyzw, r18.xyzw
   dp4 r19.z, r17.xyzw, r18.xyzw
@@ -1041,7 +1041,7 @@ if_nz r3.w
   dp3 r0.y, -r19.xyzx, -r19.xyzx
   rsq r0.y, r0.y
   mul r19.xyz, r0.yyyy, -r19.xyzx
-  mul r19.xyz, r19.xyzx, l(-1.02332675,1.02332675,-1.02332675, 0.000000)
+  mul r19.xyz, r19.xyzx, l(-1.02332675, 1.02332675, -1.02332675, 0.000000)
   dp3 r15.x, r15.yzwy, r19.xyzx
   dp3 r15.y, r16.yzwy, r19.xyzx
   dp3 r15.z, r17.yzwy, r19.xyzx
@@ -1146,7 +1146,7 @@ resinfo_indexable(texture2d)(float,float,float,float)_uint r2.yz, l(0), t11.zxyw
 ishl r2.yz, r2.yyzy, l(0, 1, 1, 0)
 utof r2.yz, r2.yyzy
 add r3.xw, r2.xxxx, l(-2000.000000, 0.000000, 0.000000, -8192.000000)
-mul_sat r3.xw, r3.xxxw, l(0.000500, 0.000000, 0.000000,0.000244140625)
+mul_sat r3.xw, r3.xxxw, l(0.000500, 0.000000, 0.000000, 0.000244140625)
 mad r1.x, r3.x, l(-0.950000), l(1.000000)
 mul r1.x, r1.x, l(1.200000)
 mad r2.x, r12.z, l(0.975000), l(0.025000)
@@ -1231,10 +1231,10 @@ loop
     or r13.w, r18.y, r13.w
     if_nz r13.w
       div r13.w, l(1.000000, 1.000000, 1.000000, 1.000000), r20.w
-      dp2 r14.w, r15.xzxx, l(0.888073862,-0.459700823, 0.000000, 0.000000)
-      dp3 r16.w, r15.xyzx, l(-0.888073862,-7.763787835E-008,-0.459700823, 0.000000)
-      dp3 r17.w, r15.xyzx, l(-3.881894273E-008,-0.888073862,0.459700823, 0.000000)
-      dp3 r19.x, r15.xyzx, l(-3.881894273E-008,0.888073862,0.459700823, 0.000000)
+      dp2 r14.w, r15.xzxx, l(0.888073862, -0.459700823, 0.000000, 0.000000)
+      dp3 r16.w, r15.xyzx, l(-0.888073862, -7.763787835E-008, -0.459700823, 0.000000)
+      dp3 r17.w, r15.xyzx, l(-3.881894273E-008, -0.888073862, 0.459700823, 0.000000)
+      dp3 r19.x, r15.xyzx, l(-3.881894273E-008, 0.888073862, 0.459700823, 0.000000)
       max r19.y, r14.w, r16.w
       max r19.x, r17.w, r19.x
       max r19.x, r19.x, r19.y
