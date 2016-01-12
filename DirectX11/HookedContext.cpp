@@ -95,14 +95,20 @@ static ULONG STDMETHODCALLTYPE AddRef(ID3D11DeviceContext *This)
 static ULONG STDMETHODCALLTYPE Release(ID3D11DeviceContext *This)
 {
 	ContextMap::iterator i;
+	ULONG ref;
 
 	HookDebug("HookedContext::Release()\n");
 
 	i = context_map.find(This);
 	if (i != context_map.end())
-		return i->second->lpVtbl->Release(i->second);
+		ref = i->second->lpVtbl->Release(i->second);
+	else
+		ref = orig_vtable.Release(This);
 
-	return orig_vtable.Release(This);
+	if (!ref)
+		context_map.erase(i);
+
+	return ref;
 }
 
 // ID3D11DeviceChild
@@ -2319,8 +2325,15 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(ID3D11DeviceContext *This)
 }
 static ULONG STDMETHODCALLTYPE TrampolineRelease(ID3D11DeviceContext *This)
 {
+	ULONG ref;
+
 	HookDebug("TrampolineContext::Release()\n");
-	return orig_vtable.Release(((ID3D11DeviceContextTrampoline*)This)->orig_this);
+	ref = orig_vtable.Release(((ID3D11DeviceContextTrampoline*)This)->orig_this);
+
+	if (!ref)
+		delete This;
+
+	return ref;
 }
 // ID3D11DeviceChild
 static void STDMETHODCALLTYPE TrampolineGetDevice(ID3D11DeviceContext *This,
