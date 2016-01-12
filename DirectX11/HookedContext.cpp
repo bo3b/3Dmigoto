@@ -110,13 +110,13 @@ static ULONG STDMETHODCALLTYPE Release(ID3D11DeviceContext *This)
 
 	EnterCriticalSection(&context_map_lock);
 	i = context_map.find(This);
-	if (i != context_map.end())
+	if (i != context_map.end()) {
 		ref = i->second->lpVtbl->Release(i->second);
-	else
+		if (!ref)
+			context_map.erase(i);
+	} else
 		ref = orig_vtable.Release(This);
 
-	if (!ref)
-		context_map.erase(i);
 	LeaveCriticalSection(&context_map_lock);
 
 	return ref;

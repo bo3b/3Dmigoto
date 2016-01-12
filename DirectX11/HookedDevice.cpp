@@ -112,13 +112,13 @@ static ULONG STDMETHODCALLTYPE Release(
 
 	EnterCriticalSection(&device_map_lock);
 	i = device_map.find(This);
-	if (i != device_map.end())
+	if (i != device_map.end()) {
 		ref = i->second->lpVtbl->Release(i->second);
-	else
+		if (!ref)
+			device_map.erase(i);
+	} else
 		ref = orig_vtable.Release(This);
 
-	if (!ref)
-		device_map.erase(i);
 	LeaveCriticalSection(&device_map_lock);
 
 	return ref;
