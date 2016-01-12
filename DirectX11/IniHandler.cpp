@@ -787,24 +787,19 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
-	if (LogFile)
-	{
-		LogInfo("[Logging]\n");
-		LogInfo("  calls=1\n");
-		if (G->gLogInput) LogInfo("  input=1\n");
-		LogDebug("  debug=1\n");
-		if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-		if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
-		if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
-	}
+	LogInfo("[Logging]\n");
+	LogInfo("  calls=1\n");
+	if (G->gLogInput) LogInfo("  input=1\n");
+	LogDebug("  debug=1\n");
+	if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
+	if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
+	if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
 
 	// [System]
+	LogInfo("[System]\n");
 	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH, iniFile);
-	if (LogFile)
-	{
-		LogInfo("[System]\n");
-		if (!G->CHAIN_DLL_PATH) LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
-	}
+	if (G->CHAIN_DLL_PATH[0])
+		LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
 
 	// [Device] (DXGI parameters)
 	if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
@@ -825,17 +820,14 @@ void LoadConfigFile()
 	G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
 	G->SCREEN_ALLOW_COMMANDS = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1;
 
-	if (LogFile)
-	{
-		LogInfo("[Device]\n");
-		if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
-		if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
-		if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-		if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%d\n", G->FILTER_REFRESH[0]);
-		if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
-		if (G->gForceStereo) LogInfo("  force_stereo=1\n");
-		if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
-	}
+	LogInfo("[Device]\n");
+	if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
+	if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
+	if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
+	if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%d\n", G->FILTER_REFRESH[0]);
+	if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
+	if (G->gForceStereo) LogInfo("  force_stereo=1\n");
+	if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 
 	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
@@ -855,15 +847,12 @@ void LoadConfigFile()
 	G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
 	G->gForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, iniFile) == 1;
 
-	if (LogFile)
-	{
-		LogInfo("[Stereo]\n");
-		if (automaticMode) LogInfo("  automatic_mode=1\n");
-		if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
-		if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
-		if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
-		if (G->gForceNoNvAPI) LogInfo("  force_no_nvapi=1 \n");
-	}
+	LogInfo("[Stereo]\n");
+	if (automaticMode) LogInfo("  automatic_mode=1\n");
+	if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
+	if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
+	if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
+	if (G->gForceNoNvAPI) LogInfo("  force_no_nvapi=1 \n");
 
 	// [Rendering]
 	GetPrivateProfileString(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH, iniFile);
@@ -922,29 +911,26 @@ void LoadConfigFile()
 		G->IniParamsReg = -1;
 	}
 
-	if (LogFile)
-	{
-		LogInfo("[Rendering]\n");
-		if (G->SHADER_PATH[0])
-			LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
-		if (G->SHADER_CACHE_PATH[0])
-			LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
+	LogInfo("[Rendering]\n");
+	if (G->SHADER_PATH[0])
+		LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
+	if (G->SHADER_CACHE_PATH[0])
+		LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
-		if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
-		if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
-		if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
-		if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
-		if (G->track_texture_updates) LogInfo("  track_texture_updates=1\n");
+	if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
+	if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
+	if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
+	if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
+	if (G->track_texture_updates) LogInfo("  track_texture_updates=1\n");
 
-		if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
-		if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
-		if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
-		if (G->EXPORT_BINARY) LogInfo("  export_binary=1\n");
-		if (G->DumpUsage) LogInfo("  dump_usage=1\n");
+	if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
+	if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
+	if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
+	if (G->EXPORT_BINARY) LogInfo("  export_binary=1\n");
+	if (G->DumpUsage) LogInfo("  dump_usage=1\n");
 
-		LogInfo("  stereo_params=%i\n", G->StereoParamsReg);
-		LogInfo("  ini_params=%i\n", G->IniParamsReg);
-	}
+	LogInfo("  stereo_params=%i\n", G->StereoParamsReg);
+	LogInfo("  ini_params=%i\n", G->IniParamsReg);
 
 
 	// Automatic section 
