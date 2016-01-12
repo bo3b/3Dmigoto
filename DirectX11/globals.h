@@ -256,11 +256,17 @@ struct ResolutionInfo
 enum class EnableHooks {
 	INVALID           = 0,
 	DEFERRED_CONTEXTS = 0x00000001,
+	IMMEDIATE_CONTEXT = 0x00000002,
+	CONTEXT           = 0x00000003,
+	DEVICE            = 0x00000004,
 	ALL               = 0x7fffffff,
 };
 SENSIBLE_ENUM(EnableHooks);
 static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
 	{L"deferred_contexts", EnableHooks::DEFERRED_CONTEXTS},
+	{L"immediate_context", EnableHooks::IMMEDIATE_CONTEXT},
+	{L"context", EnableHooks::IMMEDIATE_CONTEXT},
+	{L"device", EnableHooks::DEVICE},
 	{L"all", EnableHooks::ALL},
 	{NULL, EnableHooks::INVALID} // End of list marker
 };

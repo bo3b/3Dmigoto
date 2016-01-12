@@ -58,7 +58,7 @@
 // A map to look up the hacker context from the original context:
 typedef std::unordered_map<ID3D11DeviceContext *, ID3D11DeviceContext *> ContextMap;
 static ContextMap context_map;
-CRITICAL_SECTION context_map_lock;
+static CRITICAL_SECTION context_map_lock;
 
 // Holds all the function pointers that we need to call into the real original
 // context:

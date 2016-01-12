@@ -62,7 +62,7 @@ void HackerContext::HookContext()
 	// equivalent function in this HackerContext. It returns a trampoline
 	// interface which we use in place of mOrigContext to call the real
 	// original context, thereby side stepping the problem that calling the
-	// old mOrigInterface would be hooked and call back into us endlessly:
+	// old mOrigContext would be hooked and call back into us endlessly:
 	mOrigContext = hook_context(mOrigContext, this);
 }
 

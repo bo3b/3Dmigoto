@@ -85,6 +85,7 @@ public:
 	ID3D11Device* GetOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
 	IDXGISwapChain* GetOrigSwapChain();
+	void HackerDevice::HookDevice();
 
 
 	//static ID3D11Device* GetDirect3DDevice(ID3D11Device *pDevice);

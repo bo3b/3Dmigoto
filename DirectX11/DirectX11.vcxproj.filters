@@ -19,6 +19,7 @@
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="ResourceHash.cpp" />
     <ClCompile Include="HookedContext.cpp" />
+    <ClCompile Include="HookedDevice.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -45,6 +46,7 @@
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="HookedContext.h" />
+    <ClInclude Include="HookedDevice.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

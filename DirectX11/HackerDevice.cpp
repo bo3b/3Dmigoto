@@ -2,6 +2,7 @@
 // This gives us access to every D3D11 call for a device, and override the pieces needed.
 
 #include "HackerDevice.h"
+#include "HookedDevice.h"
 #include "HackerDXGI.h"
 
 #include <D3Dcompiler.h>
@@ -252,6 +253,18 @@ IDXGISwapChain* HackerDevice::GetOrigSwapChain()
 {
 	return mHackerSwapChain->GetOrigSwapChain();
 }
+
+void HackerDevice::HookDevice()
+{
+	// This will install hooks in the original device (if they have not
+	// already been installed from a prior device) which will call the
+	// equivalent function in this HackerDevice. It returns a trampoline
+	// interface which we use in place of mOrigDevice to call the real
+	// original device, thereby side stepping the problem that calling the
+	// old mOrigDevice would be hooked and call back into us endlessly:
+	mOrigDevice = hook_device(mOrigDevice, this);
+}
+
 
 
 // No longer need this routine, we are storing Device and Context in the object

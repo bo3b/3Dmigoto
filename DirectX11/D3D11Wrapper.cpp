@@ -692,7 +692,10 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (ppDevice != nullptr)
 	{
 		deviceWrap = new HackerDevice(origDevice, origContext);
-		*ppDevice = deviceWrap;
+		if (G->enable_hooks & EnableHooks::DEVICE)
+			deviceWrap->HookDevice();
+		else
+			*ppDevice = deviceWrap;
 		LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
 	}
 
@@ -701,7 +704,10 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (ppImmediateContext != nullptr)
 	{
 		contextWrap = new HackerContext(origDevice, origContext);
-		*ppImmediateContext = contextWrap;
+		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
+			contextWrap->HookContext();
+		else
+			*ppImmediateContext = contextWrap;
 		LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
 	}
 
@@ -796,7 +802,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (ppDevice != nullptr)
 	{
 		deviceWrap = new HackerDevice(origDevice, origContext);
-		*ppDevice = deviceWrap;
+		if (G->enable_hooks & EnableHooks::DEVICE)
+			deviceWrap->HookDevice();
+		else
+			*ppDevice = deviceWrap;
 		LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
 	}
 
@@ -804,7 +813,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (ppImmediateContext != nullptr)
 	{
 		contextWrap = new HackerContext(origDevice, origContext);
-		*ppImmediateContext = contextWrap;
+		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
+			contextWrap->HookContext();
+		else
+			*ppImmediateContext = contextWrap;
 		LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
 	}
 
