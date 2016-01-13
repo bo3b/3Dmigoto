@@ -143,7 +143,7 @@ static HRESULT STDMETHODCALLTYPE CreateBuffer(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateBuffer(This, pDesc, pInitialData, ppBuffer);
+		return i->second->lpVtbl->CreateBuffer(i->second, pDesc, pInitialData, ppBuffer);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -168,7 +168,7 @@ static HRESULT STDMETHODCALLTYPE CreateTexture1D(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateTexture1D(This, pDesc, pInitialData, ppTexture1D);
+		return i->second->lpVtbl->CreateTexture1D(i->second, pDesc, pInitialData, ppTexture1D);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE CreateTexture2D(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateTexture2D(This, pDesc, pInitialData, ppTexture2D);
+		return i->second->lpVtbl->CreateTexture2D(i->second, pDesc, pInitialData, ppTexture2D);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -220,7 +220,7 @@ static HRESULT STDMETHODCALLTYPE CreateTexture3D(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateTexture3D(This, pDesc, pInitialData, ppTexture3D);
+		return i->second->lpVtbl->CreateTexture3D(i->second, pDesc, pInitialData, ppTexture3D);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -245,7 +245,7 @@ static HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateShaderResourceView(This, pResource, pDesc, ppSRView);
+		return i->second->lpVtbl->CreateShaderResourceView(i->second, pResource, pDesc, ppSRView);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -270,7 +270,7 @@ static HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateUnorderedAccessView(This, pResource, pDesc, ppUAView);
+		return i->second->lpVtbl->CreateUnorderedAccessView(i->second, pResource, pDesc, ppUAView);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -295,7 +295,7 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateRenderTargetView(This, pResource, pDesc, ppRTView);
+		return i->second->lpVtbl->CreateRenderTargetView(i->second, pResource, pDesc, ppRTView);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -320,7 +320,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDepthStencilView(This, pResource, pDesc, ppDepthStencilView);
+		return i->second->lpVtbl->CreateDepthStencilView(i->second, pResource, pDesc, ppDepthStencilView);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -349,7 +349,7 @@ static HRESULT STDMETHODCALLTYPE CreateInputLayout(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateInputLayout(This, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
+		return i->second->lpVtbl->CreateInputLayout(i->second, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -376,7 +376,7 @@ static HRESULT STDMETHODCALLTYPE CreateVertexShader(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateVertexShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
+		return i->second->lpVtbl->CreateVertexShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -403,7 +403,7 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShader(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateGeometryShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
+		return i->second->lpVtbl->CreateGeometryShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -440,7 +440,7 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShaderWithStreamOutput(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateGeometryShaderWithStreamOutput(This, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
+		return i->second->lpVtbl->CreateGeometryShaderWithStreamOutput(i->second, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -467,7 +467,7 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreatePixelShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
+		return i->second->lpVtbl->CreatePixelShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -494,7 +494,7 @@ static HRESULT STDMETHODCALLTYPE CreateHullShader(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateHullShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
+		return i->second->lpVtbl->CreateHullShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -521,7 +521,7 @@ static HRESULT STDMETHODCALLTYPE CreateDomainShader(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDomainShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
+		return i->second->lpVtbl->CreateDomainShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -548,7 +548,7 @@ static HRESULT STDMETHODCALLTYPE CreateComputeShader(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateComputeShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
+		return i->second->lpVtbl->CreateComputeShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -569,7 +569,7 @@ static HRESULT STDMETHODCALLTYPE CreateClassLinkage(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateClassLinkage(This, ppLinkage);
+		return i->second->lpVtbl->CreateClassLinkage(i->second, ppLinkage);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -592,7 +592,7 @@ static HRESULT STDMETHODCALLTYPE CreateBlendState(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateBlendState(This, pBlendStateDesc, ppBlendState);
+		return i->second->lpVtbl->CreateBlendState(i->second, pBlendStateDesc, ppBlendState);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -615,7 +615,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDepthStencilState(This, pDepthStencilDesc, ppDepthStencilState);
+		return i->second->lpVtbl->CreateDepthStencilState(i->second, pDepthStencilDesc, ppDepthStencilState);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -638,7 +638,7 @@ static HRESULT STDMETHODCALLTYPE CreateRasterizerState(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateRasterizerState(This, pRasterizerDesc, ppRasterizerState);
+		return i->second->lpVtbl->CreateRasterizerState(i->second, pRasterizerDesc, ppRasterizerState);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -661,7 +661,7 @@ static HRESULT STDMETHODCALLTYPE CreateSamplerState(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateSamplerState(This, pSamplerDesc, ppSamplerState);
+		return i->second->lpVtbl->CreateSamplerState(i->second, pSamplerDesc, ppSamplerState);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -684,7 +684,7 @@ static HRESULT STDMETHODCALLTYPE CreateQuery(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateQuery(This, pQueryDesc, ppQuery);
+		return i->second->lpVtbl->CreateQuery(i->second, pQueryDesc, ppQuery);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -707,7 +707,7 @@ static HRESULT STDMETHODCALLTYPE CreatePredicate(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreatePredicate(This, pPredicateDesc, ppPredicate);
+		return i->second->lpVtbl->CreatePredicate(i->second, pPredicateDesc, ppPredicate);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -730,7 +730,7 @@ static HRESULT STDMETHODCALLTYPE CreateCounter(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateCounter(This, pCounterDesc, ppCounter);
+		return i->second->lpVtbl->CreateCounter(i->second, pCounterDesc, ppCounter);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -752,7 +752,7 @@ static HRESULT STDMETHODCALLTYPE CreateDeferredContext(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDeferredContext(This, ContextFlags, ppDeferredContext);
+		return i->second->lpVtbl->CreateDeferredContext(i->second, ContextFlags, ppDeferredContext);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -776,7 +776,7 @@ static HRESULT STDMETHODCALLTYPE OpenSharedResource(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->OpenSharedResource(This, hResource, ReturnedInterface, ppResource);
+		return i->second->lpVtbl->OpenSharedResource(i->second, hResource, ReturnedInterface, ppResource);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -799,7 +799,7 @@ static HRESULT STDMETHODCALLTYPE CheckFormatSupport(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckFormatSupport(This, Format, pFormatSupport);
+		return i->second->lpVtbl->CheckFormatSupport(i->second, Format, pFormatSupport);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -824,7 +824,7 @@ static HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckMultisampleQualityLevels(This, Format, SampleCount, pNumQualityLevels);
+		return i->second->lpVtbl->CheckMultisampleQualityLevels(i->second, Format, SampleCount, pNumQualityLevels);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -845,7 +845,7 @@ static void STDMETHODCALLTYPE CheckCounterInfo(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckCounterInfo(This, pCounterInfo);
+		return i->second->lpVtbl->CheckCounterInfo(i->second, pCounterInfo);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -882,7 +882,7 @@ static HRESULT STDMETHODCALLTYPE CheckCounter(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckCounter(This, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
+		return i->second->lpVtbl->CheckCounter(i->second, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -905,7 +905,7 @@ static HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckFeatureSupport(This, Feature, pFeatureSupportData, FeatureSupportDataSize);
+		return i->second->lpVtbl->CheckFeatureSupport(i->second, Feature, pFeatureSupportData, FeatureSupportDataSize);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -930,7 +930,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetPrivateData(This, guid, pDataSize, pData);
+		return i->second->lpVtbl->GetPrivateData(i->second, guid, pDataSize, pData);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -955,7 +955,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->SetPrivateData(This, guid, DataSize, pData);
+		return i->second->lpVtbl->SetPrivateData(i->second, guid, DataSize, pData);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -978,7 +978,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->SetPrivateDataInterface(This, guid, pData);
+		return i->second->lpVtbl->SetPrivateDataInterface(i->second, guid, pData);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -997,7 +997,7 @@ static D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetFeatureLevel(This);
+		return i->second->lpVtbl->GetFeatureLevel(i->second);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -1016,7 +1016,7 @@ static UINT STDMETHODCALLTYPE GetCreationFlags(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetCreationFlags(This);
+		return i->second->lpVtbl->GetCreationFlags(i->second);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -1035,7 +1035,7 @@ static HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetDeviceRemovedReason(This);
+		return i->second->lpVtbl->GetDeviceRemovedReason(i->second);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -1056,7 +1056,7 @@ static void STDMETHODCALLTYPE GetImmediateContext(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetImmediateContext(This, ppImmediateContext);
+		return i->second->lpVtbl->GetImmediateContext(i->second, ppImmediateContext);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -1076,7 +1076,7 @@ static HRESULT STDMETHODCALLTYPE SetExceptionMode(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->SetExceptionMode(This, RaiseFlags);
+		return i->second->lpVtbl->SetExceptionMode(i->second, RaiseFlags);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
@@ -1095,7 +1095,7 @@ static UINT STDMETHODCALLTYPE GetExceptionMode(
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetExceptionMode(This);
+		return i->second->lpVtbl->GetExceptionMode(i->second);
 	}
 	LeaveCriticalSection(&device_map_lock);
 
