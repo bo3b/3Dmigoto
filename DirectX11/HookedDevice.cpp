@@ -75,6 +75,7 @@ ID3D11Device* lookup_hooked_device(ID3D11Device *orig_device)
 		LeaveCriticalSection(&device_map_lock);
 		return NULL;
 	}
+	LeaveCriticalSection(&device_map_lock);
 
 	return i->second;
 }

@@ -80,6 +80,7 @@ ID3D11DeviceContext* lookup_hooked_context(ID3D11DeviceContext *orig_context)
 		LeaveCriticalSection(&context_map_lock);
 		return NULL;
 	}
+	LeaveCriticalSection(&context_map_lock);
 
 	return i->second;
 }
