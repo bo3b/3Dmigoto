@@ -33,6 +33,7 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	mHackerContext(0), mHackerSwapChain(0)
 {
 	mOrigDevice = pDevice;
+	mRealOrigDevice = pDevice;
 	mOrigContext = pContext;
 }
 
@@ -241,7 +242,7 @@ void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
 
 ID3D11Device* HackerDevice::GetOrigDevice()
 {
-	return mOrigDevice;
+	return mRealOrigDevice;
 }
 
 ID3D11DeviceContext* HackerDevice::GetOrigContext()
@@ -420,7 +421,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			// If we are hooking we don't return the wrapped device
 			*ppvObject = this;
 		}
-		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", type_name(this), this, mOrigDevice);
+		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", type_name(this), this, mRealOrigDevice);
 	}
 	else if (riid == __uuidof(ID3D11Device1))
 	{
@@ -2219,7 +2220,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	if (ppDeferredContext)
 	{
 		ID3D11DeviceContext *origContext = static_cast<ID3D11DeviceContext*>(*ppDeferredContext);
-		HackerContext *hackerContext = new HackerContext(mOrigDevice, origContext);
+		HackerContext *hackerContext = new HackerContext(mRealOrigDevice, origContext);
 		hackerContext->SetHackerDevice(this);
 
 		if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
@@ -2287,13 +2288,13 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	{
 		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext \n");
 
-		mHackerContext = new HackerContext(mOrigDevice, *ppImmediateContext);
+		mHackerContext = new HackerContext(mRealOrigDevice, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p \n", mHackerContext, *ppImmediateContext);
 	}
-	else if (mHackerContext->GetRealOrigContext() != *ppImmediateContext)
+	else if (mHackerContext->GetOrigContext() != *ppImmediateContext)
 	{
 		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
 				mHackerContext, mHackerContext->GetOrigContext(), *ppImmediateContext);

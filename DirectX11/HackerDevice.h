@@ -20,6 +20,7 @@ class HackerDevice : public ID3D11Device
 {
 private:
 	ID3D11Device *mOrigDevice;
+	ID3D11Device *mRealOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
 
 	HackerDXGISwapChain *mHackerSwapChain;

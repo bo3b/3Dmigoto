@@ -53,11 +53,6 @@ void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 
 ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 {
-	return mOrigContext;
-}
-
-ID3D11DeviceContext* HackerContext::GetRealOrigContext(void)
-{
 	return mRealOrigContext;
 }
 
