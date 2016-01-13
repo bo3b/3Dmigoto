@@ -33,7 +33,9 @@
 
 #define CINTERFACE
 #define D3D11_NO_HELPERS
+#define COBJMACROS
 #include <D3D11.h>
+#undef COBJMACROS
 #undef D3D11_NO_HELPERS
 #undef CINTERFACE
 
@@ -89,34 +91,24 @@ ID3D11DeviceContext* lookup_hooked_context(ID3D11DeviceContext *orig_context)
 // IUnknown
 static HRESULT STDMETHODCALLTYPE QueryInterface(ID3D11DeviceContext *This, REFIID riid, void **ppvObject)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::QueryInterface()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->QueryInterface(i->second, riid, ppvObject);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_QueryInterface(context, riid, ppvObject);
 
 	return orig_vtable.QueryInterface(This, riid, ppvObject);
 }
 
 static ULONG STDMETHODCALLTYPE AddRef(ID3D11DeviceContext *This)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::AddRef()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->AddRef(i->second);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_AddRef(context);
 
 	return orig_vtable.AddRef(This);
 }
@@ -147,17 +139,12 @@ static void STDMETHODCALLTYPE GetDevice(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out  ID3D11Device **ppDevice)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetDevice()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetDevice(i->second, ppDevice);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetDevice(context, ppDevice);
 
 	return orig_vtable.GetDevice(This, ppDevice);
 }
@@ -170,17 +157,12 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_bcount_opt( *pDataSize )  void *pData)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetPrivateData()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetPrivateData(i->second, guid, pDataSize, pData);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetPrivateData(context, guid, pDataSize, pData);
 
 	return orig_vtable.GetPrivateData(This, guid, pDataSize, pData);
 }
@@ -193,17 +175,12 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_bcount_opt( DataSize )  const void *pData)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::SetPrivateData()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->SetPrivateData(i->second, guid, DataSize, pData);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_SetPrivateData(context, guid, DataSize, pData);
 
 	return orig_vtable.SetPrivateData(This, guid, DataSize, pData);
 }
@@ -214,17 +191,12 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(ID3D11DeviceContext *Th
 		/* [annotation] */
 		__in_opt  const IUnknown *pData)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::SetPrivateDataInterface()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->SetPrivateDataInterface(i->second, guid, pData);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_SetPrivateDataInterface(context, guid, pData);
 
 	return orig_vtable.SetPrivateDataInterface(This, guid, pData);
 }
@@ -238,17 +210,12 @@ static void STDMETHODCALLTYPE VSSetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSSetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSSetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.VSSetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -261,17 +228,12 @@ static void STDMETHODCALLTYPE PSSetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSSetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSSetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.PSSetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -283,17 +245,12 @@ static void STDMETHODCALLTYPE PSSetShader(ID3D11DeviceContext *This,
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSSetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSSetShader(i->second,  pPixelShader, ppClassInstances, NumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSSetShader(context,  pPixelShader, ppClassInstances, NumClassInstances);
 
 	return orig_vtable.PSSetShader(This,  pPixelShader, ppClassInstances, NumClassInstances);
 }
@@ -306,17 +263,12 @@ static void STDMETHODCALLTYPE PSSetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSSetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSSetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.PSSetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -328,17 +280,12 @@ static void STDMETHODCALLTYPE VSSetShader(ID3D11DeviceContext *This,
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSSetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSSetShader(i->second,  pVertexShader, ppClassInstances, NumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSSetShader(context,  pVertexShader, ppClassInstances, NumClassInstances);
 
 	return orig_vtable.VSSetShader(This,  pVertexShader, ppClassInstances, NumClassInstances);
 }
@@ -351,17 +298,12 @@ static void STDMETHODCALLTYPE DrawIndexed(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  INT BaseVertexLocation)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DrawIndexed()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DrawIndexed(i->second,  IndexCount, StartIndexLocation, BaseVertexLocation);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DrawIndexed(context,  IndexCount, StartIndexLocation, BaseVertexLocation);
 
 	return orig_vtable.DrawIndexed(This,  IndexCount, StartIndexLocation, BaseVertexLocation);
 }
@@ -372,17 +314,12 @@ static void STDMETHODCALLTYPE Draw(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT StartVertexLocation)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::Draw()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->Draw(i->second,  VertexCount, StartVertexLocation);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_Draw(context,  VertexCount, StartVertexLocation);
 
 	return orig_vtable.Draw(This,  VertexCount, StartVertexLocation);
 }
@@ -399,17 +336,12 @@ static HRESULT STDMETHODCALLTYPE Map(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out  D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::Map()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->Map(i->second,  pResource, Subresource, MapType, MapFlags, pMappedResource);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_Map(context,  pResource, Subresource, MapType, MapFlags, pMappedResource);
 
 	return orig_vtable.Map(This,  pResource, Subresource, MapType, MapFlags, pMappedResource);
 }
@@ -420,17 +352,12 @@ static void STDMETHODCALLTYPE Unmap(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT Subresource)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::Unmap()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->Unmap(i->second,  pResource, Subresource);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_Unmap(context,  pResource, Subresource);
 
 	return orig_vtable.Unmap(This,  pResource, Subresource);
 }
@@ -443,17 +370,12 @@ static void STDMETHODCALLTYPE PSSetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSSetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSSetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.PSSetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -462,17 +384,12 @@ static void STDMETHODCALLTYPE IASetInputLayout(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_opt  ID3D11InputLayout *pInputLayout)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IASetInputLayout()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IASetInputLayout(i->second,  pInputLayout);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IASetInputLayout(context,  pInputLayout);
 
 	return orig_vtable.IASetInputLayout(This,  pInputLayout);
 }
@@ -489,17 +406,12 @@ static void STDMETHODCALLTYPE IASetVertexBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  const UINT *pOffsets)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IASetVertexBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IASetVertexBuffers(i->second,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IASetVertexBuffers(context,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 
 	return orig_vtable.IASetVertexBuffers(This,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
@@ -512,17 +424,12 @@ static void STDMETHODCALLTYPE IASetIndexBuffer(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT Offset)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IASetIndexBuffer()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IASetIndexBuffer(i->second,  pIndexBuffer, Format, Offset);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IASetIndexBuffer(context,  pIndexBuffer, Format, Offset);
 
 	return orig_vtable.IASetIndexBuffer(This,  pIndexBuffer, Format, Offset);
 }
@@ -539,17 +446,12 @@ static void STDMETHODCALLTYPE DrawIndexedInstanced(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT StartInstanceLocation)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DrawIndexedInstanced()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DrawIndexedInstanced(i->second,  IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DrawIndexedInstanced(context,  IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 
 	return orig_vtable.DrawIndexedInstanced(This,  IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 }
@@ -564,17 +466,12 @@ static void STDMETHODCALLTYPE DrawInstanced(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT StartInstanceLocation)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DrawInstanced()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DrawInstanced(i->second,  VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DrawInstanced(context,  VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
 	return orig_vtable.DrawInstanced(This,  VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 }
@@ -587,17 +484,12 @@ static void STDMETHODCALLTYPE GSSetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSSetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSSetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.GSSetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -609,17 +501,12 @@ static void STDMETHODCALLTYPE GSSetShader(ID3D11DeviceContext *This,
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSSetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSSetShader(i->second,  pShader, ppClassInstances, NumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSSetShader(context,  pShader, ppClassInstances, NumClassInstances);
 
 	return orig_vtable.GSSetShader(This,  pShader, ppClassInstances, NumClassInstances);
 }
@@ -628,17 +515,12 @@ static void STDMETHODCALLTYPE IASetPrimitiveTopology(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  D3D11_PRIMITIVE_TOPOLOGY Topology)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IASetPrimitiveTopology()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IASetPrimitiveTopology(i->second,  Topology);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IASetPrimitiveTopology(context,  Topology);
 
 	return orig_vtable.IASetPrimitiveTopology(This,  Topology);
 }
@@ -651,17 +533,12 @@ static void STDMETHODCALLTYPE VSSetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSSetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSSetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.VSSetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -674,17 +551,12 @@ static void STDMETHODCALLTYPE VSSetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSSetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSSetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.VSSetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -693,17 +565,12 @@ static void STDMETHODCALLTYPE Begin(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  ID3D11Asynchronous *pAsync)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::Begin()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->Begin(i->second,  pAsync);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_Begin(context,  pAsync);
 
 	return orig_vtable.Begin(This,  pAsync);
 }
@@ -712,17 +579,12 @@ static void STDMETHODCALLTYPE End(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  ID3D11Asynchronous *pAsync)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::End()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->End(i->second,  pAsync);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_End(context,  pAsync);
 
 	return orig_vtable.End(This,  pAsync);
 }
@@ -737,17 +599,12 @@ static HRESULT STDMETHODCALLTYPE GetData(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT GetDataFlags)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetData()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetData(i->second,  pAsync, pData, DataSize, GetDataFlags);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetData(context,  pAsync, pData, DataSize, GetDataFlags);
 
 	return orig_vtable.GetData(This,  pAsync, pData, DataSize, GetDataFlags);
 }
@@ -758,17 +615,12 @@ static void STDMETHODCALLTYPE SetPredication(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  BOOL PredicateValue)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::SetPredication()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->SetPredication(i->second,  pPredicate, PredicateValue);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_SetPredication(context,  pPredicate, PredicateValue);
 
 	return orig_vtable.SetPredication(This,  pPredicate, PredicateValue);
 }
@@ -781,17 +633,12 @@ static void STDMETHODCALLTYPE GSSetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSSetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSSetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.GSSetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -804,17 +651,12 @@ static void STDMETHODCALLTYPE GSSetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSSetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSSetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.GSSetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -827,17 +669,12 @@ static void STDMETHODCALLTYPE OMSetRenderTargets(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_opt  ID3D11DepthStencilView *pDepthStencilView)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMSetRenderTargets()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMSetRenderTargets(i->second,  NumViews, ppRenderTargetViews, pDepthStencilView);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMSetRenderTargets(context,  NumViews, ppRenderTargetViews, pDepthStencilView);
 
 	return orig_vtable.OMSetRenderTargets(This,  NumViews, ppRenderTargetViews, pDepthStencilView);
 }
@@ -858,17 +695,12 @@ static void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(ID3D11De
 		/* [annotation] */
 		__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMSetRenderTargetsAndUnorderedAccessViews()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMSetRenderTargetsAndUnorderedAccessViews(i->second,  NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMSetRenderTargetsAndUnorderedAccessViews(context,  NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 
 	return orig_vtable.OMSetRenderTargetsAndUnorderedAccessViews(This,  NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
@@ -881,17 +713,12 @@ static void STDMETHODCALLTYPE OMSetBlendState(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT SampleMask)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMSetBlendState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMSetBlendState(i->second,  pBlendState, BlendFactor, SampleMask);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMSetBlendState(context,  pBlendState, BlendFactor, SampleMask);
 
 	return orig_vtable.OMSetBlendState(This,  pBlendState, BlendFactor, SampleMask);
 }
@@ -902,17 +729,12 @@ static void STDMETHODCALLTYPE OMSetDepthStencilState(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT StencilRef)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMSetDepthStencilState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMSetDepthStencilState(i->second,  pDepthStencilState, StencilRef);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMSetDepthStencilState(context,  pDepthStencilState, StencilRef);
 
 	return orig_vtable.OMSetDepthStencilState(This,  pDepthStencilState, StencilRef);
 }
@@ -925,33 +747,23 @@ static void STDMETHODCALLTYPE SOSetTargets(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount_opt(NumBuffers)  const UINT *pOffsets)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::SOSetTargets()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->SOSetTargets(i->second,  NumBuffers, ppSOTargets, pOffsets);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_SOSetTargets(context,  NumBuffers, ppSOTargets, pOffsets);
 
 	return orig_vtable.SOSetTargets(This,  NumBuffers, ppSOTargets, pOffsets);
 }
 static void STDMETHODCALLTYPE DrawAuto(ID3D11DeviceContext *This)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DrawAuto()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DrawAuto(i->second);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DrawAuto(context);
 
 	return orig_vtable.DrawAuto(This);
 }
@@ -962,17 +774,12 @@ static void STDMETHODCALLTYPE DrawIndexedInstancedIndirect(ID3D11DeviceContext *
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DrawIndexedInstancedIndirect()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DrawIndexedInstancedIndirect(i->second,  pBufferForArgs, AlignedByteOffsetForArgs);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DrawIndexedInstancedIndirect(context,  pBufferForArgs, AlignedByteOffsetForArgs);
 
 	return orig_vtable.DrawIndexedInstancedIndirect(This,  pBufferForArgs, AlignedByteOffsetForArgs);
 }
@@ -983,17 +790,12 @@ static void STDMETHODCALLTYPE DrawInstancedIndirect(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DrawInstancedIndirect()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DrawInstancedIndirect(i->second,  pBufferForArgs, AlignedByteOffsetForArgs);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DrawInstancedIndirect(context,  pBufferForArgs, AlignedByteOffsetForArgs);
 
 	return orig_vtable.DrawInstancedIndirect(This,  pBufferForArgs, AlignedByteOffsetForArgs);
 }
@@ -1006,17 +808,12 @@ static void STDMETHODCALLTYPE Dispatch(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT ThreadGroupCountZ)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::Dispatch()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->Dispatch(i->second,  ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_Dispatch(context,  ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 
 	return orig_vtable.Dispatch(This,  ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
@@ -1027,17 +824,12 @@ static void STDMETHODCALLTYPE DispatchIndirect(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DispatchIndirect()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DispatchIndirect(i->second,  pBufferForArgs, AlignedByteOffsetForArgs);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DispatchIndirect(context,  pBufferForArgs, AlignedByteOffsetForArgs);
 
 	return orig_vtable.DispatchIndirect(This,  pBufferForArgs, AlignedByteOffsetForArgs);
 }
@@ -1046,17 +838,12 @@ static void STDMETHODCALLTYPE RSSetState(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_opt  ID3D11RasterizerState *pRasterizerState)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::RSSetState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->RSSetState(i->second,  pRasterizerState);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_RSSetState(context,  pRasterizerState);
 
 	return orig_vtable.RSSetState(This,  pRasterizerState);
 }
@@ -1067,17 +854,12 @@ static void STDMETHODCALLTYPE RSSetViewports(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::RSSetViewports()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->RSSetViewports(i->second,  NumViewports, pViewports);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_RSSetViewports(context,  NumViewports, pViewports);
 
 	return orig_vtable.RSSetViewports(This,  NumViewports, pViewports);
 }
@@ -1088,17 +870,12 @@ static void STDMETHODCALLTYPE RSSetScissorRects(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount_opt(NumRects)  const D3D11_RECT *pRects)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::RSSetScissorRects()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->RSSetScissorRects(i->second,  NumRects, pRects);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_RSSetScissorRects(context,  NumRects, pRects);
 
 	return orig_vtable.RSSetScissorRects(This,  NumRects, pRects);
 }
@@ -1121,17 +898,12 @@ static void STDMETHODCALLTYPE CopySubresourceRegion(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_opt  const D3D11_BOX *pSrcBox)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CopySubresourceRegion()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CopySubresourceRegion(i->second,  pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CopySubresourceRegion(context,  pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
 
 	return orig_vtable.CopySubresourceRegion(This,  pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
 }
@@ -1142,17 +914,12 @@ static void STDMETHODCALLTYPE CopyResource(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  ID3D11Resource *pSrcResource)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CopyResource()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CopyResource(i->second,  pDstResource, pSrcResource);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CopyResource(context,  pDstResource, pSrcResource);
 
 	return orig_vtable.CopyResource(This,  pDstResource, pSrcResource);
 }
@@ -1171,17 +938,12 @@ static void STDMETHODCALLTYPE UpdateSubresource(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT SrcDepthPitch)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::UpdateSubresource()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->UpdateSubresource(i->second,  pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_UpdateSubresource(context,  pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 
 	return orig_vtable.UpdateSubresource(This,  pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
@@ -1194,17 +956,12 @@ static void STDMETHODCALLTYPE CopyStructureCount(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  ID3D11UnorderedAccessView *pSrcView)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CopyStructureCount()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CopyStructureCount(i->second,  pDstBuffer, DstAlignedByteOffset, pSrcView);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CopyStructureCount(context,  pDstBuffer, DstAlignedByteOffset, pSrcView);
 
 	return orig_vtable.CopyStructureCount(This,  pDstBuffer, DstAlignedByteOffset, pSrcView);
 }
@@ -1215,17 +972,12 @@ static void STDMETHODCALLTYPE ClearRenderTargetView(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  const FLOAT ColorRGBA[ 4 ])
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ClearRenderTargetView()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ClearRenderTargetView(i->second,  pRenderTargetView, ColorRGBA);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ClearRenderTargetView(context,  pRenderTargetView, ColorRGBA);
 
 	return orig_vtable.ClearRenderTargetView(This,  pRenderTargetView, ColorRGBA);
 }
@@ -1236,17 +988,12 @@ static void STDMETHODCALLTYPE ClearUnorderedAccessViewUint(ID3D11DeviceContext *
 		/* [annotation] */
 		__in  const UINT Values[ 4 ])
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ClearUnorderedAccessViewUint()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ClearUnorderedAccessViewUint(i->second,  pUnorderedAccessView, Values);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ClearUnorderedAccessViewUint(context,  pUnorderedAccessView, Values);
 
 	return orig_vtable.ClearUnorderedAccessViewUint(This,  pUnorderedAccessView, Values);
 }
@@ -1257,17 +1004,12 @@ static void STDMETHODCALLTYPE ClearUnorderedAccessViewFloat(ID3D11DeviceContext 
 		/* [annotation] */
 		__in  const FLOAT Values[ 4 ])
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ClearUnorderedAccessViewFloat()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ClearUnorderedAccessViewFloat(i->second,  pUnorderedAccessView, Values);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ClearUnorderedAccessViewFloat(context,  pUnorderedAccessView, Values);
 
 	return orig_vtable.ClearUnorderedAccessViewFloat(This,  pUnorderedAccessView, Values);
 }
@@ -1282,17 +1024,12 @@ static void STDMETHODCALLTYPE ClearDepthStencilView(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  UINT8 Stencil)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ClearDepthStencilView()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ClearDepthStencilView(i->second,  pDepthStencilView, ClearFlags, Depth, Stencil);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ClearDepthStencilView(context,  pDepthStencilView, ClearFlags, Depth, Stencil);
 
 	return orig_vtable.ClearDepthStencilView(This,  pDepthStencilView, ClearFlags, Depth, Stencil);
 }
@@ -1301,17 +1038,12 @@ static void STDMETHODCALLTYPE GenerateMips(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  ID3D11ShaderResourceView *pShaderResourceView)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GenerateMips()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GenerateMips(i->second,  pShaderResourceView);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GenerateMips(context,  pShaderResourceView);
 
 	return orig_vtable.GenerateMips(This,  pShaderResourceView);
 }
@@ -1321,17 +1053,12 @@ static void STDMETHODCALLTYPE SetResourceMinLOD(ID3D11DeviceContext *This,
 		__in  ID3D11Resource *pResource,
 		FLOAT MinLOD)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::SetResourceMinLOD()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->SetResourceMinLOD(i->second,  pResource, MinLOD);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_SetResourceMinLOD(context,  pResource, MinLOD);
 
 	return orig_vtable.SetResourceMinLOD(This,  pResource, MinLOD);
 }
@@ -1340,17 +1067,12 @@ static FLOAT STDMETHODCALLTYPE GetResourceMinLOD(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  ID3D11Resource *pResource)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetResourceMinLOD()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetResourceMinLOD(i->second,  pResource);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetResourceMinLOD(context,  pResource);
 
 	return orig_vtable.GetResourceMinLOD(This,  pResource);
 }
@@ -1367,17 +1089,12 @@ static void STDMETHODCALLTYPE ResolveSubresource(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in  DXGI_FORMAT Format)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ResolveSubresource()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ResolveSubresource(i->second,  pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ResolveSubresource(context,  pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
 
 	return orig_vtable.ResolveSubresource(This,  pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
 }
@@ -1387,17 +1104,12 @@ static void STDMETHODCALLTYPE ExecuteCommandList(ID3D11DeviceContext *This,
 		__in  ID3D11CommandList *pCommandList,
 		BOOL RestoreContextState)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ExecuteCommandList()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ExecuteCommandList(i->second,  pCommandList, RestoreContextState);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ExecuteCommandList(context,  pCommandList, RestoreContextState);
 
 	return orig_vtable.ExecuteCommandList(This,  pCommandList, RestoreContextState);
 }
@@ -1410,17 +1122,12 @@ static void STDMETHODCALLTYPE HSSetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSSetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSSetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.HSSetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -1432,17 +1139,12 @@ static void STDMETHODCALLTYPE HSSetShader(ID3D11DeviceContext *This,
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSSetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSSetShader(i->second,  pHullShader, ppClassInstances, NumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSSetShader(context,  pHullShader, ppClassInstances, NumClassInstances);
 
 	return orig_vtable.HSSetShader(This,  pHullShader, ppClassInstances, NumClassInstances);
 }
@@ -1455,17 +1157,12 @@ static void STDMETHODCALLTYPE HSSetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSSetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSSetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.HSSetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -1478,17 +1175,12 @@ static void STDMETHODCALLTYPE HSSetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSSetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSSetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.HSSetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -1501,17 +1193,12 @@ static void STDMETHODCALLTYPE DSSetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSSetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSSetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.DSSetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -1523,17 +1210,12 @@ static void STDMETHODCALLTYPE DSSetShader(ID3D11DeviceContext *This,
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSSetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSSetShader(i->second,  pDomainShader, ppClassInstances, NumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSSetShader(context,  pDomainShader, ppClassInstances, NumClassInstances);
 
 	return orig_vtable.DSSetShader(This,  pDomainShader, ppClassInstances, NumClassInstances);
 }
@@ -1546,17 +1228,12 @@ static void STDMETHODCALLTYPE DSSetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSSetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSSetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.DSSetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -1569,17 +1246,12 @@ static void STDMETHODCALLTYPE DSSetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSSetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSSetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.DSSetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -1592,17 +1264,12 @@ static void STDMETHODCALLTYPE CSSetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSSetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSSetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.CSSetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -1617,17 +1284,12 @@ static void STDMETHODCALLTYPE CSSetUnorderedAccessViews(ID3D11DeviceContext *Thi
 		/* [annotation] */
 		__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSSetUnorderedAccessViews()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSSetUnorderedAccessViews(i->second,  StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSSetUnorderedAccessViews(context,  StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 
 	return orig_vtable.CSSetUnorderedAccessViews(This,  StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
@@ -1639,17 +1301,12 @@ static void STDMETHODCALLTYPE CSSetShader(ID3D11DeviceContext *This,
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSSetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSSetShader(i->second,  pComputeShader, ppClassInstances, NumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSSetShader(context,  pComputeShader, ppClassInstances, NumClassInstances);
 
 	return orig_vtable.CSSetShader(This,  pComputeShader, ppClassInstances, NumClassInstances);
 }
@@ -1662,17 +1319,12 @@ static void STDMETHODCALLTYPE CSSetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSSetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSSetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.CSSetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -1685,17 +1337,12 @@ static void STDMETHODCALLTYPE CSSetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSSetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSSetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.CSSetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -1708,17 +1355,12 @@ static void STDMETHODCALLTYPE VSGetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSGetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSGetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.VSGetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -1731,17 +1373,12 @@ static void STDMETHODCALLTYPE PSGetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSGetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSGetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.PSGetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -1754,17 +1391,12 @@ static void STDMETHODCALLTYPE PSGetShader(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSGetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSGetShader(i->second,  ppPixelShader, ppClassInstances, pNumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSGetShader(context,  ppPixelShader, ppClassInstances, pNumClassInstances);
 
 	return orig_vtable.PSGetShader(This,  ppPixelShader, ppClassInstances, pNumClassInstances);
 }
@@ -1777,17 +1409,12 @@ static void STDMETHODCALLTYPE PSGetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSGetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSGetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.PSGetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -1800,17 +1427,12 @@ static void STDMETHODCALLTYPE VSGetShader(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSGetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSGetShader(i->second,  ppVertexShader, ppClassInstances, pNumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSGetShader(context,  ppVertexShader, ppClassInstances, pNumClassInstances);
 
 	return orig_vtable.VSGetShader(This,  ppVertexShader, ppClassInstances, pNumClassInstances);
 }
@@ -1823,17 +1445,12 @@ static void STDMETHODCALLTYPE PSGetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::PSGetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->PSGetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_PSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.PSGetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -1842,17 +1459,12 @@ static void STDMETHODCALLTYPE IAGetInputLayout(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out  ID3D11InputLayout **ppInputLayout)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IAGetInputLayout()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IAGetInputLayout(i->second,  ppInputLayout);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IAGetInputLayout(context,  ppInputLayout);
 
 	return orig_vtable.IAGetInputLayout(This,  ppInputLayout);
 }
@@ -1869,17 +1481,12 @@ static void STDMETHODCALLTYPE IAGetVertexBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount_opt(NumBuffers)  UINT *pOffsets)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IAGetVertexBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IAGetVertexBuffers(i->second,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IAGetVertexBuffers(context,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 
 	return orig_vtable.IAGetVertexBuffers(This,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
@@ -1892,17 +1499,12 @@ static void STDMETHODCALLTYPE IAGetIndexBuffer(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_opt  UINT *Offset)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IAGetIndexBuffer()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IAGetIndexBuffer(i->second,  pIndexBuffer, Format, Offset);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IAGetIndexBuffer(context,  pIndexBuffer, Format, Offset);
 
 	return orig_vtable.IAGetIndexBuffer(This,  pIndexBuffer, Format, Offset);
 }
@@ -1915,17 +1517,12 @@ static void STDMETHODCALLTYPE GSGetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSGetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSGetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.GSGetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -1938,17 +1535,12 @@ static void STDMETHODCALLTYPE GSGetShader(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSGetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSGetShader(i->second,  ppGeometryShader, ppClassInstances, pNumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSGetShader(context,  ppGeometryShader, ppClassInstances, pNumClassInstances);
 
 	return orig_vtable.GSGetShader(This,  ppGeometryShader, ppClassInstances, pNumClassInstances);
 }
@@ -1957,17 +1549,12 @@ static void STDMETHODCALLTYPE IAGetPrimitiveTopology(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out  D3D11_PRIMITIVE_TOPOLOGY *pTopology)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::IAGetPrimitiveTopology()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->IAGetPrimitiveTopology(i->second,  pTopology);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_IAGetPrimitiveTopology(context,  pTopology);
 
 	return orig_vtable.IAGetPrimitiveTopology(This,  pTopology);
 }
@@ -1980,17 +1567,12 @@ static void STDMETHODCALLTYPE VSGetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSGetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSGetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.VSGetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2003,17 +1585,12 @@ static void STDMETHODCALLTYPE VSGetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::VSGetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->VSGetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_VSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.VSGetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -2024,17 +1601,12 @@ static void STDMETHODCALLTYPE GetPredication(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_opt  BOOL *pPredicateValue)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetPredication()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetPredication(i->second,  ppPredicate, pPredicateValue);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetPredication(context,  ppPredicate, pPredicateValue);
 
 	return orig_vtable.GetPredication(This,  ppPredicate, pPredicateValue);
 }
@@ -2047,17 +1619,12 @@ static void STDMETHODCALLTYPE GSGetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSGetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSGetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.GSGetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2070,17 +1637,12 @@ static void STDMETHODCALLTYPE GSGetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSGetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GSGetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.GSGetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -2093,17 +1655,12 @@ static void STDMETHODCALLTYPE OMGetRenderTargets(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMGetRenderTargets()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMGetRenderTargets(i->second,  NumViews, ppRenderTargetViews, ppDepthStencilView);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMGetRenderTargets(context,  NumViews, ppRenderTargetViews, ppDepthStencilView);
 
 	return orig_vtable.OMGetRenderTargets(This,  NumViews, ppRenderTargetViews, ppDepthStencilView);
 }
@@ -2122,17 +1679,12 @@ static void STDMETHODCALLTYPE OMGetRenderTargetsAndUnorderedAccessViews(ID3D11De
 		/* [annotation] */
 		__out_ecount_opt(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMGetRenderTargetsAndUnorderedAccessViews()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMGetRenderTargetsAndUnorderedAccessViews(i->second,  NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMGetRenderTargetsAndUnorderedAccessViews(context,  NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
 
 	return orig_vtable.OMGetRenderTargetsAndUnorderedAccessViews(This,  NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
 }
@@ -2145,17 +1697,12 @@ static void STDMETHODCALLTYPE OMGetBlendState(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_opt  UINT *pSampleMask)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMGetBlendState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMGetBlendState(i->second,  ppBlendState, BlendFactor, pSampleMask);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMGetBlendState(context,  ppBlendState, BlendFactor, pSampleMask);
 
 	return orig_vtable.OMGetBlendState(This,  ppBlendState, BlendFactor, pSampleMask);
 }
@@ -2166,17 +1713,12 @@ static void STDMETHODCALLTYPE OMGetDepthStencilState(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_opt  UINT *pStencilRef)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::OMGetDepthStencilState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->OMGetDepthStencilState(i->second,  ppDepthStencilState, pStencilRef);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_OMGetDepthStencilState(context,  ppDepthStencilState, pStencilRef);
 
 	return orig_vtable.OMGetDepthStencilState(This,  ppDepthStencilState, pStencilRef);
 }
@@ -2187,17 +1729,12 @@ static void STDMETHODCALLTYPE SOGetTargets(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppSOTargets)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::SOGetTargets()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->SOGetTargets(i->second,  NumBuffers, ppSOTargets);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_SOGetTargets(context,  NumBuffers, ppSOTargets);
 
 	return orig_vtable.SOGetTargets(This,  NumBuffers, ppSOTargets);
 }
@@ -2206,17 +1743,12 @@ static void STDMETHODCALLTYPE RSGetState(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out  ID3D11RasterizerState **ppRasterizerState)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::RSGetState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->RSGetState(i->second,  ppRasterizerState);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_RSGetState(context,  ppRasterizerState);
 
 	return orig_vtable.RSGetState(This,  ppRasterizerState);
 }
@@ -2227,17 +1759,12 @@ static void STDMETHODCALLTYPE RSGetViewports(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount_opt(*pNumViewports)  D3D11_VIEWPORT *pViewports)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::RSGetViewports()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->RSGetViewports(i->second,  pNumViewports, pViewports);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_RSGetViewports(context,  pNumViewports, pViewports);
 
 	return orig_vtable.RSGetViewports(This,  pNumViewports, pViewports);
 }
@@ -2248,17 +1775,12 @@ static void STDMETHODCALLTYPE RSGetScissorRects(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount_opt(*pNumRects)  D3D11_RECT *pRects)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::RSGetScissorRects()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->RSGetScissorRects(i->second,  pNumRects, pRects);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_RSGetScissorRects(context,  pNumRects, pRects);
 
 	return orig_vtable.RSGetScissorRects(This,  pNumRects, pRects);
 }
@@ -2271,17 +1793,12 @@ static void STDMETHODCALLTYPE HSGetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSGetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSGetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.HSGetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2294,17 +1811,12 @@ static void STDMETHODCALLTYPE HSGetShader(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSGetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSGetShader(i->second,  ppHullShader, ppClassInstances, pNumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSGetShader(context,  ppHullShader, ppClassInstances, pNumClassInstances);
 
 	return orig_vtable.HSGetShader(This,  ppHullShader, ppClassInstances, pNumClassInstances);
 }
@@ -2317,17 +1829,12 @@ static void STDMETHODCALLTYPE HSGetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSGetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSGetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.HSGetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -2340,17 +1847,12 @@ static void STDMETHODCALLTYPE HSGetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::HSGetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->HSGetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_HSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.HSGetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -2363,17 +1865,12 @@ static void STDMETHODCALLTYPE DSGetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSGetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSGetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.DSGetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2386,17 +1883,12 @@ static void STDMETHODCALLTYPE DSGetShader(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSGetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSGetShader(i->second,  ppDomainShader, ppClassInstances, pNumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSGetShader(context,  ppDomainShader, ppClassInstances, pNumClassInstances);
 
 	return orig_vtable.DSGetShader(This,  ppDomainShader, ppClassInstances, pNumClassInstances);
 }
@@ -2409,17 +1901,12 @@ static void STDMETHODCALLTYPE DSGetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSGetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSGetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.DSGetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -2432,17 +1919,12 @@ static void STDMETHODCALLTYPE DSGetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::DSGetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->DSGetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_DSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.DSGetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -2455,17 +1937,12 @@ static void STDMETHODCALLTYPE CSGetShaderResources(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSGetShaderResources()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSGetShaderResources(i->second,  StartSlot, NumViews, ppShaderResourceViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
 	return orig_vtable.CSGetShaderResources(This,  StartSlot, NumViews, ppShaderResourceViews);
 }
@@ -2478,17 +1955,12 @@ static void STDMETHODCALLTYPE CSGetUnorderedAccessViews(ID3D11DeviceContext *Thi
 		/* [annotation] */
 		__out_ecount(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSGetUnorderedAccessViews()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSGetUnorderedAccessViews(i->second,  StartSlot, NumUAVs, ppUnorderedAccessViews);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSGetUnorderedAccessViews(context,  StartSlot, NumUAVs, ppUnorderedAccessViews);
 
 	return orig_vtable.CSGetUnorderedAccessViews(This,  StartSlot, NumUAVs, ppUnorderedAccessViews);
 }
@@ -2501,17 +1973,12 @@ static void STDMETHODCALLTYPE CSGetShader(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__inout_opt  UINT *pNumClassInstances)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSGetShader()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSGetShader(i->second,  ppComputeShader, ppClassInstances, pNumClassInstances);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSGetShader(context,  ppComputeShader, ppClassInstances, pNumClassInstances);
 
 	return orig_vtable.CSGetShader(This,  ppComputeShader, ppClassInstances, pNumClassInstances);
 }
@@ -2524,17 +1991,12 @@ static void STDMETHODCALLTYPE CSGetSamplers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSGetSamplers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSGetSamplers(i->second,  StartSlot, NumSamplers, ppSamplers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
 
 	return orig_vtable.CSGetSamplers(This,  StartSlot, NumSamplers, ppSamplers);
 }
@@ -2547,85 +2009,60 @@ static void STDMETHODCALLTYPE CSGetConstantBuffers(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSGetConstantBuffers()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->CSGetConstantBuffers(i->second,  StartSlot, NumBuffers, ppConstantBuffers);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_CSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
 
 	return orig_vtable.CSGetConstantBuffers(This,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 
 static void STDMETHODCALLTYPE ClearState(ID3D11DeviceContext *This)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::ClearState()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->ClearState(i->second);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_ClearState(context);
 
 	return orig_vtable.ClearState(This);
 }
 
 static void STDMETHODCALLTYPE Flush(ID3D11DeviceContext *This)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::Flush()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->Flush(i->second);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_Flush(context);
 
 	return orig_vtable.Flush(This);
 }
 
 static D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType(ID3D11DeviceContext *This)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetType()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetType(i->second);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetType(context);
 
 	return orig_vtable.GetType(This);
 }
 
 static UINT STDMETHODCALLTYPE GetContextFlags(ID3D11DeviceContext *This)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GetContextFlags()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->GetContextFlags(i->second);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_GetContextFlags(context);
 
 	return orig_vtable.GetContextFlags(This);
 }
@@ -2635,17 +2072,12 @@ static HRESULT STDMETHODCALLTYPE FinishCommandList(ID3D11DeviceContext *This,
 		/* [annotation] */
 		__out_opt  ID3D11CommandList **ppCommandList)
 {
-	ContextMap::iterator i;
+	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::FinishCommandList()\n");
 
-	EnterCriticalSection(&context_map_lock);
-	i = context_map.find(This);
-	if (i != context_map.end()) {
-		LeaveCriticalSection(&context_map_lock);
-		return i->second->lpVtbl->FinishCommandList(i->second, RestoreDeferredContextState, ppCommandList);
-	}
-	LeaveCriticalSection(&context_map_lock);
+	if (context)
+		return ID3D11DeviceContext_FinishCommandList(context, RestoreDeferredContextState, ppCommandList);
 
 	return orig_vtable.FinishCommandList(This, RestoreDeferredContextState, ppCommandList);
 }

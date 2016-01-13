@@ -28,7 +28,9 @@
 
 #define CINTERFACE
 #define D3D11_NO_HELPERS
+#define COBJMACROS
 #include <D3D11.h>
+#undef COBJMACROS
 #undef D3D11_NO_HELPERS
 #undef CINTERFACE
 
@@ -88,17 +90,12 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 		/* [annotation][iid_is][out] */
 		__RPC__deref_out  void **ppvObject)
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::QueryInterface()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->QueryInterface(i->second, riid, ppvObject);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_QueryInterface(device, riid, ppvObject);
 
 	return orig_vtable.QueryInterface(This, riid, ppvObject);
 }
@@ -106,17 +103,12 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 static ULONG STDMETHODCALLTYPE AddRef(
 		ID3D11Device * This)
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::AddRef()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->AddRef(i->second);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_AddRef(device);
 
 	return orig_vtable.AddRef(This);
 }
@@ -154,17 +146,12 @@ static HRESULT STDMETHODCALLTYPE CreateBuffer(
 		__out_opt  ID3D11Buffer **ppBuffer)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateBuffer()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateBuffer(i->second, pDesc, pInitialData, ppBuffer);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateBuffer(device, pDesc, pInitialData, ppBuffer);
 
 	return orig_vtable.CreateBuffer(This, pDesc, pInitialData, ppBuffer);
 }
@@ -179,17 +166,12 @@ static HRESULT STDMETHODCALLTYPE CreateTexture1D(
 		__out_opt  ID3D11Texture1D **ppTexture1D)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateTexture1D()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateTexture1D(i->second, pDesc, pInitialData, ppTexture1D);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateTexture1D(device, pDesc, pInitialData, ppTexture1D);
 
 	return orig_vtable.CreateTexture1D(This, pDesc, pInitialData, ppTexture1D);
 }
@@ -205,17 +187,12 @@ static HRESULT STDMETHODCALLTYPE CreateTexture2D(
 		__out_opt  ID3D11Texture2D **ppTexture2D)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateTexture2D()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateTexture2D(i->second, pDesc, pInitialData, ppTexture2D);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateTexture2D(device, pDesc, pInitialData, ppTexture2D);
 
 	return orig_vtable.CreateTexture2D(This, pDesc, pInitialData, ppTexture2D);
 }
@@ -231,17 +208,12 @@ static HRESULT STDMETHODCALLTYPE CreateTexture3D(
 		__out_opt  ID3D11Texture3D **ppTexture3D)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateTexture3D()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateTexture3D(i->second, pDesc, pInitialData, ppTexture3D);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateTexture3D(device, pDesc, pInitialData, ppTexture3D);
 
 	return orig_vtable.CreateTexture3D(This, pDesc, pInitialData, ppTexture3D);
 }
@@ -256,17 +228,12 @@ static HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
 		__out_opt  ID3D11ShaderResourceView **ppSRView)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateShaderResourceView()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateShaderResourceView(i->second, pResource, pDesc, ppSRView);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateShaderResourceView(device, pResource, pDesc, ppSRView);
 
 	return orig_vtable.CreateShaderResourceView(This, pResource, pDesc, ppSRView);
 }
@@ -281,17 +248,12 @@ static HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
 		__out_opt  ID3D11UnorderedAccessView **ppUAView)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateUnorderedAccessView()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateUnorderedAccessView(i->second, pResource, pDesc, ppUAView);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateUnorderedAccessView(device, pResource, pDesc, ppUAView);
 
 	return orig_vtable.CreateUnorderedAccessView(This, pResource, pDesc, ppUAView);
 }
@@ -306,17 +268,12 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
 		__out_opt  ID3D11RenderTargetView **ppRTView)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateRenderTargetView()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateRenderTargetView(i->second, pResource, pDesc, ppRTView);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateRenderTargetView(device, pResource, pDesc, ppRTView);
 
 	return orig_vtable.CreateRenderTargetView(This, pResource, pDesc, ppRTView);
 }
@@ -331,17 +288,12 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
 		__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateDepthStencilView()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDepthStencilView(i->second, pResource, pDesc, ppDepthStencilView);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateDepthStencilView(device, pResource, pDesc, ppDepthStencilView);
 
 	return orig_vtable.CreateDepthStencilView(This, pResource, pDesc, ppDepthStencilView);
 }
@@ -360,17 +312,12 @@ static HRESULT STDMETHODCALLTYPE CreateInputLayout(
 		__out_opt  ID3D11InputLayout **ppInputLayout)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateInputLayout()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateInputLayout(i->second, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateInputLayout(device, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
 
 	return orig_vtable.CreateInputLayout(This, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
 }
@@ -387,17 +334,12 @@ static HRESULT STDMETHODCALLTYPE CreateVertexShader(
 		__out_opt  ID3D11VertexShader **ppVertexShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateVertexShader()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateVertexShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateVertexShader(device, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
 
 	return orig_vtable.CreateVertexShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
 }
@@ -414,17 +356,12 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShader(
 		__out_opt  ID3D11GeometryShader **ppGeometryShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateGeometryShader()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateGeometryShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateGeometryShader(device, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
 
 	return orig_vtable.CreateGeometryShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
 }
@@ -451,17 +388,12 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShaderWithStreamOutput(
 		__out_opt  ID3D11GeometryShader **ppGeometryShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateGeometryShaderWithStreamOutput()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateGeometryShaderWithStreamOutput(i->second, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateGeometryShaderWithStreamOutput(device, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
 
 	return orig_vtable.CreateGeometryShaderWithStreamOutput(This, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
 }
@@ -478,17 +410,12 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader(
 		__out_opt  ID3D11PixelShader **ppPixelShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreatePixelShader()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreatePixelShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreatePixelShader(device, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
 
 	return orig_vtable.CreatePixelShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
 }
@@ -505,17 +432,12 @@ static HRESULT STDMETHODCALLTYPE CreateHullShader(
 		__out_opt  ID3D11HullShader **ppHullShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateHullShader()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateHullShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateHullShader(device, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
 
 	return orig_vtable.CreateHullShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
 }
@@ -532,17 +454,12 @@ static HRESULT STDMETHODCALLTYPE CreateDomainShader(
 		__out_opt  ID3D11DomainShader **ppDomainShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateDomainShader()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDomainShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateDomainShader(device, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
 
 	return orig_vtable.CreateDomainShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
 }
@@ -559,17 +476,12 @@ static HRESULT STDMETHODCALLTYPE CreateComputeShader(
 		__out_opt  ID3D11ComputeShader **ppComputeShader)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateComputeShader()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateComputeShader(i->second, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateComputeShader(device, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
 
 	return orig_vtable.CreateComputeShader(This, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
 }
@@ -580,17 +492,12 @@ static HRESULT STDMETHODCALLTYPE CreateClassLinkage(
 		__out  ID3D11ClassLinkage **ppLinkage)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateClassLinkage()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateClassLinkage(i->second, ppLinkage);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateClassLinkage(device, ppLinkage);
 
 	return orig_vtable.CreateClassLinkage(This, ppLinkage);
 }
@@ -603,17 +510,12 @@ static HRESULT STDMETHODCALLTYPE CreateBlendState(
 		__out_opt  ID3D11BlendState **ppBlendState)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateBlendState()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateBlendState(i->second, pBlendStateDesc, ppBlendState);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateBlendState(device, pBlendStateDesc, ppBlendState);
 
 	return orig_vtable.CreateBlendState(This, pBlendStateDesc, ppBlendState);
 }
@@ -626,17 +528,12 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
 		__out_opt  ID3D11DepthStencilState **ppDepthStencilState)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateDepthStencilState()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDepthStencilState(i->second, pDepthStencilDesc, ppDepthStencilState);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateDepthStencilState(device, pDepthStencilDesc, ppDepthStencilState);
 
 	return orig_vtable.CreateDepthStencilState(This, pDepthStencilDesc, ppDepthStencilState);
 }
@@ -649,17 +546,12 @@ static HRESULT STDMETHODCALLTYPE CreateRasterizerState(
 		__out_opt  ID3D11RasterizerState **ppRasterizerState)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateRasterizerState()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateRasterizerState(i->second, pRasterizerDesc, ppRasterizerState);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateRasterizerState(device, pRasterizerDesc, ppRasterizerState);
 
 	return orig_vtable.CreateRasterizerState(This, pRasterizerDesc, ppRasterizerState);
 }
@@ -672,17 +564,12 @@ static HRESULT STDMETHODCALLTYPE CreateSamplerState(
 		__out_opt  ID3D11SamplerState **ppSamplerState)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateSamplerState()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateSamplerState(i->second, pSamplerDesc, ppSamplerState);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateSamplerState(device, pSamplerDesc, ppSamplerState);
 
 	return orig_vtable.CreateSamplerState(This, pSamplerDesc, ppSamplerState);
 }
@@ -695,17 +582,12 @@ static HRESULT STDMETHODCALLTYPE CreateQuery(
 		__out_opt  ID3D11Query **ppQuery)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateQuery()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateQuery(i->second, pQueryDesc, ppQuery);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateQuery(device, pQueryDesc, ppQuery);
 
 	return orig_vtable.CreateQuery(This, pQueryDesc, ppQuery);
 }
@@ -718,17 +600,12 @@ static HRESULT STDMETHODCALLTYPE CreatePredicate(
 		__out_opt  ID3D11Predicate **ppPredicate)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreatePredicate()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreatePredicate(i->second, pPredicateDesc, ppPredicate);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreatePredicate(device, pPredicateDesc, ppPredicate);
 
 	return orig_vtable.CreatePredicate(This, pPredicateDesc, ppPredicate);
 }
@@ -741,17 +618,12 @@ static HRESULT STDMETHODCALLTYPE CreateCounter(
 		__out_opt  ID3D11Counter **ppCounter)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateCounter()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateCounter(i->second, pCounterDesc, ppCounter);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateCounter(device, pCounterDesc, ppCounter);
 
 	return orig_vtable.CreateCounter(This, pCounterDesc, ppCounter);
 }
@@ -763,17 +635,12 @@ static HRESULT STDMETHODCALLTYPE CreateDeferredContext(
 		__out_opt  ID3D11DeviceContext **ppDeferredContext)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CreateDeferredContext()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CreateDeferredContext(i->second, ContextFlags, ppDeferredContext);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CreateDeferredContext(device, ContextFlags, ppDeferredContext);
 
 	return orig_vtable.CreateDeferredContext(This, ContextFlags, ppDeferredContext);
 }
@@ -787,17 +654,12 @@ static HRESULT STDMETHODCALLTYPE OpenSharedResource(
 		/* [annotation] */
 		__out_opt  void **ppResource)
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::OpenSharedResource()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->OpenSharedResource(i->second, hResource, ReturnedInterface, ppResource);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_OpenSharedResource(device, hResource, ReturnedInterface, ppResource);
 
 	return orig_vtable.OpenSharedResource(This, hResource, ReturnedInterface, ppResource);
 }
@@ -810,17 +672,12 @@ static HRESULT STDMETHODCALLTYPE CheckFormatSupport(
 	__out  UINT *pFormatSupport)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CheckFormatSupport()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckFormatSupport(i->second, Format, pFormatSupport);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CheckFormatSupport(device, Format, pFormatSupport);
 
 	return orig_vtable.CheckFormatSupport(This, Format, pFormatSupport);
 }
@@ -835,17 +692,12 @@ static HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
 		__out  UINT *pNumQualityLevels)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CheckMultisampleQualityLevels()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckMultisampleQualityLevels(i->second, Format, SampleCount, pNumQualityLevels);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CheckMultisampleQualityLevels(device, Format, SampleCount, pNumQualityLevels);
 
 	return orig_vtable.CheckMultisampleQualityLevels(This, Format, SampleCount, pNumQualityLevels);
 }
@@ -856,17 +708,12 @@ static void STDMETHODCALLTYPE CheckCounterInfo(
 		__out  D3D11_COUNTER_INFO *pCounterInfo)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CheckCounterInfo()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckCounterInfo(i->second, pCounterInfo);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CheckCounterInfo(device, pCounterInfo);
 
 	return orig_vtable.CheckCounterInfo(This, pCounterInfo);
 }
@@ -893,17 +740,12 @@ static HRESULT STDMETHODCALLTYPE CheckCounter(
 		__inout_opt  UINT *pDescriptionLength)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CheckCounter()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckCounter(i->second, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CheckCounter(device, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
 
 	return orig_vtable.CheckCounter(This, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
 }
@@ -916,17 +758,12 @@ static HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
 		UINT FeatureSupportDataSize)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::CheckFeatureSupport()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->CheckFeatureSupport(i->second, Feature, pFeatureSupportData, FeatureSupportDataSize);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_CheckFeatureSupport(device, Feature, pFeatureSupportData, FeatureSupportDataSize);
 
 	return orig_vtable.CheckFeatureSupport(This, Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
@@ -941,17 +778,12 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 		__out_bcount_opt(*pDataSize)  void *pData)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::GetPrivateData()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetPrivateData(i->second, guid, pDataSize, pData);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_GetPrivateData(device, guid, pDataSize, pData);
 
 	return orig_vtable.GetPrivateData(This, guid, pDataSize, pData);
 }
@@ -966,17 +798,12 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 		__in_bcount_opt(DataSize)  const void *pData)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::SetPrivateData()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->SetPrivateData(i->second, guid, DataSize, pData);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_SetPrivateData(device, guid, DataSize, pData);
 
 	return orig_vtable.SetPrivateData(This, guid, DataSize, pData);
 }
@@ -989,17 +816,12 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
 		__in_opt  const IUnknown *pData)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::SetPrivateDataInterface()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->SetPrivateDataInterface(i->second, guid, pData);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_SetPrivateDataInterface(device, guid, pData);
 
 	return orig_vtable.SetPrivateDataInterface(This, guid, pData);
 }
@@ -1008,17 +830,12 @@ static D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(
 		ID3D11Device * This)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::GetFeatureLevel()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetFeatureLevel(i->second);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_GetFeatureLevel(device);
 
 	return orig_vtable.GetFeatureLevel(This);
 }
@@ -1027,17 +844,12 @@ static UINT STDMETHODCALLTYPE GetCreationFlags(
 		ID3D11Device * This)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::GetCreationFlags()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetCreationFlags(i->second);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_GetCreationFlags(device);
 
 	return orig_vtable.GetCreationFlags(This);
 }
@@ -1046,17 +858,12 @@ static HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(
 		ID3D11Device * This)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::GetDeviceRemovedReason()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetDeviceRemovedReason(i->second);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_GetDeviceRemovedReason(device);
 
 	return orig_vtable.GetDeviceRemovedReason(This);
 }
@@ -1067,17 +874,12 @@ static void STDMETHODCALLTYPE GetImmediateContext(
 		__out  ID3D11DeviceContext **ppImmediateContext)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::GetImmediateContext()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetImmediateContext(i->second, ppImmediateContext);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_GetImmediateContext(device, ppImmediateContext);
 
 	return orig_vtable.GetImmediateContext(This, ppImmediateContext);
 }
@@ -1087,17 +889,12 @@ static HRESULT STDMETHODCALLTYPE SetExceptionMode(
 		UINT RaiseFlags)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::SetExceptionMode()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->SetExceptionMode(i->second, RaiseFlags);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_SetExceptionMode(device, RaiseFlags);
 
 	return orig_vtable.SetExceptionMode(This, RaiseFlags);
 }
@@ -1106,17 +903,12 @@ static UINT STDMETHODCALLTYPE GetExceptionMode(
 		ID3D11Device * This)
 
 {
-	DeviceMap::iterator i;
+	ID3D11Device *device = lookup_hooked_device(This);
 
 	HookDebug("HookedDevice::GetExceptionMode()\n");
 
-	EnterCriticalSection(&device_map_lock);
-	i = device_map.find(This);
-	if (i != device_map.end()) {
-		LeaveCriticalSection(&device_map_lock);
-		return i->second->lpVtbl->GetExceptionMode(i->second);
-	}
-	LeaveCriticalSection(&device_map_lock);
+	if (device)
+		return ID3D11Device_GetExceptionMode(device);
 
 	return orig_vtable.GetExceptionMode(This);
 }
@@ -1734,6 +1526,3 @@ ID3D11Device* hook_device(ID3D11Device *orig_device, ID3D11Device *hacker_device
 
 	return (ID3D11Device*)trampoline_device;
 }
-
-
-
