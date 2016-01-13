@@ -2293,7 +2293,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p \n", mHackerContext, *ppImmediateContext);
 	}
-	else if (mHackerContext->GetOrigContext() != *ppImmediateContext)
+	else if (mHackerContext->GetRealOrigContext() != *ppImmediateContext)
 	{
 		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
 				mHackerContext, mHackerContext->GetOrigContext(), *ppImmediateContext);

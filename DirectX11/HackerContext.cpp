@@ -20,6 +20,7 @@ HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContex
 {
 	mOrigDevice = pDevice;
 	mOrigContext = pContext;
+	mRealOrigContext = pContext;
 	mHackerDevice = NULL;
 
 	mCurrentIndexBuffer = 0;
@@ -53,6 +54,11 @@ void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 ID3D11DeviceContext* HackerContext::GetOrigContext(void)
 {
 	return mOrigContext;
+}
+
+ID3D11DeviceContext* HackerContext::GetRealOrigContext(void)
+{
+	return mRealOrigContext;
 }
 
 void HackerContext::HookContext()

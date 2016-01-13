@@ -59,6 +59,7 @@ class HackerContext : public ID3D11DeviceContext
 private:
 	ID3D11Device *mOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
+	ID3D11DeviceContext *mRealOrigContext;
 	HackerDevice *mHackerDevice;
 
 	// These are per-context, moved from globals.h:
@@ -183,6 +184,7 @@ public:
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
+	ID3D11DeviceContext* GetRealOrigContext();
 	void HookContext();
 
 	// public to allow CommandList access
