@@ -59,11 +59,15 @@ static CRITICAL_SECTION device_map_lock;
 // device:
 static struct ID3D11DeviceVtbl orig_vtable;
 
+static bool hooks_installed = false;
 
 
 ID3D11Device* lookup_hooked_device(ID3D11Device *orig_device)
 {
 	DeviceMap::iterator i;
+
+	if (!hooks_installed)
+		return NULL;
 
 	EnterCriticalSection(&device_map_lock);
 	i = device_map.find(orig_device);
@@ -1118,7 +1122,6 @@ static UINT STDMETHODCALLTYPE GetExceptionMode(
 
 static void install_hooks(ID3D11Device *device)
 {
-	static bool hooks_installed = false;
 	SIZE_T hook_id;
 
 	// Hooks should only be installed once as they will affect all contexts

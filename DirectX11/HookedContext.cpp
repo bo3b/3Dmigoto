@@ -64,10 +64,15 @@ static CRITICAL_SECTION context_map_lock;
 // context:
 static struct ID3D11DeviceContextVtbl orig_vtable;
 
+static bool hooks_installed = false;
+
 
 ID3D11DeviceContext* lookup_hooked_context(ID3D11DeviceContext *orig_context)
 {
 	ContextMap::iterator i;
+
+	if (!hooks_installed)
+		return NULL;
 
 	EnterCriticalSection(&context_map_lock);
 	i = context_map.find(orig_context);
@@ -2646,7 +2651,6 @@ static HRESULT STDMETHODCALLTYPE FinishCommandList(ID3D11DeviceContext *This,
 
 static void install_hooks(ID3D11DeviceContext *context)
 {
-	static bool hooks_installed = false;
 	SIZE_T hook_id;
 
 	// Hooks should only be installed once as they will affect all contexts

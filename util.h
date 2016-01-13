@@ -17,6 +17,9 @@
 
 #include "D3D_Shaders\stdafx.h"
 
+#include "DirectX11\HookedDevice.h"
+#include "DirectX11\HookedContext.h"
+
 
 // Defines the maximum number of four component ini params we support.
 // Potential trade off on flexibility vs overhead, but unless we increase it
@@ -545,6 +548,22 @@ static std::string NameFromIID(IID id)
 
 static const char* type_name(IUnknown *object)
 {
+	ID3D11Device *device;
+	ID3D11DeviceContext *context;
+
+	// Seems that not even try / catch is safe in all cases of this
+	// (grumble grumble poorly designed grumble...). The only cases where
+	// we should be called on an object without type information is while
+	// hooking the device and/or context, so check if it is one of those
+	// cases:
+
+	device = lookup_hooked_device((ID3D11Device*)object);
+	if (device)
+		return "Hooked_ID3D11Device";
+	context = lookup_hooked_context((ID3D11DeviceContext*)object);
+	if (context)
+		return "Hooked_ID3D11DeviceContext";
+
 	try {
 		return typeid(*object).name();
 	} catch (__non_rtti_object) {

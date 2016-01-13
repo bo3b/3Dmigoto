@@ -574,33 +574,28 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	HackerDevice *hackerDevice = NULL;
 	IUnknown *origDevice = NULL;
 
-	try {
-		if (typeid(*pDevice) == typeid(HackerDevice))
-		{
-			hackerDevice = static_cast<HackerDevice*>(pDevice);
-			origDevice = hackerDevice->GetOrigDevice();
-		}
-		else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
-		{
-			hackerDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
-			origDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetOrigDXGIDevice();
-		}
-		else if (typeid(*pDevice) == typeid(HackerDXGIDevice1))
-		{
-			hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
-			origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
-		}
-		else {
-			LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
-			return E_FAIL;
-		}
-	} catch (__non_rtti_object) {
-		hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device*)pDevice);
-		if (!hackerDevice) {
-			LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
-			return E_FAIL;
-		}
+	hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device*)pDevice);
+	if (hackerDevice) {
 		origDevice = pDevice;
+	}
+	else if (typeid(*pDevice) == typeid(HackerDevice))
+	{
+		hackerDevice = static_cast<HackerDevice*>(pDevice);
+		origDevice = hackerDevice->GetOrigDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetOrigDXGIDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice1))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
+	}
+	else {
+		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
+		return E_FAIL;
 	}
 
 	HRESULT hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
