@@ -33,7 +33,7 @@ const int maxstring = 200;
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
-	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, typeid(*pSwapChain).name());
+	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, type_name(pSwapChain));
 	LogInfo("  on HackerDevice: %p, HackerContext: %p \n", pDevice, pContext);
 
 	// Not positive we need all of these references, but let's keep them handy.

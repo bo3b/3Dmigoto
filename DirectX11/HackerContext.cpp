@@ -651,7 +651,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerContext::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+	LogDebug("HackerContext::QueryInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigContext->QueryInterface(riid, ppvObject);
 
@@ -675,7 +675,7 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 	/* [annotation] */
 	__out  ID3D11Device **ppDevice)
 {
-	LogDebug("HackerContext::GetDevice(%s@%p) returns %p \n", typeid(*this).name(), this, mHackerDevice);
+	LogDebug("HackerContext::GetDevice(%s@%p) returns %p \n", type_name(this), this, mHackerDevice);
 
 	// Fix ref counting bug that slowly eats away at the device until we
 	// crash. In FC4 this can happen after about 10 minutes, or when
@@ -698,7 +698,7 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	/* [annotation] */
 	__out_bcount_opt(*pDataSize)  void *pData)
 {
-	LogInfo("HackerContext::GetPrivateData(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
+	LogInfo("HackerContext::GetPrivateData(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext->GetPrivateData(guid, pDataSize, pData);
 	LogInfo("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
@@ -714,7 +714,7 @@ STDMETHODIMP HackerContext::SetPrivateData(THIS_
 	/* [annotation] */
 	__in_bcount_opt(DataSize)  const void *pData)
 {
-	LogInfo("HackerContext::SetPrivateData(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
+	LogInfo("HackerContext::SetPrivateData(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(guid).c_str());
 	LogInfo("  DataSize = %d\n", DataSize);
 
 	HRESULT hr = mOrigContext->SetPrivateData(guid, DataSize, pData);
@@ -729,7 +729,7 @@ STDMETHODIMP HackerContext::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
+	LogInfo("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext->SetPrivateDataInterface(guid, pData);
 	LogInfo("  returns result = %x\n", hr);

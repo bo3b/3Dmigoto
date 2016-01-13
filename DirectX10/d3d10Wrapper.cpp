@@ -645,7 +645,7 @@ HRESULT WINAPI D3D10StateBlockMaskUnion(D3D10Base::D3D10_STATE_BLOCK_MASK *pA,
 
 STDMETHODIMP D3D10Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
-	LogDebug("D3D10Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+	LogDebug("D3D10Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", type_name(this));
 
 	IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	if (riid.Data1 == marker.Data1 && riid.Data2 == marker.Data2 && riid.Data3 == marker.Data3 && 

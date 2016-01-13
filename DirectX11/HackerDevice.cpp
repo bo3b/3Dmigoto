@@ -205,7 +205,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 
 void HackerDevice::Create3DMigotoResources()
 {
-	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.  \n", typeid(*this).name(), this);
+	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.  \n", type_name(this), this);
 
 	// XXX: Ignoring the return values for now because so do our callers.
 	// If we want to change this, keep in mind that failures in
@@ -380,7 +380,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(riid).c_str());
+	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
@@ -397,14 +397,14 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
 		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this);
 		*ppvObject = dxgiDeviceWrap;
-		LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap).name(), dxgiDeviceWrap, origDXGIDevice);
+		LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap), dxgiDeviceWrap, origDXGIDevice);
 	}
 	else if (riid == __uuidof(IDXGIDevice1))
 	{
 		IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
 		HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
 		*ppvObject = dxgiDeviceWrap1;
-		LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", typeid(*dxgiDeviceWrap1).name(), dxgiDeviceWrap1, origDXGIDevice1);
+		LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap1), dxgiDeviceWrap1, origDXGIDevice1);
 	}
 	else if (riid == __uuidof(IDXGIDevice2))
 	{
@@ -420,7 +420,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			// If we are hooking we don't return the wrapped device
 			*ppvObject = this;
 		}
-		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", typeid(*this).name(), this, mOrigDevice);
+		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", type_name(this), this, mOrigDevice);
 	}
 	else if (riid == __uuidof(ID3D11Device1))
 	{
@@ -451,12 +451,12 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		//origDevice1->GetImmediateContext1(&origContext1);
 		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
 
-		//LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", typeid(*hackerContextWrap1).name(), hackerContextWrap1, origContext1);
+		//LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
 
 		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
 		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
 
-		//LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", typeid(*hackerDeviceWrap1).name(), hackerDeviceWrap1, origDevice1);
+		//LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
 
 		//// ToDo: Handle memory allocation exceptions
 
@@ -1486,7 +1486,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s \n", typeid(*this).name(), this, NameFromIID(guid).c_str());
+	LogInfo("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(guid).c_str());
 
 	return mOrigDevice->SetPrivateDataInterface(guid, pData);
 }
@@ -2207,7 +2207,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	__out_opt  ID3D11DeviceContext **ppDeferredContext)
 {
 	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %#x, ptr:%p \n", 
-		typeid(*this).name(), this, ContextFlags, ppDeferredContext);
+		type_name(this), this, ContextFlags, ppDeferredContext);
 
 	HRESULT hr = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
 	if (FAILED(hr))
@@ -2227,7 +2227,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 		else
 			*ppDeferredContext = hackerContext;
 
-		LogInfo("  created HackerContext(%s@%p) wrapper of %p \n", typeid(*hackerContext).name(), hackerContext, origContext);
+		LogInfo("  created HackerContext(%s@%p) wrapper of %p \n", type_name(hackerContext), hackerContext, origContext);
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, *ppDeferredContext);
@@ -2261,7 +2261,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
 	LogDebug("HackerDevice::GetImmediateContext(%s@%p) called with:%p \n", 
-		typeid(*this).name(), this, ppImmediateContext);
+		type_name(this), this, ppImmediateContext);
 
 	if (ppImmediateContext == nullptr)
 	{
@@ -2355,7 +2355,7 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	_Out_  ID3D11DeviceContext1 **ppImmediateContext)
 {
 	LogInfo("HackerDevice1::GetImmediateContext1(%s@%p) called with:%p \n",
-		typeid(*this).name(), this, ppImmediateContext);
+		type_name(this), this, ppImmediateContext);
 
 	if (ppImmediateContext == nullptr)
 	{
@@ -2393,7 +2393,7 @@ STDMETHODIMP HackerDevice1::CreateDeferredContext1(
 	/* [annotation] */
 	_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext)
 {
-	LogInfo("HackerDevice1::CreateDeferredContext1(%s@%p) called with flags = %x \n", typeid(*this).name(), this, ContextFlags);
+	LogInfo("HackerDevice1::CreateDeferredContext1(%s@%p) called with flags = %x \n", type_name(this), this, ContextFlags);
 	HRESULT hr = mOrigDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
 	LogDebug("  returns result = %x\n", hr);
 	return hr;

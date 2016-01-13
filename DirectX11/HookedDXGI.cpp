@@ -181,7 +181,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	//	factoryWrap = new HackerDXGIFactory(origFactory1, NULL, NULL);
 	//	if (ppFactory1)
 	//		*ppFactory1 = factoryWrap;
-	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", typeid(*factoryWrap).name(), factoryWrap, origFactory1);
+	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", type_name(factoryWrap), factoryWrap, origFactory1);
 	//}
 	//else
 	{
@@ -189,7 +189,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 		factory1Wrap = new HackerDXGIFactory1(origFactory1);
 		if (ppFactory1)
 			*ppFactory1 = factory1Wrap;
-		LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", typeid(*factory1Wrap).name(), factory1Wrap, origFactory1);
+		LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", type_name(factory1Wrap), factory1Wrap, origFactory1);
 	}
 
 	// ToDo: Skipped null checks as they would throw exceptions- but
