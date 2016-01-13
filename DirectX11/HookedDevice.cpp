@@ -61,6 +61,20 @@ static struct ID3D11DeviceVtbl orig_vtable;
 
 
 
+ID3D11Device* lookup_hooked_device(ID3D11Device *orig_device)
+{
+	DeviceMap::iterator i;
+
+	EnterCriticalSection(&device_map_lock);
+	i = device_map.find(orig_device);
+	if (i == device_map.end()) {
+		LeaveCriticalSection(&device_map_lock);
+		return NULL;
+	}
+
+	return i->second;
+}
+
 
 // IUnknown
 static HRESULT STDMETHODCALLTYPE QueryInterface(

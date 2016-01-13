@@ -65,6 +65,20 @@ static CRITICAL_SECTION context_map_lock;
 static struct ID3D11DeviceContextVtbl orig_vtable;
 
 
+ID3D11DeviceContext* lookup_hooked_context(ID3D11DeviceContext *orig_context)
+{
+	ContextMap::iterator i;
+
+	EnterCriticalSection(&context_map_lock);
+	i = context_map.find(orig_context);
+	if (i == context_map.end()) {
+		LeaveCriticalSection(&context_map_lock);
+		return NULL;
+	}
+
+	return i->second;
+}
+
 
 // IUnknown
 static HRESULT STDMETHODCALLTYPE QueryInterface(ID3D11DeviceContext *This, REFIID riid, void **ppvObject)
