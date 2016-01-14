@@ -124,7 +124,7 @@ static ULONG STDMETHODCALLTYPE Release(
 	EnterCriticalSection(&device_map_lock);
 	i = device_map.find(This);
 	if (i != device_map.end()) {
-		ref = i->second->lpVtbl->Release(i->second);
+		ref = ID3D11Device_Release(i->second);
 		if (!ref)
 			device_map.erase(i);
 	} else
