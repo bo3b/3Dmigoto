@@ -1857,10 +1857,13 @@ static ID3D11View* _CreateCompatibleView(
 
 		pDesc = FillOutBufferDesc(&desc, stride, offset, buf_src_size);
 
-		// There are a lot of different things we could do with buffer
-		// resources, and for now this only covers the structured buffer case.
-		// TODO: Handle copying from one type of view to a different type
-		// TODO: Handle copying index buffer (with a format) to a view
+		// This should already handle things like:
+		// - Copying a vertex buffer to a SRV or constant buffer
+		// - Copying an index buffer to a SRV
+		// - Copying structured buffers
+		// - Copying regular buffers
+
+		// TODO: Support UAV flags like append/consume and SRV BufferEx views
 	}
 
 	hr = (device->*CreateView)(resource, pDesc, &view);
@@ -2235,6 +2238,9 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 				break;
 		}
 	}
+
+	if (!*stride)
+		*stride = dxgi_format_size(*format);
 }
 
 static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
