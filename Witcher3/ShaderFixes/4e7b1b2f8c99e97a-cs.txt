@@ -201,13 +201,14 @@ loop
       store_structured g4.x, r6.x, l(0), r1.w
     endif 
   endif 
-  if_nz r5.y
+  // Disable this test to fix clipping on global illumination in tunnels:
+  //if_nz r5.y
     imm_atomic_iadd r5.x, g3, l(0), l(1)
     ult r5.y, r5.x, l(192)
     if_nz r5.y
       store_structured g2.x, r5.x, l(0), r1.w
     endif 
-  endif 
+  //endif 
   iadd r1.w, r1.w, l(256)
 endloop 
 sync_g_t
