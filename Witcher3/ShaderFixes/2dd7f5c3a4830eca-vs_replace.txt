@@ -9,65 +9,9 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// Depth buffer copied to this input with 3Dmigoto:
-Texture2D<float> DepthBuffer : register(t110);
+// FIXME: Implement include handler in 3DMigoto to make paths consistent:
+#include <x64\ShaderFixes\hud.hlsl>
 
-static const float near = 0.2; // Guess based on convergence, refined with trial & error
-static const float far = 1024; // Guess based on bringing mountains to screen depth with high convergence
-static const int steps = 255;
-
-float world_z_from_depth_buffer(float x, float y)
-{
-	uint width, height;
-	float z;
-
-	DepthBuffer.GetDimensions(width, height);
-
-	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
-	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
-	z = DepthBuffer.Load(int3(x, y, 0));
-	return z;
-}
-
-float adjust_from_depth_buffer(float x, float y)
-{
-	float4 stereo = StereoParams.Load(0);
-	float separation = stereo.x; float convergence = stereo.y;
-	float old_offset, offset, w, sampled_w, distance;
-	uint i;
-
-	// Based on my stereo crosshair code developed for Miasmata
-
-	// Stereo cursor: To improve the accuracy of the stereo cursor, we start at the
-	// near clipping plane and work our way towards center + separation (ideally
-	// we would loop one pixel at a time, but as the loop counts must be constant
-	// we can't do that here, so we just choose a granuality in i0 and c227.
-	// Alternatively we could loop one pixel at a time with a hardcoded maximum
-	// number of pixels)
-
-	offset = (near - convergence) * separation;	// Z = X offset from center
-	distance = separation - offset;			// Total distance to cover (separation - starting X offset)
-
-	old_offset = offset;
-	for (i = 0; i < 255; i++) {
-		offset += distance / 255.0;
-
-		// Calculate W for this adjustment amount:
-		w = (separation * convergence) / (separation - offset);
-
-		sampled_w = world_z_from_depth_buffer(x + offset, y);
-		if (sampled_w == 0)
-			return 0;
-
-		// If the sampled depth is closer than the calculated depth, exit the loop:
-		if (w > sampled_w)
-			break;
-
-		old_offset = offset;
-	}
-
-	return old_offset;
-}
 void main(
   float2 v0 : TEXCOORD0,
   float4 v1 : SV_Position0,
@@ -82,21 +26,16 @@ void main(
   o3.x = dot(v1.xyzw, mvp[0].xyzw);
   o3.y = dot(v1.xyzw, mvp[1].xyzw);
   o3.zw = float2(0.000000e+000,1.000000e+000);
-  
+
+if (!rt_is_screen())
+	return;
+
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-
-// Only adjust UI element depth when being drawn to the screen to fix slight
-// misalignment issue on mouse cursor and some icons that are drawn to an
-// offscreen buffer first:
-float4 rt_filter = IniParams.Load(int2(2,0));
-if (rt_filter.x != rt_filter.z || rt_filter.y != rt_filter.w)
-  return;
-
 if (params.z == 1)
-	o3.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
+	o3.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
 else if (params.z == 2)
-	o3.x += adjust_from_depth_buffer(o3.x, o3.y);
+	o3.x += adjust_from_stereo2mono_depth_buffer(o3.x, o3.y);
 else
 	o3.x -= stereo.x*(params.x);  
   return;

@@ -7,64 +7,53 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// Depth buffer copied to this input with 3Dmigoto:
-Texture2D<float> DepthBuffer : register(t110);
+// FIXME: Implement include handler in 3DMigoto to make paths consistent:
+#include <x64\ShaderFixes\hud.hlsl>
 
-static const float near = 0.2; // Guess based on convergence, refined with trial & error
-static const float far = 1024; // Guess based on bringing mountains to screen depth with high convergence
-static const int steps = 255;
-
-float world_z_from_depth_buffer(float x, float y)
+// Structure of the vertex buffer determined from frame analysis:
+struct vb_entry
 {
-	uint width, height;
-	float z;
+  float2 pos;
+  uint v1;
+};
 
-	DepthBuffer.GetDimensions(width, height);
+StructuredBuffer<struct vb_entry> vb_struct : register(t100);
+Buffer<uint> ib : register(t101);
 
-	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
-	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
-	z = DepthBuffer.Load(int3(x, y, 0));
-	return z;
+// Copy of the vertex shader to calculate the output position:
+float4 calc_pos(float2 pos, uint v1)
+{
+  float4 v0 = float4(pos, 0, 1);
+  float4 o3;
+  float4 r0;
+
+  r0.xyzw = mad((int4)v1.xxxx, int4(6,6,6,6), int4(2,2,4,4));
+  r0.xyzw = r0.xyzw;
+  r0.xyzw = float4(1.000000e-001,1.100000e+000,1.000000e-001,1.100000e+000) + r0.xyzw;
+  r0.xyzw = (uint4)r0.xyzw;
+  o3.x = dot(v0.xyzw, vfuniforms[r0.x].xyzw);
+  o3.y = dot(v0.xyzw, vfuniforms[r0.y].xyzw);
+  o3.zw = float2(0.000000e+000,1.000000e+000);
+
+  return o3;
 }
 
-float adjust_from_depth_buffer(float x, float y)
+float2 find_center(uint id)
 {
-	float4 stereo = StereoParams.Load(0);
-	float separation = stereo.x; float convergence = stereo.y;
-	float old_offset, offset, w, sampled_w, distance;
-	uint i;
+  int index_count = int(IniParams.Load(int2(3,0)).y);
 
-	// Based on my stereo crosshair code developed for Miasmata
+  uint id1 = ib[0];
+  uint id2 = ib[index_count - 1];
 
-	// Stereo cursor: To improve the accuracy of the stereo cursor, we start at the
-	// near clipping plane and work our way towards center + separation (ideally
-	// we would loop one pixel at a time, but as the loop counts must be constant
-	// we can't do that here, so we just choose a granuality in i0 and c227.
-	// Alternatively we could loop one pixel at a time with a hardcoded maximum
-	// number of pixels)
+  float2 pos1 = vb_struct[id1].pos;
+  float2 pos2 = vb_struct[id2].pos;
 
-	offset = (near - convergence) * separation;	// Z = X offset from center
-	distance = separation - offset;			// Total distance to cover (separation - starting X offset)
+  uint v1 = vb_struct[id1].v1;
+  uint v2 = vb_struct[id2].v1;
 
-	old_offset = offset;
-	for (i = 0; i < 255; i++) {
-		offset += distance / 255.0;	// adjustment += (total distance to cover) / i0.x (granuality)
-
-		// Calculate W for this adjustment amount:
-		w = (separation * convergence) / (separation - offset);
-
-		sampled_w = world_z_from_depth_buffer(x + offset, y);
-		if (sampled_w == 0)
-			return 0;
-
-		// If the sampled depth is closer than the calculated depth, exit the loop:
-		if (w > sampled_w)
-			break;
-
-		old_offset = offset;
-	}
-
-	return old_offset;
+  float2 p1 = calc_pos(pos1, v1);
+  float2 p2 = calc_pos(pos2, v2);
+  return (p1 + p2) / 2;
 }
 
 void main(
@@ -73,7 +62,8 @@ void main(
   out float4 o0 : TEXCOORD0,
   out float4 o1 : TEXCOORD1,
   out float2 o2 : TEXCOORD2,
-  out float4 o3 : SV_Position0)
+  out float4 o3 : SV_Position0,
+  uint id : SV_VertexID)
 {
   float4 r0;
   uint4 bitmask, uiDest;
@@ -93,26 +83,35 @@ void main(
   o2.x = dot(v0.xyzw, vfuniforms[r0.z].xyzw);
   o2.y = dot(v0.xyzw, vfuniforms[r0.w].xyzw);
 
+// Huh? Why are we adjusting the texcoord?
+// If we're trying to compensate for a slight misalignment between some icons it's due to them
+// being drawn to a tiny offscreen buffer first (noticed with frame analysis)
+float4 stereo = StereoParams.Load(0);
+float4 params = IniParams.Load(0);
+//o2.x -= stereo.x*(0.5*params.x);    
+  
   o3.x = dot(v0.xyzw, vfuniforms[r0.x].xyzw);
   o3.y = dot(v0.xyzw, vfuniforms[r0.y].xyzw);
   o3.zw = float2(0.000000e+000,1.000000e+000);
 
-float4 stereo = StereoParams.Load(0);
-float4 params = IniParams.Load(0);
-
-// Only adjust UI element depth when being drawn to the screen to fix slight
-// misalignment issue on mouse cursor and some icons that are drawn to an
-// offscreen buffer first:
-float4 rt_filter = IniParams.Load(int2(2,0));
-if (rt_filter.x != rt_filter.z || rt_filter.y != rt_filter.w)
-  return;
+if (!rt_is_screen())
+	return;
 
 if (params.z == 1)
-	o3.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
+	o3.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
 else if (params.z == 2)
-	o3.x += adjust_from_depth_buffer(o3.x, o3.y);
-else
-	o3.x -= stereo.x*(params.x);  
+	o3.x += adjust_from_stereo2mono_depth_buffer(o3.x, o3.y);
+else if (params.z == 3) {
+	float2 center = find_center(id);
+	if (in_floating_region(center)) {
+		float adj = adjust_from_stereo2mono_depth_buffer(center.x, center.y);
+		for (float offset = 0.1; offset <= 0.5; offset += 0.1)
+			adj = min_adj(adj, adjust_from_stereo2mono_depth_buffer(center.x, center.y - offset));
+		o3.x += adj;
+	} else
+		o3.x -= stereo.x*(params.x);
+} else
+	o3.x -= stereo.x*(params.x);
 
   return;
 }
@@ -188,3 +187,5 @@ ret
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
         
+ 
+ 

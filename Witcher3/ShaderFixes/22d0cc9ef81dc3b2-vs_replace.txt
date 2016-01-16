@@ -1,4 +1,4 @@
-//HUD
+//HUD - background of floating key icons and way more
 cbuffer Constants : register(b0)
 {
   float4 vfuniforms[96] : packoffset(c0);
@@ -7,64 +7,57 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// Depth buffer copied to this input with 3Dmigoto:
-Texture2D<float> DepthBuffer : register(t110);
+// FIXME: Implement include handler in 3DMigoto to make paths consistent:
+#include <x64\ShaderFixes\hud.hlsl>
 
-static const float near = 0.2; // Guess based on convergence, refined with trial & error
-static const float far = 1024; // Guess based on bringing mountains to screen depth with high convergence
-static const int steps = 255;
-
-float world_z_from_depth_buffer(float x, float y)
+// Structure of the vertex buffer determined from frame analysis:
+struct vb_entry
 {
-	uint width, height;
-	float z;
+  float color1;
+  uint v1; //unorm4?
+  float2 pos;
+};
 
-	DepthBuffer.GetDimensions(width, height);
+StructuredBuffer<struct vb_entry> vb_struct : register(t100);
+Buffer<uint> ib : register(t101);
 
-	x = min(max((x / 2 + 0.5) * width, 0), width - 1);
-	y = min(max((-y / 2 + 0.5) * height, 0), height - 1);
-	z = DepthBuffer.Load(int3(x, y, 0));
-	return z;
+// Copy of the vertex shader to calculate the output position:
+float4 calc_pos(float2 pos, float4 v1)
+{
+  float4 v2 = float4(pos, 0, 1);
+  float4 o4;
+
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = v1.zzzz * float4(1.020040e+003,1.020040e+003,1.020040e+003,1.020040e+003) + float4(2.100000e+000,3.100000e+000,1.000000e-001,1.100000e+000);
+  r0.xyzw = (uint4)r0.xyzw;
+  o4.x = dot(v2.xyzw, vfuniforms[r0.x].xyzw);
+  o4.y = dot(v2.xyzw, vfuniforms[r0.y].xyzw);
+  o4.zw = float2(0.000000e+000,1.000000e+000);
+  return o4;
 }
 
-float adjust_from_depth_buffer(float x, float y)
+float2 find_center(uint id)
 {
-	float4 stereo = StereoParams.Load(0);
-	float separation = stereo.x; float convergence = stereo.y;
-	float old_offset, offset, w, sampled_w, distance;
-	uint i;
+  int index_count = int(IniParams.Load(int2(3,0)).y);
 
-	// Based on my stereo crosshair code developed for Miasmata
+  uint id1 = ib[0];
+  uint id2 = ib[index_count - 1];
 
-	// Stereo cursor: To improve the accuracy of the stereo cursor, we start at the
-	// near clipping plane and work our way towards center + separation (ideally
-	// we would loop one pixel at a time, but as the loop counts must be constant
-	// we can't do that here, so we just choose a granuality in i0 and c227.
-	// Alternatively we could loop one pixel at a time with a hardcoded maximum
-	// number of pixels)
+  float2 pos1 = vb_struct[id1].pos;
+  float2 pos2 = vb_struct[id2].pos;
 
-	offset = (near - convergence) * separation;	// Z = X offset from center
-	distance = separation - offset;			// Total distance to cover (separation - starting X offset)
+  // Orig code uses .z, which will be the 3rd byte, but remember this is byte
+  // swapped since it was loaded as little-endian. We then need to scale it
+  // like a UNORM to get it to the form the game expects:
+  float v1 = (((vb_struct[id1].v1) >> 16) & 0xff) / 255.0;
+  float v2 = (((vb_struct[id2].v1) >> 16) & 0xff) / 255.0;
 
-	old_offset = offset;
-	for (i = 0; i < 255; i++) {
-		offset += distance / 255.0;
-
-		// Calculate W for this adjustment amount:
-		w = (separation * convergence) / (separation - offset);
-
-		sampled_w = world_z_from_depth_buffer(x + offset, y);
-		if (sampled_w == 0)
-			return 0;
-
-		// If the sampled depth is closer than the calculated depth, exit the loop:
-		if (w > sampled_w)
-			break;
-
-		old_offset = offset;
-	}
-
-	return old_offset;
+  float2 p1 = calc_pos(pos1, v1);
+  float2 p2 = calc_pos(pos2, v2);
+  return (p1 + p2) / 2;
 }
 
 void main(
@@ -75,11 +68,20 @@ void main(
   out float4 o1 : COLOR1,
   out float4 o2 : TEXCOORD0,
   out float4 o3 : TEXCOORD1,
-  out float4 o4 : SV_Position0)
+  out float4 o4 : SV_Position0,
+  uint id : SV_VertexID)
 {
   float4 r0;
   uint4 bitmask, uiDest;
   float4 fDest;
+
+  // Proof that the vertex buffer works, and confirmation that SV_VertexID is
+  // the ID within the vertex buffer, not the index buffer!
+  v2.xy = vb_struct[id].pos.xy;
+  v1.x = (((vb_struct[id].v1) >> 0) & 0xff) / 255.0;
+  v1.y = (((vb_struct[id].v1) >> 8) & 0xff) / 255.0;
+  v1.z = (((vb_struct[id].v1) >> 16) & 0xff) / 255.0;
+  v1.w = (((vb_struct[id].v1) >> 24) & 0xff) / 255.0;
 
   o0.xyzw = v0.xyzw;
   o1.xyzw = v1.xyzw;
@@ -90,94 +92,33 @@ void main(
   o4.x = dot(v2.xyzw, vfuniforms[r0.x].xyzw);
   o4.y = dot(v2.xyzw, vfuniforms[r0.y].xyzw);
   o4.zw = float2(0.000000e+000,1.000000e+000);
-  
+
+  // Making sure these work:
+  //o4 = calc_pos(v2, v1);
+  //o4.xy = find_center(id);
+
+if (!rt_is_screen())
+	return;
+
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
 
-
-// Only adjust UI element depth when being drawn to the screen to fix slight
-// misalignment issue on mouse cursor and some icons that are drawn to an
-// offscreen buffer first:
-float4 rt_filter = IniParams.Load(int2(2,0));
-if (rt_filter.x != rt_filter.z || rt_filter.y != rt_filter.w)
-  return;
-
 if (params.z == 1)
-	o4.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
+	o4.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
 else if (params.z == 2)
-	o4.x += adjust_from_depth_buffer(o4.x, o4.y);
-else
-	o4.x -= stereo.x*(params.x);  
+	o4.x += adjust_from_stereo2mono_depth_buffer(o4.x, o4.y);
+else if (params.z == 3) {
+	float2 center = find_center(id);
+	if (in_floating_region(center)) {
+		float adj = adjust_from_stereo2mono_depth_buffer(center.x, center.y);
+		for (float offset = 0.1; offset <= 0.5; offset += 0.1)
+			adj = min_adj(adj, adjust_from_stereo2mono_depth_buffer(center.x, center.y - offset));
+		o4.x += adj;
+	} else
+		o4.x -= stereo.x*(params.x);
+} else
+	o4.x -= stereo.x*(params.x);
 
   return;
 }
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.16384
-//
-//
-// Buffer Definitions: 
-//
-// cbuffer Constants
-// {
-//
-//   float4 vfuniforms[96];             // Offset:    0 Size:  1536
-//
-// }
-//
-//
-// Resource Bindings:
-//
-// Name                                 Type  Format         Dim Slot Elements
-// ------------------------------ ---------- ------- ----------- ---- --------
-// Constants                         cbuffer      NA          NA    0        1
-//
-//
-//
-// Input signature:
-//
-// Name                 Index   Mask Register SysValue  Format   Used
-// -------------------- ----- ------ -------- -------- ------- ------
-// COLOR                    0   xyzw        0     NONE   float   xyzw
-// COLOR                    1   xyzw        1     NONE   float   xyzw
-// SV_Position              0   xyzw        2     NONE   float   xyzw
-//
-//
-// Output signature:
-//
-// Name                 Index   Mask Register SysValue  Format   Used
-// -------------------- ----- ------ -------- -------- ------- ------
-// COLOR                    0   xyzw        0     NONE   float   xyzw
-// COLOR                    1   xyzw        1     NONE   float   xyzw
-// TEXCOORD                 0   xyzw        2     NONE   float   xyzw
-// TEXCOORD                 1   xyzw        3     NONE   float   xyzw
-// SV_Position              0   xyzw        4      POS   float   xyzw
-//
-vs_5_0
-dcl_globalFlags refactoringAllowed
-dcl_constantbuffer cb0[96], dynamicIndexed
-dcl_input v0.xyzw
-dcl_input v1.xyzw
-dcl_input v2.xyzw
-dcl_output o0.xyzw
-dcl_output o1.xyzw
-dcl_output o2.xyzw
-dcl_output o3.xyzw
-dcl_output_siv o4.xyzw, position
-dcl_temps 1
-mov o0.xyzw, v0.xyzw
-mov o1.xyzw, v1.xyzw
-mad r0.xyzw, v1.zzzz, l(1020.039978, 1020.039978, 1020.039978, 1020.039978), l(2.100000, 3.100000, 0.100000, 1.100000)
-ftou r0.xyzw, r0.xyzw
-mov o2.xyzw, cb0[r0.z + 0].xyzw
-mov o3.xyzw, cb0[r0.w + 0].xyzw
-dp4 o4.x, v2.xyzw, cb0[r0.x + 0].xyzw
-dp4 o4.y, v2.xyzw, cb0[r0.y + 0].xyzw
-mov o4.zw, l(0,0,0,1.000000)
-ret 
-// Approximately 10 instruction slots used
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- 
  

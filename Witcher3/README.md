@@ -104,6 +104,11 @@ Keys and Configuration
    go into the screen, positive numbers will pop out. To customise the presets
    on the ~ key, find the [KeyHUD] section and adjust the list as desired.
 
+F1: Toggle an experimental auto HUD depth adjustment. This will make NPC names
+    and some icons hover above the NPC, but will break other parts of the UI
+    and in some cases (when Geralt is standing in the way) they may appear too
+    close.
+
 When raining, raindrops will land on the camera. If you find this distracting
 you can disable it by editing the d3dx.ini file and setting x1 under
 [Constants] to 1.
