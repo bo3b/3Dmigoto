@@ -117,11 +117,15 @@ private:
 			FrameAnalysisOptions type_mask);
 	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, char type, int idx, UINT stride, UINT offset);
+	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, int idx, UINT stride, UINT offset,
+			UINT first, UINT count);
 	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, DXGI_FORMAT ib_fmt, UINT offset);
+			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
+			UINT first, UINT count);
 	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset);
+			UINT stride, UINT offset, UINT first, UINT count);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
 			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
 			UINT stride, UINT offset);
@@ -130,8 +134,8 @@ private:
 	void _DumpTextures(char shader_type, bool compute,
 		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
 	void DumpCBs(bool compute);
-	void DumpVBs();
-	void DumpIB();
+	void DumpVBs(DrawCallInfo *call_info);
+	void DumpIB(DrawCallInfo *call_info);
 	void DumpTextures(bool compute);
 	void DumpRenderTargets();
 	void DumpDepthStencilTargets();
@@ -142,7 +146,7 @@ private:
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
-	void FrameAnalysisAfterDraw(bool compute);
+	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
 
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,

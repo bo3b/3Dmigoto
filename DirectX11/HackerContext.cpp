@@ -556,7 +556,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 	}
 
 	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(false);
+		FrameAnalysisAfterDraw(false, &data.call_info);
 
 	if (data.override) {
 		if (mHackerDevice->mStereoHandle) {
@@ -1165,7 +1165,7 @@ void HackerContext::AfterDispatch(DispatchContext *context)
 		RunCommandList(mHackerDevice, this, context->post_commands, NULL, true);
 
 	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(true);
+		FrameAnalysisAfterDraw(true, NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_

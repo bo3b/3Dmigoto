@@ -389,9 +389,6 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 	if (stride)
 		fprintf(fd, "stride: %u\n", stride);
 
-	// FIXME: For vertex buffers we should wrap the input layout object to
-	// get the format (and other info like the semantic).
-
 	for (i = offset / 16; i < size / 16; i++) {
 		for (c = offset % 4; c < 4; c++)
 			fprintf(fd, "%cb%i[%d].%c: %.9g\n", type, idx, i, components[c], buf[i*4+c]);
@@ -400,13 +397,19 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 	fclose(fd);
 }
 
-void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-		UINT size, DXGI_FORMAT format, UINT offset)
+/*
+ * Dumps the vertex buffer in several formats.
+ * FIXME: We should wrap the input layout object to get the correct format (and
+ * other info like the semantic).
+ */
+void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+		UINT size, int idx, UINT stride, UINT offset, UINT first, UINT count)
 {
 	FILE *fd = NULL;
-	short *buf16 = (short*)map->pData;
+	float *buff = (float*)map->pData;
 	int *buf32 = (int*)map->pData;
-	UINT i;
+	char *buf8 = (char*)map->pData;
+	UINT i, j, start, end, buf_idx;
 	errno_t err;
 
 	err = _wfopen_s(&fd, filename, L"w");
@@ -415,24 +418,84 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 		return;
 	}
 
-	fprintf(fd, "offset: %u\n", offset);
+	if (offset)
+		fprintf(fd, "byte offset: %u\n", offset);
+	fprintf(fd, "stride: %u\n", stride);
+	if (first || count) {
+		fprintf(fd, "first vertex: %u\n", first);
+		fprintf(fd, "vertex count: %u\n", count);
+	}
+	if (!stride) {
+		FALogInfo("Cannot dump vertex buffer with stride=0\n");
+		return;
+	}
 
-	// FIXME: Currently we are dumping the index buffer starting from the
-	// offset from the IASetIndexBuffer() call to the end of the buffer. We
-	// should also take into account any size and offset passed into the
-	// DrawIndexed, DrawIndexedInstanced or DrawIndexedInstancedIndirect
-	// calls (also, how do these two offsets interract - are they added
-	// together?).
+	start = offset / stride + first;
+	end = size / stride;
+	if (count)
+		end = min(end, start + count);
+
+	// FIXME: For vertex buffers we should wrap the input layout object to
+	// get the format (and other info like the semantic).
+
+	for (i = start; i < end; i++) {
+		fprintf(fd, "\n");
+		for (j = 0; j < stride / 4; j++) {
+			buf_idx = i * stride / 4 + j;
+			fprintf(fd, "vb%i[%d]+%03d: 0x%08x %.9g\n", idx, i - start, j*4, buf32[buf_idx], buff[buf_idx]);
+		}
+		// In case we find one that is not a 32bit multiple finish off one byte at a time:
+		for (j = j * 4; j < stride; j++) {
+			buf_idx = i * stride + j;
+			fprintf(fd, "vb%i[%d]+%03d: 0x%02x\n", idx, i - start, j, buf8[buf_idx]);
+		}
+	}
+
+	fclose(fd);
+}
+
+void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+		UINT size, DXGI_FORMAT format, UINT offset, UINT first, UINT count)
+{
+	FILE *fd = NULL;
+	short *buf16 = (short*)map->pData;
+	int *buf32 = (int*)map->pData;
+	UINT start, end, i;
+	errno_t err;
+
+	err = _wfopen_s(&fd, filename, L"w");
+	if (!fd) {
+		FALogInfo("Unable to create %S: %u\n", filename, err);
+		return;
+	}
+
+	fprintf(fd, "byte offset: %u\n", offset);
+	if (first || count) {
+		fprintf(fd, "first index: %u\n", first);
+		fprintf(fd, "index count: %u\n", count);
+	}
 
 	switch(format) {
 	case DXGI_FORMAT_R16_UINT:
 		fprintf(fd, "format: DXGI_FORMAT_R16_UINT\n");
-		for (i = offset / 2; i < size / 2; i++)
+
+		start = offset / 2 + first;
+		end = size / 2;
+		if (count)
+			end = min(end, start + count);
+
+		for (i = start; i < end; i++)
 			fprintf(fd, "%u\n", buf16[i]);
 		break;
 	case DXGI_FORMAT_R32_UINT:
 		fprintf(fd, "format: DXGI_FORMAT_R32_UINT\n");
-		for (i = offset / 4; i < size / 4; i++)
+
+		start = offset / 4 + first;
+		end = size / 4;
+		if (count)
+			end = min(end, start + count);
+
+		for (i = start; i < end; i++)
 			fprintf(fd, "%u\n", buf32[i]);
 		break;
 	default:
@@ -446,7 +509,7 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 
 void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-		UINT stride, UINT offset)
+		UINT stride, UINT offset, UINT first, UINT count)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	D3D11_BUFFER_DESC desc;
@@ -493,14 +556,14 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
 		if (options & FrameAnalysisOptions::DUMP_CB_TXT)
-			DumpBufferTxt(filename, &map, desc.ByteWidth, 'c', idx, 0, 0);
+			DumpBufferTxt(filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
 		else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
-			DumpBufferTxt(filename, &map, desc.ByteWidth, 'v', idx, stride, offset);
-		else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
-			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt, offset);
+			DumpVBTxt(filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
+		else if (options & FrameAnalysisOptions::DUMP_IB_TXT, first, count)
+			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
 	}
 	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
-	// offset & size into account.
+	// offset, size, first entry and num entries into account.
 
 out_unmap:
 	mOrigContext->Unmap(staging, 0);
@@ -517,7 +580,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx, ib_fmt, stride, offset);
+			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx, ib_fmt, stride, offset, 0, 0);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			FALogInfo("Skipped dumping Texture1D resource\n");
@@ -712,14 +775,19 @@ void HackerContext::DumpCBs(bool compute)
 	}
 }
 
-void HackerContext::DumpVBs()
+void HackerContext::DumpVBs(DrawCallInfo *call_info)
 {
 	ID3D11Buffer *buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	UINT offsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	UINT i;
+	UINT i, first = 0, count = 0;
+
+	if (call_info) {
+		first = call_info->FirstVertex;
+		count = call_info->VertexCount;
+	}
 
 	// TODO: The format of each vertex buffer cannot be obtained from this
 	// call. Rather, it is available in the input layout assigned to the
@@ -736,22 +804,28 @@ void HackerContext::DumpVBs()
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0, 0, buffers[i]);
 		if (SUCCEEDED(hr)) {
-			DumpResource(buffers[i], filename,
+			DumpBuffer(buffers[i], filename,
 				FrameAnalysisOptions::DUMP_VB_MASK, i,
-				DXGI_FORMAT_UNKNOWN, strides[i], offsets[i]);
+				DXGI_FORMAT_UNKNOWN, strides[i], offsets[i],
+				first, count);
 		}
 
 		buffers[i]->Release();
 	}
 }
 
-void HackerContext::DumpIB()
+void HackerContext::DumpIB(DrawCallInfo *call_info)
 {
 	ID3D11Buffer *buffer = NULL;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 	DXGI_FORMAT format;
-	UINT offset;
+	UINT offset, first = 0, count = 0;
+
+	if (call_info) {
+		first = call_info->FirstIndex;
+		count = call_info->IndexCount;
+	}
 
 	mOrigContext->IAGetIndexBuffer(&buffer, &format, &offset);
 	if (!buffer)
@@ -759,9 +833,9 @@ void HackerContext::DumpIB()
 
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0, 0, buffer);
 	if (SUCCEEDED(hr)) {
-		DumpResource(buffer, filename,
+		DumpBuffer(buffer, filename,
 				FrameAnalysisOptions::DUMP_IB_MASK, -1,
-				format, 0, offset);
+				format, 0, offset, first, count);
 	}
 
 	buffer->Release();
@@ -1032,7 +1106,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 		FALogInfo("analyse_options (one-shot): %08x\n", new_options);
 }
 
-void HackerContext::FrameAnalysisAfterDraw(bool compute)
+void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info)
 {
 	NvAPI_Status nvret;
 
@@ -1079,10 +1153,10 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute)
 
 	if (!compute) {
 		if (analyse_options & FrameAnalysisOptions::DUMP_VB_MASK)
-			DumpVBs();
+			DumpVBs(call_info);
 
 		if (analyse_options & FrameAnalysisOptions::DUMP_IB_MASK)
-			DumpIB();
+			DumpIB(call_info);
 	}
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_TEX_MASK)
