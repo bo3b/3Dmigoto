@@ -1318,7 +1318,7 @@ void HackerDXGISwapChain::RunFrameActions()
 
 	CurrentTransition.UpdateTransitions(mHackerDevice);
 
-	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, 0, 0, 0, false);
+	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
 	G->frame_no++;
 

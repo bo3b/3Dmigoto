@@ -357,8 +357,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		}
 	}
 
-	RunCommandList(mHackerDevice, this, &shaderOverride->command_list,
-			data->VertexCount, data->IndexCount, data->InstanceCount, false);
+	RunCommandList(mHackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
 
 	// TODO: Add render target filters, texture filters, etc.
 
@@ -552,8 +551,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
-			RunCommandList(mHackerDevice, this, data.post_commands[i],
-					data.VertexCount, data.IndexCount, data.InstanceCount, true);
+			RunCommandList(mHackerDevice, this, data.post_commands[i], &data.call_info, true);
 		}
 	}
 
@@ -1154,7 +1152,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 			// lot of it's logic doesn't really apply to
 			// compute shaders. The main thing we care
 			// about is the command list, so just run that:
-			RunCommandList(mHackerDevice, this, &i->second.command_list, 0, 0, 0, false);
+			RunCommandList(mHackerDevice, this, &i->second.command_list, NULL, false);
 		}
 	}
 
@@ -1164,7 +1162,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 void HackerContext::AfterDispatch(DispatchContext *context)
 {
 	if (context->post_commands)
-		RunCommandList(mHackerDevice, this, context->post_commands, 0, 0, 0, true);
+		RunCommandList(mHackerDevice, this, context->post_commands, NULL, true);
 
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(true);
@@ -2539,7 +2537,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	/* [annotation] */
 	__in  INT BaseVertexLocation)
 {
-	DrawContext c = DrawContext(0, IndexCount, 0);
+	DrawContext c = DrawContext(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u)\n",
@@ -2556,7 +2554,7 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	/* [annotation] */
 	__in  UINT StartVertexLocation)
 {
-	DrawContext c = DrawContext(VertexCount, 0, 0);
+	DrawContext c = DrawContext(VertexCount, 0, 0, StartVertexLocation, 0, 0);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
@@ -2614,7 +2612,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
-	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount);
+	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
@@ -2636,7 +2634,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
-	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount);
+	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
@@ -2755,7 +2753,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 
 STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
-	DrawContext c = DrawContext(0, 0, 0);
+	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawAuto()\n");
@@ -2771,7 +2769,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(0, 0, 0);
+	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
@@ -2788,7 +2786,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(0, 0, 0);
+	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",

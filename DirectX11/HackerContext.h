@@ -5,6 +5,7 @@
 #include "HackerDevice.h"
 #include "Globals.h"
 #include "ResourceHash.h"
+#include "DrawCallInfo.h"
 
 struct DrawContext
 {
@@ -15,18 +16,17 @@ struct DrawContext
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
 	CommandList *post_commands[5];
-	UINT VertexCount, IndexCount, InstanceCount;
+	DrawCallInfo call_info;
 
-	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount) :
+	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
+			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance) :
 		skip(false),
 		override(false),
 		oldSeparation(FLT_MAX),
 		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
-		VertexCount(VertexCount),
-		IndexCount(IndexCount),
-		InstanceCount(InstanceCount)
+		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
 	}

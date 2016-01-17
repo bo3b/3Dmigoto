@@ -42,15 +42,13 @@ static void CommandListFlushState(HackerDevice *mHackerDevice,
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		UINT VertexCount, UINT IndexCount, UINT InstanceCount, bool post)
+		DrawCallInfo *call_info, bool post)
 {
 	CommandListState state;
 	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
 	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
 
-	state.VertexCount = VertexCount;
-	state.IndexCount = IndexCount;
-	state.InstanceCount = InstanceCount;
+	state.call_info = call_info;
 	state.post = post;
 
 	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, command_list, &state);
@@ -690,13 +688,22 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 					mOrigContext, this);
 			break;
 		case ParamOverrideType::VERTEX_COUNT:
-			*dest = (float)state->VertexCount;
+			if (state->call_info)
+				*dest = (float)state->call_info->VertexCount;
+			else
+				*dest = 0;
 			break;
 		case ParamOverrideType::INDEX_COUNT:
-			*dest = (float)state->IndexCount;
+			if (state->call_info)
+				*dest = (float)state->call_info->IndexCount;
+			else
+				*dest = 0;
 			break;
 		case ParamOverrideType::INSTANCE_COUNT:
-			*dest = (float)state->InstanceCount;
+			if (state->call_info)
+				*dest = (float)state->call_info->InstanceCount;
+			else
+				*dest = 0;
 			break;
 		default:
 			return;
@@ -1022,6 +1029,98 @@ bail:
 	return false;
 }
 
+// Is there already a utility function that does this?
+static UINT dxgi_format_size(DXGI_FORMAT format)
+{
+	switch (format) {
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return 16;
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return 12;
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R32G32_TYPELESS:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return 8;
+		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+		case DXGI_FORMAT_R16G16_TYPELESS:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return 4;
+		case DXGI_FORMAT_R8G8_TYPELESS:
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+			return 2;
+		case DXGI_FORMAT_R8_TYPELESS:
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_A8_UNORM:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 ID3D11Resource *ResourceCopyTarget::GetResource(
 		ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext,
@@ -1029,7 +1128,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		UINT *stride,        // Used by vertex buffers
 		UINT *offset,        // Used by vertex & index buffers
 		DXGI_FORMAT *format, // Used by index buffers
-		UINT *buf_size)      // Used when creating a view of the buffer
+		UINT *buf_size,      // Used when creating a view of the buffer
+		DrawCallInfo *call_info)
 {
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
@@ -1114,12 +1214,31 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// means to get the strides + offsets from within the shader.
 		// Perhaps as an IniParam, or in another constant buffer?
 		mOrigContext->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
+
+		// To simplify things we just copy the part of the buffer
+		// referred to by this call, so adjust the offset with the
+		// call-specific first vertex. Do NOT set the buffer size here
+		// as if it's too small it will disable the region copy later.
+		// TODO: Add a keyword to ignore offsets in case we want the
+		// whole buffer regardless
+		if (call_info)
+			*offset += call_info->FirstVertex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::INDEX_BUFFER:
 		// TODO: Similar comment as vertex buffers above, provide a
 		// means for a shader to get format + offset.
 		mOrigContext->IAGetIndexBuffer(&buf, format, offset);
+		*stride = dxgi_format_size(*format);
+
+		// To simplify things we just copy the part of the buffer
+		// referred to by this call, so adjust the offset with the
+		// call-specific first index. Do NOT set the buffer size here
+		// as if it's too small it will disable the region copy later.
+		// TODO: Add a keyword to ignore offsets in case we want the
+		// whole buffer regardless
+		if (call_info)
+			*offset += call_info->FirstIndex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
@@ -2060,98 +2179,6 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	*offset = 0;
 }
 
-// Is there already a utility function that does this?
-static UINT dxgi_format_size(DXGI_FORMAT format)
-{
-	switch (format) {
-		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32A32_FLOAT:
-		case DXGI_FORMAT_R32G32B32A32_UINT:
-		case DXGI_FORMAT_R32G32B32A32_SINT:
-			return 16;
-		case DXGI_FORMAT_R32G32B32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32_FLOAT:
-		case DXGI_FORMAT_R32G32B32_UINT:
-		case DXGI_FORMAT_R32G32B32_SINT:
-			return 12;
-		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-		case DXGI_FORMAT_R16G16B16A16_FLOAT:
-		case DXGI_FORMAT_R16G16B16A16_UNORM:
-		case DXGI_FORMAT_R16G16B16A16_UINT:
-		case DXGI_FORMAT_R16G16B16A16_SNORM:
-		case DXGI_FORMAT_R16G16B16A16_SINT:
-		case DXGI_FORMAT_R32G32_TYPELESS:
-		case DXGI_FORMAT_R32G32_FLOAT:
-		case DXGI_FORMAT_R32G32_UINT:
-		case DXGI_FORMAT_R32G32_SINT:
-		case DXGI_FORMAT_R32G8X24_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-			return 8;
-		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-		case DXGI_FORMAT_R10G10B10A2_UNORM:
-		case DXGI_FORMAT_R10G10B10A2_UINT:
-		case DXGI_FORMAT_R11G11B10_FLOAT:
-		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-		case DXGI_FORMAT_R8G8B8A8_UNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-		case DXGI_FORMAT_R8G8B8A8_UINT:
-		case DXGI_FORMAT_R8G8B8A8_SNORM:
-		case DXGI_FORMAT_R8G8B8A8_SINT:
-		case DXGI_FORMAT_R16G16_TYPELESS:
-		case DXGI_FORMAT_R16G16_FLOAT:
-		case DXGI_FORMAT_R16G16_UNORM:
-		case DXGI_FORMAT_R16G16_UINT:
-		case DXGI_FORMAT_R16G16_SNORM:
-		case DXGI_FORMAT_R16G16_SINT:
-		case DXGI_FORMAT_R32_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT:
-		case DXGI_FORMAT_R32_FLOAT:
-		case DXGI_FORMAT_R32_UINT:
-		case DXGI_FORMAT_R32_SINT:
-		case DXGI_FORMAT_R24G8_TYPELESS:
-		case DXGI_FORMAT_D24_UNORM_S8_UINT:
-		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-		case DXGI_FORMAT_R8G8_B8G8_UNORM:
-		case DXGI_FORMAT_G8R8_G8B8_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_UNORM:
-		case DXGI_FORMAT_B8G8R8X8_UNORM:
-		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-			return 4;
-		case DXGI_FORMAT_R8G8_TYPELESS:
-		case DXGI_FORMAT_R8G8_UNORM:
-		case DXGI_FORMAT_R8G8_UINT:
-		case DXGI_FORMAT_R8G8_SNORM:
-		case DXGI_FORMAT_R8G8_SINT:
-		case DXGI_FORMAT_R16_TYPELESS:
-		case DXGI_FORMAT_R16_FLOAT:
-		case DXGI_FORMAT_D16_UNORM:
-		case DXGI_FORMAT_R16_UNORM:
-		case DXGI_FORMAT_R16_UINT:
-		case DXGI_FORMAT_R16_SNORM:
-		case DXGI_FORMAT_R16_SINT:
-		case DXGI_FORMAT_B5G6R5_UNORM:
-		case DXGI_FORMAT_B5G5R5A1_UNORM:
-			return 2;
-		case DXGI_FORMAT_R8_TYPELESS:
-		case DXGI_FORMAT_R8_UNORM:
-		case DXGI_FORMAT_R8_UINT:
-		case DXGI_FORMAT_R8_SNORM:
-		case DXGI_FORMAT_R8_SINT:
-		case DXGI_FORMAT_A8_UNORM:
-			return 1;
-		default:
-			return 0;
-	}
-}
-
 static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
 		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
 {
@@ -2176,17 +2203,17 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 	// view description as they may be necessary later to create a
 	// compatible view or perform a region copy:
 
-	if (!*buf_size || !*stride) {
-		resource->GetType(&dimension);
-		if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
-			buffer = (ID3D11Buffer*)resource;
-			buffer->GetDesc(&buf_desc);
-			if (!*buf_size)
-				*buf_size = buf_desc.ByteWidth;
+	resource->GetType(&dimension);
+	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
+		buffer = (ID3D11Buffer*)resource;
+		buffer->GetDesc(&buf_desc);
+		if (*buf_size)
+			*buf_size = min(*buf_size, buf_desc.ByteWidth);
+		else
+			*buf_size = buf_desc.ByteWidth;
 
-			if (!*stride)
-				*stride = buf_desc.StructureByteStride;
-		}
+		if (!*stride)
+			*stride = buf_desc.StructureByteStride;
 	}
 
 	if (view) {
@@ -2277,7 +2304,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size);
+	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state->call_info);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {

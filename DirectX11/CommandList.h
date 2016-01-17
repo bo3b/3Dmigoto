@@ -5,6 +5,7 @@
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include <util.h>
+#include "DrawCallInfo.h"
 
 // Forward declarations instead of #includes to resolve circular includes (we
 // include Hacker*.h, which includes Globals.h, which includes us):
@@ -16,7 +17,7 @@ struct CommandListState {
 	// common case we are going to store both width & height in separate
 	// ini params:
 	float rt_width, rt_height;
-	UINT VertexCount, IndexCount, InstanceCount;
+	DrawCallInfo *call_info;
 	bool post;
 
 	// Anything that needs to be updated at the end of the command list:
@@ -25,9 +26,7 @@ struct CommandListState {
 	CommandListState() :
 		rt_width(-1),
 		rt_height(-1),
-		VertexCount(0),
-		IndexCount(0),
-		InstanceCount(0),
+		call_info(NULL),
 		post(false),
 		update_params(false)
 	{}
@@ -259,7 +258,8 @@ public:
 			UINT *stride,
 			UINT *offset,
 			DXGI_FORMAT *format,
-			UINT *buf_size);
+			UINT *buf_size,
+			DrawCallInfo *call_info);
 	void SetResource(
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11Resource *res,
@@ -345,8 +345,7 @@ public:
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
-		CommandList *command_list,
-		UINT VertexCount, UINT IndexCount, UINT InstanceCount,
+		CommandList *command_list, DrawCallInfo *call_info,
 		bool post);
 
 bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
