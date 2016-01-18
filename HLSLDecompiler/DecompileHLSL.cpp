@@ -73,6 +73,18 @@ struct BufferEntry
 typedef map<int, BufferEntry> CBufferData;
 typedef map<string, string> StringStringMap;
 
+// Convenience routine to calculate just the number of swizzle components.
+// Used for ibfe.  Inputs like 'o1.xy', return 2.
+
+static string swizCount(char *operand)
+{
+	if (!operand)
+		return "";
+
+	size_t count = strlen(operand) - (strrchr(operand, '.') - operand) - 1;
+	return (count == 1) ? "" : to_string(count);
+}
+
 class Decompiler
 {
 public:
@@ -3516,6 +3528,8 @@ public:
 						// Code generation for this weird instruction is tuned to indent the way we want, 
 						// and still look like a single instruction.  Still has weird indent in middle of instruction,
 						// but it seems more valuable to have it be a single line.
+						//
+						// Meh, you think this is weird? Looks like a less powerful version of rlwinm to me
 					case OPCODE_UBFE:
 					{
 						remapTarget(op1);
@@ -3541,6 +3555,31 @@ public:
 						}
 						break;
 					}
+
+					case OPCODE_IBFE:
+						{
+							// Instruction for sign extending field extraction. Used in new versions of Dolphin
+							// ibfe r0.xyzw, l(24, 24, 24, 24), l(0, 0, 0, 0), cb0[12].xyzw
+							remapTarget(op1);
+							removeBoolean(op1);
+							applySwizzle(op1, op2, true);
+							applySwizzle(op1, op3, true);
+							applySwizzle(op1, op4);
+							sprintf(buffer, "  %s = (%s == 0 ? 0 : ("
+										"%s + %s < 32 ? ("
+											"((int%s)%s << (32 - %s - %s)) >> (32 - %s)"
+										") : ("
+											"(int%s)%s >> %s"
+									")));\n",
+									writeTarget(op1), ci(op2).c_str(),
+										ci(op2).c_str(), ci(op3).c_str(),
+											swizCount(op4).c_str(), ci(op4).c_str(), ci(op2).c_str(), ci(op3).c_str(), ci(op2).c_str(),
+											swizCount(op4).c_str(), ci(op4).c_str(), ci(op3).c_str()
+								);
+
+							appendOutput(buffer);
+						}
+						break;
 
 					case OPCODE_BFREV:
 						remapTarget(op1);
