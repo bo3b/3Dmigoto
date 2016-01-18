@@ -2092,6 +2092,10 @@ static void install_hooks(ID3D11DeviceContext *context)
 	InitializeCriticalSection(&context_map_lock);
 	hooks_installed = true;
 
+	// Make sure that everything in the orig_vtable is filled in just in
+	// case we miss one of the hooks below:
+	memcpy(&orig_vtable, context->lpVtbl, sizeof(struct ID3D11DeviceContextVtbl));
+
 	// At the moment we are just throwing away the hook IDs - we should
 	// probably hold on to them incase we need to remove the hooks later:
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.QueryInterface,                            context->lpVtbl->QueryInterface,                            QueryInterface);
