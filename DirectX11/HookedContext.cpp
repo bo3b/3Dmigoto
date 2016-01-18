@@ -232,6 +232,26 @@ static void STDMETHODCALLTYPE PSSetShaderResources(ID3D11DeviceContext *This,
 
 	HookDebug("HookedContext::PSSetShaderResources()\n");
 
+	if (!NumViews) {
+		// FIXME XXX DEBUG THIS: This is causing crashes in MGSV:TPP if
+		// we hook this call and call orig_vtable.PSSetShaderResources
+		// with NumViews = 0 (either from here or the trampoline
+		// context). We can alternatively avoid the crashes by not
+		// hooking this or the other SetShaderResources calls (at least
+		// VS and PS), but that doesn't explain why they are occuring.
+		// The call works fine when we are passed NumViews != 0, so
+		// there is something very strange going on. We need to track
+		// this down in case it is a wider problem.
+		//
+		// TODO: Dump the stack and look for any signs of corruption or
+		// unexpected reentrancy, make sure this is the intended call,
+		// etc.
+		LogInfo("\n*** HookedContext::PSSetShaderResources(This: 0x%p -> 0x%p, StartSlot: %u, NumViews: %u, ppShaderResourceViews: 0x%p) ***\n"
+				"*** Passing this call with NumViews=0 to the original context will cause a crash, so bailing now ***\n\n",
+				This, context, StartSlot, NumViews, ppShaderResourceViews);
+		return;
+	}
+
 	if (context)
 		return ID3D11DeviceContext_PSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
@@ -537,6 +557,26 @@ static void STDMETHODCALLTYPE VSSetShaderResources(ID3D11DeviceContext *This,
 
 	HookDebug("HookedContext::VSSetShaderResources()\n");
 
+	if (!NumViews) {
+		// FIXME XXX DEBUG THIS: This is causing crashes in MGSV:TPP if
+		// we hook this call and call orig_vtable.VSSetShaderResources
+		// with NumViews = 0 (either from here or the trampoline
+		// context). We can alternatively avoid the crashes by not
+		// hooking this or the other SetShaderResources calls (at least
+		// VS and PS), but that doesn't explain why they are occuring.
+		// The call works fine when we are passed NumViews != 0, so
+		// there is something very strange going on. We need to track
+		// this down in case it is a wider problem.
+		//
+		// TODO: Dump the stack and look for any signs of corruption or
+		// unexpected reentrancy, make sure this is the intended call,
+		// etc.
+		LogInfo("\n*** HookedContext::VSSetShaderResources(This: 0x%p -> 0x%p, StartSlot: %u, NumViews: %u, ppShaderResourceViews: 0x%p) ***\n"
+				"*** Passing this call with NumViews=0 to the original context will cause a crash, so bailing now ***\n\n",
+				This, context, StartSlot, NumViews, ppShaderResourceViews);
+		return;
+	}
+
 	if (context)
 		return ID3D11DeviceContext_VSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
@@ -636,6 +676,26 @@ static void STDMETHODCALLTYPE GSSetShaderResources(ID3D11DeviceContext *This,
 	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::GSSetShaderResources()\n");
+
+	if (!NumViews) {
+		// FIXME XXX DEBUG THIS: This is causing crashes in MGSV:TPP if
+		// we hook this call and call orig_vtable.GSSetShaderResources
+		// with NumViews = 0 (either from here or the trampoline
+		// context). We can alternatively avoid the crashes by not
+		// hooking this or the other SetShaderResources calls (at least
+		// VS and PS), but that doesn't explain why they are occuring.
+		// The call works fine when we are passed NumViews != 0, so
+		// there is something very strange going on. We need to track
+		// this down in case it is a wider problem.
+		//
+		// TODO: Dump the stack and look for any signs of corruption or
+		// unexpected reentrancy, make sure this is the intended call,
+		// etc.
+		LogInfo("\n*** HookedContext::GSSetShaderResources(This: 0x%p -> 0x%p, StartSlot: %u, NumViews: %u, ppShaderResourceViews: 0x%p) ***\n"
+				"*** Passing this call with NumViews=0 to the original context will cause a crash, so bailing now ***\n\n",
+				This, context, StartSlot, NumViews, ppShaderResourceViews);
+		return;
+	}
 
 	if (context)
 		return ID3D11DeviceContext_GSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1126,6 +1186,26 @@ static void STDMETHODCALLTYPE HSSetShaderResources(ID3D11DeviceContext *This,
 
 	HookDebug("HookedContext::HSSetShaderResources()\n");
 
+	if (!NumViews) {
+		// FIXME XXX DEBUG THIS: This is causing crashes in MGSV:TPP if
+		// we hook this call and call orig_vtable.HSSetShaderResources
+		// with NumViews = 0 (either from here or the trampoline
+		// context). We can alternatively avoid the crashes by not
+		// hooking this or the other SetShaderResources calls (at least
+		// VS and PS), but that doesn't explain why they are occuring.
+		// The call works fine when we are passed NumViews != 0, so
+		// there is something very strange going on. We need to track
+		// this down in case it is a wider problem.
+		//
+		// TODO: Dump the stack and look for any signs of corruption or
+		// unexpected reentrancy, make sure this is the intended call,
+		// etc.
+		LogInfo("\n*** HookedContext::HSSetShaderResources(This: 0x%p -> 0x%p, StartSlot: %u, NumViews: %u, ppShaderResourceViews: 0x%p) ***\n"
+				"*** Passing this call with NumViews=0 to the original context will cause a crash, so bailing now ***\n\n",
+				This, context, StartSlot, NumViews, ppShaderResourceViews);
+		return;
+	}
+
 	if (context)
 		return ID3D11DeviceContext_HSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
@@ -1197,6 +1277,26 @@ static void STDMETHODCALLTYPE DSSetShaderResources(ID3D11DeviceContext *This,
 
 	HookDebug("HookedContext::DSSetShaderResources()\n");
 
+	if (!NumViews) {
+		// FIXME XXX DEBUG THIS: This is causing crashes in MGSV:TPP if
+		// we hook this call and call orig_vtable.DSSetShaderResources
+		// with NumViews = 0 (either from here or the trampoline
+		// context). We can alternatively avoid the crashes by not
+		// hooking this or the other SetShaderResources calls (at least
+		// VS and PS), but that doesn't explain why they are occuring.
+		// The call works fine when we are passed NumViews != 0, so
+		// there is something very strange going on. We need to track
+		// this down in case it is a wider problem.
+		//
+		// TODO: Dump the stack and look for any signs of corruption or
+		// unexpected reentrancy, make sure this is the intended call,
+		// etc.
+		LogInfo("\n*** HookedContext::DSSetShaderResources(This: 0x%p -> 0x%p, StartSlot: %u, NumViews: %u, ppShaderResourceViews: 0x%p) ***\n"
+				"*** Passing this call with NumViews=0 to the original context will cause a crash, so bailing now ***\n\n",
+				This, context, StartSlot, NumViews, ppShaderResourceViews);
+		return;
+	}
+
 	if (context)
 		return ID3D11DeviceContext_DSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
 
@@ -1267,6 +1367,26 @@ static void STDMETHODCALLTYPE CSSetShaderResources(ID3D11DeviceContext *This,
 	ID3D11DeviceContext *context = lookup_hooked_context(This);
 
 	HookDebug("HookedContext::CSSetShaderResources()\n");
+
+	if (!NumViews) {
+		// FIXME XXX DEBUG THIS: This is causing crashes in MGSV:TPP if
+		// we hook this call and call orig_vtable.CSSetShaderResources
+		// with NumViews = 0 (either from here or the trampoline
+		// context). We can alternatively avoid the crashes by not
+		// hooking this or the other SetShaderResources calls (at least
+		// VS and PS), but that doesn't explain why they are occuring.
+		// The call works fine when we are passed NumViews != 0, so
+		// there is something very strange going on. We need to track
+		// this down in case it is a wider problem.
+		//
+		// TODO: Dump the stack and look for any signs of corruption or
+		// unexpected reentrancy, make sure this is the intended call,
+		// etc.
+		LogInfo("\n*** HookedContext::CSSetShaderResources(This: 0x%p -> 0x%p, StartSlot: %u, NumViews: %u, ppShaderResourceViews: 0x%p) ***\n"
+				"*** Passing this call with NumViews=0 to the original context will cause a crash, so bailing now ***\n\n",
+				This, context, StartSlot, NumViews, ppShaderResourceViews);
+		return;
+	}
 
 	if (context)
 		return ID3D11DeviceContext_CSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -2106,7 +2226,10 @@ static void install_hooks(ID3D11DeviceContext *context)
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPrivateData,                            context->lpVtbl->SetPrivateData,                            SetPrivateData);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPrivateDataInterface,                   context->lpVtbl->SetPrivateDataInterface,                   SetPrivateDataInterface);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetConstantBuffers,                      context->lpVtbl->VSSetConstantBuffers,                      VSSetConstantBuffers);
+
+	// hooking PSSetShaderResources has caused crashes in MGSV:TPP when called with NumViews=0, that we have yet to explain
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetShaderResources,                      context->lpVtbl->PSSetShaderResources,                      PSSetShaderResources);
+
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetShader,                               context->lpVtbl->PSSetShader,                               PSSetShader);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetSamplers,                             context->lpVtbl->PSSetSamplers,                             PSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetShader,                               context->lpVtbl->VSSetShader,                               VSSetShader);
@@ -2123,7 +2246,10 @@ static void install_hooks(ID3D11DeviceContext *context)
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetConstantBuffers,                      context->lpVtbl->GSSetConstantBuffers,                      GSSetConstantBuffers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetShader,                               context->lpVtbl->GSSetShader,                               GSSetShader);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.IASetPrimitiveTopology,                    context->lpVtbl->IASetPrimitiveTopology,                    IASetPrimitiveTopology);
+
+	// hooking VSSetShaderResources has caused crashes in MGSV:TPP when called with NumViews=0, that we have yet to explain
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetShaderResources,                      context->lpVtbl->VSSetShaderResources,                      VSSetShaderResources);
+
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetSamplers,                             context->lpVtbl->VSSetSamplers,                             VSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.Begin,                                     context->lpVtbl->Begin,                                     Begin);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.End,                                       context->lpVtbl->End,                                       End);
