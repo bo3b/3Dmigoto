@@ -1221,6 +1221,7 @@ public:
 					{
 						unsigned int bHex = 0;
 						numRead = sscanf_s(c + pos, "// = 0x%lx", &bHex);
+						NextLine(c, pos, size);
 						string bString = (bHex == 0) ? "false" : "true";
 						if (structLevel < 0)
 						{
@@ -1232,7 +1233,6 @@ public:
 						else
 							sprintf(buffer, "  %s%s%s %s = %s;\n", structSpacing.c_str(), modifier.c_str(), type, name, bString.c_str());
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						NextLine(c, pos, size);
 					}
 					// Special int case, to avoid converting to float badly, creating #QNAN instead. 
 					else if (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4)
@@ -1240,16 +1240,17 @@ public:
 						int in[4] = { 0, 0, 0, 0 };
 
 						numRead = sscanf_s(c + pos, "// = %i %i %i %i", in + 0, in + 1, in + 2, in + 3);
+						NextLine(c, pos, size);
 
 						if (structLevel < 0)
 						{
 							if (suboffset == 0)
-								sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s(", modifier.c_str(), type, name, packoffset, type);
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
 							else
-								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s(", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = {", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
 						}
 						else
-							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
+							sprintf(buffer, "  %s%s%s %s = {", structSpacing.c_str(), modifier.c_str(), type, name);
 						
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 
@@ -1258,25 +1259,25 @@ public:
 							sprintf(buffer, "%i,", in[i]);
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
-						sprintf(buffer, "%i);\n", in[numRead - 1]);
+						sprintf(buffer, "%i};\n", in[numRead - 1]);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						NextLine(c, pos, size);
 					}
 					else if (e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4)
 					{
 						float v[4] = { 0, 0, 0, 0 };
-						numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+						numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx", v + 0, v + 1, v + 2, v + 3);
+						NextLine(c, pos, size);
 
 						if (structLevel < 0)
 						{
 							if (suboffset == 0)
-								sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s(", modifier.c_str(), type, name, packoffset, type);
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
 							else
-								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s(", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = {", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
 						}
 						else
-							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
-	
+							sprintf(buffer, "  %s%s%s %s = {", structSpacing.c_str(), modifier.c_str(), type, name);
+
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 
 						for (int i = 0; i < numRead - 1; ++i)
@@ -1284,14 +1285,50 @@ public:
 							sprintf(buffer, "%.9g,", v[i]);
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
-						sprintf(buffer, "%.9g);\n", v[numRead - 1]);
+						sprintf(buffer, "%.9g};\n", v[numRead - 1]);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						NextLine(c, pos, size);
+					}
+					// Only 4x4 for now, not sure this is all working, so going with known needed case.
+					else if (e.bt == DT_float4x4)
+					{
+						float v[16];
+						for (size_t i = 0; i < 4; i++)
+						{
+							numRead = sscanf_s(c + pos, "//%*[ =]0x%lx 0x%lx 0x%lx 0x%lx", &v[i*4+0], &v[i*4+1], &v[i*4+2], &v[i*4+3]);
+							if (numRead != 4)
+							{
+								logDecompileError("Default values for float4x4 not read correctly, n:" + numRead);
+								break;
+							}
+							NextLine(c, pos, size);
+						}
+
+						if (structLevel < 0)
+						{
+							if (suboffset == 0)
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
+							else
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = {", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
+						}
+						else
+							sprintf(buffer, "  %s%s%s %s = {", structSpacing.c_str(), modifier.c_str(), type, name);
+
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
+						for (int i = 0; i < 16 - 1; ++i)
+						{
+							sprintf(buffer, "%.9g,", v[i]);
+							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						}
+						sprintf(buffer, "%.9g};\n", v[15]);
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					}
 					// If we don't know what the initializer is, let's not just keep reading through it.  Let's now scan 
 					// them and output them, with a bad line in between for hand-fixing.  But, the shader will be generated.
 					else
 					{
+						sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
+						appendOutput(buffer);
 						sprintf(buffer, "Unknown bad code for initializer (needs manual fix):\n");
 						appendOutput(buffer);
 
