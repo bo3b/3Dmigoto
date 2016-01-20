@@ -1302,9 +1302,20 @@ void HackerDXGISwapChain::RunFrameActions()
 	if (LogFile) fflush(LogFile);
 
 	if (G->analyse_frame) {
-		G->analyse_frame = 0;
-		if (G->DumpUsage)
-			DumpUsage(G->ANALYSIS_PATH);
+		// We don't allow hold to be changed mid-frame due to potential
+		// for filename conflicts, so use def_analyse_options:
+		if (G->def_analyse_options & FrameAnalysisOptions::HOLD) {
+			// If using analyse_options=hold we don't stop the
+			// analysis at the frame boundary (it will be stopped
+			// at the key up event instead), but we do increment
+			// the frame count and reset the draw count:
+			G->analyse_frame_no++;
+			G->analyse_frame = 1;
+		} else {
+			G->analyse_frame = 0;
+			if (G->DumpUsage)
+				DumpUsage(G->ANALYSIS_PATH);
+		}
 	}
 
 	// NOTE: Now that key overrides can check an ini param, the ordering of

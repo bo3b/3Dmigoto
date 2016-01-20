@@ -128,6 +128,7 @@ enum class FrameAnalysisOptions {
 	DUMP_XX_TXT     = 0x000a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
 	LOG             = 0x00200000,
+	HOLD            = 0x00400000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -153,6 +154,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
 	{L"log", FrameAnalysisOptions::LOG},
+	{L"hold", FrameAnalysisOptions::HOLD},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
@@ -289,6 +291,7 @@ struct Globals
 	bool deferred_enabled;
 
 	unsigned analyse_frame;
+	unsigned analyse_frame_no;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
@@ -430,6 +433,7 @@ struct Globals
 		deferred_enabled(true),
 
 		analyse_frame(0),
+		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
 

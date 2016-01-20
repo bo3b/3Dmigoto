@@ -1112,7 +1112,21 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 
 	G->cur_analyse_options = G->def_analyse_options;
 	G->frame_analysis_seen_rts.clear();
+	G->analyse_frame_no = 1;
 	G->analyse_frame = 1;
+}
+
+static void AnalyseFrameStop(HackerDevice *device, void *private_data)
+{
+	// One of two places we can stop the frame analysis - the other is in
+	// the present call. We use this one when analyse_options=hold.
+	// We don't allow hold to be changed mid-frame due to potential
+	// for filename conflicts, so use def_analyse_options:
+	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
+		G->analyse_frame = 0;
+		if (G->DumpUsage)
+			DumpUsage(G->ANALYSIS_PATH);
+	}
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
@@ -1580,7 +1594,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", iniFile, AnalyseFrame, NULL, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", iniFile, AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
 	if (GetPrivateProfileString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH, iniFile)) {
 		LogInfoW(L"  analyse_options=%s\n", buf);
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>

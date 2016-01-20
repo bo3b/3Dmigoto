@@ -49,6 +49,10 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 		fprintf(frame_analysis_log, "analyse_options: %08x\n", G->cur_analyse_options);
 	}
 
+	// We don't allow hold to be changed mid-frame due to potential
+	// for filename conflicts, so use def_analyse_options:
+	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+		fprintf(frame_analysis_log, "%u.", G->analyse_frame_no);
 	fprintf(frame_analysis_log, "%06u ", G->analyse_frame);
 
 	va_start(ap, fmt);
@@ -611,8 +615,13 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
 
-	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG))
+	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG)) {
+		// We don't allow hold to be changed mid-frame due to potential
+		// for filename conflicts, so use def_analyse_options:
+		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+	}
 
 	if (shader_type)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%cs-", shader_type);
@@ -621,8 +630,14 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	if (idx != -1)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i", idx);
 
-	if (analyse_options & FrameAnalysisOptions::FILENAME_REG)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%06i", G->analyse_frame);
+	if (analyse_options & FrameAnalysisOptions::FILENAME_REG) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-");
+		// We don't allow hold to be changed mid-frame due to potential
+		// for filename conflicts, so use def_analyse_options:
+		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", G->analyse_frame);
+	}
 
 	if (hash) {
 		try {
