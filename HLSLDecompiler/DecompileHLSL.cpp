@@ -374,14 +374,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		while (pos < size)
@@ -444,7 +444,7 @@ public:
 			char buffer[256];
 			sprintf(buffer, "  %s%s %s : %s%d,\n", modifier.c_str(), format2, regNameStr.c_str(), name, index);
 			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -465,14 +465,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		while (pos < size)
@@ -550,7 +550,7 @@ public:
 				logDecompileError("Error parsing output signature: " + string(c + pos, 80));
 				break;
 			}
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -573,14 +573,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		set<string> outputRegister;
@@ -628,7 +628,7 @@ public:
 				logDecompileError("Error parsing output signature: " + string(c + pos, 80));
 				break;
 			}
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -653,14 +653,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		while (pos < size)
@@ -754,7 +754,7 @@ public:
 			}
 			else if (!strcmp(type, "cbuffer"))
 				mCBufferNames[name] = slot;
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -898,7 +898,7 @@ public:
 					break;
 				else
 				{
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 				}
 			}
 			if (pos >= size - strlen(headerid)) return;
@@ -909,8 +909,8 @@ public:
 				logDecompileError("Error parsing buffer name: " + string(c + pos, 80));
 				return;
 			}
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
+			NextLine(c, pos, size);
 			// Map buffer name to register.
 			map<string, int>::iterator i = mCBufferNames.find(name);
 			if (i == mCBufferNames.end())
@@ -932,7 +932,7 @@ public:
 				// Skip opening bracket.
 				if (strstr(buffer, " {\n"))
 				{
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 					continue;
 				}
 				// Ignore empty line.
@@ -942,7 +942,7 @@ public:
 					while (buffer[ePos] != 0 && (buffer[ePos] == ' ' || buffer[ePos] == '\t' || buffer[ePos] == '\n' || buffer[ePos] == '\r')) ++ePos;
 					if (!buffer[ePos])
 					{
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+						NextLine(c, pos, size);
 						continue;
 					}
 				}
@@ -966,7 +966,7 @@ public:
 					}
 					const char *structHeader2 = "{\n";
 					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 					continue;
 				}
 				if (strstr(buffer, " }"))
@@ -1031,7 +1031,7 @@ public:
 						}
 					}
 					pendingStructAttributes[structLevel].clear();
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 					--structLevel;
 					continue;
 				}
@@ -1204,7 +1204,7 @@ public:
 				}
 
 				// Default value?
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				const char *defaultid = "//      = ";
 				int packoffset = offset / 16; int suboffset = (offset % 16) / 4;
 				const char INDEX_MASK[] = "xyzw";
@@ -1232,7 +1232,7 @@ public:
 						else
 							sprintf(buffer, "  %s%s%s %s = %s;\n", structSpacing.c_str(), modifier.c_str(), type, name, bString.c_str());
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+						NextLine(c, pos, size);
 					}
 					// Special int case, to avoid converting to float badly, creating #QNAN instead. 
 					else if (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4)
@@ -1260,7 +1260,7 @@ public:
 						}
 						sprintf(buffer, "%i);\n", in[numRead - 1]);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+						NextLine(c, pos, size);
 					}
 					else if (e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4)
 					{
@@ -1286,7 +1286,7 @@ public:
 						}
 						sprintf(buffer, "%.9g);\n", v[numRead - 1]);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+						NextLine(c, pos, size);
 					}
 					// If we don't know what the initializer is, let's not just keep reading through it.  Let's now scan 
 					// them and output them, with a bad line in between for hand-fixing.  But, the shader will be generated.
@@ -2901,7 +2901,7 @@ public:
 			if (!strncmp(c + pos, "#line", 5) ||
 				!strncmp(c + pos, "undecipherable", 14))
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 
@@ -2916,7 +2916,7 @@ public:
 			// Ignore comments. 
 			if (!strncmp(c + pos, "//", 2))
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 			// Read statement.
@@ -2935,7 +2935,7 @@ public:
 			if (!strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
 			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4)) {
 				skip_shader = true;
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 
@@ -2951,7 +2951,7 @@ public:
 			}
 			else if (skip_shader)
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 			else if (!strcmp(statement, "dcl_immediateConstantBuffer"))
@@ -5009,7 +5009,7 @@ public:
 			// Ignore comments.
 			if (!strncmp(c + pos, "//", 2))
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 			// Read statement.
@@ -5030,7 +5030,7 @@ public:
 			}
 
 			// Next line.
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 	}
 
