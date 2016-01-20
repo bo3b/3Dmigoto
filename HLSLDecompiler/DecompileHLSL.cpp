@@ -5000,6 +5000,11 @@ public:
 						appendOutput(buffer);
 						break;
 
+					case OPCODE_NOP:
+						// Used in MGSV:TPP, perhaps an artefact of having debug
+						// info enabled in the shaders?
+						break;
+
 					default:
 						logDecompileError("Unknown statement: " + string(statement));
 						return;

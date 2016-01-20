@@ -64,7 +64,7 @@ void HackerContext::HookContext()
 	// interface which we use in place of mOrigContext to call the real
 	// original context, thereby side stepping the problem that calling the
 	// old mOrigContext would be hooked and call back into us endlessly:
-	mOrigContext = hook_context(mOrigContext, this);
+	mOrigContext = hook_context(mOrigContext, this, G->enable_hooks);
 }
 
 // -----------------------------------------------------------------------------
