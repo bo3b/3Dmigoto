@@ -3726,11 +3726,7 @@ public:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break; 
@@ -3739,11 +3735,7 @@ public:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
@@ -3752,11 +3744,7 @@ public:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedAdd(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
@@ -3765,11 +3753,7 @@ public:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedAdd?(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
@@ -3778,11 +3762,7 @@ public:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedExchange ?(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
@@ -4670,11 +4650,7 @@ public:
 
 						sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 
 						// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
 
@@ -4724,11 +4700,7 @@ public:
 					{
 						sprintf(buffer, "// No code for instruction (needs manual fix):\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, " %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						break;
 					}
 
