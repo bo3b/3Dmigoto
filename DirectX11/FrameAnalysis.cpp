@@ -49,6 +49,10 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 		fprintf(frame_analysis_log, "analyse_options: %08x\n", G->cur_analyse_options);
 	}
 
+	// We don't allow hold to be changed mid-frame due to potential
+	// for filename conflicts, so use def_analyse_options:
+	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+		fprintf(frame_analysis_log, "%u.", G->analyse_frame_no);
 	fprintf(frame_analysis_log, "%06u ", G->analyse_frame);
 
 	va_start(ap, fmt);
@@ -171,6 +175,119 @@ void HackerContext::FrameAnalysisLogMiscArray(UINT start, UINT len, void *const 
 			fprintf(frame_analysis_log, " handle=0x%p\n", item);
 		}
 	}
+}
+
+static void FrameAnalysisLogQuery(ID3D11Query *query)
+{
+	D3D11_QUERY_DESC desc;
+
+	query->GetDesc(&desc);
+}
+
+void HackerContext::FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async)
+{
+	AsyncQueryType type;
+	ID3D11Query *query;
+	ID3D11Predicate *predicate;
+	D3D11_QUERY_DESC desc;
+
+	if (!async || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	try {
+		type = G->mQueryTypes.at(async);
+	} catch (std::out_of_range) {
+		return;
+	}
+
+	switch (type) {
+		case AsyncQueryType::QUERY:
+			fprintf(frame_analysis_log, " type=query query=");
+			query = (ID3D11Query*)async;
+			query->GetDesc(&desc);
+			break;
+		case AsyncQueryType::PREDICATE:
+			fprintf(frame_analysis_log, " type=predicate query=");
+			predicate = (ID3D11Predicate*)async;
+			predicate->GetDesc(&desc);
+			break;
+		case AsyncQueryType::COUNTER:
+			fprintf(frame_analysis_log, " type=performance\n");
+			// Don't care about this, and it's a different DESC
+			return;
+		default:
+			// Should not happen
+			return;
+	}
+
+	switch (desc.Query) {
+		case D3D11_QUERY_EVENT:
+			fprintf(frame_analysis_log, "event");
+			break;
+		case D3D11_QUERY_OCCLUSION:
+			fprintf(frame_analysis_log, "occlusion");
+			break;
+		case D3D11_QUERY_TIMESTAMP:
+			fprintf(frame_analysis_log, "timestamp");
+			break;
+		case D3D11_QUERY_TIMESTAMP_DISJOINT:
+			fprintf(frame_analysis_log, "timestamp_disjoint");
+			break;
+		case D3D11_QUERY_PIPELINE_STATISTICS:
+			fprintf(frame_analysis_log, "pipeline_statistics");
+			break;
+		case D3D11_QUERY_OCCLUSION_PREDICATE:
+			fprintf(frame_analysis_log, "occlusion_predicate");
+			break;
+		case D3D11_QUERY_SO_STATISTICS:
+			fprintf(frame_analysis_log, "so_statistics");
+			break;
+		case D3D11_QUERY_SO_OVERFLOW_PREDICATE:
+			fprintf(frame_analysis_log, "so_overflow_predicate");
+			break;
+		case D3D11_QUERY_SO_STATISTICS_STREAM0:
+			fprintf(frame_analysis_log, "so_statistics_stream0");
+			break;
+		case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0:
+			fprintf(frame_analysis_log, "so_overflow_predicate_stream0");
+			break;
+		case D3D11_QUERY_SO_STATISTICS_STREAM1:
+			fprintf(frame_analysis_log, "so_statistics_stream1");
+			break;
+		case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1:
+			fprintf(frame_analysis_log, "so_overflow_predicate_stream1");
+			break;
+		case D3D11_QUERY_SO_STATISTICS_STREAM2:
+			fprintf(frame_analysis_log, "so_statistics_stream2");
+			break;
+		case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2:
+			fprintf(frame_analysis_log, "so_overflow_predicate_stream2");
+			break;
+		case D3D11_QUERY_SO_STATISTICS_STREAM3:
+			fprintf(frame_analysis_log, "so_statistics_stream3");
+			break;
+		case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3:
+			fprintf(frame_analysis_log, "so_overflow_predicate_stream3");
+			break;
+		default:
+			fprintf(frame_analysis_log, "?");
+			break;
+	}
+	fprintf(frame_analysis_log, " MiscFlags=0x%x\n", desc.MiscFlags);
+}
+
+void HackerContext::FrameAnalysisLogData(void *buf, UINT size)
+{
+	unsigned char *ptr = (unsigned char*)buf;
+	UINT i;
+
+	if (!buf || !size || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+		return;
+
+	fprintf(frame_analysis_log, "    data: ");
+	for (i = 0; i < size; i++, ptr++)
+		fprintf(frame_analysis_log, "%02x", *ptr);
+	fprintf(frame_analysis_log, "\n");
 }
 
 void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
@@ -611,8 +728,13 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
 
-	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG))
+	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG)) {
+		// We don't allow hold to be changed mid-frame due to potential
+		// for filename conflicts, so use def_analyse_options:
+		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+	}
 
 	if (shader_type)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%cs-", shader_type);
@@ -621,8 +743,14 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	if (idx != -1)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i", idx);
 
-	if (analyse_options & FrameAnalysisOptions::FILENAME_REG)
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%06i", G->analyse_frame);
+	if (analyse_options & FrameAnalysisOptions::FILENAME_REG) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-");
+		// We don't allow hold to be changed mid-frame due to potential
+		// for filename conflicts, so use def_analyse_options:
+		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", G->analyse_frame);
+	}
 
 	if (hash) {
 		try {

@@ -1016,7 +1016,8 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	FrameAnalysisLog("Begin(pAsync:0x%p)\n", pAsync);
+	FrameAnalysisLog("Begin(pAsync:0x%p)", pAsync);
+	FrameAnalysisLogAsyncQuery(pAsync);
 	
 	mOrigContext->Begin(pAsync);
 }
@@ -1025,7 +1026,8 @@ STDMETHODIMP_(void) HackerContext::End(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	FrameAnalysisLog("End(pAsync:0x%p)\n", pAsync);
+	FrameAnalysisLog("End(pAsync:0x%p)", pAsync);
+	FrameAnalysisLogAsyncQuery(pAsync);
 
 	 mOrigContext->End(pAsync);
 }
@@ -1042,8 +1044,12 @@ STDMETHODIMP HackerContext::GetData(THIS_
 {
 	HRESULT ret = mOrigContext->GetData(pAsync, pData, DataSize, GetDataFlags);
 
-	FrameAnalysisLog("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u\n",
+	FrameAnalysisLog("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u",
 			pAsync, pData, DataSize, GetDataFlags, ret);
+	FrameAnalysisLogAsyncQuery(pAsync);
+	if (SUCCEEDED(ret))
+		FrameAnalysisLogData(pData, DataSize);
+
 	return ret;
 }
 
@@ -1053,8 +1059,9 @@ STDMETHODIMP_(void) HackerContext::SetPredication(THIS_
 	/* [annotation] */
 	__in  BOOL PredicateValue)
 {
-	FrameAnalysisLog("SetPredication(pPredicate:0x%p, PredicateValue:%s)\n",
+	FrameAnalysisLog("SetPredication(pPredicate:0x%p, PredicateValue:%s)",
 			pPredicate, PredicateValue ? "true" : "false");
+	FrameAnalysisLogAsyncQuery(pPredicate);
 
 	return mOrigContext->SetPredication(pPredicate, PredicateValue);
 }
@@ -2041,6 +2048,8 @@ STDMETHODIMP_(void) HackerContext::GetPredication(THIS_
 
 	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)\n",
 			ppPredicate, pPredicateValue);
+	if (ppPredicate)
+		FrameAnalysisLogAsyncQuery(*ppPredicate);
 }
 
 STDMETHODIMP_(void) HackerContext::GSGetShaderResources(THIS_

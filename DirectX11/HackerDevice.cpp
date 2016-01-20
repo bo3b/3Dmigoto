@@ -1367,7 +1367,10 @@ STDMETHODIMP HackerDevice::CreateQuery(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Query **ppQuery)
 {
-	return mOrigDevice->CreateQuery(pQueryDesc, ppQuery);
+	HRESULT hr = mOrigDevice->CreateQuery(pQueryDesc, ppQuery);
+	if (G->hunting && SUCCEEDED(hr) && ppQuery && *ppQuery)
+		G->mQueryTypes[*ppQuery] = AsyncQueryType::QUERY;
+	return hr;
 }
 
 STDMETHODIMP HackerDevice::CreatePredicate(THIS_
@@ -1376,7 +1379,10 @@ STDMETHODIMP HackerDevice::CreatePredicate(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Predicate **ppPredicate)
 {
-	return mOrigDevice->CreatePredicate(pPredicateDesc, ppPredicate);
+	HRESULT hr = mOrigDevice->CreatePredicate(pPredicateDesc, ppPredicate);
+	if (G->hunting && SUCCEEDED(hr) && ppPredicate && *ppPredicate)
+		G->mQueryTypes[*ppPredicate] = AsyncQueryType::PREDICATE;
+	return hr;
 }
 
 STDMETHODIMP HackerDevice::CreateCounter(THIS_
@@ -1385,7 +1391,10 @@ STDMETHODIMP HackerDevice::CreateCounter(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Counter **ppCounter)
 {
-	return mOrigDevice->CreateCounter(pCounterDesc, ppCounter);
+	HRESULT hr = mOrigDevice->CreateCounter(pCounterDesc, ppCounter);
+	if (G->hunting && SUCCEEDED(hr) && ppCounter && *ppCounter)
+		G->mQueryTypes[*ppCounter] = AsyncQueryType::COUNTER;
+	return hr;
 }
 
 STDMETHODIMP HackerDevice::OpenSharedResource(THIS_
