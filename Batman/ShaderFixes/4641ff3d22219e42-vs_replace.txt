@@ -1,3 +1,10 @@
+// Occlusion culling probe - run with a query on the GPU to see which pixels are drawn
+
+// This shader is run with no pixel shader bound and as such the driver does
+// not steroise it, but that messes up the depth/stencil test in the rasteriser
+// and the wrong result is returned in the query, causing the game to falsely
+// cull geometry in the next frame.
+
 // ---- Created with 3Dmigoto v1.2.20 on Tue Dec 29 02:01:36 2015
 cbuffer cb0 : register(b0)
 {
@@ -25,6 +32,11 @@ void main(
   r0.xyzw = cb0[6].xyzw * v0.xxxx + r0.xyzw;
   r0.xyzw = cb0[8].xyzw * v0.zzzz + r0.xyzw;
   o0.xyzw = cb0[9].xyzw * v0.wwww + r0.xyzw;
+
+// Apply stereo correction formula to fix flickering due to broken occlusion culling:
+float4 stereo = StereoParams.Load(0);
+o0.x += stereo.x * (o0.w - stereo.y);
+
   return;
 }
 
