@@ -188,6 +188,29 @@ public:
 		return DT_Unknown;
 	}
 
+	// Make this bump to new line slightly more clear by making it a convenience routine.
+	void NextLine(const char *c, size_t &pos, size_t max)
+	{
+		while (c[pos] != 0x0a && pos < max) 
+			pos++; 
+		pos++;
+	}
+
+	// Just take the current input line, and copy it to the output.
+	// This is used when we aren't sure what to do with something, and gives us the lines
+	// in the output as ASM for reference. Specifically modifying the input pos.
+	void ASMLineOut(const char *c, size_t &pos, size_t max)
+	{
+		char buffer[256];
+
+		const char *startPos = c + pos;
+		const char *eolPos = strchr(startPos, '\n');
+		std::string line(startPos, eolPos);
+		sprintf(buffer, " %s\n", line.c_str());
+		appendOutput(buffer);
+	}
+
+
 	// This is to fix a specific problem seen with Batman, where the fxc compiler
 	// is aggressive and packs the input down to a single float4, where it should
 	// be two float2's. This is going to fix only this specific case, because there
@@ -1211,17 +1234,12 @@ public:
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					}
-					else
+					// Special int case, to avoid converting to float badly, creating #QNAN instead. 
+					else if (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4)
 					{
-						float v[4] = { 0, 0, 0, 0 };
 						int in[4] = { 0, 0, 0, 0 };
-						bool useInt = (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4);
 
-						// For int case, also converts to float badly, creating #QNAN instead. 
-						if (useInt)
-							numRead = sscanf_s(c + pos, "// = %i %i %i %i", in + 0, in + 1, in + 2, in + 3);
-						else
-							numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+						numRead = sscanf_s(c + pos, "// = %i %i %i %i", in + 0, in + 1, in + 2, in + 3);
 
 						if (structLevel < 0)
 						{
@@ -1232,25 +1250,64 @@ public:
 						}
 						else
 							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
+						
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 
 						for (int i = 0; i < numRead - 1; ++i)
 						{
-							if (useInt)
-								sprintf(buffer, "%i,", in[i]);
-							else
-								sprintf(buffer, "%.9g,", v[i]);
+							sprintf(buffer, "%i,", in[i]);
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
-						if (useInt)
-							sprintf(buffer, "%i);\n", in[numRead - 1]);
-						else
-							sprintf(buffer, "%.9g);\n", v[numRead - 1]);
-
+						sprintf(buffer, "%i);\n", in[numRead - 1]);
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					}
+					else if (e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4)
+					{
+						float v[4] = { 0, 0, 0, 0 };
+						numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+
+						if (structLevel < 0)
+						{
+							if (suboffset == 0)
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s(", modifier.c_str(), type, name, packoffset, type);
+							else
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s(", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+						}
+						else
+							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
+	
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
+						for (int i = 0; i < numRead - 1; ++i)
+						{
+							sprintf(buffer, "%.9g,", v[i]);
+							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						}
+						sprintf(buffer, "%.9g);\n", v[numRead - 1]);
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					}
+					// If we don't know what the initializer is, let's not just keep reading through it.  Let's now scan 
+					// them and output them, with a bad line in between for hand-fixing.  But, the shader will be generated.
+					else
+					{
+						sprintf(buffer, "Unknown bad code for initializer (needs manual fix):\n");
+						appendOutput(buffer);
+
+						ASMLineOut(c, pos, size);
+						NextLine(c, pos, size);
+
+						// Loop through any remaining constant declarations to output
+						const char *con = "//        0x";
+						while (!strncmp(c + pos, con, strlen(con)))
+						{
+							ASMLineOut(c, pos, size);
+							NextLine(c, pos, size);
+						}
+					}
 				}
+				// No default value.
 				else
 				{
 					if (structLevel < 0)
@@ -1265,7 +1322,8 @@ public:
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				}
 			} while (strncmp(c + pos, "// }", 4));
-			// Write declaration.
+			
+			// Write closing declaration.
 			const char *endBuffer = "}\n";
 			mOutput.insert(mOutput.end(), endBuffer, endBuffer + strlen(endBuffer));
 		}
@@ -4949,8 +5007,7 @@ public:
 				iNr++;
 			}
 
-			// Next line.
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			mLastStatement = instr;
 		}
 
