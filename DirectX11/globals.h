@@ -256,6 +256,13 @@ struct ResolutionInfo
 	{}
 };
 
+enum class AsyncQueryType
+{
+	QUERY,
+	PREDICATE,
+	COUNTER,
+};
+
 struct Globals
 {
 	bool gInitialized;
@@ -386,6 +393,7 @@ struct Globals
 
 	// Statistics
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
+	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:
 	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;

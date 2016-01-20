@@ -182,6 +182,8 @@ protected:
 	void FrameAnalysisLogView(int slot, char *slot_name, ID3D11View *view);
 	void FrameAnalysisLogViewArray(UINT start, UINT len, ID3D11View *const *ppViews);
 	void FrameAnalysisLogMiscArray(UINT start, UINT len, void *const *array);
+	void FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async);
+	void FrameAnalysisLogData(void *buf, UINT size);
 
 public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
