@@ -2294,7 +2294,11 @@ static void install_hooks(ID3D11DeviceContext *context, EnableHooks enable_hooks
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DrawInstancedIndirect,                     context->lpVtbl->DrawInstancedIndirect,                     DrawInstancedIndirect);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.Dispatch,                                  context->lpVtbl->Dispatch,                                  Dispatch);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DispatchIndirect,                          context->lpVtbl->DispatchIndirect,                          DispatchIndirect);
-	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetState,                                context->lpVtbl->RSSetState,                                RSSetState);
+
+	if (!(enable_hooks & EnableHooks::EXCEPT_SET_RASTERIZER_STATE)) {
+		// Hangs in MGSVGZ on Win7 *WITHOUT* the evil update installed
+		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetState,                                context->lpVtbl->RSSetState,                                RSSetState);
+	}
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetViewports,                            context->lpVtbl->RSSetViewports,                            RSSetViewports);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetScissorRects,                         context->lpVtbl->RSSetScissorRects,                         RSSetScissorRects);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CopySubresourceRegion,                     context->lpVtbl->CopySubresourceRegion,                     CopySubresourceRegion);
