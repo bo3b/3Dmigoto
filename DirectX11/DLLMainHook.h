@@ -18,6 +18,7 @@ enum class EnableHooks {
 	DEVICE                      = 0x00000004,
 	ALL                         = 0x0000ffff,
 	EXCEPT_SET_SHADER_RESOURCES = 0x00010000, // Crashes in MGSV:TPP if NumViews=0
+	EXCEPT_SET_SAMPLERS         = 0x00020000, // Crashes in MGSV:GZ on Win10, possibly also source of crashes in Witcher 3 on Win7
 };
 SENSIBLE_ENUM(EnableHooks);
 static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
@@ -27,5 +28,6 @@ static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
 	{L"device", EnableHooks::DEVICE},
 	{L"all", EnableHooks::ALL},
 	{L"except_set_shader_resources", EnableHooks::EXCEPT_SET_SHADER_RESOURCES},
+	{L"except_set_samplers", EnableHooks::EXCEPT_SET_SAMPLERS},
 	{NULL, EnableHooks::INVALID} // End of list marker
 };
