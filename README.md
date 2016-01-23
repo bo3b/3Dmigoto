@@ -10,17 +10,17 @@ This is not the end-user version of the tool, this is for people developing the 
 bugs, adding new features, or documenting how to use it.
 <br>
 <br>
-The current project is set up using Visual Studio 2013 Express, so anyone can do development for free.
+The current project is set up using Visual Studio 2015 Community, so anyone can do development for free.
 
 To get started do:
 
-1. Install IE 10 or 11.  VS2013 apparently requires this, but might have been fixed recently.
-1. Download the Windows 8 SDK. VS2013 only includes the 8.1 SDK and we need 8.0.  These are only
-header files and libraries, no toolsets are included.
-http://msdn.microsoft.com/en-us/windows/desktop/hh852363.aspx
-1. Download VS2013 Express for Windows Desktop.
-http://www.visualstudio.com/en-us/downloads#d-express-windows-desktop
-1. Run VS2013 and it should automatically find Update 1 to install.
+1. Install IE 10 or 11.  VS2015 apparently requires this, but might have been fixed recently.
+1. Download VS2015 Community for Windows Desktop.
+http://www.visualstudio.com/en-us/downloads#d-community
+1. Install VS2015 and be sure to select:
+   - "Programming Languagues" -> "Visual C++"
+   - "Windows and Web Development" -> "Universal Windows App Development Tools" -> "Windows 10 SDK (10.0.10240)"
+1. Run VS2015.
 1. TEAM menu, Connect.  Opens the Connect page for cloning.
 1. Use Clone menu, and enter the repository: 
 https://github.com/bo3b/3Dmigoto.git
