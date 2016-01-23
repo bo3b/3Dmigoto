@@ -16,8 +16,6 @@
     #define HLSLCC_API
 #endif
 
-#include "pstdint.h"
-
 typedef enum
 {
     LANG_DEFAULT,// Depends on the HLSL shader model.
