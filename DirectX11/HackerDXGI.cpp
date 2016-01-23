@@ -230,9 +230,15 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 		}
 		else if (riid == __uuidof(IDXGIFactory))
 		{
-			HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
-			LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, *ppParent);
-			*ppParent = factoryWrap;
+			// This is a specific hack for MGSV on Windows 10. If we wrap the DXGIFactory the game will reject it and
+			// the game will quit. We still get the swap chain however, as the game creates it from a DXGIFactory1,
+			// which it does allow us to wrap. If this turns out to be insufficient, we should be able to get it working
+			// by using the same style of hooking we use for the context & device.
+			if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_FACTORY)) {
+				HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
+				LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, *ppParent);
+				*ppParent = factoryWrap;
+			}
 		}
 		else if (riid == __uuidof(IDXGIFactory1))
 		{
