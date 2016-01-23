@@ -484,7 +484,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
 		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text)
 {
-	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %s \n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
+	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls \n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
 
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
@@ -1879,7 +1879,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
 		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
-			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second);
+			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second.hash);
 
 			mZBufferResourceView = *ppSRView;
 		}

@@ -42,8 +42,8 @@ static void SwitchToXinpuGetStateEx()
 	}
 
 	// Unnamed and undocumented exports FTW
-	int XInputGetStateExOrdinal = 100;
-	XInputGetStateEx = (tXInputGetState)GetProcAddress(xinput_lib, (LPCSTR)XInputGetStateExOrdinal);
+	LPCSTR XInputGetStateExOrdinal = (LPCSTR)100;
+	XInputGetStateEx = (tXInputGetState)GetProcAddress(xinput_lib, XInputGetStateExOrdinal);
 	if (!XInputGetStateEx) {
 		LogInfo("ERROR: Unable to get XInputGetStateEx: Guide button will not be available\n");
 		return;

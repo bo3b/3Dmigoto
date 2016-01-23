@@ -86,9 +86,9 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		hash = G->mResources.at(resource).hash;
 		orig_hash = G->mResources.at(resource).orig_hash;
 		if (hash)
-			fprintf(frame_analysis_log, " hash=%08I64x", hash);
+			fprintf(frame_analysis_log, " hash=%08x", hash);
 		if (orig_hash != hash)
-			fprintf(frame_analysis_log, " orig_hash=%08I64x", orig_hash);
+			fprintf(frame_analysis_log, " orig_hash=%08x", orig_hash);
 
 		info = &G->mResourceInfo.at(orig_hash);
 		if (info->hash_contaminated) {

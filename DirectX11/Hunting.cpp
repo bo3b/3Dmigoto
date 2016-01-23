@@ -1432,24 +1432,24 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 
 static void TuneUp(HackerDevice *device, void *private_data)
 {
-	int index = (int)private_data;
+	intptr_t index = (intptr_t)private_data;
 
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
 	G->gTuneValue[index] += G->gTuneStep;
-	LogInfo("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
+	LogInfo("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
 static void TuneDown(HackerDevice *device, void *private_data)
 {
-	int index = (int)private_data;
+	intptr_t index = (intptr_t)private_data;
 
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
 	G->gTuneValue[index] -= G->gTuneStep;
-	LogInfo("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
+	LogInfo("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
 
@@ -1531,7 +1531,7 @@ static void ToggleHunting(HackerDevice *device, void *private_data)
 
 void RegisterHuntingKeyBindings(wchar_t *iniFile)
 {
-	int i;
+	intptr_t i;
 	wchar_t buf[MAX_PATH];
 	int repeat = 8, noRepeat = 0;
 
@@ -1614,10 +1614,10 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	}
 
 	for (i = 0; i < 4; i++) {
-		_snwprintf(buf, 16, L"tune%i_up", i + 1);
+		_snwprintf(buf, 16, L"tune%Ii_up", i + 1);
 		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneUp, NULL, repeat, (void*)i);
 
-		_snwprintf(buf, 16, L"tune%i_down", i + 1);
+		_snwprintf(buf, 16, L"tune%Ii_down", i + 1);
 		RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, repeat, (void*)i);
 	}
 

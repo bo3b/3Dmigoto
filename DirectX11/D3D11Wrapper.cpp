@@ -502,6 +502,9 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 	{
 		LogInfo("Shader code info from D3DCompiler_xx.dll wrapper received:\n");
 
+		// FIXME: Is this an unsigned 32bit integer or a pointer?
+		// It can't be both because they are not the same size on x64.
+		// We might be corrupting a pointer by using the wrong function signature
 		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
 		LogInfo("  Bytecode hash = %08lx%08lx\n", (UINT32)(data->BinaryHash >> 32), (UINT32)data->BinaryHash);
 		LogInfo("  Filename = %s\n", data->HLSLFileName);

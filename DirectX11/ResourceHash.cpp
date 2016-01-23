@@ -543,7 +543,7 @@ uint32_t CalcTexture2DDataHash(
 	// TODO: We might consider an ini setting to disable this fallback for
 	// new games, or possibly to force it for old games.
 	length = Texture2DLength(pDesc, &pInitialData[0], 0);
-	LogDebug("  Texture2D length: %u bad v1.2.1 length: %u\n", length, length_v12);
+	LogDebug("  Texture2D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
 	if (length_v12 <= length) {
 		if (length_v12 < length || pDesc->ArraySize > 1) {
 			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
@@ -671,7 +671,7 @@ uint32_t CalcTexture3DDataHash(
 	// TODO: We might consider an ini setting to disable this fallback for
 	// new games, or possibly to force it for old games.
 	length = Texture3DLength(pDesc, &pInitialData[0], 0);
-	LogDebug("  Texture3D length: %u bad v1.2.1 length: %u\n", length, length_v12);
+	LogDebug("  Texture3D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
 	if (length_v12 <= length) {
 		if (length_v12 < length) {
 			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture3D CRC calculation\n");
