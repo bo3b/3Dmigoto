@@ -206,8 +206,10 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 
 		LogInfoW(L"[%s]\n", id);
 
-		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
-			break;
+		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile)) {
+			LogInfo("  WARNING: [%s] missing Key=\n", id);
+			continue;
+		}
 
 		type = KeyOverrideType::ACTIVATE;
 
@@ -400,8 +402,10 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 
 		LogInfoW(L"[%s]\n", id);
 
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
+			LogInfo("  WARNING: [%s] missing Hash=\n", id);
+			continue;
+		}
 		swscanf_s(setting, L"%16llx", &hash);
 		LogInfo("  Hash=%16llx\n", hash);
 
@@ -527,8 +531,11 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 
 		LogInfoW(L"[%s]\n", id);
 
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
+			LogInfo("  WARNING: [%s] missing Hash=\n", id);
+			continue;
+		}
+
 		swscanf_s(setting, L"%8lx", &hash);
 		LogInfo("  Hash=%08lx\n", hash);
 
