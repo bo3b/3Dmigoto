@@ -2425,7 +2425,7 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 {
 	HRESULT ret = mOrigContext->FinishCommandList(RestoreDeferredContextState, ppCommandList);
 
-	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p) = %u\n", ppCommandList, ret);
+	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p -> 0x%p) = %u\n", ppCommandList, ppCommandList ? *ppCommandList : NULL, ret);
 	return ret;
 }
 
