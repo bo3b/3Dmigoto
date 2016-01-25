@@ -79,8 +79,13 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 	uint32_t hash, orig_hash;
 	struct ResourceHashInfo *info;
 
-	if (!resource || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
 		return;
+
+	if (!resource) {
+		fprintf(frame_analysis_log, "\n");
+		return;
+	}
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -191,8 +196,13 @@ void HackerContext::FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async)
 	ID3D11Predicate *predicate;
 	D3D11_QUERY_DESC desc;
 
-	if (!async || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
 		return;
+
+	if (!async) {
+		fprintf(frame_analysis_log, "\n");
+		return;
+	}
 
 	try {
 		type = G->mQueryTypes.at(async);
@@ -281,8 +291,13 @@ void HackerContext::FrameAnalysisLogData(void *buf, UINT size)
 	unsigned char *ptr = (unsigned char*)buf;
 	UINT i;
 
-	if (!buf || !size || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
 		return;
+
+	if (!buf || !size) {
+		fprintf(frame_analysis_log, "\n");
+		return;
+	}
 
 	fprintf(frame_analysis_log, "    data: ");
 	for (i = 0; i < size; i++, ptr++)

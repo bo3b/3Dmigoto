@@ -2046,10 +2046,9 @@ STDMETHODIMP_(void) HackerContext::GetPredication(THIS_
 {
 	 mOrigContext->GetPredication(ppPredicate, pPredicateValue);
 
-	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)\n",
+	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)",
 			ppPredicate, pPredicateValue);
-	if (ppPredicate)
-		FrameAnalysisLogAsyncQuery(*ppPredicate);
+	FrameAnalysisLogAsyncQuery(ppPredicate ? *ppPredicate : NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::GSGetShaderResources(THIS_
