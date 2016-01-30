@@ -185,10 +185,11 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 {
 	char buf[256];
 	DWORD written;
-	ResourceHash hash, orig_hash;
+	ResourceHash hash, orig_hash, old_hash;
 
 	hash = G->mResources[handle].hash;
 	orig_hash = G->mResources[handle].orig_hash;
+	old_hash = G->mResources[handle].old_hash;
 
 	sprintf(buf, "  <%s", tag);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -203,6 +204,11 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 
 	if (orig_hash != hash) {
 		sprintf(buf, " orig_hash=%" PRI_TEX, orig_hash);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+	}
+
+	if (old_hash != orig_hash) {
+		sprintf(buf, " old_orig_hash=%08x", old_hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 	}
 

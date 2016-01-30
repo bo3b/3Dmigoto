@@ -1709,11 +1709,14 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// We also see the handle itself get reused. That suggests that maybe we ought
 	// to be tracking Release operations as well, and removing them from the map.
 
-	ResourceSubHash data_hash = 0, desc_hash = 0;
+	ResourceSubHash data_hash = 0, desc_hash = 0, old_hash = 0;
 	ResourceHash hash;
 	data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
-	if (pDesc)
+	if (pDesc) {
 		desc_hash = CalcTexture2DDescHash(pDesc);
+		if (G->hunting)
+			old_hash = CalcTexture2DDescHashOld(data_hash, pDesc);
+	}
 
 	hash = CombinedResourceHash(desc_hash, data_hash);
 	LogDebug("  InitialData = %p, hash = %" PRI_TEX "\n", pInitialData, hash);
@@ -1808,6 +1811,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 				memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
+				G->mResources[*ppTexture2D].old_hash = old_hash;
 			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}

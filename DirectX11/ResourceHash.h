@@ -23,6 +23,7 @@ struct ResourceHandleInfo
 {
 	ResourceHash hash;
 	ResourceHash orig_hash;	// Original data hash at the time of creation
+	ResourceHash old_hash;	// Used to ease transition from 3DMigoto 1.2.x
 
 	// TODO: If we are sure we understand all possible differences between
 	// the original desc and that obtained by querying the resource we
@@ -45,6 +46,7 @@ struct ResourceHandleInfo
 	ResourceHandleInfo() :
 		hash(0),
 		orig_hash(0),
+		old_hash(0),
 		mapped_writable(false),
 		diverted_map(NULL),
 		diverted_size(0)
@@ -148,6 +150,7 @@ struct ResourceHashInfo
 
 ResourceSubHash CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc);
 ResourceSubHash CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc);
+ResourceSubHash CalcTexture2DDescHashOld(ResourceSubHash data_hash, const D3D11_TEXTURE2D_DESC *const_desc);
 
 ResourceSubHash CalcTexture2DDataHash(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 ResourceSubHash CalcTexture3DDataHash(const D3D11_TEXTURE3D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);

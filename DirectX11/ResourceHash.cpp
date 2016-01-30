@@ -382,7 +382,7 @@ static void AdjustForConstResolution(UINT *hashWidth, UINT *hashHeight)
 	}
 }
 
-ResourceSubHash CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc)
+ResourceSubHash CalcTexture2DDescHashOld(ResourceSubHash data_hash, const D3D11_TEXTURE2D_DESC *const_desc)
 {
 	D3D11_TEXTURE2D_DESC* desc = const_cast<D3D11_TEXTURE2D_DESC*>(const_desc);
 
@@ -390,12 +390,17 @@ ResourceSubHash CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc)
 	UINT saveHeight = desc->Height;
 	AdjustForConstResolution(&desc->Width, &desc->Height);
 
-	uint32_t hash = crc32c_hw(0, desc, sizeof(D3D11_TEXTURE2D_DESC));
+	uint32_t hash = crc32c_hw(data_hash, desc, sizeof(D3D11_TEXTURE2D_DESC));
 
 	desc->Width = saveWidth;
 	desc->Height = saveHeight;
 
 	return hash;
+}
+
+ResourceSubHash CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc)
+{
+	return CalcTexture2DDescHashOld(0, const_desc);
 }
 
 ResourceSubHash CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc)
