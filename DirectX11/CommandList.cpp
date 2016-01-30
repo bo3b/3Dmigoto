@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "HackerDevice.h"
 #include "HackerContext.h"
+#include "ResourceHash.h"
 
 #include <D3DCompiler.h>
 
@@ -226,7 +227,7 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 	ID3D11Resource *resource = NULL;
 	TextureOverrideMap::iterator i;
 	TextureOverride *ret = NULL;
-	uint32_t hash = 0;
+	uint64_t hash = 0;
 
 	switch (shader_type) {
 		case L'v':
@@ -264,7 +265,7 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 	if (!hash)
 		goto out_release_resource;
 
-	mHackerContext->FrameAnalysisLog(" hash=%08llx", hash);
+	mHackerContext->FrameAnalysisLog(" hash=%" PRI_TEX, hash);
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())

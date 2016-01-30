@@ -295,6 +295,36 @@ void LogViewDesc(const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc)
 	}
 }
 
+ResourceHash CombinedResourceHash(ResourceSubHash desc_hash, ResourceSubHash data_hash)
+{
+	// We put the data hash in the high 32 bits and the description hash in
+	// the low 32 bits. This allows TextureOverride sections for render
+	// targets to be used unchanged in some cases. Any hashes that included
+	// a data hash will be changed regardless.
+
+	return (((ResourceHash)data_hash << 32) | desc_hash);
+}
+
+void ResourceHandleInfo::SetDataHash(ResourceSubHash data_hash)
+{
+	hash = (hash & 0x00000000ffffffffULL) | ((ResourceHash)data_hash << 32);
+}
+
+void ResourceHandleInfo::SetDescHash(ResourceSubHash desc_hash)
+{
+	hash = (hash & 0xffffffff00000000ULL) | desc_hash;
+}
+
+ResourceSubHash ResourceHandleInfo::GetDataHash()
+{
+	return ((hash >> 32) & 0xffffffff);
+}
+
+ResourceSubHash ResourceHandleInfo::GetDescHash()
+{
+	return (hash & 0xffffffff);
+}
+
 
 // This special case of texture resolution is to improve the behavior of special 
 // full-screen textures.  Textures can be created dynamically of course, and some
@@ -352,30 +382,15 @@ static void AdjustForConstResolution(UINT *hashWidth, UINT *hashHeight)
 	}
 }
 
-uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc)
+ResourceSubHash CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc)
 {
-	// It concerns me that CreateTextureND can use an override if it
-	// matches screen resolution, but when we record render target / shader
-	// resource stats we don't use the same override.
-	//
-	// For textures made with CreateTextureND and later used as a render
-	// target it's probably fine since the hash will still be stored, but
-	// it could be a problem if we need the hash of a render target not
-	// created directly with that. I don't know enough about the DX11 API
-	// to know if this is an issue, but it might be worth using the screen
-	// resolution override in all cases. -DarkStarSword
-
-	// Based on that concern, and the need to have a pointer to the 
-	// D3D11_TEXTURE2D_DESC struct for hash calculation, let's go ahead
-	// and use the resolution override always.
-
 	D3D11_TEXTURE2D_DESC* desc = const_cast<D3D11_TEXTURE2D_DESC*>(const_desc);
 
 	UINT saveWidth = desc->Width;
 	UINT saveHeight = desc->Height;
 	AdjustForConstResolution(&desc->Width, &desc->Height);
 
-	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE2D_DESC));
+	uint32_t hash = crc32c_hw(0, desc, sizeof(D3D11_TEXTURE2D_DESC));
 
 	desc->Width = saveWidth;
 	desc->Height = saveHeight;
@@ -383,18 +398,15 @@ uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC
 	return hash;
 }
 
-uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc)
+ResourceSubHash CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc)
 {
-	// Same comment as in CalcTexture2DDescHash above - concerned about
-	// inconsistent use of these resolution overrides
-
 	D3D11_TEXTURE3D_DESC* desc = const_cast<D3D11_TEXTURE3D_DESC*>(const_desc);
 
 	UINT saveWidth = desc->Width;
 	UINT saveHeight = desc->Height;
 	AdjustForConstResolution(&desc->Width, &desc->Height);
 
-	uint32_t hash = crc32c_hw(initial_hash, desc, sizeof(D3D11_TEXTURE3D_DESC));
+	uint32_t hash = crc32c_hw(0, desc, sizeof(D3D11_TEXTURE3D_DESC));
 
 	desc->Width = saveWidth;
 	desc->Height = saveHeight;
@@ -506,61 +518,20 @@ static size_t Texture3DLength(
 }
 
 
-uint32_t CalcTexture2DDataHash(
+ResourceSubHash CalcTexture2DDataHash(
 	const D3D11_TEXTURE2D_DESC *pDesc,
 	const D3D11_SUBRESOURCE_DATA *pInitialData)
 {
 	uint32_t hash = 0;
-	size_t length_v12;
 	size_t length;
 	UINT item = 0, level = 0, index;
 
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
 
-	// In 3DMigoto v1.2, this is what we were using as the length of the
-	// buffer in bytes. Unfortunately this is not right since pDesc->Width
-	// is in texels, not bytes, and if pDesc->ArraySize was greater than 1
-	// it signifies that there are additional separate buffers to consider,
-	// while we treated it as making the first buffer longer. Additionally,
-	// compressed textures complicate the buffer size calculation further.
-	//
-	// The result is that we might not consider the entire buffer when
-	// calculating the hash (which may not be ideal, but it is generally
-	// acceptable), or we might overflow the buffer. If we overflow we
-	// might get an exception if there is nothing mapped after the buffer
-	// (which we catch and log), but we could just as easily process
-	// gargage after the buffer as being part of the texture, which would
-	// lead to us creating unpredictable hashes.
-	length_v12 = pDesc->Width * pDesc->Height * pDesc->ArraySize;
-
-	// Compare the old broken length to the length of just the first item.
-	// If the broken length is shorter, we will just use that and skip
-	// considering additional entries in the array. While not ideal, this
-	// will minimise the pain of changing the texture hash so soon after
-	// the last time.
-	//
-	// TODO: We might consider an ini setting to disable this fallback for
-	// new games, or possibly to force it for old games.
-	length = Texture2DLength(pDesc, &pInitialData[0], 0);
-	LogDebug("  Texture2D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
-	if (length_v12 <= length) {
-		if (length_v12 < length || pDesc->ArraySize > 1) {
-			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
-		}
-		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
-	}
-
-	// If we are here it means the old length had overflowed the buffer,
-	// which means we could not rely on it being a consistent value unless
-	// we got lucky and the memory following the buffer was always
-	// consistent (and even if we did, can we be sure every player will,
-	// and that it won't change when the game is updated?).
-	//
-	// In that case, let's do it right... and hopefully this will be the
-	// last time we need to change this.
-
-	LogDebug("  Using 3DMigoto v1.2.11+ Texture2D CRC calculation\n");
+	// With 3DMigoto 1.3.x we have changed the texture hashes again, so
+	// have taken the opportunity to remove the backwards compatibility
+	// mode for the incorrect length calculation.
 
 	// We are no longer taking multiple subresources into account in the
 	// hash. We did for a short time between 3DMigoto 1.2.9 and 1.2.10, but
@@ -583,11 +554,6 @@ uint32_t CalcTexture2DDataHash(
 	// multi-element resources - so not something we would do unless
 	// necessary.
 	//
-	// 3DMigoto 1.2.9 already changed the hash of multi-element resources,
-	// but none of our fixes were reported broken by that change. Therefore
-	// I am fairly confident that there won't be any impact to this change
-	// either.
-	//
 	//for (item = 0; item < pDesc->ArraySize; item++) {
 		// We could potentially consider multiple mip-map levels, but
 		// they are unlikely to differentiate any textures that the
@@ -606,7 +572,7 @@ uint32_t CalcTexture2DDataHash(
 	return hash;
 }
 
-uint32_t GetOrigResourceHash(ID3D11Resource *resource)
+ResourceHash GetOrigResourceHash(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
 
@@ -617,7 +583,7 @@ uint32_t GetOrigResourceHash(ID3D11Resource *resource)
 	return 0;
 }
 
-uint32_t GetResourceHash(ID3D11Resource *resource)
+ResourceHash GetResourceHash(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
 
@@ -638,62 +604,25 @@ uint32_t GetResourceHash(ID3D11Resource *resource)
 	return 0;
 }
 
-uint32_t CalcTexture3DDataHash(
+ResourceSubHash CalcTexture3DDataHash(
 	const D3D11_TEXTURE3D_DESC *pDesc,
 	const D3D11_SUBRESOURCE_DATA *pInitialData)
 {
 	uint32_t hash = 0;
-	size_t length_v12;
 	size_t length;
 
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
 
-	// In 3DMigoto v1.2, this is what we were using as the length of the
-	// buffer in bytes. Unfortunately this is not right since pDesc->Width
-	// is in texels, not bytes. Additionally, compressed textures
-	// complicate the buffer size calculation further.
-	//
-	// The result is that we might not consider the entire buffer when
-	// calculating the hash (which may not be ideal, but it is generally
-	// acceptable), or we might overflow the buffer. If we overflow we
-	// might get an exception if there is nothing mapped after the buffer
-	// (which we catch and log), but we could just as easily process
-	// gargage after the buffer as being part of the texture, which would
-	// lead to us creating unpredictable hashes.
-	length_v12 = pDesc->Width * pDesc->Height * pDesc->Depth;
-
-	// Compare the old broken length to the actual length. If the broken
-	// length is shorter, we will just use that. While not ideal, this will
-	// minimise the pain of changing the texture hash so soon after the
-	// last time.
-	//
-	// TODO: We might consider an ini setting to disable this fallback for
-	// new games, or possibly to force it for old games.
-	length = Texture3DLength(pDesc, &pInitialData[0], 0);
-	LogDebug("  Texture3D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
-	if (length_v12 <= length) {
-		if (length_v12 < length) {
-			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture3D CRC calculation\n");
-		}
-		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
-	}
-
-	// If we are here it means the old length had overflowed the buffer,
-	// which means we could not rely on it being a consistent value unless
-	// we got lucky and the memory following the buffer was always
-	// consistent (and even if we did, can we be sure every player will,
-	// and that it won't change when the game is updated?).
-	//
-	// In that case, let's do it right... and hopefully this will be the
-	// last time we need to change this.
-
-	LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
+	// With 3DMigoto 1.3.x we have changed the texture hashes again, so
+	// have taken the opportunity to remove the backwards compatibility
+	// mode for the incorrect length calculation.
 
 	// As above, we could potentially consider multiple mip-map levels blah
 	// blah blah... Difference is, there can only be one array entry in a
 	// 3D texture
 
+	length = Texture3DLength(pDesc, &pInitialData[0], 0);
 	hash = crc32c_hw(hash, pInitialData[0].pSysMem, length);
 
 	return hash;
@@ -732,7 +661,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
 {
 	struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
-	uint32_t srcHash = 0, dstHash = 0;
+	ResourceHash srcHash = 0, dstHash = 0;
 	UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
 	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
 	bool partial = false;
@@ -772,8 +701,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 					&srcWidth, &srcHeight, &srcDepth,
 					&srcIdx, &srcMip, &srcArraySize);
 
-			if (dstHash != srcHash && srcInfo->initial_data_used_in_hash) {
-				dstInfo->initial_data_used_in_hash = true;
+			if (dstHash != srcHash) {
 				if (!G->track_texture_updates)
 					dstInfo->hash_contaminated = true;
 			}
@@ -784,13 +712,11 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	switch (type) {
 		case 'U':
 			dstInfo->update_contamination.insert(DstSubresource);
-			dstInfo->initial_data_used_in_hash = true;
 			if (!G->track_texture_updates)
 				dstInfo->hash_contaminated = true;
 			break;
 		case 'M':
 			dstInfo->map_contamination.insert(DstSubresource);
-			dstInfo->initial_data_used_in_hash = true;
 			if (!G->track_texture_updates)
 				dstInfo->hash_contaminated = true;
 			break;
@@ -845,7 +771,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	ID3D11Texture3D *tex3D;
 	D3D11_TEXTURE2D_DESC *desc2D;
 	D3D11_TEXTURE3D_DESC *desc3D;
-	uint32_t old_data_hash, old_hash;
+	ResourceHash old_hash;
 
 	if (!resource || !data)
 		return;
@@ -874,7 +800,6 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	// positive about all the misc flags. Once we understand all possible
 	// differences we could just store those instead of the whole struct.
 
-	old_data_hash = info->data_hash;
 	old_hash = info->hash;
 
 	resource->GetType(&dim);
@@ -885,8 +810,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 			desc2D = &info->desc2D;
 			// TODO: tex2D->GetDesc(&desc2D); then fix up mip-maps if necessary
 
-			info->data_hash = CalcTexture2DDataHash(desc2D, &initialData);
-			info->hash = CalcTexture2DDescHash(info->data_hash, desc2D);
+			info->SetDataHash(CalcTexture2DDataHash(desc2D, &initialData));
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			tex3D = (ID3D11Texture3D*)resource;
@@ -894,23 +818,18 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 			desc3D = &info->desc3D;
 			// TODO: tex3D->GetDesc(&desc3D); then fix up mip-maps if necessary
 
-			info->data_hash = CalcTexture3DDataHash(desc3D, &initialData);
-			info->hash = CalcTexture3DDescHash(info->data_hash, desc3D);
+			info->SetDataHash(CalcTexture3DDataHash(desc3D, &initialData));
 			break;
 	}
 
 	LogDebug("Updated resource hash\n");
-	LogDebug("  old data: %08x new data: %08x\n", old_data_hash, info->data_hash);
-	LogDebug("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
+	LogDebug("  old hash: %" PRI_TEX " new hash: %" PRI_TEX "\n", old_hash, info->hash);
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 {
 	ResourceHandleInfo *dst_info, *src_info;
-	D3D11_RESOURCE_DIMENSION dim;
-	D3D11_TEXTURE2D_DESC *desc2D;
-	D3D11_TEXTURE3D_DESC *desc3D;
-	uint32_t old_data_hash, old_hash;
+	ResourceHash old_hash;
 
 	try {
 		src_info = &G->mResources.at(src);
@@ -927,7 +846,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	// If there was no initial data in either source or destination, or
 	// they both contain the same data, we don't need to recalculate the
 	// hash as it will not change:
-	if (src_info->data_hash == dst_info->data_hash)
+	if (src_info->GetDataHash() == dst_info->GetDataHash())
 		return;
 
 	// XXX: If the destination had an initial data but the source did not
@@ -940,30 +859,12 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	// decision for every game... We could always make it an option in the
 	// d3dx.ini if need be...
 
-	old_data_hash = dst_info->data_hash;
 	old_hash = dst_info->hash;
 
-	dst_info->data_hash = src_info->data_hash;
-
-	dst->GetType(&dim);
-	switch (dim) {
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			desc2D = &dst_info->desc2D;
-			// TODO: tex2D->GetDesc(&desc2D); then fix up mip-maps if necessary
-
-			dst_info->hash = CalcTexture2DDescHash(dst_info->data_hash, desc2D);
-			break;
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			desc3D = &dst_info->desc3D;
-			// TODO: tex3D->GetDesc(&desc3D); then fix up mip-maps if necessary
-
-			dst_info->hash = CalcTexture3DDescHash(dst_info->data_hash, desc3D);
-			break;
-	}
+	dst_info->SetDataHash(src_info->GetDataHash());
 
 	LogDebug("Propagated resource hash\n");
-	LogDebug("  old data: %08x new data: %08x\n", old_data_hash, dst_info->data_hash);
-	LogDebug("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
+	LogDebug("  old hash: %" PRI_TEX " new hash: %" PRI_TEX "\n", old_hash, dst_info->hash);
 }
 
 void MapTrackResourceHashUpdate(

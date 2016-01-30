@@ -1,4 +1,5 @@
 #include "HackerContext.h"
+#include "ResourceHash.h"
 #include "Globals.h"
 
 #include <ScreenGrab.h>
@@ -76,7 +77,7 @@ static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_
 
 void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 {
-	uint32_t hash, orig_hash;
+	ResourceHash hash, orig_hash;
 	struct ResourceHashInfo *info;
 
 	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
@@ -91,9 +92,9 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		hash = G->mResources.at(resource).hash;
 		orig_hash = G->mResources.at(resource).orig_hash;
 		if (hash)
-			fprintf(frame_analysis_log, " hash=%08x", hash);
+			fprintf(frame_analysis_log, " hash=%" PRI_TEX, hash);
 		if (orig_hash != hash)
-			fprintf(frame_analysis_log, " orig_hash=%08x", orig_hash);
+			fprintf(frame_analysis_log, " orig_hash=%" PRI_TEX, orig_hash);
 
 		info = &G->mResourceInfo.at(orig_hash);
 		if (info->hash_contaminated) {
@@ -737,7 +738,7 @@ void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
 }
 
 HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-		wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
+		wchar_t *reg, char shader_type, int idx, ResourceHash hash, ResourceHash orig_hash,
 		ID3D11Resource *handle)
 {
 	struct ResourceHashInfo *info;
@@ -788,10 +789,10 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 			}
 		} catch (std::out_of_range) {}
 
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%08x", hash);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%" LPRI_TEX, hash);
 
 		if (hash != orig_hash)
-			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"(%08x)", orig_hash);
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"(%" LPRI_TEX L")", orig_hash);
 	}
 	if (analyse_options & FrameAnalysisOptions::FILENAME_HANDLE)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
@@ -849,7 +850,7 @@ void HackerContext::_DumpTextures(char shader_type, bool compute,
 	ID3D11Resource *resource;
 	D3D11_RESOURCE_DIMENSION dim;
 	wchar_t filename[MAX_PATH];
-	uint32_t hash, orig_hash;
+	ResourceHash hash, orig_hash;
 	HRESULT hr;
 	UINT i;
 
@@ -1026,7 +1027,7 @@ void HackerContext::DumpRenderTargets()
 	UINT i;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
+	ResourceHash hash, orig_hash;
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
 		// TODO: Decouple from HackerContext and remove dependency on
@@ -1058,7 +1059,7 @@ void HackerContext::DumpDepthStencilTargets()
 {
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
+	ResourceHash hash, orig_hash;
 
 	if (mCurrentDepthTarget) {
 		// TODO: Decouple from HackerContext and remove dependency on
@@ -1088,7 +1089,7 @@ void HackerContext::DumpUAVs(bool compute)
 	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
+	ResourceHash hash, orig_hash;
 
 	if (compute)
 		mOrigContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
@@ -1186,7 +1187,7 @@ void HackerContext::FrameAnalysisProcessTriggers(bool compute)
 	FrameAnalysisOptions new_options = FrameAnalysisOptions::INVALID;
 	struct ShaderOverride *shaderOverride;
 	struct TextureOverride *textureOverride;
-	uint32_t hash;
+	ResourceHash hash;
 	UINT i;
 
 	// TODO: Trigger on texture inputs

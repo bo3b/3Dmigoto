@@ -514,7 +514,7 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	TextureOverride *override;
-	uint32_t hash;
+	ResourceHash hash;
 
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -536,11 +536,11 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 			continue;
 		}
 
-		swscanf_s(setting, L"%8lx", &hash);
-		LogInfo("  Hash=%08lx\n", hash);
+		swscanf_s(setting, L"%" LPRI_TEX, &hash);
+		LogInfo("  Hash=%" PRI_TEX "\n", hash);
 
 		if (G->mTextureOverrideMap.count(hash)) {
-			LogInfo("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
+			LogInfo("  WARNING: Duplicate TextureOverride hash: %" PRI_TEX "\n", hash);
 			BeepFailure2();
 		}
 		override = &G->mTextureOverrideMap[hash];
@@ -1014,8 +1014,8 @@ void LoadConfigFile()
 	}
 	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH, iniFile))
 	{
-		uint32_t hash;
-		swscanf_s(setting, L"%08lx", &hash);
+		ResourceHash hash;
+		swscanf_s(setting, L"%" LPRI_TEX, &hash);
 		G->ZBufferHashToInject = hash;
 	}
 	if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH, iniFile))

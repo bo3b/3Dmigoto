@@ -25,8 +25,8 @@
 // The VERSION_REVISION is automatically incremented for every Publish build.
 
 #define VERSION_MAJOR               1
-#define VERSION_MINOR               2
-#define VERSION_REVISION            27
+#define VERSION_MINOR               3
+#define VERSION_REVISION            0
  
 #define STRINGIZE2(s) #s
 #define STRINGIZE(s) STRINGIZE2(s)

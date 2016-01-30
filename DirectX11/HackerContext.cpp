@@ -76,7 +76,7 @@ void HackerContext::HookContext()
 ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
 {
 	ID3D11Resource *resource = NULL;
-	uint32_t orig_hash = 0;
+	ResourceHash orig_hash = 0;
 
 	if (!view)
 		return NULL;
@@ -126,7 +126,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 {
 	D3D11_RENDER_TARGET_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
-	uint32_t orig_hash = 0;
+	ResourceHash orig_hash = 0;
 
 	target->GetDesc(&desc);
 
@@ -157,7 +157,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 {
 	D3D11_DEPTH_STENCIL_VIEW_DESC desc;
 	ID3D11Resource *resource = NULL;
-	uint32_t orig_hash = 0;
+	ResourceHash orig_hash = 0;
 
 	if (!target)
 		return;
@@ -426,7 +426,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				mCurrentHullShader == G->mSelectedHullShader ||
 				selectedRenderTargetPos < mCurrentRenderTargets.size())
 			{
-				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
+				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %" PRI_TEX ", CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
 					mCurrentIndexBuffer, mCurrentVertexShader, mCurrentPixelShader);
 
 				// Snapshot render target list.
@@ -769,7 +769,7 @@ HRESULT HackerContext::MapDenyCPURead(
 	ID3D11Texture2D *tex = (ID3D11Texture2D*)pResource;
 	D3D11_TEXTURE2D_DESC desc;
 	D3D11_RESOURCE_DIMENSION dim;
-	uint32_t hash;
+	ResourceHash hash;
 	TextureOverrideMap::iterator i;
 	HRESULT hr;
 	UINT replace_size;
@@ -788,7 +788,7 @@ HRESULT HackerContext::MapDenyCPURead(
 	tex->GetDesc(&desc);
 	hash = GetResourceHash(tex);
 
-	LogDebug("Map Texture2D %08lx (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
+	LogDebug("Map Texture2D %" PRI_TEX " (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
 			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
 
 	// Currently only replacing first subresource to simplify map type, and
@@ -1259,7 +1259,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	ID3D11Texture2D *dstTex = (ID3D11Texture2D*)pDstResource;
 	D3D11_TEXTURE2D_DESC srcDesc, dstDesc;
 	D3D11_RESOURCE_DIMENSION srcDim, dstDim;
-	uint32_t srcHash, dstHash;
+	ResourceHash srcHash, dstHash;
 	TextureOverrideMap::iterator i;
 
 	if (!pSrcResource || !pDstResource || !pSrcBox)
@@ -1275,7 +1275,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	srcHash = GetResourceHash(srcTex);
 	dstHash = GetResourceHash(dstTex);
 
-	LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
+	LogDebug("CopySubresourceRegion %" PRI_TEX " (%u:%u x %u:%u / %u x %u) -> %" PRI_TEX " (%u x %u / %u x %u)\n",
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
 			dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
 
@@ -2592,7 +2592,7 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 		DataBufferMap::iterator i = G->mDataBuffers.find(pIndexBuffer);
 		if (i != G->mDataBuffers.end()) {
 			mCurrentIndexBuffer = i->second;
-			LogDebug("  index buffer found: handle = %p, hash = %08lx \n", pIndexBuffer, mCurrentIndexBuffer);
+			LogDebug("  index buffer found: handle = %p, hash = %" PRI_TEX "\n", pIndexBuffer, mCurrentIndexBuffer);
 
 			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 				G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);

@@ -1556,16 +1556,19 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	{
 		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
-		uint32_t hash = 0;
+		ResourceSubHash data_hash = 0, desc_hash = 0;
+		ResourceHash hash;
 		if (pInitialData && pInitialData->pSysMem && pDesc)
-			hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
+			data_hash = crc32c_hw(0, pInitialData->pSysMem, pDesc->ByteWidth);
 		if (pDesc)
-			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
+			desc_hash = crc32c_hw(0, pDesc, sizeof(D3D11_BUFFER_DESC));
+
+		hash = CombinedResourceHash(desc_hash, data_hash);
 
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mDataBuffers[*ppBuffer] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		LogDebug("    Buffer registered: handle = %p, hash = %08lx \n", *ppBuffer, hash);
+		LogDebug("    Buffer registered: handle = %p, hash = %" PRI_TEX " \n", *ppBuffer, hash);
 	}
 	return hr;
 }
@@ -1706,11 +1709,14 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// We also see the handle itself get reused. That suggests that maybe we ought
 	// to be tracking Release operations as well, and removing them from the map.
 
-	uint32_t data_hash, hash;
-	hash = data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
+	ResourceSubHash data_hash = 0, desc_hash = 0;
+	ResourceHash hash;
+	data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
 	if (pDesc)
-		hash = CalcTexture2DDescHash(hash, pDesc);
-	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
+		desc_hash = CalcTexture2DDescHash(pDesc);
+
+	hash = CombinedResourceHash(desc_hash, data_hash);
+	LogDebug("  InitialData = %p, hash = %" PRI_TEX "\n", pInitialData, hash);
 
 	// Override custom settings?
 	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
@@ -1798,12 +1804,10 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture2D].hash = hash;
 			G->mResources[*ppTexture2D].orig_hash = hash;
-			G->mResources[*ppTexture2D].data_hash = data_hash;
 			if (pDesc)
 				memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
-				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1840,11 +1844,14 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 
 	// Create hash code from raw texture data and description.
 	// Initial data is optional, so we might have zero data to add to the hash there.
-	uint32_t data_hash, hash;
-	hash = data_hash = CalcTexture3DDataHash(pDesc, pInitialData);
+	ResourceSubHash data_hash = 0, desc_hash = 0;
+	ResourceHash hash;
+	data_hash = CalcTexture3DDataHash(pDesc, pInitialData);
 	if (pDesc)
-		hash = CalcTexture3DDescHash(hash, pDesc);
-	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
+		desc_hash = CalcTexture3DDescHash(pDesc);
+
+	hash = CombinedResourceHash(desc_hash, data_hash);
+	LogInfo("  InitialData = %p, hash = %" PRI_TEX " \n", pInitialData, hash);
 
 	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
 
@@ -1854,12 +1861,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture3D].hash = hash;
 			G->mResources[*ppTexture3D].orig_hash = hash;
-			G->mResources[*ppTexture3D].data_hash = data_hash;
 			if (pDesc)
 				memcpy(&G->mResources[*ppTexture3D].desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
-				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1887,7 +1892,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
 		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
-			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second.hash);
+			LogInfo("  resource view of z buffer found: handle = %p, hash = %" PRI_TEX "\n", *ppSRView, i->second.hash);
 
 			mZBufferResourceView = *ppSRView;
 		}

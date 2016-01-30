@@ -62,16 +62,16 @@ DWORD castStrLen(const char* string)
 	return (DWORD)strlen(string);
 }
 
-static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *tag)
+static void DumpUsageResourceInfo(HANDLE f, std::set<ResourceHash> *hashes, char *tag)
 {
-	std::set<uint32_t>::iterator orig_hash;
-	std::set<uint32_t>::iterator iCopy;
+	std::set<ResourceHash>::iterator orig_hash;
+	std::set<ResourceHash>::iterator iCopy;
 	std::set<UINT>::iterator iMU;
 	CopySubresourceRegionContaminationMap::iterator iRegion;
 	CopySubresourceRegionContaminationMap::key_type kRegion;
 	CopySubresourceRegionContamination *region;
 
-	uint32_t srcHash;
+	ResourceHash srcHash;
 	UINT SrcIdx, SrcMip, DstIdx, DstMip;
 	struct ResourceHashInfo *info;
 	char buf[256];
@@ -84,7 +84,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 		} catch (std::out_of_range) {
 			continue;
 		}
-		_snprintf_s(buf, 256, 256, "<%s orig_hash=%08lx ", tag, *orig_hash);
+		_snprintf_s(buf, 256, 256, "<%s orig_hash=%" PRI_TEX " ", tag, *orig_hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 		StrRenderTarget(buf, 256, *info);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -108,7 +108,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 			nl = true;
 		}
 		for (iCopy = info->copy_contamination.begin(); iCopy != info->copy_contamination.end(); iCopy++) {
-			_snprintf_s(buf, 256, 256, "\n  <CopiedFrom>%08lx</CopiedFrom>", *iCopy);
+			_snprintf_s(buf, 256, 256, "\n  <CopiedFrom>%" PRI_TEX "</CopiedFrom>", *iCopy);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 			nl = true;
 		}
@@ -167,7 +167,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 				WriteFile(f, buf, castStrLen(buf), &written, 0);
 			}
 
-			_snprintf_s(buf, 256, 256, ">%08lx</SubresourceCopiedFrom>", srcHash);
+			_snprintf_s(buf, 256, 256, ">%" PRI_TEX "</SubresourceCopiedFrom>", srcHash);
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 
 			nl = true;
@@ -185,7 +185,7 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 {
 	char buf[256];
 	DWORD written;
-	uint32_t hash, orig_hash;
+	ResourceHash hash, orig_hash;
 
 	hash = G->mResources[handle].hash;
 	orig_hash = G->mResources[handle].orig_hash;
@@ -202,7 +202,7 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 
 	if (orig_hash != hash) {
-		sprintf(buf, " orig_hash=%08lx", orig_hash);
+		sprintf(buf, " orig_hash=%" PRI_TEX, orig_hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 	}
 
@@ -214,7 +214,7 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 	} catch (std::out_of_range) {
 	}
 
-	sprintf(buf, ">%08lx</%s>\n", hash, tag);
+	sprintf(buf, ">%" PRI_TEX "</%s>\n", hash, tag);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
@@ -1191,7 +1191,7 @@ out:
 
 static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {
-	HuntNext<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+	HuntNext<ResourceHash>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 }
 static void NextPixelShader(HackerDevice *device, void *private_data)
 {
@@ -1264,7 +1264,7 @@ out:
 
 static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
-	HuntPrev<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+	HuntPrev<ResourceHash>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 }
 static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
@@ -1304,7 +1304,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-	LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
+	LogInfo(">>>> Index buffer marked: index buffer hash = %" PRI_TEX "\n", G->mSelectedIndexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
 		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
@@ -1347,8 +1347,8 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 	if (!MarkShaderBegin("pixel shader", G->mSelectedPixelShader))
 		return;
 
-	for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
-		LogInfo("     visited index buffer hash = %08x\n", *i);
+	for (std::set<ResourceHash>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
+		LogInfo("     visited index buffer hash = %" PRI_TEX "\n", *i);
 	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
 		LogInfo("     visited vertex shader hash = %016I64x \n", *i);
 
@@ -1360,8 +1360,8 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 	if (!MarkShaderBegin("vertex shader", G->mSelectedVertexShader))
 		return;
 
-	for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-		LogInfo("     visited index buffer hash = %08lx \n", *i);
+	for (std::set<ResourceHash>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
+		LogInfo("     visited index buffer hash = %" PRI_TEX " \n", *i);
 	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
 		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
 
@@ -1406,11 +1406,11 @@ static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 		return;
 	}
 
-	uint32_t hash = G->mResources[target].hash;
-	uint32_t orig_hash = G->mResources[target].orig_hash;
+	ResourceHash hash = G->mResources[target].hash;
+	ResourceHash orig_hash = G->mResources[target].orig_hash;
 	struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
 	StrRenderTarget(buf, 256, info);
-	LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
+	LogInfo("%srender target handle = %p, hash = %" PRI_TEX ", orig_hash = %" PRI_TEX ", %s\n",
 		log_prefix, target, hash, orig_hash, buf);
 }
 

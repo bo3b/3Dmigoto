@@ -63,7 +63,7 @@ private:
 	HackerDevice *mHackerDevice;
 
 	// These are per-context, moved from globals.h:
-	uint32_t mCurrentIndexBuffer;
+	ResourceHash mCurrentIndexBuffer;
 	UINT64 mCurrentVertexShader;
 	ID3D11VertexShader *mCurrentVertexShaderHandle;
 	UINT64 mCurrentPixelShader;
@@ -141,7 +141,7 @@ private:
 	void DumpDepthStencilTargets();
 	void DumpUAVs(bool compute);
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
+			wchar_t *reg, char shader_type, int idx, ResourceHash hash, ResourceHash orig_hash,
 			ID3D11Resource *handle);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);

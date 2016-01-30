@@ -6,12 +6,23 @@
 #include <map>
 #include <set>
 
+// I'm going against some coding conventions here (namely "typedef considered
+// harmful") and my colleagues advice ("inttypes.h style macros are horrible")
+// because we have now changed these twice and it's just error prone finding
+// and updating every place they are used. Besides, this isn't that project ;-)
+typedef uint64_t ResourceHash;
+typedef uint32_t ResourceSubHash;
+#define PRI_TEX "016llx"
+// Figures, MSVC doesn't follow the C99 standard and concatonate adjacent
+// strings and wide strings as wide strings so we need this and extra spaces
+// where we use it:
+#define LPRI_TEX L"016llx"
+
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
 {
-	uint32_t hash;
-	uint32_t orig_hash;	// Original hash at the time of creation
-	uint32_t data_hash;	// Just the data hash for track_texture_updates
+	ResourceHash hash;
+	ResourceHash orig_hash;	// Original data hash at the time of creation
 
 	// TODO: If we are sure we understand all possible differences between
 	// the original desc and that obtained by querying the resource we
@@ -34,11 +45,15 @@ struct ResourceHandleInfo
 	ResourceHandleInfo() :
 		hash(0),
 		orig_hash(0),
-		data_hash(0),
 		mapped_writable(false),
 		diverted_map(NULL),
 		diverted_size(0)
 	{}
+
+	void SetDataHash(ResourceSubHash data_hash);
+	void SetDescHash(ResourceSubHash desc_hash);
+	ResourceSubHash GetDataHash();
+	ResourceSubHash GetDescHash();
 };
 
 struct CopySubresourceRegionContamination
@@ -77,14 +92,14 @@ struct CopySubresourceRegionContamination
 
 // Create a map that uses a hashable tuple of five integers as they key (Hey C++,
 // this is something Python can do with what? ... 0 lines of boilerplate?)
-typedef std::tuple<uint32_t, UINT, UINT, UINT, UINT> CopySubresourceRegionContaminationMapKey;
+typedef std::tuple<ResourceHash, UINT, UINT, UINT, UINT> CopySubresourceRegionContaminationMapKey;
 template<> struct std::hash<CopySubresourceRegionContaminationMapKey>
 {
 	size_t operator()(CopySubresourceRegionContaminationMapKey const &key)
 	{
 		// http://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
 		size_t seed = 0;
-		seed ^= std::hash<uint32_t>()(std::get<0>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<ResourceHash>()(std::get<0>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= std::hash<UINT>()(std::get<1>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= std::hash<UINT>()(std::get<2>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= std::hash<UINT>()(std::get<3>(key)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -104,16 +119,14 @@ struct ResourceHashInfo
 		D3D11_TEXTURE3D_DESC tex3d_desc;
 	};
 
-	bool initial_data_used_in_hash;
 	bool hash_contaminated;
 	std::set<UINT> update_contamination;
 	std::set<UINT> map_contamination;
-	std::set<uint32_t> copy_contamination;
+	std::set<ResourceHash> copy_contamination;
 	CopySubresourceRegionContaminationMap region_contamination;
 
 	ResourceHashInfo() :
 		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
-		initial_data_used_in_hash(false),
 		hash_contaminated(false)
 	{}
 
@@ -133,14 +146,16 @@ struct ResourceHashInfo
 };
 
 
-uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc);
-uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc);
+ResourceSubHash CalcTexture2DDescHash(const D3D11_TEXTURE2D_DESC *const_desc);
+ResourceSubHash CalcTexture3DDescHash(const D3D11_TEXTURE3D_DESC *const_desc);
 
-uint32_t CalcTexture2DDataHash(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
-uint32_t CalcTexture3DDataHash(const D3D11_TEXTURE3D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
+ResourceSubHash CalcTexture2DDataHash(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
+ResourceSubHash CalcTexture3DDataHash(const D3D11_TEXTURE3D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 
-uint32_t GetOrigResourceHash(ID3D11Resource *resource);
-uint32_t GetResourceHash(ID3D11Resource *resource);
+ResourceHash CombinedResourceHash(ResourceSubHash desc_hash, ResourceSubHash data_hash);
+
+ResourceHash GetOrigResourceHash(ID3D11Resource *resource);
+ResourceHash GetResourceHash(ID3D11Resource *resource);
 
 void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		ID3D11Resource *src, UINT srcSubresource, char type,
