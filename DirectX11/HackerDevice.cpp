@@ -543,7 +543,7 @@ void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileD
 	{
 		LogInfo("    error creating shader.\n");
 
-		delete pShaderBytecode; pShaderBytecode = 0;
+		delete [] pShaderBytecode; pShaderBytecode = 0;
 		return;
 	}
 
@@ -556,7 +556,7 @@ void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileD
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
 			RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite, L"");
 		}
-		delete pShaderBytecode; pShaderBytecode = 0;
+		delete [] pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -607,7 +607,7 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 	{
 		LogInfo("    error creating shader.\n");
 
-		delete pShaderBytecode; pShaderBytecode = 0;
+		delete [] pShaderBytecode; pShaderBytecode = 0;
 		return;
 	}
 
@@ -620,7 +620,7 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
 			RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite, L"");
 		}
-		delete pShaderBytecode; pShaderBytecode = 0;
+		delete [] pShaderBytecode; pShaderBytecode = 0;
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -733,7 +733,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				|| codeSize != readSize)
 			{
 				LogInfo("    Error reading file.\n");
-				delete pCode; pCode = 0;
+				delete [] pCode; pCode = 0;
 				CloseHandle(f);
 			}
 			else
@@ -783,7 +783,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				{
 					LogInfo("    disassembly of original shader failed.\n");
 
-					delete srcData;
+					delete [] srcData;
 				}
 				else
 				{
@@ -801,7 +801,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					ID3DBlob *pCompiledOutput = 0;
 					HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-					delete srcData; srcData = 0;
+					delete [] srcData; srcData = 0;
 					if (pCompiledOutput)
 					{
 						pCodeSize = pCompiledOutput->GetBufferSize();
@@ -1167,7 +1167,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
 
-				if (pCompiledOutput)
+				if (SUCCEEDED(ret) && pCompiledOutput)
 				{
 					SIZE_T codeSize = pCompiledOutput->GetBufferSize();
 					char *code = new char[codeSize];
@@ -1187,7 +1187,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 						if (hr == S_OK)
 							*zeroShader = zeroPixelShader;
 					}
-					delete code;
+					delete [] code;
 				}
 
 				if (LogFile && pErrorMsgs)
@@ -1238,6 +1238,8 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
 	const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage)
 {
+	HRESULT hr;
+
 	if (!NeedOriginalShader(hash))
 		return;
 
@@ -1246,28 +1248,34 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		if (!wcsncmp(shaderType, L"vs", 2)) {
 			ID3D11VertexShader *originalShader;
-			mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalVertexShaders[(ID3D11VertexShader*)pShader] = originalShader;
+			hr = mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			if (SUCCEEDED(hr))
+				G->mOriginalVertexShaders[(ID3D11VertexShader*)pShader] = originalShader;
 		} else if (!wcsncmp(shaderType, L"ps", 2)) {
 			ID3D11PixelShader *originalShader;
-			mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalPixelShaders[(ID3D11PixelShader*)pShader] = originalShader;
+			hr = mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			if (SUCCEEDED(hr))
+				G->mOriginalPixelShaders[(ID3D11PixelShader*)pShader] = originalShader;
 		} else if (!wcsncmp(shaderType, L"cs", 2)) {
 			ID3D11ComputeShader *originalShader;
-			mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalComputeShaders[(ID3D11ComputeShader*)pShader] = originalShader;
+			hr = mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			if (SUCCEEDED(hr))
+				G->mOriginalComputeShaders[(ID3D11ComputeShader*)pShader] = originalShader;
 		} else if (!wcsncmp(shaderType, L"gs", 2)) {
 			ID3D11GeometryShader *originalShader;
-			mOrigDevice->CreateGeometryShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalGeometryShaders[(ID3D11GeometryShader*)pShader] = originalShader;
+			hr = mOrigDevice->CreateGeometryShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			if (SUCCEEDED(hr))
+				G->mOriginalGeometryShaders[(ID3D11GeometryShader*)pShader] = originalShader;
 		} else if (!wcsncmp(shaderType, L"hs", 2)) {
 			ID3D11HullShader *originalShader;
-			mOrigDevice->CreateHullShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalHullShaders[(ID3D11HullShader*)pShader] = originalShader;
+			hr = mOrigDevice->CreateHullShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			if (SUCCEEDED(hr))
+				G->mOriginalHullShaders[(ID3D11HullShader*)pShader] = originalShader;
 		} else if (!wcsncmp(shaderType, L"ds", 2)) {
 			ID3D11DomainShader *originalShader;
-			mOrigDevice->CreateDomainShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
+			hr = mOrigDevice->CreateDomainShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+			if (SUCCEEDED(hr))
+				G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
 		}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1894,10 +1902,10 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 // C++ function template of common code shared by all CreateXXXShader functions:
 template <class ID3D11Shader,
 	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-			 const void *pShaderBytecode,
-			 SIZE_T BytecodeLength,
-			 ID3D11ClassLinkage *pClassLinkage,
-			 ID3D11Shader **ppShader)
+			 __in const void *pShaderBytecode,
+			 __in SIZE_T BytecodeLength,
+			 __in_opt ID3D11ClassLinkage *pClassLinkage,
+			 __out_opt ID3D11Shader **ppShader)
 	 >
 STDMETHODIMP HackerDevice::CreateShader(THIS_
 	/* [annotation] */
@@ -1915,7 +1923,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
 	)
 {
-	HRESULT hr = -1;
+	HRESULT hr = E_FAIL;
 	UINT64 hash;
 	string shaderModel;
 	SIZE_T replaceShaderSize;
@@ -1959,6 +1967,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			// Create the new shader.
 			LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
 
+			*ppShader = NULL; // Appease the static analysis gods
 			hr = (mOrigDevice->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
 			if (SUCCEEDED(hr))
 			{
@@ -1968,11 +1977,13 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				{
 					// Hunting mode:  keep byteCode around for possible replacement or marking
 					ID3DBlob* blob;
-					D3DCreateBlob(replaceShaderSize, &blob);
-					memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
-					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+					hr = D3DCreateBlob(replaceShaderSize, &blob);
+					if (SUCCEEDED(hr)) {
+						memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+						if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine);
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+					}
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
@@ -1985,23 +1996,27 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	}
 	if (hr != S_OK)
 	{
+		if (ppShader)
+			*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen.
-		if (G->hunting)
+		if (G->hunting && SUCCEEDED(hr))
 		{
 			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 				ID3DBlob* blob;
-				D3DCreateBlob(BytecodeLength, &blob);
-				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine);
+				hr = D3DCreateBlob(BytecodeLength, &blob);
+				if (SUCCEEDED(hr)) {
+					memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine);
 
-				// Also add the original shader to the original shaders
-				// map so that if it is later replaced marking_mode =
-				// original and depth buffer filtering will work:
-				if (originalShaders->count(*ppShader) == 0)
-					(*originalShaders)[*ppShader] = *ppShader;
+					// Also add the original shader to the original shaders
+					// map so that if it is later replaced marking_mode =
+					// original and depth buffer filtering will work:
+					if (originalShaders->count(*ppShader) == 0)
+						(*originalShaders)[*ppShader] = *ppShader;
+				}
 			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}

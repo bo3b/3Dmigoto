@@ -246,6 +246,7 @@ public:
 			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg1, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
 		if (numRead != 6)
 			return false;
+		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
 		if (strcmp(name, "TEXCOORD") != 0)
 			return false;
 
@@ -263,6 +264,7 @@ public:
 			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg2, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
 		if (numRead != 6)
 			return false;
+		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
 		if (strcmp(name, "TEXCOORD") != 0)
 			return false;
 
@@ -764,7 +766,7 @@ public:
 	void WriteResourceDefinitions()
 	{
 		char buffer[256];
-		sprintf(buffer, "\n");
+		_snprintf_s(buffer, 256, 256, "\n");
 		mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 
 		for (map<int, string>::iterator i = mSamplerNames.begin(); i != mSamplerNames.end(); ++i)
@@ -922,7 +924,7 @@ public:
 			// Write declaration.
 			char buffer[256];
 			if (name[0] == '$') name[0] = '_';
-			sprintf(buffer, "\ncbuffer %s : register(b%d)\n{\n", name, bufferRegister);
+			_snprintf_s(buffer, 256, 256, "\ncbuffer %s : register(b%d)\n{\n", name, bufferRegister);
 			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			do
 			{
@@ -996,6 +998,10 @@ public:
 					}
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					// Prefix struct attributes.
+					if (structLevel < 0) {
+						logDecompileError("structLevel is negative - malformed shader?\n");
+						return;
+					}
 					size_t arrayPos = structName.find('[');
 					if (arrayPos == string::npos)
 					{
@@ -2083,7 +2089,7 @@ public:
 		// Fixup for constant buffer reads where the type may not be known due to missing headers:
 		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
 		{
-			sprintf(buffer, "asint(%s)", target);
+			_snprintf_s(buffer, opcodeSize, opcodeSize, "asint(%s)", target);
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
@@ -2092,9 +2098,9 @@ public:
 		{
 			size_t size = strlen(pos + 1);
 			if (size == 1)
-				sprintf(buffer, "(int)%s", target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(int)%s", target);
 			else
-				sprintf(buffer, "(int%Id)%s", size, target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(int%Id)%s", size, target);
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
@@ -2126,7 +2132,7 @@ public:
 		// Fixup for constant buffer reads where the type may not be known due to missing headers:
 		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
 		{
-			sprintf(buffer, "asuint(%s)", target);
+			_snprintf_s(buffer, opcodeSize, opcodeSize, "asuint(%s)", target);
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
@@ -2135,9 +2141,9 @@ public:
 		{
 			size_t size = strlen(pos + 1);
 			if (size == 1)
-				sprintf(buffer, "(uint)%s", target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(uint)%s", target);
 			else
-				sprintf(buffer, "(uint%Id)%s", size, target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(uint%Id)%s", size, target);
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
@@ -2845,7 +2851,7 @@ public:
 							char buf[512];
 							if (MatrixPos_MUL1.empty())
 								MatrixPos_MUL1 = string("1,1,1");
-							sprintf(buf, "\nfloat3 stereoMat%dMul = float3(%s);"
+							_snprintf_s(buf, 512, 512, "\nfloat3 stereoMat%dMul = float3(%s);"
 								"\n%s -= viewDirection.x * separation * (wpos - convergence) * stereoMat%dMul.x;"
 								"\n%s -= viewDirection.y * separation * (wpos - convergence) * stereoMat%dMul.y;"
 								"\n%s -= viewDirection.z * separation * (wpos - convergence) * stereoMat%dMul.z;",

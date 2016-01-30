@@ -45,11 +45,13 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 		DWORD dwFlags, LPCWSTR our_name, LPCWSTR library)
 {
 	WCHAR fullPath[MAX_PATH];
+	UINT ret;
 
 	// We can use System32 for all cases, because it will be properly rerouted
 	// to SysWow64 by LoadLibraryEx itself.
 
-	if (GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath)) == 0)
+	ret = GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath));
+	if (ret == 0 || ret >= ARRAYSIZE(fullPath))
 		return NULL;
 	wcscat_s(fullPath, MAX_PATH, L"\\");
 	wcscat_s(fullPath, MAX_PATH, library);

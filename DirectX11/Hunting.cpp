@@ -226,7 +226,8 @@ void DumpUsage(wchar_t *dir)
 		wcscpy(path, dir);
 		wcscat(path, L"\\");
 	} else {
-		GetModuleFileName(0, path, MAX_PATH);
+		if (!GetModuleFileName(0, path, MAX_PATH))
+			return;
 		wcsrchr(path, L'\\')[1] = 0;
 	}
 	wcscat(path, L"ShaderUsage.txt");
@@ -1094,7 +1095,8 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	_localtime64_s(&tm, &ltime);
 	wcsftime(subdir, MAX_PATH, L"FrameAnalysis-%Y-%m-%d-%H%M%S", &tm);
 
-	GetModuleFileName(0, path, MAX_PATH);
+	if (!GetModuleFileName(0, path, MAX_PATH))
+		return;
 	wcsrchr(path, L'\\')[1] = 0;
 	wcscat_s(path, MAX_PATH, subdir);
 

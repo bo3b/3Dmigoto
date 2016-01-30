@@ -204,10 +204,10 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	for (i = lower; i != upper; i++) {
 		const wchar_t *id = i->c_str();
 
-		LogInfoW(L"[%s]\n", id);
+		LogInfo("[%S]\n", id);
 
 		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile)) {
-			LogInfo("  WARNING: [%s] missing Key=\n", id);
+			LogInfo("  WARNING: [%S] missing Key=\n", id);
 			continue;
 		}
 
@@ -400,10 +400,10 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 	for (i = lower; i != upper; i++) {
 		id = i->c_str();
 
-		LogInfoW(L"[%s]\n", id);
+		LogInfo("[%S]\n", id);
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
-			LogInfo("  WARNING: [%s] missing Hash=\n", id);
+			LogInfo("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 		swscanf_s(setting, L"%16llx", &hash);
@@ -529,10 +529,10 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	{
 		id = i->c_str();
 
-		LogInfoW(L"[%s]\n", id);
+		LogInfo("[%S]\n", id);
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
-			LogInfo("  WARNING: [%s] missing Hash=\n", id);
+			LogInfo("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 
@@ -735,7 +735,8 @@ void LoadConfigFile()
 
 	G->gInitialized = true;
 
-	GetModuleFileName(0, iniFile, MAX_PATH);
+	if (!GetModuleFileName(0, iniFile, MAX_PATH))
+		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
@@ -1121,6 +1122,7 @@ void ReloadConfig(HackerDevice *device)
 {
 	ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT hr;
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
@@ -1142,7 +1144,11 @@ void ReloadConfig(HackerDevice *device)
 
 	// Update the iniParams resource from the config file:
 	// FIXME: THIS CRASHES IF 3D IS DISABLED (ROOT CAUSE LIKELY ELSEWHERE)
-	realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	hr = realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(hr)) {
+		LogInfo("Failed to update IniParams\n");
+		return;
+	}
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(device->mIniTexture, 0);
 }

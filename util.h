@@ -138,7 +138,7 @@ static void BeepFailure2()
 	Beep(300, 200); Beep(200, 150);
 }
 
-static void DoubleBeepExit() 
+static DECLSPEC_NORETURN void DoubleBeepExit()
 {
 	// Fatal error somewhere, known to crash, might as well exit cleanly
 	// with some notification.

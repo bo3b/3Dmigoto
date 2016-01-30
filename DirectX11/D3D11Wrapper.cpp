@@ -370,6 +370,8 @@ static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
 
 void InitD311()
 {
+	UINT ret;
+
 	if (hD3D11) return;
 
 	G = new Globals();
@@ -383,8 +385,11 @@ void InitD311()
 
 	if (G->CHAIN_DLL_PATH[0])
 	{
-		wchar_t sysDir[MAX_PATH];
-		GetModuleFileName(0, sysDir, MAX_PATH);
+		wchar_t sysDir[MAX_PATH] = {0};
+		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
+			LogInfo("GetModuleFileName failed\n");
+			DoubleBeepExit();
+		}
 		wcsrchr(sysDir, L'\\')[1] = 0;
 		wcscat(sysDir, G->CHAIN_DLL_PATH);
 		if (LogFile)
@@ -425,7 +430,8 @@ void InitD311()
 
 			LoadLibraryEx(L"SUPPRESS_3DMIGOTO_REDIRECT", NULL, 0);
 
-			if (GetSystemDirectoryW(libPath, ARRAYSIZE(libPath))) {
+			ret = GetSystemDirectoryW(libPath, ARRAYSIZE(libPath));
+			if (ret != 0 && ret < ARRAYSIZE(libPath)) {
 				wcscat_s(libPath, MAX_PATH, L"\\d3d11.dll");
 				LogInfoW(L"Trying to load %ls\n", libPath);
 				hD3D11 = LoadLibraryEx(libPath, NULL, 0);
@@ -641,7 +647,7 @@ HRESULT WINAPI D3D11CreateDevice(
 					D3D_DRIVER_TYPE     DriverType,
 					HMODULE             Software,
 					UINT                Flags,
-	_In_opt_  const D3D_FEATURE_LEVEL   *pFeatureLevels,
+	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
 					UINT                FeatureLevels,
 					UINT                SDKVersion,
 	_Out_opt_       ID3D11Device        **ppDevice,

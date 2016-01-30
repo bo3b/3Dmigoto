@@ -30,9 +30,14 @@ static void CommandListFlushState(HackerDevice *mHackerDevice,
 		CommandListState *state)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT hr;
 
 	if (state->update_params) {
-		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		hr = mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		if (FAILED(hr)) {
+			LogInfo("CommandListFlushState: Map failed\n");
+			return;
+		}
 		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
@@ -387,7 +392,10 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	string name(wname->begin(), wname->end());
 
 	LogInfo("  %cs=%S\n", type, filename);
-	GetModuleFileName(0, path, MAX_PATH);
+	if (!GetModuleFileName(0, path, MAX_PATH)) {
+		LogInfo("GetModuleFileName failed\n");
+		goto err;
+	}
 	wcsrchr(path, L'\\')[1] = 0;
 	wcscat(path, filename);
 
@@ -1802,11 +1810,12 @@ static void RecreateCompatibleResource(
 		DXGI_FORMAT format,
 		UINT *buf_dst_size)
 {
-	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
 	ID3D11Resource *res = NULL;
+	bool restore_create_mode = false;
 
 	if (dst)
 		bind_flags = dst->BindFlags();
@@ -1829,6 +1838,7 @@ static void RecreateCompatibleResource(
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
 		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+		restore_create_mode = true;
 
 		// STEREO2MONO will force the final destination to mono since
 		// it is in the CREATEMODE_MASK, but is not STEREO. It also
@@ -1866,7 +1876,7 @@ static void RecreateCompatibleResource(
 			break;
 	}
 
-	if (options & ResourceCopyOptions::CREATEMODE_MASK)
+	if (restore_create_mode)
 		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	if (res) {
@@ -2227,7 +2237,7 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 					*stride = dxgi_format_size(*format);
 				if (!*offset)
 					*offset = resource_view_desc.Buffer.FirstElement * *stride;
-				if (!buf_size)
+				if (!*buf_size)
 					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
 			case ResourceCopyTargetType::RENDER_TARGET:
@@ -2239,7 +2249,7 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 					*stride = dxgi_format_size(*format);
 				if (!*offset)
 					*offset = render_view_desc.Buffer.FirstElement * *stride;
-				if (!buf_size)
+				if (!*buf_size)
 					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
 			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
@@ -2260,7 +2270,7 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 					*stride = dxgi_format_size(*format);
 				if (!*offset)
 					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
-				if (!buf_size)
+				if (!*buf_size)
 					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
 		}

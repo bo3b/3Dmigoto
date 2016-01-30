@@ -714,9 +714,9 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 {
 	LogInfo("HackerDXGIFactory1::IsCurrent(%s@%p) called\n", type_name(this), this);
-	HRESULT hr = mOrigFactory1->IsCurrent();
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
+	BOOL ret = mOrigFactory1->IsCurrent();
+	LogInfo("  returns result = %d\n", ret);
+	return ret;
 }
 
 
@@ -1105,11 +1105,9 @@ STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_
 	LogInfo("HackerDXGIOutput::GetDesc(%s@%p) called \n", type_name(this), this);
 	
 	HRESULT ret = mOrigOutput->GetDesc(pDesc);
-	if (LogFile)
+	if (SUCCEEDED(ret))
 	{
-		char str[MAX_PATH];
-		wcstombs(str, pDesc->DeviceName, MAX_PATH);
-		LogInfo("  returned %s, desktop=%d\n", str, pDesc->AttachedToDesktop);
+		LogInfo("  returned %S, desktop=%d\n", pDesc->DeviceName, pDesc->AttachedToDesktop);
 	}
 	return ret;
 }

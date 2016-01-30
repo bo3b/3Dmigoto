@@ -45,10 +45,10 @@ private:
 	// Templates of nearly identical functions
 	template <class ID3D11Shader,
 		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-				 const void *pShaderBytecode,
-				 SIZE_T BytecodeLength,
-				 ID3D11ClassLinkage *pClassLinkage,
-				 ID3D11Shader **ppShader)
+				 __in const void *pShaderBytecode,
+				 __in SIZE_T BytecodeLength,
+				 __in_opt ID3D11ClassLinkage *pClassLinkage,
+				 __out_opt ID3D11Shader **ppShader)
 		 >
 	STDMETHODIMP CreateShader(THIS_
 		/* [annotation] */

@@ -49,7 +49,8 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 	IDXGISwapChain *mOrigSwapChain;
 
 	hr = OrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-	mOrigSwapChain = *ppSwapChain;
+	if (SUCCEEDED(hr))
+		mOrigSwapChain = *ppSwapChain;
 
 	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d \n", mOrigSwapChain, pDevice, hr);
 

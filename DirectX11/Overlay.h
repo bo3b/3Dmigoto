@@ -78,7 +78,7 @@ private:
 
 	void SaveState();
 	void RestoreState();
-	void InitDrawState();
+	HRESULT InitDrawState();
 
 
 public:
