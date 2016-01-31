@@ -474,6 +474,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			swscanf_s(setting, L"%16llx", &hash2);
 			LogInfo("  IndexBufferFilter=%16llx\n", hash2);
 			override->indexBufferFilter.push_back(hash2);
+			TrackResourceHash(hash2);
 		}
 
 		if (GetPrivateProfileString(id, L"analyse_options", 0, setting, MAX_PATH, iniFile)) {
@@ -521,6 +522,7 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
+	tracked_resources.clear();
 
 	lower = sections.lower_bound(wstring(L"TextureOverride"));
 	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
@@ -544,6 +546,8 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 			BeepFailure2();
 		}
 		override = &G->mTextureOverrideMap[hash];
+
+		TrackResourceHash(hash);
 
 		override->stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
 		if (override->stereoMode != -1)
@@ -1017,6 +1021,7 @@ void LoadConfigFile()
 		ResourceHash hash;
 		swscanf_s(setting, L"%" LPRI_TEX, &hash);
 		G->ZBufferHashToInject = hash;
+		TrackResourceHash(hash);
 	}
 	if (GetPrivateProfileString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH, iniFile))
 		G->BackProject_Vector1 = readStringParameter(setting);

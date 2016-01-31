@@ -1558,10 +1558,10 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		// the pDesc data as a unique fingerprint for a buffer.
 		ResourceSubHash data_hash = 0, desc_hash = 0;
 		ResourceHash hash;
-		if (pInitialData && pInitialData->pSysMem && pDesc)
-			data_hash = crc32c_hw(0, pInitialData->pSysMem, pDesc->ByteWidth);
 		if (pDesc)
 			desc_hash = crc32c_hw(0, pDesc, sizeof(D3D11_BUFFER_DESC));
+		if (pInitialData && pInitialData->pSysMem && pDesc && NeedResourceDataHash(desc_hash))
+			data_hash = crc32c_hw(0, pInitialData->pSysMem, pDesc->ByteWidth);
 
 		hash = CombinedResourceHash(desc_hash, data_hash);
 
@@ -1594,6 +1594,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 {
 	TextureOverride *textureOverride = NULL;
 	bool override = false;
+	bool track_hash = false;
 
 	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
 	if (pDesc)
@@ -1711,11 +1712,13 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 
 	ResourceSubHash data_hash = 0, desc_hash = 0, old_hash = 0;
 	ResourceHash hash;
-	data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
-	if (pDesc) {
+	if (pDesc)
 		desc_hash = CalcTexture2DDescHash(pDesc);
-		if (G->hunting)
+	if (NeedResourceDataHash(desc_hash)) {
+		data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
+		if (G->hunting && pDesc)
 			old_hash = CalcTexture2DDescHashOld(data_hash, pDesc);
+		track_hash = G->track_texture_updates;
 	}
 
 	hash = CombinedResourceHash(desc_hash, data_hash);
@@ -1805,13 +1808,16 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (hr == S_OK && ppTexture2D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture2D].hash = hash;
-			G->mResources[*ppTexture2D].orig_hash = hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
+
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->track_hash_updates = track_hash;
 			if (pDesc)
-				memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
-				G->mResources[*ppTexture2D].old_hash = old_hash;
+				handle_info->old_hash = old_hash;
 			}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1827,6 +1833,8 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture3D **ppTexture3D)
 {
+	bool track_hash = false;
+
 	LogInfo("HackerDevice::CreateTexture3D called with parameters\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
@@ -1850,9 +1858,12 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// Initial data is optional, so we might have zero data to add to the hash there.
 	ResourceSubHash data_hash = 0, desc_hash = 0;
 	ResourceHash hash;
-	data_hash = CalcTexture3DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		desc_hash = CalcTexture3DDescHash(pDesc);
+	if (NeedResourceDataHash(desc_hash)) {
+		data_hash = CalcTexture3DDataHash(pDesc, pInitialData);
+		track_hash = G->track_texture_updates;
+	}
 
 	hash = CombinedResourceHash(desc_hash, data_hash);
 	LogInfo("  InitialData = %p, hash = %" PRI_TEX " \n", pInitialData, hash);
@@ -1863,10 +1874,13 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	if (hr == S_OK && ppTexture3D)
 	{
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture3D].hash = hash;
-			G->mResources[*ppTexture3D].orig_hash = hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
+
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->track_hash_updates = track_hash;
 			if (pDesc)
-				memcpy(&G->mResources[*ppTexture3D].desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 			}

@@ -4,6 +4,8 @@
 #include "util.h"
 #include "globals.h"
 
+std::unordered_set<ResourceSubHash> tracked_resources;
+
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
 
@@ -304,6 +306,24 @@ ResourceHash CombinedResourceHash(ResourceSubHash desc_hash, ResourceSubHash dat
 
 	return (((ResourceHash)data_hash << 32) | desc_hash);
 }
+
+void TrackResourceHash(ResourceHash hash)
+{
+	// Hash is mentioned in the d3dx.ini file. Add the desc part of the
+	// hash to the tracked list, which we use to cut down the number of
+	// textures that we calculate the data part of the hash for, especially
+	// important when using track_texture_updates:
+	tracked_resources.insert(hash & 0xffffffff);
+}
+
+bool NeedResourceDataHash(ResourceSubHash desc_hash)
+{
+	// In hunting mode always calculate the data part of the hash, as we
+	// need that to find texture hashes in the first place and to allow
+	// them to be added to the ini file and reloaded:
+	return (G->hunting || tracked_resources.count(desc_hash));
+}
+
 
 void ResourceHandleInfo::SetDataHash(ResourceSubHash data_hash)
 {
@@ -789,6 +809,9 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 		}
 	}
 
+	if (info->track_hash_updates == false)
+		return;
+
 	// Ever noticed that D3D11_SUBRESOURCE_DATA is binary identical to
 	// D3D11_MAPPED_SUBRESOURCE but they changed all the names around?
 	initialData.pSysMem = data;
@@ -841,6 +864,9 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	} catch (std::out_of_range) {
 		return;
 	}
+
+	if (src_info->track_hash_updates == false)
+		return;
 
 	try {
 		dst_info = &G->mResources.at(dst);
@@ -915,6 +941,9 @@ void MapTrackResourceHashUpdate(
 	} catch (std::out_of_range) {
 		return;
 	}
+
+	if (info->track_hash_updates == false)
+		return;
 
 	if (divert) {
 		pResource->GetType(&dim);

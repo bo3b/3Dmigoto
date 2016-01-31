@@ -5,6 +5,7 @@
 #include <tuple>
 #include <map>
 #include <set>
+#include <unordered_set>
 
 // I'm going against some coding conventions here (namely "typedef considered
 // harmful") and my colleagues advice ("inttypes.h style macros are horrible")
@@ -17,6 +18,8 @@ typedef uint32_t ResourceSubHash;
 // strings and wide strings as wide strings so we need this and extra spaces
 // where we use it:
 #define LPRI_TEX L"016llx"
+
+extern std::unordered_set<ResourceSubHash> tracked_resources;
 
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
@@ -42,6 +45,7 @@ struct ResourceHandleInfo
 	bool mapped_writable;
 	void *diverted_map;
 	size_t diverted_size;
+	bool track_hash_updates;
 
 	ResourceHandleInfo() :
 		hash(0),
@@ -49,7 +53,8 @@ struct ResourceHandleInfo
 		old_hash(0),
 		mapped_writable(false),
 		diverted_map(NULL),
-		diverted_size(0)
+		diverted_size(0),
+		track_hash_updates(false)
 	{}
 
 	void SetDataHash(ResourceSubHash data_hash);
@@ -159,6 +164,9 @@ ResourceHash CombinedResourceHash(ResourceSubHash desc_hash, ResourceSubHash dat
 
 ResourceHash GetOrigResourceHash(ID3D11Resource *resource);
 ResourceHash GetResourceHash(ID3D11Resource *resource);
+
+void TrackResourceHash(ResourceHash hash);
+bool NeedResourceDataHash(ResourceSubHash desc_hash);
 
 void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		ID3D11Resource *src, UINT srcSubresource, char type,
