@@ -321,7 +321,7 @@ bool NeedResourceDataHash(ResourceSubHash desc_hash)
 	// In hunting mode always calculate the data part of the hash, as we
 	// need that to find texture hashes in the first place and to allow
 	// them to be added to the ini file and reloaded:
-	return (G->hunting || tracked_resources.count(desc_hash));
+	return (tracked_resources.count(desc_hash));
 }
 
 
@@ -924,9 +924,11 @@ void MapTrackResourceHashUpdate(
 			return;
 	}
 
+#if 0
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
 	}
+#endif
 
 	// TODO: If track_texture_updated is disabled, but we are in hunting
 	// with a reloadable config, we might consider tracking the data hash

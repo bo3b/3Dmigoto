@@ -1815,10 +1815,10 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			handle_info->track_hash_updates = track_hash;
 			if (pDesc)
 				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
-			if (G->hunting && pDesc) {
-				G->mResourceInfo[hash] = *pDesc;
-				handle_info->old_hash = old_hash;
-			}
+			//if (G->hunting && pDesc) {
+			//	G->mResourceInfo[hash] = *pDesc;
+			//	handle_info->old_hash = old_hash;
+			//}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1881,9 +1881,9 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 			handle_info->track_hash_updates = track_hash;
 			if (pDesc)
 				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
-			if (G->hunting && pDesc) {
-				G->mResourceInfo[hash] = *pDesc;
-			}
+			//if (G->hunting && pDesc) {
+			//	G->mResourceInfo[hash] = *pDesc;
+			//}
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
