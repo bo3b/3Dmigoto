@@ -1337,7 +1337,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
 	if (G->track_texture_updates && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
-		PropagateResourceHash(pDstResource, pSrcResource);
+		PropagateResourceHash(pDstResource, pSrcResource, SrcSubresource);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
@@ -1358,7 +1358,7 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	 mOrigContext->CopyResource(pDstResource, pSrcResource);
 
 	if (G->track_texture_updates)
-		PropagateResourceHash(pDstResource, pSrcResource);
+		PropagateResourceHash(pDstResource, pSrcResource, 0);
 }
 
 STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_

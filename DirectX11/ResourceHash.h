@@ -176,7 +176,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	ResourceHandleInfo *info,
 	const void *data, UINT rowPitch, UINT depthPitch);
 
-void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src);
+void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src, UINT src_subresource);
 
 void MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource,
 	D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE *pMappedResource);

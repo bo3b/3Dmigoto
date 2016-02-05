@@ -321,7 +321,7 @@ bool NeedResourceDataHash(ResourceSubHash desc_hash)
 	// In hunting mode always calculate the data part of the hash, as we
 	// need that to find texture hashes in the first place and to allow
 	// them to be added to the ini file and reloaded:
-	return (tracked_resources.count(desc_hash));
+	return (!!tracked_resources.count(desc_hash));
 }
 
 
@@ -854,19 +854,17 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	LogDebug("  old hash: %" PRI_TEX " new hash: %" PRI_TEX "\n", old_hash, info->hash);
 }
 
-void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
+void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src, UINT src_subresource)
 {
 	ResourceHandleInfo *dst_info, *src_info;
 	ResourceHash old_hash;
+	ResourceSubHash new_data_hash = 0xffffffff;
 
 	try {
 		src_info = &G->mResources.at(src);
 	} catch (std::out_of_range) {
 		return;
 	}
-
-	if (src_info->track_hash_updates == false)
-		return;
 
 	try {
 		dst_info = &G->mResources.at(dst);
@@ -892,7 +890,15 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 
 	old_hash = dst_info->hash;
 
-	dst_info->SetDataHash(src_info->GetDataHash());
+	// We only track resource hashes for the first subresource at the
+	// moment. If the game has copied a different subresource into
+	// subresource 0 we will use 0xffffffff as the hash to mark it as
+	// unknown. We might need to do something about this eventually, but
+	// for now at least do this so we don't propagate the wrong hash:
+	if (src_subresource == 0)
+		new_data_hash = src_info->GetDataHash();
+
+	dst_info->SetDataHash(new_data_hash);
 
 	LogDebug("Propagated resource hash\n");
 	LogDebug("  old hash: %" PRI_TEX " new hash: %" PRI_TEX "\n", old_hash, dst_info->hash);
