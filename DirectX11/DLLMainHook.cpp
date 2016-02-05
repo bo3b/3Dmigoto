@@ -2,6 +2,7 @@
 
 #include "log.h"
 #include "HookedDXGI.h"
+#include "globals.h"
 
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
@@ -214,6 +215,53 @@ static bool InstallHooks()
 	return (dwOsErr == 0) ? true : false;
 }
 
+typedef BOOL(WINAPI *lpfnSetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+		_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags);
+lpfnSetWindowPos trampoline_SetWindowPos;
+
+static BOOL WINAPI Hooked_SetWindowPos(
+    _In_ HWND hWnd,
+    _In_opt_ HWND hWndInsertAfter,
+    _In_ int X,
+    _In_ int Y,
+    _In_ int cx,
+    _In_ int cy,
+    _In_ UINT uFlags)
+{
+	if (G->SCREEN_FULLSCREEN) {
+		// Do nothing - passing this call through could change the game
+		// to a borderless window. Needed for The Witness.
+		return true;
+	}
+
+	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
+static bool InstallSetWindowPosHook()
+{
+	HINSTANCE hUser32;
+	void* fnOrigSetWindowPos;
+	DWORD dwOsErr;
+	SIZE_T hook_id;
+
+	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+	if (!hUser32) {
+		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get User32 module for SetWindowPos hook\n");
+		return false;
+	}
+
+	fnOrigSetWindowPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetWindowPos");
+	if (fnOrigSetWindowPos == NULL)
+	{
+		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of SetWindowPos\n");
+		return false;
+	}
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetWindowPos, fnOrigSetWindowPos, Hooked_SetWindowPos);
+
+	return !dwOsErr;
+}
+
 static void RemoveHooks()
 {
 	cHookMgr.UnhookAll();
@@ -239,6 +287,7 @@ BOOL WINAPI DllMain(
 		case DLL_PROCESS_ATTACH:
 			InstallDXGIHooks();
 			result = InstallHooks();
+			result = result && InstallSetWindowPosHook();
 			break;
 
 		case DLL_PROCESS_DETACH:
