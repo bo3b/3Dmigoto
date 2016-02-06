@@ -1787,6 +1787,9 @@ static ResourceType* RecreateCompatibleTexture(
 	if (FAILED(hr)) {
 		LogInfo("Resource copy RecreateCompatibleTexture failed: 0x%x\n", hr);
 		LogResourceDesc(&new_desc);
+		src_resource->GetDesc(&old_desc);
+		LogInfo("Original resource was:\n", hr);
+		LogResourceDesc(&old_desc);
 		return NULL;
 	}
 
