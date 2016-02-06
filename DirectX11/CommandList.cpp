@@ -973,8 +973,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
 	// easier to just make a copy of the string:
 	if (val->length() >= MAX_PATH)
 		goto bail;
-	val->copy(buf, MAX_PATH, 0);
-	buf[val->length()] = L'\0';
+	wcsncpy_s(buf, val->c_str(), MAX_PATH);
 
 	operation->options = parse_enum_option_string<wchar_t *, ResourceCopyOptions>
 		(ResourceCopyOptionNames, buf, &src_ptr);
