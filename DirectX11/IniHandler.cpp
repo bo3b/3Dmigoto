@@ -278,6 +278,65 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			wcscat(path, setting);
 			custom_resource->filename = path;
 		}
+
+		if (GetPrivateProfileString(i->c_str(), L"type", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
+				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
+			if (custom_resource->override_type == CustomResourceType::INVALID) {
+				LogInfo("  WARNING: Unknown type \"%S\"\n", setting);
+				BeepFailure2();
+			} else {
+				LogInfo("  type=%S\n", setting);
+			}
+		}
+
+		if (GetPrivateProfileString(i->c_str(), L"format", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_format = ParseFormatString(setting);
+			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
+				LogInfo("  WARNING: Unknown format \"%S\"\n", setting);
+				BeepFailure2();
+			} else {
+				LogInfo("  format=%s\n", TexFormatStr(custom_resource->override_format));
+			}
+		}
+
+		custom_resource->override_width = GetPrivateProfileInt(i->c_str(), L"width", -1, iniFile);
+		if (custom_resource->override_width != -1)
+			LogInfo("  width=%d\n", custom_resource->override_width);
+
+		custom_resource->override_height = GetPrivateProfileInt(i->c_str(), L"height", -1, iniFile);
+		if (custom_resource->override_height != -1)
+			LogInfo("  height=%d\n", custom_resource->override_height);
+
+		custom_resource->override_depth = GetPrivateProfileInt(i->c_str(), L"depth", -1, iniFile);
+		if (custom_resource->override_depth != -1)
+			LogInfo("  depth=%d\n", custom_resource->override_depth);
+
+		custom_resource->override_mips = GetPrivateProfileInt(i->c_str(), L"mips", -1, iniFile);
+		if (custom_resource->override_mips != -1)
+			LogInfo("  mips=%d\n", custom_resource->override_mips);
+
+		custom_resource->override_array = GetPrivateProfileInt(i->c_str(), L"array", -1, iniFile);
+		if (custom_resource->override_array != -1)
+			LogInfo("  array=%d\n", custom_resource->override_array);
+
+		custom_resource->override_msaa = GetPrivateProfileInt(i->c_str(), L"msaa", -1, iniFile);
+		if (custom_resource->override_msaa != -1)
+			LogInfo("  msaa=%d\n", custom_resource->override_msaa);
+
+		custom_resource->override_msaa_quality = GetPrivateProfileInt(i->c_str(), L"msaa_quality", -1, iniFile);
+		if (custom_resource->override_msaa_quality != -1)
+			LogInfo("  msaa_quality=%d\n", custom_resource->override_msaa_quality);
+
+		custom_resource->override_byte_width = GetPrivateProfileInt(i->c_str(), L"byte_width", -1, iniFile);
+		if (custom_resource->override_byte_width != -1)
+			LogInfo("  byte_width=%d\n", custom_resource->override_byte_width);
+
+		custom_resource->override_stride = GetPrivateProfileInt(i->c_str(), L"stride", -1, iniFile);
+		if (custom_resource->override_stride != -1)
+			LogInfo("  stride=%d\n", custom_resource->override_stride);
+
+		// TODO: Overrides for bind flags, misc flags, etc
 	}
 }
 

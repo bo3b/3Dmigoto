@@ -191,6 +191,39 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
+enum class CustomResourceType {
+	INVALID,
+	BUFFER,
+	STRUCTURED_BUFFER,
+	RAW_BUFFER,
+	TEXTURE1D,
+	TEXTURE2D,
+	TEXTURE3D,
+	CUBE,
+};
+static EnumName_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[] = {
+	// Use the same names as HLSL here since they are what shaderhackers
+	// will see in the shaders, even if some of these have no distinction
+	// from our point of view, or are just a misc flag:
+	{L"Buffer", CustomResourceType::BUFFER},
+	{L"StructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"AppendStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"ConsumeStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"ByteAddressBuffer", CustomResourceType::RAW_BUFFER},
+	{L"Texture1D", CustomResourceType::TEXTURE1D},
+	{L"Texture2D", CustomResourceType::TEXTURE2D},
+	{L"Texture3D", CustomResourceType::TEXTURE3D},
+	{L"TextureCube", CustomResourceType::CUBE},
+	// RW variants are identical to the above (it's the usage that counts):
+	{L"RWBuffer", CustomResourceType::BUFFER},
+	{L"RWStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"RWByteAddressBuffer", CustomResourceType::RAW_BUFFER},
+	{L"RWTexture1D", CustomResourceType::TEXTURE1D},
+	{L"RWTexture2D", CustomResourceType::TEXTURE2D},
+	{L"RWTexture3D", CustomResourceType::TEXTURE3D},
+
+	{NULL, CustomResourceType::INVALID} // End of list marker
+};
 class CustomResource
 {
 public:
@@ -212,10 +245,36 @@ public:
 	wstring filename;
 	bool substantiated;
 
+	// Used to override description when copying or synthesise resources
+	// from scratch:
+	CustomResourceType override_type;
+	DXGI_FORMAT override_format;
+	int override_width;
+	int override_height;
+	int override_depth;
+	int override_mips;
+	int override_array;
+	int override_msaa;
+	int override_msaa_quality;
+	int override_byte_width;
+	int override_stride;
+
 	CustomResource();
 	~CustomResource();
 
 	void Substantiate(ID3D11Device *mOrigDevice);
+	void OverrideBufferDesc(D3D11_BUFFER_DESC *desc);
+	void OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc);
+	void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
+	void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
+	void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
+
+private:
+	void LoadFromFile(ID3D11Device *mOrigDevice);
+	void SubstantiateBuffer(ID3D11Device *mOrigDevice);
+	void SubstantiateTexture1D(ID3D11Device *mOrigDevice);
+	void SubstantiateTexture2D(ID3D11Device *mOrigDevice);
+	void SubstantiateTexture3D(ID3D11Device *mOrigDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;

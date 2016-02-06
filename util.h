@@ -357,6 +357,34 @@ static char *TexFormatStr(unsigned int format)
 	return "UNKNOWN";
 }
 
+static DXGI_FORMAT ParseFormatString(const wchar_t *wfmt)
+{
+	size_t num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
+	char afmt[30];
+	unsigned format;
+	int nargs, end;
+
+	// Try parsing format string as decimal:
+	nargs = swscanf_s(wfmt, L"%u%n", &format, &end);
+	if (nargs == 1 && end == wcslen(wfmt))
+		return (DXGI_FORMAT)format;
+
+	if (!_wcsnicmp(wfmt, L"DXGI_FORMAT_", 12))
+		wfmt += 12;
+
+	// Look up format string:
+	wcstombs(afmt, wfmt, 30);
+	afmt[29] = '\0';
+	for (format = 0; format < num_formats; format++) {
+		if (!_strnicmp(afmt, DXGIFormats[format], 30))
+			return (DXGI_FORMAT)format;
+	}
+
+	// UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
+	// -1 cast to a DXGI_FORMAT to signify an error:
+	return (DXGI_FORMAT)-1;
+}
+
 // From DirectXTK with extra formats added
 static DXGI_FORMAT EnsureNotTypeless( DXGI_FORMAT fmt )
 {

@@ -773,6 +773,99 @@ bail:
 }
 
 
+// Is there already a utility function that does this?
+static UINT dxgi_format_size(DXGI_FORMAT format)
+{
+	switch (format) {
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return 16;
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return 12;
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R32G32_TYPELESS:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return 8;
+		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+		case DXGI_FORMAT_R16G16_TYPELESS:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return 4;
+		case DXGI_FORMAT_R8G8_TYPELESS:
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+			return 2;
+		case DXGI_FORMAT_R8_TYPELESS:
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_A8_UNORM:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+
 CustomResource::CustomResource() :
 	resource(NULL),
 	view(NULL),
@@ -785,7 +878,18 @@ CustomResource::CustomResource() :
 	format(DXGI_FORMAT_UNKNOWN),
 	max_copies_per_frame(0),
 	frame_no(0),
-	copies_this_frame(0)
+	copies_this_frame(0),
+	override_type(CustomResourceType::INVALID),
+	override_format((DXGI_FORMAT)-1),
+	override_width(-1),
+	override_height(-1),
+	override_depth(-1),
+	override_mips(-1),
+	override_array(-1),
+	override_msaa(-1),
+	override_msaa_quality(-1),
+	override_byte_width(-1),
+	override_stride(-1)
 {}
 
 CustomResource::~CustomResource()
@@ -798,9 +902,6 @@ CustomResource::~CustomResource()
 
 void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
 {
-	wstring ext;
-	HRESULT hr;
-
 	// We only allow a custom resource to be substantiated once. Otherwise
 	// we could end up reloading it again if it is later set to null. Also
 	// prevents us from endlessly retrying to load a custom resource from a
@@ -821,44 +922,256 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
 	// parameters while probing the hardware before it settles on the one
 	// it will actually use.
 
+	if (!filename.empty())
+		return LoadFromFile(mOrigDevice);
+
+	switch (override_type) {
+		case CustomResourceType::BUFFER:
+		case CustomResourceType::STRUCTURED_BUFFER:
+		case CustomResourceType::RAW_BUFFER:
+			return SubstantiateBuffer(mOrigDevice);
+		case CustomResourceType::TEXTURE1D:
+			return SubstantiateTexture1D(mOrigDevice);
+		case CustomResourceType::TEXTURE2D:
+		case CustomResourceType::CUBE:
+			return SubstantiateTexture2D(mOrigDevice);
+		case CustomResourceType::TEXTURE3D:
+			return SubstantiateTexture3D(mOrigDevice);
+	}
+}
+
+void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
+{
+	wstring ext;
+	HRESULT hr;
+
 	// TODO: Support loading raw buffers (may want more ini params to
 	// describe them)
 
-	if (!filename.empty()) {
-		// XXX: We are not creating a view with DirecXTK because
-		// 1) it assumes we want a shader resource view, which is an
-		//    assumption that doesn't fit with the goal of this code to
-		//    allow for arbitrary resource copying, and
-		// 2) we currently won't use the view in a source custom
-		//    resource, even if we are referencing it into a compatible
-		//    slot. We might improve this, and if we do, I don't want
-		//    any surprises caused by a view of the wrong type we
-		//    happen to have created here and forgotten about.
-		// If we do start using the source custom resource's view, we
-		// could do something smart here, like only using it if the
-		// bind_flags indicate it will be used as a shader resource.
+	// XXX: We are not creating a view with DirecXTK because
+	// 1) it assumes we want a shader resource view, which is an
+	//    assumption that doesn't fit with the goal of this code to
+	//    allow for arbitrary resource copying, and
+	// 2) we currently won't use the view in a source custom
+	//    resource, even if we are referencing it into a compatible
+	//    slot. We might improve this, and if we do, I don't want
+	//    any surprises caused by a view of the wrong type we
+	//    happen to have created here and forgotten about.
+	// If we do start using the source custom resource's view, we
+	// could do something smart here, like only using it if the
+	// bind_flags indicate it will be used as a shader resource.
 
-		ext = filename.substr(filename.rfind(L"."));
-		if (!_wcsicmp(ext.c_str(), L".dds")) {
-			LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
-			hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice,
-					filename.c_str(), 0,
-					D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
-					false, &resource, NULL, NULL);
-		} else {
-			LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
-			hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice,
-					filename.c_str(), 0,
-					D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
-					false, &resource, NULL);
-		}
-		if (SUCCEEDED(hr)) {
-			is_null = false;
-			// TODO:
-			// format = ...
-		} else
-			LogInfoW(L"Failed to load custom resource %s: 0x%x\n", filename.c_str(), hr);
+	ext = filename.substr(filename.rfind(L"."));
+	if (!_wcsicmp(ext.c_str(), L".dds")) {
+		LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
+		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice,
+				filename.c_str(), 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				false, &resource, NULL, NULL);
+	} else {
+		LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
+		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice,
+				filename.c_str(), 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				false, &resource, NULL);
 	}
+	if (SUCCEEDED(hr)) {
+		is_null = false;
+		// TODO:
+		// format = ...
+	} else
+		LogInfoW(L"Failed to load custom resource %s: 0x%x\n", filename.c_str(), hr);
+}
+
+void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice)
+{
+	ID3D11Buffer *buffer;
+	D3D11_BUFFER_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideBufferDesc(&desc);
+
+	hr = mOrigDevice->CreateBuffer(&desc, NULL, &buffer);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)buffer;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice)
+{
+	ID3D11Texture1D *tex1d;
+	D3D11_TEXTURE1D_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideTexDesc(&desc);
+
+	hr = mOrigDevice->CreateTexture1D(&desc, NULL, &tex1d);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)tex1d;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice)
+{
+	ID3D11Texture2D *tex2d;
+	D3D11_TEXTURE2D_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideTexDesc(&desc);
+
+	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &tex2d);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)tex2d;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice)
+{
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE3D_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideTexDesc(&desc);
+
+	hr = mOrigDevice->CreateTexture3D(&desc, NULL, &tex3d);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)tex3d;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+
+void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
+{
+	switch (override_type) {
+		case CustomResourceType::STRUCTURED_BUFFER:
+			desc->MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+			break;
+		case CustomResourceType::RAW_BUFFER:
+			desc->MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+			break;
+	}
+
+	if (override_stride != -1)
+		desc->StructureByteStride = override_stride;
+	if (override_byte_width != -1) {
+		desc->ByteWidth = override_byte_width;
+	} else if (override_array != -1) {
+		if (desc->StructureByteStride) {
+			desc->ByteWidth = desc->StructureByteStride * override_array;
+		} else if (override_format != (DXGI_FORMAT)-1 && override_format != DXGI_FORMAT_UNKNOWN) {
+			desc->ByteWidth = dxgi_format_size(override_format) * override_array;
+		}
+	}
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
+{
+	if (override_width != -1)
+		desc->Width = override_width;
+	if (override_mips != -1)
+		desc->MipLevels = override_mips;
+	if (override_array != -1)
+		desc->ArraySize = override_array;
+	if (override_format != (DXGI_FORMAT)-1)
+		desc->Format = override_format;
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
+{
+	if (override_width != -1)
+		desc->Width = override_width;
+	if (override_height != -1)
+		desc->Height = override_height;
+	if (override_mips != -1)
+		desc->MipLevels = override_mips;
+	if (override_format != (DXGI_FORMAT)-1)
+		desc->Format = override_format;
+	if (override_array != -1)
+		desc->ArraySize = override_array;
+	if (override_msaa != -1)
+		desc->SampleDesc.Count = override_msaa;
+	if (override_msaa_quality != -1)
+		desc->SampleDesc.Quality = override_msaa_quality;
+
+	if (override_type == CustomResourceType::CUBE) {
+		desc->MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
+		if (override_array != -1)
+			desc->ArraySize = override_array * 6;
+	}
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
+{
+	if (override_width != -1)
+		desc->Width = override_width;
+	if (override_height != -1)
+		desc->Height = override_height;
+	if (override_depth != -1)
+		desc->Height = override_depth;
+	if (override_mips != -1)
+		desc->MipLevels = override_mips;
+	if (override_format != (DXGI_FORMAT)-1)
+		desc->Format = override_format;
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
+{
+	if (override_format != (DXGI_FORMAT)-1)
+		*format = override_format;
+	if (override_stride != -1)
+		*stride = override_stride;
 }
 
 
@@ -1034,98 +1347,6 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
 bail:
 	delete operation;
 	return false;
-}
-
-// Is there already a utility function that does this?
-static UINT dxgi_format_size(DXGI_FORMAT format)
-{
-	switch (format) {
-		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32A32_FLOAT:
-		case DXGI_FORMAT_R32G32B32A32_UINT:
-		case DXGI_FORMAT_R32G32B32A32_SINT:
-			return 16;
-		case DXGI_FORMAT_R32G32B32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32_FLOAT:
-		case DXGI_FORMAT_R32G32B32_UINT:
-		case DXGI_FORMAT_R32G32B32_SINT:
-			return 12;
-		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-		case DXGI_FORMAT_R16G16B16A16_FLOAT:
-		case DXGI_FORMAT_R16G16B16A16_UNORM:
-		case DXGI_FORMAT_R16G16B16A16_UINT:
-		case DXGI_FORMAT_R16G16B16A16_SNORM:
-		case DXGI_FORMAT_R16G16B16A16_SINT:
-		case DXGI_FORMAT_R32G32_TYPELESS:
-		case DXGI_FORMAT_R32G32_FLOAT:
-		case DXGI_FORMAT_R32G32_UINT:
-		case DXGI_FORMAT_R32G32_SINT:
-		case DXGI_FORMAT_R32G8X24_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-			return 8;
-		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-		case DXGI_FORMAT_R10G10B10A2_UNORM:
-		case DXGI_FORMAT_R10G10B10A2_UINT:
-		case DXGI_FORMAT_R11G11B10_FLOAT:
-		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-		case DXGI_FORMAT_R8G8B8A8_UNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-		case DXGI_FORMAT_R8G8B8A8_UINT:
-		case DXGI_FORMAT_R8G8B8A8_SNORM:
-		case DXGI_FORMAT_R8G8B8A8_SINT:
-		case DXGI_FORMAT_R16G16_TYPELESS:
-		case DXGI_FORMAT_R16G16_FLOAT:
-		case DXGI_FORMAT_R16G16_UNORM:
-		case DXGI_FORMAT_R16G16_UINT:
-		case DXGI_FORMAT_R16G16_SNORM:
-		case DXGI_FORMAT_R16G16_SINT:
-		case DXGI_FORMAT_R32_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT:
-		case DXGI_FORMAT_R32_FLOAT:
-		case DXGI_FORMAT_R32_UINT:
-		case DXGI_FORMAT_R32_SINT:
-		case DXGI_FORMAT_R24G8_TYPELESS:
-		case DXGI_FORMAT_D24_UNORM_S8_UINT:
-		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-		case DXGI_FORMAT_R8G8_B8G8_UNORM:
-		case DXGI_FORMAT_G8R8_G8B8_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_UNORM:
-		case DXGI_FORMAT_B8G8R8X8_UNORM:
-		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-			return 4;
-		case DXGI_FORMAT_R8G8_TYPELESS:
-		case DXGI_FORMAT_R8G8_UNORM:
-		case DXGI_FORMAT_R8G8_UINT:
-		case DXGI_FORMAT_R8G8_SNORM:
-		case DXGI_FORMAT_R8G8_SINT:
-		case DXGI_FORMAT_R16_TYPELESS:
-		case DXGI_FORMAT_R16_FLOAT:
-		case DXGI_FORMAT_D16_UNORM:
-		case DXGI_FORMAT_R16_UNORM:
-		case DXGI_FORMAT_R16_UINT:
-		case DXGI_FORMAT_R16_SNORM:
-		case DXGI_FORMAT_R16_SINT:
-		case DXGI_FORMAT_B5G6R5_UNORM:
-		case DXGI_FORMAT_B5G5R5A1_UNORM:
-			return 2;
-		case DXGI_FORMAT_R8_TYPELESS:
-		case DXGI_FORMAT_R8_UNORM:
-		case DXGI_FORMAT_R8_UINT:
-		case DXGI_FORMAT_R8_SNORM:
-		case DXGI_FORMAT_R8_SINT:
-		case DXGI_FORMAT_A8_UNORM:
-			return 1;
-		default:
-			return 0;
-	}
 }
 
 ID3D11Resource *ResourceCopyTarget::GetResource(
@@ -1616,6 +1837,7 @@ static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
 }
 
 static ID3D11Buffer *RecreateCompatibleBuffer(
+		ResourceCopyTarget *dst,
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
 		ID3D11View *src_view,
@@ -1686,6 +1908,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		// constraints, so we shouldn't need to resize it.
 		*buf_dst_size = new_desc.ByteWidth;
 	}
+
+	if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		dst->custom_resource->OverrideBufferDesc(&new_desc);
 
 	if (dst_resource) {
 		// If destination already exists and the description is
@@ -1914,6 +2139,7 @@ template <typename ResourceType,
 	      ResourceType **ppTexture)
 	>
 static ResourceType* RecreateCompatibleTexture(
+		ResourceCopyTarget *dst,
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
@@ -1953,6 +2179,9 @@ static ResourceType* RecreateCompatibleTexture(
 	// from creating the resource otherwise. Since we don't need to
 	// generate mip-maps just clear it out:
 	new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+	if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		dst->custom_resource->OverrideTexDesc(&new_desc);
 
 	if (dst_resource) {
 		// If destination already exists and the description is
@@ -2039,22 +2268,22 @@ static void RecreateCompatibleResource(
 
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
+			res = RecreateCompatibleBuffer(dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
 					bind_flags, device, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags,
+				(dst, (ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags,
+				(dst, (ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags,
+				(dst, (ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 	}
@@ -2808,6 +3037,8 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame)
 				return;
 		}
+
+		dst.custom_resource->OverrideOutOfBandInfo(&format, &stride);
 	}
 
 	FillInMissingInfo(src.type, src_resource, src_view, &stride, &offset, &buf_src_size, &format);
