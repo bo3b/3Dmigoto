@@ -151,10 +151,15 @@ static bool ParseDrawCommand(const wchar_t *key, wstring *val,
 	int nargs, end = 0;
 
 	if (!wcscmp(key, L"draw")) {
-		operation->type = DrawCommandType::DRAW;
-		nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
-		if (nargs != 2)
-			goto bail;
+		if (!wcscmp(val->c_str(), L"from_caller")) {
+			operation->type = DrawCommandType::FROM_CALLER;
+			end = val->length();
+		} else {
+			operation->type = DrawCommandType::DRAW;
+			nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
+			if (nargs != 2)
+				goto bail;
+		}
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
@@ -337,6 +342,26 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 			break;
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
 		// TODO: 	break;
+		case DrawCommandType::FROM_CALLER:
+			DrawCallInfo *info = state->call_info;
+			if (info->InstanceCount) {
+				if (info->IndexCount) {
+					mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+					mOrigContext->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+				} else {
+					mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+					mOrigContext->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+				}
+			} else if (info->IndexCount) {
+				mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", info->IndexCount, info->FirstIndex, info->FirstVertex);
+				mOrigContext->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
+			} else if (info->VertexCount) {
+				mHackerContext->FrameAnalysisLog("3DMigoto Draw from_caller -> Draw(%u, %u)\n", info->VertexCount, info->FirstVertex);
+				mOrigContext->Draw(info->VertexCount, info->FirstVertex);
+			}
+			// TODO: Save enough state to know if it's DrawAuto or
+			// an Indirect draw call (and the buffer)
+			break;
 	}
 }
 

@@ -109,6 +109,7 @@ enum class DrawCommandType {
 	DRAW_INSTANCED_INDIRECT,
 	DISPATCH,
 	DISPATCH_INDIRECT,
+	FROM_CALLER,
 };
 
 class DrawCommand : public CommandListCommand {
