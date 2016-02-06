@@ -280,9 +280,10 @@ enum class ResourceCopyOptions {
 	STEREO          = 0x00000010,
 	MONO            = 0x00000020,
 	STEREO2MONO     = 0x00000040,
+	COPY_DESC       = 0x00000080,
 
-	COPY_MASK       = 0x00000049, // Anything that implies a copy
-	COPY_TYPE_MASK  = 0x0000004b, // Anything that implies a copy or a reference
+	COPY_MASK       = 0x000000c9, // Anything that implies a copy
+	COPY_TYPE_MASK  = 0x000000cb, // Anything that implies a copy or a reference
 	CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
@@ -290,6 +291,8 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"copy", ResourceCopyOptions::COPY},
 	{L"ref", ResourceCopyOptions::REFERENCE},
 	{L"reference", ResourceCopyOptions::REFERENCE},
+	{L"copy_desc", ResourceCopyOptions::COPY_DESC},
+	{L"copy_description", ResourceCopyOptions::COPY_DESC},
 	{L"unless_null", ResourceCopyOptions::UNLESS_NULL},
 	{L"stereo", ResourceCopyOptions::STEREO},
 	{L"mono", ResourceCopyOptions::MONO},

@@ -2825,7 +2825,9 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		dst_resource = *pp_cached_resource;
 		dst_view = *pp_cached_view;
 
-		if (options & ResourceCopyOptions::STEREO2MONO) {
+		if (options & ResourceCopyOptions::COPY_DESC) {
+			// RecreateCompatibleResource has already done the work
+		} else if (options & ResourceCopyOptions::STEREO2MONO) {
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -2884,7 +2886,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice,
 				stride, offset, format, buf_src_size);
 		// Not checking for NULL return as view's are not applicable to
-		// all types. TODO: Check for legitimate failures.
+		// all types. Legitimate failures are logged.
 		*pp_cached_view = dst_view;
 	}
 
