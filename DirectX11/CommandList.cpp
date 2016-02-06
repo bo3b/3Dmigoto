@@ -1709,6 +1709,190 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	return buffer;
 }
 
+static DXGI_FORMAT MakeTypeless(DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return DXGI_FORMAT_R32G32B32A32_TYPELESS;
+
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return DXGI_FORMAT_R32G32B32_TYPELESS;
+
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+			return DXGI_FORMAT_R16G16B16A16_TYPELESS;
+
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+			return DXGI_FORMAT_R32G32_TYPELESS;
+
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return DXGI_FORMAT_R32G8X24_TYPELESS;
+
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+			return DXGI_FORMAT_R10G10B10A2_TYPELESS;
+
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+			return DXGI_FORMAT_R8G8B8A8_TYPELESS;
+
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+			return DXGI_FORMAT_R16G16_TYPELESS;
+
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+			return DXGI_FORMAT_R32_TYPELESS;
+
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return DXGI_FORMAT_R24G8_TYPELESS;
+
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+			return DXGI_FORMAT_R8G8_TYPELESS;
+
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+			return DXGI_FORMAT_R16_TYPELESS;
+
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+			return DXGI_FORMAT_R8_TYPELESS;
+
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+			return DXGI_FORMAT_BC1_TYPELESS;
+
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+			return DXGI_FORMAT_BC2_TYPELESS;
+
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+			return DXGI_FORMAT_BC3_TYPELESS;
+
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+			return DXGI_FORMAT_BC4_TYPELESS;
+
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+			return DXGI_FORMAT_BC5_TYPELESS;
+
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+			return DXGI_FORMAT_B8G8R8A8_TYPELESS;
+
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return DXGI_FORMAT_B8G8R8X8_TYPELESS;
+
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+			return DXGI_FORMAT_BC6H_TYPELESS;
+
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return DXGI_FORMAT_BC7_TYPELESS;
+
+		default:
+			return fmt;
+	}
+}
+
+static DXGI_FORMAT MakeDSVFormat(DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+			return DXGI_FORMAT_D32_FLOAT;
+
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+			return DXGI_FORMAT_D16_UNORM;
+
+		default:
+			return EnsureNotTypeless(fmt);
+	}
+}
+
+static DXGI_FORMAT MakeNonDSVFormat(DXGI_FORMAT fmt)
+{
+	// TODO: Add a keyword to return the stencil side of a combined
+	// depth/stencil resource instead of the depth side
+	switch(fmt)
+	{
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+			return DXGI_FORMAT_R32_FLOAT;
+
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+			return DXGI_FORMAT_R16_UNORM;
+
+		default:
+			return EnsureNotTypeless(fmt);
+	}
+}
+
 // MSAA resolving only makes sense for Texture2D types, and the SampleDesc
 // entry only exists in those. Use template specialisation so we don't have to
 // duplicate the entire RecreateCompatibleTexture() routine for such a small
@@ -1733,7 +1917,6 @@ static ResourceType* RecreateCompatibleTexture(
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
-		DXGI_FORMAT format,
 		ID3D11Device *device,
 		StereoHandle mStereoHandle,
 		ResourceCopyOptions options)
@@ -1747,16 +1930,14 @@ static ResourceType* RecreateCompatibleTexture(
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
 	new_desc.CPUAccessFlags = 0;
-#if 0
-	// Didn't seem to work - got an invalid argument error from
-	// CreateTexture2D. Could be that the existing view used a format
-	// incompatible with the bind flags (e.g. depth+stencil formats can't
-	// be used in a shader resource).
-	if (format)
-		new_desc.Format = format;
-#else
-	new_desc.Format = EnsureNotTypeless(new_desc.Format);
-#endif
+
+	// New strategy - we make the new resources typeless whenever possible
+	// and will fill the type back in in the view instead. This gives us
+	// more flexibility with depth/stencil formats which need different
+	// types depending on where they are bound in the pipeline. This also
+	// helps with certain MSAA resources that may not be possible to create
+	// if we change the type to a R*X* format.
+	new_desc.Format = MakeTypeless(new_desc.Format);
 
 	if (options & ResourceCopyOptions::STEREO2MONO)
 		new_desc.Width *= 2;
@@ -1863,17 +2044,17 @@ static void RecreateCompatibleResource(
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format,
+				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format,
+				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format,
+				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 	}
@@ -1958,6 +2139,251 @@ static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(
 	return NULL;
 }
 
+
+// This is a hell of a lot of duplicated code, mostly thanks to DX using
+// different names for the same thing in a slightly different type, and pretty
+// much all this is only needed for depth/stencil format conversions. It would
+// be nice to refactor this somehow. TODO: For now we are creating a view of
+// the entire resource, but it would make sense to use information from the
+// source view if available instead.
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MostDetailedMip = resource_desc->MipLevels - 1;
+		view_desc->Texture1D.MipLevels = -1;
+	} else {
+		view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MostDetailedMip = resource_desc->MipLevels - 1;
+		view_desc->Texture1DArray.MipLevels = -1;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MipSlice = 0;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MipSlice = 0;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MipSlice = 0;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+			view_desc->TextureCube.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->TextureCube.MipLevels = -1;
+		} else {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
+			view_desc->TextureCubeArray.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->TextureCubeArray.MipLevels = -1;
+			view_desc->TextureCubeArray.First2DArrayFace = 0; // FIXME: Get from original view
+			view_desc->TextureCubeArray.NumCubes = resource_desc->ArraySize / 6;
+		}
+	} else if (resource_desc->SampleDesc.Count == 1) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			view_desc->Texture2D.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->Texture2D.MipLevels = -1;
+		} else {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+			view_desc->Texture2DArray.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->Texture2DArray.MipLevels = -1;
+			view_desc->Texture2DArray.FirstArraySlice = 0;
+			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+		}
+	} else {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+		} else {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY;
+			view_desc->Texture2DMSArray.FirstArraySlice = 0;
+			view_desc->Texture2DMSArray.ArraySize = resource_desc->ArraySize;
+		}
+	}
+
+	return view_desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->SampleDesc.Count == 1) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+			view_desc->Texture2D.MipSlice = 0;
+		} else {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+			view_desc->Texture2DArray.MipSlice = 0;
+			view_desc->Texture2DArray.FirstArraySlice = 0;
+			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+		}
+	} else {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMS;
+		} else {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY;
+			view_desc->Texture2DMSArray.FirstArraySlice = 0;
+			view_desc->Texture2DMSArray.ArraySize = resource_desc->ArraySize;
+		}
+	}
+
+	return view_desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeDSVFormat(format);
+
+	if (resource_desc->SampleDesc.Count == 1) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+			view_desc->Texture2D.MipSlice = 0;
+		} else {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+			view_desc->Texture2DArray.MipSlice = 0;
+			view_desc->Texture2DArray.FirstArraySlice = 0;
+			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+		}
+	} else {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+		} else {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY;
+			view_desc->Texture2DMSArray.FirstArraySlice = 0;
+			view_desc->Texture2DMSArray.ArraySize = resource_desc->ArraySize;
+		}
+	}
+
+	return view_desc;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		view_desc->Texture2D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+		view_desc->Texture2DArray.MipSlice = 0;
+		view_desc->Texture2DArray.FirstArraySlice = 0;
+		view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
+	view_desc->Texture3D.MostDetailedMip = resource_desc->MipLevels - 1;
+	view_desc->Texture3D.MipLevels = -1;
+
+	return view_desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE3D;
+	view_desc->Texture3D.MipSlice = 0;
+	view_desc->Texture3D.FirstWSlice = 0;
+	view_desc->Texture3D.WSize = -1;
+
+	return view_desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	// DSV cannot be a Texture3D
+
+	return NULL;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
+	view_desc->Texture3D.MipSlice = 0;
+	view_desc->Texture3D.FirstWSlice = 0;
+	view_desc->Texture3D.WSize = -1;
+
+	return view_desc;
+}
+
+
 template <typename ViewType,
 	 typename DescType,
 	 HRESULT (__stdcall ID3D11Device::*CreateView)(THIS_
@@ -1974,27 +2400,63 @@ static ID3D11View* _CreateCompatibleView(
 		UINT buf_src_size)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
 	ViewType *view = NULL;
-	DescType desc, *pDesc = NULL;
+	DescType view_desc, *pDesc = NULL;
 	HRESULT hr;
 
 	resource->GetType(&dimension);
-	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
-		// In the case of a buffer type resource we must specify the
-		// description as DirectX doesn't have enough information from the
-		// buffer alone to create a view.
+	switch(dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			// In the case of a buffer type resource we must specify the
+			// description as DirectX doesn't have enough information from the
+			// buffer alone to create a view.
 
-		desc.Format = format;
+			view_desc.Format = format;
 
-		pDesc = FillOutBufferDesc(&desc, stride, offset, buf_src_size);
+			pDesc = FillOutBufferDesc(&view_desc, stride, offset, buf_src_size);
 
-		// This should already handle things like:
-		// - Copying a vertex buffer to a SRV or constant buffer
-		// - Copying an index buffer to a SRV
-		// - Copying structured buffers
-		// - Copying regular buffers
+			// This should already handle things like:
+			// - Copying a vertex buffer to a SRV or constant buffer
+			// - Copying an index buffer to a SRV
+			// - Copying structured buffers
+			// - Copying regular buffers
 
-		// TODO: Support UAV flags like append/consume and SRV BufferEx views
+			// TODO: Support UAV flags like append/consume and SRV BufferEx views
+			break;
+
+		// We now also fill out the view description for textures as
+		// well. We used to create fully typed resources and leave this
+		// up to DX, but there were some situations where that would
+		// not work (depth buffers need different types depending on
+		// where they are bound, some MSAA resources could not be
+		// created), so we now create typeless resources and therefore
+		// have to fill out the view description to set the type. We
+		// could potentially do this for only the cases where we need
+		// (i.e. depth buffer formats), but I want to do this for
+		// everything because it's so damn overly complex that typos
+		// are ensured so this way it will at least get more exposure
+		// and I can find the bugs sooner:
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
+			tex1d->GetDesc(&tex1d_desc);
+			pDesc = FillOutTex1DDesc(&view_desc, &tex1d_desc, format);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
+			tex2d->GetDesc(&tex2d_desc);
+			pDesc = FillOutTex2DDesc(&view_desc, &tex2d_desc, format);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			pDesc = FillOutTex3DDesc(&view_desc, &tex3d_desc, format);
+			break;
 	}
 
 	hr = (device->*CreateView)(resource, pDesc, &view);
