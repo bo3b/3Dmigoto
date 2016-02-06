@@ -379,6 +379,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"indexbufferfilter",
 	L"analyse_options",
 	L"fake_o0",
+	L"model",
 	NULL
 };
 static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
@@ -485,6 +486,12 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		override->fake_o0 = GetPrivateProfileInt(id, L"fake_o0", 0, iniFile) == 1;
 		if (override->fake_o0)
 			LogInfo("  fake_o0=1\n");
+
+		if (GetPrivateProfileString(id, L"model", 0, setting, MAX_PATH, iniFile)) {
+			wcstombs(override->model, setting, ARRAYSIZE(override->model));
+			override->model[ARRAYSIZE(override->model) - 1] = '\0';
+			LogInfo("  model=%s\n", override->model);
+		}
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}

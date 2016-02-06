@@ -720,6 +720,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *device)
 {
 	UINT64 hash;
+	ShaderOverrideMap::iterator override;
 	ID3D11DeviceChild* oldShader = NULL;
 	ID3D11DeviceChild* replacement = NULL;
 	ID3D11ClassLinkage* classLinkage;
@@ -771,6 +772,13 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// if I were to modify the original. Too many moving parts for me, no good way to test regressions.
 			//   -bo3b
 			G->mReloadedShaders[oldShader].found = true;
+
+			// Check if the user has overridden the shader model:
+			ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+			if (override != G->mShaderOverrideMap.end()) {
+				if (override->second.model[0])
+					shaderModel = override->second.model;
+			}
 
 			// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
 			// Disassemble the binary to get that string.

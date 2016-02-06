@@ -181,6 +181,7 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
 	bool fake_o0;
+	char model[20]; // More than long enough for even ps_4_0_level_9_0
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -193,7 +194,9 @@ struct ShaderOverride {
 		partner_hash(0),
 		analyse_options(FrameAnalysisOptions::INVALID),
 		fake_o0(false)
-	{}
+	{
+		model[0] = '\0';
+	}
 };
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 

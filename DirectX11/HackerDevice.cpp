@@ -664,7 +664,7 @@ void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileDa
 
 char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
-	void **zeroShader, wstring &headerLine)
+	void **zeroShader, wstring &headerLine, const char *overrideShaderModel)
 {
 	foundShaderModel = "";
 	timeStamp = { 0 };
@@ -672,6 +672,11 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	*zeroShader = 0;
 	char *pCode = 0;
 	wchar_t val[MAX_PATH];
+
+	// Way too many obscure interractions in this function, using another
+	// temporary variable to not modify anything already here and reduce
+	// the risk of breaking it in some subtle way:
+	const char *tmpShaderModel;
 
 	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0])
 	{
@@ -792,15 +797,20 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					timeStamp = ftWrite;
 					headerLine = std::wstring(srcData, strchr(srcData, '\n'));
 
+					if (overrideShaderModel)
+						tmpShaderModel = overrideShaderModel;
+					else
+						tmpShaderModel = shaderModel.c_str();
+
 					// Compile replacement.
-					LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel.c_str());
+					LogInfo("    compiling replacement HLSL code with shader model %s\n", tmpShaderModel);
 
 					// TODO: Add #defines for StereoParams and IniParams
 
 					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;
 					HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
-						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+						"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 					delete [] srcData; srcData = 0;
 					if (pCompiledOutput)
 					{
@@ -1052,14 +1062,19 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
 				if (!errorOccurred)
 				{
-					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
+					if (overrideShaderModel)
+						tmpShaderModel = overrideShaderModel;
+					else
+						tmpShaderModel = shaderModel.c_str();
+
+					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmpShaderModel, decompiledCode.size());
 
 					// TODO: Add #defines for StereoParams and IniParams
 
 					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;
 					ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
-						"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+						"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 					LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
 
 					if (LogFile && pErrorMsgs)
@@ -1930,12 +1945,21 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	FILETIME ftWrite;
 	ID3D11Shader *zeroShader = 0;
 	wstring headerLine = L"";
+	ShaderOverrideMap::iterator override;
+	const char *overrideShaderModel = NULL;
 
 	if (pShaderBytecode && ppShader)
 	{
 		// Calculate hash
 		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
 		LogInfo("  bytecode hash = %016I64x\n", hash);
+
+		// Check if the user has overridden the shader model:
+		ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+		if (override != G->mShaderOverrideMap.end()) {
+			if (override->second.model[0])
+				overrideShaderModel = override->second.model;
+		}
 
 		// Preloaded shader? (Can't use preloaded shaders with class linkage).
 		if (preloadedShaders && !pClassLinkage)
@@ -1951,7 +1975,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				if (G->marking_mode == MARKING_MODE_ZERO)
 				{
 					char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-						shaderModel, ftWrite, (void **)&zeroShader, headerLine);
+						shaderModel, ftWrite, (void **)&zeroShader, headerLine, overrideShaderModel);
 					delete replaceShader;
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -1961,7 +1985,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	if (hr != S_OK && ppShader && pShaderBytecode)
 	{
 		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, (void **)&zeroShader, headerLine);
+			shaderModel, ftWrite, (void **)&zeroShader, headerLine, overrideShaderModel);
 		if (replaceShader)
 		{
 			// Create the new shader.
