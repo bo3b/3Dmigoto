@@ -767,11 +767,15 @@ void LoadConfigFile()
 		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
 	}
 
-#if _DEBUG
-	// Always force full logging by default in DEBUG builds
-	gLogDebug = true;
-	unbuffered = setvbuf(LogFile, NULL, _IONBF, 0); 
-#endif
+// Let's not do this - it's trivially easy to turn this on in the ini if we
+// need it and always enabling it for debug builds leads to things being
+// painfully slow if we need to make any progress in the game to get to
+// whatever we are trying to debug. -DarkStarSword
+//#if _DEBUG
+//	// Always force full logging by default in DEBUG builds
+//	gLogDebug = true;
+//	unbuffered = setvbuf(LogFile, NULL, _IONBF, 0); 
+//#endif
 
 	// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
 	BOOL affinity = -1;
