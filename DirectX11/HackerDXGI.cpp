@@ -1369,8 +1369,6 @@ void HackerDXGISwapChain::RunFrameActions()
 
 	G->frame_no++;
 
-	UpdateStereoParams(mHackerDevice, mHackerContext);
-
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag
 	// instead and we handle it now.
@@ -1423,6 +1421,10 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	RunFrameActions();
 
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
+
+	// Update the stereo params texture just after the present so that we
+	// get the new values for the current frame:
+	UpdateStereoParams(mHackerDevice, mHackerContext);
 
 	LogDebug("  returns %x\n", hr);
 	return hr;
