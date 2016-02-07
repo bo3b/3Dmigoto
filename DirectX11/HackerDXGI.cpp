@@ -1294,6 +1294,38 @@ IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 }
 
 
+static void UpdateStereoParams(HackerDevice *mHackerDevice, HackerContext *mHackerContext)
+{
+	if (G->ENABLE_TUNE)
+	{
+		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
+		mHackerDevice->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
+		mHackerDevice->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
+		mHackerDevice->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
+		mHackerDevice->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
+		int counter = 0;
+		if (counter-- < 0)
+		{
+			counter = 30;
+			mHackerDevice->mParamTextureManager.mForceUpdate = true;
+		}
+	}
+
+	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
+	// so we need to check first.
+	if (mHackerDevice->mStereoTexture)
+	{
+		LogDebug("  updating stereo parameter texture.\n");
+		mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, mHackerContext, mHackerDevice->mStereoTexture, false);
+	}
+	else
+	{
+		LogDebug("  stereo parameter texture missing.\n");
+	}
+}
+
+
+
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
 
@@ -1336,6 +1368,8 @@ void HackerDXGISwapChain::RunFrameActions()
 	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
 	G->frame_no++;
+
+	UpdateStereoParams(mHackerDevice, mHackerContext);
 
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag

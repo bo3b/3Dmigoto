@@ -2805,8 +2805,6 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	AfterDraw(c);
 }
 
-// Done at the start of each frame to clear the buffer
-
 STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	/* [annotation] */
 	__in  ID3D11RenderTargetView *pRenderTargetView,
@@ -2816,33 +2814,6 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	FrameAnalysisLog("ClearRenderTargetView(pRenderTargetView:0x%p, ColorRGBA:0x%p)",
 			pRenderTargetView, ColorRGBA);
 	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
-
-	if (G->ENABLE_TUNE)
-	{
-		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
-		mHackerDevice->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
-		mHackerDevice->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
-		mHackerDevice->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
-		mHackerDevice->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
-		int counter = 0;
-		if (counter-- < 0)
-		{
-			counter = 30;
-			mHackerDevice->mParamTextureManager.mForceUpdate = true;
-		}
-	}
-
-	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
-	// so we need to check first.
-	if (mHackerDevice->mStereoTexture)
-	{
-		LogDebug("  updating stereo parameter texture.\n");
-		mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, this, mHackerDevice->mStereoTexture, false);
-	}
-	else
-	{
-		LogDebug("  stereo parameter texture missing.\n");
-	}
 
 	mOrigContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
