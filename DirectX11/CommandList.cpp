@@ -153,7 +153,7 @@ static bool ParseDrawCommand(const wchar_t *key, wstring *val,
 	if (!wcscmp(key, L"draw")) {
 		if (!wcscmp(val->c_str(), L"from_caller")) {
 			operation->type = DrawCommandType::FROM_CALLER;
-			end = val->length();
+			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW;
 			nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
