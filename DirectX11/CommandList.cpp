@@ -473,7 +473,7 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	hr = D3DCompile(srcData.data(), srcDataSize, name.c_str(), 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
 
-	if (pErrorMsgs) {
+	if (pErrorMsgs && LogFile) { // Check LogFile so the fwrite doesn't crash
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 		SIZE_T errSize = pErrorMsgs->GetBufferSize();
 		LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
