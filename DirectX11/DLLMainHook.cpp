@@ -228,7 +228,7 @@ static BOOL WINAPI Hooked_SetWindowPos(
     _In_ int cy,
     _In_ UINT uFlags)
 {
-	if (G->SCREEN_FULLSCREEN) {
+	if (G->SCREEN_FULLSCREEN == 2) {
 		// Do nothing - passing this call through could change the game
 		// to a borderless window. Needed for The Witness.
 		return true;
@@ -237,29 +237,37 @@ static BOOL WINAPI Hooked_SetWindowPos(
 	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
-static bool InstallSetWindowPosHook()
+void InstallSetWindowPosHook()
 {
 	HINSTANCE hUser32;
 	void* fnOrigSetWindowPos;
 	DWORD dwOsErr;
 	SIZE_T hook_id;
+	static bool hook_installed = false;
+
+	// Only attempt to hook it once:
+	if (hook_installed)
+		return;
+	hook_installed = true;
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	if (!hUser32) {
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get User32 module for SetWindowPos hook\n");
-		return false;
-	}
+	if (!hUser32)
+		goto err;
 
 	fnOrigSetWindowPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetWindowPos");
 	if (fnOrigSetWindowPos == NULL)
-	{
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of SetWindowPos\n");
-		return false;
-	}
+		goto err;
 
 	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetWindowPos, fnOrigSetWindowPos, Hooked_SetWindowPos);
+	if (dwOsErr)
+		goto err;
 
-	return !dwOsErr;
+	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
+	return;
+err:
+	LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+	BeepFailure2();
+	return;
 }
 
 static void RemoveHooks()
@@ -287,7 +295,6 @@ BOOL WINAPI DllMain(
 		case DLL_PROCESS_ATTACH:
 			InstallDXGIHooks();
 			result = InstallHooks();
-			result = result && InstallSetWindowPosHook();
 			break;
 
 		case DLL_PROCESS_DETACH:

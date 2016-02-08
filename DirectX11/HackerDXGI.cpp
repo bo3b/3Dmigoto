@@ -504,8 +504,16 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 	LogInfo("     Refresh rate = %f \n",
 		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 
-	if (G->SCREEN_FULLSCREEN)
+	if (G->SCREEN_FULLSCREEN > 0)
 	{
+		if (G->SCREEN_FULLSCREEN == 2) {
+			// We install this hook on demand to avoid any possible
+			// issues with hooking the call when we don't need it:
+			// Unconfirmed, but possibly related to:
+			// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+			InstallSetWindowPosHook();
+		}
+
 		pDesc->Windowed = false;
 		LogInfo("->Forcing Windowed to = %d \n", pDesc->Windowed);
 	}
@@ -769,7 +777,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	//	pFullscreenDesc->RefreshRate.Numerator = SCREEN_REFRESH;
 	//	pFullscreenDesc->RefreshRate.Denominator = 1;
 	//}
-	//if (pFullscreenDesc && SCREEN_FULLSCREEN >= 0) pFullscreenDesc->Windowed = !SCREEN_FULLSCREEN;
+	//if (pFullscreenDesc && SCREEN_FULLSCREEN >= 0) pFullscreenDesc->Windowed = !SCREEN_FULLSCREEN; SCREEN_FULLSCREEN has different valid values now, if you enable this code you need to rework it
 
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
@@ -1453,8 +1461,16 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %p\n", pTarget);
 
-	if (G->SCREEN_FULLSCREEN)
+	if (G->SCREEN_FULLSCREEN > 0)
 	{
+		if (G->SCREEN_FULLSCREEN == 2) {
+			// We install this hook on demand to avoid any possible
+			// issues with hooking the call when we don't need it.
+			// Unconfirmed, but possibly related to:
+			// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+			InstallSetWindowPosHook();
+		}
+
 		Fullscreen = true;
 		LogInfo("->Fullscreen forced = %d \n", Fullscreen);
 	}

@@ -788,7 +788,9 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 
 static void ToggleFullScreen(HackerDevice *device, void *private_data)
 {
-	G->SCREEN_FULLSCREEN = !G->SCREEN_FULLSCREEN;
+	// SCREEN_FULLSCREEN has several options now, so to preserve the
+	// current setting when toggled off we negate it:
+	G->SCREEN_FULLSCREEN = -G->SCREEN_FULLSCREEN;
 	LogInfo("> full screen forcing toggled to %d (will not take effect until next mode switch)\n", G->SCREEN_FULLSCREEN);
 }
 
@@ -898,7 +900,7 @@ void LoadConfigFile()
 			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7, 
 			G->FILTER_REFRESH + 8, G->FILTER_REFRESH + 9);
 	}
-	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile) == 1;
+	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", -1, iniFile);
 	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
 	G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
 	G->SCREEN_ALLOW_COMMANDS = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1;
@@ -908,7 +910,7 @@ void LoadConfigFile()
 	if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
 	if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
 	if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%d\n", G->FILTER_REFRESH[0]);
-	if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
+	if (G->SCREEN_FULLSCREEN != -1) LogInfo("  full_screen=%d\n", G->SCREEN_FULLSCREEN);
 	if (G->gForceStereo) LogInfo("  force_stereo=1\n");
 	if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
 

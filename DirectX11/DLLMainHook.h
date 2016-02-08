@@ -9,6 +9,7 @@ extern CNktHookLib cHookMgr;
 extern bool bLog;
 
 void InitD311();
+void InstallSetWindowPosHook();
 
 enum class EnableHooks {
 	INVALID                     = 0,
