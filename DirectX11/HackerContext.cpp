@@ -468,6 +468,20 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	if (!G->fix_enabled)
 		return;
 
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	// We used to do this in the SetShader calls, but Akiba's Trip clears
+	// all shader resources after that call, so doing it here guarantees it
+	// will be bound for the draw call.
+	BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
+	if (mCurrentHullShader)
+		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
+	if (mCurrentDomainShader)
+		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
+	if (mCurrentGeometryShader)
+		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
+
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
@@ -967,9 +981,6 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 
 	FrameAnalysisLog("GSSetShader(pShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pShader, ppClassInstances, NumClassInstances, mCurrentGeometryShader);
-
-	if (pShader)
-		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::IASetPrimitiveTopology(THIS_
@@ -1147,6 +1158,8 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 				return false;
 		}
 	}
+
+	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
@@ -1557,9 +1570,6 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 
 	FrameAnalysisLog("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pHullShader, ppClassInstances, NumClassInstances, mCurrentHullShader);
-
-	if (pHullShader)
-		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetSamplers(THIS_
@@ -1626,9 +1636,6 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 
 	FrameAnalysisLog("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pDomainShader, ppClassInstances, NumClassInstances, mCurrentDomainShader);
-
-	if (pDomainShader)
-		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::DSSetSamplers(THIS_
@@ -1803,9 +1810,6 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 
 	FrameAnalysisLog("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pComputeShader, ppClassInstances, NumClassInstances, mCurrentComputeShader);
-
-	if (pComputeShader)
-		BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
@@ -2480,11 +2484,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 
 	FrameAnalysisLog("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pVertexShader, ppClassInstances, NumClassInstances, mCurrentVertexShader);
-
-	// When hunting is off, send stereo texture to all shaders, as any might need it.
-	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
-	if (pVertexShader)
-		BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
@@ -2522,11 +2521,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 	FrameAnalysisLog("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pPixelShader, ppClassInstances, NumClassInstances, mCurrentPixelShader);
 
-	// When hunting is off, send stereo texture to all shaders, as any might need it.
-	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
 	if (pPixelShader) {
-		BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
-
 		// Set custom depth texture.
 		if (mHackerDevice->mZBufferResourceView)
 		{
