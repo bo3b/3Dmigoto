@@ -332,22 +332,6 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 			mIniTexture = 0;
 			LogInfo("  releasing iniparams texture, result = %d\n", result);
 		}
-		if (!G->mPreloadedPixelShaders.empty())
-		{
-			LogInfo("  releasing preloaded pixel shaders\n");
-
-			for (PreloadPixelShaderMap::iterator i = G->mPreloadedPixelShaders.begin(); i != G->mPreloadedPixelShaders.end(); ++i)
-				i->second->Release();
-			G->mPreloadedPixelShaders.clear();		// No critical wrap for exiting.
-		}
-		if (!G->mPreloadedVertexShaders.empty())
-		{
-			LogInfo("  releasing preloaded vertex shaders\n");
-
-			for (PreloadVertexShaderMap::iterator i = G->mPreloadedVertexShaders.begin(); i != G->mPreloadedVertexShaders.end(); ++i)
-				i->second->Release();
-			G->mPreloadedVertexShaders.clear();		// No critical wrap for exiting.
-		}
 		delete this;
 		return 0L;
 	}
@@ -494,134 +478,6 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	G->mReloadedShaders[ppShader].timeStamp = timeStamp;
 	G->mReloadedShaders[ppShader].replacement = NULL;
 	G->mReloadedShaders[ppShader].infoText = text;
-}
-
-void HackerDevice::PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileData)
-{
-	wchar_t fileName[MAX_PATH];
-	wsprintf(fileName, L"%ls\\%ls", path, findFileData.cFileName);
-	char cFileName[MAX_PATH];
-
-	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
-	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f == INVALID_HANDLE_VALUE)
-	{
-		LogInfo("  error reading binary vertex shader %s.\n", cFileName);
-		return;
-	}
-	DWORD bytecodeLength = GetFileSize(f, 0);
-	char *pShaderBytecode = new char[bytecodeLength];
-	DWORD readSize;
-	FILETIME ftWrite;
-	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0)
-		|| !GetFileTime(f, NULL, NULL, &ftWrite)
-		|| bytecodeLength != readSize)
-	{
-		LogInfo("  Error reading binary vertex shader %s.\n", cFileName);
-		CloseHandle(f);
-		return;
-	}
-	CloseHandle(f);
-
-	LogInfo("  preloading vertex shader %s\n", cFileName);
-
-	UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
-	UINT64 keyHash = 0;
-	for (int i = 0; i < 16; ++i)
-	{
-		UINT64 digit = findFileData.cFileName[i] > L'9' ? towupper(findFileData.cFileName[i]) - L'A' + 10 : findFileData.cFileName[i] - L'0';
-		keyHash += digit << (60 - i * 4);
-	}
-	LogInfo("    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n",
-		(UINT32)(keyHash >> 32), (UINT32)(keyHash),
-		(UINT32)(hash >> 32), (UINT32)(hash));
-
-	// Create the new shader.
-	ID3D11VertexShader *pVertexShader;
-	HRESULT hr = mOrigDevice->CreateVertexShader(pShaderBytecode, bytecodeLength, 0, &pVertexShader);
-	if (FAILED(hr))
-	{
-		LogInfo("    error creating shader.\n");
-
-		delete [] pShaderBytecode; pShaderBytecode = 0;
-		return;
-	}
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mPreloadedVertexShaders[keyHash] = pVertexShader;
-		if (G->hunting)
-		{
-			ID3DBlob* blob;
-			D3DCreateBlob(bytecodeLength, &blob);
-			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
-			RegisterForReload(pVertexShader, keyHash, L"vs", "bin", NULL, blob, ftWrite, L"");
-		}
-		delete [] pShaderBytecode; pShaderBytecode = 0;
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-void HackerDevice::PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileData)
-{
-	wchar_t fileName[MAX_PATH];
-	wsprintf(fileName, L"%ls\\%ls", path, findFileData.cFileName);
-	char cFileName[MAX_PATH];
-
-	if (LogFile) wcstombs(cFileName, findFileData.cFileName, MAX_PATH);
-	HANDLE f = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f == INVALID_HANDLE_VALUE)
-	{
-		LogInfo("  error reading binary pixel shader %s.\n", cFileName);
-		return;
-	}
-	DWORD bytecodeLength = GetFileSize(f, 0);
-	char *pShaderBytecode = new char[bytecodeLength];
-	DWORD readSize;
-	FILETIME ftWrite;
-	if (!ReadFile(f, pShaderBytecode, bytecodeLength, &readSize, 0)
-		|| !GetFileTime(f, NULL, NULL, &ftWrite)
-		|| bytecodeLength != readSize)
-	{
-		LogInfo("  Error reading binary pixel shader %s.\n", cFileName);
-		CloseHandle(f);
-		return;
-	}
-	CloseHandle(f);
-
-	LogInfo("  preloading pixel shader %s\n", cFileName);
-
-	UINT64 hash = fnv_64_buf(pShaderBytecode, bytecodeLength);
-	UINT64 keyHash = 0;
-	for (int i = 0; i < 16; ++i)
-	{
-		UINT64 digit = findFileData.cFileName[i] > L'9' ? towupper(findFileData.cFileName[i]) - L'A' + 10 : findFileData.cFileName[i] - L'0';
-		keyHash += digit << (60 - i * 4);
-	}
-	LogInfo("    key hash = %08lx%08lx, bytecode hash = %08lx%08lx\n",
-		(UINT32)(keyHash >> 32), (UINT32)(keyHash),
-		(UINT32)(hash >> 32), (UINT32)(hash));
-
-	// Create the new shader.
-	ID3D11PixelShader *pPixelShader;
-	HRESULT hr = mOrigDevice->CreatePixelShader(pShaderBytecode, bytecodeLength, 0, &pPixelShader);
-	if (FAILED(hr))
-	{
-		LogInfo("    error creating shader.\n");
-
-		delete [] pShaderBytecode; pShaderBytecode = 0;
-		return;
-	}
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		G->mPreloadedPixelShaders[hash] = pPixelShader;
-		if (G->hunting)
-		{
-			ID3DBlob* blob;
-			D3DCreateBlob(bytecodeLength, &blob);
-			memcpy(blob->GetBufferPointer(), pShaderBytecode, bytecodeLength);
-			RegisterForReload(pPixelShader, keyHash, L"ps", "bin", NULL, blob, ftWrite, L"");
-		}
-		delete [] pShaderBytecode; pShaderBytecode = 0;
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 // Fairly bold new strategy here for ReplaceShader. 
@@ -1620,79 +1476,6 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		LogDebug("\n");
 	}
 
-	// Preload shaders? 
-	// ToDo: This really doesn't belong here as a late-binding. Maybe move to Create3DMigotoResources.
-	if (G->PRELOAD_SHADERS && G->mPreloadedVertexShaders.empty() && G->mPreloadedPixelShaders.empty())
-	{
-		LogInfo("  preloading custom shaders.\n");
-
-		wchar_t fileName[MAX_PATH];
-		if (G->SHADER_PATH[0])
-		{
-			wsprintf(fileName, L"%ls\\*-vs_replace.bin", G->SHADER_PATH);
-			WIN32_FIND_DATA findFileData;
-			HANDLE hFind = FindFirstFile(fileName, &findFileData);
-			if (hFind != INVALID_HANDLE_VALUE)
-			{
-				BOOL found = true;
-				while (found)
-				{
-					PreloadVertexShader(G->SHADER_PATH, findFileData);
-					found = FindNextFile(hFind, &findFileData);
-				}
-				FindClose(hFind);
-			}
-		}
-		if (G->SHADER_CACHE_PATH[0])
-		{
-			wsprintf(fileName, L"%ls\\*-vs_replace.bin", G->SHADER_CACHE_PATH);
-			WIN32_FIND_DATA findFileData;
-			HANDLE hFind = FindFirstFile(fileName, &findFileData);
-			if (hFind != INVALID_HANDLE_VALUE)
-			{
-				BOOL found = true;
-				while (found)
-				{
-					PreloadVertexShader(G->SHADER_CACHE_PATH, findFileData);
-					found = FindNextFile(hFind, &findFileData);
-				}
-				FindClose(hFind);
-			}
-		}
-		if (G->SHADER_PATH[0])
-		{
-			wsprintf(fileName, L"%ls\\*-ps_replace.bin", G->SHADER_PATH);
-			WIN32_FIND_DATA findFileData;
-			HANDLE hFind = FindFirstFile(fileName, &findFileData);
-			if (hFind != INVALID_HANDLE_VALUE)
-			{
-				BOOL found = true;
-				while (found)
-				{
-					PreloadPixelShader(G->SHADER_PATH, findFileData);
-					found = FindNextFile(hFind, &findFileData);
-				}
-				FindClose(hFind);
-			}
-		}
-		if (G->SHADER_CACHE_PATH[0])
-		{
-			wsprintf(fileName, L"%ls\\*-ps_replace.bin", G->SHADER_CACHE_PATH);
-			WIN32_FIND_DATA findFileData;
-			HANDLE hFind = FindFirstFile(fileName, &findFileData);
-			if (hFind != INVALID_HANDLE_VALUE)
-			{
-				BOOL found = true;
-				while (found)
-				{
-					PreloadPixelShader(G->SHADER_CACHE_PATH, findFileData);
-					found = FindNextFile(hFind, &findFileData);
-				}
-				FindClose(hFind);
-			}
-		}
-	}
-
 	// Rectangular depth stencil textures of at least 640x480 may indicate
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
@@ -1933,7 +1716,6 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	__out_opt  ID3D11Shader **ppShader,
 	wchar_t *shaderType,
 	std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-	std::unordered_map<UINT64, ID3D11Shader *> *preloadedShaders,
 	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
 	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
 	)
@@ -1959,27 +1741,6 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		if (override != G->mShaderOverrideMap.end()) {
 			if (override->second.model[0])
 				overrideShaderModel = override->second.model;
-		}
-
-		// Preloaded shader? (Can't use preloaded shaders with class linkage).
-		if (preloadedShaders && !pClassLinkage)
-		{
-			std::unordered_map<UINT64, ID3D11Shader *>::iterator i = preloadedShaders->find(hash);
-			if (i != preloadedShaders->end())
-			{
-				*ppShader = i->second;
-				ULONG cnt = (*ppShader)->AddRef();
-				hr = S_OK;
-				LogInfo("    shader assigned by preloaded version. ref counter = %d\n", cnt);
-
-				if (G->marking_mode == MARKING_MODE_ZERO)
-				{
-					char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-						shaderModel, ftWrite, (void **)&zeroShader, headerLine, overrideShaderModel);
-					delete replaceShader;
-				}
-				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
-			}
 		}
 	}
 	if (hr != S_OK && ppShader && pShaderBytecode)
@@ -2082,7 +1843,7 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 
 	return CreateShader<ID3D11VertexShader, &ID3D11Device::CreateVertexShader>
 			(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader,
-			 L"vs", &G->mVertexShaders, &G->mPreloadedVertexShaders, &G->mOriginalVertexShaders, &G->mZeroVertexShaders);
+			 L"vs", &G->mVertexShaders, &G->mOriginalVertexShaders, &G->mZeroVertexShaders);
 }
 
 STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
@@ -2101,7 +1862,6 @@ STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
 			(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader,
 			 L"gs",
 			 &G->mGeometryShaders,
-			 NULL /* TODO: &G->mPreloadedGeometryShaders */,
 			 &G->mOriginalGeometryShaders,
 			 NULL /* TODO: &G->mZeroGeometryShaders */);
 }
@@ -2152,7 +1912,7 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 
 	return CreateShader<ID3D11PixelShader, &ID3D11Device::CreatePixelShader>
 			(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader,
-			 L"ps", &G->mPixelShaders, &G->mPreloadedPixelShaders, &G->mOriginalPixelShaders, &G->mZeroPixelShaders);
+			 L"ps", &G->mPixelShaders, &G->mOriginalPixelShaders, &G->mZeroPixelShaders);
 }
 
 STDMETHODIMP HackerDevice::CreateHullShader(THIS_
@@ -2171,7 +1931,6 @@ STDMETHODIMP HackerDevice::CreateHullShader(THIS_
 			(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader,
 			 L"hs",
 			 &G->mHullShaders,
-			 NULL /* TODO: &G->mPreloadedHullShaders */,
 			 &G->mOriginalHullShaders,
 			 NULL /* TODO: &G->mZeroHullShaders */);
 }
@@ -2192,7 +1951,6 @@ STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
 			(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader,
 			 L"ds",
 			 &G->mDomainShaders,
-			 NULL /* TODO: &G->mPreloadedDomainShaders */,
 			 &G->mOriginalDomainShaders,
 			 NULL /* TODO: &G->mZeroDomainShaders */);
 }
@@ -2213,7 +1971,6 @@ STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
 			(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader,
 			 L"cs",
 			 &G->mComputeShaders,
-			 NULL /* TODO: &G->mPreloadedComputeShaders */,
 			 &G->mOriginalComputeShaders,
 			 NULL /* TODO (if this even makes sense?): &G->mZeroComputeShaders */);
 }

@@ -29,8 +29,6 @@ private:
 	// Utility routines
 	void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
 		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text);
-	void PreloadVertexShader(wchar_t *path, WIN32_FIND_DATA &findFileData);
-	void PreloadPixelShader(wchar_t *path, WIN32_FIND_DATA &findFileData);
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
 		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);
@@ -61,7 +59,6 @@ private:
 		__out_opt  ID3D11Shader **ppShader,
 		wchar_t *shaderType,
 		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-		std::unordered_map<UINT64, ID3D11Shader *> *preloadedShaders,
 		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
 		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
 		);

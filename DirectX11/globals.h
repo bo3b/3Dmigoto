@@ -71,12 +71,10 @@ typedef std::unordered_map<ID3D11DeviceChild *, OriginalShaderInfo> ShaderReload
 
 // Key is vertexshader, value is hash key.
 typedef std::unordered_map<ID3D11VertexShader *, UINT64> VertexShaderMap;
-typedef std::unordered_map<UINT64, ID3D11VertexShader *> PreloadVertexShaderMap;
 typedef std::unordered_map<ID3D11VertexShader *, ID3D11VertexShader *> VertexShaderReplacementMap;
 
 // Key is pixelshader, value is hash key.
 typedef std::unordered_map<ID3D11PixelShader *, UINT64> PixelShaderMap;
-typedef std::unordered_map<UINT64, ID3D11PixelShader *> PreloadPixelShaderMap;
 typedef std::unordered_map<ID3D11PixelShader *, ID3D11PixelShader *> PixelShaderReplacementMap;
 
 typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
@@ -307,7 +305,7 @@ struct Globals
 	std::unordered_set<void*> frame_analysis_seen_rts;
 
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
-	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
 	bool track_texture_updates;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
@@ -347,7 +345,6 @@ struct Globals
 	CompiledShaderMap mCompiledShaderMap;
 
 	VertexShaderMap mVertexShaders;							// All shaders ever registered with CreateVertexShader
-	PreloadVertexShaderMap mPreloadedVertexShaders;			// All shaders that were preloaded as .bin
 	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
 	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
@@ -356,7 +353,6 @@ struct Globals
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
 	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
-	PreloadPixelShaderMap mPreloadedPixelShaders;
 	PixelShaderReplacementMap mOriginalPixelShaders;
 	PixelShaderReplacementMap mZeroPixelShaders;
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
@@ -453,7 +449,6 @@ struct Globals
 		EXPORT_FIXED(false),
 		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
-		PRELOAD_SHADERS(false),
 		FIX_SV_Position(false),
 		FIX_Light_Position(false),
 		FIX_Recompile_VS(false),
