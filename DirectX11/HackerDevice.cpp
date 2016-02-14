@@ -1682,13 +1682,15 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
-		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
-		{
-			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second.hash);
+		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
+			if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
+			{
+				LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second.hash);
 
-			mZBufferResourceView = *ppSRView;
-		}
+				mZBufferResourceView = *ppSRView;
+			}
+		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogDebug("  returns result = %x\n", hr);

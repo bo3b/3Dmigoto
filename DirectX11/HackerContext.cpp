@@ -85,18 +85,18 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 	if (!resource)
 		return NULL;
 
-	// We are using the original resource hash for stat collection - things
-	// get tricky otherwise
-	orig_hash = GetOrigResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-	resource->Release();
+		// We are using the original resource hash for stat collection - things
+		// get tricky otherwise
+		orig_hash = GetOrigResourceHash(resource);
 
-	if (orig_hash)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		resource->Release();
+
+		if (orig_hash)
 			G->mShaderResourceInfo.insert(orig_hash);
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	return resource;
 }
@@ -137,19 +137,22 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	if (!resource)
 		return;
 
-	// We are using the original resource hash for stat collection - things
-	// get tricky otherwise
-	orig_hash = GetOrigResourceHash((ID3D11Texture2D *)resource);
-
-	resource->Release();
-
-	if (!resource)
-		return;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+		// We are using the original resource hash for stat collection - things
+		// get tricky otherwise
+		orig_hash = GetOrigResourceHash((ID3D11Texture2D *)resource);
+
+		resource->Release();
+
+		if (!resource)
+			goto out_unlock;
+
 		mCurrentRenderTargets.push_back(resource);
 		G->mVisitedRenderTargets.insert(resource);
 		G->mRenderTargetInfo.insert(orig_hash);
+
+out_unlock:
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -168,15 +171,17 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	target->GetDesc(&desc);
 
-	// We are using the original resource hash for stat collection - things
-	// get tricky otherwise
-	orig_hash = GetOrigResourceHash(resource);
-
-	resource->Release();
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+		// We are using the original resource hash for stat collection - things
+		// get tricky otherwise
+		orig_hash = GetOrigResourceHash(resource);
+
+		resource->Release();
+
 		mCurrentDepthTarget = resource;
 		G->mDepthTargetInfo.insert(orig_hash);
+
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -800,7 +805,9 @@ HRESULT HackerContext::MapDenyCPURead(
 		return E_FAIL;
 
 	tex->GetDesc(&desc);
-	hash = GetResourceHash(tex);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(tex);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	LogDebug("Map Texture2D %08lx (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
 			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
@@ -1285,8 +1292,10 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 
 	srcTex->GetDesc(&srcDesc);
 	dstTex->GetDesc(&dstDesc);
-	srcHash = GetResourceHash(srcTex);
-	dstHash = GetResourceHash(dstTex);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		srcHash = GetResourceHash(srcTex);
+		dstHash = GetResourceHash(dstTex);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 

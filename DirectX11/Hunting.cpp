@@ -1134,8 +1134,11 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 	// for filename conflicts, so use def_analyse_options:
 	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
 		G->analyse_frame = 0;
-		if (G->DumpUsage)
-			DumpUsage(G->ANALYSIS_PATH);
+		if (G->DumpUsage) {
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+				DumpUsage(G->ANALYSIS_PATH);
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		}
 	}
 }
 

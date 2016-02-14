@@ -87,6 +87,8 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		return;
 	}
 
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	try {
 		hash = G->mResources.at(resource).hash;
 		orig_hash = G->mResources.at(resource).orig_hash;
@@ -109,6 +111,8 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		}
 	} catch (std::out_of_range) {
 	}
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
 }
@@ -1294,6 +1298,9 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 		}
 	}
 
+	// Grab the critical section now as we may need it several times during
+	// dumping for mResources
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
 		DumpCBs(compute);
@@ -1319,6 +1326,8 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
 		DumpDepthStencilTargets();
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {

@@ -265,7 +265,9 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 
 	view->GetDesc(&desc);
 
-	hash = GetResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)
 		goto out_release_resource;
 
