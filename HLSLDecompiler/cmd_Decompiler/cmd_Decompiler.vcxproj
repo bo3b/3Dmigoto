@@ -57,22 +57,22 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
-    <OutDir>$(SolutionDir)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\x32\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
-    <OutDir>$(SolutionDir)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\x32\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
-    <OutDir>$(SolutionDir)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\x32\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
