@@ -33,8 +33,6 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  --disassemble-ms\n");
 	LogInfo("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
 
-	// Flugan's assembler cannot be used standalone as it requires an original binary
-	// We could provide one in some cases, but we really need to remove that requirement.
 	LogInfo("  -a, --assemble\n");
 	LogInfo("\t\t\tAssemble shaders with Flugan's assembler\n");
 
@@ -427,6 +425,10 @@ static void* serialise_signature_section(char *section24, char *section28, char 
 	sg5_entry_serialiased *entry5 = NULL;
 	sg1_entry_serialiased *entry1 = NULL;
 
+	// Geometry shader 5 never uses OSGN, bump to OSG5:
+	if (entry_size == 24 && section24 == NULL)
+		entry_size = 28;
+
 	// Only OSG5 exists in version 5, so bump ISG & PSG to version 5.1:
 	if (entry_size == 28 && section28 == NULL)
 		entry_size = 32;
@@ -673,6 +675,23 @@ static bool is_hull_shader(string *shader, size_t start_pos) {
 	return false;
 }
 
+static bool is_geometry_shader_5(string *shader, size_t start_pos) {
+	string line;
+	size_t pos = start_pos;
+
+	while (pos != shader->npos) {
+		line = next_line(shader, &pos);
+		if (!strncmp(line.c_str(), "gs_5_", 5))
+			return true;
+		if (!strncmp(line.c_str() + 1, "s_4_", 4))
+			return false;
+		if (!strncmp(line.c_str() + 1, "s_5_", 4))
+			return false;
+	}
+
+	return false;
+}
+
 static bool parse_section(string *line, string *shader, size_t *pos, void **section)
 {
 	*section = NULL;
@@ -694,7 +713,10 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 		*section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false);
 	} else if (!strncmp(line->c_str(), "// Output signature:", 20)) {
 		LogInfo("Parsing Output Signature section...\n",);
-		*section = parse_signature_section("OSGN", "OSG5", "OSG1", shader, pos, true);
+		char *section24 = "OSGN";
+		if (is_geometry_shader_5(shader, *pos))
+			section24 = NULL;
+		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true);
 	}
 
 	return false;
@@ -960,6 +982,7 @@ static int process(string const *filename)
 		if (args.validate) {
 			if (validate_assembly(&output, &srcData))
 				return EXIT_FAILURE;
+			// TODO: Validate signature parsing instead of binary identical files
 		}
 
 		if (WriteOutput(filename, ".asm", &output))
@@ -973,7 +996,9 @@ static int process(string const *filename)
 		if (FAILED(hret))
 			return EXIT_FAILURE;
 
+		// TODO:
 		// if (args.validate)
+		// disassemble again and perform fuzzy compare
 
 		if (WriteOutput(filename, ".shdr", &output))
 			return EXIT_FAILURE;
