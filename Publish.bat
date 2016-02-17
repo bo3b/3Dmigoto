@@ -135,10 +135,16 @@ MOVE ".\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
 
 echo(
+MKDIR ".\Zip Release\cmd_Decompiler\"
+MOVE ".\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
+COPY ".\Zip Release\x32\d3dcompiler_46.dll"  ".\Zip Release\cmd_Decompiler\"
+
+echo(
 echo(
 echo === Create Zip release for x32 and x64  ===
 7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x32\"
 7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x64\"
+7zip\7za a ".\Zip Release\cmd_Decompiler-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\cmd_Decompiler\*"
 
 PAUSE
 EXIT
