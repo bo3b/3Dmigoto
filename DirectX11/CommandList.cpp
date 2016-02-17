@@ -1936,7 +1936,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		*buf_dst_size = new_desc.ByteWidth;
 	}
 
-	if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 		dst->custom_resource->OverrideBufferDesc(&new_desc);
 
 	if (dst_resource) {
@@ -2207,7 +2207,7 @@ static ResourceType* RecreateCompatibleTexture(
 	// generate mip-maps just clear it out:
 	new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
-	if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 		dst->custom_resource->OverrideTexDesc(&new_desc);
 
 	if (dst_resource) {
