@@ -71,6 +71,12 @@ public:
 	ID3DBlob *vs_bytecode, *hs_bytecode, *ds_bytecode;
 	ID3DBlob *gs_bytecode, *ps_bytecode, *cs_bytecode;
 
+	int blend_override;
+	D3D11_BLEND_DESC blend_desc;
+	ID3D11BlendState *blend_state;
+	FLOAT blend_factor[4];
+	UINT blend_sample_mask;
+
 	CommandList command_list;
 	CommandList post_command_list;
 

@@ -671,14 +671,228 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476088(v=vs.85).aspx
+static wchar_t *BlendOPs[] = {
+	L"",
+	L"ADD",
+	L"SUBTRACT",
+	L"REV_SUBTRACT",
+	L"MIN",
+	L"MAX",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476086(v=vs.85).aspx
+static wchar_t *BlendFactors[] = {
+	L"",
+	L"ZERO",
+	L"ONE",
+	L"SRC_COLOR",
+	L"INV_SRC_COLOR",
+	L"SRC_ALPHA",
+	L"INV_SRC_ALPHA",
+	L"DEST_ALPHA",
+	L"INV_DEST_ALPHA",
+	L"DEST_COLOR",
+	L"INV_DEST_COLOR",
+	L"SRC_ALPHA_SAT",
+	L"BLEND_FACTOR",
+	L"INV_BLEND_FACTOR",
+	L"SRC1_COLOR",
+	L"INV_SRC1_COLOR",
+	L"SRC1_ALPHA",
+	L"INV_SRC1_ALPHA",
+};
+
+static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_BLEND *src, D3D11_BLEND *dst)
+{
+	wchar_t op_buf[32], src_buf[32], dst_buf[32];
+	wchar_t *op_ptr, *src_ptr, *dst_ptr;
+	int i;
+
+	i = swscanf_s(val, L"%s %s %s",
+			op_buf, ARRAYSIZE(op_buf),
+			src_buf, ARRAYSIZE(src_buf),
+			dst_buf, ARRAYSIZE(dst_buf));
+	if (i != 3) {
+		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
+		BeepFailure2();
+		return;
+	}
+	LogInfo("  %S=%S\n", key, val);
+
+	op_ptr = op_buf; src_ptr = src_buf; dst_ptr = dst_buf;
+
+	if (!_wcsnicmp(op_ptr, L"D3D11_BLEND_OP_", 15))
+		op_ptr += 15;
+	if (!_wcsnicmp(src_ptr, L"D3D11_BLEND_", 12))
+		src_ptr += 12;
+	if (!_wcsnicmp(dst_ptr, L"D3D11_BLEND_", 12))
+		dst_ptr += 12;
+
+	for (i = 1; i < ARRAYSIZE(BlendOPs); i++) {
+		if (!_wcsnicmp(op_ptr, BlendOPs[i], 32)) {
+			*op = (D3D11_BLEND_OP)i;
+			break;
+		}
+	}
+	if (i == ARRAYSIZE(BlendOPs)) {
+		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_ptr);
+		BeepFailure2();
+	}
+
+	for (i = 1; i < ARRAYSIZE(BlendFactors); i++) {
+		if (!_wcsnicmp(src_ptr, BlendFactors[i], 32)) {
+			*src = (D3D11_BLEND)i;
+			break;
+		}
+	}
+	if (i == ARRAYSIZE(BlendFactors)) {
+		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_ptr);
+		BeepFailure2();
+	}
+
+	for (i = 1; i < ARRAYSIZE(BlendFactors); i++) {
+		if (!_wcsnicmp(dst_ptr, BlendFactors[i], 32)) {
+			*dst = (D3D11_BLEND)i;
+			break;
+		}
+	}
+	if (i == ARRAYSIZE(BlendFactors)) {
+		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_ptr);
+		BeepFailure2();
+	}
+}
+
+static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const wchar_t *section, int index, wchar_t *iniFile)
+{
+	wchar_t setting[MAX_PATH];
+	bool override = false;
+	wchar_t key[32];
+	int ival;
+
+	wcscpy(key, L"blend");
+	if (index >= 0)
+		swprintf_s(key, ARRAYSIZE(key), L"blend[%i]", index);
+	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		override = true;
+
+		// Special value to disable blending:
+		if (!wcscmp(setting, L"disable")) {
+			LogInfo("  %S=disable\n", key);
+			desc->BlendEnable = false;
+			return true;
+		}
+
+		ParseBlendOp(key, setting,
+				&desc->BlendOp,
+				&desc->SrcBlend,
+				&desc->DestBlend);
+	}
+
+	wcscpy(key, L"alpha");
+	if (index >= 0)
+		swprintf_s(key, ARRAYSIZE(key), L"alpha[%i]", index);
+	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		override = true;
+		ParseBlendOp(key, setting,
+				&desc->BlendOpAlpha,
+				&desc->SrcBlendAlpha,
+				&desc->DestBlendAlpha);
+	}
+
+	wcscpy(key, L"mask");
+	if (index >= 0)
+		swprintf_s(key, ARRAYSIZE(key), L"mask[%i]", index);
+	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		override = true;
+		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
+		desc->RenderTargetWriteMask = ival; // Use an intermediate to be safe
+		LogInfo("  %S=0x%x\n", key, desc->RenderTargetWriteMask);
+	}
+
+	if (override)
+		desc->BlendEnable = true;
+
+	return override;
+}
+
+static void ParseBlendState(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	D3D11_BLEND_DESC *desc = &shader->blend_desc;
+	wchar_t setting[MAX_PATH];
+	wchar_t key[32];
+	int i, ival;
+
+	memset(desc, 0, sizeof(D3D11_BLEND_DESC));
+
+	// Set a default blend state for any missing values:
+	desc->AlphaToCoverageEnable = false;
+	desc->IndependentBlendEnable = false;
+	desc->RenderTarget[0].BlendEnable = false;
+	desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	desc->RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
+	desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	desc->RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	desc->RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	// Any blend states that are specified without a render target index
+	// are propagated to all render targets:
+	if (ParseBlendRenderTarget(&desc->RenderTarget[0], section, -1, iniFile))
+		shader->blend_override = 1;
+	for (i = 1; i < 8; i++)
+		memcpy(&desc->RenderTarget[i], &desc->RenderTarget[0], sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+
+	// We check all render targets again with the [%i] syntax. We do the
+	// first one again since the last time was for default, while this is
+	// for the specific target:
+	for (i = 0; i < 8; i++) {
+		if (ParseBlendRenderTarget(&desc->RenderTarget[i], section, i, iniFile)) {
+			shader->blend_override = 1;
+			desc->IndependentBlendEnable = true;
+		}
+	}
+
+	ival = GetPrivateProfileInt(section, L"alpha_to_coverage", -1, iniFile);
+	if (ival != -1) {
+		shader->blend_override = 1;
+		desc->AlphaToCoverageEnable = ival == 1;
+		LogInfo("  alpha_to_coverage=%i\n", desc->AlphaToCoverageEnable);
+	}
+
+	for (i = 0; i < 4; i++) {
+		swprintf_s(key, ARRAYSIZE(key), L"blend_factor[%i]", i);
+		if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+			shader->blend_override = 1;
+			swscanf_s(setting, L"%f", &shader->blend_factor[i]);
+			LogInfo("  %S=%f\n", key, shader->blend_factor[i]);
+		}
+	}
+
+	if (GetPrivateProfileString(section, L"sample_mask", 0, setting, MAX_PATH, iniFile)) {
+		shader->blend_override = 1;
+		swscanf_s(setting, L"%x", &shader->blend_sample_mask);
+		LogInfo("  sample_mask=0x%x\n", shader->blend_sample_mask);
+	}
+}
+
 // List of keys in [CustomShader] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	L"blend", L"alpha", L"mask",
+	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
+	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
+	L"alpha[0]", L"alpha[1]", L"alpha[2]", L"alpha[3]",
+	L"alpha[4]", L"alpha[5]", L"alpha[6]", L"alpha[7]",
+	L"mask[0]", L"mask[1]", L"mask[2]", L"mask[3]",
+	L"mask[4]", L"mask[5]", L"mask[6]", L"mask[7]",
+	L"alpha_to_coverage", L"sample_mask",
+	L"blend_factor[0]", L"blend_factor[1]",
+	L"blend_factor[2]", L"blend_factor[3]",
 	NULL
 };
-
-// TODO: Refactor common code with ParseResourceSections
 static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 {
 	IniSections::iterator lower, upper, i;
@@ -716,6 +930,9 @@ static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 			failed |= custom_shader->compile('p', setting, &shader_id);
 		if (GetPrivateProfileString(i->c_str(), L"cs", 0, setting, MAX_PATH, iniFile))
 			failed |= custom_shader->compile('c', setting, &shader_id);
+
+
+		ParseBlendState(custom_shader, i->c_str(), iniFile);
 
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an

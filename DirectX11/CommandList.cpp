@@ -371,8 +371,13 @@ CustomShader::CustomShader() :
 	vs(NULL), hs(NULL), ds(NULL), gs(NULL), ps(NULL), cs(NULL),
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
+	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
 	substantiated(false)
 {
+	int i;
+
+	for (i = 0; i < 4; i++)
+		blend_factor[i] = 1.0f;
 }
 
 CustomShader::~CustomShader()
@@ -389,6 +394,9 @@ CustomShader::~CustomShader()
 		ps->Release();
 	if (cs)
 		cs->Release();
+
+	if (blend_state)
+		blend_state->Release();
 
 	if (vs_bytecode)
 		vs_bytecode->Release();
@@ -533,6 +541,9 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 		cs_bytecode->Release();
 		cs_bytecode = NULL;
 	}
+
+	if (blend_override == 1) // 2 will use default blend state
+		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
 }
 
 struct saved_shader_inst
@@ -565,6 +576,9 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11GeometryShader *saved_gs = NULL;
 	ID3D11PixelShader *saved_ps = NULL;
 	ID3D11ComputeShader *saved_cs = NULL;
+	ID3D11BlendState *saved_blend = NULL;
+	FLOAT saved_blend_factor[4];
+	UINT saved_sample_mask;
 	bool saved_post;
 
 	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
@@ -604,6 +618,10 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->CSGetShader(&saved_cs, cs_inst.instances, &cs_inst.num_instances);
 		mOrigContext->CSSetShader(custom_shader->cs, NULL, 0);
 	}
+	if (custom_shader->blend_override) {
+		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
+		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
+	}
 
 	// Run the command lists. This should generally include a draw or
 	// dispatch call, or call out to another command list which does.
@@ -629,6 +647,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->PSSetShader(saved_ps, ps_inst.instances, ps_inst.num_instances);
 	if (custom_shader->cs)
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
+	if (custom_shader->blend_override)
+		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
 
 	if (saved_vs)
 		saved_vs->Release();
@@ -642,6 +662,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_ps->Release();
 	if (saved_cs)
 		saved_cs->Release();
+	if (saved_blend)
+		saved_blend->Release();
 }
 
 
