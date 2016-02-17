@@ -337,7 +337,9 @@ static struct svt system_value_abbreviations[] = {
 	{ 15, "LINEDET",   },
 	{ 16, "LINEDEN",   },
 
-	// System values using SPRs (special purpose registers)
+	// System values using SPRs (special purpose registers). These only
+	// ever seem to show up in the output signature - any used as inputs is
+	// not in the input signature, and uses a 'v' prefix instead of 'o'.
 	// Mask = "N/A" (0x1)
 	// Register = "oSomething" (0xffffffff)
 	// Used = "YES" (0xe) / "NO" (0x0)
