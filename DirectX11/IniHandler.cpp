@@ -352,7 +352,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 	IniSection::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
-	CommandList *command_list, *explicit_command_list = NULL;
+	CommandList *command_list, *explicit_command_list;
 	IniSections whitelisted_keys;
 	int i;
 
@@ -396,6 +396,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		}
 
 		command_list = pre_command_list;
+		explicit_command_list = NULL;
 		key_ptr = key->c_str();
 		if (post_command_list) {
 			if (!key->compare(0, 5, L"post ")) {
