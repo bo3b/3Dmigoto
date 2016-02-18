@@ -330,6 +330,7 @@ struct Globals
 
 	ResolutionInfo mResolutionInfo;
 	CommandList present_command_list;
+	CommandList post_present_command_list;
 	unsigned frame_no;
 
 	CRITICAL_SECTION mCriticalSection;

@@ -1345,6 +1345,20 @@ void HackerDXGISwapChain::RunFrameActions()
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
 
+	// Run the command list here, before drawing the overlay so that a
+	// custom shader on the present call won't remove the overlay. Also,
+	// run this before most frame actions so that this can be considered as
+	// a pre-present command list. We have a separate post-present command
+	// list after the present call in case we need to restore state or
+	// affect something at the start of the frame.
+	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
+
+	// Draw the on-screen overlay text with hunting info, before final Present.
+	// But only when hunting is enabled, this will also make it obvious when
+	// hunting is on.
+	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
+		mOverlay->DrawOverlay();
+
 	if (G->analyse_frame) {
 		// We don't allow hold to be changed mid-frame due to potential
 		// for filename conflicts, so use def_analyse_options:
@@ -1372,8 +1386,6 @@ void HackerDXGISwapChain::RunFrameActions()
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
 	CurrentTransition.UpdateTransitions(mHackerDevice);
-
-	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
 	G->frame_no++;
 
@@ -1418,12 +1430,6 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	// But only when hunting is enabled, this will also make it obvious when
-	// hunting is on.
-	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
-		mOverlay->DrawOverlay();
-	
 	// Every presented frame, we want to take some CPU time to run our actions,
 	// which enables hunting, and snapshots, and aiming overrides and other inputs
 	RunFrameActions();
@@ -1433,6 +1439,11 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	// Update the stereo params texture just after the present so that we
 	// get the new values for the current frame:
 	UpdateStereoParams(mHackerDevice, mHackerContext);
+
+	// Run the post present command list now, which can be used to restore
+	// state changed in the pre-present command list, or to perform some
+	// action at the start of a frame:
+	RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
 	LogDebug("  returns %x\n", hr);
 	return hr;

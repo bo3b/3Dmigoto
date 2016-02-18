@@ -1354,7 +1354,8 @@ void LoadConfigFile()
 
 	LogInfo("[Present]\n");
 	G->present_command_list.clear();
-	ParseCommandList(L"Present", iniFile, &G->present_command_list, NULL, NULL);
+	G->post_present_command_list.clear();
+	ParseCommandList(L"Present", iniFile, &G->present_command_list, &G->post_present_command_list, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.
