@@ -2979,6 +2979,13 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
 	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
 
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+
 	// Some of these may already be filled in when getting the resource
 	// (either because it is stored in the pipeline state and retrieved
 	// with the resource, or was stored in a custom resource). If they are
@@ -3046,6 +3053,26 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 				if (!*buf_size)
 					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
+		}
+	} else if (*format == DXGI_FORMAT_UNKNOWN) {
+		// If we *still* don't know the format and it's a texture, get it from
+		// the resource description. This will be the case for the back buffer
+		// since that does not have a view.
+		switch (dimension) {
+			case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+				tex1d = (ID3D11Texture1D*)resource;
+				tex1d->GetDesc(&tex1d_desc);
+				*format = tex1d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+				tex2d = (ID3D11Texture2D*)resource;
+				tex2d->GetDesc(&tex2d_desc);
+				*format = tex2d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+				tex3d = (ID3D11Texture3D*)resource;
+				tex3d->GetDesc(&tex3d_desc);
+				*format = tex3d_desc.Format;
 		}
 	}
 
