@@ -1224,7 +1224,7 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 }
 
 
-bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
+bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 {
 	int ret, len;
 	size_t length = wcslen(target);
@@ -1288,7 +1288,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 		return true;
 	}
 
-	if (allow_null && !wcscmp(target, L"null")) {
+	if (is_source && !wcscmp(target, L"null")) {
 		type = ResourceCopyTargetType::EMPTY;
 		return true;
 	}
@@ -1305,6 +1305,13 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
 
 		custom_resource = &res->second;
 		type = ResourceCopyTargetType::CUSTOM_RESOURCE;
+		return true;
+	}
+
+	// XXX: Any reason to allow access to sequential swap chains? Given
+	// they either won't exist or are read only I can't think of one.
+	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
+		type = ResourceCopyTargetType::SWAP_CHAIN;
 		return true;
 	}
 
@@ -1365,8 +1372,16 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
 		// If we are copying a resource into a custom resource (e.g.
 		// for use from another draw call), do a full copy by default
 		// in case the game alters the original.
+		//
+		// If we are assigning a render target, do so by reference
+		// since we probably want the result reflected in the resource
+		// we assigned to it. Mostly this would already work due to the
+		// custom resource rules, but adding this rule should make
+		// assigning the back buffer to a render target work.
 		if (operation->dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 			operation->options |= ResourceCopyOptions::COPY;
+		else if (operation->dst.type == ResourceCopyTargetType::RENDER_TARGET)
+			operation->options |= ResourceCopyOptions::REFERENCE;
 		else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 			operation->options |= ResourceCopyOptions::REFERENCE;
 		else if (operation->src.type == operation->dst.type)
@@ -1399,6 +1414,7 @@ bail:
 }
 
 ID3D11Resource *ResourceCopyTarget::GetResource(
+		HackerDevice *mHackerDevice,
 		ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext,
 		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
@@ -1620,6 +1636,11 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		if (custom_resource->resource)
 			custom_resource->resource->AddRef();
 		return custom_resource->resource;
+
+	case ResourceCopyTargetType::SWAP_CHAIN:
+		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		return res;
+
 	}
 
 	return NULL;
@@ -1822,6 +1843,13 @@ void ResourceCopyTarget::SetResource(
 				custom_resource->resource->AddRef();
 		}
 		break;
+
+	case ResourceCopyTargetType::SWAP_CHAIN:
+		// Only way we could "set" a resource to the back buffer is by
+		// copying to it. Might implement overwrites later, but no
+		// pressing need. To write something to the back buffer, assign
+		// it as a render target instead.
+		break;
 	}
 }
 
@@ -1846,6 +1874,9 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
+		case ResourceCopyTargetType::SWAP_CHAIN:
+			// N/A since swap chain can't be set as a destination
+			return (D3D11_BIND_FLAG)0;
 	}
 
 	// Shouldn't happen. No return value makes sense, so raise an exception
@@ -3056,7 +3087,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state->call_info);
+	src_resource = src.GetResource(mHackerDevice, mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state->call_info);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {

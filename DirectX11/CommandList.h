@@ -300,6 +300,7 @@ enum class ResourceCopyTargetType {
 	DEPTH_STENCIL_TARGET,
 	UNORDERED_ACCESS_VIEW,
 	CUSTOM_RESOURCE,
+	SWAP_CHAIN,
 };
 
 class ResourceCopyTarget {
@@ -316,8 +317,9 @@ public:
 		custom_resource(NULL)
 	{}
 
-	bool ParseTarget(const wchar_t *target, bool allow_null);
+	bool ParseTarget(const wchar_t *target, bool is_source);
 	ID3D11Resource *GetResource(
+			HackerDevice *mHackerDevice,
 			ID3D11Device *mOrigDevice,
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11View **view,
