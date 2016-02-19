@@ -478,12 +478,18 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	// We used to do this in the SetShader calls, but Akiba's Trip clears
 	// all shader resources after that call, so doing it here guarantees it
 	// will be bound for the draw call.
+	//
+	// It is important that we check the current shader *handle*, not
+	// *hash*, as the hash may not be updated if there are no
+	// ShaderOverride sections and hunting is disabled. We always assume
+	// vertex and pixel shaders are bound as the most common case (and it
+	// is harmless if we are wrong on that)
 	BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
-	if (mCurrentHullShader)
+	if (mCurrentHullShaderHandle)
 		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
-	if (mCurrentDomainShader)
+	if (mCurrentDomainShaderHandle)
 		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
-	if (mCurrentGeometryShader)
+	if (mCurrentGeometryShaderHandle)
 		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
 	BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
 
@@ -1743,16 +1749,23 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 {
 	ID3D11Shader *repl_shader = pShader;
 
+	// Always update the current shader handle no matter what so we can
+	// reliably check if a shader of a given type is bound and for certain
+	// types of old style filtering:
+	*currentShaderHandle = pShader;
+
 	if (pShader) {
 		// Store as current shader. Need to do this even while
 		// not hunting for ShaderOverride section in BeforeDraw
-		// As an optimization, we can skip the lookup if there are no ShaderOverride
-		// The lookup/find takes measurable amounts of CPU time.
+		// We also set the current shader hash, but as an optimization,
+		// we skip the lookup if there are no ShaderOverride The
+		// lookup/find takes measurable amounts of CPU time.
+		//
+		// grumble grumble this optimisation caught me out grumble grumble -DSS
 		if (!G->mShaderOverrideMap.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
 			std::unordered_map<ID3D11Shader *, UINT64>::iterator i = registered->find(pShader);
 			if (i != registered->end()) {
 				*currentShaderHash = i->second;
-				*currentShaderHandle = pShader;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
 				if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
@@ -1763,6 +1776,11 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			}
 			else
 				LogDebug("  shader %p not found\n", pShader);
+		} else {
+			// Not accurate, but if we have a bug where we
+			// reference this at least make sure we don't use the
+			// *wrong* hash
+			*currentShaderHash = 0;
 		}
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
@@ -1793,7 +1811,6 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 	} else {
 		*currentShaderHash = 0;
-		*currentShaderHandle = NULL;
 	}
 
 	// Call through to original XXSetShader, but pShader may have been replaced.
