@@ -6,6 +6,15 @@ A fix by DarkStarSword and mike_ar69
 Special thanks to Bo3b for the decompiler fixes and DHR for discovering the Max
 Payne 3 profile!
 
+Update 2016-02-23
+-----------------
+Removed the assembly shaders due to a falling out in the community. This means
+the NVIDIA Hairworks simulated fur glitch at depth == 1.0 has returned, but
+that is a very minor issue. Soft shadows are now fixed with 3DMigoto's
+arbitrary resource copying support so they continue to work flawlessly. Be sure
+to uninstall the existing fix with the provided uninstall.bat prior to updating
+to this version.
+
 Update 2015-12-21
 -----------------
 This is a major update to showcase new 3DMigoto features. For the original fix,
@@ -58,11 +67,11 @@ that it would be a good choice to showcase many of these new features.
 - Fixed reflected glow of sun & moon (new feature: render target size
   filtering)
 
-- Fixed NVIDIA Hairworks simulated fur glitch at depth == 1.0 (new features:
-  ability to fix domain shaders & use Flugan's assembler)
+- <del>Fixed NVIDIA Hairworks simulated fur glitch at depth == 1.0 (new features:
+  ability to fix domain shaders & use Flugan's assembler)</del>
 
-- Fixed box shaped artefact on NVIDIA soft shadows (new feature: Flugan's
-  assembler)
+- Fixed box shaped artefact on NVIDIA soft shadows (new feature: <del>Flugan's
+  assembler</del> arbitrary resource copying)
 
 - Fixed interior shadow mask clipping on windows & doors (No new feature
   strictly required to fix it, but the new frame analysis features were crucial
@@ -161,6 +170,9 @@ Known Issues
   waypoint icon. This would be tricky to fix as the text is drawn earlier in
   the frame than the icon and there's no easy way to distinguish it from any
   other text that we don't want to adjust.
+
+- Simulated fur glitches a little when very close to the camera, but otherwise
+  looks fine.
 
 Notes
 -----
