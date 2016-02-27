@@ -85,9 +85,11 @@ public:
 	CommandList post_command_list;
 
 	bool substantiated;
+	ID3D11Device *device;
 
 	CustomShader();
 	~CustomShader();
+	void destroy_device_child_objects();
 
 	bool compile(char type, wchar_t *filename, wstring *wname);
 	void substantiate(ID3D11Device *mOrigDevice);
@@ -272,6 +274,7 @@ public:
 
 	CustomResource();
 	~CustomResource();
+	void destroy_device_child_objects();
 
 	void Substantiate(ID3D11Device *mOrigDevice);
 	void OverrideBufferDesc(D3D11_BUFFER_DESC *desc);

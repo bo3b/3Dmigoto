@@ -373,7 +373,7 @@ CustomShader::CustomShader() :
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
 	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
 	rs_override(0), rs_state(NULL),
-	substantiated(false)
+	device(NULL)
 {
 	int i;
 
@@ -382,6 +382,24 @@ CustomShader::CustomShader() :
 }
 
 CustomShader::~CustomShader()
+{
+	destroy_device_child_objects();
+
+	if (vs_bytecode)
+		vs_bytecode->Release();
+	if (hs_bytecode)
+		hs_bytecode->Release();
+	if (ds_bytecode)
+		ds_bytecode->Release();
+	if (gs_bytecode)
+		gs_bytecode->Release();
+	if (ps_bytecode)
+		ps_bytecode->Release();
+	if (cs_bytecode)
+		cs_bytecode->Release();
+}
+
+void CustomShader::destroy_device_child_objects()
 {
 	if (vs)
 		vs->Release();
@@ -396,23 +414,22 @@ CustomShader::~CustomShader()
 	if (cs)
 		cs->Release();
 
+	vs = NULL;
+	hs = NULL;
+	ds = NULL;
+	gs = NULL;
+	ps = NULL;
+	cs = NULL;
+
 	if (blend_state)
 		blend_state->Release();
 	if (rs_state)
 		rs_state->Release();
 
-	if (vs_bytecode)
-		vs_bytecode->Release();
-	if (hs_bytecode)
-		hs_bytecode->Release();
-	if (ds_bytecode)
-		ds_bytecode->Release();
-	if (gs_bytecode)
-		gs_bytecode->Release();
-	if (ps_bytecode)
-		ps_bytecode->Release();
-	if (cs_bytecode)
-		cs_bytecode->Release();
+	blend_state = NULL;
+	rs_state = NULL;
+
+	device = NULL;
 }
 
 // This is similar to the other compile routines, but still distinct enough to
@@ -510,40 +527,26 @@ err:
 
 void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 {
-	if (substantiated)
-		return;
-	substantiated = true;
+	if (device) {
+		if (device == mOrigDevice)
+			return;
+		LogInfo("CustomShader accessed from new device - recreating!\n");
+		destroy_device_child_objects();
+	}
+	device = mOrigDevice;
 
-	if (vs_bytecode) {
+	if (vs_bytecode)
 		mOrigDevice->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
-		vs_bytecode->Release();
-		vs_bytecode = NULL;
-	}
-	if (hs_bytecode) {
+	if (hs_bytecode)
 		mOrigDevice->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
-		hs_bytecode->Release();
-		hs_bytecode = NULL;
-	}
-	if (ds_bytecode) {
+	if (ds_bytecode)
 		mOrigDevice->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
-		ds_bytecode->Release();
-		ds_bytecode = NULL;
-	}
-	if (gs_bytecode) {
+	if (gs_bytecode)
 		mOrigDevice->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
-		gs_bytecode->Release();
-		gs_bytecode = NULL;
-	}
-	if (ps_bytecode) {
+	if (ps_bytecode)
 		mOrigDevice->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
-		ps_bytecode->Release();
-		ps_bytecode = NULL;
-	}
-	if (cs_bytecode) {
+	if (cs_bytecode)
 		mOrigDevice->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
-		cs_bytecode->Release();
-		cs_bytecode = NULL;
-	}
 
 	if (blend_override == 1) // 2 will use default blend state
 		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
@@ -1022,20 +1025,53 @@ CustomResource::CustomResource() :
 
 CustomResource::~CustomResource()
 {
+	destroy_device_child_objects();
+}
+
+void CustomResource::destroy_device_child_objects()
+{
 	if (resource)
 		resource->Release();
 	if (view)
 		view->Release();
+
+	resource = NULL;
+	view = NULL;
+	substantiated = false;
 }
 
 void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
 {
+	ID3D11Device *old_device;
+
 	// We only allow a custom resource to be substantiated once. Otherwise
 	// we could end up reloading it again if it is later set to null. Also
 	// prevents us from endlessly retrying to load a custom resource from a
 	// file that doesn't exist:
-	if (substantiated)
-		return;
+	if (substantiated) {
+		// There is one exception - if the resource was substantiated
+		// on a different device we may need to throw it away and start
+		// over. TODO: Check the misc flags as some resources can be
+		// shared between devices.
+		if (resource) {
+			resource->GetDevice(&old_device);
+			if (old_device != mOrigDevice) {
+				LogInfo("CustomResource resource accessed from new device - recreating!\n");
+				destroy_device_child_objects();
+			}
+			old_device->Release();
+		}
+		if (view) {
+			view->GetDevice(&old_device);
+			if (old_device != mOrigDevice) {
+				LogInfo("CustomResource view accessed from new device - recreating!\n");
+				destroy_device_child_objects();
+			}
+			old_device->Release();
+		}
+		if (substantiated)
+			return;
+	}
 	substantiated = true;
 
 	// If this custom resource has already been set through other means we
@@ -3224,6 +3260,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	UINT offset = 0;
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	UINT buf_src_size = 0, buf_dst_size = 0;
+	ID3D11Device *old_device;
 
 	mHackerContext->FrameAnalysisLog("3DMigoto %S = %S\n", ini_key.c_str(), ini_val.c_str());
 
@@ -3264,6 +3301,25 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		}
 
 		dst.custom_resource->OverrideOutOfBandInfo(&format, &stride);
+	}
+
+	if (*pp_cached_resource) {
+		(*pp_cached_resource)->GetDevice(&old_device);
+		if (old_device != mOrigDevice) {
+			LogInfo("Cached resource accessed from new device - destroying!\n");
+			(*pp_cached_resource)->Release();
+			*pp_cached_resource = NULL;
+		}
+		old_device->Release();
+	}
+	if (*pp_cached_view) {
+		(*pp_cached_view)->GetDevice(&old_device);
+		if (old_device != mOrigDevice) {
+			LogInfo("Cached view accessed from new device - destroying!\n");
+			(*pp_cached_view)->Release();
+			*pp_cached_view = NULL;
+		}
+		old_device->Release();
 	}
 
 	FillInMissingInfo(src.type, src_resource, src_view, &stride, &offset, &buf_src_size, &format);
