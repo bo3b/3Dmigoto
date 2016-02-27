@@ -331,6 +331,11 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 		swprintf_s(info, maxstring, L"Stereo disabled");
 }
 
+void Overlay::Resize(UINT Width, UINT Height)
+{
+	mResolution.x = Width;
+	mResolution.y = Height;
+}
 
 void Overlay::DrawOverlay(void)
 {

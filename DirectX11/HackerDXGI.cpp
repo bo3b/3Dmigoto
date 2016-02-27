@@ -1548,11 +1548,15 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-	if (SUCCEEDED(hr) && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-		G->mResolutionInfo.width = Width;
-		G->mResolutionInfo.height = Height;
-		LogInfo("Got resolution from swap chain: %ix%i\n",
-			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	if (SUCCEEDED(hr)) {
+		mOverlay->Resize(Width, Height);
+
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = Width;
+			G->mResolutionInfo.height = Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
 	}
 
 	LogInfo("  returns result = %x\n", hr); 
