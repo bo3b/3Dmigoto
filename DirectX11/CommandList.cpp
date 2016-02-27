@@ -572,6 +572,43 @@ struct saved_shader_inst
 	}
 };
 
+static void get_all_rts_dsv_uavs(ID3D11DeviceContext *mOrigContext,
+	UINT *NumRTVs,
+	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT],
+	ID3D11DepthStencilView **dsv,
+	UINT *UAVStartSlot,
+	UINT *NumUAVs,
+	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT])
+
+{
+	int i;
+
+	// OMGetRenderTargetAndUnorderedAccessViews is a poorly designed API as
+	// to use it properly to get all RTVs and UAVs we need to pass it some
+	// information that we don't know. So, we have to do a few extra steps
+	// to find that info.
+
+	mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
+
+	*NumRTVs = 0;
+	if (rtvs) {
+		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+			if (rtvs[i])
+				*NumRTVs = i + 1;
+		}
+	}
+
+	*UAVStartSlot = *NumRTVs;
+	// Set NumUAVs to the max to retrieve them all now, and so that later
+	// when rebinding them we will unbind any others that the command list
+	// bound in the meantime
+	*NumUAVs = D3D11_PS_CS_UAV_REGISTER_COUNT - *UAVStartSlot;
+
+	// Finally get all the UAVs. Since we already retrieved the RTVs and
+	// DSV we can skip getting them:
+	mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
+}
+
 void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
@@ -589,6 +626,12 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	FLOAT saved_blend_factor[4];
 	UINT saved_sample_mask;
 	bool saved_post;
+	UINT NumRTVs, UAVStartSlot, NumUAVs;
+	ID3D11RenderTargetView *saved_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11DepthStencilView *saved_dsv;
+	ID3D11UnorderedAccessView *saved_uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
+	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1};
+	UINT i;
 
 	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
 
@@ -640,6 +683,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	// potentially skip this by flagging if a command list may alter them,
 	// but that probably wouldn't buy us anything:
 	mOrigContext->RSGetViewports(&num_viewports, saved_viewports);
+	// Likewise, save off all RTVs, UAVs and DSVs unconditionally:
+	get_all_rts_dsv_uavs(mOrigContext, &NumRTVs, saved_rtvs, &saved_dsv, &UAVStartSlot, &NumUAVs, saved_uavs);
 
 	// Run the command lists. This should generally include a draw or
 	// dispatch call, or call out to another command list which does.
@@ -671,6 +716,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->RSSetState(saved_rs);
 
 	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
+	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
 
 	if (saved_vs)
 		saved_vs->Release();
@@ -688,6 +734,15 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_blend->Release();
 	if (saved_rs)
 		saved_rs->Release();
+
+	for (i = 0; i < NumRTVs; i++) {
+		if (saved_rtvs[i])
+			saved_rtvs[i]->Release();
+	}
+	for (i = 0; i < NumUAVs; i++) {
+		if (saved_uavs[i])
+			saved_uavs[i]->Release();
+	}
 }
 
 
