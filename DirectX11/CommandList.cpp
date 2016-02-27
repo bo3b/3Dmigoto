@@ -2706,6 +2706,7 @@ static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex2DDesc(
 		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
 {
 	view_desc->Format = MakeDSVFormat(format);
+	view_desc->Flags = 0; // TODO: Fill in from old view, and add keyword to override
 
 	if (resource_desc->SampleDesc.Count == 1) {
 		if (resource_desc->ArraySize == 1) {
