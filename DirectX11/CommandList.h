@@ -61,6 +61,7 @@ public:
 class CustomShader
 {
 public:
+	bool vs_override, hs_override, ds_override, gs_override, ps_override, cs_override;
 	ID3D11VertexShader *vs;
 	ID3D11HullShader *hs;
 	ID3D11DomainShader *ds;

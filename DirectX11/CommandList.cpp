@@ -368,6 +368,8 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 }
 
 CustomShader::CustomShader() :
+	vs_override(false), hs_override(false), ds_override(false),
+	gs_override(false), ps_override(false), cs_override(false),
 	vs(NULL), hs(NULL), ds(NULL), gs(NULL), ps(NULL), cs(NULL),
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
@@ -431,6 +433,41 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	string name(wname->begin(), wname->end());
 
 	LogInfo("  %cs=%S\n", type, filename);
+
+	switch(type) {
+		case 'v':
+			ppBytecode = &vs_bytecode;
+			vs_override = true;
+			break;
+		case 'h':
+			ppBytecode = &hs_bytecode;
+			hs_override = true;
+			break;
+		case 'd':
+			ppBytecode = &ds_bytecode;
+			ds_override = true;
+			break;
+		case 'g':
+			ppBytecode = &gs_bytecode;
+			gs_override = true;
+			break;
+		case 'p':
+			ppBytecode = &ps_bytecode;
+			ps_override = true;
+			break;
+		case 'c':
+			ppBytecode = &cs_bytecode;
+			cs_override = true;
+			break;
+		default:
+			// Should not happen
+			goto err;
+	}
+
+	// Special value to unbind the shader instead:
+	if (!_wcsicmp(filename, L"null"))
+		return false;
+
 	if (!GetModuleFileName(0, path, MAX_PATH)) {
 		LogInfo("GetModuleFileName failed\n");
 		goto err;
@@ -457,29 +494,7 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	// Currently always using shader model 5, could allow this to be
 	// overridden in the future:
 	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
-	switch(type) {
-		case 'v':
-			ppBytecode = &vs_bytecode;
-			break;
-		case 'h':
-			ppBytecode = &hs_bytecode;
-			break;
-		case 'd':
-			ppBytecode = &ds_bytecode;
-			break;
-		case 'g':
-			ppBytecode = &gs_bytecode;
-			break;
-		case 'p':
-			ppBytecode = &ps_bytecode;
-			break;
-		case 'c':
-			ppBytecode = &cs_bytecode;
-			break;
-		default:
-			// Should not happen
-			goto err;
-	}
+
 	// TODO: Add #defines for StereoParams and IniParams. Define a macro
 	// for the type of shader, and maybe allow more defines to be specified
 	// in the ini
@@ -648,27 +663,27 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	// by calling the next shader in sequence from the command list after
 	// the draw call.
 
-	if (custom_shader->vs) {
+	if (custom_shader->vs_override) {
 		mOrigContext->VSGetShader(&saved_vs, vs_inst.instances, &vs_inst.num_instances);
 		mOrigContext->VSSetShader(custom_shader->vs, NULL, 0);
 	}
-	if (custom_shader->hs) {
+	if (custom_shader->hs_override) {
 		mOrigContext->HSGetShader(&saved_hs, hs_inst.instances, &hs_inst.num_instances);
 		mOrigContext->HSSetShader(custom_shader->hs, NULL, 0);
 	}
-	if (custom_shader->ds) {
+	if (custom_shader->ds_override) {
 		mOrigContext->DSGetShader(&saved_ds, ds_inst.instances, &ds_inst.num_instances);
 		mOrigContext->DSSetShader(custom_shader->ds, NULL, 0);
 	}
-	if (custom_shader->gs) {
+	if (custom_shader->gs_override) {
 		mOrigContext->GSGetShader(&saved_gs, gs_inst.instances, &gs_inst.num_instances);
 		mOrigContext->GSSetShader(custom_shader->gs, NULL, 0);
 	}
-	if (custom_shader->ps) {
+	if (custom_shader->ps_override) {
 		mOrigContext->PSGetShader(&saved_ps, ps_inst.instances, &ps_inst.num_instances);
 		mOrigContext->PSSetShader(custom_shader->ps, NULL, 0);
 	}
-	if (custom_shader->cs) {
+	if (custom_shader->cs_override) {
 		mOrigContext->CSGetShader(&saved_cs, cs_inst.instances, &cs_inst.num_instances);
 		mOrigContext->CSSetShader(custom_shader->cs, NULL, 0);
 	}
@@ -704,17 +719,17 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	state->post = saved_post;
 
 	// Finally restore the original shaders
-	if (custom_shader->vs)
+	if (custom_shader->vs_override)
 		mOrigContext->VSSetShader(saved_vs, vs_inst.instances, vs_inst.num_instances);
-	if (custom_shader->hs)
+	if (custom_shader->hs_override)
 		mOrigContext->HSSetShader(saved_hs, hs_inst.instances, hs_inst.num_instances);
-	if (custom_shader->ds)
+	if (custom_shader->ds_override)
 		mOrigContext->DSSetShader(saved_ds, ds_inst.instances, ds_inst.num_instances);
-	if (custom_shader->gs)
+	if (custom_shader->gs_override)
 		mOrigContext->GSSetShader(saved_gs, gs_inst.instances, gs_inst.num_instances);
-	if (custom_shader->ps)
+	if (custom_shader->ps_override)
 		mOrigContext->PSSetShader(saved_ps, ps_inst.instances, ps_inst.num_instances);
-	if (custom_shader->cs)
+	if (custom_shader->cs_override)
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
 	if (custom_shader->blend_override)
 		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
