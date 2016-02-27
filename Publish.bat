@@ -124,15 +124,19 @@ echo(
 echo === Move builds to target zip directory ===
 echo(
 MKDIR ".\Zip Release\x32\"
+MKDIR ".\Zip Release\x32\ShaderFixes\"
 MOVE ".\x32\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x32\ShaderFixes\"
 
 echo(
 MKDIR ".\Zip Release\x64\"
+MKDIR ".\Zip Release\x64\ShaderFixes\"
 MOVE ".\x64\Zip Release\d3dx.ini"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
+MOVE ".\x64\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x64\ShaderFixes\"
 
 echo(
 MKDIR ".\Zip Release\cmd_Decompiler\"
