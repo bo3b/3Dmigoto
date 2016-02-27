@@ -77,6 +77,10 @@ public:
 	FLOAT blend_factor[4];
 	UINT blend_sample_mask;
 
+	int rs_override;
+	D3D11_RASTERIZER_DESC rs_desc;
+	ID3D11RasterizerState *rs_state;
+
 	CommandList command_list;
 	CommandList post_command_list;
 

@@ -51,6 +51,134 @@ bool IsCommandListSection(const wchar_t *section)
 	return false;
 }
 
+// Helper functions to parse common types and log their values. TODO: Convert
+// more of this file to use these where appropriate
+static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, const wchar_t *iniFile, bool *found)
+{
+	wchar_t val[32];
+	float ret = def;
+	int len;
+
+	if (found)
+		*found = false;
+
+	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
+		swscanf_s(val, L"%f%s", &ret, &len);
+		if (len != wcslen(val)) {
+			LogInfo("  WARNING: Floating point parse error: %S=%S\n", key, val);
+			BeepFailure2();
+		} else {
+			if (found)
+				*found = true;
+			LogInfo("  %S=%f\n", key, ret);
+		}
+	}
+
+	return ret;
+}
+
+static int GetIniInt(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found)
+{
+	wchar_t val[32];
+	int ret = def;
+	int len;
+
+	if (found)
+		*found = false;
+
+	// Not using GetPrivateProfileInt as it doesn't tell us if the key existed
+	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
+		swscanf_s(val, L"%d%s", &ret, &len);
+		if (len != wcslen(val)) {
+			LogInfo("  WARNING: Integer parse error: %S=%S\n", key, val);
+			BeepFailure2();
+		} else {
+			if (found)
+				*found = true;
+			LogInfo("  %S=%d\n", key, ret);
+		}
+	}
+
+	return ret;
+}
+
+static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, const wchar_t *iniFile, bool *found)
+{
+	wchar_t val[32];
+	bool ret = def;
+
+	if (found)
+		*found = false;
+
+	// Not using GetPrivateProfileInt as it doesn't tell us if the key existed
+	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
+		if (!_wcsicmp(val, L"1") || !_wcsicmp(val, L"true") || !_wcsicmp(val, L"yes") || !_wcsicmp(val, L"on")) {
+			LogInfo("  %S=1\n", key);
+			if (found)
+				*found = true;
+			return true;
+		}
+		if (!_wcsicmp(val, L"0") || !_wcsicmp(val, L"false") || !_wcsicmp(val, L"no") || !_wcsicmp(val, L"off")) {
+			LogInfo("  %S=0\n", key);
+			if (found)
+				*found = true;
+			return false;
+		}
+
+		LogInfo("  WARNING: Boolean parse error: %S=%S\n", key, val);
+		BeepFailure2();
+	}
+
+	return ret;
+}
+
+class EnumParseError: public exception {} enumParseError;
+
+static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], size_t  names_len, int first)
+{
+	size_t prefix_len;
+	wchar_t *ptr = str;
+	int i;
+
+	if (prefix) {
+		prefix_len = wcslen(prefix);
+		if (!_wcsnicmp(ptr, prefix, prefix_len))
+			ptr += prefix_len;
+	}
+
+	for (i = first; i < names_len; i++) {
+		if (!_wcsicmp(ptr, names[i]))
+			return i;
+	}
+
+	throw enumParseError;
+}
+
+static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found,
+		wchar_t *prefix, wchar_t *names[], size_t  names_len, int first)
+{
+	wchar_t val[MAX_PATH];
+	int ret = def;
+
+	if (found)
+		*found = false;
+
+	if (GetPrivateProfileString(section, key, 0, val, MAX_PATH, iniFile)) {
+		try {
+			ret = ParseEnum(val, prefix, names, names_len, first);
+			if (found)
+				*found = true;
+			LogInfo("  %S=%S\n", key, val);
+		} catch (EnumParseError) {
+			LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
+			BeepFailure2();
+		}
+	}
+
+	return ret;
+}
+
+
 // Case insensitive version of less comparitor. This is used to create case
 // insensitive sets of section names in the ini so we can detect duplicate
 // sections that vary only by case, e.g. [Key1] and [KEY1], as these are
@@ -707,7 +835,6 @@ static wchar_t *BlendFactors[] = {
 static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_BLEND *src, D3D11_BLEND *dst)
 {
 	wchar_t op_buf[32], src_buf[32], dst_buf[32];
-	wchar_t *op_ptr, *src_ptr, *dst_ptr;
 	int i;
 
 	i = swscanf_s(val, L"%s %s %s",
@@ -721,45 +848,24 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	}
 	LogInfo("  %S=%S\n", key, val);
 
-	op_ptr = op_buf; src_ptr = src_buf; dst_ptr = dst_buf;
-
-	if (!_wcsnicmp(op_ptr, L"D3D11_BLEND_OP_", 15))
-		op_ptr += 15;
-	if (!_wcsnicmp(src_ptr, L"D3D11_BLEND_", 12))
-		src_ptr += 12;
-	if (!_wcsnicmp(dst_ptr, L"D3D11_BLEND_", 12))
-		dst_ptr += 12;
-
-	for (i = 1; i < ARRAYSIZE(BlendOPs); i++) {
-		if (!_wcsnicmp(op_ptr, BlendOPs[i], 32)) {
-			*op = (D3D11_BLEND_OP)i;
-			break;
-		}
-	}
-	if (i == ARRAYSIZE(BlendOPs)) {
-		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_ptr);
+	try {
+		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_buf);
 		BeepFailure2();
 	}
 
-	for (i = 1; i < ARRAYSIZE(BlendFactors); i++) {
-		if (!_wcsnicmp(src_ptr, BlendFactors[i], 32)) {
-			*src = (D3D11_BLEND)i;
-			break;
-		}
-	}
-	if (i == ARRAYSIZE(BlendFactors)) {
-		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_ptr);
+	try {
+		*src = (D3D11_BLEND)ParseEnum(src_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_buf);
 		BeepFailure2();
 	}
 
-	for (i = 1; i < ARRAYSIZE(BlendFactors); i++) {
-		if (!_wcsnicmp(dst_ptr, BlendFactors[i], 32)) {
-			*dst = (D3D11_BLEND)i;
-			break;
-		}
-	}
-	if (i == ARRAYSIZE(BlendFactors)) {
-		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_ptr);
+	try {
+		*dst = (D3D11_BLEND)ParseEnum(dst_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
 		BeepFailure2();
 	}
 }
@@ -878,10 +984,82 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section, wchar_
 	}
 }
 
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476131(v=vs.85).aspx
+static wchar_t *FillModes[] = {
+	L"",
+	L"",
+	L"WIREFRAME",
+	L"SOLID",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476108(v=vs.85).aspx
+static wchar_t *CullModes[] = {
+	L"",
+	L"NONE",
+	L"FRONT",
+	L"BACK",
+};
+
+// Actually a bool
+static wchar_t *FrontDirection[] = {
+	L"Clockwise",
+	L"CounterClockwise",
+};
+
+static void ParseRSState(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	D3D11_RASTERIZER_DESC *desc = &shader->rs_desc;
+	bool found;
+
+	desc->FillMode = (D3D11_FILL_MODE)GetIniEnum(section, L"fill", D3D11_FILL_SOLID, iniFile, &found,
+			L"D3D11_FILL_", FillModes, ARRAYSIZE(FillModes), 2);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->CullMode = (D3D11_CULL_MODE)GetIniEnum(section, L"cull", D3D11_CULL_BACK,  iniFile, &found,
+			L"D3D11_CULL_", CullModes, ARRAYSIZE(CullModes), 1);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->FrontCounterClockwise = (BOOL)GetIniEnum(section, L"front", 0, iniFile, &found,
+			NULL, FrontDirection, ARRAYSIZE(FrontDirection), 0);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->DepthBias = GetIniInt(section, L"depth_bias", 0, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->DepthBiasClamp = GetIniFloat(section, L"depth_bias_clamp", 0, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->SlopeScaledDepthBias = GetIniFloat(section, L"slope_scaled_depth_bias", 0, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->DepthClipEnable = GetIniBool(section, L"depth_clip_enable", true, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->ScissorEnable = GetIniBool(section, L"scissor_enable", false, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->MultisampleEnable = GetIniBool(section, L"multisample_enable", false, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->AntialiasedLineEnable = GetIniBool(section, L"antialiased_line_enable", false, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+}
+
 // List of keys in [CustomShader] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	// OM Blend State overrides:
 	L"blend", L"alpha", L"mask",
 	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
 	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
@@ -892,6 +1070,10 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"alpha_to_coverage", L"sample_mask",
 	L"blend_factor[0]", L"blend_factor[1]",
 	L"blend_factor[2]", L"blend_factor[3]",
+	// RS State overrides:
+	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
+	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
+	L"multisample_enable", L"antialiased_line_enable",
 	NULL
 };
 static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
@@ -934,6 +1116,7 @@ static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 
 
 		ParseBlendState(custom_shader, i->c_str(), iniFile);
+		ParseRSState(custom_shader, i->c_str(), iniFile);
 
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an

@@ -372,6 +372,7 @@ CustomShader::CustomShader() :
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
 	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
+	rs_override(0), rs_state(NULL),
 	substantiated(false)
 {
 	int i;
@@ -397,6 +398,8 @@ CustomShader::~CustomShader()
 
 	if (blend_state)
 		blend_state->Release();
+	if (rs_state)
+		rs_state->Release();
 
 	if (vs_bytecode)
 		vs_bytecode->Release();
@@ -544,6 +547,9 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 
 	if (blend_override == 1) // 2 will use default blend state
 		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
+
+	if (rs_override == 1) // 2 will use default blend state
+		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
 }
 
 struct saved_shader_inst
@@ -577,6 +583,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11PixelShader *saved_ps = NULL;
 	ID3D11ComputeShader *saved_cs = NULL;
 	ID3D11BlendState *saved_blend = NULL;
+	ID3D11RasterizerState *saved_rs = NULL;
 	UINT num_viewports = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 	D3D11_VIEWPORT saved_viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 	FLOAT saved_blend_factor[4];
@@ -624,6 +631,10 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
 		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
 	}
+	if (custom_shader->rs_override) {
+		mOrigContext->RSGetState(&saved_rs);
+		mOrigContext->RSSetState(custom_shader->rs_state);
+	}
 
 	// We save off the viewports unconditionally for now. We could
 	// potentially skip this by flagging if a command list may alter them,
@@ -656,6 +667,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
 	if (custom_shader->blend_override)
 		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
+	if (custom_shader->rs_override)
+		mOrigContext->RSSetState(saved_rs);
 
 	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
 
@@ -673,6 +686,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_cs->Release();
 	if (saved_blend)
 		saved_blend->Release();
+	if (saved_rs)
+		saved_rs->Release();
 }
 
 
