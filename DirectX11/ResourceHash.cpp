@@ -157,7 +157,7 @@ void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 			LogInfo("    ViewDimension = BUFFEREX\n");
 			LogInfo("      BufferEx.FirstElement = %u\n", desc->BufferEx.FirstElement);
 			LogInfo("      BufferEx.NumElements = %u\n", desc->BufferEx.NumElements);
-			LogInfo("      BufferEx.Flags = %u\n", desc->BufferEx.Flags);
+			LogInfo("      BufferEx.Flags = 0x%x\n", desc->BufferEx.Flags);
 			break;
 	}
 }
@@ -216,7 +216,7 @@ void LogViewDesc(const D3D11_DEPTH_STENCIL_VIEW_DESC *desc)
 {
 	LogInfo("  View Type = Depth Stencil\n");
 	LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
-	LogInfo("    Flags = %u\n", desc->Flags);
+	LogInfo("    Flags = 0x%x\n", desc->Flags);
 	switch (desc->ViewDimension) {
 		case D3D11_DSV_DIMENSION_UNKNOWN:
 			LogInfo("    ViewDimension = UNKNOWN\n");
@@ -264,7 +264,7 @@ void LogViewDesc(const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc)
 			LogInfo("    ViewDimension = BUFFER\n");
 			LogInfo("      Buffer.FirstElement = %u\n", desc->Buffer.FirstElement);
 			LogInfo("      Buffer.NumElements = %u\n", desc->Buffer.NumElements);
-			LogInfo("      Buffer.Flags = %u\n", desc->Buffer.Flags);
+			LogInfo("      Buffer.Flags = 0x%x\n", desc->Buffer.Flags);
 			break;
 		case D3D11_UAV_DIMENSION_TEXTURE1D:
 			LogInfo("    ViewDimension = TEXTURE1D\n");
