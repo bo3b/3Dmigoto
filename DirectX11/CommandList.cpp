@@ -3355,4 +3355,8 @@ out_release:
 	src_resource->Release();
 	if (src_view)
 		src_view->Release();
+	if (options & ResourceCopyOptions::NO_VIEW_CACHE && *pp_cached_view) {
+		(*pp_cached_view)->Release();
+		*pp_cached_view = NULL;
+	}
 }
