@@ -2817,6 +2817,45 @@ static ID3D11View* CreateCompatibleView(
 	return NULL;
 }
 
+static void SetViewportFromResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *resource)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+	D3D11_VIEWPORT viewport = {0, 0, 0, 0, D3D11_MIN_DEPTH, D3D11_MAX_DEPTH};
+
+	// TODO: Could handle mip-maps from a view like the CD3D11_VIEWPORT
+	// constructor, but we aren't using them elsewhere so don't care yet.
+	resource->GetType(&dimension);
+	switch(dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			// TODO: Width = NumElements
+			return;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
+			tex1d->GetDesc(&tex1d_desc);
+			viewport.Width = (float)tex1d_desc.Width;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
+			tex2d->GetDesc(&tex2d_desc);
+			viewport.Width = (float)tex2d_desc.Width;
+			viewport.Height = (float)tex2d_desc.Height;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			viewport.Width = (float)tex3d_desc.Width;
+			viewport.Height = (float)tex3d_desc.Height;
+	}
+
+	mOrigContext->RSSetViewports(1, &viewport);
+}
+
 ResourceCopyOperation::ResourceCopyOperation() :
 	options(ResourceCopyOptions::INVALID),
 	cached_resource(NULL),
@@ -3229,6 +3268,9 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	}
 
 	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, format, buf_dst_size);
+
+	if (options & ResourceCopyOptions::SET_VIEWPORT)
+		SetViewportFromResource(mOrigContext, dst_resource);
 
 out_release:
 	src_resource->Release();
