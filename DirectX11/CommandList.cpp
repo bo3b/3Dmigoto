@@ -577,6 +577,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11PixelShader *saved_ps = NULL;
 	ID3D11ComputeShader *saved_cs = NULL;
 	ID3D11BlendState *saved_blend = NULL;
+	UINT num_viewports = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+	D3D11_VIEWPORT saved_viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 	FLOAT saved_blend_factor[4];
 	UINT saved_sample_mask;
 	bool saved_post;
@@ -623,6 +625,11 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
 	}
 
+	// We save off the viewports unconditionally for now. We could
+	// potentially skip this by flagging if a command list may alter them,
+	// but that probably wouldn't buy us anything:
+	mOrigContext->RSGetViewports(&num_viewports, saved_viewports);
+
 	// Run the command lists. This should generally include a draw or
 	// dispatch call, or call out to another command list which does.
 	// The reason for having a post command list is so that people can
@@ -649,6 +656,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
 	if (custom_shader->blend_override)
 		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
+
+	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
 
 	if (saved_vs)
 		saved_vs->Release();
