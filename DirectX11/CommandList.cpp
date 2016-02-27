@@ -373,6 +373,7 @@ CustomShader::CustomShader() :
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
 	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
 	rs_override(0), rs_state(NULL),
+	topology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED),
 	substantiated(false)
 {
 	int i;
@@ -632,6 +633,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11UnorderedAccessView *saved_uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
 	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1};
 	UINT i;
+	D3D11_PRIMITIVE_TOPOLOGY saved_topology;
 
 	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
 
@@ -678,6 +680,10 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->RSGetState(&saved_rs);
 		mOrigContext->RSSetState(custom_shader->rs_state);
 	}
+	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {
+		mOrigContext->IAGetPrimitiveTopology(&saved_topology);
+		mOrigContext->IASetPrimitiveTopology(custom_shader->topology);
+	}
 
 	// We save off the viewports unconditionally for now. We could
 	// potentially skip this by flagging if a command list may alter them,
@@ -714,6 +720,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
 	if (custom_shader->rs_override)
 		mOrigContext->RSSetState(saved_rs);
+	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+		mOrigContext->IASetPrimitiveTopology(saved_topology);
 
 	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);

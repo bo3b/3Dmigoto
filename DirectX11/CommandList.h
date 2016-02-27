@@ -81,6 +81,8 @@ public:
 	D3D11_RASTERIZER_DESC rs_desc;
 	ID3D11RasterizerState *rs_state;
 
+	D3D11_PRIMITIVE_TOPOLOGY topology;
+
 	CommandList command_list;
 	CommandList post_command_list;
 

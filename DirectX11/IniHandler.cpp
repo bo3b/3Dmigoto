@@ -1055,6 +1055,88 @@ static void ParseRSState(CustomShader *shader, const wchar_t *section, wchar_t *
 		shader->rs_override = 1;
 }
 
+struct PrimitiveTopology {
+	wchar_t *name;
+	int val;
+};
+
+static struct PrimitiveTopology PrimitiveTopologies[] = {
+	{ L"UNDEFINED", 0},
+	{ L"POINT_LIST", 1},
+	{ L"LINE_LIST", 2},
+	{ L"LINE_STRIP", 3},
+	{ L"TRIANGLE_LIST", 4},
+	{ L"TRIANGLE_STRIP", 5},
+	{ L"LINE_LIST_ADJ", 10},
+	{ L"LINE_STRIP_ADJ", 11},
+	{ L"TRIANGLE_LIST_ADJ", 12},
+	{ L"TRIANGLE_STRIP_ADJ", 13},
+	{ L"1_CONTROL_POINT_PATCH_LIST", 33},
+	{ L"2_CONTROL_POINT_PATCH_LIST", 34},
+	{ L"3_CONTROL_POINT_PATCH_LIST", 35},
+	{ L"4_CONTROL_POINT_PATCH_LIST", 36},
+	{ L"5_CONTROL_POINT_PATCH_LIST", 37},
+	{ L"6_CONTROL_POINT_PATCH_LIST", 38},
+	{ L"7_CONTROL_POINT_PATCH_LIST", 39},
+	{ L"8_CONTROL_POINT_PATCH_LIST", 40},
+	{ L"9_CONTROL_POINT_PATCH_LIST", 41},
+	{ L"10_CONTROL_POINT_PATCH_LIST", 42},
+	{ L"11_CONTROL_POINT_PATCH_LIST", 43},
+	{ L"12_CONTROL_POINT_PATCH_LIST", 44},
+	{ L"13_CONTROL_POINT_PATCH_LIST", 45},
+	{ L"14_CONTROL_POINT_PATCH_LIST", 46},
+	{ L"15_CONTROL_POINT_PATCH_LIST", 47},
+	{ L"16_CONTROL_POINT_PATCH_LIST", 48},
+	{ L"17_CONTROL_POINT_PATCH_LIST", 49},
+	{ L"18_CONTROL_POINT_PATCH_LIST", 50},
+	{ L"19_CONTROL_POINT_PATCH_LIST", 51},
+	{ L"20_CONTROL_POINT_PATCH_LIST", 52},
+	{ L"21_CONTROL_POINT_PATCH_LIST", 53},
+	{ L"22_CONTROL_POINT_PATCH_LIST", 54},
+	{ L"23_CONTROL_POINT_PATCH_LIST", 55},
+	{ L"24_CONTROL_POINT_PATCH_LIST", 56},
+	{ L"25_CONTROL_POINT_PATCH_LIST", 57},
+	{ L"26_CONTROL_POINT_PATCH_LIST", 58},
+	{ L"27_CONTROL_POINT_PATCH_LIST", 59},
+	{ L"28_CONTROL_POINT_PATCH_LIST", 60},
+	{ L"29_CONTROL_POINT_PATCH_LIST", 61},
+	{ L"30_CONTROL_POINT_PATCH_LIST", 62},
+	{ L"31_CONTROL_POINT_PATCH_LIST", 63},
+	{ L"32_CONTROL_POINT_PATCH_LIST", 64},
+};
+
+static void ParseTopology(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	wchar_t *prefix = L"D3D11_PRIMITIVE_TOPOLOGY_";
+	size_t prefix_len;
+	wchar_t val[MAX_PATH];
+	wchar_t *ptr;
+	int i;
+
+	shader->topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+	if (!GetPrivateProfileString(section, L"topology", 0, val, MAX_PATH, iniFile))
+		return;
+
+	prefix_len = wcslen(prefix);
+	ptr = val;
+	if (!_wcsnicmp(ptr, prefix, prefix_len))
+		ptr += prefix_len;
+
+
+	for (i = 1; i < ARRAYSIZE(PrimitiveTopologies); i++) {
+		if (!_wcsicmp(ptr, PrimitiveTopologies[i].name)) {
+			shader->topology = (D3D11_PRIMITIVE_TOPOLOGY)PrimitiveTopologies[i].val;
+			LogInfo("  topology=%S\n", val);
+			return;
+		}
+
+	}
+
+	LogInfo("  WARNING: Unrecognised primitive topology=%S\n", val);
+	BeepFailure2();
+}
+
 // List of keys in [CustomShader] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
@@ -1074,6 +1156,8 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
 	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
 	L"multisample_enable", L"antialiased_line_enable",
+	// IA State overrides:
+	L"topology",
 	NULL
 };
 static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
@@ -1117,6 +1201,7 @@ static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 
 		ParseBlendState(custom_shader, i->c_str(), iniFile);
 		ParseRSState(custom_shader, i->c_str(), iniFile);
+		ParseTopology(custom_shader, i->c_str(), iniFile);
 
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an
