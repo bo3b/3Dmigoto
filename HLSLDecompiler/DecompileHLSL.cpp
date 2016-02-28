@@ -3344,7 +3344,8 @@ public:
 				if (strcmp(statement, "dcl_output") && 
 					strcmp(statement, "dcl_output_siv") &&
 					strcmp(statement, "dcl_globalFlags") &&
-					strcmp(statement, "dcl_input_ps") &&
+					//strcmp(statement, "dcl_input_siv") && 
+					strcmp(statement, "dcl_input_ps") && 
 					strcmp(statement, "dcl_input_ps_sgv") &&
 					strcmp(statement, "dcl_input_ps_siv"))
 				{
@@ -5055,6 +5056,13 @@ public:
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
 						sprintf(buffer, "m0.Append(0); \n");
+						appendOutput(buffer);
+						break;
+					case OPCODE_CUT_STREAM:
+						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "m0.RestartStrip(); \n");
 						appendOutput(buffer);
 						break;
 
