@@ -206,7 +206,7 @@ public:
 		const char *startPos = c + pos;
 		const char *eolPos = strchr(startPos, '\n');
 		std::string line(startPos, eolPos);
-		sprintf(buffer, " %s\n", line.c_str());
+		sprintf(buffer, "%s\n", line.c_str());
 		appendOutput(buffer);
 	}
 
@@ -3316,11 +3316,45 @@ public:
 				const char *helperDecl = "  uint4 bitmask, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
+			// For Geometry Shaders, e.g. dcl_stream m0  TODO: make it StreamN, add to varlist
+			else if (!strcmp(statement, "dcl_stream"))
+			{
+				// Write out original ASM, inline, for reference.
+				sprintf(buffer, "// Needs manual fix for instruction:  \n//");
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				ASMLineOut(c, pos, size);
+				// Move back to input section and output something close to right
+				char *main_ptr = strstr(mOutput.data(), "void main(");
+				size_t offset = main_ptr - mOutput.data();
+				NextLine(mOutput.data(), offset, mOutput.size());
+				sprintf(buffer, "  inout TriangleStream<float> m0,\n");
+				mOutput.insert(mOutput.begin() + offset , buffer, buffer + strlen(buffer));
+			}
+			// For Geometry Shaders, e.g. dcl_maxout n
+			else if (!strcmp(statement, "dcl_maxout"))
+			{
+				char *main_ptr = strstr(mOutput.data(), "void main(");
+				size_t offset = main_ptr - mOutput.data();
+				sprintf(buffer, "[maxvertexcount(%s)]\n", op1);
+				mOutput.insert(mOutput.begin() + offset, buffer, buffer + strlen(buffer));
+			}
 			else if (!strncmp(statement, "dcl_", 4))
 			{
-				// Other declarations.
-				//sprintf(buffer, "  // unknown dcl_  %s\n", statement);
-				//mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				// Hateful strcmp logic is upside down, only output for ones we aren't already handling.
+				if (strcmp(statement, "dcl_output") && 
+					strcmp(statement, "dcl_output_siv") &&
+					strcmp(statement, "dcl_globalFlags") &&
+					strcmp(statement, "dcl_input_ps") &&
+					strcmp(statement, "dcl_input_ps_sgv") &&
+					strcmp(statement, "dcl_input_ps_siv"))
+				{
+					// Other declarations, unforeseen.
+					sprintf(buffer, "// Needs manual fix for instruction: \n");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					sprintf(buffer, "// unknown dcl_: ");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					ASMLineOut(c, pos, size);
+				}
 			}
 			else
 			{
@@ -5012,6 +5046,15 @@ public:
 							sprintf(buffer, "  if (%s == 0) return;\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) return;\n", ci(op1).c_str());
+						appendOutput(buffer);
+						break;
+
+						// FarCry4 GeometryShader
+					case OPCODE_EMIT_STREAM:
+						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "m0.Append(0); \n");
 						appendOutput(buffer);
 						break;
 

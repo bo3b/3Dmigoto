@@ -718,7 +718,22 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
             psDecl->sTGSM.ui32Count = pui32Token[ui32OperandOffset++];
             break;
         }
-        default:
+
+		// Two manually added from newer version of HLSLCrossCompiler.
+		case OPCODE_DCL_STREAM:
+		{
+			psDecl->ui32NumOperands = 1;
+			DecodeOperand(pui32Token + ui32OperandOffset, &psDecl->asOperands[0]);
+			break;
+		}
+		// Not seen yet, needs mod to structs.h-- REALLY need to update to latest JJ.
+		//case OPCODE_DCL_GS_INSTANCE_COUNT:
+		//{
+		//	psDecl->ui32NumOperands = 0;
+		//	psDecl->value.ui32GSInstanceCount = pui32Token[1];
+		//	break;
+		//}
+		default:
         {
             //Reached end of declarations
             return 0;
