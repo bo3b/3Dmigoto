@@ -75,7 +75,7 @@ struct Inputs_
 
 [maxvertexcount(4)]
 void main( 
-  triangle Inputs_ v[3],
+  line Inputs_ v[2],
   inout TriangleStream<Tri_struct> m0
   // float3 v0 : Position0,
   // float w0 : TEXALONGLENGTH0,
@@ -99,8 +99,8 @@ void main(
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_outputtopology trianglestrip 
 
-  r0.x = cmp(v[0].width == 0.000000);
-  r0.y = cmp(v[1].width == 0.000000);
+  r0.x = cmp(v[0].width == 0.0);
+  r0.y = cmp(v[1].width == 0.0);
   r0.x = r0.y ? r0.x : 0;
   if (r0.x != 0) {
     return;
