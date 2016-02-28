@@ -1,10 +1,18 @@
 // ---- Created with 3Dmigoto v1.2.32 on Sun Feb 28 03:53:18 2016
 cbuffer cb2 : register(b2)
 {
-  float4 cb2[2];
+//  float4 cb2[2];
+  uint4 cb2[2];
 }
 
 
+// Manually added struct for input/output
+struct Vector_
+{
+    float4 Pos : SV_POSITION;
+    float2 xy_ : TEXCOORD0;
+    uint x_ : SV_RenderTargetArrayIndex;
+};
 
 
 // 3Dmigoto declarations
@@ -12,13 +20,18 @@ cbuffer cb2 : register(b2)
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
+struct empty
+{
+};
 
 [maxvertexcount(3)]
-void main( 
-  inout TriangleStream<float> m0,
-  out float4 o0 : SV_Position0,
-  out float2 o1 : TEXCOORD0,
-  out uint o2 : SV_RenderTargetArrayIndex0)
+void main(
+  point empty input_[1], 
+  inout TriangleStream<Vector_> m0)
+
+  // out float4 o0 : SV_Position0,
+  // out float2 o1 : TEXCOORD0,
+  // out uint o2 : SV_RenderTargetArrayIndex0)
 {
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_inputprimitive point 
@@ -26,24 +39,47 @@ void main(
 //dcl_stream m0
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_outputtopology trianglestrip 
+
+Vector_ output;
+float4 o0;  // Pos
+float2 o1;  // xy_
+uint o2;    // x_
+
   o0.xyzw = float4(-1,1,0,1);
   o1.xy = float2(0,0);
   o2.x = cb2[1].w;
+  
+output.Pos = o0;
+output.xy_ = o1;
+output.x_ = o2;
+  
 // Needs manual fix for instruction, maybe. 
 //emit_stream m0
-m0.Append(0); 
+m0.Append(output); 
+
   o0.xyzw = float4(3,1,0,1);
   o1.xy = float2(2,0);
   o2.x = cb2[1].w;
+
+  output.Pos = o0;
+output.xy_ = o1;
+output.x_ = o2;
+
 // Needs manual fix for instruction, maybe. 
 //emit_stream m0
-m0.Append(0); 
+m0.Append(output); 
+  
+output.Pos = o0;
+output.xy_ = o1;
+output.x_ = o2;
+
   o0.xyzw = float4(-1,-3,0,1);
   o1.xy = float2(0,2);
   o2.x = cb2[1].w;
-// Needs manual fix for instruction, maybe. 
+
+  // Needs manual fix for instruction, maybe. 
 //emit_stream m0
-m0.Append(0); 
+m0.Append(output); 
   return;
 }
 
