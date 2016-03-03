@@ -134,7 +134,7 @@ static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, con
 
 class EnumParseError: public exception {} enumParseError;
 
-static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], size_t  names_len, int first)
+static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_len, int first)
 {
 	size_t prefix_len;
 	wchar_t *ptr = str;
@@ -155,7 +155,7 @@ static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], size_t  na
 }
 
 static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found,
-		wchar_t *prefix, wchar_t *names[], size_t  names_len, int first)
+		wchar_t *prefix, wchar_t *names[], int names_len, int first)
 {
 	wchar_t val[MAX_PATH];
 	int ret = def;
