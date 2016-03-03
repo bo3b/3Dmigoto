@@ -2565,11 +2565,11 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex1DDesc(
 
 	if (resource_desc->ArraySize == 1) {
 		view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
-		view_desc->Texture1D.MostDetailedMip = resource_desc->MipLevels - 1;
+		view_desc->Texture1D.MostDetailedMip = 0;
 		view_desc->Texture1D.MipLevels = -1;
 	} else {
 		view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1DARRAY;
-		view_desc->Texture1DArray.MostDetailedMip = resource_desc->MipLevels - 1;
+		view_desc->Texture1DArray.MostDetailedMip = 0;
 		view_desc->Texture1DArray.MipLevels = -1;
 		view_desc->Texture1DArray.FirstArraySlice = 0;
 		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
@@ -2640,11 +2640,11 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex2DDesc(
 	if (resource_desc->MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
 		if (resource_desc->ArraySize == 1) {
 			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-			view_desc->TextureCube.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->TextureCube.MostDetailedMip = 0;
 			view_desc->TextureCube.MipLevels = -1;
 		} else {
 			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
-			view_desc->TextureCubeArray.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->TextureCubeArray.MostDetailedMip = 0;
 			view_desc->TextureCubeArray.MipLevels = -1;
 			view_desc->TextureCubeArray.First2DArrayFace = 0; // FIXME: Get from original view
 			view_desc->TextureCubeArray.NumCubes = resource_desc->ArraySize / 6;
@@ -2652,11 +2652,11 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex2DDesc(
 	} else if (resource_desc->SampleDesc.Count == 1) {
 		if (resource_desc->ArraySize == 1) {
 			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			view_desc->Texture2D.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->Texture2D.MostDetailedMip = 0;
 			view_desc->Texture2D.MipLevels = -1;
 		} else {
 			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-			view_desc->Texture2DArray.MostDetailedMip = resource_desc->MipLevels - 1;
+			view_desc->Texture2DArray.MostDetailedMip = 0;
 			view_desc->Texture2DArray.MipLevels = -1;
 			view_desc->Texture2DArray.FirstArraySlice = 0;
 			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
@@ -2755,7 +2755,7 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
 	view_desc->Format = MakeNonDSVFormat(format);
 
 	view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
-	view_desc->Texture3D.MostDetailedMip = resource_desc->MipLevels - 1;
+	view_desc->Texture3D.MostDetailedMip = 0;
 	view_desc->Texture3D.MipLevels = -1;
 
 	return view_desc;
