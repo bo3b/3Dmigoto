@@ -590,10 +590,6 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 			return true;
 		}
 	}
-	else if (wcsstr(fileName, L"_reasm"))
-	{
-		return false;	// Don't reassemble these, and don't error out.
-	} 
 	else
 	{
 		LogInfo("   >Replacement shader found. Re-Loading replacement ASM code from %ls \n", fileName);
@@ -603,79 +599,33 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// We need original byte code unchanged, so make a copy.
 		vector<byte> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
-		byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 
-		// Write reassembly binary output for comparison. ToDo: remove after we have
-		// resolved the disassembler precision issue and validated everything works.
-		FILE *fw;
-		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType.c_str());
-		_wfopen_s(&fw, fullName, L"wb");
-		if (fw)
+		// Not completely clear what error reporting happens from assembler.  
+		// We know it throws at least one exception, let's use that.
+		try
 		{
-			LogInfoW(L"    storing reassembled binary to %s\n", fullName);
-			fwrite(byteCode.data(), 1, byteCode.size(), fw);
-			fclose(fw);
+			byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 		}
-		else
-		{
-			LogInfoW(L"    error storing reassembled binary to %s\n", fullName);
-		}
-
-
-		// ToDo: How we do know when it fails? Error handling. Do we really have to re-disassemble?
-		string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
-		if (asmText.empty())
-		{
+		catch (...)
+		{ 
 			LogInfo("  *** assembler failed. \n");
 			return true;
 		}
-		else
-		{
-			// Write reassembly output for comparison. ToDo: how long do we need this?
-			swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType.c_str());
-			HRESULT hr = CreateTextFile(fullName, asmText, true);
-			if (FAILED(hr)) {
-				LogInfoW(L"    *** error storing reassembly to %s \n", fullName);
-			}
-			else {
-				LogInfoW(L"    storing reassembly to %s \n", fullName);
-			}
 
-			// Since the re-assembly worked, let's make it the active shader code.
-			HRESULT ret = D3DCreateBlob(byteCode.size(), &pByteCode);
-			if (SUCCEEDED(ret)) {
-				memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
-			} else {
-				LogInfo("    *** failed to allocate new Blob for assemble. \n");
-				return true;
-			}
+		// Since the re-assembly worked, let's make it the active shader code.
+		HRESULT ret = D3DCreateBlob(byteCode.size(), &pByteCode);
+		if (SUCCEEDED(ret)) {
+			memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
+		}
+		else {
+			LogInfo("    *** failed to allocate new Blob for assemble. \n");
+			return true;
 		}
 	}
 
 
-	// Write replacement .bin if necessary
-	if (G->CACHE_SHADERS && pByteCode)
-	{
-		wchar_t val[MAX_PATH];
-
-		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", shaderFixPath, hash, shaderType.c_str());
-		FILE *fw;
-		_wfopen_s(&fw, val, L"wb");
-		if (LogFile)
-		{
-			char fileName[MAX_PATH];
-			wcstombs(fileName, val, MAX_PATH);
-			if (fw)
-				LogInfo("    storing compiled shader to %s\n", fileName);
-			else
-				LogInfo("    error writing compiled shader to %s\n", fileName);
-		}
-		if (fw)
-		{
-			fwrite(pByteCode->GetBufferPointer(), 1, pByteCode->GetBufferSize(), fw);
-			fclose(fw);
-		}
-	}
+	// No longer generating .bin cache shaders here.  Unnecessary complexity, and this needs
+	// to be refactored to use a single shader loading code anyway.
 
 
 	// For success, let's add the first line of text from the file to the OriginalShaderInfo,
@@ -1043,16 +993,6 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
 			do {
-				// Ignore reassembly files (XXX: Should we be strict and whitelist allowed patterns,
-				// or relaxed and blacklist bad patterns in filenames? Pretty sure I saw some code
-				// that treads _bad.txt files as an indication that a shader is bad - do we need
-				// to consider that here?) -DarkStarSword
-				wchar_t *ext = wcsrchr(findFileData.cFileName, L'.');
-				if (ext) {
-					if (!wcsncmp(ext - 6, L"_reasm", 6))
-						continue;
-				}
-
 				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device);
 			} while (FindNextFile(hFind, &findFileData) && success);
 			FindClose(hFind);
