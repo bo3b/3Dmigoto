@@ -693,6 +693,21 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 
 // If a matching file exists, load an ASM text shader as a replacement for a shader.  
 // Reassemble it, and return the binary.
+//
+// Changing the output of this routine to be simply .bin files. We had some old test
+// code for assembler validation, but that just causes confusion.  Retiring the *_reasm.txt
+// files as redundant.
+// Files are like: 
+//  cc79d4a79b16b59c-vs.txt  as ASM text
+//  cc79d4a79b16b59c-vs.bin  as reassembled binary shader code
+//
+// Using this naming convention because we already have multiple fixes that use the *-vs.txt format
+// to mean ASM text files, and changing all of those seems unnecessary.  This will parallel the use
+// of HLSL files like:
+//  cc79d4a79b16b59c-vs_replace.txt   as HLSL text
+//  cc79d4a79b16b59c-vs_replace.bin   as recompiled binary shader code
+//
+// So it should be clear by name, what type of file they are.  
 
 void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
@@ -730,50 +745,43 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 			pTimeStamp = ftWrite;
 			pHeaderLine = std::wstring(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
 
-			// Re-assemble the ASM text back to binary
 			vector<byte> byteCode(pBytecodeLength);
 			memcpy(byteCode.data(), pShaderBytecode, pBytecodeLength);
-			byteCode = assembler(*reinterpret_cast<vector<byte>*>(&asmTextBytes), byteCode);
+			
+			// Re-assemble the ASM text back to binary
+			try
+			{
+				byteCode = assembler(*reinterpret_cast<vector<byte>*>(&asmTextBytes), byteCode);
 
-			// Write reassembly binary output for comparison. ToDo: remove after we have
-			// resolved the disassembler precision issue and validated everything works.
-			FILE *fw;
-			swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, pShaderType);
-			_wfopen_s(&fw, path, L"wb");
-			if (fw)
-			{
-				LogInfoW(L"    storing reassembled binary to %s \n", path);
-				fwrite(byteCode.data(), 1, byteCode.size(), fw);
-				fclose(fw);
-			}
-			else
-			{
-				LogInfoW(L"    error storing reassembled binary to %s \n", path);
-			}
+				// ToDo: Any errors to check?  When it fails, throw an exception.
 
-			// With that cso object of reassembly, let's re-dissassemble it and write output.
-			// ToDo: remove this after it's all working.  This is just testing, validation.
-			string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
-			if (asmText.empty())
-			{
-				LogInfo("  re-disassembly failed. \n");
-			}
-			else
-			{
-				// Write reassembly output for comparison.
-				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, pShaderType);
-				HRESULT hr = CreateTextFile(path, asmText, true);
-				if (FAILED(hr)) {
-					LogInfoW(L"    error storing reassembly to %s \n", path);
-				}
-				else {
-					LogInfoW(L"    storing reassembly to %s \n", path);
-				}
-
-				// Since the re-assembly worked, let's make it the active shader code.
+				// Assuming the re-assembly worked, let's make it the active shader code.
 				pCodeSize = byteCode.size();
 				pCode = new char[pCodeSize];
 				memcpy(pCode, byteCode.data(), pCodeSize);
+
+				// Cache binary replacement.
+				if (G->CACHE_SHADERS && pCode)
+				{
+					// Write reassembled binary output as a cached shader.
+					FILE *fw;
+					swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+					_wfopen_s(&fw, path, L"wb");
+					if (fw)
+					{
+						LogInfoW(L"    storing reassembled binary to %s \n", path);
+						fwrite(byteCode.data(), 1, byteCode.size(), fw);
+						fclose(fw);
+					}
+					else
+					{
+						LogInfoW(L"    error storing reassembled binary to %s \n", path);
+					}
+				}
+			}
+			catch (...)
+			{
+				LogInfo("    reassembly of ASM shader text failed. \n");
 			}
 		}
 	}
