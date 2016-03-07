@@ -537,7 +537,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0])
 	{
 		if (G->EXPORT_BINARY) {
-			wsprintf(val, L"%ls\\%08lx%08lx-%ls.bin", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+			wsprintf(val, L"%ls\\%016llx-%ls.bin", G->SHADER_CACHE_PATH, hash, shaderType);
 			HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			bool exists = false;
 			if (f != INVALID_HANDLE_VALUE) {
@@ -555,7 +555,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					delete [] buf;
 					if (exists)
 						break;
-					wsprintf(val, L"%ls\\%08lx%08lx-%ls_%d.bin", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType, ++cnt);
+					wsprintf(val, L"%ls\\%016llx-%ls_%d.bin", G->SHADER_CACHE_PATH, hash, shaderType, ++cnt);
 					f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 				}
 			}
@@ -579,7 +579,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		}
 
 		// Read binary compiled shader.
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+		wsprintf(val, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, shaderType);
 		HANDLE f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (f != INVALID_HANDLE_VALUE)
 		{
@@ -621,7 +621,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		// Load previously created HLSL shaders, but only from ShaderFixes
 		if (!pCode)
 		{
-			wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+			wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
 			f = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (f != INVALID_HANDLE_VALUE)
 			{
@@ -691,7 +691,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// Cache binary replacement.
 					if (G->CACHE_SHADERS && pCode)
 					{
-						wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+						wsprintf(val, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, shaderType);
 						FILE *fw;
 						_wfopen_s(&fw, val, L"wb");
 						if (LogFile)
@@ -797,7 +797,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
 	{
 		// Skip?
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_bad.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)(hash), shaderType);
+		wsprintf(val, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
 		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
@@ -814,9 +814,9 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 			// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
 			if (G->EXPORT_HLSL >= 1)
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_CACHE_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
+				wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
 			else
-				wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType);
+				wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
 
 			// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
 			errno_t err = _wfopen_s(&fw, val, L"rb");
