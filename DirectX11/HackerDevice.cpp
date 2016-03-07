@@ -491,10 +491,11 @@ void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, w
 void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength)
 {
 	wchar_t path[MAX_PATH];
-
-	wsprintf(path, L"%ls\\%016llx-%ls.bin", G->SHADER_CACHE_PATH, hash, pShaderType);
-	HANDLE f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE f;
 	bool exists = false;
+
+	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_CACHE_PATH, hash, pShaderType);
+	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f != INVALID_HANDLE_VALUE)
 	{
 		int cnt = 0;
@@ -512,7 +513,7 @@ void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShad
 			delete[] buf;
 			if (exists)
 				break;
-			wsprintf(path, L"%ls\\%016llx-%ls_%d.bin", G->SHADER_CACHE_PATH, hash, pShaderType, ++cnt);
+			swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_%d.bin", G->SHADER_CACHE_PATH, hash, pShaderType, ++cnt);
 			f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		}
 	}
@@ -541,15 +542,16 @@ void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
 {
 	wchar_t path[MAX_PATH];
+	HANDLE f;
 
-	wsprintf(path, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
-	HANDLE f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
+	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	// If we can't find an HLSL compiled version, look for ASM assembled one.
 	if (f == INVALID_HANDLE_VALUE)
 	{
-		wsprintf(path, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-		HANDLE f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+		f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	}
 
 	if (f != INVALID_HANDLE_VALUE)
@@ -600,8 +602,9 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 {
 	wchar_t path[MAX_PATH];
 	HANDLE f;
+	string shaderModel;
 
-	wsprintf(path, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, pShaderType);
+	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, pShaderType);
 	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f != INVALID_HANDLE_VALUE)
 	{
@@ -619,7 +622,7 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 		LogInfo("    Source code loaded. Size = %d\n", srcDataSize);
 
 		// Disassemble old shader to get shader model.
-		string shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
+		shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
 		if (shaderModel.empty())
 		{
 			LogInfo("    disassembly of original shader failed.\n");
@@ -676,7 +679,7 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// Cache binary replacement.
 			if (G->CACHE_SHADERS && pCode)
 			{
-				wsprintf(path, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
+				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 				FILE *fw;
 				_wfopen_s(&fw, path, L"wb");
 				if (LogFile)
@@ -722,6 +725,7 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 {
 	wchar_t path[MAX_PATH];
 	HANDLE f;
+	string shaderModel;
 
 	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.txt", G->SHADER_PATH, hash, pShaderType);
 	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -741,7 +745,7 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 		LogInfo("    Asm source code loaded. Size = %d \n", srcDataSize);
 
 		// Disassemble old shader to get shader model.
-		string shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
+		shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
 		if (shaderModel.empty())
 		{
 			LogInfo("    disassembly of original shader failed.\n");
@@ -882,7 +886,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
 	{
 		// Skip?
-		wsprintf(val, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
+		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
 		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
@@ -899,9 +903,9 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 			// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
 			if (G->EXPORT_HLSL >= 1)
-				wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
+				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
 			else
-				wsprintf(val, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
+				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
 
 			// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
 			errno_t err = _wfopen_s(&fw, val, L"rb");
