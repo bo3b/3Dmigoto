@@ -535,7 +535,7 @@ void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShad
 	
 
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
-// This will load either *_replace.bin, or *_reasm.bin variants.
+// This will load either *_replace.bin, or *.bin variants.
 
 void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
@@ -544,9 +544,17 @@ void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 
 	wsprintf(path, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 	HANDLE f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	// If we can't find an HLSL compiled version, look for ASM assembled one.
+	if (f == INVALID_HANDLE_VALUE)
+	{
+		wsprintf(path, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+		HANDLE f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	}
+
 	if (f != INVALID_HANDLE_VALUE)
 	{
-		LogInfo("    Replacement binary shader found.\n");
+		LogInfoW(L"    Replacement binary shader found: %s \n", path);
 
 		DWORD codeSize = GetFileSize(f, 0);
 		pCode = new char[codeSize];
@@ -556,14 +564,14 @@ void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 			|| !GetFileTime(f, NULL, NULL, &ftWrite)
 			|| codeSize != readSize)
 		{
-			LogInfo("    Error reading file.\n");
+			LogInfo("    Error reading binary file. \n");
 			delete[] pCode; pCode = 0;
 			CloseHandle(f);
 		}
 		else
 		{
 			pCodeSize = codeSize;
-			LogInfo("    Bytecode loaded. Size = %Iu\n", pCodeSize);
+			LogInfo("    Bytecode loaded. Size = %Iu \n", pCodeSize);
 			CloseHandle(f);
 
 			pShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
