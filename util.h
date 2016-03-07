@@ -712,7 +712,6 @@ static HRESULT CreateTextFile(wchar_t* fullPath, string asmText, bool overwrite)
 
 
 // Specific variant to name files consistently, so we know they are Asm text.
-// ToDo: Remove all use of the obsolete wsprintf.
 
 static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
 	const void *pShaderBytecode, size_t bytecodeLength)

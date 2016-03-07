@@ -327,7 +327,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
-		wsprintf(fullName, L"%ls\\%016I64x-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
+		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
 		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
@@ -416,7 +416,7 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	wchar_t fullName[MAX_PATH];
 	FILE *fw;
 
-	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
+	swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType.c_str());
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 	{
@@ -518,7 +518,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
-	wsprintf(fullName, L"%s\\%s", shaderFixPath, fileName);
+	swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
 	HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
@@ -657,7 +657,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 	if (G->CACHE_SHADERS && pByteCode)
 	{
 		wchar_t val[MAX_PATH];
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", shaderFixPath, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
+
+		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", shaderFixPath, hash, shaderType.c_str());
 		FILE *fw;
 		_wfopen_s(&fw, val, L"wb");
 		if (LogFile)
@@ -901,7 +902,8 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			// Lastly, reload the shader generated, to check for decompile errors, set it as the active 
 			// shader code, in case there are visual errors, and make it the match the code in the file.
 			wchar_t fileName[MAX_PATH];
-			wsprintf(fileName, L"%08lx%08lx-%ls_replace.txt", (UINT32)(hash >> 32), (UINT32)(hash), iter.second.shaderType.c_str());
+
+			swprintf_s(fileName, MAX_PATH, L"%016llx-%ls_replace.txt", hash, iter.second.shaderType.c_str());
 			if (!ReloadShader(G->SHADER_PATH, fileName, device))
 				break;
 
@@ -1036,7 +1038,7 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		// Strict file name format, to allow renaming out of the way. 
 		// "00aa7fa12bbf66b3-ps_replace.txt" or "00aa7fa12bbf66b3-vs.txt"
 		// Will still blow up if the first characters are not hex.
-		wsprintf(fileName, L"%ls\\????????????????-??*.txt", G->SHADER_PATH);
+		swprintf_s(fileName, MAX_PATH, L"%ls\\????????????????-??*.txt", G->SHADER_PATH);
 		HANDLE hFind = FindFirstFile(fileName, &findFileData);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
