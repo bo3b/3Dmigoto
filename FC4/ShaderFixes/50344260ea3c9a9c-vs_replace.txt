@@ -83,7 +83,7 @@ Texture2D<float4> IconFilter2 : register(t102);
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-#include <ShaderFixes/crosshair.hlsl>
+#include <crosshair.hlsl>
 
 float2 find_quad_center(uint id)
 {
