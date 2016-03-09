@@ -640,6 +640,7 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// temporary variable to not modify anything already here and reduce
 			// the risk of breaking it in some subtle way:
 			const char *tmpShaderModel;
+			char apath[MAX_PATH];
 
 			if (pOverrideShaderModel)
 				tmpShaderModel = pOverrideShaderModel;
@@ -653,7 +654,12 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 
 			ID3DBlob *errorMsgs; // FIXME: This can leak
 			ID3DBlob *compiledOutput = 0;
-			HRESULT ret = D3DCompile(srcData, srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+			// Pass the real filename and use the standard include handler so that
+			// #include will work with a relative path from the shader itself.
+			// Later we could add a custom include handler to track dependencies so
+			// that we can make reloading work better when using includes:
+			wcstombs(apath, path, MAX_PATH);
+			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 				"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiledOutput, &errorMsgs);
 			delete[] srcData; srcData = 0;
 			if (compiledOutput)
@@ -1011,6 +1017,8 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// temporary variable to not modify anything already here and reduce
 					// the risk of breaking it in some subtle way:
 					const char *tmpShaderModel;
+					char apath[MAX_PATH];
+
 					if (overrideShaderModel)
 						tmpShaderModel = overrideShaderModel;
 					else
@@ -1022,7 +1030,12 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 					ID3DBlob *pErrorMsgs; // FIXME: This can leak
 					ID3DBlob *pCompiledOutput = 0;
-					ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+					// Probably unecessary here since this shader is one we freshly decompiled,
+					// but for consistency pass the path here as well so that the standard
+					// include handler can correctly handle includes with paths relative to the
+					// shader itself:
+					wcstombs(apath, val, MAX_PATH);
+					ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 						"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 					LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
 
@@ -1127,6 +1140,9 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 				ID3DBlob *pErrorMsgs; // FIXME: This can leak
 				ID3DBlob *pCompiledOutput = 0;
+				// We don't have a valid value for path at this point in the function, so don't pass one in.
+				// Arguably we should not be using the default include handler here since it requires a valid
+				// path, but I'm not going to touch this without a good reason.
 				HRESULT ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
 					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
 				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
