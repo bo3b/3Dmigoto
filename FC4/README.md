@@ -6,6 +6,16 @@ A fix by DarkStarSword and mike_ar69
 Special thanks to Bo3b for the decompiler fixes and DHR for discovering the Max
 Payne 3 profile!
 
+Update 2016-03-09
+-----------------
+- Fixed the crosshair not working on the Steam version of the game.
+- Fixed the simulated fur glitch in HLSL (Thanks to bo3b for the work on the decompiler)
+- Fixed interior shadow mask clipping with MSAA enabled.
+- Updated to 3DMigoto that supports SBS & TAB output modes. To enable, set the
+  output mode to checkerboard in the nvidia control panel (don't worry -
+  checkerboard won't be used), uncomment the 'run = CustomShader3DVision2SBS'
+  line in the d3dx.ini, then press F9 in game to cycle modes.
+
 Update 2016-02-23
 -----------------
 Removed the assembly shaders due to a falling out in the community. This means
@@ -67,8 +77,8 @@ that it would be a good choice to showcase many of these new features.
 - Fixed reflected glow of sun & moon (new feature: render target size
   filtering)
 
-- <del>Fixed NVIDIA Hairworks simulated fur glitch at depth == 1.0 (new features:
-  ability to fix domain shaders & use Flugan's assembler)</del>
+- Fixed NVIDIA Hairworks simulated fur glitch at depth == 1.0 (new features:
+  ability to fix geometry shaders & use Flugan's assembler)
 
 - Fixed box shaped artefact on NVIDIA soft shadows (new feature: <del>Flugan's
   assembler</del> arbitrary resource copying)
@@ -170,9 +180,6 @@ Known Issues
   waypoint icon. This would be tricky to fix as the text is drawn earlier in
   the frame than the icon and there's no easy way to distinguish it from any
   other text that we don't want to adjust.
-
-- Simulated fur glitches a little when very close to the camera, but otherwise
-  looks fine.
 
 Notes
 -----

@@ -518,6 +518,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
+	char apath[MAX_PATH];
 	swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
 	HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -565,7 +566,12 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// TODO: Add #defines for StereoParams and IniParams
 
 		ID3DBlob* pErrorMsgs = nullptr;
-		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+		// Pass the real filename and use the standard include handler so that
+		// #include will work with a relative path from the shader itself.
+		// Later we could add a custom include handler to track dependencies so
+		// that we can make reloading work better when using includes:
+		wcstombs(apath, fullName, MAX_PATH);
+		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 			"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
