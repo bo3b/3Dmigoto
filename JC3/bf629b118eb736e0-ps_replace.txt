@@ -877,9 +877,9 @@ r5.x = LightIndices[r15.w].x;
         r16.z = cmp((int)r16.y != 255);
         if (r16.z != 0) {
           r16.z = (uint)r16.y << 2;
-          r17.xyzw = Globals[r16.z].xyzw * -r13.yyyy + Globals[r16.z].xyzw;
-          r17.xyzw = Globals[r16.z].xyzw * -r13.zzzz + r17.xyzw;
-          r17.xyzw = Globals[r16.z].xyzw * -r13.wwww + r17.xyzw;
+          r17.xyzw = Globals[r16.z + 63].xyzw * -r13.yyyy + Globals[r16.z + 66].xyzw;
+          r17.xyzw = Globals[r16.z + 64].xyzw * -r13.zzzz + r17.xyzw;
+          r17.xyzw = Globals[r16.z + 65].xyzw * -r13.wwww + r17.xyzw;
           r16.z = 1 / r17.w;
           r16.w = r17.z * r16.z;
           r18.z = (uint)r16.y;
