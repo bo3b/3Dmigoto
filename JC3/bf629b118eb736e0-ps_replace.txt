@@ -1,17 +1,17 @@
 // ---- Created with 3Dmigoto v1.2.34 on Sun Mar 20 20:52:29 2016
 
 
-// Buffer<mixed4> t32 : register(t32);
-tbuffer t32 : register(t32)
-{
-  uint4 LightIndices[2];             // Offset:    0 Size:    32
-};
-
-
 cbuffer GlobalConstants : register(b0)
 {
   float4 Globals[95] : packoffset(c0);
 }
+
+// Buffer<mixed4> t32 : register(t32);
+tbuffer tb : register(t32)
+{
+  uint4 LightIndices[2];             // Offset:    0 Size:    32
+};
+
 
 cbuffer LightingFrameConsts : register(b3)
 {
@@ -75,7 +75,7 @@ Texture2D<float4> StereoParams : register(t125);
 
 void main( 
   float4 v0 : SV_Position0,
-  float4 v1 : TEXCOORD0,
+  float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
