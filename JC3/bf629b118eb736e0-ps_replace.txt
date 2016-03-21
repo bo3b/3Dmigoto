@@ -1,5 +1,11 @@
 // ---- Created with 3Dmigoto v1.2.34 on Sun Mar 20 20:52:29 2016
-Buffer<mixed4> t32 : register(t32);
+
+
+// Buffer<mixed4> t32 : register(t32);
+tbuffer t32 : register(t32)
+{
+  uint4 LightIndices[2];             // Offset:    0 Size:    32
+};
 
 
 cbuffer GlobalConstants : register(b0)
@@ -758,7 +764,10 @@ void main(
   while (true) {
     r4.x = cmp((uint)r14.w >= (uint)r0.z);
     if (r4.x != 0) break;
-    r4.x = t32.Load(r14.w).x;
+    
+// r4.x = t32.Load(r14.w).x;
+r4.x = LightIndices[r14.w].x;
+ 
     r13.yzw = -r1.xxx * v2.xyz + PointLights[r4.x].xyz;
     r4.w = dot(r13.yzw, r13.yzw);
     r5.x = cmp(r4.w < PointLights[r4.x].w);
@@ -843,7 +852,10 @@ void main(
   while (true) {
     r5.x = cmp((uint)r15.w >= (uint)r0.x);
     if (r5.x != 0) break;
-    r5.x = t32.Load(r15.w).x;
+    
+// r5.x = t32.Load(r15.w).x;
+r5.x = LightIndices[r15.w].x;
+
     r6.w = (int)r5.x + 1;
     r13.yzw = -r1.xxx * v2.xyz + SpotLights[r5.x].xyz;
     r7.w = dot(r13.yzw, r13.yzw);
