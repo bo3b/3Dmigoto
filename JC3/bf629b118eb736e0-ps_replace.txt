@@ -367,9 +367,9 @@ void main(
   r10.z = r10.w * 0.546274245 + r10.z;
   r10.z = max(0, r10.z);
   r14.xyz = GroundFillFlux_9_Color.yzw * r10.zzz;
-  r15.xyzw = SkyLightingRed.Load(float4(0,0,0,0)).xyzw;
-  r16.xyzw = SkyLightingGreen.Load(float4(0,0,0,0)).xyzw;
-  r17.xyzw = SkyLightingBlue.Load(float4(0,0,0,0)).xyzw;
+  r15.xyzw = SkyLightingRed.Load(0).xyzw;
+  r16.xyzw = SkyLightingGreen.Load(0).xyzw;
+  r17.xyzw = SkyLightingBlue.Load(0).xyzw;
   r5.x = 1;
   r18.xyzw = float4(0.282094806,-0.488602519,0.488602519,-0.488602519) * r5.xyzw;
   r10.z = dot(r15.xyzw, r18.xyzw);
