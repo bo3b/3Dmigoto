@@ -920,7 +920,19 @@ r5.x = LightIndices[r15.w].x;
         if (r16.y != 0) {
           r16.y = -SpotLights[r6.w].z + 1;
           r16.z = (int)r5.x + 3;
-          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+          
+//          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+uint spotlights = SpotLights[r6.w].w;
+uint rsixteen = r16.w;
+if (8 == 0) rsixteen = 0; 
+else if (8+16 < 32) 
+{ 
+  rsixteen = spotlights << (32-(8 + 16)); 
+  rsixteen = rsixteen >> (32-8); 
+} else 
+  rsixteen = spotlights >> 16;
+r16.w = rsixteen;         
+
           r13.yzw = r16.xxx * r13.yzw;
           r7.w = r16.x * r7.w;
           r5.x = SpotLights[r5.x].w * r7.w;
@@ -978,7 +990,12 @@ r5.x = LightIndices[r15.w].x;
           if (r5.x != 0) {
             bitmask.x = ((~(-1 << 16)) << 2) & 0xffffffff;
   r5.x = (((uint)SpotLights[r6.w].w << 2) & bitmask.x) | ((uint)0 & ~bitmask.x);
-            r16.xyz = int3(1,2,3) + (int3)r5.xxx;
+  
+            // r16.xyz = int3(1,2,3) + (int3)r5.xxx;
+            r16.x = 2 + int(r5.x);
+            r16.y = 3 + int(r5.x);
+            r16.z = 1 + int(r5.x);
+
             r17.xyz = Projections[r5.x].xyw * r6.xxx + Projections[r16.z].xyw;
             r17.xyz = Projections[r16.x].xyw * r6.yyy + r17.xyz;
             r16.xyz = Projections[r16.y].xyw * r6.zzz + r17.xyz;
