@@ -1,19 +1,19 @@
-// ---- Created with 3Dmigoto v1.2.26 on Fri Jan 22 01:46:55 2016
-
-
-tbuffer tb
-{
-  uint4 LightIndices[2];             // Offset:    0 Size:    32
-}
-
-
-Buffer<tb> tb : register(t32);
-
+// Shadows Lights Reflections (manually fixed)
 
 cbuffer GlobalConstants : register(b0)
 {
   float4 Globals[95] : packoffset(c0);
-}
+};
+
+// Buffer<float> tb : register(t32);
+
+tbuffer tb : register(t32)
+{
+  uint4 LightIndices[2];             // Offset:    0 Size:    32
+};
+
+
+
 
 cbuffer LightingFrameConsts : register(b3)
 {
@@ -79,7 +79,13 @@ void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
-  out float4 o0 : SV_Target0)
+  out float4 o0 : SV_Target0,
+  
+  // Extra input from vertex shader:
+  matrix vp : TEXCOORD2,
+  matrix ivp : TEXCOORD6)
+  
+  
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27;
   uint4 bitmask, uiDest;
@@ -101,6 +107,18 @@ void main(
   r1.x = r1.x * Globals[9].z + Globals[9].w;
   r1.x = 1 / r1.x;
   r6.xyz = v2.xyz * r1.xxx;
+  
+  //Correct shadow:
+  float4 stereo = StereoParams.Load(0);
+  float4 tmp = mul(float4(r6.xyz, 1), vp);
+  tmp.x -= stereo.x * (tmp.w - stereo.y);
+  r6.xyz = mul(tmp, ivp).xyz;
+  
+  //Correct Reflections?
+  //tmp = mul(float4(v2.xyz, 1), vp);
+  //tmp.x -= stereo.x * tmp.w;
+  //v2.xyz = mul(tmp, ivp).xyz;
+  
   r1.w = dot(-v2.xyz, -v2.xyz);
   r1.w = rsqrt(r1.w);
   r7.xyz = -v2.xyz * r1.www;
@@ -124,7 +142,11 @@ void main(
   r4.w = 4 * r4.w;
   r4.w = saturate(r4.w);
   r4.w = r8.x ? 0 : r4.w;
-  r9.xyz = r1.xxx * v2.xyz + Globals[4].xyz;
+    
+  //Adjust shadows
+  //r9.xyz = r1.xxx * v2.xyz + Globals[4].xyz;
+  r9.xyz = r6.xyz + Globals[4].xyz;
+  
   r7.w = dot(v0.xy, float2(12.9898005,78.2330017));
   r7.w = sin(r7.w);
   r7.w = 43758.5469 * r7.w;
@@ -336,7 +358,12 @@ void main(
   r0.z = r0.z * r10.y;
   r0.z = saturate(-r0.z * r10.z + 1);
   r12.x = Globals[3].w * r7.w;
+  
+  // Correction
   r10.yzw = -v2.xyz * r1.www + -Globals[3].xyz;
+  //r10.yzw = -r6.xyz + -Globals[3].xyz;
+  
+  
   r0.w = dot(r10.yzw, r10.yzw);
   r0.w = rsqrt(r0.w);
   r10.yzw = r10.yzw * r0.www;
@@ -761,8 +788,14 @@ void main(
   while (true) {
     r4.x = cmp((uint)r14.w >= (uint)r0.z);
     if (r4.x != 0) break;
-    r4.x = t32.Load(r14.w).x;
-    r13.yzw = -r1.xxx * v2.xyz + PointLights[r4.x].xyz;
+    // r4.x = tb.Load(r14.w).x;
+r4.x = LightIndices[r14.w].x;
+    
+	
+	//fix lights
+    //r13.yzw = -r1.xxx * v2.xyz + PointLights[r4.x].xyz;
+	r13.yzw = -r6.xyz + PointLights[r4.x].xyz;
+	
     r4.w = dot(r13.yzw, r13.yzw);
     r5.x = cmp(r4.w < PointLights[r4.x].w);
     if (r5.x != 0) {
@@ -846,9 +879,14 @@ void main(
   while (true) {
     r5.x = cmp((uint)r15.w >= (uint)r0.x);
     if (r5.x != 0) break;
-    r5.x = t32.Load(r15.w).x;
+    // r5.x = tbuff.Load(r15.w).x;
+r5.x = LightIndices[r15.w].x;
     r6.w = (int)r5.x + 1;
-    r13.yzw = -r1.xxx * v2.xyz + SpotLights[r5.x].xyz;
+    
+	// Correction
+	r13.yzw = -r1.xxx * v2.xyz + SpotLights[r5.x].xyz;
+	//r13.yzw = -r6.xyz + SpotLights[r5.x].xyz;
+	
     r7.w = dot(r13.yzw, r13.yzw);
     r12.w = dot(r13.yzw, SpotLights[r6.w].xyz);
     r16.x = SpotLights[r5.x].w * r7.w;
@@ -911,7 +949,7 @@ void main(
         if (r16.y != 0) {
           r16.y = -SpotLights[r6.w].z + 1;
           r16.z = (int)r5.x + 3;
-          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (uint)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
           r13.yzw = r16.xxx * r13.yzw;
           r7.w = r16.x * r7.w;
           r5.x = SpotLights[r5.x].w * r7.w;

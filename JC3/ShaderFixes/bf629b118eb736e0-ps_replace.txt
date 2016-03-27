@@ -978,7 +978,11 @@ r5.x = LightIndices[r15.w].x;
           r16.xyz = SpotLights[r16.z].xyz * r5.xxx;
           r13.yzw = r13.yyy * r2.xyz + r17.xyz;
           r13.yzw = r16.xyz * r13.yzw;
-          r5.x = cmp((int)r16.w != 255);
+
+          // Invert this test and it lights up
+          //r5.x = cmp((int)r16.w != 255);
+          r5.x = cmp((int)r16.w == 255);
+          
           if (r5.x != 0) {
             bitmask.x = ((~(-1 << 16)) << 2) & 0xffffffff;
   r5.x = (((uint)SpotLights[r6.w].w << 2) & bitmask.x) | ((uint)0 & ~bitmask.x);
