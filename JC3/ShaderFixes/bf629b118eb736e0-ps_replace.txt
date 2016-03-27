@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.34 on Sun Mar 20 20:52:29 2016
+// MAIN Shadows - Manually Fixed
 
 
 cbuffer GlobalConstants : register(b0)
@@ -77,7 +77,12 @@ void main(
   float4 v0 : SV_Position0,
   float2 v1 : TEXCOORD0,	// Fix warnings
   float3 v2 : TEXCOORD1,
-  out float4 o0 : SV_Target0)
+  out float4 o0 : SV_Target0,
+  
+  // Extra input from vertex shader:
+  matrix vp : TEXCOORD2,
+  matrix ivp : TEXCOORD6)
+  
 {
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_resource_texture1d (float,float,float,float) t22
@@ -105,6 +110,13 @@ void main(
   r1.x = r1.x * Globals[9].z + Globals[9].w;
   r1.x = 1 / r1.x;
   r6.xyz = v2.xyz * r1.xxx;
+  
+  //Correct shadow:
+  float4 stereo = StereoParams.Load(0);
+  float4 tmp = mul(float4(r6.xyz, 1), vp);
+  tmp.x -= stereo.x * (tmp.w - stereo.y);
+  r6.xyz = mul(tmp, ivp).xyz;
+  
   r1.w = dot(-v2.xyz, -v2.xyz);
   r1.w = rsqrt(r1.w);
   r7.xyz = -v2.xyz * r1.www;
@@ -128,7 +140,11 @@ void main(
   r4.w = 4 * r4.w;
   r4.w = saturate(r4.w);
   r4.w = r8.x ? 0 : r4.w;
-  r9.xyz = r1.xxx * v2.xyz + Globals[4].xyz;
+  
+  //r9.xyz = r1.xxx * v2.xyz + Globals[4].xyz;
+  r9.xyz = r6.xyz + Globals[4].xyz;
+  
+  
   r7.w = dot(v0.xy, float2(12.9898005,78.2330017));
   r7.w = sin(r7.w);
   r7.w = 43758.5469 * r7.w;
@@ -768,7 +784,11 @@ void main(
 // r4.x = t32.Load(r14.w).x;
 r4.x = LightIndices[r14.w].x;
  
-    r13.yzw = -r1.xxx * v2.xyz + PointLights[r4.x].xyz;
+    //r13.yzw = -r1.xxx * v2.xyz + PointLights[r4.x].xyz;
+	r13.yzw = -r6.xyz + PointLights[r4.x].xyz;
+	
+	
+	
     r4.w = dot(r13.yzw, r13.yzw);
     r5.x = cmp(r4.w < PointLights[r4.x].w);
     if (r5.x != 0) {
@@ -857,7 +877,11 @@ r4.x = LightIndices[r14.w].x;
 r5.x = LightIndices[r15.w].x;
 
     r6.w = (int)r5.x + 1;
-    r13.yzw = -r1.xxx * v2.xyz + SpotLights[r5.x].xyz;
+    
+	//r13.yzw = -r1.xxx * v2.xyz + SpotLights[r5.x].xyz;
+	r13.yzw = -r6.xyz + SpotLights[r5.x].xyz;
+	
+	
     r7.w = dot(r13.yzw, r13.yzw);
     r12.w = dot(r13.yzw, SpotLights[r6.w].xyz);
     r16.x = SpotLights[r5.x].w * r7.w;
@@ -877,8 +901,8 @@ r5.x = LightIndices[r15.w].x;
         r16.z = cmp((int)r16.y != 255);
         if (r16.z != 0) {
           r16.z = (uint)r16.y << 2;
-		  // Lost the needed "+ 63" offsets, manually restored.
-          r17.xyzw = Globals[r16.z + 63].xyzw * -r13.yyyy + Globals[r16.z + 66].xyzw;
+      		  // Lost the needed "+ 63" offsets, manually restored.
+	      r17.xyzw = Globals[r16.z + 63].xyzw * -r13.yyyy + Globals[r16.z + 66].xyzw;
           r17.xyzw = Globals[r16.z + 64].xyzw * -r13.zzzz + r17.xyzw;
           r17.xyzw = Globals[r16.z + 65].xyzw * -r13.wwww + r17.xyzw;
           r16.z = 1 / r17.w;
