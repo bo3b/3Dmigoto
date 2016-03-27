@@ -1,11 +1,17 @@
 // ---- Created with 3Dmigoto v1.2.34 on Sun Mar 20 20:52:29 2016
-Buffer<mixed4> t32 : register(t32);
 
 
 cbuffer GlobalConstants : register(b0)
 {
   float4 Globals[95] : packoffset(c0);
 }
+
+// Buffer<mixed4> t32 : register(t32);
+tbuffer tb : register(t32)
+{
+  uint4 LightIndices[2];             // Offset:    0 Size:    32
+};
+
 
 cbuffer LightingFrameConsts : register(b3)
 {
@@ -69,7 +75,7 @@ Texture2D<float4> StereoParams : register(t125);
 
 void main( 
   float4 v0 : SV_Position0,
-  float4 v1 : TEXCOORD0,
+  float2 v1 : TEXCOORD0,	// Fix warnings
   float3 v2 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
@@ -361,9 +367,9 @@ void main(
   r10.z = r10.w * 0.546274245 + r10.z;
   r10.z = max(0, r10.z);
   r14.xyz = GroundFillFlux_9_Color.yzw * r10.zzz;
-  r15.xyzw = SkyLightingRed.Load(float4(0,0,0,0)).xyzw;
-  r16.xyzw = SkyLightingGreen.Load(float4(0,0,0,0)).xyzw;
-  r17.xyzw = SkyLightingBlue.Load(float4(0,0,0,0)).xyzw;
+  r15.xyzw = SkyLightingRed.Load(0).xyzw;		// Fix truncation warnings
+  r16.xyzw = SkyLightingGreen.Load(0).xyzw;
+  r17.xyzw = SkyLightingBlue.Load(0).xyzw;
   r5.x = 1;
   r18.xyzw = float4(0.282094806,-0.488602519,0.488602519,-0.488602519) * r5.xyzw;
   r10.z = dot(r15.xyzw, r18.xyzw);
@@ -758,7 +764,10 @@ void main(
   while (true) {
     r4.x = cmp((uint)r14.w >= (uint)r0.z);
     if (r4.x != 0) break;
-    r4.x = t32.Load(r14.w).x;
+    
+// r4.x = t32.Load(r14.w).x;
+r4.x = LightIndices[r14.w].x;
+ 
     r13.yzw = -r1.xxx * v2.xyz + PointLights[r4.x].xyz;
     r4.w = dot(r13.yzw, r13.yzw);
     r5.x = cmp(r4.w < PointLights[r4.x].w);
@@ -843,7 +852,10 @@ void main(
   while (true) {
     r5.x = cmp((uint)r15.w >= (uint)r0.x);
     if (r5.x != 0) break;
-    r5.x = t32.Load(r15.w).x;
+    
+// r5.x = t32.Load(r15.w).x;
+r5.x = LightIndices[r15.w].x;
+
     r6.w = (int)r5.x + 1;
     r13.yzw = -r1.xxx * v2.xyz + SpotLights[r5.x].xyz;
     r7.w = dot(r13.yzw, r13.yzw);
@@ -865,9 +877,10 @@ void main(
         r16.z = cmp((int)r16.y != 255);
         if (r16.z != 0) {
           r16.z = (uint)r16.y << 2;
-          r17.xyzw = Globals[r16.z].xyzw * -r13.yyyy + Globals[r16.z].xyzw;
-          r17.xyzw = Globals[r16.z].xyzw * -r13.zzzz + r17.xyzw;
-          r17.xyzw = Globals[r16.z].xyzw * -r13.wwww + r17.xyzw;
+		  // Lost the needed "+ 63" offsets, manually restored.
+          r17.xyzw = Globals[r16.z + 63].xyzw * -r13.yyyy + Globals[r16.z + 66].xyzw;
+          r17.xyzw = Globals[r16.z + 64].xyzw * -r13.zzzz + r17.xyzw;
+          r17.xyzw = Globals[r16.z + 65].xyzw * -r13.wwww + r17.xyzw;
           r16.z = 1 / r17.w;
           r16.w = r17.z * r16.z;
           r18.z = (uint)r16.y;
@@ -908,7 +921,10 @@ void main(
         if (r16.y != 0) {
           r16.y = -SpotLights[r6.w].z + 1;
           r16.z = (int)r5.x + 3;
-          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+          
+//          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (uint)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+
           r13.yzw = r16.xxx * r13.yzw;
           r7.w = r16.x * r7.w;
           r5.x = SpotLights[r5.x].w * r7.w;
