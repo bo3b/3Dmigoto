@@ -1410,6 +1410,17 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		return true;
 	}
 
+	// Alternate means to assign StereoParams and IniParams
+	if (is_source && !wcscmp(target, L"stereoparams")) {
+		type = ResourceCopyTargetType::STEREO_PARAMS;
+		return true;
+	}
+
+	if (is_source && !wcscmp(target, L"iniparams")) {
+		type = ResourceCopyTargetType::INI_PARAMS;
+		return true;
+	}
+
 	// XXX: Any reason to allow access to sequential swap chains? Given
 	// they either won't exist or are read only I can't think of one.
 	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
@@ -1487,6 +1498,10 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
 		else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 			operation->options |= ResourceCopyOptions::REFERENCE;
 		else if (operation->src.type == operation->dst.type)
+			operation->options |= ResourceCopyOptions::REFERENCE;
+		else if (operation->dst.type == ResourceCopyTargetType::SHADER_RESOURCE
+				&& (operation->src.type == ResourceCopyTargetType::STEREO_PARAMS
+				|| operation->src.type == ResourceCopyTargetType::INI_PARAMS))
 			operation->options |= ResourceCopyOptions::REFERENCE;
 		else
 			operation->options |= ResourceCopyOptions::COPY;
@@ -1739,6 +1754,14 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			custom_resource->resource->AddRef();
 		return custom_resource->resource;
 
+	case ResourceCopyTargetType::STEREO_PARAMS:
+		*view = mHackerDevice->mStereoResourceView;
+		return mHackerDevice->mStereoTexture;
+
+	case ResourceCopyTargetType::INI_PARAMS:
+		*view = mHackerDevice->mIniResourceView;
+		return mHackerDevice->mIniTexture;
+
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
@@ -1946,6 +1969,8 @@ void ResourceCopyTarget::SetResource(
 		}
 		break;
 
+	case ResourceCopyTargetType::STEREO_PARAMS:
+	case ResourceCopyTargetType::INI_PARAMS:
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		// Only way we could "set" a resource to the back buffer is by
 		// copying to it. Might implement overwrites later, but no
@@ -1976,6 +2001,8 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
+		case ResourceCopyTargetType::STEREO_PARAMS:
+		case ResourceCopyTargetType::INI_PARAMS:
 		case ResourceCopyTargetType::SWAP_CHAIN:
 			// N/A since swap chain can't be set as a destination
 			return (D3D11_BIND_FLAG)0;
