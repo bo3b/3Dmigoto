@@ -436,6 +436,8 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 		custom_resource->override_byte_width = GetIniInt(i->c_str(), L"byte_width", -1, iniFile, NULL);
 		custom_resource->override_stride = GetIniInt(i->c_str(), L"stride", -1, iniFile, NULL);
 
+		custom_resource->width_multiply = GetIniFloat(i->c_str(), L"width_multiply", 1.0f, iniFile, NULL);
+		custom_resource->height_multiply = GetIniFloat(i->c_str(), L"height_multiply", 1.0f, iniFile, NULL);
 
 		// TODO: Overrides for bind flags, misc flags, etc
 	}

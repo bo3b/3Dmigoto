@@ -1040,7 +1040,9 @@ CustomResource::CustomResource() :
 	override_msaa(-1),
 	override_msaa_quality(-1),
 	override_byte_width(-1),
-	override_stride(-1)
+	override_stride(-1),
+	width_multiply(1.0f),
+	height_multiply(1.0f)
 {}
 
 CustomResource::~CustomResource()
@@ -1272,6 +1274,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 	if (override_format != (DXGI_FORMAT)-1)
 		desc->Format = override_format;
 
+	desc->Width = (UINT)(desc->Width * width_multiply);
+
 	// TODO: Add more overrides for bind & misc flags
 }
 
@@ -1298,6 +1302,9 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 			desc->ArraySize = override_array * 6;
 	}
 
+	desc->Width = (UINT)(desc->Width * width_multiply);
+	desc->Height = (UINT)(desc->Height * height_multiply);
+
 	// TODO: Add more overrides for bind & misc flags
 }
 
@@ -1313,6 +1320,9 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 		desc->MipLevels = override_mips;
 	if (override_format != (DXGI_FORMAT)-1)
 		desc->Format = override_format;
+
+	desc->Width = (UINT)(desc->Width * width_multiply);
+	desc->Height = (UINT)(desc->Height * height_multiply);
 
 	// TODO: Add more overrides for bind & misc flags
 }

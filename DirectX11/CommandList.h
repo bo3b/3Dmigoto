@@ -273,6 +273,9 @@ public:
 	int override_byte_width;
 	int override_stride;
 
+	float width_multiply;
+	float height_multiply;
+
 	CustomResource();
 	~CustomResource();
 
