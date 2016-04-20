@@ -1083,6 +1083,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section, wchar_t 
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	L"max_executions_per_frame",
 	// OM Blend State overrides:
 	L"blend", L"alpha", L"mask",
 	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
@@ -1144,6 +1145,9 @@ static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 		ParseBlendState(custom_shader, i->c_str(), iniFile);
 		ParseRSState(custom_shader, i->c_str(), iniFile);
 		ParseTopology(custom_shader, i->c_str(), iniFile);
+
+		custom_shader->max_executions_per_frame =
+			GetIniInt(i->c_str(), L"max_executions_per_frame", 0, iniFile, NULL);
 
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an

@@ -89,6 +89,10 @@ public:
 
 	bool substantiated;
 
+	int max_executions_per_frame;
+	unsigned frame_no;
+	int executions_this_frame;
+
 	CustomShader();
 	~CustomShader();
 

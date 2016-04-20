@@ -376,7 +376,10 @@ CustomShader::CustomShader() :
 	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
 	rs_override(0), rs_state(NULL),
 	topology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED),
-	substantiated(false)
+	substantiated(false),
+	max_executions_per_frame(0),
+	frame_no(0),
+	executions_this_frame(0)
 {
 	int i;
 
@@ -651,6 +654,16 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	D3D11_PRIMITIVE_TOPOLOGY saved_topology;
 
 	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
+
+	if (custom_shader->max_executions_per_frame) {
+		if (custom_shader->frame_no != G->frame_no) {
+			custom_shader->frame_no = G->frame_no;
+			custom_shader->executions_this_frame = 0;
+		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
+			mHackerContext->FrameAnalysisLog("max_executions_per_frame exceeded\n");
+			return;
+		}
+	}
 
 	custom_shader->substantiate(mOrigDevice);
 
