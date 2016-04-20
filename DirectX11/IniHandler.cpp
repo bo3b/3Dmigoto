@@ -63,7 +63,7 @@ static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, 
 		*found = false;
 
 	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
-		swscanf_s(val, L"%f%s", &ret, &len);
+		swscanf_s(val, L"%f%n", &ret, &len);
 		if (len != wcslen(val)) {
 			LogInfo("  WARNING: Floating point parse error: %S=%S\n", key, val);
 			BeepFailure2();
@@ -88,7 +88,7 @@ static int GetIniInt(const wchar_t *section, const wchar_t *key, int def, const 
 
 	// Not using GetPrivateProfileInt as it doesn't tell us if the key existed
 	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
-		swscanf_s(val, L"%d%s", &ret, &len);
+		swscanf_s(val, L"%d%n", &ret, &len);
 		if (len != wcslen(val)) {
 			LogInfo("  WARNING: Integer parse error: %S=%S\n", key, val);
 			BeepFailure2();
@@ -356,8 +356,8 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 			}
 		}
 
-		delay = GetPrivateProfileInt(id, L"delay", 0, iniFile);
-		release_delay = GetPrivateProfileInt(id, L"release_delay", 0, iniFile);
+		delay = GetIniInt(id, L"delay", 0, iniFile, NULL);
+		release_delay = GetIniInt(id, L"release_delay", 0, iniFile, NULL);
 
 		if (type == KeyOverrideType::CYCLE)
 			preset = new KeyOverrideCycle();
@@ -395,9 +395,7 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 		custom_resource = &customResources[resource_id];
 
 		custom_resource->max_copies_per_frame =
-			GetPrivateProfileInt(i->c_str(), L"max_copies_per_frame", 0, iniFile);
-		if (custom_resource->max_copies_per_frame)
-			LogInfo("  max_copies_per_frame=%d\n", custom_resource->max_copies_per_frame);
+			GetIniInt(i->c_str(), L"max_copies_per_frame", 0, iniFile, NULL);
 
 		if (GetPrivateProfileString(i->c_str(), L"filename", 0, setting, MAX_PATH, iniFile)) {
 			LogInfoW(L"  filename=%s\n", setting);
@@ -428,41 +426,16 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			}
 		}
 
-		custom_resource->override_width = GetPrivateProfileInt(i->c_str(), L"width", -1, iniFile);
-		if (custom_resource->override_width != -1)
-			LogInfo("  width=%d\n", custom_resource->override_width);
+		custom_resource->override_width = GetIniInt(i->c_str(), L"width", -1, iniFile, NULL);
+		custom_resource->override_height = GetIniInt(i->c_str(), L"height", -1, iniFile, NULL);
+		custom_resource->override_depth = GetIniInt(i->c_str(), L"depth", -1, iniFile, NULL);
+		custom_resource->override_mips = GetIniInt(i->c_str(), L"mips", -1, iniFile, NULL);
+		custom_resource->override_array = GetIniInt(i->c_str(), L"array", -1, iniFile, NULL);
+		custom_resource->override_msaa = GetIniInt(i->c_str(), L"msaa", -1, iniFile, NULL);
+		custom_resource->override_msaa_quality = GetIniInt(i->c_str(), L"msaa_quality", -1, iniFile, NULL);
+		custom_resource->override_byte_width = GetIniInt(i->c_str(), L"byte_width", -1, iniFile, NULL);
+		custom_resource->override_stride = GetIniInt(i->c_str(), L"stride", -1, iniFile, NULL);
 
-		custom_resource->override_height = GetPrivateProfileInt(i->c_str(), L"height", -1, iniFile);
-		if (custom_resource->override_height != -1)
-			LogInfo("  height=%d\n", custom_resource->override_height);
-
-		custom_resource->override_depth = GetPrivateProfileInt(i->c_str(), L"depth", -1, iniFile);
-		if (custom_resource->override_depth != -1)
-			LogInfo("  depth=%d\n", custom_resource->override_depth);
-
-		custom_resource->override_mips = GetPrivateProfileInt(i->c_str(), L"mips", -1, iniFile);
-		if (custom_resource->override_mips != -1)
-			LogInfo("  mips=%d\n", custom_resource->override_mips);
-
-		custom_resource->override_array = GetPrivateProfileInt(i->c_str(), L"array", -1, iniFile);
-		if (custom_resource->override_array != -1)
-			LogInfo("  array=%d\n", custom_resource->override_array);
-
-		custom_resource->override_msaa = GetPrivateProfileInt(i->c_str(), L"msaa", -1, iniFile);
-		if (custom_resource->override_msaa != -1)
-			LogInfo("  msaa=%d\n", custom_resource->override_msaa);
-
-		custom_resource->override_msaa_quality = GetPrivateProfileInt(i->c_str(), L"msaa_quality", -1, iniFile);
-		if (custom_resource->override_msaa_quality != -1)
-			LogInfo("  msaa_quality=%d\n", custom_resource->override_msaa_quality);
-
-		custom_resource->override_byte_width = GetPrivateProfileInt(i->c_str(), L"byte_width", -1, iniFile);
-		if (custom_resource->override_byte_width != -1)
-			LogInfo("  byte_width=%d\n", custom_resource->override_byte_width);
-
-		custom_resource->override_stride = GetPrivateProfileInt(i->c_str(), L"stride", -1, iniFile);
-		if (custom_resource->override_stride != -1)
-			LogInfo("  stride=%d\n", custom_resource->override_stride);
 
 		// TODO: Overrides for bind flags, misc flags, etc
 	}
@@ -604,16 +577,9 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		}
 		override = &G->mShaderOverrideMap[hash];
 
-		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
-		{
-			swscanf_s(setting, L"%e", &override->separation);
-			LogInfo("  Separation=%f\n", override->separation);
-		}
-		if (GetPrivateProfileString(id, L"Convergence", 0, setting, MAX_PATH, iniFile))
-		{
-			swscanf_s(setting, L"%e", &override->convergence);
-			LogInfo("  Convergence=%f\n", override->convergence);
-		}
+		override->separation = GetIniFloat(id, L"Separation", FLT_MAX, iniFile, NULL);
+		override->convergence = GetIniFloat(id, L"Convergence", FLT_MAX, iniFile, NULL);
+
 		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
 			if (!wcscmp(setting, L"skip")) {
 				override->skip = true;
@@ -671,9 +637,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
-		override->fake_o0 = GetPrivateProfileInt(id, L"fake_o0", 0, iniFile) == 1;
-		if (override->fake_o0)
-			LogInfo("  fake_o0=1\n");
+		override->fake_o0 = GetIniBool(id, L"fake_o0", false, iniFile, NULL);
 
 		if (GetPrivateProfileString(id, L"model", 0, setting, MAX_PATH, iniFile)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -740,21 +704,10 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		}
 		override = &G->mTextureOverrideMap[hash];
 
-		override->stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-		if (override->stereoMode != -1)
-			LogInfo("  StereoMode=%d\n", override->stereoMode);
-
-		override->format = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-		if (override->format != -1)
-			LogInfo("  Format=%d\n", override->format);
-
-		override->width = GetPrivateProfileInt(id, L"Width", -1, iniFile);
-		if (override->width != -1)
-			LogInfo("  Width=%d\n", override->width);
-
-		override->height = GetPrivateProfileInt(id, L"Height", -1, iniFile);
-		if (override->height != -1)
-			LogInfo("  Height=%d\n", override->height);
+		override->stereoMode = GetIniInt(id, L"StereoMode", -1, iniFile, NULL);
+		override->format = GetIniInt(id, L"Format", -1, iniFile, NULL);
+		override->width = GetIniInt(id, L"Width", -1, iniFile, NULL);
+		override->height = GetIniInt(id, L"Height", -1, iniFile, NULL);
 
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
@@ -782,18 +735,10 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
-		if (GetPrivateProfileString(id, L"filter_index", 0, setting, MAX_PATH, iniFile)) {
-			swscanf_s(setting, L"%f", &override->filter_index);
-			LogInfo("  filter_index=%f\n", override->filter_index);
-		}
+		override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, iniFile, NULL);
 
-		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
-		if (override->expand_region_copy)
-			LogInfo("  expand_region_copy=1\n");
-
-		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
-		if (override->deny_cpu_read)
-			LogInfo("  deny_cpu_read=1\n");
+		override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, iniFile, NULL);
+		override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, iniFile, NULL);
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}
@@ -928,12 +873,12 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section, wchar_
 	D3D11_BLEND_DESC *desc = &shader->blend_desc;
 	wchar_t setting[MAX_PATH];
 	wchar_t key[32];
-	int i, ival;
+	int i;
+	bool found;
 
 	memset(desc, 0, sizeof(D3D11_BLEND_DESC));
 
 	// Set a default blend state for any missing values:
-	desc->AlphaToCoverageEnable = false;
 	desc->IndependentBlendEnable = false;
 	desc->RenderTarget[0].BlendEnable = false;
 	desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
@@ -961,20 +906,15 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section, wchar_
 		}
 	}
 
-	ival = GetPrivateProfileInt(section, L"alpha_to_coverage", -1, iniFile);
-	if (ival != -1) {
+	desc->AlphaToCoverageEnable = GetIniBool(section, L"alpha_to_coverage", false, iniFile, &found);
+	if (found)
 		shader->blend_override = 1;
-		desc->AlphaToCoverageEnable = ival == 1;
-		LogInfo("  alpha_to_coverage=%i\n", desc->AlphaToCoverageEnable);
-	}
 
 	for (i = 0; i < 4; i++) {
 		swprintf_s(key, ARRAYSIZE(key), L"blend_factor[%i]", i);
-		if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		shader->blend_factor[i] = GetIniFloat(section, key, 0.0f, iniFile, &found);
+		if (found)
 			shader->blend_override = 1;
-			swscanf_s(setting, L"%f", &shader->blend_factor[i]);
-			LogInfo("  %S=%f\n", key, shader->blend_factor[i]);
-		}
 	}
 
 	if (GetPrivateProfileString(section, L"sample_mask", 0, setting, MAX_PATH, iniFile)) {
@@ -1300,6 +1240,7 @@ void LoadConfigFile()
 	// so that there is no question what settings we are using.
 
 	// [Logging]
+	// Not using the helper function for this one since logging isn't enabled yet
 	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
 	{
 		if (!LogFile)
@@ -1307,18 +1248,20 @@ void LoadConfigFile()
 		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
+	LogInfo("[Logging]\n");
+	LogInfo("  calls=1\n");
 
 	GetIniSections(sections, iniFile);
 
-	G->gLogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
-	gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
+	G->gLogInput = GetIniBool(L"Logging", L"input", false, iniFile, NULL);
+	gLogDebug = GetIniBool(L"Logging", L"debug", false, iniFile, NULL);
 
 	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 	// to open active files.
-	int unbuffered = -1;
-	if (LogFile && GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
+	if (LogFile && GetIniBool(L"Logging", L"unbuffered", false, iniFile, NULL))
 	{
-		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+		int unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+		LogInfo("    unbuffered return: %d\n", unbuffered);
 	}
 
 // Let's not do this - it's trivially easy to turn this on in the ini if we
@@ -1332,19 +1275,17 @@ void LoadConfigFile()
 //#endif
 
 	// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
-	BOOL affinity = -1;
-	if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, iniFile))
+	if (GetIniBool(L"Logging", L"force_cpu_affinity", false, iniFile, NULL))
 	{
 		DWORD one = 0x01;
-		affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
+		BOOL affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
+		LogInfo("    force_cpu_affinity return: %s\n", affinity ? "true" : "false");
 	}
 
 	// If specified in Logging section, wait for Attach to Debugger.
-	bool waitfordebugger = false;
-	int debugger = GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile);
+	int debugger = GetIniInt(L"Logging", L"waitfordebugger", 0, iniFile, NULL);
 	if (debugger > 0)
 	{
-		waitfordebugger = true;
 		do
 		{
 			Sleep(250);
@@ -1352,14 +1293,6 @@ void LoadConfigFile()
 		if (debugger > 1)
 			__debugbreak();
 	}
-
-	LogInfo("[Logging]\n");
-	LogInfo("  calls=1\n");
-	if (G->gLogInput) LogInfo("  input=1\n");
-	LogDebug("  debug=1\n");
-	if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-	if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
-	if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
 
 	// [System]
 	LogInfo("[System]\n");
@@ -1373,32 +1306,24 @@ void LoadConfigFile()
 	}
 
 	// [Device] (DXGI parameters)
-	if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
-	if (GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
-	if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
+	LogInfo("[Device]\n");
+	G->SCREEN_WIDTH = GetIniInt(L"Device", L"width", -1, iniFile, NULL);
+	G->SCREEN_HEIGHT = GetIniInt(L"Device", L"height", -1, iniFile, NULL);
+	G->SCREEN_REFRESH = GetIniInt(L"Device", L"refresh_rate", -1, iniFile, NULL);
+
 	if (GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH, iniFile))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			G->FILTER_REFRESH + 0, G->FILTER_REFRESH + 1, G->FILTER_REFRESH + 2, G->FILTER_REFRESH + 3, 
 			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7, 
 			G->FILTER_REFRESH + 8, G->FILTER_REFRESH + 9);
+		LogInfoW(L"  filter_refresh_rate=%s\n", setting);
 	}
-	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", -1, iniFile);
-	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
-	G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
-	G->SCREEN_ALLOW_COMMANDS = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1;
 
-	LogInfo("[Device]\n");
-	if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
-	if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
-	if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-	if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%d\n", G->FILTER_REFRESH[0]);
-	if (G->SCREEN_FULLSCREEN != -1) LogInfo("  full_screen=%d\n", G->SCREEN_FULLSCREEN);
-	if (G->gForceStereo) LogInfo("  force_stereo=1\n");
-	if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
+	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, iniFile, NULL);
+	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
+	G->gForceStereo = GetIniBool(L"Device", L"force_stereo", false, iniFile, NULL);
+	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, iniFile, NULL);
 
 	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
@@ -1412,20 +1337,15 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	// [Stereo]
-	bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll
-	G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;
-	G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
-	G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
-	G->gForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, iniFile) == 1;
-
 	LogInfo("[Stereo]\n");
-	if (automaticMode) LogInfo("  automatic_mode=1\n");
-	if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
-	if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
-	if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
-	if (G->gForceNoNvAPI) LogInfo("  force_no_nvapi=1 \n");
+	bool automaticMode = GetIniBool(L"Stereo", L"automatic_mode", false, iniFile, NULL);				// in NVapi dll
+	G->gCreateStereoProfile = GetIniBool(L"Stereo", L"create_profile", false, iniFile, NULL);
+	G->gSurfaceCreateMode = GetIniInt(L"Stereo", L"surface_createmode", -1, iniFile, NULL);
+	G->gSurfaceSquareCreateMode = GetIniInt(L"Stereo", L"surface_square_createmode", -1, iniFile, NULL);
+	G->gForceNoNvAPI = GetIniBool(L"Stereo", L"force_no_nvapi", false, iniFile, NULL);
 
 	// [Rendering]
+	LogInfo("[Rendering]\n");
 	GetPrivateProfileString(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH, iniFile);
 	if (G->SHADER_PATH[0])
 	{
@@ -1457,19 +1377,19 @@ void LoadConfigFile()
 		CreateDirectory(G->SHADER_CACHE_PATH, 0);
 	}
 
-	G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, iniFile) == 1;
-	G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, iniFile) == 1;
-	G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, iniFile) == 1;
-	G->track_texture_updates = GetPrivateProfileInt(L"Rendering", L"track_texture_updates", 0, iniFile) == 1;
+	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, iniFile, NULL);
+	G->ENABLE_CRITICAL_SECTION = GetIniBool(L"Rendering", L"use_criticalsection", false, iniFile, NULL);
+	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, iniFile, NULL);
+	G->track_texture_updates = GetIniBool(L"Rendering", L"track_texture_updates", false, iniFile, NULL);
 
-	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
-	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
-	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
-	G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, iniFile) == 1;
-	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
+	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, iniFile, NULL);
+	G->EXPORT_SHADERS = GetIniBool(L"Rendering", L"export_shaders", false, iniFile, NULL);
+	G->EXPORT_HLSL = GetIniInt(L"Rendering", L"export_hlsl", 0, iniFile, NULL);
+	G->EXPORT_BINARY = GetIniBool(L"Rendering", L"export_binary", false, iniFile, NULL);
+	G->DumpUsage = GetIniBool(L"Rendering", L"dump_usage", false, iniFile, NULL);
 
-	G->StereoParamsReg = GetPrivateProfileInt(L"Rendering", L"stereo_params", 125, iniFile);
-	G->IniParamsReg = GetPrivateProfileInt(L"Rendering", L"ini_params", 120, iniFile);
+	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, iniFile, NULL);
+	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, iniFile, NULL);
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		LogInfo("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		BeepFailure2();
@@ -1481,31 +1401,16 @@ void LoadConfigFile()
 		G->IniParamsReg = -1;
 	}
 
-	LogInfo("[Rendering]\n");
 	if (G->SHADER_PATH[0])
 		LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
 	if (G->SHADER_CACHE_PATH[0])
 		LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
-	if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
-	if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
-	if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
-	if (G->track_texture_updates) LogInfo("  track_texture_updates=1\n");
-
-	if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
-	if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
-	if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
-	if (G->EXPORT_BINARY) LogInfo("  export_binary=1\n");
-	if (G->DumpUsage) LogInfo("  dump_usage=1\n");
-
-	LogInfo("  stereo_params=%i\n", G->StereoParamsReg);
-	LogInfo("  ini_params=%i\n", G->IniParamsReg);
-
 
 	// Automatic section 
-	G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, iniFile) == 1;
-	G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, iniFile) == 1;
-	G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, iniFile) == 1;
+	G->FIX_SV_Position = GetIniBool(L"Rendering", L"fix_sv_position", false, iniFile, NULL);
+	G->FIX_Light_Position = GetIniBool(L"Rendering", L"fix_light_position", false, iniFile, NULL);
+	G->FIX_Recompile_VS = GetIniBool(L"Rendering", L"recompile_all_vs", false, iniFile, NULL);
 	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH, iniFile))
 	{
 		char buf[MAX_PATH];
@@ -1597,9 +1502,7 @@ void LoadConfigFile()
 
 	// [Hunting]
 	LogInfo("[Hunting]\n");
-	G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile);
-	if (G->hunting)
-		LogInfo("  hunting=%u\n", G->hunting);
+	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, iniFile, NULL);
 
 	G->marking_mode = MARKING_MODE_SKIP;
 	if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
