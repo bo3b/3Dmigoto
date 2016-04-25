@@ -10,6 +10,7 @@
 #include "nvapi.h"
 #include "log.h"
 #include "util.h"
+#include "shader.h"
 #include "DecompileHLSL.h"
 #include "HackerContext.h"
 #include "Globals.h"
@@ -1807,6 +1808,68 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	return hr;
 }
 
+static uint32_t hash_shader_bytecode(struct dxbc_header *header, SIZE_T BytecodeLength)
+{
+	uint32_t *offsets = (uint32_t*)((char*)header + sizeof(struct dxbc_header));
+	struct section_header *section;
+	unsigned i;
+
+	if (BytecodeLength < sizeof(struct dxbc_header) + header->num_sections*sizeof(uint32_t))
+		return 0;
+
+	for (i = 0; i < header->num_sections; i++) {
+		section = (struct section_header*)((char*)header + offsets[i]);
+		if (BytecodeLength < (char*)section - (char*)header + sizeof(struct section_header) + section->size)
+			return 0;
+
+		if (!strncmp(section->signature, "SHEX", 4) || !strncmp(section->signature, "SHDR", 4))
+			return crc32c_hw(0, (char*)section + sizeof(struct section_header), section->size);
+	}
+
+	LogInfo("  No SHEX / SHDR section - falling back to FNV\n");
+	return 0;
+}
+
+static UINT64 hash_shader(const void *pShaderBytecode, SIZE_T BytecodeLength)
+{
+	UINT64 hash = 0;
+	struct dxbc_header *header = (struct dxbc_header *)pShaderBytecode;
+
+	if (BytecodeLength < sizeof(struct dxbc_header))
+		goto fnv;
+
+	switch (G->shader_hash_type) {
+		case ShaderHashType::FNV:
+fnv:
+			hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
+			LogInfo("       FNV hash = %016I64x\n", hash);
+			break;
+
+		case ShaderHashType::EMBEDDED:
+			// Confirmed with dx11shaderanalyse that the hash
+			// embedded in the file is as md5sum would have printed
+			// it (that is - if md5sum used the same obfuscated
+			// message size padding), so read it as big-endian so
+			// that we print it the same way for consistency.
+			//
+			// Endian bug: _byteswap_uint64 is unconditional, but I
+			// don't want to pull in all of winsock just for ntohl,
+			// and since we are only targetting x86... meh.
+			hash = _byteswap_uint64(header->hash[0] | (UINT64)header->hash[1] << 32);
+			LogInfo("  Embedded hash = %016I64x\n", hash);
+			break;
+
+		case ShaderHashType::BYTECODE:
+			hash = hash_shader_bytecode(header, BytecodeLength);
+			if (!hash)
+				goto fnv;
+			LogInfo("  Bytecode hash = %016I64x\n", hash);
+			break;
+	}
+
+	return hash;
+}
+
 
 // C++ function template of common code shared by all CreateXXXShader functions:
 template <class ID3D11Shader,
@@ -1844,8 +1907,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	if (pShaderBytecode && ppShader)
 	{
 		// Calculate hash
-		hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
-		LogInfo("  bytecode hash = %016I64x\n", hash);
+		hash = hash_shader(pShaderBytecode, BytecodeLength);
 
 		// Check if the user has overridden the shader model:
 		ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);

@@ -47,6 +47,7 @@
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="HookedContext.h" />
     <ClInclude Include="HookedDevice.h" />
+    <ClInclude Include="..\shader.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

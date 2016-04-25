@@ -1352,6 +1352,20 @@ void LoadConfigFile()
 
 	// [Rendering]
 	LogInfo("[Rendering]\n");
+
+	G->shader_hash_type = ShaderHashType::FNV;
+	if (GetPrivateProfileString(L"Rendering", L"shader_hash", 0, setting, MAX_PATH, iniFile)) {
+		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
+			(ShaderHashNames, setting, ShaderHashType::INVALID);
+		if (G->shader_hash_type == ShaderHashType::INVALID) {
+			LogInfoW(L"  WARNING: Unknown shader_hash \"%s\"\n", setting);
+			G->shader_hash_type = ShaderHashType::FNV;
+			BeepFailure2();
+		} else {
+			LogInfoW(L"  shader_hash=%s\n", setting);
+		}
+	}
+
 	GetPrivateProfileString(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH, iniFile);
 	if (G->SHADER_PATH[0])
 	{

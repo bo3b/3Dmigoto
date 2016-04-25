@@ -300,6 +300,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shader.h" />
     <ClInclude Include="..\..\util.h" />
     <ClInclude Include="..\DecompileHLSL.h" />
     <ClInclude Include="stdafx.h" />

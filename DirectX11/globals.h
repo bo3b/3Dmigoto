@@ -30,6 +30,19 @@ const int MARKING_MODE_ORIGINAL = 2;
 const int MARKING_MODE_ZERO = 3;
 const int MARKING_MODE_PINK = 4;
 
+enum class ShaderHashType {
+	INVALID = -1,
+	FNV,
+	EMBEDDED,
+	BYTECODE,
+};
+static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
+	{L"3dmigoto", ShaderHashType::FNV},
+	{L"embedded", ShaderHashType::EMBEDDED},
+	{L"bytecode", ShaderHashType::BYTECODE},
+	{NULL, ShaderHashType::INVALID} // End of list marker
+};
+
 // Key is index/vertex buffer, value is hash key.
 typedef std::unordered_map<ID3D11Buffer *, uint32_t> DataBufferMap;
 
@@ -304,6 +317,7 @@ struct Globals
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
 
+	ShaderHashType shader_hash_type;
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
 	bool track_texture_updates;
@@ -445,6 +459,7 @@ struct Globals
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
 
+		shader_hash_type(ShaderHashType::FNV),
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
 		EXPORT_FIXED(false),
