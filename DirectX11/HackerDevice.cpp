@@ -1808,11 +1808,39 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	return hr;
 }
 
+// Whitelist bytecode sections for the bytecode hash. This should include any
+// section that clearly makes the shader different from another near identical
+// shader such that they are not compatible with one another, such as the
+// bytecode itself as well as the input/output/patch constant signatures.
+//
+// It should not include metadata that might change for a reason other than the
+// shader being changed. In particular, it should not include the compiler
+// version (in the RDEF section), which may change if the developer upgrades
+// their build environment, or debug information that includes the directory on
+// the developer's machine that the shader was compiled from (in the SDBG
+// section). The STAT section is also intentionally not included because it
+// contains nothing useful.
+//
+// The RDEF section may arguably be useful to compromise between this and a
+// hash of the entire shader - it includes the compiler version, which makes it
+// a bad idea to hash, BUT it also includes the reflection information such as
+// variable names which arguably might be useful to distinguish between
+// otherwise identical shaders. However I don't think there is much advantage
+// of that over just hashing the full shader, and in some cases we might like
+// to ignore variable name changes, so it seems best to skip it.
+static char* hash_whitelisted_sections[] = {
+	"SHDR", "SHEX",         // Bytecode
+	"ISGN",         "ISG1", // Input signature
+	"PCSG",         "PSG1", // Patch constant signature
+	"OSGN", "OSG5", "OSG1", // Output signature
+};
+
 static uint32_t hash_shader_bytecode(struct dxbc_header *header, SIZE_T BytecodeLength)
 {
 	uint32_t *offsets = (uint32_t*)((char*)header + sizeof(struct dxbc_header));
 	struct section_header *section;
-	unsigned i;
+	unsigned i, j;
+	uint32_t hash = 0;
 
 	if (BytecodeLength < sizeof(struct dxbc_header) + header->num_sections*sizeof(uint32_t))
 		return 0;
@@ -1822,12 +1850,13 @@ static uint32_t hash_shader_bytecode(struct dxbc_header *header, SIZE_T Bytecode
 		if (BytecodeLength < (char*)section - (char*)header + sizeof(struct section_header) + section->size)
 			return 0;
 
-		if (!strncmp(section->signature, "SHEX", 4) || !strncmp(section->signature, "SHDR", 4))
-			return crc32c_hw(0, (char*)section + sizeof(struct section_header), section->size);
+		for (j = 0; j < ARRAYSIZE(hash_whitelisted_sections); j++) {
+			if (!strncmp(section->signature, hash_whitelisted_sections[j], 4))
+				hash = crc32c_hw(hash, (char*)section + sizeof(struct section_header), section->size);
+		}
 	}
 
-	LogInfo("  No SHEX / SHDR section - falling back to FNV\n");
-	return 0;
+	return hash;
 }
 
 static UINT64 hash_shader(const void *pShaderBytecode, SIZE_T BytecodeLength)
