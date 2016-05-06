@@ -1430,20 +1430,24 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
-	// Every presented frame, we want to take some CPU time to run our actions,
-	// which enables hunting, and snapshots, and aiming overrides and other inputs
-	RunFrameActions();
+	if (!(Flags & DXGI_PRESENT_TEST)) {
+		// Every presented frame, we want to take some CPU time to run our actions,
+		// which enables hunting, and snapshots, and aiming overrides and other inputs
+		RunFrameActions();
+	}
 
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
 
-	// Update the stereo params texture just after the present so that we
-	// get the new values for the current frame:
-	UpdateStereoParams(mHackerDevice, mHackerContext);
+	if (!(Flags & DXGI_PRESENT_TEST)) {
+		// Update the stereo params texture just after the present so that we
+		// get the new values for the current frame:
+		UpdateStereoParams(mHackerDevice, mHackerContext);
 
-	// Run the post present command list now, which can be used to restore
-	// state changed in the pre-present command list, or to perform some
-	// action at the start of a frame:
-	RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
+		// Run the post present command list now, which can be used to restore
+		// state changed in the pre-present command list, or to perform some
+		// action at the start of a frame:
+		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
+	}
 
 	LogDebug("  returns %x\n", hr);
 	return hr;
@@ -1696,18 +1700,28 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
 	LogInfo("HackerDXGISwapChain1::Present1(%s@%p) called \n", type_name(this), this);
 	LogInfo("  SyncInterval = %d\n", SyncInterval);
 	LogInfo("  PresentFlags = %d\n", PresentFlags);
-	
-	// Every presented frame, we want to take some CPU time to run our actions,
-	// which enables hunting, and snapshots, and aiming overrides and other inputs
-//	RunFrameActions();
 
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	// But only when hunting is enabled, this will also make it obvious when
-	// hunting is on.
-//	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
-//		mOverlay->DrawOverlay();
+	// TODO like regular Present call:
+	// if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+	// 	// Every presented frame, we want to take some CPU time to run our actions,
+	// 	// which enables hunting, and snapshots, and aiming overrides and other inputs
+	// 	RunFrameActions();
+	// }
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
+
+	// TODO like regular Present call:
+	// if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+	// 	// Update the stereo params texture just after the present so that we
+	// 	// get the new values for the current frame:
+	// 	UpdateStereoParams(mHackerDevice, mHackerContext);
+
+	// 	// Run the post present command list now, which can be used to restore
+	// 	// state changed in the pre-present command list, or to perform some
+	// 	// action at the start of a frame:
+	// 	RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
+	// }
+
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
