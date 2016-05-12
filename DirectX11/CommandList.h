@@ -19,6 +19,7 @@ struct CommandListState {
 	float rt_width, rt_height;
 	DrawCallInfo *call_info;
 	bool post;
+	CURSORINFO cursor_info;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -28,7 +29,8 @@ struct CommandListState {
 		rt_height(-1),
 		call_info(NULL),
 		post(false),
-		update_params(false)
+		update_params(false),
+		cursor_info()
 	{}
 };
 
@@ -158,6 +160,9 @@ enum class ParamOverrideType {
 	VERTEX_COUNT,
 	INDEX_COUNT,
 	INSTANCE_COUNT,
+	CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
+	CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
+	CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -170,6 +175,9 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
 	{L"index_count", ParamOverrideType::INDEX_COUNT},
 	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
+	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
+	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
+	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {

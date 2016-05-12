@@ -829,6 +829,15 @@ static float ProcessParamTextureFilter(HackerContext *mHackerContext,
 	return tex->filter_index;
 }
 
+static void UpdateCursorInfo(CommandListState *state)
+{
+	if (state->cursor_info.cbSize)
+		return;
+
+	state->cursor_info.cbSize = sizeof(CURSORINFO);
+	GetCursorInfo(&state->cursor_info);
+}
+
 void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
@@ -876,6 +885,18 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 				*dest = (float)state->call_info->InstanceCount;
 			else
 				*dest = 0;
+			break;
+		case ParamOverrideType::CURSOR_VISIBLE:
+			UpdateCursorInfo(state);
+			*dest = !!(state->cursor_info.flags & CURSOR_SHOWING);
+			break;
+		case ParamOverrideType::CURSOR_SCREEN_X:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_info.ptScreenPos.x;
+			break;
+		case ParamOverrideType::CURSOR_SCREEN_Y:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_info.ptScreenPos.y;
 			break;
 		default:
 			return;
