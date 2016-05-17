@@ -26,7 +26,7 @@
 
 #define VERSION_MAJOR               1
 #define VERSION_MINOR               2
-#define VERSION_REVISION            37
+#define VERSION_REVISION            38
  
 #define STRINGIZE2(s) #s
 #define STRINGIZE(s) STRINGIZE2(s)
