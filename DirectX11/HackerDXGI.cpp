@@ -386,7 +386,7 @@ STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
 // system, and that is better for us in general. Only early access and beta
 // releases are requiring Factory2, and when wrapping those, we get a crash of
 // some form, that may not be our fault.
-// 
+//
 // Note that we can expect this QueryInterface to get called for any 
 // HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
 
@@ -396,30 +396,27 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 {
 	LogInfo("HackerDXGIFactory::QueryInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
-	HRESULT hr;
+	HRESULT	hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
-	if (riid == __uuidof(IDXGIFactory2))
+	if (SUCCEEDED(hr) && ppvObject)
 	{
-		// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		if (riid == __uuidof(IDXGIFactory2))
+		{
+			// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+			// Unless we are overriding default behavior from ini file.
+			if (!G->enable_dxgi1_2)
+			{
+				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+				*ppvObject = NULL;
+				return E_NOINTERFACE;
+			}
 
-		// For when we need to return a legit Factory2.  Crashes at present.
-		//hr = mOrigFactory->QueryInterface(riid, ppvObject);
-		//HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
-		//LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
-
-		//if (factory2Wrap == NULL)
-		//{
-		//	LogInfo("  error allocating factory2Wrap. \n");
-		//	return E_OUTOFMEMORY;
-		//}
-
-		//*ppvObject = factory2Wrap;
+			// For when we need to return a legit Factory2.  
+			HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+			LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
+			*ppvObject = factory2Wrap;
+		}
 	}
-	
-	hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
 	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;

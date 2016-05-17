@@ -288,6 +288,8 @@ struct Globals
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 
 	EnableHooks enable_hooks;
+	
+	bool enable_dxgi1_2;
 
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
@@ -494,6 +496,7 @@ struct Globals
 		SCISSOR_DISABLE(0),
 
 		enable_hooks(EnableHooks::INVALID),
+		enable_dxgi1_2(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
 		gLogInput(false)
