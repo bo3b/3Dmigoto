@@ -289,6 +289,7 @@ struct Globals
 
 	EnableHooks enable_hooks;
 	
+	bool enable_check_interface;
 	bool enable_dxgi1_2;
 
 	int SCREEN_WIDTH;
@@ -496,6 +497,7 @@ struct Globals
 		SCISSOR_DISABLE(0),
 
 		enable_hooks(EnableHooks::INVALID),
+		enable_check_interface(false),
 		enable_dxgi1_2(false),
 		gInitialized(false),
 		gReloadConfigPending(false),

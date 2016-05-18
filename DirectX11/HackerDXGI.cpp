@@ -1070,8 +1070,12 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
 	// when no evil update is installed, and matches our CreateDevice strategy.
 	// Because this call is only ever supposed to be used for ID3D10 lookups, this
 	// probably means it will always return the error.
-	if (InterfaceName != __uuidof(ID3D11Device))
-		hr = DXGI_ERROR_UNSUPPORTED;
+	// Some games fail at launch, so a d3dx.ini setting can allow them skip this.
+	if (!G->enable_check_interface)
+	{
+		if (InterfaceName != __uuidof(ID3D11Device))
+			hr = DXGI_ERROR_UNSUPPORTED;
+	}
 
 	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
 	LogInfo("  returns hr=%x\n", hr);

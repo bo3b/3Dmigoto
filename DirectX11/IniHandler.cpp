@@ -1316,6 +1316,11 @@ void LoadConfigFile()
 		LogInfoW(L"  allow_dxgi1_2=%s\n", setting);
 		G->enable_dxgi1_2 = true;
 	}
+	if (GetPrivateProfileString(L"System", L"allow_check_interface", 0, setting, MAX_PATH, iniFile))
+	{
+		LogInfoW(L"  allow_check_interface=%s\n", setting);
+		G->enable_check_interface = true;
+	}
 
 	// [Device] (DXGI parameters)
 	LogInfo("[Device]\n");
