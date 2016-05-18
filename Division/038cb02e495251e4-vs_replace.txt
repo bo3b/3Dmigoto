@@ -1,17 +1,21 @@
 // HUD
-cbuffer cb1 : register(b1)
-{
-  float4 cb1[1];
-}
-
 cbuffer cb0 : register(b0)
 {
   float4 cb0[2];
 }
 
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[1];
+}
 
 
+// raw
+// No resource bindings, so no names or other info, but ByteAddressBuffer
+// is the right data type for raw.
+ByteAddressBuffer RawBuffer : register(t0);
 
+  
 // 3Dmigoto declarations
 #define cmp -
 Texture1D<float4> IniParams : register(t120);
@@ -27,10 +31,12 @@ void main(
   float2 v5 : CUSTOM5,
   float2 v6 : CUSTOM6,
   out float4 o0 : IO0_unClippedPos0,
-  out float3 o1 : IO1_edgeuv0,
+// float3 for real, but compiler packing bug. float4 pushes to next register.
+out float4 o1 : IO1_edgeuv0,    
   out float o2 : IO2_UI_UserBig0,
   out float p2 : IO4_UI_UserSmall0,
-  out int p2 : IO6_UI_RenderType0,
+// should be int, but compiler moves to new reg.  Make sure output is actually int.
+out float q2 : IO6_UI_RenderType0,
   out float4 o3 : IO3_Gfx_ClipPosition0,
   out float2 o4 : IO5_Gfx_UV0,
   out float4 o5 : IO7_Gfx_Color0,
@@ -38,15 +44,25 @@ void main(
 {
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_resource_raw t0
-  float4 r0,r1,r2,r3;
+float4 r0;
+float4 r1;
+uint4 r2;
+float4 r3;
   uint4 bitmask, uiDest;
   float4 fDest;
 
   r0.xy = float2(255,255) * v2.zw;
-  r0.xy = (int2)r0.xy;
-  r1.x = (uint)r0.x << 6;
+  
+//  r0.xy = (int2)r0.xy;
+int2 tmp = (int2)r0.xy;
+//  r1.x = (uint)r0.x << 6;
+uint index = tmp.x << 6;
+
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xyzw, r1.x, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xyzw, r1.x, t0.xyzw
+// Tricky because it's a raw buffer load, so it's not using [] form.
+r1.xyzw = asfloat(RawBuffer.Load4(index));
+
   bitmask.x = ((~(-1 << 26)) << 6) & 0xffffffff;
   r2.x = (((uint)r0.x << 6) & bitmask.x) | ((uint)16 & ~bitmask.x);
   bitmask.y = ((~(-1 << 26)) << 6) & 0xffffffff;
@@ -54,15 +70,22 @@ ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xyzw, r1.x, t0.xyzw
   bitmask.z = ((~(-1 << 26)) << 6) & 0xffffffff;
   r2.z = (((uint)r0.x << 6) & bitmask.z) | ((uint)48 & ~bitmask.z);
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r3.xyzw, r2.x, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r3.xyzw, r2.x, t0.xyzw
+r3.xyzw = asfloat(RawBuffer.Load4(r2.x));
+
   r3.xyzw = v0.yyyy * r3.xyzw;
   r1.xyzw = r1.xyzw * v0.xxxx + r3.xyzw;
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r3.xyzw, r2.y, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r3.xyzw, r2.y, t0.xyzw
+r3.xyzw = asfloat(RawBuffer.Load4(r2.y));
+
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r2.z, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r2.z, t0.xyzw
+//r2.xyzw = asfloat(RawBuffer.Load4(r2.z));
+float4 tmp_float = asfloat(RawBuffer.Load4(r2.z));
+
   r1.xyzw = r3.xyzw * v0.zzzz + r1.xyzw;
-  r1.xyzw = r1.xyzw + r2.xyzw;
+  r1.xyzw = r1.xyzw + tmp_float.xyzw;
   o0.xyzw = r1.xyzw;
   r0.x = -1 + r1.w;
   r0.x = cb1[0].z * r0.x + 1;
@@ -70,7 +93,15 @@ ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r2.z, t0.xyzw
   o1.z = r0.x;
   r0.z = v0.w;
   r0.w = v2.y;
-  o2.xyz = r0.zwy;
+//  o2.xyz = r0.zwy;
+o2.x = r0.z;
+p2.x = r0.w;
+// This should be int, but we can't specify that in header because the
+// compiler aggressively forces it to a different register.  So it's defined
+// as float, but is actually an int output to be sent along.  Using the 'asfloat'
+// intrinsic tells the compiler to not insert any conversions.
+q2.x = asfloat(r0.y);
+
   r0.xyzw = cb0[0].xyzw * r1.xyww;
   r0.xy = r0.xy + r0.zw;
   r0.zw = cb0[1].xy * cb0[0].xy;

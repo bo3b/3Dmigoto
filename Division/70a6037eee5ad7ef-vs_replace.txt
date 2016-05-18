@@ -21,9 +21,15 @@ void main(
   out float2 p2 : IO5_uv1Max0,
   out float4 o3 : SV_Position0)
 {
-  o0.xyzw = v1.xyzw;
-  o1.xyzw = v2.xyzw;
-  o2.xyzw = v3.xyzw;
+//  o0.xyzw = v1.xyzw;
+o0.xy = v1.xy;
+p0.xy = v1.zw;
+//  o1.xyzw = v2.xyzw;
+o1.xy = v2.xy;
+p1.xy = v2.zw;
+//  o2.xyzw = v3.xyzw;
+o2.xy = v3.xy;
+p2.xy = v3.zw;
   o3.xyz = v0.xyz;
   o3.w = 1;
   return;

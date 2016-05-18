@@ -1,14 +1,18 @@
 // HUD Crosshair
-cbuffer cb1 : register(b1)
-{
-  float4 cb1[1];
-}
-
 cbuffer cb0 : register(b0)
 {
   float4 cb0[2];
 }
 
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[1];
+}
+
+// raw
+// No resource bindings, so no names or other info, but ByteAddressBuffer
+// is the right data type for raw.
+ByteAddressBuffer RawBuffer : register(t0);
 
 
 
@@ -42,25 +46,48 @@ void main(
   float4 fDest;
 
   r0.xy = float2(255,255) * v2.zw;
+  
   r0.x = (int)r0.x;
   o5.x = (int)r0.y;
-  r0.y = (uint)r0.x << 6;
+  
+  // r0.y = (uint)r0.x << 6;
+  
+  // bitmask.x = ((~(-1 << 26)) << 6) & 0xffffffff;
+  // r0.x = (((uint)r0.x << 6) & bitmask.x) | ((uint)16 & ~bitmask.x);
+  // bitmask.z = ((~(-1 << 26)) << 6) & 0xffffffff;
+  // r0.z = (((uint)r0.x << 6) & bitmask.z) | ((uint)32 & ~bitmask.z);
+  // bitmask.w = ((~(-1 << 26)) << 6) & 0xffffffff;
+  // r0.w = (((uint)r0.x << 6) & bitmask.w) | ((uint)48 & ~bitmask.w);
+
+uint4 index;  
+  index.y = (uint)r0.x << 6;
+  
   bitmask.x = ((~(-1 << 26)) << 6) & 0xffffffff;
-  r0.x = (((uint)r0.x << 6) & bitmask.x) | ((uint)16 & ~bitmask.x);
+  index.x = (((uint)r0.x << 6) & bitmask.x) | ((uint)16 & ~bitmask.x);
   bitmask.z = ((~(-1 << 26)) << 6) & 0xffffffff;
-  r0.z = (((uint)r0.x << 6) & bitmask.z) | ((uint)32 & ~bitmask.z);
+  index.z = (((uint)r0.x << 6) & bitmask.z) | ((uint)32 & ~bitmask.z);
   bitmask.w = ((~(-1 << 26)) << 6) & 0xffffffff;
-  r0.w = (((uint)r0.x << 6) & bitmask.w) | ((uint)48 & ~bitmask.w);
+  index.w = (((uint)r0.x << 6) & bitmask.w) | ((uint)48 & ~bitmask.w);
+  
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, t0.xyzw
+r1.xyzw = asfloat(RawBuffer.Load4(index.y));
+
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r0.x, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r0.x, t0.xyzw
+r2.xyzw = asfloat(RawBuffer.Load4(index.x));
+
   r2.xyzw = v0.yyyy * r2.xyzw;
   r1.xyzw = r1.xyzw * v0.xxxx + r2.xyzw;
+  
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r0.z, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r0.z, t0.xyzw
+r2.xyzw = asfloat(RawBuffer.Load4(index.z));
+
 // No code for instruction (needs manual fix):
-ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xyzw, r0.w, t0.xyzw
+//ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xyzw, r0.w, t0.xyzw
+r0.xyzw = asfloat(RawBuffer.Load4(index.w));
+
   r1.xyzw = r2.xyzw * v0.zzzz + r1.xyzw;
   r0.xyzw = r1.xyzw + r0.xyzw;
   o0.xyzw = r0.xyzw;
