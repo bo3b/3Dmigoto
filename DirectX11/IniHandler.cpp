@@ -541,7 +541,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"iteration",
 	L"indexbufferfilter",
 	L"analyse_options",
-	L"fake_o0",
 	L"model",
 	NULL
 };
@@ -638,8 +637,6 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
-
-		override->fake_o0 = GetIniBool(id, L"fake_o0", false, iniFile, NULL);
 
 		if (GetPrivateProfileString(id, L"model", 0, setting, MAX_PATH, iniFile)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));

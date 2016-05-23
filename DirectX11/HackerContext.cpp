@@ -219,63 +219,6 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 	return pPixelShader;
 }
 
-void HackerContext::AssignDummyRenderTarget()
-{
-	HRESULT hr;
-	ID3D11Texture2D *resource = NULL;
-	ID3D11RenderTargetView *resource_view = NULL;
-	D3D11_TEXTURE2D_DESC desc;
-	ID3D11DepthStencilView *depth_view = NULL;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
-	ID3D11Texture2D *depth_resource = NULL;
-
-	mOrigContext->OMGetRenderTargets(0, NULL, &depth_view);
-
-	if (!depth_view) {
-		// Might still be able to make a dummy render target of arbitrary size?
-		return;
-	}
-
-	depth_view->GetDesc(&depth_view_desc);
-
-	if (depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2D &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMS &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DARRAY &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY) {
-		goto out;
-	}
-
-	depth_view->GetResource((ID3D11Resource**)&depth_resource);
-	if (!depth_resource)
-		goto out;
-
-	depth_resource->GetDesc(&desc);
-
-	// Adjust desc to suit a render target:
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	desc.BindFlags = D3D11_BIND_RENDER_TARGET;
-
-	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &resource);
-	if (FAILED(hr))
-		goto out1;
-
-	hr = mOrigDevice->CreateRenderTargetView(resource, NULL, &resource_view);
-	if (FAILED(hr))
-		goto out2;
-
-	mOrigContext->OMSetRenderTargets(1, &resource_view, depth_view);
-
-
-	resource_view->Release();
-out2:
-	resource->Release();
-out1:
-	depth_resource->Release();
-out:
-	depth_view->Release();
-}
-
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
@@ -377,11 +320,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			if (i != G->mOriginalVertexShaders.end())
 				data->oldVertexShader = SwitchVSShader(i->second);
 		}
-	} else {
-		if (shaderOverride->fake_o0)
-			AssignDummyRenderTarget();
 	}
-
 }
 
 void HackerContext::BeforeDraw(DrawContext &data)
