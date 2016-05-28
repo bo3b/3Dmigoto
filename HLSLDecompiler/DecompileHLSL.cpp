@@ -2043,7 +2043,7 @@ public:
 		{
 			printed = sprintf_s(convert, sizeof(convert), "l(");
 
-			count = sscanf_s(target, "l(0x%x,0x%x,0x%x,0x%x)", (unsigned int*)&lit[0], (unsigned int*)&lit[1], (unsigned int*)&lit[2], (unsigned int*)&lit[3]);
+			count = sscanf_s(target, "l(%x,%x,%x,%x)", (unsigned int*)&lit[0], (unsigned int*)&lit[1], (unsigned int*)&lit[2], (unsigned int*)&lit[3]);
 			if (count != 0)
 			{
 				for (int i = 0; i < count; i++)
