@@ -1284,15 +1284,13 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 
 	if (override_stride != -1)
 		desc->StructureByteStride = override_stride;
-	if (override_byte_width != -1) {
+	else if (override_format != (DXGI_FORMAT)-1 && override_format != DXGI_FORMAT_UNKNOWN)
+		desc->StructureByteStride = dxgi_format_size(override_format);
+
+	if (override_byte_width != -1)
 		desc->ByteWidth = override_byte_width;
-	} else if (override_array != -1) {
-		if (desc->StructureByteStride) {
-			desc->ByteWidth = desc->StructureByteStride * override_array;
-		} else if (override_format != (DXGI_FORMAT)-1 && override_format != DXGI_FORMAT_UNKNOWN) {
-			desc->ByteWidth = dxgi_format_size(override_format) * override_array;
-		}
-	}
+	else if (override_array != -1)
+		desc->ByteWidth = desc->StructureByteStride * override_array;
 
 	// TODO: Add more overrides for bind & misc flags
 }
