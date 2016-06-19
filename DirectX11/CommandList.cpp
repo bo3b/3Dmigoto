@@ -1188,6 +1188,8 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice)
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
 		is_null = false;
+		if (override_format != (DXGI_FORMAT)-1)
+			format = override_format;
 	} else {
 		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
