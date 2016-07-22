@@ -1490,9 +1490,15 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 	return mOrigDevice->SetPrivateDataInterface(guid, pData);
 }
 
+// Doesn't seem like any games use this, but might be something we need to
+// return only DX11.
+
 STDMETHODIMP_(D3D_FEATURE_LEVEL) HackerDevice::GetFeatureLevel(THIS)
 {
-	return mOrigDevice->GetFeatureLevel();
+	D3D_FEATURE_LEVEL featureLevel = mOrigDevice->GetFeatureLevel();
+
+	LogInfo("HackerDevice::GetFeatureLevel(%s@%p) returns FeatureLevel:%x \n", type_name(this), this, featureLevel);
+	return featureLevel;
 }
 
 STDMETHODIMP_(UINT) HackerDevice::GetCreationFlags(THIS)

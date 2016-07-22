@@ -1267,16 +1267,6 @@ void LoadConfigFile()
 		LogInfo("    unbuffered return: %d\n", unbuffered);
 	}
 
-// Let's not do this - it's trivially easy to turn this on in the ini if we
-// need it and always enabling it for debug builds leads to things being
-// painfully slow if we need to make any progress in the game to get to
-// whatever we are trying to debug. -DarkStarSword
-//#if _DEBUG
-//	// Always force full logging by default in DEBUG builds
-//	gLogDebug = true;
-//	unbuffered = setvbuf(LogFile, NULL, _IONBF, 0); 
-//#endif
-
 	// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
 	if (GetIniBool(L"Logging", L"force_cpu_affinity", false, iniFile, NULL))
 	{
@@ -1318,6 +1308,7 @@ void LoadConfigFile()
 		LogInfoW(L"  allow_check_interface=%s\n", setting);
 		G->enable_check_interface = true;
 	}
+	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
 
 	// [Device] (DXGI parameters)
 	LogInfo("[Device]\n");
