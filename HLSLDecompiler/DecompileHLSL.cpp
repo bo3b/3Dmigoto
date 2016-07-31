@@ -3799,22 +3799,42 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Add remaining atomic ops, we see atomic_or in Song of the Deep.
+						// Needs an unclear manual fix, but better than not generating any HLSL at all.
 						// Opcodes found in Witcher3 Compute Shader, manual fix needed.
-					case OPCODE_ATOMIC_UMAX:
+					case OPCODE_ATOMIC_AND:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						sprintf(buffer, "  InterlockedAnd(dest, value, orig_value);\n");
 						appendOutput(buffer);
-						break; 
+						break;
 					}
-					case OPCODE_ATOMIC_UMIN:
+					case OPCODE_ATOMIC_OR:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						sprintf(buffer, "  InterlockedOr(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_XOR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedXor(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_CMP_STORE:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedCompareStore(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
 					}
@@ -3827,12 +3847,39 @@ public:
 						appendOutput(buffer);
 						break;
 					}
-					case OPCODE_IMM_ATOMIC_IADD:
+					case OPCODE_ATOMIC_IMAX:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "  InterlockedAdd?(dest, value, orig_value);\n");
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_IMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
 					}
@@ -3842,6 +3889,105 @@ public:
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedExchange ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_CONSUME:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  Interlocked... ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IADD:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAdd(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_AND:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAnd(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_OR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedOr(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_XOR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedXor(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_EXCH:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedExchange(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_CMP_EXCH:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedCompareExchange(dest, compare_value, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, imm_value, orig_value);\n");
 						appendOutput(buffer);
 						break;
 					}
