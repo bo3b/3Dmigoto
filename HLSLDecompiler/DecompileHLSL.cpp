@@ -3661,6 +3661,30 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Add the Firstbit ops, because now Just Cause 3 uses them.
+						// firstbit{_hi|_lo|_shi} dest[.mask], src0[.swizzle]
+					case OPCODE_FIRSTBIT_HI:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					case OPCODE_FIRSTBIT_LO:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbitlow(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					case OPCODE_FIRSTBIT_SHI:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 						// Code generation for this weird instruction is tuned to indent the way we want, 
 						// and still look like a single instruction.  Still has weird indent in middle of instruction,
 						// but it seems more valuable to have it be a single line.
