@@ -1659,18 +1659,38 @@ public:
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/4]", regAndSwiz);
 					else
 					{
-						// Most common case, like: g_AmbientCube[r3.w]
+						// Most common case, like: g_AmbientCube[r3.w] and Globals[r19.w+63]
 
 						// Bug was to not handle the struct case here, and truncate string.
 						//  Like g_OmniLights[r5.w].m_PositionFar -> g_OmniLights[r5.w]
 						//sprintf(right3 + strlen(right3), "[%s]", indexRegister);
-
+						
 						// Start fresh with original string and just replace, not char* manipulate.
-						// base: g_OmniLights[0].m_PositionFar
+						// base e.g: g_OmniLights[0].m_PositionFar
 						string base = i->second.Name;
 						size_t left = base.find('[') + 1;
 						size_t length = base.find(']') - left;
-						base.replace(left, length, regAndSwiz);
+
+						// Another bug was to miss array indexing into a variable name. So if i->second.Name
+						// is not a zero index element, we need to preserve the offset.
+						// Like a JC3 variant of cb0[r19.w + 63].xyzw becoming Globals[r19.w+63]
+						// Normally an offset turns into an actual named variable.
+
+						int offset;
+						sscanf_s(i->second.Name.c_str(), "%*[^[][%d]", &offset);
+						if (offset == 0)
+						{
+							// e.g. cb0[r21.y + 55] -> PointLight[r21.y]
+							base.replace(left, length, regAndSwiz);
+						}
+						else
+						{
+							// leave it named with register and bufOffset, e.g. cb0[r19.w + 63] -> Globals[r19.w+63]
+							char regAndOffset[opcodeSize];
+							sprintf_s(regAndOffset, "%s+%d", regAndSwiz, bufOffset);
+							base.replace(left, length, regAndOffset);
+						}
+
 						strcpy(right3, base.c_str());
 					}
 				}
@@ -4938,7 +4958,7 @@ public:
 						break;
 					}
 
-						// Missing opcodes for SM5.  Not implemetned yet, but we want to generate some sort of code, in case
+						// Missing opcodes for SM5.  Not implemented yet, but we want to generate some sort of code, in case
 						// these are used in needed shaders.  That way we can hand edit the shader to make it usable, until 
 						// this is completed.
 					case OPCODE_STORE_UAV_TYPED:
