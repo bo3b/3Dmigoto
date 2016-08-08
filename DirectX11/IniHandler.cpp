@@ -782,9 +782,9 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	int i;
 
 	i = swscanf_s(val, L"%s %s %s",
-			op_buf, ARRAYSIZE(op_buf),
-			src_buf, ARRAYSIZE(src_buf),
-			dst_buf, ARRAYSIZE(dst_buf));
+			op_buf, (unsigned)ARRAYSIZE(op_buf),
+			src_buf, (unsigned)ARRAYSIZE(src_buf),
+			dst_buf, (unsigned)ARRAYSIZE(dst_buf));
 	if (i != 3) {
 		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
 		BeepFailure2();
