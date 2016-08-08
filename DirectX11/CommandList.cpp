@@ -30,9 +30,14 @@ static void CommandListFlushState(HackerDevice *mHackerDevice,
 		CommandListState *state)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT hr;
 
 	if (state->update_params) {
-		mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		hr = mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		if (FAILED(hr)) {
+			LogInfo("CommandListFlushState: Map failed\n");
+			return;
+		}
 		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
@@ -146,10 +151,15 @@ static bool ParseDrawCommand(const wchar_t *key, wstring *val,
 	int nargs, end = 0;
 
 	if (!wcscmp(key, L"draw")) {
-		operation->type = DrawCommandType::DRAW;
-		nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
-		if (nargs != 2)
-			goto bail;
+		if (!wcscmp(val->c_str(), L"from_caller")) {
+			operation->type = DrawCommandType::FROM_CALLER;
+			end = (int)val->length();
+		} else {
+			operation->type = DrawCommandType::DRAW;
+			nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
+			if (nargs != 2)
+				goto bail;
+		}
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
@@ -255,7 +265,9 @@ static TextureOverride* FindTextureOverrideBySlot(HackerContext
 
 	view->GetDesc(&desc);
 
-	hash = GetResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)
 		goto out_release_resource;
 
@@ -332,15 +344,47 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 			break;
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
 		// TODO: 	break;
+		case DrawCommandType::FROM_CALLER:
+			DrawCallInfo *info = state->call_info;
+			if (info->InstanceCount) {
+				if (info->IndexCount) {
+					mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+					mOrigContext->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+				} else {
+					mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+					mOrigContext->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+				}
+			} else if (info->IndexCount) {
+				mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", info->IndexCount, info->FirstIndex, info->FirstVertex);
+				mOrigContext->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
+			} else if (info->VertexCount) {
+				mHackerContext->FrameAnalysisLog("3DMigoto Draw from_caller -> Draw(%u, %u)\n", info->VertexCount, info->FirstVertex);
+				mOrigContext->Draw(info->VertexCount, info->FirstVertex);
+			}
+			// TODO: Save enough state to know if it's DrawAuto or
+			// an Indirect draw call (and the buffer)
+			break;
 	}
 }
 
 CustomShader::CustomShader() :
+	vs_override(false), hs_override(false), ds_override(false),
+	gs_override(false), ps_override(false), cs_override(false),
 	vs(NULL), hs(NULL), ds(NULL), gs(NULL), ps(NULL), cs(NULL),
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
-	substantiated(false)
+	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
+	rs_override(0), rs_state(NULL),
+	topology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED),
+	substantiated(false),
+	max_executions_per_frame(0),
+	frame_no(0),
+	executions_this_frame(0)
 {
+	int i;
+
+	for (i = 0; i < 4; i++)
+		blend_factor[i] = 1.0f;
 }
 
 CustomShader::~CustomShader()
@@ -357,6 +401,11 @@ CustomShader::~CustomShader()
 		ps->Release();
 	if (cs)
 		cs->Release();
+
+	if (blend_state)
+		blend_state->Release();
+	if (rs_state)
+		rs_state->Release();
 
 	if (vs_bytecode)
 		vs_bytecode->Release();
@@ -387,7 +436,45 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	string name(wname->begin(), wname->end());
 
 	LogInfo("  %cs=%S\n", type, filename);
-	GetModuleFileName(0, path, MAX_PATH);
+
+	switch(type) {
+		case 'v':
+			ppBytecode = &vs_bytecode;
+			vs_override = true;
+			break;
+		case 'h':
+			ppBytecode = &hs_bytecode;
+			hs_override = true;
+			break;
+		case 'd':
+			ppBytecode = &ds_bytecode;
+			ds_override = true;
+			break;
+		case 'g':
+			ppBytecode = &gs_bytecode;
+			gs_override = true;
+			break;
+		case 'p':
+			ppBytecode = &ps_bytecode;
+			ps_override = true;
+			break;
+		case 'c':
+			ppBytecode = &cs_bytecode;
+			cs_override = true;
+			break;
+		default:
+			// Should not happen
+			goto err;
+	}
+
+	// Special value to unbind the shader instead:
+	if (!_wcsicmp(filename, L"null"))
+		return false;
+
+	if (!GetModuleFileName(0, path, MAX_PATH)) {
+		LogInfo("GetModuleFileName failed\n");
+		goto err;
+	}
 	wcsrchr(path, L'\\')[1] = 0;
 	wcscat(path, filename);
 
@@ -410,29 +497,7 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	// Currently always using shader model 5, could allow this to be
 	// overridden in the future:
 	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
-	switch(type) {
-		case 'v':
-			ppBytecode = &vs_bytecode;
-			break;
-		case 'h':
-			ppBytecode = &hs_bytecode;
-			break;
-		case 'd':
-			ppBytecode = &ds_bytecode;
-			break;
-		case 'g':
-			ppBytecode = &gs_bytecode;
-			break;
-		case 'p':
-			ppBytecode = &ps_bytecode;
-			break;
-		case 'c':
-			ppBytecode = &cs_bytecode;
-			break;
-		default:
-			// Should not happen
-			goto err;
-	}
+
 	// TODO: Add #defines for StereoParams and IniParams. Define a macro
 	// for the type of shader, and maybe allow more defines to be specified
 	// in the ini
@@ -440,7 +505,7 @@ bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
 	hr = D3DCompile(srcData.data(), srcDataSize, name.c_str(), 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
 
-	if (pErrorMsgs) {
+	if (pErrorMsgs && LogFile) { // Check LogFile so the fwrite doesn't crash
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 		SIZE_T errSize = pErrorMsgs->GetBufferSize();
 		LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
@@ -498,6 +563,12 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 		cs_bytecode->Release();
 		cs_bytecode = NULL;
 	}
+
+	if (blend_override == 1) // 2 will use default blend state
+		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
+
+	if (rs_override == 1) // 2 will use default blend state
+		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
 }
 
 struct saved_shader_inst
@@ -520,6 +591,43 @@ struct saved_shader_inst
 	}
 };
 
+static void get_all_rts_dsv_uavs(ID3D11DeviceContext *mOrigContext,
+	UINT *NumRTVs,
+	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT],
+	ID3D11DepthStencilView **dsv,
+	UINT *UAVStartSlot,
+	UINT *NumUAVs,
+	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT])
+
+{
+	int i;
+
+	// OMGetRenderTargetAndUnorderedAccessViews is a poorly designed API as
+	// to use it properly to get all RTVs and UAVs we need to pass it some
+	// information that we don't know. So, we have to do a few extra steps
+	// to find that info.
+
+	mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
+
+	*NumRTVs = 0;
+	if (rtvs) {
+		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+			if (rtvs[i])
+				*NumRTVs = i + 1;
+		}
+	}
+
+	*UAVStartSlot = *NumRTVs;
+	// Set NumUAVs to the max to retrieve them all now, and so that later
+	// when rebinding them we will unbind any others that the command list
+	// bound in the meantime
+	*NumUAVs = D3D11_PS_CS_UAV_REGISTER_COUNT - *UAVStartSlot;
+
+	// Finally get all the UAVs. Since we already retrieved the RTVs and
+	// DSV we can skip getting them:
+	mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
+}
+
 void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
@@ -530,9 +638,32 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11GeometryShader *saved_gs = NULL;
 	ID3D11PixelShader *saved_ps = NULL;
 	ID3D11ComputeShader *saved_cs = NULL;
+	ID3D11BlendState *saved_blend = NULL;
+	ID3D11RasterizerState *saved_rs = NULL;
+	UINT num_viewports = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+	D3D11_VIEWPORT saved_viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+	FLOAT saved_blend_factor[4];
+	UINT saved_sample_mask;
 	bool saved_post;
+	UINT NumRTVs, UAVStartSlot, NumUAVs;
+	ID3D11RenderTargetView *saved_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11DepthStencilView *saved_dsv;
+	ID3D11UnorderedAccessView *saved_uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
+	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1};
+	UINT i;
+	D3D11_PRIMITIVE_TOPOLOGY saved_topology;
 
 	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
+
+	if (custom_shader->max_executions_per_frame) {
+		if (custom_shader->frame_no != G->frame_no) {
+			custom_shader->frame_no = G->frame_no;
+			custom_shader->executions_this_frame = 0;
+		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
+			mHackerContext->FrameAnalysisLog("max_executions_per_frame exceeded\n");
+			return;
+		}
+	}
 
 	custom_shader->substantiate(mOrigDevice);
 
@@ -545,30 +676,49 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	// by calling the next shader in sequence from the command list after
 	// the draw call.
 
-	if (custom_shader->vs) {
+	if (custom_shader->vs_override) {
 		mOrigContext->VSGetShader(&saved_vs, vs_inst.instances, &vs_inst.num_instances);
 		mOrigContext->VSSetShader(custom_shader->vs, NULL, 0);
 	}
-	if (custom_shader->hs) {
+	if (custom_shader->hs_override) {
 		mOrigContext->HSGetShader(&saved_hs, hs_inst.instances, &hs_inst.num_instances);
 		mOrigContext->HSSetShader(custom_shader->hs, NULL, 0);
 	}
-	if (custom_shader->ds) {
+	if (custom_shader->ds_override) {
 		mOrigContext->DSGetShader(&saved_ds, ds_inst.instances, &ds_inst.num_instances);
 		mOrigContext->DSSetShader(custom_shader->ds, NULL, 0);
 	}
-	if (custom_shader->gs) {
+	if (custom_shader->gs_override) {
 		mOrigContext->GSGetShader(&saved_gs, gs_inst.instances, &gs_inst.num_instances);
 		mOrigContext->GSSetShader(custom_shader->gs, NULL, 0);
 	}
-	if (custom_shader->ps) {
+	if (custom_shader->ps_override) {
 		mOrigContext->PSGetShader(&saved_ps, ps_inst.instances, &ps_inst.num_instances);
 		mOrigContext->PSSetShader(custom_shader->ps, NULL, 0);
 	}
-	if (custom_shader->cs) {
+	if (custom_shader->cs_override) {
 		mOrigContext->CSGetShader(&saved_cs, cs_inst.instances, &cs_inst.num_instances);
 		mOrigContext->CSSetShader(custom_shader->cs, NULL, 0);
 	}
+	if (custom_shader->blend_override) {
+		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
+		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
+	}
+	if (custom_shader->rs_override) {
+		mOrigContext->RSGetState(&saved_rs);
+		mOrigContext->RSSetState(custom_shader->rs_state);
+	}
+	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {
+		mOrigContext->IAGetPrimitiveTopology(&saved_topology);
+		mOrigContext->IASetPrimitiveTopology(custom_shader->topology);
+	}
+
+	// We save off the viewports unconditionally for now. We could
+	// potentially skip this by flagging if a command list may alter them,
+	// but that probably wouldn't buy us anything:
+	mOrigContext->RSGetViewports(&num_viewports, saved_viewports);
+	// Likewise, save off all RTVs, UAVs and DSVs unconditionally:
+	get_all_rts_dsv_uavs(mOrigContext, &NumRTVs, saved_rtvs, &saved_dsv, &UAVStartSlot, &NumUAVs, saved_uavs);
 
 	// Run the command lists. This should generally include a draw or
 	// dispatch call, or call out to another command list which does.
@@ -582,18 +732,27 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	state->post = saved_post;
 
 	// Finally restore the original shaders
-	if (custom_shader->vs)
+	if (custom_shader->vs_override)
 		mOrigContext->VSSetShader(saved_vs, vs_inst.instances, vs_inst.num_instances);
-	if (custom_shader->hs)
+	if (custom_shader->hs_override)
 		mOrigContext->HSSetShader(saved_hs, hs_inst.instances, hs_inst.num_instances);
-	if (custom_shader->ds)
+	if (custom_shader->ds_override)
 		mOrigContext->DSSetShader(saved_ds, ds_inst.instances, ds_inst.num_instances);
-	if (custom_shader->gs)
+	if (custom_shader->gs_override)
 		mOrigContext->GSSetShader(saved_gs, gs_inst.instances, gs_inst.num_instances);
-	if (custom_shader->ps)
+	if (custom_shader->ps_override)
 		mOrigContext->PSSetShader(saved_ps, ps_inst.instances, ps_inst.num_instances);
-	if (custom_shader->cs)
+	if (custom_shader->cs_override)
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
+	if (custom_shader->blend_override)
+		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
+	if (custom_shader->rs_override)
+		mOrigContext->RSSetState(saved_rs);
+	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+		mOrigContext->IASetPrimitiveTopology(saved_topology);
+
+	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
+	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
 
 	if (saved_vs)
 		saved_vs->Release();
@@ -607,6 +766,19 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_ps->Release();
 	if (saved_cs)
 		saved_cs->Release();
+	if (saved_blend)
+		saved_blend->Release();
+	if (saved_rs)
+		saved_rs->Release();
+
+	for (i = 0; i < NumRTVs; i++) {
+		if (saved_rtvs[i])
+			saved_rtvs[i]->Release();
+	}
+	for (i = 0; i < NumUAVs; i++) {
+		if (saved_uavs[i])
+			saved_uavs[i]->Release();
+	}
 }
 
 
@@ -657,6 +829,15 @@ static float ProcessParamTextureFilter(HackerContext *mHackerContext,
 	return tex->filter_index;
 }
 
+static void UpdateCursorInfo(CommandListState *state)
+{
+	if (state->cursor_info.cbSize)
+		return;
+
+	state->cursor_info.cbSize = sizeof(CURSORINFO);
+	GetCursorInfo(&state->cursor_info);
+}
+
 void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
@@ -704,6 +885,18 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 				*dest = (float)state->call_info->InstanceCount;
 			else
 				*dest = 0;
+			break;
+		case ParamOverrideType::CURSOR_VISIBLE:
+			UpdateCursorInfo(state);
+			*dest = !!(state->cursor_info.flags & CURSOR_SHOWING);
+			break;
+		case ParamOverrideType::CURSOR_SCREEN_X:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_info.ptScreenPos.x;
+			break;
+		case ParamOverrideType::CURSOR_SCREEN_Y:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_info.ptScreenPos.y;
 			break;
 		default:
 			return;
@@ -764,270 +957,6 @@ bail:
 	return false;
 }
 
-
-CustomResource::CustomResource() :
-	resource(NULL),
-	view(NULL),
-	is_null(true),
-	substantiated(false),
-	bind_flags((D3D11_BIND_FLAG)0),
-	stride(0),
-	offset(0),
-	buf_size(0),
-	format(DXGI_FORMAT_UNKNOWN),
-	max_copies_per_frame(0),
-	frame_no(0),
-	copies_this_frame(0)
-{}
-
-CustomResource::~CustomResource()
-{
-	if (resource)
-		resource->Release();
-	if (view)
-		view->Release();
-}
-
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
-{
-	wstring ext;
-	HRESULT hr;
-
-	// We only allow a custom resource to be substantiated once. Otherwise
-	// we could end up reloading it again if it is later set to null. Also
-	// prevents us from endlessly retrying to load a custom resource from a
-	// file that doesn't exist:
-	if (substantiated)
-		return;
-	substantiated = true;
-
-	// If this custom resource has already been set through other means we
-	// won't overwrite it:
-	if (resource || view)
-		return;
-
-	// If the resource section has enough information to create a resource
-	// we do so the first time it is loaded from. The reason we do it this
-	// late is to make sure we know which device is actually being used to
-	// render the game - FC4 creates about a dozen devices with different
-	// parameters while probing the hardware before it settles on the one
-	// it will actually use.
-
-	// TODO: Support loading raw buffers (may want more ini params to
-	// describe them)
-
-	if (!filename.empty()) {
-		// XXX: We are not creating a view with DirecXTK because
-		// 1) it assumes we want a shader resource view, which is an
-		//    assumption that doesn't fit with the goal of this code to
-		//    allow for arbitrary resource copying, and
-		// 2) we currently won't use the view in a source custom
-		//    resource, even if we are referencing it into a compatible
-		//    slot. We might improve this, and if we do, I don't want
-		//    any surprises caused by a view of the wrong type we
-		//    happen to have created here and forgotten about.
-		// If we do start using the source custom resource's view, we
-		// could do something smart here, like only using it if the
-		// bind_flags indicate it will be used as a shader resource.
-
-		ext = filename.substr(filename.rfind(L"."));
-		if (!_wcsicmp(ext.c_str(), L".dds")) {
-			LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
-			hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice,
-					filename.c_str(), 0,
-					D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
-					false, &resource, NULL, NULL);
-		} else {
-			LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
-			hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice,
-					filename.c_str(), 0,
-					D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
-					false, &resource, NULL);
-		}
-		if (SUCCEEDED(hr)) {
-			is_null = false;
-			// TODO:
-			// format = ...
-		} else
-			LogInfoW(L"Failed to load custom resource %s: 0x%x\n", filename.c_str(), hr);
-	}
-}
-
-
-bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool allow_null)
-{
-	int ret, len;
-	size_t length = wcslen(target);
-	CustomResources::iterator res;
-
-	ret = swscanf_s(target, L"%lcs-cb%u%n", &shader_type, 1, &slot, &len);
-	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
-		type = ResourceCopyTargetType::CONSTANT_BUFFER;
-		goto check_shader_type;
-	}
-
-	ret = swscanf_s(target, L"%lcs-t%u%n", &shader_type, 1, &slot, &len);
-	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		type = ResourceCopyTargetType::SHADER_RESOURCE;
-	       goto check_shader_type;
-	}
-
-	// TODO: ret = swscanf_s(target, L"%lcs-s%u%n", &shader_type, 1, &slot, &len);
-	// TODO: if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT) {
-	// TODO: 	type = ResourceCopyTargetType::SAMPLER;
-	// TODO:	goto check_shader_type;
-	// TODO: }
-
-	ret = swscanf_s(target, L"o%u%n", &slot, &len);
-	if (ret == 1 && len == length && slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT) {
-		type = ResourceCopyTargetType::RENDER_TARGET;
-		return true;
-	}
-
-	if (!wcscmp(target, L"od")) {
-		type = ResourceCopyTargetType::DEPTH_STENCIL_TARGET;
-		return true;
-	}
-
-	ret = swscanf_s(target, L"%lcs-u%u%n", &shader_type, 1, &slot, &len);
-	// XXX: On Win8 D3D11_1_UAV_SLOT_COUNT (64) is the limit instead. Use
-	// the lower amount for now to enforce compatibility.
-	if (ret == 2 && len == length && slot < D3D11_PS_CS_UAV_REGISTER_COUNT) {
-		// These views are only valid for pixel and compute shaders:
-		if (shader_type == L'p' || shader_type == L'c') {
-			type = ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
-			return true;
-		}
-		return false;
-	}
-
-	ret = swscanf_s(target, L"vb%u%n", &slot, &len);
-	if (ret == 1 && len == length && slot < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT) {
-		type = ResourceCopyTargetType::VERTEX_BUFFER;
-		return true;
-	}
-
-	if (!wcscmp(target, L"ib")) {
-		type = ResourceCopyTargetType::INDEX_BUFFER;
-		return true;
-	}
-
-	ret = swscanf_s(target, L"so%u%n", &slot, &len);
-	if (ret == 1 && len == length && slot < D3D11_SO_STREAM_COUNT) {
-		type = ResourceCopyTargetType::STREAM_OUTPUT;
-		return true;
-	}
-
-	if (allow_null && !wcscmp(target, L"null")) {
-		type = ResourceCopyTargetType::EMPTY;
-		return true;
-	}
-
-	if (length >= 9 && !wcsncmp(target, L"resource", 8)) {
-		// section name should already have been transformed to lower
-		// case from ParseCommandList, so our keys will be consistent
-		// in the unordered_map:
-		wstring resource_id(target);
-
-		res = customResources.find(resource_id);
-		if (res == customResources.end())
-			return false;
-
-		custom_resource = &res->second;
-		type = ResourceCopyTargetType::CUSTOM_RESOURCE;
-		return true;
-	}
-
-	return false;
-
-check_shader_type:
-	switch(shader_type) {
-		case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-			return true;
-	}
-	return false;
-}
-
-
-bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
-		CommandList *command_list)
-{
-	ResourceCopyOperation *operation = new ResourceCopyOperation();
-	wchar_t buf[MAX_PATH];
-	wchar_t *src_ptr = NULL;
-
-	if (!operation->dst.ParseTarget(key, false))
-		goto bail;
-
-	// parse_enum_option_string replaces spaces with NULLs, so it can't
-	// operate on the buffer in the wstring directly. I could potentially
-	// change it to work without modifying the string, but for now it's
-	// easier to just make a copy of the string:
-	if (val->length() >= MAX_PATH)
-		goto bail;
-	val->copy(buf, MAX_PATH, 0);
-	buf[val->length()] = L'\0';
-
-	operation->options = parse_enum_option_string<wchar_t *, ResourceCopyOptions>
-		(ResourceCopyOptionNames, buf, &src_ptr);
-
-	if (!src_ptr)
-		goto bail;
-
-	if (!operation->src.ParseTarget(src_ptr, true))
-		goto bail;
-
-	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {
-		// If the copy method was not speficied make a guess.
-		// References aren't always safe (e.g. a resource can't be both
-		// an input and an output), and a resource may not have been
-		// created with the right usage flags, so we'll err on the side
-		// of doing a full copy if we aren't fairly sure.
-		//
-		// If we're merely copying a resource from one shader to
-		// another without changnig the usage (e.g. giving the vertex
-		// shader access to a constant buffer or texture from the pixel
-		// shader) a reference is probably safe (unless the game
-		// reassigns it to a different usage later and doesn't know
-		// that our reference is still bound somewhere), but it would
-		// not be safe to give a vertex shader access to the depth
-		// buffer of the output merger stage, for example.
-		//
-		// If we are copying a resource into a custom resource (e.g.
-		// for use from another draw call), do a full copy by default
-		// in case the game alters the original.
-		if (operation->dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-			operation->options |= ResourceCopyOptions::COPY;
-		else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-			operation->options |= ResourceCopyOptions::REFERENCE;
-		else if (operation->src.type == operation->dst.type)
-			operation->options |= ResourceCopyOptions::REFERENCE;
-		else
-			operation->options |= ResourceCopyOptions::COPY;
-	}
-
-	// FIXME: If custom resources are copied to other custom resources by
-	// reference that are in turn bound to the pipeline we may not
-	// propagate all the bind flags correctly depending on the order
-	// everything is parsed. We'd need to construct a dependency graph
-	// to fix this, but it's not clear that this combination would really
-	// be used in practice, so for now this will do.
-	// FIXME: The constant buffer bind flag can't be combined with others
-	if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
-			(operation->options & ResourceCopyOptions::REFERENCE)) {
-		// Fucking C++ making this line 3x longer than it should be:
-		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
-			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
-	}
-
-	operation->ini_key = key;
-	operation->ini_val = *val;
-	command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
-	return true;
-bail:
-	delete operation;
-	return false;
-}
 
 // Is there already a utility function that does this?
 static UINT dxgi_format_size(DXGI_FORMAT format)
@@ -1121,7 +1050,532 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 	}
 }
 
+
+CustomResource::CustomResource() :
+	resource(NULL),
+	view(NULL),
+	is_null(true),
+	substantiated(false),
+	bind_flags((D3D11_BIND_FLAG)0),
+	stride(0),
+	offset(0),
+	buf_size(0),
+	format(DXGI_FORMAT_UNKNOWN),
+	max_copies_per_frame(0),
+	frame_no(0),
+	copies_this_frame(0),
+	override_type(CustomResourceType::INVALID),
+	override_format((DXGI_FORMAT)-1),
+	override_width(-1),
+	override_height(-1),
+	override_depth(-1),
+	override_mips(-1),
+	override_array(-1),
+	override_msaa(-1),
+	override_msaa_quality(-1),
+	override_byte_width(-1),
+	override_stride(-1),
+	width_multiply(1.0f),
+	height_multiply(1.0f)
+{}
+
+CustomResource::~CustomResource()
+{
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
+}
+
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
+{
+	// We only allow a custom resource to be substantiated once. Otherwise
+	// we could end up reloading it again if it is later set to null. Also
+	// prevents us from endlessly retrying to load a custom resource from a
+	// file that doesn't exist:
+	if (substantiated)
+		return;
+	substantiated = true;
+
+	// If this custom resource has already been set through other means we
+	// won't overwrite it:
+	if (resource || view)
+		return;
+
+	// If the resource section has enough information to create a resource
+	// we do so the first time it is loaded from. The reason we do it this
+	// late is to make sure we know which device is actually being used to
+	// render the game - FC4 creates about a dozen devices with different
+	// parameters while probing the hardware before it settles on the one
+	// it will actually use.
+
+	if (!filename.empty())
+		return LoadFromFile(mOrigDevice);
+
+	switch (override_type) {
+		case CustomResourceType::BUFFER:
+		case CustomResourceType::STRUCTURED_BUFFER:
+		case CustomResourceType::RAW_BUFFER:
+			return SubstantiateBuffer(mOrigDevice);
+		case CustomResourceType::TEXTURE1D:
+			return SubstantiateTexture1D(mOrigDevice);
+		case CustomResourceType::TEXTURE2D:
+		case CustomResourceType::CUBE:
+			return SubstantiateTexture2D(mOrigDevice);
+		case CustomResourceType::TEXTURE3D:
+			return SubstantiateTexture3D(mOrigDevice);
+	}
+}
+
+void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
+{
+	wstring ext;
+	HRESULT hr;
+
+	// TODO: Support loading raw buffers (may want more ini params to
+	// describe them)
+
+	// XXX: We are not creating a view with DirecXTK because
+	// 1) it assumes we want a shader resource view, which is an
+	//    assumption that doesn't fit with the goal of this code to
+	//    allow for arbitrary resource copying, and
+	// 2) we currently won't use the view in a source custom
+	//    resource, even if we are referencing it into a compatible
+	//    slot. We might improve this, and if we do, I don't want
+	//    any surprises caused by a view of the wrong type we
+	//    happen to have created here and forgotten about.
+	// If we do start using the source custom resource's view, we
+	// could do something smart here, like only using it if the
+	// bind_flags indicate it will be used as a shader resource.
+
+	ext = filename.substr(filename.rfind(L"."));
+	if (!_wcsicmp(ext.c_str(), L".dds")) {
+		LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
+		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice,
+				filename.c_str(), 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				false, &resource, NULL, NULL);
+	} else {
+		LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
+		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice,
+				filename.c_str(), 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				false, &resource, NULL);
+	}
+	if (SUCCEEDED(hr)) {
+		is_null = false;
+		// TODO:
+		// format = ...
+	} else
+		LogInfoW(L"Failed to load custom resource %s: 0x%x\n", filename.c_str(), hr);
+}
+
+void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice)
+{
+	ID3D11Buffer *buffer;
+	D3D11_BUFFER_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideBufferDesc(&desc);
+
+	hr = mOrigDevice->CreateBuffer(&desc, NULL, &buffer);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)buffer;
+		is_null = false;
+		if (override_format != (DXGI_FORMAT)-1)
+			format = override_format;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice)
+{
+	ID3D11Texture1D *tex1d;
+	D3D11_TEXTURE1D_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideTexDesc(&desc);
+
+	hr = mOrigDevice->CreateTexture1D(&desc, NULL, &tex1d);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)tex1d;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice)
+{
+	ID3D11Texture2D *tex2d;
+	D3D11_TEXTURE2D_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideTexDesc(&desc);
+
+	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &tex2d);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)tex2d;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice)
+{
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE3D_DESC desc;
+	HRESULT hr;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = bind_flags;
+	OverrideTexDesc(&desc);
+
+	hr = mOrigDevice->CreateTexture3D(&desc, NULL, &tex3d);
+	if (SUCCEEDED(hr)) {
+		LogInfo("Substantiated custom %S resource\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogDebugResourceDesc(&desc);
+		resource = (ID3D11Resource*)tex3d;
+		is_null = false;
+	} else {
+		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogResourceDesc(&desc);
+		BeepFailure();
+	}
+}
+
+void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
+{
+	switch (override_type) {
+		case CustomResourceType::STRUCTURED_BUFFER:
+			desc->MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+			break;
+		case CustomResourceType::RAW_BUFFER:
+			desc->MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+			break;
+	}
+
+	if (override_stride != -1)
+		desc->StructureByteStride = override_stride;
+	else if (override_format != (DXGI_FORMAT)-1 && override_format != DXGI_FORMAT_UNKNOWN)
+		desc->StructureByteStride = dxgi_format_size(override_format);
+
+	if (override_byte_width != -1)
+		desc->ByteWidth = override_byte_width;
+	else if (override_array != -1)
+		desc->ByteWidth = desc->StructureByteStride * override_array;
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
+{
+	if (override_width != -1)
+		desc->Width = override_width;
+	if (override_mips != -1)
+		desc->MipLevels = override_mips;
+	if (override_array != -1)
+		desc->ArraySize = override_array;
+	if (override_format != (DXGI_FORMAT)-1)
+		desc->Format = override_format;
+
+	desc->Width = (UINT)(desc->Width * width_multiply);
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
+{
+	if (override_width != -1)
+		desc->Width = override_width;
+	if (override_height != -1)
+		desc->Height = override_height;
+	if (override_mips != -1)
+		desc->MipLevels = override_mips;
+	if (override_format != (DXGI_FORMAT)-1)
+		desc->Format = override_format;
+	if (override_array != -1)
+		desc->ArraySize = override_array;
+	if (override_msaa != -1)
+		desc->SampleDesc.Count = override_msaa;
+	if (override_msaa_quality != -1)
+		desc->SampleDesc.Quality = override_msaa_quality;
+
+	if (override_type == CustomResourceType::CUBE) {
+		desc->MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
+		if (override_array != -1)
+			desc->ArraySize = override_array * 6;
+	}
+
+	desc->Width = (UINT)(desc->Width * width_multiply);
+	desc->Height = (UINT)(desc->Height * height_multiply);
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
+{
+	if (override_width != -1)
+		desc->Width = override_width;
+	if (override_height != -1)
+		desc->Height = override_height;
+	if (override_depth != -1)
+		desc->Height = override_depth;
+	if (override_mips != -1)
+		desc->MipLevels = override_mips;
+	if (override_format != (DXGI_FORMAT)-1)
+		desc->Format = override_format;
+
+	desc->Width = (UINT)(desc->Width * width_multiply);
+	desc->Height = (UINT)(desc->Height * height_multiply);
+
+	// TODO: Add more overrides for bind & misc flags
+}
+
+void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
+{
+	if (override_format != (DXGI_FORMAT)-1)
+		*format = override_format;
+	if (override_stride != -1)
+		*stride = override_stride;
+}
+
+
+bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
+{
+	int ret, len;
+	size_t length = wcslen(target);
+	CustomResources::iterator res;
+
+	ret = swscanf_s(target, L"%lcs-cb%u%n", &shader_type, 1, &slot, &len);
+	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+		type = ResourceCopyTargetType::CONSTANT_BUFFER;
+		goto check_shader_type;
+	}
+
+	ret = swscanf_s(target, L"%lcs-t%u%n", &shader_type, 1, &slot, &len);
+	if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
+		type = ResourceCopyTargetType::SHADER_RESOURCE;
+	       goto check_shader_type;
+	}
+
+	// TODO: ret = swscanf_s(target, L"%lcs-s%u%n", &shader_type, 1, &slot, &len);
+	// TODO: if (ret == 2 && len == length && slot < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT) {
+	// TODO: 	type = ResourceCopyTargetType::SAMPLER;
+	// TODO:	goto check_shader_type;
+	// TODO: }
+
+	ret = swscanf_s(target, L"o%u%n", &slot, &len);
+	if (ret == 1 && len == length && slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT) {
+		type = ResourceCopyTargetType::RENDER_TARGET;
+		return true;
+	}
+
+	if (!wcscmp(target, L"od")) {
+		type = ResourceCopyTargetType::DEPTH_STENCIL_TARGET;
+		return true;
+	}
+
+	ret = swscanf_s(target, L"%lcs-u%u%n", &shader_type, 1, &slot, &len);
+	// XXX: On Win8 D3D11_1_UAV_SLOT_COUNT (64) is the limit instead. Use
+	// the lower amount for now to enforce compatibility.
+	if (ret == 2 && len == length && slot < D3D11_PS_CS_UAV_REGISTER_COUNT) {
+		// These views are only valid for pixel and compute shaders:
+		if (shader_type == L'p' || shader_type == L'c') {
+			type = ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
+			return true;
+		}
+		return false;
+	}
+
+	ret = swscanf_s(target, L"vb%u%n", &slot, &len);
+	if (ret == 1 && len == length && slot < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT) {
+		type = ResourceCopyTargetType::VERTEX_BUFFER;
+		return true;
+	}
+
+	if (!wcscmp(target, L"ib")) {
+		type = ResourceCopyTargetType::INDEX_BUFFER;
+		return true;
+	}
+
+	ret = swscanf_s(target, L"so%u%n", &slot, &len);
+	if (ret == 1 && len == length && slot < D3D11_SO_STREAM_COUNT) {
+		type = ResourceCopyTargetType::STREAM_OUTPUT;
+		return true;
+	}
+
+	if (is_source && !wcscmp(target, L"null")) {
+		type = ResourceCopyTargetType::EMPTY;
+		return true;
+	}
+
+	if (length >= 9 && !wcsncmp(target, L"resource", 8)) {
+		// section name should already have been transformed to lower
+		// case from ParseCommandList, so our keys will be consistent
+		// in the unordered_map:
+		wstring resource_id(target);
+
+		res = customResources.find(resource_id);
+		if (res == customResources.end())
+			return false;
+
+		custom_resource = &res->second;
+		type = ResourceCopyTargetType::CUSTOM_RESOURCE;
+		return true;
+	}
+
+	// Alternate means to assign StereoParams and IniParams
+	if (is_source && !wcscmp(target, L"stereoparams")) {
+		type = ResourceCopyTargetType::STEREO_PARAMS;
+		return true;
+	}
+
+	if (is_source && !wcscmp(target, L"iniparams")) {
+		type = ResourceCopyTargetType::INI_PARAMS;
+		return true;
+	}
+
+	// XXX: Any reason to allow access to sequential swap chains? Given
+	// they either won't exist or are read only I can't think of one.
+	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
+		type = ResourceCopyTargetType::SWAP_CHAIN;
+		return true;
+	}
+
+	return false;
+
+check_shader_type:
+	switch(shader_type) {
+		case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+			return true;
+	}
+	return false;
+}
+
+
+bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
+		CommandList *command_list)
+{
+	ResourceCopyOperation *operation = new ResourceCopyOperation();
+	wchar_t buf[MAX_PATH];
+	wchar_t *src_ptr = NULL;
+
+	if (!operation->dst.ParseTarget(key, false))
+		goto bail;
+
+	// parse_enum_option_string replaces spaces with NULLs, so it can't
+	// operate on the buffer in the wstring directly. I could potentially
+	// change it to work without modifying the string, but for now it's
+	// easier to just make a copy of the string:
+	if (val->length() >= MAX_PATH)
+		goto bail;
+	wcsncpy_s(buf, val->c_str(), MAX_PATH);
+
+	operation->options = parse_enum_option_string<wchar_t *, ResourceCopyOptions>
+		(ResourceCopyOptionNames, buf, &src_ptr);
+
+	if (!src_ptr)
+		goto bail;
+
+	if (!operation->src.ParseTarget(src_ptr, true))
+		goto bail;
+
+	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {
+		// If the copy method was not speficied make a guess.
+		// References aren't always safe (e.g. a resource can't be both
+		// an input and an output), and a resource may not have been
+		// created with the right usage flags, so we'll err on the side
+		// of doing a full copy if we aren't fairly sure.
+		//
+		// If we're merely copying a resource from one shader to
+		// another without changnig the usage (e.g. giving the vertex
+		// shader access to a constant buffer or texture from the pixel
+		// shader) a reference is probably safe (unless the game
+		// reassigns it to a different usage later and doesn't know
+		// that our reference is still bound somewhere), but it would
+		// not be safe to give a vertex shader access to the depth
+		// buffer of the output merger stage, for example.
+		//
+		// If we are copying a resource into a custom resource (e.g.
+		// for use from another draw call), do a full copy by default
+		// in case the game alters the original.
+		//
+		// If we are assigning a render target, do so by reference
+		// since we probably want the result reflected in the resource
+		// we assigned to it. Mostly this would already work due to the
+		// custom resource rules, but adding this rule should make
+		// assigning the back buffer to a render target work.
+		if (operation->dst.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+			operation->options |= ResourceCopyOptions::COPY;
+		else if (operation->dst.type == ResourceCopyTargetType::RENDER_TARGET)
+			operation->options |= ResourceCopyOptions::REFERENCE;
+		else if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+			operation->options |= ResourceCopyOptions::REFERENCE;
+		else if (operation->src.type == operation->dst.type)
+			operation->options |= ResourceCopyOptions::REFERENCE;
+		else if (operation->dst.type == ResourceCopyTargetType::SHADER_RESOURCE
+				&& (operation->src.type == ResourceCopyTargetType::STEREO_PARAMS
+				|| operation->src.type == ResourceCopyTargetType::INI_PARAMS))
+			operation->options |= ResourceCopyOptions::REFERENCE;
+		else
+			operation->options |= ResourceCopyOptions::COPY;
+	}
+
+	// FIXME: If custom resources are copied to other custom resources by
+	// reference that are in turn bound to the pipeline we may not
+	// propagate all the bind flags correctly depending on the order
+	// everything is parsed. We'd need to construct a dependency graph
+	// to fix this, but it's not clear that this combination would really
+	// be used in practice, so for now this will do.
+	// FIXME: The constant buffer bind flag can't be combined with others
+	if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
+			(operation->options & ResourceCopyOptions::REFERENCE)) {
+		// Fucking C++ making this line 3x longer than it should be:
+		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
+			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
+	}
+
+	operation->ini_key = key;
+	operation->ini_val = *val;
+	command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
+	return true;
+bail:
+	delete operation;
+	return false;
+}
+
 ID3D11Resource *ResourceCopyTarget::GetResource(
+		HackerDevice *mHackerDevice,
 		ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext,
 		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
@@ -1343,6 +1797,19 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		if (custom_resource->resource)
 			custom_resource->resource->AddRef();
 		return custom_resource->resource;
+
+	case ResourceCopyTargetType::STEREO_PARAMS:
+		*view = mHackerDevice->mStereoResourceView;
+		return mHackerDevice->mStereoTexture;
+
+	case ResourceCopyTargetType::INI_PARAMS:
+		*view = mHackerDevice->mIniResourceView;
+		return mHackerDevice->mIniTexture;
+
+	case ResourceCopyTargetType::SWAP_CHAIN:
+		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		return res;
+
 	}
 
 	return NULL;
@@ -1545,6 +2012,15 @@ void ResourceCopyTarget::SetResource(
 				custom_resource->resource->AddRef();
 		}
 		break;
+
+	case ResourceCopyTargetType::STEREO_PARAMS:
+	case ResourceCopyTargetType::INI_PARAMS:
+	case ResourceCopyTargetType::SWAP_CHAIN:
+		// Only way we could "set" a resource to the back buffer is by
+		// copying to it. Might implement overwrites later, but no
+		// pressing need. To write something to the back buffer, assign
+		// it as a render target instead.
+		break;
 	}
 }
 
@@ -1569,6 +2045,11 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
+		case ResourceCopyTargetType::STEREO_PARAMS:
+		case ResourceCopyTargetType::INI_PARAMS:
+		case ResourceCopyTargetType::SWAP_CHAIN:
+			// N/A since swap chain can't be set as a destination
+			return (D3D11_BIND_FLAG)0;
 	}
 
 	// Shouldn't happen. No return value makes sense, so raise an exception
@@ -1609,6 +2090,7 @@ static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
 }
 
 static ID3D11Buffer *RecreateCompatibleBuffer(
+		ResourceCopyTarget *dst,
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
 		ID3D11View *src_view,
@@ -1680,6 +2162,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		*buf_dst_size = new_desc.ByteWidth;
 	}
 
+	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		dst->custom_resource->OverrideBufferDesc(&new_desc);
+
 	if (dst_resource) {
 		// If destination already exists and the description is
 		// identical we don't need to recreate it.
@@ -1700,6 +2185,190 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	LogDebugResourceDesc(&new_desc);
 
 	return buffer;
+}
+
+static DXGI_FORMAT MakeTypeless(DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return DXGI_FORMAT_R32G32B32A32_TYPELESS;
+
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return DXGI_FORMAT_R32G32B32_TYPELESS;
+
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+			return DXGI_FORMAT_R16G16B16A16_TYPELESS;
+
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+			return DXGI_FORMAT_R32G32_TYPELESS;
+
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return DXGI_FORMAT_R32G8X24_TYPELESS;
+
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+			return DXGI_FORMAT_R10G10B10A2_TYPELESS;
+
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+			return DXGI_FORMAT_R8G8B8A8_TYPELESS;
+
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+			return DXGI_FORMAT_R16G16_TYPELESS;
+
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+			return DXGI_FORMAT_R32_TYPELESS;
+
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return DXGI_FORMAT_R24G8_TYPELESS;
+
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+			return DXGI_FORMAT_R8G8_TYPELESS;
+
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+			return DXGI_FORMAT_R16_TYPELESS;
+
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+			return DXGI_FORMAT_R8_TYPELESS;
+
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+			return DXGI_FORMAT_BC1_TYPELESS;
+
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+			return DXGI_FORMAT_BC2_TYPELESS;
+
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+			return DXGI_FORMAT_BC3_TYPELESS;
+
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+			return DXGI_FORMAT_BC4_TYPELESS;
+
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+			return DXGI_FORMAT_BC5_TYPELESS;
+
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+			return DXGI_FORMAT_B8G8R8A8_TYPELESS;
+
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return DXGI_FORMAT_B8G8R8X8_TYPELESS;
+
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+			return DXGI_FORMAT_BC6H_TYPELESS;
+
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return DXGI_FORMAT_BC7_TYPELESS;
+
+		default:
+			return fmt;
+	}
+}
+
+static DXGI_FORMAT MakeDSVFormat(DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+			return DXGI_FORMAT_D32_FLOAT;
+
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+			return DXGI_FORMAT_D16_UNORM;
+
+		default:
+			return EnsureNotTypeless(fmt);
+	}
+}
+
+static DXGI_FORMAT MakeNonDSVFormat(DXGI_FORMAT fmt)
+{
+	// TODO: Add a keyword to return the stencil side of a combined
+	// depth/stencil resource instead of the depth side
+	switch(fmt)
+	{
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+			return DXGI_FORMAT_R32_FLOAT;
+
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+			return DXGI_FORMAT_R16_UNORM;
+
+		default:
+			return EnsureNotTypeless(fmt);
+	}
 }
 
 // MSAA resolving only makes sense for Texture2D types, and the SampleDesc
@@ -1723,10 +2392,10 @@ template <typename ResourceType,
 	      ResourceType **ppTexture)
 	>
 static ResourceType* RecreateCompatibleTexture(
+		ResourceCopyTarget *dst,
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
 		D3D11_BIND_FLAG bind_flags,
-		DXGI_FORMAT format,
 		ID3D11Device *device,
 		StereoHandle mStereoHandle,
 		ResourceCopyOptions options)
@@ -1740,16 +2409,14 @@ static ResourceType* RecreateCompatibleTexture(
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
 	new_desc.CPUAccessFlags = 0;
-#if 0
-	// Didn't seem to work - got an invalid argument error from
-	// CreateTexture2D. Could be that the existing view used a format
-	// incompatible with the bind flags (e.g. depth+stencil formats can't
-	// be used in a shader resource).
-	if (format)
-		new_desc.Format = format;
-#else
-	new_desc.Format = EnsureNotTypeless(new_desc.Format);
-#endif
+
+	// New strategy - we make the new resources typeless whenever possible
+	// and will fill the type back in in the view instead. This gives us
+	// more flexibility with depth/stencil formats which need different
+	// types depending on where they are bound in the pipeline. This also
+	// helps with certain MSAA resources that may not be possible to create
+	// if we change the type to a R*X* format.
+	new_desc.Format = MakeTypeless(new_desc.Format);
 
 	if (options & ResourceCopyOptions::STEREO2MONO)
 		new_desc.Width *= 2;
@@ -1766,6 +2433,9 @@ static ResourceType* RecreateCompatibleTexture(
 	// generate mip-maps just clear it out:
 	new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
+	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		dst->custom_resource->OverrideTexDesc(&new_desc);
+
 	if (dst_resource) {
 		// If destination already exists and the description is
 		// identical we don't need to recreate it.
@@ -1780,6 +2450,9 @@ static ResourceType* RecreateCompatibleTexture(
 	if (FAILED(hr)) {
 		LogInfo("Resource copy RecreateCompatibleTexture failed: 0x%x\n", hr);
 		LogResourceDesc(&new_desc);
+		src_resource->GetDesc(&old_desc);
+		LogInfo("Original resource was:\n", hr);
+		LogResourceDesc(&old_desc);
 		return NULL;
 	}
 
@@ -1802,11 +2475,12 @@ static void RecreateCompatibleResource(
 		DXGI_FORMAT format,
 		UINT *buf_dst_size)
 {
-	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
 	ID3D11Resource *res = NULL;
+	bool restore_create_mode = false;
 
 	if (dst)
 		bind_flags = dst->BindFlags();
@@ -1829,6 +2503,7 @@ static void RecreateCompatibleResource(
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
 		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+		restore_create_mode = true;
 
 		// STEREO2MONO will force the final destination to mono since
 		// it is in the CREATEMODE_MASK, but is not STEREO. It also
@@ -1846,27 +2521,27 @@ static void RecreateCompatibleResource(
 
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			res = RecreateCompatibleBuffer((ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
+			res = RecreateCompatibleBuffer(dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
 					bind_flags, device, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				((ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags, format,
+				(dst, (ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				((ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags, format,
+				(dst, (ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				((ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags, format,
+				(dst, (ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags,
 				 device, mStereoHandle, options);
 			break;
 	}
 
-	if (options & ResourceCopyOptions::CREATEMODE_MASK)
+	if (restore_create_mode)
 		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	if (res) {
@@ -1946,6 +2621,252 @@ static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(
 	return NULL;
 }
 
+
+// This is a hell of a lot of duplicated code, mostly thanks to DX using
+// different names for the same thing in a slightly different type, and pretty
+// much all this is only needed for depth/stencil format conversions. It would
+// be nice to refactor this somehow. TODO: For now we are creating a view of
+// the entire resource, but it would make sense to use information from the
+// source view if available instead.
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MostDetailedMip = 0;
+		view_desc->Texture1D.MipLevels = -1;
+	} else {
+		view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MostDetailedMip = 0;
+		view_desc->Texture1DArray.MipLevels = -1;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MipSlice = 0;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MipSlice = 0;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex1DDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
+		D3D11_TEXTURE1D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE1D;
+		view_desc->Texture1D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE1DARRAY;
+		view_desc->Texture1DArray.MipSlice = 0;
+		view_desc->Texture1DArray.FirstArraySlice = 0;
+		view_desc->Texture1DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+			view_desc->TextureCube.MostDetailedMip = 0;
+			view_desc->TextureCube.MipLevels = -1;
+		} else {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
+			view_desc->TextureCubeArray.MostDetailedMip = 0;
+			view_desc->TextureCubeArray.MipLevels = -1;
+			view_desc->TextureCubeArray.First2DArrayFace = 0; // FIXME: Get from original view
+			view_desc->TextureCubeArray.NumCubes = resource_desc->ArraySize / 6;
+		}
+	} else if (resource_desc->SampleDesc.Count == 1) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			view_desc->Texture2D.MostDetailedMip = 0;
+			view_desc->Texture2D.MipLevels = -1;
+		} else {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+			view_desc->Texture2DArray.MostDetailedMip = 0;
+			view_desc->Texture2DArray.MipLevels = -1;
+			view_desc->Texture2DArray.FirstArraySlice = 0;
+			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+		}
+	} else {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+		} else {
+			view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY;
+			view_desc->Texture2DMSArray.FirstArraySlice = 0;
+			view_desc->Texture2DMSArray.ArraySize = resource_desc->ArraySize;
+		}
+	}
+
+	return view_desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->SampleDesc.Count == 1) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+			view_desc->Texture2D.MipSlice = 0;
+		} else {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+			view_desc->Texture2DArray.MipSlice = 0;
+			view_desc->Texture2DArray.FirstArraySlice = 0;
+			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+		}
+	} else {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMS;
+		} else {
+			view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY;
+			view_desc->Texture2DMSArray.FirstArraySlice = 0;
+			view_desc->Texture2DMSArray.ArraySize = resource_desc->ArraySize;
+		}
+	}
+
+	return view_desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeDSVFormat(format);
+	view_desc->Flags = 0; // TODO: Fill in from old view, and add keyword to override
+
+	if (resource_desc->SampleDesc.Count == 1) {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+			view_desc->Texture2D.MipSlice = 0;
+		} else {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+			view_desc->Texture2DArray.MipSlice = 0;
+			view_desc->Texture2DArray.FirstArraySlice = 0;
+			view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+		}
+	} else {
+		if (resource_desc->ArraySize == 1) {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+		} else {
+			view_desc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY;
+			view_desc->Texture2DMSArray.FirstArraySlice = 0;
+			view_desc->Texture2DMSArray.ArraySize = resource_desc->ArraySize;
+		}
+	}
+
+	return view_desc;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex2DDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
+		D3D11_TEXTURE2D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	if (resource_desc->ArraySize == 1) {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		view_desc->Texture2D.MipSlice = 0;
+	} else {
+		view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+		view_desc->Texture2DArray.MipSlice = 0;
+		view_desc->Texture2DArray.FirstArraySlice = 0;
+		view_desc->Texture2DArray.ArraySize = resource_desc->ArraySize;
+	}
+
+	return view_desc;
+}
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	view_desc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
+	view_desc->Texture3D.MostDetailedMip = 0;
+	view_desc->Texture3D.MipLevels = -1;
+
+	return view_desc;
+}
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	view_desc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE3D;
+	view_desc->Texture3D.MipSlice = 0;
+	view_desc->Texture3D.FirstWSlice = 0;
+	view_desc->Texture3D.WSize = -1;
+
+	return view_desc;
+}
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	// DSV cannot be a Texture3D
+
+	return NULL;
+}
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex3DDesc(
+		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+{
+	view_desc->Format = MakeNonDSVFormat(format);
+
+	view_desc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
+	view_desc->Texture3D.MipSlice = 0;
+	view_desc->Texture3D.FirstWSlice = 0;
+	view_desc->Texture3D.WSize = -1;
+
+	return view_desc;
+}
+
+
 template <typename ViewType,
 	 typename DescType,
 	 HRESULT (__stdcall ID3D11Device::*CreateView)(THIS_
@@ -1962,27 +2883,63 @@ static ID3D11View* _CreateCompatibleView(
 		UINT buf_src_size)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
 	ViewType *view = NULL;
-	DescType desc, *pDesc = NULL;
+	DescType view_desc, *pDesc = NULL;
 	HRESULT hr;
 
 	resource->GetType(&dimension);
-	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
-		// In the case of a buffer type resource we must specify the
-		// description as DirectX doesn't have enough information from the
-		// buffer alone to create a view.
+	switch(dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			// In the case of a buffer type resource we must specify the
+			// description as DirectX doesn't have enough information from the
+			// buffer alone to create a view.
 
-		desc.Format = format;
+			view_desc.Format = format;
 
-		pDesc = FillOutBufferDesc(&desc, stride, offset, buf_src_size);
+			pDesc = FillOutBufferDesc(&view_desc, stride, offset, buf_src_size);
 
-		// This should already handle things like:
-		// - Copying a vertex buffer to a SRV or constant buffer
-		// - Copying an index buffer to a SRV
-		// - Copying structured buffers
-		// - Copying regular buffers
+			// This should already handle things like:
+			// - Copying a vertex buffer to a SRV or constant buffer
+			// - Copying an index buffer to a SRV
+			// - Copying structured buffers
+			// - Copying regular buffers
 
-		// TODO: Support UAV flags like append/consume and SRV BufferEx views
+			// TODO: Support UAV flags like append/consume and SRV BufferEx views
+			break;
+
+		// We now also fill out the view description for textures as
+		// well. We used to create fully typed resources and leave this
+		// up to DX, but there were some situations where that would
+		// not work (depth buffers need different types depending on
+		// where they are bound, some MSAA resources could not be
+		// created), so we now create typeless resources and therefore
+		// have to fill out the view description to set the type. We
+		// could potentially do this for only the cases where we need
+		// (i.e. depth buffer formats), but I want to do this for
+		// everything because it's so damn overly complex that typos
+		// are ensured so this way it will at least get more exposure
+		// and I can find the bugs sooner:
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
+			tex1d->GetDesc(&tex1d_desc);
+			pDesc = FillOutTex1DDesc(&view_desc, &tex1d_desc, format);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
+			tex2d->GetDesc(&tex2d_desc);
+			pDesc = FillOutTex2DDesc(&view_desc, &tex2d_desc, format);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			pDesc = FillOutTex3DDesc(&view_desc, &tex3d_desc, format);
+			break;
 	}
 
 	hr = (device->*CreateView)(resource, pDesc, &view);
@@ -2032,6 +2989,45 @@ static ID3D11View* CreateCompatibleView(
 				       (resource, device, stride, offset, format, buf_src_size);
 	}
 	return NULL;
+}
+
+static void SetViewportFromResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *resource)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+	D3D11_VIEWPORT viewport = {0, 0, 0, 0, D3D11_MIN_DEPTH, D3D11_MAX_DEPTH};
+
+	// TODO: Could handle mip-maps from a view like the CD3D11_VIEWPORT
+	// constructor, but we aren't using them elsewhere so don't care yet.
+	resource->GetType(&dimension);
+	switch(dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			// TODO: Width = NumElements
+			return;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
+			tex1d->GetDesc(&tex1d_desc);
+			viewport.Width = (float)tex1d_desc.Width;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
+			tex2d->GetDesc(&tex2d_desc);
+			viewport.Width = (float)tex2d_desc.Width;
+			viewport.Height = (float)tex2d_desc.Height;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			viewport.Width = (float)tex3d_desc.Width;
+			viewport.Height = (float)tex3d_desc.Height;
+	}
+
+	mOrigContext->RSSetViewports(1, &viewport);
 }
 
 ResourceCopyOperation::ResourceCopyOperation() :
@@ -2196,6 +3192,13 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
 	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
 
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+
 	// Some of these may already be filled in when getting the resource
 	// (either because it is stored in the pipeline state and retrieved
 	// with the resource, or was stored in a custom resource). If they are
@@ -2227,7 +3230,7 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 					*stride = dxgi_format_size(*format);
 				if (!*offset)
 					*offset = resource_view_desc.Buffer.FirstElement * *stride;
-				if (!buf_size)
+				if (!*buf_size)
 					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
 			case ResourceCopyTargetType::RENDER_TARGET:
@@ -2239,7 +3242,7 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 					*stride = dxgi_format_size(*format);
 				if (!*offset)
 					*offset = render_view_desc.Buffer.FirstElement * *stride;
-				if (!buf_size)
+				if (!*buf_size)
 					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
 			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
@@ -2260,9 +3263,29 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 					*stride = dxgi_format_size(*format);
 				if (!*offset)
 					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
-				if (!buf_size)
+				if (!*buf_size)
 					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
 				break;
+		}
+	} else if (*format == DXGI_FORMAT_UNKNOWN) {
+		// If we *still* don't know the format and it's a texture, get it from
+		// the resource description. This will be the case for the back buffer
+		// since that does not have a view.
+		switch (dimension) {
+			case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+				tex1d = (ID3D11Texture1D*)resource;
+				tex1d->GetDesc(&tex1d_desc);
+				*format = tex1d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+				tex2d = (ID3D11Texture2D*)resource;
+				tex2d->GetDesc(&tex2d_desc);
+				*format = tex2d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+				tex3d = (ID3D11Texture3D*)resource;
+				tex3d->GetDesc(&tex3d_desc);
+				*format = tex3d_desc.Format;
 		}
 	}
 
@@ -2304,7 +3327,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		return;
 	}
 
-	src_resource = src.GetResource(mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state->call_info);
+	src_resource = src.GetResource(mHackerDevice, mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state->call_info);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -2334,6 +3357,8 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame)
 				return;
 		}
+
+		dst.custom_resource->OverrideOutOfBandInfo(&format, &stride);
 	}
 
 	FillInMissingInfo(src.type, src_resource, src_view, &stride, &offset, &buf_src_size, &format);
@@ -2351,7 +3376,9 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		dst_resource = *pp_cached_resource;
 		dst_view = *pp_cached_view;
 
-		if (options & ResourceCopyOptions::STEREO2MONO) {
+		if (options & ResourceCopyOptions::COPY_DESC) {
+			// RecreateCompatibleResource has already done the work
+		} else if (options & ResourceCopyOptions::STEREO2MONO) {
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -2410,14 +3437,21 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice,
 				stride, offset, format, buf_src_size);
 		// Not checking for NULL return as view's are not applicable to
-		// all types. TODO: Check for legitimate failures.
+		// all types. Legitimate failures are logged.
 		*pp_cached_view = dst_view;
 	}
 
 	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, format, buf_dst_size);
 
+	if (options & ResourceCopyOptions::SET_VIEWPORT)
+		SetViewportFromResource(mOrigContext, dst_resource);
+
 out_release:
 	src_resource->Release();
 	if (src_view)
 		src_view->Release();
+	if (options & ResourceCopyOptions::NO_VIEW_CACHE && *pp_cached_view) {
+		(*pp_cached_view)->Release();
+		*pp_cached_view = NULL;
+	}
 }

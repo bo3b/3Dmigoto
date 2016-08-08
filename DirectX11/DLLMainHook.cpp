@@ -2,6 +2,7 @@
 
 #include "log.h"
 #include "HookedDXGI.h"
+#include "globals.h"
 
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
@@ -45,11 +46,13 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 		DWORD dwFlags, LPCWSTR our_name, LPCWSTR library)
 {
 	WCHAR fullPath[MAX_PATH];
+	UINT ret;
 
 	// We can use System32 for all cases, because it will be properly rerouted
 	// to SysWow64 by LoadLibraryEx itself.
 
-	if (GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath)) == 0)
+	ret = GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath));
+	if (ret == 0 || ret >= ARRAYSIZE(fullPath))
 		return NULL;
 	wcscat_s(fullPath, MAX_PATH, L"\\");
 	wcscat_s(fullPath, MAX_PATH, library);
@@ -210,6 +213,61 @@ static bool InstallHooks()
 
 
 	return (dwOsErr == 0) ? true : false;
+}
+
+typedef BOOL(WINAPI *lpfnSetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+		_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags);
+lpfnSetWindowPos trampoline_SetWindowPos;
+
+static BOOL WINAPI Hooked_SetWindowPos(
+    _In_ HWND hWnd,
+    _In_opt_ HWND hWndInsertAfter,
+    _In_ int X,
+    _In_ int Y,
+    _In_ int cx,
+    _In_ int cy,
+    _In_ UINT uFlags)
+{
+	if (G->SCREEN_FULLSCREEN == 2) {
+		// Do nothing - passing this call through could change the game
+		// to a borderless window. Needed for The Witness.
+		return true;
+	}
+
+	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
+void InstallSetWindowPosHook()
+{
+	HINSTANCE hUser32;
+	void* fnOrigSetWindowPos;
+	DWORD dwOsErr;
+	SIZE_T hook_id;
+	static bool hook_installed = false;
+
+	// Only attempt to hook it once:
+	if (hook_installed)
+		return;
+	hook_installed = true;
+
+	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+	if (!hUser32)
+		goto err;
+
+	fnOrigSetWindowPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetWindowPos");
+	if (fnOrigSetWindowPos == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetWindowPos, fnOrigSetWindowPos, Hooked_SetWindowPos);
+	if (dwOsErr)
+		goto err;
+
+	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
+	return;
+err:
+	LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+	BeepFailure2();
+	return;
 }
 
 static void RemoveHooks()

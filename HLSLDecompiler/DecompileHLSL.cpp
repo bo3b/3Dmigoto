@@ -205,7 +205,7 @@ public:
 		const char *startPos = c + pos;
 		const char *eolPos = strchr(startPos, '\n');
 		std::string line(startPos, eolPos);
-		sprintf(buffer, " %s\n", line.c_str());
+		sprintf(buffer, "%s\n", line.c_str());
 		appendOutput(buffer);
 	}
 
@@ -245,6 +245,7 @@ public:
 			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg1, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
 		if (numRead != 6)
 			return false;
+		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
 		if (strcmp(name, "TEXCOORD") != 0)
 			return false;
 
@@ -262,6 +263,7 @@ public:
 			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg2, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
 		if (numRead != 6)
 			return false;
+		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
 		if (strcmp(name, "TEXCOORD") != 0)
 			return false;
 
@@ -763,7 +765,7 @@ public:
 	void WriteResourceDefinitions()
 	{
 		char buffer[256];
-		sprintf(buffer, "\n");
+		_snprintf_s(buffer, 256, 256, "\n");
 		mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 
 		for (map<int, string>::iterator i = mSamplerNames.begin(); i != mSamplerNames.end(); ++i)
@@ -921,7 +923,7 @@ public:
 			// Write declaration.
 			char buffer[256];
 			if (name[0] == '$') name[0] = '_';
-			sprintf(buffer, "\ncbuffer %s : register(b%d)\n{\n", name, bufferRegister);
+			_snprintf_s(buffer, 256, 256, "\ncbuffer %s : register(b%d)\n{\n", name, bufferRegister);
 			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			do
 			{
@@ -995,6 +997,10 @@ public:
 					}
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					// Prefix struct attributes.
+					if (structLevel < 0) {
+						logDecompileError("structLevel is negative - malformed shader?\n");
+						return;
+					}
 					size_t arrayPos = structName.find('[');
 					if (arrayPos == string::npos)
 					{
@@ -1652,18 +1658,38 @@ public:
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/4]", regAndSwiz);
 					else
 					{
-						// Most common case, like: g_AmbientCube[r3.w]
+						// Most common case, like: g_AmbientCube[r3.w] and Globals[r19.w+63]
 
 						// Bug was to not handle the struct case here, and truncate string.
 						//  Like g_OmniLights[r5.w].m_PositionFar -> g_OmniLights[r5.w]
 						//sprintf(right3 + strlen(right3), "[%s]", indexRegister);
-
+						
 						// Start fresh with original string and just replace, not char* manipulate.
-						// base: g_OmniLights[0].m_PositionFar
+						// base e.g: g_OmniLights[0].m_PositionFar
 						string base = i->second.Name;
 						size_t left = base.find('[') + 1;
 						size_t length = base.find(']') - left;
-						base.replace(left, length, regAndSwiz);
+
+						// Another bug was to miss array indexing into a variable name. So if i->second.Name
+						// is not a zero index element, we need to preserve the offset.
+						// Like a JC3 variant of cb0[r19.w + 63].xyzw becoming Globals[r19.w+63]
+						// Normally an offset turns into an actual named variable.
+
+						int offset;
+						sscanf_s(i->second.Name.c_str(), "%*[^[][%d]", &offset);
+						if (offset == 0)
+						{
+							// e.g. cb0[r21.y + 55] -> PointLight[r21.y]
+							base.replace(left, length, regAndSwiz);
+						}
+						else
+						{
+							// leave it named with register and bufOffset, e.g. cb0[r19.w + 63] -> Globals[r19.w+63]
+							char regAndOffset[opcodeSize];
+							sprintf_s(regAndOffset, "%s+%d", regAndSwiz, bufOffset);
+							base.replace(left, length, regAndOffset);
+						}
+
 						strcpy(right3, base.c_str());
 					}
 				}
@@ -2036,7 +2062,7 @@ public:
 		{
 			printed = sprintf_s(convert, sizeof(convert), "l(");
 
-			count = sscanf_s(target, "l(0x%x,0x%x,0x%x,0x%x)", (unsigned int*)&lit[0], (unsigned int*)&lit[1], (unsigned int*)&lit[2], (unsigned int*)&lit[3]);
+			count = sscanf_s(target, "l(%x,%x,%x,%x)", (unsigned int*)&lit[0], (unsigned int*)&lit[1], (unsigned int*)&lit[2], (unsigned int*)&lit[3]);
 			if (count != 0)
 			{
 				for (int i = 0; i < count; i++)
@@ -2082,7 +2108,7 @@ public:
 		// Fixup for constant buffer reads where the type may not be known due to missing headers:
 		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
 		{
-			sprintf(buffer, "asint(%s)", target);
+			_snprintf_s(buffer, opcodeSize, opcodeSize, "asint(%s)", target);
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
@@ -2091,9 +2117,9 @@ public:
 		{
 			size_t size = strlen(pos + 1);
 			if (size == 1)
-				sprintf(buffer, "(int)%s", target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(int)%s", target);
 			else
-				sprintf(buffer, "(int%Id)%s", size, target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(int%Id)%s", size, target);
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
@@ -2125,7 +2151,7 @@ public:
 		// Fixup for constant buffer reads where the type may not be known due to missing headers:
 		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
 		{
-			sprintf(buffer, "asuint(%s)", target);
+			_snprintf_s(buffer, opcodeSize, opcodeSize, "asuint(%s)", target);
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
@@ -2134,9 +2160,9 @@ public:
 		{
 			size_t size = strlen(pos + 1);
 			if (size == 1)
-				sprintf(buffer, "(uint)%s", target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(uint)%s", target);
 			else
-				sprintf(buffer, "(uint%Id)%s", size, target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(uint%Id)%s", size, target);
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
@@ -2844,7 +2870,7 @@ public:
 							char buf[512];
 							if (MatrixPos_MUL1.empty())
 								MatrixPos_MUL1 = string("1,1,1");
-							sprintf(buf, "\nfloat3 stereoMat%dMul = float3(%s);"
+							_snprintf_s(buf, 512, 512, "\nfloat3 stereoMat%dMul = float3(%s);"
 								"\n%s -= viewDirection.x * separation * (wpos - convergence) * stereoMat%dMul.x;"
 								"\n%s -= viewDirection.y * separation * (wpos - convergence) * stereoMat%dMul.y;"
 								"\n%s -= viewDirection.z * separation * (wpos - convergence) * stereoMat%dMul.z;",
@@ -3309,11 +3335,46 @@ public:
 				const char *helperDecl = "  uint4 bitmask, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
+			// For Geometry Shaders, e.g. dcl_stream m0  TODO: make it StreamN, add to varlist
+			else if (!strcmp(statement, "dcl_stream"))
+			{
+				// Write out original ASM, inline, for reference.
+				sprintf(buffer, "// Needs manual fix for instruction:  \n//");
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				ASMLineOut(c, pos, size);
+				// Move back to input section and output something close to right
+				char *main_ptr = strstr(mOutput.data(), "void main(");
+				size_t offset = main_ptr - mOutput.data();
+				NextLine(mOutput.data(), offset, mOutput.size());
+				sprintf(buffer, "  inout TriangleStream<float> m0,\n");
+				mOutput.insert(mOutput.begin() + offset , buffer, buffer + strlen(buffer));
+			}
+			// For Geometry Shaders, e.g. dcl_maxout n
+			else if (!strcmp(statement, "dcl_maxout"))
+			{
+				char *main_ptr = strstr(mOutput.data(), "void main(");
+				size_t offset = main_ptr - mOutput.data();
+				sprintf(buffer, "[maxvertexcount(%s)]\n", op1);
+				mOutput.insert(mOutput.begin() + offset, buffer, buffer + strlen(buffer));
+			}
 			else if (!strncmp(statement, "dcl_", 4))
 			{
-				// Other declarations.
-				//sprintf(buffer, "  // unknown dcl_  %s\n", statement);
-				//mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				// Hateful strcmp logic is upside down, only output for ones we aren't already handling.
+				if (strcmp(statement, "dcl_output") && 
+					strcmp(statement, "dcl_output_siv") &&
+					strcmp(statement, "dcl_globalFlags") &&
+					//strcmp(statement, "dcl_input_siv") && 
+					strcmp(statement, "dcl_input_ps") && 
+					strcmp(statement, "dcl_input_ps_sgv") &&
+					strcmp(statement, "dcl_input_ps_siv"))
+				{
+					// Other declarations, unforeseen.
+					sprintf(buffer, "// Needs manual fix for instruction: \n");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					sprintf(buffer, "// unknown dcl_: ");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					ASMLineOut(c, pos, size);
+				}
 			}
 			else
 			{
@@ -3619,6 +3680,30 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Add the Firstbit ops, because now Just Cause 3 uses them.
+						// firstbit{_hi|_lo|_shi} dest[.mask], src0[.swizzle]
+					case OPCODE_FIRSTBIT_HI:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					case OPCODE_FIRSTBIT_LO:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbitlow(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					case OPCODE_FIRSTBIT_SHI:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 						// Code generation for this weird instruction is tuned to indent the way we want, 
 						// and still look like a single instruction.  Still has weird indent in middle of instruction,
 						// but it seems more valuable to have it be a single line.
@@ -3640,7 +3725,7 @@ public:
 								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
 							// FIXME: May need fixup for read from constant buffer of unidentified type?
-							sprintf(buffer, "%s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
+							sprintf(buffer, "%s = (uint)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
 							appendOutput(buffer);
 							sprintf(buffer, " } else %s = (uint)%s >> %s;\n",
 								writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
@@ -3757,22 +3842,42 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Add remaining atomic ops, we see atomic_or in Song of the Deep.
+						// Needs an unclear manual fix, but better than not generating any HLSL at all.
 						// Opcodes found in Witcher3 Compute Shader, manual fix needed.
-					case OPCODE_ATOMIC_UMAX:
+					case OPCODE_ATOMIC_AND:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						sprintf(buffer, "  InterlockedAnd(dest, value, orig_value);\n");
 						appendOutput(buffer);
-						break; 
+						break;
 					}
-					case OPCODE_ATOMIC_UMIN:
+					case OPCODE_ATOMIC_OR:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						sprintf(buffer, "  InterlockedOr(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_XOR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedXor(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_CMP_STORE:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedCompareStore(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
 					}
@@ -3785,12 +3890,39 @@ public:
 						appendOutput(buffer);
 						break;
 					}
-					case OPCODE_IMM_ATOMIC_IADD:
+					case OPCODE_ATOMIC_IMAX:
 					{
 						sprintf(buffer, "  // Needs manual fix for instruction:\n");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "  InterlockedAdd?(dest, value, orig_value);\n");
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_IMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
 						appendOutput(buffer);
 						break;
 					}
@@ -3800,6 +3932,105 @@ public:
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
 						sprintf(buffer, "  InterlockedExchange ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_CONSUME:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  Interlocked... ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IADD:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAdd(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_AND:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAnd(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_OR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedOr(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_XOR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedXor(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_EXCH:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedExchange(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_CMP_EXCH:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedCompareExchange(dest, compare_value, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, imm_value, orig_value);\n");
 						appendOutput(buffer);
 						break;
 					}
@@ -4288,7 +4519,7 @@ public:
 							// Fails: bitmask.%c = (((1 << %s) - 1) << %s) & 0xffffffff;
 
 							// FIXME: May need fixup for read from constant buffer of unidentified type
-							sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;\n"
+							sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;"
 								"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
 								*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(),
 								writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);
@@ -4726,7 +4957,7 @@ public:
 						break;
 					}
 
-						// Missing opcodes for SM5.  Not implemetned yet, but we want to generate some sort of code, in case
+						// Missing opcodes for SM5.  Not implemented yet, but we want to generate some sort of code, in case
 						// these are used in needed shaders.  That way we can hand edit the shader to make it usable, until 
 						// this is completed.
 					case OPCODE_STORE_UAV_TYPED:
@@ -5005,6 +5236,22 @@ public:
 							sprintf(buffer, "  if (%s == 0) return;\n", ci(op1).c_str());
 						else
 							sprintf(buffer, "  if (%s != 0) return;\n", ci(op1).c_str());
+						appendOutput(buffer);
+						break;
+
+						// FarCry4 GeometryShader
+					case OPCODE_EMIT_STREAM:
+						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "m0.Append(0); \n");
+						appendOutput(buffer);
+						break;
+					case OPCODE_CUT_STREAM:
+						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "m0.RestartStrip(); \n");
 						appendOutput(buffer);
 						break;
 

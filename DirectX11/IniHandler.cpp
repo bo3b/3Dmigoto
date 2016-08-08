@@ -51,6 +51,134 @@ bool IsCommandListSection(const wchar_t *section)
 	return false;
 }
 
+// Helper functions to parse common types and log their values. TODO: Convert
+// more of this file to use these where appropriate
+static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, const wchar_t *iniFile, bool *found)
+{
+	wchar_t val[32];
+	float ret = def;
+	int len;
+
+	if (found)
+		*found = false;
+
+	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
+		swscanf_s(val, L"%f%n", &ret, &len);
+		if (len != wcslen(val)) {
+			LogInfo("  WARNING: Floating point parse error: %S=%S\n", key, val);
+			BeepFailure2();
+		} else {
+			if (found)
+				*found = true;
+			LogInfo("  %S=%f\n", key, ret);
+		}
+	}
+
+	return ret;
+}
+
+static int GetIniInt(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found)
+{
+	wchar_t val[32];
+	int ret = def;
+	int len;
+
+	if (found)
+		*found = false;
+
+	// Not using GetPrivateProfileInt as it doesn't tell us if the key existed
+	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
+		swscanf_s(val, L"%d%n", &ret, &len);
+		if (len != wcslen(val)) {
+			LogInfo("  WARNING: Integer parse error: %S=%S\n", key, val);
+			BeepFailure2();
+		} else {
+			if (found)
+				*found = true;
+			LogInfo("  %S=%d\n", key, ret);
+		}
+	}
+
+	return ret;
+}
+
+static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, const wchar_t *iniFile, bool *found)
+{
+	wchar_t val[32];
+	bool ret = def;
+
+	if (found)
+		*found = false;
+
+	// Not using GetPrivateProfileInt as it doesn't tell us if the key existed
+	if (GetPrivateProfileString(section, key, 0, val, 32, iniFile)) {
+		if (!_wcsicmp(val, L"1") || !_wcsicmp(val, L"true") || !_wcsicmp(val, L"yes") || !_wcsicmp(val, L"on")) {
+			LogInfo("  %S=1\n", key);
+			if (found)
+				*found = true;
+			return true;
+		}
+		if (!_wcsicmp(val, L"0") || !_wcsicmp(val, L"false") || !_wcsicmp(val, L"no") || !_wcsicmp(val, L"off")) {
+			LogInfo("  %S=0\n", key);
+			if (found)
+				*found = true;
+			return false;
+		}
+
+		LogInfo("  WARNING: Boolean parse error: %S=%S\n", key, val);
+		BeepFailure2();
+	}
+
+	return ret;
+}
+
+class EnumParseError: public exception {} enumParseError;
+
+static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_len, int first)
+{
+	size_t prefix_len;
+	wchar_t *ptr = str;
+	int i;
+
+	if (prefix) {
+		prefix_len = wcslen(prefix);
+		if (!_wcsnicmp(ptr, prefix, prefix_len))
+			ptr += prefix_len;
+	}
+
+	for (i = first; i < names_len; i++) {
+		if (!_wcsicmp(ptr, names[i]))
+			return i;
+	}
+
+	throw enumParseError;
+}
+
+static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found,
+		wchar_t *prefix, wchar_t *names[], int names_len, int first)
+{
+	wchar_t val[MAX_PATH];
+	int ret = def;
+
+	if (found)
+		*found = false;
+
+	if (GetPrivateProfileString(section, key, 0, val, MAX_PATH, iniFile)) {
+		try {
+			ret = ParseEnum(val, prefix, names, names_len, first);
+			if (found)
+				*found = true;
+			LogInfo("  %S=%S\n", key, val);
+		} catch (EnumParseError) {
+			LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
+			BeepFailure2();
+		}
+	}
+
+	return ret;
+}
+
+
 // Case insensitive version of less comparitor. This is used to create case
 // insensitive sets of section names in the ini so we can detect duplicate
 // sections that vary only by case, e.g. [Key1] and [KEY1], as these are
@@ -204,10 +332,12 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	for (i = lower; i != upper; i++) {
 		const wchar_t *id = i->c_str();
 
-		LogInfoW(L"[%s]\n", id);
+		LogInfo("[%S]\n", id);
 
-		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
-			break;
+		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile)) {
+			LogInfo("  WARNING: [%S] missing Key=\n", id);
+			continue;
+		}
 
 		type = KeyOverrideType::ACTIVATE;
 
@@ -226,8 +356,8 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 			}
 		}
 
-		delay = GetPrivateProfileInt(id, L"delay", 0, iniFile);
-		release_delay = GetPrivateProfileInt(id, L"release_delay", 0, iniFile);
+		delay = GetIniInt(id, L"delay", 0, iniFile, NULL);
+		release_delay = GetIniInt(id, L"release_delay", 0, iniFile, NULL);
 
 		if (type == KeyOverrideType::CYCLE)
 			preset = new KeyOverrideCycle();
@@ -265,9 +395,7 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 		custom_resource = &customResources[resource_id];
 
 		custom_resource->max_copies_per_frame =
-			GetPrivateProfileInt(i->c_str(), L"max_copies_per_frame", 0, iniFile);
-		if (custom_resource->max_copies_per_frame)
-			LogInfo("  max_copies_per_frame=%d\n", custom_resource->max_copies_per_frame);
+			GetIniInt(i->c_str(), L"max_copies_per_frame", 0, iniFile, NULL);
 
 		if (GetPrivateProfileString(i->c_str(), L"filename", 0, setting, MAX_PATH, iniFile)) {
 			LogInfoW(L"  filename=%s\n", setting);
@@ -276,6 +404,42 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			wcscat(path, setting);
 			custom_resource->filename = path;
 		}
+
+		if (GetPrivateProfileString(i->c_str(), L"type", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
+				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
+			if (custom_resource->override_type == CustomResourceType::INVALID) {
+				LogInfo("  WARNING: Unknown type \"%S\"\n", setting);
+				BeepFailure2();
+			} else {
+				LogInfo("  type=%S\n", setting);
+			}
+		}
+
+		if (GetPrivateProfileString(i->c_str(), L"format", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_format = ParseFormatString(setting);
+			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
+				LogInfo("  WARNING: Unknown format \"%S\"\n", setting);
+				BeepFailure2();
+			} else {
+				LogInfo("  format=%s\n", TexFormatStr(custom_resource->override_format));
+			}
+		}
+
+		custom_resource->override_width = GetIniInt(i->c_str(), L"width", -1, iniFile, NULL);
+		custom_resource->override_height = GetIniInt(i->c_str(), L"height", -1, iniFile, NULL);
+		custom_resource->override_depth = GetIniInt(i->c_str(), L"depth", -1, iniFile, NULL);
+		custom_resource->override_mips = GetIniInt(i->c_str(), L"mips", -1, iniFile, NULL);
+		custom_resource->override_array = GetIniInt(i->c_str(), L"array", -1, iniFile, NULL);
+		custom_resource->override_msaa = GetIniInt(i->c_str(), L"msaa", -1, iniFile, NULL);
+		custom_resource->override_msaa_quality = GetIniInt(i->c_str(), L"msaa_quality", -1, iniFile, NULL);
+		custom_resource->override_byte_width = GetIniInt(i->c_str(), L"byte_width", -1, iniFile, NULL);
+		custom_resource->override_stride = GetIniInt(i->c_str(), L"stride", -1, iniFile, NULL);
+
+		custom_resource->width_multiply = GetIniFloat(i->c_str(), L"width_multiply", 1.0f, iniFile, NULL);
+		custom_resource->height_multiply = GetIniFloat(i->c_str(), L"height_multiply", 1.0f, iniFile, NULL);
+
+		// TODO: Overrides for bind flags, misc flags, etc
 	}
 }
 
@@ -291,7 +455,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 	IniSection::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
-	CommandList *command_list, *explicit_command_list = NULL;
+	CommandList *command_list, *explicit_command_list;
 	IniSections whitelisted_keys;
 	int i;
 
@@ -335,6 +499,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		}
 
 		command_list = pre_command_list;
+		explicit_command_list = NULL;
 		key_ptr = key->c_str();
 		if (post_command_list) {
 			if (!key->compare(0, 5, L"post ")) {
@@ -376,7 +541,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"iteration",
 	L"indexbufferfilter",
 	L"analyse_options",
-	L"fake_o0",
+	L"model",
 	NULL
 };
 static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
@@ -398,10 +563,12 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 	for (i = lower; i != upper; i++) {
 		id = i->c_str();
 
-		LogInfoW(L"[%s]\n", id);
+		LogInfo("[%S]\n", id);
 
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
+			LogInfo("  WARNING: [%S] missing Hash=\n", id);
+			continue;
+		}
 		swscanf_s(setting, L"%16llx", &hash);
 		LogInfo("  Hash=%16llx\n", hash);
 
@@ -411,16 +578,9 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 		}
 		override = &G->mShaderOverrideMap[hash];
 
-		if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
-		{
-			swscanf_s(setting, L"%e", &override->separation);
-			LogInfo("  Separation=%f\n", override->separation);
-		}
-		if (GetPrivateProfileString(id, L"Convergence", 0, setting, MAX_PATH, iniFile))
-		{
-			swscanf_s(setting, L"%e", &override->convergence);
-			LogInfo("  Convergence=%f\n", override->convergence);
-		}
+		override->separation = GetIniFloat(id, L"Separation", FLT_MAX, iniFile, NULL);
+		override->convergence = GetIniFloat(id, L"Convergence", FLT_MAX, iniFile, NULL);
+
 		if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
 			if (!wcscmp(setting, L"skip")) {
 				override->skip = true;
@@ -478,9 +638,11 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
-		override->fake_o0 = GetPrivateProfileInt(id, L"fake_o0", 0, iniFile) == 1;
-		if (override->fake_o0)
-			LogInfo("  fake_o0=1\n");
+		if (GetPrivateProfileString(id, L"model", 0, setting, MAX_PATH, iniFile)) {
+			wcstombs(override->model, setting, ARRAYSIZE(override->model));
+			override->model[ARRAYSIZE(override->model) - 1] = '\0';
+			LogInfo("  model=%s\n", override->model);
+		}
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
@@ -525,10 +687,13 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	{
 		id = i->c_str();
 
-		LogInfoW(L"[%s]\n", id);
+		LogInfo("[%S]\n", id);
 
-		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
-			break;
+		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
+			LogInfo("  WARNING: [%S] missing Hash=\n", id);
+			continue;
+		}
+
 		swscanf_s(setting, L"%8lx", &hash);
 		LogInfo("  Hash=%08lx\n", hash);
 
@@ -538,21 +703,10 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 		}
 		override = &G->mTextureOverrideMap[hash];
 
-		override->stereoMode = GetPrivateProfileInt(id, L"StereoMode", -1, iniFile);
-		if (override->stereoMode != -1)
-			LogInfo("  StereoMode=%d\n", override->stereoMode);
-
-		override->format = GetPrivateProfileInt(id, L"Format", -1, iniFile);
-		if (override->format != -1)
-			LogInfo("  Format=%d\n", override->format);
-
-		override->width = GetPrivateProfileInt(id, L"Width", -1, iniFile);
-		if (override->width != -1)
-			LogInfo("  Width=%d\n", override->width);
-
-		override->height = GetPrivateProfileInt(id, L"Height", -1, iniFile);
-		if (override->height != -1)
-			LogInfo("  Height=%d\n", override->height);
+		override->stereoMode = GetIniInt(id, L"StereoMode", -1, iniFile, NULL);
+		override->format = GetIniInt(id, L"Format", -1, iniFile, NULL);
+		override->width = GetIniInt(id, L"Width", -1, iniFile, NULL);
+		override->height = GetIniInt(id, L"Height", -1, iniFile, NULL);
 
 		if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
 		{
@@ -580,32 +734,372 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
-		if (GetPrivateProfileString(id, L"filter_index", 0, setting, MAX_PATH, iniFile)) {
-			swscanf_s(setting, L"%f", &override->filter_index);
-			LogInfo("  filter_index=%f\n", override->filter_index);
-		}
+		override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, iniFile, NULL);
 
-		override->expand_region_copy = GetPrivateProfileInt(id, L"expand_region_copy", 0, iniFile) == 1;
-		if (override->expand_region_copy)
-			LogInfo("  expand_region_copy=1\n");
-
-		override->deny_cpu_read = GetPrivateProfileInt(id, L"deny_cpu_read", 0, iniFile) == 1;
-		if (override->deny_cpu_read)
-			LogInfo("  deny_cpu_read=1\n");
+		override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, iniFile, NULL);
+		override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, iniFile, NULL);
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476088(v=vs.85).aspx
+static wchar_t *BlendOPs[] = {
+	L"",
+	L"ADD",
+	L"SUBTRACT",
+	L"REV_SUBTRACT",
+	L"MIN",
+	L"MAX",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476086(v=vs.85).aspx
+static wchar_t *BlendFactors[] = {
+	L"",
+	L"ZERO",
+	L"ONE",
+	L"SRC_COLOR",
+	L"INV_SRC_COLOR",
+	L"SRC_ALPHA",
+	L"INV_SRC_ALPHA",
+	L"DEST_ALPHA",
+	L"INV_DEST_ALPHA",
+	L"DEST_COLOR",
+	L"INV_DEST_COLOR",
+	L"SRC_ALPHA_SAT",
+	L"BLEND_FACTOR",
+	L"INV_BLEND_FACTOR",
+	L"SRC1_COLOR",
+	L"INV_SRC1_COLOR",
+	L"SRC1_ALPHA",
+	L"INV_SRC1_ALPHA",
+};
+
+static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_BLEND *src, D3D11_BLEND *dst)
+{
+	wchar_t op_buf[32], src_buf[32], dst_buf[32];
+	int i;
+
+	i = swscanf_s(val, L"%s %s %s",
+			op_buf, ARRAYSIZE(op_buf),
+			src_buf, ARRAYSIZE(src_buf),
+			dst_buf, ARRAYSIZE(dst_buf));
+	if (i != 3) {
+		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
+		BeepFailure2();
+		return;
+	}
+	LogInfo("  %S=%S\n", key, val);
+
+	try {
+		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_buf);
+		BeepFailure2();
+	}
+
+	try {
+		*src = (D3D11_BLEND)ParseEnum(src_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_buf);
+		BeepFailure2();
+	}
+
+	try {
+		*dst = (D3D11_BLEND)ParseEnum(dst_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
+		BeepFailure2();
+	}
+}
+
+static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const wchar_t *section, int index, wchar_t *iniFile)
+{
+	wchar_t setting[MAX_PATH];
+	bool override = false;
+	wchar_t key[32];
+	int ival;
+
+	wcscpy(key, L"blend");
+	if (index >= 0)
+		swprintf_s(key, ARRAYSIZE(key), L"blend[%i]", index);
+	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		override = true;
+
+		// Special value to disable blending:
+		if (!wcscmp(setting, L"disable")) {
+			LogInfo("  %S=disable\n", key);
+			desc->BlendEnable = false;
+			return true;
+		}
+
+		ParseBlendOp(key, setting,
+				&desc->BlendOp,
+				&desc->SrcBlend,
+				&desc->DestBlend);
+	}
+
+	wcscpy(key, L"alpha");
+	if (index >= 0)
+		swprintf_s(key, ARRAYSIZE(key), L"alpha[%i]", index);
+	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		override = true;
+		ParseBlendOp(key, setting,
+				&desc->BlendOpAlpha,
+				&desc->SrcBlendAlpha,
+				&desc->DestBlendAlpha);
+	}
+
+	wcscpy(key, L"mask");
+	if (index >= 0)
+		swprintf_s(key, ARRAYSIZE(key), L"mask[%i]", index);
+	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
+		override = true;
+		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
+		desc->RenderTargetWriteMask = ival; // Use an intermediate to be safe
+		LogInfo("  %S=0x%x\n", key, desc->RenderTargetWriteMask);
+	}
+
+	if (override)
+		desc->BlendEnable = true;
+
+	return override;
+}
+
+static void ParseBlendState(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	D3D11_BLEND_DESC *desc = &shader->blend_desc;
+	wchar_t setting[MAX_PATH];
+	wchar_t key[32];
+	int i;
+	bool found;
+
+	memset(desc, 0, sizeof(D3D11_BLEND_DESC));
+
+	// Set a default blend state for any missing values:
+	desc->IndependentBlendEnable = false;
+	desc->RenderTarget[0].BlendEnable = false;
+	desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	desc->RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
+	desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	desc->RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	desc->RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	// Any blend states that are specified without a render target index
+	// are propagated to all render targets:
+	if (ParseBlendRenderTarget(&desc->RenderTarget[0], section, -1, iniFile))
+		shader->blend_override = 1;
+	for (i = 1; i < 8; i++)
+		memcpy(&desc->RenderTarget[i], &desc->RenderTarget[0], sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+
+	// We check all render targets again with the [%i] syntax. We do the
+	// first one again since the last time was for default, while this is
+	// for the specific target:
+	for (i = 0; i < 8; i++) {
+		if (ParseBlendRenderTarget(&desc->RenderTarget[i], section, i, iniFile)) {
+			shader->blend_override = 1;
+			desc->IndependentBlendEnable = true;
+		}
+	}
+
+	desc->AlphaToCoverageEnable = GetIniBool(section, L"alpha_to_coverage", false, iniFile, &found);
+	if (found)
+		shader->blend_override = 1;
+
+	for (i = 0; i < 4; i++) {
+		swprintf_s(key, ARRAYSIZE(key), L"blend_factor[%i]", i);
+		shader->blend_factor[i] = GetIniFloat(section, key, 0.0f, iniFile, &found);
+		if (found)
+			shader->blend_override = 1;
+	}
+
+	if (GetPrivateProfileString(section, L"sample_mask", 0, setting, MAX_PATH, iniFile)) {
+		shader->blend_override = 1;
+		swscanf_s(setting, L"%x", &shader->blend_sample_mask);
+		LogInfo("  sample_mask=0x%x\n", shader->blend_sample_mask);
+	}
+}
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476131(v=vs.85).aspx
+static wchar_t *FillModes[] = {
+	L"",
+	L"",
+	L"WIREFRAME",
+	L"SOLID",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476108(v=vs.85).aspx
+static wchar_t *CullModes[] = {
+	L"",
+	L"NONE",
+	L"FRONT",
+	L"BACK",
+};
+
+// Actually a bool
+static wchar_t *FrontDirection[] = {
+	L"Clockwise",
+	L"CounterClockwise",
+};
+
+static void ParseRSState(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	D3D11_RASTERIZER_DESC *desc = &shader->rs_desc;
+	bool found;
+
+	desc->FillMode = (D3D11_FILL_MODE)GetIniEnum(section, L"fill", D3D11_FILL_SOLID, iniFile, &found,
+			L"D3D11_FILL_", FillModes, ARRAYSIZE(FillModes), 2);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->CullMode = (D3D11_CULL_MODE)GetIniEnum(section, L"cull", D3D11_CULL_BACK,  iniFile, &found,
+			L"D3D11_CULL_", CullModes, ARRAYSIZE(CullModes), 1);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->FrontCounterClockwise = (BOOL)GetIniEnum(section, L"front", 0, iniFile, &found,
+			NULL, FrontDirection, ARRAYSIZE(FrontDirection), 0);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->DepthBias = GetIniInt(section, L"depth_bias", 0, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->DepthBiasClamp = GetIniFloat(section, L"depth_bias_clamp", 0, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->SlopeScaledDepthBias = GetIniFloat(section, L"slope_scaled_depth_bias", 0, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->DepthClipEnable = GetIniBool(section, L"depth_clip_enable", true, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->ScissorEnable = GetIniBool(section, L"scissor_enable", false, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->MultisampleEnable = GetIniBool(section, L"multisample_enable", false, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+
+	desc->AntialiasedLineEnable = GetIniBool(section, L"antialiased_line_enable", false, iniFile, &found);
+	if (found)
+		shader->rs_override = 1;
+}
+
+struct PrimitiveTopology {
+	wchar_t *name;
+	int val;
+};
+
+static struct PrimitiveTopology PrimitiveTopologies[] = {
+	{ L"UNDEFINED", 0},
+	{ L"POINT_LIST", 1},
+	{ L"LINE_LIST", 2},
+	{ L"LINE_STRIP", 3},
+	{ L"TRIANGLE_LIST", 4},
+	{ L"TRIANGLE_STRIP", 5},
+	{ L"LINE_LIST_ADJ", 10},
+	{ L"LINE_STRIP_ADJ", 11},
+	{ L"TRIANGLE_LIST_ADJ", 12},
+	{ L"TRIANGLE_STRIP_ADJ", 13},
+	{ L"1_CONTROL_POINT_PATCH_LIST", 33},
+	{ L"2_CONTROL_POINT_PATCH_LIST", 34},
+	{ L"3_CONTROL_POINT_PATCH_LIST", 35},
+	{ L"4_CONTROL_POINT_PATCH_LIST", 36},
+	{ L"5_CONTROL_POINT_PATCH_LIST", 37},
+	{ L"6_CONTROL_POINT_PATCH_LIST", 38},
+	{ L"7_CONTROL_POINT_PATCH_LIST", 39},
+	{ L"8_CONTROL_POINT_PATCH_LIST", 40},
+	{ L"9_CONTROL_POINT_PATCH_LIST", 41},
+	{ L"10_CONTROL_POINT_PATCH_LIST", 42},
+	{ L"11_CONTROL_POINT_PATCH_LIST", 43},
+	{ L"12_CONTROL_POINT_PATCH_LIST", 44},
+	{ L"13_CONTROL_POINT_PATCH_LIST", 45},
+	{ L"14_CONTROL_POINT_PATCH_LIST", 46},
+	{ L"15_CONTROL_POINT_PATCH_LIST", 47},
+	{ L"16_CONTROL_POINT_PATCH_LIST", 48},
+	{ L"17_CONTROL_POINT_PATCH_LIST", 49},
+	{ L"18_CONTROL_POINT_PATCH_LIST", 50},
+	{ L"19_CONTROL_POINT_PATCH_LIST", 51},
+	{ L"20_CONTROL_POINT_PATCH_LIST", 52},
+	{ L"21_CONTROL_POINT_PATCH_LIST", 53},
+	{ L"22_CONTROL_POINT_PATCH_LIST", 54},
+	{ L"23_CONTROL_POINT_PATCH_LIST", 55},
+	{ L"24_CONTROL_POINT_PATCH_LIST", 56},
+	{ L"25_CONTROL_POINT_PATCH_LIST", 57},
+	{ L"26_CONTROL_POINT_PATCH_LIST", 58},
+	{ L"27_CONTROL_POINT_PATCH_LIST", 59},
+	{ L"28_CONTROL_POINT_PATCH_LIST", 60},
+	{ L"29_CONTROL_POINT_PATCH_LIST", 61},
+	{ L"30_CONTROL_POINT_PATCH_LIST", 62},
+	{ L"31_CONTROL_POINT_PATCH_LIST", 63},
+	{ L"32_CONTROL_POINT_PATCH_LIST", 64},
+};
+
+static void ParseTopology(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	wchar_t *prefix = L"D3D11_PRIMITIVE_TOPOLOGY_";
+	size_t prefix_len;
+	wchar_t val[MAX_PATH];
+	wchar_t *ptr;
+	int i;
+
+	shader->topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+	if (!GetPrivateProfileString(section, L"topology", 0, val, MAX_PATH, iniFile))
+		return;
+
+	prefix_len = wcslen(prefix);
+	ptr = val;
+	if (!_wcsnicmp(ptr, prefix, prefix_len))
+		ptr += prefix_len;
+
+
+	for (i = 1; i < ARRAYSIZE(PrimitiveTopologies); i++) {
+		if (!_wcsicmp(ptr, PrimitiveTopologies[i].name)) {
+			shader->topology = (D3D11_PRIMITIVE_TOPOLOGY)PrimitiveTopologies[i].val;
+			LogInfo("  topology=%S\n", val);
+			return;
+		}
+
+	}
+
+	LogInfo("  WARNING: Unrecognised primitive topology=%S\n", val);
+	BeepFailure2();
+}
+
 // List of keys in [CustomShader] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	L"max_executions_per_frame",
+	// OM Blend State overrides:
+	L"blend", L"alpha", L"mask",
+	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
+	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
+	L"alpha[0]", L"alpha[1]", L"alpha[2]", L"alpha[3]",
+	L"alpha[4]", L"alpha[5]", L"alpha[6]", L"alpha[7]",
+	L"mask[0]", L"mask[1]", L"mask[2]", L"mask[3]",
+	L"mask[4]", L"mask[5]", L"mask[6]", L"mask[7]",
+	L"alpha_to_coverage", L"sample_mask",
+	L"blend_factor[0]", L"blend_factor[1]",
+	L"blend_factor[2]", L"blend_factor[3]",
+	// RS State overrides:
+	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
+	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
+	L"multisample_enable", L"antialiased_line_enable",
+	// IA State overrides:
+	L"topology",
 	NULL
 };
-
-// TODO: Refactor common code with ParseResourceSections
 static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 {
 	IniSections::iterator lower, upper, i;
@@ -643,6 +1137,14 @@ static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 			failed |= custom_shader->compile('p', setting, &shader_id);
 		if (GetPrivateProfileString(i->c_str(), L"cs", 0, setting, MAX_PATH, iniFile))
 			failed |= custom_shader->compile('c', setting, &shader_id);
+
+
+		ParseBlendState(custom_shader, i->c_str(), iniFile);
+		ParseRSState(custom_shader, i->c_str(), iniFile);
+		ParseTopology(custom_shader, i->c_str(), iniFile);
+
+		custom_shader->max_executions_per_frame =
+			GetIniInt(i->c_str(), L"max_executions_per_frame", 0, iniFile, NULL);
 
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an
@@ -715,7 +1217,9 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 
 static void ToggleFullScreen(HackerDevice *device, void *private_data)
 {
-	G->SCREEN_FULLSCREEN = !G->SCREEN_FULLSCREEN;
+	// SCREEN_FULLSCREEN has several options now, so to preserve the
+	// current setting when toggled off we negate it:
+	G->SCREEN_FULLSCREEN = -G->SCREEN_FULLSCREEN;
 	LogInfo("> full screen forcing toggled to %d (will not take effect until next mode switch)\n", G->SCREEN_FULLSCREEN);
 }
 
@@ -728,7 +1232,8 @@ void LoadConfigFile()
 
 	G->gInitialized = true;
 
-	GetModuleFileName(0, iniFile, MAX_PATH);
+	if (!GetModuleFileName(0, iniFile, MAX_PATH))
+		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
@@ -738,6 +1243,7 @@ void LoadConfigFile()
 	// so that there is no question what settings we are using.
 
 	// [Logging]
+	// Not using the helper function for this one since logging isn't enabled yet
 	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
 	{
 		if (!LogFile)
@@ -745,40 +1251,34 @@ void LoadConfigFile()
 		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
+	LogInfo("[Logging]\n");
+	LogInfo("  calls=1\n");
 
 	GetIniSections(sections, iniFile);
 
-	G->gLogInput = GetPrivateProfileInt(L"Logging", L"input", 0, iniFile) == 1;
-	gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, iniFile) == 1;
+	G->gLogInput = GetIniBool(L"Logging", L"input", false, iniFile, NULL);
+	gLogDebug = GetIniBool(L"Logging", L"debug", false, iniFile, NULL);
 
 	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
 	// to open active files.
-	int unbuffered = -1;
-	if (LogFile && GetPrivateProfileInt(L"Logging", L"unbuffered", 0, iniFile))
+	if (LogFile && GetIniBool(L"Logging", L"unbuffered", false, iniFile, NULL))
 	{
-		unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+		int unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+		LogInfo("    unbuffered return: %d\n", unbuffered);
 	}
 
-#if _DEBUG
-	// Always force full logging by default in DEBUG builds
-	gLogDebug = true;
-	unbuffered = setvbuf(LogFile, NULL, _IONBF, 0); 
-#endif
-
 	// Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
-	BOOL affinity = -1;
-	if (GetPrivateProfileInt(L"Logging", L"force_cpu_affinity", 0, iniFile))
+	if (GetIniBool(L"Logging", L"force_cpu_affinity", false, iniFile, NULL))
 	{
 		DWORD one = 0x01;
-		affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
+		BOOL affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
+		LogInfo("    force_cpu_affinity return: %s\n", affinity ? "true" : "false");
 	}
 
 	// If specified in Logging section, wait for Attach to Debugger.
-	bool waitfordebugger = false;
-	int debugger = GetPrivateProfileInt(L"Logging", L"waitfordebugger", 0, iniFile);
+	int debugger = GetIniInt(L"Logging", L"waitfordebugger", 0, iniFile, NULL);
 	if (debugger > 0)
 	{
-		waitfordebugger = true;
 		do
 		{
 			Sleep(250);
@@ -787,52 +1287,48 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
-	LogInfo("[Logging]\n");
-	LogInfo("  calls=1\n");
-	if (G->gLogInput) LogInfo("  input=1\n");
-	LogDebug("  debug=1\n");
-	if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-	if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
-	if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
-
 	// [System]
 	LogInfo("[System]\n");
 	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH, iniFile);
 	if (G->CHAIN_DLL_PATH[0])
 		LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
-	if (GetPrivateProfileString(L"System", L"hook", 0, setting, MAX_PATH, iniFile)) {
+	if (GetPrivateProfileString(L"System", L"hook", 0, setting, MAX_PATH, iniFile))
+	{
 		LogInfoW(L"  hook=%s\n", setting);
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
 			(EnableHooksNames, setting, NULL);
 	}
+	if (GetPrivateProfileString(L"System", L"allow_dxgi1_2", 0, setting, MAX_PATH, iniFile))
+	{
+		LogInfoW(L"  allow_dxgi1_2=%s\n", setting);
+		G->enable_dxgi1_2 = true;
+	}
+	if (GetPrivateProfileString(L"System", L"allow_check_interface", 0, setting, MAX_PATH, iniFile))
+	{
+		LogInfoW(L"  allow_check_interface=%s\n", setting);
+		G->enable_check_interface = true;
+	}
+	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
 
 	// [Device] (DXGI parameters)
-	if (GetPrivateProfileString(L"Device", L"width", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%d", &G->SCREEN_WIDTH);
-	if (GetPrivateProfileString(L"Device", L"height", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%d", &G->SCREEN_HEIGHT);
-	if (GetPrivateProfileString(L"Device", L"refresh_rate", 0, setting, MAX_PATH, iniFile))
-		swscanf_s(setting, L"%d", &G->SCREEN_REFRESH);
+	LogInfo("[Device]\n");
+	G->SCREEN_WIDTH = GetIniInt(L"Device", L"width", -1, iniFile, NULL);
+	G->SCREEN_HEIGHT = GetIniInt(L"Device", L"height", -1, iniFile, NULL);
+	G->SCREEN_REFRESH = GetIniInt(L"Device", L"refresh_rate", -1, iniFile, NULL);
+
 	if (GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH, iniFile))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			G->FILTER_REFRESH + 0, G->FILTER_REFRESH + 1, G->FILTER_REFRESH + 2, G->FILTER_REFRESH + 3, 
 			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7, 
 			G->FILTER_REFRESH + 8, G->FILTER_REFRESH + 9);
+		LogInfoW(L"  filter_refresh_rate=%s\n", setting);
 	}
-	G->SCREEN_FULLSCREEN = GetPrivateProfileInt(L"Device", L"full_screen", 0, iniFile) == 1;
-	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
-	G->gForceStereo = GetPrivateProfileInt(L"Device", L"force_stereo", 0, iniFile) == 1;
-	G->SCREEN_ALLOW_COMMANDS = GetPrivateProfileInt(L"Device", L"allow_windowcommands", 0, iniFile) == 1;
 
-	LogInfo("[Device]\n");
-	if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
-	if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
-	if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-	if (G->FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%d\n", G->FILTER_REFRESH[0]);
-	if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
-	if (G->gForceStereo) LogInfo("  force_stereo=1\n");
-	if (G->SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
+	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, iniFile, NULL);
+	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
+	G->gForceStereo = GetIniBool(L"Device", L"force_stereo", false, iniFile, NULL);
+	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, iniFile, NULL);
 
 	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
@@ -846,20 +1342,29 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	// [Stereo]
-	bool automaticMode = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;				// in NVapi dll
-	G->gCreateStereoProfile = GetPrivateProfileInt(L"Stereo", L"create_profile", 0, iniFile) == 1;
-	G->gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
-	G->gSurfaceSquareCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_square_createmode", -1, iniFile);
-	G->gForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, iniFile) == 1;
-
 	LogInfo("[Stereo]\n");
-	if (automaticMode) LogInfo("  automatic_mode=1\n");
-	if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
-	if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
-	if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
-	if (G->gForceNoNvAPI) LogInfo("  force_no_nvapi=1 \n");
+	bool automaticMode = GetIniBool(L"Stereo", L"automatic_mode", false, iniFile, NULL);				// in NVapi dll
+	G->gCreateStereoProfile = GetIniBool(L"Stereo", L"create_profile", false, iniFile, NULL);
+	G->gSurfaceCreateMode = GetIniInt(L"Stereo", L"surface_createmode", -1, iniFile, NULL);
+	G->gSurfaceSquareCreateMode = GetIniInt(L"Stereo", L"surface_square_createmode", -1, iniFile, NULL);
+	G->gForceNoNvAPI = GetIniBool(L"Stereo", L"force_no_nvapi", false, iniFile, NULL);
 
 	// [Rendering]
+	LogInfo("[Rendering]\n");
+
+	G->shader_hash_type = ShaderHashType::FNV;
+	if (GetPrivateProfileString(L"Rendering", L"shader_hash", 0, setting, MAX_PATH, iniFile)) {
+		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
+			(ShaderHashNames, setting, ShaderHashType::INVALID);
+		if (G->shader_hash_type == ShaderHashType::INVALID) {
+			LogInfoW(L"  WARNING: Unknown shader_hash \"%s\"\n", setting);
+			G->shader_hash_type = ShaderHashType::FNV;
+			BeepFailure2();
+		} else {
+			LogInfoW(L"  shader_hash=%s\n", setting);
+		}
+	}
+
 	GetPrivateProfileString(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH, iniFile);
 	if (G->SHADER_PATH[0])
 	{
@@ -891,20 +1396,19 @@ void LoadConfigFile()
 		CreateDirectory(G->SHADER_CACHE_PATH, 0);
 	}
 
-	G->CACHE_SHADERS = GetPrivateProfileInt(L"Rendering", L"cache_shaders", 0, iniFile) == 1;
-	G->PRELOAD_SHADERS = GetPrivateProfileInt(L"Rendering", L"preload_shaders", 0, iniFile) == 1;
-	G->ENABLE_CRITICAL_SECTION = GetPrivateProfileInt(L"Rendering", L"use_criticalsection", 0, iniFile) == 1;
-	G->SCISSOR_DISABLE = GetPrivateProfileInt(L"Rendering", L"rasterizer_disable_scissor", 0, iniFile) == 1;
-	G->track_texture_updates = GetPrivateProfileInt(L"Rendering", L"track_texture_updates", 0, iniFile) == 1;
+	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, iniFile, NULL);
+	G->ENABLE_CRITICAL_SECTION = GetIniBool(L"Rendering", L"use_criticalsection", false, iniFile, NULL);
+	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, iniFile, NULL);
+	G->track_texture_updates = GetIniBool(L"Rendering", L"track_texture_updates", false, iniFile, NULL);
 
-	G->EXPORT_FIXED = GetPrivateProfileInt(L"Rendering", L"export_fixed", 0, iniFile) == 1;
-	G->EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, iniFile) == 1;
-	G->EXPORT_HLSL = GetPrivateProfileInt(L"Rendering", L"export_hlsl", 0, iniFile);
-	G->EXPORT_BINARY = GetPrivateProfileInt(L"Rendering", L"export_binary", 0, iniFile) == 1;
-	G->DumpUsage = GetPrivateProfileInt(L"Rendering", L"dump_usage", 0, iniFile) == 1;
+	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, iniFile, NULL);
+	G->EXPORT_SHADERS = GetIniBool(L"Rendering", L"export_shaders", false, iniFile, NULL);
+	G->EXPORT_HLSL = GetIniInt(L"Rendering", L"export_hlsl", 0, iniFile, NULL);
+	G->EXPORT_BINARY = GetIniBool(L"Rendering", L"export_binary", false, iniFile, NULL);
+	G->DumpUsage = GetIniBool(L"Rendering", L"dump_usage", false, iniFile, NULL);
 
-	G->StereoParamsReg = GetPrivateProfileInt(L"Rendering", L"stereo_params", 125, iniFile);
-	G->IniParamsReg = GetPrivateProfileInt(L"Rendering", L"ini_params", 120, iniFile);
+	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, iniFile, NULL);
+	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, iniFile, NULL);
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		LogInfo("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		BeepFailure2();
@@ -916,32 +1420,16 @@ void LoadConfigFile()
 		G->IniParamsReg = -1;
 	}
 
-	LogInfo("[Rendering]\n");
 	if (G->SHADER_PATH[0])
 		LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
 	if (G->SHADER_CACHE_PATH[0])
 		LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
-	if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
-	if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
-	if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
-	if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
-	if (G->track_texture_updates) LogInfo("  track_texture_updates=1\n");
-
-	if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
-	if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
-	if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
-	if (G->EXPORT_BINARY) LogInfo("  export_binary=1\n");
-	if (G->DumpUsage) LogInfo("  dump_usage=1\n");
-
-	LogInfo("  stereo_params=%i\n", G->StereoParamsReg);
-	LogInfo("  ini_params=%i\n", G->IniParamsReg);
-
 
 	// Automatic section 
-	G->FIX_SV_Position = GetPrivateProfileInt(L"Rendering", L"fix_sv_position", 0, iniFile) == 1;
-	G->FIX_Light_Position = GetPrivateProfileInt(L"Rendering", L"fix_light_position", 0, iniFile) == 1;
-	G->FIX_Recompile_VS = GetPrivateProfileInt(L"Rendering", L"recompile_all_vs", 0, iniFile) == 1;
+	G->FIX_SV_Position = GetIniBool(L"Rendering", L"fix_sv_position", false, iniFile, NULL);
+	G->FIX_Light_Position = GetIniBool(L"Rendering", L"fix_light_position", false, iniFile, NULL);
+	G->FIX_Recompile_VS = GetIniBool(L"Rendering", L"recompile_all_vs", false, iniFile, NULL);
 	if (GetPrivateProfileString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH, iniFile))
 	{
 		char buf[MAX_PATH];
@@ -1033,9 +1521,7 @@ void LoadConfigFile()
 
 	// [Hunting]
 	LogInfo("[Hunting]\n");
-	G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile);
-	if (G->hunting)
-		LogInfo("  hunting=%u\n", G->hunting);
+	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, iniFile, NULL);
 
 	G->marking_mode = MARKING_MODE_SKIP;
 	if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
@@ -1059,7 +1545,8 @@ void LoadConfigFile()
 
 	LogInfo("[Present]\n");
 	G->present_command_list.clear();
-	ParseCommandList(L"Present", iniFile, &G->present_command_list, NULL, NULL);
+	G->post_present_command_list.clear();
+	ParseCommandList(L"Present", iniFile, &G->present_command_list, &G->post_present_command_list, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.
@@ -1114,6 +1601,7 @@ void ReloadConfig(HackerDevice *device)
 {
 	ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT hr;
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
@@ -1135,7 +1623,11 @@ void ReloadConfig(HackerDevice *device)
 
 	// Update the iniParams resource from the config file:
 	// FIXME: THIS CRASHES IF 3D IS DISABLED (ROOT CAUSE LIKELY ELSEWHERE)
-	realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	hr = realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(hr)) {
+		LogInfo("Failed to update IniParams\n");
+		return;
+	}
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(device->mIniTexture, 0);
 }

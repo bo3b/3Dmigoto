@@ -370,6 +370,8 @@ static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
 
 void InitD311()
 {
+	UINT ret;
+
 	if (hD3D11) return;
 
 	G = new Globals();
@@ -383,8 +385,11 @@ void InitD311()
 
 	if (G->CHAIN_DLL_PATH[0])
 	{
-		wchar_t sysDir[MAX_PATH];
-		GetModuleFileName(0, sysDir, MAX_PATH);
+		wchar_t sysDir[MAX_PATH] = {0};
+		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
+			LogInfo("GetModuleFileName failed\n");
+			DoubleBeepExit();
+		}
 		wcsrchr(sysDir, L'\\')[1] = 0;
 		wcscat(sysDir, G->CHAIN_DLL_PATH);
 		if (LogFile)
@@ -425,7 +430,8 @@ void InitD311()
 
 			LoadLibraryEx(L"SUPPRESS_3DMIGOTO_REDIRECT", NULL, 0);
 
-			if (GetSystemDirectoryW(libPath, ARRAYSIZE(libPath))) {
+			ret = GetSystemDirectoryW(libPath, ARRAYSIZE(libPath));
+			if (ret != 0 && ret < ARRAYSIZE(libPath)) {
 				wcscat_s(libPath, MAX_PATH, L"\\d3d11.dll");
 				LogInfoW(L"Trying to load %ls\n", libPath);
 				hD3D11 = LoadLibraryEx(libPath, NULL, 0);
@@ -506,8 +512,8 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 		// It can't be both because they are not the same size on x64.
 		// We might be corrupting a pointer by using the wrong function signature
 		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
-		LogInfo("  Bytecode hash = %08lx%08lx\n", (UINT32)(data->BinaryHash >> 32), (UINT32)data->BinaryHash);
-		LogInfo("  Filename = %s\n", data->HLSLFileName);
+		LogInfo("  Bytecode hash = %016llx \n", data->BinaryHash);
+		LogInfo("  Filename = %s \n", data->HLSLFileName);
 
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
@@ -602,14 +608,6 @@ void ShowDebugInfo(ID3D11Device *origDevice)
 }
 
 
-// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
-// Direct3D, and collect the original Device and original Context.  Both of those will be handed
-// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
-// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
-// created here, it's easy enough to provide them upon instantiation.
-//
-// Now intended to be fully null safe- as games seem to have a lot of variance.
-//
 // Any request for greater than 11.0 DX needs an E_INVALIDARG return, to match the
 // documented behavior. We want to return an error for any higher level requests,
 // at least for the time being, to avoid having to implement all the possible
@@ -635,13 +633,64 @@ void ShowDebugInfo(ID3D11Device *origDevice)
 // during testing.  If this proves problematic later, it's probably worth keeping
 // it as a .ini option to force this mode.
 // (Can be an array. We are looking only at first element. Seems OK.)
+//
+// 7-21-16: Now adding the ability to disable this forcing function, because Marlow 
+// Briggs and Narco Terror do not launch when we do this.  
+// This will now make it a option in the d3dx.ini, default to force DX11, but can be
+// disabled, or forced to always use DX11.
+//
+// pFeatureLevels can be modified here because we have changed the signature from const.
+// If pFeatureLevels comes in null, that is OK, because the default behavior for
+// CreateDevice is to create a DX11 Device.
+// 
+// Returns true if we need to error out with E_INVALIDARG, which is default in d3dx.ini.
+
+bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
+{
+	if (!featureLevels)
+	{
+		LogInfo("->Feature level null, defaults to D3D_FEATURE_LEVEL_11_0. \n");
+		return false;
+	}
+
+	if (G->enable_create_device == 1)
+	{
+		LogInfo("->Feature level allowed through unchanged: %#x \n", *featureLevels);
+		return false;
+	}
+	if (G->enable_create_device == 2)
+	{
+		*featureLevels = D3D_FEATURE_LEVEL_11_0;
+
+		LogInfo("->Feature level forced to 11.0: %#x \n", *featureLevels);
+		return false;
+	}
+
+	// Error out if we aren't looking for D3D_FEATURE_LEVEL_11_0.
+	if (*featureLevels != D3D_FEATURE_LEVEL_11_0)
+	{
+		LogInfo("->Feature level != 11.0: %#x, returning E_INVALIDARG \n", *featureLevels);
+		return true;
+	}
+
+	return false;
+}
+
+
+// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
+// Direct3D, and collect the original Device and original Context.  Both of those will be handed
+// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
+// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
+// created here, it's easy enough to provide them upon instantiation.
+//
+// Now intended to be fully null safe- as games seem to have a lot of variance.
 
 HRESULT WINAPI D3D11CreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
 					D3D_DRIVER_TYPE     DriverType,
 					HMODULE             Software,
 					UINT                Flags,
-	_In_opt_  const D3D_FEATURE_LEVEL   *pFeatureLevels,
+	_In_reads_opt_(FeatureLevels) /*const*/ D3D_FEATURE_LEVEL   *pFeatureLevels,
 					UINT                FeatureLevels,
 					UINT                SDKVersion,
 	_Out_opt_       ID3D11Device        **ppDevice,
@@ -658,13 +707,8 @@ HRESULT WINAPI D3D11CreateDevice(
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel : 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
-	// Error out if we aren't looking for D3D_FEATURE_LEVEL_11_0. It can be null, 
-	// which will default to level 11.0 
-	if ((pFeatureLevels) && (*pFeatureLevels != D3D_FEATURE_LEVEL_11_0))
-	{
-		LogInfo("->Feature level != 11.0: %x, returning E_INVALIDARG \n", *pFeatureLevels);
+	if (ForceDX11(pFeatureLevels))
 		return E_INVALIDARG;
-	}
 
 #if _DEBUG_LAYER
 	Flags = EnableDebugFlags(Flags);
@@ -741,18 +785,18 @@ HRESULT WINAPI D3D11CreateDevice(
 // See notes in CreateDevice.
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
-	_In_opt_        IDXGIAdapter         *pAdapter,
-					D3D_DRIVER_TYPE      DriverType,
-					HMODULE              Software,
-					UINT                 Flags,
-	_In_opt_  const D3D_FEATURE_LEVEL    *pFeatureLevels,
-					UINT                 FeatureLevels,
-					UINT                 SDKVersion,
-	_In_opt_		DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	_Out_opt_       IDXGISwapChain		 **ppSwapChain,
-	_Out_opt_       ID3D11Device         **ppDevice,
-	_Out_opt_       D3D_FEATURE_LEVEL    *pFeatureLevel,
-	_Out_opt_       ID3D11DeviceContext  **ppImmediateContext)
+	_In_opt_			IDXGIAdapter         *pAdapter,
+						D3D_DRIVER_TYPE      DriverType,
+						HMODULE              Software,
+						UINT                 Flags,
+	_In_opt_ /*const*/	D3D_FEATURE_LEVEL    *pFeatureLevels,
+						UINT                 FeatureLevels,
+						UINT                 SDKVersion,
+	_In_opt_			DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
+	_Out_opt_			IDXGISwapChain		 **ppSwapChain,
+	_Out_opt_			ID3D11Device         **ppDevice,
+	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
+	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
 	InitD311();
 	LogInfo("\n\n *** D3D11CreateDeviceAndSwapChain called with \n");
@@ -766,13 +810,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
-	// Error out if we aren't looking for D3D_FEATURE_LEVEL_11_0. It can be null, 
-	// which will default to level 11.0 
-	if ((pFeatureLevels) && (*pFeatureLevels != D3D_FEATURE_LEVEL_11_0))
-	{
-		LogInfo("->Feature level != 11.0: %x, returning E_INVALIDARG \n", *pFeatureLevels);
+	if (ForceDX11(pFeatureLevels))
 		return E_INVALIDARG;
-	}
 
 	ForceDisplayParams(pSwapChainDesc);
 

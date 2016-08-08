@@ -65,6 +65,7 @@
     <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\shader.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="..\version.h" />
     <ClInclude Include="D3D11Wrapper.h" />
@@ -225,7 +226,7 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
 call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -250,7 +251,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
 call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -280,7 +281,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
 call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -308,7 +309,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
 </Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -336,7 +337,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
 call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -365,7 +366,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </Link>
     <PostBuildEvent>
       <Command>xcopy “$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_46.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
 </Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>

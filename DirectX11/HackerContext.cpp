@@ -85,18 +85,18 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 	if (!resource)
 		return NULL;
 
-	// We are using the original resource hash for stat collection - things
-	// get tricky otherwise
-	orig_hash = GetOrigResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-	resource->Release();
+		// We are using the original resource hash for stat collection - things
+		// get tricky otherwise
+		orig_hash = GetOrigResourceHash(resource);
 
-	if (orig_hash)
-	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		resource->Release();
+
+		if (orig_hash)
 			G->mShaderResourceInfo.insert(orig_hash);
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	}
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	return resource;
 }
@@ -137,19 +137,22 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	if (!resource)
 		return;
 
-	// We are using the original resource hash for stat collection - things
-	// get tricky otherwise
-	orig_hash = GetOrigResourceHash((ID3D11Texture2D *)resource);
-
-	resource->Release();
-
-	if (!resource)
-		return;
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+		// We are using the original resource hash for stat collection - things
+		// get tricky otherwise
+		orig_hash = GetOrigResourceHash((ID3D11Texture2D *)resource);
+
+		resource->Release();
+
+		if (!resource)
+			goto out_unlock;
+
 		mCurrentRenderTargets.push_back(resource);
 		G->mVisitedRenderTargets.insert(resource);
 		G->mRenderTargetInfo.insert(orig_hash);
+
+out_unlock:
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -168,15 +171,17 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	target->GetDesc(&desc);
 
-	// We are using the original resource hash for stat collection - things
-	// get tricky otherwise
-	orig_hash = GetOrigResourceHash(resource);
-
-	resource->Release();
-
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+		// We are using the original resource hash for stat collection - things
+		// get tricky otherwise
+		orig_hash = GetOrigResourceHash(resource);
+
+		resource->Release();
+
 		mCurrentDepthTarget = resource;
 		G->mDepthTargetInfo.insert(orig_hash);
+
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -212,63 +217,6 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 		pClassInstances[i].Release();
 
 	return pPixelShader;
-}
-
-void HackerContext::AssignDummyRenderTarget()
-{
-	HRESULT hr;
-	ID3D11Texture2D *resource = NULL;
-	ID3D11RenderTargetView *resource_view = NULL;
-	D3D11_TEXTURE2D_DESC desc;
-	ID3D11DepthStencilView *depth_view = NULL;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
-	ID3D11Texture2D *depth_resource = NULL;
-
-	mOrigContext->OMGetRenderTargets(0, NULL, &depth_view);
-
-	if (!depth_view) {
-		// Might still be able to make a dummy render target of arbitrary size?
-		return;
-	}
-
-	depth_view->GetDesc(&depth_view_desc);
-
-	if (depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2D &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMS &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DARRAY &&
-	    depth_view_desc.ViewDimension != D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY) {
-		goto out;
-	}
-
-	depth_view->GetResource((ID3D11Resource**)&depth_resource);
-	if (!depth_resource)
-		goto out;
-
-	depth_resource->GetDesc(&desc);
-
-	// Adjust desc to suit a render target:
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	desc.BindFlags = D3D11_BIND_RENDER_TARGET;
-
-	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &resource);
-	if (FAILED(hr))
-		goto out1;
-
-	hr = mOrigDevice->CreateRenderTargetView(resource, NULL, &resource_view);
-	if (FAILED(hr))
-		goto out2;
-
-	mOrigContext->OMSetRenderTargets(1, &resource_view, depth_view);
-
-
-	resource_view->Release();
-out2:
-	resource->Release();
-out1:
-	depth_resource->Release();
-out:
-	depth_view->Release();
 }
 
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
@@ -372,11 +320,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			if (i != G->mOriginalVertexShaders.end())
 				data->oldVertexShader = SwitchVSShader(i->second);
 		}
-	} else {
-		if (shaderOverride->fake_o0)
-			AssignDummyRenderTarget();
 	}
-
 }
 
 void HackerContext::BeforeDraw(DrawContext &data)
@@ -467,6 +411,26 @@ void HackerContext::BeforeDraw(DrawContext &data)
 
 	if (!G->fix_enabled)
 		return;
+
+	// When hunting is off, send stereo texture to all shaders, as any might need it.
+	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
+	// We used to do this in the SetShader calls, but Akiba's Trip clears
+	// all shader resources after that call, so doing it here guarantees it
+	// will be bound for the draw call.
+	//
+	// It is important that we check the current shader *handle*, not
+	// *hash*, as the hash may not be updated if there are no
+	// ShaderOverride sections and hunting is disabled. We always assume
+	// vertex and pixel shaders are bound as the most common case (and it
+	// is harmless if we are wrong on that)
+	BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
+	if (mCurrentHullShaderHandle)
+		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
+	if (mCurrentDomainShaderHandle)
+		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
+	if (mCurrentGeometryShaderHandle)
+		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
 
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
@@ -786,7 +750,9 @@ HRESULT HackerContext::MapDenyCPURead(
 		return E_FAIL;
 
 	tex->GetDesc(&desc);
-	hash = GetResourceHash(tex);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(tex);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	LogDebug("Map Texture2D %08lx (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
 			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
@@ -967,9 +933,6 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 
 	FrameAnalysisLog("GSSetShader(pShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pShader, ppClassInstances, NumClassInstances, mCurrentGeometryShader);
-
-	if (pShader)
-		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::IASetPrimitiveTopology(THIS_
@@ -1148,6 +1111,8 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 		}
 	}
 
+	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
+
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
@@ -1272,8 +1237,10 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 
 	srcTex->GetDesc(&srcDesc);
 	dstTex->GetDesc(&dstDesc);
-	srcHash = GetResourceHash(srcTex);
-	dstHash = GetResourceHash(dstTex);
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		srcHash = GetResourceHash(srcTex);
+		dstHash = GetResourceHash(dstTex);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
@@ -1557,9 +1524,6 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 
 	FrameAnalysisLog("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pHullShader, ppClassInstances, NumClassInstances, mCurrentHullShader);
-
-	if (pHullShader)
-		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetSamplers(THIS_
@@ -1626,9 +1590,6 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 
 	FrameAnalysisLog("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pDomainShader, ppClassInstances, NumClassInstances, mCurrentDomainShader);
-
-	if (pDomainShader)
-		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::DSSetSamplers(THIS_
@@ -1727,16 +1688,23 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 {
 	ID3D11Shader *repl_shader = pShader;
 
+	// Always update the current shader handle no matter what so we can
+	// reliably check if a shader of a given type is bound and for certain
+	// types of old style filtering:
+	*currentShaderHandle = pShader;
+
 	if (pShader) {
 		// Store as current shader. Need to do this even while
 		// not hunting for ShaderOverride section in BeforeDraw
-		// As an optimization, we can skip the lookup if there are no ShaderOverride
-		// The lookup/find takes measurable amounts of CPU time.
+		// We also set the current shader hash, but as an optimization,
+		// we skip the lookup if there are no ShaderOverride The
+		// lookup/find takes measurable amounts of CPU time.
+		//
+		// grumble grumble this optimisation caught me out grumble grumble -DSS
 		if (!G->mShaderOverrideMap.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
 			std::unordered_map<ID3D11Shader *, UINT64>::iterator i = registered->find(pShader);
 			if (i != registered->end()) {
 				*currentShaderHash = i->second;
-				*currentShaderHandle = pShader;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
 				if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
@@ -1747,6 +1715,11 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 			}
 			else
 				LogDebug("  shader %p not found\n", pShader);
+		} else {
+			// Not accurate, but if we have a bug where we
+			// reference this at least make sure we don't use the
+			// *wrong* hash
+			*currentShaderHash = 0;
 		}
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
@@ -1777,7 +1750,6 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 	} else {
 		*currentShaderHash = 0;
-		*currentShaderHandle = NULL;
 	}
 
 	// Call through to original XXSetShader, but pShader may have been replaced.
@@ -1803,9 +1775,6 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 
 	FrameAnalysisLog("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pComputeShader, ppClassInstances, NumClassInstances, mCurrentComputeShader);
-
-	if (pComputeShader)
-		BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetSamplers(THIS_
@@ -2046,10 +2015,9 @@ STDMETHODIMP_(void) HackerContext::GetPredication(THIS_
 {
 	 mOrigContext->GetPredication(ppPredicate, pPredicateValue);
 
-	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)\n",
+	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)",
 			ppPredicate, pPredicateValue);
-	if (ppPredicate)
-		FrameAnalysisLogAsyncQuery(*ppPredicate);
+	FrameAnalysisLogAsyncQuery(ppPredicate ? *ppPredicate : NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::GSGetShaderResources(THIS_
@@ -2426,7 +2394,7 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 {
 	HRESULT ret = mOrigContext->FinishCommandList(RestoreDeferredContextState, ppCommandList);
 
-	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p) = %u\n", ppCommandList, ret);
+	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p -> 0x%p) = %u\n", ppCommandList, ppCommandList ? *ppCommandList : NULL, ret);
 	return ret;
 }
 
@@ -2481,11 +2449,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 
 	FrameAnalysisLog("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pVertexShader, ppClassInstances, NumClassInstances, mCurrentVertexShader);
-
-	// When hunting is off, send stereo texture to all shaders, as any might need it.
-	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
-	if (pVertexShader)
-		BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
@@ -2523,11 +2486,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 	FrameAnalysisLog("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u) hash=%016I64x\n",
 			pPixelShader, ppClassInstances, NumClassInstances, mCurrentPixelShader);
 
-	// When hunting is off, send stereo texture to all shaders, as any might need it.
-	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
 	if (pPixelShader) {
-		BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
-
 		// Set custom depth texture.
 		if (mHackerDevice->mZBufferResourceView)
 		{
@@ -2806,8 +2765,6 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	AfterDraw(c);
 }
 
-// Done at the start of each frame to clear the buffer
-
 STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	/* [annotation] */
 	__in  ID3D11RenderTargetView *pRenderTargetView,
@@ -2817,33 +2774,6 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 	FrameAnalysisLog("ClearRenderTargetView(pRenderTargetView:0x%p, ColorRGBA:0x%p)",
 			pRenderTargetView, ColorRGBA);
 	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
-
-	if (G->ENABLE_TUNE)
-	{
-		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
-		mHackerDevice->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
-		mHackerDevice->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
-		mHackerDevice->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
-		mHackerDevice->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
-		int counter = 0;
-		if (counter-- < 0)
-		{
-			counter = 30;
-			mHackerDevice->mParamTextureManager.mForceUpdate = true;
-		}
-	}
-
-	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
-	// so we need to check first.
-	if (mHackerDevice->mStereoTexture)
-	{
-		LogDebug("  updating stereo parameter texture.\n");
-		mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, this, mHackerDevice->mStereoTexture, false);
-	}
-	else
-	{
-		LogDebug("  stereo parameter texture missing.\n");
-	}
 
 	mOrigContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }

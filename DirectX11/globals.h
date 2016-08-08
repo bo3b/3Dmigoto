@@ -30,6 +30,19 @@ const int MARKING_MODE_ORIGINAL = 2;
 const int MARKING_MODE_ZERO = 3;
 const int MARKING_MODE_PINK = 4;
 
+enum class ShaderHashType {
+	INVALID = -1,
+	FNV,
+	EMBEDDED,
+	BYTECODE,
+};
+static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
+	{L"3dmigoto", ShaderHashType::FNV},
+	{L"embedded", ShaderHashType::EMBEDDED},
+	{L"bytecode", ShaderHashType::BYTECODE},
+	{NULL, ShaderHashType::INVALID} // End of list marker
+};
+
 // Key is index/vertex buffer, value is hash key.
 typedef std::unordered_map<ID3D11Buffer *, uint32_t> DataBufferMap;
 
@@ -71,12 +84,10 @@ typedef std::unordered_map<ID3D11DeviceChild *, OriginalShaderInfo> ShaderReload
 
 // Key is vertexshader, value is hash key.
 typedef std::unordered_map<ID3D11VertexShader *, UINT64> VertexShaderMap;
-typedef std::unordered_map<UINT64, ID3D11VertexShader *> PreloadVertexShaderMap;
 typedef std::unordered_map<ID3D11VertexShader *, ID3D11VertexShader *> VertexShaderReplacementMap;
 
 // Key is pixelshader, value is hash key.
 typedef std::unordered_map<ID3D11PixelShader *, UINT64> PixelShaderMap;
-typedef std::unordered_map<UINT64, ID3D11PixelShader *> PreloadPixelShaderMap;
 typedef std::unordered_map<ID3D11PixelShader *, ID3D11PixelShader *> PixelShaderReplacementMap;
 
 typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
@@ -180,7 +191,7 @@ struct ShaderOverride {
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
-	bool fake_o0;
+	char model[20]; // More than long enough for even ps_4_0_level_9_0
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -191,9 +202,10 @@ struct ShaderOverride {
 		skip(false),
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		analyse_options(FrameAnalysisOptions::INVALID),
-		fake_o0(false)
-	{}
+		analyse_options(FrameAnalysisOptions::INVALID)
+	{
+		model[0] = '\0';
+	}
 };
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 
@@ -274,11 +286,15 @@ struct Globals
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 
 	EnableHooks enable_hooks;
+	
+	bool enable_check_interface;
+	bool enable_dxgi1_2;
+	int enable_create_device;
 
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
-	bool SCREEN_FULLSCREEN;
+	int SCREEN_FULLSCREEN;
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
 
@@ -303,8 +319,9 @@ struct Globals
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
 
+	ShaderHashType shader_hash_type;
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
-	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, PRELOAD_SHADERS, SCISSOR_DISABLE;
+	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
 	bool track_texture_updates;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
@@ -329,6 +346,7 @@ struct Globals
 
 	ResolutionInfo mResolutionInfo;
 	CommandList present_command_list;
+	CommandList post_present_command_list;
 	unsigned frame_no;
 
 	CRITICAL_SECTION mCriticalSection;
@@ -344,7 +362,6 @@ struct Globals
 	CompiledShaderMap mCompiledShaderMap;
 
 	VertexShaderMap mVertexShaders;							// All shaders ever registered with CreateVertexShader
-	PreloadVertexShaderMap mPreloadedVertexShaders;			// All shaders that were preloaded as .bin
 	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
 	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
@@ -353,7 +370,6 @@ struct Globals
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
 	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
-	PreloadPixelShaderMap mPreloadedPixelShaders;
 	PixelShaderReplacementMap mOriginalPixelShaders;
 	PixelShaderReplacementMap mZeroPixelShaders;
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
@@ -445,12 +461,12 @@ struct Globals
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
 
+		shader_hash_type(ShaderHashType::FNV),
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
 		EXPORT_FIXED(false),
 		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
-		PRELOAD_SHADERS(false),
 		FIX_SV_Position(false),
 		FIX_Light_Position(false),
 		FIX_Recompile_VS(false),
@@ -467,7 +483,7 @@ struct Globals
 		SCREEN_WIDTH(-1),
 		SCREEN_HEIGHT(-1),
 		SCREEN_REFRESH(-1),
-		SCREEN_FULLSCREEN(false),
+		SCREEN_FULLSCREEN(0),
 		SCREEN_ALLOW_COMMANDS(false),
 
 		marking_mode(-1),
@@ -480,6 +496,9 @@ struct Globals
 		SCISSOR_DISABLE(0),
 
 		enable_hooks(EnableHooks::INVALID),
+		enable_check_interface(false),
+		enable_dxgi1_2(false),
+		enable_create_device(0),
 		gInitialized(false),
 		gReloadConfigPending(false),
 		gLogInput(false)

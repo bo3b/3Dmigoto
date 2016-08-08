@@ -3,7 +3,9 @@
 // everything from indoors). It uses a 2D bounding box, which causes clipping
 // that we need to fix.
 // VS 492c73b915631923 - clear rectangle to avoid stale data from previous frame
+// VS 21ac1b95e1826465 - MSAA2 version of 492c73b915631923
 // VS 438efe85d344ddd3 - draw mask on windows
+// VS 6263f81e0c11b315 - MSAA2 version of 438efe85d344ddd3
 
 cbuffer CDeferredInteriorAmbientProvider : register(b0)
 {

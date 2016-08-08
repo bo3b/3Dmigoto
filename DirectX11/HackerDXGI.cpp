@@ -386,7 +386,7 @@ STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
 // system, and that is better for us in general. Only early access and beta
 // releases are requiring Factory2, and when wrapping those, we get a crash of
 // some form, that may not be our fault.
-// 
+//
 // Note that we can expect this QueryInterface to get called for any 
 // HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
 
@@ -396,30 +396,27 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 {
 	LogInfo("HackerDXGIFactory::QueryInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
-	HRESULT hr;
+	HRESULT	hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
-	if (riid == __uuidof(IDXGIFactory2))
+	if (SUCCEEDED(hr) && ppvObject)
 	{
-		// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		if (riid == __uuidof(IDXGIFactory2))
+		{
+			// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+			// Unless we are overriding default behavior from ini file.
+			if (!G->enable_dxgi1_2)
+			{
+				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+				*ppvObject = NULL;
+				return E_NOINTERFACE;
+			}
 
-		// For when we need to return a legit Factory2.  Crashes at present.
-		//hr = mOrigFactory->QueryInterface(riid, ppvObject);
-		//HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
-		//LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
-
-		//if (factory2Wrap == NULL)
-		//{
-		//	LogInfo("  error allocating factory2Wrap. \n");
-		//	return E_OUTOFMEMORY;
-		//}
-
-		//*ppvObject = factory2Wrap;
+			// For when we need to return a legit Factory2.  
+			HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+			LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
+			*ppvObject = factory2Wrap;
+		}
 	}
-	
-	hr = mOrigFactory->QueryInterface(riid, ppvObject);
 
 	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
@@ -504,8 +501,16 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 	LogInfo("     Refresh rate = %f \n",
 		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 
-	if (G->SCREEN_FULLSCREEN)
+	if (G->SCREEN_FULLSCREEN > 0)
 	{
+		if (G->SCREEN_FULLSCREEN == 2) {
+			// We install this hook on demand to avoid any possible
+			// issues with hooking the call when we don't need it:
+			// Unconfirmed, but possibly related to:
+			// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+			InstallSetWindowPosHook();
+		}
+
 		pDesc->Windowed = false;
 		LogInfo("->Forcing Windowed to = %d \n", pDesc->Windowed);
 	}
@@ -714,9 +719,9 @@ STDMETHODIMP HackerDXGIFactory1::EnumAdapters1(THIS_
 STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 {
 	LogInfo("HackerDXGIFactory1::IsCurrent(%s@%p) called\n", type_name(this), this);
-	HRESULT hr = mOrigFactory1->IsCurrent();
-	LogInfo("  returns result = %x\n", hr);
-	return hr;
+	BOOL ret = mOrigFactory1->IsCurrent();
+	LogInfo("  returns result = %d\n", ret);
+	return ret;
 }
 
 
@@ -769,7 +774,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	//	pFullscreenDesc->RefreshRate.Numerator = SCREEN_REFRESH;
 	//	pFullscreenDesc->RefreshRate.Denominator = 1;
 	//}
-	//if (pFullscreenDesc && SCREEN_FULLSCREEN >= 0) pFullscreenDesc->Windowed = !SCREEN_FULLSCREEN;
+	//if (pFullscreenDesc && SCREEN_FULLSCREEN >= 0) pFullscreenDesc->Windowed = !SCREEN_FULLSCREEN; SCREEN_FULLSCREEN has different valid values now, if you enable this code you need to rework it
 
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
@@ -1065,8 +1070,12 @@ STDMETHODIMP HackerDXGIAdapter::CheckInterfaceSupport(THIS_
 	// when no evil update is installed, and matches our CreateDevice strategy.
 	// Because this call is only ever supposed to be used for ID3D10 lookups, this
 	// probably means it will always return the error.
-	if (InterfaceName != __uuidof(ID3D11Device))
-		hr = DXGI_ERROR_UNSUPPORTED;
+	// Some games fail at launch, so a d3dx.ini setting can allow them skip this.
+	if (!G->enable_check_interface)
+	{
+		if (InterfaceName != __uuidof(ID3D11Device))
+			hr = DXGI_ERROR_UNSUPPORTED;
+	}
 
 	if (hr == S_OK && pUMDVersion) LogInfo("  UMDVersion high=%x, low=%x\n", pUMDVersion->HighPart, pUMDVersion->LowPart);
 	LogInfo("  returns hr=%x\n", hr);
@@ -1105,11 +1114,9 @@ STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_
 	LogInfo("HackerDXGIOutput::GetDesc(%s@%p) called \n", type_name(this), this);
 	
 	HRESULT ret = mOrigOutput->GetDesc(pDesc);
-	if (LogFile)
+	if (SUCCEEDED(ret))
 	{
-		char str[MAX_PATH];
-		wcstombs(str, pDesc->DeviceName, MAX_PATH);
-		LogInfo("  returned %s, desktop=%d\n", str, pDesc->AttachedToDesktop);
+		LogInfo("  returned %S, desktop=%d\n", pDesc->DeviceName, pDesc->AttachedToDesktop);
 	}
 	return ret;
 }
@@ -1296,6 +1303,38 @@ IDXGISwapChain* HackerDXGISwapChain::GetOrigSwapChain()
 }
 
 
+static void UpdateStereoParams(HackerDevice *mHackerDevice, HackerContext *mHackerContext)
+{
+	if (G->ENABLE_TUNE)
+	{
+		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
+		mHackerDevice->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
+		mHackerDevice->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
+		mHackerDevice->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
+		mHackerDevice->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
+		int counter = 0;
+		if (counter-- < 0)
+		{
+			counter = 30;
+			mHackerDevice->mParamTextureManager.mForceUpdate = true;
+		}
+	}
+
+	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
+	// so we need to check first.
+	if (mHackerDevice->mStereoTexture)
+	{
+		LogDebug("  updating stereo parameter texture.\n");
+		mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, mHackerContext, mHackerDevice->mStereoTexture, false);
+	}
+	else
+	{
+		LogDebug("  stereo parameter texture missing.\n");
+	}
+}
+
+
+
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
 
@@ -1306,6 +1345,20 @@ void HackerDXGISwapChain::RunFrameActions()
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
 	if (LogFile) fflush(LogFile);
+
+	// Run the command list here, before drawing the overlay so that a
+	// custom shader on the present call won't remove the overlay. Also,
+	// run this before most frame actions so that this can be considered as
+	// a pre-present command list. We have a separate post-present command
+	// list after the present call in case we need to restore state or
+	// affect something at the start of the frame.
+	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
+
+	// Draw the on-screen overlay text with hunting info, before final Present.
+	// But only when hunting is enabled, this will also make it obvious when
+	// hunting is on.
+	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
+		mOverlay->DrawOverlay();
 
 	if (G->analyse_frame) {
 		// We don't allow hold to be changed mid-frame due to potential
@@ -1334,8 +1387,6 @@ void HackerDXGISwapChain::RunFrameActions()
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
 	CurrentTransition.UpdateTransitions(mHackerDevice);
-
-	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
 	G->frame_no++;
 
@@ -1380,17 +1431,24 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	// But only when hunting is enabled, this will also make it obvious when
-	// hunting is on.
-	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
-		mOverlay->DrawOverlay();
-	
-	// Every presented frame, we want to take some CPU time to run our actions,
-	// which enables hunting, and snapshots, and aiming overrides and other inputs
-	RunFrameActions();
+	if (!(Flags & DXGI_PRESENT_TEST)) {
+		// Every presented frame, we want to take some CPU time to run our actions,
+		// which enables hunting, and snapshots, and aiming overrides and other inputs
+		RunFrameActions();
+	}
 
 	HRESULT hr = mOrigSwapChain->Present(SyncInterval, Flags);
+
+	if (!(Flags & DXGI_PRESENT_TEST)) {
+		// Update the stereo params texture just after the present so that we
+		// get the new values for the current frame:
+		UpdateStereoParams(mHackerDevice, mHackerContext);
+
+		// Run the post present command list now, which can be used to restore
+		// state changed in the pre-present command list, or to perform some
+		// action at the start of a frame:
+		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
+	}
 
 	LogDebug("  returns %x\n", hr);
 	return hr;
@@ -1419,8 +1477,16 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %p\n", pTarget);
 
-	if (G->SCREEN_FULLSCREEN)
+	if (G->SCREEN_FULLSCREEN > 0)
 	{
+		if (G->SCREEN_FULLSCREEN == 2) {
+			// We install this hook on demand to avoid any possible
+			// issues with hooking the call when we don't need it.
+			// Unconfirmed, but possibly related to:
+			// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+			InstallSetWindowPosHook();
+		}
+
 		Fullscreen = true;
 		LogInfo("->Fullscreen forced = %d \n", Fullscreen);
 	}
@@ -1487,11 +1553,15 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-	if (SUCCEEDED(hr) && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-		G->mResolutionInfo.width = Width;
-		G->mResolutionInfo.height = Height;
-		LogInfo("Got resolution from swap chain: %ix%i\n",
-			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	if (SUCCEEDED(hr)) {
+		mOverlay->Resize(Width, Height);
+
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			G->mResolutionInfo.width = Width;
+			G->mResolutionInfo.height = Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
 	}
 
 	LogInfo("  returns result = %x\n", hr); 
@@ -1631,18 +1701,28 @@ STDMETHODIMP HackerDXGISwapChain1::Present1(THIS_
 	LogInfo("HackerDXGISwapChain1::Present1(%s@%p) called \n", type_name(this), this);
 	LogInfo("  SyncInterval = %d\n", SyncInterval);
 	LogInfo("  PresentFlags = %d\n", PresentFlags);
-	
-	// Every presented frame, we want to take some CPU time to run our actions,
-	// which enables hunting, and snapshots, and aiming overrides and other inputs
-//	RunFrameActions();
 
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	// But only when hunting is enabled, this will also make it obvious when
-	// hunting is on.
-//	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
-//		mOverlay->DrawOverlay();
+	// TODO like regular Present call:
+	// if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+	// 	// Every presented frame, we want to take some CPU time to run our actions,
+	// 	// which enables hunting, and snapshots, and aiming overrides and other inputs
+	// 	RunFrameActions();
+	// }
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
+
+	// TODO like regular Present call:
+	// if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+	// 	// Update the stereo params texture just after the present so that we
+	// 	// get the new values for the current frame:
+	// 	UpdateStereoParams(mHackerDevice, mHackerContext);
+
+	// 	// Run the post present command list now, which can be used to restore
+	// 	// state changed in the pre-present command list, or to perform some
+	// 	// action at the start of a frame:
+	// 	RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
+	// }
+
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }

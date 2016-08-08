@@ -98,7 +98,7 @@ float4 calc_pos(float2 v0)
   return o0;
 }
 
-#include <ShaderFixes/crosshair.hlsl>
+#include <crosshair.hlsl>
 
 void main(
   float2 v0 : position0,

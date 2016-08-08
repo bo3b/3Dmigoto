@@ -157,7 +157,7 @@ void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 			LogInfo("    ViewDimension = BUFFEREX\n");
 			LogInfo("      BufferEx.FirstElement = %u\n", desc->BufferEx.FirstElement);
 			LogInfo("      BufferEx.NumElements = %u\n", desc->BufferEx.NumElements);
-			LogInfo("      BufferEx.Flags = %u\n", desc->BufferEx.Flags);
+			LogInfo("      BufferEx.Flags = 0x%x\n", desc->BufferEx.Flags);
 			break;
 	}
 }
@@ -216,7 +216,7 @@ void LogViewDesc(const D3D11_DEPTH_STENCIL_VIEW_DESC *desc)
 {
 	LogInfo("  View Type = Depth Stencil\n");
 	LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
-	LogInfo("    Flags = %u\n", desc->Flags);
+	LogInfo("    Flags = 0x%x\n", desc->Flags);
 	switch (desc->ViewDimension) {
 		case D3D11_DSV_DIMENSION_UNKNOWN:
 			LogInfo("    ViewDimension = UNKNOWN\n");
@@ -264,7 +264,7 @@ void LogViewDesc(const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc)
 			LogInfo("    ViewDimension = BUFFER\n");
 			LogInfo("      Buffer.FirstElement = %u\n", desc->Buffer.FirstElement);
 			LogInfo("      Buffer.NumElements = %u\n", desc->Buffer.NumElements);
-			LogInfo("      Buffer.Flags = %u\n", desc->Buffer.Flags);
+			LogInfo("      Buffer.Flags = 0x%x\n", desc->Buffer.Flags);
 			break;
 		case D3D11_UAV_DIMENSION_TEXTURE1D:
 			LogInfo("    ViewDimension = TEXTURE1D\n");
@@ -606,6 +606,10 @@ uint32_t CalcTexture2DDataHash(
 	return hash;
 }
 
+// Must be called with the critical section held to protect mResources against
+// simultaneous reads & modifications (hmm, tempted to implement a lock free
+// map given that it's add only, or use RCU). Is there anything on Windows like
+// lockdep to statically prove this is called with the lock held?
 uint32_t GetOrigResourceHash(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
@@ -617,6 +621,10 @@ uint32_t GetOrigResourceHash(ID3D11Resource *resource)
 	return 0;
 }
 
+// Must be called with the critical section held to protect mResources against
+// simultaneous reads & modifications (hmm, tempted to implement a lock free
+// map given that it's add only, or use RCU). Is there anything on Windows like
+// lockdep to statically prove this is called with the lock held?
 uint32_t GetResourceHash(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
@@ -740,11 +748,11 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (!dest)
 		return;
 
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	dstHash = GetOrigResourceHash(dest);
 	if (!dstHash)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		goto out_unlock;
 
 	try {
 		dstInfo = &G->mResourceInfo.at(dstHash);
@@ -850,11 +858,13 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	if (!resource || !data)
 		return;
 
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	if (!info) {
 		try {
 			info = &G->mResources.at(resource);
 		} catch (std::out_of_range) {
-			return;
+			goto out_unlock;
 		}
 	}
 
@@ -902,6 +912,9 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	LogDebug("Updated resource hash\n");
 	LogDebug("  old data: %08x new data: %08x\n", old_data_hash, info->data_hash);
 	LogDebug("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
+
+out_unlock:
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
@@ -912,23 +925,25 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
 
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	try {
 		src_info = &G->mResources.at(src);
 	} catch (std::out_of_range) {
-		return;
+		goto out_unlock;
 	}
 
 	try {
 		dst_info = &G->mResources.at(dst);
 	} catch (std::out_of_range) {
-		return;
+		goto out_unlock;
 	}
 
 	// If there was no initial data in either source or destination, or
 	// they both contain the same data, we don't need to recalculate the
 	// hash as it will not change:
 	if (src_info->data_hash == dst_info->data_hash)
-		return;
+		goto out_unlock;
 
 	// XXX: If the destination had an initial data but the source did not
 	// we will currently discard the data part of the hash - is that the
@@ -964,6 +979,9 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	LogDebug("Propagated resource hash\n");
 	LogDebug("  old data: %08x new data: %08x\n", old_data_hash, dst_info->data_hash);
 	LogDebug("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
+
+out_unlock:
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void MapTrackResourceHashUpdate(
@@ -1004,10 +1022,12 @@ void MapTrackResourceHashUpdate(
 	if (!G->track_texture_updates || Subresource != 0 || !pMappedResource)
 		return;
 
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	try {
 		info = &G->mResources.at(pResource);
 	} catch (std::out_of_range) {
-		return;
+		goto out_unlock;
 	}
 
 	if (divert) {
@@ -1020,13 +1040,13 @@ void MapTrackResourceHashUpdate(
 				info->diverted_size = pMappedResource->DepthPitch * info->desc3D.Depth;
 				break;
 			default:
-				return;
+				goto out_unlock;
 		}
 
 		replace = malloc(info->diverted_size);
 		if (!replace) {
 			LogInfo("MapTrackResourceHashUpdate out of memory\n");
-			return;
+			goto out_unlock;
 		}
 		memset(replace, 0, info->diverted_size);
 
@@ -1038,6 +1058,9 @@ void MapTrackResourceHashUpdate(
 
 	memcpy(&info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 	info->mapped_writable = true;
+
+out_unlock:
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource)
@@ -1047,14 +1070,16 @@ void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource)
 	if (!G->track_texture_updates || Subresource != 0)
 		return;
 
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
 	try {
 		info = &G->mResources.at(pResource);
 	} catch (std::out_of_range) {
-		return;
+		goto out_unlock;
 	}
 
 	if (!info->mapped_writable)
-		return;
+		goto out_unlock;
 	info->mapped_writable = false;
 
 	UpdateResourceHashFromCPU(pResource, info, info->map.pData, info->map.RowPitch, info->map.DepthPitch);
@@ -1064,4 +1089,7 @@ void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource)
 		memcpy(info->diverted_map, info->map.pData, info->diverted_size);
 		free(info->map.pData);
 	}
+
+out_unlock:
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }

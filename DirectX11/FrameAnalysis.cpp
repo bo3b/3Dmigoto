@@ -79,8 +79,15 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 	uint32_t hash, orig_hash;
 	struct ResourceHashInfo *info;
 
-	if (!resource || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
 		return;
+
+	if (!resource) {
+		fprintf(frame_analysis_log, "\n");
+		return;
+	}
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -104,6 +111,8 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		}
 	} catch (std::out_of_range) {
 	}
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
 }
@@ -191,8 +200,13 @@ void HackerContext::FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async)
 	ID3D11Predicate *predicate;
 	D3D11_QUERY_DESC desc;
 
-	if (!async || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
 		return;
+
+	if (!async) {
+		fprintf(frame_analysis_log, "\n");
+		return;
+	}
 
 	try {
 		type = G->mQueryTypes.at(async);
@@ -281,8 +295,13 @@ void HackerContext::FrameAnalysisLogData(void *buf, UINT size)
 	unsigned char *ptr = (unsigned char*)buf;
 	UINT i;
 
-	if (!buf || !size || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
 		return;
+
+	if (!buf || !size) {
+		fprintf(frame_analysis_log, "\n");
+		return;
+	}
 
 	fprintf(frame_analysis_log, "    data: ");
 	for (i = 0; i < size; i++, ptr++)
@@ -294,7 +313,7 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	HRESULT hr = S_OK;
+	HRESULT hr = S_OK, dont_care;
 	wchar_t *ext;
 
 	ext = wcsrchr(filename, L'.');
@@ -304,7 +323,7 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	}
 
 	// Needs to be called at some point before SaveXXXTextureToFile:
-	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
 	if ((options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
 	    (options & FrameAnalysisOptions::DUMP_XXX)) {
@@ -336,7 +355,7 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa)
 {
-	NVAPI_STEREO_SURFACECREATEMODE orig_mode;
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	HRESULT hr;
 
 	// NOTE: desc is passed by value - this is intentional so we don't
@@ -656,7 +675,11 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	}
 
 	mOrigContext->CopyResource(staging, buffer);
-	mOrigContext->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	hr = mOrigContext->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	if (FAILED(hr)) {
+		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
+		return;
+	}
 
 	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
@@ -1275,6 +1298,9 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 		}
 	}
 
+	// Grab the critical section now as we may need it several times during
+	// dumping for mResources
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
 		DumpCBs(compute);
@@ -1300,6 +1326,8 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
 		DumpDepthStencilTargets();
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {

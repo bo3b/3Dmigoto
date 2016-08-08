@@ -78,7 +78,7 @@ private:
 
 	void SaveState();
 	void RestoreState();
-	void InitDrawState();
+	HRESULT InitDrawState();
 
 
 public:
@@ -86,5 +86,6 @@ public:
 	~Overlay();
 
 	void DrawOverlay(void);
+	void Resize(UINT Width, UINT Height);
 };
 

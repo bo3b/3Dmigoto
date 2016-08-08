@@ -283,11 +283,12 @@ namespace nv
 				desc.MiscFlags = 0;
 
 				HRESULT ret = pDevice->CreateTexture2D(&desc, &sysData, &staging);
+				delete sysData.pSysMem;
 				if (ret != S_OK)
 				{
 					LogInfo("    error during creation of stereo staging texture. result = %x.\n", ret);
+					return NULL;
 				}
-				delete sysData.pSysMem;
 				return staging;
 			}
 

@@ -138,7 +138,7 @@ static void BeepFailure2()
 	Beep(300, 200); Beep(200, 150);
 }
 
-static void DoubleBeepExit() 
+static DECLSPEC_NORETURN void DoubleBeepExit()
 {
 	// Fatal error somewhere, known to crash, might as well exit cleanly
 	// with some notification.
@@ -357,6 +357,34 @@ static char *TexFormatStr(unsigned int format)
 	return "UNKNOWN";
 }
 
+static DXGI_FORMAT ParseFormatString(const wchar_t *wfmt)
+{
+	size_t num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
+	char afmt[30];
+	unsigned format;
+	int nargs, end;
+
+	// Try parsing format string as decimal:
+	nargs = swscanf_s(wfmt, L"%u%n", &format, &end);
+	if (nargs == 1 && end == wcslen(wfmt))
+		return (DXGI_FORMAT)format;
+
+	if (!_wcsnicmp(wfmt, L"DXGI_FORMAT_", 12))
+		wfmt += 12;
+
+	// Look up format string:
+	wcstombs(afmt, wfmt, 30);
+	afmt[29] = '\0';
+	for (format = 0; format < num_formats; format++) {
+		if (!_strnicmp(afmt, DXGIFormats[format], 30))
+			return (DXGI_FORMAT)format;
+	}
+
+	// UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
+	// -1 cast to a DXGI_FORMAT to signify an error:
+	return (DXGI_FORMAT)-1;
+}
+
 // From DirectXTK with extra formats added
 static DXGI_FORMAT EnsureNotTypeless( DXGI_FORMAT fmt )
 {
@@ -551,32 +579,6 @@ static const char* type_name(IUnknown *object)
 // Common routine to handle disassembling binary shaders to asm text.
 // This is used whenever we need the Asm text.
 
-// Old version directly using D3DDisassemble, suffers from precision issues due
-// to bug in MS's disassembler that always prints floats with %f, which does
-// not have sufficient precision to reproduce a 32bit floating point value
-// exactly. Might still be useful for comparison:
-// static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength)
-// {
-// 	ID3DBlob *disassembly = nullptr;
-// 	UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS;
-// 	string comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
-//
-// 	HRESULT r = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(),
-// 		&disassembly);
-// 	if (FAILED(r))
-// 	{
-// 		LogInfo("  disassembly failed. Error: %x \n", r);
-// 		return "";
-// 	}
-//
-// 	// Successfully disassembled into a Blob.  Let's turn it into a C++ std::string
-// 	// so that we don't have a null byte as a terminator.  If written to a file,
-// 	// the null bytes otherwise cause Git diffs to fail.
-// 	string asmText = string(static_cast<char*>(disassembly->GetBufferPointer()));
-//
-// 	disassembly->Release();
-// 	return asmText;
-// }
 
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
@@ -710,7 +712,6 @@ static HRESULT CreateTextFile(wchar_t* fullPath, string asmText, bool overwrite)
 
 
 // Specific variant to name files consistently, so we know they are Asm text.
-// ToDo: Remove all use of the obsolete wsprintf.
 
 static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
 	const void *pShaderBytecode, size_t bytecodeLength)

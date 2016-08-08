@@ -33,6 +33,8 @@ const int maxstring = 200;
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
 {
+	HRESULT hr;
+
 	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, type_name(pSwapChain));
 	LogInfo("  on HackerDevice: %p, HackerContext: %p \n", pDevice, pContext);
 
@@ -43,7 +45,9 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	mHackerSwapChain = pSwapChain;
 
 	DXGI_SWAP_CHAIN_DESC description;
-	pSwapChain->GetDesc(&description);
+	hr = pSwapChain->GetDesc(&description);
+	if (FAILED(hr))
+		return;
 	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
 
 	// The courierbold.spritefont is now included as binary resource data attached
@@ -188,15 +192,21 @@ void Overlay::RestoreState()
 // state.  This adds an init to be certain that the rendertarget is the backbuffer
 // so that the overlay is drawn. 
 
-void Overlay::InitDrawState()
+HRESULT Overlay::InitDrawState()
 {
+	HRESULT hr;
+
 	ID3D11Texture2D *pBackBuffer;
-	mHackerSwapChain->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	hr = mHackerSwapChain->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	if (FAILED(hr))
+		return hr;
 
 	// use the back buffer address to create the render target
 	ID3D11RenderTargetView *backbuffer;
-	mHackerDevice->GetOrigDevice()->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+	hr = mHackerDevice->GetOrigDevice()->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
 	pBackBuffer->Release();
+	if (FAILED(hr))
+		return hr;
 
 	// set the first render target as the back buffer, with no stencil
 	mHackerContext->GetOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
@@ -204,6 +214,8 @@ void Overlay::InitDrawState()
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
 	mHackerContext->GetOrigContext()->RSSetViewports(1, &openView);
+
+	return S_OK;
 }
 
 // -----------------------------------------------------------------------------
@@ -319,15 +331,24 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 		swprintf_s(info, maxstring, L"Stereo disabled");
 }
 
+void Overlay::Resize(UINT Width, UINT Height)
+{
+	mResolution.x = Width;
+	mResolution.y = Height;
+}
 
 void Overlay::DrawOverlay(void)
 {
+	HRESULT hr;
+
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
 	// around our drawing.  
 	SaveState();
 	{
-		InitDrawState();
+		hr = InitDrawState();
+		if (FAILED(hr))
+			goto fail_restore;
 
 		mSpriteBatch->Begin();
 		{
@@ -354,5 +375,6 @@ void Overlay::DrawOverlay(void)
 		}
 		mSpriteBatch->End();
 	}
+fail_restore:
 	RestoreState();
 }

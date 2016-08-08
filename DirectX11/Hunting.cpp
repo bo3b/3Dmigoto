@@ -226,7 +226,8 @@ void DumpUsage(wchar_t *dir)
 		wcscpy(path, dir);
 		wcscat(path, L"\\");
 	} else {
-		GetModuleFileName(0, path, MAX_PATH);
+		if (!GetModuleFileName(0, path, MAX_PATH))
+			return;
 		wcsrchr(path, L'\\')[1] = 0;
 	}
 	wcscat(path, L"ShaderUsage.txt");
@@ -326,7 +327,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
-		wsprintf(fullName, L"%ls\\%016I64x-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
+		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
 		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
@@ -415,7 +416,7 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	wchar_t fullName[MAX_PATH];
 	FILE *fw;
 
-	wsprintf(fullName, L"%ls\\%08lx%08lx-%ls_replace.txt", G->SHADER_PATH, (UINT32)(hash >> 32), (UINT32)hash, shaderType.c_str());
+	swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType.c_str());
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 	{
@@ -517,7 +518,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
-	wsprintf(fullName, L"%s\\%s", shaderFixPath, fileName);
+	char apath[MAX_PATH];
+	swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
 	HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
@@ -564,7 +566,12 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// TODO: Add #defines for StereoParams and IniParams
 
 		ID3DBlob* pErrorMsgs = nullptr;
-		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+		// Pass the real filename and use the standard include handler so that
+		// #include will work with a relative path from the shader itself.
+		// Later we could add a custom include handler to track dependencies so
+		// that we can make reloading work better when using includes:
+		wcstombs(apath, fullName, MAX_PATH);
+		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 			"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
@@ -589,10 +596,6 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 			return true;
 		}
 	}
-	else if (wcsstr(fileName, L"_reasm"))
-	{
-		return false;	// Don't reassemble these, and don't error out.
-	} 
 	else
 	{
 		LogInfo("   >Replacement shader found. Re-Loading replacement ASM code from %ls \n", fileName);
@@ -602,78 +605,33 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// We need original byte code unchanged, so make a copy.
 		vector<byte> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
-		byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 
-		// Write reassembly binary output for comparison. ToDo: remove after we have
-		// resolved the disassembler precision issue and validated everything works.
-		FILE *fw;
-		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_reasm.bin", G->SHADER_PATH, hash, shaderType.c_str());
-		_wfopen_s(&fw, fullName, L"wb");
-		if (fw)
+		// Not completely clear what error reporting happens from assembler.  
+		// We know it throws at least one exception, let's use that.
+		try
 		{
-			LogInfoW(L"    storing reassembled binary to %s\n", fullName);
-			fwrite(byteCode.data(), 1, byteCode.size(), fw);
-			fclose(fw);
+			byteCode = assembler(*reinterpret_cast<vector<byte>*>(&srcData), byteCode);
 		}
-		else
-		{
-			LogInfoW(L"    error storing reassembled binary to %s\n", fullName);
-		}
-
-
-		// ToDo: How we do know when it fails? Error handling. Do we really have to re-disassemble?
-		string asmText = BinaryToAsmText(byteCode.data(), byteCode.size());
-		if (asmText.empty())
-		{
+		catch (...)
+		{ 
 			LogInfo("  *** assembler failed. \n");
 			return true;
 		}
-		else
-		{
-			// Write reassembly output for comparison. ToDo: how long do we need this?
-			swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_reasm.txt", G->SHADER_PATH, hash, shaderType.c_str());
-			HRESULT hr = CreateTextFile(fullName, asmText, true);
-			if (FAILED(hr)) {
-				LogInfoW(L"    *** error storing reassembly to %s \n", fullName);
-			}
-			else {
-				LogInfoW(L"    storing reassembly to %s \n", fullName);
-			}
 
-			// Since the re-assembly worked, let's make it the active shader code.
-			HRESULT ret = D3DCreateBlob(byteCode.size(), &pByteCode);
-			if (SUCCEEDED(ret)) {
-				memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
-			} else {
-				LogInfo("    *** failed to allocate new Blob for assemble. \n");
-				return true;
-			}
+		// Since the re-assembly worked, let's make it the active shader code.
+		HRESULT ret = D3DCreateBlob(byteCode.size(), &pByteCode);
+		if (SUCCEEDED(ret)) {
+			memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
+		}
+		else {
+			LogInfo("    *** failed to allocate new Blob for assemble. \n");
+			return true;
 		}
 	}
 
 
-	// Write replacement .bin if necessary
-	if (G->CACHE_SHADERS && pByteCode)
-	{
-		wchar_t val[MAX_PATH];
-		wsprintf(val, L"%ls\\%08lx%08lx-%ls_replace.bin", shaderFixPath, (UINT32)(hash >> 32), (UINT32)(hash), shaderType.c_str());
-		FILE *fw;
-		_wfopen_s(&fw, val, L"wb");
-		if (LogFile)
-		{
-			char fileName[MAX_PATH];
-			wcstombs(fileName, val, MAX_PATH);
-			if (fw)
-				LogInfo("    storing compiled shader to %s\n", fileName);
-			else
-				LogInfo("    error writing compiled shader to %s\n", fileName);
-		}
-		if (fw)
-		{
-			fwrite(pByteCode->GetBufferPointer(), 1, pByteCode->GetBufferSize(), fw);
-			fclose(fw);
-		}
-	}
+	// No longer generating .bin cache shaders here.  Unnecessary complexity, and this needs
+	// to be refactored to use a single shader loading code anyway.
 
 
 	// For success, let's add the first line of text from the file to the OriginalShaderInfo,
@@ -719,6 +677,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *device)
 {
 	UINT64 hash;
+	ShaderOverrideMap::iterator override;
 	ID3D11DeviceChild* oldShader = NULL;
 	ID3D11DeviceChild* replacement = NULL;
 	ID3D11ClassLinkage* classLinkage;
@@ -770,6 +729,13 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// if I were to modify the original. Too many moving parts for me, no good way to test regressions.
 			//   -bo3b
 			G->mReloadedShaders[oldShader].found = true;
+
+			// Check if the user has overridden the shader model:
+			ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+			if (override != G->mShaderOverrideMap.end()) {
+				if (override->second.model[0])
+					shaderModel = override->second.model;
+			}
 
 			// If shaderModel is "bin", that means the original was loaded as a binary object, and thus shaderModel is unknown.
 			// Disassemble the binary to get that string.
@@ -892,7 +858,8 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			// Lastly, reload the shader generated, to check for decompile errors, set it as the active 
 			// shader code, in case there are visual errors, and make it the match the code in the file.
 			wchar_t fileName[MAX_PATH];
-			wsprintf(fileName, L"%08lx%08lx-%ls_replace.txt", (UINT32)(hash >> 32), (UINT32)(hash), iter.second.shaderType.c_str());
+
+			swprintf_s(fileName, MAX_PATH, L"%016llx-%ls_replace.txt", hash, iter.second.shaderType.c_str());
 			if (!ReloadShader(G->SHADER_PATH, fileName, device))
 				break;
 
@@ -1027,21 +994,11 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		// Strict file name format, to allow renaming out of the way. 
 		// "00aa7fa12bbf66b3-ps_replace.txt" or "00aa7fa12bbf66b3-vs.txt"
 		// Will still blow up if the first characters are not hex.
-		wsprintf(fileName, L"%ls\\????????????????-??*.txt", G->SHADER_PATH);
+		swprintf_s(fileName, MAX_PATH, L"%ls\\????????????????-??*.txt", G->SHADER_PATH);
 		HANDLE hFind = FindFirstFile(fileName, &findFileData);
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
 			do {
-				// Ignore reassembly files (XXX: Should we be strict and whitelist allowed patterns,
-				// or relaxed and blacklist bad patterns in filenames? Pretty sure I saw some code
-				// that treads _bad.txt files as an indication that a shader is bad - do we need
-				// to consider that here?) -DarkStarSword
-				wchar_t *ext = wcsrchr(findFileData.cFileName, L'.');
-				if (ext) {
-					if (!wcsncmp(ext - 6, L"_reasm", 6))
-						continue;
-				}
-
 				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device);
 			} while (FindNextFile(hFind, &findFileData) && success);
 			FindClose(hFind);
@@ -1094,7 +1051,8 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	_localtime64_s(&tm, &ltime);
 	wcsftime(subdir, MAX_PATH, L"FrameAnalysis-%Y-%m-%d-%H%M%S", &tm);
 
-	GetModuleFileName(0, path, MAX_PATH);
+	if (!GetModuleFileName(0, path, MAX_PATH))
+		return;
 	wcsrchr(path, L'\\')[1] = 0;
 	wcscat_s(path, MAX_PATH, subdir);
 
@@ -1124,8 +1082,11 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 	// for filename conflicts, so use def_analyse_options:
 	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
 		G->analyse_frame = 0;
-		if (G->DumpUsage)
-			DumpUsage(G->ANALYSIS_PATH);
+		if (G->DumpUsage) {
+			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+				DumpUsage(G->ANALYSIS_PATH);
+			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		}
 	}
 }
 

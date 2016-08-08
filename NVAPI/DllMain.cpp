@@ -130,6 +130,7 @@ static map<float, float> GameConvergenceMap, GameConvergenceMapInv;
 static bool gDirectXOverride = false;
 static int gSurfaceCreateMode = -1;
 static bool UnlockSeparation = false;
+static bool UnlockConvergence = false;
 
 static float UserConvergence = -1, SetConvergence = -1, GetConvergence = -1;
 static float UserSeparation = -1, SetSeparation = -1, GetSeparation = -1;
@@ -237,12 +238,14 @@ static void LoadConfigFile()
 	ForceAutomaticStereo = GetPrivateProfileInt(L"Stereo", L"automatic_mode", 0, iniFile) == 1;
 	gSurfaceCreateMode = GetPrivateProfileInt(L"Stereo", L"surface_createmode", -1, iniFile);
 	UnlockSeparation = GetPrivateProfileInt(L"Stereo", L"unlock_separation", 0, iniFile) == 1;
+	UnlockConvergence = GetPrivateProfileInt(L"Stereo", L"unlock_convergence", 0, iniFile) == 1;
 
 	LogInfo("[Stereo]\n");
 	LogInfo("  force_no_nvapi=%d \n", ForceNoNvAPI ? 1 : 0);
 	LogInfo("  force_stereo=%d \n", NoStereoDisable ? 1 : 0);
 	LogInfo("  automatic_mode=%d \n", ForceAutomaticStereo ? 1 : 0);
 	LogInfo("  unlock_separation=%d \n", UnlockSeparation ? 1 : 0);
+	LogInfo("  unlock_convergence=%d \n", UnlockConvergence ? 1 : 0);
 	LogInfo("  surface_createmode=%d \n", gSurfaceCreateMode);
 }
 
@@ -377,24 +380,44 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetConvergence(StereoHandle stereoHandl
 		return (*_NvAPI_Stereo_SetConvergence)(stereoHandle, newConvergence);
 	}
 
-	// Save current user convergence value.
-	float currentConvergence;
-	_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)(*nvapi_QueryInterfacePtr)(0x4ab00934);
-	(*_NvAPI_Stereo_GetConvergence)(stereoHandle, &currentConvergence);
+	if (GameConvergenceMap.empty()) {
+		if (UnlockConvergence)
+			return NVAPI_OK;
 
-	if (GameConvergenceMapInv.find(currentConvergence) == GameConvergenceMapInv.end())
-		UserConvergence = currentConvergence;
-	// Map special convergence value?
-	map<float, float>::iterator i = GameConvergenceMap.find(newConvergence);
-	if (i != GameConvergenceMap.end())
-		newConvergence = i->second;
-	else
-		// Normal convergence value. Replace with user value.
-		newConvergence = UserConvergence;
+		// If we don't have a convergence map and convergence unlocking
+		// has not been requested we now allow the SetConvergence call
+		// to go through. This is important for compatibility with
+		// Helix Mod.
+	} else {
+		// Old convergence mapping code from Chiri. Some of this looks
+		// suspect, but I'm avoiding touching it without understanding
+		// all the nuances of what it was trying to achieve. Notably
+		// this code will effectively unlock convergence all of the
+		// time, which does not seem like it would have been
+		// intentional and causes problems if this DLL is being used
+		// with Helix Mod, or 3DVision enabled games that do something
+		// sensible with convergence when the user has not set up
+		// remapping.
 
-	// Update needed?
-	if (currentConvergence == newConvergence)
-		return NVAPI_OK;
+		// Save current user convergence value.
+		float currentConvergence;
+		_NvAPI_Stereo_GetConvergence = (tNvAPI_Stereo_GetConvergence)(*nvapi_QueryInterfacePtr)(0x4ab00934);
+		(*_NvAPI_Stereo_GetConvergence)(stereoHandle, &currentConvergence);
+
+		if (GameConvergenceMapInv.find(currentConvergence) == GameConvergenceMapInv.end())
+			UserConvergence = currentConvergence;
+		// Map special convergence value?
+		map<float, float>::iterator i = GameConvergenceMap.find(newConvergence);
+		if (i != GameConvergenceMap.end())
+			newConvergence = i->second;
+		else
+			// Normal convergence value. Replace with user value.
+			newConvergence = UserConvergence;
+
+		// Update needed?
+		if (currentConvergence == newConvergence)
+			return NVAPI_OK;
+	}
 	if (SetConvergence != newConvergence)
 	{
 		LogConvergence("%s - Remap SetConvergence to %e, hex=%x\n", LogTime().c_str(), SetConvergence = newConvergence, *reinterpret_cast<unsigned int *>(&newConvergence));

@@ -19,6 +19,7 @@ struct CommandListState {
 	float rt_width, rt_height;
 	DrawCallInfo *call_info;
 	bool post;
+	CURSORINFO cursor_info;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -28,7 +29,8 @@ struct CommandListState {
 		rt_height(-1),
 		call_info(NULL),
 		post(false),
-		update_params(false)
+		update_params(false),
+		cursor_info()
 	{}
 };
 
@@ -61,6 +63,7 @@ public:
 class CustomShader
 {
 public:
+	bool vs_override, hs_override, ds_override, gs_override, ps_override, cs_override;
 	ID3D11VertexShader *vs;
 	ID3D11HullShader *hs;
 	ID3D11DomainShader *ds;
@@ -71,10 +74,26 @@ public:
 	ID3DBlob *vs_bytecode, *hs_bytecode, *ds_bytecode;
 	ID3DBlob *gs_bytecode, *ps_bytecode, *cs_bytecode;
 
+	int blend_override;
+	D3D11_BLEND_DESC blend_desc;
+	ID3D11BlendState *blend_state;
+	FLOAT blend_factor[4];
+	UINT blend_sample_mask;
+
+	int rs_override;
+	D3D11_RASTERIZER_DESC rs_desc;
+	ID3D11RasterizerState *rs_state;
+
+	D3D11_PRIMITIVE_TOPOLOGY topology;
+
 	CommandList command_list;
 	CommandList post_command_list;
 
 	bool substantiated;
+
+	int max_executions_per_frame;
+	unsigned frame_no;
+	int executions_this_frame;
 
 	CustomShader();
 	~CustomShader();
@@ -109,6 +128,7 @@ enum class DrawCommandType {
 	DRAW_INSTANCED_INDIRECT,
 	DISPATCH,
 	DISPATCH_INDIRECT,
+	FROM_CALLER,
 };
 
 class DrawCommand : public CommandListCommand {
@@ -140,6 +160,9 @@ enum class ParamOverrideType {
 	VERTEX_COUNT,
 	INDEX_COUNT,
 	INSTANCE_COUNT,
+	CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
+	CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
+	CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -152,6 +175,9 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
 	{L"index_count", ParamOverrideType::INDEX_COUNT},
 	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
+	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
+	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
+	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {
@@ -191,6 +217,39 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
+enum class CustomResourceType {
+	INVALID,
+	BUFFER,
+	STRUCTURED_BUFFER,
+	RAW_BUFFER,
+	TEXTURE1D,
+	TEXTURE2D,
+	TEXTURE3D,
+	CUBE,
+};
+static EnumName_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[] = {
+	// Use the same names as HLSL here since they are what shaderhackers
+	// will see in the shaders, even if some of these have no distinction
+	// from our point of view, or are just a misc flag:
+	{L"Buffer", CustomResourceType::BUFFER},
+	{L"StructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"AppendStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"ConsumeStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"ByteAddressBuffer", CustomResourceType::RAW_BUFFER},
+	{L"Texture1D", CustomResourceType::TEXTURE1D},
+	{L"Texture2D", CustomResourceType::TEXTURE2D},
+	{L"Texture3D", CustomResourceType::TEXTURE3D},
+	{L"TextureCube", CustomResourceType::CUBE},
+	// RW variants are identical to the above (it's the usage that counts):
+	{L"RWBuffer", CustomResourceType::BUFFER},
+	{L"RWStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
+	{L"RWByteAddressBuffer", CustomResourceType::RAW_BUFFER},
+	{L"RWTexture1D", CustomResourceType::TEXTURE1D},
+	{L"RWTexture2D", CustomResourceType::TEXTURE2D},
+	{L"RWTexture3D", CustomResourceType::TEXTURE3D},
+
+	{NULL, CustomResourceType::INVALID} // End of list marker
+};
 class CustomResource
 {
 public:
@@ -212,10 +271,39 @@ public:
 	wstring filename;
 	bool substantiated;
 
+	// Used to override description when copying or synthesise resources
+	// from scratch:
+	CustomResourceType override_type;
+	DXGI_FORMAT override_format;
+	int override_width;
+	int override_height;
+	int override_depth;
+	int override_mips;
+	int override_array;
+	int override_msaa;
+	int override_msaa_quality;
+	int override_byte_width;
+	int override_stride;
+
+	float width_multiply;
+	float height_multiply;
+
 	CustomResource();
 	~CustomResource();
 
 	void Substantiate(ID3D11Device *mOrigDevice);
+	void OverrideBufferDesc(D3D11_BUFFER_DESC *desc);
+	void OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc);
+	void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
+	void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
+	void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
+
+private:
+	void LoadFromFile(ID3D11Device *mOrigDevice);
+	void SubstantiateBuffer(ID3D11Device *mOrigDevice);
+	void SubstantiateTexture1D(ID3D11Device *mOrigDevice);
+	void SubstantiateTexture2D(ID3D11Device *mOrigDevice);
+	void SubstantiateTexture3D(ID3D11Device *mOrigDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
@@ -234,6 +322,9 @@ enum class ResourceCopyTargetType {
 	DEPTH_STENCIL_TARGET,
 	UNORDERED_ACCESS_VIEW,
 	CUSTOM_RESOURCE,
+	STEREO_PARAMS,
+	INI_PARAMS,
+	SWAP_CHAIN,
 };
 
 class ResourceCopyTarget {
@@ -250,8 +341,9 @@ public:
 		custom_resource(NULL)
 	{}
 
-	bool ParseTarget(const wchar_t *target, bool allow_null);
+	bool ParseTarget(const wchar_t *target, bool is_source);
 	ID3D11Resource *GetResource(
+			HackerDevice *mHackerDevice,
 			ID3D11Device *mOrigDevice,
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11View **view,
@@ -280,9 +372,12 @@ enum class ResourceCopyOptions {
 	STEREO          = 0x00000010,
 	MONO            = 0x00000020,
 	STEREO2MONO     = 0x00000040,
+	COPY_DESC       = 0x00000080,
+	SET_VIEWPORT    = 0x00000100,
+	NO_VIEW_CACHE   = 0x00000200,
 
-	COPY_MASK       = 0x00000049, // Anything that implies a copy
-	COPY_TYPE_MASK  = 0x0000004b, // Anything that implies a copy or a reference
+	COPY_MASK       = 0x000000c9, // Anything that implies a copy
+	COPY_TYPE_MASK  = 0x000000cb, // Anything that implies a copy or a reference
 	CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
@@ -290,10 +385,14 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"copy", ResourceCopyOptions::COPY},
 	{L"ref", ResourceCopyOptions::REFERENCE},
 	{L"reference", ResourceCopyOptions::REFERENCE},
+	{L"copy_desc", ResourceCopyOptions::COPY_DESC},
+	{L"copy_description", ResourceCopyOptions::COPY_DESC},
 	{L"unless_null", ResourceCopyOptions::UNLESS_NULL},
 	{L"stereo", ResourceCopyOptions::STEREO},
 	{L"mono", ResourceCopyOptions::MONO},
 	{L"stereo2mono", ResourceCopyOptions::STEREO2MONO},
+	{L"set_viewport", ResourceCopyOptions::SET_VIEWPORT},
+	{L"no_view_cache", ResourceCopyOptions::NO_VIEW_CACHE},
 
 	// This one currently depends on device support for resolving the
 	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
