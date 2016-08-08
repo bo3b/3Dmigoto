@@ -649,7 +649,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11RenderTargetView *saved_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *saved_dsv;
 	ID3D11UnorderedAccessView *saved_uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
-	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1};
+	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {(UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1};
 	UINT i;
 	D3D11_PRIMITIVE_TOPOLOGY saved_topology;
 
@@ -2451,7 +2451,7 @@ static ResourceType* RecreateCompatibleTexture(
 		LogInfo("Resource copy RecreateCompatibleTexture failed: 0x%x\n", hr);
 		LogResourceDesc(&new_desc);
 		src_resource->GetDesc(&old_desc);
-		LogInfo("Original resource was:\n", hr);
+		LogInfo("Original resource was:\n");
 		LogResourceDesc(&old_desc);
 		return NULL;
 	}
