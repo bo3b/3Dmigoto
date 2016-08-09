@@ -357,16 +357,16 @@ static uint8_t parse_mask(char mask[8], bool invert)
 	return ret ^ (invert ? 0xf : 0);
 }
 
-static size_t pad(size_t size, size_t multiple)
+static uint32_t pad(uint32_t size, uint32_t multiple)
 {
 	return (multiple - size % multiple) % multiple;
 }
 
 static void* serialise_signature_section(char *section24, char *section28, char *section32, int entry_size,
-		vector<struct sgn_entry_unserialised> *entries, size_t name_len)
+		vector<struct sgn_entry_unserialised> *entries, uint32_t name_len)
 {
 	void *section;
-	size_t section_size, padding, alloc_size, name_off;
+	uint32_t section_size, padding, alloc_size, name_off;
 	char *name_ptr = NULL;
 	void *padding_ptr = NULL;
 	struct section_header *section_header = NULL;
@@ -384,7 +384,7 @@ static void* serialise_signature_section(char *section24, char *section28, char 
 		entry_size = 32;
 
 	// Calculate various offsets and sizes:
-	name_off = sizeof(struct sgn_header) + (entry_size * entries->size());
+	name_off = (uint32_t)(sizeof(struct sgn_header) + (entry_size * entries->size()));
 	section_size = name_off + name_len;
 	padding = pad(section_size, 4);
 	alloc_size = section_size + sizeof(struct section_header) + padding;
@@ -428,7 +428,7 @@ static void* serialise_signature_section(char *section24, char *section28, char 
 	}
 	section_header->size = section_size + padding;
 
-	sgn_header->num_entries = entries->size();
+	sgn_header->num_entries = (uint32_t)entries->size();
 	sgn_header->unknown = sizeof(struct sgn_header); // Not confirmed, but seems likely. Always 8
 
 	// Fill out entries:
@@ -463,7 +463,7 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 	string line;
 	size_t old_pos = *pos;
 	int numRead;
-	size_t name_off = 0;
+	uint32_t name_off = 0;
 	int entry_size = 24; // We use the size, because in MS's usual wisdom version 1 is higher than version 5 :facepalm:
 	char semantic_name[64]; // Semantic names are limited to 63 characters in fxc
 	char semantic_name2[64];
@@ -567,7 +567,7 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 			}
 		} // else { ;-)
 			entry.name_offset = name_off;
-			name_off += entry.name.size() + 1;
+			name_off += (uint32_t)entry.name.size() + 1;
 		// }
 name_already_used:
 
@@ -678,10 +678,10 @@ static void serialise_shader_binary(vector<void*> *sections, uint32_t all_sectio
 	uint32_t *section_offset_ptr = NULL;
 	void *section_ptr = NULL;
 	uint32_t section_size;
-	size_t shader_size;
+	uint32_t shader_size;
 
 	// Calculate final size of shader binary:
-	shader_size = sizeof(struct dxbc_header) + 4 * sections->size() + all_sections_size;
+	shader_size = (uint32_t)(sizeof(struct dxbc_header) + 4 * sections->size() + all_sections_size);
 
 	bytecode->resize(shader_size);
 
@@ -694,12 +694,12 @@ static void serialise_shader_binary(vector<void*> *sections, uint32_t all_sectio
 	memset(header->hash, 0, sizeof(header->hash)); // Will be filled in by assembler
 	header->one = 1;
 	header->size = shader_size;
-	header->num_sections = sections->size();
+	header->num_sections = (uint32_t)sections->size();
 
 	for (void *section : *sections) {
 		section_size = *((uint32_t*)section + 1) + sizeof(section_header);
 		memcpy(section_ptr, section, section_size);
-		*section_offset_ptr = (char*)section_ptr - (char*)header;
+		*section_offset_ptr = (uint32_t)((char*)section_ptr - (char*)header);
 		section_offset_ptr++;
 		section_ptr = (char*)section_ptr + section_size;
 	}
