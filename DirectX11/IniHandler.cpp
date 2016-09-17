@@ -1533,6 +1533,7 @@ void LoadConfigFile()
 		LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
 	}
 
+	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, iniFile, NULL);
 
 	RegisterHuntingKeyBindings(iniFile);
 	RegisterPresetKeyBindings(sections, iniFile);
