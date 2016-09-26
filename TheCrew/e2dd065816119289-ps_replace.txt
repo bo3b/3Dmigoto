@@ -11,14 +11,9 @@ SamplerState s1_s : register(s1);
 
 SamplerState s0_s : register(s0);
 
-cbuffer cb3 : register(b3)
+cbuffer cb0 : register(b0)
 {
-  float4 cb3[5];
-}
-
-cbuffer cb2 : register(b2)
-{
-  float4 cb2[16];
+  float4 cb0[12];
 }
 
 cbuffer cb1 : register(b1)
@@ -26,10 +21,16 @@ cbuffer cb1 : register(b1)
   float4 cb1[12];
 }
 
-cbuffer cb0 : register(b0)
+cbuffer cb2 : register(b2)
 {
-  float4 cb0[12];
+  float4 cb2[16];
 }
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[5];
+}
+
 
 // 3Dmigoto declarations
 #define cmp -
@@ -43,7 +44,7 @@ Texture2D<float4> StereoParams : register(t125);
 // unknown dcl_: dcl_resource_structured t0, 4 
 struct t0_struct
 {
-	float4 t0_float4;
+	float t0_float;
 };
 StructuredBuffer<t0_struct> t0_buff : register(t0);
 
@@ -51,7 +52,8 @@ StructuredBuffer<t0_struct> t0_buff : register(t0);
 // unknown dcl_: dcl_resource_structured t1, 28 
 struct t1_struct
 {
-	float4 t1_array[7];
+	float4 t1_index0;
+  float3 t1_index16;
 };
 StructuredBuffer<t1_struct> t1_buff : register(t1);
 
@@ -59,7 +61,7 @@ StructuredBuffer<t1_struct> t1_buff : register(t1);
 // unknown dcl_: dcl_resource_structured t2, 8 
 struct t2_struct
 {
-	float4 t2_array[2];
+	float2 t2_float2;
 };
 StructuredBuffer<t2_struct> t2_buff : register(t2);
 
@@ -67,7 +69,7 @@ StructuredBuffer<t2_struct> t2_buff : register(t2);
 // unknown dcl_: dcl_resource_structured t3, 4 
 struct t3_struct
 {
-	float4 t3_float4;
+	float t3_float;
 };
 StructuredBuffer<t3_struct> t3_buff : register(t3);
 
@@ -149,7 +151,10 @@ void main(
   r2.w = r3.z * r2.w;
   r2.w = (int)r2.w;
   r2.w = x0[r2.w+0].x;
-  r5.xy = (uint2)r2.ww >> int2(24,16);
+  
+  // r5.xy = (uint2)r2.ww >> int2(24,16);
+r5.xy = (int2)r2.ww >> int2(24,16);
+
   r5.xy = (int2)r5.xy & int2(255,255);
   r2.w = (int)r2.w & 0x0000ffff;
   r5.yz = (int2)r5.xy;
@@ -163,10 +168,12 @@ void main(
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, r0.y, l(0), t3.xxxx
 // r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.y = t3_buff[r0.y].t3_float4.x;
+r0.y = t3_buff[r0.y].t3_float;
 
 
-  r0.w = (uint)r0.y >> 24;
+  // r0.w = (uint)r0.y >> 24;
+r0.w = (int)r0.y >> 24;
+
   r0.w = (int)r0.w & 255;
   r2.w = cmp((int)r0.w == 0);
   if (r0.w == 0) {
@@ -196,9 +203,11 @@ r0.y = t3_buff[r0.y].t3_float4.x;
       // ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r9.zw, r3.z, l(0), t2.xxxy
       // r9.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r9.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r9.zw = t2_buff[r3.z].t2_array[0].xy;
+r9.zw = t2_buff[r3.z].t2_float2.xy;
 	
-      r4.w = (uint)r9.z >> 16;
+      // r4.w = (uint)r9.z >> 16;
+r4.w = (int)r9.z >> 16;
+
       r4.w = (int)r4.w & 0x0000ffff;
       r5.w = (int)r9.z & 0x0000ffff;
 	  
@@ -209,7 +218,7 @@ r9.zw = t2_buff[r3.z].t2_array[0].xy;
       // r10.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r10.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r10.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r10.xyzw = t1_buff[r4.w].t1_array[0].xyzw;
+r10.xyzw = t1_buff[r4.w].t1_index0.xyzw;
     
       // Missing reflection info for shader. No names possible.
       // Known bad code for instruction (needs manual fix):
@@ -218,7 +227,7 @@ r10.xyzw = t1_buff[r4.w].t1_array[0].xyzw;
       // r11.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r11.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r11.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r11.xyzw = t1_buff[r5.w].t1_array[0].xyzw;
+r11.xyzw = t1_buff[r5.w].t1_index0.xyzw;
     
   	  r12.xyz = r5.xyz * r0.xxx + -r10.xyz;
       r11.xyzw = r11.xyzw + -r10.xyzw;
@@ -234,7 +243,7 @@ r11.xyzw = t1_buff[r5.w].t1_array[0].xyzw;
       // r11.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r11.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r11.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r11.xyzw = t1_buff[r4.w].t1_array[4].xyzw;
+r11.xyz = t1_buff[r4.w].t1_index16.xyz;
 	
       // Missing reflection info for shader. No names possible.
       // Known bad code for instruction (needs manual fix):
@@ -242,7 +251,7 @@ r11.xyzw = t1_buff[r4.w].t1_array[4].xyzw;
       // r12.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r12.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
       // r12.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r12.xyz = t1_buff[r5.w].t1_array[4].xyz;
+r12.xyz = t1_buff[r5.w].t1_index16.xyz;
 	
       r12.xyz = r12.xyz + -r11.xyz;
       r11.xyz = r6.www * r12.xyz + r11.xyz;
@@ -486,7 +495,7 @@ r12.xyz = t1_buff[r5.w].t1_array[4].xyz;
     // Known bad code for instruction (needs manual fix):
     // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.w, l(0), l(0), t0.xxxx
     // r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.w = t0_buff[0].t0_float4.x;
+r0.w = t0_buff[0].t0_float;
   
     r0.xyz = r0.xyz * r0.www;
     o0.xyz = min(float3(55000,55000,55000), r0.xyz);
