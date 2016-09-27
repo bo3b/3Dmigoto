@@ -72,9 +72,6 @@ Texture2D<float4> g_gbufferTexture1 : register(t1);
 Texture2D<float4> g_gbufferTexture2 : register(t2);
 Texture2D<float> g_depthTexture : register(t6);
 Texture2D<float> g_diffuseOcclusionTexture : register(t10);
-StructuredBuffer<g_lightCullInput> g_lightCullInput : register(t19);
-StructuredBuffer<g_lightIndexInput> g_lightIndexInput : register(t20);
-StructuredBuffer<g_compactTileGridBuffer> g_compactTileGridBuffer : register(t24);
 
 
 // 3Dmigoto declarations
@@ -82,46 +79,116 @@ StructuredBuffer<g_compactTileGridBuffer> g_compactTileGridBuffer : register(t24
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
+// Hand fixed for structured buffers. 
 
-void main()
-{
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_resource_structured t19, 16 
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_resource_structured t20, 4 
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_resource_structured t24, 4 
-// Needs manual fix for instruction: 
+
+//StructuredBuffer<g_lightCullInput> g_lightCullInput : register(t19);
+// Resource bind info for g_lightCullInput
+// {
+//
+//   uint4 $Element;                    // Offset:    0 Size:    16
+//
+// }
+struct g_lightCullInput_res
+{
+	uint4 g_lightCullInput_uint4;
+};
+StructuredBuffer<g_lightCullInput_res> g_lightCullInput : register(t19);
+
+//StructuredBuffer<g_lightIndexInput> g_lightIndexInput : register(t20);
+// Resource bind info for g_lightIndexInput
+// {
+//
+//   uint $Element;                     // Offset:    0 Size:     4
+//
+// }
+struct g_lightIndexInput_res
+{
+	uint g_lightIndexInput_uint;
+};
+StructuredBuffer<g_lightIndexInput_res> g_lightIndexInput : register(t20);
+
+//StructuredBuffer<g_compactTileGridBuffer> g_compactTileGridBuffer : register(t24);
+// Resource bind info for g_compactTileGridBuffer
+// {
+//
+//   uint $Element;                     // Offset:    0 Size:     4
+//
+// }
+struct g_compactTileGridBuffer_res
+{
+	uint g_compactTileGridBuffer_uint;
+};
+StructuredBuffer<g_compactTileGridBuffer_res> g_compactTileGridBuffer : register(t24);
+
+
+// Manual fix for
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+RWTexture2D<float4> g_outputTexture0 : register(u0); 
+
+
+// Manual fix for group shared registers
+// unknown dcl_: dcl_tgsm_raw g0, 4
+// unknown dcl_: dcl_tgsm_raw g1, 4
+groupshared uint g0;
+groupshared uint g1;
+
+
+// Manual fix for
+// unknown dcl_: dcl_thread_group 16, 16, 1
+[numthreads(16, 16, 1)]  
+
+
+void main(
+uint3 vThreadGroupID : SV_GroupID,
+uint3 vThreadIDInGroup : SV_GroupThreadID,
+uint vThreadIDInGroupFlattened : SV_GroupIndex
+)
+{
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32;
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_tgsm_raw g0, 4
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_tgsm_raw g1, 4
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_thread_group 16, 16, 1
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
-r0.x = g_linearSampler[]..swiz;
+  // Known bad code for instruction (needs manual fix):
+  // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
+  // r0.x = g_linearSampler[]..swiz;
+r0.x = g_compactTileGridBuffer[vThreadGroupID.x].g_compactTileGridBuffer_uint;
+
   r1.x = (uint)r0.x >> 16;
-  r1.yzw = (int3)r0.xxx & int3(0,0,0);
+  
+  // r1.yzw = (int3)r0.xxx & int3(0,0,0);
+r1.yzw = (int3)r0.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff);
+  
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.y, r1.x, l(0), t19.xxxx
-  r1.y = g_linearSampler[]..swiz;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.x, r1.x, l(8), t19.xxxx
-  r1.x = g_linearSampler[]..swiz;
+    
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.y, r1.x, l(0), t19.xxxx
+    // r1.y = g_linearSampler[]..swiz;
+r1.y = g_lightCullInput[r1.x].g_lightCullInput_uint4.x;
+  
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.x, r1.x, l(8), t19.xxxx
+    // r1.x = g_linearSampler[]..swiz;
+r1.x = g_lightCullInput[r1.x].g_lightCullInput_uint4.z;
+  
     r1.x = (int)r1.x & 0x0000ffff;
-  // No code for instruction (needs manual fix):
-    store_raw g0.x, l(0), r1.y
-  // No code for instruction (needs manual fix):
-    store_raw g1.x, l(0), r1.x
+    
+    // No code for instruction (needs manual fix):
+    // store_raw g0.x, l(0), r1.y
+g0.x = r1.y;
+    
+    // No code for instruction (needs manual fix):
+    // store_raw g1.x, l(0), r1.x
+g1.x = r1.x;
+    
   }
   GroupMemoryBarrierWithGroupSync();
   r1.xy = (uint2)r0.xw;
@@ -178,10 +245,15 @@ r0.x = g_linearSampler[]..swiz;
   r5.w = dot(r6.xyz, r7.xyz);
   r6.w = saturate(r5.w);
   r1.z = g_diffuseOcclusionTexture.SampleLevel(g_linearSampler_s, r1.zw, 0).x;
-// No code for instruction (needs manual fix):
-ld_raw r1.w, l(0), g0.xxxx
-// No code for instruction (needs manual fix):
-ld_raw r7.x, l(0), g1.xxxx
+  
+  // No code for instruction (needs manual fix):
+  // ld_raw r1.w, l(0), g0.xxxx
+r1.w = g0.x;
+
+  // No code for instruction (needs manual fix):
+  // ld_raw r7.x, l(0), g1.xxxx
+r7.x = g1.x;
+
   r7.x = (int)r1.w + (int)r7.x;
   r7.y = max(0.00200000009, r1.y);
   r5.w = 9.99999975e-006 + abs(r5.w);
@@ -212,11 +284,17 @@ ld_raw r7.x, l(0), g1.xxxx
   while (true) {
     r11.w = cmp((uint)r10.w >= (uint)r7.x);
     if (r11.w != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.w, r10.w, l(0), t20.xxxx
-  r11.w = g_linearSampler[]..swiz;
+    
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.w, r10.w, l(0), t20.xxxx
+    // r11.w = g_linearSampler[]..swiz;
+r11.w = g_lightIndexInput[r10.w].g_lightIndexInput_uint;
+  
     r11.w = (int)r11.w * 9;
-    r13.w = (uint13)g_lightInfoArea[r11.w].areaLight.areaLightType;
+    
+    // r13.w = (uint13)g_lightInfoArea[r11.w].areaLight.areaLightType;
+r13.w = (uint)g_lightInfoArea[r11.w].areaLight.areaLightType;
+    
     r14.w = cmp((int)r13.w == 2);
     if (r14.w != 0) {
       r20.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * float3(0.5,0.5,0.5);
@@ -998,8 +1076,11 @@ ld_raw r7.x, l(0), g1.xxxx
   r1.xyz = g_exposureMultipliers.zzz * r1.xyz;
   r1.xyz = min(float3(65504,65504,65504), r1.xyz);
   r1.w = 0;
-// No code for instruction (needs manual fix):
-store_uav_typed u0.xyzw, r0.xyzw, r1.xyzw
+  
+  // No code for instruction (needs manual fix):
+  // store_uav_typed u0.xyzw, r0.xyzw, r1.xyzw
+g_outputTexture0[r0.xy].xyzw = r1.xyzw;
+
   return;
 }
 
