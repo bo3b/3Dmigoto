@@ -76,7 +76,7 @@ Texture2D<float> g_diffuseOcclusionTexture : register(t10);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
+Texture1D<float4> IniParams : register(t35);
 Texture2D<float4> StereoParams : register(t125);
 
 // Hand fixed for structured buffers. 
@@ -155,10 +155,65 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
   uint4 bitmask, uiDest;
   float4 fDest;
 
+float4x4 origMatrix = invViewProjectionMatrix;
+float4x4 invMatrix;
+
+AllMemoryBarrierWithGroupSync();
+
+//Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+
+//...Original Matrix
+a1.xyzw = origMatrix[0].xyzw;
+a2.xyzw = origMatrix[1].xyzw;
+a3.xyzw = origMatrix[2].xyzw;
+a4.xyzw = origMatrix[3].xyzw;
+
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse  
+
+invMatrix[0].xyzw = b1.xyzw;  
+invMatrix[1].xyzw = b2.xyzw;  
+invMatrix[2].xyzw = b3.xyzw;  
+invMatrix[3].xyzw = b4.xyzw;  
+
+AllMemoryBarrierWithGroupSync();
+  
+float4 stereo = StereoParams.Load(0);
+
   // Known bad code for instruction (needs manual fix):
   // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
   // r0.x = g_linearSampler[]..swiz;
 r0.x = g_compactTileGridBuffer[vThreadGroupID.x].g_compactTileGridBuffer_uint;
+r0.x += stereo.x * (invMatrix[0].w - stereo.y);
 
   r1.x = (uint)r0.x >> 16;
   
