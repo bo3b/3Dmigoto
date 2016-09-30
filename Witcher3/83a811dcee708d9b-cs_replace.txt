@@ -1,4 +1,6 @@
 // ---- Created with 3Dmigoto v1.2.44 on Tue Sep 27 19:29:38 2016
+// compute shader for physical lighting: environmental reflections, specular highlights, etc
+
 Texture2D<float4> t16 : register(t16);
 
 Texture2D<float4> t7 : register(t7);

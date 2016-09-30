@@ -1,3 +1,5 @@
+// avoid CS that causes TDR
+// 
 Texture2D<float4> t1 : register(t1);
 
 Texture2D<float4> t0 : register(t0);
@@ -325,23 +327,20 @@ g2[r5.x + 0].x = r1.w;
     r1.yzw = cb12[3].xyz * r1.www + r2.yzw;
     r3.xyz = cb12[4].xyz + r1.yzw;
     
-// No code for instruction (needs manual fix):
-// ld_raw r1.y, l(0), g3.xxxx
-r1.y = g3.x;
 
     r0.w = -r0.w * 1.562500000e-002 + 1.000000000e+000;
     r3.w = 1.000000000e+000;
     r4.xzw = float3(0.000000e+000,0.000000e+000,0.000000e+000);
     r5.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
-    r1.z = 0.000000000e+000;
+    
+    uint endval = g3.x;  // r1.y = g3.x; // ld_raw r1.y, l(0), g3.xxxx
+    uint i = 0;  // r1.z = 0.000000000e+000;
+    
     while (true) {
-      r1.w = cmp((uint)r1.z >= (uint)r1.y);
-      if (r1.w != 0) break;
+      uint done = cmp(i >= endval); // r1.w = cmp((uint)r1.z >= (uint)r1.y);
+      if (done != 0) break; // if (r1.w != 0) break;
       
-// Missing reflection info for shader. No names possible. 
-// Known bad code for instruction (needs manual fix):
-//     ld_structured r1.w, r1.z, l(0), g2.xxxx
-r1.w = g2[r1.z + 0].x;
+      r1.w = g2[r1.z + 0].x; //     ld_structured r1.w, r1.z, l(0), g2.xxxx
 
       r1.w = (int)r1.w * 5;
       r6.x = dot(r3.xyzw, cb13[r1.w+2363].xyzw);
@@ -373,7 +372,7 @@ r1.w = g2[r1.z + 0].x;
         r6.xyzw = r2.wwww ? r4.xyzw : r7.xyzw;
         r5.xyzw = max(r5.xyzw, r6.xyzw);
       }
-      r1.z = (int)r1.z + 1;
+      i = i + 1;  // r1.z = (int)r1.z + 1;
     }
     r0.w = r5.y * r5.y;
     r1.y = cmp(0 < r5.x);
@@ -394,9 +393,8 @@ r1.w = g2[r1.z + 0].x;
     r2.xy = float2(1,1);
   }
   r2.z = 0;
-// No code for instruction (needs manual fix):
-// store_uav_typed u0.xyzw, r0.xyyy, r2.zzxy
-u0[r0.xy] = r2.zzxy;
+
+  u0[r0.xy] = r2.zzxy; // store_uav_typed u0.xyzw, r0.xyyy, r2.zzxy
 
   r0.x = cmp((uint)r1.x < 192);
   if (r0.x != 0) {
@@ -405,25 +403,20 @@ u0[r0.xy] = r2.zzxy;
     r0.x = (uint)r0.x;
     r0.x = mad((int)r0.x, 192, (int)r1.x);
     
-// No code for instruction (needs manual fix):
-// ld_raw r0.y, l(0), g5.xxxx
-r0.y = g5.x;
+
+    r0.y = g5.x; // ld_raw r0.y, l(0), g5.xxxx
 
     r0.y = cmp((uint)r1.x < (uint)r0.y);
     if (r0.y != 0) {
-    
-// Missing reflection info for shader. No names possible. 
-// Known bad code for instruction (needs manual fix):
-//     ld_structured r0.y, r1.x, l(0), g4.xxxx
-r0.y = g4[r1.x + 0].x;
+
+      r0.y = g4[r1.x + 0].x; // ld_structured r0.y, r1.x, l(0), g4.xxxx
 
     } else {
       r0.y = 192;
     }
     r0.x = (uint)r0.x << 2;
-// No code for instruction (needs manual fix):
-// store_raw u1.x, r0.x, r0.y
-u1.Store(r0.x, r0.y);
+
+    u1.Store(r0.x, r0.y);  // store_raw u1.x, r0.x, r0.y
   }
   return;
 }
