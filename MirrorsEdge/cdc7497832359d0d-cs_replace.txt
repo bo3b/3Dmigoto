@@ -287,9 +287,10 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
     if (test != 0) break; // if (r10.w != 0) break;
   
 // r10.w = g_lightIndexInput[r9.w].g_lightIndexInput_uint;
-    r10.w = g_lightIndexInput[i].g_lightIndexInput_uint; // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r9.w, l(0), t20.xxxx
+    int r10_w = g_lightIndexInput[i].g_lightIndexInput_uint; // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r9.w, l(0), t20.xxxx
     
-    r11.x = (int)r10.w * 21;
+    r11.x = r10_w * 21;  // r11.x = (int)r10.w * 21;
+    
     r11.yzw = -r5.xyz * r2.xxx + g_lightInfoPunctualShadow[r11.x].baseLight.pos.xyz;
     r12.x = dot(r11.yzw, r11.yzw);
     r12.y = rsqrt(r12.x);
@@ -446,18 +447,19 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
         r11.w = (uint)r12.w;
         r12.z = (int)r11.w & 3;
         r11.w = (uint)r11.w >> 2;
-        r10.w = mad((int)r10.w, 21, (int)r11.w);
-        r10.w = dot(g_lightInfoPunctualShadow[r10.w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);
-        r11.w = cmp(r10.w >= 0);
+        
+        r10_w = mad((int)r10_w, 21, (int)r11.w);  // r10.w = mad((int)r10.w, 21, (int)r11.w);
+        r10_w = dot(g_lightInfoPunctualShadow[r10_w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);  // r10.w = dot(g_lightInfoPunctualShadow[r10.w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);
+        r11.w = cmp(r10_w >= 0);  // r11.w = cmp(r10.w >= 0);
         r11.z = r11.z ? r11.w : 0;
-        r10.w = (uint)r10.w;
+        r10_w = (uint)r10_w;  // r10.w = (uint)r10.w;
 		
         // r11.w = (uint7)g_lightInfoPunctualShadow[r11.x].shadow.quality;
 r11.w = (uint)g_lightInfoPunctualShadow[r11.x].shadow.quality;
         
 		r11.w = cmp((int)r11.w == 1);
         if (r11.w != 0) {
-          r16.z = (uint)r10.w;
+          r16.z = (uint)r10_w;  // r16.z = (uint)r10.w;
           r12.zw = shadowMapSizeAndInvSize.xx * r13.xy + float2(0.5,0.5);
           r17.xy = floor(r12.zw);
           r12.zw = -r17.xy + r12.zw;
@@ -537,16 +539,16 @@ r11.w = (uint)g_lightInfoPunctualShadow[r11.x].shadow.quality;
           r11.w = r16.x * r17.y + r11.w;
           r11.w = saturate(0.0163934417 * r11.w);
         } else {
-          r13.z = (uint)r10.w;
-          r10.w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s, r13.xyz, r11.y).x;
+          r13.z = (uint)r10_w;  // r13.z = (uint)r10.w;
+          r10_w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s, r13.xyz, r11.y).x;  // r10.w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s, r13.xyz, r11.y).x;
           r11.y = cmp(r11.y < 1);
-          r11.w = r11.y ? r10.w : 1;
+          r11.w = r11.y ? r10_w : 1;  // r11.w = r11.y ? r10.w : 1;
         }
-        r10.w = -1 + r11.w;
-        r10.w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10.w;
-        r10.w = r12.y * r10.w + 1;
-        r10.w = r11.z ? r10.w : 1;
-        r12.x = r12.x * r10.w;
+        r10_w = -1 + r11.w;  // r10.w = -1 + r11.w;
+        r10_w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10_w;  // r10.w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10.w;
+        r10_w = r12.y * r10_w + 1;  // r10.w = r12.y * r10.w + 1;
+        r10_w = r11.z ? r10_w : 1;  // r10.w = r11.z ? r10.w : 1;
+        r12.x = r12.x * r10_w;  // r12.x = r12.x * r10.w;
       }
     }
     r10.xyz = r15.xyz * r12.xxx + r10.xyz;
