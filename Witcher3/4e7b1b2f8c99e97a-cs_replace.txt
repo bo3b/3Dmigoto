@@ -35,8 +35,8 @@ Texture2D<float4> StereoParams : register(t125);
 
 [numthreads(16, 16, 1)]                 // dcl_thread_group 16, 16, 1
 void main(
-uint3 vThreadGroupID : SV_GroupThreadID,  // dcl_input vThreadGroupID.xy
-uint3 vThreadIDInGroup : SV_GroupID)      // dcl_input vThreadIDInGroup.xy
+uint3 vThreadIDInGroup : SV_GroupThreadID,  // dcl_input vThreadGroupID.xy
+uint3 vThreadGroupID : SV_GroupID)      // dcl_input vThreadIDInGroup.xy
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
   uint4 bitmask, uiDest;
