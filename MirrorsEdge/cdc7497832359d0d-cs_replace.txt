@@ -1,5 +1,7 @@
 // ---- Created with 3Dmigoto v1.2.43 on Sat Sep 24 11:04:38 2016
 
+// Successfully hand-fixed, works in game.
+
 cbuffer cbPunctualShadowLightInfo : register(b2)
 {
 
