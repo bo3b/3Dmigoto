@@ -151,34 +151,38 @@ uint3 vThreadIDInGroup : SV_GroupThreadID,
 uint vThreadIDInGroupFlattened : SV_GroupIndex
 )
 {
-  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32;
+  float4 r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32;
   uint4 bitmask, uiDest;
   float4 fDest;
-
+  uint4 r0;
+  int4 thread;
+  
    // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx  
   r0.x = g_compactTileGridBuffer[vThreadGroupID.x].g_compactTileGridBuffer_uint;
 
-  r1.x = (uint)r0.x >> 16;
+  thread.x = r0.x >> 16;  // r1.x = (uint)r0.x >> 16;
   
-  // r1.yzw = (int3)r0.xxx & int3(0,0,0);
-r1.yzw = (int3)r0.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff);
+  // r1.yzw = (int3)r0.xxx & int3(0,0,0);  bad consts
+  thread.yzw = (int3)r0.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff);
   
-  r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
+  r0.xyzw = mad(thread.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
+  
   if (vThreadIDInGroupFlattened.x == 0) {
-    r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
+    
+    thread.x = mad(thread.w, tileCountX, thread.x); // r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
     
     // ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.y, r1.x, l(0), t19.xxxx
-    r1.y = g_lightCullInput[r1.x].g_lightCullInput_uint4.x;
+    thread.y = g_lightCullInput[thread.x].g_lightCullInput_uint4.x;
   
     // ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.x, r1.x, l(8), t19.xxxx
-    r1.x = g_lightCullInput[r1.x].g_lightCullInput_uint4.z;
+    thread.x = g_lightCullInput[thread.x].g_lightCullInput_uint4.z;
   
-    r1.x = (int)r1.x & 0x0000ffff;
+    thread.x = thread.x & 0x0000ffff;
     
 
-    g0.x = r1.y;    // store_raw g0.x, l(0), r1.y
+    g0.x = thread.y;    // store_raw g0.x, l(0), r1.y
         
-    g1.x = r1.x;    // store_raw g1.x, l(0), r1.x
+    g1.x = thread.x;    // store_raw g1.x, l(0), r1.x
   }
   
   GroupMemoryBarrierWithGroupSync();    // sync_g_t
@@ -237,11 +241,12 @@ r1.yzw = (int3)r0.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff);
   r6.w = saturate(r5.w);
   r1.z = g_diffuseOcclusionTexture.SampleLevel(g_linearSampler_s, r1.zw, 0).x;
   
-  r1.w = g0.x;  // ld_raw r1.w, l(0), g0.xxxx
+  uint loopstart = g0.x;  // ld_raw r1.w, l(0), g0.xxxx
   
-  r7.x = g1.x; // ld_raw r7.x, l(0), g1.xxxx
+  uint loopend = g1.x; // ld_raw r7.x, l(0), g1.xxxx
 
-  r7.x = (int)r1.w + (int)r7.x;
+  loopend = loopstart + loopend;  // r7.x = (int)r1.w + (int)r7.x;
+  
   r7.y = max(0.00200000009, r1.y);
   r5.w = 9.99999975e-006 + abs(r5.w);
   r9.xyz = r1.xxx + -r4.xyz;
@@ -254,6 +259,7 @@ r1.yzw = (int3)r0.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff);
   r9.w = r8.w * r8.w;
   r9.w = r9.w * r9.w;
   r8.w = r9.w * r8.w;
+  
   r9.w = 1.5 * r7.y;
   r9.w = min(1, r9.w);
   r9.w = -r9.w * 7 + 8;
@@ -267,21 +273,25 @@ r1.yzw = (int3)r0.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff);
   r17.xz = float2(0,0);
   r18.xyz = float3(0,0,0);
   r19.xyz = float3(0,0,0);
-  r10.w = r1.w;
+  
+  uint i = loopstart;  // r10.w = r1.w;
+  
   while (true) {
-    r11.w = cmp((uint)r10.w >= (uint)r7.x);
-    if (r11.w != 0) break;
+    int done = cmp(i >= loopend);  // r11.w = cmp((uint)r10.w >= (uint)r7.x);
+    if (done != 0) break;  // if (r11.w != 0) break;
     
     // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.w, r10.w, l(0), t20.xxxx
-    r11.w = g_lightIndexInput[r10.w].g_lightIndexInput_uint;
+    r11.w = g_lightIndexInput[i].g_lightIndexInput_uint;
   
-    r11.w = (int)r11.w * 9;
+    // Skips this one, because fxc calculates array indexing and generates imul *9
+    //r11.w = r11.w * 9; 
     
-    // r13.w = (uint13)g_lightInfoArea[r11.w].areaLight.areaLightType;
-r13.w = (uint)g_lightInfoArea[r11.w].areaLight.areaLightType;
+    // r13.w = (uint13)g_lightInfoArea[r11.w].areaLight.areaLightType;  bad uint13 conversion
+    uint r13_w = (uint)g_lightInfoArea[r11.w].areaLight.areaLightType;
     
-    r14.w = cmp((int)r13.w == 2);
-    if (r14.w != 0) {
+    int r14_w = cmp((int)r13_w == 2);  // r14.w = cmp((int)r13.w == 2);
+    
+    if (r14_w != 0) {  // if (r14.w != 0) {
       r20.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * float3(0.5,0.5,0.5);
       r21.xyz = -r20.xyz * g_lightInfoArea[r11.w].areaLight.lightRadius1 + g_lightInfoArea[r11.w].baseLight.pos.xyz;
       r20.xyz = r20.xyz * g_lightInfoArea[r11.w].areaLight.lightRadius1 + g_lightInfoArea[r11.w].baseLight.pos.xyz;
@@ -1039,9 +1049,11 @@ r13.w = (uint)g_lightInfoArea[r11.w].areaLight.areaLightType;
         }
       }
     }
+
     r19.xyz = r21.xyz + r19.xyz;
     r18.xyz = r20.xyz + r18.xyz;
-    r10.w = (int)r10.w + 1;
+    
+    i = i + 1;  // r10.w = (int)r10.w + 1;
   }
   r1.x = -1 + r1.z;
   r1.x = dynamicAOFactor * r1.x + 1;
