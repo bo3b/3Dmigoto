@@ -1,3 +1,5 @@
+// Shadows, Lights and Reflections *NEW
+
 // ---- Created with 3Dmigoto v1.2.44 on Sun Sep 25 23:45:39 2016
 
 cbuffer GlobalConstants : register(b0)
@@ -69,7 +71,12 @@ void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
-  out float4 o0 : SV_Target0)
+  out float4 o0 : SV_Target0,
+  
+  // Extra input from vertex shader:
+  matrix vp : TEXCOORD2,
+  matrix ivp : TEXCOORD6)
+  
 {
 // Needs manual fix for instruction: 
 // unknown dcl_: dcl_resource_texture1d (float,float,float,float) t22
@@ -97,6 +104,18 @@ void main(
   r1.x = r1.x * Globals[9].z + Globals[9].w;
   r1.x = 1 / r1.x;
   r6.xyz = v2.xyz * r1.xxx;
+  
+  //Correct shadow:
+  // float4 stereo = StereoParams.Load(0);
+  // float4 tmp = mul(float4(r6.xyz, 1), vp);
+  // tmp.x -= stereo.x * (tmp.w - stereo.y);
+  // r6.xyz = mul(tmp, ivp).xyz;
+  
+  //Fix reflections
+  // tmp = mul(float4(v2.xyz, 1), vp);
+  // tmp.x -= stereo.x * tmp.w;
+  // v2.xyz = mul(tmp, ivp).xyz;
+  
   r1.w = dot(-v2.xyz, -v2.xyz);
   r1.w = rsqrt(r1.w);
   r7.xyz = -v2.xyz * r1.www;
@@ -120,7 +139,11 @@ void main(
   r4.w = 4 * r4.w;
   r4.w = saturate(r4.w);
   r4.w = r8.x ? 0 : r4.w;
+  
   r9.xyz = r1.xxx * v2.xyz + Globals[4].xyz;
+  // r9.xyz = r6.xyz + Globals[4].xyz;
+  
+  
   r7.w = dot(v0.xy, float2(12.9898005,78.2330017));
   r7.w = sin(r7.w);
   r7.w = 43758.5469 * r7.w;
@@ -359,9 +382,12 @@ void main(
   r10.z = r10.w * 0.546274245 + r10.z;
   r10.z = max(0, r10.z);
   r14.xyz = GroundFillFlux_9_Color.yzw * r10.zzz;
-  r15.xyzw = SkyLightingRed.Load(0).xyzw;
-  r16.xyzw = SkyLightingGreen.Load(0).xyzw;
-  r17.xyzw = SkyLightingBlue.Load(0).xyzw;
+  // r15.xyzw = SkyLightingRed.Load(float4(0,0,0,0)).xyzw;
+  // r16.xyzw = SkyLightingGreen.Load(float4(0,0,0,0)).xyzw;
+  // r17.xyzw = SkyLightingBlue.Load(float4(0,0,0,0)).xyzw;
+r15.xyzw = SkyLightingRed.Load(float(0)).xyzw;
+r16.xyzw = SkyLightingGreen.Load(float(0)).xyzw;
+r17.xyzw = SkyLightingBlue.Load(float(0)).xyzw;
   r5.x = 1;
   r18.xyzw = float4(0.282094806,-0.488602519,0.488602519,-0.488602519) * r5.xyzw;
   r10.z = dot(r15.xyzw, r18.xyzw);
@@ -733,25 +759,46 @@ void main(
   r0.z = r0.z * 2.257725 + -4.24227524;
   r0.z = max(0, r0.z);
   
-  int r0z = (int)r0.z;          // r0.z = (int)r0.z;
   
-  // r14.xy = (uint2)r0.xy >> int2(6,6);
-  // r14.z = (uint)r0.z << 2;
-  // r14.w = 0;
-int4 r14xyzw;
-r14xyzw.xy = (int2)r0.xy >> int2(6,6);
-r14xyzw.z = r0z << 2;
-r14xyzw.w = 0;
+// The following looping sections have been heavily hand-tuned to use int and
+// uint types where it's obvious what the result should be.  For example,
+// the LightLoopup is a uint4, so the return result should clearly be
+// unit4, not float4 which is our default.
+// Tweaking the data types to almost all be type int makes the ASM generated
+// identical to the original.
+//
+// This suggests a good improvement for the Decompiler, to look for int/uint
+// types, and create and use those temps int vars until the next time the
+// named register is reused.
+
+int r0z;
+int4 i_r14;
+uint4 u_r0, u_r15, u_r16;
+int r1y;
+int r4x;  
+int4 i_r4;
+int4 i_r17;    
+int4 i_r18;    
+int4 i_r6;
+int4 i_r19;      
+int4 i_r8;
+int r7w;      
+int r9w;
+uint r12w;        
+
+  r0z = (int)r0.z;                          // r0.z = (int)r0.z;
+  i_r14.xy = (int2)r0.xy >> int2(6,6);      // r14.xy = (uint2)r0.xy >> int2(6,6);
+  i_r14.z = r0z << 2;                       // r14.z = (uint)r0.z << 2;
+  i_r14.w = 0;                              // r14.w = 0;
 
   // r0.xyzw = LightLookup.Load(r14.xyzw, int3(0, 0, 0)).xyzw;
   // r15.xyzw = LightLookup.Load(r14.xyzw, int3(0, 0, 0)).xyzw;
   // r16.xyzw = LightLookup.Load(r14.xyzw, int3(0, 0, 0)).xyzw;
   // r14.xyzw = LightLookup.Load(r14.xyzw, int3(0, 0, 0)).xyzw;
-uint4 r0xyzw,r15xyzw,r16xyzw;
-r0xyzw.xyzw = LightLookup.Load(r14xyzw.xyzw, uint3(0, 0, 0)).xyzw;
-r15xyzw.xyzw = LightLookup.Load(r14xyzw.xyzw, uint3(0, 0, 1)).xyzw;
-r16xyzw.xyzw = LightLookup.Load(r14xyzw.xyzw, uint3(0, 0, 2)).xyzw;
-r14xyzw.xyzw = LightLookup.Load(r14xyzw.xyzw, uint3(0, 0, 3)).xyzw;
+u_r0.xyzw = LightLookup.Load(i_r14.xyzw, uint3(0, 0, 0)).xyzw;
+u_r15.xyzw = LightLookup.Load(i_r14.xyzw, uint3(0, 0, 1)).xyzw;
+u_r16.xyzw = LightLookup.Load(i_r14.xyzw, uint3(0, 0, 2)).xyzw;
+i_r14.xyzw = LightLookup.Load(i_r14.xyzw, uint3(0, 0, 3)).xyzw;
 
   // r1.y = r0.x ? 32 : 0;
   // r1.y = r0.y ? 64 : r1.y;
@@ -761,15 +808,14 @@ r14xyzw.xyzw = LightLookup.Load(r14xyzw.xyzw, uint3(0, 0, 3)).xyzw;
   // r1.y = r15.y ? 192 : r1.y;
   // r1.y = r15.z ? 224 : r1.y;
   // r1.y = r15.w ? 256 : r1.y;
-int r1y;
-r1y = r0xyzw.x ? 32 : 0;
-r1y = r0xyzw.y ? 64 : r1y;
-r1y = r0xyzw.z ? 96 : r1y;
-r1y = r0xyzw.w ? 128 : r1y;
-r1y = r15xyzw.x ? 160 : r1y;
-r1y = r15xyzw.y ? 192 : r1y;
-r1y = r15xyzw.z ? 224 : r1y;
-r1y = r15xyzw.w ? 256 : r1y;
+r1y = u_r0.x ? 32 : 0;
+r1y = u_r0.y ? 64 : r1y;
+r1y = u_r0.z ? 96 : r1y;
+r1y = u_r0.w ? 128 : r1y;
+r1y = u_r15.x ? 160 : r1y;
+r1y = u_r15.y ? 192 : r1y;
+r1y = u_r15.z ? 224 : r1y;
+r1y = u_r15.w ? 256 : r1y;
   // r4.x = int(r16.x ? 32 : 0);
   // r4.x = int(r16.y ? 64 : r4.x);
   // r4.x = int(r16.z ? 96 : r4.x);
@@ -778,19 +824,17 @@ r1y = r15xyzw.w ? 256 : r1y;
   // r4.x = int(r14.y ? 192 : r4.x);
   // r4.x = int(r14.z ? 224 : r4.x);
   // r4.x = int(r14.w ? 256 : r4.x);
-int r4x;  
-r4x = int(r16xyzw.x ? 32 : 0);
-r4x = int(r16xyzw.y ? 64 : r4x);
-r4x = int(r16xyzw.z ? 96 : r4x);
-r4x = int(r16xyzw.w ? 128 : r4x);
-r4x = int(r14xyzw.x ? 160 : r4x);
-r4x = int(r14xyzw.y ? 192 : r4x);
-r4x = int(r14xyzw.z ? 224 : r4x);
-r4x = int(r14xyzw.w ? 256 : r4x);
+r4x = int(u_r16.x ? 32 : 0);
+r4x = int(u_r16.y ? 64 : r4x);
+r4x = int(u_r16.z ? 96 : r4x);
+r4x = int(u_r16.w ? 128 : r4x);
+r4x = int(i_r14.x ? 160 : r4x);
+r4x = int(i_r14.y ? 192 : r4x);
+r4x = int(i_r14.z ? 224 : r4x);
+r4x = int(i_r14.w ? 256 : r4x);
   
-int r4w;
-  r4w = (int)r1y | (int)r4x;        // r4.w = (int)r1.y | (int)r4.x;
-  if (r4w != 0) {                   // if (r4.w != 0) {
+  i_r4.w = (int)r1y | (int)r4x;               // r4.w = (int)r1.y | (int)r4.x;
+  if (i_r4.w != 0) {                          // if (r4.w != 0) {
     r4.w = Globals[49].z * 2.0999999;
     r17.xz = r10.xx;
     r17.yw = r11.xx;
@@ -803,68 +847,71 @@ int r4w;
     r3.w = r3.w / r5.x;
     r5.x = -r13.x * r13.x + 1;
     r10.xzw = -r5.wyz * r13.xxx + r7.xyz;
-    r17.w = r15.w;
-    r18.xyzw = r0.xyzw;
+    
+    i_r17.w = u_r15.w;                        // r17.w = r15.w;
+    i_r18.xyzw = u_r0.xyzw;                   // r18.xyzw = r0.xyzw;
     r13.yzw = r9.xyz;
-    r6.w = 0;
+    i_r6.w = 0;                               // r6.w = 0;
+    
     while (true) {
-      r19.xyz = r18.yzw;
-      r7.w = 0;
+      i_r19.xyz = i_r18.yzw;                  // r19.xyz = r18.yzw;
+
+      r7w = 0;                                // r7.w = 0;
       
-int4 r8yw;
-      r8yw.y = r18.x;      // r8.y = r18.x;
-      r8yw.w = r6.w;       // r8.w = r6.w;
+      i_r8.y = i_r18.x;                       // r8.y = r18.x;
+      i_r8.w = i_r6.w;                        // r8.w = r6.w;
       
-int r9w;
-      r9w = 0;             // r9.w = 0;
+      r9w = 0;                                // r9.w = 0;
       while (true) {
         
-uint r12w;        
-        r12w = firstbitlow((uint)r8yw.y);     // r12.w = firstbitlow((uint)r8.y);
-        r12w = (int)r8yw.w + (int)r12w;       // r12.w = (int)r8.w + (int)r12.w;
-        if (r8yw.y != 0) {                    // if (r8.y != 0) {
-          r19.w = (int)r8yw.y + -1;           // r19.w = (int)r8.y + -1;
-          r8yw.y = (int)r8yw.y & (int)r19.w;  // r8.y = (int)r8.y & (int)r19.w;
-          r7.w = r12w;                        // r7.w = r12.w;
+        r12w = firstbitlow((uint)i_r8.y);     // r12.w = firstbitlow((uint)r8.y);
+        r12w = (int)i_r8.w + (int)r12w;       // r12.w = (int)r8.w + (int)r12.w;
+        if (i_r8.y != 0) {                    // if (r8.y != 0) {
+          i_r19.w = (int)i_r8.y + -1;         // r19.w = (int)r8.y + -1;
+          i_r8.y = (int)i_r8.y & (int)i_r19.w;// r8.y = (int)r8.y & (int)r19.w;
+          r7w = r12w;                         // r7.w = r12.w;
           r9w = -1;                           // r9.w = -1;
           break;
         } else {
-          r19.w = cmp((int)r8yw.w == 96);     // r19.w = cmp((int)r8.w == 96);
-          r17.xyz = r19.www ? r15.xyz : r19.xyz;
-          r19.w = (int)r8yw.w + 32;           // r19.w = (int)r8.w + 32;
-          r20.x = cmp((uint)r19.w >= (uint)r1.y);
-          if (r20.x != 0) {
-            r19.xyz = r17.yzw;
-            r7.w = r12w;                      // r7.w = r12.w;
-            r8yw.y = r17.x;                   // r8.y = r17.x;
-            r8yw.w = r19.w;                   // r8.w = r19.w;
+          i_r19.w = cmp((int)i_r8.w == 96);   // r19.w = cmp((int)r8.w == 96);
+          i_r17.xyz = i_r19.w ? u_r15.xyz : i_r19.xyz; // r17.xyz = r19.www ? r15.xyz : r19.xyz;
+          i_r19.w = (int)i_r8.w + 32;         // r19.w = (int)r8.w + 32;
+int r20x;          
+          r20x = cmp((uint)i_r19.w >= (uint)r1y); // r20.x = cmp((uint)r19.w >= (uint)r1.y);
+          if (r20x != 0) {                    // if (r20.x != 0) {
+            i_r19.xyz = i_r17.yzw;            // r19.xyz = r17.yzw;
+            r7w = r12w;                       // r7.w = r12.w;
+            i_r8.y = i_r17.x;                 // r8.y = r17.x;
+            i_r8.w = i_r19.w;                 // r8.w = r19.w;
             r9w = 0;                          // r9.w = 0;
             break;
           }
-          r19.xy = r17.yz;
-          r19.z = r15.w;
-          r8yw.y = r17.x;                     // r8.y = r17.x;
-          r8yw.w = r19.w;                     // r8.w = r19.w;
+          i_r19.xy = i_r17.yz;                // r19.xy = r17.yz;
+          i_r19.z = u_r15.w;                  // r19.z = r15.w;
+          i_r8.y = i_r17.x;                   // r8.y = r17.x;
+          i_r8.w = i_r19.w;                   // r8.w = r19.w;
         }
-        r7.w = r12w;                          // r7.w = r12.w;
+        r7w = r12w;                           // r7.w = r12.w;
         r9w = 0;                              // r9.w = 0;
       }
-      r18.yzw = r19.xyz;
+      i_r18.yzw = i_r19.xyz;                  //r18.yzw = r19.xyz;
       
-      r18.x = r8yw.y;                         // r18.x = r8.y;
-      r6.w = r8yw.w;                          // r6.w = r8.w;
+      i_r18.x = i_r8.y;                       // r18.x = r8.y;
+      i_r6.w = i_r8.w;                        // r6.w = r8.w;
       if (r9w == 0) break;                    // if (r9.w == 0) break;
       
-      r12w = (int)r7.w * 3;                   // r12.w = (int)r7.w * 3;
+uint r12w;        
+      r12w = (int)r7w * 3;                    // r12.w = (int)r7.w * 3;
       r17.xyz = -r1.xxx * v2.xyz + PointLights[r12w].xyz; // r17.xyz = -r1.xxx * v2.xyz + PointLights[r12.w].xyz;
       r19.w = dot(r17.xyz, r17.xyz);
-      r12w = cmp(r19.w < PointLights[r12w].w); // r12.w = cmp(r19.w < PointLights[r12.w].w);
+      r12w = cmp(r19.w < PointLights[r12w].w);// r12.w = cmp(r19.w < PointLights[r12.w].w);
       if (r12w != 0) {                        // if (r12.w != 0) {
-        r20.xy = mad((int2)r7.ww, int2(3,3), int2(1,2));
+int2 r20xy;        
+        r20xy.xy = mad((int2)r7w, int2(3,3), int2(1,2));  // r20.xy = mad((int2)r7.ww, int2(3,3), int2(1,2));
         r12.w = rsqrt(r19.w);
         r17.xyz = r17.xyz * r12.www;
         r12.w = r19.w * r12.w;
-        r12.w = saturate(r12.w * PointLights[r20.y].x + PointLights[r20.y].y);
+        r12.w = saturate(r12.w * PointLights[r20xy.y].x + PointLights[r20xy.y].y); // r12.w = saturate(r12.w * PointLights[r20.y].x + PointLights[r20.y].y);
         r21.xyz = -v2.xyz * r1.www + r17.xyz;
         r19.w = dot(r21.xyz, r21.xyz);
         r19.w = rsqrt(r19.w);
@@ -908,22 +955,21 @@ uint r12w;
         r19.w = 1 / r19.w;
         r19.w = r21.x * r19.w;
         r21.xyz = r21.yzw * r19.www;
-        r21.xyz = PointLights[r20.y].www * r21.xyz;
+        r21.xyz = PointLights[r20xy.y].www * r21.xyz;      // r21.xyz = PointLights[r20.y].www * r21.xyz;
         r12.w = r12.w * r1.z;
-        r22.xyz = PointLights[r20.x].xyz * r12.www;
+        r22.xyz = PointLights[r20xy.x].xyz * r12.www;      // r22.xyz = PointLights[r20.x].xyz * r12.www;
         r20.xzw = r20.zzz * r2.xyz + r21.xyz;
         r20.xzw = r22.xyz * r20.xzw;
 
-uint r12w;        
-        r12w = cmp(asuint(PointLights[r20.y].z) != 255);  // r12.w = cmp((int)PointLights[r20.y].z != 255);
-        if (r12w != 0) {                                  // if (r12.w != 0) {
-          r12w = asuint(PointLights[r20.y].z) >> 8;       // r12.w = (uint)PointLights[r20.y].z >> 8;
-          r12w = (int)r12w << 2;                          //r12.w = (uint)r12.w << 2;
+        r12w = cmp(asuint(PointLights[r20xy.y].z) != 255); // r12.w = cmp((int)PointLights[r20.y].z != 255);
+        if (r12w != 0) {                                   // if (r12.w != 0) {
+          r12w = asuint(PointLights[r20xy.y].z) >> 8;      // r12.w = (uint)PointLights[r20.y].z >> 8;
+          r12w = (int)r12w << 2;                           //r12.w = (uint)r12.w << 2;
           r21.xyz = Projections[r12w/4]._m10_m11_m12 * -r17.yyy; // r21.xyz = Projections[r12.w/4]._m10_m11_m12 * -r17.yyy;
           r21.xyz = Projections[r12w/4]._m00_m01_m02 * -r17.xxx + r21.xyz; // r21.xyz = Projections[r12.w/4]._m00_m01_m02 * -r17.xxx + r21.xyz;
           r21.xyz = Projections[r12w/4]._m20_m21_m22 * -r17.zzz + r21.xyz; // r21.xyz = Projections[r12.w/4]._m20_m21_m22 * -r17.zzz + r21.xyz;
-          r12w = 255 & asuint(PointLights[r20.y].z);      // r12.w = 255 & (int)PointLights[r20.y].z;
-          r21.w = (int)r12w;                              // r21.w = (int)r12.w;
+          r12w = 255 & asuint(PointLights[r20xy.y].z);     // r12.w = 255 & (int)PointLights[r20.y].z;
+          r21.w = (int)r12w;                               // r21.w = (int)r12.w;
           
           r17.xyz = PointlightTextures.SampleLevel(CubeMapSampler_s, r21.xyzw, 0).xyz;
           r20.xzw = r20.xzw * r17.xyz;
@@ -935,48 +981,49 @@ uint r12w;
     r8.yw = float2(0.301916689,-0.243903905) * r11.zz;
     r15.xyzw = float4(-0.798239172,-0.418027014,-0.190623999,-0.695239484) * r11.zzzz;
     r11.xz = float2(0.951625586,-0.165848598) * r11.xz;
-    r17.w = r14.w;
-    r18.xyzw = r16.xyzw;
+    
+    r17.w = i_r14.w;                            // r17.w = r14.w;
+    i_r18.xyzw = u_r16.xyzw;                    // r18.xyzw = r16.xyzw;
     r9.xyz = r13.yzw;
-    r1.y = 0;
+    r1y = 0;                                    // r1.y = 0;
+    
     while (true) {
-      r19.xyz = r18.yzw;
+int4 i_r19;      
+      i_r19.xyz = i_r18.yzw;                    // r19.xyz = r18.yzw;
 uint r6w;
       r6w = 0;                                  // r6.w = 0;
 
 int r7w;      
-      r7w = r18.x;                              // r7.w = r18.x;
+      r7w = i_r18.x;                            // r7.w = r18.x;
 int r9w;      
-      r9w = r1.y;                               // r9.w = r1.y;
+      r9w = r1y;                                // r9.w = r1.y;
       
 int r12w;        
       r12w = 0;                                 // r12.w = 0;
 
       while (true) {
-        
-uint r19w;        
-        r19w = firstbitlow(r7w);                // r19.w = firstbitlow((uint)r7.w);
-        r19w = r9w + r19w;                      // r19.w = (int)r9.w + (int)r19.w;
+        i_r19.w = firstbitlow(r7w);             // r19.w = firstbitlow((uint)r7.w);
+        i_r19.w = r9w + i_r19.w;                // r19.w = (int)r9.w + (int)r19.w;
         
         if (r7w != 0) {                         // if (r7.w != 0) {
 int r20x;          
           r20x = r7w + -1;                      // r20.x = (int)r7.w + -1;
           r7w = r7w & r20x;                     // r7.w = (int)r7.w & (int)r20.x;
-          r6w = r19w;                           // r6.w = r19.w;
+          r6w = i_r19.w;                        // r6.w = r19.w;
           r12w = -1;                            // r12.w = -1;
           
           break;
         } else {
 int2 r20xy;          
           r20xy.x = cmp(r9w == 96);             //r20.x = cmp((int)r9.w == 96);
-          r17.xyz = r20xy.xxx ? r14.xyz : r19.xyz; // r17.xyz = r20.xxx ? r14.xyz : r19.xyz; 
+          r17.xyz = r20xy.xxx ? i_r14.xyz : i_r19.xyz; // r17.xyz = r20.xxx ? r14.xyz : r19.xyz; 
           r20xy.x = (int)r9w + 32;              // r20.x = (int)r9.w + 32;
-          r20xy.y = cmp((uint)r20xy.x >= (uint)r4.x); // r20.y = cmp((uint)r20.x >= (uint)r4.x);
+          r20xy.y = cmp((uint)r20xy.x >= (uint)r4x); // r20.y = cmp((uint)r20.x >= (uint)r4.x);
           
           if (r20xy.y != 0) {                   // if (r20.y != 0) {
-            r19.xyz = r17.yzw;
+            i_r19.xyz = r17.yzw;                // r19.xyz = r17.yzw;
             
-            r6w = r19w;                         // r6.w = r19.w;
+            r6w = i_r19.w;                      // r6.w = r19.w;
             r7w = r17.x;                        // r7.w = r17.x;
             r9w = r20xy.x;                      // r9.w = r20.x;
             
@@ -984,21 +1031,22 @@ int2 r20xy;
             
             break;
           }
-          r19.xy = r17.yz;
-          r19.z = r14.w;
+          i_r19.xy = r17.yz;                    // r19.xy = r17.yz;
+          i_r19.z = i_r14.w;                  // r19.z = r14.w;
           
           r7w = r17.x;                          // r7.w = r17.x;
           r9w = r20xy.x;                        // r9.w = r20.x;
         }
         
-        r6w = r19w;                             // r6.w = r19.w;
+        r6w = i_r19.w;                          // r6.w = r19.w;
         r12w = 0;                               // r12.w = 0;
       }
-      r18.yzw = r19.xyz;
+      i_r18.yzw = i_r19.xyz;                    // r18.yzw = r19.xyz;
       
-      r18.x = r7w;                              // r18.x = r7.w;
-      r1.y = r9w;                               // r1.y = r9.w;
+      i_r18.x = r7w;                            // r18.x = r7.w;
+      r1y = r9w;                                // r1.y = r9.w;
       if (r12w == 0) break;                     // if (r12.w == 0) break;
+      
 int i,j;      
       i = (uint)r6w << 2;                       // r17.x = (uint)r6.w << 2;
       bitmask.y = ((~(-1 << 30)) << 2) & 0xffffffff;  
