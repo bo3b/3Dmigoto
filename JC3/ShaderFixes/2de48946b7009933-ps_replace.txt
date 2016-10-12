@@ -1,4 +1,4 @@
-// Decals PS (replace the entire shader with the 2de489)
+// Decals PS
 
 cbuffer cbInstanceConsts : register(b1)
 {

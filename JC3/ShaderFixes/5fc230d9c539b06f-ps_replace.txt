@@ -1,4 +1,4 @@
-// Decals PS (replace the entire shader with the 2de489)
+// DEcals - Route
 
 cbuffer cbInstanceConsts : register(b1)
 {
@@ -9,12 +9,10 @@ SamplerState DepthMap_s : register(s0);
 SamplerState DiffuseAlpha_s : register(s1);
 SamplerState NormalMap_s : register(s2);
 SamplerState MPM_s : register(s3);
-SamplerState Tint_AlphaMask_s : register(s4);
 Texture2D<float4> DepthMap : register(t0);
 Texture2D<float4> DiffuseAlpha : register(t1);
 Texture2D<float4> NormalMap : register(t2);
 Texture2D<float4> MPM : register(t3);
-Texture2D<float4> Tint_AlphaMask : register(t4);
 
 
 // 3Dmigoto declarations
@@ -24,13 +22,12 @@ Texture2D<float4> StereoParams : register(t125);
 
 #include <ShaderFixes/matrix.hlsl>
 
-
 void main( 
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float4 v2 : TEXCOORD1,
   float4 v3 : TEXCOORD2,
-  noperspective float3 v4 : TEXCOORD3,  //decompiler bug?
+  float3 v4 : TEXCOORD3,
   out float4 o0 : SV_Target0,
   out float4 o1 : SV_Target1,
   out float4 o2 : SV_Target2,
@@ -40,66 +37,66 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  r0.xy = v1.xy / v1.ww;
-  r1.xyzw = InstanceConsts[1].xyzw * r0.yyyy;
-  r1.xyzw = r0.xxxx * InstanceConsts[0].xyzw + r1.xyzw;
-  r0.x = DepthMap.Sample(DepthMap_s, r0.xy).x;
-  r0.xyzw = r0.xxxx * InstanceConsts[2].xyzw + r1.xyzw;
-  r0.xyzw = InstanceConsts[3].xyzw + r0.xyzw;
-  r0.xyz = r0.xyz / r0.www;
+  r0.xyz = InstanceConsts[5].yyy * v2.xyz;
+  r1.xy = v1.xy / v1.ww;
+  r2.xyzw = InstanceConsts[1].xyzw * r1.yyyy;
+  r2.xyzw = r1.xxxx * InstanceConsts[0].xyzw + r2.xyzw;
+  r0.w = DepthMap.Sample(DepthMap_s, r1.xy).x;
+  r1.xyzw = r0.wwww * InstanceConsts[2].xyzw + r2.xyzw;
+  r1.xyzw = InstanceConsts[3].xyzw + r1.xyzw;
+  r1.xyz = r1.yzx / r1.www;
   
-matrix ivp = matrix(InstanceConsts[0], InstanceConsts[1], InstanceConsts[2], InstanceConsts[3]);
+  matrix ivp = matrix(InstanceConsts[0], InstanceConsts[1], InstanceConsts[2], InstanceConsts[3]);
 matrix vp = inverse(ivp);
 
-float4 tmp = float4(r0.xyz, 1);
+float4 tmp = float4(r1.zxy, 1);
 tmp = mul(tmp, vp);
 float4 stereo = StereoParams.Load(0);
 tmp.x -= stereo.x * (tmp.w - stereo.y) / 2;
-r0.xyz = mul(tmp, ivp);
+r1.xyz = mul(tmp, ivp).yzx;
   
-  
-  r0.xyz = -InstanceConsts[4].xyz + r0.xyz;
-  
-  r1.xyz = InstanceConsts[5].yyy * v2.xyz;
-  r1.x = dot(r0.xyz, r1.xyz);
-  
+  r1.xyz = -InstanceConsts[4].yzx + r1.xyz;
+  r0.x = dot(r1.zxy, r0.xyz);
   r2.xyz = InstanceConsts[5].xxx * v3.xyz;
-  r1.y = dot(r0.xyz, r2.xyz);
-  
+  r0.y = dot(r1.zxy, r2.xyz);
   r2.xyz = InstanceConsts[5].zzz * v4.xyz;
-  r1.z = dot(r0.xyz, r2.xyz);
-  
-  r0.xyz = r1.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
-  r0.w = min(1, abs(r1.z));
-  r0.w = InstanceConsts[5].w * -r0.w + 1;
-  r1.xyz = cmp(r0.xyz < float3(0,0,0));
-  r1.x = (int)r1.y | (int)r1.x;
-  r1.x = (int)r1.z | (int)r1.x;
-  if (r1.x != 0) discard;
-  r1.xyz = float3(1,1,1) + -r0.xyz;
-  r1.xyz = cmp(r1.xyz < float3(0,0,0));
-  r0.z = (int)r1.y | (int)r1.x;
-  r0.z = (int)r1.z | (int)r0.z;
-  if (r0.z != 0) discard;
-  r1.xy = r0.xy * InstanceConsts[10].xy + InstanceConsts[10].zw;
+  r0.z = dot(r1.zxy, r2.xyz);
+  r0.xyw = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  r0.z = min(1, abs(r0.z));
+  r0.z = InstanceConsts[5].w * -r0.z + 1;
+  r2.xyz = cmp(r0.xyw < float3(0,0,0));
+  r1.w = (int)r2.y | (int)r2.x;
+  r1.w = (int)r2.z | (int)r1.w;
+  if (r1.w != 0) discard;
+  r2.xyz = float3(1,1,1) + -r0.xyw;
   r0.xy = r0.xy * InstanceConsts[6].xy + InstanceConsts[6].zw;
-  r1.xyzw = Tint_AlphaMask.Sample(Tint_AlphaMask_s, r1.xy).xyzw;
-  r0.z = r1.w + -r1.y;
-  r0.z = InstanceConsts[8].w * r0.z + r1.y;
-  r0.z = 1 + -r0.z;
-  r0.z = -InstanceConsts[9].w * r0.z + 1;
-  r2.xyzw = DiffuseAlpha.Sample(DiffuseAlpha_s, r0.xy).wxyz;
-  r2.yzw = InstanceConsts[8].xyz * r2.yzw;
-  r0.z = r2.x * r0.z;
-  r1.w = saturate(InstanceConsts[4].w);
-  r0.z = r1.w * r0.z;
-  r0.z = r0.w * r0.z;
-  r3.xyz = InstanceConsts[9].xyz * r0.zzz;
+  r2.xyz = cmp(r2.xyz < float3(0,0,0));
+  r0.w = (int)r2.y | (int)r2.x;
+  r0.w = (int)r2.z | (int)r0.w;
+  if (r0.w != 0) discard;
+  r2.xyz = ddy_coarse(r1.yzx);
+  r1.xyz = ddx_coarse(r1.xyz);
+  r3.xyz = r2.xyz * r1.xyz;
+  r1.xyz = r2.zxy * r1.yzx + -r3.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r0.w = saturate(dot(r1.xyz, v4.xyz));
+  r0.w = 1 + -r0.w;
+  r0.w = -InstanceConsts[7].x + r0.w;
+  r0.w = saturate(-r0.w * InstanceConsts[7].y + 1);
+  r1.xyzw = DiffuseAlpha.Sample(DiffuseAlpha_s, r0.xy).wxyz;
+  o0.xyz = InstanceConsts[8].xyz * r1.yzw;
+  r1.y = saturate(InstanceConsts[4].w);
+  r1.x = r1.x * r1.y;
+  r0.z = r1.x * r0.z;
+  r0.z = r0.z * r0.w;
+  r1.xyz = InstanceConsts[9].xzy * r0.zzz;
   o3.w = r0.z;
-  o0.w = saturate(r3.x);
-  r1.xyz = r2.yzw * r1.xyz + -r2.yzw;
-  r0.z = InstanceConsts[9].w * InstanceConsts[8].w;
-  o0.xyz = r0.zzz * r1.xyz + r2.yzw;
+  r1.xy = saturate(r1.xy);
+  o1.w = saturate(r1.z);
+  o0.w = r1.x;
+  o2.w = r1.y;
   r1.xyz = NormalMap.Sample(NormalMap_s, r0.xy).xyz;
   r0.xyz = MPM.Sample(MPM_s, r0.xy).xyz;
   o2.xyz = r0.xyz;
@@ -111,18 +108,14 @@ r0.xyz = mul(tmp, ivp);
   r0.w = rsqrt(r0.w);
   r0.xyz = r0.xyz * r0.www;
   o1.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
-  o1.w = saturate(r3.y);
-  o2.w = saturate(r3.z);
   o3.x = InstanceConsts[11].w;
   o3.yz = float2(0,0);
   return;
 }
 
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
-//
-//   using 3Dmigoto v1.2.27 on Tue Jan 26 14:59:40 2016
 //
 //
 // Buffer Definitions: 
@@ -143,12 +136,10 @@ r0.xyz = mul(tmp, ivp);
 // DiffuseAlpha                      sampler      NA          NA    1        1
 // NormalMap                         sampler      NA          NA    2        1
 // MPM                               sampler      NA          NA    3        1
-// Tint_AlphaMask                    sampler      NA          NA    4        1
 // DepthMap                          texture  float4          2d    0        1
 // DiffuseAlpha                      texture  float4          2d    1        1
 // NormalMap                         texture  float4          2d    2        1
 // MPM                               texture  float4          2d    3        1
-// Tint_AlphaMask                    texture  float4          2d    4        1
 // cbInstanceConsts                  cbuffer      NA          NA    1        1
 //
 //
@@ -180,12 +171,10 @@ dcl_sampler s0, mode_default
 dcl_sampler s1, mode_default
 dcl_sampler s2, mode_default
 dcl_sampler s3, mode_default
-dcl_sampler s4, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
-dcl_resource_texture2d (float,float,float,float) t4
 dcl_input_ps linear v1.xyw
 dcl_input_ps linear v2.xyz
 dcl_input_ps linear v3.xyz
@@ -195,51 +184,56 @@ dcl_output o1.xyzw
 dcl_output o2.xyzw
 dcl_output o3.xyzw
 dcl_temps 4
-div r0.xy, v1.xyxx, v1.wwww
-mul r1.xyzw, r0.yyyy, cb1[1].xyzw
-mad r1.xyzw, r0.xxxx, cb1[0].xyzw, r1.xyzw
-sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t0.xyzw, s0
-mad r0.xyzw, r0.xxxx, cb1[2].xyzw, r1.xyzw
-add r0.xyzw, r0.xyzw, cb1[3].xyzw
-div r0.xyz, r0.xyzx, r0.wwww
-add r0.xyz, r0.xyzx, -cb1[4].xyzx
-mul r1.xyz, v2.xyzx, cb1[5].yyyy
-dp3 r1.x, r0.xyzx, r1.xyzx
+mul r0.xyz, v2.xyzx, cb1[5].yyyy
+div r1.xy, v1.xyxx, v1.wwww
+mul r2.xyzw, r1.yyyy, cb1[1].xyzw
+mad r2.xyzw, r1.xxxx, cb1[0].xyzw, r2.xyzw
+sample_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t0.yzwx, s0
+mad r1.xyzw, r0.wwww, cb1[2].xyzw, r2.xyzw
+add r1.xyzw, r1.xyzw, cb1[3].xyzw
+div r1.xyz, r1.yzxy, r1.wwww
+add r1.xyz, r1.xyzx, -cb1[4].yzxy
+dp3 r0.x, r1.zxyz, r0.xyzx
 mul r2.xyz, v3.xyzx, cb1[5].xxxx
-dp3 r1.y, r0.xyzx, r2.xyzx
+dp3 r0.y, r1.zxyz, r2.xyzx
 mul r2.xyz, v4.xyzx, cb1[5].zzzz
-dp3 r1.z, r0.xyzx, r2.xyzx
-mad r0.xyz, r1.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
-min r0.w, |r1.z|, l(1.000000)
-mad r0.w, cb1[5].w, -r0.w, l(1.000000)
-lt r1.xyz, r0.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
-or r1.x, r1.y, r1.x
-or r1.x, r1.z, r1.x
-discard_nz r1.x
-add r1.xyz, -r0.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
-lt r1.xyz, r1.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
-or r0.z, r1.y, r1.x
-or r0.z, r1.z, r0.z
-discard_nz r0.z
-mad r1.xy, r0.xyxx, cb1[10].xyxx, cb1[10].zwzz
+dp3 r0.z, r1.zxyz, r2.xyzx
+mad r0.xyw, r0.xyxz, l(0.500000, 0.500000, 0.000000, 0.500000), l(0.500000, 0.500000, 0.000000, 0.500000)
+min r0.z, |r0.z|, l(1.000000)
+mad r0.z, cb1[5].w, -r0.z, l(1.000000)
+lt r2.xyz, r0.xywx, l(0.000000, 0.000000, 0.000000, 0.000000)
+or r1.w, r2.y, r2.x
+or r1.w, r2.z, r1.w
+discard_nz r1.w
+add r2.xyz, -r0.xywx, l(1.000000, 1.000000, 1.000000, 0.000000)
 mad r0.xy, r0.xyxx, cb1[6].xyxx, cb1[6].zwzz
-sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r1.xyxx, t4.xyzw, s4
-add r0.z, -r1.y, r1.w
-mad r0.z, cb1[8].w, r0.z, r1.y
-add r0.z, -r0.z, l(1.000000)
-mad r0.z, -cb1[9].w, r0.z, l(1.000000)
-sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r0.xyxx, t1.wxyz, s1
-mul r2.yzw, r2.yyzw, cb1[8].xxyz
-mul r0.z, r0.z, r2.x
-mov_sat r1.w, cb1[4].w
-mul r0.z, r0.z, r1.w
-mul r0.z, r0.z, r0.w
-mul r3.xyz, r0.zzzz, cb1[9].xyzx
+lt r2.xyz, r2.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+or r0.w, r2.y, r2.x
+or r0.w, r2.z, r0.w
+discard_nz r0.w
+deriv_rty_coarse r2.xyz, r1.yzxy
+deriv_rtx_coarse r1.xyz, r1.xyzx
+mul r3.xyz, r1.xyzx, r2.xyzx
+mad r1.xyz, r2.zxyz, r1.yzxy, -r3.xyzx
+dp3 r0.w, r1.xyzx, r1.xyzx
+rsq r0.w, r0.w
+mul r1.xyz, r0.wwww, r1.xyzx
+dp3_sat r0.w, r1.xyzx, v4.xyzx
+add r0.w, -r0.w, l(1.000000)
+add r0.w, r0.w, -cb1[7].x
+mad_sat r0.w, -r0.w, cb1[7].y, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.xyxx, t1.wxyz, s1
+mul o0.xyz, r1.yzwy, cb1[8].xyzx
+mov_sat r1.y, cb1[4].w
+mul r1.x, r1.y, r1.x
+mul r0.z, r0.z, r1.x
+mul r0.z, r0.w, r0.z
+mul r1.xyz, r0.zzzz, cb1[9].xzyx
 mov o3.w, r0.z
-mov_sat o0.w, r3.x
-mad r1.xyz, r2.yzwy, r1.xyzx, -r2.yzwy
-mul r0.z, cb1[8].w, cb1[9].w
-mad o0.xyz, r0.zzzz, r1.xyzx, r2.yzwy
+mov_sat r1.xy, r1.xyxx
+mov_sat o1.w, r1.z
+mov o0.w, r1.x
+mov o2.w, r1.y
 sample_indexable(texture2d)(float,float,float,float) r1.xyz, r0.xyxx, t2.xyzw, s2
 sample_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t3.xyzw, s3
 mov o2.xyz, r0.xyzx
@@ -251,11 +245,9 @@ dp3 r0.w, r0.xyzx, r0.xyzx
 rsq r0.w, r0.w
 mul r0.xyz, r0.wwww, r0.xyzx
 mad o1.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
-mov_sat o1.w, r3.y
-mov_sat o2.w, r3.z
 mov o3.x, cb1[11].w
 mov o3.yz, l(0,0,0,0)
 ret 
-// Approximately 61 instruction slots used
+// Approximately 64 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

@@ -114,10 +114,10 @@ void main(
   tmp.x -= stereo.x * (tmp.w - stereo.y);
   r6.xyz = mul(tmp, ivp).xyz;
   
-  //Correct Reflections?
-  //tmp = mul(float4(v2.xyz, 1), vp);
-  //tmp.x -= stereo.x * tmp.w;
-  //v2.xyz = mul(tmp, ivp).xyz;
+  //Correct Reflections
+  tmp = mul(float4(v2.xyz, 1), vp);
+  tmp.x -= stereo.x * tmp.w;
+  v2.xyz = mul(tmp, ivp).xyz;
   
   r1.w = dot(-v2.xyz, -v2.xyz);
   r1.w = rsqrt(r1.w);
@@ -949,7 +949,7 @@ r5.x = LightIndices[r15.w].x;
         if (r16.y != 0) {
           r16.y = -SpotLights[r6.w].z + 1;
           r16.z = (int)r5.x + 3;
-          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (uint)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
+          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
           r13.yzw = r16.xxx * r13.yzw;
           r7.w = r16.x * r7.w;
           r5.x = SpotLights[r5.x].w * r7.w;
