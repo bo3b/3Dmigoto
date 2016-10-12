@@ -216,12 +216,39 @@ SamplerState g_sLinearMipLinearClamp_s : register(s2);
 Texture2D<float4> g_tGBuffer1 : register(t0);
 Texture2D<float4> g_tGBuffer2 : register(t1);
 Texture2D<float4> g_tLinearDepth : register(t2);
-StructuredBuffer<g_sbMaterialData> g_sbMaterialData : register(t3);
 Texture2D<float4> g_tEnvBRDF : register(t4);
-StructuredBuffer<g_inOccs> g_inOccs : register(t5);
-StructuredBuffer<g_gatherIndexData> g_gatherIndexData : register(t6);
-StructuredBuffer<g_vSSRSamples> g_vSSRSamples : register(t7);
 Texture2D<float4> g_tPreviousColor : register(t8);
+
+
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t3, 48 
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t5, 4 
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t6, 4 
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t7, 8 
+
+// Manually add struct for t3 type.
+
+struct MaterialData
+{
+    float3 vSpecularColor;         // Offset:    0
+    float fOcclusion;              // Offset:   12
+    float2 vShadowSoftnessRange;   // Offset:   16
+    float2 vScatterWidthRange;     // Offset:   24
+    float2 vTranslucencyDepthRange;// Offset:   32
+    uint uBRDF_uScatterIndex;      // Offset:   40
+    uint uHash;                    // Offset:   44
+};                        // Offset:    0 Size:    48
+
+StructuredBuffer<MaterialData> g_sbMaterialData : register(t3);
+
+// These do not need structs, because they are simple types.
+
+StructuredBuffer<uint> g_inOccs : register(t5);
+StructuredBuffer<uint> g_gatherIndexData : register(t6);
+StructuredBuffer<float2> g_vSSRSamples : register(t7);
 
 
 // 3Dmigoto declarations
@@ -236,14 +263,6 @@ void main(
   out float4 o1 : SV_Target1,
   out uint o2 : SV_Target2)
 {
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_structured t3, 48 
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_structured t5, 4 
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_structured t6, 4 
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_structured t7, 8 
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23;
   uint4 bitmask, uiDest;
   float4 fDest;
@@ -292,9 +311,11 @@ void main(
   bitmask.w = ((~(-1 << 5)) << 0) & 0xffffffff;  r3.w = (((uint)r0.x << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
   bitmask.w = ((~(-1 << 2)) << 10) & 0xffffffff;  r4.w = (((uint)g_uCurrentFrame << 10) & bitmask.w) | ((uint)0 & ~bitmask.w);
   r3.w = (int)r3.w + (int)r4.w;
+  
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r3.w, r3.w, l(0), t7.xxxx
 r3.w = g_sNearestClamp[]..swiz;
+
   r5.x = g_vScreenRes.x * g_vScreenRes.y + 0.5;
   r5.x = (uint)r5.x;
   r3.w = r3.w * 1.10000002 + 0.400000006;
@@ -311,9 +332,11 @@ r3.w = g_sNearestClamp[]..swiz;
     r8.w = rsqrt(r8.w);
     r9.xy = r8.ww * -r2.xy;
     r8.w = mad((int)r8.y, (int)r5.x, (int)r2.w);
+    
   // Known bad code for instruction (needs manual fix):
     ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r8.w, r8.w, l(0), t6.xxxx
   r8.w = g_sNearestClamp[]..swiz;
+  
     r10.z = g_vDirSteps[r8.z].y * r2.y;
     r10.w = -g_vDirSteps[r8.z].x * r2.y;
     r10.x = g_vDirSteps[r8.z].y * r1.x;
@@ -371,13 +394,17 @@ r3.w = g_sNearestClamp[]..swiz;
     r10.y = -r10.x;
     r6.xy = max(r10.xy, r7.xy);
     r7.x = (uint)r8.w << 1;
+    
   // Known bad code for instruction (needs manual fix):
     ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.x, r7.x, l(0), t5.xxxx
   r7.x = g_sNearestClamp[]..swiz;
+  
     bitmask.y = ((~(-1 << 31)) << 1) & 0xffffffff;  r7.y = (((uint)r8.w << 1) & bitmask.y) | ((uint)1 & ~bitmask.y);
+    
   // Known bad code for instruction (needs manual fix):
     ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.y, r7.y, l(0), t5.xxxx
   r7.y = g_sNearestClamp[]..swiz;
+  
     r8.z = (int)r7.x & 0x0000ffff;
     r7.x = (uint)r7.x >> 16;
     r12.x = f16tof32(r8.z);
@@ -457,11 +484,10 @@ r3.w = g_sNearestClamp[]..swiz;
     r10.yz = (uint2)r10.yz;
     r3.w = (uint)r10.y << 8;
     r3.w = (int)r10.z | (int)r3.w;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r10.yzw, r3.w, l(0), t3.xxyz
-  r10.y = g_sNearestClamp[]..swiz;
-  r10.z = g_sNearestClamp[]..swiz;
-  r10.w = g_sNearestClamp[]..swiz;
+    
+// ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r10.yzw, r3.w, l(0), t3.xxyz
+r10.yzw = g_sbMaterialData_sb[r3.w].vSpecularColor.xyz;
+  
     r3.x = dot(r4.xyz, -r6.xyz);
     r10.xyz = r10.xxx * r10.yzw;
     r3.xy = g_tEnvBRDF.SampleLevel(g_sLinearClamp_s, r3.xy, 0).xy;
@@ -486,10 +512,12 @@ r3.w = g_sNearestClamp[]..swiz;
       r9.w = (int)r0.x + (int)r9.w;
       r8.w = (int)r8.w + (int)r9.w;
       r8.w = (int)r4.w + (int)r8.w;
+      
     // Known bad code for instruction (needs manual fix):
         ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r15.xy, r8.w, l(0), t7.xyxx
     r15.x = g_sNearestClamp[]..swiz;
     r15.y = g_sNearestClamp[]..swiz;
+    
       r8.w = g_fRayJitter * r15.y;
       r9.w = 6.28318548 * r15.x;
       r10.w = -r15.y * g_fRayJitter + 1;
