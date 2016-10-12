@@ -2,6 +2,8 @@
 
 // Successfully hand-fixed, works in game.
 
+// Tile Lights 1
+
 cbuffer cbPunctualShadowLightInfo : register(b2)
 {
 
@@ -179,6 +181,28 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
   uint4 bitmask, uiDest;
   float4 fDest;
 
+  matrix ivp, vp;
+ivp = matrix(invViewProjectionMatrix._m00_m10_m20_m30, invViewProjectionMatrix._m01_m11_m21_m31, invViewProjectionMatrix._m02_m12_m22_m32, invViewProjectionMatrix._m03_m13_m23_m33);
+
+// Work out Inverse
+vp[0].x = ivp[1].y*(ivp[2].z*ivp[3].w - ivp[2].w*ivp[3].z) + ivp[1].z*(ivp[2].w*ivp[3].y - ivp[2].y*ivp[3].w) + ivp[1].w*(ivp[2].y*ivp[3].z - ivp[2].z*ivp[3].y);
+vp[0].y = ivp[0].y*(ivp[2].w*ivp[3].z - ivp[2].z*ivp[3].w) + ivp[0].z*(ivp[2].y*ivp[3].w - ivp[2].w*ivp[3].y) + ivp[0].w*(ivp[2].z*ivp[3].y - ivp[2].y*ivp[3].z);
+vp[0].z = ivp[0].y*(ivp[1].z*ivp[3].w - ivp[1].w*ivp[3].z) + ivp[0].z*(ivp[1].w*ivp[3].y - ivp[1].y*ivp[3].w) + ivp[0].w*(ivp[1].y*ivp[3].z - ivp[1].z*ivp[3].y);
+vp[0].w = ivp[0].y*(ivp[1].w*ivp[2].z - ivp[1].z*ivp[2].w) + ivp[0].z*(ivp[1].y*ivp[2].w - ivp[1].w*ivp[2].y) + ivp[0].w*(ivp[1].z*ivp[2].y - ivp[1].y*ivp[2].z);
+vp[1].x = ivp[1].x*(ivp[2].w*ivp[3].z - ivp[2].z*ivp[3].w) + ivp[1].z*(ivp[2].x*ivp[3].w - ivp[2].w*ivp[3].x) + ivp[1].w*(ivp[2].z*ivp[3].x - ivp[2].x*ivp[3].z);
+vp[1].y = ivp[0].x*(ivp[2].z*ivp[3].w - ivp[2].w*ivp[3].z) + ivp[0].z*(ivp[2].w*ivp[3].x - ivp[2].x*ivp[3].w) + ivp[0].w*(ivp[2].x*ivp[3].z - ivp[2].z*ivp[3].x);
+vp[1].z = ivp[0].x*(ivp[1].w*ivp[3].z - ivp[1].z*ivp[3].w) + ivp[0].z*(ivp[1].x*ivp[3].w - ivp[1].w*ivp[3].x) + ivp[0].w*(ivp[1].z*ivp[3].x - ivp[1].x*ivp[3].z);
+vp[1].w = ivp[0].x*(ivp[1].z*ivp[2].w - ivp[1].w*ivp[2].z) + ivp[0].z*(ivp[1].w*ivp[2].x - ivp[1].x*ivp[2].w) + ivp[0].w*(ivp[1].x*ivp[2].z - ivp[1].z*ivp[2].x);
+vp[2].x = ivp[1].x*(ivp[2].y*ivp[3].w - ivp[2].w*ivp[3].y) + ivp[1].y*(ivp[2].w*ivp[3].x - ivp[2].x*ivp[3].w) + ivp[1].w*(ivp[2].x*ivp[3].y - ivp[2].y*ivp[3].x);
+vp[2].y = ivp[0].x*(ivp[2].w*ivp[3].y - ivp[2].y*ivp[3].w) + ivp[0].y*(ivp[2].x*ivp[3].w - ivp[2].w*ivp[3].x) + ivp[0].w*(ivp[2].y*ivp[3].x - ivp[2].x*ivp[3].y);
+vp[2].z = ivp[0].x*(ivp[1].y*ivp[3].w - ivp[1].w*ivp[3].y) + ivp[0].y*(ivp[1].w*ivp[3].x - ivp[1].x*ivp[3].w) + ivp[0].w*(ivp[1].x*ivp[3].y - ivp[1].y*ivp[3].x);
+vp[2].w = ivp[0].x*(ivp[1].w*ivp[2].y - ivp[1].y*ivp[2].w) + ivp[0].y*(ivp[1].x*ivp[2].w - ivp[1].w*ivp[2].x) + ivp[0].w*(ivp[1].y*ivp[2].x - ivp[1].x*ivp[2].y);
+vp[3].x = ivp[1].x*(ivp[2].z*ivp[3].y - ivp[2].y*ivp[3].z) + ivp[1].y*(ivp[2].x*ivp[3].z - ivp[2].z*ivp[3].x) + ivp[1].z*(ivp[2].y*ivp[3].x - ivp[2].x*ivp[3].y);
+vp[3].y = ivp[0].x*(ivp[2].y*ivp[3].z - ivp[2].z*ivp[3].y) + ivp[0].y*(ivp[2].z*ivp[3].x - ivp[2].x*ivp[3].z) + ivp[0].z*(ivp[2].x*ivp[3].y - ivp[2].y*ivp[3].x);
+vp[3].z = ivp[0].x*(ivp[1].z*ivp[3].y - ivp[1].y*ivp[3].z) + ivp[0].y*(ivp[1].x*ivp[3].z - ivp[1].z*ivp[3].x) + ivp[0].z*(ivp[1].y*ivp[3].x - ivp[1].x*ivp[3].y);
+vp[3].w = ivp[0].x*(ivp[1].y*ivp[2].z - ivp[1].z*ivp[2].y) + ivp[0].y*(ivp[1].z*ivp[2].x - ivp[1].x*ivp[2].z) + ivp[0].z*(ivp[1].x*ivp[2].y - ivp[1].y*ivp[2].x);
+vp /= determinant(ivp);
+  
 	uint4 threading = g_compactTileGridBuffer[vThreadGroupID.x].g_compactTileGridBuffer_uint; // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
 
   uint4 threadshift = threading.x >> 16; //  r1.x = (uint)r0.x >> 16;
@@ -246,12 +270,22 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
   r5.xy = r1.zw * float2(2,2) + float2(-1,-1);
   r2.xy = float2(1,-1) * r5.xy;
   r2.w = 1;
+    
   r5.x = dot(r2.xyzw, invViewProjectionMatrix._m00_m10_m20_m30);
   r5.y = dot(r2.xyzw, invViewProjectionMatrix._m01_m11_m21_m31);
   r5.z = dot(r2.xyzw, invViewProjectionMatrix._m02_m12_m22_m32);
   r2.x = dot(r2.xyzw, invViewProjectionMatrix._m03_m13_m23_m33);
   r2.x = 1 / r2.x;
+  
   r7.xyz = r5.xyz * r2.xxx;
+  
+  //Fix
+  float4 stereo = StereoParams.Load(0);
+  float4 tmp = mul(vp, float4(r7.xyz, 1));
+  tmp.x -= stereo.x * (tmp.w - stereo.y);
+  r7.xyz = mul(ivp, tmp).xyz;
+  
+  
   r2.y = dot(-r7.xyz, -r7.xyz);
   r2.y = rsqrt(r2.y);
   r8.xyz = -r7.xyz * r2.yyy;
@@ -289,11 +323,16 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
     if (test != 0) break; // if (r10.w != 0) break;
   
 // r10.w = g_lightIndexInput[r9.w].g_lightIndexInput_uint;
-    int r10_w = g_lightIndexInput[i].g_lightIndexInput_uint; // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r9.w, l(0), t20.xxxx
+    r10.w = g_lightIndexInput[i].g_lightIndexInput_uint; // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r9.w, l(0), t20.xxxx
     
-    r11.x = r10_w * 21;  // r11.x = (int)r10.w * 21;
-    
-    r11.yzw = -r5.xyz * r2.xxx + g_lightInfoPunctualShadow[r11.x].baseLight.pos.xyz;
+    r11.x = (int)r10.w * 21;
+	
+//Fix - Second spot
+    //r11.yzw = -r5.xyz * r2.xxx + g_lightInfoPunctualShadow[r11.x].baseLight.pos.xyz;
+	r11.yzw = -r7.xyz + g_lightInfoPunctualShadow[r11.x].baseLight.pos.xyz;
+	
+	
+	
     r12.x = dot(r11.yzw, r11.yzw);
     r12.y = rsqrt(r12.x);
     r12.yzw = r12.yyy * r11.yzw;
@@ -432,13 +471,15 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
           r11.y = r11.y / r12.z;
           r11.z = -1;
         } else {
+		
+			
           r16.x = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix1.xyzw);
           r16.y = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix2.xyzw);
           r11.w = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix3.xyzw);
           r12.z = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix4.xyzw);
           r12.z = 1 / r12.z;
           r16.xy = r16.xy * r12.zz;
-          r11.y = r12.z * r11.w;
+		  r11.y = r12.z * r11.w;
           r13.xy = r16.xy * float2(0.5,-0.5) + float2(0.5,0.5);
           r11.w = -r11.w * r12.z + 1;
           r12.z = max(abs(r16.x), abs(r16.y));
@@ -449,19 +490,18 @@ uint vThreadIDInGroupFlattened : SV_GroupIndex
         r11.w = (uint)r12.w;
         r12.z = (int)r11.w & 3;
         r11.w = (uint)r11.w >> 2;
-        
-        r10_w = mad((int)r10_w, 21, (int)r11.w);  // r10.w = mad((int)r10.w, 21, (int)r11.w);
-        r10_w = dot(g_lightInfoPunctualShadow[r10_w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);  // r10.w = dot(g_lightInfoPunctualShadow[r10.w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);
-        r11.w = cmp(r10_w >= 0);  // r11.w = cmp(r10.w >= 0);
+        r10.w = mad((int)r10.w, 21, (int)r11.w);
+        r10.w = dot(g_lightInfoPunctualShadow[r10.w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);
+        r11.w = cmp(r10.w >= 0);
         r11.z = r11.z ? r11.w : 0;
-        r10_w = (uint)r10_w;  // r10.w = (uint)r10.w;
+        r10.w = (uint)r10.w;
 		
         // r11.w = (uint7)g_lightInfoPunctualShadow[r11.x].shadow.quality;
 r11.w = (uint)g_lightInfoPunctualShadow[r11.x].shadow.quality;
         
 		r11.w = cmp((int)r11.w == 1);
         if (r11.w != 0) {
-          r16.z = (uint)r10_w;  // r16.z = (uint)r10.w;
+          r16.z = (uint)r10.w;
           r12.zw = shadowMapSizeAndInvSize.xx * r13.xy + float2(0.5,0.5);
           r17.xy = floor(r12.zw);
           r12.zw = -r17.xy + r12.zw;
@@ -541,16 +581,16 @@ r11.w = (uint)g_lightInfoPunctualShadow[r11.x].shadow.quality;
           r11.w = r16.x * r17.y + r11.w;
           r11.w = saturate(0.0163934417 * r11.w);
         } else {
-          r13.z = (uint)r10_w;  // r13.z = (uint)r10.w;
-          r10_w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s, r13.xyz, r11.y).x;  // r10.w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s, r13.xyz, r11.y).x;
+          r13.z = (uint)r10.w;
+          r10.w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s, r13.xyz, r11.y).x;
           r11.y = cmp(r11.y < 1);
-          r11.w = r11.y ? r10_w : 1;  // r11.w = r11.y ? r10.w : 1;
+          r11.w = r11.y ? r10.w : 1;
         }
-        r10_w = -1 + r11.w;  // r10.w = -1 + r11.w;
-        r10_w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10_w;  // r10.w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10.w;
-        r10_w = r12.y * r10_w + 1;  // r10.w = r12.y * r10.w + 1;
-        r10_w = r11.z ? r10_w : 1;  // r10.w = r11.z ? r10.w : 1;
-        r12.x = r12.x * r10_w;  // r12.x = r12.x * r10.w;
+        r10.w = -1 + r11.w;
+        r10.w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10.w;
+        r10.w = r12.y * r10.w + 1;
+        r10.w = r11.z ? r10.w : 1;
+        r12.x = r12.x * r10.w;
       }
     }
     r10.xyz = r15.xyz * r12.xxx + r10.xyz;
