@@ -305,16 +305,20 @@ void main(
   r3.z = dot(r4.xy, r4.xy);
   r4.xy = float2(1,-1) + r3.zz;
   r4.xyz = r4.zwy / r4.xxx;
-  r3.zw = (uint2)r0.xy % uint2(0,0);
+  
+  // Bad constant conversion:
+  // udiv null, r3.zw, r0.xxxy, l(0, 0, 3, 3)
+  // r3.zw = (uint2)r0.xy % uint2(0,0);
+r3.zw = (uint2)r0.xy % uint2(3,3);
+  
   r3.z = mad((int)r3.w, 3, (int)r3.z);
   bitmask.w = ((~(-1 << 5)) << 5) & 0xffffffff;  r3.w = (((uint)r0.y << 5) & bitmask.w) | ((uint)0 & ~bitmask.w);
   bitmask.w = ((~(-1 << 5)) << 0) & 0xffffffff;  r3.w = (((uint)r0.x << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
   bitmask.w = ((~(-1 << 2)) << 10) & 0xffffffff;  r4.w = (((uint)g_uCurrentFrame << 10) & bitmask.w) | ((uint)0 & ~bitmask.w);
   r3.w = (int)r3.w + (int)r4.w;
   
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r3.w, r3.w, l(0), t7.xxxx
-r3.w = g_sNearestClamp[]..swiz;
+// ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r3.w, r3.w, l(0), t7.xxxx
+r3.w = g_vSSRSamples[r3.w].x;
 
   r5.x = g_vScreenRes.x * g_vScreenRes.y + 0.5;
   r5.x = (uint)r5.x;
@@ -333,9 +337,8 @@ r3.w = g_sNearestClamp[]..swiz;
     r9.xy = r8.ww * -r2.xy;
     r8.w = mad((int)r8.y, (int)r5.x, (int)r2.w);
     
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r8.w, r8.w, l(0), t6.xxxx
-  r8.w = g_sNearestClamp[]..swiz;
+// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r8.w, r8.w, l(0), t6.xxxx
+r8.w = g_gatherIndexData[r8.w].x;
   
     r10.z = g_vDirSteps[r8.z].y * r2.y;
     r10.w = -g_vDirSteps[r8.z].x * r2.y;
@@ -395,15 +398,13 @@ r3.w = g_sNearestClamp[]..swiz;
     r6.xy = max(r10.xy, r7.xy);
     r7.x = (uint)r8.w << 1;
     
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.x, r7.x, l(0), t5.xxxx
-  r7.x = g_sNearestClamp[]..swiz;
+// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.x, r7.x, l(0), t5.xxxx
+r7.x = g_inOccs[r7.x].x;
   
     bitmask.y = ((~(-1 << 31)) << 1) & 0xffffffff;  r7.y = (((uint)r8.w << 1) & bitmask.y) | ((uint)1 & ~bitmask.y);
     
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.y, r7.y, l(0), t5.xxxx
-  r7.y = g_sNearestClamp[]..swiz;
+// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.y, r7.y, l(0), t5.xxxx
+r7.y = g_inOccs[r7.y].x;
   
     r8.z = (int)r7.x & 0x0000ffff;
     r7.x = (uint)r7.x >> 16;
@@ -486,7 +487,7 @@ r3.w = g_sNearestClamp[]..swiz;
     r3.w = (int)r10.z | (int)r3.w;
     
 // ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r10.yzw, r3.w, l(0), t3.xxyz
-r10.yzw = g_sbMaterialData_sb[r3.w].vSpecularColor.xyz;
+r10.yzw = g_sbMaterialData[r3.w].vSpecularColor.xyz;
   
     r3.x = dot(r4.xyz, -r6.xyz);
     r10.xyz = r10.xxx * r10.yzw;
@@ -513,10 +514,8 @@ r10.yzw = g_sbMaterialData_sb[r3.w].vSpecularColor.xyz;
       r8.w = (int)r8.w + (int)r9.w;
       r8.w = (int)r4.w + (int)r8.w;
       
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r15.xy, r8.w, l(0), t7.xyxx
-    r15.x = g_sNearestClamp[]..swiz;
-    r15.y = g_sNearestClamp[]..swiz;
+// ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r15.xy, r8.w, l(0), t7.xyxx
+r15.xy = g_vSSRSamples[r8.w].xy;
     
       r8.w = g_fRayJitter * r15.y;
       r9.w = 6.28318548 * r15.x;
