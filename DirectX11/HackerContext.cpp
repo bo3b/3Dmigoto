@@ -610,13 +610,30 @@ STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 	return ulRef;
 }
 
+// In a strange case, Mafia 3 calls this hacky interface with the request for
+// the ID3D11DeviceContext.  That's right, it calls to get the exact
+// same object that it is using to call.  I swear.
+
 HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
 	LogDebug("HackerContext::QueryInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
-
+		
 	HRESULT hr = mOrigContext->QueryInterface(riid, ppvObject);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed result = %x for %p \n", hr, ppvObject);
+		return hr;
+	}
+
+	// To avoid letting the game bypass our hooked object, we need to return the 
+	// HackerContext/this in this case.
+	if (riid == __uuidof(ID3D11DeviceContext))
+	{
+		*ppvObject = this;
+		LogDebug("  return HackerContext(%s@%p) wrapper of %p \n", type_name(this), this, mOrigContext);
+	}
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
 	return hr;
