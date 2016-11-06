@@ -380,10 +380,15 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 
 	if (riid == __uuidof(IDXGIDevice))
 	{
-		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
-		HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this);
-		*ppvObject = dxgiDeviceWrap;
-		LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap), dxgiDeviceWrap, origDXGIDevice);
+		// This is a specific hack for MGSV on Windows 10 *with* the
+		// anniversary update installed. If we wrap the DXGIDevice the
+		// game will reject it and the game will quit.
+		if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_DEVICE)) {
+			IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
+			HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this);
+			*ppvObject = dxgiDeviceWrap;
+			LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap), dxgiDeviceWrap, origDXGIDevice);
+		}
 	}
 	else if (riid == __uuidof(IDXGIDevice1))
 	{

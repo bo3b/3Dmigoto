@@ -1,3 +1,6 @@
+// ---- Created with 3Dmigoto v1.2.44 on Tue Sep 27 19:29:38 2016
+// compute shader for physical lighting: environmental reflections, specular highlights, etc
+
 Texture2D<float4> t16 : register(t16);
 
 Texture2D<float4> t7 : register(t7);
@@ -16,43 +19,49 @@ Texture2D<float4> t0 : register(t0);
 
 SamplerState s6_s : register(s6);
 
-cbuffer cb13 : register(b13)
-{
-  float4 cb13[57];
-}
 
 cbuffer cb12 : register(b12)
 {
   float4 cb12[219];
 }
 
-RWTexture2D<float4> u0 : register(u0);
+cbuffer cb13 : register(b13)
+{
+  float4 cb13[57];
+}
 
-Texture2D<float4> StereoParams : register(t125);
+
+RWTexture2D<float4> u0 : register(u0);  // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+
+
+// 3Dmigoto declarations
+#define cmp -
 Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
 
-[numthreads(16, 16, 1)]
+
+[numthreads(16, 16, 1)] // unknown dcl_: dcl_thread_group 16, 16, 1
 void main(
-uint3 vThreadGroupID : SV_GroupThreadID,
-uint3 vThreadIDInGroup : SV_GroupID)
+uint3 vThreadIDInGroup : SV_GroupThreadID,
+uint3 vThreadGroupID : SV_GroupID)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19;
   uint4 bitmask, uiDest;
   float4 fDest;
 
   r0.xy = mad((int2)vThreadGroupID.xy, int2(16,16), (int2)vThreadIDInGroup.xy);
-  r0.zw = float2(0.000000e+000,0.000000e+000);
+  r0.zw = float2(0,0);
   r1.x = t0.Load(r0.xyw).x;
   r1.y = r1.x * cb12[22].x + cb12[22].y;
-  r1.y = r1.y < 1.000000000e+000;
+  r1.y = cmp(r1.y < 1);
   if (r1.y != 0) {
     r1.y = t1.Load(r0.xyw).w;
     r2.xyzw = t2.Load(r0.xyw).xyzw;
-    r2.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r2.xyz;
+    r2.xyz = float3(-0.5,-0.5,-0.5) + r2.xyz;
     r1.z = dot(r2.xyz, r2.xyz);
     r1.z = rsqrt(r1.z);
     r3.xyz = r2.xyz * r1.zzz;
-    r2.xy = r0.xy;
+    r2.xy = (uint2)r0.xy;
     r4.xyzw = cb12[211].xyzw * r2.yyyy;
     r4.xyzw = cb12[210].xyzw * r2.xxxx + r4.xyzw;
     r4.xyzw = cb12[212].xyzw * r1.xxxx + r4.xyzw;
@@ -65,21 +74,21 @@ uint3 vThreadIDInGroup : SV_GroupID)
     r7.xyzw = t16.Load(r0.xyw).xyzw;
     r8.xyzw = t4.Load(r0.xyw).xyzw;
     r8.xyz = log2(r8.xyz);
-    r8.xyz = float3(2.200000e+000,2.200000e+000,2.200000e+000) * r8.xyz;
+    r8.xyz = float3(2.20000005,2.20000005,2.20000005) * r8.xyz;
     r8.xyz = exp2(r8.xyz);
-    r1.w = r8.w * 2.550000000e+002 + 5.000000000e-001;
+    r1.w = r8.w * 255 + 0.5;
     r1.w = (uint)r1.w;
     r2.x = (int)r1.w & 11;
-    r2.x = r2.x ? 0.000000000e+000 : 1.000000000e+000;
-    r2.y = 0.000000000e+000 < r7.y;
+    r2.x = r2.x ? 0 : 1;
+    r2.y = cmp(0 < r7.y);
     if (r2.y != 0) {
       r1.w = (int)r1.w & 8;
-      r9.xy = r1.ww ? cb13[3].xy : float2(1.000000e+000,0.000000e+000);
+      r9.xy = r1.ww ? cb13[3].xy : float2(1,0);
       r1.w = dot(cb13[0].xyz, r3.xyz);
       r2.y = saturate(r1.w);
       r3.w = r2.y + r9.y;
       r3.w = r3.w + r1.y;
-      r3.w = 0.000000000e+000 < r3.w;
+      r3.w = cmp(0 < r3.w);
       if (r3.w != 0) {
         r3.w = r1.w * r9.x + r9.y;
         r9.xyz = saturate(r3.www);
@@ -88,35 +97,35 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r1.x = rsqrt(r1.x);
         r5.xyz = r5.xyz * r1.xxx;
         r1.x = dot(r5.xyz, r6.xyz);
-        r1.x = 1.000000000e+000 + -abs(r1.x);
-        r1.x = max(0.000000000e+000, r1.x);
+        r1.x = 1 + -abs(r1.x);
+        r1.x = max(0, r1.x);
         r3.w = r1.x * r1.x;
         r3.w = r3.w * r3.w;
         r1.x = r3.w * r1.x;
-        r3.w = 1.000000000e+000 + -r2.w;
-        r10.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r8.xyz;
-        r11.xyz = max(float3(0.000000e+000,0.000000e+000,0.000000e+000), r10.xyz);
+        r3.w = 1 + -r2.w;
+        r10.xyz = float3(1,1,1) + -r8.xyz;
+        r11.xyz = max(float3(0,0,0), r10.xyz);
         r11.xyz = cb13[56].xxx * r11.xyz;
         r11.xyz = r11.xyz * r1.xxx;
-        r1.x = 1.000000000e+000 + cb13[56].z;
+        r1.x = 1 + cb13[56].z;
         r1.x = -cb13[56].z * r3.w + r1.x;
         r11.xyz = r11.xyz / r1.xxx;
         r11.xyz = r11.xyz + r8.xyz;
-        r12.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r11.xyz;
+        r12.xyz = float3(1,1,1) + -r11.xyz;
         r12.xyz = r12.xyz * r9.zzz;
-        r12.xyz = float3(3.183099e-001,3.183099e-001,3.183099e-001) * r12.xyz;
-        r1.x = 0.000000000e+000 < r1.y;
+        r12.xyz = float3(0.318309873,0.318309873,0.318309873) * r12.xyz;
+        r1.x = cmp(0 < r1.y);
         if (r1.x != 0) {
-          r1.x = 1.000000000e+000 + r1.w;
-          r1.x = 5.000000000e-001 * r1.x;
+          r1.x = 1 + r1.w;
+          r1.x = 0.5 * r1.x;
           r3.w = dot(cb13[0].xyz, -r6.xyz);
-          r3.w = 1.000000000e+000 + r3.w;
-          r3.w = 5.000000000e-001 * r3.w;
+          r3.w = 1 + r3.w;
+          r3.w = 0.5 * r3.w;
           r4.w = dot(r3.xyz, -r6.xyz);
-          r4.w = 1.000000000e+000 + r4.w;
+          r4.w = 1 + r4.w;
           r4.w = cb12[36].w * r4.w;
           r3.w = r3.w * r3.w;
-          r4.w = 5.000000000e-001 * r4.w;
+          r4.w = 0.5 * r4.w;
           r3.w = r3.w * r3.w + -r1.x;
           r1.x = cb12[36].x * r3.w + r1.x;
           r1.x = r4.w * r1.x;
@@ -136,22 +145,22 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r10.xyz = r1.xxx * r10.xyz + cb13[1].xyz;
         r12.xyz = r12.xyz * r7.yyy;
         r12.xyz = r12.xyz * r10.xyz;
-        r1.x = 0.000000000e+000 < r1.w;
+        r1.x = cmp(0 < r1.w);
         if (r1.x != 0) {
           r1.x = saturate(dot(r3.xyz, r5.xyz));
           r1.w = dot(r3.xyz, r6.xyz);
           r3.w = r2.w * r2.w;
           r4.w = r3.w * r3.w;
           r1.x = r1.x * r1.x;
-          r3.w = r3.w * r3.w + -1.000000000e+000;
-          r1.x = r1.x * r3.w + 1.000000000e+000;
+          r3.w = r3.w * r3.w + -1;
+          r1.x = r1.x * r3.w + 1;
           r1.x = r1.x * r1.x;
-          r1.x = 3.141520023e+000 * r1.x;
+          r1.x = 3.14152002 * r1.x;
           r1.x = r4.w / r1.x;
-          r3.w = 1.000000000e+000 + r2.w;
+          r3.w = 1 + r2.w;
           r3.w = r3.w * r3.w;
-          r4.w = 1.250000000e-001 * r3.w;
-          r3.w = -r3.w * 1.250000000e-001 + 1.000000000e+000;
+          r4.w = 0.125 * r3.w;
+          r3.w = -r3.w * 0.125 + 1;
           r5.x = r2.y * r3.w + r4.w;
           r5.x = r2.y / r5.x;
           r3.w = abs(r1.w) * r3.w + r4.w;
@@ -160,31 +169,31 @@ uint3 vThreadIDInGroup : SV_GroupID)
           r1.x = r3.w * r1.x;
           r5.xyz = r1.xxx * r11.xyz;
           r1.x = r2.y * abs(r1.w);
-          r1.x = 4.000000000e+000 * r1.x;
+          r1.x = 4 * r1.x;
           r5.xyz = r5.xyz / r1.xxx;
           r5.xyz = r5.xyz * r2.yyy;
         } else {
-          r5.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+          r5.xyz = float3(0,0,0);
         }
         r5.xyz = r7.yyy * r5.xyz;
         r5.xyz = r5.xyz * r10.xyz;
       } else {
-        r9.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-        r12.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-        r5.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+        r9.xyz = float3(0,0,0);
+        r12.xyz = float3(0,0,0);
+        r5.xyz = float3(0,0,0);
       }
     } else {
-      r9.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-      r12.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-      r5.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+      r9.xyz = float3(0,0,0);
+      r12.xyz = float3(0,0,0);
+      r5.xyz = float3(0,0,0);
     }
     r9.xyz = min(r9.xyz, r7.yyy);
     r1.xw = -cb12[0].xy + r4.xy;
     r1.x = dot(r1.xw, r1.xw);
     r1.x = sqrt(r1.x);
     r1.x = saturate(r1.x * cb12[218].x + cb12[218].y);
-    r1.w = -1.000000000e+000 + cb12[184].z;
-    r1.x = r1.x * r1.w + 1.000000000e+000;
+    r1.w = -1 + cb12[184].z;
+    r1.x = r1.x * r1.w + 1;
     r1.w = cb12[183].x + -cb12[183].y;
     r10.xyz = r9.xyz * r1.www + cb12[183].yyy;
     r10.xyz = r10.xyz * r1.xxx;
@@ -193,87 +202,87 @@ uint3 vThreadIDInGroup : SV_GroupID)
     r11.xyz = r11.xyz * r1.xxx;
     r13.xyzw = (int4)r0.xyxy + int4(0,1,1,0);
     r14.xy = r13.zw;
-    r14.zw = float2(0.000000e+000,0.000000e+000);
+    r14.zw = float2(0,0);
     r14.xyz = t2.Load(r14.xyz).xyz;
-    r13.zw = float2(0.000000e+000,0.000000e+000);
+    r13.zw = float2(0,0);
     r13.xyz = t2.Load(r13.xyz).xyz;
-    r14.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r14.xyz;
+    r14.xyz = float3(-0.5,-0.5,-0.5) + r14.xyz;
     r1.x = dot(r14.xyz, r14.xyz);
     r1.x = rsqrt(r1.x);
     r14.xyz = r14.xyz * r1.xxx;
-    r13.xyz = float3(-5.000000e-001,-5.000000e-001,-5.000000e-001) + r13.xyz;
+    r13.xyz = float3(-0.5,-0.5,-0.5) + r13.xyz;
     r1.x = dot(r13.xyz, r13.xyz);
     r1.x = rsqrt(r1.x);
     r13.xyz = r13.xyz * r1.xxx;
     r1.x = dot(r3.xyz, r14.xyz);
     r1.w = dot(r3.xyz, r13.xyz);
     r1.x = min(r1.x, r1.w);
-    r1.w = 1.000000000e+000 + -abs(r1.x);
+    r1.w = 1 + -abs(r1.x);
     r1.w = sqrt(r1.w);
-    r2.y = abs(r1.x) * -1.872929931e-002 + 7.426100224e-002;
-    r2.y = r2.y * abs(r1.x) + -2.121143937e-001;
-    r2.y = r2.y * abs(r1.x) + 1.570728779e+000;
+    r2.y = abs(r1.x) * -0.0187292993 + 0.0742610022;
+    r2.y = r2.y * abs(r1.x) + -0.212114394;
+    r2.y = r2.y * abs(r1.x) + 1.57072878;
     r3.w = r2.y * r1.w;
-    r3.w = r3.w * -2.000000000e+000 + 3.141592741e+000;
-    r1.x = r1.x < -r1.x;
+    r3.w = r3.w * -2 + 3.14159274;
+    r1.x = cmp(r1.x < -r1.x);
     r1.x = r1.x ? r3.w : 0;
     r1.x = r2.y * r1.w + r1.x;
-    r1.x = 8.148732758e+001 * r1.x;
+    r1.x = 81.4873276 * r1.x;
     r1.x = log2(r1.x);
     r1.w = dot(-r6.xyz, r3.xyz);
     r1.w = r1.w + r1.w;
     r13.xyz = r3.xyz * -r1.www + -r6.xyz;
     r1.w = r2.w * r2.w;
-    r1.xw = float2(6.250000e-001,1.050000e+001) * r1.xw;
+    r1.xw = float2(0.625,10.5) * r1.xw;
     r1.x = max(r1.w, r1.x);
-    r1.w = r3.z < 0.000000000e+000;
-    r2.y = r1.w ? 1 : 0;
-    r14.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r3.xyxy;
-    r3.w = -r2.z * r1.z + 1.000000000e+000;
-    r3.w = max(1.000000047e-003, r3.w);
+    r1.w = cmp(r3.z < 0);
+    r2.y = r1.w ? 0.000000 : 0;
+    r14.xyzw = float4(0.5,-0.5,-0.5,0.5) * r3.xyxy;
+    r3.w = -r2.z * r1.z + 1;
+    r3.w = max(0.00100000005, r3.w);
     r14.xy = r14.xy / r3.ww;
-    r1.z = r2.z * r1.z + 1.000000000e+000;
-    r1.z = max(1.000000047e-003, r1.z);
+    r1.z = r2.z * r1.z + 1;
+    r1.z = max(0.00100000005, r1.z);
     r14.zw = r14.zw / r1.zz;
-    r14.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r14.xyzw;
+    r14.xyzw = float4(0.5,0.5,0.5,0.5) + r14.xyzw;
     r1.zw = r1.ww ? r14.xy : r14.zw;
-    r1.zw = r1.zw * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-    r14.x = r2.y;
-    r14.y = 0.000000000e+000;
+    r1.zw = r1.zw * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+    r14.x = (int)r2.y;
+    r14.y = 0;
     r1.zw = r14.xy + r1.zw;
-    r14.xy = float2(5.000000e-001,1.428571e-001) * r1.zw;
+    r14.xy = float2(0.5,0.142857149) * r1.zw;
     r15.xyz = cb12[114].xyz * r4.yyy;
     r15.xyz = cb12[113].xyz * r4.xxx + r15.xyz;
     r15.xyz = cb12[115].xyz * r4.zzz + r15.xyz;
     r15.xyz = cb12[116].xyz + r15.xyz;
-    r15.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -abs(r15.xyz);
-    r1.z = r7.z != -1.000000;
+    r15.xyz = float3(1,1,1) + -abs(r15.xyz);
+    r1.z = cmp(r7.z != -1.000000);
     if (r1.z != 0) {
       r2.yz = asint(cb12[117].yy) & int2(1,2);
-      r1.w = r2.y ? 1.000000000e+000 : r7.z;
-      r2.y = 1.000000000e+000 + -r7.z;
-      r2.y = r2.z ? 1.000000000e+000 : r2.y;
+      r1.w = r2.y ? 1 : r7.z;
+      r2.y = 1 + -r7.z;
+      r2.y = r2.z ? 1 : r2.y;
       r1.w = r2.y * r1.w;
     } else {
-      r1.w = 1.000000000e+000;
+      r1.w = 1;
     }
-    r16.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000) < r15.xyz;
+    r16.xyz = cmp(float3(0,0,0) < r15.xyz);
     r2.y = r16.y ? r16.x : 0;
     r2.y = r16.z ? r2.y : 0;
-    r2.z = 0.000000000e+000 < r1.w;
+    r2.z = cmp(0 < r1.w);
     r2.y = r2.z ? r2.y : 0;
     if (r2.y != 0) {
       r15.xyz = saturate(cb12[112].xyz * r15.xyz);
       r1.w = cb12[111].x * r1.w;
-      r1.w = 9.999899864e-001 * r1.w;
+      r1.w = 0.999989986 * r1.w;
       r2.y = r15.x * r15.y;
       r2.y = r2.y * r15.z;
       r2.z = r2.y * r1.w;
-      r1.w = r1.w * r2.y + 9.999999747e-006;
+      r1.w = r1.w * r2.y + 9.99999975e-006;
       r2.y = cb12[117].x * r2.z;
-      r2.z = cb12[122].x;
-      r14.z = r2.z * 1.428571492e-001 + r14.y;
-      r15.xyz = t6.SampleLevel(s6_s, r14.xz, 0.000000000e+000).xyz;
+      r2.z = asint(cb12[122].x);
+      r14.z = r2.z * 0.142857149 + r14.y;
+      r15.xyz = t6.SampleLevel(s6_s, r14.xz, 0).xyz;
       r15.xyz = r15.xyz * r2.yyy;
       r16.xyz = cb12[119].xyz * r13.yyy;
       r16.xyz = cb12[118].xyz * r13.xxx + r16.xyz;
@@ -282,7 +291,7 @@ uint3 vThreadIDInGroup : SV_GroupID)
       r17.xyz = cb12[118].xyz * r4.xxx + r17.xyz;
       r17.xyz = cb12[120].xyz * r4.zzz + r17.xyz;
       r17.xyz = cb12[121].xyz + r17.xyz;
-      r16.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r16.xyz;
+      r16.xyz = float3(1,1,1) / r16.xyz;
       r18.xyz = -r17.xyz * r16.xyz + r16.xyz;
       r16.xyz = -r17.xyz * r16.xyz + -r16.xyz;
       r16.xyz = max(r18.xyz, r16.xyz);
@@ -293,55 +302,55 @@ uint3 vThreadIDInGroup : SV_GroupID)
       r2.z = dot(r16.xyz, r16.xyz);
       r2.z = rsqrt(r2.z);
       r16.xyw = r16.xyz * r2.zzz;
-      r3.w = r16.w < 0.000000000e+000;
-      r4.w = r3.w ? 1 : 0;
-      r17.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r16.xyxy;
-      r5.w = -r16.z * r2.z + 1.000000000e+000;
-      r5.w = max(1.000000047e-003, r5.w);
+      r3.w = cmp(r16.w < 0);
+      r4.w = r3.w ? 0.000000 : 0;
+      r17.xyzw = float4(0.5,-0.5,-0.5,0.5) * r16.xyxy;
+      r5.w = -r16.z * r2.z + 1;
+      r5.w = max(0.00100000005, r5.w);
       r16.xy = r17.xy / r5.ww;
-      r2.z = r16.z * r2.z + 1.000000000e+000;
-      r2.z = max(1.000000047e-003, r2.z);
+      r2.z = r16.z * r2.z + 1;
+      r2.z = max(0.00100000005, r2.z);
       r16.zw = r17.zw / r2.zz;
-      r16.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r16.xyzw;
+      r16.xyzw = float4(0.5,0.5,0.5,0.5) + r16.xyzw;
       r16.xy = r3.ww ? r16.xy : r16.zw;
-      r16.xy = r16.xy * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-      r17.y = cb12[122].x;
-      r17.z = r4.w;
-      r17.xw = float2(0.000000e+000,0.000000e+000);
+      r16.xy = r16.xy * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+      r17.y = asint(cb12[122].x);
+      r17.z = (int)r4.w;
+      r17.xw = float2(0,0);
       r16.xy = r17.zw + r16.xy;
       r16.xy = r17.xy + r16.xy;
-      r16.xy = float2(5.000000e-001,1.428571e-001) * r16.xy;
+      r16.xy = float2(0.5,0.142857149) * r16.xy;
       r16.xyz = t7.SampleLevel(s6_s, r16.xy, r1.x).xyz;
       r16.xyz = r16.xyz * r2.yyy;
     } else {
-      r15.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-      r16.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-      r1.w = 9.999999747e-006;
+      r15.xyz = float3(0,0,0);
+      r16.xyz = float3(0,0,0);
+      r1.w = 9.99999975e-006;
     }
-    r2.y = r1.w < 9.990000129e-001;
+    r2.y = cmp(r1.w < 0.999000013);
     if (r2.y != 0) {
       r17.xyz = cb12[126].xyz * r4.yyy;
       r17.xyz = cb12[125].xyz * r4.xxx + r17.xyz;
       r17.xyz = cb12[127].xyz * r4.zzz + r17.xyz;
       r17.xyz = cb12[128].xyz + r17.xyz;
-      r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -abs(r17.xyz);
+      r17.xyz = float3(1,1,1) + -abs(r17.xyz);
       if (r1.z != 0) {
         r18.xy = asint(cb12[129].yy) & int2(1,2);
-        r2.z = r18.x ? 1.000000000e+000 : r7.z;
-        r3.w = 1.000000000e+000 + -r7.z;
-        r3.w = r18.y ? 1.000000000e+000 : r3.w;
+        r2.z = r18.x ? 1 : r7.z;
+        r3.w = 1 + -r7.z;
+        r3.w = r18.y ? 1 : r3.w;
         r2.z = r3.w * r2.z;
       } else {
-        r2.z = 1.000000000e+000;
+        r2.z = 1;
       }
-      r18.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000) < r17.xyz;
+      r18.xyz = cmp(float3(0,0,0) < r17.xyz);
       r3.w = r18.y ? r18.x : 0;
       r3.w = r18.z ? r3.w : 0;
-      r4.w = 0.000000000e+000 < r2.z;
+      r4.w = cmp(0 < r2.z);
       r3.w = r4.w ? r3.w : 0;
       if (r3.w != 0) {
         r17.xyz = saturate(cb12[124].xyz * r17.xyz);
-        r3.w = 1.000000000e+000 + -r1.w;
+        r3.w = 1 + -r1.w;
         r2.z = r3.w * r2.z;
         r2.z = cb12[123].x * r2.z;
         r3.w = r17.x * r17.y;
@@ -349,9 +358,9 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r4.w = r3.w * r2.z;
         r1.w = r2.z * r3.w + r1.w;
         r2.z = cb12[129].x * r4.w;
-        r3.w = cb12[134].x;
-        r14.w = r3.w * 1.428571492e-001 + r14.y;
-        r17.xyz = t6.SampleLevel(s6_s, r14.xw, 0.000000000e+000).xyz;
+        r3.w = asint(cb12[134].x);
+        r14.w = r3.w * 0.142857149 + r14.y;
+        r17.xyz = t6.SampleLevel(s6_s, r14.xw, 0).xyz;
         r15.xyz = r2.zzz * r17.xyz + r15.xyz;
         r17.xyz = cb12[131].xyz * r13.yyy;
         r17.xyz = cb12[130].xyz * r13.xxx + r17.xyz;
@@ -360,7 +369,7 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r18.xyz = cb12[130].xyz * r4.xxx + r18.xyz;
         r18.xyz = cb12[132].xyz * r4.zzz + r18.xyz;
         r18.xyz = cb12[133].xyz + r18.xyz;
-        r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r17.xyz;
+        r17.xyz = float3(1,1,1) / r17.xyz;
         r19.xyz = -r18.xyz * r17.xyz + r17.xyz;
         r17.xyz = -r18.xyz * r17.xyz + -r17.xyz;
         r17.xyz = max(r19.xyz, r17.xyz);
@@ -371,54 +380,54 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r3.w = dot(r17.xyz, r17.xyz);
         r3.w = rsqrt(r3.w);
         r17.xyw = r17.xyz * r3.www;
-        r4.w = r17.w < 0.000000000e+000;
-        r5.w = r4.w ? 1 : 0;
-        r18.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r17.xyxy;
-        r6.w = -r17.z * r3.w + 1.000000000e+000;
-        r6.w = max(1.000000047e-003, r6.w);
+        r4.w = cmp(r17.w < 0);
+        r5.w = r4.w ? 0.000000 : 0;
+        r18.xyzw = float4(0.5,-0.5,-0.5,0.5) * r17.xyxy;
+        r6.w = -r17.z * r3.w + 1;
+        r6.w = max(0.00100000005, r6.w);
         r14.zw = r18.xy / r6.ww;
-        r14.zw = float2(5.000000e-001,5.000000e-001) + r14.zw;
-        r3.w = r17.z * r3.w + 1.000000000e+000;
-        r3.w = max(1.000000047e-003, r3.w);
+        r14.zw = float2(0.5,0.5) + r14.zw;
+        r3.w = r17.z * r3.w + 1;
+        r3.w = max(0.00100000005, r3.w);
         r17.xy = r18.zw / r3.ww;
-        r17.xy = float2(5.000000e-001,5.000000e-001) + r17.xy;
+        r17.xy = float2(0.5,0.5) + r17.xy;
         r14.zw = r4.ww ? r14.zw : r17.xy;
-        r14.zw = r14.zw * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-        r17.y = cb12[134].x;
-        r17.z = r5.w;
-        r17.xw = float2(0.000000e+000,0.000000e+000);
+        r14.zw = r14.zw * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+        r17.y = asint(cb12[134].x);
+        r17.z = (int)r5.w;
+        r17.xw = float2(0,0);
         r14.zw = r17.zw + r14.zw;
         r14.zw = r17.xy + r14.zw;
-        r14.zw = float2(5.000000e-001,1.428571e-001) * r14.zw;
+        r14.zw = float2(0.5,0.142857149) * r14.zw;
         r17.xyz = t7.SampleLevel(s6_s, r14.zw, r1.x).xyz;
         r16.xyz = r2.zzz * r17.xyz + r16.xyz;
       }
     }
-    r2.z = r1.w < 9.990000129e-001;
+    r2.z = cmp(r1.w < 0.999000013);
     r2.y = r2.z ? r2.y : 0;
     if (r2.y != 0) {
       r17.xyz = cb12[138].xyz * r4.yyy;
       r17.xyz = cb12[137].xyz * r4.xxx + r17.xyz;
       r17.xyz = cb12[139].xyz * r4.zzz + r17.xyz;
       r17.xyz = cb12[140].xyz + r17.xyz;
-      r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -abs(r17.xyz);
+      r17.xyz = float3(1,1,1) + -abs(r17.xyz);
       if (r1.z != 0) {
         r14.zw = asint(cb12[141].yy) & int2(1,2);
-        r2.z = r14.z ? 1.000000000e+000 : r7.z;
-        r3.w = 1.000000000e+000 + -r7.z;
-        r3.w = r14.w ? 1.000000000e+000 : r3.w;
+        r2.z = r14.z ? 1 : r7.z;
+        r3.w = 1 + -r7.z;
+        r3.w = r14.w ? 1 : r3.w;
         r2.z = r3.w * r2.z;
       } else {
-        r2.z = 1.000000000e+000;
+        r2.z = 1;
       }
-      r18.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000) < r17.xyz;
+      r18.xyz = cmp(float3(0,0,0) < r17.xyz);
       r3.w = r18.y ? r18.x : 0;
       r3.w = r18.z ? r3.w : 0;
-      r4.w = 0.000000000e+000 < r2.z;
+      r4.w = cmp(0 < r2.z);
       r3.w = r4.w ? r3.w : 0;
       if (r3.w != 0) {
         r17.xyz = saturate(cb12[136].xyz * r17.xyz);
-        r3.w = 1.000000000e+000 + -r1.w;
+        r3.w = 1 + -r1.w;
         r2.z = r3.w * r2.z;
         r2.z = cb12[135].x * r2.z;
         r3.w = r17.x * r17.y;
@@ -426,10 +435,10 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r4.w = r3.w * r2.z;
         r1.w = r2.z * r3.w + r1.w;
         r2.z = cb12[141].x * r4.w;
-        r3.w = cb12[146].x;
-        r17.y = r3.w * 1.428571492e-001 + r14.y;
+        r3.w = asint(cb12[146].x);
+        r17.y = r3.w * 0.142857149 + r14.y;
         r17.x = r14.x;
-        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0.000000000e+000).xyz;
+        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0).xyz;
         r15.xyz = r2.zzz * r17.xyz + r15.xyz;
         r17.xyz = cb12[143].xyz * r13.yyy;
         r17.xyz = cb12[142].xyz * r13.xxx + r17.xyz;
@@ -438,7 +447,7 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r18.xyz = cb12[142].xyz * r4.xxx + r18.xyz;
         r18.xyz = cb12[144].xyz * r4.zzz + r18.xyz;
         r18.xyz = cb12[145].xyz + r18.xyz;
-        r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r17.xyz;
+        r17.xyz = float3(1,1,1) / r17.xyz;
         r19.xyz = -r18.xyz * r17.xyz + r17.xyz;
         r17.xyz = -r18.xyz * r17.xyz + -r17.xyz;
         r17.xyz = max(r19.xyz, r17.xyz);
@@ -449,54 +458,54 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r3.w = dot(r17.xyz, r17.xyz);
         r3.w = rsqrt(r3.w);
         r17.xyw = r17.xyz * r3.www;
-        r4.w = r17.w < 0.000000000e+000;
-        r5.w = r4.w ? 1 : 0;
-        r18.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r17.xyxy;
-        r6.w = -r17.z * r3.w + 1.000000000e+000;
-        r6.w = max(1.000000047e-003, r6.w);
+        r4.w = cmp(r17.w < 0);
+        r5.w = r4.w ? 0.000000 : 0;
+        r18.xyzw = float4(0.5,-0.5,-0.5,0.5) * r17.xyxy;
+        r6.w = -r17.z * r3.w + 1;
+        r6.w = max(0.00100000005, r6.w);
         r14.zw = r18.xy / r6.ww;
-        r14.zw = float2(5.000000e-001,5.000000e-001) + r14.zw;
-        r3.w = r17.z * r3.w + 1.000000000e+000;
-        r3.w = max(1.000000047e-003, r3.w);
+        r14.zw = float2(0.5,0.5) + r14.zw;
+        r3.w = r17.z * r3.w + 1;
+        r3.w = max(0.00100000005, r3.w);
         r17.xy = r18.zw / r3.ww;
-        r17.xy = float2(5.000000e-001,5.000000e-001) + r17.xy;
+        r17.xy = float2(0.5,0.5) + r17.xy;
         r14.zw = r4.ww ? r14.zw : r17.xy;
-        r14.zw = r14.zw * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-        r17.y = cb12[146].x;
-        r17.z = r5.w;
-        r17.xw = float2(0.000000e+000,0.000000e+000);
+        r14.zw = r14.zw * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+        r17.y = asint(cb12[146].x);
+        r17.z = (int)r5.w;
+        r17.xw = float2(0,0);
         r14.zw = r17.zw + r14.zw;
         r14.zw = r17.xy + r14.zw;
-        r14.zw = float2(5.000000e-001,1.428571e-001) * r14.zw;
+        r14.zw = float2(0.5,0.142857149) * r14.zw;
         r17.xyz = t7.SampleLevel(s6_s, r14.zw, r1.x).xyz;
         r16.xyz = r2.zzz * r17.xyz + r16.xyz;
       }
     }
-    r2.z = r1.w < 9.990000129e-001;
+    r2.z = cmp(r1.w < 0.999000013);
     r2.y = r2.z ? r2.y : 0;
     if (r2.y != 0) {
       r17.xyz = cb12[150].xyz * r4.yyy;
       r17.xyz = cb12[149].xyz * r4.xxx + r17.xyz;
       r17.xyz = cb12[151].xyz * r4.zzz + r17.xyz;
       r17.xyz = cb12[152].xyz + r17.xyz;
-      r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -abs(r17.xyz);
+      r17.xyz = float3(1,1,1) + -abs(r17.xyz);
       if (r1.z != 0) {
         r14.zw = asint(cb12[153].yy) & int2(1,2);
-        r2.z = r14.z ? 1.000000000e+000 : r7.z;
-        r3.w = 1.000000000e+000 + -r7.z;
-        r3.w = r14.w ? 1.000000000e+000 : r3.w;
+        r2.z = r14.z ? 1 : r7.z;
+        r3.w = 1 + -r7.z;
+        r3.w = r14.w ? 1 : r3.w;
         r2.z = r3.w * r2.z;
       } else {
-        r2.z = 1.000000000e+000;
+        r2.z = 1;
       }
-      r18.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000) < r17.xyz;
+      r18.xyz = cmp(float3(0,0,0) < r17.xyz);
       r3.w = r18.y ? r18.x : 0;
       r3.w = r18.z ? r3.w : 0;
-      r4.w = 0.000000000e+000 < r2.z;
+      r4.w = cmp(0 < r2.z);
       r3.w = r4.w ? r3.w : 0;
       if (r3.w != 0) {
         r17.xyz = saturate(cb12[148].xyz * r17.xyz);
-        r3.w = 1.000000000e+000 + -r1.w;
+        r3.w = 1 + -r1.w;
         r2.z = r3.w * r2.z;
         r2.z = cb12[147].x * r2.z;
         r3.w = r17.x * r17.y;
@@ -504,10 +513,10 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r4.w = r3.w * r2.z;
         r1.w = r2.z * r3.w + r1.w;
         r2.z = cb12[153].x * r4.w;
-        r3.w = cb12[158].x;
-        r17.y = r3.w * 1.428571492e-001 + r14.y;
+        r3.w = asint(cb12[158].x);
+        r17.y = r3.w * 0.142857149 + r14.y;
         r17.x = r14.x;
-        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0.000000000e+000).xyz;
+        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0).xyz;
         r15.xyz = r2.zzz * r17.xyz + r15.xyz;
         r17.xyz = cb12[155].xyz * r13.yyy;
         r17.xyz = cb12[154].xyz * r13.xxx + r17.xyz;
@@ -516,7 +525,7 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r18.xyz = cb12[154].xyz * r4.xxx + r18.xyz;
         r18.xyz = cb12[156].xyz * r4.zzz + r18.xyz;
         r18.xyz = cb12[157].xyz + r18.xyz;
-        r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r17.xyz;
+        r17.xyz = float3(1,1,1) / r17.xyz;
         r19.xyz = -r18.xyz * r17.xyz + r17.xyz;
         r17.xyz = -r18.xyz * r17.xyz + -r17.xyz;
         r17.xyz = max(r19.xyz, r17.xyz);
@@ -527,54 +536,54 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r3.w = dot(r17.xyz, r17.xyz);
         r3.w = rsqrt(r3.w);
         r17.xyw = r17.xyz * r3.www;
-        r4.w = r17.w < 0.000000000e+000;
-        r5.w = r4.w ? 1 : 0;
-        r18.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r17.xyxy;
-        r6.w = -r17.z * r3.w + 1.000000000e+000;
-        r6.w = max(1.000000047e-003, r6.w);
+        r4.w = cmp(r17.w < 0);
+        r5.w = r4.w ? 0.000000 : 0;
+        r18.xyzw = float4(0.5,-0.5,-0.5,0.5) * r17.xyxy;
+        r6.w = -r17.z * r3.w + 1;
+        r6.w = max(0.00100000005, r6.w);
         r14.zw = r18.xy / r6.ww;
-        r14.zw = float2(5.000000e-001,5.000000e-001) + r14.zw;
-        r3.w = r17.z * r3.w + 1.000000000e+000;
-        r3.w = max(1.000000047e-003, r3.w);
+        r14.zw = float2(0.5,0.5) + r14.zw;
+        r3.w = r17.z * r3.w + 1;
+        r3.w = max(0.00100000005, r3.w);
         r17.xy = r18.zw / r3.ww;
-        r17.xy = float2(5.000000e-001,5.000000e-001) + r17.xy;
+        r17.xy = float2(0.5,0.5) + r17.xy;
         r14.zw = r4.ww ? r14.zw : r17.xy;
-        r14.zw = r14.zw * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-        r17.y = cb12[158].x;
-        r17.z = r5.w;
-        r17.xw = float2(0.000000e+000,0.000000e+000);
+        r14.zw = r14.zw * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+        r17.y = asint(cb12[158].x);
+        r17.z = (int)r5.w;
+        r17.xw = float2(0,0);
         r14.zw = r17.zw + r14.zw;
         r14.zw = r17.xy + r14.zw;
-        r14.zw = float2(5.000000e-001,1.428571e-001) * r14.zw;
+        r14.zw = float2(0.5,0.142857149) * r14.zw;
         r17.xyz = t7.SampleLevel(s6_s, r14.zw, r1.x).xyz;
         r16.xyz = r2.zzz * r17.xyz + r16.xyz;
       }
     }
-    r2.z = r1.w < 9.990000129e-001;
+    r2.z = cmp(r1.w < 0.999000013);
     r2.y = r2.z ? r2.y : 0;
     if (r2.y != 0) {
       r17.xyz = cb12[162].xyz * r4.yyy;
       r17.xyz = cb12[161].xyz * r4.xxx + r17.xyz;
       r17.xyz = cb12[163].xyz * r4.zzz + r17.xyz;
       r17.xyz = cb12[164].xyz + r17.xyz;
-      r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -abs(r17.xyz);
+      r17.xyz = float3(1,1,1) + -abs(r17.xyz);
       if (r1.z != 0) {
         r14.zw = asint(cb12[165].yy) & int2(1,2);
-        r2.z = r14.z ? 1.000000000e+000 : r7.z;
-        r3.w = 1.000000000e+000 + -r7.z;
-        r3.w = r14.w ? 1.000000000e+000 : r3.w;
+        r2.z = r14.z ? 1 : r7.z;
+        r3.w = 1 + -r7.z;
+        r3.w = r14.w ? 1 : r3.w;
         r2.z = r3.w * r2.z;
       } else {
-        r2.z = 1.000000000e+000;
+        r2.z = 1;
       }
-      r18.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000) < r17.xyz;
+      r18.xyz = cmp(float3(0,0,0) < r17.xyz);
       r3.w = r18.y ? r18.x : 0;
       r3.w = r18.z ? r3.w : 0;
-      r4.w = 0.000000000e+000 < r2.z;
+      r4.w = cmp(0 < r2.z);
       r3.w = r4.w ? r3.w : 0;
       if (r3.w != 0) {
         r17.xyz = saturate(cb12[160].xyz * r17.xyz);
-        r3.w = 1.000000000e+000 + -r1.w;
+        r3.w = 1 + -r1.w;
         r2.z = r3.w * r2.z;
         r2.z = cb12[159].x * r2.z;
         r3.w = r17.x * r17.y;
@@ -582,10 +591,10 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r4.w = r3.w * r2.z;
         r1.w = r2.z * r3.w + r1.w;
         r2.z = cb12[165].x * r4.w;
-        r3.w = cb12[170].x;
-        r17.y = r3.w * 1.428571492e-001 + r14.y;
+        r3.w = asint(cb12[170].x);
+        r17.y = r3.w * 0.142857149 + r14.y;
         r17.x = r14.x;
-        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0.000000000e+000).xyz;
+        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0).xyz;
         r15.xyz = r2.zzz * r17.xyz + r15.xyz;
         r17.xyz = cb12[167].xyz * r13.yyy;
         r17.xyz = cb12[166].xyz * r13.xxx + r17.xyz;
@@ -594,7 +603,7 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r18.xyz = cb12[166].xyz * r4.xxx + r18.xyz;
         r18.xyz = cb12[168].xyz * r4.zzz + r18.xyz;
         r18.xyz = cb12[169].xyz + r18.xyz;
-        r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r17.xyz;
+        r17.xyz = float3(1,1,1) / r17.xyz;
         r19.xyz = -r18.xyz * r17.xyz + r17.xyz;
         r17.xyz = -r18.xyz * r17.xyz + -r17.xyz;
         r17.xyz = max(r19.xyz, r17.xyz);
@@ -605,54 +614,54 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r3.w = dot(r17.xyz, r17.xyz);
         r3.w = rsqrt(r3.w);
         r17.xyw = r17.xyz * r3.www;
-        r4.w = r17.w < 0.000000000e+000;
-        r5.w = r4.w ? 1 : 0;
-        r18.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r17.xyxy;
-        r6.w = -r17.z * r3.w + 1.000000000e+000;
-        r6.w = max(1.000000047e-003, r6.w);
+        r4.w = cmp(r17.w < 0);
+        r5.w = r4.w ? 0.000000 : 0;
+        r18.xyzw = float4(0.5,-0.5,-0.5,0.5) * r17.xyxy;
+        r6.w = -r17.z * r3.w + 1;
+        r6.w = max(0.00100000005, r6.w);
         r14.zw = r18.xy / r6.ww;
-        r14.zw = float2(5.000000e-001,5.000000e-001) + r14.zw;
-        r3.w = r17.z * r3.w + 1.000000000e+000;
-        r3.w = max(1.000000047e-003, r3.w);
+        r14.zw = float2(0.5,0.5) + r14.zw;
+        r3.w = r17.z * r3.w + 1;
+        r3.w = max(0.00100000005, r3.w);
         r17.xy = r18.zw / r3.ww;
-        r17.xy = float2(5.000000e-001,5.000000e-001) + r17.xy;
+        r17.xy = float2(0.5,0.5) + r17.xy;
         r14.zw = r4.ww ? r14.zw : r17.xy;
-        r14.zw = r14.zw * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-        r17.y = cb12[170].x;
-        r17.z = r5.w;
-        r17.xw = float2(0.000000e+000,0.000000e+000);
+        r14.zw = r14.zw * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+        r17.y = asint(cb12[170].x);
+        r17.z = (int)r5.w;
+        r17.xw = float2(0,0);
         r14.zw = r17.zw + r14.zw;
         r14.zw = r17.xy + r14.zw;
-        r14.zw = float2(5.000000e-001,1.428571e-001) * r14.zw;
+        r14.zw = float2(0.5,0.142857149) * r14.zw;
         r17.xyz = t7.SampleLevel(s6_s, r14.zw, r1.x).xyz;
         r16.xyz = r2.zzz * r17.xyz + r16.xyz;
       }
     }
-    r2.z = r1.w < 9.990000129e-001;
+    r2.z = cmp(r1.w < 0.999000013);
     r2.y = r2.z ? r2.y : 0;
     if (r2.y != 0) {
       r17.xyz = cb12[174].xyz * r4.yyy;
       r17.xyz = cb12[173].xyz * r4.xxx + r17.xyz;
       r17.xyz = cb12[175].xyz * r4.zzz + r17.xyz;
       r17.xyz = cb12[176].xyz + r17.xyz;
-      r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -abs(r17.xyz);
+      r17.xyz = float3(1,1,1) + -abs(r17.xyz);
       if (r1.z != 0) {
         r2.yz = asint(cb12[177].yy) & int2(1,2);
-        r1.z = r2.y ? 1.000000000e+000 : r7.z;
-        r2.y = 1.000000000e+000 + -r7.z;
-        r2.y = r2.z ? 1.000000000e+000 : r2.y;
+        r1.z = r2.y ? 1 : r7.z;
+        r2.y = 1 + -r7.z;
+        r2.y = r2.z ? 1 : r2.y;
         r1.z = r2.y * r1.z;
       } else {
-        r1.z = 1.000000000e+000;
+        r1.z = 1;
       }
-      r18.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000) < r17.xyz;
+      r18.xyz = cmp(float3(0,0,0) < r17.xyz);
       r2.y = r18.y ? r18.x : 0;
       r2.y = r18.z ? r2.y : 0;
-      r2.z = 0.000000000e+000 < r1.z;
+      r2.z = cmp(0 < r1.z);
       r2.y = r2.z ? r2.y : 0;
       if (r2.y != 0) {
         r17.xyz = saturate(cb12[172].xyz * r17.xyz);
-        r2.y = 1.000000000e+000 + -r1.w;
+        r2.y = 1 + -r1.w;
         r1.z = r2.y * r1.z;
         r1.z = cb12[171].x * r1.z;
         r2.y = r17.x * r17.y;
@@ -660,10 +669,10 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r2.z = r2.y * r1.z;
         r1.w = r1.z * r2.y + r1.w;
         r1.z = cb12[177].x * r2.z;
-        r2.y = cb12[182].x;
-        r17.y = r2.y * 1.428571492e-001 + r14.y;
+        r2.y = asint(cb12[182].x);
+        r17.y = r2.y * 0.142857149 + r14.y;
         r17.x = r14.x;
-        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0.000000000e+000).xyz;
+        r17.xyz = t6.SampleLevel(s6_s, r17.xy, 0).xyz;
         r15.xyz = r1.zzz * r17.xyz + r15.xyz;
         r17.xyz = cb12[179].xyz * r13.yyy;
         r17.xyz = cb12[178].xyz * r13.xxx + r17.xyz;
@@ -672,7 +681,7 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r18.xyz = cb12[178].xyz * r4.xxx + r18.xyz;
         r18.xyz = cb12[180].xyz * r4.zzz + r18.xyz;
         r18.xyz = cb12[181].xyz + r18.xyz;
-        r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) / r17.xyz;
+        r17.xyz = float3(1,1,1) / r17.xyz;
         r19.xyz = -r18.xyz * r17.xyz + r17.xyz;
         r17.xyz = -r18.xyz * r17.xyz + -r17.xyz;
         r17.xyz = max(r19.xyz, r17.xyz);
@@ -683,60 +692,60 @@ uint3 vThreadIDInGroup : SV_GroupID)
         r2.y = dot(r4.xyz, r4.xyz);
         r2.y = rsqrt(r2.y);
         r4.xyw = r4.xyz * r2.yyy;
-        r2.z = r4.w < 0.000000000e+000;
-        r3.w = r2.z ? 1 : 0;
-        r17.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r4.xyxy;
-        r4.x = -r4.z * r2.y + 1.000000000e+000;
-        r4.x = max(1.000000047e-003, r4.x);
+        r2.z = cmp(r4.w < 0);
+        r3.w = r2.z ? 0.000000 : 0;
+        r17.xyzw = float4(0.5,-0.5,-0.5,0.5) * r4.xyxy;
+        r4.x = -r4.z * r2.y + 1;
+        r4.x = max(0.00100000005, r4.x);
         r4.xy = r17.xy / r4.xx;
-        r2.y = r4.z * r2.y + 1.000000000e+000;
-        r2.y = max(1.000000047e-003, r2.y);
+        r2.y = r4.z * r2.y + 1;
+        r2.y = max(0.00100000005, r2.y);
         r4.zw = r17.zw / r2.yy;
-        r4.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r4.xyzw;
+        r4.xyzw = float4(0.5,0.5,0.5,0.5) + r4.xyzw;
         r2.yz = r2.zz ? r4.xy : r4.zw;
-        r2.yz = r2.yz * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-        r4.y = cb12[182].x;
-        r4.z = r3.w;
-        r4.xw = float2(0.000000e+000,0.000000e+000);
+        r2.yz = r2.yz * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+        r4.y = asint(cb12[182].x);
+        r4.z = (int)r3.w;
+        r4.xw = float2(0,0);
         r2.yz = r4.zw + r2.yz;
         r2.yz = r4.xy + r2.yz;
-        r2.yz = float2(5.000000e-001,1.428571e-001) * r2.yz;
+        r2.yz = float2(0.5,0.142857149) * r2.yz;
         r4.xyz = t7.SampleLevel(s6_s, r2.yz, r1.x).xyz;
         r16.xyz = r1.zzz * r4.xyz + r16.xyz;
       }
     }
-    r1.z = r1.w < 9.990000129e-001;
+    r1.z = cmp(r1.w < 0.999000013);
     if (r1.z != 0) {
-      r1.z = 1.000000000e+000 + -r1.w;
+      r1.z = 1 + -r1.w;
       r2.y = cb12[99].x * r1.z;
       r1.w = r1.z * cb12[99].x + r1.w;
       r1.z = cb12[105].x * r2.y;
-      r2.y = cb12[110].x;
-      r14.y = r2.y * 1.428571492e-001 + r14.y;
-      r4.xyz = t6.SampleLevel(s6_s, r14.xy, 0.000000000e+000).xyz;
+      r2.y = asint(cb12[110].x);
+      r14.y = r2.y * 0.142857149 + r14.y;
+      r4.xyz = t6.SampleLevel(s6_s, r14.xy, 0).xyz;
       r15.xyz = r1.zzz * r4.xyz + r15.xyz;
-      r2.y = r13.z < 0.000000000e+000;
-      r2.z = r2.y ? 1 : 0;
-      r4.xyzw = float4(5.000000e-001,-5.000000e-001,-5.000000e-001,5.000000e-001) * r13.xyxy;
-      r3.w = 1.000000000e+000 + -r13.z;
-      r3.w = max(1.000000047e-003, r3.w);
+      r2.y = cmp(r13.z < 0);
+      r2.z = r2.y ? 0.000000 : 0;
+      r4.xyzw = float4(0.5,-0.5,-0.5,0.5) * r13.xyxy;
+      r3.w = 1 + -r13.z;
+      r3.w = max(0.00100000005, r3.w);
       r4.xy = r4.xy / r3.ww;
-      r3.w = 1.000000000e+000 + r13.z;
-      r3.w = max(1.000000047e-003, r3.w);
+      r3.w = 1 + r13.z;
+      r3.w = max(0.00100000005, r3.w);
       r4.zw = r4.zw / r3.ww;
-      r4.xyzw = float4(5.000000e-001,5.000000e-001,5.000000e-001,5.000000e-001) + r4.xyzw;
+      r4.xyzw = float4(0.5,0.5,0.5,0.5) + r4.xyzw;
       r4.xy = r2.yy ? r4.xy : r4.zw;
-      r4.xy = r4.xy * float2(6.666666e-001,6.666666e-001) + float2(1.666667e-001,1.666667e-001);
-      r13.y = cb12[110].x;
-      r13.z = r2.z;
-      r13.xw = float2(0.000000e+000,0.000000e+000);
+      r4.xy = r4.xy * float2(0.666666627,0.666666627) + float2(0.166666672,0.166666672);
+      r13.y = asint(cb12[110].x);
+      r13.z = (int)r2.z;
+      r13.xw = float2(0,0);
       r2.yz = r13.zw + r4.xy;
       r2.yz = r13.xy + r2.yz;
-      r2.yz = float2(5.000000e-001,1.428571e-001) * r2.yz;
+      r2.yz = float2(0.5,0.142857149) * r2.yz;
       r4.xyz = t7.SampleLevel(s6_s, r2.yz, r1.x).xyz;
       r16.xyz = r1.zzz * r4.xyz + r16.xyz;
     }
-    r1.x = 1.000000e+000 / r1.w;
+    r1.x = 1 / r1.w;
     r4.xyz = r15.xyz * r1.xxx;
     r1.xzw = r16.xyz * r1.xxx;
     r2.y = t3.Load(r0.xyw).y;
@@ -753,30 +762,30 @@ uint3 vThreadIDInGroup : SV_GroupID)
     r4.xyz = r10.xyz * r4.xyz;
     r2.y = dot(r3.xyz, r6.xyz);
     r2.y = max(abs(r2.y), abs(r2.y));
-    r2.y = 1.000000000e+000 + -r2.y;
-    r2.y = max(0.000000000e+000, r2.y);
+    r2.y = 1 + -r2.y;
+    r2.y = max(0, r2.y);
     r2.z = r2.y * r2.y;
     r2.z = r2.z * r2.z;
     r2.y = r2.z * r2.y;
-    r2.z = 1.000000000e+000 + -r2.w;
+    r2.z = 1 + -r2.w;
     r2.x = min(cb13[56].y, r2.x);
-    r3.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r8.xyz;
-    r3.xyz = max(float3(0.000000e+000,0.000000e+000,0.000000e+000), r3.xyz);
+    r3.xyz = float3(1,1,1) + -r8.xyz;
+    r3.xyz = max(float3(0,0,0), r3.xyz);
     r3.xyz = r3.xyz * r2.xxx;
     r2.xyw = r3.xyz * r2.yyy;
-    r3.x = 1.000000000e+000 + cb13[56].w;
+    r3.x = 1 + cb13[56].w;
     r2.z = -cb13[56].w * r2.z + r3.x;
     r2.xyz = r2.xyw / r2.zzz;
     r2.xyz = r8.xyz + r2.xyz;
-    r3.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r2.xyz;
+    r3.xyz = float3(1,1,1) + -r2.xyz;
     r3.xyz = r4.xyz * r3.xyz;
     r1.xzw = r11.xyz * r1.xzw;
     r1.xzw = r1.xzw * r2.xyz;
     r2.xyz = saturate(r7.xxx * cb12[186].xyz + cb12[187].xyz);
-    r2.w = -1.000000000e+000 + cb12[69].z;
-    r1.y = r1.y * r2.w + 1.000000000e+000;
-    r2.xyz = float3(-1.000000e+000,-1.000000e+000,-1.000000e+000) + r2.xyz;
-    r2.xyz = r1.yyy * r2.xyz + float3(1.000000e+000,1.000000e+000,1.000000e+000);
+    r2.w = -1 + cb12[69].z;
+    r1.y = r1.y * r2.w + 1;
+    r2.xyz = float3(-1,-1,-1) + r2.xyz;
+    r2.xyz = r1.yyy * r2.xyz + float3(1,1,1);
     r4.xyz = r7.www * r2.xyz;
     r2.xyz = cb12[69].xxx * r2.xyz + cb12[69].yyy;
     r3.xyz = r4.xyz * r3.xyz;
@@ -784,24 +793,23 @@ uint3 vThreadIDInGroup : SV_GroupID)
     r4.xyz = r9.xyz * r2.xyz;
     r2.xyz = r5.xyz * r2.xyz;
   } else {
-    r3.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-    r4.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-    r2.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
-    r1.xyz = float3(0.000000e+000,0.000000e+000,0.000000e+000);
+    r3.xyz = float3(0,0,0);
+    r4.xyz = float3(0,0,0);
+    r2.xyz = float3(0,0,0);
+    r1.xyz = float3(0,0,0);
   }
   r5.xyz = t1.Load(r0.xyz).xyz;
   r5.xyz = log2(r5.xyz);
-  r5.xyz = float3(2.200000e+000,2.200000e+000,2.200000e+000) * r5.xyz;
+  r5.xyz = float3(2.20000005,2.20000005,2.20000005) * r5.xyz;
   r5.xyz = exp2(r5.xyz);
   r3.xyz = r4.xyz + r3.xyz;
-  r3.xyz = max(float3(0.000000e+000,0.000000e+000,0.000000e+000), r3.xyz);
+  r3.xyz = max(float3(0,0,0), r3.xyz);
   r1.xyz = r2.xyz + r1.xyz;
-  r1.xyz = max(float3(0.000000e+000,0.000000e+000,0.000000e+000), r1.xyz);
+  r1.xyz = max(float3(0,0,0), r1.xyz);
   r1.xyz = r5.xyz * r3.xyz + r1.xyz;
-  r1.w = 1.000000000e+000;
-// No code for instruction (needs manual fix):
-// store_uav_typed u0.xyzw, r0.xyyy, r1.xyzw
-u0[r0.xy] = r1.xyzw;
+  r1.w = 1;
+
+  u0[r0.xy] = r1.xyzw;  // store_uav_typed u0.xyzw, r0.xyyy, r1.xyzw
   return;
 }
 
@@ -1606,5 +1614,5 @@ ret
 
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-T:\Games\The Witcher 3 Wild Hunt\bin\wrapper1349(39,21-34): error X3004: undeclared identifier 'vThreadGroupID'
+W:\Games\The Witcher 3 Wild Hunt\bin\x64\ShaderCache\83a811dcee708d9b-cs_replace.txt(49,21-34): error X3004: undeclared identifier 'vThreadGroupID'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

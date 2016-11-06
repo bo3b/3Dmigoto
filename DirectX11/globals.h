@@ -299,6 +299,7 @@ struct Globals
 	bool SCREEN_ALLOW_COMMANDS;
 
 	int marking_mode;
+	int mark_snapshot;
 	bool gForceStereo;
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;
@@ -487,6 +488,7 @@ struct Globals
 		SCREEN_ALLOW_COMMANDS(false),
 
 		marking_mode(-1),
+		mark_snapshot(2),
 		gForceStereo(false),
 		gCreateStereoProfile(false),
 		gSurfaceCreateMode(-1),

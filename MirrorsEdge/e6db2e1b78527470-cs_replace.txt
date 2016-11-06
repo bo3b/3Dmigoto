@@ -1,0 +1,638 @@
+// Tile Lights 5
+
+cbuffer cbPunctualLightInfo : register(b1)
+{
+
+  struct
+  {
+
+    struct
+    {
+      float3 pos;
+      float invSqrAttenuationRadius;
+      float3 color;
+      float attenuationOffset;
+      float3 matrixForward;
+      float diffuseScale;
+      float3 matrixUp;
+      float specularScale;
+      float3 matrixLeft;
+      float shadowDimmer;
+      float angleScale;
+      float angleOffset;
+      float2 unused;
+    } baseLight;
+
+
+    struct
+    {
+      float enable;
+      float volumeShadowMapIndex;
+      float invAttenuationRadius;
+      float tanAngle;
+    } vShadow;
+
+  } g_lightInfoPunctual[128] : packoffset(c0);
+
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4x4 invViewProjectionMatrix : packoffset(c0);
+  float4 g_exposureMultipliers : packoffset(c4);
+  float localIblMipmapBias : packoffset(c5);
+  float screenAspectRatio : packoffset(c5.y);
+  float2 invResolution : packoffset(c5.z);
+  float4 shadowMapSizeAndInvSize : packoffset(c6);
+  uint forceSplitLighting : packoffset(c7);
+  uint sssScatteringEnables : packoffset(c7.y);
+  float volumetricShadowmapHalfTexelOffset : packoffset(c7.z);
+  float volumetricShadowmapOneMinusHalfTexelOffset : packoffset(c7.w);
+  float volumetricShadowmapInvMaxCount : packoffset(c8);
+  float dynamicAOFactor : packoffset(c8.y);
+  uint tileCountX : packoffset(c8.z);
+  uint pad1 : packoffset(c8.w);
+  float4x3 g_normalBasisTransforms[6] : packoffset(c9);
+}
+
+SamplerState g_linearSampler_s : register(s0);
+Texture2D<float4> g_gbufferTexture0 : register(t0);
+Texture2D<float4> g_gbufferTexture1 : register(t1);
+Texture2D<float4> g_gbufferTexture2 : register(t2);
+Texture2D<float> g_depthTexture : register(t6);
+Texture2D<float> g_diffuseOcclusionTexture : register(t10);
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+// Hand fix to copy these for definitions
+
+// Resource bind info for g_lightCullInput
+// {
+//
+//   uint4 $Element;                    // Offset:    0 Size:    16
+//
+// }
+StructuredBuffer<uint4> g_lightCullInput : register(t19);
+
+//
+// Resource bind info for g_lightIndexInput
+// {
+//
+//   uint $Element;                     // Offset:    0 Size:     4
+//
+// }
+StructuredBuffer<uint> g_lightIndexInput : register(t20);
+
+//
+// Resource bind info for g_compactTileGridBuffer
+// {
+//
+//   uint $Element;                     // Offset:    0 Size:     4
+//
+// }
+StructuredBuffer<uint> g_compactTileGridBuffer : register(t24);
+
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+RWTexture2D<float4> g_outputTexture0 : register(u0); 
+
+// Manual fix for group shared registers
+// unknown dcl_: dcl_tgsm_raw g0, 4
+// unknown dcl_: dcl_tgsm_raw g1, 4
+groupshared uint g0;
+groupshared uint g1;
+
+// Manual fix for
+// unknown dcl_: dcl_thread_group 16, 16, 1
+[numthreads(16, 16, 1)]  
+
+void main(
+uint3 vThreadGroupID : SV_GroupID,
+uint3 vThreadIDInGroup : SV_GroupThreadID,
+uint vThreadIDInGroupFlattened : SV_GroupIndex
+)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Using different variables here than the standard r0,r1 type floats allows us
+// to avoid a lot of float->uint conversions and back.
+
+	uint4 tileIndex = g_compactTileGridBuffer[vThreadGroupID.x]; // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
+  uint4 tile = tileIndex.x >> 16;                       // r1.x = (uint)r0.x >> 16;
+  tile.yzw = tileIndex.xxx & int3(0x0000ffff, 0x0000ffff, 0x0000ffff); // r1.yzw = (int3)r0.xxx & int3(0,0,0); and r1.yzw, r0.xxxx, l(0, 0x0000ffff, 0x0000ffff, 0x0000ffff)
+  tileIndex.xyzw = mad((int4)tile.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);  // r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
+  
+  if (vThreadIDInGroupFlattened.x == 0) {
+    tile.x = mad((int)tile.w, tileCountX, (int)tile.x); // r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
+    tile.xy = g_lightCullInput[tile.x].xy;              // ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xy, r1.x, l(0), t19.xyxx
+    tile.y = tile.y & 0x0000ffff;                       // r1.y = (int)r1.y & 0x0000ffff;
+    g0.x = tile.x;                                      // store_raw g0.x, l(0), r1.x
+    g1.x = tile.y;                                      // store_raw g1.x, l(0), r1.y
+  }
+  
+  GroupMemoryBarrierWithGroupSync();
+  
+  r1.xy = (uint2)tileIndex.xw;                          // r1.xy = (uint2)r0.xw;
+  
+  r1.zw = float2(0.5,0.5) + r1.xy;
+  r1.zw = invResolution.xy * r1.zw;
+  r2.xy = (int2)r1.xy;
+  r2.zw = float2(0,0);
+  r3.xyzw = g_gbufferTexture0.Load(r2.xyw).xyzw;
+  r4.xyzw = g_gbufferTexture1.Load(r2.xyw).xyzw;
+  r1.xy = g_gbufferTexture2.Load(r2.xyw).yz;
+  r2.z = g_depthTexture.Load(r2.xyz).x;
+  r4.w = 6 * r4.w;
+  r4.w = round(r4.w);
+  r4.w = (uint)r4.w;
+  r5.xy = r3.xy * float2(2,2) + float2(-1,-1);
+  r3.x = dot(r5.xy, r5.xy);
+  r3.x = min(1, r3.x);
+  r3.x = 1 + -r3.x;
+  r5.z = sqrt(r3.x);
+  r3.x = (int)r4.w * 3;
+  r6.x = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m00_m10_m20);
+  r6.y = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m01_m11_m21);
+  r6.z = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m02_m12_m22);
+  r3.x = 1 + -r3.z;
+  r3.y = 3 * r3.w;
+  r3.y = round(r3.y);
+  r3.y = (int)r3.y;
+  r3.y = cmp((int)r3.y == 1);
+  r1.x = r3.y ? 0 : r1.x;
+  r3.y = 1 + -r1.x;
+  r3.yzw = r4.xyz * r3.yyy;
+  r1.y = r1.y * r1.y;
+  r4.w = 0.159999996 * r1.y;
+  r4.xyz = -r1.yyy * float3(0.159999996,0.159999996,0.159999996) + r4.xyz;
+  r4.xyz = r1.xxx * r4.xyz + r4.www;
+  r1.x = dot(r4.xyz, float3(0.330000013,0.330000013,0.330000013));
+  r1.x = saturate(50 * r1.x);
+  r1.y = r3.x * r3.x;
+  r5.xy = r1.zw * float2(2,2) + float2(-1,-1);
+  r2.xy = float2(1,-1) * r5.xy;
+  r2.w = 1;
+  r5.x = dot(r2.xyzw, invViewProjectionMatrix._m00_m10_m20_m30);
+  r5.y = dot(r2.xyzw, invViewProjectionMatrix._m01_m11_m21_m31);
+  r5.z = dot(r2.xyzw, invViewProjectionMatrix._m02_m12_m22_m32);
+  r2.x = dot(r2.xyzw, invViewProjectionMatrix._m03_m13_m23_m33);
+  r2.x = 1 / r2.x;
+  r2.yzw = r5.xyz * r2.xxx;
+  r4.w = dot(-r2.yzw, -r2.yzw);
+  r4.w = rsqrt(r4.w);
+  r7.xyz = r4.www * -r2.yzw;
+  r5.w = dot(r6.xyz, r7.xyz);
+  r6.w = saturate(r5.w);
+  r1.z = g_diffuseOcclusionTexture.SampleLevel(g_linearSampler_s, r1.zw, 0).x;
+  
+  uint start = g0.x;                // ld_raw r1.w, l(0), g0.xxxx
+  uint loopend = g1.x;              // ld_raw r7.x, l(0), g1.xxxx
+  loopend = start + loopend;        // r7.x = (int)r1.w + (int)r7.x;
+
+  r5.w = 9.99999975e-006 + abs(r5.w);
+  r7.yzw = r1.xxx + -r4.xyz;
+  r1.x = max(0.00200000009, r1.y);
+  r1.x = r1.x * r1.x;
+  r8.x = -r5.w * r1.x + r5.w;
+  r8.x = r8.x * r5.w + r1.x;
+  r8.x = sqrt(r8.x);
+  r8.y = r3.x * -0.337748349 + 1;
+  r8.z = 1 + -r5.w;
+  r8.w = r8.z * r8.z;
+  r8.w = r8.w * r8.w;
+  r8.z = r8.w * r8.z;
+  r9.xyz = float3(0,0,0);
+  r10.xyz = float3(0,0,0);
+
+  uint i = start;                   // r8.w = r1.w;
+  while (true) {
+    uint test = cmp(i >= loopend);  // r9.w = cmp((uint)r8.w >= (uint)r7.x);
+    if (test != 0) break;           // if (r9.w != 0) break;
+    uint j = g_lightIndexInput[i];  // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r9.w, r8.w, l(0), t20.xxxx
+    
+    // We skip this index multiplier, because fxc will already know to calculate the propr
+    // offset into the array, using the size of g_lightInfoPunctual struct.
+    // j = j * 7;                      // r9.w = (int)r9.w * 7;
+    r11.xyz = -r5.xyz * r2.xxx + g_lightInfoPunctual[j].baseLight.pos.xyz;  // r11.xyz = -r5.xyz * r2.xxx + g_lightInfoPunctual[r9.w].baseLight.pos.xyz;
+    
+    r10.w = dot(r11.xyz, r11.xyz);
+    r11.w = rsqrt(r10.w);
+    r11.xyz = r11.xyz * r11.www;
+    r11.w = g_lightInfoPunctual[j].baseLight.attenuationOffset + r10.w;  // r11.w = g_lightInfoPunctual[r9.w].baseLight.attenuationOffset + r10.w;
+    r11.w = max(9.99999975e-005, r11.w);
+    r11.w = 1 / r11.w;
+    r10.w = g_lightInfoPunctual[j].baseLight.invSqrAttenuationRadius * r10.w;  // r10.w = g_lightInfoPunctual[r9.w].baseLight.invSqrAttenuationRadius * r10.w;
+    r10.w = -r10.w * r10.w + 1;
+    r10.w = max(0, r10.w);
+    r10.w = r10.w * r10.w;
+    r10.w = r11.w * r10.w;
+    
+    r11.w = dot(g_lightInfoPunctual[j].baseLight.matrixForward.xyz, r11.xyz);  // r11.w = dot(g_lightInfoPunctual[r9.w].baseLight.matrixForward.xyz, r11.xyz);
+    r11.w = saturate(r11.w * g_lightInfoPunctual[j].baseLight.angleScale + g_lightInfoPunctual[j].baseLight.angleOffset);  // r11.w = saturate(r11.w * g_lightInfoPunctual[r9.w].baseLight.angleScale + g_lightInfoPunctual[r9.w].baseLight.angleOffset);
+    
+    r11.w = r11.w * r11.w;
+    r10.w = r11.w * r10.w;
+    r11.w = saturate(dot(r6.xyz, r11.xyz));
+    r10.w = r11.w * r10.w;
+    r12.x = cmp(0 < r10.w);
+    if (r12.x != 0) {
+      r12.xyz = -r2.yzw * r4.www + r11.xyz;
+      r12.w = dot(r12.xyz, r12.xyz);
+      r12.w = rsqrt(r12.w);
+      r12.xyz = r12.xyz * r12.www;
+      r11.x = saturate(dot(r11.xyz, r12.xyz));
+      r11.y = saturate(dot(r6.xyz, r12.xyz));
+      r11.z = 1 + -r11.x;
+      r12.x = r11.z * r11.z;
+      r12.x = r12.x * r12.x;
+      r11.z = r12.x * r11.z;
+      r12.xyz = r7.yzw * r11.zzz + r4.xyz;
+      r11.z = -r11.w * r1.x + r11.w;
+      r11.z = r11.z * r11.w + r1.x;
+      r11.z = sqrt(r11.z);
+      r11.z = r11.z * r5.w;
+      r11.z = r11.w * r8.x + r11.z;
+      r11.z = 0.5 / r11.z;
+      r12.w = r11.y * r1.x + -r11.y;
+      r11.y = r12.w * r11.y + 1;
+      r11.y = r11.y * r11.y;
+      r11.y = r1.x / r11.y;
+      r11.y = r11.z * r11.y;
+      r12.xyz = r12.xyz * r11.yyy;
+      r11.x = r11.x * r11.x;
+      r11.x = dot(r11.xx, r3.xx);
+      r11.x = r3.x * 0.5 + r11.x;
+      r11.y = 1 + -r11.w;
+      r11.z = r11.y * r11.y;
+      r11.z = r11.z * r11.z;
+      r11.y = r11.z * r11.y;
+      r11.x = -1 + r11.x;
+      r11.y = r11.x * r11.y + 1;
+      r11.x = r11.x * r8.z + 1;
+      r11.x = r11.y * r11.x;
+      r11.x = r11.x * r8.y;
+      
+      r11.y = g_lightInfoPunctual[j].baseLight.diffuseScale * r10.w;  // r11.y = g_lightInfoPunctual[r9.w].baseLight.diffuseScale * r10.w;
+      r11.yzw = g_lightInfoPunctual[j].baseLight.color.xyz * r11.yyy;  // r11.yzw = g_lightInfoPunctual[r9.w].baseLight.color.xyz * r11.yyy;
+      r11.xyz = r11.xxx * r11.yzw;
+      r10.w = g_lightInfoPunctual[j].baseLight.specularScale * r10.w;  // r10.w = g_lightInfoPunctual[r9.w].baseLight.specularScale * r10.w;
+      r13.xyz = g_lightInfoPunctual[j].baseLight.color.xyz * r10.www;  // r13.xyz = g_lightInfoPunctual[r9.w].baseLight.color.xyz * r10.www;
+      
+      r12.xyz = r13.xyz * r12.xyz;
+    } else {
+      r11.xyz = float3(0,0,0);
+      r12.xyz = float3(0,0,0);
+    }
+    r10.xyz = r11.xyz + r10.xyz;
+    r9.xyz = r12.xyz + r9.xyz;
+    
+    i = i + 1;      // r8.w = (int)r8.w + 1;
+  }
+  r1.x = -1 + r1.z;
+  r1.x = dynamicAOFactor * r1.x + 1;
+  r2.xyz = r10.xyz * r1.xxx;
+  r1.x = r6.w + r1.z;
+  r1.y = r1.y * -16 + -1;
+  r1.y = exp2(r1.y);
+  r1.x = log2(r1.x);
+  r1.x = r1.y * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = r1.x + r1.z;
+  r1.x = saturate(-1 + r1.x);
+  r1.xyz = r9.xyz * r1.xxx;
+  r2.xyz = r3.yzw * r2.xyz;
+  r1.xyz = float3(0.318309873,0.318309873,0.318309873) * r1.xyz;
+  r1.xyz = r2.xyz * float3(0.318309873,0.318309873,0.318309873) + r1.xyz;
+  r1.xyz = g_exposureMultipliers.zzz * r1.xyz;
+  r1.xyz = min(float3(65504,65504,65504), r1.xyz);
+  r1.w = 0;
+  
+  g_outputTexture0[tileIndex.xy].xyzw = r1.xyzw;  // store_uav_typed u0.xyzw, r0.xyzw, r1.xyzw
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 6.3.9600.16384
+//
+//   using 3Dmigoto v1.2.43 on Sat Oct 01 09:35:30 2016
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer cbPunctualLightInfo
+// {
+//
+//   struct PunctualLightInfo
+//   {
+//       
+//       struct BaseLightInfo
+//       {
+//           
+//           float3 pos;                // Offset:    0
+//           float invSqrAttenuationRadius;// Offset:   12
+//           float3 color;              // Offset:   16
+//           float attenuationOffset;   // Offset:   28
+//           float3 matrixForward;      // Offset:   32
+//           float diffuseScale;        // Offset:   44
+//           float3 matrixUp;           // Offset:   48
+//           float specularScale;       // Offset:   60
+//           float3 matrixLeft;         // Offset:   64
+//           float shadowDimmer;        // Offset:   76
+//           float angleScale;          // Offset:   80
+//           float angleOffset;         // Offset:   84
+//           float2 unused;             // Offset:   88
+//
+//       } baseLight;                   // Offset:    0
+//       
+//       struct VolumetricShadowInfo
+//       {
+//           
+//           float enable;              // Offset:   96
+//           float volumeShadowMapIndex;// Offset:  100
+//           float invAttenuationRadius;// Offset:  104
+//           float tanAngle;            // Offset:  108
+//
+//       } vShadow;                     // Offset:   96
+//
+//   } g_lightInfoPunctual[128];        // Offset:    0 Size: 14336
+//
+// }
+//
+// cbuffer cb0
+// {
+//
+//   float4x4 invViewProjectionMatrix;  // Offset:    0 Size:    64
+//   float4 g_exposureMultipliers;      // Offset:   64 Size:    16
+//   float localIblMipmapBias;          // Offset:   80 Size:     4 [unused]
+//   float screenAspectRatio;           // Offset:   84 Size:     4 [unused]
+//   float2 invResolution;              // Offset:   88 Size:     8
+//   float4 shadowMapSizeAndInvSize;    // Offset:   96 Size:    16 [unused]
+//   uint forceSplitLighting;           // Offset:  112 Size:     4 [unused]
+//   uint sssScatteringEnables;         // Offset:  116 Size:     4 [unused]
+//   float volumetricShadowmapHalfTexelOffset;// Offset:  120 Size:     4 [unused]
+//   float volumetricShadowmapOneMinusHalfTexelOffset;// Offset:  124 Size:     4 [unused]
+//   float volumetricShadowmapInvMaxCount;// Offset:  128 Size:     4 [unused]
+//   float dynamicAOFactor;             // Offset:  132 Size:     4
+//   uint tileCountX;                   // Offset:  136 Size:     4
+//   uint pad1;                         // Offset:  140 Size:     4 [unused]
+//   float4x3 g_normalBasisTransforms[6];// Offset:  144 Size:   288
+//
+// }
+//
+// Resource bind info for g_lightCullInput
+// {
+//
+//   uint4 $Element;                    // Offset:    0 Size:    16
+//
+// }
+//
+// Resource bind info for g_lightIndexInput
+// {
+//
+//   uint $Element;                     // Offset:    0 Size:     4
+//
+// }
+//
+// Resource bind info for g_compactTileGridBuffer
+// {
+//
+//   uint $Element;                     // Offset:    0 Size:     4
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// g_linearSampler                   sampler      NA          NA    0        1
+// g_gbufferTexture0                 texture  float4          2d    0        1
+// g_gbufferTexture1                 texture  float4          2d    1        1
+// g_gbufferTexture2                 texture  float4          2d    2        1
+// g_depthTexture                    texture   float          2d    6        1
+// g_diffuseOcclusionTexture         texture   float          2d   10        1
+// g_lightCullInput                  texture  struct         r/o   19        1
+// g_lightIndexInput                 texture  struct         r/o   20        1
+// g_compactTileGridBuffer           texture  struct         r/o   24        1
+// g_outputTexture0                      UAV  float4          2d    0        1
+// cb0                               cbuffer      NA          NA    0        1
+// cbPunctualLightInfo               cbuffer      NA          NA    1        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// no Input
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// no Output
+cs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb1[896], dynamicIndexed
+dcl_constantbuffer cb0[27], dynamicIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t10
+dcl_resource_structured t19, 16 
+dcl_resource_structured t20, 4 
+dcl_resource_structured t24, 4 
+dcl_uav_typed_texture2d (float,float,float,float) u0
+dcl_input vThreadIDInGroupFlattened
+dcl_input vThreadGroupID.x
+dcl_input vThreadIDInGroup.xy
+dcl_temps 14
+dcl_tgsm_raw g0, 4
+dcl_tgsm_raw g1, 4
+dcl_thread_group 16, 16, 1
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
+ushr r1.x, r0.x, l(16)
+and r1.yzw, r0.xxxx, l(0, 0x0000ffff, 0x0000ffff, 0x0000ffff)
+imad r0.xyzw, r1.xyzw, l(16, 16, 16, 16), vThreadIDInGroup.xyyy
+if_z vThreadIDInGroupFlattened.x
+  imad r1.x, r1.w, cb0[8].z, r1.x
+  ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xy, r1.x, l(0), t19.xyxx
+  and r1.y, r1.y, l(0x0000ffff)
+  store_raw g0.x, l(0), r1.x
+  store_raw g1.x, l(0), r1.y
+endif 
+sync_g_t
+utof r1.xy, r0.xwxx
+add r1.zw, r1.xxxy, l(0.000000, 0.000000, 0.500000, 0.500000)
+mul r1.zw, r1.zzzw, cb0[5].zzzw
+ftoi r2.xy, r1.xyxx
+mov r2.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r3.xyzw, r2.xyww, t0.xyzw
+ld_indexable(texture2d)(float,float,float,float) r4.xyzw, r2.xyww, t1.xyzw
+ld_indexable(texture2d)(float,float,float,float) r1.xy, r2.xyww, t2.yzxw
+ld_indexable(texture2d)(float,float,float,float) r2.z, r2.xyzw, t6.yzxw
+mul r4.w, r4.w, l(6.000000)
+round_ne r4.w, r4.w
+ftou r4.w, r4.w
+mad r5.xy, r3.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+dp2 r3.x, r5.xyxx, r5.xyxx
+min r3.x, r3.x, l(1.000000)
+add r3.x, -r3.x, l(1.000000)
+sqrt r5.z, r3.x
+imul null, r3.x, r4.w, l(3)
+dp3 r6.x, r5.xyzx, cb0[r3.x + 9].xyzx
+dp3 r6.y, r5.xyzx, cb0[r3.x + 10].xyzx
+dp3 r6.z, r5.xyzx, cb0[r3.x + 11].xyzx
+add r3.x, -r3.z, l(1.000000)
+mul r3.y, r3.w, l(3.000000)
+round_ne r3.y, r3.y
+ftoi r3.y, r3.y
+ieq r3.y, r3.y, l(1)
+movc r1.x, r3.y, l(0), r1.x
+add r3.y, -r1.x, l(1.000000)
+mul r3.yzw, r3.yyyy, r4.xxyz
+mul r1.y, r1.y, r1.y
+mul r4.w, r1.y, l(0.160000)
+mad r4.xyz, -r1.yyyy, l(0.160000, 0.160000, 0.160000, 0.000000), r4.xyzx
+mad r4.xyz, r1.xxxx, r4.xyzx, r4.wwww
+dp3 r1.x, r4.xyzx, l(0.330000, 0.330000, 0.330000, 0.000000)
+mul_sat r1.x, r1.x, l(50.000000)
+mul r1.y, r3.x, r3.x
+mad r5.xy, r1.zwzz, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r2.xy, r5.xyxx, l(1.000000, -1.000000, 0.000000, 0.000000)
+mov r2.w, l(1.000000)
+dp4 r5.x, r2.xyzw, cb0[0].xyzw
+dp4 r5.y, r2.xyzw, cb0[1].xyzw
+dp4 r5.z, r2.xyzw, cb0[2].xyzw
+dp4 r2.x, r2.xyzw, cb0[3].xyzw
+div r2.x, l(1.000000, 1.000000, 1.000000, 1.000000), r2.x
+mul r2.yzw, r2.xxxx, r5.xxyz
+dp3 r4.w, -r2.yzwy, -r2.yzwy
+rsq r4.w, r4.w
+mul r7.xyz, -r2.yzwy, r4.wwww
+dp3 r5.w, r6.xyzx, r7.xyzx
+mov_sat r6.w, r5.w
+sample_l_indexable(texture2d)(float,float,float,float) r1.z, r1.zwzz, t10.yzxw, s0, l(0.000000)
+ld_raw r1.w, l(0), g0.xxxx
+ld_raw r7.x, l(0), g1.xxxx
+iadd r7.x, r1.w, r7.x
+add r5.w, |r5.w|, l(0.000010)
+add r7.yzw, -r4.xxyz, r1.xxxx
+max r1.x, r1.y, l(0.002000)
+mul r1.x, r1.x, r1.x
+mad r8.x, -r5.w, r1.x, r5.w
+mad r8.x, r8.x, r5.w, r1.x
+sqrt r8.x, r8.x
+mad r8.y, r3.x, l(-0.337748349), l(1.000000)
+add r8.z, -r5.w, l(1.000000)
+mul r8.w, r8.z, r8.z
+mul r8.w, r8.w, r8.w
+mul r8.z, r8.z, r8.w
+mov r9.xyz, l(0,0,0,0)
+mov r10.xyz, l(0,0,0,0)
+mov r8.w, r1.w
+loop 
+  uge r9.w, r8.w, r7.x
+  breakc_nz r9.w
+  ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r9.w, r8.w, l(0), t20.xxxx
+  imul null, r9.w, r9.w, l(7)
+  mad r11.xyz, -r5.xyzx, r2.xxxx, cb1[r9.w + 0].xyzx
+  dp3 r10.w, r11.xyzx, r11.xyzx
+  rsq r11.w, r10.w
+  mul r11.xyz, r11.wwww, r11.xyzx
+  add r11.w, r10.w, cb1[r9.w + 1].w
+  max r11.w, r11.w, l(0.000100)
+  div r11.w, l(1.000000, 1.000000, 1.000000, 1.000000), r11.w
+  mul r10.w, r10.w, cb1[r9.w + 0].w
+  mad r10.w, -r10.w, r10.w, l(1.000000)
+  max r10.w, r10.w, l(0.000000)
+  mul r10.w, r10.w, r10.w
+  mul r10.w, r10.w, r11.w
+  dp3 r11.w, cb1[r9.w + 2].xyzx, r11.xyzx
+  mad_sat r11.w, r11.w, cb1[r9.w + 5].x, cb1[r9.w + 5].y
+  mul r11.w, r11.w, r11.w
+  mul r10.w, r10.w, r11.w
+  dp3_sat r11.w, r6.xyzx, r11.xyzx
+  mul r10.w, r10.w, r11.w
+  lt r12.x, l(0.000000), r10.w
+  if_nz r12.x
+    mad r12.xyz, -r2.yzwy, r4.wwww, r11.xyzx
+    dp3 r12.w, r12.xyzx, r12.xyzx
+    rsq r12.w, r12.w
+    mul r12.xyz, r12.wwww, r12.xyzx
+    dp3_sat r11.x, r11.xyzx, r12.xyzx
+    dp3_sat r11.y, r6.xyzx, r12.xyzx
+    add r11.z, -r11.x, l(1.000000)
+    mul r12.x, r11.z, r11.z
+    mul r12.x, r12.x, r12.x
+    mul r11.z, r11.z, r12.x
+    mad r12.xyz, r7.yzwy, r11.zzzz, r4.xyzx
+    mad r11.z, -r11.w, r1.x, r11.w
+    mad r11.z, r11.z, r11.w, r1.x
+    sqrt r11.z, r11.z
+    mul r11.z, r5.w, r11.z
+    mad r11.z, r11.w, r8.x, r11.z
+    div r11.z, l(0.500000), r11.z
+    mad r12.w, r11.y, r1.x, -r11.y
+    mad r11.y, r12.w, r11.y, l(1.000000)
+    mul r11.y, r11.y, r11.y
+    div r11.y, r1.x, r11.y
+    mul r11.y, r11.y, r11.z
+    mul r12.xyz, r11.yyyy, r12.xyzx
+    mul r11.x, r11.x, r11.x
+    dp2 r11.x, r11.xxxx, r3.xxxx
+    mad r11.x, r3.x, l(0.500000), r11.x
+    add r11.y, -r11.w, l(1.000000)
+    mul r11.z, r11.y, r11.y
+    mul r11.z, r11.z, r11.z
+    mul r11.y, r11.y, r11.z
+    add r11.x, r11.x, l(-1.000000)
+    mad r11.y, r11.x, r11.y, l(1.000000)
+    mad r11.x, r11.x, r8.z, l(1.000000)
+    mul r11.x, r11.x, r11.y
+    mul r11.x, r8.y, r11.x
+    mul r11.y, r10.w, cb1[r9.w + 2].w
+    mul r11.yzw, r11.yyyy, cb1[r9.w + 1].xxyz
+    mul r11.xyz, r11.yzwy, r11.xxxx
+    mul r10.w, r10.w, cb1[r9.w + 3].w
+    mul r13.xyz, r10.wwww, cb1[r9.w + 1].xyzx
+    mul r12.xyz, r12.xyzx, r13.xyzx
+  else 
+    mov r11.xyz, l(0,0,0,0)
+    mov r12.xyz, l(0,0,0,0)
+  endif 
+  add r10.xyz, r10.xyzx, r11.xyzx
+  add r9.xyz, r9.xyzx, r12.xyzx
+  iadd r8.w, r8.w, l(1)
+endloop 
+add r1.x, r1.z, l(-1.000000)
+mad r1.x, cb0[8].y, r1.x, l(1.000000)
+mul r2.xyz, r1.xxxx, r10.xyzx
+add r1.x, r1.z, r6.w
+mad r1.y, r1.y, l(-16.000000), l(-1.000000)
+exp r1.y, r1.y
+log r1.x, r1.x
+mul r1.x, r1.x, r1.y
+exp r1.x, r1.x
+add r1.x, r1.z, r1.x
+add_sat r1.x, r1.x, l(-1.000000)
+mul r1.xyz, r1.xxxx, r9.xyzx
+mul r2.xyz, r2.xyzx, r3.yzwy
+mul r1.xyz, r1.xyzx, l(0.318309873, 0.318309873, 0.318309873, 0.000000)
+mad r1.xyz, r2.xyzx, l(0.318309873, 0.318309873, 0.318309873, 0.000000), r1.xyzx
+mul r1.xyz, r1.xyzx, cb0[4].zzzz
+min r1.xyz, r1.xyzx, l(65504.000000, 65504.000000, 65504.000000, 0.000000)
+mov r1.w, l(0)
+store_uav_typed u0.xyzw, r0.xyzw, r1.xyzw
+ret 
+// Approximately 175 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

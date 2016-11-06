@@ -35,9 +35,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BinaryDecompiler", "BinaryDecompiler\BinaryDecompiler.vcxproj", "{258D0AD2-B762-41E3-A0C1-CF831D859DA4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1693604A-42AF-4848-B892-D1540FB17FDE}"
-	ProjectSection(SolutionItems) = preProject
-		Performance2.psess = Performance2.psess
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D_Shaders", "D3D_Shaders\D3D_Shaders.vcxproj", "{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}"
 EndProject
@@ -3993,6 +3990,32 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Batman", "Batman", "{2E0F59
 		Batman\edbe6336cc9f9cb1-ps_replace.txt = Batman\edbe6336cc9f9cb1-ps_replace.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MirrorsEdge", "MirrorsEdge", "{5D4D390B-B2FC-42EB-B55B-3010D48A3087}"
+	ProjectSection(SolutionItems) = preProject
+		MirrorsEdge\cdc7497832359d0d-cs.jps = MirrorsEdge\cdc7497832359d0d-cs.jps
+		MirrorsEdge\cdc7497832359d0d-cs.txt = MirrorsEdge\cdc7497832359d0d-cs.txt
+		MirrorsEdge\cdc7497832359d0d-cs_replace.txt = MirrorsEdge\cdc7497832359d0d-cs_replace.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ACUnity", "ACUnity", "{594BA0F0-332D-414C-931E-9F797AB4BAC8}"
+	ProjectSection(SolutionItems) = preProject
+		ACUnity\4bbbef785873db07-ps_replace.txt = ACUnity\4bbbef785873db07-ps_replace.txt
+		ACUnity\7080753c496de9b1-ps_replace.hlsl = ACUnity\7080753c496de9b1-ps_replace.hlsl
+		ACUnity\766a538f8dd9444c-vs_replace.txt = ACUnity\766a538f8dd9444c-vs_replace.txt
+		ACUnity\d1671d27b7df4c80-vs_replace.txt = ACUnity\d1671d27b7df4c80-vs_replace.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arma3", "Arma3", "{4B42AF93-6C52-4926-8426-B49EB7CC51DC}"
+	ProjectSection(SolutionItems) = preProject
+		Arma3\3785b659ae8bd90a-vs_replace.txt = Arma3\3785b659ae8bd90a-vs_replace.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes", "{2AB571AA-200D-4BB3-8072-C4FB3E2431E3}"
+	ProjectSection(SolutionItems) = preProject
+		Arma3\ShaderFixes\9dd0e38efacac520-ps_replace.txt = Arma3\ShaderFixes\9dd0e38efacac520-ps_replace.txt
+		Arma3\ShaderFixes\bb7859fd0d031ca8-vs_replace.txt = Arma3\ShaderFixes\bb7859fd0d031ca8-vs_replace.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -4154,5 +4177,9 @@ Global
 		{09915712-7D63-41F9-8110-D5667F1F9FCF} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{83DCC342-4199-4E03-B720-80E5EDF18500} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{2E0F59CC-A1FA-49CE-A8A7-727A042D77B3} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
+		{5D4D390B-B2FC-42EB-B55B-3010D48A3087} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
+		{594BA0F0-332D-414C-931E-9F797AB4BAC8} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
+		{4B42AF93-6C52-4926-8426-B49EB7CC51DC} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
+		{2AB571AA-200D-4BB3-8072-C4FB3E2431E3} = {4B42AF93-6C52-4926-8426-B49EB7CC51DC}
 	EndGlobalSection
 EndGlobal

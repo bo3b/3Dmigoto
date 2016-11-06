@@ -75,7 +75,7 @@ Texture2D<float4> StereoParams : register(t125);
 
 void main( 
   float4 v0 : SV_Position0,
-  float2 v1 : TEXCOORD0,	// Fix warnings
+  float2 v1 : TEXCOORD0,
   float3 v2 : TEXCOORD1,
   out float4 o0 : SV_Target0,
   
@@ -116,6 +116,11 @@ void main(
   float4 tmp = mul(float4(r6.xyz, 1), vp);
   tmp.x -= stereo.x * (tmp.w - stereo.y);
   r6.xyz = mul(tmp, ivp).xyz;
+  
+  //Fix reflections
+  tmp = mul(float4(v2.xyz, 1), vp);
+  tmp.x -= stereo.x * tmp.w;
+  v2.xyz = mul(tmp, ivp).xyz;
   
   r1.w = dot(-v2.xyz, -v2.xyz);
   r1.w = rsqrt(r1.w);
@@ -383,7 +388,7 @@ void main(
   r10.z = r10.w * 0.546274245 + r10.z;
   r10.z = max(0, r10.z);
   r14.xyz = GroundFillFlux_9_Color.yzw * r10.zzz;
-  r15.xyzw = SkyLightingRed.Load(0).xyzw;		// Fix truncation warnings
+  r15.xyzw = SkyLightingRed.Load(0).xyzw;
   r16.xyzw = SkyLightingGreen.Load(0).xyzw;
   r17.xyzw = SkyLightingBlue.Load(0).xyzw;
   r5.x = 1;
@@ -901,8 +906,7 @@ r5.x = LightIndices[r15.w].x;
         r16.z = cmp((int)r16.y != 255);
         if (r16.z != 0) {
           r16.z = (uint)r16.y << 2;
-      		  // Lost the needed "+ 63" offsets, manually restored.
-	      r17.xyzw = Globals[r16.z + 63].xyzw * -r13.yyyy + Globals[r16.z + 66].xyzw;
+          r17.xyzw = Globals[r16.z + 63].xyzw * -r13.yyyy + Globals[r16.z + 66].xyzw;
           r17.xyzw = Globals[r16.z + 64].xyzw * -r13.zzzz + r17.xyzw;
           r17.xyzw = Globals[r16.z + 65].xyzw * -r13.wwww + r17.xyzw;
           r16.z = 1 / r17.w;
@@ -945,10 +949,7 @@ r5.x = LightIndices[r15.w].x;
         if (r16.y != 0) {
           r16.y = -SpotLights[r6.w].z + 1;
           r16.z = (int)r5.x + 3;
-          
-//          if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (int)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
           if (8 == 0) r16.w = 0; else if (8+16 < 32) {           r16.w = (uint)SpotLights[r6.w].w << (32-(8 + 16)); r16.w = (uint)r16.w >> (32-8);          } else r16.w = (uint)SpotLights[r6.w].w >> 16;
-
           r13.yzw = r16.xxx * r13.yzw;
           r7.w = r16.x * r7.w;
           r5.x = SpotLights[r5.x].w * r7.w;
@@ -1002,14 +1003,13 @@ r5.x = LightIndices[r15.w].x;
           r16.xyz = SpotLights[r16.z].xyz * r5.xxx;
           r13.yzw = r13.yyy * r2.xyz + r17.xyz;
           r13.yzw = r16.xyz * r13.yzw;
-
-          // Invert this test and it lights up
-          //r5.x = cmp((int)r16.w != 255);
+		  
+		  //Change here to Lights goes on - original "!="
           r5.x = cmp((int)r16.w == 255);
-          
+		  
           if (r5.x != 0) {
             bitmask.x = ((~(-1 << 16)) << 2) & 0xffffffff;
-  r5.x = (((uint)SpotLights[r6.w].w << 2) & bitmask.x) | ((uint)0 & ~bitmask.x);
+			r5.x = (((uint)SpotLights[r6.w].w << 2) & bitmask.x) | ((uint)0 & ~bitmask.x);
             r16.xyz = int3(1,2,3) + (int3)r5.xxx;
             r17.xyz = Projections[r5.x].xyw * r6.xxx + Projections[r16.z].xyw;
             r17.xyz = Projections[r16.x].xyw * r6.yyy + r17.xyz;
