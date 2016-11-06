@@ -336,28 +336,32 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		UINT selectedRenderTargetPos;
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 		{
-			// Stats
-			if (mCurrentVertexShader && mCurrentPixelShader)
-			{
-				G->mVertexShaderInfo[mCurrentVertexShader].PartnerShader.insert(mCurrentPixelShader);
-				G->mPixelShaderInfo[mCurrentPixelShader].PartnerShader.insert(mCurrentVertexShader);
-			}
-			if (mCurrentPixelShader) {
-				for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-					std::vector<std::set<ID3D11Resource *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
-
-					if (selectedRenderTargetPos >= targets.size())
-						targets.push_back(std::set<ID3D11Resource *>());
-
-					targets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
+			// In some cases stat collection can have a significant
+			// performance impact or may result in a runaway
+			// memory leak, so only do it if dump_usage is enabled:
+			if (G->DumpUsage) {
+				if (mCurrentVertexShader && mCurrentPixelShader)
+				{
+					G->mVertexShaderInfo[mCurrentVertexShader].PartnerShader.insert(mCurrentPixelShader);
+					G->mPixelShaderInfo[mCurrentPixelShader].PartnerShader.insert(mCurrentVertexShader);
 				}
-				if (mCurrentDepthTarget)
-					G->mPixelShaderInfo[mCurrentPixelShader].DepthTargets.insert(mCurrentDepthTarget);
-			}
+				if (mCurrentPixelShader) {
+					for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+						std::vector<std::set<ID3D11Resource *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
 
-			// Maybe make this optional if it turns out to have a
-			// significant performance impact:
-			RecordShaderResourceUsage();
+						if (selectedRenderTargetPos >= targets.size())
+							targets.push_back(std::set<ID3D11Resource *>());
+
+						targets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
+					}
+					if (mCurrentDepthTarget)
+						G->mPixelShaderInfo[mCurrentPixelShader].DepthTargets.insert(mCurrentDepthTarget);
+				}
+
+				// Maybe make this optional if it turns out to have a
+				// significant performance impact:
+				RecordShaderResourceUsage();
+			}
 
 			// Selection
 			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
@@ -2668,12 +2672,14 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 			for (UINT i = 0; i < NumViews; ++i) {
 				if (!ppRenderTargetViews[i])
 					continue;
-				RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+				if (G->DumpUsage)
+					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
 				FrameAnalysisClearRT(ppRenderTargetViews[i]);
 			}
 		}
 
-		RecordDepthStencil(pDepthStencilView);
+		if (G->DumpUsage)
+			RecordDepthStencil(pDepthStencilView);
 	}
 
 	mOrigContext->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -2714,12 +2720,14 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 				for (UINT i = 0; i < NumRTVs; ++i) {
 					if (!ppRenderTargetViews[i])
 						continue;
-					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+					if (G->DumpUsage)
+						RecordRenderTargetInfo(ppRenderTargetViews[i], i);
 					FrameAnalysisClearRT(ppRenderTargetViews[i]);
 				}
 			}
 
-			RecordDepthStencil(pDepthStencilView);
+			if (G->DumpUsage)
+				RecordDepthStencil(pDepthStencilView);
 		}
 
 		if (ppUnorderedAccessViews && (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
