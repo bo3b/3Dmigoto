@@ -290,6 +290,7 @@ struct Globals
 	bool enable_check_interface;
 	bool enable_dxgi1_2;
 	int enable_create_device;
+	bool enable_platform_update;
 
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
@@ -501,6 +502,7 @@ struct Globals
 		enable_check_interface(false),
 		enable_dxgi1_2(false),
 		enable_create_device(0),
+		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
 		gLogInput(false)

@@ -1309,6 +1309,7 @@ void LoadConfigFile()
 		G->enable_check_interface = true;
 	}
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
+	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, iniFile, NULL);
 
 	// [Device] (DXGI parameters)
 	LogInfo("[Device]\n");
