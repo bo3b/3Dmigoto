@@ -1298,16 +1298,8 @@ void LoadConfigFile()
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
 			(EnableHooksNames, setting, NULL);
 	}
-	if (GetPrivateProfileString(L"System", L"allow_dxgi1_2", 0, setting, MAX_PATH, iniFile))
-	{
-		LogInfoW(L"  allow_dxgi1_2=%s\n", setting);
-		G->enable_dxgi1_2 = true;
-	}
-	if (GetPrivateProfileString(L"System", L"allow_check_interface", 0, setting, MAX_PATH, iniFile))
-	{
-		LogInfoW(L"  allow_check_interface=%s\n", setting);
-		G->enable_check_interface = true;
-	}
+	G->enable_dxgi1_2 = GetIniInt(L"System", L"allow_dxgi1_2", 0, iniFile, NULL);
+	G->enable_check_interface = GetIniBool(L"System", L"allow_check_interface", false, iniFile, NULL);
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
 	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, iniFile, NULL);
 

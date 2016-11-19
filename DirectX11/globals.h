@@ -288,7 +288,7 @@ struct Globals
 	EnableHooks enable_hooks;
 	
 	bool enable_check_interface;
-	bool enable_dxgi1_2;
+	int enable_dxgi1_2;
 	int enable_create_device;
 	bool enable_platform_update;
 
@@ -500,7 +500,7 @@ struct Globals
 
 		enable_hooks(EnableHooks::INVALID),
 		enable_check_interface(false),
-		enable_dxgi1_2(false),
+		enable_dxgi1_2(0),
 		enable_create_device(0),
 		enable_platform_update(false),
 		gInitialized(false),
