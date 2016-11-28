@@ -1,6 +1,13 @@
+#include "nvprofile.h"
+
 #include <nvapi.h>
 #include "../util.h"
 #include "Globals.h"
+
+#include <unordered_set>
+#include <fstream>
+#include <string>
+
 
 // Recommended reading:
 // NVIDIA Driver Settings Programming Guide
@@ -236,6 +243,192 @@ static void log_nv_error(NvAPI_Status status)
 	LogInfo(" NVAPI error: %s\n", desc);
 }
 
+static HMODULE nvDLL;
+typedef NvAPI_Status *(__cdecl *nvapi_QueryInterfaceType)(unsigned int offset);
+static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
+typedef NvAPI_Status(__cdecl *tNvAPI_DRS_SaveSettingsToFileEx)(NvDRSSessionHandle hSession, NvAPI_UnicodeString fileName);
+static tNvAPI_DRS_SaveSettingsToFileEx _NvAPI_DRS_SaveSettingsToFileEx;
+
+static NvAPI_Status NvAPI_DRS_SaveSettingsToFileEx(NvDRSSessionHandle hSession, NvAPI_UnicodeString fileName)
+{
+	if (!nvDLL) {
+		nvDLL = GetModuleHandle(L"nvapi64.dll");
+		if (!nvDLL) {
+			nvDLL = GetModuleHandle(L"nvapi.dll");
+		}
+		if (!nvDLL) {
+			LogInfo("Can't get nvapi handle\n");
+			return NVAPI_ERROR;
+		}
+	}
+	if (!nvapi_QueryInterfacePtr) {
+		nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
+		LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+		if (!nvapi_QueryInterfacePtr) {
+			LogInfo("Unable to call NvAPI_QueryInterface\n");
+			return NVAPI_ERROR;
+		}
+	}
+	if (!_NvAPI_DRS_SaveSettingsToFileEx) {
+		_NvAPI_DRS_SaveSettingsToFileEx	= (tNvAPI_DRS_SaveSettingsToFileEx)nvapi_QueryInterfacePtr(0x1267818E);
+		LogDebug("NvAPI_DRS_SaveSettingsToFileEx @ 0x%p\n", _NvAPI_DRS_SaveSettingsToFileEx);
+		if (!_NvAPI_DRS_SaveSettingsToFileEx) {
+			LogInfo("Unable to call NvAPI_DRS_SaveSettingsToFileEx\n");
+			return NVAPI_ERROR;
+		}
+	}
+	return (*_NvAPI_DRS_SaveSettingsToFileEx)(hSession, fileName);
+}
+
+static bool next_broken_utf16_line(std::ifstream *fp, std::wstring *line)
+{
+	char c[2];
+
+	*line = L"";
+
+	while (fp->good()) {
+		fp->read(c, 2);
+		if (c[0] == '\r' && c[1] == '\0') {
+			fp->read(c, 2);
+			if (c[0] == '\n' && c[1] == '\0')
+				return true;
+			else
+				line->push_back(L'\r');
+		}
+		line->push_back(*(wchar_t*)&c);
+	}
+
+	return false;
+}
+
+// Any settings with the internal flag are specially encoded, so we have to
+// decode them to be able to make sense of them... but the DRS API does not
+// pass this flag to us and they differ for each profile so it seems our only
+// option is to ask the driver to save the profiles to disk, and read that back
+// in to identify these settings. This is the same approach used by nvidia
+// profile inspector.
+static void identify_internal_settings(NvDRSSessionHandle session,
+		wchar_t *profile_name,
+		std::unordered_set<unsigned> *internal_settings)
+{
+	wchar_t tmp[MAX_PATH], path[MAX_PATH];
+	NvAPI_Status status = NVAPI_OK;
+	wstring line, search, sid;
+	std::ifstream fp;
+	int found = 0;
+	unsigned id;
+
+	if (!GetTempPath(MAX_PATH, tmp))
+		goto err;
+
+	if (!GetTempFileName(tmp, L"3DM", 0, path))
+		goto err;
+
+	// FIXME: If we are looking up multiple profiles we should do this only
+	// once. If we are looking up all the profiles it might be worth
+	// creating an unordered_map to map each profile to their internal
+	// settings.
+	status = NvAPI_DRS_SaveSettingsToFileEx(session, (NvU16*)path);
+	if (status != NVAPI_OK)
+		goto err_rm;
+
+	// We can't treat the file as UTF16, since the encoding scheme they
+	// used causes internal strings in the file to violate that encoding
+	// and will confuse any parsers (they may stop reading prematurely).
+	// Safest thing to do is treat it as a stream of bytes and find the
+	// newline characters and strings we are looking for ourselves.
+	// Notably, there are potentially edge cases that could screw even this
+	// up, but the worst case should only be that we miss one internal
+	// string setting... and in practice they fluked avoiding that so far.
+	fp.open(path, std::ios::binary);
+
+	search = L"Profile \"";
+	search += profile_name;
+	search += L"\"";
+
+	while (next_broken_utf16_line(&fp, &line)) {
+		if (found) {
+			if (!line.compare(L"EndProfile")) {
+				found = 2;
+				break;
+			}
+
+			if (line.length() > 22 && !line.compare(line.length() - 22, 22, L"InternalSettingFlag=V0")) {
+				sid = line.substr(line.find(L" ID_0x") + 6, 8);
+				swscanf_s(sid.c_str(), L"%08x", &id);
+				// LogDebug("Identified Internal Setting ID 0x%08x\n", line.c_str(), id);
+				internal_settings->insert(id);
+			}
+
+		} else if (!line.compare(0, search.length(), search)) {
+			found = 1;
+		}
+	}
+	if (found != 2)
+		goto err_close;
+
+	fp.close();
+
+	DeleteFile(path);
+	return;
+
+err_close:
+	fp.close();
+err_rm:
+	DeleteFile(path);
+err:
+	log_nv_error(status);
+	LogInfo("WARNING: Unable to determine which settings are internal - some settings will be garbage\n");
+}
+
+unsigned char internal_setting_key[] = {
+	0x2f, 0x7c, 0x4f, 0x8b, 0x20, 0x24, 0x52, 0x8d, 0x26, 0x3c, 0x94, 0x77, 0xf3, 0x7c, 0x98, 0xa5,
+	0xfa, 0x71, 0xb6, 0x80, 0xdd, 0x35, 0x84, 0xba, 0xfd, 0xb6, 0xa6, 0x1b, 0x39, 0xc4, 0xcc, 0xb0,
+	0x7e, 0x95, 0xd9, 0xee, 0x18, 0x4b, 0x9c, 0xf5, 0x2d, 0x4e, 0xd0, 0xc1, 0x55, 0x17, 0xdf, 0x18,
+	0x1e, 0x0b, 0x18, 0x8b, 0x88, 0x58, 0x86, 0x5a, 0x1e, 0x03, 0xed, 0x56, 0xfb, 0x16, 0xfe, 0x8a,
+	0x01, 0x32, 0x9c, 0x8d, 0xf2, 0xe8, 0x4a, 0xe6, 0x90, 0x8e, 0x15, 0x68, 0xe8, 0x2d, 0xf4, 0x40,
+	0x37, 0x9a, 0x72, 0xc7, 0x02, 0x0c, 0xd1, 0xd3, 0x58, 0xea, 0x62, 0xd1, 0x98, 0x36, 0x2b, 0xb2,
+	0x16, 0xd5, 0xde, 0x93, 0xf1, 0xba, 0x74, 0xe3, 0x32, 0xc4, 0x9f, 0xf6, 0x12, 0xfe, 0x18, 0xc0,
+	0xbb, 0x35, 0x79, 0x9c, 0x6b, 0x7a, 0x23, 0x7f, 0x2b, 0x15, 0x9b, 0x42, 0x07, 0x1a, 0xff, 0x69,
+	0xfb, 0x9c, 0xbd, 0x23, 0x97, 0xa8, 0x22, 0x63, 0x8f, 0x32, 0xc8, 0xe9, 0x9b, 0x63, 0x1c, 0xee,
+	0x2c, 0xd9, 0xed, 0x8d, 0x3a, 0x35, 0x9c, 0xb1, 0x60, 0xae, 0x5e, 0xf5, 0x97, 0x6b, 0x9f, 0x20,
+	0x8c, 0xf7, 0x98, 0x2c, 0x43, 0x79, 0x95, 0x1d, 0xcd, 0x46, 0x36, 0x6c, 0xd9, 0x67, 0x20, 0xab,
+	0x41, 0x22, 0x21, 0xe5, 0x55, 0x82, 0xf5, 0x27, 0x20, 0xf5, 0x08, 0x07, 0x3f, 0x6d, 0x69, 0xd9,
+	0x1c, 0x4b, 0xf8, 0x26, 0x03, 0x6e, 0xb2, 0x3f, 0x1e, 0xe6, 0xca, 0x3d, 0x61, 0x44, 0xb0, 0x92,
+	0xaf, 0xf0, 0x88, 0xca, 0xe0, 0x5f, 0x5d, 0xf4, 0xdf, 0xc6, 0x4c, 0xa4, 0xe0, 0xca, 0xb0, 0x20,
+	0x5d, 0xc0, 0xfa, 0xdd, 0x9a, 0x34, 0x8f, 0x50, 0x79, 0x5a, 0x5f, 0x7c, 0x19, 0x9e, 0x40, 0x70,
+	0x71, 0xb5, 0x45, 0x19, 0xb8, 0x53, 0xfc, 0xdf, 0x24, 0xbe, 0x22, 0x1c, 0x79, 0xbf, 0x42, 0x89,
+};
+
+unsigned decode_internal_dword(unsigned id, unsigned val)
+{
+	unsigned off, key;
+
+	off = (id << 1);
+	key = internal_setting_key[(off+3) % 256] << 24
+	    | internal_setting_key[(off+2) % 256] << 16
+	    | internal_setting_key[(off+1) % 256] << 8
+	    | internal_setting_key[(off+0) % 256];
+	// LogDebug("Decoded Setting ID=%08x Off=%u Key=%08x Enc=%08x Dec=%08x\n", id, off, key, val, key ^ val);
+	return key ^ val;
+}
+
+void decode_internal_string(unsigned id, NvAPI_UnicodeString val)
+{
+	unsigned off, i;
+	wchar_t key;
+
+	for (i = 0; i < NVAPI_UNICODE_STRING_MAX; i++) {
+		off = ((id << 1) + i*2);
+		key = internal_setting_key[(off+1) % 256] << 8
+		    | internal_setting_key[(off+0) % 256];
+		// LogInfo("Decoded SettingString ID=%08x Off=%u Key=%04x Enc=%04x Dec=%04x\n", id, off, key, val[i], key ^ val[i]);
+		val[i] = val[i] ^ key;
+		if (!val[i]) // Decoded the NULL terminator
+			break;
+	}
+}
+
 // We aim to make the output of this similar to Geforce Profile Manager so that
 // it is familiar, and so that perhaps it could even be copied from one to the
 // other, but we definitely do NOT want it to be identical - we want to show
@@ -244,12 +437,13 @@ static void log_nv_error(NvAPI_Status status)
 // opened in anything more sophisticated than notepad!
 void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVDRS_PROFILE *info)
 {
+	std::unordered_set<unsigned> internal_settings;
 	NvAPI_Status status = NVAPI_OK;
 	NVDRS_APPLICATION *apps = NULL;
 	NVDRS_SETTING *settings = NULL;
-	unsigned len;
-	NvU32 i;
+	unsigned len, dval;
 	char *name;
+	NvU32 i;
 
 	info->version = NVDRS_PROFILE_VER;
 	status = NvAPI_DRS_GetProfileInfo(session, profile, info);
@@ -296,6 +490,8 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 		// Geforce Profile Manager output: isMetro
 	}
 
+	identify_internal_settings(session, (wchar_t*)info->profileName, &internal_settings);
+
 	if (info->numOfSettings > 0) {
 		settings = new NVDRS_SETTING[info->numOfSettings];
 		memset(settings, 0, sizeof(NVDRS_SETTING) * info->numOfSettings);
@@ -313,21 +509,27 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 
 		switch (settings[i].settingType) {
 		case NVDRS_DWORD_TYPE:
-			// FIXME: Decode
-			LogInfo("    Setting ID_0x%08x = 0x%08x",
-					settings[i].settingId,
-					settings[i].u32CurrentValue);
+			dval = settings[i].u32CurrentValue;
+			if (settings[i].isCurrentPredefined
+					&& settings[i].isPredefinedValid
+					&& internal_settings.count(settings[i].settingId)) {
+				dval = decode_internal_dword(settings[i].settingId, dval);
+			}
+			LogInfo("    Setting ID_0x%08x = 0x%08x", settings[i].settingId, dval);
 			break;
 		case NVDRS_BINARY_TYPE:
+			// Do these even exist?
 			LogInfo(" XXX Setting Binary XXX (length=%d) :", settings[i].binaryCurrentValue.valueLength);
 			for (len = 0; len < settings[i].binaryCurrentValue.valueLength; len++)
 				LogInfo(" %02x", settings[i].binaryCurrentValue.valueData[len]);
 			break;
 		case NVDRS_WSTRING_TYPE:
-			// FIXME: Decode
-			LogInfo("    SettingString ID_0x%08x = \"%S\"",
-					settings[i].settingId,
-					(wchar_t*)settings[i].wszCurrentValue);
+			if (settings[i].isCurrentPredefined
+					&& settings[i].isPredefinedValid
+					&& internal_settings.count(settings[i].settingId)) {
+				decode_internal_string(settings[i].settingId, settings[i].wszCurrentValue);
+			}
+			LogInfo("    SettingString ID_0x%08x = \"%S\"", settings[i].settingId, (wchar_t*)settings[i].wszCurrentValue);
 			break;
 		}
 		if (!settings[i].isCurrentPredefined)
