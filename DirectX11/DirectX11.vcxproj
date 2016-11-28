@@ -53,6 +53,7 @@
     <ClCompile Include="Hunting.cpp" />
     <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="nvprofile.cpp" />
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="CommandList.cpp" />
@@ -80,6 +81,7 @@
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="IniHandler.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="nvprofile.h" />
     <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="CommandList.h" />

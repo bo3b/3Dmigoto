@@ -17,6 +17,7 @@
 #include "HackerContext.h"
 #include "IniHandler.h"
 #include "HackerDXGI.h"
+#include "nvprofile.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
@@ -60,6 +61,9 @@ bool InitializeDLL()
 		LogInfo("  NvAPI_Initialize failed: %s\n", errorMessage);
 		return false;
 	}
+
+	log_nv_driver_version();
+	log_relevant_nv_profiles();
 
 	// This sequence is to make the force_no_nvapi work.  When the game pCars
 	// starts it calls NvAPI_Initialize that we want to return an error for.

@@ -1588,6 +1588,8 @@ void LoadConfigFile()
 			}
 		}
 	}
+
+	LogInfo("\n");
 }
 
 
