@@ -6,6 +6,225 @@
 // NVIDIA Driver Settings Programming Guide
 // And the nvapi reference
 
+static EnumName_t<char*, unsigned> NVStereoSettingNames[] = {
+	// Same name we decided to use in nvidia profile inspector:
+	{"StereoProfile", 0x701EB457},
+
+	// Primary name table:
+	{"Time", 0x70ad05c8},
+	{"RunTimeName", 0x701a8be4},
+	{"EnableConsumerStereoSupport", 0x70cb9168},
+	{"StereoViewer", 0x704915a1},
+	{"StereoViewerType", 0x708f9ef7},
+	{"ShowAllViewerTypes", 0x708e5cb4},
+	{"StereoAdjustEnable", 0x70538ab1},
+	{"StereoDisableTnL", 0x70633bd9},
+	{"StereoTransformationType", 0x70c27e3c},
+	{"StereoSeparation", 0x70933c00},
+	{"StereoSeparationStep", 0x7082555b},
+	{"StereoConvergence", 0x708db8c5},
+	{"StereoVRConvergenceBias", 0x708db8c6},
+	{"StereoConvergenceMultiplier", 0x70efbb5b},
+	{"StereoVRRefreshRateOverride", 0x708db8c8},
+	{"StereoVRVsync", 0x708db8c9},
+	{"RHW2DDetectionMin", 0x7029432b},
+	{"RHWGreaterAtScreen", 0x702c861a},
+	{"RHWEqualAtScreen", 0x70ab2e09},
+	{"RHWLessAtScreen", 0x70381472},
+	{"AutoConvergence", 0x702a0ab2},
+	{"AutoConvergenceAdjustPace", 0x70bf3c6b},
+	{"StereoToggle", 0x70d76b8b},
+	{"SaveStereoImage", 0x70121853},
+	{"StereoVerticalAdjustMore", 0x7087fe61},
+	{"StereoVerticalAdjustLess", 0x703acfc6},
+	{"StereoHorizontalAdjustMore", 0x70062f07},
+	{"StereoHorizontalAdjustLess", 0x70871a39},
+	{"StereoSeparationAdjustMore", 0x70ab8d32},
+	{"StereoSeparationAdjustLess", 0x705d1e02},
+	{"StereoConvergenceAdjustMore", 0x701ed576},
+	{"StereoConvergenceAdjustLess", 0x70d4add7},
+	{"StereoToggleMode", 0x70d76b8c},
+	{"StereoSuggestSettings", 0x706315af},
+	{"StereoUnsuggestSettings", 0x7017861c},
+	{"WriteConfig", 0x700498b3},
+	{"DeleteConfig", 0x70c73ba2},
+	{"ToggleLaserSight", 0x70b7bd1f},
+	{"LaserAdjustXPlus", 0x70d8bae6},
+	{"LaserAdjustXMinus", 0x7048b7dc},
+	{"LaserAdjustYPlus", 0x7024eda4},
+	{"LaserAdjustYMinus", 0x70fb9e1e},
+	{"ToggleAutoConvergence", 0x70085de3},
+	{"ToggleAutoConvergenceRestore", 0x703bc51e},
+	{"RHWAtScreenMore", 0x7066a22e},
+	{"RHWAtScreenLess", 0x709139ad},
+	{"RHWLessAtScreenMore", 0x704e4bca},
+	{"RHWLessAtScreenLess", 0x70b378a1},
+	{"GammaAdjustMore", 0x703f4521},
+	{"GammaAdjustLess", 0x70e8420c},
+	{"GlassesDelayPlus", 0x701fc5b4},
+	{"GlassesDelayMinus", 0x70b8a743},
+	{"FavorSZ", 0x705faed7},
+	{"LaserSight", 0x7058b6e1},
+	{"LaserSightFile", 0x707ac50d},
+	{"LaserSightEnabled", 0x7054837a},
+	{"LaserSightIndex", 0x70da83c6},
+	{"LaserSightProperty", 0x7032243a},
+	{"StereoPointer", 0x70364596},
+	{"GameSpecific0", 0x702244b7},
+	{"StereoDefaultOn", 0x70ab30a7},
+	{"FrustumAdjustMode", 0x70a1411a},
+	{"MonitorSize", 0x7086ebe9},
+	{"MaxMonitorSize", 0x7032022c},
+	{"MaxVertexCount", 0x709e4a94},
+	{"PartialClearMode", 0x709794cc},
+	{"LaserXAdjust", 0x7057e831},
+	{"LaserYAdjust", 0x70225308},
+	{"LaserZAdjust", 0x7014fca2},
+	{"StereoRefreshDefaultOn", 0x702ba385},
+	{"MixedTnL", 0x70bd11e0},
+	{"StereoGamma", 0x70c8b5d1},
+	{"LineCodeColor", 0x70dc4a12},
+	{"LeftAnaglyphFilter", 0x70d51cd1},
+	{"RightAnaglyphFilter", 0x70f4a930},
+	{"InterleavePattern0", 0x70b1c8cc},
+	{"InterleavePattern1", 0x7091a772},
+	{"StereoForceVSync", 0x70aae185},
+	{"StereoColorKey", 0x70e5773b},
+	{"ZDirection", 0x70b17872},
+	{"StereoCompatibility", 0x70a2000e},
+	{"LeftColorFilter0", 0x70ac6888},
+	{"LeftColorFilter1", 0x7090b6ca},
+	{"RightColorFilter0", 0x70b9a2f7},
+	{"RightColorFilter1", 0x70aca0cc},
+	{"SharpVPI", 0x706e0041},
+	{"StereoMode", 0x701baa09},
+	{"Watchdog", 0x700a5654},
+	{"StereoOSDEnable", 0x70f455aa},
+	{"StereoOrthoEnable", 0x703564f6},
+	{"StereoTextureEnable", 0x70edb381},
+	{"StereoNotSupported", 0x709aa171},
+	{"ModesetWarning", 0x70969bb0},
+	{"StereoFirstTime", 0x70af6400},
+	{"StereoRefreshRate", 0x70ded3c0},
+	{"GameConfigs", 0x704a905a},
+	{"CompareEyes", 0x70729e58},
+	{"CompareFrom", 0x70efb726},
+	{"StereoImageType", 0x7097906c},
+	{"SnapShotQuality", 0x7004e7a6},
+	{"NoLockSubstitute", 0x7005ad16},
+	{"PushbufSubstituteSize", 0x7054fbf8},
+	{"DiscardHotkeys", 0x70175566},
+	{"StereoLCDPatternType", 0x707cfb97},
+	{"GlassesSwitchDelay", 0x70057bb6},
+	{"StartZBit", 0x7044d7a6},
+	{"DisableOnOutOfMemory", 0x70c71508},
+	{"StereoWindowedEnable", 0x709b3484},
+	{"AllowNonExclusiveStereo", 0x702c7709},
+	{"Rhwinf", 0x706e1913},
+	{"Rhwscr", 0x70a4995c},
+	{"Zinf", 0x70fc13ad},
+	{"Zscr", 0x707f0e69},
+	{"InGameLaserSight", 0x7064f0c2},
+	{"CutoffNearDepthLess", 0x70d1bdb5},
+	{"CutoffNearDepthMore", 0x7020c991},
+	{"CutoffFarDepthLess", 0x704c9a46},
+	{"CutoffFarDepthMore", 0x70fbc04d},
+	{"CutoffStepLess", 0x704b45c7},
+	{"CutoffStepMore", 0x700f2971},
+	{"StereoCutoffDepthNear", 0x7050e011},
+	{"StereoCutoffDepthFar", 0x70add220},
+	{"StereoCutoff", 0x709a1ddf},
+	{"EnableCE", 0x702b8c95},
+	{"MediaPlayer", 0x70a8fc7f},
+	{"StereoDX9", 0x70d10d2b},
+	{"StereoMsgVerticalOffset", 0x70160ebf},
+	{"LaserSightTrigger", 0x70031b88},
+	{"StereoLaserSightMaxCount", 0x70bc864d},
+	{"StereoLaserSightCount", 0x70077042},
+	{"StereoEasyZCheck", 0x70b6d6ed},
+	{"StereoStrictLSCheck", 0x709bc378},
+	{"StereoDisableAsync", 0x70de5533},
+	{"EnablePartialStereoBlit", 0x7096eced},
+	{"StereoMemoEnabled", 0x707f4b45},
+	{"StereoNoDepthOverride", 0x709dea62},
+	{"StereoFlagsDX10", 0x702442fc},
+	{"StereoUseMatrix", 0x70e34a78},
+	{"StereoShaderMatrixCheck", 0x7044f8fb},
+	{"StereoLogShaders", 0x7052bdd0},
+	{"StereoEpsilon", 0x70e5a749},
+	{"DelayedStereoDesktop", 0x7042eef1},
+	{"DX10VSCBNumber", 0x70f8e408},
+	{"DX10DSCBNumber", 0x70092d4a},
+	{"InGameLaserSightDX9States", 0x706139ad},
+	{"StereoMiscFlags", 0x70ccb5f0},
+	{"StereoHiddenProfile", 0x70e46f20},
+	{"StereoLinkDll", 0x70e46f2a},
+	{"EnableStereoCursor", 0x70e46f2b},
+	{"CreateStereoDTAfterPresentNum", 0x70a7fc7f},
+	{"Date_Rel", 0x705fafec},
+	{"Game", 0x70c8d48e},
+	{"Style", 0x709cc5e0},
+	{"Publisher", 0x706c7030},
+	{"Developer", 0x703c4026},
+	{"API", 0x70b5603f},
+	{"Value", 0x7049c7ec},
+	{"Compat", 0x7051e5f5},
+	{"PF_Issues", 0x704cde5a},
+	{"Comments", 0x704d456e},
+	{"Developer_Issues", 0x704f5928},
+	{"P1SH0", 0x70998683},
+	{"V1SH0", 0x70e6a3cf},
+	{"PSH0", 0x7046516e},
+	{"VSH0", 0x708b7af8},
+	{"VSH1", 0x708b7af9},
+	{"VSH2", 0x708b7afa},
+	{"VSH3", 0x708b7afb},
+	{"VSH4", 0x708b7afc},
+	{"VSH5", 0x708b7afd},
+	{"VSH6", 0x708b7afe},
+	{"VSH7", 0x708b7aff},
+	{"VSH8", 0x708b7b00},
+	{"VSH9", 0x708b7b01},
+	{"VSH10", 0x708b7b02},
+	{"2DDHUDSettings", 0x709adada},
+	{"2DDConvergence", 0x709adadb},
+	{"Disable2DD", 0x709adadd},
+	{"2DD_Notes", 0x709adadc},
+
+	// Secondary name table:
+	{"StereoConvergence (Alternate 1)", 0x7077bace},
+	{"LaserSight (Alternate 1)", 0x7031a2e7},
+	{"FrustumAdjustMode (Alternate 1)", 0x70ed1da7},
+	{"StereoTextureEnable (Alternate 1)", 0x70e1518c},
+	{"Rhwinf (Alternate 1)", 0x70cc286a},
+	{"Rhwscr (Alternate 1)", 0x7030b071},
+	{"InGameLaserSight (Alternate 1)", 0x70dd2585},
+	{"StereoCutoffDepthNear (Alternate 1)", 0x704ef483},
+	{"StereoCutoff (Alternate 1)", 0x704fcf5c},
+	{"StereoConvergence (Alternate 2)", 0x7084807e},
+	{"LaserSight (Alternate 2)", 0x7045b752},
+	{"FrustumAdjustMode (Alternate 2)", 0x70f475a0},
+	{"StereoTextureEnable (Alternate 2)", 0x70c0125e},
+	{"Rhwinf (Alternate 2)", 0x70a3fee6},
+	{"Rhwscr (Alternate 2)", 0x70b57ed1},
+	{"InGameLaserSight (Alternate 2)", 0x70e7adad},
+	{"StereoCutoffDepthNear (Alternate 2)", 0x7031de06},
+	{"StereoCutoff (Alternate 2)", 0x7053569a},
+	{"DX10VSCBNumber (Alternate 2)", 0x70f64a32},
+};
+
+static char* lookup_setting_name(unsigned id)
+{
+	for (int i = 0; i < ARRAYSIZE(NVStereoSettingNames); i++) {
+		if (NVStereoSettingNames[i].val == id) {
+			return NVStereoSettingNames[i].name;
+		}
+	}
+
+	return NULL;
+}
+
+
 static void log_nv_error(NvAPI_Status status)
 {
 	NvAPI_ShortString desc = {0};
@@ -30,6 +249,7 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 	NVDRS_SETTING *settings = NULL;
 	unsigned len;
 	NvU32 i;
+	char *name;
 
 	info->version = NVDRS_PROFILE_VER;
 	status = NvAPI_DRS_GetProfileInfo(session, profile, info);
@@ -110,8 +330,13 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 		}
 		if (!settings[i].isCurrentPredefined)
 			LogInfo(" UserSpecified=true");
-		if (settings[i].settingName[0])
+		if (settings[i].settingName[0]) {
 			LogInfo(" // %S", (wchar_t*)settings[i].settingName);
+		} else {
+			name = lookup_setting_name(settings[i].settingId);
+			if (name)
+				LogInfo(" // %s", name);
+		}
 		LogInfo("\n");
 	}
 
