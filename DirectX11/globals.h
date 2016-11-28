@@ -280,6 +280,7 @@ struct Globals
 	bool gInitialized;
 	bool gReloadConfigPending;
 	bool gLogInput;
+	bool dump_all_profiles;
 
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
@@ -505,7 +506,8 @@ struct Globals
 		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
-		gLogInput(false)
+		gLogInput(false),
+		dump_all_profiles(false)
 
 	{
 		int i;

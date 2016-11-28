@@ -1,5 +1,6 @@
 #include <nvapi.h>
 #include "../util.h"
+#include "Globals.h"
 
 // Recommended reading:
 // NVIDIA Driver Settings Programming Guide
@@ -138,6 +139,19 @@ bail:
 	log_nv_error(status);
 }
 
+void log_all_nv_profiles(NvDRSSessionHandle session)
+{
+	NvAPI_Status status = NVAPI_OK;
+	NvDRSProfileHandle profile = 0;
+	unsigned i;
+
+	for (i = 0; (status = NvAPI_DRS_EnumProfiles(session, i, &profile)) == NVAPI_OK; i++)
+		log_nv_profile(session, profile);
+
+	if (status != NVAPI_END_ENUMERATION)
+		log_nv_error(status);
+}
+
 // This function logs the contents of all profiles that may have an influence
 // on the current game - the base profile, global default profile (if different
 // to the base profile), the default stereo profile (or rather will once we
@@ -216,19 +230,23 @@ void log_relevant_nv_profiles()
 
 	LogInfo("\n");
 
-	_log_nv_profile(session, base_profile, &base_info);
-	if (base_profile != global_profile)
-		_log_nv_profile(session, global_profile, &global_info);
-
-	app.version = NVDRS_APPLICATION_VER;
-	status = NvAPI_DRS_FindApplicationByName(session, (NvU16*)path, &profile, &app);
-	if (status == NVAPI_OK) {
-		log_nv_profile(session, profile);
+	if (G->dump_all_profiles) {
+		log_all_nv_profiles(session);
 	} else {
-		LogInfo("Cannot locate application profile: ");
-		// Not necessarily an error, since the application may not have
-		// a profile. Will still print the nvapi error in the common
-		// cleanup/error paths below.
+		_log_nv_profile(session, base_profile, &base_info);
+		if (base_profile != global_profile)
+			_log_nv_profile(session, global_profile, &global_info);
+
+		app.version = NVDRS_APPLICATION_VER;
+		status = NvAPI_DRS_FindApplicationByName(session, (NvU16*)path, &profile, &app);
+		if (status == NVAPI_OK) {
+			log_nv_profile(session, profile);
+		} else {
+			LogInfo("Cannot locate application profile: ");
+			// Not necessarily an error, since the application may not have
+			// a profile. Will still print the nvapi error in the common
+			// cleanup/error paths below.
+		}
 	}
 
 bail:

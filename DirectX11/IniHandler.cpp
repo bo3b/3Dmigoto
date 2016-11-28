@@ -1287,6 +1287,8 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
+	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, iniFile, NULL);
+
 	// [System]
 	LogInfo("[System]\n");
 	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH, iniFile);
