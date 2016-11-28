@@ -284,14 +284,16 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 		LogInfo("    Executable \"%S\"", (wchar_t*)apps[i].appName);
 		if (apps[i].userFriendlyName[0])
 			LogInfo(" Name=\"%S\"", (wchar_t*)apps[i].userFriendlyName);
+		if (apps[i].launcher[0])
+			LogInfo(" Launcher=\"%S\"", (wchar_t*)apps[i].launcher);
+		if (apps[i].fileInFolder[0])
+			LogInfo(" FindFile=\"%S\"", (wchar_t*)apps[i].fileInFolder);
 		if (!apps[i].isPredefined)
 			LogInfo(" UserSpecified=true");
 		LogInfo("\n");
-		// XXX There's several other pieces of info here we might need
-		// to worry about:
-		// - launcher
-		// - fileInFolder
-		// - isMetro
+		// XXX There's one last piece of info here we might need to
+		// output, but I don't see anything that looks like it in the
+		// Geforce Profile Manager output: isMetro
 	}
 
 	if (info->numOfSettings > 0) {
