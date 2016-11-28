@@ -36,7 +36,7 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 	if (status != NVAPI_OK)
 		goto bail;
 
-	LogInfo("Profile \"%S\"%s\n", info->profileName,
+	LogInfo("Profile \"%S\"%s\n", (wchar_t*)info->profileName,
 			info->isPredefined ? "" : " UserSpecified=true");
 
 	if (info->gpuSupport.geforce && info->gpuSupport.quadro) // CHECKME
@@ -61,9 +61,9 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 	}
 
 	for (i = 0; i < info->numOfApps; i++) {
-		LogInfo("    Executable \"%S\"", apps[i].appName);
+		LogInfo("    Executable \"%S\"", (wchar_t*)apps[i].appName);
 		if (apps[i].userFriendlyName[0])
-			LogInfo(" Name=\"%S\"", apps[i].userFriendlyName);
+			LogInfo(" Name=\"%S\"", (wchar_t*)apps[i].userFriendlyName);
 		if (!apps[i].isPredefined)
 			LogInfo(" UserSpecified=true");
 		LogInfo("\n");
@@ -105,13 +105,13 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 			// FIXME: Decode
 			LogInfo("    SettingString ID_0x%08x = \"%S\"",
 					settings[i].settingId,
-					settings[i].wszCurrentValue);
+					(wchar_t*)settings[i].wszCurrentValue);
 			break;
 		}
 		if (!settings[i].isCurrentPredefined)
 			LogInfo(" UserSpecified=true");
 		if (settings[i].settingName[0])
-			LogInfo(" // %S", settings[i].settingName);
+			LogInfo(" // %S", (wchar_t*)settings[i].settingName);
 		LogInfo("\n");
 	}
 
@@ -197,7 +197,7 @@ void log_relevant_nv_profiles()
 	if (status != NVAPI_OK)
 		goto bail;
 
-	LogInfo("BaseProfile \"%S\"\n", base_info.profileName);
+	LogInfo("BaseProfile \"%S\"\n", (wchar_t*)base_info.profileName);
 
 	status = NvAPI_DRS_GetCurrentGlobalProfile(session, &global_profile);
 	if (status != NVAPI_OK)
@@ -208,7 +208,7 @@ void log_relevant_nv_profiles()
 	if (status != NVAPI_OK)
 		goto bail;
 
-	LogInfo("SelectedGlobalProfile \"%S\"\n", global_info.profileName);
+	LogInfo("SelectedGlobalProfile \"%S\"\n", (wchar_t*)global_info.profileName);
 
 	// TODO: Log current stereo profile
 	// FIXME: Update nvapi headers to latest public version to get this function:
