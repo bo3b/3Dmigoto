@@ -301,21 +301,21 @@ static bool next_broken_utf16_line(std::ifstream *fp, std::wstring *line)
 	return false;
 }
 
+typedef std::unordered_map<wstring, std::unordered_set<unsigned>> internal_setting_map_type;
+internal_setting_map_type internal_setting_map;
+
 // Any settings with the internal flag are specially encoded, so we have to
 // decode them to be able to make sense of them... but the DRS API does not
 // pass this flag to us and they differ for each profile so it seems our only
 // option is to ask the driver to save the profiles to disk, and read that back
 // in to identify these settings. This is the same approach used by nvidia
 // profile inspector.
-static void identify_internal_settings(NvDRSSessionHandle session,
-		wchar_t *profile_name,
-		std::unordered_set<unsigned> *internal_settings)
+static int create_internal_setting_map(NvDRSSessionHandle session)
 {
 	wchar_t tmp[MAX_PATH], path[MAX_PATH];
 	NvAPI_Status status = NVAPI_OK;
-	wstring line, search, sid;
+	wstring line, profile, sid;
 	std::ifstream fp;
-	int found = 0;
 	unsigned id;
 
 	if (!GetTempPath(MAX_PATH, tmp))
@@ -324,10 +324,6 @@ static void identify_internal_settings(NvDRSSessionHandle session,
 	if (!GetTempFileName(tmp, L"3DM", 0, path))
 		goto err;
 
-	// FIXME: If we are looking up multiple profiles we should do this only
-	// once. If we are looking up all the profiles it might be worth
-	// creating an unordered_map to map each profile to their internal
-	// settings.
 	status = NvAPI_DRS_SaveSettingsToFileEx(session, (NvU16*)path);
 	if (status != NVAPI_OK)
 		goto err_rm;
@@ -342,44 +338,56 @@ static void identify_internal_settings(NvDRSSessionHandle session,
 	// string setting... and in practice they fluked avoiding that so far.
 	fp.open(path, std::ios::binary);
 
-	search = L"Profile \"";
-	search += profile_name;
-	search += L"\"";
-
 	while (next_broken_utf16_line(&fp, &line)) {
-		if (found) {
-			if (!line.compare(L"EndProfile")) {
-				found = 2;
-				break;
-			}
+		if (!line.compare(0, 9, L"Profile \"")) {
+			profile = line.substr(9, line.find_last_of(L'\"') - 9);
+		}
 
-			if (line.length() > 22 && !line.compare(line.length() - 22, 22, L"InternalSettingFlag=V0")) {
-				sid = line.substr(line.find(L" ID_0x") + 6, 8);
-				swscanf_s(sid.c_str(), L"%08x", &id);
-				// LogDebug("Identified Internal Setting ID 0x%08x\n", line.c_str(), id);
-				internal_settings->insert(id);
-			}
+		if (!line.compare(L"EndProfile")) {
+			profile.clear();
+		}
 
-		} else if (!line.compare(0, search.length(), search)) {
-			found = 1;
+		if (!profile.empty() && line.length() > 22 && !line.compare(line.length() - 22, 22, L"InternalSettingFlag=V0")) {
+			sid = line.substr(line.find(L" ID_0x") + 6, 8);
+			swscanf_s(sid.c_str(), L"%08x", &id);
+			// LogInfo("Identified Internal Setting ID %S 0x%08x\n", line.c_str(), id);
+			internal_setting_map[profile].insert(id);
 		}
 	}
-	if (found != 2)
-		goto err_close;
 
 	fp.close();
 
 	DeleteFile(path);
-	return;
+	return 0;
 
-err_close:
-	fp.close();
 err_rm:
 	DeleteFile(path);
 err:
 	log_nv_error(status);
 	LogInfo("WARNING: Unable to determine which settings are internal - some settings will be garbage\n");
+	return -1;
 }
+
+static void destroy_internal_setting_map()
+{
+	internal_setting_map.clear();
+}
+
+static void identify_internal_settings(NvDRSSessionHandle session,
+		wchar_t *profile_name,
+		std::unordered_set<unsigned> **internal_settings)
+{
+	internal_setting_map_type::iterator i;
+
+	*internal_settings = NULL;
+
+	i = internal_setting_map.find(wstring(profile_name));
+	if (i == internal_setting_map.end())
+		return;
+
+	*internal_settings = &i->second;
+}
+
 
 unsigned char internal_setting_key[] = {
 	0x2f, 0x7c, 0x4f, 0x8b, 0x20, 0x24, 0x52, 0x8d, 0x26, 0x3c, 0x94, 0x77, 0xf3, 0x7c, 0x98, 0xa5,
@@ -437,7 +445,7 @@ void decode_internal_string(unsigned id, NvAPI_UnicodeString val)
 // opened in anything more sophisticated than notepad!
 void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVDRS_PROFILE *info)
 {
-	std::unordered_set<unsigned> internal_settings;
+	std::unordered_set<unsigned> *internal_settings = NULL;
 	NvAPI_Status status = NVAPI_OK;
 	NVDRS_APPLICATION *apps = NULL;
 	NVDRS_SETTING *settings = NULL;
@@ -512,7 +520,7 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 			dval = settings[i].u32CurrentValue;
 			if (settings[i].isCurrentPredefined
 					&& settings[i].isPredefinedValid
-					&& internal_settings.count(settings[i].settingId)) {
+					&& internal_settings && internal_settings->count(settings[i].settingId)) {
 				dval = decode_internal_dword(settings[i].settingId, dval);
 			}
 			LogInfo("    Setting ID_0x%08x = 0x%08x", settings[i].settingId, dval);
@@ -526,7 +534,7 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 		case NVDRS_WSTRING_TYPE:
 			if (settings[i].isCurrentPredefined
 					&& settings[i].isPredefinedValid
-					&& internal_settings.count(settings[i].settingId)) {
+					&& internal_settings && internal_settings->count(settings[i].settingId)) {
 				decode_internal_string(settings[i].settingId, settings[i].wszCurrentValue);
 			}
 			LogInfo("    SettingString ID_0x%08x = \"%S\"", settings[i].settingId, (wchar_t*)settings[i].wszCurrentValue);
@@ -617,6 +625,9 @@ void log_relevant_nv_profiles()
 	if (status != NVAPI_OK)
 		goto bail;
 
+	if (create_internal_setting_map(session))
+		goto bail;
+
 	status = NvAPI_DRS_GetBaseProfile(session, &base_profile);
 	if (status != NVAPI_OK)
 		goto bail;
@@ -680,6 +691,7 @@ void log_relevant_nv_profiles()
 
 bail:
 	delete default_stereo_profile;
+	destroy_internal_setting_map();
 	NvAPI_DRS_DestroySession(session);
 err_no_session:
 	log_nv_error(status);
