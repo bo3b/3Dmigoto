@@ -712,3 +712,144 @@ void log_nv_driver_version()
 		log_nv_error(status);
 	}
 }
+
+// Raise privileges to allow us to write any changes we need into the driver
+// profile.
+//
+// In order to run some code with admin privileges we need an entire task
+// running as admin. This presents a dilemma:
+//
+// We are a dll loaded by another process, so we cannot ourselves require that
+// we are run with admin privileges as that is outside of our control.
+//
+// We could request the user run the game as admin, but we don't want to do
+// that as we don't know what consequences that might have. e.g. the game could
+// create a config or save file while running as admin and find itself unable
+// to modify (or perhaps even open) that file later when running as a limited
+// user.
+//
+// We could install a privileged service, background task or COM object that we
+// communicate with... but we would need to be privileged at some point in
+// order to install that. Since we are just dropped in a game directory we
+// don't have any opportunity to install such a service.
+//
+// We could distribute a helper program alongside 3DMigoto that requires admin.
+// This is not a bad option, and has the advantage that we should be able to
+// set a sensible description that would appear in the UAC prompt, but on the
+// downside it would increase the amount of cruft we pollute the game directory
+// with, which we want to minimise.
+//
+// We could distribute the same helper program embedded as a resource inside
+// the 3DMigoto dll, which we write to disk and execute only when we need it.
+// This might end up being the best option, but at the cost of complexity.
+//
+// The below is an attempt to use rundll to achieve this - we call rundll with
+// runas to request it be run as admin, then have it load us and call back into
+// us. One disadvantage of this approach is the description in the UAC dialog
+// has no indication of why we need admin, but we could always show our own
+// dialog first to explain what we are about to do.
+//     MAJOR PROBLEM WITH THIS APPROACH: The full path of the DLL cannot have
+//     any spaces or commas in the filename. The documentation recommends using
+//     the short path to guarantee this, but if short paths are disabled on a
+//     drive this will not work, as seems to be the case when not using drive
+//     C. As a workaround we could perhaps copy ourselves to another location,
+//     such as the temporary directory - that is less likely to have a space in
+//     the path and even if it does it is more likely to have a short filename.
+static void spawn_privileged_profile_helper_task()
+{
+	wchar_t rundll_path[MAX_PATH], migoto_long_path[MAX_PATH], migoto_short_path[MAX_PATH], game_path[MAX_PATH];
+	wstring params;
+	SHELLEXECUTEINFO info = {0};
+	HMODULE module;
+	DWORD rc;
+
+	if (!GetSystemDirectory(rundll_path, MAX_PATH))
+		goto err;
+	wcscat(rundll_path, L"\\rundll32.exe");
+
+	// Get a handle to ourselves. Use an address to ensure we get us, not
+	// some other d3d11.dll
+	if (!GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+			| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)spawn_privileged_profile_helper_task, &module)) {
+		goto err;
+	}
+
+	if (!GetModuleFileName(module, migoto_long_path, MAX_PATH))
+		goto err;
+
+	// rundll requires the short path to ensure there are no spaces or
+	// other punctuation:
+	if (!GetShortPathName(migoto_long_path, migoto_short_path, MAX_PATH))
+		goto err;
+
+	// Now we no longer need the long path, turn it into the directory so
+	// that the new process starts in the right directory to find d3dx.ini,
+	// even if the game has changed to a different directory:
+	wcsrchr(migoto_long_path, L'\\')[1] = 0;
+
+	// Since the new process will be rundll, pass in the full path to the
+	// game's executable so that we can find the right profile, etc:
+	GetModuleFileName(0, game_path, MAX_PATH);
+
+	// Since the parameters include two paths, it could conceivably be
+	// longer than MAX_PATH, so use a wstring so we don't need to care:
+	params = migoto_short_path;
+	params += L",Install3DMigotoDriverProfile ";
+	params += game_path;
+
+	info.cbSize = sizeof(info);
+	info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
+	info.lpVerb = L"runas";
+	info.lpFile = rundll_path;
+	info.lpDirectory = migoto_long_path;
+	info.lpParameters = params.c_str();
+	info.nShow = SW_HIDE;
+
+	// ShellExecuteEx may require COM, though will probably be ok without it:
+	if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)))
+		LogInfo("spawn_privileged_profile_helper_task: CoInitializeEx failed\n");
+
+	LogInfo("Spawning helper task to install driver profile...\n");
+	LogInfo("  Program: %S\n", rundll_path);
+	LogInfo("  Arguments: %S\n", params.c_str());
+	LogInfo("  Directory: %S\n", info.lpDirectory);
+	if (!ShellExecuteEx(&info))
+		goto err;
+
+	if (!info.hProcess)
+		goto err;
+
+	if (WaitForSingleObject(info.hProcess, INFINITE) == WAIT_FAILED)
+		goto err_close;
+
+	if (!GetExitCodeProcess(info.hProcess, &rc))
+		goto err_close;
+
+	LogInfo("Helper process terminated with code %u\n", rc);
+
+	CloseHandle(info.hProcess);
+
+	return;
+err_close:
+	CloseHandle(info.hProcess);
+err:
+	LogInfo("Error while requesting admin privileges to install driver profile\n");
+}
+
+// rundll entry point - when we come here we should be running in a new process
+// with admin privileges, so that we can write any changes we need to the
+// driver profile.
+void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR lpszCmdLine, int nCmdShow)
+{
+	MessageBox(hwnd, lpszCmdLine, L"3DMigoto profile installer", MB_OK);
+}
+
+void install_driver_profile()
+{
+	// TODO: If we are already privileged we should just write the profile
+	// directly instead of calling code paths with lots of points of failure
+	spawn_privileged_profile_helper_task();
+
+	// TODO: Actually install the driver profile...
+}
