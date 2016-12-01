@@ -7,7 +7,7 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-#include <x64\ShaderFixes\hud.hlsl>
+#include <hud.hlsl>
 
 
 
