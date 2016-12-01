@@ -118,13 +118,6 @@ Known Issues
 - Sometimes after dying and loading a previous save the game may crash, or the
   3D may glitch out. If this happens, restart the game.
 
-- Possibly related to the above, sometimes HBAO+ may stop working correctly. If
-  you see a false ambient occlusion shadow appear to the right of objects, you
-  can press F11 to quickly disable HBAO+ without having to use the menus. This
-  is often an indicator that the 3D is going to die or that the game may even
-  crash soon, so it is recommended to save your game and restart as soon as
-  possible.
-
 - On SLI systems, water in certain areas may display an incorrect reflection
   (e.g. reflecting clouds from the sky while underground). These false
   reflections can be disabled by pressing F3.
