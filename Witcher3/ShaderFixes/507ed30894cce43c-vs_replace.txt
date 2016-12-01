@@ -1,13 +1,12 @@
-//HUD
+//HUD MINIMAP2
 cbuffer Constants : register(b0)
 {
   float4 mvp[2] : packoffset(c0);
-}
+} 
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// FIXME: Implement include handler in 3DMigoto to make paths consistent:
 #include <x64\ShaderFixes\hud.hlsl>
 
 void main(
@@ -17,18 +16,11 @@ void main(
   o0.x = dot(v0.xyzw, mvp[0].xyzw);
   o0.y = dot(v0.xyzw, mvp[1].xyzw);
   o0.zw = float2(0.000000e+000,1.000000e+000);
-
-if (!rt_is_screen())
-	return;
-
+ 
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-if (params.z == 1)
-	o0.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
-else if (params.z == 2)
-	o0.x += adjust_from_stereo2mono_depth_buffer(o0.x, o0.y);
-else
-	o0.x -= stereo.x*(params.x);  
+
+o0.x += stereo.x*(params.x);  
   
   return;
 }
@@ -82,3 +74,4 @@ ret
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  
+  

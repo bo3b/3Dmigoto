@@ -7,7 +7,6 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// FIXME: Implement include handler in 3DMigoto to make paths consistent:
 #include <x64\ShaderFixes\hud.hlsl>
 
 void main(
@@ -42,18 +41,10 @@ void main(
   o3.x = dot(v1.xyzw, vfuniforms[r0.x].xyzw);
   o3.y = dot(v1.xyzw, vfuniforms[r0.y].xyzw);
   o3.zw = float2(0.000000e+000,1.000000e+000);
-
-if (!rt_is_screen())
-	return;
-
+  
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-if (params.z == 1)
-	o3.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
-else if (params.z == 2)
-	o3.x += adjust_from_stereo2mono_depth_buffer(o3.x, o3.y);
-else
-	o3.x -= stereo.x*(params.x);  
+o3.x += stereo.x*(params.x);  
   return;
 }
 

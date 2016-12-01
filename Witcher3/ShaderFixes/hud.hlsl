@@ -14,7 +14,7 @@ float world_z_from_depth_buffer(float x, float y)
 	return w;
 }
 
-float adjust_from_stereo2mono_depth_buffer(float x, float y)
+float adjust_from_depth_buffer(float x, float y)
 {
 	float4 stereo = StereoParams.Load(0);
 	float separation = stereo.x; float convergence = stereo.y;
@@ -94,9 +94,9 @@ float adjust_from_stereo2mono_depth_buffer(float x, float y)
 	return old_offset * -stereo.z;
 }
 
-float adjust_from_stereo2mono_depth_buffer(float2 pos)
+float adjust_from_depth_buffer(float2 pos)
 {
-	return adjust_from_stereo2mono_depth_buffer(pos.x, pos.y);
+	return adjust_from_depth_buffer(pos.x, pos.y);
 }
 
 bool rt_is_screen()

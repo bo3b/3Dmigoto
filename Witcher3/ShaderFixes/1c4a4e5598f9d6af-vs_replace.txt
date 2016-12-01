@@ -1,60 +1,13 @@
-//HUD - cursors
+//HUD - cursors - MINIMAP person + INVENTORY
 cbuffer Constants : register(b0)
 {
   float4 vfuniforms[144] : packoffset(c0);
-}
+} 
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// FIXME: Implement include handler in 3DMigoto to make paths consistent:
 #include <x64\ShaderFixes\hud.hlsl>
-
-// Structure of the vertex buffer determined from frame analysis:
-struct vb_entry
-{
-  float2 pos;
-  uint v1;
-};
-
-StructuredBuffer<struct vb_entry> vb_struct : register(t100);
-Buffer<uint> ib : register(t101);
-
-// Copy of the vertex shader to calculate the output position:
-float4 calc_pos(float2 pos, uint v1)
-{
-  float4 v0 = float4(pos, 0, 1);
-  float4 o3;
-  float4 r0;
-
-  r0.xyzw = mad((int4)v1.xxxx, int4(6,6,6,6), int4(2,2,4,4));
-  r0.xyzw = r0.xyzw;
-  r0.xyzw = float4(1.000000e-001,1.100000e+000,1.000000e-001,1.100000e+000) + r0.xyzw;
-  r0.xyzw = (uint4)r0.xyzw;
-  o3.x = dot(v0.xyzw, vfuniforms[r0.x].xyzw);
-  o3.y = dot(v0.xyzw, vfuniforms[r0.y].xyzw);
-  o3.zw = float2(0.000000e+000,1.000000e+000);
-
-  return o3;
-}
-
-float2 find_center(uint id)
-{
-  int index_count = int(IniParams.Load(int2(3,0)).y);
-
-  uint id1 = ib[0];
-  uint id2 = ib[index_count - 1];
-
-  float2 pos1 = vb_struct[id1].pos;
-  float2 pos2 = vb_struct[id2].pos;
-
-  uint v1 = vb_struct[id1].v1;
-  uint v2 = vb_struct[id2].v1;
-
-  float2 p1 = calc_pos(pos1, v1);
-  float2 p2 = calc_pos(pos2, v2);
-  return (p1 + p2) / 2;
-}
 
 void main(
   float4 v0 : SV_Position0,
@@ -62,8 +15,7 @@ void main(
   out float4 o0 : TEXCOORD0,
   out float4 o1 : TEXCOORD1,
   out float2 o2 : TEXCOORD2,
-  out float4 o3 : SV_Position0,
-  uint id : SV_VertexID)
+  out float4 o3 : SV_Position0)
 {
   float4 r0;
   uint4 bitmask, uiDest;
@@ -82,37 +34,20 @@ void main(
   r0.xyzw = (uint4)r0.xyzw;
   o2.x = dot(v0.xyzw, vfuniforms[r0.z].xyzw);
   o2.y = dot(v0.xyzw, vfuniforms[r0.w].xyzw);
-
+  
 // Huh? Why are we adjusting the texcoord?
 // If we're trying to compensate for a slight misalignment between some icons it's due to them
 // being drawn to a tiny offscreen buffer first (noticed with frame analysis)
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-//o2.x -= stereo.x*(0.5*params.x);    
+o2.x += stereo.x*(0.5*params.x);    
   
   o3.x = dot(v0.xyzw, vfuniforms[r0.x].xyzw);
   o3.y = dot(v0.xyzw, vfuniforms[r0.y].xyzw);
   o3.zw = float2(0.000000e+000,1.000000e+000);
 
-if (!rt_is_screen())
-	return;
-
-if (params.z == 1)
-	o3.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
-else if (params.z == 2)
-	o3.x += adjust_from_stereo2mono_depth_buffer(o3.x, o3.y);
-else if (params.z == 3) {
-	float2 center = find_center(id);
-	if (in_floating_region(center)) {
-		float adj = adjust_from_stereo2mono_depth_buffer(center.x, center.y);
-		for (float offset = 0.1; offset <= 0.5; offset += 0.1)
-			adj = min_adj(adj, adjust_from_stereo2mono_depth_buffer(center.x, center.y - offset));
-		o3.x += adj;
-	} else
-		o3.x -= stereo.x*(params.x);
-} else
-	o3.x -= stereo.x*(params.x);
-
+o3.x += stereo.x*(params.x);  
+	
   return;
 }
 
@@ -187,5 +122,4 @@ ret
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
         
- 
- 
+   
