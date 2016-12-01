@@ -3,8 +3,30 @@ The Witcher 3: Wild Hunt
 A fix by mike_ar69 & DarkStarSword
 Assembler and alternate wrapper by Flugan
 3DMigoto improvements by Bo3b and DarkStarSword
-Profile and 1.10 update by Helifax
+Profile and 1.10/1.21 update by Helifax
 Special thanks to everyone on the forum who helped out with testing!
+
+Latest update 7-2-16, works with both Hearts of Stone and Blood and Wine expansions:
+
+The Witcher 3 - Patch 1.21 Update
+---------------------------------
+**Fixed so far:**
+
+- **Decals (quite a lot of them)**
+- **Rain splashes /drops**
+- **Blood**
+- **Hairworks shadows**
+- **Fixed witcher senses bubbles & warp bubbles so they now are at proper depth.**
+- **Crosshair is pushed to DEPTH**
+- **All other UI is still at FIXED depth.**
+- **Stars at night (thx SKAUT) for the savegame and pointing it out;)**
+- I added presets for different convergence levels on Keys "Z" and
+  "XBOX-RIGHT_THUMB_PRESS". - The Witcher Senses bubbles are also aligned for
+  these 2 convergence values and might not work for others (haven't tested).
+
+- I recommend using these presets to play the game (if you aren't already using
+  something like this). One if for Cutscenes/Interior the other is for
+  outside:)
 
 Fixed
 -----
@@ -73,6 +95,38 @@ Installation
                 Setting ID_0x70f8e408 = 0x80b671f3 InternalSettingFlag=V0
                 Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
                 Setting ID_0x709adada = 0x37f58357 InternalSettingFlag=V0
+            EndProfile
+
+        Latest profile for newer drivers. (11/3/16)
+
+            Profile "The Witcher 3"
+                ShowOn GeForce
+                ProfileType Application
+                Executable "witcher3.exe"
+                Executable "witcher3release.exe"
+                Setting ID_0x00a06746 = 0x00800000
+                Setting ID_0x00a06946 = 0x080020F5
+                Setting ID_0x1033cec2 = 0x00000002
+                Setting ID_0x1033dcd3 = 0x00000004
+                Setting ID_0x106d5cff = 0x00000000
+                Setting ID_0x10f9dc81 = 0x00000011
+                Setting ID_0x70092d4a = 0xb19c3533 InternalSettingFlag=V0
+                Setting ID_0x701eb457 = 0x2241ab21 InternalSettingFlag=V0
+                Setting ID_0x702442fc = 0x1c22fe24 InternalSettingFlag=V0
+                SettingString ID_0x7049c7ec = "웪ꑌ" InternalSettingFlag=V0
+                SettingString ID_0x704d456e = "" InternalSettingFlag=V0
+                SettingString ID_0x7051e5f5 = "籪鸙" InternalSettingFlag=V0
+                Setting ID_0x708db8c5 = 0x5c3300b3 InternalSettingFlag=V0
+                SettingString ID_0x709adadc = "ݧ浒ᓌܢڗ湡㿘㶩䐕鋃쫺待욻ꐩ쪒ₐ쀼᳢ڥø娋簰鹷瀧땑ᤡ叝㳉Съ뽹" InternalSettingFlag=V0
+                SettingString ID_0x70b5603f = "榛鳈⏙ꢗ" InternalSettingFlag=V0
+                Setting ID_0x70edb381 = 0x24208b6c InternalSettingFlag=V0
+                Setting ID_0x70f8e408 = 0x80b671f3 InternalSettingFlag=V0
+                Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
+                Setting ID_0x709adada = 0x37f58357 InternalSettingFlag=V0
+                Setting ID_0x709adadb = 0x3F6C5C19 InternalSettingFlag=V0
+                Setting ID_0x709adadb = 0x3F630FC1 UserSpecified=true
+                Setting ID_0x00c96f61 = 0x0000000f InternalSettingFlag=V0
+                Setting ID_0x003846a8 = 0x0000000f InternalSettingFlag=V0
             EndProfile
 
     5. In the "C:\ProgramData\NVIDIA Corporation\Drs" folder delete the
