@@ -8,6 +8,7 @@
 #include "Globals.h"
 #include "Override.h"
 #include "Hunting.h"
+#include "nvprofile.h"
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -46,6 +47,22 @@ bool IsCommandListSection(const wchar_t *section)
 			if (!_wcsicmp(section, CommandListSections[i].section))
 				return true;
 		}
+	}
+
+	return false;
+}
+
+static wchar_t *AllowLinesWithoutEquals[] = {
+	L"Profile",
+};
+
+bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
+{
+	int i;
+
+	for (i = 0; i < ARRAYSIZE(AllowLinesWithoutEquals); i++) {
+		if (!_wcsicmp(section, AllowLinesWithoutEquals[i]))
+			return true;
 	}
 
 	return false;
@@ -225,6 +242,7 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	DWORD result;
 	IniSections keys;
 	bool warn_duplicates = true;
+	bool warn_lines_without_equals = true;
 
 	// Sections that utilise a command list are allowed to have duplicate
 	// keys, while other sections are not. The command list parser will
@@ -232,6 +250,9 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	// list.
 	if (IsCommandListSection(section))
 		warn_duplicates = false;
+
+	if (DoesSectionAllowLinesWithoutEquals(section))
+		warn_lines_without_equals = false;
 
 	key_vals.clear();
 
@@ -251,14 +272,16 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	for (kptr = buf; *kptr; kptr++) {
 		for (vptr = kptr; *vptr && *vptr != L'='; vptr++) {}
 		if (*vptr != L'=') {
-			LogInfoW(L"WARNING: Malformed line in d3dx.ini: [%s] \"%s\"\n", section, kptr);
-			BeepFailure2();
-			kptr = vptr;
-			continue;
+			if (warn_lines_without_equals) {
+				LogInfoW(L"WARNING: Malformed line in d3dx.ini: [%s] \"%s\"\n", section, kptr);
+				BeepFailure2();
+				kptr = vptr;
+				continue;
+			}
+		} else {
+			*vptr = L'\0';
+			vptr++;
 		}
-
-		*vptr = L'\0';
-		vptr++;
 
 		if (warn_duplicates) {
 			if (keys.count(kptr)) {
@@ -526,6 +549,25 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		continue;
 log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
+	}
+}
+
+static void ParseDriverProfile(wchar_t *iniFile)
+{
+	IniSection section;
+	IniSection::iterator entry;
+	wstring *lhs, *rhs;
+
+	// Arguably we should only parse this section the first time since the
+	// settings will only be applied on startup.
+	profile_settings.clear();
+
+	GetIniSection(section, L"Profile", iniFile);
+	for (entry = section.begin(); entry < section.end(); entry++) {
+		lhs = &entry->first;
+		rhs = &entry->second;
+
+		parse_ini_profile_line(lhs, rhs);
 	}
 }
 
@@ -1590,6 +1632,9 @@ void LoadConfigFile()
 			}
 		}
 	}
+
+	LogInfo("[Profile]\n");
+	ParseDriverProfile(iniFile);
 
 	LogInfo("\n");
 }
