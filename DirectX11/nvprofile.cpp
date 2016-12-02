@@ -2,6 +2,8 @@
 
 #include "../util.h"
 #include "Globals.h"
+#include "IniHandler.h"
+#include "D3D11Wrapper.h"
 
 #include <unordered_set>
 #include <fstream>
@@ -11,6 +13,18 @@ ProfileSettings profile_settings;
 // Recommended reading:
 // NVIDIA Driver Settings Programming Guide
 // And the nvapi reference
+
+static wchar_t *exe_path;
+
+// Replacement for GetModuleFileName that will return the passed in filename if
+// we are being run as a privileged helper.
+static DWORD get_exe_path(wchar_t *filename, DWORD size)
+{
+	if (exe_path)
+		return !wcscpy_s(filename, size, exe_path);
+
+	return GetModuleFileName(0, filename, size);
+}
 
 struct NVStereoSetting {
 	unsigned id;
@@ -681,7 +695,7 @@ static NvDRSProfileHandle get_cur_nv_profile(NvDRSSessionHandle session)
 	NVDRS_APPLICATION app = {0};
 	wchar_t path[MAX_PATH];
 
-	if (!GetModuleFileName(0, path, MAX_PATH)) {
+	if (!get_exe_path(path, MAX_PATH)) {
 		LogInfo("GetModuleFileName failed\n");
 		return 0;
 	}
@@ -1140,14 +1154,6 @@ err:
 		DeleteFile(migoto_short_path);
 }
 
-// rundll entry point - when we come here we should be running in a new process
-// with admin privileges, so that we can write any changes we need to the
-// driver profile.
-void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR lpszCmdLine, int nCmdShow)
-{
-	MessageBox(hwnd, lpszCmdLine, L"3DMigoto profile installer", MB_OK);
-}
-
 static bool compare_setting(NvDRSSessionHandle session,
 		NvDRSProfileHandle profile,
 		NVDRS_SETTING *migoto_setting,
@@ -1241,7 +1247,7 @@ static void get_lower_exe_name(wchar_t *name)
 	wchar_t path[MAX_PATH];
 	wchar_t *exe, *c;
 
-	if (!GetModuleFileName(0, path, MAX_PATH))
+	if (!get_exe_path(path, MAX_PATH))
 		return;
 
 	exe = &wcsrchr(path, L'\\')[1];
@@ -1256,7 +1262,7 @@ static void generate_profile_name(wchar_t *name)
 	wchar_t path[MAX_PATH];
 	wchar_t *exe, *ext;
 
-	if (!GetModuleFileName(0, path, MAX_PATH))
+	if (!get_exe_path(path, MAX_PATH))
 		return;
 
 	exe = &wcsrchr(path, L'\\')[1];
@@ -1352,6 +1358,79 @@ static int update_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile
 	}
 
 	return 0;
+}
+
+// rundll entry point - when we come here we should be running in a new process
+// with admin privileges, so that we can write any changes we need to the
+// driver profile. This follows a subset of the flows that InitializeDLL,
+// LoadConfigFile and log_check_and_update_nv_profiles normally do.
+void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR lpszCmdLine, int nCmdShow)
+{
+	NvDRSSessionHandle session = 0;
+	NvDRSProfileHandle profile = 0;
+	NvAPI_Status status = NVAPI_OK;
+
+	exe_path = lpszCmdLine;
+
+	LoadProfileManagerConfig(exe_path);
+
+	// Preload OUR nvapi before we call init because we need some of our calls.
+#if(_WIN64)
+#define NVAPI_DLL L"nvapi64.dll"
+#else
+#define NVAPI_DLL L"nvapi.dll"
+#endif
+
+	LoadLibrary(NVAPI_DLL);
+
+	// Tell our nvapi.dll that it's us calling, and it's OK.
+	NvAPIOverride();
+	status = NvAPI_Initialize();
+	if (status != NVAPI_OK) {
+		LogInfo("  NvAPI_Initialize failed: ");
+		log_nv_error(status);
+		return;
+	}
+
+	log_nv_driver_version();
+
+	status = NvAPI_DRS_CreateSession(&session);
+	if (status != NVAPI_OK)
+		goto err_no_session;
+
+	status = NvAPI_DRS_LoadSettings(session);
+	if (status != NVAPI_OK)
+		goto bail;
+
+	if (create_internal_setting_map(session))
+		goto bail;
+
+	profile = get_cur_nv_profile(session);
+
+	log_relevant_nv_profiles(session, profile);
+
+	// Don't bother checking if we need to update - if we have been called,
+	// that has already been decided.
+
+	if (profile == 0)
+		profile = create_profile(session);
+
+	if (profile == 0)
+		goto bail;
+
+	if (update_profile(session, profile))
+		goto bail;
+
+	LogInfo("Profile update successful\n");
+
+bail:
+	destroy_internal_setting_map();
+	NvAPI_DRS_DestroySession(session);
+err_no_session:
+	if (status != NVAPI_OK) {
+		LogInfo("Profile manager error: ");
+		log_nv_error(status);
+	}
 }
 
 void log_check_and_update_nv_profiles()
