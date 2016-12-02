@@ -1159,7 +1159,7 @@ static bool compare_setting(NvDRSSessionHandle session,
 		NVDRS_SETTING *migoto_setting,
 		bool allow_user_customisation,
 		std::unordered_set<unsigned> *internal_settings,
-		char *reason)
+		bool log)
 {
 	NVDRS_SETTING driver_setting = {0};
 	NvAPI_Status status = NVAPI_OK;
@@ -1169,13 +1169,15 @@ static bool compare_setting(NvDRSSessionHandle session,
 	driver_setting.version = NVDRS_SETTING_VER;
 	status = NvAPI_DRS_GetSetting(session, profile, migoto_setting->settingId, &driver_setting);
 	if (status != NVAPI_OK) {
-		LogInfo("%s setting 0x%08x: ", reason, migoto_setting->settingId);
+		if (log)
+			LogInfo("Need to update setting 0x%08x because ", migoto_setting->settingId);
 		log_nv_error(status);
 		return true;
 	}
 
 	if (migoto_setting->settingType != driver_setting.settingType) {
-		LogInfo("%s setting 0x%08x (type differs)\n", reason, migoto_setting->settingId);
+		if (log)
+			LogInfo("Need to update setting 0x%08x because type differs\n", migoto_setting->settingId);
 		return true;
 	}
 
@@ -1200,8 +1202,11 @@ static bool compare_setting(NvDRSSessionHandle session,
 		if (internal)
 			dval = decode_internal_dword(driver_setting.settingId, dval);
 		if (dval != migoto_setting->u32CurrentValue) {
-			LogInfo("%s DWORD setting 0x%08x. Current: 0x%08x Want: 0x%08x\n",
-					reason, migoto_setting->settingId, dval, migoto_setting->u32CurrentValue);
+			if (log) {
+				LogInfo("Need to update DWORD setting 0x%08x from 0x%08x to 0x%08x\n",
+					migoto_setting->settingId, dval,
+					migoto_setting->u32CurrentValue);
+			}
 			return true;
 		}
 		break;
@@ -1209,9 +1214,11 @@ static bool compare_setting(NvDRSSessionHandle session,
 		if (internal)
 			decode_internal_string(driver_setting.settingId, driver_setting.wszCurrentValue);
 		if (wcscmp((wchar_t*)driver_setting.wszCurrentValue, (wchar_t*)migoto_setting->wszCurrentValue)) {
-			LogInfo("%s string setting 0x%08x\n", reason, migoto_setting->settingId);
-			LogInfo("  Current: \"%S\"\n", (wchar_t*)driver_setting.wszCurrentValue);
-			LogInfo("     Want: \"%S\"\n", (wchar_t*)migoto_setting->wszCurrentValue);
+			if (log) {
+				LogInfo("Need to update string setting 0x%08x\n", migoto_setting->settingId);
+				LogInfo("  From: \"%S\"\n", (wchar_t*)driver_setting.wszCurrentValue);
+				LogInfo("    To: \"%S\"\n", (wchar_t*)migoto_setting->wszCurrentValue);
+			}
 			return true;
 		}
 	}
@@ -1235,8 +1242,9 @@ static bool need_profile_update(NvDRSSessionHandle session, NvDRSProfileHandle p
 	identify_internal_settings(session, profile, &internal_settings);
 
 	for (i = profile_settings.begin(); i != profile_settings.end(); i++) {
-		if (compare_setting(session, profile, &i->second, true, internal_settings, "Need to update"))
+		if (compare_setting(session, profile, &i->second, true, internal_settings, true)) {
 			return true;
+		}
 	}
 
 	return false;
@@ -1340,12 +1348,25 @@ static int update_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile
 
 	for (i = profile_settings.begin(); i != profile_settings.end(); i++) {
 		migoto_setting = &i->second;
-		if (compare_setting(session, profile, migoto_setting, false, internal_settings, "Updating")) {
+		if (compare_setting(session, profile, migoto_setting, false, internal_settings, false)) {
 			status = NvAPI_DRS_SetSetting(session, profile, migoto_setting);
 			if (status != NVAPI_OK) {
 				LogInfo("Error updating driver profile: ");
 				log_nv_error(status);
 				return -1;
+			}
+
+			switch (migoto_setting->settingType) {
+			case NVDRS_DWORD_TYPE:
+				LogInfo("DWORD setting 0x%08x changed to 0x%08x\n",
+						migoto_setting->settingId,
+						migoto_setting->u32CurrentValue);
+				break;
+			case NVDRS_WSTRING_TYPE:
+				LogInfo("String setting 0x%08x changed to \"%S\"\n",
+						migoto_setting->settingId,
+						(wchar_t*)migoto_setting->wszCurrentValue);
+				break;
 			}
 		}
 	}
