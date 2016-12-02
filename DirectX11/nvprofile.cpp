@@ -298,7 +298,7 @@ static void log_nv_error(NvAPI_Status status)
 		return;
 
 	NvAPI_GetErrorMessage(status, desc);
-	LogInfo(" NVAPI error: %s\n", desc);
+	LogInfo("%s\n", desc);
 }
 
 static HMODULE nvDLL;
@@ -431,7 +431,7 @@ static void destroy_internal_setting_map()
 	internal_setting_map.clear();
 }
 
-static void identify_internal_settings(NvDRSSessionHandle session,
+static void _identify_internal_settings(NvDRSSessionHandle session,
 		wchar_t *profile_name,
 		std::unordered_set<unsigned> **internal_settings)
 {
@@ -444,6 +444,26 @@ static void identify_internal_settings(NvDRSSessionHandle session,
 		return;
 
 	*internal_settings = &i->second;
+}
+
+static void identify_internal_settings(NvDRSSessionHandle session,
+		NvDRSProfileHandle profile,
+		std::unordered_set<unsigned> **internal_settings)
+{
+	NvAPI_Status status = NVAPI_OK;
+	NVDRS_PROFILE info = {0};
+
+	*internal_settings = NULL;
+
+	info.version = NVDRS_PROFILE_VER;
+	status = NvAPI_DRS_GetProfileInfo(session, profile, &info);
+	if (status != NVAPI_OK) {
+		LogInfo("Error getting profile info: ");
+		log_nv_error(status);
+		return;
+	}
+
+	_identify_internal_settings(session, (wchar_t*)info.profileName, internal_settings);
 }
 
 
@@ -557,7 +577,7 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 		// Geforce Profile Manager output: isMetro
 	}
 
-	identify_internal_settings(session, (wchar_t*)info->profileName, &internal_settings);
+	_identify_internal_settings(session, (wchar_t*)info->profileName, &internal_settings);
 
 	if (info->numOfSettings > 0) {
 		settings = new NVDRS_SETTING[info->numOfSettings];
@@ -943,7 +963,7 @@ void log_nv_driver_version()
 	if (status == NVAPI_OK) {
 		LogInfo("NVIDIA driver version %u.%u (branch %s)\n", version / 100, version % 100, branch);
 	} else {
-		LogInfo("Error getting NVIDIA driver version:");
+		LogInfo("Error getting NVIDIA driver version: ");
 		log_nv_error(status);
 	}
 }
@@ -1080,25 +1100,75 @@ void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR l
 	MessageBox(hwnd, lpszCmdLine, L"3DMigoto profile installer", MB_OK);
 }
 
-static void install_driver_profile()
+static bool compare_setting(NvDRSSessionHandle session,
+		NvDRSProfileHandle profile,
+		NVDRS_SETTING *migoto_setting,
+		bool allow_user_customisation,
+		std::unordered_set<unsigned> *internal_settings,
+		char *reason)
 {
-	// TODO: If we are already privileged we should just write the profile
-	// directly instead of calling code paths with lots of points of failure
-	spawn_privileged_profile_helper_task();
+	NVDRS_SETTING driver_setting = {0};
+	NvAPI_Status status = NVAPI_OK;
+	unsigned dval = 0;
+	bool internal;
 
-	// TODO: Actually install the driver profile...
+	driver_setting.version = NVDRS_SETTING_VER;
+	status = NvAPI_DRS_GetSetting(session, profile, migoto_setting->settingId, &driver_setting);
+	if (status != NVAPI_OK) {
+		LogInfo("%s setting 0x%08x: ", reason, migoto_setting->settingId);
+		log_nv_error(status);
+		return true;
+	}
+
+	if (migoto_setting->settingType != driver_setting.settingType) {
+		LogInfo("%s setting 0x%08x (type differs)\n", reason, migoto_setting->settingId);
+		return true;
+	}
+
+	if (allow_user_customisation &&
+			!driver_setting.isCurrentPredefined &&
+			is_user_customise_allowed(migoto_setting->settingId)) {
+		// Allow the user to customise things like convergence
+		// without insisting on writing the profile back every
+		// launch. We will still update these if we decide we
+		// need to update the profile for any other reason.
+		return false;
+	}
+
+	internal = driver_setting.isCurrentPredefined
+		&& driver_setting.isPredefinedValid
+		&& internal_settings
+		&& internal_settings->count(driver_setting.settingId);
+
+	switch (migoto_setting->settingType) {
+	case NVDRS_DWORD_TYPE:
+		dval = driver_setting.u32CurrentValue;
+		if (internal)
+			dval = decode_internal_dword(driver_setting.settingId, dval);
+		if (dval != migoto_setting->u32CurrentValue) {
+			LogInfo("%s DWORD setting 0x%08x. Current: 0x%08x Want: 0x%08x\n",
+					reason, migoto_setting->settingId, dval, migoto_setting->u32CurrentValue);
+			return true;
+		}
+		break;
+	case NVDRS_WSTRING_TYPE:
+		if (internal)
+			decode_internal_string(driver_setting.settingId, driver_setting.wszCurrentValue);
+		if (wcscmp((wchar_t*)driver_setting.wszCurrentValue, (wchar_t*)migoto_setting->wszCurrentValue)) {
+			LogInfo("%s string setting 0x%08x\n", reason, migoto_setting->settingId);
+			LogInfo("  Current: \"%S\"\n", (wchar_t*)driver_setting.wszCurrentValue);
+			LogInfo("     Want: \"%S\"\n", (wchar_t*)migoto_setting->wszCurrentValue);
+			return true;
+		}
+	}
+
+	return false;
 }
 
 static bool need_profile_update(NvDRSSessionHandle session, NvDRSProfileHandle profile)
 {
 	std::unordered_set<unsigned> *internal_settings = NULL;
 	ProfileSettings::iterator i;
-	NVDRS_SETTING driver_setting = {0};
-	NVDRS_SETTING *migoto_setting;
-	NvAPI_Status status = NVAPI_OK;
-	NVDRS_PROFILE info = {0};
-	unsigned dval = 0;
-	bool internal;
 
 	if (profile_settings.empty())
 		return false;
@@ -1108,69 +1178,132 @@ static bool need_profile_update(NvDRSSessionHandle session, NvDRSProfileHandle p
 		return true;
 	}
 
-	info.version = NVDRS_PROFILE_VER;
-	status = NvAPI_DRS_GetProfileInfo(session, profile, &info);
-	if (status != NVAPI_OK) {
-		LogInfo("Need profile update: Error getting profile info: ");
-		log_nv_error(status);
-		return true;
-	}
+	identify_internal_settings(session, profile, &internal_settings);
 
-	identify_internal_settings(session, (wchar_t*)info.profileName, &internal_settings);
-
-	driver_setting.version = NVDRS_SETTING_VER;
 	for (i = profile_settings.begin(); i != profile_settings.end(); i++) {
-		migoto_setting = &i->second;
-
-		status = NvAPI_DRS_GetSetting(session, profile, migoto_setting->settingId, &driver_setting);
-		if (status != NVAPI_OK) {
-			LogInfo("Need profile update: Error getting setting 0x%08x: ", migoto_setting->settingId);
-			log_nv_error(status);
+		if (compare_setting(session, profile, &i->second, true, internal_settings, "Need to update"))
 			return true;
-		}
-
-		if (migoto_setting->settingType != driver_setting.settingType) {
-			LogInfo("Need profile update: Setting 0x%08x type differs\n", migoto_setting->settingId);
-			return true;
-		}
-
-		if (!driver_setting.isCurrentPredefined && is_user_customise_allowed(migoto_setting->settingId)) {
-			// Allow the user to customise things like convergence
-			// without insisting on writing the profile back every
-			// launch. We will still update these if we decide we
-			// need to update the profile for any other reason.
-			continue;
-		}
-
-		internal = driver_setting.isCurrentPredefined
-			&& driver_setting.isPredefinedValid
-			&& internal_settings
-			&& internal_settings->count(driver_setting.settingId);
-
-		switch (migoto_setting->settingType) {
-		case NVDRS_DWORD_TYPE:
-			dval = driver_setting.u32CurrentValue;
-			if (internal)
-				dval = decode_internal_dword(driver_setting.settingId, dval);
-			if (dval != migoto_setting->u32CurrentValue) {
-				LogInfo("Need profile update: DWORD setting 0x%08x differs. Current: 0x%08x Want: 0x%08x\n",
-						migoto_setting->settingId, dval, migoto_setting->u32CurrentValue);
-				return true;
-			}
-			break;
-		case NVDRS_WSTRING_TYPE:
-			if (internal)
-				decode_internal_string(driver_setting.settingId, driver_setting.wszCurrentValue);
-			if (wcscmp((wchar_t*)driver_setting.wszCurrentValue, (wchar_t*)migoto_setting->wszCurrentValue)) {
-				LogInfo("Need profile update: String setting 0x%08x differs\n", migoto_setting->settingId);
-				LogInfo("  Current: \"%S\"\n", (wchar_t*)driver_setting.wszCurrentValue);
-				LogInfo("     Want: \"%S\"\n", (wchar_t*)migoto_setting->wszCurrentValue);
-				return true;
-			}
-		}
 	}
 
 	return false;
+}
+
+static void get_lower_exe_name(wchar_t *name)
+{
+	wchar_t path[MAX_PATH];
+	wchar_t *exe, *c;
+
+	if (!GetModuleFileName(0, path, MAX_PATH))
+		return;
+
+	exe = &wcsrchr(path, L'\\')[1];
+	for (c = exe; *c; c++)
+		*c = towlower(*c);
+
+	wcscpy_s(name, NVAPI_UNICODE_STRING_MAX, exe);
+}
+
+static void generate_profile_name(wchar_t *name)
+{
+	wchar_t path[MAX_PATH];
+	wchar_t *exe, *ext;
+
+	if (!GetModuleFileName(0, path, MAX_PATH))
+		return;
+
+	exe = &wcsrchr(path, L'\\')[1];
+	ext = wcsrchr(path, L'.');
+	if (ext)
+		*ext = L'\0';
+
+	wcscpy_s(name, NVAPI_UNICODE_STRING_MAX, exe);
+	wcscat_s(name, NVAPI_UNICODE_STRING_MAX, L"-3DMigoto");
+}
+
+static int add_exe_to_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile)
+{
+	NvAPI_Status status = NVAPI_OK;
+	NVDRS_APPLICATION app = {0};
+
+	app.version = NVDRS_APPLICATION_VER;
+	// Could probably add the full path, but then we would be more likely
+	// to hit cases where the profile exists but the executable isn't in
+	// it. For now just use the executable name unless this proves to be a
+	// problem in practice.
+	get_lower_exe_name((wchar_t*)app.appName);
+
+	LogInfo("Adding \"%S\" to profile\n", (wchar_t*)app.appName);
+	status = NvAPI_DRS_CreateApplication(session, profile, &app);
+	if (status != NVAPI_OK) {
+		LogInfo("Error adding app to profile: ");
+		log_nv_error(status);
+		return -1;
+	}
+
+	return 0;
+}
+
+static NvDRSProfileHandle create_profile(NvDRSSessionHandle session)
+{
+	NvAPI_Status status = NVAPI_OK;
+	NvDRSProfileHandle profile = 0;
+	NVDRS_PROFILE info = {0};
+
+	info.version = NVDRS_PROFILE_VER;
+	generate_profile_name((wchar_t*)info.profileName);
+
+	// In the event that the profile name already exists, add us to it:
+	status = NvAPI_DRS_FindProfileByName(session, info.profileName, &profile);
+	if (status == NVAPI_OK) {
+		LogInfo("Profile \"%S\" already exists\n", (wchar_t*)info.profileName);
+		if (add_exe_to_profile(session, profile))
+			return 0;
+		return profile;
+	}
+
+	LogInfo("Creating profile \"%S\"\n", (wchar_t*)info.profileName);
+	status = NvAPI_DRS_CreateProfile(session, &info, &profile);
+	if (status != NVAPI_OK) {
+		LogInfo("Error creating profile: ");
+		log_nv_error(status);
+		return 0;
+	}
+
+	if (add_exe_to_profile(session, profile))
+		return 0;
+
+	return profile;
+}
+
+static int update_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile)
+{
+	std::unordered_set<unsigned> *internal_settings = NULL;
+	ProfileSettings::iterator i;
+	NvAPI_Status status = NVAPI_OK;
+	NVDRS_SETTING *migoto_setting;
+
+	identify_internal_settings(session, profile, &internal_settings);
+
+	for (i = profile_settings.begin(); i != profile_settings.end(); i++) {
+		migoto_setting = &i->second;
+		if (compare_setting(session, profile, migoto_setting, false, internal_settings, "Updating")) {
+			status = NvAPI_DRS_SetSetting(session, profile, migoto_setting);
+			if (status != NVAPI_OK) {
+				LogInfo("Error updating driver profile: ");
+				log_nv_error(status);
+				return -1;
+			}
+		}
+	}
+
+	status = NvAPI_DRS_SaveSettings(session);
+	if (status != NVAPI_OK) {
+		LogInfo("Error saving driver profile: ");
+		log_nv_error(status);
+		return -1;
+	}
+
+	return 0;
 }
 
 void log_check_and_update_nv_profiles()
@@ -1201,7 +1334,46 @@ void log_check_and_update_nv_profiles()
 		goto bail;
 	}
 
-	LogInfo("NEED PROFILE UPDATE\n");
+	// We need to update the profile. Firstly, we try with our current
+	// permissions, just in case we are already running as admin, or nvidia
+	// ever decides to allow unprivileged applications to modify their own
+	// profile:
+
+	if (profile == 0)
+		profile = create_profile(session);
+
+	if (profile == 0 || update_profile(session, profile)) {
+		spawn_privileged_profile_helper_task();
+	}
+
+	// Close the session, create a new one and log and load the (hopefully)
+	// updated settings to see if the helper program was successfully able
+	// to update the profile.
+	destroy_internal_setting_map();
+	NvAPI_DRS_DestroySession(session);
+
+	status = NvAPI_DRS_CreateSession(&session);
+	if (status != NVAPI_OK)
+		goto err_no_session;
+
+	status = NvAPI_DRS_LoadSettings(session);
+	if (status != NVAPI_OK)
+		goto bail;
+
+	if (create_internal_setting_map(session))
+		goto bail;
+
+	profile = get_cur_nv_profile(session);
+	if (profile) {
+		LogInfo("----------- Updated profile settings -----------\n");
+		log_nv_profile(session, profile);
+		LogInfo("----------- End updated profile settings -----------\n");
+	}
+
+	if (need_profile_update(session, profile)) {
+		LogInfo("WARNING: Profile update failed!\n");
+		BeepProfileFail();
+	}
 
 bail:
 	destroy_internal_setting_map();
