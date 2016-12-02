@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <fstream>
 
-std::unordered_map<NvU32, NVDRS_SETTING> profile_settings;
+ProfileSettings profile_settings;
 
 // Recommended reading:
 // NVIDIA Driver Settings Programming Guide
@@ -20,214 +20,223 @@ struct NVStereoSetting {
 	// Only setting this on fields identified as floats based on values
 	// observed in existing profiles - there may be others:
 	bool known_float;
+	// This allows a user setting to exist that does not match that
+	// specified in the [Profile] section. It is intended primarily for
+	// settings that a user may customise on the fly, such as convergence,
+	// whether the memo or laser sight is shown, compatibility mode, etc.
+	// These settings will still be updated if they are predefined, or when
+	// updating the profile for any other reason (the later allows us to
+	// force an update if we need to change them by e.g. adding a version
+	// number to the Comments setting).
+	bool allow_user_customise;
 	wchar_t *name;
 };
 
 static NVStereoSetting NVStereoSettingNames[] = {
 	// Same name we decided to use in nvidia profile inspector:
-	{0x701EB457, false, L"StereoProfile"},
+	{0x701EB457, false, false, L"StereoProfile"},
 
 	// Primary name table:
-	{0x70ad05c8, false, L"Time"},
-	{0x701a8be4, false, L"RunTimeName"},
-	{0x70cb9168, false, L"EnableConsumerStereoSupport"},
-	{0x704915a1, false, L"StereoViewer"},
-	{0x708f9ef7, false, L"StereoViewerType"},
-	{0x708e5cb4, false, L"ShowAllViewerTypes"},
-	{0x70538ab1, false, L"StereoAdjustEnable"},
-	{0x70633bd9, false, L"StereoDisableTnL"},
-	{0x70c27e3c, false, L"StereoTransformationType"},
-	{0x70933c00, false, L"StereoSeparation"},
-	{0x7082555b, false, L"StereoSeparationStep"},
-	{0x708db8c5,  true, L"StereoConvergence"},
-	{0x708db8c6, false, L"StereoVRConvergenceBias"},
-	{0x70efbb5b, false, L"StereoConvergenceMultiplier"},
-	{0x708db8c8, false, L"StereoVRRefreshRateOverride"},
-	{0x708db8c9, false, L"StereoVRVsync"},
-	{0x7029432b, false, L"RHW2DDetectionMin"},
-	{0x702c861a,  true, L"RHWGreaterAtScreen"},
-	{0x70ab2e09, false, L"RHWEqualAtScreen"},
-	{0x70381472,  true, L"RHWLessAtScreen"},
-	{0x702a0ab2, false, L"AutoConvergence"},
-	{0x70bf3c6b,  true, L"AutoConvergenceAdjustPace"},
-	{0x70d76b8b, false, L"StereoToggle"},
-	{0x70121853, false, L"SaveStereoImage"},
-	{0x7087fe61, false, L"StereoVerticalAdjustMore"},
-	{0x703acfc6, false, L"StereoVerticalAdjustLess"},
-	{0x70062f07, false, L"StereoHorizontalAdjustMore"},
-	{0x70871a39, false, L"StereoHorizontalAdjustLess"},
-	{0x70ab8d32, false, L"StereoSeparationAdjustMore"},
-	{0x705d1e02, false, L"StereoSeparationAdjustLess"},
-	{0x701ed576, false, L"StereoConvergenceAdjustMore"},
-	{0x70d4add7, false, L"StereoConvergenceAdjustLess"},
-	{0x70d76b8c, false, L"StereoToggleMode"},
-	{0x706315af, false, L"StereoSuggestSettings"},
-	{0x7017861c, false, L"StereoUnsuggestSettings"},
-	{0x700498b3, false, L"WriteConfig"},
-	{0x70c73ba2, false, L"DeleteConfig"},
-	{0x70b7bd1f, false, L"ToggleLaserSight"},
-	{0x70d8bae6, false, L"LaserAdjustXPlus"},
-	{0x7048b7dc, false, L"LaserAdjustXMinus"},
-	{0x7024eda4, false, L"LaserAdjustYPlus"},
-	{0x70fb9e1e, false, L"LaserAdjustYMinus"},
-	{0x70085de3, false, L"ToggleAutoConvergence"},
-	{0x703bc51e, false, L"ToggleAutoConvergenceRestore"},
-	{0x7066a22e, false, L"RHWAtScreenMore"},
-	{0x709139ad, false, L"RHWAtScreenLess"},
-	{0x704e4bca, false, L"RHWLessAtScreenMore"},
-	{0x70b378a1, false, L"RHWLessAtScreenLess"},
-	{0x703f4521, false, L"GammaAdjustMore"},
-	{0x70e8420c, false, L"GammaAdjustLess"},
-	{0x701fc5b4, false, L"GlassesDelayPlus"},
-	{0x70b8a743, false, L"GlassesDelayMinus"},
-	{0x705faed7, false, L"FavorSZ"},
-	{0x7058b6e1, false, L"LaserSight"},
-	{0x707ac50d, false, L"LaserSightFile"},
-	{0x7054837a, false, L"LaserSightEnabled"},
-	{0x70da83c6, false, L"LaserSightIndex"},
-	{0x7032243a, false, L"LaserSightProperty"},
-	{0x70364596, false, L"StereoPointer"},
-	{0x702244b7, false, L"GameSpecific0"},
-	{0x70ab30a7, false, L"StereoDefaultOn"},
-	{0x70a1411a, false, L"FrustumAdjustMode"},
-	{0x7086ebe9, false, L"MonitorSize"},
-	{0x7032022c, false, L"MaxMonitorSize"},
-	{0x709e4a94, false, L"MaxVertexCount"},
-	{0x709794cc, false, L"PartialClearMode"},
-	{0x7057e831,  true, L"LaserXAdjust"},
-	{0x70225308,  true, L"LaserYAdjust"},
-	{0x7014fca2,  true, L"LaserZAdjust"},
-	{0x702ba385, false, L"StereoRefreshDefaultOn"},
-	{0x70bd11e0, false, L"MixedTnL"},
-	{0x70c8b5d1, false, L"StereoGamma"},
-	{0x70dc4a12, false, L"LineCodeColor"},
-	{0x70d51cd1, false, L"LeftAnaglyphFilter"},
-	{0x70f4a930, false, L"RightAnaglyphFilter"},
-	{0x70b1c8cc, false, L"InterleavePattern0"},
-	{0x7091a772, false, L"InterleavePattern1"},
-	{0x70aae185, false, L"StereoForceVSync"},
-	{0x70e5773b, false, L"StereoColorKey"},
-	{0x70b17872, false, L"ZDirection"},
-	{0x70a2000e, false, L"StereoCompatibility"},
-	{0x70ac6888, false, L"LeftColorFilter0"},
-	{0x7090b6ca, false, L"LeftColorFilter1"},
-	{0x70b9a2f7, false, L"RightColorFilter0"},
-	{0x70aca0cc, false, L"RightColorFilter1"},
-	{0x706e0041, false, L"SharpVPI"},
-	{0x701baa09, false, L"StereoMode"},
-	{0x700a5654, false, L"Watchdog"},
-	{0x70f455aa, false, L"StereoOSDEnable"},
-	{0x703564f6, false, L"StereoOrthoEnable"},
-	{0x70edb381, false, L"StereoTextureEnable"},
-	{0x709aa171, false, L"StereoNotSupported"},
-	{0x70969bb0, false, L"ModesetWarning"},
-	{0x70af6400, false, L"StereoFirstTime"},
-	{0x70ded3c0, false, L"StereoRefreshRate"},
-	{0x704a905a, false, L"GameConfigs"},
-	{0x70729e58, false, L"CompareEyes"},
-	{0x70efb726, false, L"CompareFrom"},
-	{0x7097906c, false, L"StereoImageType"},
-	{0x7004e7a6, false, L"SnapShotQuality"},
-	{0x7005ad16, false, L"NoLockSubstitute"},
-	{0x7054fbf8, false, L"PushbufSubstituteSize"},
-	{0x70175566, false, L"DiscardHotkeys"},
-	{0x707cfb97, false, L"StereoLCDPatternType"},
-	{0x70057bb6, false, L"GlassesSwitchDelay"},
-	{0x7044d7a6, false, L"StartZBit"},
-	{0x70c71508, false, L"DisableOnOutOfMemory"},
-	{0x709b3484, false, L"StereoWindowedEnable"},
-	{0x702c7709, false, L"AllowNonExclusiveStereo"},
-	{0x706e1913,  true, L"Rhwinf"},
-	{0x70a4995c,  true, L"Rhwscr"},
-	{0x70fc13ad, false, L"Zinf"}, // float? Only appears once as 0
-	{0x707f0e69,  true, L"Zscr"},
-	{0x7064f0c2, false, L"InGameLaserSight"},
-	{0x70d1bdb5, false, L"CutoffNearDepthLess"},
-	{0x7020c991, false, L"CutoffNearDepthMore"},
-	{0x704c9a46, false, L"CutoffFarDepthLess"},
-	{0x70fbc04d, false, L"CutoffFarDepthMore"},
-	{0x704b45c7, false, L"CutoffStepLess"},
-	{0x700f2971, false, L"CutoffStepMore"},
-	{0x7050e011,  true, L"StereoCutoffDepthNear"},
-	{0x70add220,  true, L"StereoCutoffDepthFar"},
-	{0x709a1ddf, false, L"StereoCutoff"},
-	{0x702b8c95, false, L"EnableCE"},
-	{0x70a8fc7f, false, L"MediaPlayer"},
-	{0x70d10d2b, false, L"StereoDX9"},
-	{0x70160ebf, false, L"StereoMsgVerticalOffset"},
-	{0x70031b88, false, L"LaserSightTrigger"},
-	{0x70bc864d, false, L"StereoLaserSightMaxCount"},
-	{0x70077042, false, L"StereoLaserSightCount"},
-	{0x70b6d6ed, false, L"StereoEasyZCheck"},
-	{0x709bc378, false, L"StereoStrictLSCheck"},
-	{0x70de5533, false, L"StereoDisableAsync"},
-	{0x7096eced, false, L"EnablePartialStereoBlit"},
-	{0x707f4b45, false, L"StereoMemoEnabled"},
-	{0x709dea62, false, L"StereoNoDepthOverride"},
-	{0x702442fc, false, L"StereoFlagsDX10"},
-	{0x70e34a78, false, L"StereoUseMatrix"},
-	{0x7044f8fb, false, L"StereoShaderMatrixCheck"},
-	{0x7052bdd0, false, L"StereoLogShaders"},
-	{0x70e5a749,  true, L"StereoEpsilon"},
-	{0x7042eef1, false, L"DelayedStereoDesktop"},
-	{0x70f8e408, false, L"DX10VSCBNumber"},
-	{0x70092d4a, false, L"DX10DSCBNumber"},
-	{0x706139ad, false, L"InGameLaserSightDX9States"},
-	{0x70ccb5f0, false, L"StereoMiscFlags"},
-	{0x70e46f20, false, L"StereoHiddenProfile"},
-	{0x70e46f2a, false, L"StereoLinkDll"},
-	{0x70e46f2b, false, L"EnableStereoCursor"},
-	{0x70a7fc7f, false, L"CreateStereoDTAfterPresentNum"},
-	{0x705fafec, false, L"Date_Rel"},
-	{0x70c8d48e, false, L"Game"},
-	{0x709cc5e0, false, L"Style"},
-	{0x706c7030, false, L"Publisher"},
-	{0x703c4026, false, L"Developer"},
-	{0x70b5603f, false, L"API"},
-	{0x7049c7ec, false, L"Value"},
-	{0x7051e5f5, false, L"Compat"},
-	{0x704cde5a, false, L"PF_Issues"},
-	{0x704d456e, false, L"Comments"},
-	{0x704f5928, false, L"Developer_Issues"},
-	{0x70998683, false, L"P1SH0"},
-	{0x70e6a3cf, false, L"V1SH0"},
-	{0x7046516e, false, L"PSH0"},
-	{0x708b7af8, false, L"VSH0"},
-	{0x708b7af9, false, L"VSH1"},
-	{0x708b7afa, false, L"VSH2"},
-	{0x708b7afb, false, L"VSH3"},
-	{0x708b7afc, false, L"VSH4"},
-	{0x708b7afd, false, L"VSH5"},
-	{0x708b7afe, false, L"VSH6"},
-	{0x708b7aff, false, L"VSH7"},
-	{0x708b7b00, false, L"VSH8"},
-	{0x708b7b01, false, L"VSH9"},
-	{0x708b7b02, false, L"VSH10"},
-	{0x709adada, false, L"2DDHUDSettings"},
-	{0x709adadb,  true, L"2DDConvergence"},
-	{0x709adadd, false, L"Disable2DD"},
-	{0x709adadc, false, L"2DD_Notes"},
+	{0x70ad05c8, false, false, L"Time"},
+	{0x701a8be4, false, false, L"RunTimeName"},
+	{0x70cb9168, false, false, L"EnableConsumerStereoSupport"},
+	{0x704915a1, false, false, L"StereoViewer"},
+	{0x708f9ef7, false, false, L"StereoViewerType"},
+	{0x708e5cb4, false, false, L"ShowAllViewerTypes"},
+	{0x70538ab1, false, false, L"StereoAdjustEnable"},
+	{0x70633bd9, false, false, L"StereoDisableTnL"},
+	{0x70c27e3c, false, false, L"StereoTransformationType"},
+	{0x70933c00, false,  true, L"StereoSeparation"},
+	{0x7082555b, false, false, L"StereoSeparationStep"},
+	{0x708db8c5,  true,  true, L"StereoConvergence"},
+	{0x708db8c6, false, false, L"StereoVRConvergenceBias"},
+	{0x70efbb5b, false, false, L"StereoConvergenceMultiplier"},
+	{0x708db8c8, false, false, L"StereoVRRefreshRateOverride"},
+	{0x708db8c9, false, false, L"StereoVRVsync"},
+	{0x7029432b, false, false, L"RHW2DDetectionMin"},
+	{0x702c861a,  true, false, L"RHWGreaterAtScreen"},
+	{0x70ab2e09, false, false, L"RHWEqualAtScreen"},
+	{0x70381472,  true, false, L"RHWLessAtScreen"},
+	{0x702a0ab2, false, false, L"AutoConvergence"},
+	{0x70bf3c6b,  true, false, L"AutoConvergenceAdjustPace"},
+	{0x70d76b8b, false, false, L"StereoToggle"},
+	{0x70121853, false, false, L"SaveStereoImage"},
+	{0x7087fe61, false, false, L"StereoVerticalAdjustMore"},
+	{0x703acfc6, false, false, L"StereoVerticalAdjustLess"},
+	{0x70062f07, false, false, L"StereoHorizontalAdjustMore"},
+	{0x70871a39, false, false, L"StereoHorizontalAdjustLess"},
+	{0x70ab8d32, false, false, L"StereoSeparationAdjustMore"},
+	{0x705d1e02, false, false, L"StereoSeparationAdjustLess"},
+	{0x701ed576, false, false, L"StereoConvergenceAdjustMore"},
+	{0x70d4add7, false, false, L"StereoConvergenceAdjustLess"},
+	{0x70d76b8c, false, false, L"StereoToggleMode"},
+	{0x706315af, false, false, L"StereoSuggestSettings"},
+	{0x7017861c, false, false, L"StereoUnsuggestSettings"},
+	{0x700498b3, false, false, L"WriteConfig"},
+	{0x70c73ba2, false, false, L"DeleteConfig"},
+	{0x70b7bd1f, false, false, L"ToggleLaserSight"},
+	{0x70d8bae6, false, false, L"LaserAdjustXPlus"},
+	{0x7048b7dc, false, false, L"LaserAdjustXMinus"},
+	{0x7024eda4, false, false, L"LaserAdjustYPlus"},
+	{0x70fb9e1e, false, false, L"LaserAdjustYMinus"},
+	{0x70085de3, false, false, L"ToggleAutoConvergence"},
+	{0x703bc51e, false, false, L"ToggleAutoConvergenceRestore"},
+	{0x7066a22e, false, false, L"RHWAtScreenMore"},
+	{0x709139ad, false, false, L"RHWAtScreenLess"},
+	{0x704e4bca, false, false, L"RHWLessAtScreenMore"},
+	{0x70b378a1, false, false, L"RHWLessAtScreenLess"},
+	{0x703f4521, false, false, L"GammaAdjustMore"},
+	{0x70e8420c, false, false, L"GammaAdjustLess"},
+	{0x701fc5b4, false, false, L"GlassesDelayPlus"},
+	{0x70b8a743, false, false, L"GlassesDelayMinus"},
+	{0x705faed7, false, false, L"FavorSZ"},
+	{0x7058b6e1, false, false, L"LaserSight"},
+	{0x707ac50d, false, false, L"LaserSightFile"},
+	{0x7054837a, false,  true, L"LaserSightEnabled"},
+	{0x70da83c6, false, false, L"LaserSightIndex"},
+	{0x7032243a, false, false, L"LaserSightProperty"},
+	{0x70364596, false, false, L"StereoPointer"},
+	{0x702244b7, false, false, L"GameSpecific0"},
+	{0x70ab30a7, false, false, L"StereoDefaultOn"},
+	{0x70a1411a, false,  true, L"FrustumAdjustMode"},
+	{0x7086ebe9, false, false, L"MonitorSize"},
+	{0x7032022c, false, false, L"MaxMonitorSize"},
+	{0x709e4a94, false, false, L"MaxVertexCount"},
+	{0x709794cc, false, false, L"PartialClearMode"},
+	{0x7057e831,  true, false, L"LaserXAdjust"},
+	{0x70225308,  true, false, L"LaserYAdjust"},
+	{0x7014fca2,  true, false, L"LaserZAdjust"},
+	{0x702ba385, false, false, L"StereoRefreshDefaultOn"},
+	{0x70bd11e0, false, false, L"MixedTnL"},
+	{0x70c8b5d1, false, false, L"StereoGamma"},
+	{0x70dc4a12, false, false, L"LineCodeColor"},
+	{0x70d51cd1, false, false, L"LeftAnaglyphFilter"},
+	{0x70f4a930, false, false, L"RightAnaglyphFilter"},
+	{0x70b1c8cc, false, false, L"InterleavePattern0"},
+	{0x7091a772, false, false, L"InterleavePattern1"},
+	{0x70aae185, false, false, L"StereoForceVSync"},
+	{0x70e5773b, false, false, L"StereoColorKey"},
+	{0x70b17872, false, false, L"ZDirection"},
+	{0x70a2000e, false, false, L"StereoCompatibility"},
+	{0x70ac6888, false, false, L"LeftColorFilter0"},
+	{0x7090b6ca, false, false, L"LeftColorFilter1"},
+	{0x70b9a2f7, false, false, L"RightColorFilter0"},
+	{0x70aca0cc, false, false, L"RightColorFilter1"},
+	{0x706e0041, false, false, L"SharpVPI"},
+	{0x701baa09, false, false, L"StereoMode"},
+	{0x700a5654, false, false, L"Watchdog"},
+	{0x70f455aa, false, false, L"StereoOSDEnable"},
+	{0x703564f6, false, false, L"StereoOrthoEnable"},
+	{0x70edb381, false, false, L"StereoTextureEnable"},
+	{0x709aa171, false, false, L"StereoNotSupported"},
+	{0x70969bb0, false, false, L"ModesetWarning"},
+	{0x70af6400, false, false, L"StereoFirstTime"},
+	{0x70ded3c0, false, false, L"StereoRefreshRate"},
+	{0x704a905a, false, false, L"GameConfigs"},
+	{0x70729e58, false, false, L"CompareEyes"},
+	{0x70efb726, false, false, L"CompareFrom"},
+	{0x7097906c, false, false, L"StereoImageType"},
+	{0x7004e7a6, false, false, L"SnapShotQuality"},
+	{0x7005ad16, false, false, L"NoLockSubstitute"},
+	{0x7054fbf8, false, false, L"PushbufSubstituteSize"},
+	{0x70175566, false, false, L"DiscardHotkeys"},
+	{0x707cfb97, false, false, L"StereoLCDPatternType"},
+	{0x70057bb6, false, false, L"GlassesSwitchDelay"},
+	{0x7044d7a6, false, false, L"StartZBit"},
+	{0x70c71508, false, false, L"DisableOnOutOfMemory"},
+	{0x709b3484, false, false, L"StereoWindowedEnable"},
+	{0x702c7709, false, false, L"AllowNonExclusiveStereo"},
+	{0x706e1913,  true, false, L"Rhwinf"},
+	{0x70a4995c,  true, false, L"Rhwscr"},
+	{0x70fc13ad, false, false, L"Zinf"}, // float? Only appears once as 0
+	{0x707f0e69,  true, false, L"Zscr"},
+	{0x7064f0c2, false, false, L"InGameLaserSight"},
+	{0x70d1bdb5, false, false, L"CutoffNearDepthLess"},
+	{0x7020c991, false, false, L"CutoffNearDepthMore"},
+	{0x704c9a46, false, false, L"CutoffFarDepthLess"},
+	{0x70fbc04d, false, false, L"CutoffFarDepthMore"},
+	{0x704b45c7, false, false, L"CutoffStepLess"},
+	{0x700f2971, false, false, L"CutoffStepMore"},
+	{0x7050e011,  true, false, L"StereoCutoffDepthNear"},
+	{0x70add220,  true, false, L"StereoCutoffDepthFar"},
+	{0x709a1ddf, false, false, L"StereoCutoff"},
+	{0x702b8c95, false, false, L"EnableCE"},
+	{0x70a8fc7f, false, false, L"MediaPlayer"},
+	{0x70d10d2b, false, false, L"StereoDX9"},
+	{0x70160ebf, false, false, L"StereoMsgVerticalOffset"},
+	{0x70031b88, false, false, L"LaserSightTrigger"},
+	{0x70bc864d, false, false, L"StereoLaserSightMaxCount"},
+	{0x70077042, false, false, L"StereoLaserSightCount"},
+	{0x70b6d6ed, false, false, L"StereoEasyZCheck"},
+	{0x709bc378, false, false, L"StereoStrictLSCheck"},
+	{0x70de5533, false, false, L"StereoDisableAsync"},
+	{0x7096eced, false, false, L"EnablePartialStereoBlit"},
+	{0x707f4b45, false,  true, L"StereoMemoEnabled"},
+	{0x709dea62, false, false, L"StereoNoDepthOverride"},
+	{0x702442fc, false, false, L"StereoFlagsDX10"},
+	{0x70e34a78, false, false, L"StereoUseMatrix"},
+	{0x7044f8fb, false, false, L"StereoShaderMatrixCheck"},
+	{0x7052bdd0, false, false, L"StereoLogShaders"},
+	{0x70e5a749,  true, false, L"StereoEpsilon"},
+	{0x7042eef1, false, false, L"DelayedStereoDesktop"},
+	{0x70f8e408, false, false, L"DX10VSCBNumber"},
+	{0x70092d4a, false, false, L"DX10DSCBNumber"},
+	{0x706139ad, false, false, L"InGameLaserSightDX9States"},
+	{0x70ccb5f0, false, false, L"StereoMiscFlags"},
+	{0x70e46f20, false, false, L"StereoHiddenProfile"},
+	{0x70e46f2a, false, false, L"StereoLinkDll"},
+	{0x70e46f2b, false, false, L"EnableStereoCursor"},
+	{0x70a7fc7f, false, false, L"CreateStereoDTAfterPresentNum"},
+	{0x705fafec, false, false, L"Date_Rel"},
+	{0x70c8d48e, false, false, L"Game"},
+	{0x709cc5e0, false, false, L"Style"},
+	{0x706c7030, false, false, L"Publisher"},
+	{0x703c4026, false, false, L"Developer"},
+	{0x70b5603f, false, false, L"API"},
+	{0x7049c7ec, false, false, L"Value"},
+	{0x7051e5f5, false, false, L"Compat"},
+	{0x704cde5a, false, false, L"PF_Issues"},
+	{0x704d456e, false, false, L"Comments"},
+	{0x704f5928, false, false, L"Developer_Issues"},
+	{0x70998683, false, false, L"P1SH0"},
+	{0x70e6a3cf, false, false, L"V1SH0"},
+	{0x7046516e, false, false, L"PSH0"},
+	{0x708b7af8, false, false, L"VSH0"},
+	{0x708b7af9, false, false, L"VSH1"},
+	{0x708b7afa, false, false, L"VSH2"},
+	{0x708b7afb, false, false, L"VSH3"},
+	{0x708b7afc, false, false, L"VSH4"},
+	{0x708b7afd, false, false, L"VSH5"},
+	{0x708b7afe, false, false, L"VSH6"},
+	{0x708b7aff, false, false, L"VSH7"},
+	{0x708b7b00, false, false, L"VSH8"},
+	{0x708b7b01, false, false, L"VSH9"},
+	{0x708b7b02, false, false, L"VSH10"},
+	{0x709adada, false, false, L"2DDHUDSettings"},
+	{0x709adadb,  true,  true, L"2DDConvergence"},
+	{0x709adadd, false,  true, L"Disable2DD"},
+	{0x709adadc, false, false, L"2DD_Notes"},
 
 	// Secondary name table:
-	{0x7077bace,  true, L"StereoConvergence (Alternate 1)"},
-	{0x7031a2e7, false, L"LaserSight (Alternate 1)"},
-	{0x70ed1da7, false, L"FrustumAdjustMode (Alternate 1)"},
-	{0x70e1518c, false, L"StereoTextureEnable (Alternate 1)"},
-	{0x70cc286a,  true, L"Rhwinf (Alternate 1)"},
-	{0x7030b071,  true, L"Rhwscr (Alternate 1)"},
-	{0x70dd2585, false, L"InGameLaserSight (Alternate 1)"},
-	{0x704ef483,  true, L"StereoCutoffDepthNear (Alternate 1)"},
-	{0x704fcf5c, false, L"StereoCutoff (Alternate 1)"},
-	{0x7084807e,  true, L"StereoConvergence (Alternate 2)"},
-	{0x7045b752, false, L"LaserSight (Alternate 2)"},
-	{0x70f475a0, false, L"FrustumAdjustMode (Alternate 2)"},
-	{0x70c0125e, false, L"StereoTextureEnable (Alternate 2)"},
-	{0x70a3fee6,  true, L"Rhwinf (Alternate 2)"},
-	{0x70b57ed1,  true, L"Rhwscr (Alternate 2)"},
-	{0x70e7adad, false, L"InGameLaserSight (Alternate 2)"},
-	{0x7031de06,  true, L"StereoCutoffDepthNear (Alternate 2)"},
-	{0x7053569a, false, L"StereoCutoff (Alternate 2)"},
-	{0x70f64a32, false, L"DX10VSCBNumber (Alternate 2)"},
+	{0x7077bace,  true,  true, L"StereoConvergence (Alternate 1)"},
+	{0x7031a2e7, false, false, L"LaserSight (Alternate 1)"},
+	{0x70ed1da7, false,  true, L"FrustumAdjustMode (Alternate 1)"},
+	{0x70e1518c, false, false, L"StereoTextureEnable (Alternate 1)"},
+	{0x70cc286a,  true, false, L"Rhwinf (Alternate 1)"},
+	{0x7030b071,  true, false, L"Rhwscr (Alternate 1)"},
+	{0x70dd2585, false,  true, L"InGameLaserSight (Alternate 1)"},
+	{0x704ef483,  true, false, L"StereoCutoffDepthNear (Alternate 1)"},
+	{0x704fcf5c, false, false, L"StereoCutoff (Alternate 1)"},
+	{0x7084807e,  true, false, L"StereoConvergence (Alternate 2)"},
+	{0x7045b752, false, false, L"LaserSight (Alternate 2)"},
+	{0x70f475a0, false,  true, L"FrustumAdjustMode (Alternate 2)"},
+	{0x70c0125e, false, false, L"StereoTextureEnable (Alternate 2)"},
+	{0x70a3fee6,  true, false, L"Rhwinf (Alternate 2)"},
+	{0x70b57ed1,  true, false, L"Rhwscr (Alternate 2)"},
+	{0x70e7adad, false,  true, L"InGameLaserSight (Alternate 2)"},
+	{0x7031de06,  true, false, L"StereoCutoffDepthNear (Alternate 2)"},
+	{0x7053569a, false, false, L"StereoCutoff (Alternate 2)"},
+	{0x70f64a32, false, false, L"DX10VSCBNumber (Alternate 2)"},
 };
 
 static wchar_t* lookup_setting_name(unsigned id)
@@ -270,6 +279,16 @@ static bool is_known_float_setting(unsigned id)
 	return false;
 }
 
+static bool is_user_customise_allowed(unsigned id)
+{
+	for (int i = 0; i < ARRAYSIZE(NVStereoSettingNames); i++) {
+		if (NVStereoSettingNames[i].id == id) {
+			return NVStereoSettingNames[i].allow_user_customise;
+		}
+	}
+
+	return false;
+}
 
 static void log_nv_error(NvAPI_Status status)
 {
@@ -490,6 +509,7 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 	NVDRS_SETTING *settings = NULL;
 	unsigned len, dval = 0;
 	wchar_t *name;
+	bool internal;
 	NvU32 i;
 
 	info->version = NVDRS_PROFILE_VER;
@@ -554,14 +574,16 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 			continue;
 		}
 
+		internal = settings[i].isCurrentPredefined
+			&& settings[i].isPredefinedValid
+			&& internal_settings
+			&& internal_settings->count(settings[i].settingId);
+
 		switch (settings[i].settingType) {
 		case NVDRS_DWORD_TYPE:
 			dval = settings[i].u32CurrentValue;
-			if (settings[i].isCurrentPredefined
-					&& settings[i].isPredefinedValid
-					&& internal_settings && internal_settings->count(settings[i].settingId)) {
+			if (internal)
 				dval = decode_internal_dword(settings[i].settingId, dval);
-			}
 			LogInfo("    Setting ID_0x%08x = 0x%08x", settings[i].settingId, dval);
 			break;
 		case NVDRS_BINARY_TYPE:
@@ -571,11 +593,8 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 				LogInfo(" %02x", settings[i].binaryCurrentValue.valueData[len]);
 			break;
 		case NVDRS_WSTRING_TYPE:
-			if (settings[i].isCurrentPredefined
-					&& settings[i].isPredefinedValid
-					&& internal_settings && internal_settings->count(settings[i].settingId)) {
+			if (internal)
 				decode_internal_string(settings[i].settingId, settings[i].wszCurrentValue);
-			}
 			LogInfo("    SettingString ID_0x%08x = \"%S\"", settings[i].settingId, (wchar_t*)settings[i].wszCurrentValue);
 			break;
 		}
@@ -635,44 +654,47 @@ void log_all_nv_profiles(NvDRSSessionHandle session)
 		log_nv_error(status);
 }
 
+static NvDRSProfileHandle get_cur_nv_profile(NvDRSSessionHandle session)
+{
+	NvDRSProfileHandle profile = 0;
+	NvAPI_Status status = NVAPI_OK;
+	NVDRS_APPLICATION app = {0};
+	wchar_t path[MAX_PATH];
+
+	if (!GetModuleFileName(0, path, MAX_PATH)) {
+		LogInfo("GetModuleFileName failed\n");
+		return 0;
+	}
+	LogInfo("\nLooking up profiles related to %S\n", path);
+
+	app.version = NVDRS_APPLICATION_VER;
+	status = NvAPI_DRS_FindApplicationByName(session, (NvU16*)path, &profile, &app);
+	if (status != NVAPI_OK) {
+		LogInfo("Cannot locate application profile: ");
+		// Not necessarily an error, since the application may not have
+		// a profile. Still log the reason:
+		log_nv_error(status);
+	}
+
+	return profile;
+}
+
 // This function logs the contents of all profiles that may have an influence
 // on the current game - the base profile, global default profile (if different
 // to the base profile), the default stereo profile (or rather will once we
 // update our nvapi headers), and
-void log_relevant_nv_profiles()
+static void log_relevant_nv_profiles(NvDRSSessionHandle session, NvDRSProfileHandle profile)
 {
-	NvDRSSessionHandle session = 0;
 	NvDRSProfileHandle base_profile = 0;
 	NvDRSProfileHandle global_profile = 0;
 	NvDRSProfileHandle stereo_profile = 0;
-	NvDRSProfileHandle profile = 0;
 	NVDRS_PROFILE base_info = {0};
 	NVDRS_PROFILE global_info = {0};
 	NvAPI_Status status = NVAPI_OK;
 	NvU32 len = 0;
 	char *default_stereo_profile = NULL;
-	wchar_t path[MAX_PATH];
-	NVDRS_APPLICATION app = {0};
 
-	if (!GetModuleFileName(0, path, MAX_PATH)) {
-		LogInfo("GetModuleFileName failed\n");
-		goto bail;
-	}
-	LogInfo("\nLooking up profiles related to %S\n", path);
 	LogInfo("----------- Driver profile settings -----------\n");
-
-	// NvAPI_Initialize() should have already been called
-
-	status = NvAPI_DRS_CreateSession(&session);
-	if (status != NVAPI_OK)
-		goto err_no_session;
-
-	status = NvAPI_DRS_LoadSettings(session);
-	if (status != NVAPI_OK)
-		goto bail;
-
-	if (create_internal_setting_map(session))
-		goto bail;
 
 	status = NvAPI_DRS_GetBaseProfile(session, &base_profile);
 	if (status != NVAPI_OK)
@@ -723,23 +745,12 @@ void log_relevant_nv_profiles()
 		if (base_profile != global_profile)
 			_log_nv_profile(session, global_profile, &global_info);
 
-		app.version = NVDRS_APPLICATION_VER;
-		status = NvAPI_DRS_FindApplicationByName(session, (NvU16*)path, &profile, &app);
-		if (status == NVAPI_OK) {
+		if (profile)
 			log_nv_profile(session, profile);
-		} else {
-			LogInfo("Cannot locate application profile: ");
-			// Not necessarily an error, since the application may not have
-			// a profile. Will still print the nvapi error in the common
-			// cleanup/error paths below.
-		}
 	}
 
 bail:
 	delete default_stereo_profile;
-	destroy_internal_setting_map();
-	NvAPI_DRS_DestroySession(session);
-err_no_session:
 	log_nv_error(status);
 	LogInfo("----------- End driver profile settings -----------\n");
 }
@@ -1069,11 +1080,135 @@ void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR l
 	MessageBox(hwnd, lpszCmdLine, L"3DMigoto profile installer", MB_OK);
 }
 
-void install_driver_profile()
+static void install_driver_profile()
 {
 	// TODO: If we are already privileged we should just write the profile
 	// directly instead of calling code paths with lots of points of failure
 	spawn_privileged_profile_helper_task();
 
 	// TODO: Actually install the driver profile...
+}
+
+static bool need_profile_update(NvDRSSessionHandle session, NvDRSProfileHandle profile)
+{
+	std::unordered_set<unsigned> *internal_settings = NULL;
+	ProfileSettings::iterator i;
+	NVDRS_SETTING driver_setting = {0};
+	NVDRS_SETTING *migoto_setting;
+	NvAPI_Status status = NVAPI_OK;
+	NVDRS_PROFILE info = {0};
+	unsigned dval = 0;
+	bool internal;
+
+	if (profile_settings.empty())
+		return false;
+
+	if (profile == 0) {
+		LogInfo("Need profile update: No profile installed\n");
+		return true;
+	}
+
+	info.version = NVDRS_PROFILE_VER;
+	status = NvAPI_DRS_GetProfileInfo(session, profile, &info);
+	if (status != NVAPI_OK) {
+		LogInfo("Need profile update: Error getting profile info: ");
+		log_nv_error(status);
+		return true;
+	}
+
+	identify_internal_settings(session, (wchar_t*)info.profileName, &internal_settings);
+
+	driver_setting.version = NVDRS_SETTING_VER;
+	for (i = profile_settings.begin(); i != profile_settings.end(); i++) {
+		migoto_setting = &i->second;
+
+		status = NvAPI_DRS_GetSetting(session, profile, migoto_setting->settingId, &driver_setting);
+		if (status != NVAPI_OK) {
+			LogInfo("Need profile update: Error getting setting 0x%08x: ", migoto_setting->settingId);
+			log_nv_error(status);
+			return true;
+		}
+
+		if (migoto_setting->settingType != driver_setting.settingType) {
+			LogInfo("Need profile update: Setting 0x%08x type differs\n", migoto_setting->settingId);
+			return true;
+		}
+
+		if (!driver_setting.isCurrentPredefined && is_user_customise_allowed(migoto_setting->settingId)) {
+			// Allow the user to customise things like convergence
+			// without insisting on writing the profile back every
+			// launch. We will still update these if we decide we
+			// need to update the profile for any other reason.
+			continue;
+		}
+
+		internal = driver_setting.isCurrentPredefined
+			&& driver_setting.isPredefinedValid
+			&& internal_settings
+			&& internal_settings->count(driver_setting.settingId);
+
+		switch (migoto_setting->settingType) {
+		case NVDRS_DWORD_TYPE:
+			dval = driver_setting.u32CurrentValue;
+			if (internal)
+				dval = decode_internal_dword(driver_setting.settingId, dval);
+			if (dval != migoto_setting->u32CurrentValue) {
+				LogInfo("Need profile update: DWORD setting 0x%08x differs. Current: 0x%08x Want: 0x%08x\n",
+						migoto_setting->settingId, dval, migoto_setting->u32CurrentValue);
+				return true;
+			}
+			break;
+		case NVDRS_WSTRING_TYPE:
+			if (internal)
+				decode_internal_string(driver_setting.settingId, driver_setting.wszCurrentValue);
+			if (wcscmp((wchar_t*)driver_setting.wszCurrentValue, (wchar_t*)migoto_setting->wszCurrentValue)) {
+				LogInfo("Need profile update: String setting 0x%08x differs\n", migoto_setting->settingId);
+				LogInfo("  Current: \"%S\"\n", (wchar_t*)driver_setting.wszCurrentValue);
+				LogInfo("     Want: \"%S\"\n", (wchar_t*)migoto_setting->wszCurrentValue);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void log_check_and_update_nv_profiles()
+{
+	NvDRSSessionHandle session = 0;
+	NvDRSProfileHandle profile = 0;
+	NvAPI_Status status = NVAPI_OK;
+
+	// NvAPI_Initialize() should have already been called
+
+	status = NvAPI_DRS_CreateSession(&session);
+	if (status != NVAPI_OK)
+		goto err_no_session;
+
+	status = NvAPI_DRS_LoadSettings(session);
+	if (status != NVAPI_OK)
+		goto bail;
+
+	if (create_internal_setting_map(session))
+		goto bail;
+
+	profile = get_cur_nv_profile(session);
+
+	log_relevant_nv_profiles(session, profile);
+
+	if (!need_profile_update(session, profile)) {
+		LogInfo("No profile update required\n");
+		goto bail;
+	}
+
+	LogInfo("NEED PROFILE UPDATE\n");
+
+bail:
+	destroy_internal_setting_map();
+	NvAPI_DRS_DestroySession(session);
+err_no_session:
+	if (status != NVAPI_OK) {
+		LogInfo("Profile manager error: ");
+		log_nv_error(status);
+	}
 }

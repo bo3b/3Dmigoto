@@ -63,8 +63,7 @@ bool InitializeDLL()
 	}
 
 	log_nv_driver_version();
-	log_relevant_nv_profiles();
-	// TODO: install_driver_profile();
+	log_check_and_update_nv_profiles();
 
 	// This sequence is to make the force_no_nvapi work.  When the game pCars
 	// starts it calls NvAPI_Initialize that we want to return an error for.
