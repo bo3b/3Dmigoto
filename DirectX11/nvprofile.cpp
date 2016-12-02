@@ -968,6 +968,28 @@ void log_nv_driver_version()
 	}
 }
 
+static int copy_self_to_temp_location(wchar_t *migoto_long_path, wchar_t *migoto_short_path)
+{
+	wchar_t tmp[MAX_PATH];
+
+	if (!GetTempPath(MAX_PATH, tmp))
+		return -1;
+
+	if (!GetTempFileName(tmp, L"3DM", 0, migoto_short_path))
+		return -1;
+
+	LogInfo("Copying %S to %S\n", migoto_long_path, migoto_short_path);
+	if (!CopyFile(migoto_long_path, migoto_short_path, false)) {
+		LogInfo("*** Copy error: %u ***\n", GetLastError());
+		goto err_rm;
+	}
+
+	return 0;
+err_rm:
+	DeleteFile(migoto_short_path);
+	return -1;
+}
+
 // Raise privileges to allow us to write any changes we need into the driver
 // profile.
 //
@@ -1017,6 +1039,7 @@ static void spawn_privileged_profile_helper_task()
 	SHELLEXECUTEINFO info = {0};
 	HMODULE module;
 	DWORD rc;
+	bool do_rm = false;
 
 	if (!GetSystemDirectory(rundll_path, MAX_PATH))
 		goto err;
@@ -1037,6 +1060,25 @@ static void spawn_privileged_profile_helper_task()
 	// other punctuation:
 	if (!GetShortPathName(migoto_long_path, migoto_short_path, MAX_PATH))
 		goto err;
+
+	// If the short path contains a space or a comma (as may happen with
+	// e.g. games installed on non system drives that don't have short
+	// filenames enabled), we cannot call it with rundll. In that case,
+	// copy the dll to a temporary location to increase the chance of
+	// success.
+	if (wcschr(migoto_short_path, L' ') || wcschr(migoto_short_path, L',')) {
+		if (copy_self_to_temp_location(migoto_long_path, migoto_short_path))
+			goto err;
+		do_rm = true;
+
+		// If the shortname still has a space, we are boned:
+		if (!GetShortPathName(migoto_short_path, migoto_short_path, MAX_PATH))
+			goto err;
+		if (wcschr(migoto_short_path, L' ') || wcschr(migoto_short_path, L',')) {
+			LogInfo("*** Temporary directory has a space, cannot use rundll method ***\n");
+			goto err;
+		}
+	}
 
 	// Now we no longer need the long path, turn it into the directory so
 	// that the new process starts in the right directory to find d3dx.ini,
@@ -1085,11 +1127,17 @@ static void spawn_privileged_profile_helper_task()
 
 	CloseHandle(info.hProcess);
 
+	if (do_rm)
+		DeleteFile(migoto_short_path);
+
 	return;
 err_close:
 	CloseHandle(info.hProcess);
 err:
 	LogInfo("Error while requesting admin privileges to install driver profile\n");
+
+	if (do_rm)
+		DeleteFile(migoto_short_path);
 }
 
 // rundll entry point - when we come here we should be running in a new process
