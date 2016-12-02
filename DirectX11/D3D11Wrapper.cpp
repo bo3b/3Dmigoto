@@ -23,7 +23,13 @@
 // definitions of the variables.  All other uses will be via the extern in the 
 // globals.h and log.h files.
 
-Globals *G;
+// Globals used to be allocated on the heap, which is pointless given that it
+// is global, and fragile given that we now have a second entry point for the
+// profile helper that does not use the same init paths as the regular dll.
+// Statically allocate it as StaticG and point the old G pointer to it to avoid
+// needing to change every reference.
+Globals StaticG;
+Globals *G = &StaticG;
 
 FILE *LogFile = 0;		// off by default.
 bool gLogDebug = false;
@@ -378,7 +384,6 @@ void InitD311()
 
 	if (hD3D11) return;
 
-	G = new Globals();
 	InitializeCriticalSection(&G->mCriticalSection);
 
 	InitializeDLL();
