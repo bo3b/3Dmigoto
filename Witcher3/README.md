@@ -8,10 +8,18 @@ Special thanks to everyone on the forum who helped out with testing!
 
 Latest update 7-2-16, works with both Hearts of Stone and Blood and Wine expansions:
 
+The Witcher 3 - Patch 1.31 Update
+---------------------------------
+- 3DMigoto 1.2.49
+- Profile is now part of the fix and is automatically deployed
+- Dynamic-crosshair is back
+- stereo2mono updated version so it doesn't kill the SLI bus in 3D Surround.
+- Fixed HBAO+ normal map artefacts following DarkStarSword's pattern (thanks mx-2!)
+
+Big thank you to DarkStarSword and Bo3b for all their work on this update of 3DMigoto!
+
 The Witcher 3 - Patch 1.21 Update
 ---------------------------------
-**Fixed so far:**
-
 - **Decals (quite a lot of them)**
 - **Rain splashes /drops**
 - **Blood**
@@ -49,119 +57,32 @@ Fixed
 
 Installation
 ------------
-1. Use driver 358.87 (Newer drivers may work as well, but this the recommended
-   driver for this game as it is known to work well for a lot of people,
-   including Windows 10 users).
+1. Extract the folder from the rar file into the game directory under "The
+   Witcher 3 Wild Hunt\bin\x64". If done correctly, the d3d11.dll file should
+   be in the same directory as witcher3.exe.
 
-2. Install Helifax' custom profile for The Witcher 3. Note that you will have
-   to repeat this any time you reinstall the nvidia drivers (instructions
-   summarised from [here][1]):
+2. Launch the game. The first time you run it (and again after any driver
+   update) you will get a UAC prompt for Rundll32 to install the driver
+   profile - choose yes. If you get an error about not being able to find the
+   specified module, run the game as admin once.
 
-[1]: https://forums.geforce.com/default/topic/841696/3d-vision/the-witcher-3-correct-3d-vision-nvidia-profile-cm-mode-included-/post/4562951/#4562951
-
-    1. Download Geforce 3D Profile Manager.exe attached to [this page][2]
-
-[2]: http://nvidia.custhelp.com/app/answers/detail/a_id/2625/kw/Profile
-
-    2. In the "C:\ProgramData\NVIDIA Corporation\Drs" folder delete the
-       nvdrssel.bin file (It will get automatically generated on profile
-       import).
-
-    3. In Geforce 3D Profile Manager, choose "Export SLI Profiles" and save the
-       NVIDIA Profiles.txt somewhere.
-
-    4. Open NVIDIA Profiles.txt in notepad (other editors may corrupt the
-       file's non-standard encoding) and search for "Witcher 3". Remove the
-       existing profile and replace it with this one:
-
-            Profile "The Witcher 3"
-                ShowOn GeForce
-                ProfileType Application
-                Executable "witcher3.exe"
-                Executable "witcher3release.exe"
-                Setting ID_0x00a06946 = 0x780020F5
-                Setting ID_0x1033cec2 = 0x00000002
-                Setting ID_0x1033dcd3 = 0x00000004
-                Setting ID_0x70092d4a = 0xb19c3533 InternalSettingFlag=V0
-                Setting ID_0x701eb457 = 0x2241ab21 InternalSettingFlag=V0
-                Setting ID_0x702442fc = 0x1c22fe24 InternalSettingFlag=V0
-                SettingString ID_0x7049c7ec = "웪ꑌ" InternalSettingFlag=V0
-                SettingString ID_0x7051e5f5 = "籪鸙" InternalSettingFlag=V0
-                Setting ID_0x708db8c5 = 0x5c3300b3 InternalSettingFlag=V0
-                Setting ID_0x708db8c5 = 0x3FF13DD9 UserSpecified=true
-                Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
-                SettingString ID_0x70b5603f = "榛鳈⏙ꢗ" InternalSettingFlag=V0
-                Setting ID_0x70edb381 = 0x24208b6c InternalSettingFlag=V0
-                Setting ID_0x70f8e408 = 0x80b671f3 InternalSettingFlag=V0
-                Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
-                Setting ID_0x709adada = 0x37f58357 InternalSettingFlag=V0
-            EndProfile
-
-        Latest profile for newer drivers. (11/3/16)
-
-            Profile "The Witcher 3"
-                ShowOn GeForce
-                ProfileType Application
-                Executable "witcher3.exe"
-                Executable "witcher3release.exe"
-                Setting ID_0x00a06746 = 0x00800000
-                Setting ID_0x00a06946 = 0x080020F5
-                Setting ID_0x1033cec2 = 0x00000002
-                Setting ID_0x1033dcd3 = 0x00000004
-                Setting ID_0x106d5cff = 0x00000000
-                Setting ID_0x10f9dc81 = 0x00000011
-                Setting ID_0x70092d4a = 0xb19c3533 InternalSettingFlag=V0
-                Setting ID_0x701eb457 = 0x2241ab21 InternalSettingFlag=V0
-                Setting ID_0x702442fc = 0x1c22fe24 InternalSettingFlag=V0
-                SettingString ID_0x7049c7ec = "웪ꑌ" InternalSettingFlag=V0
-                SettingString ID_0x704d456e = "" InternalSettingFlag=V0
-                SettingString ID_0x7051e5f5 = "籪鸙" InternalSettingFlag=V0
-                Setting ID_0x708db8c5 = 0x5c3300b3 InternalSettingFlag=V0
-                SettingString ID_0x709adadc = "ݧ浒ᓌܢڗ湡㿘㶩䐕鋃쫺待욻ꐩ쪒ₐ쀼᳢ڥø娋簰鹷瀧땑ᤡ叝㳉Съ뽹" InternalSettingFlag=V0
-                SettingString ID_0x70b5603f = "榛鳈⏙ꢗ" InternalSettingFlag=V0
-                Setting ID_0x70edb381 = 0x24208b6c InternalSettingFlag=V0
-                Setting ID_0x70f8e408 = 0x80b671f3 InternalSettingFlag=V0
-                Setting ID_0x709a1ddf = 0x4b1cd968 InternalSettingFlag=V0
-                Setting ID_0x709adada = 0x37f58357 InternalSettingFlag=V0
-                Setting ID_0x709adadb = 0x3F6C5C19 InternalSettingFlag=V0
-                Setting ID_0x709adadb = 0x3F630FC1 UserSpecified=true
-                Setting ID_0x00c96f61 = 0x0000000f InternalSettingFlag=V0
-                Setting ID_0x003846a8 = 0x0000000f InternalSettingFlag=V0
-            EndProfile
-
-    5. In the "C:\ProgramData\NVIDIA Corporation\Drs" folder delete the
-       nvdrssel.bin file. (if it got generated).
-
-    6. In Geforce 3D Profile Manager, choose "Import SLI Profiles" and select
-       the modified NVIDIA Profiles.txt
-
-3. Extract [3Dfix-Witcher3-1.10.zip][3] into the game directory. If done
-   correctly, the d3d11.dll file should be in the same directory as
-   witcher3.exe.
-
-[3]: https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.10.zip
-
-4. Make sure that "Enable advanced in-game settings" is enabled in the NVIDIA
-   control panel under Set Up Stereoscopic 3D -> Set keyboard shortcuts.
-
-5. Launch the game. If 3D does not kick in change the video settings to
-   exclusive full screen mode (This setting has a tendency to reset from time
-   to time, so this step may need to be repeated on occasion).
-
-6. Disable compatibility mode with Ctrl+Alt+F11 (check the green text to
-   confirm that it is disabled - you should only need to do this once).
+3. If 3D does not kick in change the video settings to exclusive full screen
+   mode (This setting has a tendency to reset from time to time, so this step
+   may need to be repeated on occasion).
 
 Keys and Configuration
 ----------------------
 ~: Cycles UI depth between several presets. You may customise the default depth
-   by editing the d3dx.ini and adjusting x under [Constants]. Negative numbers
-   go into the screen, positive numbers will pop out. To customise the presets
-   on the ~ key, find the [KeyHUD] section and adjust the list as desired.
+   by editing the d3dx.ini and adjusting x under [Constants]. To customise the
+   presets on the ~ key, find the [KeyHUD] section and adjust the list as
+   desired.
 
-F1: Toggle an experimental auto HUD depth adjustment. This will make NPC names
-    and some icons hover above the NPC, but will break other parts of the UI
-    and in some cases (when Geralt is standing in the way) they may appear too
-    close.
+F1: Toggle between two convergence presets.
+
+F3: Disable false reflections caused by an SLI bug.
+
+F11: Cycle SBS / TAB modes (to enable, first uncomment the "run =
+     CustomShader3DVision2SBS" line in the d3dx.ini under [Present]
 
 When raining, raindrops will land on the camera. If you find this distracting
 you can disable it by editing the d3dx.ini file and setting x1 under
@@ -175,3 +96,12 @@ Known Issues
 - On SLI systems, water in certain areas may display an incorrect reflection
   (e.g. reflecting clouds from the sky while underground). These false
   reflections can be disabled by pressing F3.
+
+Download
+--------
+[The Witcher 3 v1.31 - 3DMigoto 1.2.49](http://3dsurroundgaming.com/3DVision/Witcher_3_1.31.rar)
+
+Outdated versions:  
+[The Witcher 3 v1.22 - 3DMigoto 1.2.40](http://3dsurroundgaming.com/3DVision/Witcher_3_1.22_3DM_1.2.40.rar)  
+[The Witcher 3 v1.21 - older 3DMigoto - Dynamic crosshair](http://3dsurroundgaming.com/3DVision/Witcher_3_1.21.rar)  
+[The Witcher 3 v1.10](https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.10.zip)
