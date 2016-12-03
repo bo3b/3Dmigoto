@@ -982,14 +982,16 @@ void log_nv_driver_version()
 	}
 }
 
-static int copy_self_to_temp_location(wchar_t *migoto_long_path, wchar_t *migoto_short_path)
+static int copy_self_to_temp_location(wchar_t *migoto_long_path,
+		wchar_t *migoto_short_path,
+		wchar_t *d3dcompiler_temp_path)
 {
 	wchar_t tmp[MAX_PATH];
 
-	if (!GetTempPath(MAX_PATH, tmp))
+	if (!GetTempPath(MAX_PATH, d3dcompiler_temp_path))
 		return -1;
 
-	if (!GetTempFileName(tmp, L"3DM", 0, migoto_short_path))
+	if (!GetTempFileName(d3dcompiler_temp_path, L"3DM", 0, migoto_short_path))
 		return -1;
 
 	LogInfo("Copying %S to %S\n", migoto_long_path, migoto_short_path);
@@ -997,6 +999,26 @@ static int copy_self_to_temp_location(wchar_t *migoto_long_path, wchar_t *migoto
 		LogInfo("*** Copy error: %u ***\n", GetLastError());
 		goto err_rm;
 	}
+
+	// We might also need to copy d3dcompiler_46.dll, since if it cannot be
+	// found in any of the standard locations rundll will throw "The
+	// specified module could not be found." error. We can avoid this later
+	// once we ship our own helper, as we can keep it's dependencies to a
+	// minimum:
+	wcscat_s(d3dcompiler_temp_path, MAX_PATH, L"d3dcompiler_46.dll");
+	wcscpy_s(tmp, MAX_PATH, migoto_long_path);
+	wcsrchr(tmp, L'\\')[1] = 0;
+	wcscat_s(tmp, MAX_PATH, L"d3dcompiler_46.dll");
+
+	LogInfo("Copying %S to %S\n", tmp, d3dcompiler_temp_path);
+	if (!CopyFile(tmp, d3dcompiler_temp_path, false)) {
+		LogInfo("*** Copy error: %u ***\n", GetLastError());
+		// Not going to abort in this case - there is a possibility the
+		// DLL may be in a standard location and this might still work.
+		// If not, we'll get an error dialog and error tones and the
+		// user can run the game as admin once to work around it.
+	}
+
 
 	return 0;
 err_rm:
@@ -1048,7 +1070,11 @@ err_rm:
 //     the path and even if it does it is more likely to have a short filename.
 static void spawn_privileged_profile_helper_task()
 {
-	wchar_t rundll_path[MAX_PATH], migoto_long_path[MAX_PATH], migoto_short_path[MAX_PATH], game_path[MAX_PATH];
+	wchar_t rundll_path[MAX_PATH];
+	wchar_t migoto_long_path[MAX_PATH];
+	wchar_t migoto_short_path[MAX_PATH];
+	wchar_t d3dcompiler_temp_path[MAX_PATH];
+	wchar_t game_path[MAX_PATH];
 	wstring params;
 	SHELLEXECUTEINFO info = {0};
 	HMODULE module;
@@ -1081,7 +1107,7 @@ static void spawn_privileged_profile_helper_task()
 	// copy the dll to a temporary location to increase the chance of
 	// success.
 	if (wcschr(migoto_short_path, L' ') || wcschr(migoto_short_path, L',')) {
-		if (copy_self_to_temp_location(migoto_long_path, migoto_short_path))
+		if (copy_self_to_temp_location(migoto_long_path, migoto_short_path, d3dcompiler_temp_path))
 			goto err;
 		do_rm = true;
 
@@ -1141,8 +1167,10 @@ static void spawn_privileged_profile_helper_task()
 
 	CloseHandle(info.hProcess);
 
-	if (do_rm)
+	if (do_rm) {
 		DeleteFile(migoto_short_path);
+		DeleteFile(d3dcompiler_temp_path);
+	}
 
 	return;
 err_close:
@@ -1150,8 +1178,10 @@ err_close:
 err:
 	LogInfo("Error while requesting admin privileges to install driver profile\n");
 
-	if (do_rm)
+	if (do_rm) {
 		DeleteFile(migoto_short_path);
+		DeleteFile(d3dcompiler_temp_path);
+	}
 }
 
 static bool compare_setting(NvDRSSessionHandle session,
