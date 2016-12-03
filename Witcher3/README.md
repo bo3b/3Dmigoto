@@ -8,6 +8,10 @@ Special thanks to everyone on the forum who helped out with testing!
 
 Latest update 7-2-16, works with both Hearts of Stone and Blood and Wine expansions:
 
+The Witcher 3 - 1.31.1 Update
+-----------------------------
+- Fixes the Steam overlay and Steam controller in Windows 7 and Windows 8
+
 The Witcher 3 - Patch 1.31 Update
 ---------------------------------
 - 3DMigoto 1.2.49
