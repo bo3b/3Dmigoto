@@ -1,4 +1,4 @@
-// HBAO+ depth parse. Only shipping this shader to replace old version with vanilla.
+// HBAO+ depth parse
 
 Texture2D<float4> t0 : register(t0);
 
@@ -27,6 +27,14 @@ void main(
   r0.x = saturate(cb0[5].z * r0.x + cb0[5].w);
   r0.x = r0.x * cb0[5].x + cb0[5].y;
   o0.x = 1.000000e+000 / r0.x;
+
+// HBAO+ sometimes dies - and this shader is only run for the right eye causing
+// a ghosted image in the left eye. Offer a key binding to disable it on the
+// fly in case it happens in a cutscene when the settings can't be brought up.
+float4 params = IniParams.Load(0);
+if (params.y)
+	o0.x = 0;
+
   return;
 }
 
