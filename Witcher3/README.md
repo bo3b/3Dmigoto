@@ -8,17 +8,14 @@ Special thanks to everyone on the forum who helped out with testing!
 
 Latest update 7-2-16, works with both Hearts of Stone and Blood and Wine expansions:
 
-The Witcher 3 - 1.31.1 Update
------------------------------
-- Fixes the Steam overlay and Steam controller in Windows 7 and Windows 8
-
 The Witcher 3 - Patch 1.31 Update
 ---------------------------------
-- 3DMigoto 1.2.49
+- 3DMigoto 1.2.50
 - Profile is now part of the fix and is automatically deployed
 - Dynamic-crosshair is back
 - stereo2mono updated version so it doesn't kill the SLI bus in 3D Surround.
 - Fixed HBAO+ normal map artefacts following DarkStarSword's pattern (thanks mx-2!)
+- Fixes the Steam overlay and Steam controller in Windows 7 and Windows 8
 
 Big thank you to DarkStarSword and Bo3b for all their work on this update of 3DMigoto!
 
@@ -67,8 +64,7 @@ Installation
 
 2. Launch the game. The first time you run it (and again after any driver
    update) you will get a UAC prompt for Rundll32 to install the driver
-   profile - choose yes. If you get an error about not being able to find the
-   specified module, run the game as admin once.
+   profile - choose yes.
 
 3. If 3D does not kick in change the video settings to exclusive full screen
    mode (This setting has a tendency to reset from time to time, so this step
@@ -85,12 +81,22 @@ F1: Toggle between two convergence presets.
 
 F3: Disable false reflections caused by an SLI bug.
 
-F11: Cycle SBS / TAB modes (to enable, first uncomment the "run =
-     CustomShader3DVision2SBS" line in the d3dx.ini under [Present]
+F11: Cycle SBS / TAB modes (see below to enable).
 
 When raining, raindrops will land on the camera. If you find this distracting
 you can disable it by editing the d3dx.ini file and setting x1 under
 [Constants] to 1.
+
+Side-by-Side / Top-and-Bottom Output Modes
+------------------------------------------
+This fix is bundled with the new SBS / TAB output mode support in 3DMigoto. To
+enable it, edit the d3dx.ini, find the [Present] section and uncomment the
+following line by removing the semicolon from the start:
+
+    run = CustomShader3DVision2SBS
+
+Then, in game press F11 to cycle output modes. If using 3D TV Play, set the
+nvidia control panel to output checkerboard to remove the 720p limitation.
 
 Known Issues
 ------------
