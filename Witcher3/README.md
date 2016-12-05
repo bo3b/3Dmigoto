@@ -1,15 +1,15 @@
 The Witcher 3: Wild Hunt
 ========================
 A fix by mike_ar69 & DarkStarSword
-Assembler and alternate wrapper by Flugan
+Profile and 1.10/1.21/1.31 updates by Helifax
 3DMigoto improvements by Bo3b and DarkStarSword
-Profile and 1.10/1.21 update by Helifax
+Assembler by Flugan
 Special thanks to everyone on the forum who helped out with testing!
 
-Latest update 7-2-16, works with both Hearts of Stone and Blood and Wine expansions:
+Latest update 12-4-16, works with both Hearts of Stone and Blood and Wine expansions:
 
-The Witcher 3 - Patch 1.31 Update
----------------------------------
+The Witcher 3 - Patch 1.31 Update (12-4-16)
+-------------------------------------------
 - 3DMigoto 1.2.50
 - Profile is now part of the fix and is automatically deployed
 - Dynamic-crosshair is back
@@ -32,7 +32,6 @@ The Witcher 3 - Patch 1.21 Update
 - I added presets for different convergence levels on Keys "Z" and
   "XBOX-RIGHT_THUMB_PRESS". - The Witcher Senses bubbles are also aligned for
   these 2 convergence values and might not work for others (haven't tested).
-
 - I recommend using these presets to play the game (if you aren't already using
   something like this). One if for Cutscenes/Interior the other is for
   outside:)
@@ -109,7 +108,7 @@ Known Issues
 
 Download
 --------
-[The Witcher 3 v1.31 - 3DMigoto 1.2.49](http://3dsurroundgaming.com/3DVision/Witcher_3_1.31.rar)
+[The Witcher 3 v1.31 - 3DMigoto 1.2.49](https://s3.amazonaws.com/bo3b/3dsurroundgaming/Witcher_3_1.31.rar)
 
 Outdated versions:  
 [The Witcher 3 v1.22 - 3DMigoto 1.2.40](http://3dsurroundgaming.com/3DVision/Witcher_3_1.22_3DM_1.2.40.rar)  
