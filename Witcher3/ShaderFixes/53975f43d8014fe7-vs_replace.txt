@@ -39,7 +39,7 @@ float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
 float depth = world_z_from_depth_buffer(0,0);
 
-if (params.z != 1)
+if (params.z == 1.0)
 {
 	if ((depth != 0))
 	{
@@ -50,13 +50,7 @@ if (params.z != 1)
 }
 else
 {
-	if ((depth != 0) && (o4.x > -0.15) && (o4.x < 0.05) && (o4.y > -0.02) && (o4.y < 0.050))
-	{
-		o4.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
-	}
-	else
-		o4.x += stereo.x*(params.x);
-
+	o4.x += stereo.x*(params.x);
 }
 
   return;
