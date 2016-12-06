@@ -26,8 +26,23 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-o2.x += stereo.x*(params.x);   
-  return;
+float depth = world_z_from_depth_buffer(0,0);
+
+if (params.z == 2.0)
+{
+	if ((depth != 0) && (o2.x > -1.0) && (o2.x < 0.4))
+	{
+		o2.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
+	}
+	else
+		o2.x += stereo.x*(params.x);
+}
+else
+{
+	o2.x += stereo.x*(params.x);
+}
+
+return;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,4 +104,4 @@ ret
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
   
-  
+   

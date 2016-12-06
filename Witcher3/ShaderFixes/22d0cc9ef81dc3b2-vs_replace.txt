@@ -35,7 +35,22 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-o4.x += stereo.x*(params.x);  
+float depth = world_z_from_depth_buffer(0,0);
+
+if (params.z == 2.0)
+{
+	if ((depth != 0) && (o4.x > -1.0) && (o4.x < 0.5))
+	{
+		o4.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
+	}
+	else
+		o4.x += stereo.x*(params.x);
+}
+else
+{
+	o4.x += stereo.x*(params.x);
+}  
+ 
 
 
 
@@ -111,4 +126,4 @@ ret
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
  
  
-     
+      
