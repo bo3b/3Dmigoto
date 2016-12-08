@@ -1,4 +1,4 @@
-//HUD Context -> MINIMAP OVERLAY
+//HUD Context -> MINIMAP OVERLAY + XBOX icons
 cbuffer Constants : register(b0)
 {
   float4 cxadd : packoffset(c0);
@@ -31,7 +31,40 @@ void main(
   
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-o4.x += stereo.x*(params.x);  
+float depth = world_z_from_depth_buffer(0,0);
+float4 resolution = StereoParams.Load(int3(2, 0, 0));
+float aspectRatio = resolution.x / resolution.y;
+float cutLeft = -0.45;
+float cutRight = 0.3;
+float cutUp = 0.0;
+float cutDown = -0.0;
+
+if (params.z == 2.0)
+{
+	if (aspectRatio > (21/9))
+	{
+		cutLeft = -0.12;
+		cutRight = 0.12;
+	}
+	if (
+	(depth != 0) && 
+	((o4.x < cutLeft) && (o4.y > cutUp) ||
+	(o4.x < cutLeft) && (o4.y < cutDown) ||
+	(o4.x > cutRight) && (o4.y > cutUp) ||
+	(o4.x > cutRight) && (o4.y < cutDown))
+	)
+	{
+		o4.x += stereo.x*(params.x);
+	}
+	else if (depth != 0)
+		o4.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
+		else
+		o4.x += stereo.x*(params.x);
+}
+else
+{
+	o4.x += stereo.x*(params.x);
+}
 
   return;
 }

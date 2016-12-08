@@ -1,4 +1,4 @@
-// Witcher senses Bubbles - Helifax 1.21
+// Witcher senses Bubbles - Helifax 1.32
 cbuffer cb12 : register(b12)
 {
   float4 cb12[193] : packoffset(c0);
@@ -16,6 +16,8 @@ cbuffer cb1 : register(b1)
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
+
+#include <hud.hlsl>
 
 void main( 
   float3 v0 : POSITION0,
@@ -164,15 +166,20 @@ void main(
   o5.w = dot(r0.xyzw, cb1[3].xyzw);
   o4.xyzw = v1.xyzw;
   o3.xy = v4.xy;
+    
+float4 stereo = StereoParams.Load(0);
+float4 params = IniParams.Load(0);
+float depth = world_z_from_depth_buffer(0,0);
+
+o5.x -= stereo.x * (o5.w - stereo.y) ;
+
+if (depth != 0)
+{
+	o5.x += adjust_from_depth_buffer(0,0);
+}
+else
+	o5.x += stereo.x*(params.x);
   
-  float4 stereo = StereoParams.Load(0);
-  // Noise Witcher senses
-  
-  o5.x -= stereo.x * (o5.w - stereo.y) ;
-  float temp = 1.05;
-  if (stereo.y > 1.0)
-	temp = 1.25;
-  o5.x += stereo.x * (temp - o5.z * stereo.y) ;  
   return;
 }
 
@@ -390,4 +397,4 @@ ret
 // Approximately 131 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
- 
+   

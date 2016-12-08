@@ -39,7 +39,7 @@ float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
 float depth = world_z_from_depth_buffer(0,0);
 
-if (params.z == 1.0)
+if (params.z >= 1.0)
 {
 	if ((depth != 0))
 	{
