@@ -1,40 +1,21 @@
 The Witcher 3: Wild Hunt
 ========================
 A fix by mike_ar69 & DarkStarSword
-Profile and 1.10/1.21/1.31 updates by Helifax
+Profile and 1.10/1.21/1.32 updates by Helifax
 3DMigoto improvements by Bo3b and DarkStarSword
 Assembler by Flugan
 Special thanks to everyone on the forum who helped out with testing!
 
-Latest update 12-4-16, works with both Hearts of Stone and Blood and Wine expansions:
+Latest update 12-11-16, works with both Hearts of Stone and Blood and Wine expansions:
 
-The Witcher 3 - Patch 1.31 Update (12-4-16)
--------------------------------------------
-- 3DMigoto 1.2.50
-- Profile is now part of the fix and is automatically deployed
-- Dynamic-crosshair is back
-- stereo2mono updated version so it doesn't kill the SLI bus in 3D Surround.
-- Fixed HBAO+ normal map artefacts following DarkStarSword's pattern (thanks mx-2!)
-- Fixes the Steam overlay and Steam controller in Windows 7 and Windows 8
-
-Big thank you to DarkStarSword and Bo3b for all their work on this update of 3DMigoto!
-
-The Witcher 3 - Patch 1.21 Update
----------------------------------
-- **Decals (quite a lot of them)**
-- **Rain splashes /drops**
-- **Blood**
-- **Hairworks shadows**
-- **Fixed witcher senses bubbles & warp bubbles so they now are at proper depth.**
-- **Crosshair is pushed to DEPTH**
-- **All other UI is still at FIXED depth.**
-- **Stars at night (thx SKAUT) for the savegame and pointing it out;)**
-- I added presets for different convergence levels on Keys "Z" and
-  "XBOX-RIGHT_THUMB_PRESS". - The Witcher Senses bubbles are also aligned for
-  these 2 convergence values and might not work for others (haven't tested).
-- I recommend using these presets to play the game (if you aren't already using
-  something like this). One if for Cutscenes/Interior the other is for
-  outside:)
+<script src="https://s3.amazonaws.com/DarkStarSword/3dvisionlive.js"></script>
+<noscript><p>Please enable javascript to view screenshots.</p></noscript>
+<script>
+embed_3dvisionlive('559045dde7e564582e00024d');
+embed_3dvisionlive('55904701e7e564f5750001a3');
+embed_3dvisionlive('55903ebce7e5648d2c000263');
+embed_3dvisionlive('55903fc9e7e564c97f0001ac');
+</script>
 
 Fixed
 -----
@@ -106,11 +87,56 @@ Known Issues
   (e.g. reflecting clouds from the sky while underground). These false
   reflections can be disabled by pressing F3.
 
+
+The Witcher 3 - Patch 1.32 Update (12-11-16)
+--------------------------------------------
+- Fixed the UI warping strangely in some menus.
+- Added convergence changes while aiming
+- Added convergence changes while using Witcher Senses
+- All UI is pushed to DEPTH in Witcher Senses (Xbox Left Trigger or R.Mouse).
+  Unfortunately I cannot push only certain elements as the shaders are shared.
+  Also, if I try to do this the Minimap will glitch really bad - as seen
+  before. If you want to disable this functionality, search the "d3dx.ini" file
+  for "z = 2" and set it to "z = 0".
+- Witcher Senses bubbles are pushed to the right depth.
+- Other minor changes to the convergence values.
+
+
+The Witcher 3 - Patch 1.31 Update (12-4-16)
+-------------------------------------------
+- 3DMigoto 1.2.50
+- Profile is now part of the fix and is automatically deployed
+- Dynamic-crosshair is back
+- stereo2mono updated version so it doesn't kill the SLI bus in 3D Surround.
+- Fixed HBAO+ normal map artefacts following DarkStarSword's pattern (thanks mx-2!)
+- Fixes the Steam overlay and Steam controller in Windows 7 and Windows 8
+
+Big thank you to DarkStarSword and Bo3b for all their work on this update of 3DMigoto!
+
+The Witcher 3 - Patch 1.21 Update
+---------------------------------
+- Decals (quite a lot of them)
+- Rain splashes /drops
+- Blood
+- Hairworks shadows
+- Fixed witcher senses bubbles & warp bubbles so they now are at proper depth.
+- Crosshair is pushed to DEPTH
+- All other UI is still at FIXED depth.
+- Stars at night (thx SKAUT) for the savegame and pointing it out;)
+- I added presets for different convergence levels on Keys "Z" and
+  "XBOX-RIGHT_THUMB_PRESS". - The Witcher Senses bubbles are also aligned for
+  these 2 convergence values and might not work for others (haven't tested).
+- I recommend using these presets to play the game (if you aren't already using
+  something like this). One if for Cutscenes/Interior the other is for
+  outside:)
+
+
 Download
 --------
-[The Witcher 3 v1.31 - 3DMigoto 1.2.49](https://s3.amazonaws.com/bo3b/3dsurroundgaming/Witcher_3_1.31.rar)
+[Witcher_3_v1.32](https://s3.amazonaws.com/bo3b/Witcher_3_1.32.rar)
 
 Outdated versions:  
+[The Witcher 3 v1.31 - 3DMigoto 1.2.49](https://s3.amazonaws.com/bo3b/3dsurroundgaming/Witcher_3_1.31.rar)
 [The Witcher 3 v1.22 - 3DMigoto 1.2.40](http://3dsurroundgaming.com/3DVision/Witcher_3_1.22_3DM_1.2.40.rar)  
 [The Witcher 3 v1.21 - older 3DMigoto - Dynamic crosshair](http://3dsurroundgaming.com/3DVision/Witcher_3_1.21.rar)  
 [The Witcher 3 v1.10](https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.10.zip)
