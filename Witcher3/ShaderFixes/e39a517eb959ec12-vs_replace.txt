@@ -35,32 +35,14 @@ float cutRight = 0.3;
 float cutUp = 0.0;
 float cutDown = -0.0;
 
-if (params.z == 2.0)
+if (params.z >= 1.0)
 {
-	if (aspectRatio > (21/9))
-	{
-		cutLeft = -0.12;
-		cutRight = 0.12;
-	}
-	if (
-	(depth != 0) && 
-	((o2.x < cutLeft) && (o2.y > cutUp) ||
-	(o2.x < cutLeft) && (o2.y < cutDown) ||
-	(o2.x > cutRight) && (o2.y > cutUp) ||
-	(o2.x > cutRight) && (o2.y < cutDown))
-	)
-	{
-		o2.x += stereo.x*(params.x);
-	}
-	else if (depth != 0)
-		o2.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
-	else
-		o2.x += stereo.x*(params.x);
+	o2.x -= stereo.x* ( o2.z - stereo.y);
 }
 else
 {
-	o2.x += stereo.x*(params.x);
-}	
+	o2.x += stereo.x* params.x;
+}
   return;
 }
 

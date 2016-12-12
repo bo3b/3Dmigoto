@@ -36,7 +36,14 @@ void main(
 
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-o4.x += stereo.x*(params.x);  
+if (params.z >= 1.0)
+{
+	o4.x -= stereo.x* ( o4.z - stereo.y);
+}
+else
+{
+	o4.x += stereo.x* params.x;
+}
 
   return;
 }

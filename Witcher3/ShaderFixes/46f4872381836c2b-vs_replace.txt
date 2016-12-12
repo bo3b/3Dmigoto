@@ -40,7 +40,7 @@ if (params.z >= 1.0)
 		o2.x += adjust_from_depth_buffer(dot(float4(0,0,0,1), vfuniforms[r0.x].xyzw), dot(float4(0,0,0,1), vfuniforms[r0.y].xyzw));
 	}
 	else
-		o2.x += stereo.x*(params.x);
+		o2.x -= stereo.x*( o2.z - stereo.y);
 }
 else
 {
