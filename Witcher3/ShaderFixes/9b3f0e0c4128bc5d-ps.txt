@@ -888,6 +888,7 @@ movc o0.xyzw, r0.xxxx, l(0,0,0,0), r3.xyzw
 // from frame analysis, t3 = low quality reflections? Maybe from previous frame?
 // We use original r1 here otherwise the reflection becomes smeared
 //sample_l_indexable(texture2d)(float,float,float,float) r0.xyzw, r205.xyxx, t3.xyzw, s1, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r0.xyzw, r1.xyxx, t3.xyzw, s1, l(0.000000)
 
 dp4 r1.x, l(0.333000, 0.333000, 0.333000, 0.333000), r0.xyzw
 ne r1.x, r1.x, r1.x
