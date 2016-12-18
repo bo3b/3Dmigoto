@@ -140,8 +140,8 @@ Download
 [The Witcher 3 v1.33](http://3dsurroundgaming.com/3DVision/Witcher_3_1.33.rar)
 
 Outdated versions:  
-[The Witcher 3 v1.32](https://s3.amazonaws.com/bo3b/Witcher_3_1.32.rar)
-[The Witcher 3 v1.31 - 3DMigoto 1.2.49](https://s3.amazonaws.com/bo3b/3dsurroundgaming/Witcher_3_1.31.rar)
+[The Witcher 3 v1.32](https://s3.amazonaws.com/bo3b/Witcher_3_1.32.rar)  
+[The Witcher 3 v1.31 - 3DMigoto 1.2.49](https://s3.amazonaws.com/bo3b/3dsurroundgaming/Witcher_3_1.31.rar)  
 [The Witcher 3 v1.22 - 3DMigoto 1.2.40](http://3dsurroundgaming.com/3DVision/Witcher_3_1.22_3DM_1.2.40.rar)  
 [The Witcher 3 v1.21 - older 3DMigoto - Dynamic crosshair](http://3dsurroundgaming.com/3DVision/Witcher_3_1.21.rar)  
 [The Witcher 3 v1.10](https://s3.amazonaws.com/DarkStarSword/3Dfix-Witcher3-1.10.zip)
