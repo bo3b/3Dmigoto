@@ -1,7 +1,7 @@
 The Witcher 3: Wild Hunt
 ========================
 A fix by mike_ar69 & DarkStarSword
-Profile and 1.10/1.21/1.32 updates by Helifax
+Profile and 1.10/1.21/1.3x updates by Helifax
 3DMigoto improvements by Bo3b and DarkStarSword
 Assembler by Flugan
 Special thanks to everyone on the forum who helped out with testing!
@@ -88,6 +88,10 @@ Known Issues
   reflections can be disabled by pressing F3.
 
 
+The Witcher 3 - Patch 1.33 Update (12-16-16)
+--------------------------------------------
+- Fixed the water bug during the day and the "green effect" during the night.
+
 The Witcher 3 - Patch 1.32 Update (12-11-16)
 --------------------------------------------
 - Fixed the UI warping strangely in some menus.
@@ -133,9 +137,10 @@ The Witcher 3 - Patch 1.21 Update
 
 Download
 --------
-[Witcher_3_v1.32](https://s3.amazonaws.com/bo3b/Witcher_3_1.32.rar)
+[The Witcher 3 v1.33](http://3dsurroundgaming.com/3DVision/Witcher_3_1.33.rar)
 
 Outdated versions:  
+[The Witcher 3 v1.32](https://s3.amazonaws.com/bo3b/Witcher_3_1.32.rar)
 [The Witcher 3 v1.31 - 3DMigoto 1.2.49](https://s3.amazonaws.com/bo3b/3dsurroundgaming/Witcher_3_1.31.rar)
 [The Witcher 3 v1.22 - 3DMigoto 1.2.40](http://3dsurroundgaming.com/3DVision/Witcher_3_1.22_3DM_1.2.40.rar)  
 [The Witcher 3 v1.21 - older 3DMigoto - Dynamic crosshair](http://3dsurroundgaming.com/3DVision/Witcher_3_1.21.rar)  
