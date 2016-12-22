@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 #include <util.h>
 #include "DrawCallInfo.h"
+#include <nvapi.h>
 
 // Forward declarations instead of #includes to resolve circular includes (we
 // include Hacker*.h, which includes Globals.h, which includes us):
@@ -250,6 +251,18 @@ static EnumName_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[]
 
 	{NULL, CustomResourceType::INVALID} // End of list marker
 };
+enum class CustomResourceMode {
+	DEFAULT,
+	AUTO,
+	STEREO,
+	MONO,
+};
+static EnumName_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[] = {
+	{L"auto", CustomResourceMode::AUTO},
+	{L"stereo", CustomResourceMode::STEREO},
+	{L"mono", CustomResourceMode::MONO},
+	{NULL, CustomResourceMode::DEFAULT} // End of list marker
+};
 class CustomResource
 {
 public:
@@ -274,6 +287,7 @@ public:
 	// Used to override description when copying or synthesise resources
 	// from scratch:
 	CustomResourceType override_type;
+	CustomResourceMode override_mode;
 	DXGI_FORMAT override_format;
 	int override_width;
 	int override_height;
@@ -291,7 +305,8 @@ public:
 	CustomResource();
 	~CustomResource();
 
-	void Substantiate(ID3D11Device *mOrigDevice);
+	void Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle);
+	bool OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode);
 	void OverrideBufferDesc(D3D11_BUFFER_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);

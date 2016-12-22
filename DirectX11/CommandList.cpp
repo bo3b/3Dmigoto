@@ -1065,6 +1065,7 @@ CustomResource::CustomResource() :
 	frame_no(0),
 	copies_this_frame(0),
 	override_type(CustomResourceType::INVALID),
+	override_mode(CustomResourceMode::DEFAULT),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -1087,8 +1088,37 @@ CustomResource::~CustomResource()
 		view->Release();
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
+bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode)
 {
+
+	if (override_mode == CustomResourceMode::DEFAULT)
+		return false;
+
+	NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
+
+	switch (override_mode) {
+		case CustomResourceMode::STEREO:
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+			return true;
+		case CustomResourceMode::MONO:
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
+			return true;
+		case CustomResourceMode::AUTO:
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_AUTO);
+			return true;
+	}
+
+	return false;
+}
+
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle)
+{
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
+	bool restore_create_mode = false;
+
 	// We only allow a custom resource to be substantiated once. Otherwise
 	// we could end up reloading it again if it is later set to null. Also
 	// prevents us from endlessly retrying to load a custom resource from a
@@ -1109,22 +1139,32 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
 	// parameters while probing the hardware before it settles on the one
 	// it will actually use.
 
-	if (!filename.empty())
-		return LoadFromFile(mOrigDevice);
+	restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 
-	switch (override_type) {
-		case CustomResourceType::BUFFER:
-		case CustomResourceType::STRUCTURED_BUFFER:
-		case CustomResourceType::RAW_BUFFER:
-			return SubstantiateBuffer(mOrigDevice);
-		case CustomResourceType::TEXTURE1D:
-			return SubstantiateTexture1D(mOrigDevice);
-		case CustomResourceType::TEXTURE2D:
-		case CustomResourceType::CUBE:
-			return SubstantiateTexture2D(mOrigDevice);
-		case CustomResourceType::TEXTURE3D:
-			return SubstantiateTexture3D(mOrigDevice);
+	if (!filename.empty()) {
+		LoadFromFile(mOrigDevice);
+	} else {
+		switch (override_type) {
+			case CustomResourceType::BUFFER:
+			case CustomResourceType::STRUCTURED_BUFFER:
+			case CustomResourceType::RAW_BUFFER:
+				SubstantiateBuffer(mOrigDevice);
+				break;
+			case CustomResourceType::TEXTURE1D:
+				SubstantiateTexture1D(mOrigDevice);
+				break;
+			case CustomResourceType::TEXTURE2D:
+			case CustomResourceType::CUBE:
+				SubstantiateTexture2D(mOrigDevice);
+				break;
+			case CustomResourceType::TEXTURE3D:
+				SubstantiateTexture3D(mOrigDevice);
+				break;
+		}
 	}
+
+	if (restore_create_mode)
+		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 }
 
 void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
@@ -1776,7 +1816,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->Substantiate(mOrigDevice);
+		custom_resource->Substantiate(mOrigDevice, mHackerDevice->mStereoHandle);
 
 		*stride = custom_resource->stride;
 		*offset = custom_resource->offset;
@@ -2517,6 +2557,8 @@ static void RecreateCompatibleResource(
 			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
+	} else if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+		restore_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 	}
 
 	switch (src_dimension) {

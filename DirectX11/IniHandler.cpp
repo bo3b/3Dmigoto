@@ -439,6 +439,17 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			}
 		}
 
+		if (GetPrivateProfileString(i->c_str(), L"mode", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
+				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
+			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
+				LogInfo("  WARNING: Unknown mode \"%S\"\n", setting);
+				BeepFailure2();
+			} else {
+				LogInfo("  mode=%S\n", setting);
+			}
+		}
+
 		if (GetPrivateProfileString(i->c_str(), L"format", 0, setting, MAX_PATH, iniFile)) {
 			custom_resource->override_format = ParseFormatString(setting);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
