@@ -352,7 +352,8 @@ public:
 
 private:
 	void LoadFromFile(ID3D11Device *mOrigDevice);
-	void SubstantiateBuffer(ID3D11Device *mOrigDevice);
+	void LoadBufferFromFile(ID3D11Device *mOrigDevice);
+	void SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, DWORD size);
 	void SubstantiateTexture1D(ID3D11Device *mOrigDevice);
 	void SubstantiateTexture2D(ID3D11Device *mOrigDevice);
 	void SubstantiateTexture3D(ID3D11Device *mOrigDevice);
