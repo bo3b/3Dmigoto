@@ -473,7 +473,12 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 		custom_resource->width_multiply = GetIniFloat(i->c_str(), L"width_multiply", 1.0f, iniFile, NULL);
 		custom_resource->height_multiply = GetIniFloat(i->c_str(), L"height_multiply", 1.0f, iniFile, NULL);
 
-		// TODO: Overrides for bind flags, misc flags, etc
+		if (GetPrivateProfileString(i->c_str(), L"bind_flags", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
+				(CustomResourceBindFlagNames, setting, NULL);
+		}
+
+		// TODO: Overrides for misc flags, etc
 	}
 }
 

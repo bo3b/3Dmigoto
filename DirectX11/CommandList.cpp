@@ -1066,6 +1066,7 @@ CustomResource::CustomResource() :
 	copies_this_frame(0),
 	override_type(CustomResourceType::INVALID),
 	override_mode(CustomResourceMode::DEFAULT),
+	override_bind_flags(CustomResourceBindFlags::INVALID),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -1334,7 +1335,10 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 	else if (override_array != -1)
 		desc->ByteWidth = desc->StructureByteStride * override_array;
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
@@ -1350,7 +1354,10 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 
 	desc->Width = (UINT)(desc->Width * width_multiply);
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
@@ -1379,7 +1386,10 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 	desc->Width = (UINT)(desc->Width * width_multiply);
 	desc->Height = (UINT)(desc->Height * height_multiply);
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
@@ -1398,7 +1408,10 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 	desc->Width = (UINT)(desc->Width * width_multiply);
 	desc->Height = (UINT)(desc->Height * height_multiply);
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
