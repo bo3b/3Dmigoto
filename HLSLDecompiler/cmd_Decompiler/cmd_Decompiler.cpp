@@ -504,13 +504,13 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 
 		numRead = sscanf_s((line + "       ").c_str(),
 				"// %s %d%7c %s %s %s%7c",
-				semantic_name, ARRAYSIZE(semantic_name),
+				semantic_name, (unsigned)ARRAYSIZE(semantic_name),
 				&entry.common.semantic_index,
-				mask, ARRAYSIZE(mask),
-				&reg, ARRAYSIZE(reg),
-				system_value, ARRAYSIZE(system_value),
-				format, ARRAYSIZE(format),
-				used, ARRAYSIZE(used));
+				mask, (unsigned)ARRAYSIZE(mask),
+				&reg, (unsigned)ARRAYSIZE(reg),
+				system_value, (unsigned)ARRAYSIZE(system_value),
+				format, (unsigned)ARRAYSIZE(format),
+				used, (unsigned)ARRAYSIZE(used));
 
 		if (numRead != 7) {
 			// I really would love to throw parseError here to
@@ -525,7 +525,7 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 		// section version if sucessful:
 		numRead = sscanf_s(semantic_name, "m%u:%s",
 				&entry.stream,
-				semantic_name2, ARRAYSIZE(semantic_name2));
+				semantic_name2, (unsigned)ARRAYSIZE(semantic_name2));
 		if (numRead == 2) {
 			entry_size = max(entry_size, 28);
 			entry.name = semantic_name2;
