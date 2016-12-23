@@ -3491,7 +3491,9 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
 			// RecreateCompatibleResource has already done the work
+			mHackerContext->FrameAnalysisLog("3DMigoto copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
+			mHackerContext->FrameAnalysisLog("3DMigoto performing reverse stereo blit\n");
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -3518,15 +3520,19 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
+			mHackerContext->FrameAnalysisLog("3DMigoto resolving MSAA\n");
 			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
 		} else if (buf_dst_size) {
+			mHackerContext->FrameAnalysisLog("3DMigoto performing region copy\n");
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					mOrigContext, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
+			mHackerContext->FrameAnalysisLog("3DMigoto performing full copy\n");
 			mOrigContext->CopyResource(dst_resource, src_resource);
 		}
 	} else {
+		mHackerContext->FrameAnalysisLog("3DMigoto copying by reference\n");
 		dst_resource = src_resource;
 		if (src_view && (src.type == dst.type)) {
 			dst_view = src_view;
