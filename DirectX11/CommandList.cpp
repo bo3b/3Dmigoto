@@ -2208,13 +2208,15 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT *buf_dst_size)
+		UINT *buf_dst_size,
+		ResourceCopyOptions options)
 {
 	HRESULT hr;
 	D3D11_BUFFER_DESC old_desc;
 	D3D11_BUFFER_DESC new_desc;
 	ID3D11Buffer *buffer = NULL;
 	UINT dst_size;
+	bool force_region_copy = !!(options & ResourceCopyOptions::REGION_COPY);
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
@@ -2234,7 +2236,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		// If the size of the new resource doesn't match the old or
 		// there is an offset we will have to perform a region copy
 		// instead of a regular copy:
-		if (offset || dst_size != new_desc.ByteWidth) {
+		if (offset || dst_size != new_desc.ByteWidth || force_region_copy) {
 			// It might be temping to take the offset into account
 			// here and make the buffer only as large as it need to
 			// be, but it's possible that the source offset might
@@ -2259,11 +2261,11 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		// stride (although we would need to recreate the view every
 		// time it changed), but for now it seems safest to use the
 		// region copy method whenever there is an offset:
-		if (offset || dst_size != new_desc.ByteWidth) {
+		if (offset || dst_size != new_desc.ByteWidth || force_region_copy) {
 			*buf_dst_size = dst_size;
 			new_desc.ByteWidth = dst_size;
 		}
-	} else if (!src_view && offset) {
+	} else if (!src_view && offset || force_region_copy) {
 		// No source view but we do have an offset - use the region
 		// copy to knock out the offset. We can probably assume the
 		// original resource met all the size and alignment
@@ -2633,7 +2635,7 @@ static void RecreateCompatibleResource(
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
-					bind_flags, device, stride, offset, format, buf_dst_size);
+					bind_flags, device, stride, offset, format, buf_dst_size, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -3524,6 +3526,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
 		} else if (buf_dst_size) {
 			mHackerContext->FrameAnalysisLog("3DMigoto performing region copy\n");
+			// TODO: Implement region_copy for textures as well
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					mOrigContext, stride, &offset,
 					buf_src_size, buf_dst_size);

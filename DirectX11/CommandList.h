@@ -428,9 +428,10 @@ enum class ResourceCopyOptions {
 	COPY_DESC       = 0x00000080,
 	SET_VIEWPORT    = 0x00000100,
 	NO_VIEW_CACHE   = 0x00000200,
+	REGION_COPY     = 0x00000400,
 
-	COPY_MASK       = 0x000000c9, // Anything that implies a copy
-	COPY_TYPE_MASK  = 0x000000cb, // Anything that implies a copy or a reference
+	COPY_MASK       = 0x000004c9, // Anything that implies a copy
+	COPY_TYPE_MASK  = 0x000004cb, // Anything that implies a copy or a reference
 	CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
@@ -446,6 +447,7 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"stereo2mono", ResourceCopyOptions::STEREO2MONO},
 	{L"set_viewport", ResourceCopyOptions::SET_VIEWPORT},
 	{L"no_view_cache", ResourceCopyOptions::NO_VIEW_CACHE},
+	{L"region_copy", ResourceCopyOptions::REGION_COPY},
 
 	// This one currently depends on device support for resolving the
 	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
