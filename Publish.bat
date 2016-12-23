@@ -141,7 +141,7 @@ MOVE ".\x64\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x64\ShaderFixes\"
 echo(
 MKDIR ".\Zip Release\cmd_Decompiler\"
 MOVE ".\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
-COPY ".\Zip Release\x32\d3dcompiler_46.dll"  ".\Zip Release\cmd_Decompiler\"
+COPY ".\Zip Release\x32\d3dcompiler_47.dll"  ".\Zip Release\cmd_Decompiler\"
 
 echo(
 echo(

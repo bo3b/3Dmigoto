@@ -1000,15 +1000,15 @@ static int copy_self_to_temp_location(wchar_t *migoto_long_path,
 		goto err_rm;
 	}
 
-	// We might also need to copy d3dcompiler_46.dll, since if it cannot be
+	// We might also need to copy d3dcompiler_47.dll, since if it cannot be
 	// found in any of the standard locations rundll will throw "The
 	// specified module could not be found." error. We can avoid this later
 	// once we ship our own helper, as we can keep it's dependencies to a
 	// minimum:
-	wcscat_s(d3dcompiler_temp_path, MAX_PATH, L"d3dcompiler_46.dll");
+	wcscat_s(d3dcompiler_temp_path, MAX_PATH, L"d3dcompiler_47.dll");
 	wcscpy_s(tmp, MAX_PATH, migoto_long_path);
 	wcsrchr(tmp, L'\\')[1] = 0;
-	wcscat_s(tmp, MAX_PATH, L"d3dcompiler_46.dll");
+	wcscat_s(tmp, MAX_PATH, L"d3dcompiler_47.dll");
 
 	LogInfo("Copying %S to %S\n", tmp, d3dcompiler_temp_path);
 	if (!CopyFile(tmp, d3dcompiler_temp_path, false)) {
