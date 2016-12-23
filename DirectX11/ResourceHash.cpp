@@ -107,24 +107,24 @@ void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 		case D3D11_SRV_DIMENSION_TEXTURE1D:
 			LogInfo("    ViewDimension = TEXTURE1D\n");
 			LogInfo("      Texture1D.MostDetailedMip = %u\n", desc->Texture1D.MostDetailedMip);
-			LogInfo("      Texture1D.MipLevels = %u\n", desc->Texture1D.MipLevels);
+			LogInfo("      Texture1D.MipLevels = %d\n", desc->Texture1D.MipLevels);
 			break;
 		case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
 			LogInfo("    ViewDimension = TEXTURE1DARRAY\n");
 			LogInfo("      Texture1DArray.MostDetailedMip = %u\n", desc->Texture1DArray.MostDetailedMip);
-			LogInfo("      Texture1DArray.MipLevels = %u\n", desc->Texture1DArray.MipLevels);
+			LogInfo("      Texture1DArray.MipLevels = %d\n", desc->Texture1DArray.MipLevels);
 			LogInfo("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
 			LogInfo("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
 			break;
 		case D3D11_SRV_DIMENSION_TEXTURE2D:
 			LogInfo("    ViewDimension = TEXTURE2D\n");
 			LogInfo("      Texture2D.MostDetailedMip = %u\n", desc->Texture2D.MostDetailedMip);
-			LogInfo("      Texture2D.MipLevels = %u\n", desc->Texture2D.MipLevels);
+			LogInfo("      Texture2D.MipLevels = %d\n", desc->Texture2D.MipLevels);
 			break;
 		case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
 			LogInfo("    ViewDimension = TEXTURE2DARRAY\n");
 			LogInfo("      Texture2DArray.MostDetailedMip = %u\n", desc->Texture2DArray.MostDetailedMip);
-			LogInfo("      Texture2DArray.MipLevels = %u\n", desc->Texture2DArray.MipLevels);
+			LogInfo("      Texture2DArray.MipLevels = %d\n", desc->Texture2DArray.MipLevels);
 			LogInfo("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
 			LogInfo("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
 			break;
@@ -139,17 +139,17 @@ void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 		case D3D11_SRV_DIMENSION_TEXTURE3D:
 			LogInfo("    ViewDimension = TEXTURE3D\n");
 			LogInfo("      Texture3D.MostDetailedMip = %u\n", desc->Texture3D.MostDetailedMip);
-			LogInfo("      Texture3D.MipLevels = %u\n", desc->Texture3D.MipLevels);
+			LogInfo("      Texture3D.MipLevels = %d\n", desc->Texture3D.MipLevels);
 			break;
 		case D3D11_SRV_DIMENSION_TEXTURECUBE:
 			LogInfo("    ViewDimension = TEXTURECUBE\n");
 			LogInfo("      TextureCube.MostDetailedMip = %u\n", desc->TextureCube.MostDetailedMip);
-			LogInfo("      TextureCube.MipLevels = %u\n", desc->TextureCube.MipLevels);
+			LogInfo("      TextureCube.MipLevels = %d\n", desc->TextureCube.MipLevels);
 			break;
 		case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
 			LogInfo("    ViewDimension = TEXTURECUBEARRAY\n");
 			LogInfo("      TextureCubeArray.MostDetailedMip = %u\n", desc->TextureCubeArray.MostDetailedMip);
-			LogInfo("      TextureCubeArray.MipLevels = %u\n", desc->TextureCubeArray.MipLevels);
+			LogInfo("      TextureCubeArray.MipLevels = %d\n", desc->TextureCubeArray.MipLevels);
 			LogInfo("      TextureCubeArray.First2DArrayFace = %u\n", desc->TextureCubeArray.First2DArrayFace);
 			LogInfo("      TextureCubeArray.NumCubes = %u\n", desc->TextureCubeArray.NumCubes);
 			break;

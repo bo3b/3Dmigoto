@@ -18,6 +18,7 @@ del d3d10.lib
 
 del d3d11.dll
 del d3d11_log.txt
+del d3d11_profile_log.txt
 del d3d11.exp
 del d3d11.pdb
 del d3d11.ilk

@@ -280,6 +280,7 @@ struct Globals
 	bool gInitialized;
 	bool gReloadConfigPending;
 	bool gLogInput;
+	bool dump_all_profiles;
 
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
@@ -288,8 +289,9 @@ struct Globals
 	EnableHooks enable_hooks;
 	
 	bool enable_check_interface;
-	bool enable_dxgi1_2;
+	int enable_dxgi1_2;
 	int enable_create_device;
+	bool enable_platform_update;
 
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
@@ -499,11 +501,13 @@ struct Globals
 
 		enable_hooks(EnableHooks::INVALID),
 		enable_check_interface(false),
-		enable_dxgi1_2(false),
+		enable_dxgi1_2(0),
 		enable_create_device(0),
+		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
-		gLogInput(false)
+		gLogInput(false),
+		dump_all_profiles(false)
 
 	{
 		int i;

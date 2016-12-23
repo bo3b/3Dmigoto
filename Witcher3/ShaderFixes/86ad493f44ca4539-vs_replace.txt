@@ -1,4 +1,4 @@
-//HUD
+//HUD Xbox context
 cbuffer Constants : register(b0)
 {
   float4 mvp[2] : packoffset(c0);
@@ -8,8 +8,7 @@ cbuffer Constants : register(b0)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-// FIXME: Implement include handler in 3DMigoto to make paths consistent:
-#include <x64\ShaderFixes\hud.hlsl>
+#include <hud.hlsl>
 
 void main(
   float4 v0 : COLOR0,
@@ -24,19 +23,27 @@ void main(
   o2.x = dot(v1.xyzw, mvp[0].xyzw);
   o2.y = dot(v1.xyzw, mvp[1].xyzw);
   o2.zw = float2(0.000000e+000,1.000000e+000);
-
-if (!rt_is_screen())
-	return;
-
+  
 float4 stereo = StereoParams.Load(0);
 float4 params = IniParams.Load(0);
-if (params.z == 1)
-	o2.x += adjust_from_stereo2mono_depth_buffer(dot(float4(0,0,0,1), mvp[0].xyzw), dot(float4(0,0,0,1), mvp[1].xyzw));
-else if (params.z == 2)
-	o2.x += adjust_from_stereo2mono_depth_buffer(o2.x, o2.y);
+float depth = world_z_from_depth_buffer(0,0);
+float4 resolution = StereoParams.Load(int3(2, 0, 0));
+float aspectRatio = resolution.x / resolution.y;
+float cutLeft = -0.45;
+float cutRight = 0.3;
+float cutUp = 0.0;
+float cutDown = -0.0;
+
+if (params.z >= 1.0)
+{
+	o2.x -= stereo.x* ( o2.z - stereo.y);
+}
 else
-	o2.x -= stereo.x*(params.x);  
-  return;
+{
+	o2.x += stereo.x* params.x;
+}
+
+return;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,3 +105,4 @@ ret
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
   
+   

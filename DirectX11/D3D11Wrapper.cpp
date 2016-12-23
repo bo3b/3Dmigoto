@@ -17,12 +17,19 @@
 #include "HackerContext.h"
 #include "IniHandler.h"
 #include "HackerDXGI.h"
+#include "nvprofile.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
 // globals.h and log.h files.
 
-Globals *G;
+// Globals used to be allocated on the heap, which is pointless given that it
+// is global, and fragile given that we now have a second entry point for the
+// profile helper that does not use the same init paths as the regular dll.
+// Statically allocate it as StaticG and point the old G pointer to it to avoid
+// needing to change every reference.
+Globals StaticG;
+Globals *G = &StaticG;
 
 FILE *LogFile = 0;		// off by default.
 bool gLogDebug = false;
@@ -60,6 +67,9 @@ bool InitializeDLL()
 		LogInfo("  NvAPI_Initialize failed: %s\n", errorMessage);
 		return false;
 	}
+
+	log_nv_driver_version();
+	log_check_and_update_nv_profiles();
 
 	// This sequence is to make the force_no_nvapi work.  When the game pCars
 	// starts it calls NvAPI_Initialize that we want to return an error for.
@@ -374,7 +384,6 @@ void InitD311()
 
 	if (hD3D11) return;
 
-	G = new Globals();
 	InitializeCriticalSection(&G->mCriticalSection);
 
 	InitializeDLL();

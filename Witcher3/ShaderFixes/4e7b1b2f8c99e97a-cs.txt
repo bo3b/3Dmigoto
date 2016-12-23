@@ -201,7 +201,7 @@ loop
       store_structured g4.x, r6.x, l(0), r1.w
     endif 
   endif 
-  // Disable this test to fix clipping on global illumination in tunnels:
+  // THIS NEEDS TO BE DISABLED AS DarkStarSword Pointed out
   //if_nz r5.y
     imm_atomic_iadd r5.x, g3, l(0), l(1)
     ult r5.y, r5.x, l(192)

@@ -404,17 +404,32 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 		{
 			// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 			// Unless we are overriding default behavior from ini file.
-			if (!G->enable_dxgi1_2)
+			if (G->enable_dxgi1_2 == 0)
 			{
 				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 				*ppvObject = NULL;
 				return E_NOINTERFACE;
+			} else if (G->enable_dxgi1_2 == 1) {
+				// For when we need to return a legit Factory2.
+				HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+				LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
+				*ppvObject = factory2Wrap;
 			}
-
-			// For when we need to return a legit Factory2.  
-			HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
-			LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
-			*ppvObject = factory2Wrap;
+			// Wrapping DXGIFactory2 here or failing this call
+			// seems to disable the Steam overlay on Winddows 7 and
+			// Windows 8 in some games such as The Witcher 3, but
+			// the logs do not show any calls being made on the
+			// wrapped object, just that it is always released
+			// immediately. It is also noteworthy that the overlay
+			// is also disabled when using API Monitor. The
+			// explanation is not immediately apparent, but perhaps
+			// Steam is checking the type of the returned object or
+			// something similar?
+			//
+			// This can be worked around by setting allow_dxgi1_2=2
+			// to allow the unwrapped DXGIFactory2 object through,
+			// but this may cause problems if the game itself is
+			// using the Factory2 object, not just the overlay.
 		}
 	}
 

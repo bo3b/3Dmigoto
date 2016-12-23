@@ -105,3 +105,8 @@ EXPORTS
 ; EnableFeatureLevelUpgrade
 ; OpenAdapter10
 ; OpenAdapter10_2
+
+; 3DMigoto exports that are not found in the real d3d11.dll
+; We are not exporting an ordinal here, since a text string is less likely to
+; clash with any future changes to the real d3d11.dll or another wrapper.
+Install3DMigotoDriverProfileW

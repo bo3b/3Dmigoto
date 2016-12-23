@@ -8,6 +8,7 @@
 #include "Globals.h"
 #include "Override.h"
 #include "Hunting.h"
+#include "nvprofile.h"
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -46,6 +47,22 @@ bool IsCommandListSection(const wchar_t *section)
 			if (!_wcsicmp(section, CommandListSections[i].section))
 				return true;
 		}
+	}
+
+	return false;
+}
+
+static wchar_t *AllowLinesWithoutEquals[] = {
+	L"Profile",
+};
+
+bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
+{
+	int i;
+
+	for (i = 0; i < ARRAYSIZE(AllowLinesWithoutEquals); i++) {
+		if (!_wcsicmp(section, AllowLinesWithoutEquals[i]))
+			return true;
 	}
 
 	return false;
@@ -225,6 +242,7 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	DWORD result;
 	IniSections keys;
 	bool warn_duplicates = true;
+	bool warn_lines_without_equals = true;
 
 	// Sections that utilise a command list are allowed to have duplicate
 	// keys, while other sections are not. The command list parser will
@@ -232,6 +250,9 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	// list.
 	if (IsCommandListSection(section))
 		warn_duplicates = false;
+
+	if (DoesSectionAllowLinesWithoutEquals(section))
+		warn_lines_without_equals = false;
 
 	key_vals.clear();
 
@@ -251,14 +272,16 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	for (kptr = buf; *kptr; kptr++) {
 		for (vptr = kptr; *vptr && *vptr != L'='; vptr++) {}
 		if (*vptr != L'=') {
-			LogInfoW(L"WARNING: Malformed line in d3dx.ini: [%s] \"%s\"\n", section, kptr);
-			BeepFailure2();
-			kptr = vptr;
-			continue;
+			if (warn_lines_without_equals) {
+				LogInfoW(L"WARNING: Malformed line in d3dx.ini: [%s] \"%s\"\n", section, kptr);
+				BeepFailure2();
+				kptr = vptr;
+				continue;
+			}
+		} else {
+			*vptr = L'\0';
+			vptr++;
 		}
-
-		*vptr = L'\0';
-		vptr++;
 
 		if (warn_duplicates) {
 			if (keys.count(kptr)) {
@@ -416,6 +439,17 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			}
 		}
 
+		if (GetPrivateProfileString(i->c_str(), L"mode", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
+				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
+			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
+				LogInfo("  WARNING: Unknown mode \"%S\"\n", setting);
+				BeepFailure2();
+			} else {
+				LogInfo("  mode=%S\n", setting);
+			}
+		}
+
 		if (GetPrivateProfileString(i->c_str(), L"format", 0, setting, MAX_PATH, iniFile)) {
 			custom_resource->override_format = ParseFormatString(setting);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
@@ -439,7 +473,12 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 		custom_resource->width_multiply = GetIniFloat(i->c_str(), L"width_multiply", 1.0f, iniFile, NULL);
 		custom_resource->height_multiply = GetIniFloat(i->c_str(), L"height_multiply", 1.0f, iniFile, NULL);
 
-		// TODO: Overrides for bind flags, misc flags, etc
+		if (GetPrivateProfileString(i->c_str(), L"bind_flags", 0, setting, MAX_PATH, iniFile)) {
+			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
+				(CustomResourceBindFlagNames, setting, NULL);
+		}
+
+		// TODO: Overrides for misc flags, etc
 	}
 }
 
@@ -526,6 +565,25 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		continue;
 log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
+	}
+}
+
+static void ParseDriverProfile(wchar_t *iniFile)
+{
+	IniSection section;
+	IniSection::iterator entry;
+	wstring *lhs, *rhs;
+
+	// Arguably we should only parse this section the first time since the
+	// settings will only be applied on startup.
+	profile_settings.clear();
+
+	GetIniSection(section, L"Profile", iniFile);
+	for (entry = section.begin(); entry < section.end(); entry++) {
+		lhs = &entry->first;
+		rhs = &entry->second;
+
+		parse_ini_profile_line(lhs, rhs);
 	}
 }
 
@@ -1287,6 +1345,8 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
+	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, iniFile, NULL);
+
 	// [System]
 	LogInfo("[System]\n");
 	GetPrivateProfileString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH, iniFile);
@@ -1298,17 +1358,10 @@ void LoadConfigFile()
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
 			(EnableHooksNames, setting, NULL);
 	}
-	if (GetPrivateProfileString(L"System", L"allow_dxgi1_2", 0, setting, MAX_PATH, iniFile))
-	{
-		LogInfoW(L"  allow_dxgi1_2=%s\n", setting);
-		G->enable_dxgi1_2 = true;
-	}
-	if (GetPrivateProfileString(L"System", L"allow_check_interface", 0, setting, MAX_PATH, iniFile))
-	{
-		LogInfoW(L"  allow_check_interface=%s\n", setting);
-		G->enable_check_interface = true;
-	}
+	G->enable_dxgi1_2 = GetIniInt(L"System", L"allow_dxgi1_2", 0, iniFile, NULL);
+	G->enable_check_interface = GetIniBool(L"System", L"allow_check_interface", false, iniFile, NULL);
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
+	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, iniFile, NULL);
 
 	// [Device] (DXGI parameters)
 	LogInfo("[Device]\n");
@@ -1595,6 +1648,56 @@ void LoadConfigFile()
 			}
 		}
 	}
+
+	LogInfo("[Profile]\n");
+	ParseDriverProfile(iniFile);
+
+	LogInfo("\n");
+}
+
+// This variant is called by the profile manager helper with the path to the
+// game's executable passed in. It doesn't need to parse most of the config,
+// only the [Profile] section and some of the logging. It uses a separate log
+// file from the main DLL.
+void LoadProfileManagerConfig(const wchar_t *exe_path)
+{
+	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
+
+	G->gInitialized = true;
+
+	if (wcscpy_s(iniFile, MAX_PATH, exe_path))
+		DoubleBeepExit();
+	wcsrchr(iniFile, L'\\')[1] = 0;
+	wcscpy(logFilename, iniFile);
+	wcscat(iniFile, L"d3dx.ini");
+	wcscat(logFilename, L"d3d11_profile_log.txt");
+
+	// [Logging]
+	// Not using the helper function for this one since logging isn't enabled yet
+	if (GetPrivateProfileInt(L"Logging", L"calls", 1, iniFile))
+	{
+		if (!LogFile)
+			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
+		LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+		LogInfo("----------- d3dx.ini settings -----------\n");
+	}
+	LogInfo("[Logging]\n");
+	LogInfo("  calls=1\n");
+
+	gLogDebug = GetIniBool(L"Logging", L"debug", false, iniFile, NULL);
+
+	// Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
+	// to open active files.
+	if (LogFile && GetIniBool(L"Logging", L"unbuffered", false, iniFile, NULL))
+	{
+		int unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
+		LogInfo("    unbuffered return: %d\n", unbuffered);
+	}
+
+	LogInfo("[Profile]\n");
+	ParseDriverProfile(iniFile);
+
+	LogInfo("\n");
 }
 
 

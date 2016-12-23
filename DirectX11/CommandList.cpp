@@ -658,7 +658,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	if (custom_shader->max_executions_per_frame) {
 		if (custom_shader->frame_no != G->frame_no) {
 			custom_shader->frame_no = G->frame_no;
-			custom_shader->executions_this_frame = 0;
+			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
 			mHackerContext->FrameAnalysisLog("max_executions_per_frame exceeded\n");
 			return;
@@ -1065,6 +1065,8 @@ CustomResource::CustomResource() :
 	frame_no(0),
 	copies_this_frame(0),
 	override_type(CustomResourceType::INVALID),
+	override_mode(CustomResourceMode::DEFAULT),
+	override_bind_flags(CustomResourceBindFlags::INVALID),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -1087,8 +1089,37 @@ CustomResource::~CustomResource()
 		view->Release();
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
+bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode)
 {
+
+	if (override_mode == CustomResourceMode::DEFAULT)
+		return false;
+
+	NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
+
+	switch (override_mode) {
+		case CustomResourceMode::STEREO:
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+			return true;
+		case CustomResourceMode::MONO:
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
+			return true;
+		case CustomResourceMode::AUTO:
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+					NVAPI_STEREO_SURFACECREATEMODE_AUTO);
+			return true;
+	}
+
+	return false;
+}
+
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle)
+{
+	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
+	bool restore_create_mode = false;
+
 	// We only allow a custom resource to be substantiated once. Otherwise
 	// we could end up reloading it again if it is later set to null. Also
 	// prevents us from endlessly retrying to load a custom resource from a
@@ -1109,22 +1140,64 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice)
 	// parameters while probing the hardware before it settles on the one
 	// it will actually use.
 
-	if (!filename.empty())
-		return LoadFromFile(mOrigDevice);
+	restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 
-	switch (override_type) {
-		case CustomResourceType::BUFFER:
-		case CustomResourceType::STRUCTURED_BUFFER:
-		case CustomResourceType::RAW_BUFFER:
-			return SubstantiateBuffer(mOrigDevice);
-		case CustomResourceType::TEXTURE1D:
-			return SubstantiateTexture1D(mOrigDevice);
-		case CustomResourceType::TEXTURE2D:
-		case CustomResourceType::CUBE:
-			return SubstantiateTexture2D(mOrigDevice);
-		case CustomResourceType::TEXTURE3D:
-			return SubstantiateTexture3D(mOrigDevice);
+	if (!filename.empty()) {
+		LoadFromFile(mOrigDevice);
+	} else {
+		switch (override_type) {
+			case CustomResourceType::BUFFER:
+			case CustomResourceType::STRUCTURED_BUFFER:
+			case CustomResourceType::RAW_BUFFER:
+				SubstantiateBuffer(mOrigDevice, NULL, 0);
+				break;
+			case CustomResourceType::TEXTURE1D:
+				SubstantiateTexture1D(mOrigDevice);
+				break;
+			case CustomResourceType::TEXTURE2D:
+			case CustomResourceType::CUBE:
+				SubstantiateTexture2D(mOrigDevice);
+				break;
+			case CustomResourceType::TEXTURE3D:
+				SubstantiateTexture3D(mOrigDevice);
+				break;
+		}
 	}
+
+	if (restore_create_mode)
+		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+}
+
+void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice)
+{
+	DWORD size, read_size;
+	void *buf = NULL;
+	HANDLE f;
+
+	f = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE) {
+		LogInfo("Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
+		return;
+	}
+
+	size = GetFileSize(f, 0);
+	buf = malloc(size); // malloc to allow realloc to resize it if the user overrode the size
+	if (!buf) {
+		LogInfo("Out of memory loading %S\n", filename.c_str());
+		goto out_close;
+	}
+
+	if (!ReadFile(f, buf, size, &read_size, 0) || size != read_size) {
+		LogInfo("Error reading custom buffer from file %S\n", filename.c_str());
+		goto out_delete;
+	}
+
+	SubstantiateBuffer(mOrigDevice, &buf, size);
+
+out_delete:
+	free(buf);
+out_close:
+	CloseHandle(f);
 }
 
 void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
@@ -1132,8 +1205,12 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
 	wstring ext;
 	HRESULT hr;
 
-	// TODO: Support loading raw buffers (may want more ini params to
-	// describe them)
+	switch (override_type) {
+		case CustomResourceType::BUFFER:
+		case CustomResourceType::STRUCTURED_BUFFER:
+		case CustomResourceType::RAW_BUFFER:
+			return LoadBufferFromFile(mOrigDevice);
+	}
 
 	// XXX: We are not creating a view with DirecXTK because
 	// 1) it assumes we want a shader resource view, which is an
@@ -1167,11 +1244,12 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
 		// TODO:
 		// format = ...
 	} else
-		LogInfoW(L"Failed to load custom resource %s: 0x%x\n", filename.c_str(), hr);
+		LogInfoW(L"Failed to load custom texture resource %s: 0x%x\n", filename.c_str(), hr);
 }
 
-void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice)
+void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, DWORD size)
 {
+	D3D11_SUBRESOURCE_DATA data = {0}, *pInitialData = NULL;
 	ID3D11Buffer *buffer;
 	D3D11_BUFFER_DESC desc;
 	HRESULT hr;
@@ -1181,7 +1259,26 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice)
 	desc.BindFlags = bind_flags;
 	OverrideBufferDesc(&desc);
 
-	hr = mOrigDevice->CreateBuffer(&desc, NULL, &buffer);
+	if (buf) {
+		// Fill in size from the file, allowing for an override to make
+		// it larger or smaller, which may involve reallocating the
+		// buffer from the caller.
+		if (desc.ByteWidth <= 0) {
+			desc.ByteWidth = size;
+		} else if (desc.ByteWidth > size) {
+			void *new_buf = realloc(*buf, desc.ByteWidth);
+			if (!new_buf) {
+				LogInfo("Out of memory enlarging buffer\n");
+				return;
+			}
+			*buf = new_buf;
+		}
+
+		data.pSysMem = *buf;
+		pInitialData = &data;
+	}
+
+	hr = mOrigDevice->CreateBuffer(&desc, pInitialData, &buffer);
 	if (SUCCEEDED(hr)) {
 		LogInfo("Substantiated custom %S resource\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type));
@@ -1294,7 +1391,10 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 	else if (override_array != -1)
 		desc->ByteWidth = desc->StructureByteStride * override_array;
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
@@ -1310,7 +1410,10 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 
 	desc->Width = (UINT)(desc->Width * width_multiply);
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
@@ -1339,7 +1442,10 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 	desc->Width = (UINT)(desc->Width * width_multiply);
 	desc->Height = (UINT)(desc->Height * height_multiply);
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
@@ -1358,7 +1464,10 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 	desc->Width = (UINT)(desc->Width * width_multiply);
 	desc->Height = (UINT)(desc->Height * height_multiply);
 
-	// TODO: Add more overrides for bind & misc flags
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
@@ -1776,7 +1885,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->Substantiate(mOrigDevice);
+		custom_resource->Substantiate(mOrigDevice, mHackerDevice->mStereoHandle);
 
 		*stride = custom_resource->stride;
 		*offset = custom_resource->offset;
@@ -2220,7 +2329,6 @@ static DXGI_FORMAT MakeTypeless(DXGI_FORMAT fmt)
 
 		case DXGI_FORMAT_R10G10B10A2_UNORM:
 		case DXGI_FORMAT_R10G10B10A2_UINT:
-		case DXGI_FORMAT_R11G11B10_FLOAT:
 			return DXGI_FORMAT_R10G10B10A2_TYPELESS;
 
 		case DXGI_FORMAT_R8G8B8A8_UNORM:
@@ -2302,6 +2410,7 @@ static DXGI_FORMAT MakeTypeless(DXGI_FORMAT fmt)
 		case DXGI_FORMAT_BC7_UNORM_SRGB:
 			return DXGI_FORMAT_BC7_TYPELESS;
 
+		case DXGI_FORMAT_R11G11B10_FLOAT:
 		default:
 			return fmt;
 	}
@@ -2517,6 +2626,8 @@ static void RecreateCompatibleResource(
 			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
+	} else if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+		restore_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 	}
 
 	switch (src_dimension) {
@@ -3353,9 +3464,11 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		if (dst.custom_resource->max_copies_per_frame) {
 			if (dst.custom_resource->frame_no != G->frame_no) {
 				dst.custom_resource->frame_no = G->frame_no;
-				dst.custom_resource->copies_this_frame = 0;
-			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame)
+				dst.custom_resource->copies_this_frame = 1;
+			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
+				mHackerContext->FrameAnalysisLog("max_copies_per_frame exceeded\n");
 				return;
+			}
 		}
 
 		dst.custom_resource->OverrideOutOfBandInfo(&format, &stride);
@@ -3378,7 +3491,9 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
 			// RecreateCompatibleResource has already done the work
+			mHackerContext->FrameAnalysisLog("3DMigoto copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
+			mHackerContext->FrameAnalysisLog("3DMigoto performing reverse stereo blit\n");
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -3405,15 +3520,19 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
+			mHackerContext->FrameAnalysisLog("3DMigoto resolving MSAA\n");
 			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
 		} else if (buf_dst_size) {
+			mHackerContext->FrameAnalysisLog("3DMigoto performing region copy\n");
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					mOrigContext, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
+			mHackerContext->FrameAnalysisLog("3DMigoto performing full copy\n");
 			mOrigContext->CopyResource(dst_resource, src_resource);
 		}
 	} else {
+		mHackerContext->FrameAnalysisLog("3DMigoto copying by reference\n");
 		dst_resource = src_resource;
 		if (src_view && (src.type == dst.type)) {
 			dst_view = src_view;

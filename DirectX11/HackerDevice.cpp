@@ -429,30 +429,34 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		// This worked in DragonAge, to avoid a crash. Wrapping Device1 also progressed but
 		// adds a ton of undesirable complexity, so let's keep it simpler since we don't 
 		// seem to lose anything. Not features, not performance.
-		
-		LogInfo("  returns E_NOINTERFACE as error for ID3D11Device1. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		//
+		// Dishonored 2 is the first known game that lacks a fallback
+		// and requires the platform update.
 
-		// Maybe later:
-		//ID3D11Device1 *origDevice1;
-		//hr = mOrigDevice->QueryInterface(riid, (void**)(&origDevice1));
+		if (!G->enable_platform_update) {
+			LogInfo("  returns E_NOINTERFACE as error for ID3D11Device1 (try allow_platform_update=1 if the game refuses to run). \n");
+			*ppvObject = NULL;
+			return E_NOINTERFACE;
+		}
 
-		//ID3D11DeviceContext1 *origContext1;
-		//origDevice1->GetImmediateContext1(&origContext1);
-		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
+		ID3D11Device1 *origDevice1;
+		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDevice1));
 
-		//LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
+		ID3D11DeviceContext1 *origContext1;
+		origDevice1->GetImmediateContext1(&origContext1);
+		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
 
-		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
-		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
 
-		//LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
+		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
 
-		//// ToDo: Handle memory allocation exceptions
+		LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
 
-		//if (ppvObject)
-		//	*ppvObject = hackerDeviceWrap1;
+		// ToDo: Handle memory allocation exceptions
+
+		if (ppvObject)
+			*ppvObject = hackerDeviceWrap1;
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
