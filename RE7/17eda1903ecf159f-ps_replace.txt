@@ -55,13 +55,12 @@ SamplerState BilinearClamp_s : register(s1);
 Texture2D<float> ReadonlyDepth : register(t0);
 Texture2D<float4> BaseColorMetallicSRV : register(t1);
 Texture2D<float4> NormalXNormalYRoughnessMiscSRV : register(t2);
- IESLightTableSRV : register(t3);
-StructuredBuffer<LightParameterSRV> LightParameterSRV : register(t4);
+
 Texture2DArray<float> ShadowMapSRV : register(t5);
-StructuredBuffer<ShadowParameterSRV> ShadowParameterSRV : register(t6);
+
 Texture2D<float2> DepthBoundary : register(t7);
 Texture3D<uint> ScreenLightGridSRV : register(t8);
-StructuredBuffer<IndexListSRV> IndexListSRV : register(t9);
+
 Texture2D<uint> GIDSRV : register(t10);
 
 
@@ -71,19 +70,67 @@ Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
 
+// Manual fix:
+// Resource bind info for LightParameterSRV
+// {
+//
+  struct LightParameter
+  {
+      
+      float3 position;               // Offset:    0
+      float tolerance;               // Offset:   12
+      float3 direction;              // Offset:   16
+      float falloff;                 // Offset:   28
+      float4 attenuation;            // Offset:   32
+      float3 color;                  // Offset:   48
+      float boundingRadius;          // Offset:   60
+      uint shadowIndex;              // Offset:   64
+      uint iesId;                    // Offset:   68
+      uint2 reserved;                // Offset:   72
+
+  };                        // Offset:    0 Size:    80
+//
+// }
+
+// Manual fix:
+// Resource bind info for ShadowParameterSRV
+// {
+//
+  struct ShadowParameter
+  {
+      
+      row_major float4x4 viewProjection;// Offset:    0
+      float variance;                // Offset:   64
+      uint arrayIndex;               // Offset:   68
+      uint mipIndex;                 // Offset:   72
+      float bias;                    // Offset:   76
+
+  };                        // Offset:    0 Size:    80
+//
+// }
+
+
+// unknown dcl_: dcl_resource_texture1darray (float,float,float,float) t3
+ Texture1DArray<float> IESLightTableSRV : register(t3);
+
+// unknown dcl_: dcl_resource_structured t4, 80 
+// LightParameterSRV                 texture  struct         r/o    4        1
+StructuredBuffer<LightParameter> LightParameterSRV : register(t4);
+
+// unknown dcl_: dcl_resource_structured t6, 80 
+// ShadowParameterSRV                texture  struct         r/o    6        1
+StructuredBuffer<ShadowParameter> ShadowParameterSRV : register(t6);
+
+// unknown dcl_: dcl_resource_raw t9
+ByteAddressBuffer IndexListSRV : register(t9);
+
+
 void main( 
   float4 v0 : SV_Position0,
   out float4 o0 : SV_TARGET0,
   out float4 o1 : SV_TARGET1)
 {
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_texture1darray (float,float,float,float) t3
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_structured t4, 80 
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_structured t6, 80 
-// Needs manual fix for instruction: 
-// unknown dcl_: dcl_resource_raw t9
+
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
   uint4 bitmask, uiDest;
   float4 fDest;
@@ -196,7 +243,14 @@ void main(
           r2.w = max(abs(r14.x), abs(r14.y));
           r2.w = cmp(r2.w < 0.5);
           r14.xy = r6.xy * Cascade_Translate2.zz + Cascade_Translate2.xy;
-          r15.xyzw = Cascade_Scale2.xx * DL_Bias;
+           
+          // mul r15.xyzw, cb2[6].wxwx, cb2[10].zzxx
+          // r15.xyzw = Cascade_Scale2.xx * DL_Bias;
+          r15.x = Cascade_Scale2.x * DL_Bias;
+          r15.y = Cascade_Scale2.x * DL_Variance;
+          r15.z = Cascade_Scale1.x * DL_Bias;
+          r15.w = Cascade_Scale1.x * DL_Variance;
+          
           r16.xz = r15.zx * float2(0.5,0.5) + r6.zz;
           r14.zw = float2(-0.5,-0.5) + r14.xy;
           r4.w = max(abs(r14.z), abs(r14.w));
@@ -317,8 +371,10 @@ void main(
       r0.w = (int)r0.w & (int)r1.w;
       r1.zw = (uint2)r1.zz << int2(2,5);
       r1.z = (int)r1.z + (int)r0.y;
-    // No code for instruction (needs manual fix):
-        ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.z, r1.z, t9.xxxx
+      
+      // ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.z, r1.z, t9.xxxx
+      r1.z = asfloat(IndexListSRV.Load(r1.z));
+
       r13.xyz = r10.xyz;
       r14.xyz = r12.xyz;
       r2.w = r1.z;
@@ -329,35 +385,38 @@ void main(
         r4.w = ~(int)r4.w;
         r4.w = (int)r2.w & (int)r4.w;
         r3.w = (int)r1.w + (int)r3.w;
+        
+      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xyzw, r3.w, l(0), t4.xyzw
+      r15.xyz = LightParameterSRV[r3.w].position.xyz;
+      r15.w = LightParameterSRV[r3.w].tolerance;
+
       // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xyzw, r3.w, l(0), t4.xyzw
-      r15.x = PointClamp[]..swiz;
-      r15.y = PointClamp[]..swiz;
-      r15.z = PointClamp[]..swiz;
-      r15.w = PointClamp[]..swiz;
+      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.xyzw, r3.w, l(16), t4.xyzw
+      r16.x = LightParameterSRV[r3.w].direction.x;
+      r16.y = LightParameterSRV[r3.w].direction.y;
+      r16.z = LightParameterSRV[r3.w].direction.z;
+      r16.w = LightParameterSRV[r3.w].falloff;
+
       // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.xyzw, r3.w, l(16), t4.xyzw
-      r16.x = PointClamp[]..swiz;
-      r16.y = PointClamp[]..swiz;
-      r16.z = PointClamp[]..swiz;
-      r16.w = PointClamp[]..swiz;
+      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r3.w, l(32), t4.xyzw
+      r17.x = LightParameterSRV[r3.w].attenuation.x;
+      r17.y = LightParameterSRV[r3.w].attenuation.y;
+      r17.z = LightParameterSRV[r3.w].attenuation.z;
+      r17.w = LightParameterSRV[r3.w].attenuation.w;
+
       // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r3.w, l(32), t4.xyzw
-      r17.x = PointClamp[]..swiz;
-      r17.y = PointClamp[]..swiz;
-      r17.z = PointClamp[]..swiz;
-      r17.w = PointClamp[]..swiz;
+      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r18.xyzw, r3.w, l(48), t4.xyzw
+      r18.x = LightParameterSRV[r3.w].color.x;
+      r18.y = LightParameterSRV[r3.w].color.y;
+      r18.z = LightParameterSRV[r3.w].color.z;
+      r18.w = LightParameterSRV[r3.w].boundingRadius;
+      
       // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r18.xyzw, r3.w, l(48), t4.xyzw
-      r18.x = PointClamp[]..swiz;
-      r18.y = PointClamp[]..swiz;
-      r18.z = PointClamp[]..swiz;
-      r18.w = PointClamp[]..swiz;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r19.xyz, r3.w, l(64), t4.xyzx
-      r19.x = PointClamp[]..swiz;
-      r19.y = PointClamp[]..swiz;
-      r19.z = PointClamp[]..swiz;
+      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r19.xyz, r3.w, l(64), t4.xyzx
+      r19.x = LightParameterSRV[r3.w].shadowIndex;
+      r19.y = LightParameterSRV[r3.w].iesId;
+      r19.z = LightParameterSRV[r3.w].reserved.x;
+
         r20.xyz = r15.xyz + -r5.xyz;
         r3.w = dot(r20.xyz, r20.xyz);
         r6.w = rsqrt(r3.w);
@@ -367,7 +426,9 @@ void main(
         r22.x = r7.w * 0.5 + 0.5;
         r7.w = cmp((int)r19.y == -1);
         r22.y = (uint)r19.y;
-        r8.w = IESLightTableSRV.SampleLevel(BilinearClamp_s, r22.xyxx, 0).x;
+        
+        r8.w = IESLightTableSRV.SampleLevel(BilinearClamp_s, r22.xy, 0).x;
+        
         r7.w = r7.w ? 1 : r8.w;
         r8.w = r3.w * r17.x + 1;
         r8.w = r8.w * r8.w;
@@ -428,37 +489,38 @@ void main(
         r3.w = cmp((uint)r19.x < 256);
         if (r3.w != 0) {
           if (r19.z == 0) {
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
-          r17.x = PointClamp[]..swiz;
-          r17.y = PointClamp[]..swiz;
-          r17.z = PointClamp[]..swiz;
-          r17.w = PointClamp[]..swiz;
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
-          r20.x = PointClamp[]..swiz;
-          r20.y = PointClamp[]..swiz;
-          r20.z = PointClamp[]..swiz;
-          r20.w = PointClamp[]..swiz;
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
-          r21.x = PointClamp[]..swiz;
-          r21.y = PointClamp[]..swiz;
-          r21.z = PointClamp[]..swiz;
-          r21.w = PointClamp[]..swiz;
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
-          r22.x = PointClamp[]..swiz;
-          r22.y = PointClamp[]..swiz;
-          r22.z = PointClamp[]..swiz;
-          r22.w = PointClamp[]..swiz;
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.zw, r19.x, l(64), t6.xxxy
-          r16.z = PointClamp[]..swiz;
-          r16.w = PointClamp[]..swiz;
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r3.w, r19.x, l(76), t6.xxxx
-          r3.w = PointClamp[]..swiz;
+
+          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
+          r17.x = ShadowParameterSRV[r19.x].viewProjection[0].x;
+          r17.y = ShadowParameterSRV[r19.x].viewProjection[0].y;
+          r17.z = ShadowParameterSRV[r19.x].viewProjection[0].z;
+          r17.w = ShadowParameterSRV[r19.x].viewProjection[0].w;
+          
+          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
+          r20.x = ShadowParameterSRV[r19.x].viewProjection[1].x;
+          r20.y = ShadowParameterSRV[r19.x].viewProjection[1].y;
+          r20.z = ShadowParameterSRV[r19.x].viewProjection[1].z;
+          r20.w = ShadowParameterSRV[r19.x].viewProjection[1].w;
+          
+          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
+          r21.x = ShadowParameterSRV[r19.x].viewProjection[2].x;
+          r21.y = ShadowParameterSRV[r19.x].viewProjection[2].y;
+          r21.z = ShadowParameterSRV[r19.x].viewProjection[2].z;
+          r21.w = ShadowParameterSRV[r19.x].viewProjection[2].w;
+          
+          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
+          r22.x = ShadowParameterSRV[r19.x].viewProjection[3].x;
+          r22.y = ShadowParameterSRV[r19.x].viewProjection[3].y;
+          r22.z = ShadowParameterSRV[r19.x].viewProjection[3].z;
+          r22.w = ShadowParameterSRV[r19.x].viewProjection[3].w;
+          
+          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.zw, r19.x, l(64), t6.xxxy
+          r16.z = ShadowParameterSRV[r19.x].variance;
+          r16.w = ShadowParameterSRV[r19.x].arrayIndex;
+          
+          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r3.w, r19.x, l(76), t6.xxxx
+          r3.w = ShadowParameterSRV[r19.x].bias;
+          
             r23.x = r17.x;
             r23.y = r20.x;
             r23.z = r21.x;
@@ -512,33 +574,34 @@ void main(
           } else {
             r7.w = cmp((int)r19.z == 1);
             if (r7.w != 0) {
-            // Known bad code for instruction (needs manual fix):
-                        ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
-            r17.x = PointClamp[]..swiz;
-            r17.y = PointClamp[]..swiz;
-            r17.z = PointClamp[]..swiz;
-            r17.w = PointClamp[]..swiz;
-            // Known bad code for instruction (needs manual fix):
-                        ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
-            r20.x = PointClamp[]..swiz;
-            r20.y = PointClamp[]..swiz;
-            r20.z = PointClamp[]..swiz;
-            r20.w = PointClamp[]..swiz;
-            // Known bad code for instruction (needs manual fix):
-                        ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
-            r21.x = PointClamp[]..swiz;
-            r21.y = PointClamp[]..swiz;
-            r21.z = PointClamp[]..swiz;
-            r21.w = PointClamp[]..swiz;
-            // Known bad code for instruction (needs manual fix):
-                        ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
-            r22.x = PointClamp[]..swiz;
-            r22.y = PointClamp[]..swiz;
-            r22.z = PointClamp[]..swiz;
-            r22.w = PointClamp[]..swiz;
-            // Known bad code for instruction (needs manual fix):
-                        ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r7.w, r19.x, l(76), t6.xxxx
-            r7.w = PointClamp[]..swiz;
+              
+              // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
+              r17.x = ShadowParameterSRV[r19.x].viewProjection[0].x;
+              r17.y = ShadowParameterSRV[r19.x].viewProjection[0].y;
+              r17.z = ShadowParameterSRV[r19.x].viewProjection[0].z;
+              r17.w = ShadowParameterSRV[r19.x].viewProjection[0].w;
+
+              // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
+              r20.x = ShadowParameterSRV[r19.x].viewProjection[1].x;
+              r20.y = ShadowParameterSRV[r19.x].viewProjection[1].y;
+              r20.z = ShadowParameterSRV[r19.x].viewProjection[1].z;
+              r20.w = ShadowParameterSRV[r19.x].viewProjection[1].w;
+
+              // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
+              r21.x = ShadowParameterSRV[r19.x].viewProjection[2].x;
+              r21.y = ShadowParameterSRV[r19.x].viewProjection[2].y;
+              r21.z = ShadowParameterSRV[r19.x].viewProjection[2].z;
+              r21.w = ShadowParameterSRV[r19.x].viewProjection[2].w;
+
+              // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
+              r22.x = ShadowParameterSRV[r19.x].viewProjection[3].x;
+              r22.y = ShadowParameterSRV[r19.x].viewProjection[3].y;
+              r22.z = ShadowParameterSRV[r19.x].viewProjection[3].z;
+              r22.w = ShadowParameterSRV[r19.x].viewProjection[3].w;
+
+              // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r7.w, r19.x, l(76), t6.xxxx
+              r7.w = ShadowParameterSRV[r19.x].bias;
+            
               r15.xyz = -r15.zyx + r5.zyx;
               r10.w = max(abs(r15.z), abs(r15.y));
               r10.w = max(r10.w, abs(r15.x));
@@ -583,10 +646,12 @@ void main(
                 r3.w = 1;
               }
               if (r10.w == 0) {
-              // Known bad code for instruction (needs manual fix):
-                            ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xy, r19.x, l(64), t6.xyxx
-              r15.x = PointClamp[]..swiz;
-              r15.y = PointClamp[]..swiz;
+                
+
+                // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xy, r19.x, l(64), t6.xyxx
+                r15.x = ShadowParameterSRV[r19.x].variance;
+                r15.y = ShadowParameterSRV[r19.x].arrayIndex;
+                
                 r10.w = (int)r15.y + (int)r12.w;
                 r17.z = (int)r10.w;
                 r10.w = 0;
