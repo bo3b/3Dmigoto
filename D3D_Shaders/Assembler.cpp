@@ -1690,7 +1690,14 @@ vector<DWORD> assembleIns(string s) {
 		ins->opcode = 100;
 		if (w[1] == "linear") {
 			if (w[2] == "noperspective") {
-				if (w[3] == "centroid") {
+				if (w[3] == "sample") {
+					// DarkStarSword added case found in WATCH_DOGS2:
+					// dcl_input_ps_siv linear noperspective sample v0.xy, position
+					ins->_11_23 = 7;
+					os = assembleOp(w[4], true);
+					if (w[5] == "position")
+						os.push_back(1);
+				} else if (w[3] == "centroid") {
 					ins->_11_23 = 5;
 					os = assembleOp(w[4], true);
 					if (w[5] == "position")
