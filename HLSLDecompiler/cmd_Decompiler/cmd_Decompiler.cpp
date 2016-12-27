@@ -181,17 +181,38 @@ static int validate_assembly(string *assembly, vector<char> *orig_bytecode)
 {
 	vector<byte> new_bytecode(orig_bytecode->size());
 	vector<byte> assembly_vec(assembly->begin(), assembly->end());
+	size_t pos, size, size1, size2;
+	unsigned char *p1, *p2;
+	int rc = EXIT_SUCCESS;
 
 	// Assemble the disassembly and compare it to the original bytecode
 	new_bytecode = assembler(assembly_vec, *reinterpret_cast<vector<byte>*>(orig_bytecode));
 
-	if (memcmp(orig_bytecode->data(), new_bytecode.data(), orig_bytecode->size())) {
-		LogInfo("\n*** Assembly verification pass failed!\n");
-		return EXIT_FAILURE;
+	size1 = orig_bytecode->size();
+	size2 = new_bytecode.size();
+	size = min(size1, size2);
+	p1 = (unsigned char*)orig_bytecode->data();
+	p2 = (unsigned char*)new_bytecode.data();
+
+	for (pos = 0; pos < size; pos++, p1++, p2++) {
+		if (*p1 == *p2)
+			continue;
+
+		if (rc == EXIT_SUCCESS)
+			LogInfo("\n*** Assembly verification pass failed!\n");
+		rc = EXIT_FAILURE;
+
+		LogInfo("  0x%08Ix: expected 0x%02x, found 0x%02x\n", pos, *p1, *p2);
 	}
 
-	LogInfo("    Assembly verification pass succeeded\n");
-	return EXIT_SUCCESS;
+	if (size1 != size2) {
+		LogInfo("\n*** Assembly verification pass failed: bytecode size mismatch\n");
+		rc = EXIT_FAILURE;
+	}
+
+	if (rc == EXIT_SUCCESS)
+		LogInfo("    Assembly verification pass succeeded\n");
+	return rc;
 }
 
 class ParseError : public exception {} parseError;
