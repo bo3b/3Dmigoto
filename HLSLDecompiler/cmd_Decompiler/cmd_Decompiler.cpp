@@ -177,44 +177,6 @@ static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLen
 	return S_OK;
 }
 
-static int validate_assembly(string *assembly, vector<char> *orig_bytecode)
-{
-	vector<byte> new_bytecode(orig_bytecode->size());
-	vector<byte> assembly_vec(assembly->begin(), assembly->end());
-	size_t pos, size, size1, size2;
-	unsigned char *p1, *p2;
-	int rc = EXIT_SUCCESS;
-
-	// Assemble the disassembly and compare it to the original bytecode
-	new_bytecode = assembler(assembly_vec, *reinterpret_cast<vector<byte>*>(orig_bytecode));
-
-	size1 = orig_bytecode->size();
-	size2 = new_bytecode.size();
-	size = min(size1, size2);
-	p1 = (unsigned char*)orig_bytecode->data();
-	p2 = (unsigned char*)new_bytecode.data();
-
-	for (pos = 0; pos < size; pos++, p1++, p2++) {
-		if (*p1 == *p2)
-			continue;
-
-		if (rc == EXIT_SUCCESS)
-			LogInfo("\n*** Assembly verification pass failed!\n");
-		rc = EXIT_FAILURE;
-
-		LogInfo("  0x%08Ix: expected 0x%02x, found 0x%02x\n", pos, *p1, *p2);
-	}
-
-	if (size1 != size2) {
-		LogInfo("\n*** Assembly verification pass failed: bytecode size mismatch\n");
-		rc = EXIT_FAILURE;
-	}
-
-	if (rc == EXIT_SUCCESS)
-		LogInfo("    Assembly verification pass succeeded\n");
-	return rc;
-}
-
 class ParseError : public exception {} parseError;
 
 static string next_line(string *shader, size_t *pos)
@@ -797,6 +759,96 @@ static HRESULT AssembleFlugan(vector<char> *assembly, string *bytecode)
 
 	return S_OK;
 }
+
+static int validate_section(char section[4], unsigned char *old_section, unsigned char *new_section, size_t size)
+{
+	unsigned char *p1 = old_section, *p2 = new_section;
+	int rc = 0;
+	size_t pos;
+
+	for (pos = 0; pos < size; pos++, p1++, p2++) {
+		if (*p1 == *p2)
+			continue;
+
+		if (!rc)
+			LogInfo("\n");
+		LogInfo("  Section %.4s 0x%08Ix: expected 0x%02x, found 0x%02x\n", section, pos, *p1, *p2);
+		rc = 1;
+	}
+
+	return rc;
+}
+
+static int validate_assembly(string *assembly, vector<char> *old_shader)
+{
+	vector<char> assembly_vec(assembly->begin(), assembly->end());
+	string new_assembly;
+	struct dxbc_header *old_dxbc_header = NULL, *new_dxbc_header = NULL;
+	struct section_header *old_section_header = NULL, *new_section_header = NULL;
+	uint32_t *old_section_offset_ptr = NULL, *new_section_offset_ptr = NULL;
+	unsigned char *old_section = NULL, *new_section = NULL;
+	uint32_t size;
+	unsigned i, j;
+	int rc = 0;
+	HRESULT hret;
+
+	// Assemble the disassembly and compare it to the original shader. We
+	// use the version that reconstructs the signature sections from the
+	// assembly text so that we can check the signature parsing separately
+	// from the assembler. FIXME: We really need to clean up how the
+	// buffers are passed between these functions
+	hret = AssembleFlugan(&assembly_vec, &new_assembly);
+	if (FAILED(hret)) {
+		LogInfo("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
+		return 1;
+	}
+
+	vector<char> new_shader(new_assembly.begin(), new_assembly.end());
+
+	// Get some useful pointers into the buffers:
+	old_dxbc_header = (struct dxbc_header*)old_shader->data();
+	new_dxbc_header = (struct dxbc_header*)new_shader.data();
+
+	old_section_offset_ptr = (uint32_t*)((char*)old_dxbc_header + sizeof(struct dxbc_header));
+	for (i = 0; i < old_dxbc_header->num_sections; i++, old_section_offset_ptr++) {
+		old_section_header = (struct section_header*)((char*)old_dxbc_header + *old_section_offset_ptr);
+
+		// Find the matching section in the new shader:
+		new_section_offset_ptr = (uint32_t*)((char*)new_dxbc_header + sizeof(struct dxbc_header));
+		for (j = 0; j < new_dxbc_header->num_sections; j++, new_section_offset_ptr++) {
+			new_section_header = (struct section_header*)((char*)new_dxbc_header + *new_section_offset_ptr);
+
+			if (memcmp(old_section_header->signature, new_section_header->signature, 4))
+				continue;
+
+			LogDebug(" Checking section %.4s...", old_section_header->signature);
+
+			size = min(old_section_header->size, new_section_header->size);
+			old_section = (unsigned char*)old_section_header + sizeof(struct section_header);
+			new_section = (unsigned char*)new_section_header + sizeof(struct section_header);
+
+			if (validate_section(old_section_header->signature, old_section, new_section, size))
+				rc = 1;
+			else
+				LogDebug(" OK\n");
+
+			if (old_section_header->size != new_section_header->size) {
+				LogInfo("\n*** Assembly verification pass failed: size mismatch in section %.4s\n",
+						old_section_header->signature);
+				rc = 1;
+			}
+
+			break;
+		}
+		if (j == new_dxbc_header->num_sections)
+			LogInfo("Reassembled shader missing %.4s section\n", old_section_header->signature);
+	}
+
+	if (!rc)
+		LogInfo("    Assembly verification pass succeeded\n");
+	return rc;
+}
+
 
 static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, string *hlslText, string *shaderModel)
 {
