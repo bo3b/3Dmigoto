@@ -161,10 +161,12 @@ void main(
     r4.z = dot(r3.xyz, viewMat._m20_m21_m22);
     r0.x = r0.z * r0.z;
     r0.x = r0.x * r0.x;
-    r3.xy = (uint2)v0.xy;
-    r3.zw = float2(0,0);
-    r0.y = ReadonlyDepth.Load(r3.xyw).x;
-    r1.zw = (uint2)r3.xy;
+    
+    r3.xy = (uint2)v0.xy; // r3.xy = (uint2)v0.xy;
+    r3.zw = uint2(0,0); // r3.zw = float2(0,0);
+    r0.y = ReadonlyDepth.Load(r3.xyw).x; // r0.y = ReadonlyDepth.Load(r3.xyw).x;
+    r1.zw = r3.xy; // r1.zw = (uint2)r3.xy;
+    
     r1.zw = screenInverseSize.xy * r1.zw;
     r1.zw = r1.zw * float2(2,-2) + float2(-1,1);
     r5.xyzw = viewProjInvMat._m10_m11_m12_m13 * r1.wwww;
@@ -176,7 +178,9 @@ void main(
     r0.y = dot(r6.xyz, r6.xyz);
     r0.y = rsqrt(r0.y);
     r7.xyz = r6.xyz * r0.yyy;
-    r0.z = GIDSRV.Load(r3.xyz).x;
+    
+    r0.z = GIDSRV.Load(r3.xyz).x; // r0.z = GIDSRV.Load(r3.xyz).x;
+    
     bitmask.z = ((~(-1 << 11)) << 4) & 0xffffffff;  r1.z = (((uint)r0.z << 4) & bitmask.z) | ((uint)0 & ~bitmask.z);
     r8.x = f16tof32(r1.z);
     r1.zw = (uint2)r0.zz >> int2(11,22);
@@ -215,7 +219,8 @@ void main(
         r6.x = -r0.y * r3.z + r0.y;
         r0.y = r0.y * r6.x + r3.z;
         r0.y = r3.w * r0.y;
-        r3.w = 0x7ef311c3 + (int)-r0.y;
+        
+        r3.w = asfloat(0x7ef311c3 + asint(-r0.y)); // r3.w = 0x7ef311c3 + (int)-r0.y;
         r0.y = -r3.w * r0.y + 2;
         r0.y = r3.w * r0.y;
         r6.x = r3.z * r0.y;
@@ -229,19 +234,25 @@ void main(
         r9.yz = float2(-0.5,-0.5) + r6.xy;
         r0.y = max(abs(r9.y), abs(r9.z));
         r0.y = cmp(r0.y < 0.5);
+        
+        int i_r1;
+
         if (r0.y != 0) {
           r9.yz = r6.xy * Cascade_Translate1.zz + Cascade_Translate1.xy;
           r11.yw = Cascade_Scale1.xx * DL_Bias;
           r12.w = r11.y * 0.5 + r6.z;
           r13.w = DL_Bias + r6.z;
-          r13.x = DL_ArrayIndex;
+          
+          r13.x = asfloat(DL_ArrayIndex); // r13.x = DL_ArrayIndex;
           r11.x = DL_Variance;
-          r1.z = 0;
+          i_r1 = 0; // r1.z = 0;
         } else {
           r10.yz = r6.xy * Cascade_Translate1.zz + Cascade_Translate1.xy;
           r14.xy = float2(-0.5,-0.5) + r10.yz;
           r2.w = max(abs(r14.x), abs(r14.y));
-          r2.w = cmp(r2.w < 0.5);
+          
+          int i_r2;
+          i_r2 = cmp(r2.w < 0.5); // r2.w = cmp(r2.w < 0.5);
           r14.xy = r6.xy * Cascade_Translate2.zz + Cascade_Translate2.xy;
            
           // mul r15.xyzw, cb2[6].wxwx, cb2[10].zzxx
@@ -254,65 +265,74 @@ void main(
           r16.xz = r15.zx * float2(0.5,0.5) + r6.zz;
           r14.zw = float2(-0.5,-0.5) + r14.xy;
           r4.w = max(abs(r14.z), abs(r14.w));
-          r4.w = cmp(r4.w < 0.5);
+          
+          int i_r4;
+          i_r4 = cmp(r4.w < 0.5); // r4.w = cmp(r4.w < 0.5);
           r17.xy = r6.xy * Cascade_Translate3.zz + Cascade_Translate3.xy;
           r14.zw = Cascade_Scale3.xx * DL_Bias;
           r18.x = r14.z * 0.5 + r6.z;
           r15.xz = float2(-0.5,-0.5) + r17.xy;
           r7.w = max(abs(r15.x), abs(r15.z));
-          r7.w = cmp(r7.w < 0.5);
-          r8.w = ~(int)r7.w;
-          r19.xyz = DL_ArrayIndex + int3(1,2,3);
+          
+          int i_r7;
+          i_r7 = cmp(r7.w < 0.5); // r7.w = cmp(r7.w < 0.5);
+          
+          int i_r8;
+          i_r8 = ~i_r7; // r8.w = ~(int)r7.w;
+          r19.xyz = asfloat(DL_ArrayIndex + int3(1,2,3));
           r17.z = r19.z;
           r17.w = r14.w;
-          r6.zw = DL_ArrayIndex;
-          r20.xyzw = r7.wwww ? r17.xyzw : r6.xyzw;
-          r18.y = r19.y;
-          r18.z = r15.y;
+          r6.zw = asfloat(DL_ArrayIndex);
+          r20.xyzw = i_r7 ? r17.xyzw : r6.xyzw; // r20.xyzw = r7.wwww ? r17.xyzw : r6.xyzw;
+          r18.y = r19.y; 
+          r18.z = r15.y; 
           r18.w = r17.w;
           r21.xy = r20.zw;
           r21.zw = float2(0,0);
-          r21.xyzw = r4.wwww ? r18.yzxw : r21.xyzw;
-          r6.zw = r4.ww ? r14.xy : r20.xy;
+          r21.xyzw = i_r4 ? r18.yzxw : r21.xyzw; // r21.xyzw = r4.wwww ? r18.yzxw : r21.xyzw;
+          r6.zw = i_r4 ? r14.xy : r20.xy; // r6.zw = r4.ww ? r14.xy : r20.xy;
           r16.yw = r17.xy;
           r18.yz = float2(0,0);
-          r17.xyz = r4.www ? r16.zyw : r18.xyz;
-          r6.xy = r2.ww ? r10.yz : r6.zw;
-          r9.yz = r2.ww ? r14.xy : r17.yz;
-          r13.w = r2.w ? r16.x : r17.x;
+          r17.xyz = i_r4 ? r16.zyw : r18.xyz; // r17.xyz = r4.www ? r16.zyw : r18.xyz;
+          r6.xy = i_r2 ? r10.yz : r6.zw; // r6.xy = r2.ww ? r10.yz : r6.zw;
+          r9.yz = i_r2 ? r14.xy : r17.yz; // r9.yz = r2.ww ? r14.xy : r17.yz;
+          r13.w = i_r2 ? r16.x : r17.x; // r13.w = r2.w ? r16.x : r17.x;
           r16.x = r19.x;
           r16.yw = r15.wy;
-          r11.xyzw = r2.wwww ? r16.yxzw : r21.yxzw;
-          r2.w = (int)r2.w | (int)r4.w;
-          r1.z = r2.w ? 0 : r8.w;
+          r11.xyzw = i_r2 ? r16.yxzw : r21.yxzw; // r11.xyzw = r2.wwww ? r16.yxzw : r21.yxzw;
+          i_r2 = i_r2 | i_r4; // r2.w = (int)r2.w | (int)r4.w;
+          i_r1 = i_r2 ? 0 : i_r8; // r1.z = r2.w ? 0 : r8.w;
           r0.y = 1;
           r13.x = r11.y;
           r12.w = r11.z;
         }
-        if (r1.z == 0) {
-          r12.x = (int)r13.x + 1;
+        if (i_r1 == 0) { // if (r1.z == 0) {
+          r12.x = asint(r13.x) + 1; // r12.x = (int)r13.x + 1;
           r14.x = r9.x;
           r14.y = r10.x;
           r1.z = 0;
-          r2.w = 0;
+          
+          uint u_r2;
+          u_r2 = 0; // r2.w = 0;
           while (true) {
-            r4.w = cmp((uint)r2.w >= 8);
+            r4.w = cmp(u_r2 >= 8); // r4.w = cmp((uint)r2.w >= 8);
             if (r4.w != 0) break;
-            r10.y = dot(ShadowSamplePoints[r2.w].xy, r14.xy);
-            r4.w = ShadowSamplePoints[r2.w].x * r14.y;
-            r10.z = ShadowSamplePoints[r2.w].y * r14.x + -r4.w;
+            r10.y = dot(ShadowSamplePoints[u_r2].xy, r14.xy); // r10.y = dot(ShadowSamplePoints[r2.w].xy, r14.xy);
+            r4.w = ShadowSamplePoints[u_r2].x * r14.y; // r4.w = ShadowSamplePoints[r2.w].x * r14.y;
+            r10.z = ShadowSamplePoints[u_r2].y * r14.x + -r4.w; // r10.z = ShadowSamplePoints[r2.w].y * r14.x + -r4.w;
             r13.yz = r10.yz * r11.xx + r6.xy;
             r6.zw = float2(-0.5,-0.5) + r13.yz;
             r4.w = max(abs(r6.z), abs(r6.w));
             r4.w = cmp(0.5 < r4.w);
             r12.yz = r10.yz * r11.ww + r9.yz;
             r15.xyzw = r4.wwww ? r12.yzxw : r13.yzxw;
-            r15.z = (int)r15.z;
+            
+            r15.z = asint(r15.z); // r15.z = (int)r15.z;
             r4.w = ShadowMapSRV.SampleLevel(PointClamp_s, r15.xyz, 0).x;
             r4.w = cmp(r4.w < r15.w);
             r4.w = r4.w ? 1.000000 : 0;
             r1.z = r4.w + r1.z;
-            r2.w = (int)r2.w + 1;
+            u_r2 = u_r2 + 1; // r2.w = (int)r2.w + 1;
           }
           r0.y = 0.125 * r1.z;
         }
@@ -332,13 +352,18 @@ void main(
     } else {
       r6.xyz = float3(0,0,0);
     }
-    r3.xy = (uint2)r3.xy >> int2(5,5);
+    
+    uint4 u_r3;
+    u_r3.xy = (uint2)r3.xy >> uint2(5,5); // r3.xy = (uint2)r3.xy >> int2(5,5);
     r1.zw = screenSize.xy * float2(0.03125,0.03125) + float2(-1,-1);
-    r9.yz = (uint2)r3.xy;
+    r9.yz = (uint2)u_r3.xy; // r9.yz = (uint2)r3.xy;
     r1.zw = min(r9.yz, r1.zw);
-    r11.xy = (uint2)r1.zw;
-    r11.zw = float2(0,0);
-    r1.zw = DepthBoundary.Load(r11.xyz).xy;
+    
+    uint4 u_r11;
+    u_r11.xy = (uint2)r1.zw;  // r11.xy = (uint2)r1.zw;
+    u_r11.zw = float2(0,0); // r11.zw = float2(0,0);
+    r1.zw = DepthBoundary.Load(u_r11.xyz).xy; // r1.zw = DepthBoundary.Load(r11.xyz).xy;
+    
     r0.y = r1.x + -r1.z;
     r1.x = r1.w + -r1.z;
     r0.y = abs(r0.y) / abs(r1.x);
@@ -347,12 +372,16 @@ void main(
     r0.y = -1 + r0.y;
     r0.y = 1.06666672 * r0.y;
     r0.y = min(15, r0.y);
-    r3.z = (uint)r0.y;
-    r3.w = 0;
-    r0.y = ScreenLightGridSRV.Load(r3.xyzw).x;
-    r1.x = (int)r0.y & 255;
-    r0.y = (uint)r0.y >> 6;
-    r0.y = (int)r0.y & 0x03fffffc;
+    u_r3.z = (uint)r0.y; // r3.z = (uint)r0.y;
+    u_r3.w = 0; // r3.w = 0;
+    
+    uint u_r0;
+    u_r0 = ScreenLightGridSRV.Load(u_r3.xyzw).x; // r0.y = ScreenLightGridSRV.Load(r3.xyzw).x;
+    
+    uint4 u_r1;
+    u_r1.x = u_r0 & 255; // r1.x = (int)r0.y & 255;
+    u_r0 = u_r0 >> 6; // r0.y = (uint)r0.y >> 6;
+    u_r0 = u_r0 & 0x03fffffc; // r0.y = (int)r0.y & 0x03fffffc;
     r2.xyz = r2.xyz * r0.www;
     r2.xyz = max(float3(0.0399999991,0.0399999991,0.0399999991), r2.xyz);
     r3.xyz = float3(1,1,1) + -r2.xyz;
@@ -362,60 +391,69 @@ void main(
     r9.yw = r10.xx;
     r10.xyz = r8.xyz;
     r12.xyz = r6.xyz;
-    r0.w = r1.x;
+    
+    int4 i_r0;
+    i_r0.w = u_r1.x; // r0.w = r1.x;
     while (true) {
-      if (r0.w == 0) break;
-      r1.z = firstbitlow((uint)r0.w);
-      r1.w = 1 << (int)r1.z;
-      r1.w = ~(int)r1.w;
-      r0.w = (int)r0.w & (int)r1.w;
-      r1.zw = (uint2)r1.zz << int2(2,5);
-      r1.z = (int)r1.z + (int)r0.y;
+      if (i_r0.w == 0) break;  // if (r0.w == 0) break;
+      
+      int4 i_r1;
+      i_r1.z = firstbitlow(i_r0.w); // r1.z = firstbitlow((uint)r0.w);
+      i_r1.w = 1 << (int)i_r1.z; // r1.w = 1 << (int)r1.z;
+      i_r1.w = ~(int)i_r1.w; // r1.w = ~(int)r1.w;
+      i_r0.w = (int)i_r0.w & (int)i_r1.w; // r0.w = (int)r0.w & (int)r1.w;
+      i_r1.zw = (uint2)i_r1.zz << int2(2,5); // r1.zw = (uint2)r1.zz << int2(2,5);
+      i_r1.z = (int)i_r1.z + u_r0; // r1.z = (int)r1.z + (int)r0.y;
       
       // ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.z, r1.z, t9.xxxx
-      r1.z = asfloat(IndexListSRV.Load(r1.z));
+      i_r1.z = (IndexListSRV.Load(i_r1.z));
 
       r13.xyz = r10.xyz;
       r14.xyz = r12.xyz;
-      r2.w = r1.z;
-      while (true) {
-        if (r2.w == 0) break;
-        r3.w = firstbitlow((uint)r2.w);
-        r4.w = 1 << (int)r3.w;
-        r4.w = ~(int)r4.w;
-        r4.w = (int)r2.w & (int)r4.w;
-        r3.w = (int)r1.w + (int)r3.w;
-        
-      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xyzw, r3.w, l(0), t4.xyzw
-      r15.xyz = LightParameterSRV[r3.w].position.xyz;
-      r15.w = LightParameterSRV[r3.w].tolerance;
-
-      // Known bad code for instruction (needs manual fix):
-      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.xyzw, r3.w, l(16), t4.xyzw
-      r16.x = LightParameterSRV[r3.w].direction.x;
-      r16.y = LightParameterSRV[r3.w].direction.y;
-      r16.z = LightParameterSRV[r3.w].direction.z;
-      r16.w = LightParameterSRV[r3.w].falloff;
-
-      // Known bad code for instruction (needs manual fix):
-      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r3.w, l(32), t4.xyzw
-      r17.x = LightParameterSRV[r3.w].attenuation.x;
-      r17.y = LightParameterSRV[r3.w].attenuation.y;
-      r17.z = LightParameterSRV[r3.w].attenuation.z;
-      r17.w = LightParameterSRV[r3.w].attenuation.w;
-
-      // Known bad code for instruction (needs manual fix):
-      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r18.xyzw, r3.w, l(48), t4.xyzw
-      r18.x = LightParameterSRV[r3.w].color.x;
-      r18.y = LightParameterSRV[r3.w].color.y;
-      r18.z = LightParameterSRV[r3.w].color.z;
-      r18.w = LightParameterSRV[r3.w].boundingRadius;
       
-      // Known bad code for instruction (needs manual fix):
-      // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r19.xyz, r3.w, l(64), t4.xyzx
-      r19.x = LightParameterSRV[r3.w].shadowIndex;
-      r19.y = LightParameterSRV[r3.w].iesId;
-      r19.z = LightParameterSRV[r3.w].reserved.x;
+      int4 i_r2;
+      i_r2.w = i_r1.z; // r2.w = r1.z;
+      while (true) {
+        if (i_r2.w == 0) break; // if (r2.w == 0) break;
+        
+        int4 i_r3;
+        i_r3.w = firstbitlow(i_r2.w); // r3.w = firstbitlow((uint)r2.w);
+        
+        int4 i_r4;
+        i_r4.w = 1 << (int)i_r3.w; // r4.w = 1 << (int)r3.w;
+        i_r4.w = ~i_r4.w; // r4.w = ~(int)r4.w;
+        i_r4.w = (int)i_r2.w & (int)i_r4.w; // r4.w = (int)r2.w & (int)r4.w;
+        i_r3.w = (int)i_r1.w + (int)i_r3.w; // r3.w = (int)r1.w + (int)r3.w;
+        
+        // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xyzw, r3.w, l(0), t4.xyzw
+        r15.xyz = LightParameterSRV[i_r3.w].position.xyz;
+        r15.w = LightParameterSRV[i_r3.w].tolerance;
+
+        // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.xyzw, r3.w, l(16), t4.xyzw
+        r16.x = LightParameterSRV[i_r3.w].direction.x;
+        r16.y = LightParameterSRV[i_r3.w].direction.y;
+        r16.z = LightParameterSRV[i_r3.w].direction.z;
+        r16.w = LightParameterSRV[i_r3.w].falloff;
+
+        // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r3.w, l(32), t4.xyzw
+        // r17.x = LightParameterSRV[r3.w].attenuation.x;
+        // r17.y = LightParameterSRV[r3.w].attenuation.y;
+        // r17.z = LightParameterSRV[r3.w].attenuation.z;
+        // r17.w = LightParameterSRV[r3.w].attenuation.w;
+        r17.xyzw = LightParameterSRV[i_r3.w].attenuation.xyzw;
+      
+        // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r18.xyzw, r3.w, l(48), t4.xyzw
+        // r18.x = LightParameterSRV[r3.w].color.x;
+        // r18.y = LightParameterSRV[r3.w].color.y;
+        // r18.z = LightParameterSRV[r3.w].color.z;
+        r18.xyz = LightParameterSRV[i_r3.w].color.xyz;
+        r18.w = LightParameterSRV[i_r3.w].boundingRadius;
+        
+        // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r19.xyz, r3.w, l(64), t4.xyzx
+        uint4 u_r19;
+        u_r19.x = LightParameterSRV[i_r3.w].shadowIndex; 
+        u_r19.y = LightParameterSRV[i_r3.w].iesId;
+        u_r19.z = LightParameterSRV[i_r3.w].reserved.x;
 
         r20.xyz = r15.xyz + -r5.xyz;
         r3.w = dot(r20.xyz, r20.xyz);
@@ -424,15 +462,15 @@ void main(
         r21.xyz = r20.xyz * r6.www;
         r7.w = dot(r21.xyz, r16.xyz);
         r22.x = r7.w * 0.5 + 0.5;
-        r7.w = cmp((int)r19.y == -1);
-        r22.y = (uint)r19.y;
+        r7.w = cmp(u_r19.y == -1); // r7.w = cmp((int)r19.y == -1);
+        r22.y = u_r19.y; // r22.y = (uint)r19.y; 
         
         r8.w = IESLightTableSRV.SampleLevel(BilinearClamp_s, r22.xy, 0).x;
         
         r7.w = r7.w ? 1 : r8.w;
         r8.w = r3.w * r17.x + 1;
-        r8.w = r8.w * r8.w;
-        r10.w = 0x7ef311c3 + (int)-r8.w;
+        r8.w = r8.w * r8.w; 
+        r10.w = asfloat((int)(0x7ef311c3) + asint(-r8.w)); // r10.w = 0x7ef311c3 + (int)-r8.w;
         r8.w = -r10.w * r8.w + 2;
         r8.w = saturate(r10.w * r8.w + -r15.w);
         r10.w = 1 + -r15.w;
@@ -470,7 +508,7 @@ void main(
           r14.w = -r6.w * r10.w + r6.w;
           r6.w = r6.w * r14.w + r10.w;
           r6.w = r12.w * r6.w;
-          r12.w = 0x7ef311c3 + (int)-r6.w;
+          r12.w = asfloat(0x7ef311c3 + asint(-r6.w)); // r12.w = 0x7ef311c3 + (int)-r6.w;
           r6.w = -r12.w * r6.w + 2;
           r6.w = r12.w * r6.w;
           r16.x = r10.w * r6.w;
@@ -483,43 +521,45 @@ void main(
         }
         r3.w = cmp(0 >= r8.w);
         if (r3.w != 0) {
-          r2.w = r4.w;
+          i_r2.w = i_r4.w; // r2.w = r4.w;
           continue;
         }
-        r3.w = cmp((uint)r19.x < 256);
+        r3.w = cmp(u_r19.x < 256); // r3.w = cmp((uint)r19.x < 256);
         if (r3.w != 0) {
-          if (r19.z == 0) {
+          if (u_r19.z == 0) { // if (r19.z == 0) {
 
-          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
-          r17.x = ShadowParameterSRV[r19.x].viewProjection[0].x;
-          r17.y = ShadowParameterSRV[r19.x].viewProjection[0].y;
-          r17.z = ShadowParameterSRV[r19.x].viewProjection[0].z;
-          r17.w = ShadowParameterSRV[r19.x].viewProjection[0].w;
-          
-          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
-          r20.x = ShadowParameterSRV[r19.x].viewProjection[1].x;
-          r20.y = ShadowParameterSRV[r19.x].viewProjection[1].y;
-          r20.z = ShadowParameterSRV[r19.x].viewProjection[1].z;
-          r20.w = ShadowParameterSRV[r19.x].viewProjection[1].w;
-          
-          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
-          r21.x = ShadowParameterSRV[r19.x].viewProjection[2].x;
-          r21.y = ShadowParameterSRV[r19.x].viewProjection[2].y;
-          r21.z = ShadowParameterSRV[r19.x].viewProjection[2].z;
-          r21.w = ShadowParameterSRV[r19.x].viewProjection[2].w;
-          
-          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
-          r22.x = ShadowParameterSRV[r19.x].viewProjection[3].x;
-          r22.y = ShadowParameterSRV[r19.x].viewProjection[3].y;
-          r22.z = ShadowParameterSRV[r19.x].viewProjection[3].z;
-          r22.w = ShadowParameterSRV[r19.x].viewProjection[3].w;
-          
-          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.zw, r19.x, l(64), t6.xxxy
-          r16.z = ShadowParameterSRV[r19.x].variance;
-          r16.w = ShadowParameterSRV[r19.x].arrayIndex;
-          
-          // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r3.w, r19.x, l(76), t6.xxxx
-          r3.w = ShadowParameterSRV[r19.x].bias;
+            // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
+            r17.x = ShadowParameterSRV[u_r19.x].viewProjection[0].x;
+            r17.y = ShadowParameterSRV[u_r19.x].viewProjection[0].y;
+            r17.z = ShadowParameterSRV[u_r19.x].viewProjection[0].z;
+            r17.w = ShadowParameterSRV[u_r19.x].viewProjection[0].w;
+            
+            // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
+            r20.x = ShadowParameterSRV[u_r19.x].viewProjection[1].x;
+            r20.y = ShadowParameterSRV[u_r19.x].viewProjection[1].y;
+            r20.z = ShadowParameterSRV[u_r19.x].viewProjection[1].z;
+            r20.w = ShadowParameterSRV[u_r19.x].viewProjection[1].w;
+            
+            // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
+            r21.x = ShadowParameterSRV[u_r19.x].viewProjection[2].x;
+            r21.y = ShadowParameterSRV[u_r19.x].viewProjection[2].y;
+            r21.z = ShadowParameterSRV[u_r19.x].viewProjection[2].z;
+            r21.w = ShadowParameterSRV[u_r19.x].viewProjection[2].w;
+            
+            // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
+            r22.x = ShadowParameterSRV[u_r19.x].viewProjection[3].x;
+            r22.y = ShadowParameterSRV[u_r19.x].viewProjection[3].y;
+            r22.z = ShadowParameterSRV[u_r19.x].viewProjection[3].z;
+            r22.w = ShadowParameterSRV[u_r19.x].viewProjection[3].w;
+            
+            // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r16.zw, r19.x, l(64), t6.xxxy
+            r16.z = ShadowParameterSRV[u_r19.x].variance;
+            
+            uint u_r16;
+            u_r16 = ShadowParameterSRV[u_r19.x].arrayIndex; // r16.w = ShadowParameterSRV[u_r19.x].arrayIndex;
+            
+            // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r3.w, r19.x, l(76), t6.xxxx
+            r3.w = ShadowParameterSRV[u_r19.x].bias;
           
             r23.x = r17.x;
             r23.y = r20.x;
@@ -550,13 +590,15 @@ void main(
             r7.w = cmp(r3.w < 0);
             r6.w = (int)r6.w | (int)r7.w;
             if (r6.w == 0) {
-              r20.z = (uint)r16.w;
+              r20.z = u_r16; // r20.z = (uint)r16.w;
               r6.w = 0;
-              r7.w = 0;
+              
+              uint u_r7;
+              u_r7 = 0; // r7.w = 0;
               while (true) {
-                r10.w = cmp((uint)r7.w >= 8);
+                r10.w = cmp(u_r7 >= 8); // r10.w = cmp((uint)r7.w >= 8);
                 if (r10.w != 0) break;
-                r17.zw = ShadowSamplePoints[r7.w].xy * r16.zz;
+                r17.zw = ShadowSamplePoints[u_r7].xy * r16.zz; // r17.zw = ShadowSamplePoints[r7.w].xy * r16.zz;
                 r21.x = dot(r17.zw, r9.xy);
                 r10.w = r17.z * r9.w;
                 r21.y = r17.w * r9.z + -r10.w;
@@ -565,42 +607,43 @@ void main(
                 r10.w = cmp(r10.w < r3.w);
                 r10.w = r10.w ? 1.000000 : 0;
                 r6.w = r10.w + r6.w;
-                r7.w = (int)r7.w + 1;
+                u_r7 = u_r7 + 1; // r7.w = (int)r7.w + 1;
               }
               r3.w = 0.125 * r6.w;
             } else {
               r3.w = 1;
             }
           } else {
-            r7.w = cmp((int)r19.z == 1);
-            if (r7.w != 0) {
+            uint u_r7;
+            u_r7 = cmp(u_r19.z == 1); // r7.w = cmp((int)r19.z == 1);
+            if (u_r7 != 0) { // if (r7.w != 0) {
               
               // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r17.xyzw, r19.x, l(0), t6.xyzw
-              r17.x = ShadowParameterSRV[r19.x].viewProjection[0].x;
-              r17.y = ShadowParameterSRV[r19.x].viewProjection[0].y;
-              r17.z = ShadowParameterSRV[r19.x].viewProjection[0].z;
-              r17.w = ShadowParameterSRV[r19.x].viewProjection[0].w;
+              r17.x = ShadowParameterSRV[u_r19.x].viewProjection[0].x;
+              r17.y = ShadowParameterSRV[u_r19.x].viewProjection[0].y;
+              r17.z = ShadowParameterSRV[u_r19.x].viewProjection[0].z;
+              r17.w = ShadowParameterSRV[u_r19.x].viewProjection[0].w;
 
               // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r20.xyzw, r19.x, l(16), t6.xyzw
-              r20.x = ShadowParameterSRV[r19.x].viewProjection[1].x;
-              r20.y = ShadowParameterSRV[r19.x].viewProjection[1].y;
-              r20.z = ShadowParameterSRV[r19.x].viewProjection[1].z;
-              r20.w = ShadowParameterSRV[r19.x].viewProjection[1].w;
+              r20.x = ShadowParameterSRV[u_r19.x].viewProjection[1].x;
+              r20.y = ShadowParameterSRV[u_r19.x].viewProjection[1].y;
+              r20.z = ShadowParameterSRV[u_r19.x].viewProjection[1].z;
+              r20.w = ShadowParameterSRV[u_r19.x].viewProjection[1].w;
 
               // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r21.xyzw, r19.x, l(32), t6.xyzw
-              r21.x = ShadowParameterSRV[r19.x].viewProjection[2].x;
-              r21.y = ShadowParameterSRV[r19.x].viewProjection[2].y;
-              r21.z = ShadowParameterSRV[r19.x].viewProjection[2].z;
-              r21.w = ShadowParameterSRV[r19.x].viewProjection[2].w;
+              r21.x = ShadowParameterSRV[u_r19.x].viewProjection[2].x;
+              r21.y = ShadowParameterSRV[u_r19.x].viewProjection[2].y;
+              r21.z = ShadowParameterSRV[u_r19.x].viewProjection[2].z;
+              r21.w = ShadowParameterSRV[u_r19.x].viewProjection[2].w;
 
               // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r22.xyzw, r19.x, l(48), t6.xyzw
-              r22.x = ShadowParameterSRV[r19.x].viewProjection[3].x;
-              r22.y = ShadowParameterSRV[r19.x].viewProjection[3].y;
-              r22.z = ShadowParameterSRV[r19.x].viewProjection[3].z;
-              r22.w = ShadowParameterSRV[r19.x].viewProjection[3].w;
+              r22.x = ShadowParameterSRV[u_r19.x].viewProjection[3].x;
+              r22.y = ShadowParameterSRV[u_r19.x].viewProjection[3].y;
+              r22.z = ShadowParameterSRV[u_r19.x].viewProjection[3].z;
+              r22.w = ShadowParameterSRV[u_r19.x].viewProjection[3].w;
 
               // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r7.w, r19.x, l(76), t6.xxxx
-              r7.w = ShadowParameterSRV[r19.x].bias;
+              r7.w = ShadowParameterSRV[u_r19.x].bias;
             
               r15.xyz = -r15.zyx + r5.zyx;
               r10.w = max(abs(r15.z), abs(r15.y));
@@ -612,13 +655,16 @@ void main(
               r13.w = r23.z ? 1.000000 : 0;
               r13.w = r19.w ? r16.w : r13.w;
               r12.w = r12.w ? r16.z : r13.w;
+              
               r12.w = (int)r12.w;
-              r13.w = (uint)r12.w >> 1;
-              r14.w = cmp((int)r13.w == 1);
+              
+              int i_r13;
+              i_r13 = (int)r12.w >> 1; // r13.w = (uint)r12.w >> 1;
+              r14.w = cmp(i_r13 == 1); // r14.w = cmp((int)r13.w == 1);
               r15.zw = r14.ww ? r15.xz : r15.zy;
-              r15.xy = r13.ww ? r15.zw : r15.yx;
-              r13.w = (int)r12.w & 1;
-              r11.xy = r13.ww ? r15.xy : r15.yx;
+              r15.xy = i_r13 ? r15.zw : r15.yx; // r15.xy = r13.ww ? r15.zw : r15.yx;
+              i_r13 = (int)r12.w & 1; // r13.w = (int)r12.w & 1;
+              r11.xy = i_r13 ? r15.xy : r15.yx; // r11.xy = r13.ww ? r15.xy : r15.yx;
               r11.z = -r10.w;
               r15.x = r17.x;
               r15.y = r20.x;
@@ -641,36 +687,41 @@ void main(
               r10.w = dot(r11.xyzw, r22.xyzw);
               r11.xyz = r15.xyz / r10.www;
               r7.w = r11.z + r7.w;
-              r10.w = cmp(1 < r7.w);
-              if (r10.w != 0) {
+              
+              int i_r10;
+              i_r10 = cmp(1 < r7.w); // r10.w = cmp(1 < r7.w);
+              if (i_r10 != 0) { // if (r10.w != 0) {
                 r3.w = 1;
               }
-              if (r10.w == 0) {
+              if (i_r10 == 0) { // if (r10.w == 0) {
                 
-
                 // ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r15.xy, r19.x, l(64), t6.xyxx
-                r15.x = ShadowParameterSRV[r19.x].variance;
-                r15.y = ShadowParameterSRV[r19.x].arrayIndex;
+                r15.x = ShadowParameterSRV[u_r19.x].variance; // r15.x = ShadowParameterSRV[r19.x].variance;
+                uint u_r15;
+                u_r15 = ShadowParameterSRV[u_r19.x].arrayIndex; // r15.y = ShadowParameterSRV[r19.x].arrayIndex;
                 
-                r10.w = (int)r15.y + (int)r12.w;
-                r17.z = (int)r10.w;
-                r10.w = 0;
-                r11.z = 0;
+                i_r10 = u_r15 + (int)r12.w; // r10.w = (int)r15.y + (int)r12.w;
+                r17.z = i_r10; // r17.z = (int)r10.w;
+                r10.w = 0; 
+                
+                uint u_r11;
+                u_r11 = 0; // r11.z = 0;
                 while (true) {
-                  r12.w = cmp((uint)r11.z >= 8);
+                  r12.w = cmp(u_r11 >= 8); // r12.w = cmp((uint)r11.z >= 8);
                   if (r12.w != 0) break;
-                  r15.yz = ShadowSamplePoints[r11.z].xy * r15.xx;
+                  r15.yz = ShadowSamplePoints[u_r11].xy * r15.xx; // r15.yz = ShadowSamplePoints[r11.z].xy * r15.xx;
                   r19.x = dot(r15.yz, r9.zw);
                   r12.w = r15.y * r9.w;
                   r19.y = r15.z * r9.z + -r12.w;
                   r17.xy = r19.xy + r11.xy;
-                  r12.w = ShadowMapSRV.SampleLevel(PointClamp_s, r17.xyz, 0).x;
-                  r12.w = cmp(r12.w < r7.w);
-                  r12.w = r12.w ? 1.000000 : 0;
-                  r10.w = r12.w + r10.w;
-                  r11.z = (int)r11.z + 1;
+                  
+                  r12.w = ShadowMapSRV.SampleLevel(PointClamp_s, r17.xyz, 0).x; // r12.w = ShadowMapSRV.SampleLevel(PointClamp_s, r17.xyz, 0).x;
+                  r12.w = cmp(r12.w < r7.w); // r12.w = cmp(r12.w < r7.w);
+                  r12.w = r12.w ? 1.0000 : 0; // r12.w = r12.w ? 1.000000 : 0;
+                  r10.w = r12.w + r10.w; // r10.w = r12.w + r10.w;
+                  u_r11 = (int)u_r11 + 1; // r11.z = (int)r11.z + 1;
                 }
-                r3.w = 0.125 * r10.w;
+                r3.w = 0.125 * r10.w; // r3.w = 0.125 * r10.w;
               }
             } else {
               r3.w = 1;
@@ -683,7 +734,7 @@ void main(
         r11.xyz = r16.yyy * r3.xyz;
         r11.xyz = r2.xyz * r16.xxx + r11.xyz;
         r14.xyz = r18.xyz * r11.xyz + r14.xyz;
-        r2.w = r4.w;
+        i_r2.w = i_r4.w; // r2.w = r4.w;
       }
       r10.xyz = r13.xyz;
       r12.xyz = r14.xyz;
