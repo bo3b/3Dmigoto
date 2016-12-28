@@ -59,13 +59,7 @@ Texture2D<double>       double_tex  : register(t36);
 Texture2D<double1>      double1_tex : register(t37);
 Texture2D<double2>      double2_tex : register(t38);
 
-// NOTE: New types in Windows 8
-// Declarations are the same, load instructions differ:
-Texture2D<min16float>   min16float_tex : register(t39);
-Texture2D<min10float>   min10float_tex : register(t40);
-Texture2D<min16int>     min16int_tex   : register(t41);
-Texture2D<min12int>     min12int_tex   : register(t42);
-Texture2D<min16uint>    min16uint_tex  : register(t43);
+// min precision types moved to min_precision.hlsl
 
 typedef vector<int, 1> v1;
 Texture2D<v1> vector_tex : register(t44);
@@ -196,13 +190,6 @@ void main(out float4 output : SV_Target0)
 	output += (float)double_tex.Load(0);
 	output += (float)double1_tex.Load(0);
 	output += float4(double2_tex.Load(0), 0, 0);
-
-	// Requires Windows 8:
-	output += min16float_tex.Load(0);
-	output += min10float_tex.Load(0);
-	output += min16int_tex.Load(0);
-	output += min12int_tex.Load(0);
-	output += min16uint_tex.Load(0);
 
 	output += vector_tex.Load(0);
 

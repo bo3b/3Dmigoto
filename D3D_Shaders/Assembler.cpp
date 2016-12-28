@@ -1658,8 +1658,9 @@ vector<DWORD> assembleIns(string s) {
 		ins->_11_23 = 0;
 		for (int i = 1; i < w.size(); i += 2) {
 			// Changed this to use a loop rather than parsing a
-			// fixed number of arguments. Added double precision
-			// flag. -DarkStarSword
+			// fixed number of arguments. Added double precision,
+			// minimum precision and skipOptimization flags.
+			//   -DarkStarSword
 			string s = w[i];
 			if (s == "refactoringAllowed")
 				ins->_11_23 |= 0x01;
@@ -1669,8 +1670,13 @@ vector<DWORD> assembleIns(string s) {
 				ins->_11_23 |= 0x04;
 			if (s == "enableRawAndStructuredBuffers")
 				ins->_11_23 |= 0x08;
+			if (s == "skipOptimization")
+				ins->_11_23 |= 0x10;
+			if (s == "enableMinimumPrecision")
+				ins->_11_23 |= 0x20;
 			if (s == "enable11_1DoubleExtensions")
 				ins->_11_23 |= 0x40;
+			// TODO: enable shader extensions flag 0x80
 		}
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {
