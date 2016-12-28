@@ -1313,6 +1313,7 @@ vector<DWORD> assembleIns(string s) {
 				v.push_back(0x00199983);
 			if (w[startPos - 1] == "(unorm,unorm,unorm,unorm)")
 				v.push_back(0x00044443);
+			// FIXME: Missing snorm -DarkStarSword
 		}
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
@@ -1658,7 +1659,7 @@ vector<DWORD> assembleIns(string s) {
 		}
 		ins->length = 1 + os.size();
 		v.push_back(op);
-		v.insert(v.end(), os.begin(), os.end());		
+		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps_siv") {
 		vector<DWORD> os;
 		ins->opcode = 100;
@@ -1743,6 +1744,8 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 3;
 		else if (w[1] == "partitioning_fractional_even")
 			ins->_11_23 = 4;
+		// FIXME: Missing pow2 -DarkStarSword
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff471446(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_tessellator_output_primitive") {
 		ins->opcode = 151;
@@ -1753,6 +1756,8 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 3;
 		else if (w[1] == "output_triangle_ccw")
 			ins->_11_23 = 4;
+		// FIXME: Missing output point -DarkStarSword
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff471445(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_tessellator_domain") {
 		ins->opcode = 149;
@@ -1789,6 +1794,8 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 5;
 		else if (w[1] == "linestrip")
 			ins->_11_23 = 3;
+		// FIXME: Missing point stream -DarkStarSword
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509661(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_output_control_point_count") {
 		vector<DWORD> os = assembleOp(w[1]);
@@ -1819,6 +1826,8 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 3;
 		else if (w[1] == "triangleadj")
 			ins->_11_23 = 7;
+		// FIXME: missing "lineadj", which is probably 6 -DarkStarSword
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509609(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_hs_max_tessfactor") {
 		vector<DWORD> os = assembleOp(w[1]);
