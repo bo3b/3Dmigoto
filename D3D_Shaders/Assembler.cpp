@@ -1161,7 +1161,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dge",                 { 3, 0xc4    } },
 	{ "dlt",                 { 3, 0xc5    } },
 	{ "dne",                 { 3, 0xc6    } },
-	{ "dmov",                { 2, 0xc7    } },
+	{ "dmov",                { 2, 0xc7    } }, // Unverified
 	{ "dmovc",               { 4, 0xc8    } },
 	{ "dtof",                { 2, 0xc9    } },
 	{ "ftod",                { 2, 0xca    } },
@@ -1176,11 +1176,10 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dfma",                { 4, 0xd3    } },
 	{ "drcp",                { 2, 0xd4    } },
 	// TODO: msad                 0xd5
-	// TODO: dtoi                 0xd6
-	// TODO: dtou                 0xd7
-	// TODO: itod                 0xd8
-	// TODO: utod                 0xd9
-	// TODO: Compare with list in BinaryDecompiler/internal_includes/tokens.h for missing instructions
+	{ "dtoi",                { 2, 0xd6    } },
+	{ "dtou",                { 2, 0xd7    } },
+	{ "itod",                { 2, 0xd8    } },
+	{ "utod",                { 2, 0xd9    } },
 };
 
 void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
