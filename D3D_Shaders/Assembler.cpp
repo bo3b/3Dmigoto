@@ -1084,6 +1084,23 @@ unordered_map<string, vector<int>> insMap = {
 	{ "ibfe", { 4, 139 } },
 	{ "lod", { 4, 108 } },
 	{ "samplepos", { 3, 110 } },
+	// Added double precision instructions -DarkStarSword
+	{ "dadd",  { 3, 0xbf } },
+	{ "dmax",  { 3, 0xc0 } },
+	{ "dmin",  { 3, 0xc1 } },
+	{ "dmul",  { 3, 0xc2 } },
+	{ "deq",   { 3, 0xc3 } },
+	{ "dge",   { 3, 0xc4 } },
+	{ "dlt",   { 3, 0xc5 } },
+	{ "dne",   { 3, 0xc6 } },
+	{ "dmov",  { 2, 0xc7 } },
+	{ "dmovc", { 4, 0xc8 } },
+	{ "dtof",  { 2, 0xc9 } },
+	{ "ftod",  { 2, 0xca } },
+	{ "ddiv",  { 3, 0xd2 } },
+	{ "dfma",  { 4, 0xd3 } },
+	{ "drcp",  { 2, 0xd4 } },
+	// TODO: Compare with list in BinaryDecompiler/internal_includes/tokens.h for missing instructions
 };
 
 void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
@@ -1101,7 +1118,10 @@ void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
 		v->push_back(0x2222);
 	if (*type == "(unorm,unorm,unorm,unorm)")
 		v->push_back(0x1111);
-	// TODO: Any other types, mixed types, etc.
+	if (*type == "(double,<continued>,<unused>,<unused>)")
+		v->push_back(0x9987);
+	if (*type == "(double,<continued>,double,<continued>)")
+		v->push_back(0x8787);
 	// FIXME: Fail gracefully if we don't recognise the type, since doing
 	// nothing here will cause a hang!
 }
@@ -1314,9 +1334,13 @@ vector<DWORD> assembleIns(string s) {
 				v.push_back(0x00199983);
 			if (w[startPos - 1] == "(unorm,unorm,unorm,unorm)")
 				v.push_back(0x00044443);
-			// Added snorm -DarkStarSword
+			// Added snorm and double types -DarkStarSword
 			if (w[startPos - 1] == "(snorm,snorm,snorm,snorm)")
 				v.push_back(0x00088883);
+			if (w[startPos - 1] == "(double,<continued>,<unused>,<unused>)")
+				v.push_back(0x002661c3);
+			if (w[startPos - 1] == "(double,<continued>,double,<continued>)")
+				v.push_back(0x0021e1c3);
 		}
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
@@ -1504,32 +1528,21 @@ vector<DWORD> assembleIns(string s) {
 		ins->opcode = 106;
 		ins->length = 1;
 		ins->_11_23 = 0;
-		if (w.size() > 1) {
-			string s = w[1];
+		for (int i = 1; i < w.size(); i += 2) {
+			// Changed this to use a loop rather than parsing a
+			// fixed number of arguments. Added double precision
+			// flag. -DarkStarSword
+			string s = w[i];
 			if (s == "refactoringAllowed")
-				ins->_11_23 |= 1;
+				ins->_11_23 |= 0x01;
+			if (s == "enableDoublePrecisionFloatOps")
+				ins->_11_23 |= 0x02;
 			if (s == "forceEarlyDepthStencil")
-				ins->_11_23 |= 4;
+				ins->_11_23 |= 0x04;
 			if (s == "enableRawAndStructuredBuffers")
-				ins->_11_23 |= 8;
-		}
-		if (w.size() > 3) {
-			string s = w[3];
-			if (s == "refactoringAllowed")
-				ins->_11_23 |= 1;
-			if (s == "forceEarlyDepthStencil")
-				ins->_11_23 |= 4;
-			if (s == "enableRawAndStructuredBuffers")
-				ins->_11_23 |= 8;
-		}
-		if (w.size() > 5) {
-			string s = w[5];
-			if (s == "refactoringAllowed")
-				ins->_11_23 |= 1;
-			if (s == "forceEarlyDepthStencil")
-				ins->_11_23 |= 4;
-			if (s == "enableRawAndStructuredBuffers")
-				ins->_11_23 |= 8;
+				ins->_11_23 |= 0x08;
+			if (s == "enable11_1DoubleExtensions")
+				ins->_11_23 |= 0x40;
 		}
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {
