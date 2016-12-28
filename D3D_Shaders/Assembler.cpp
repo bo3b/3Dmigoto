@@ -1089,7 +1089,7 @@ unordered_map<string, vector<int>> insMap = {
 void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
 	// The resource declarations all use the same format strings and
 	// encoding, so do this once, consistently, and handle all confirmed
-	// values. -DarkStarSword
+	// values. Use resource_types.hlsl to check the values -DarkStarSword
 
 	if (*type == "(float,float,float,float)")
 		v->push_back(0x5555);
@@ -1097,11 +1097,10 @@ void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
 		v->push_back(0x4444);
 	if (*type == "(sint,sint,sint,sint)")
 		v->push_back(0x3333);
+	if (*type == "(snorm,snorm,snorm,snorm)")
+		v->push_back(0x2222);
 	if (*type == "(unorm,unorm,unorm,unorm)")
 		v->push_back(0x1111);
-	// CHECKME:
-	// if (*type == "(snorm,snorm,snorm,snorm)")
-	// 	v->push_back(0x2222);
 	// TODO: Any other types, mixed types, etc.
 	// FIXME: Fail gracefully if we don't recognise the type, since doing
 	// nothing here will cause a hang!
@@ -1315,7 +1314,9 @@ vector<DWORD> assembleIns(string s) {
 				v.push_back(0x00199983);
 			if (w[startPos - 1] == "(unorm,unorm,unorm,unorm)")
 				v.push_back(0x00044443);
-			// FIXME: Missing snorm -DarkStarSword
+			// Added snorm -DarkStarSword
+			if (w[startPos - 1] == "(snorm,snorm,snorm,snorm)")
+				v.push_back(0x00088883);
 		}
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
