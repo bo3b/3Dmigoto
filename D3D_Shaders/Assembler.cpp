@@ -1798,11 +1798,13 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_outputtopology") {
 		ins->opcode = 92;
 		ins->length = 1;
-		if (w[1] == "trianglestrip")
+		if (w[1] == "pointlist")
+			ins->_11_23 = 1;
+		else if (w[1] == "trianglestrip")
 			ins->_11_23 = 5;
 		else if (w[1] == "linestrip")
 			ins->_11_23 = 3;
-		// FIXME: Missing point stream -DarkStarSword
+		// Added point list -DarkStarSword
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509661(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_output_control_point_count") {
@@ -1832,9 +1834,11 @@ vector<DWORD> assembleIns(string s) {
 			ins->_11_23 = 2;
 		else if (w[1] == "triangle")
 			ins->_11_23 = 3;
+		else if (w[1] == "lineadj")
+			ins->_11_23 = 6;
 		else if (w[1] == "triangleadj")
 			ins->_11_23 = 7;
-		// FIXME: missing "lineadj", which is probably 6 -DarkStarSword
+		// Added "lineadj" -DarkStarSword
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509609(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_hs_max_tessfactor") {
