@@ -960,6 +960,8 @@ unordered_map<string, vector<int>> insMap = {
 	{ "break",               { 0, 0x02    } },
 	{ "breakc_nz",           { 1, 0x03, 0 } },
 	{ "breakc_z",            { 1, 0x03, 0 } },
+	// TODO: call               , 0x04
+	// TODO: callc              , 0x05
 	{ "case",                { 1, 0x06    } },
 	{ "continue",            { 0, 0x07    } },
 	{ "continuec_nz",        { 1, 0x08, 0 } },
@@ -976,6 +978,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dp4",                 { 3, 0x11    } },
 	{ "else",                { 0, 0x12    } },
 	{ "emit",                { 0, 0x13    } },
+	// TODO: emit then cut      , 0x14
 	{ "endif",               { 0, 0x15    } },
 	{ "endloop",             { 0, 0x16    } },
 	{ "endswitch",           { 0, 0x17    } },
@@ -1000,6 +1003,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "ishl",                { 3, 0x29    } },
 	{ "ishr",                { 3, 0x2a    } },
 	{ "itof",                { 2, 0x2b    } },
+	// TODO: label              , 0x2c
 	{ "ld",                  { 3, 0x2d    } },
 	{ "ldms",                { 4, 0x2e    } },
 	{ "log",                 { 2, 0x2f    } },
@@ -1008,10 +1012,12 @@ unordered_map<string, vector<int>> insMap = {
 	{ "mad",                 { 4, 0x32    } },
 	{ "min",                 { 3, 0x33    } },
 	{ "max",                 { 3, 0x34    } },
+	// TODO: Custom data        , 0x35
 	{ "mov",                 { 2, 0x36    } },
 	{ "movc",                { 4, 0x37    } },
 	{ "mul",                 { 3, 0x38    } },
 	{ "ne",                  { 3, 0x39    } },
+	// TODO: nop                , 0x3a
 	{ "not",                 { 2, 0x3b    } },
 	{ "or",                  { 3, 0x3c    } },
 	{ "resinfo",             { 3, 0x3d    } },
@@ -1029,7 +1035,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "sample_c_lz",         { 5, 0x47    } },
 	{ "sample_l",            { 5, 0x48    } },
 	{ "sample_d",            { 6, 0x49    } },
-	{ "sampled",             { 6, 0x49    } },
+	{ "sampled",             { 6, 0x49    } }, // Hmmm, possible typo? -DSS
 	{ "sample_b",            { 5, 0x4a    } },
 	{ "sqrt",                { 2, 0x4b    } },
 	{ "switch",              { 1, 0x4c, 0 } },
@@ -1043,35 +1049,91 @@ unordered_map<string, vector<int>> insMap = {
 	{ "ushr",                { 3, 0x55    } },
 	{ "utof",                { 2, 0x56    } },
 	{ "xor",                 { 3, 0x57    } },
+	// dcl_resource               0x58
+	// dcl_constant_buffer        0x59
+	// dcl_sampler                0x5a
+	// dcl_index_range            0x5b
+	// dcl_gs_output_primitive_topology 0x5c
+	// dcl_gs_input_primitive     0x5d
+	// dcl_max_output_vertex_count 0x5e
+	// dcl_input                  0x5f
+	// dcl_input_sgv              0x60
+	// dcl_input_siv              0x61
+	// dcl_input_ps               0x62
+	// dcl_input_ps_sgv           0x63
+	// dcl_input_ps_siv           0x64
+	// dcl_output                 0x65
+	// dcl_output_sgv             0x66
+	// dcl_output_siv             0x67
+	// dcl_temps                  0x68
+	// dcl_indexable_temp         0x69
+	// dcl_global_flags           0x6a
+	// RESERVED_10                0x6b
 	{ "lod",                 { 4, 0x6c    } },
 	{ "gather4",             { 4, 0x6d    } },
 	{ "samplepos",           { 3, 0x6e    } },
 	{ "sampleinfo",          { 2, 0x6f    } },
+	// RESERVED_10_1              0x70
+	// TODO: hs_decls // token marks beginning of HS sub-shader
+	// TODO: hs_control_point_phase // token marks beginning of HS sub-shader
+	// TODO: hs_fork_phase // token marks beginning of HS sub-shader
+	// TODO: hs_join_phase // token marks beginning of HS sub-shader
+	// TODO: emit_stream          0x75
+	// TODO: cut_stream           0x76
+	// TODO: emitthencut_stream   0x77
+	// TODO: interface_call       0x78
+	// TODO: bufinfo              0x79
 	{ "deriv_rtx_coarse",    { 2, 0x7a    } },
 	{ "deriv_rtx_fine",      { 2, 0x7b    } },
 	{ "deriv_rty_coarse",    { 2, 0x7c    } },
 	{ "deriv_rty_fine",      { 2, 0x7d    } },
+	// TODO: gather4_c            0x7e
+	// TODO: gather4_po           0x7f
+	// TODO: gather4_po_c         0x80
 	{ "rcp",                 { 2, 0x81    } },
 	{ "f32tof16",            { 2, 0x82    } },
 	{ "f16tof32",            { 2, 0x83    } },
+	// TODO: uaddc                0x84
+	// TODO: usubb                0x85
 	{ "countbits",           { 2, 0x86    } },
 	{ "firstbit_hi",         { 2, 0x87    } },
 	{ "firstbit_lo",         { 2, 0x88    } },
+	// TODO: firstbit_shi         0x89
 	{ "ubfe",                { 4, 0x8a    } },
 	{ "ibfe",                { 4, 0x8b    } },
 	{ "bfi",                 { 5, 0x8c    } },
 	{ "bfrev",               { 2, 0x8d    } },
 	{ "swapc",               { 5, 0x8e, 2 } },
+	// dcl_stream                 0x8f
+	// dcl_function_body          0x90
+	// dcl_function_table         0x91
+	// dcl_interface              0x92
+	// dcl_input_control_point_count 0x93
+	// dcl_output_control_point_count 0x94
+	// dcl_tess_domain            0x95
+	// dcl_tess_partitioning      0x96
+	// dcl_tess_output_primitive  0x97
+	// dcl_hs_max_tessfactor      0x98
+	// dcl_hs_fork_phase_instance_count 0x99
+	// dcl_hs_join_phase_instance_count 0x9a
 	{ "dcl_thread_group",    { 3, 0x9b    } },
-	{ "dcl_uav_raw",         { 1, 0x9d, 0 } },
-	{ "dcl_uav_structured",  { 2, 0x9e, 0 } },
-	{ "dcl_tgsm_raw",        { 2, 0x9f, 0 } },
-	{ "dcl_tgsm_structured", { 3, 0xa0, 0 } },
+	// dcl_unordered_access_view_typed 0x9c
+	{ "dcl_uav_raw",         { 1, 0x9d, 0 } }, // dcl_unordered_access_view_raw?
+	{ "dcl_uav_structured",  { 2, 0x9e, 0 } }, // dcl_unordered_access_view_structured?
+	{ "dcl_tgsm_raw",        { 2, 0x9f, 0 } }, // dcl_thread_group_shared_memory_raw?
+	{ "dcl_tgsm_structured", { 3, 0xa0, 0 } }, // dcl_thread_group_shared_memory_structured?
+	// dcl_resource_raw           0xa1
+	// dcl_resource_structured    0xa2
+	// ld_uav_typed               0xa3
+	// store_uav_typed            0xa4
 	{ "ld_raw",              { 3, 0xa5    } },
 	{ "store_raw",           { 3, 0xa6    } },
 	{ "ld_structured",       { 4, 0xa7    } },
 	{ "store_structured",    { 4, 0xa8    } },
+	// TODO: atomic_and           0xa9
 	{ "atomic_or",           { 3, 0xaa, 0 } },
+	// TODO: atomic_xor           0xab
+	// TODO: atomic_cmp_store     0xac
 	{ "atomic_iadd",         { 3, 0xad, 0 } },
 	{ "atomic_imax",         { 3, 0xae, 0 } },
 	{ "atomic_imin",         { 3, 0xaf, 0 } },
@@ -1081,8 +1143,15 @@ unordered_map<string, vector<int>> insMap = {
 	{ "imm_atomic_consume",  { 2, 0xb3    } },
 	{ "imm_atomic_iadd",     { 4, 0xb4    } },
 	{ "imm_atomic_and",      { 4, 0xb5    } },
+	// TODO: imm_atomic_or        0xb6
+	// TODO: imm_atomic_xor       0xb7
 	{ "imm_atomic_exch",     { 4, 0xb8    } },
 	{ "imm_atomic_cmp_exch", { 5, 0xb9    } },
+	// TODO: imm_atomic_imax      0xba
+	// TODO: imm_atomic_imin      0xbb
+	// TODO: imm_atomic_umax      0xbc
+	// TODO: imm_atomic_umin      0xbd
+	// sync                       0xbe
 	// Added double precision instructons -DarkStarSword
 	{ "dadd",                { 3, 0xbf    } },
 	{ "dmax",                { 3, 0xc0    } },
@@ -1096,10 +1165,21 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dmovc",               { 4, 0xc8    } },
 	{ "dtof",                { 2, 0xc9    } },
 	{ "ftod",                { 2, 0xca    } },
+	// TODO: eval_snapped         0xcb
 	{ "eval_sample_index",   { 3, 0xcc    } },
+	// TODO: eval_centroid        0xcd
+	// TODO: dcl_gs_instance_count 0xce
+	// TODO: abort                0xcf
+	// TODO: debug_break          0xd0
+	// RESERVED_11                0xd1
 	{ "ddiv",                { 3, 0xd2    } },
 	{ "dfma",                { 4, 0xd3    } },
 	{ "drcp",                { 2, 0xd4    } },
+	// TODO: msad                 0xd5
+	// TODO: dtoi                 0xd6
+	// TODO: dtou                 0xd7
+	// TODO: itod                 0xd8
+	// TODO: utod                 0xd9
 	// TODO: Compare with list in BinaryDecompiler/internal_includes/tokens.h for missing instructions
 };
 
