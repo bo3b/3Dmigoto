@@ -126,9 +126,51 @@ void main(out float4 output : SV_Target0)
 	output += float4(half3_tex.Load(0), 0);
 	output += half4_tex.Load(0);
 
+	// Excercises dtof:
 	output += (float)double_tex.Load(0);
 	output += (float)double1_tex.Load(0);
 	output += float4(double2_tex.Load(0), 0, 0);
+
+	// Excercises dadd:
+	output += (float)(double2_tex.Load(0).x + double_tex.Load(0));
+
+	// Excercises ftod:
+	output += (float)((double)float_tex.Load(0) + double_tex.Load(0));
+
+	// Excercises dmul:
+	output += (float)(double2_tex.Load(1).x * double_tex.Load(1));
+
+	// Excercises ddiv and globalFlags enable11_1DoubleExtensions:
+	output += (float)(double2_tex.Load(2).x / double_tex.Load(2));
+
+	// Excercises drcp:
+	output += (float)(rcp(double_tex.Load(3)));
+
+	// Excercises dmax:
+	output += (float)max(double2_tex.Load(4).x, double_tex.Load(4));
+
+	// Excercises dmin:
+	output += (float)min(double2_tex.Load(5).x, double_tex.Load(5));
+
+	// Excercises deq:
+	output += (float)(double2_tex.Load(6).x == double_tex.Load(6));
+
+	// Excercises dne:
+	output += (float)(double2_tex.Load(7).x != double_tex.Load(7));
+
+	// Excercises dge:
+	output += (float)(double2_tex.Load(7).x >= double_tex.Load(7));
+
+	// Excercises dlt:
+	output += (float)(double2_tex.Load(8).x < double_tex.Load(8));
+
+	// Excercises double literal strings:
+	//output.x += mad(0.5l, double2_tex.Load(9).x, 0.5l);
+
+	// Excercises dmovc:
+	output.x += (float)(double2_tex.Load(10).x ? double2_tex.Load(10).y : double_tex.Load(10));
+
+	// TODO: Excercise dmov, drcp
 
 	// Requires Windows 8:
 	output += min16float_tex.Load(0);
