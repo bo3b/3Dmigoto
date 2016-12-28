@@ -923,22 +923,29 @@ unordered_map<string, vector<DWORD>> hackMap = {
 };
 
 unordered_map<string, vector<int>> ldMap = {
-	// FIXME: Missing various permutations of aoffimmi(1) / indexable(2) /
-	//        aoffimmi_indexable(3)
-	// FIXME: Most of these also have a basic implementation in the
-	//        instruction table, but a couple are missing (bufinfo,
-	//        gather4_c, gather4_po, gather4_po_c, ld_uav_typed)
+	// Hint: Compiling for shader model 5 always uses _indexable variants,
+	//       so use shader model 4 to test vanilla and _aoffimmi (address
+	//       offset immediate) variants. resource_types.hlsl has test cases
+	//       for most of these - compile it for both shader models.
+	// NOTE: There are also basic (non indexable, non address offset
+	//       immediate) variants in the instruction table. A couple of
+	//       those are not verified as AFAIK they are only present in
+	//       shader model 5+ and compiling for that shader model always
+	//       seems to use the _indexable variants found here.
+	//               -DarkStarSword
+
 	{ "ld_aoffimmi",                    { 3, 0x2d, 1 } },
 	{ "ld_indexable",                   { 3, 0x2d, 2 } },
 	{ "ld_aoffimmi_indexable",          { 3, 0x2d, 3 } },
 
-	{ "ldms_aoffimmi",                  { 4, 0x2e, 1 } },
+	{ "ldms_aoffimmi",                  { 4, 0x2e, 1 } }, // Added and verified -DarkStarSword
 	{ "ldms_indexable",                 { 4, 0x2e, 2 } },
 	{ "ldms_aoffimmi_indexable",        { 4, 0x2e, 3 } },
 
-// TODO { "resinfo_aoffimmi",               { 3, 0x3d, 1 } },
+	// _aoffimmi doesn't make sense for resinfo. Be aware that there are
+	// _uint and _rcpFloat variants handled elsewhere in the code.
+	//   -DarkStarSword
 	{ "resinfo_indexable",              { 3, 0x3d, 2 } },
-// TODO { "resinfo_aoffimmi_indexable",     { 3, 0x3d, 3 } },
 
 	{ "sample_aoffimmi",                { 4, 0x45, 1 } },
 	{ "sample_indexable",               { 4, 0x45, 2 } },
@@ -946,7 +953,7 @@ unordered_map<string, vector<int>> ldMap = {
 
 	{ "sample_c_aoffimmi",              { 5, 0x46, 1 } },
 	{ "sample_c_indexable",             { 5, 0x46, 2 } },
-// TODO { "sample_c_aoffimmi_indexable",    { 5, 0x46, 3 } },
+	{ "sample_c_aoffimmi_indexable",    { 5, 0x46, 3 } }, // Added and verified -DarkStarSword
 
 	{ "sample_c_lz_aoffimmi",           { 5, 0x47, 1 } },
 	{ "sample_c_lz_indexable",          { 5, 0x47, 2 } },
@@ -956,45 +963,36 @@ unordered_map<string, vector<int>> ldMap = {
 	{ "sample_l_indexable",             { 5, 0x48, 2 } },
 	{ "sample_l_aoffimmi_indexable",    { 5, 0x48, 3 } },
 
-// TODO { "sample_d_aoffimmi",              { 6, 0x49, 1 } },
+	{ "sample_d_aoffimmi",              { 6, 0x49, 1 } }, // Added and verified -DarkStarSword
 	{ "sample_d_indexable",             { 6, 0x49, 2 } },
-// TODO { "sample_d_aoffimmi_indexable",    { 6, 0x49, 3 } },
+	{ "sample_d_aoffimmi_indexable",    { 6, 0x49, 3 } }, // Added and verified -DarkStarSword
 
-// TODO { "sample_b_aoffimmi",              { 5, 0x4a, 1 } },
+	{ "sample_b_aoffimmi",              { 5, 0x4a, 1 } }, // Added and verified -DarkStarSword
 	{ "sample_b_indexable",             { 5, 0x4a, 2 } },
-// TODO { "sample_b_aoffimmi_indexable",    { 5, 0x4a, 3 } },
+	{ "sample_b_aoffimmi_indexable",    { 5, 0x4a, 3 } }, // Added and verified -DarkStarSword
 
-// TODO { "gather4_aoffimmi",               { 4, 0x6d, 1 } },
+	{ "gather4_aoffimmi",               { 4, 0x6d, 1 } }, // Unverified (not in SM4 so only indexable variants?)
 	{ "gather4_indexable",              { 4, 0x6d, 2 } },
 	{ "gather4_aoffimmi_indexable",     { 4, 0x6d, 3 } },
 
-// TODO { "bufinfo_aoffimmi",               { 2, 0x79, 1 } },
+	// _aoffimmi doesn't make sense for bufinfo
 	{ "bufinfo_indexable",              { 2, 0x79, 2 } },
-// TODO { "bufinfo_aoffimmi_indexable",     { 2, 0x79, 3 } },
 
-// TODO { "gather4_c_aoffimmi",             { 5, 0x7e, 1 } },
+	{ "gather4_c_aoffimmi",             { 5, 0x7e, 1 } }, // Unverified (not in SM4 so only indexable variants?)
 	{ "gather4_c_indexable",            { 5, 0x7e, 2 } },
 	{ "gather4_c_aoffimmi_indexable",   { 5, 0x7e, 3 } },
 
-// TODO { "gather4_po_aoffimmi",            { 5, 0x7f, 1 } },
+	// gather4_po variants do not have an _aoffimmi variant by definition
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh447084(v=vs.85).aspx
 	{ "gather4_po_indexable",           { 5, 0x7f, 2 } },
-// TODO { "gather4_po_aoffimmi_indexable",  { 5, 0x7f, 3 } },
-
-// TODO { "gather4_po_c_aoffimmi",          { 6, 0x80, 1 } },
 	{ "gather4_po_c_indexable",         { 6, 0x80, 2 } },
-// TODO { "gather4_po_c_aoffimmi_indexable",{ 6, 0x80, 3 } },
 
-// TODO { "ld_uav_typed_aoffimmi",          { 3, 0xa3, 1 } },
+	// RWTexture2D (etc), ByteAddressBuffer and StructuredBuffer have no
+	// variants of .Load that takes an offset, so there are no _aoffimmi
+	// variants for these:
 	{ "ld_uav_typed_indexable",         { 3, 0xa3, 2 } },
-// TODO { "ld_uav_typed_aoffimmi_indexable",{ 3, 0xa3, 3 } },
-
-// TODO { "ld_raw_aoffimmi",                { 3, 0xa5, 1 } },
 	{ "ld_raw_indexable",               { 3, 0xa5, 2 } },
-// TODO { "ld_raw_aoffimmi_indexable",      { 3, 0xa5, 3 } },
-
-// TODO { "ld_structured_aoffimmi",         { 4, 0xa7, 1 } },
 	{ "ld_structured_indexable",        { 4, 0xa7, 2 } },
-// TODO { "ld_structured_aoffimmi_indexable",{4, 0xa7, 3 } },
 };
 
 unordered_map<string, vector<int>> insMap = {
@@ -1131,14 +1129,14 @@ unordered_map<string, vector<int>> insMap = {
 	// cut_stream                       0x76 // Implemented elsewhere
 	// TODO: emitthencut_stream         0x77
 	// TODO: interface_call             0x78
-	// bufinfo                          0x79 // See also load table. TODO: Basic variant?
+	{ "bufinfo",                   { 2, 0x79    } }, // Unverified (not in SM4 so only indexable variants?). See also load table.
 	{ "deriv_rtx_coarse",          { 2, 0x7a    } },
 	{ "deriv_rtx_fine",            { 2, 0x7b    } },
 	{ "deriv_rty_coarse",          { 2, 0x7c    } },
 	{ "deriv_rty_fine",            { 2, 0x7d    } },
-	// gather4_c                        0x7e // See also load table. TODO: Basic variant?
-	// gather4_po                       0x7f // See also load table. TODO: Basic variant?
-	// gather4_po_c                     0x80 // See also load table. TODO: Basic variant?
+	{ "gather4_c",                 { 5, 0x7e    } }, // Unverified (not in SM4 so only indexable variants?). See also load table.
+	{ "gather4_po",                { 5, 0x7f    } }, // Unverified (not in SM4 so only indexable variants?). See also load table.
+	{ "gather4_po_c",              { 6, 0x80    } }, // Unverified (not in SM4 so only indexable variants?). See also load table.
 	{ "rcp",                       { 2, 0x81    } },
 	{ "f32tof16",                  { 2, 0x82    } },
 	{ "f16tof32",                  { 2, 0x83    } },
@@ -1173,7 +1171,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dcl_tgsm_structured",       { 3, 0xa0, 0 } },
 	// dcl_resource_raw                 0xa1 // Implemented elsewhere
 	// dcl_resource_structured          0xa2 // Implemented elsewhere
-	// ld_uav_typed                     0xa3 // See also load table. TODO: Basic variant?
+	{ "ld_uav_typed",              { 3, 0xa3    } }, // Unverified (not in SM4 so only indexable variants?) See also load table.
 	// store_uav_typed                  0xa4 // Implemented elsewhere
 	{ "ld_raw",                    { 3, 0xa5    } }, // See also load table
 	{ "store_raw",                 { 3, 0xa6    } },
@@ -1288,11 +1286,19 @@ vector<DWORD> assembleIns(string s) {
 			w = 2048;
 		ins->_11_23 = x | y | z | w;
 	}
+	// Handles _uint variant of resinfo instruction:
 	pos = s.find("_uint");
 	if (pos != string::npos) {
 		s.erase(pos, 5);
 		ins->_11_23 = 2;
 	}
+	// Commented out because I can't figure out the HLSL to generate this,
+	// but pretty sure this is correct: -DarkStarSword
+	// TODO: pos = s.find("_rcpFloat");
+	// TODO: if (pos != string::npos) {
+	// TODO: 	s.erase(pos, 9);
+	// TODO: 	ins->_11_23 = 1;
+	// TODO: }
 	vector<DWORD> v;
 	vector<string> w = strToWords(s);
 	string o = w[0];
