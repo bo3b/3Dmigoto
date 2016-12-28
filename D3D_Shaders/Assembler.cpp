@@ -1130,7 +1130,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "store_raw",           { 3, 0xa6    } },
 	{ "ld_structured",       { 4, 0xa7    } },
 	{ "store_structured",    { 4, 0xa8    } },
-	// TODO: atomic_and           0xa9
+	{ "atomic_and",          { 3, 0xa9, 0 } },
 	{ "atomic_or",           { 3, 0xaa, 0 } },
 	// TODO: atomic_xor           0xab
 	// TODO: atomic_cmp_store     0xac
