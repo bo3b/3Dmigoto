@@ -1989,22 +1989,6 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	}
 
-	/*
-	if (o == "add") {
-		ins->opcode = 0x00;
-		auto o1 = assembleOp(w[1], 1);
-		auto o2 = assembleOp(w[2]);
-		auto o3 = assembleOp(w[3]);
-		ins->length = 1;
-		ins->length += o1.size();
-		ins->length += o2.size();
-		ins->length += o3.size();
-		v.push_back(op);
-		v.insert(v.end(), o1.begin(), o1.end());
-		v.insert(v.end(), o2.begin(), o2.end());
-		v.insert(v.end(), o3.begin(), o3.end());
-	}
-	*/
 	return v;
 }
 
@@ -2051,6 +2035,9 @@ vector<string> stringToLines(const char* start, size_t size) {
 	return lines;
 }
 
+// For anyone confused about what this hash function is doing, there is a
+// clearer implementation here, with details of how this differs from MD5:
+// https://github.com/DarkStarSword/3d-fixes/blob/master/dx11shaderanalyse.py
 vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	DWORD esi;
 	DWORD ebx;
@@ -2178,61 +2165,6 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	vector<DWORD> hash(4);
 	std::memcpy(hash.data(), h, 16);
 	return hash;
-}
-
-// Dead code (any reason to keep this?)
-string shaderModel(byte* buffer) {
-	DWORD numChunks;
-	vector<DWORD> chunkOffsets;
-
-	byte* pPosition = buffer;
-	pPosition += 28;
-	numChunks = *(DWORD*)pPosition;
-	if (numChunks < 1)
-		throw std::invalid_argument("shaderModel: Bad shader binary");
-	pPosition += 4;
-	chunkOffsets.resize(numChunks);
-	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
-
-	byte* codeByteStart;
-	int codeChunk = 0;
-	for (DWORD i = 1; i <= numChunks; i++) {
-		codeChunk = numChunks - i;
-		codeByteStart = buffer + chunkOffsets[codeChunk];
-		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
-			break;
-	}
-	// FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
-	int major = (*codeStart & 0xF0) >> 4;
-	int minor = (*codeStart & 0xF000) >> 12;
-	int shaderType = (*codeStart & 0xFFFF0000) >> 16;
-	string shaderModel = "ps_";
-	if (shaderType == 0x1)
-		shaderModel = "vs_";
-	switch (major) {
-	case 5:
-		shaderModel.append("5_");
-		break;
-	case 4:
-		shaderModel.append("4_");
-		break;
-	case 3:
-		shaderModel.append("3_");
-		break;
-	}
-	switch (minor) {
-	case 0:
-		shaderModel.append("0");
-		break;
-	case 1:
-		shaderModel.append("1");
-		break;
-	case 2:
-		shaderModel.append("2");
-		break;
-	}
-	return shaderModel;
 }
 
 vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
