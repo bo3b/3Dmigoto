@@ -1744,23 +1744,27 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 1;
 		if (w[1] == "partitioning_integer")
 			ins->_11_23 = 1;
+		else if (w[1] == "partitioning_pow2")
+			ins->_11_23 = 2;
 		else if (w[1] == "partitioning_fractional_odd")
 			ins->_11_23 = 3;
 		else if (w[1] == "partitioning_fractional_even")
 			ins->_11_23 = 4;
-		// FIXME: Missing pow2 -DarkStarSword
+		// Added pow2 -DarkStarSword
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff471446(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_tessellator_output_primitive") {
 		ins->opcode = 151;
 		ins->length = 1;
-		if (w[1] == "output_line")
+		if (w[1] == "output_point")
+			ins->_11_23 = 1;
+		else if (w[1] == "output_line")
 			ins->_11_23 = 2;
 		else if (w[1] == "output_triangle_cw")
 			ins->_11_23 = 3;
 		else if (w[1] == "output_triangle_ccw")
 			ins->_11_23 = 4;
-		// FIXME: Missing output point -DarkStarSword
+		// Added output_point -DarkStarSword
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff471445(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_tessellator_domain") {
