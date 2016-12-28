@@ -1,4 +1,7 @@
-// Compile with fxc /T ps_5_0 /Fo resource_types.bin
+// To test ld_indexable and co:
+//   Compile with fxc /T ps_5_0 /Fo resource_types.bin
+// To test ld and co:
+//   Compile with fxc /T ps_4_0 /Fo resource_types.bin
 
 // HLSL scalar types:
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb509646(v=vs.85).aspx
@@ -54,10 +57,8 @@ Texture2D<half2>        half2_tex   : register(t33);
 Texture2D<half3>        half3_tex   : register(t34);
 Texture2D<half4>        half4_tex   : register(t35);
 
-// No double4 - too large for a Texture2D (maybe a structured buffer?):
-Texture2D<double>       double_tex  : register(t36);
-Texture2D<double1>      double1_tex : register(t37);
-Texture2D<double2>      double2_tex : register(t38);
+// Double precision moved to double_precision.hlsl so we can compile this for
+// ps_4_0 to test ld (not _indexable) variants
 
 // min precision types moved to min_precision.hlsl
 
@@ -133,9 +134,24 @@ Texture2DMSArray<float4, 30> msaa30_array : register(t106);
 Texture2DMSArray<float4, 31> msaa31_array : register(t107);
 Texture2DMSArray<float4, 32> msaa32_array : register(t108);
 
+SamplerState samp : register(s0);
+SamplerComparisonState samp_c : register(s1);
+
+ByteAddressBuffer byte_buf : register(t110);
+
+struct foo {
+	float foo;
+	uint bar;
+	snorm float baz;
+	int buz;
+};
+StructuredBuffer<struct foo> struct_buf : register(t111);
+
 void main(out float4 output : SV_Target0)
 {
 	output = 0;
+	uint uwidth, uheight, umips, udim;
+	float fwidth, fheight, fmips;
 
 	// Use all textures to ensure the compiler doesn't optimise them out,
 	// and to see what the load instructions look like:
@@ -185,11 +201,6 @@ void main(out float4 output : SV_Target0)
 	output += float4(half2_tex.Load(0), 0, 0);
 	output += float4(half3_tex.Load(0), 0);
 	output += half4_tex.Load(0);
-
-	// Excercises dtof:
-	output += (float)double_tex.Load(0);
-	output += (float)double1_tex.Load(0);
-	output += float4(double2_tex.Load(0), 0, 0);
 
 	output += vector_tex.Load(0);
 
@@ -258,4 +269,89 @@ void main(out float4 output : SV_Target0)
 	output += msaa30_array.Load(0, 0);
 	output += msaa31_array.Load(0, 0);
 	output += msaa32_array.Load(0, 0);
+
+	// ps_4_0: ld_aoffimmi:
+	// ps_5_0: ld_aoffimmi_indexable:
+	output += float_tex.Load(int3(5,5,5), int2(2, 2));
+
+	// ld_indexable (same as .Load but without mip maps):
+	output += float_tex[uint2(2,3)];
+
+	// ld_indexable again (same as .Load with mip maps):
+	output += float_tex.mips[4][uint2(2,3)];
+
+	// Requires D3D 11.2 / Win8.1:
+	// uint status;
+	// output += float_tex.Load(int3(5,5,0), int2(2, 2), status);
+	// output.x +=  CheckAccessFullyMapped(status);
+
+	// ps_5_0: resinfo_indexable(...)(...)_uint
+	// ps_4_0: resinfo_uint
+	float_tex.GetDimensions(0, uwidth, uheight, umips);
+	output += uwidth + uheight + umips;
+
+	// ps_5_0: resinfo_indexable(...)(...)
+	// ps_4_0: resinfo
+	float_tex.GetDimensions(0, fwidth, fheight, fmips);
+	output += fwidth + fheight + fmips;
+
+	// TODO: resinfo_rcpFloat
+
+	// ps_4_0: ldms_aoffimmi:
+	// ps_5_0: ldms_aoffimmi_indexable:
+	output += msaa1_tex.Load(0, 0, int2(2, 2));
+
+	// ps_4_0: sample
+	// ps_5_0: sample_indexable
+	output += float_tex.Sample(samp, float2(0.2, 0.3));
+
+	// ps_4_0: sample_aoffimmi
+	// ps_5_0: sample_aoffimmi_indexable
+	output += float_tex.Sample(samp, float2(0.2, 0.3), int2(2,3));
+
+	// ps_4_0: sample_c
+	// ps_5_0: sample_c_indexable
+	output += float_tex.SampleCmp(samp_c, float2(0.1, 0.2), 0.5);
+
+	// ps_4_0: sample_c_aoffimmi
+	// ps_5_0: sample_c_aoffimmi_indexable
+	output += float_tex.SampleCmp(samp_c, float2(0.1, 0.2), 0.5, int2(1,2));
+
+	// ps_4_0: sample_c_lz
+	// ps_5_0: sample_c_lz_indexable
+	output += float_tex.SampleCmpLevelZero(samp_c, float2(0.1, 0.2), 0.5);
+
+	// ps_4_0: sample_c_lz_aoffimmi
+	// ps_5_0: sample_c_lz_aoffimmi_indexable
+	output += float_tex.SampleCmpLevelZero(samp_c, float2(0.1, 0.2), 0.5, int2(1,2));
+
+	// ps_4_0: sample_b
+	// ps_5_0: sample_b_indexable
+	output += float_tex.SampleBias(samp, float2(0.4, 0.1), 0.1);
+
+	// ps_4_0: sample_b_aoffimmi
+	// ps_5_0: sample_b_aoffimmi_indexable
+	output += float_tex.SampleBias(samp, float2(0.4, 0.1), 0.1, int2(2,3));
+
+	// ps_4_0: sample_d
+	// ps_5_0: sample_d_indexable
+	output += float_tex.SampleGrad(samp, float2(0.4, 0.1), 0.6, 0.7);
+
+	// ps_4_0: sample_d_aoffimmi
+	// ps_5_0: sample_d_aoffimmi_indexable
+	output += float_tex.SampleGrad(samp, float2(0.4, 0.1), 0.6, 0.7, int2(3,4));
+
+	// ps_4_0 ld_raw
+	// ps_5_0 ld_raw_indexable
+	output += byte_buf.Load(0);
+	output += float4(byte_buf.Load2(1), 0, 0);
+	output += float4(byte_buf.Load3(2), 0);
+	output += byte_buf.Load4(3);
+
+	// ps_4_0 ld_structured
+	// ps_5_0 ld_structured_indexable
+	output += struct_buf.Load(0).foo;
+	output += struct_buf.Load(2).bar;
+	output += struct_buf.Load(1).baz;
+	output += struct_buf.Load(3).buz;
 }
