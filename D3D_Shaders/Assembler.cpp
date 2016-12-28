@@ -923,263 +923,312 @@ unordered_map<string, vector<DWORD>> hackMap = {
 };
 
 unordered_map<string, vector<int>> ldMap = {
+	// FIXME: Missing various permutations of aoffimmi(1) / indexable(2) /
+	//        aoffimmi_indexable(3)
+	// FIXME: Most of these also have a basic implementation in the
+	//        instruction table, but a couple are missing (bufinfo,
+	//        gather4_c, gather4_po, gather4_po_c, ld_uav_typed)
 	{ "ld_aoffimmi",                    { 3, 0x2d, 1 } },
 	{ "ld_indexable",                   { 3, 0x2d, 2 } },
 	{ "ld_aoffimmi_indexable",          { 3, 0x2d, 3 } },
+
+	{ "ldms_aoffimmi",                  { 4, 0x2e, 1 } },
 	{ "ldms_indexable",                 { 4, 0x2e, 2 } },
 	{ "ldms_aoffimmi_indexable",        { 4, 0x2e, 3 } },
+
+// TODO { "resinfo_aoffimmi",               { 3, 0x3d, 1 } },
 	{ "resinfo_indexable",              { 3, 0x3d, 2 } },
+// TODO { "resinfo_aoffimmi_indexable",     { 3, 0x3d, 3 } },
+
 	{ "sample_aoffimmi",                { 4, 0x45, 1 } },
 	{ "sample_indexable",               { 4, 0x45, 2 } },
 	{ "sample_aoffimmi_indexable",      { 4, 0x45, 3 } },
+
 	{ "sample_c_aoffimmi",              { 5, 0x46, 1 } },
 	{ "sample_c_indexable",             { 5, 0x46, 2 } },
+// TODO { "sample_c_aoffimmi_indexable",    { 5, 0x46, 3 } },
+
 	{ "sample_c_lz_aoffimmi",           { 5, 0x47, 1 } },
 	{ "sample_c_lz_indexable",          { 5, 0x47, 2 } },
 	{ "sample_c_lz_aoffimmi_indexable", { 5, 0x47, 3 } },
+
 	{ "sample_l_aoffimmi",              { 5, 0x48, 1 } },
 	{ "sample_l_indexable",             { 5, 0x48, 2 } },
 	{ "sample_l_aoffimmi_indexable",    { 5, 0x48, 3 } },
+
+// TODO { "sample_d_aoffimmi",              { 6, 0x49, 1 } },
 	{ "sample_d_indexable",             { 6, 0x49, 2 } },
+// TODO { "sample_d_aoffimmi_indexable",    { 6, 0x49, 3 } },
+
+// TODO { "sample_b_aoffimmi",              { 5, 0x4a, 1 } },
 	{ "sample_b_indexable",             { 5, 0x4a, 2 } },
+// TODO { "sample_b_aoffimmi_indexable",    { 5, 0x4a, 3 } },
+
+// TODO { "gather4_aoffimmi",               { 4, 0x6d, 1 } },
 	{ "gather4_indexable",              { 4, 0x6d, 2 } },
 	{ "gather4_aoffimmi_indexable",     { 4, 0x6d, 3 } },
+
+// TODO { "bufinfo_aoffimmi",               { 2, 0x79, 1 } },
 	{ "bufinfo_indexable",              { 2, 0x79, 2 } },
+// TODO { "bufinfo_aoffimmi_indexable",     { 2, 0x79, 3 } },
+
+// TODO { "gather4_c_aoffimmi",             { 5, 0x7e, 1 } },
 	{ "gather4_c_indexable",            { 5, 0x7e, 2 } },
 	{ "gather4_c_aoffimmi_indexable",   { 5, 0x7e, 3 } },
+
+// TODO { "gather4_po_aoffimmi",            { 5, 0x7f, 1 } },
 	{ "gather4_po_indexable",           { 5, 0x7f, 2 } },
+// TODO { "gather4_po_aoffimmi_indexable",  { 5, 0x7f, 3 } },
+
+// TODO { "gather4_po_c_aoffimmi",          { 6, 0x80, 1 } },
 	{ "gather4_po_c_indexable",         { 6, 0x80, 2 } },
+// TODO { "gather4_po_c_aoffimmi_indexable",{ 6, 0x80, 3 } },
+
+// TODO { "ld_uav_typed_aoffimmi",          { 3, 0xa3, 1 } },
 	{ "ld_uav_typed_indexable",         { 3, 0xa3, 2 } },
+// TODO { "ld_uav_typed_aoffimmi_indexable",{ 3, 0xa3, 3 } },
+
+// TODO { "ld_raw_aoffimmi",                { 3, 0xa5, 1 } },
 	{ "ld_raw_indexable",               { 3, 0xa5, 2 } },
+// TODO { "ld_raw_aoffimmi_indexable",      { 3, 0xa5, 3 } },
+
+// TODO { "ld_structured_aoffimmi",         { 4, 0xa7, 1 } },
 	{ "ld_structured_indexable",        { 4, 0xa7, 2 } },
+// TODO { "ld_structured_aoffimmi_indexable",{4, 0xa7, 3 } },
 };
 
 unordered_map<string, vector<int>> insMap = {
-	{ "add",                 { 3, 0x00    } },
-	{ "and",                 { 3, 0x01    } },
-	{ "break",               { 0, 0x02    } },
-	{ "breakc_nz",           { 1, 0x03, 0 } },
-	{ "breakc_z",            { 1, 0x03, 0 } },
-	// TODO: call               , 0x04
-	// TODO: callc              , 0x05
-	{ "case",                { 1, 0x06    } },
-	{ "continue",            { 0, 0x07    } },
-	{ "continuec_nz",        { 1, 0x08, 0 } },
-	{ "continuec_z",         { 1, 0x08, 0 } },
-	{ "cut",                 { 0, 0x09    } },
-	{ "default",             { 0, 0x0a    } },
-	{ "deriv_rtx",           { 2, 0x0b    } },
-	{ "deriv_rty",           { 2, 0x0c    } },
-	{ "discard_nz",          { 1, 0x0d, 0 } },
-	{ "discard_z",           { 1, 0x0d, 0 } },
-	{ "div",                 { 3, 0x0e    } },
-	{ "dp2",                 { 3, 0x0f    } },
-	{ "dp3",                 { 3, 0x10    } },
-	{ "dp4",                 { 3, 0x11    } },
-	{ "else",                { 0, 0x12    } },
-	{ "emit",                { 0, 0x13    } },
-	// TODO: emit then cut      , 0x14
-	{ "endif",               { 0, 0x15    } },
-	{ "endloop",             { 0, 0x16    } },
-	{ "endswitch",           { 0, 0x17    } },
-	{ "eq",                  { 3, 0x18    } },
-	{ "exp",                 { 2, 0x19    } },
-	{ "frc",                 { 2, 0x1a    } },
-	{ "ftoi",                { 2, 0x1b    } },
-	{ "ftou",                { 2, 0x1c    } },
-	{ "ge",                  { 3, 0x1d    } },
-	{ "iadd",                { 3, 0x1e    } },
-	{ "if_nz",               { 1, 0x1f, 0 } },
-	{ "if_z",                { 1, 0x1f, 0 } },
-	{ "ieq",                 { 3, 0x20    } },
-	{ "ige",                 { 3, 0x21    } },
-	{ "ilt",                 { 3, 0x22    } },
-	{ "imad",                { 4, 0x23    } },
-	{ "imax",                { 3, 0x24    } },
-	{ "imin",                { 3, 0x25    } },
-	{ "imul",                { 4, 0x26, 2 } },
-	{ "ine",                 { 3, 0x27    } },
-	{ "ineg",                { 2, 0x28    } },
-	{ "ishl",                { 3, 0x29    } },
-	{ "ishr",                { 3, 0x2a    } },
-	{ "itof",                { 2, 0x2b    } },
-	// TODO: label              , 0x2c
-	{ "ld",                  { 3, 0x2d    } },
-	{ "ldms",                { 4, 0x2e    } },
-	{ "log",                 { 2, 0x2f    } },
-	{ "loop",                { 0, 0x30    } },
-	{ "lt",                  { 3, 0x31    } },
-	{ "mad",                 { 4, 0x32    } },
-	{ "min",                 { 3, 0x33    } },
-	{ "max",                 { 3, 0x34    } },
-	// TODO: Custom data        , 0x35
-	{ "mov",                 { 2, 0x36    } },
-	{ "movc",                { 4, 0x37    } },
-	{ "mul",                 { 3, 0x38    } },
-	{ "ne",                  { 3, 0x39    } },
-	// TODO: nop                , 0x3a
-	{ "not",                 { 2, 0x3b    } },
-	{ "or",                  { 3, 0x3c    } },
-	{ "resinfo",             { 3, 0x3d    } },
-	{ "ret",                 { 0, 0x3e    } },
-	{ "retc_nz",             { 1, 0x3f, 0 } },
-	{ "retc_z",              { 1, 0x3f, 0 } },
-	{ "round_ne",            { 2, 0x40    } },
-	{ "round_ni",            { 2, 0x41    } },
-	{ "round_pi",            { 2, 0x42    } },
-	{ "round_nz",            { 2, 0x43    } },
-	{ "round_z",             { 2, 0x43    } },
-	{ "rsq",                 { 2, 0x44    } },
-	{ "sample",              { 4, 0x45    } },
-	{ "sample_c",            { 5, 0x46    } },
-	{ "sample_c_lz",         { 5, 0x47    } },
-	{ "sample_l",            { 5, 0x48    } },
-	{ "sample_d",            { 6, 0x49    } },
-	{ "sampled",             { 6, 0x49    } }, // Hmmm, possible typo? -DSS
-	{ "sample_b",            { 5, 0x4a    } },
-	{ "sqrt",                { 2, 0x4b    } },
-	{ "switch",              { 1, 0x4c, 0 } },
-	{ "sincos",              { 3, 0x4d, 2 } },
-	{ "udiv",                { 4, 0x4e, 2 } },
-	{ "ult",                 { 3, 0x4f    } },
-	{ "uge",                 { 3, 0x50    } },
-	{ "umul",                { 4, 0x51, 2 } },
-	{ "umax",                { 3, 0x53    } },
-	{ "umin",                { 3, 0x54    } },
-	{ "ushr",                { 3, 0x55    } },
-	{ "utof",                { 2, 0x56    } },
-	{ "xor",                 { 3, 0x57    } },
-	// dcl_resource               0x58
-	// dcl_constant_buffer        0x59
-	// dcl_sampler                0x5a
-	// dcl_index_range            0x5b
-	// dcl_gs_output_primitive_topology 0x5c
-	// dcl_gs_input_primitive     0x5d
-	// dcl_max_output_vertex_count 0x5e
-	// dcl_input                  0x5f
-	// dcl_input_sgv              0x60
-	// dcl_input_siv              0x61
-	// dcl_input_ps               0x62
-	// dcl_input_ps_sgv           0x63
-	// dcl_input_ps_siv           0x64
-	// dcl_output                 0x65
-	// dcl_output_sgv             0x66
-	// dcl_output_siv             0x67
-	// dcl_temps                  0x68
-	// dcl_indexable_temp         0x69
-	// dcl_global_flags           0x6a
-	// RESERVED_10                0x6b
-	{ "lod",                 { 4, 0x6c    } },
-	{ "gather4",             { 4, 0x6d    } },
-	{ "samplepos",           { 3, 0x6e    } },
-	{ "sampleinfo",          { 2, 0x6f    } },
-	// RESERVED_10_1              0x70
-	// TODO: hs_decls // token marks beginning of HS sub-shader
-	// TODO: hs_control_point_phase // token marks beginning of HS sub-shader
-	// TODO: hs_fork_phase // token marks beginning of HS sub-shader
-	// TODO: hs_join_phase // token marks beginning of HS sub-shader
-	// TODO: emit_stream          0x75
-	// TODO: cut_stream           0x76
-	// TODO: emitthencut_stream   0x77
-	// TODO: interface_call       0x78
-	// TODO: bufinfo              0x79
-	{ "deriv_rtx_coarse",    { 2, 0x7a    } },
-	{ "deriv_rtx_fine",      { 2, 0x7b    } },
-	{ "deriv_rty_coarse",    { 2, 0x7c    } },
-	{ "deriv_rty_fine",      { 2, 0x7d    } },
-	// TODO: gather4_c            0x7e
-	// TODO: gather4_po           0x7f
-	// TODO: gather4_po_c         0x80
-	{ "rcp",                 { 2, 0x81    } },
-	{ "f32tof16",            { 2, 0x82    } },
-	{ "f16tof32",            { 2, 0x83    } },
-	// TODO: uaddc                0x84
-	// TODO: usubb                0x85
-	{ "countbits",           { 2, 0x86    } },
-	{ "firstbit_hi",         { 2, 0x87    } },
-	{ "firstbit_lo",         { 2, 0x88    } },
-	// TODO: firstbit_shi         0x89
-	{ "ubfe",                { 4, 0x8a    } },
-	{ "ibfe",                { 4, 0x8b    } },
-	{ "bfi",                 { 5, 0x8c    } },
-	{ "bfrev",               { 2, 0x8d    } },
-	{ "swapc",               { 5, 0x8e, 2 } },
-	// dcl_stream                 0x8f
-	// dcl_function_body          0x90
-	// dcl_function_table         0x91
-	// dcl_interface              0x92
-	// dcl_input_control_point_count 0x93
-	// dcl_output_control_point_count 0x94
-	// dcl_tess_domain            0x95
-	// dcl_tess_partitioning      0x96
-	// dcl_tess_output_primitive  0x97
-	// dcl_hs_max_tessfactor      0x98
-	// dcl_hs_fork_phase_instance_count 0x99
-	// dcl_hs_join_phase_instance_count 0x9a
-	{ "dcl_thread_group",    { 3, 0x9b    } },
-	// dcl_unordered_access_view_typed 0x9c
-	{ "dcl_uav_raw",         { 1, 0x9d, 0 } }, // dcl_unordered_access_view_raw?
-	{ "dcl_uav_structured",  { 2, 0x9e, 0 } }, // dcl_unordered_access_view_structured?
-	{ "dcl_tgsm_raw",        { 2, 0x9f, 0 } }, // dcl_thread_group_shared_memory_raw?
-	{ "dcl_tgsm_structured", { 3, 0xa0, 0 } }, // dcl_thread_group_shared_memory_structured?
-	// dcl_resource_raw           0xa1
-	// dcl_resource_structured    0xa2
-	// ld_uav_typed               0xa3
-	// store_uav_typed            0xa4
-	{ "ld_raw",              { 3, 0xa5    } },
-	{ "store_raw",           { 3, 0xa6    } },
-	{ "ld_structured",       { 4, 0xa7    } },
-	{ "store_structured",    { 4, 0xa8    } },
-	{ "atomic_and",          { 3, 0xa9, 0 } },
-	{ "atomic_or",           { 3, 0xaa, 0 } },
-	// TODO: atomic_xor           0xab
-	// TODO: atomic_cmp_store     0xac
-	{ "atomic_iadd",         { 3, 0xad, 0 } },
-	{ "atomic_imax",         { 3, 0xae, 0 } },
-	{ "atomic_imin",         { 3, 0xaf, 0 } },
-	{ "atomic_umax",         { 3, 0xb0, 0 } },
-	{ "atomic_umin",         { 3, 0xb1, 0 } },
-	{ "imm_atomic_alloc",    { 2, 0xb2    } },
-	{ "imm_atomic_consume",  { 2, 0xb3    } },
-	{ "imm_atomic_iadd",     { 4, 0xb4    } },
-	{ "imm_atomic_and",      { 4, 0xb5    } },
-	// TODO: imm_atomic_or        0xb6
-	// TODO: imm_atomic_xor       0xb7
-	{ "imm_atomic_exch",     { 4, 0xb8    } },
-	{ "imm_atomic_cmp_exch", { 5, 0xb9    } },
-	// TODO: imm_atomic_imax      0xba
-	// TODO: imm_atomic_imin      0xbb
-	// TODO: imm_atomic_umax      0xbc
-	// TODO: imm_atomic_umin      0xbd
-	// sync                       0xbe
+	{ "add",                       { 3, 0x00    } },
+	{ "and",                       { 3, 0x01    } },
+	{ "break",                     { 0, 0x02    } },
+	{ "breakc_nz",                 { 1, 0x03, 0 } },
+	{ "breakc_z",                  { 1, 0x03, 0 } },
+	// TODO: call                     , 0x04
+	// TODO: callc                    , 0x05
+	{ "case",                      { 1, 0x06    } },
+	{ "continue",                  { 0, 0x07    } },
+	{ "continuec_nz",              { 1, 0x08, 0 } },
+	{ "continuec_z",               { 1, 0x08, 0 } },
+	{ "cut",                       { 0, 0x09    } },
+	{ "default",                   { 0, 0x0a    } },
+	{ "deriv_rtx",                 { 2, 0x0b    } },
+	{ "deriv_rty",                 { 2, 0x0c    } },
+	{ "discard_nz",                { 1, 0x0d, 0 } },
+	{ "discard_z",                 { 1, 0x0d, 0 } },
+	{ "div",                       { 3, 0x0e    } },
+	{ "dp2",                       { 3, 0x0f    } },
+	{ "dp3",                       { 3, 0x10    } },
+	{ "dp4",                       { 3, 0x11    } },
+	{ "else",                      { 0, 0x12    } },
+	{ "emit",                      { 0, 0x13    } },
+	// TODO: emit then cut            , 0x14
+	{ "endif",                     { 0, 0x15    } },
+	{ "endloop",                   { 0, 0x16    } },
+	{ "endswitch",                 { 0, 0x17    } },
+	{ "eq",                        { 3, 0x18    } },
+	{ "exp",                       { 2, 0x19    } },
+	{ "frc",                       { 2, 0x1a    } },
+	{ "ftoi",                      { 2, 0x1b    } },
+	{ "ftou",                      { 2, 0x1c    } },
+	{ "ge",                        { 3, 0x1d    } },
+	{ "iadd",                      { 3, 0x1e    } },
+	{ "if_nz",                     { 1, 0x1f, 0 } },
+	{ "if_z",                      { 1, 0x1f, 0 } },
+	{ "ieq",                       { 3, 0x20    } },
+	{ "ige",                       { 3, 0x21    } },
+	{ "ilt",                       { 3, 0x22    } },
+	{ "imad",                      { 4, 0x23    } },
+	{ "imax",                      { 3, 0x24    } },
+	{ "imin",                      { 3, 0x25    } },
+	{ "imul",                      { 4, 0x26, 2 } },
+	{ "ine",                       { 3, 0x27    } },
+	{ "ineg",                      { 2, 0x28    } },
+	{ "ishl",                      { 3, 0x29    } },
+	{ "ishr",                      { 3, 0x2a    } },
+	{ "itof",                      { 2, 0x2b    } },
+	// TODO: label                    , 0x2c
+	{ "ld",                        { 3, 0x2d    } }, // See also load table
+	{ "ldms",                      { 4, 0x2e    } }, // See also load table
+	{ "log",                       { 2, 0x2f    } },
+	{ "loop",                      { 0, 0x30    } },
+	{ "lt",                        { 3, 0x31    } },
+	{ "mad",                       { 4, 0x32    } },
+	{ "min",                       { 3, 0x33    } },
+	{ "max",                       { 3, 0x34    } },
+	// TODO: Custom data              , 0x35
+	//       dcl_immediateConstantBuffer implemented elsewhere
+	//       Other types from binary decompiler:
+	//        - comment
+	//        - debuginfo
+	//        - opaque
+	//        - shader message
+	{ "mov",                       { 2, 0x36    } },
+	{ "movc",                      { 4, 0x37    } },
+	{ "mul",                       { 3, 0x38    } },
+	{ "ne",                        { 3, 0x39    } },
+	// TODO: nop                      , 0x3a
+	{ "not",                       { 2, 0x3b    } },
+	{ "or",                        { 3, 0x3c    } },
+	{ "resinfo",                   { 3, 0x3d    } }, // See also load table
+	{ "ret",                       { 0, 0x3e    } },
+	{ "retc_nz",                   { 1, 0x3f, 0 } },
+	{ "retc_z",                    { 1, 0x3f, 0 } },
+	{ "round_ne",                  { 2, 0x40    } },
+	{ "round_ni",                  { 2, 0x41    } },
+	{ "round_pi",                  { 2, 0x42    } },
+	{ "round_nz",                  { 2, 0x43    } },
+	{ "round_z",                   { 2, 0x43    } },
+	{ "rsq",                       { 2, 0x44    } },
+	{ "sample",                    { 4, 0x45    } }, // See also load table
+	{ "sample_c",                  { 5, 0x46    } }, // See also load table
+	{ "sample_c_lz",               { 5, 0x47    } }, // See also load table
+	{ "sample_l",                  { 5, 0x48    } }, // See also load table
+	{ "sample_d",                  { 6, 0x49    } }, // See also load table
+	{ "sampled",                   { 6, 0x49    } }, // Hmmm, possible typo? -DSS
+	{ "sample_b",                  { 5, 0x4a    } }, // See also load table
+	{ "sqrt",                      { 2, 0x4b    } },
+	{ "switch",                    { 1, 0x4c, 0 } },
+	{ "sincos",                    { 3, 0x4d, 2 } },
+	{ "udiv",                      { 4, 0x4e, 2 } },
+	{ "ult",                       { 3, 0x4f    } },
+	{ "uge",                       { 3, 0x50    } },
+	{ "umul",                      { 4, 0x51, 2 } },
+	{ "umax",                      { 3, 0x53    } },
+	{ "umin",                      { 3, 0x54    } },
+	{ "ushr",                      { 3, 0x55    } },
+	{ "utof",                      { 2, 0x56    } },
+	{ "xor",                       { 3, 0x57    } },
+	// dcl_resource                     0x58 // Implemented elsewhere
+	// dcl_constantbuffer               0x59 // implemented elsewhere
+	// dcl_sampler                      0x5a // Implemented elsewhere
+	// dcl_indexrange                   0x5b // Implemented elsewhere
+	// dcl_outputtopology               0x5c // Implemented elsewhere
+	// dcl_inputprimitive               0x5d // Implemented elsewhere
+	// dcl_maxout                       0x5e // Implemented elsewhere
+	// dcl_input                        0x5f // Implemented elsewhere
+	// dcl_input_sgv                    0x60 // Implemented elsewhere
+	// dcl_input_siv                    0x61 // Implemented elsewhere
+	// dcl_input_ps                     0x62 // Implemented elsewhere
+	// dcl_input_ps_sgv                 0x63 // Implemented elsewhere
+	// dcl_input_ps_siv                 0x64 // Implemented elsewhere
+	// dcl_output                       0x65 // Implemented elsewhere
+	// dcl_output_sgv                   0x66 // TODO
+	// dcl_output_siv                   0x67 // Implemented elsewhere
+	// dcl_temps                        0x68 // Implemented elsewhere
+	// dcl_indexableTemp                0x69 // Implemented elsewhere
+	// dcl_globalFlags                  0x6a // Implemented elsewhere
+	// RESERVED_10                      0x6b
+	{ "lod",                       { 4, 0x6c    } },
+	{ "gather4",                   { 4, 0x6d    } }, // See also load table
+	{ "samplepos",                 { 3, 0x6e    } },
+	{ "sampleinfo",                { 2, 0x6f    } },
+	// RESERVED_10_1                    0x70
+	// hs_decls                         0x71 // Implemented elsewhere
+	// hs_control_point_phase           0x72 // Implemented elsewhere
+	// hs_fork_phase                    0x73 // Implemented elsewhere
+	// hs_join_phase                    0x74 // Implemented elsewhere
+	// emit_stream                      0x75 // Implemented elsewhere
+	// cut_stream                       0x76 // Implemented elsewhere
+	// TODO: emitthencut_stream         0x77
+	// TODO: interface_call             0x78
+	// bufinfo                          0x79 // See also load table. TODO: Basic variant?
+	{ "deriv_rtx_coarse",          { 2, 0x7a    } },
+	{ "deriv_rtx_fine",            { 2, 0x7b    } },
+	{ "deriv_rty_coarse",          { 2, 0x7c    } },
+	{ "deriv_rty_fine",            { 2, 0x7d    } },
+	// gather4_c                        0x7e // See also load table. TODO: Basic variant?
+	// gather4_po                       0x7f // See also load table. TODO: Basic variant?
+	// gather4_po_c                     0x80 // See also load table. TODO: Basic variant?
+	{ "rcp",                       { 2, 0x81    } },
+	{ "f32tof16",                  { 2, 0x82    } },
+	{ "f16tof32",                  { 2, 0x83    } },
+	// TODO: uaddc                      0x84
+	// TODO: usubb                      0x85
+	{ "countbits",                 { 2, 0x86    } },
+	{ "firstbit_hi",               { 2, 0x87    } },
+	{ "firstbit_lo",               { 2, 0x88    } },
+	// TODO: firstbit_shi               0x89
+	{ "ubfe",                      { 4, 0x8a    } },
+	{ "ibfe",                      { 4, 0x8b    } },
+	{ "bfi",                       { 5, 0x8c    } },
+	{ "bfrev",                     { 2, 0x8d    } },
+	{ "swapc",                     { 5, 0x8e, 2 } },
+	// dcl_stream                       0x8f // Implemented elsewhere
+	// dcl_function_body                0x90 // TODO
+	// dcl_function_table               0x91 // TODO
+	// dcl_interface                    0x92 // TODO
+	// dcl_input_control_point_count    0x93 // Implemented elsewhere
+	// dcl_output_control_point_count   0x94 // Implemented elsewhere
+	// dcl_tessellator_domain           0x95 // Implemented elsewhere
+	// dcl_tessellator_partitioning     0x96 // Implemented elsewhere
+	// dcl_tessellator_output_primitive 0x97 // Implemented elsewhere
+	// dcl_hs_max_tessfactor            0x98 // Implemented elsewhere
+	// dcl_hs_fork_phase_instance_count 0x99 // Implemented elsewhere
+	// dcl_hs_join_phase_instance_count 0x9a // TODO
+	{ "dcl_thread_group",          { 3, 0x9b    } },
+	// dcl_uav_typed_*                  0x9c // Implemented elsewhere
+	{ "dcl_uav_raw",               { 1, 0x9d, 0 } },
+	{ "dcl_uav_structured",        { 2, 0x9e, 0 } },
+	{ "dcl_tgsm_raw",              { 2, 0x9f, 0 } },
+	{ "dcl_tgsm_structured",       { 3, 0xa0, 0 } },
+	// dcl_resource_raw                 0xa1 // Implemented elsewhere
+	// dcl_resource_structured          0xa2 // Implemented elsewhere
+	// ld_uav_typed                     0xa3 // See also load table. TODO: Basic variant?
+	// store_uav_typed                  0xa4 // Implemented elsewhere
+	{ "ld_raw",                    { 3, 0xa5    } }, // See also load table
+	{ "store_raw",                 { 3, 0xa6    } },
+	{ "ld_structured",             { 4, 0xa7    } }, // See also load table
+	{ "store_structured",          { 4, 0xa8    } },
+	{ "atomic_and",                { 3, 0xa9, 0 } },
+	{ "atomic_or",                 { 3, 0xaa, 0 } },
+	// TODO: atomic_xor                 0xab
+	// TODO: atomic_cmp_store           0xac
+	{ "atomic_iadd",               { 3, 0xad, 0 } },
+	{ "atomic_imax",               { 3, 0xae, 0 } },
+	{ "atomic_imin",               { 3, 0xaf, 0 } },
+	{ "atomic_umax",               { 3, 0xb0, 0 } },
+	{ "atomic_umin",               { 3, 0xb1, 0 } },
+	{ "imm_atomic_alloc",          { 2, 0xb2    } },
+	{ "imm_atomic_consume",        { 2, 0xb3    } },
+	{ "imm_atomic_iadd",           { 4, 0xb4    } },
+	{ "imm_atomic_and",            { 4, 0xb5    } },
+	// TODO: imm_atomic_or              0xb6
+	// TODO: imm_atomic_xor             0xb7
+	{ "imm_atomic_exch",           { 4, 0xb8    } },
+	{ "imm_atomic_cmp_exch",       { 5, 0xb9    } },
+	// TODO: imm_atomic_imax            0xba
+	// TODO: imm_atomic_imin            0xbb
+	// TODO: imm_atomic_umax            0xbc
+	// TODO: imm_atomic_umin            0xbd
+	// sync_*                           0xbe // Implemented elsewhere
 	// Added double precision instructons -DarkStarSword
-	{ "dadd",                { 3, 0xbf    } },
-	{ "dmax",                { 3, 0xc0    } },
-	{ "dmin",                { 3, 0xc1    } },
-	{ "dmul",                { 3, 0xc2    } },
-	{ "deq",                 { 3, 0xc3    } },
-	{ "dge",                 { 3, 0xc4    } },
-	{ "dlt",                 { 3, 0xc5    } },
-	{ "dne",                 { 3, 0xc6    } },
-	{ "dmov",                { 2, 0xc7    } }, // Unverified
-	{ "dmovc",               { 4, 0xc8    } },
-	{ "dtof",                { 2, 0xc9    } },
-	{ "ftod",                { 2, 0xca    } },
-	// TODO: eval_snapped         0xcb
-	{ "eval_sample_index",   { 3, 0xcc    } },
-	// TODO: eval_centroid        0xcd
-	// TODO: dcl_gs_instance_count 0xce
-	// TODO: abort                0xcf
-	// TODO: debug_break          0xd0
-	// RESERVED_11                0xd1
-	{ "ddiv",                { 3, 0xd2    } },
-	{ "dfma",                { 4, 0xd3    } },
-	{ "drcp",                { 2, 0xd4    } },
-	// TODO: msad                 0xd5
-	{ "dtoi",                { 2, 0xd6    } },
-	{ "dtou",                { 2, 0xd7    } },
-	{ "itod",                { 2, 0xd8    } },
-	{ "utod",                { 2, 0xd9    } },
+	{ "dadd",                      { 3, 0xbf    } },
+	{ "dmax",                      { 3, 0xc0    } },
+	{ "dmin",                      { 3, 0xc1    } },
+	{ "dmul",                      { 3, 0xc2    } },
+	{ "deq",                       { 3, 0xc3    } },
+	{ "dge",                       { 3, 0xc4    } },
+	{ "dlt",                       { 3, 0xc5    } },
+	{ "dne",                       { 3, 0xc6    } },
+	{ "dmov",                      { 2, 0xc7    } }, // Unverified
+	{ "dmovc",                     { 4, 0xc8    } },
+	{ "dtof",                      { 2, 0xc9    } },
+	{ "ftod",                      { 2, 0xca    } },
+	// TODO: eval_snapped               0xcb
+	{ "eval_sample_index",         { 3, 0xcc    } },
+	// TODO: eval_centroid              0xcd
+	// TODO: dcl_gs_instance_count      0xce
+	// TODO: abort                      0xcf
+	// TODO: debug_break                0xd0
+	// RESERVED_11                      0xd1
+	{ "ddiv",                      { 3, 0xd2    } },
+	{ "dfma",                      { 4, 0xd3    } },
+	{ "drcp",                      { 2, 0xd4    } },
+	// TODO: msad                       0xd5
+	{ "dtoi",                      { 2, 0xd6    } },
+	{ "dtou",                      { 2, 0xd7    } },
+	{ "itod",                      { 2, 0xd8    } },
+	{ "utod",                      { 2, 0xd9    } },
 };
 
 void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
@@ -1259,19 +1308,19 @@ vector<DWORD> assembleIns(string s) {
 	if (bSat) o = o.substr(0, o.find("_sat"));
 
 	if (o == "hs_decls") {
-		ins->opcode = 113;
+		ins->opcode = 0x71;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_fork_phase") {
-		ins->opcode = 115;
+		ins->opcode = 0x73;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_join_phase") {
-		ins->opcode = 116;
+		ins->opcode = 0x74;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_control_point_phase") {
-		ins->opcode = 114;
+		ins->opcode = 0x72;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "ps_") {
@@ -1305,19 +1354,19 @@ vector<DWORD> assembleIns(string s) {
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (w[0] == "sync_g_t") {
-		ins->opcode = 190;
+		ins->opcode = 0xbe;
 		ins->_11_23 = 3;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (w[0] == "sync_uglobal") {
-		ins->opcode = 190;
+		ins->opcode = 0xbe;
 		ins->_11_23 = 8;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (w[0] == "store_uav_typed") {
-		ins->opcode = 134;
+		ins->opcode = 0x86;
 		if (w[1][0] == 'u') {
-			ins->opcode = 164;
+			ins->opcode = 0xa4;
 		}
 		int numOps = 3;
 		vector<vector<DWORD>> Os;
@@ -1425,7 +1474,7 @@ vector<DWORD> assembleIns(string s) {
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
 	} else if (o == "dcl_input") {
 		vector<DWORD> os = assembleOp(w[1], 1);
-		ins->opcode = 95;
+		ins->opcode = 0x5f;
 		ins->length = 1 + os.size();
 		// Should sort special value for text constants.
 		if ((os[0] & 0xFF0) == 0)
@@ -1434,19 +1483,19 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_output") {
 		vector<DWORD> os = assembleOp(w[1], 1);
-		ins->opcode = 101;
+		ins->opcode = 0x65;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_raw") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 161;
+		ins->opcode = 0xa1;
 		ins->length = 3;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_buffer") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 1;
 		ins->length = 4;
 		v.push_back(op);
@@ -1454,7 +1503,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1d") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 2;
 		ins->length = 4;
 		v.push_back(op);
@@ -1462,7 +1511,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1darray") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 7;
 		ins->length = 4;
 		v.push_back(op);
@@ -1470,7 +1519,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture1d") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 156;
+		ins->opcode = 0x9c;
 		ins->_11_23 = 2;
 		ins->length = 4;
 		v.push_back(op);
@@ -1478,7 +1527,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2d") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 3;
 		ins->length = 4;
 		v.push_back(op);
@@ -1486,7 +1535,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_buffer") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 156;
+		ins->opcode = 0x9c;
 		ins->_11_23 = 1;
 		ins->length = 4;
 		v.push_back(op);
@@ -1494,7 +1543,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture3d") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 5;
 		ins->length = 4;
 		v.push_back(op);
@@ -1502,7 +1551,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture3d") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 156;
+		ins->opcode = 0x9c;
 		ins->_11_23 = 5;
 		ins->length = 4;
 		v.push_back(op);
@@ -1510,7 +1559,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecube") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 6;
 		ins->length = 4;
 		v.push_back(op);
@@ -1518,7 +1567,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecubearray") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 10;
 		ins->length = 4;
 		v.push_back(op);
@@ -1526,7 +1575,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2darray") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		ins->_11_23 = 8;
 		ins->length = 4;
 		v.push_back(op);
@@ -1534,7 +1583,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2d") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 156;
+		ins->opcode = 0x9c;
 		ins->_11_23 = 3;
 		ins->length = 4;
 		v.push_back(op);
@@ -1542,7 +1591,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2darray") {
 		vector<DWORD> os = assembleOp(w[2]);
-		ins->opcode = 156;
+		ins->opcode = 0x9c;
 		ins->_11_23 = 8;
 		ins->length = 4;
 		v.push_back(op);
@@ -1550,7 +1599,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2dms") {
 		vector<DWORD> os = assembleOp(w[3]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		// Changed this to calculate the value rather than hard coding
 		// a small handful of values that we've seen. -DarkStarSword
 		sscanf_s(w[1].c_str(), "(%d)", &msaa_samples);
@@ -1561,7 +1610,7 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_resource_texture2dmsarray") {
 		vector<DWORD> os = assembleOp(w[3]);
-		ins->opcode = 88;
+		ins->opcode = 0x58;
 		// Changed this to calculate the value rather than hard coding
 		// a small handful of values that we've seen. -DarkStarSword
 		sscanf_s(w[1].c_str(), "(%d)", &msaa_samples);
@@ -1572,19 +1621,19 @@ vector<DWORD> assembleIns(string s) {
 		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_indexrange") {
 		vector<DWORD> os = assembleOp(w[1], true);
-		ins->opcode = 91;
+		ins->opcode = 0x5b;
 		ins->length = 2 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 		v.push_back(atoi(w[2].c_str()));
 	} else if (o == "dcl_temps") {
-		ins->opcode = 104;
+		ins->opcode = 0x68;
 		ins->length = 2;
 		v.push_back(op);
 		v.push_back(atoi(w[1].c_str()));
 	} else if (o == "dcl_resource_structured") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 162;
+		ins->opcode = 0xa2;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1592,7 +1641,7 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_sampler") {
 		vector<DWORD> os = assembleOp(w[1]);
 		os[0] = 0x106000;
-		ins->opcode = 90;
+		ins->opcode = 0x5a;
 		if (w.size() > 2) {
 			if (w[2] == "mode_default") {
 				ins->_11_23 = 0;
@@ -1604,7 +1653,7 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_globalFlags") {
-		ins->opcode = 106;
+		ins->opcode = 0x6a;
 		ins->length = 1;
 		ins->_11_23 = 0;
 		for (int i = 1; i < w.size(); i += 2) {
@@ -1626,7 +1675,7 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 89;
+		ins->opcode = 0x59;
 		if (w.size() > 2) {
 			if (w[2] == "dynamicIndexed")
 				ins->_11_23 = 1;
@@ -1638,7 +1687,7 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_output_siv") {
 		vector<DWORD> os = assembleOp(w[1], true);
-		ins->opcode = 103;
+		ins->opcode = 0x67;
 		if (w[2] == "position")
 			os.push_back(1);
 		else if (w[2] == "clip_distance")
@@ -1678,7 +1727,7 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_siv") {
 		vector<DWORD> os = assembleOp(w[1], true);
-		ins->opcode = 97;
+		ins->opcode = 0x61;
 		if (w[2] == "position")
 			os.push_back(1);
 		else if (w[2] == "clip_distance")
@@ -1694,7 +1743,7 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_sgv") {
 		vector<DWORD> os = assembleOp(w[1], true);
-		ins->opcode = 96;
+		ins->opcode = 0x60;
 		if (w[2] == "vertex_id")
 			os.push_back(6);
 		if (w[2] == "instance_id")
@@ -1704,7 +1753,7 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps") {
 		vector<DWORD> os;
-		ins->opcode = 98;
+		ins->opcode = 0x62;
 		if (w[1] == "linear") {
 			if (w[2] == "noperspective") {
 				ins->_11_23 = 4;
@@ -1729,7 +1778,7 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps_sgv") {
 		vector<DWORD> os = assembleOp(w[1], true);
-		ins->opcode = 99;
+		ins->opcode = 0x63;
 		ins->_11_23 = 1;
 		if (w.size() > 2) {
 			if (w[2] == "sampleIndex") {
@@ -1745,7 +1794,7 @@ vector<DWORD> assembleIns(string s) {
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps_siv") {
 		vector<DWORD> os;
-		ins->opcode = 100;
+		ins->opcode = 0x64;
 		if (w[1] == "linear") {
 			if (w[2] == "noperspective") {
 				if (w[3] == "sample") {
@@ -1785,7 +1834,7 @@ vector<DWORD> assembleIns(string s) {
 		string s2 = s1.substr(0, s1.find('['));
 		string s3 = s1.substr(s1.find('[') + 1);
 		s3.erase(s3.end() - 1, s3.end());
-		ins->opcode = 105;
+		ins->opcode = 0x69;
 		ins->length = 4;
 		v.push_back(op);
 		v.push_back(atoi(s2.c_str()));
@@ -1793,7 +1842,7 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(atoi(w[2].c_str()));
 	} else if (o == "dcl_immediateConstantBuffer") {
 		vector<DWORD> os;
-		ins->opcode = 53;
+		ins->opcode = 0x35;
 		ins->_11_23 = 3;
 		ins->length = 0;
 		w.size();
@@ -1819,7 +1868,7 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(length);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_tessellator_partitioning") {
-		ins->opcode = 150;
+		ins->opcode = 0x96;
 		ins->length = 1;
 		if (w[1] == "partitioning_integer")
 			ins->_11_23 = 1;
@@ -1833,7 +1882,7 @@ vector<DWORD> assembleIns(string s) {
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff471446(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_tessellator_output_primitive") {
-		ins->opcode = 151;
+		ins->opcode = 0x97;
 		ins->length = 1;
 		if (w[1] == "output_point")
 			ins->_11_23 = 1;
@@ -1847,7 +1896,7 @@ vector<DWORD> assembleIns(string s) {
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff471445(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_tessellator_domain") {
-		ins->opcode = 149;
+		ins->opcode = 0x95;
 		ins->length = 1;
 		if (w[1] == "domain_isoline")
 			ins->_11_23 = 1;
@@ -1858,24 +1907,24 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 	} else if (o == "dcl_stream") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 143;
+		ins->opcode = 0x8f;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "emit_stream") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 117;
+		ins->opcode = 0x75;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "cut_stream") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 118;
+		ins->opcode = 0x76;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_outputtopology") {
-		ins->opcode = 92;
+		ins->opcode = 0x5c;
 		ins->length = 1;
 		if (w[1] == "pointlist")
 			ins->_11_23 = 1;
@@ -1888,24 +1937,24 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 	} else if (o == "dcl_output_control_point_count") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 148;
+		ins->opcode = 0x94;
 		ins->_11_23 = os[0];
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "dcl_input_control_point_count") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 147;
+		ins->opcode = 0x93;
 		ins->_11_23 = os[0];
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "dcl_maxout") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 94;
+		ins->opcode = 0x5e;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_inputprimitive") {
-		ins->opcode = 93;
+		ins->opcode = 0x5d;
 		ins->length = 1;
 		if (w[1] == "point")
 			ins->_11_23 = 1;
@@ -1922,13 +1971,13 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 	} else if (o == "dcl_hs_max_tessfactor") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 152;
+		ins->opcode = 0x98;
 		ins->length = 1 + os.size() - 1;
 		v.push_back(op);
 		v.insert(v.end(), os.begin() + 1, os.end());
 	} else if (o == "dcl_hs_fork_phase_instance_count") {
 		vector<DWORD> os = assembleOp(w[1]);
-		ins->opcode = 153;
+		ins->opcode = 0x99;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1936,7 +1985,7 @@ vector<DWORD> assembleIns(string s) {
 
 	/*
 	if (o == "add") {
-		ins->opcode = 0;
+		ins->opcode = 0x00;
 		auto o1 = assembleOp(w[1], 1);
 		auto o2 = assembleOp(w[2]);
 		auto o3 = assembleOp(w[3]);
