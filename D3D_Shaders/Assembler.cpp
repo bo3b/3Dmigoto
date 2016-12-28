@@ -1108,6 +1108,8 @@ void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
 }
 
 vector<DWORD> assembleIns(string s) {
+	unsigned msaa_samples = 0;
+
 	if (hackMap.find(s) != hackMap.end()) {
 		auto v = hackMap[s];
 		return v;
@@ -1445,20 +1447,10 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_resource_texture2dms") {
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 88;
-		if (w[1] == "(0)")
-			ins->_11_23 = 4;
-		if (w[1] == "(2)")
-			ins->_11_23 = 68;
-		if (w[1] == "(4)")
-			ins->_11_23 = 132;
-		if (w[1] == "(6)")
-			ins->_11_23 = 196;
-		if (w[1] == "(8)")
-			ins->_11_23 = 260;
-		if (w[1] == "(16)")
-			ins->_11_23 = 516;
-		if (w[1] == "(32)")
-			ins->_11_23 = 1028;
+		// Changed this to calculate the value rather than hard coding
+		// a small handful of values that we've seen. -DarkStarSword
+		sscanf_s(w[1].c_str(), "(%d)", &msaa_samples);
+		ins->_11_23 = (msaa_samples << 5) | 4;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1466,12 +1458,10 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_resource_texture2dmsarray") {
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 88;
-		if (w[1] == "(2)")
-			ins->_11_23 = 73;
-		if (w[1] == "(4)")
-			ins->_11_23 = 137;
-		if (w[1] == "(8)")
-			ins->_11_23 = 265;
+		// Changed this to calculate the value rather than hard coding
+		// a small handful of values that we've seen. -DarkStarSword
+		sscanf_s(w[1].c_str(), "(%d)", &msaa_samples);
+		ins->_11_23 = (msaa_samples << 5) | 9;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
