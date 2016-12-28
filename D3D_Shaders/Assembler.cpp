@@ -1086,6 +1086,27 @@ unordered_map<string, vector<int>> insMap = {
 	{ "samplepos", { 3, 110 } },
 };
 
+void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
+	// The resource declarations all use the same format strings and
+	// encoding, so do this once, consistently, and handle all confirmed
+	// values. -DarkStarSword
+
+	if (*type == "(float,float,float,float)")
+		v->push_back(0x5555);
+	if (*type == "(uint,uint,uint,uint)")
+		v->push_back(0x4444);
+	if (*type == "(sint,sint,sint,sint)")
+		v->push_back(0x3333);
+	if (*type == "(unorm,unorm,unorm,unorm)")
+		v->push_back(0x1111);
+	// CHECKME:
+	// if (*type == "(snorm,snorm,snorm,snorm)")
+	// 	v->push_back(0x2222);
+	// TODO: Any other types, mixed types, etc.
+	// FIXME: Fail gracefully if we don't recognise the type, since doing
+	// nothing here will cause a hang!
+}
+
 vector<DWORD> assembleIns(string s) {
 	if (hackMap.find(s) != hackMap.end()) {
 		auto v = hackMap[s];
@@ -1323,12 +1344,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
-		if (w[1] == "(sint,sint,sint,sint)")
-			v.push_back(0x3333);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1336,10 +1352,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1darray") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1347,10 +1360,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture1d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 156;
@@ -1358,10 +1368,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1369,12 +1376,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
-		if (w[1] == "(sint,sint,sint,sint)")
-			v.push_back(0x3333);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_buffer") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 156;
@@ -1382,10 +1384,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture3d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1393,10 +1392,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture3d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 156;
@@ -1404,10 +1400,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecube") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1415,10 +1408,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecubearray") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1426,10 +1416,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2darray") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 88;
@@ -1437,10 +1424,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2d") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 156;
@@ -1448,10 +1432,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2darray") {
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 156;
@@ -1459,10 +1440,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[1] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[1] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2dms") {
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 88;
@@ -1483,10 +1461,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[2] == "(float,float,float,float)")
-			v.push_back(0x5555);
-		if (w[2] == "(uint,uint,uint,uint)")
-			v.push_back(0x4444);
+		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_resource_texture2dmsarray") {
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 88;
@@ -1499,8 +1474,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
-		if (w[2] == "(unorm,unorm,unorm,unorm)")
-			v.push_back(0x1111);
+		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_indexrange") {
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 91;
