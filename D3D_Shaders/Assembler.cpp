@@ -1248,7 +1248,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "ddiv",                      { 3, 0xd2    } }, // Added and verified -DarkStarSword
 	{ "dfma",                      { 4, 0xd3    } }, // Added and verified -DarkStarSword
 	{ "drcp",                      { 2, 0xd4    } }, // Added and verified -DarkStarSword
-	// TODO: msad                       0xd5
+	{ "msad",                      { 4, 0xd5    } }, // Added and verified -DarkStarSword
 	{ "dtoi",                      { 2, 0xd6    } }, // Added and verified -DarkStarSword
 	{ "dtou",                      { 2, 0xd7    } }, // Added and verified -DarkStarSword
 	{ "itod",                      { 2, 0xd8    } }, // Added and verified -DarkStarSword
@@ -1773,7 +1773,8 @@ vector<DWORD> assembleIns(string s) {
 		for (int i = 1; i < w.size(); i += 2) {
 			// Changed this to use a loop rather than parsing a
 			// fixed number of arguments. Added double precision,
-			// minimum precision and skipOptimization flags.
+			// minimum precision, skipOptimization and 11.1 shader
+			// extension flags.
 			//   -DarkStarSword
 			string s = w[i];
 			if (s == "refactoringAllowed")
@@ -1790,7 +1791,8 @@ vector<DWORD> assembleIns(string s) {
 				ins->_11_23 |= 0x20;
 			if (s == "enable11_1DoubleExtensions")
 				ins->_11_23 |= 0x40;
-			// TODO: enable shader extensions flag 0x80
+			if (s == "enable11_1ShaderExtensions")
+				ins->_11_23 |= 0x80;
 		}
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {

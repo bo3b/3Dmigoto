@@ -101,6 +101,9 @@ void main()
 	// firstbit_shi
 	tally += firstbithigh(asint(tally));
 
+	// msad
+	tally += msad4(tally, uint2(1, 2), uint4(3, 4, 5, 6));
+
 
 
 
