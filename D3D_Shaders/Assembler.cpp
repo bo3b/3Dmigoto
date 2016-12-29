@@ -1255,7 +1255,8 @@ unordered_map<string, vector<int>> insMap = {
 	{ "utod",                      { 2, 0xd9    } }, // Added and verified -DarkStarSword
 };
 
-void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
+void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
+{
 	// The resource declarations all use the same format strings and
 	// encoding, so do this once, consistently, and handle all confirmed
 	// values. Use resource_types.hlsl to check the values -DarkStarSword
@@ -1276,6 +1277,63 @@ void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
 		v->push_back(0x8787);
 	// FIXME: Fail gracefully if we don't recognise the type, since doing
 	// nothing here will cause a hang!
+}
+
+void assembleSystemValue(string *sv, vector<DWORD> *os)
+{
+	// All possible system values used in any of the dcl_*_s?v
+	// declarations (s?v = system value). Not all system values make sense
+	// for all types of shaders, and some are only inputs or only outputs,
+	// but it's not our responsibility to validate that - we just want to
+	// handle all possible cases. -DarkStarSword
+
+	if (*sv == "position")
+		os->push_back(1);
+	else if (*sv == "clip_distance")
+		os->push_back(2);
+	else if (*sv == "cull_distance")
+		os->push_back(3);
+	else if (*sv == "rendertarget_array_index")
+		os->push_back(4);
+	else if (*sv == "viewport_array_index")
+		os->push_back(5);
+	else if (*sv == "vertex_id")
+		os->push_back(6);
+	else if (*sv == "primitive_id")
+		os->push_back(7);
+	else if (*sv == "instance_id")
+		os->push_back(8);
+	else if (*sv == "is_front_face")
+		os->push_back(9);
+	else if (*sv == "sampleIndex")
+		os->push_back(10);
+	else if (*sv == "finalQuadUeq0EdgeTessFactor")
+		os->push_back(11);
+	else if (*sv == "finalQuadVeq0EdgeTessFactor")
+		os->push_back(12);
+	else if (*sv == "finalQuadUeq1EdgeTessFactor")
+		os->push_back(13);
+	else if (*sv == "finalQuadVeq1EdgeTessFactor")
+		os->push_back(14);
+	else if (*sv == "finalQuadUInsideTessFactor")
+		os->push_back(15);
+	else if (*sv == "finalQuadVInsideTessFactor")
+		os->push_back(16);
+	else if (*sv == "finalTriUeq0EdgeTessFactor")
+		os->push_back(17);
+	else if (*sv == "finalTriVeq0EdgeTessFactor")
+		os->push_back(18);
+	else if (*sv == "finalTriWeq0EdgeTessFactor")
+		os->push_back(19);
+	else if (*sv == "finalTriInsideTessFactor")
+		os->push_back(20);
+	else if (*sv == "finalLineDetailTessFactor")
+		os->push_back(21);
+	else if (*sv == "finalLineDensityTessFactor")
+		os->push_back(22);
+
+	// FIXME: Fail gracefully if we don't recognise the system value,
+	// otherwise we might generate a corrupt shader and crash DirectX.
 }
 
 vector<DWORD> assembleIns(string s) {
@@ -1726,69 +1784,21 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_output_siv") {
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x67;
-		if (w[2] == "position")
-			os.push_back(1);
-		else if (w[2] == "clip_distance")
-			os.push_back(2);
-		else if (w[2] == "cull_distance")
-			os.push_back(3);
-		else if (w[2] == "rendertarget_array_index")
-			os.push_back(4);
-		else if (w[2] == "viewport_array_index")
-			os.push_back(5);
-		else if (w[2] == "finalQuadUeq0EdgeTessFactor")
-			os.push_back(11);
-		else if (w[2] == "finalQuadVeq0EdgeTessFactor")
-			os.push_back(12);
-		else if (w[2] == "finalQuadUeq1EdgeTessFactor")
-			os.push_back(13);
-		else if (w[2] == "finalQuadVeq1EdgeTessFactor")
-			os.push_back(14);
-		else if (w[2] == "finalQuadUInsideTessFactor")
-			os.push_back(15);
-		else if (w[2] == "finalQuadVInsideTessFactor")
-			os.push_back(16);
-		else if (w[2] == "finalTriUeq0EdgeTessFactor")
-			os.push_back(17);
-		else if (w[2] == "finalTriVeq0EdgeTessFactor")
-			os.push_back(18);
-		else if (w[2] == "finalTriWeq0EdgeTessFactor")
-			os.push_back(19);
-		else if (w[2] == "finalTriInsideTessFactor")
-			os.push_back(20);
-		else if (w[2] == "finalLineDetailTessFactor")
-			os.push_back(21);
-		else if (w[2] == "finalLineDensityTessFactor")
-			os.push_back(22);
+		assembleSystemValue(&w[2], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_siv") {
-		// FIXME: This should use the same system value parsing as
-		// dcl_output_siv (and other _siv declarations. siv = sytem
-		// value) -DarkStarSword
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x61;
-		if (w[2] == "position")
-			os.push_back(1);
-		else if (w[2] == "clip_distance")
-			os.push_back(2);
-		else if (w[2] == "cull_distance")
-			os.push_back(3);
-		else if (w[2] == "finalLineDetailTessFactor")
-			os.push_back(0x15);
-		else if (w[2] == "finalLineDensityTessFactor")
-			os.push_back(0x16);
+		assembleSystemValue(&w[2], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_sgv") {
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x60;
-		if (w[2] == "vertex_id")
-			os.push_back(6);
-		if (w[2] == "instance_id")
-			os.push_back(8);
+		assembleSystemValue(&w[2], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1821,22 +1831,12 @@ vector<DWORD> assembleIns(string s) {
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x63;
 		ins->_11_23 = 1;
-		if (w.size() > 2) {
-			if (w[2] == "sampleIndex") {
-				os.push_back(0xA);
-			} else if (w[2] == "is_front_face") {
-				os.push_back(0x9);
-			} else if (w[2] == "primitive_id") {
-				os.push_back(0x7);
-			}
-		}
+		if (w.size() > 2)
+			assembleSystemValue(&w[2], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps_siv") {
-		// FIXME: This should use the same system value parsing as
-		// dcl_output_siv (and other _siv declarations. siv = sytem
-		// value). Added missing viewport_array_index -DarkStarSword
 		vector<DWORD> os;
 		ins->opcode = 0x64;
 		if (w[1] == "linear") {
@@ -1846,20 +1846,27 @@ vector<DWORD> assembleIns(string s) {
 					// dcl_input_ps_siv linear noperspective sample v0.xy, position
 					ins->_11_23 = 7;
 					os = assembleOp(w[4], true);
-					if (w[5] == "position")
+					if (w[5] == "position") {
+						// This is a system value, it should be using common code -DSS
 						os.push_back(1);
+					}
 				} else if (w[3] == "centroid") {
 					ins->_11_23 = 5;
 					os = assembleOp(w[4], true);
-					if (w[5] == "position")
+					if (w[5] == "position") {
+						// This is a system value, it should be using common code -DSS
 						os.push_back(1);
+					}
 				} else {
 					ins->_11_23 = 4;
 					os = assembleOp(w[3], true);
-					if (w[4] == "position")
+					if (w[4] == "position") {
+						// This is a system value, it should be using common code -DSS
 						os.push_back(1);
+					}
 				}
 			} else if (w[3] == "clip_distance") {
+				// This is a system value, it should be using common code -DSS
 				os = assembleOp(w[2], true);
 				ins->_11_23 = 2;
 				os.push_back(2);
@@ -1867,10 +1874,13 @@ vector<DWORD> assembleIns(string s) {
 		} else if (w[1] == "constant") {
 			ins->_11_23 = 1;
 			os = assembleOp(w[2], true);
-			if (w[3] == "rendertarget_array_index")
-				os.push_back(4);
-			if (w[3] == "viewport_array_index")
-				os.push_back(5);
+			// Switched this case to the common system value parsing (at least fixes missing
+			// viewport_array_index). Should restructure this whole routine since the above
+			// method of expecting specific values is fragile, and ignores the fact that the
+			// final keyword is a system value (by virtue of this being a system value
+			// declaration instruction). Probably should loop over the other keywords.
+			//  -DarkStarSword
+			assembleSystemValue(&w[3], &os);
 		}
 		ins->length = 1 + os.size();
 		v.push_back(op);

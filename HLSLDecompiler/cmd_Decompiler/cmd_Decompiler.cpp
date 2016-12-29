@@ -260,7 +260,9 @@ static struct svt system_value_abbreviations[] = {
 
 	// Tesselation domain/hull shaders. XXX: These numbers don't match up
 	// with BinaryDecompiler, but I got them myself, so I am 100% certain
-	// they are right, but perhaps I am missing something:
+	// they are right, but perhaps I am missing something (Update - now
+	// pretty sure the values in BinaryDecompiler are those used in the
+	// bytecode, whereas these values are used in the signatures):
 	{ 11, "QUADEDGE",  }, // SV_TessFactor with [domain("quad")]
 	{ 12, "QUADINT",   }, // SV_InsideTessFactor with [domain("quad")]
 	{ 13, "TRIEDGE",   }, // SV_TessFactor with [domain("tri")]
