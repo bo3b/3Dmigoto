@@ -1091,7 +1091,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "movc",                      { 4, 0x37    } },
 	{ "mul",                       { 3, 0x38    } },
 	{ "ne",                        { 3, 0x39    } },
-	// TODO: nop                      , 0x3a
+	{ "nop",                       { 0, 0x3a    } }, // Added and verified -DarkStarSword
 	{ "not",                       { 2, 0x3b    } },
 	{ "or",                        { 3, 0x3c    } },
 	{ "resinfo",                   { 3, 0x3d    } }, // See also load table
