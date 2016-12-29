@@ -1764,6 +1764,9 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_siv") {
+		// FIXME: This should use the same system value parsing as
+		// dcl_output_siv (and other _siv declarations. siv = sytem
+		// value) -DarkStarSword
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x61;
 		if (w[2] == "position")
@@ -1831,6 +1834,9 @@ vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps_siv") {
+		// FIXME: This should use the same system value parsing as
+		// dcl_output_siv (and other _siv declarations. siv = sytem
+		// value). Added missing viewport_array_index -DarkStarSword
 		vector<DWORD> os;
 		ins->opcode = 0x64;
 		if (w[1] == "linear") {
@@ -1863,6 +1869,8 @@ vector<DWORD> assembleIns(string s) {
 			os = assembleOp(w[2], true);
 			if (w[3] == "rendertarget_array_index")
 				os.push_back(4);
+			if (w[3] == "viewport_array_index")
+				os.push_back(5);
 		}
 		ins->length = 1 + os.size();
 		v.push_back(op);
