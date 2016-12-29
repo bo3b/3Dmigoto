@@ -2,7 +2,15 @@
 #define TEST_DEPTH 0
 
 void main(
-	float4 ipos : SV_Position,
+	nointerpolation float texcoord0 : TEXCOORD0,
+	linear float texcoord1 : TEXCOORD1,
+	linear centroid float texcoord2 : TEXCOORD2,
+	linear noperspective float texcoord3 : TEXCOORD3,
+	linear noperspective centroid float texcoord4 : TEXCOORD4,
+	linear sample float texcoord5 : TEXCOORD5,
+	linear noperspective sample float texcoord6 : TEXCOORD6,
+
+	linear sample float4 ipos : SV_Position,
 	out float4 target0 : SV_Target0,
 	uint coverage_in : SV_Coverage,
 	out uint coverage_out : SV_Coverage,
@@ -22,7 +30,16 @@ void main(
 {
 	target0 = 1;
 
+	target0 += texcoord0;
+	target0 += texcoord1;
+	target0 += texcoord2;
+	target0 += texcoord3;
+	target0 += texcoord4;
+	target0 += texcoord5;
+	target0 += texcoord6;
+
 	coverage_out = 0;
+	target0 += ipos;
 	target0 += coverage_in;
 	target0 += clip;
 	target0 += vi; // exposes an assembler bug
