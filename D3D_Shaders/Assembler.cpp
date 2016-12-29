@@ -1206,8 +1206,8 @@ unordered_map<string, vector<int>> insMap = {
 	{ "store_structured",          { 4, 0xa8    } },
 	{ "atomic_and",                { 3, 0xa9, 0 } },
 	{ "atomic_or",                 { 3, 0xaa, 0 } },
-	// TODO: atomic_xor                 0xab
-	// TODO: atomic_cmp_store           0xac
+	{ "atomic_xor",                { 3, 0xab, 0 } }, // Added and verified -DarkStarSword
+	{ "atomic_cmp_store",          { 4, 0xac, 0 } }, // Added and verified -DarkStarSword
 	{ "atomic_iadd",               { 3, 0xad, 0 } },
 	{ "atomic_imax",               { 3, 0xae, 0 } },
 	{ "atomic_imin",               { 3, 0xaf, 0 } },
@@ -1217,28 +1217,27 @@ unordered_map<string, vector<int>> insMap = {
 	{ "imm_atomic_consume",        { 2, 0xb3    } },
 	{ "imm_atomic_iadd",           { 4, 0xb4    } },
 	{ "imm_atomic_and",            { 4, 0xb5    } },
-	// TODO: imm_atomic_or              0xb6
-	// TODO: imm_atomic_xor             0xb7
+	{ "imm_atomic_or",             { 4, 0xb6    } }, // Added and verified -DarkStarSword
+	{ "imm_atomic_xor",            { 4, 0xb7    } }, // Added and verified -DarkStarSword
 	{ "imm_atomic_exch",           { 4, 0xb8    } },
 	{ "imm_atomic_cmp_exch",       { 5, 0xb9    } },
-	// TODO: imm_atomic_imax            0xba
-	// TODO: imm_atomic_imin            0xbb
-	// TODO: imm_atomic_umax            0xbc
-	// TODO: imm_atomic_umin            0xbd
+	{ "imm_atomic_imax",           { 4, 0xba    } }, // Added and verified -DarkStarSword
+	{ "imm_atomic_imin",           { 4, 0xbb    } }, // Added and verified -DarkStarSword
+	{ "imm_atomic_umax",           { 4, 0xbc    } }, // Added and verified -DarkStarSword
+	{ "imm_atomic_umin",           { 4, 0xbd    } }, // Added and verified -DarkStarSword
 	// sync_*                           0xbe // Implemented elsewhere
-	// Added double precision instructons -DarkStarSword
-	{ "dadd",                      { 3, 0xbf    } },
-	{ "dmax",                      { 3, 0xc0    } },
-	{ "dmin",                      { 3, 0xc1    } },
-	{ "dmul",                      { 3, 0xc2    } },
-	{ "deq",                       { 3, 0xc3    } },
-	{ "dge",                       { 3, 0xc4    } },
-	{ "dlt",                       { 3, 0xc5    } },
-	{ "dne",                       { 3, 0xc6    } },
+	{ "dadd",                      { 3, 0xbf    } }, // Added and verified -DarkStarSword
+	{ "dmax",                      { 3, 0xc0    } }, // Added and verified -DarkStarSword
+	{ "dmin",                      { 3, 0xc1    } }, // Added and verified -DarkStarSword
+	{ "dmul",                      { 3, 0xc2    } }, // Added and verified -DarkStarSword
+	{ "deq",                       { 3, 0xc3    } }, // Added and verified -DarkStarSword
+	{ "dge",                       { 3, 0xc4    } }, // Added and verified -DarkStarSword
+	{ "dlt",                       { 3, 0xc5    } }, // Added and verified -DarkStarSword
+	{ "dne",                       { 3, 0xc6    } }, // Added and verified -DarkStarSword
 	{ "dmov",                      { 2, 0xc7    } }, // Unverified
-	{ "dmovc",                     { 4, 0xc8    } },
-	{ "dtof",                      { 2, 0xc9    } },
-	{ "ftod",                      { 2, 0xca    } },
+	{ "dmovc",                     { 4, 0xc8    } }, // Added and verified -DarkStarSword
+	{ "dtof",                      { 2, 0xc9    } }, // Added and verified -DarkStarSword
+	{ "ftod",                      { 2, 0xca    } }, // Added and verified -DarkStarSword
 	// TODO: eval_snapped               0xcb
 	{ "eval_sample_index",         { 3, 0xcc    } },
 	// TODO: eval_centroid              0xcd
@@ -1246,14 +1245,14 @@ unordered_map<string, vector<int>> insMap = {
 	// TODO: abort                      0xcf
 	// TODO: debug_break                0xd0
 	// RESERVED_11                      0xd1
-	{ "ddiv",                      { 3, 0xd2    } },
-	{ "dfma",                      { 4, 0xd3    } },
-	{ "drcp",                      { 2, 0xd4    } },
+	{ "ddiv",                      { 3, 0xd2    } }, // Added and verified -DarkStarSword
+	{ "dfma",                      { 4, 0xd3    } }, // Added and verified -DarkStarSword
+	{ "drcp",                      { 2, 0xd4    } }, // Added and verified -DarkStarSword
 	// TODO: msad                       0xd5
-	{ "dtoi",                      { 2, 0xd6    } },
-	{ "dtou",                      { 2, 0xd7    } },
-	{ "itod",                      { 2, 0xd8    } },
-	{ "utod",                      { 2, 0xd9    } },
+	{ "dtoi",                      { 2, 0xd6    } }, // Added and verified -DarkStarSword
+	{ "dtou",                      { 2, 0xd7    } }, // Added and verified -DarkStarSword
+	{ "itod",                      { 2, 0xd8    } }, // Added and verified -DarkStarSword
+	{ "utod",                      { 2, 0xd9    } }, // Added and verified -DarkStarSword
 };
 
 void assembleResourceDeclarationType(string *type, vector<DWORD> *v) {
