@@ -1,8 +1,7 @@
 // Compile with fxc /T cs_5_0 /Fo compute.bin
 
-StructuredBuffer<uint> struc_buf : register(t10);
-RWStructuredBuffer<uint> rw_struc_buf : register(u2);
 RWByteAddressBuffer rw_byte_buf : register(u0);
+groupshared uint gt;
 
   [numthreads(4, 2, 1)]
 void main()
@@ -107,6 +106,53 @@ void main()
 	// abort
 	if (tally > 4)
 		abort();
+
+
+
+	// Various synchronisation types:
+
+
+	// sync_uglobal_g
+	AllMemoryBarrier();
+
+	InterlockedAdd(gt, 1, ret);
+	tally += ret;
+
+	// sync_uglobal_g_t
+	AllMemoryBarrierWithGroupSync();
+
+	InterlockedAdd(gt, 1, ret);
+	tally += ret;
+
+	// sync_uglobal
+	DeviceMemoryBarrier();
+
+	InterlockedAdd(gt, 1, ret);
+	tally += ret;
+
+	// sync_uglobal_t
+	DeviceMemoryBarrierWithGroupSync();
+
+	InterlockedAdd(gt, 1, ret);
+	tally += ret;
+
+	// sync_g
+	GroupMemoryBarrier();
+
+	InterlockedAdd(gt, 1, ret);
+	tally += ret;
+
+	// sync_g_t
+	GroupMemoryBarrierWithGroupSync();
+
+	InterlockedAdd(gt, 1, ret);
+	tally += ret;
+
+	// TODO: sync_ugroup*
+	// TODO: sync_ugroup_t*
+	// TODO: sync_ugroup_g*
+	// TODO: sync_ugroup_g_t*
+
 
 
 	// Use the tally so the compiler doesn't optimise anything out:
