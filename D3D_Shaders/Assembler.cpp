@@ -1336,6 +1336,30 @@ void assembleSystemValue(string *sv, vector<DWORD> *os)
 	// otherwise we might generate a corrupt shader and crash DirectX.
 }
 
+int interpolationMode(vector<string> &w)
+{
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/dn280473(v=vs.85).aspx
+
+	if (w[1] == "constant")
+		return 1;
+	if (w[1] != "linear")
+		return 0; // FIXME: Fail gracefully
+
+	if (w[2] == "noperspective") {
+		if (w[3] == "sample")
+			return 7;
+		if (w[3] == "centroid")
+			return 5;
+		return 4;
+	}
+	if (w[2] == "centroid")
+		return 3;
+	if (w[2] == "sample")
+		return 6;
+
+	return 2;
+}
+
 vector<DWORD> assembleIns(string s) {
 	unsigned msaa_samples = 0;
 
@@ -1805,25 +1829,10 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_input_ps") {
 		vector<DWORD> os;
 		ins->opcode = 0x62;
-		if (w[1] == "linear") {
-			if (w[2] == "noperspective") {
-				ins->_11_23 = 4;
-				os = assembleOp(w[3], true);
-			} else if (w[2] == "centroid") {
-				ins->_11_23 = 3;
-				os = assembleOp(w[3], true);
-			} else if (w[2] == "sample") {
-				ins->_11_23 = 6;
-				os = assembleOp(w[3], true);
-			} else {
-				ins->_11_23 = 2;
-				os = assembleOp(w[2], true);
-			}
-		}
-		if (w[1] == "constant") {
-			ins->_11_23 = 1;
-			os = assembleOp(w[2], true);
-		}
+		// Switched to use common interpolation mode parsing to catch
+		// more variants -DarkStarSword
+		ins->_11_23 = interpolationMode(w);
+		os = assembleOp(w[w.size() - 1], true);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1839,49 +1848,13 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "dcl_input_ps_siv") {
 		vector<DWORD> os;
 		ins->opcode = 0x64;
-		if (w[1] == "linear") {
-			if (w[2] == "noperspective") {
-				if (w[3] == "sample") {
-					// DarkStarSword added case found in WATCH_DOGS2:
-					// dcl_input_ps_siv linear noperspective sample v0.xy, position
-					ins->_11_23 = 7;
-					os = assembleOp(w[4], true);
-					if (w[5] == "position") {
-						// This is a system value, it should be using common code -DSS
-						os.push_back(1);
-					}
-				} else if (w[3] == "centroid") {
-					ins->_11_23 = 5;
-					os = assembleOp(w[4], true);
-					if (w[5] == "position") {
-						// This is a system value, it should be using common code -DSS
-						os.push_back(1);
-					}
-				} else {
-					ins->_11_23 = 4;
-					os = assembleOp(w[3], true);
-					if (w[4] == "position") {
-						// This is a system value, it should be using common code -DSS
-						os.push_back(1);
-					}
-				}
-			} else if (w[3] == "clip_distance") {
-				// This is a system value, it should be using common code -DSS
-				os = assembleOp(w[2], true);
-				ins->_11_23 = 2;
-				os.push_back(2);
-			}
-		} else if (w[1] == "constant") {
-			ins->_11_23 = 1;
-			os = assembleOp(w[2], true);
-			// Switched this case to the common system value parsing (at least fixes missing
-			// viewport_array_index). Should restructure this whole routine since the above
-			// method of expecting specific values is fragile, and ignores the fact that the
-			// final keyword is a system value (by virtue of this being a system value
-			// declaration instruction). Probably should loop over the other keywords.
-			//  -DarkStarSword
-			assembleSystemValue(&w[3], &os);
-		}
+		// Switched to use common interpolation mode parsing (fixes
+		// missing linear noperspective sample case in WATCH_DOGS2) and
+		// system value parsing (fixes missing viewport_array_index)
+		//   -DarkStarSword
+		ins->_11_23 = interpolationMode(w);
+		os = assembleOp(w[w.size() - 2], true);
+		assembleSystemValue(&w[w.size() - 1], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
