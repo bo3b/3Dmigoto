@@ -89,6 +89,21 @@ void main()
 
 
 
+
+	// Misc functions
+
+	// firstbit_hi
+	tally += firstbithigh(tally);
+
+	// firstbit_lo
+	tally += firstbitlow(tally);
+
+	// firstbit_shi
+	tally += firstbithigh(asint(tally));
+
+
+
+
 	// Use the tally so the compiler doesn't optimise anything out:
 	rw_byte_buf.InterlockedAdd(1, tally);
 }

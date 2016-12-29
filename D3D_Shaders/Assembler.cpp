@@ -1172,7 +1172,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "countbits",                 { 2, 0x86    } },
 	{ "firstbit_hi",               { 2, 0x87    } },
 	{ "firstbit_lo",               { 2, 0x88    } },
-	// TODO: firstbit_shi               0x89
+	{ "firstbit_shi",              { 2, 0x89    } }, // Added and verified -DarkStarSword
 	{ "ubfe",                      { 4, 0x8a    } },
 	{ "ibfe",                      { 4, 0x8b    } },
 	{ "bfi",                       { 5, 0x8c    } },
