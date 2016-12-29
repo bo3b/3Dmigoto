@@ -9,12 +9,14 @@ void main(
 	//inout TriangleStream<PSSceneIn> OutputStream,
 	inout PointStream<PSSceneIn> OutputStream,
 	inout PointStream<PSSceneIn> OutputStream1,
-	uint id : SV_GSInstanceID
+	uint id : SV_GSInstanceID,
+	uint prim : SV_PrimitiveID
 	)
 {
 	PSSceneIn o;
 	o.pos = 0;
 	o.coord = id;
+	o.coord += prim;
 	OutputStream.Append(o);
 	OutputStream1.Append(o);
 }

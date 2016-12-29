@@ -7,12 +7,14 @@ struct PSSceneIn {
 void main(
 	triangle float4 ipos[3] : SV_Position,
 	inout TriangleStream<PSSceneIn> OutputStream,
-	uint id : SV_GSInstanceID
+	uint id : SV_GSInstanceID,
+	uint prim : SV_PrimitiveID
 	)
 {
 	PSSceneIn o;
 	o.pos = 0;
 	o.coord = id;
+	o.coord += prim;
 	OutputStream.Append(o);
 }
 
