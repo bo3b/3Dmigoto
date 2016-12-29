@@ -771,8 +771,8 @@ static int validate_section(char section[4], unsigned char *old_section, unsigne
 			continue;
 
 		if (!rc)
-			LogInfo("\n");
-		LogInfo("  Section %.4s 0x%08Ix: expected 0x%02x, found 0x%02x\n", section, pos, *p1, *p2);
+			LogInfo("\n*** Assembly verification pass failed: mismatch in section %.4s:\n", section);
+		LogInfo("  0x%08Ix: expected 0x%02x, found 0x%02x\n", pos, *p1, *p2);
 		rc = 1;
 	}
 
