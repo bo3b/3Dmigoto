@@ -1467,14 +1467,38 @@ vector<DWORD> assembleIns(string s) {
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
-	} else if (w[0] == "sync_g_t") {
+	} else if (w[0] == "sync_g") { // GroupMemoryBarrier() added and verified -DarkStarSword
 		ins->opcode = 0xbe;
-		ins->_11_23 = 3;
+		ins->_11_23 = 0x02;
 		ins->length = 1;
 		v.push_back(op);
-	} else if (w[0] == "sync_uglobal") {
+	} else if (w[0] == "sync_g_t") { // GroupMemoryBarrierWithGroupSync()
 		ins->opcode = 0xbe;
-		ins->_11_23 = 8;
+		ins->_11_23 = 0x03;
+		ins->length = 1;
+		v.push_back(op);
+	// TODO: sync_ugroup
+	// TODO: sync_ugroup_t
+	// TODO: sync_ugroup_g
+	// TODO: sync_ugroup_g_t
+	} else if (w[0] == "sync_uglobal") { // DeviceMemoryBarrier()
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x08;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "sync_uglobal_t") { // DeviceMemoryBarrierWithGroupSync() Added and verified -DarkStarSword
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x09;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "sync_uglobal_g") { // AllMemoryBarrier() Addedd and verified -DarkStarSword
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x0a;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "sync_uglobal_g_t") { // AllMemoryBarrierWithGroupSync() Addedd and verified -DarkStarSword
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x0b;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (w[0] == "store_uav_typed") {
