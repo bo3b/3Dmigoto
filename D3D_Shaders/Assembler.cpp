@@ -1242,7 +1242,7 @@ unordered_map<string, vector<int>> insMap = {
 	// TODO: eval_snapped               0xcb
 	{ "eval_sample_index",         { 3, 0xcc    } },
 	// TODO: eval_centroid              0xcd
-	// TODO: dcl_gs_instance_count      0xce
+	{ "dcl_gsinstances",           { 1, 0xce    } }, // Added and verified -DarkStarSword
 	// TODO: abort                      0xcf
 	// TODO: debug_break                0xd0
 	// RESERVED_11                      0xd1

@@ -4,6 +4,7 @@ struct PSSceneIn {
 };
 
 [maxvertexcount(3)]
+[instance(4)] // Adds dcl_gsinstances 4
 void main(
 		triangle float4 ipos[3] : SV_Position,
 		inout TriangleStream<PSSceneIn> OutputStream,
