@@ -302,6 +302,7 @@ static uint32_t parse_system_value(char *sv)
 
 static uint8_t parse_mask(char mask[8], bool invert)
 {
+	uint8_t xor_val = (invert ? 0xf : 0);
 	uint8_t ret = 0;
 	int i;
 
@@ -326,18 +327,18 @@ static uint8_t parse_mask(char mask[8], bool invert)
 				break;
 			// Special matches for semantics using special purpose registers:
 			case 'Y': // YES
-				return 0xe;
+				return 0x1 ^ xor_val;
 			case 'N': // NO or N/A - wait for next character
 				break;
 			case 'O': // NO
-				return 0x0;
+				return 0x0 ^ xor_val;
 			case '/': // N/A
-				return 0x1;
+				return 0x1 ^ xor_val;
 			default:
 				throw parseError;
 		}
 	}
-	return ret ^ (invert ? 0xf : 0);
+	return ret ^ xor_val;
 }
 
 static uint32_t pad(uint32_t size, uint32_t multiple)
