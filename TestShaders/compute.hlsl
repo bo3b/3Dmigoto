@@ -1,7 +1,8 @@
-// Compile with fxc /T cs_5_0 /Fo compute.bin
+// Compile with fxc /T cs_5_0 /Od /Fo compute.bin
+// Disable optimisations to make sure all 6 sync instructions are used
 
 RWByteAddressBuffer rw_byte_buf : register(u0);
-groupshared uint gt;
+groupshared uint gt = 0;
 
   [numthreads(4, 2, 1)]
 void main()
