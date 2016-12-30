@@ -1242,7 +1242,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "eval_sample_index",         { 3, 0xcc    } },
 	{ "eval_centroid",             { 2, 0xcd    } }, // Added and verified -DarkStarSword
 	{ "dcl_gsinstances",           { 1, 0xce    } }, // Added and verified -DarkStarSword
-	{ "abort",                     { 0, 0xcf    } }, // Added and verified -DarkStarSword
+	{ "abort",                     { 0, 0xcf    } }, // Debug layer instruction. Added and verified -DarkStarSword
 	// TODO: debug_break                0xd0
 	// RESERVED_11                      0xd1
 	{ "ddiv",                      { 3, 0xd2    } }, // Added and verified -DarkStarSword

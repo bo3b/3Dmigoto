@@ -104,9 +104,6 @@ void main()
 	// msad
 	tally += msad4(tally, uint2(1, 2), uint4(3, 4, 5, 6));
 
-	// abort
-	if (tally > 4)
-		abort();
 
 
 
