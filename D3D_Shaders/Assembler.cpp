@@ -2138,6 +2138,24 @@ vector<string> stringToLines(const char* start, size_t size) {
 	return lines;
 }
 
+void preprocessLine(string &line)
+{
+	const char *p;
+	int i;
+
+	for (p = line.c_str(), i = 0; *p; p++, i++) {
+		// Replace tabs with spaces:
+		if (*p == '\t')
+			line[i] = ' ';
+
+		// Strip C style comments:
+		if (!memcmp(p, "//", 2)) {
+			line.resize(i);
+			return;
+		}
+	}
+}
+
 // For anyone confused about what this hash function is doing, there is a
 // clearer implementation here, with details of how this differs from MD5:
 // https://github.com/DarkStarSword/3d-fixes/blob/master/dx11shaderanalyse.py
@@ -2318,32 +2336,31 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	vector<DWORD> o;
 	for (DWORD i = 0; i < lines.size(); i++) {
 		string s = lines[i];
-		if (memcmp(s.c_str(), "//", 2) != 0) {
-			vector<DWORD> v;
-			if (!codeStarted) {
-				if (s.size() > 0 && s[0] != ' ') {
-					codeStarted = true;
-					vector<DWORD> ins = assembleIns(s);
-					o.insert(o.end(), ins.begin(), ins.end());
-					o.push_back(0);
-				}
-			} else if (s.find("{ {") < s.size()) {
-				s2 = s;
-				multiLine = true;
-			} else if (s.find("} }") < s.size()) {
-				s2.append("\n");
-				s2.append(s);
-				s = s2;
-				multiLine = false;
+		preprocessLine(s);
+		vector<DWORD> v;
+		if (!codeStarted) {
+			if (s.size() > 0 && s[0] != ' ') {
+				codeStarted = true;
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
-			} else if (multiLine) {
-				s2.append("\n");
-				s2.append(s);
-			} else if (s.size() > 0) {
-				vector<DWORD> ins = assembleIns(s);
-				o.insert(o.end(), ins.begin(), ins.end());
+				o.push_back(0);
 			}
+		} else if (s.find("{ {") < s.size()) {
+			s2 = s;
+			multiLine = true;
+		} else if (s.find("} }") < s.size()) {
+			s2.append("\n");
+			s2.append(s);
+			s = s2;
+			multiLine = false;
+			vector<DWORD> ins = assembleIns(s);
+			o.insert(o.end(), ins.begin(), ins.end());
+		} else if (multiLine) {
+			s2.append("\n");
+			s2.append(s);
+		} else if (s.size() > 0) {
+			vector<DWORD> ins = assembleIns(s);
+			o.insert(o.end(), ins.begin(), ins.end());
 		}
 	}
 	codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care
