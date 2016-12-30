@@ -1167,8 +1167,8 @@ unordered_map<string, vector<int>> insMap = {
 	{ "rcp",                       { 2, 0x81    } },
 	{ "f32tof16",                  { 2, 0x82    } },
 	{ "f16tof32",                  { 2, 0x83    } },
-	// TODO: uaddc                      0x84
-	// TODO: usubb                      0x85
+	{ "uaddc",                     { 4, 0x84    } }, // Partially verified - assembled & disassembled OK, but did not check against compiled shader -DSS
+	{ "usubb",                     { 4, 0x85    } }, // Partially verified - assembled & disassembled OK, but did not check against compiled shader -DSS
 	{ "countbits",                 { 2, 0x86    } },
 	{ "firstbit_hi",               { 2, 0x87    } },
 	{ "firstbit_lo",               { 2, 0x88    } },
