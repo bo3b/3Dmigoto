@@ -1477,10 +1477,31 @@ vector<DWORD> assembleIns(string s) {
 		ins->_11_23 = 0x03;
 		ins->length = 1;
 		v.push_back(op);
-	// TODO: sync_ugroup
-	// TODO: sync_ugroup_t
-	// TODO: sync_ugroup_g
-	// TODO: sync_ugroup_g_t
+
+	// The following four _ugroup variants of the sync instruction have
+	// only been partially verified - they were assembled & disassembled
+	// OK, but did not check against a compiled shader -DarkStarSword
+	} else if (w[0] == "sync_sat_ugroup") {
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x04;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "sync_sat_ugroup_t") {
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x05;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "sync_sat_ugroup_g") {
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x06;
+		ins->length = 1;
+		v.push_back(op);
+	} else if (w[0] == "sync_sat_ugroup_g_t") {
+		ins->opcode = 0xbe;
+		ins->_11_23 = 0x07;
+		ins->length = 1;
+		v.push_back(op);
+
 	} else if (w[0] == "sync_uglobal") { // DeviceMemoryBarrier()
 		ins->opcode = 0xbe;
 		ins->_11_23 = 0x08;
