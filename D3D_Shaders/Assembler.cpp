@@ -970,7 +970,7 @@ unordered_map<string, vector<int>> ldMap = {
 	{ "ldms_aoffimmi_indexable",        { 4, 0x2e, 3 } },
 
 	// _aoffimmi doesn't make sense for resinfo. Be aware that there are
-	// _uint and _rcpFloat variants handled elsewhere in the code.
+	// _uint and _rcpfloat variants handled elsewhere in the code.
 	//   -DarkStarSword
 	{ "resinfo_indexable",              { 3, 0x3d, 2 } },
 
@@ -1461,13 +1461,17 @@ vector<DWORD> assembleIns(string s) {
 		s.erase(pos, 5);
 		ins->_11_23 = 2;
 	}
-	// Commented out because I can't figure out the HLSL to generate this,
-	// but pretty sure this is correct: -DarkStarSword
-	// TODO: pos = s.find("_rcpFloat");
-	// TODO: if (pos != string::npos) {
-	// TODO: 	s.erase(pos, 9);
-	// TODO: 	ins->_11_23 = 1;
-	// TODO: }
+	// resinfo_rcpfloat partially verified - assembled & disassembled OK,
+	// but did not check against compiled shader as HLSL lacks an intrinsic
+	// that maps to this, and fxc does not seem to optimise to use it, but
+	// that does not necessarily mean we will never see it. Note that MSDN
+	// refers to this as _rcpFloat, but the disassembler uses _rcpfloat.
+	//   -DarkStarSword
+	pos = s.find("_rcpfloat");
+	if (pos != string::npos) {
+		s.erase(pos, 9);
+		ins->_11_23 = 1;
+	}
 	vector<DWORD> v;
 	vector<string> w = strToWords(s);
 	string o = w[0];
