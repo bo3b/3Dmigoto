@@ -25,6 +25,14 @@ void main(
 	o.coord += prim;
 	OutputStream.Append(o);
 	OutputStream1.Append(o);
+	OutputStream.RestartStrip();
+	OutputStream1.RestartStrip();
+	OutputStream.Append(o);
+	OutputStream1.Append(o);
+	OutputStream.RestartStrip();
+	OutputStream1.RestartStrip();
+	OutputStream.Append(o);
+	OutputStream1.Append(o);
 }
 
 // Funky:

@@ -14,4 +14,7 @@ void main(lineadj vs2gs input[4], inout PointStream<gs2ps> ostream)
 
 	ostream.Append(output);
 	ostream.RestartStrip();
+	ostream.Append(output);
+	ostream.RestartStrip();
+	ostream.Append(output);
 }

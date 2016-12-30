@@ -1046,7 +1046,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dp4",                       { 3, 0x11    } },
 	{ "else",                      { 0, 0x12    } },
 	{ "emit",                      { 0, 0x13    } },
-	// TODO: emit then cut            , 0x14
+	{ "emit_then_cut",             { 0, 0x14    } }, // Partially verified - assembled & disassembled OK, but did not check against compiled shader -DSS
 	{ "endif",                     { 0, 0x15    } },
 	{ "endloop",                   { 0, 0x16    } },
 	{ "endswitch",                 { 0, 0x17    } },
@@ -1154,7 +1154,7 @@ unordered_map<string, vector<int>> insMap = {
 	// hs_join_phase                    0x74 // Implemented elsewhere
 	// emit_stream                      0x75 // Implemented elsewhere
 	// cut_stream                       0x76 // Implemented elsewhere
-	// TODO: emitthencut_stream         0x77
+	// emit_then_cut_stream             0x77 // Implemented elsewhere
 	// TODO: interface_call             0x78
 	{ "bufinfo",                   { 2, 0x79    } }, // Unverified (not in SM4 so only indexable variants?). See also load table.
 	{ "deriv_rtx_coarse",          { 2, 0x7a    } },
@@ -1984,6 +1984,15 @@ vector<DWORD> assembleIns(string s) {
 	} else if (o == "cut_stream") {
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x76;
+		ins->length = 1 + os.size();
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+	} else if (o == "emit_then_cut_stream") {
+		// Partially verified - assembled & disassembled OK, but did not
+		// check against compiled shader as fxc never generates this
+		//   -DarkStarSword
+		vector<DWORD> os = assembleOp(w[1]);
+		ins->opcode = 0x77;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
