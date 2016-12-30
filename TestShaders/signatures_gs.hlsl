@@ -1,6 +1,11 @@
 struct PSSceneIn {
 	float4 pos : SV_Position;
 	float4 coord : TEXCOORD0;
+	float clip : SV_ClipDistance;        // dcl_output_siv o2.x, clip_distance
+	float cull : SV_CullDistance;        // dcl_output_siv o2.y, cull_distance
+	bool ff : SV_IsFrontFace;            // dcl_output_sgv o3.x, is_front_face
+	uint rt : SV_RenderTargetArrayIndex; // dcl_output_siv o3.y, rendertarget_array_index
+	uint vp : SV_ViewportArrayIndex;     // dcl_output_siv o3.z, viewport_array_index
 };
 
 [maxvertexcount(3)]
@@ -11,7 +16,8 @@ void main(
 	uint prim : SV_PrimitiveID
 	)
 {
-	PSSceneIn o;
+	PSSceneIn o = (PSSceneIn)0;
+
 	o.pos = 0;
 	o.coord = id;
 	o.coord += prim;
