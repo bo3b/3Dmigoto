@@ -25,6 +25,8 @@ dcl_uav_raw u0
 dcl_temps 16
 dcl_tgsm_raw g0, 4
 dcl_thread_group 4, 2, 1
+sync
+sync_t
 sync_g
 sync_g_t
 sync_sat_ugroup
@@ -35,5 +37,9 @@ sync_uglobal
 sync_uglobal_t
 sync_uglobal_g
 sync_uglobal_g_t
+sync_sat_uglobal
+sync_sat_uglobal_t
+sync_sat_uglobal_g
+sync_sat_uglobal_g_t
 ret 
 // Approximately 0 instruction slots used
