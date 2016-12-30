@@ -1137,7 +1137,7 @@ unordered_map<string, vector<int>> insMap = {
 	// dcl_input_ps_sgv                 0x63 // Implemented elsewhere
 	// dcl_input_ps_siv                 0x64 // Implemented elsewhere
 	// dcl_output                       0x65 // Implemented elsewhere
-	// dcl_output_sgv                   0x66 // TODO
+	// dcl_output_sgv                   0x66 // Implemented elsewhere
 	// dcl_output_siv                   0x67 // Implemented elsewhere
 	// dcl_temps                        0x68 // Implemented elsewhere
 	// dcl_indexableTemp                0x69 // Implemented elsewhere
@@ -1828,6 +1828,15 @@ vector<DWORD> assembleIns(string s) {
 			else if (w[2] == "immediateIndexed")
 				ins->_11_23 = 0;
 		}
+		ins->length = 1 + os.size();
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+	} else if (o == "dcl_output_sgv") {
+		// Added and verified. Used when writing to SV_IsFrontFace in a
+		// geometry shader. -DarkStarSword
+		vector<DWORD> os = assembleOp(w[1], true);
+		ins->opcode = 0x66;
+		assembleSystemValue(&w[2], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
