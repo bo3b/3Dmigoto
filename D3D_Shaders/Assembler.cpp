@@ -1238,9 +1238,9 @@ unordered_map<string, vector<int>> insMap = {
 	{ "dmovc",                     { 4, 0xc8    } }, // Added and verified -DarkStarSword
 	{ "dtof",                      { 2, 0xc9    } }, // Added and verified -DarkStarSword
 	{ "ftod",                      { 2, 0xca    } }, // Added and verified -DarkStarSword
-	// TODO: eval_snapped               0xcb
+	{ "eval_snapped",              { 3, 0xcb    } }, // Added and verified -DarkStarSword
 	{ "eval_sample_index",         { 3, 0xcc    } },
-	// TODO: eval_centroid              0xcd
+	{ "eval_centroid",             { 2, 0xcd    } }, // Added and verified -DarkStarSword
 	{ "dcl_gsinstances",           { 1, 0xce    } }, // Added and verified -DarkStarSword
 	{ "abort",                     { 0, 0xcf    } }, // Added and verified -DarkStarSword
 	// TODO: debug_break                0xd0

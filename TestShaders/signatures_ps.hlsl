@@ -52,6 +52,15 @@ void main(
 #endif
 	target0 += rt;
 	target0 += si;
+
+	// eval_sample_index
+	target0 += EvaluateAttributeAtSample(texcoord1, 1);
+
+	// eval_sample_snapped
+	target0 += EvaluateAttributeSnapped(texcoord1, int2(2,3));
+
+	// eval_sample_centroidd
+	target0 += EvaluateAttributeCentroid(texcoord1);
 }
 
 // Funky:
