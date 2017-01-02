@@ -2231,6 +2231,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		dst_size = (new_desc.ByteWidth + 15) & ~0xf;
 		dst_size = min(dst_size, D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16);
 
+		// Constant buffers cannot be structured, so clear that flag:
+		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+
 		// If the size of the new resource doesn't match the old or
 		// there is an offset we will have to perform a region copy
 		// instead of a regular copy:
