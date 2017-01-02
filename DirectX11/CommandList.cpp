@@ -2208,7 +2208,8 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT *buf_dst_size)
+		UINT *buf_dst_size,
+		ResourceCopyOptions options)
 {
 	HRESULT hr;
 	D3D11_BUFFER_DESC old_desc;
@@ -2220,6 +2221,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
 	new_desc.CPUAccessFlags = 0;
+
+	if (options & ResourceCopyOptions::STEREO2MONO)
+		new_desc.ByteWidth *= 2;
 
 	// TODO: Add a keyword to allow raw views:
 	// D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
@@ -2636,7 +2640,7 @@ static void RecreateCompatibleResource(
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
-					bind_flags, device, stride, offset, format, buf_dst_size);
+					bind_flags, device, stride, offset, format, buf_dst_size, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -3195,40 +3199,20 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	}
 }
 
-static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
-		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext)
+static void ReverseStereoBlit2D(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
+		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext, int fallback)
 {
-	NvAPI_Status nvret;
-	D3D11_RESOURCE_DIMENSION src_dimension;
 	ID3D11Texture2D *src;
 	D3D11_TEXTURE2D_DESC srcDesc;
 	UINT item, level, index, width, height;
 	D3D11_BOX srcBox;
-	int fallbackside, fallback = 0;
-
-	src_resource->GetType(&src_dimension);
-	if (src_dimension != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-		// TODO: I think it should be possible to do this with all
-		// resource types (possibly including buffers from the
-		// discovery of the stereo parameters in the cb12 slot), but I
-		// need to test it and make sure it works first
-		LogInfo("Resource copy: Reverse stereo blit not supported on resource type %d\n", src_dimension);
-		return;
-	}
+	int fallbackside;
 
 	src = (ID3D11Texture2D*)src_resource;
 	src->GetDesc(&srcDesc);
 
 	// TODO: Resolve MSAA
 	// TODO: Use intermediate resource if copying from a texture with depth buffer bind flags
-
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
-	if (nvret != NVAPI_OK) {
-		LogInfo("Resource copying failed to enable reverse stereo blit\n");
-		// Fallback path: Copy 2D resource to both sides of the 2x
-		// width destination (TESTME)
-		fallback = 1;
-	}
 
 	for (fallbackside = 0; fallbackside < 1 + fallback; fallbackside++) {
 
@@ -3251,6 +3235,70 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 						src, index, &srcBox);
 			}
 		}
+	}
+}
+
+static void ReverseStereoBlitBuffer(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
+		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext, int fallback)
+{
+	ID3D11Buffer *src;
+	D3D11_BUFFER_DESC srcDesc;
+	D3D11_BOX srcBox;
+	int fallbackside;
+
+	src = (ID3D11Buffer*)src_resource;
+	src->GetDesc(&srcDesc);
+
+	for (fallbackside = 0; fallbackside < 1 + fallback; fallbackside++) {
+		// Set the source box as per the nvapi documentation:
+		srcBox.left = 0;
+		srcBox.top = 0;
+		srcBox.front = 0;
+		srcBox.right = srcDesc.ByteWidth;
+		srcBox.bottom = 1;
+		srcBox.back = 1;
+
+		// Perform the reverse stereo blit:
+		mOrigContext->CopySubresourceRegion(dst_resource, 0,
+				fallbackside * srcBox.right, 0, 0,
+				src, 0, &srcBox);
+	}
+}
+
+static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
+		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext)
+{
+	D3D11_RESOURCE_DIMENSION src_dimension;
+	NvAPI_Status nvret;
+	int fallback = 0;
+
+	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
+	if (nvret != NVAPI_OK) {
+		LogInfo("Resource copying failed to enable reverse stereo blit\n");
+		// Fallback path: Copy 2D resource to both sides of the 2x
+		// width destination (TESTME)
+		fallback = 1;
+	}
+
+	src_resource->GetType(&src_dimension);
+	switch (src_dimension) {
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			ReverseStereoBlit2D(dst_resource, src_resource,
+					    mStereoHandle, mOrigContext, fallback);
+			break;
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			ReverseStereoBlitBuffer(dst_resource, src_resource,
+					        mStereoHandle, mOrigContext, fallback);
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			// TODO: I think it should be possible to do this with all
+			// resource types (possibly including buffers from the
+			// discovery of the stereo parameters in the cb12 slot), but I
+			// need to test it and make sure it works first
+			LogInfo("Resource copy: Reverse stereo blit not supported on resource type %d\n",
+					src_dimension);
+			break;
 	}
 
 	NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, false);
@@ -3521,6 +3569,8 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 					mHackerDevice->mStereoHandle, mOrigContext);
 
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
+
+			// FIXME: Buffers will ignore offsets when doing stereo2mono
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			mHackerContext->FrameAnalysisLog("3DMigoto resolving MSAA\n");
