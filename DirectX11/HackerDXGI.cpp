@@ -66,11 +66,21 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 }
 
 
+// In the Elite Dangerous case, they Release the HackerContext objects before creating the 
+// swap chain.  That causes problems, because we are not expecting anyone to get here without
+// having a valid context.  They later call GetImmediateContext, which will generate a wrapped
+// context.  So, since we need the context for our Overlay, let's do that a litte early in
+// this case, which will save the reference for their GetImmediateContext call.
+
 HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGIDeviceSubObject(pSwapChain)
 {
 	mOrigSwapChain = pSwapChain;
 
+	if (pContext == NULL)
+	{
+		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&pContext));
+	}
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
 	pDevice->SetHackerSwapChain(this);
@@ -80,7 +90,7 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 		// info over the game. Using the Hacker Device and Context we gave the game.
 		mOverlay = new Overlay(pDevice, pContext, this);
 	} catch (...) {
-		LogInfo("Failed to create overlay. Check if courierbold.spritefont is installed\n");
+		LogInfo("  *** Failed to create Overlay. Exception caught. \n");
 		mOverlay = NULL;
 	}
 }
