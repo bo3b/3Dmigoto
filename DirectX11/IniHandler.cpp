@@ -826,6 +826,8 @@ static wchar_t *BlendFactors[] = {
 	L"DEST_COLOR",
 	L"INV_DEST_COLOR",
 	L"SRC_ALPHA_SAT",
+	L"",
+	L"",
 	L"BLEND_FACTOR",
 	L"INV_BLEND_FACTOR",
 	L"SRC1_COLOR",
