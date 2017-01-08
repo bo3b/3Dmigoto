@@ -4,6 +4,12 @@
 // Hierarchy:
 //  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
+// Object				OS				D3D11 version	Feature level
+// ID3D11DeviceContext	Win7			11.0			11.0
+// ID3D11DeviceContext1	Platform update	11.1			11.1
+// ID3D11DeviceContext2	Win8.1			11.2
+// ID3D11DeviceContext3					11.3
+
 #include "HackerContext.h"
 #include "HookedContext.h"
 
@@ -637,6 +643,43 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 	{
 		*ppvObject = this;
 		LogDebug("  return HackerContext(%s@%p) wrapper of %p \n", type_name(this), this, mOrigContext);
+	}
+	else if (riid == __uuidof(ID3D11DeviceContext1))
+	{
+		if (!G->enable_platform_update) 
+		{
+			LogInfo("  returns E_NOINTERFACE as error for ID3D11DeviceContext1 (try allow_platform_update=1 if the game refuses to run). \n");
+			*ppvObject = NULL;
+			return E_NOINTERFACE;
+		}
+
+		// For Batman: TellTale games, they call this to fetch the DeviceContext1.
+		// We need to return a hooked version as part of fleshing it out for games like this
+		// that require the evil-update to run.
+		// Not at all positive this is the right approach, the mix of type1 objects and
+		// Hacker objects is a bit obscure.
+
+		ID3D11DeviceContext1 *origDeviceContext1;
+		ID3D11Device *origDevice;
+		ID3D11Device1 *origDevice1;
+		origDeviceContext1 = static_cast<ID3D11DeviceContext1*>(*ppvObject);
+		origDeviceContext1->GetDevice(&origDevice);
+		HRESULT hr = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		if (FAILED(hr))
+		{
+			LogInfo("  failed QueryInterface of ID3D11Device1 = %x for %p \n", hr, origDevice1);
+			return hr;
+		}
+
+		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origDeviceContext1);
+		LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origDeviceContext1);
+		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origDeviceContext1);
+		LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
+
+		*ppvObject = hackerContextWrap1;
+		LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origDeviceContext1);
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);
@@ -2806,14 +2849,24 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 
 // -----------------------------------------------------------------------------
 // HackerContext1
-//	Not positive we need this now, but makes it possible to wrap Device1 for 
-//	systems with platform update installed.
+//	Requires Win7 Platform Update
+
+// Hierarchy:
+//  HackerContext1 <- HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
 HackerContext1::HackerContext1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext)
 	: HackerContext(pDevice1, pContext)
 {
 	mOrigDevice1 = pDevice1;
 	mOrigContext1 = pContext;
+}
+
+void HackerContext1::SetHackerDevice1(HackerDevice1 *pDevice)
+{
+	mHackerDevice1 = pDevice;
+
+	// Pass this along to the superclass, in case games improperly use the non1 versions.
+	SetHackerDevice(pDevice);
 }
 
 
