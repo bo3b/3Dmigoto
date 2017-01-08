@@ -278,12 +278,12 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	{
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
 		// TODO: for platform update, return IDXGIAdapter2
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 		*ppParent = NULL;
 		return E_NOINTERFACE;
 	}
@@ -313,10 +313,9 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
-		// TODO: for platform update, return HackerDXGIFactory2
-		*ppParent = NULL;
-		return E_NOINTERFACE;
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+		HackerDXGIFactory2 *factoryWrap2 = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppParent));
+		LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factoryWrap2, *ppParent);
+		*ppParent = factoryWrap2;
 	}
 
 	LogInfo("  returns result = %#x \n", hr);
@@ -475,12 +474,12 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 		{
 			// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 			// Unless we are overriding default behavior from ini file.
-			if (G->enable_dxgi1_2 == 0)
+			if ((G->enable_dxgi1_2 == 0) && (!G->enable_platform_update))
 			{
 				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 				*ppvObject = NULL;
 				return E_NOINTERFACE;
-			} else if (G->enable_dxgi1_2 == 1) {
+			} else if ((G->enable_dxgi1_2 == 1) || (G->enable_platform_update)) {
 				// For when we need to return a legit Factory2.
 				HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
 				LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
@@ -833,8 +832,12 @@ STDMETHODIMP_(BOOL) HackerDXGIFactory1::IsCurrent(THIS)
 //
 // Ignoring these, and returning errors simplifies our job.
 //
+// IDXGIFactory2 requires Platform Update
 // IDXGIFactory3 requires Win8.1
 // IDXGIFactory4 requires Win10
+//
+// Adding Factory2 for Batman-Telltale Series, and Dishonored2, which require the
+// platform update.
 
 STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][in] */ 
