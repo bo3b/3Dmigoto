@@ -743,11 +743,26 @@ HRESULT WINAPI D3D11CreateDevice(
 	ShowDebugInfo(origDevice);
 #endif
 
+	// When platform update is desired, we want to create the HackerDevice1 and
+	// HackerContext1 objects instead.  We'll store these and return them as
+	// non1 objects so other code can just use the objects.
+	ID3D11Device1 *origDevice1 = nullptr;
+	ID3D11DeviceContext1 *origContext1 = nullptr;
+	if (G->enable_platform_update)
+	{
+		origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+	}
+
 	// Create a wrapped version of the original device to return to the game.
 	HackerDevice *deviceWrap = nullptr;
-	if (ppDevice != nullptr)
+	if (origDevice != nullptr)
 	{
-		deviceWrap = new HackerDevice(origDevice, origContext);
+		if (G->enable_platform_update)
+			deviceWrap = new HackerDevice1(origDevice1, origContext1);
+		else
+			deviceWrap = new HackerDevice(origDevice, origContext);
+
 		if (G->enable_hooks & EnableHooks::DEVICE)
 			deviceWrap->HookDevice();
 		else
@@ -757,9 +772,13 @@ HRESULT WINAPI D3D11CreateDevice(
 
 	// Create a wrapped version of the original context to return to the game.
 	HackerContext *contextWrap = nullptr;
-	if (ppImmediateContext != nullptr)
+	if (origContext != nullptr)
 	{
-		contextWrap = new HackerContext(origDevice, origContext);
+		if (G->enable_platform_update)
+			contextWrap = new HackerContext1(origDevice1, origContext1);
+		else
+			contextWrap = new HackerContext(origDevice, origContext);
+
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			contextWrap->HookContext();
 		else
@@ -849,10 +868,24 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ShowDebugInfo(origDevice);
 #endif
 
+	// When platform update is desired, we want to create the HackerDevice1 and
+	// HackerContext1 objects instead. 
+	ID3D11Device1 *origDevice1 = nullptr;
+	ID3D11DeviceContext1 *origContext1 = nullptr;
+	if (G->enable_platform_update)
+	{
+		origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+	}
+
 	HackerDevice *deviceWrap = nullptr;
 	if (ppDevice != nullptr)
 	{
-		deviceWrap = new HackerDevice(origDevice, origContext);
+		if (G->enable_platform_update)
+			deviceWrap = new HackerDevice1(origDevice1, origContext1);
+		else
+			deviceWrap = new HackerDevice(origDevice, origContext);
+
 		if (G->enable_hooks & EnableHooks::DEVICE)
 			deviceWrap->HookDevice();
 		else
@@ -863,7 +896,11 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	HackerContext *contextWrap = nullptr;
 	if (ppImmediateContext != nullptr)
 	{
-		contextWrap = new HackerContext(origDevice, origContext);
+		if (G->enable_platform_update)
+			contextWrap = new HackerContext1(origDevice1, origContext1);
+		else
+			contextWrap = new HackerContext(origDevice, origContext);
+
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			contextWrap->HookContext();
 		else

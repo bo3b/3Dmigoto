@@ -653,33 +653,36 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 			return E_NOINTERFACE;
 		}
 
+		*ppvObject = this;
+		LogDebug("  return HackerContext1(%s@%p) wrapper of %p \n", type_name(this), this, mOrigContext);
+
 		// For Batman: TellTale games, they call this to fetch the DeviceContext1.
 		// We need to return a hooked version as part of fleshing it out for games like this
 		// that require the evil-update to run.
 		// Not at all positive this is the right approach, the mix of type1 objects and
 		// Hacker objects is a bit obscure.
 
-		ID3D11DeviceContext1 *origDeviceContext1;
-		ID3D11Device *origDevice;
-		ID3D11Device1 *origDevice1;
-		origDeviceContext1 = static_cast<ID3D11DeviceContext1*>(*ppvObject);
-		origDeviceContext1->GetDevice(&origDevice);
-		HRESULT hr = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-		if (FAILED(hr))
-		{
-			LogInfo("  failed QueryInterface of ID3D11Device1 = %x for %p \n", hr, origDevice1);
-			return hr;
-		}
+		//ID3D11DeviceContext1 *origDeviceContext1;
+		//ID3D11Device *origDevice;
+		//ID3D11Device1 *origDevice1;
+		//origDeviceContext1 = static_cast<ID3D11DeviceContext1*>(*ppvObject);
+		//origDeviceContext1->GetDevice(&origDevice);
+		//HRESULT hr = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		//if (FAILED(hr))
+		//{
+		//	LogInfo("  failed QueryInterface of ID3D11Device1 = %x for %p \n", hr, origDevice1);
+		//	return hr;
+		//}
 
-		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origDeviceContext1);
-		LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origDeviceContext1);
-		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origDeviceContext1);
-		LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
-		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
-		hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
+		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origDeviceContext1);
+		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origDeviceContext1);
+		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origDeviceContext1);
+		//LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		//hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
 
-		*ppvObject = hackerContextWrap1;
-		LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origDeviceContext1);
+		//*ppvObject = hackerContextWrap1;
+		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origDeviceContext1);
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, ppvObject);

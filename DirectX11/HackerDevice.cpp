@@ -456,21 +456,27 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			return E_NOINTERFACE;
 		}
 
-		ID3D11Device1 *origDevice1 = static_cast<ID3D11Device1*>(*ppvObject);
-		ID3D11DeviceContext1 *origContext1;
-		origDevice1->GetImmediateContext1(&origContext1);
+		if (!(G->enable_hooks & EnableHooks::DEVICE)) {
+			// If we are hooking we don't return the wrapped device
+			*ppvObject = this;
+		}
+		LogDebug("  return HackerDevice1(%s@%p) wrapper of %p \n", type_name(this), this, mRealOrigDevice);
 
-		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
-		LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
-		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
-		LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
+		//ID3D11Device1 *origDevice1 = static_cast<ID3D11Device1*>(*ppvObject);
+		//ID3D11DeviceContext1 *origContext1;
+		//origDevice1->GetImmediateContext1(&origContext1);
 
-		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
-		hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
+		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
+		//LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
+		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
 
-		// ToDo: Handle memory allocation exceptions
+		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		//hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
 
-		*ppvObject = hackerDeviceWrap1;
+		//// ToDo: Handle memory allocation exceptions
+
+		//*ppvObject = hackerDeviceWrap1;
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
