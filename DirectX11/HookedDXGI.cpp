@@ -1,3 +1,10 @@
+// Object			OS				DXGI version	Feature level
+// IDXGIFactory		Win7			1.0				11.0
+// IDXGIFactory1	Win7			1.0				11.0
+// IDXGIFactory2	Platform update	1.2				11.1
+// IDXGIFactory3	Win8.1			1.3
+// IDXGIFactory4					1.4
+// IDXGIFactory5					1.5
 
 #include "DLLMainHook.h"
 #include "log.h"
@@ -179,12 +186,15 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	//if (riid == __uuidof(IDXGIFactory))
 	//{
 	//	HackerDXGIFactory *factoryWrap;
-	//	factoryWrap = new HackerDXGIFactory(origFactory1, NULL, NULL);
+	//	factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(origFactory1));
 	//	if (ppFactory1)
 	//		*ppFactory1 = factoryWrap;
 	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", type_name(factoryWrap), factoryWrap, origFactory1);
 	//}
 	//else
+
+	// Also worth noting that IDXGIFactory1 is fully supported on Win7, doesn't require 
+	// platform update.  So forcing an upcast to Factory1, which is a superset, should be OK.
 	{
 		HackerDXGIFactory1 *factory1Wrap;
 		factory1Wrap = new HackerDXGIFactory1(origFactory1);
