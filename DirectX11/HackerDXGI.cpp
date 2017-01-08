@@ -863,6 +863,35 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 		(float) pFullscreenDesc->RefreshRate.Numerator / (float) pFullscreenDesc->RefreshRate.Denominator);
 	if (pFullscreenDesc) LogInfo("  Windowed = %d\n", pFullscreenDesc->Windowed);
 
+	// Not at all sure this can be called with DXGIDevice, but following CreateSwapChain model.
+	HackerDevice *hackerDevice = NULL;
+	IUnknown *origDevice = NULL;
+	if (typeid(*pDevice) == typeid(HackerDevice))
+	{
+		hackerDevice = static_cast<HackerDevice*>(pDevice);
+		origDevice = hackerDevice->GetOrigDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDevice1))
+	{
+		// Needed for Batman:Telltale games
+		hackerDevice = static_cast<HackerDevice1*>(pDevice);
+		origDevice = hackerDevice->GetOrigDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetOrigDXGIDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice1))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
+	}
+	else {
+		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
+		return E_FAIL;
+	}
+
 	//if (pDesc && SCREEN_WIDTH >= 0) pDesc->Width = SCREEN_WIDTH;
 	//if (pDesc && SCREEN_HEIGHT >= 0) pDesc->Height = SCREEN_HEIGHT;
 	//if (pFullscreenDesc && SCREEN_REFRESH >= 0)
@@ -875,22 +904,29 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	//HRESULT hr = -1;
 	//if (pRestrictToOutput)
 	//hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput->m_pOutput, &origSwapChain);
-	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
-	LogInfo("  return value = %x\n", hr);
 
-	if (SUCCEEDED(hr)) {
-	//	*ppSwapChain = HackerDXGISwapChain1::GetDirectSwapChain(origSwapChain);
-	//	if ((*ppSwapChain)->m_WrappedDevice) (*ppSwapChain)->m_WrappedDevice->Release();
-	//	(*ppSwapChain)->m_WrappedDevice = pDevice; pDevice->AddRef();
-	//	(*ppSwapChain)->m_RealDevice = realDevice;
-		if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-			G->mResolutionInfo.width = pDesc->Width;
-			G->mResolutionInfo.height = pDesc->Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
-				G->mResolutionInfo.width, G->mResolutionInfo.height);
-		}
+	HRESULT hr = mOrigFactory2->CreateSwapChainForHwnd(origDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed result = %x for %p \n", hr, pDevice);
+		return hr;
 	}
 
+	if (ppSwapChain)
+	{
+		HackerDXGISwapChain1 *swapchainWrap1 = new HackerDXGISwapChain1(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+		LogInfo("->HackerDXGISwapChain1 %p created to wrap %p \n", swapchainWrap1, *ppSwapChain);
+		*ppSwapChain = reinterpret_cast<IDXGISwapChain1*>(swapchainWrap1);
+	}
+
+	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+		G->mResolutionInfo.width = pDesc->Width;
+		G->mResolutionInfo.height = pDesc->Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
+	LogInfo("->return value = %#x \n\n", hr);
 	return hr;
 }
 
