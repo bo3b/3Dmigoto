@@ -1,3 +1,37 @@
+// Object			OS				DXGI version	Feature level
+// IDXGIDevice		Win7			1.0				11.0
+// IDXGIDevice1		Win7			1.0				11.0
+// IDXGIDevice2		Platform update	1.2				11.1
+// IDXGIDevice3		Win8.1			1.3
+// IDXGIDevice4						1.5
+// 
+// IDXGIAdapter		Win7			1.0				11.0
+// IDXGIAdapter1	Win7			1.0				11.0
+// IDXGIAdapter2	Platform update	1.2				11.1
+// IDXGIAdapter3					1.3
+// 
+// IDXGIFactory		Win7			1.0				11.0
+// IDXGIFactory1	Win7			1.0				11.0
+// IDXGIFactory2	Platform update	1.2				11.1
+// IDXGIFactory3	Win8.1			1.3
+// IDXGIFactory4					1.4
+// IDXGIFactory5					1.5
+// 
+// IDXGIOutput		Win7			1.0				11.0
+// IDXGIOutput1		Platform update	1.2				11.1
+// IDXGIOutput2		Win8.1			1.3
+// IDXGIOutput3		Win8.1			1.3
+// IDXGIOutput4		Win10			1.4
+// IDXGIOutput5		Win10			1.5
+// 
+// IDXGIResource	Win7			1.0				11.0
+// IDXGIResource1	Platform update	1.2				11.1
+// 
+// IDXGISwapChain	Win7			1.0				11.0
+// IDXGISwapChain1	Platform update	1.2				11.1
+// IDXGISwapChain2	Win8.1			1.3
+// IDXGISwapChain3	Win10			1.4
+// IDXGISwapChain4					1.5
 
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
@@ -222,40 +256,67 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	LogInfo("HackerDXGIObject::GetParent(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigObject->GetParent(riid, ppParent);
-
-	// Check return value before wrapping - don't create wrappers for error states
-	if (SUCCEEDED(hr) && ppParent)
+	if (FAILED(hr))
 	{
-		if (riid == __uuidof(IDXGIAdapter))
+		LogInfo("  failed result = %x for %p \n", hr, ppParent);
+		return hr;
+	}
+
+	// No need to check for null states from here, it would have thrown an error.
+
+	if (riid == __uuidof(IDXGIAdapter) || riid == __uuidof(IDXGIAdapter1))
+	{
+		// Always return the IDXGIAdapter1 for these parents, as the superset on Win7.
+		IDXGIAdapter1 *origAdapter1;
+		static_cast<IDXGIAdapter*>(*ppParent)->QueryInterface(IID_PPV_ARGS(&origAdapter1));
+
+		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
+		LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p \n", adapterWrap1, *ppParent);
+		*ppParent = adapterWrap1;
+	}
+	else if (riid == __uuidof(IDXGIAdapter2))
+	{
+		if (!G->enable_platform_update) 
 		{
-			HackerDXGIAdapter *adapterWrap = new HackerDXGIAdapter(static_cast<IDXGIAdapter*>(*ppParent));
-			LogInfo("  created HackerDXGIAdapter wrapper = %p of %p \n", adapterWrap, *ppParent);
-			*ppParent = reinterpret_cast<void*>(adapterWrap);
+			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			*ppParent = NULL;
+			return E_NOINTERFACE;
 		}
-		else if (riid == __uuidof(IDXGIAdapter1))
+		// TODO: for platform update, return IDXGIAdapter2
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+		*ppParent = NULL;
+		return E_NOINTERFACE;
+	}
+	else if (riid == __uuidof(IDXGIFactory))
+	{
+		// This is a specific hack for MGSV on Windows 10. If we wrap the DXGIFactory the game will reject it and
+		// the game will quit. We still get the swap chain however, as the game creates it from a DXGIFactory1,
+		// which it does allow us to wrap. If this turns out to be insufficient, we should be able to get it working
+		// by using the same style of hooking we use for the context & device.
+		if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_FACTORY)) {
+			HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
+			LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, *ppParent);
+			*ppParent = factoryWrap;
+		}
+	}
+	else if (riid == __uuidof(IDXGIFactory1))
+	{
+		HackerDXGIFactory1 *factoryWrap1 = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(*ppParent));
+		LogInfo("  created HackerDXGIFactory1 wrapper = %p of %p \n", factoryWrap1, *ppParent);
+		*ppParent = factoryWrap1;
+	}
+	else if (riid == __uuidof(IDXGIFactory2))
+	{
+		if (!G->enable_platform_update) 
 		{
-			HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(static_cast<IDXGIAdapter1*>(*ppParent));
-			LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p \n", adapterWrap1, *ppParent);
-			*ppParent = reinterpret_cast<void*>(adapterWrap1);
+			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			*ppParent = NULL;
+			return E_NOINTERFACE;
 		}
-		else if (riid == __uuidof(IDXGIFactory))
-		{
-			// This is a specific hack for MGSV on Windows 10. If we wrap the DXGIFactory the game will reject it and
-			// the game will quit. We still get the swap chain however, as the game creates it from a DXGIFactory1,
-			// which it does allow us to wrap. If this turns out to be insufficient, we should be able to get it working
-			// by using the same style of hooking we use for the context & device.
-			if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_FACTORY)) {
-				HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
-				LogInfo("  created HackerDXGIFactory wrapper = %p of %p \n", factoryWrap, *ppParent);
-				*ppParent = factoryWrap;
-			}
-		}
-		else if (riid == __uuidof(IDXGIFactory1))
-		{
-			HackerDXGIFactory1 *factoryWrap1 = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(*ppParent));
-			LogInfo("  created HackerDXGIFactory1 wrapper = %p of %p \n", factoryWrap1, *ppParent);
-			*ppParent = factoryWrap1;
-		}
+		// TODO: for platform update, return HackerDXGIFactory2
+		*ppParent = NULL;
+		return E_NOINTERFACE;
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 	}
 
 	LogInfo("  returns result = %#x \n", hr);
@@ -611,12 +672,19 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	IUnknown *origDevice = NULL;
 
 	hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device*)pDevice);
-	if (hackerDevice) {
+	if (hackerDevice) 
+	{
 		origDevice = pDevice;
 	}
 	else if (typeid(*pDevice) == typeid(HackerDevice))
 	{
 		hackerDevice = static_cast<HackerDevice*>(pDevice);
+		origDevice = hackerDevice->GetOrigDevice();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDevice1))
+	{
+		// Needed for Batman:Telltale games
+		hackerDevice = static_cast<HackerDevice1*>(pDevice);
 		origDevice = hackerDevice->GetOrigDevice();
 	}
 	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
@@ -1045,7 +1113,28 @@ STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 		// update is not installed, or missing feature on Win8.1.  This will force the game
 		// to use a more compatible path and make our job easier.
 
+		if (!G->enable_platform_update) 
+		{
+			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+			*ppvObject = NULL;
+			return E_NOINTERFACE;
+		}
+		// TODO: for platform update, return IDXGIAdapter2
 		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+		*ppvObject = NULL;
+		return E_NOINTERFACE;
+	}
+	else if (riid == __uuidof(IDXGIFactory2))
+	{
+		// Called from Batman: Telltale games. 
+
+		if (!G->enable_platform_update)
+		{
+			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			*ppvObject = NULL;
+			return E_NOINTERFACE;
+		}
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 		*ppvObject = NULL;
 		return E_NOINTERFACE;
 	}
