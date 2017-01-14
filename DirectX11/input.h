@@ -72,6 +72,7 @@ public:
 class VKInputButton : public InputButton {
 public:
 	int vkey;
+	bool invert;
 
 	VKInputButton(const wchar_t *keyName);
 	bool CheckState() override;
@@ -86,6 +87,7 @@ private:
 	WORD button;
 	BYTE left_trigger;
 	BYTE right_trigger;
+	bool invert;
 
 	bool _CheckState(int controller);
 public:

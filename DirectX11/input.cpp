@@ -114,8 +114,14 @@ bool InputAction::Dispatch(HackerDevice *device)
 
 // -----------------------------------------------------------------------------
 
-VKInputButton::VKInputButton(const wchar_t *keyName)
+VKInputButton::VKInputButton(const wchar_t *keyName) :
+	invert(false)
 {
+	if (!_wcsnicmp(keyName, L"no_", 3)) {
+		invert = true;
+		keyName += 3;
+	}
+
 	vkey = ParseVKey(keyName);
 	if (vkey < 0)
 		throw keyParseError;
@@ -128,7 +134,7 @@ VKInputButton::VKInputButton(const wchar_t *keyName)
 
 bool VKInputButton::CheckState()
 {
-	return (GetAsyncKeyState(vkey) < 0);
+	return ((GetAsyncKeyState(vkey) < 0) ^ invert);
 }
 
 
@@ -222,16 +228,16 @@ bool XInputButton::_CheckState(int controller)
 	XINPUT_GAMEPAD *gamepad = &XInputState[controller].state.Gamepad;
 
 	if (!XInputState[controller].connected)
-		return false;
+		return false; // Don't invert if it's not connected
 
 	if (button && (gamepad->wButtons & button))
-		return true;
+		return true ^ invert;
 	if (left_trigger && (gamepad->bLeftTrigger >= left_trigger))
-		return true;
+		return true ^ invert;
 	if (right_trigger && (gamepad->bRightTrigger >= right_trigger))
-		return true;
+		return true ^ invert;
 
-	return false;
+	return false ^ invert;
 }
 
 static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
@@ -266,10 +272,16 @@ XInputButton::XInputButton(const wchar_t *keyName) :
 	controller(-1),
 	button(0),
 	left_trigger(0),
-	right_trigger(0)
+	right_trigger(0),
+	invert(false)
 {
 	int i, threshold = XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
 	BYTE *trigger;
+
+	if (!_wcsnicmp(keyName, L"no_", 3)) {
+		invert = true;
+		keyName += 3;
+	}
 
 	if (_wcsnicmp(keyName, L"XB", 2))
 		throw keyParseError;
@@ -356,13 +368,24 @@ InputButtonList::InputButtonList(wchar_t *keyName)
 		if (*ptr)
 			ptr++;
 
-		try {
-			buttons.push_back(new VKInputButton(cur_key.c_str()));
-		} catch (KeyParseError) {
+		// Special case: "no_modifiers" is expanded to exclude all modifiers:
+		if (!_wcsicmp(cur_key.c_str(), L"no_modifiers")) {
+			buttons.push_back(new VKInputButton(L"NO_CTRL"));
+			buttons.push_back(new VKInputButton(L"NO_ALT"));
+			buttons.push_back(new VKInputButton(L"NO_SHIFT"));
+			// Ctrl, Alt & Shift have left/right independent
+			// variants, but Win does not, exclude both:
+			buttons.push_back(new VKInputButton(L"NO_LWIN"));
+			buttons.push_back(new VKInputButton(L"NO_RWIN"));
+		} else {
 			try {
-				buttons.push_back(new XInputButton(cur_key.c_str()));
+				buttons.push_back(new VKInputButton(cur_key.c_str()));
 			} catch (KeyParseError) {
-				goto fail;
+				try {
+					buttons.push_back(new XInputButton(cur_key.c_str()));
+				} catch (KeyParseError) {
+					goto fail;
+				}
 			}
 		}
 	}
