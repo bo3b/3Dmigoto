@@ -146,7 +146,10 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
 
 	/*
 	 * The following are to reduce the impact on existing users with an old
-	 * d3dx.ini, provided they are using the default english key bindings
+	 * d3dx.ini, provided they are using the default english key bindings.
+	 *
+	 * NOTE: These will not work to specify key combinations (at least not
+	 * the ones with spaces) - for that, use the VK naming.
 	 */
 	{L"Num 1", 0x61},
 	{L"Num 2", 0x62},
@@ -164,7 +167,7 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
 	{L"Prnt Scrn", 0x2C},
 };
 
-static int ParseVKey(wchar_t *name)
+static int ParseVKey(const wchar_t *name)
 {
 	int i;
 
