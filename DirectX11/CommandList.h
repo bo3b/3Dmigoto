@@ -121,7 +121,7 @@ public:
 	CustomShader();
 	~CustomShader();
 
-	bool compile(char type, wchar_t *filename, wstring *wname);
+	bool compile(char type, wchar_t *filename, const wstring *wname);
 	void substantiate(ID3D11Device *mOrigDevice);
 };
 

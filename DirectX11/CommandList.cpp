@@ -456,7 +456,7 @@ CustomShader::~CustomShader()
 
 // This is similar to the other compile routines, but still distinct enough to
 // get it's own function for now - TODO: Refactor out the common code
-bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
+bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 {
 	wchar_t path[MAX_PATH];
 	HANDLE f;
