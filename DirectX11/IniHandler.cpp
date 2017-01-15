@@ -30,6 +30,7 @@ static Section CommandListSections[] = {
 	{L"ShaderOverride", true},
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
+	{L"CommandList", true},
 	{L"Present", false},
 };
 
@@ -1258,6 +1259,37 @@ static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 	}
 }
 
+// "Explicit" means that this parses command lists sections that are
+// *explicitly* called [CommandList*], as opposed to other sections that are
+// implicitly command lists (such as ShaderOverride, Present, etc).
+static void ParseExplicitCommandListSections(IniSections &sections, wchar_t *iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wstring section_id;
+	ExplicitCommandListSection *command_list_section;
+
+	explicitCommandListSections.clear();
+
+	lower = sections.lower_bound(wstring(L"CommandList"));
+	upper = prefix_upper_bound(sections, wstring(L"CommandList"));
+	for (i = lower; i != upper; i++) {
+		LogInfoW(L"[%s]\n", i->c_str());
+
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		section_id = *i;
+		std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
+
+		// Construct an explicit command list section in the global list:
+		command_list_section = &explicitCommandListSections[section_id];
+
+		// FIXME: Parse these later as these sections can refer to
+		// other CustomShader/CommandList sections that may not have
+		// been parsed yet:
+		ParseCommandList(i->c_str(), iniFile, &command_list_section->command_list, &command_list_section->post_command_list, NULL);
+	}
+}
+
 // Check the Stereo availability. If stereo is disabled we otherwise will crash 
 // when trying to create stereo texture.  This should be more graceful now.
 
@@ -1633,6 +1665,7 @@ void LoadConfigFile()
 
 	ParseResourceSections(sections, iniFile);
 	ParseCustomShaderSections(sections, iniFile);
+	ParseExplicitCommandListSections(sections, iniFile);
 
 	ParseShaderOverrideSections(sections, iniFile);
 	ParseTextureOverrideSections(sections, iniFile);

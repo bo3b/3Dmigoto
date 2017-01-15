@@ -61,6 +61,28 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
+class ExplicitCommandListSection
+{
+public:
+	CommandList command_list;
+	CommandList post_command_list;
+};
+
+typedef std::unordered_map<std::wstring, class ExplicitCommandListSection> ExplicitCommandListSections;
+extern ExplicitCommandListSections explicitCommandListSections;
+
+class RunExplicitCommandList : public CommandListCommand {
+public:
+	wstring ini_val;
+	ExplicitCommandListSection *command_list_section;
+
+	RunExplicitCommandList() :
+		command_list_section(NULL)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
 class CustomShader
 {
 public:
