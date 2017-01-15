@@ -22,29 +22,54 @@
 //
 // ParseCommandList will terminate the program if it is called on a section not
 // listed here to make sure we never forget to update this.
-struct CommandListSection {
+struct Section {
 	wchar_t *section;
 	bool prefix;
 };
-static CommandListSection CommandListSections[] = {
+static Section CommandListSections[] = {
 	{L"ShaderOverride", true},
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
 	{L"Present", false},
 };
 
-bool IsCommandListSection(const wchar_t *section)
+// List all remaining sections so we can verify that every section listed in
+// the d3dx.ini is valid and warn about any typos. As above, the boolean value
+// indicates that this is a prefix, false if it is an exact match. No need to
+// list a section in both lists - put it above if it is a command list section,
+// and in this list if it is not:
+static Section RegularSections[] = {
+	{L"Logging", false},
+	{L"System", false},
+	{L"Device", false},
+	{L"Stereo", false},
+	{L"Rendering", false},
+	{L"Hunting", false},
+	{L"Constants", false},
+	{L"Profile", false},
+	{L"ConvergenceMap", false}, // Only used in nvapi wrapper
+	{L"Resource", true},
+	{L"Key", true},
+};
+
+// List of sections that will not trigger a warning if they contain a line
+// without an equals sign
+static wchar_t *AllowLinesWithoutEquals[] = {
+	L"Profile",
+};
+
+static bool SectionInList(const wchar_t *section, Section section_list[], int list_size)
 {
 	size_t len;
 	int i;
 
-	for (i = 0; i < ARRAYSIZE(CommandListSections); i++) {
-		if (CommandListSections[i].prefix) {
-			len = wcslen(CommandListSections[i].section);
-			if (!_wcsnicmp(section, CommandListSections[i].section, len))
+	for (i = 0; i < list_size; i++) {
+		if (section_list[i].prefix) {
+			len = wcslen(section_list[i].section);
+			if (!_wcsnicmp(section, section_list[i].section, len))
 				return true;
 		} else {
-			if (!_wcsicmp(section, CommandListSections[i].section))
+			if (!_wcsicmp(section, section_list[i].section))
 				return true;
 		}
 	}
@@ -52,11 +77,17 @@ bool IsCommandListSection(const wchar_t *section)
 	return false;
 }
 
-static wchar_t *AllowLinesWithoutEquals[] = {
-	L"Profile",
-};
+static bool IsCommandListSection(const wchar_t *section)
+{
+	return SectionInList(section, CommandListSections, ARRAYSIZE(CommandListSections));
+}
 
-bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
+static bool IsRegularSection(const wchar_t *section)
+{
+	return SectionInList(section, RegularSections, ARRAYSIZE(RegularSections));
+}
+
+static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 {
 	int i;
 
@@ -250,6 +281,10 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	// list.
 	if (IsCommandListSection(section))
 		warn_duplicates = false;
+	else if (!IsRegularSection(section)) {
+		LogInfoW(L"WARNING: Unknown section in d3dx.ini: [%s]\n", section);
+		BeepFailure2();
+	}
 
 	if (DoesSectionAllowLinesWithoutEquals(section))
 		warn_lines_without_equals = false;
