@@ -394,6 +394,7 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 
 		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile)) {
 			LogInfo("  WARNING: [%S] missing Key=\n", id);
+			BeepFailure2();
 			continue;
 		}
 
@@ -660,6 +661,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
 			LogInfo("  WARNING: [%S] missing Hash=\n", id);
+			BeepFailure2();
 			continue;
 		}
 		swscanf_s(setting, L"%16llx", &hash);
@@ -784,6 +786,7 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
 			LogInfo("  WARNING: [%S] missing Hash=\n", id);
+			BeepFailure2();
 			continue;
 		}
 
