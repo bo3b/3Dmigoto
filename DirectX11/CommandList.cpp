@@ -21,9 +21,16 @@ void _RunCommandList(HackerDevice *mHackerDevice,
 {
 	CommandList::iterator i;
 
+	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
+		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
+		return;
+	}
+
+	state->recursion++;
 	for (i = command_list->begin(); i < command_list->end(); i++) {
 		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state);
 	}
+	state->recursion--;
 }
 
 static void CommandListFlushState(HackerDevice *mHackerDevice,

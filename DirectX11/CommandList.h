@@ -8,6 +8,13 @@
 #include "DrawCallInfo.h"
 #include <nvapi.h>
 
+// Used to prevent typos leading to infinite recursion (or at least overflowing
+// the real stack) due to a section running itself or a circular reference. 64
+// should be more than generous - I don't want it to be too low and stifle
+// people's imagination, but I'd be very surprised if anyone ever has a
+// legitimate need to exceed this:
+#define MAX_COMMAND_LIST_RECURSION 64
+
 // Forward declarations instead of #includes to resolve circular includes (we
 // include Hacker*.h, which includes Globals.h, which includes us):
 class HackerDevice;
@@ -21,6 +28,7 @@ struct CommandListState {
 	DrawCallInfo *call_info;
 	bool post;
 	CURSORINFO cursor_info;
+	int recursion;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -31,7 +39,8 @@ struct CommandListState {
 		call_info(NULL),
 		post(false),
 		update_params(false),
-		cursor_info()
+		cursor_info(),
+		recursion(0)
 	{}
 };
 
