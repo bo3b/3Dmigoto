@@ -1830,7 +1830,7 @@ vector<DWORD> assembleIns(string s) {
 		ins->opcode = 0x6a;
 		ins->length = 1;
 		ins->_11_23 = 0;
-		for (int i = 1; i < w.size(); i += 2) {
+		for (unsigned i = 1; i < w.size(); i += 2) {
 			// Changed this to use a loop rather than parsing a
 			// fixed number of arguments. Added double precision,
 			// minimum precision, skipOptimization and 11.1 shader
