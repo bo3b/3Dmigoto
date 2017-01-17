@@ -699,7 +699,7 @@ HRESULT WINAPI D3D11CreateDevice(
 					D3D_DRIVER_TYPE     DriverType,
 					HMODULE             Software,
 					UINT                Flags,
-	_In_reads_opt_(FeatureLevels) /*const*/ D3D_FEATURE_LEVEL   *pFeatureLevels,
+	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
 					UINT                FeatureLevels,
 					UINT                SDKVersion,
 	_Out_opt_       ID3D11Device        **ppDevice,
@@ -716,7 +716,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel : 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
-	if (ForceDX11(pFeatureLevels))
+	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
 
 #if _DEBUG_LAYER
@@ -817,7 +817,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 						D3D_DRIVER_TYPE      DriverType,
 						HMODULE              Software,
 						UINT                 Flags,
-	_In_opt_ /*const*/	D3D_FEATURE_LEVEL    *pFeatureLevels,
+	_In_opt_ const		D3D_FEATURE_LEVEL    *pFeatureLevels,
 						UINT                 FeatureLevels,
 						UINT                 SDKVersion,
 	_In_opt_			DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
@@ -838,7 +838,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
-	if (ForceDX11(pFeatureLevels))
+	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
 
 	ForceDisplayParams(pSwapChainDesc);
