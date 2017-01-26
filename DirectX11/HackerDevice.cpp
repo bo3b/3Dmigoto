@@ -1597,6 +1597,25 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
 
+static bool heuristic_could_be_possible_resolution(unsigned width, unsigned height)
+{
+	// Exclude very small resolutions:
+	if (width < 640 || height < 480)
+		return false;
+
+	// Assume square textures are not a resolution, like 3D Vision:
+	if (width == height)
+		return false;
+
+	// Special case for WATCH_DOGS2 1.09.154 update, which creates 16384 x 4096
+	// shadow maps on ultra that are mistaken for the resolution. I don't
+	// think that 4 is ever a valid aspect radio, so exclude it:
+	if (width == height * 4)
+		return false;
+
+	return true;
+}
+
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__in  const D3D11_TEXTURE2D_DESC *pDesc,
@@ -1625,7 +1644,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
+	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
@@ -1774,7 +1793,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
+	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
