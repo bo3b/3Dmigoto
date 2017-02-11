@@ -270,6 +270,95 @@ err:
 	return;
 }
 
+typedef wchar_t*(WINAPI *lpfnGetCommandLineW)(void);
+typedef char*(WINAPI *lpfnGetCommandLineA)(void);
+lpfnGetCommandLineW trampoline_GetCommandLineW;
+lpfnGetCommandLineA trampoline_GetCommandLineA;
+
+static wchar_t *override_command_line_w = NULL;
+static char *override_command_line_a = NULL;
+
+static wchar_t* WINAPI Hooked_GetCommandLineW(void)
+{
+	wchar_t *orig_command_line;
+	size_t len;
+
+	if (!override_command_line_w) {
+		orig_command_line = trampoline_GetCommandLineW();
+		len = wcslen(orig_command_line) + wcslen(G->COMMAND_LINE_APPEND) + 2;
+		override_command_line_w = new wchar_t[len];
+		wcscpy_s(override_command_line_w, len, orig_command_line);
+		wcscat_s(override_command_line_w, len, L" ");
+		wcscat_s(override_command_line_w, len, G->COMMAND_LINE_APPEND);
+	}
+
+	LogInfoW(L"Hooked_GetCommandLineW returning \"%s\"\n", override_command_line_w);
+
+	return override_command_line_w;
+}
+
+static char* WINAPI Hooked_GetCommandLineA(void)
+{
+	char *orig_command_line;
+	char buf[MAX_PATH];
+	size_t len;
+
+	if (!override_command_line_a) {
+		orig_command_line = trampoline_GetCommandLineA();
+		len = strlen(orig_command_line) + wcslen(G->COMMAND_LINE_APPEND) + 2;
+		override_command_line_a = new char[len];
+		strcpy_s(override_command_line_a, len, orig_command_line);
+		strcat_s(override_command_line_a, len, " ");
+		wcstombs(buf, G->COMMAND_LINE_APPEND, MAX_PATH);
+		strcat_s(override_command_line_a, len, buf);
+	}
+
+	LogInfo("Hooked_GetCommandLineA returning \"%s\"\n", override_command_line_a);
+
+	return override_command_line_a;
+}
+
+void InstallGetCommandLineHooks()
+{
+	HINSTANCE hKernel32;
+	void *fnOrigGetCommandLineW, *fnOrigGetCommandLineA;
+	DWORD dwOsErr;
+	SIZE_T hook_id;
+	static bool hook_installed = false;
+
+	// Only attempt to hook it once:
+	if (hook_installed)
+		return;
+	hook_installed = true;
+
+	hKernel32 = NktHookLibHelpers::GetModuleBaseAddress(L"Kernel32.dll");
+	if (!hKernel32)
+		goto err;
+
+	fnOrigGetCommandLineW = NktHookLibHelpers::GetProcedureAddress(hKernel32, "GetCommandLineW");
+	if (fnOrigGetCommandLineW == NULL)
+		goto err;
+
+	fnOrigGetCommandLineA = NktHookLibHelpers::GetProcedureAddress(hKernel32, "GetCommandLineA");
+	if (fnOrigGetCommandLineA == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCommandLineW, fnOrigGetCommandLineW, Hooked_GetCommandLineW);
+	if (dwOsErr)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCommandLineA, fnOrigGetCommandLineA, Hooked_GetCommandLineA);
+	if (dwOsErr)
+		goto err;
+
+	LogInfo("Successfully hooked GetCommandLine\n");
+	return;
+err:
+	LogInfo("Failed to hook GetCommaneLine\n");
+	BeepFailure2();
+	return;
+}
+
 static void RemoveHooks()
 {
 	cHookMgr.UnhookAll();

@@ -10,6 +10,7 @@ extern bool bLog;
 
 void InitD311();
 void InstallSetWindowPosHook();
+void InstallGetCommandLineHooks();
 
 enum class EnableHooks {
 	INVALID                     = 0,

@@ -1452,6 +1452,11 @@ void LoadConfigFile()
 	G->enable_check_interface = GetIniBool(L"System", L"allow_check_interface", false, iniFile, NULL);
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
 	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, iniFile, NULL);
+	GetPrivateProfileString(L"System", L"command_line_append", 0, G->COMMAND_LINE_APPEND, MAX_PATH, iniFile);
+	if (G->COMMAND_LINE_APPEND[0]) {
+		LogInfoW(L"  command_line_append=%s\n", G->COMMAND_LINE_APPEND);
+		InstallGetCommandLineHooks();
+	}
 
 	// [Device] (DXGI parameters)
 	LogInfo("[Device]\n");

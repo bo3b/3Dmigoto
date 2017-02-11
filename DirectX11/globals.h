@@ -285,6 +285,7 @@ struct Globals
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
+	wchar_t COMMAND_LINE_APPEND[MAX_PATH];
 
 	EnableHooks enable_hooks;
 	
@@ -515,6 +516,7 @@ struct Globals
 		SHADER_PATH[0] = 0;
 		SHADER_CACHE_PATH[0] = 0;
 		CHAIN_DLL_PATH[0] = 0;
+		COMMAND_LINE_APPEND[0] = 0;
 
 		ANALYSIS_PATH[0] = 0;
 
