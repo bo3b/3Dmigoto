@@ -1,0 +1,4 @@
+*.bin
+*.msasm
+*.asm
+*.shdr

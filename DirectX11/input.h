@@ -72,8 +72,9 @@ public:
 class VKInputButton : public InputButton {
 public:
 	int vkey;
+	bool invert;
 
-	VKInputButton(wchar_t *keyName);
+	VKInputButton(const wchar_t *keyName);
 	bool CheckState() override;
 };
 
@@ -86,10 +87,23 @@ private:
 	WORD button;
 	BYTE left_trigger;
 	BYTE right_trigger;
+	bool invert;
 
 	bool _CheckState(int controller);
 public:
-	XInputButton(wchar_t *keyName);
+	XInputButton(const wchar_t *keyName);
+	bool CheckState() override;
+};
+
+// -----------------------------------------------------------------------------
+// InputButtonList allows multiple InputButtons to be combined:
+class InputButtonList : public InputButton {
+	vector<InputButton*> buttons;
+	void clear();
+
+public:
+	InputButtonList(wchar_t *keyName);
+	~InputButtonList();
 	bool CheckState() override;
 };
 

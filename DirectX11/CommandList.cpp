@@ -10,6 +10,7 @@
 
 CustomResources customResources;
 CustomShaders customShaders;
+ExplicitCommandListSections explicitCommandListSections;
 
 void _RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
@@ -20,9 +21,16 @@ void _RunCommandList(HackerDevice *mHackerDevice,
 {
 	CommandList::iterator i;
 
+	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
+		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
+		return;
+	}
+
+	state->recursion++;
 	for (i = command_list->begin(); i < command_list->end(); i++) {
 		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state);
 	}
+	state->recursion--;
 }
 
 static void CommandListFlushState(HackerDevice *mHackerDevice,
@@ -122,21 +130,48 @@ static bool ParseRunShader(wstring *val, CommandList *explicit_command_list,
 	RunCustomShaderCommand *operation = new RunCustomShaderCommand();
 	CustomShaders::iterator shader;
 
-	if (!wcsncmp(val->c_str(), L"customshader", 12)) {
-		// Value should already have been transformed to lower
-		// case from ParseCommandList, so our keys will be
-		// consistent in the unordered_map:
-		wstring shader_id(val->c_str());
+	// Value should already have been transformed to lower case from
+	// ParseCommandList, so our keys will be consistent in the
+	// unordered_map:
+	wstring shader_id(val->c_str());
 
-		shader = customShaders.find(shader_id);
-		if (shader == customShaders.end())
-			goto bail;
+	shader = customShaders.find(shader_id);
+	if (shader == customShaders.end())
+		goto bail;
 
-		operation->ini_val = *val;
-		operation->custom_shader = &shader->second;
-		AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
-		return true;
-	}
+	operation->ini_val = *val;
+	operation->custom_shader = &shader->second;
+	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return true;
+
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseRunExplicitCommandList(wstring *val, CommandList *explicit_command_list,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	RunExplicitCommandList *operation = new RunExplicitCommandList();
+	ExplicitCommandListSections::iterator shader;
+
+	// Value should already have been transformed to lower case from
+	// ParseCommandList, so our keys will be consistent in the
+	// unordered_map:
+	wstring section_id(val->c_str());
+
+	shader = explicitCommandListSections.find(section_id);
+	if (shader == explicitCommandListSections.end())
+		goto bail;
+
+	operation->ini_val = *val;
+	operation->command_list_section = &shader->second;
+	// This function is nearly identical to ParseRunShader, but in case we
+	// later refactor these together note that here we do not specify a
+	// sensible command list, so it will be added to both pre and post
+	// command lists:
+	AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+	return true;
 
 bail:
 	delete operation;
@@ -216,8 +251,13 @@ bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
 	if (!wcscmp(key, L"checktextureoverride"))
 		return ParseCheckTextureOverride(val, explicit_command_list, pre_command_list, post_command_list);
 
-	if (!wcscmp(key, L"run"))
-		return ParseRunShader(val, explicit_command_list, pre_command_list, post_command_list);
+	if (!wcscmp(key, L"run")) {
+		if (!wcsncmp(val->c_str(), L"customshader", 12))
+			return ParseRunShader(val, explicit_command_list, pre_command_list, post_command_list);
+
+		if (!wcsncmp(val->c_str(), L"commandlist", 11))
+			return ParseRunExplicitCommandList(val, explicit_command_list, pre_command_list, post_command_list);
+	}
 
 	return ParseDrawCommand(key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -423,7 +463,7 @@ CustomShader::~CustomShader()
 
 // This is similar to the other compile routines, but still distinct enough to
 // get it's own function for now - TODO: Refactor out the common code
-bool CustomShader::compile(char type, wchar_t *filename, wstring *wname)
+bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 {
 	wchar_t path[MAX_PATH];
 	HANDLE f;
@@ -779,6 +819,18 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		if (saved_uavs[i])
 			saved_uavs[i]->Release();
 	}
+}
+
+void RunExplicitCommandList::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	mHackerContext->FrameAnalysisLog("3DMigoto run = %S", ini_val.c_str());
+
+	if (state->post)
+		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &command_list_section->post_command_list, state);
+	else
+		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &command_list_section->command_list, state);
 }
 
 
@@ -2230,6 +2282,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		// be larger than 4096 x 4 component x 4 byte constants.
 		dst_size = (new_desc.ByteWidth + 15) & ~0xf;
 		dst_size = min(dst_size, D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16);
+
+		// Constant buffers cannot be structured, so clear that flag:
+		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 
 		// If the size of the new resource doesn't match the old or
 		// there is an offset we will have to perform a region copy

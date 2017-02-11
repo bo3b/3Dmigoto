@@ -8,6 +8,13 @@
 #include "DrawCallInfo.h"
 #include <nvapi.h>
 
+// Used to prevent typos leading to infinite recursion (or at least overflowing
+// the real stack) due to a section running itself or a circular reference. 64
+// should be more than generous - I don't want it to be too low and stifle
+// people's imagination, but I'd be very surprised if anyone ever has a
+// legitimate need to exceed this:
+#define MAX_COMMAND_LIST_RECURSION 64
+
 // Forward declarations instead of #includes to resolve circular includes (we
 // include Hacker*.h, which includes Globals.h, which includes us):
 class HackerDevice;
@@ -21,6 +28,7 @@ struct CommandListState {
 	DrawCallInfo *call_info;
 	bool post;
 	CURSORINFO cursor_info;
+	int recursion;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -31,7 +39,8 @@ struct CommandListState {
 		call_info(NULL),
 		post(false),
 		update_params(false),
-		cursor_info()
+		cursor_info(),
+		recursion(0)
 	{}
 };
 
@@ -56,6 +65,28 @@ public:
 	CheckTextureOverrideCommand() :
 		shader_type(NULL),
 		texture_slot(INT_MAX)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
+class ExplicitCommandListSection
+{
+public:
+	CommandList command_list;
+	CommandList post_command_list;
+};
+
+typedef std::unordered_map<std::wstring, class ExplicitCommandListSection> ExplicitCommandListSections;
+extern ExplicitCommandListSections explicitCommandListSections;
+
+class RunExplicitCommandList : public CommandListCommand {
+public:
+	wstring ini_val;
+	ExplicitCommandListSection *command_list_section;
+
+	RunExplicitCommandList() :
+		command_list_section(NULL)
 	{}
 
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
@@ -99,7 +130,7 @@ public:
 	CustomShader();
 	~CustomShader();
 
-	bool compile(char type, wchar_t *filename, wstring *wname);
+	bool compile(char type, wchar_t *filename, const wstring *wname);
 	void substantiate(ID3D11Device *mOrigDevice);
 };
 

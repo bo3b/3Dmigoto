@@ -114,8 +114,14 @@ bool InputAction::Dispatch(HackerDevice *device)
 
 // -----------------------------------------------------------------------------
 
-VKInputButton::VKInputButton(wchar_t *keyName)
+VKInputButton::VKInputButton(const wchar_t *keyName) :
+	invert(false)
 {
+	if (!_wcsnicmp(keyName, L"no_", 3)) {
+		invert = true;
+		keyName += 3;
+	}
+
 	vkey = ParseVKey(keyName);
 	if (vkey < 0)
 		throw keyParseError;
@@ -128,7 +134,7 @@ VKInputButton::VKInputButton(wchar_t *keyName)
 
 bool VKInputButton::CheckState()
 {
-	return (GetAsyncKeyState(vkey) < 0);
+	return ((GetAsyncKeyState(vkey) < 0) ^ invert);
 }
 
 
@@ -222,16 +228,16 @@ bool XInputButton::_CheckState(int controller)
 	XINPUT_GAMEPAD *gamepad = &XInputState[controller].state.Gamepad;
 
 	if (!XInputState[controller].connected)
-		return false;
+		return false; // Don't invert if it's not connected
 
 	if (button && (gamepad->wButtons & button))
-		return true;
+		return true ^ invert;
 	if (left_trigger && (gamepad->bLeftTrigger >= left_trigger))
-		return true;
+		return true ^ invert;
 	if (right_trigger && (gamepad->bRightTrigger >= right_trigger))
-		return true;
+		return true ^ invert;
 
-	return false;
+	return false ^ invert;
 }
 
 static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
@@ -262,14 +268,20 @@ static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
 // (either that or I have a very precise 100% reproducable memory corruption
 // issue), which isn't that surprising given that regular expressions are
 // uncommon in the Windows world. Feel free to rewrite this in a cleaner way.
-XInputButton::XInputButton(wchar_t *keyName) :
+XInputButton::XInputButton(const wchar_t *keyName) :
 	controller(-1),
 	button(0),
 	left_trigger(0),
-	right_trigger(0)
+	right_trigger(0),
+	invert(false)
 {
 	int i, threshold = XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
 	BYTE *trigger;
+
+	if (!_wcsnicmp(keyName, L"no_", 3)) {
+		invert = true;
+		keyName += 3;
+	}
 
 	if (_wcsnicmp(keyName, L"XB", 2))
 		throw keyParseError;
@@ -334,6 +346,86 @@ bool XInputButton::CheckState()
 	return false;
 }
 
+InputButtonList::InputButtonList(wchar_t *keyName)
+{
+	wchar_t *ptr = keyName, *cur = NULL;
+	wstring cur_key;
+
+	while (*ptr) {
+		// Skip over whitespace:
+		for (; *ptr == L' '; ptr++) {}
+
+		// Mark start of current entry:
+		cur = ptr;
+
+		// Scan until the next whitespace or end of string:
+		for (; *ptr && *ptr != L' '; ptr++) {}
+
+		// Copy the current entry to a new string (don't modify the
+		// string passed from the caller so it can still log properly)
+		// and advance pointer unless it is the end of string:
+		cur_key = wstring(cur, ptr - cur);
+		if (*ptr)
+			ptr++;
+
+		// Special case: "no_modifiers" is expanded to exclude all modifiers:
+		if (!_wcsicmp(cur_key.c_str(), L"no_modifiers")) {
+			buttons.push_back(new VKInputButton(L"NO_CTRL"));
+			buttons.push_back(new VKInputButton(L"NO_ALT"));
+			buttons.push_back(new VKInputButton(L"NO_SHIFT"));
+			// Ctrl, Alt & Shift have left/right independent
+			// variants, but Win does not, exclude both:
+			buttons.push_back(new VKInputButton(L"NO_LWIN"));
+			buttons.push_back(new VKInputButton(L"NO_RWIN"));
+		} else {
+			try {
+				buttons.push_back(new VKInputButton(cur_key.c_str()));
+			} catch (KeyParseError) {
+				try {
+					buttons.push_back(new XInputButton(cur_key.c_str()));
+				} catch (KeyParseError) {
+					goto fail;
+				}
+			}
+		}
+	}
+
+	if (buttons.empty())
+		throw keyParseError;
+
+	return;
+fail:
+	clear();
+	throw keyParseError;
+}
+
+void InputButtonList::clear()
+{
+	vector<InputButton*>::iterator i;
+
+	for (i = buttons.begin(); i < buttons.end(); i++)
+		delete *i;
+
+	buttons.clear();
+}
+
+InputButtonList::~InputButtonList()
+{
+	clear();
+}
+
+bool InputButtonList::CheckState()
+{
+	vector<InputButton*>::iterator i;
+
+	for (i = buttons.begin(); i < buttons.end(); i++) {
+		if (!(*i)->CheckState())
+			return false;
+	}
+
+	return true;
+}
+
 static std::vector<class InputAction *> actions;
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
@@ -345,15 +437,24 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 
 	RightStripW(keyName);
 
+	// We could potentially only use the InputButtonList here, but that
+	// does not work with some of our backwards compatibility key names
+	// that contain spaces ("Num blah", "Prnt Scrn"), so we still try to
+	// parse the keyName as a single key first.
 	try {
 		button = new VKInputButton(keyName);
 	} catch (KeyParseError) {
 		try {
 			button = new XInputButton(keyName);
 		} catch (KeyParseError) {
-			LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", iniKey, keyName);
-			BeepFailure2();
-			return;
+			try {
+				button = new InputButtonList(keyName);
+			} catch (KeyParseError) {
+				LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n",
+						iniKey, keyName);
+				BeepFailure2();
+				return;
+			}
 		}
 	}
 

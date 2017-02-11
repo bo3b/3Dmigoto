@@ -15,6 +15,7 @@
 class HackerContext;
 class HackerContext1;
 class HackerDXGISwapChain;
+class HackerDXGIDevice1;
 
 class HackerDevice : public ID3D11Device
 {
@@ -25,6 +26,7 @@ private:
 
 	HackerDXGISwapChain *mHackerSwapChain;
 	HackerContext *mHackerContext;
+	HackerDXGIDevice1 *mHackerDXGIDevice1;
 
 	// Utility routines
 	void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,

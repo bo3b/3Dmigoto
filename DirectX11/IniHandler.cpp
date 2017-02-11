@@ -22,29 +22,55 @@
 //
 // ParseCommandList will terminate the program if it is called on a section not
 // listed here to make sure we never forget to update this.
-struct CommandListSection {
+struct Section {
 	wchar_t *section;
 	bool prefix;
 };
-static CommandListSection CommandListSections[] = {
+static Section CommandListSections[] = {
 	{L"ShaderOverride", true},
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
+	{L"CommandList", true},
 	{L"Present", false},
 };
 
-bool IsCommandListSection(const wchar_t *section)
+// List all remaining sections so we can verify that every section listed in
+// the d3dx.ini is valid and warn about any typos. As above, the boolean value
+// indicates that this is a prefix, false if it is an exact match. No need to
+// list a section in both lists - put it above if it is a command list section,
+// and in this list if it is not:
+static Section RegularSections[] = {
+	{L"Logging", false},
+	{L"System", false},
+	{L"Device", false},
+	{L"Stereo", false},
+	{L"Rendering", false},
+	{L"Hunting", false},
+	{L"Constants", false},
+	{L"Profile", false},
+	{L"ConvergenceMap", false}, // Only used in nvapi wrapper
+	{L"Resource", true},
+	{L"Key", true},
+};
+
+// List of sections that will not trigger a warning if they contain a line
+// without an equals sign
+static wchar_t *AllowLinesWithoutEquals[] = {
+	L"Profile",
+};
+
+static bool SectionInList(const wchar_t *section, Section section_list[], int list_size)
 {
 	size_t len;
 	int i;
 
-	for (i = 0; i < ARRAYSIZE(CommandListSections); i++) {
-		if (CommandListSections[i].prefix) {
-			len = wcslen(CommandListSections[i].section);
-			if (!_wcsnicmp(section, CommandListSections[i].section, len))
+	for (i = 0; i < list_size; i++) {
+		if (section_list[i].prefix) {
+			len = wcslen(section_list[i].section);
+			if (!_wcsnicmp(section, section_list[i].section, len))
 				return true;
 		} else {
-			if (!_wcsicmp(section, CommandListSections[i].section))
+			if (!_wcsicmp(section, section_list[i].section))
 				return true;
 		}
 	}
@@ -52,11 +78,17 @@ bool IsCommandListSection(const wchar_t *section)
 	return false;
 }
 
-static wchar_t *AllowLinesWithoutEquals[] = {
-	L"Profile",
-};
+static bool IsCommandListSection(const wchar_t *section)
+{
+	return SectionInList(section, CommandListSections, ARRAYSIZE(CommandListSections));
+}
 
-bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
+static bool IsRegularSection(const wchar_t *section)
+{
+	return SectionInList(section, RegularSections, ARRAYSIZE(RegularSections));
+}
+
+static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 {
 	int i;
 
@@ -250,6 +282,10 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	// list.
 	if (IsCommandListSection(section))
 		warn_duplicates = false;
+	else if (!IsRegularSection(section)) {
+		LogInfoW(L"WARNING: Unknown section in d3dx.ini: [%s]\n", section);
+		BeepFailure2();
+	}
 
 	if (DoesSectionAllowLinesWithoutEquals(section))
 		warn_lines_without_equals = false;
@@ -359,6 +395,7 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 
 		if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile)) {
 			LogInfo("  WARNING: [%S] missing Key=\n", id);
+			BeepFailure2();
 			continue;
 		}
 
@@ -625,6 +662,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
 			LogInfo("  WARNING: [%S] missing Hash=\n", id);
+			BeepFailure2();
 			continue;
 		}
 		swscanf_s(setting, L"%16llx", &hash);
@@ -749,6 +787,7 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 
 		if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile)) {
 			LogInfo("  WARNING: [%S] missing Hash=\n", id);
+			BeepFailure2();
 			continue;
 		}
 
@@ -826,6 +865,8 @@ static wchar_t *BlendFactors[] = {
 	L"DEST_COLOR",
 	L"INV_DEST_COLOR",
 	L"SRC_ALPHA_SAT",
+	L"",
+	L"",
 	L"BLEND_FACTOR",
 	L"INV_BLEND_FACTOR",
 	L"SRC1_COLOR",
@@ -1158,63 +1199,112 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"topology",
 	NULL
 };
-static void ParseCustomShaderSections(IniSections &sections, wchar_t *iniFile)
+static void EnumerateCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 {
 	IniSections::iterator lower, upper, i;
 	wstring shader_id;
-	CustomShader *custom_shader;
-	wchar_t setting[MAX_PATH];
-	bool failed;
 
 	customShaders.clear();
 
 	lower = sections.lower_bound(wstring(L"CustomShader"));
 	upper = prefix_upper_bound(sections, wstring(L"CustomShader"));
 	for (i = lower; i != upper; i++) {
-		LogInfoW(L"[%s]\n", i->c_str());
-
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
 		shader_id = *i;
 		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
 
 		// Construct a custom shader in the global list:
-		custom_shader = &customShaders[shader_id];
+		customShaders[shader_id];
+	}
+}
+static void ParseCustomShaderSections(wchar_t *iniFile)
+{
+	CustomShaders::iterator i;
+	const wstring *shader_id;
+	CustomShader *custom_shader;
+	wchar_t setting[MAX_PATH];
+	bool failed;
+
+	for (i = customShaders.begin(); i != customShaders.end(); i++) {
+		shader_id = &i->first;
+		custom_shader = &i->second;
+
+		// FIXME: This will be logged in lower case. It would be better
+		// to use the original case, but not a big deal:
+		LogInfoW(L"[%s]\n", shader_id->c_str());
 
 		failed = false;
 
-		if (GetPrivateProfileString(i->c_str(), L"vs", 0, setting, MAX_PATH, iniFile))
-			failed |= custom_shader->compile('v', setting, &shader_id);
-		if (GetPrivateProfileString(i->c_str(), L"hs", 0, setting, MAX_PATH, iniFile))
-			failed |= custom_shader->compile('h', setting, &shader_id);
-		if (GetPrivateProfileString(i->c_str(), L"ds", 0, setting, MAX_PATH, iniFile))
-			failed |= custom_shader->compile('d', setting, &shader_id);
-		if (GetPrivateProfileString(i->c_str(), L"gs", 0, setting, MAX_PATH, iniFile))
-			failed |= custom_shader->compile('g', setting, &shader_id);
-		if (GetPrivateProfileString(i->c_str(), L"ps", 0, setting, MAX_PATH, iniFile))
-			failed |= custom_shader->compile('p', setting, &shader_id);
-		if (GetPrivateProfileString(i->c_str(), L"cs", 0, setting, MAX_PATH, iniFile))
-			failed |= custom_shader->compile('c', setting, &shader_id);
+		if (GetPrivateProfileString(shader_id->c_str(), L"vs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('v', setting, shader_id);
+		if (GetPrivateProfileString(shader_id->c_str(), L"hs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('h', setting, shader_id);
+		if (GetPrivateProfileString(shader_id->c_str(), L"ds", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('d', setting, shader_id);
+		if (GetPrivateProfileString(shader_id->c_str(), L"gs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('g', setting, shader_id);
+		if (GetPrivateProfileString(shader_id->c_str(), L"ps", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('p', setting, shader_id);
+		if (GetPrivateProfileString(shader_id->c_str(), L"cs", 0, setting, MAX_PATH, iniFile))
+			failed |= custom_shader->compile('c', setting, shader_id);
 
 
-		ParseBlendState(custom_shader, i->c_str(), iniFile);
-		ParseRSState(custom_shader, i->c_str(), iniFile);
-		ParseTopology(custom_shader, i->c_str(), iniFile);
+		ParseBlendState(custom_shader, shader_id->c_str(), iniFile);
+		ParseRSState(custom_shader, shader_id->c_str(), iniFile);
+		ParseTopology(custom_shader, shader_id->c_str(), iniFile);
 
 		custom_shader->max_executions_per_frame =
-			GetIniInt(i->c_str(), L"max_executions_per_frame", 0, iniFile, NULL);
+			GetIniInt(shader_id->c_str(), L"max_executions_per_frame", 0, iniFile, NULL);
 
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an
 			// error since we are likely to call Draw or Dispatch
-			customShaders.erase(shader_id);
+			customShaders.erase(*shader_id);
 			continue;
 		}
 
-		// FIXME: Parse these later as these sections can refer to
-		// other CustomShader sections that may not have been parsed
-		// yet:
-		ParseCommandList(i->c_str(), iniFile, &custom_shader->command_list, &custom_shader->post_command_list, CustomShaderIniKeys);
+		ParseCommandList(shader_id->c_str(), iniFile, &custom_shader->command_list, &custom_shader->post_command_list, CustomShaderIniKeys);
+	}
+}
+
+// "Explicit" means that this parses command lists sections that are
+// *explicitly* called [CommandList*], as opposed to other sections that are
+// implicitly command lists (such as ShaderOverride, Present, etc).
+static void EnumerateExplicitCommandListSections(IniSections &sections, wchar_t *iniFile)
+{
+	IniSections::iterator lower, upper, i;
+	wstring section_id;
+
+	explicitCommandListSections.clear();
+
+	lower = sections.lower_bound(wstring(L"CommandList"));
+	upper = prefix_upper_bound(sections, wstring(L"CommandList"));
+	for (i = lower; i != upper; i++) {
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		section_id = *i;
+		std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
+
+		// Construct an explicit command list section in the global list:
+		explicitCommandListSections[section_id];
+	}
+}
+
+static void ParseExplicitCommandListSections(wchar_t *iniFile)
+{
+	ExplicitCommandListSections::iterator i;
+	ExplicitCommandListSection *command_list_section;
+	const wstring *section_id;
+
+	for (i = explicitCommandListSections.begin(); i != explicitCommandListSections.end(); i++) {
+		section_id = &i->first;
+		command_list_section = &i->second;
+
+		// FIXME: This will be logged in lower case. It would be better
+		// to use the original case, but not a big deal:
+		LogInfoW(L"[%s]\n", section_id->c_str());
+		ParseCommandList(section_id->c_str(), iniFile, &command_list_section->command_list, &command_list_section->post_command_list, NULL);
 	}
 }
 
@@ -1592,7 +1682,22 @@ void LoadConfigFile()
 	RegisterPresetKeyBindings(sections, iniFile);
 
 	ParseResourceSections(sections, iniFile);
-	ParseCustomShaderSections(sections, iniFile);
+
+	// Splitting the enumeration of these sections out from parsing them as
+	// they can be referenced from other command list sections (via the run
+	// command), including sections of the same type. Most of the other
+	// sections don't need this so long as we parse them in an appropriate
+	// order so that sections that can be referred to are parsed before
+	// sections that can refer to them (e.g. Resource sections are parsed
+	// before all command list sections for this reason), but these are
+	// special since they can both refer to other sections and be referred
+	// to by other sections, and we don't want the parse order to determine
+	// if the reference will work or not.
+	EnumerateCustomShaderSections(sections, iniFile);
+	EnumerateExplicitCommandListSections(sections, iniFile);
+
+	ParseCustomShaderSections(iniFile);
+	ParseExplicitCommandListSections(iniFile);
 
 	ParseShaderOverrideSections(sections, iniFile);
 	ParseTextureOverrideSections(sections, iniFile);

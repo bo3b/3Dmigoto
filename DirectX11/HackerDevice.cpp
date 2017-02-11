@@ -1,6 +1,13 @@
 // Wrapper for the ID3D11Device.
 // This gives us access to every D3D11 call for a device, and override the pieces needed.
 
+// Object			OS				D3D11 version	Feature level
+// ID3D11Device		Win7			11.0			11.0
+// ID3D11Device1	Platform update	11.1			11.1
+// ID3D11Device2	Win8.1			11.2
+// ID3D11Device3	Win10			11.3
+// ID3D11Device4					11.4
+
 #include "HackerDevice.h"
 #include "HookedDevice.h"
 #include "HackerDXGI.h"
@@ -31,7 +38,7 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
 	mIniResourceView(0), mIniTexture(0),
 	mZBufferResourceView(0), 
-	mHackerContext(0), mHackerSwapChain(0)
+	mHackerContext(0), mHackerSwapChain(0), mHackerDXGIDevice1(0)
 {
 	mOrigDevice = pDevice;
 	mRealOrigDevice = pDevice;
@@ -378,25 +385,35 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	// No need for further checks of null ppvObject, as it could not have successfully
 	// called the original in that case.
 
-	if (riid == __uuidof(IDXGIDevice))
+	if (riid == __uuidof(IDXGIDevice) || riid == __uuidof(IDXGIDevice1))
 	{
+		if (mHackerDXGIDevice1 != nullptr)
+		{
+			*ppvObject = mHackerDXGIDevice1;
+			LogDebug("  return HackerDXGIDevice1(%s@%p) wrapper of %p \n", 
+				type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, mHackerDXGIDevice1->GetOrigDXGIDevice());
+		}
+		else
 		// This is a specific hack for MGSV on Windows 10 *with* the
 		// anniversary update installed. If we wrap the DXGIDevice the
 		// game will reject it and the game will quit.
 		if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_DEVICE)) {
 			IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
-			HackerDXGIDevice *dxgiDeviceWrap = new HackerDXGIDevice(origDXGIDevice, this);
-			*ppvObject = dxgiDeviceWrap;
-			LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap), dxgiDeviceWrap, origDXGIDevice);
+			IDXGIDevice1 *origDXGIDevice1;
+			origDXGIDevice->QueryInterface(IID_PPV_ARGS(&origDXGIDevice1));
+
+			mHackerDXGIDevice1 = new HackerDXGIDevice1(origDXGIDevice1, this);
+			*ppvObject = mHackerDXGIDevice1;
+			LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, origDXGIDevice1);
 		}
 	}
-	else if (riid == __uuidof(IDXGIDevice1))
-	{
-		IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
-		HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
-		*ppvObject = dxgiDeviceWrap1;
-		LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap1), dxgiDeviceWrap1, origDXGIDevice1);
-	}
+	//else if (riid == __uuidof(IDXGIDevice1))
+	//{
+	//	IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
+	//	HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
+	//	*ppvObject = dxgiDeviceWrap1;
+	//	LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap1), dxgiDeviceWrap1, origDXGIDevice1);
+	//}
 	else if (riid == __uuidof(IDXGIDevice2))
 	{
 		// an IDXGIDevice2 can only be created on platform update or above, so let's 
@@ -439,24 +456,27 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			return E_NOINTERFACE;
 		}
 
-		ID3D11Device1 *origDevice1;
-		hr = mOrigDevice->QueryInterface(riid, (void**)(&origDevice1));
+		if (!(G->enable_hooks & EnableHooks::DEVICE)) {
+			// If we are hooking we don't return the wrapped device
+			*ppvObject = this;
+		}
+		LogDebug("  return HackerDevice1(%s@%p) wrapper of %p \n", type_name(this), this, mRealOrigDevice);
 
-		ID3D11DeviceContext1 *origContext1;
-		origDevice1->GetImmediateContext1(&origContext1);
-		HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
+		//ID3D11Device1 *origDevice1 = static_cast<ID3D11Device1*>(*ppvObject);
+		//ID3D11DeviceContext1 *origContext1;
+		//origDevice1->GetImmediateContext1(&origContext1);
 
-		LogInfo("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
+		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
+		//LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
+		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
 
-		HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
-		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
+		//hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
 
-		LogInfo("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		//// ToDo: Handle memory allocation exceptions
 
-		// ToDo: Handle memory allocation exceptions
-
-		if (ppvObject)
-			*ppvObject = hackerDeviceWrap1;
+		//*ppvObject = hackerDeviceWrap1;
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
@@ -1577,6 +1597,25 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
 }
 
+static bool heuristic_could_be_possible_resolution(unsigned width, unsigned height)
+{
+	// Exclude very small resolutions:
+	if (width < 640 || height < 480)
+		return false;
+
+	// Assume square textures are not a resolution, like 3D Vision:
+	if (width == height)
+		return false;
+
+	// Special case for WATCH_DOGS2 1.09.154 update, which creates 16384 x 4096
+	// shadow maps on ultra that are mistaken for the resolution. I don't
+	// think that 4 is ever a valid aspect radio, so exclude it:
+	if (width == height * 4)
+		return false;
+
+	return true;
+}
+
 STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__in  const D3D11_TEXTURE2D_DESC *pDesc,
@@ -1605,7 +1644,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
+	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
@@ -1754,7 +1793,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    pDesc->Width >= 640 && pDesc->Height >= 480 && pDesc->Width != pDesc->Height) {
+	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) {
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
@@ -2355,6 +2394,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 
 // -----------------------------------------------------------------------------
 // HackerDevice1 methods.  All other subclassed methods will use HackerDevice methods.
+//	Requires Win7 Platform Update
 
 HackerDevice1::HackerDevice1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext)
 	: HackerDevice(pDevice1, pContext)
@@ -2368,6 +2408,10 @@ HackerDevice1::HackerDevice1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 void HackerDevice1::SetHackerContext1(HackerContext1 *pHackerContext)
 {
 	mHackerContext1 = pHackerContext;
+
+	// Make sure the superclass has the reference too, because games can call GetImmediateContext,
+	// instead of GetImmediateContext1.
+	SetHackerContext(pHackerContext);
 }
 
 
@@ -2389,18 +2433,21 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	// We still need to call the original function to make sure the reference counts are correct:
 	mOrigDevice1->GetImmediateContext1(ppImmediateContext);
 
-	// It should no longer be possible, but we can conceivably arrive here with
-	// no mHackerContext created.  Based on the original code, it's not a bad
-	// idea to create that HackerContext here.
+	// we can arrive here with no mHackerContext created if one was not
+	// requested from CreateDevice/CreateDeviceFromSwapChain. In that case
+	// we need to wrap the immediate context now:
 	if (mHackerContext1 == nullptr)
 	{
 		LogInfo("*** HackerContext1 missing at HackerDevice1::GetImmediateContext1 \n");
 
 		mHackerContext1 = new HackerContext1(mOrigDevice1, *ppImmediateContext);
-		// FIXME:
-		// mHackerContext1->SetHackerDevice1(this);
-		// mHackerContext1->SetHackerDevice(mOrigDevice);
+		mHackerContext1->SetHackerDevice1(this);
 		LogInfo("  mHackerContext1 %p created to wrap %p \n", mHackerContext1, *ppImmediateContext);
+	}
+	else if (mHackerContext1->GetOrigContext() != *ppImmediateContext)
+	{
+		LogInfo("WARNING: mHackerContext1 %p found to be wrapping %p instead of %p at HackerDevice1::GetImmediateContext1!\n",
+			mHackerContext1, mHackerContext1->GetOrigContext(), *ppImmediateContext);
 	}
 
 	*ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(mHackerContext1);

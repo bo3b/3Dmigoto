@@ -1050,9 +1050,12 @@ class HackerContext1: public HackerContext
 private:
 	ID3D11Device1 *mOrigDevice1;
 	ID3D11DeviceContext1 *mOrigContext1;
+	HackerDevice1 *mHackerDevice1;
 
 public:
 	HackerContext1(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext1);
+
+	void SetHackerDevice1(HackerDevice1 *pDevice);
 
 
 	void STDMETHODCALLTYPE CopySubresourceRegion1(

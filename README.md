@@ -1,5 +1,4 @@
-![alt text](http://3dmigoto.jarvismac.co.uk/wp-content/uploads/2013/08/3dmigoto_greenBck_500x143.png)
-
+![image](https://cloud.githubusercontent.com/assets/6544511/22624161/934dba64-eb27-11e6-8f78-46c902e96e1b.png)
 ========
 
 ####Chiri's wrapper to enable fixing broken stereoscopic effects in DX11 games.
@@ -29,7 +28,11 @@ https://github.com/bo3b/3Dmigoto.git
 1. At the home menu in Team Explorer, double click StereovisionHacks.sln to open the solution.
 1. Switch to Solution Explorer, and wait for it to parse all the files.
 1. Hit F7 to build the full solution.
-1. Output files are in .\Debug (16 dll and 1 .ini)
+1. Output files are in .\x64\Debug (3 dll and 1 .ini)
+<br>
+<br>
+*After some research, it's clear that using the 8.1 SDK (or greater) will not work, because the Decompiler is heavily tied to the format of the assembler output from the 8.0 SDK.  
+VS2015 has been tested and works, but still requires 8.0 SDK.
 <br>
 <br>
 

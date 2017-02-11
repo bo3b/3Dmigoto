@@ -16,7 +16,7 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
 	{L"CLEAR", 0x0C},
 	{L"RETURN", 0x0D}, {L"ENTER", 0x0D},
 	{L"SHIFT", 0x10},
-	{L"CONTROL", 0x11},
+	{L"CONTROL", 0x11}, {L"CTRL", 0x11},
 	{L"MENU", 0x12}, {L"ALT", 0x12},
 	{L"PAUSE", 0x13},
 	{L"CAPITAL", 0x14}, {L"CAPS", 0x14}, {L"CAPSLOCK", 0x14}, {L"CAPS_LOCK", 0x14},
@@ -97,8 +97,8 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
 	{L"SCROLL", 0x91},
 	{L"LSHIFT", 0xA0}, {L"LEFT_SHIFT", 0xA0},
 	{L"RSHIFT", 0xA1}, {L"RIGHT_SHIFT", 0xA1},
-	{L"LCONTROL", 0xA2}, {L"LEFT_CONTROL", 0xA2},
-	{L"RCONTROL", 0xA3}, {L"RIGHT_CONTROL", 0xA3},
+	{L"LCONTROL", 0xA2}, {L"LEFT_CONTROL", 0xA2}, {L"LCTRL", 0xA2}, {L"LEFT_CTRL", 0xA2},
+	{L"RCONTROL", 0xA3}, {L"RIGHT_CONTROL", 0xA3}, {L"RCTRL", 0xA3}, {L"RIGHT_CTRL", 0xA3},
 	{L"LMENU", 0xA4}, {L"LEFT_MENU", 0xA4}, {L"LALT", 0xA4}, {L"LEFT_ALT", 0xA4},
 	{L"RMENU", 0xA5}, {L"RIGHT_MENU", 0xA5}, {L"RALT", 0xA5}, {L"RIGHT_ALT", 0xA5},
 	{L"BROWSER_BACK", 0xA6},
@@ -146,7 +146,10 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
 
 	/*
 	 * The following are to reduce the impact on existing users with an old
-	 * d3dx.ini, provided they are using the default english key bindings
+	 * d3dx.ini, provided they are using the default english key bindings.
+	 *
+	 * NOTE: These will not work to specify key combinations (at least not
+	 * the ones with spaces) - for that, use the VK naming.
 	 */
 	{L"Num 1", 0x61},
 	{L"Num 2", 0x62},
@@ -164,7 +167,7 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
 	{L"Prnt Scrn", 0x2C},
 };
 
-static int ParseVKey(wchar_t *name)
+static int ParseVKey(const wchar_t *name)
 {
 	int i;
 
