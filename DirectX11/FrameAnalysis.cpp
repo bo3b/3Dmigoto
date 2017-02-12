@@ -666,6 +666,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	desc.Usage = D3D11_USAGE_STAGING;
 	desc.BindFlags = 0;
+	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
 	hr = mOrigDevice->CreateBuffer(&desc, NULL, &staging);
