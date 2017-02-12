@@ -118,10 +118,10 @@ enum class FrameAnalysisOptions {
 	DUMP_TEX_JPS    = 0x00000200,
 	DUMP_TEX_DDS    = 0x00000400,
 	DUMP_TEX_MASK   = 0x00000700,
-	DUMP_XXX        = 0x00000111,
-	DUMP_XXX_JPS    = 0x00000222,
-	DUMP_XXX_DDS    = 0x00000444,
-	DUMP_XXX_MASK   = 0x00000777,
+	DUMP_XXX        = 0x00800111,
+	DUMP_XXX_JPS    = 0x00800222,
+	DUMP_XXX_DDS    = 0x00800444,
+	DUMP_XXX_MASK   = 0x00800777,
 	PERSIST         = 0x00000800, // Used by shader/texture triggers
 	STEREO          = 0x00001000,
 	MONO            = 0x00002000,
@@ -135,11 +135,12 @@ enum class FrameAnalysisOptions {
 	DUMP_IB_BIN     = 0x00040000,
 	DUMP_IB_TXT     = 0x00080000,
 	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x00054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
-	DUMP_XX_TXT     = 0x000a8000, // Not including SRVs, RTs or UAVs for now
+	DUMP_XX_BIN     = 0x00854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
+	DUMP_XX_TXT     = 0x008a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
 	LOG             = 0x00200000,
 	HOLD            = 0x00400000,
+	DUMP_ON_UNMAP   = 0x00800000, // XXX: For now including in all XX masks
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -166,6 +167,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
 	{L"log", FrameAnalysisOptions::LOG},
 	{L"hold", FrameAnalysisOptions::HOLD},
+	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 

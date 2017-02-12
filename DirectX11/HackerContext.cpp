@@ -920,6 +920,9 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	MapUpdateResourceHash(pResource, Subresource);
 	FreeDeniedMapping(pResource, Subresource);
 	mOrigContext->Unmap(pResource, Subresource);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterUnmap(pResource);
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetConstantBuffers(THIS_
