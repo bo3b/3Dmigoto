@@ -154,6 +154,19 @@ lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
 // look for Factory here.  Bizarrely though, Factory2 is expected.
 // Except that, Dragon Age makes the mistake of calling Factory1 for Factory. D'oh!
 
+// Dishonored2 requires platform_update=1.  In this case, let's make sure to always
+// create a DXGIFactory2, as the highest level object available.  Because they can
+// always upcast at any time using QueryInterface.  We have previously been rewrapping
+// and returning different objects, which seems wrong, especially if they ever do
+// pointer comparisons.
+// If we return DXGIFactory2 and they only ever need DXGIFactory1, that should cause
+// no problems, as the interfaces are the same.
+//
+// Another factor is the use of GetParent, to get back to this DXGIFactory1 object.
+// If we have wrapped extra times, then we'll return a different object.  We need
+// to maintain the chain of objects so that GetParent from the Device will return
+// the correct Adapter, which can then return the correct Factory.
+
 static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
 	InitD311();
@@ -161,7 +174,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-	if (riid == __uuidof(IDXGIFactory2))
+	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
 	{
 		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 		*ppFactory1 = NULL;
@@ -209,6 +222,45 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	return hr;
 }
 
+
+// -----------------------------------------------------------------------------
+
+typedef HRESULT(WINAPI *lpfnCreateDXGIFactory2)(REFIID riid, void **ppFactory2);
+SIZE_T nFactory2_ID;
+lpfnCreateDXGIFactory2 fnOrigCreateFactory2;
+
+// This will only be created if enable_platform_update=1, and DXGIFactory2 is the 
+// highest level object we expect to make, so it can be simpler.
+
+static HRESULT WINAPI Hooked_CreateDXGIFactory2(REFIID riid, void **ppFactory2)
+{
+	InitD311();
+	LogInfo("Hooked_CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("  calling original CreateDXGIFactory2 API \n");
+
+	// Call original factory, regardless of what they requested, to keep the
+	// same expected sequence from their perspective.
+	IDXGIFactory2 *origFactory2;
+	HRESULT hr = fnOrigCreateFactory2(riid, (void **)&origFactory2);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x \n", hr);
+		return hr;
+	}
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
+
+	HackerDXGIFactory2 *factory2Wrap;
+	factory2Wrap = new HackerDXGIFactory2(origFactory2);
+	if (ppFactory2)
+		*ppFactory2 = factory2Wrap;
+	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
+
+	// ToDo: Skipped null checks as they would throw exceptions- but
+	// we should handle exceptions.
+
+	return hr;
+}
+
 // -----------------------------------------------------------------------------
 
 // Load the dxgi.dll and hook the two calls for CreateFactory.
@@ -218,6 +270,7 @@ bool InstallDXGIHooks(void)
 	HINSTANCE hDXGI;
 	LPVOID fnCreateDXGIFactory;
 	LPVOID fnCreateDXGIFactory1;
+	LPVOID fnCreateDXGIFactory2;
 	DWORD dwOsErr;
 
 	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
@@ -256,6 +309,21 @@ bool InstallDXGIHooks(void)
 	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x \n", dwOsErr);
 	if (dwOsErr != 0)
 		return false;
+
+	if (G->enable_platform_update)
+	{
+		fnCreateDXGIFactory2 = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory2");
+		if (fnCreateDXGIFactory2 == NULL)
+		{
+			DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory2 for dxgi hook. \n");
+			return false;
+		}
+		dwOsErr = cHookMgr.Hook(&nFactory2_ID, (LPVOID*)&(fnOrigCreateFactory2),
+			fnCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+		DoubleLog("  Install Hook for DXGI::CreateDXGIFactory2 using Deviare in-proc: %x \n", dwOsErr);
+		if (dwOsErr != 0)
+			return false;
+	}
 
 	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc. \n");
 	return true;
