@@ -90,56 +90,17 @@ static SIZE_T nHookId = 0;
 
 // -----------------------------------------------------------------------------
 
-typedef HRESULT(WINAPI *lpfnCreateDXGIFactory2)(REFIID riid, void **ppFactory2);
-SIZE_T nFactory2_ID;
-lpfnCreateDXGIFactory2 fnOrigCreateFactory2;
+// The original API references, directly from the DXGI.dll
 
-static HRESULT WrapFactory2(void **ppFactory2)
-{
-	IDXGIFactory2 *origFactory2;
-	HRESULT hr = fnOrigCreateFactory2(__uuidof(IDXGIFactory2), (void **)&origFactory2);
-	if (FAILED(hr))
-	{
-		LogInfo("  failed with HRESULT=%x \n", hr);
-		return hr;
-	}
-	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
-
-	HackerDXGIFactory2 *factory2Wrap;
-	factory2Wrap = new HackerDXGIFactory2(origFactory2);
-
-	if (ppFactory2)
-		*ppFactory2 = factory2Wrap;
-
-	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
-
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
-
-	return hr;
-}
-
-// -----------------------------------------------------------------------------
-
-// This will only be created if enable_platform_update=1, and DXGIFactory2 is the 
-// highest level object we expect to make, so it can be simpler.
-
-static HRESULT WINAPI Hooked_CreateDXGIFactory2(REFIID riid, void **ppFactory2)
-{
-	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory2 API \n");
-
-	HRESULT hr = WrapFactory2(ppFactory2);
-
-	return hr;
-}
-
-// -----------------------------------------------------------------------------
+typedef HRESULT(WINAPI *lpfnCreateDXGIFactory)(REFIID riid, void **ppFactory);
+SIZE_T nFactory_ID;
+lpfnCreateDXGIFactory fnOrigCreateFactory;
 
 typedef HRESULT(WINAPI *lpfnCreateDXGIFactory1)(REFIID riid, void **ppFactory1);
 SIZE_T nFactory1_ID; 
 lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
+
+// -----------------------------------------------------------------------------
 
 static HRESULT WrapFactory1(void **ppFactory1)
 {
@@ -164,6 +125,74 @@ static HRESULT WrapFactory1(void **ppFactory1)
 
 	return hr;
 }
+
+// -----------------------------------------------------------------------------
+
+static HRESULT WrapFactory2(void **ppFactory2)
+{
+	// To create an original Factory2, this is not hooked out of the DXGI.dll, as
+	// it's not defined there.  But, we can call into fnOrigCreateFactory1 for it.
+
+	IDXGIFactory2 *origFactory2;
+	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory2), (void **)&origFactory2);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x \n", hr);
+		return hr;
+	}
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
+
+	HackerDXGIFactory2 *factory2Wrap;
+	factory2Wrap = new HackerDXGIFactory2(origFactory2);
+
+	if (ppFactory2)
+		*ppFactory2 = factory2Wrap;
+
+	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
+
+	// ToDo: Skipped null checks as they would throw exceptions- but
+	// we should handle exceptions.
+
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+
+// Actual function called by the game for every CreateDXGIFactory they make.
+// This is only called for the in-process game, not system wide.
+//
+// This is our replacement, so that we can return a wrapped factory, which
+// will allow us access to the SwapChain.
+
+// It's legal to request a DXGIFactory2 here, so if platform_update is 
+// enabled we'll go ahead and return that.  We are also going to always
+// return at least a DXGIFactory1 now, because that is the baseline
+// expected object for Win7, and allows us to better handle QueryInterface
+// and GetParent calls.
+
+static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
+{
+	InitD311();
+	LogInfo("Hooked_CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("  calling original CreateDXGIFactory API\n");
+
+	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
+	{
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+		*ppFactory = NULL;
+		return E_NOINTERFACE;
+	}
+
+	HRESULT hr;
+	if (G->enable_platform_update)
+		hr = WrapFactory2(ppFactory);
+	else
+		hr = WrapFactory1(ppFactory);
+
+	return hr;
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -247,58 +276,14 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
 // -----------------------------------------------------------------------------
 
-typedef HRESULT(WINAPI *lpfnCreateDXGIFactory)(REFIID riid, void **ppFactory);
-SIZE_T nFactory_ID;
-lpfnCreateDXGIFactory fnOrigCreateFactory;
-
-// -----------------------------------------------------------------------------
-
-// Actual function called by the game for every CreateDXGIFactory they make.
-// This is only called for the in-process game, not system wide.
-//
-// This is our replacement, so that we can return a wrapped factory, which
-// will allow us access to the SwapChain.
-
-// It's legal to request a DXGIFactory2 here, so if platform_update is 
-// enabled we'll go ahead and return that.  We are also going to always
-// return at least a DXGIFactory1 now, because that is the baseline
-// expected object for Win7, and allows us to better handle QueryInterface
-// and GetParent calls.
-
-static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
-{
-	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory API\n");
-
-	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
-	{
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
-		*ppFactory = NULL;
-		return E_NOINTERFACE;
-	}
-
-	HRESULT hr;
-	if (G->enable_platform_update)
-		hr = WrapFactory2(ppFactory);
-	else
-		hr = WrapFactory1(ppFactory);
-
-	return hr;
-}
-
-
-// -----------------------------------------------------------------------------
-
 // Load the dxgi.dll and hook the two calls for CreateFactory.
+// Any Factory2 use has to be fetched from one of these two.
 
 bool InstallDXGIHooks(void)
 {
 	HINSTANCE hDXGI;
 	LPVOID fnCreateDXGIFactory;
 	LPVOID fnCreateDXGIFactory1;
-	LPVOID fnCreateDXGIFactory2;
 	DWORD dwOsErr;
 
 	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
@@ -337,21 +322,6 @@ bool InstallDXGIHooks(void)
 	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x \n", dwOsErr);
 	if (dwOsErr != 0)
 		return false;
-
-	if (G->enable_platform_update)
-	{
-		fnCreateDXGIFactory2 = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory2");
-		if (fnCreateDXGIFactory2 == NULL)
-		{
-			DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory2 for dxgi hook. \n");
-			return false;
-		}
-		dwOsErr = cHookMgr.Hook(&nFactory2_ID, (LPVOID*)&(fnOrigCreateFactory2),
-			fnCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
-		DoubleLog("  Install Hook for DXGI::CreateDXGIFactory2 using Deviare in-proc: %x \n", dwOsErr);
-		if (dwOsErr != 0)
-			return false;
-	}
 
 	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc. \n");
 	return true;
