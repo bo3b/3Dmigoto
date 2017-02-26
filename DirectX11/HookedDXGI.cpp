@@ -94,19 +94,10 @@ typedef HRESULT(WINAPI *lpfnCreateDXGIFactory2)(REFIID riid, void **ppFactory2);
 SIZE_T nFactory2_ID;
 lpfnCreateDXGIFactory2 fnOrigCreateFactory2;
 
-// This will only be created if enable_platform_update=1, and DXGIFactory2 is the 
-// highest level object we expect to make, so it can be simpler.
-
-static HRESULT WINAPI Hooked_CreateDXGIFactory2(REFIID riid, void **ppFactory2)
+static HRESULT WrapFactory2(void **ppFactory2)
 {
-	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory2 API \n");
-
-	// Call original factory, regardless of what they requested, to keep the
-	// same expected sequence from their perspective.
 	IDXGIFactory2 *origFactory2;
-	HRESULT hr = fnOrigCreateFactory2(riid, (void **)&origFactory2);
+	HRESULT hr = fnOrigCreateFactory2(__uuidof(IDXGIFactory2), (void **)&origFactory2);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x \n", hr);
@@ -116,8 +107,10 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory2(REFIID riid, void **ppFactory2)
 
 	HackerDXGIFactory2 *factory2Wrap;
 	factory2Wrap = new HackerDXGIFactory2(origFactory2);
+
 	if (ppFactory2)
 		*ppFactory2 = factory2Wrap;
+
 	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
 
 	// ToDo: Skipped null checks as they would throw exceptions- but
@@ -128,9 +121,51 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory2(REFIID riid, void **ppFactory2)
 
 // -----------------------------------------------------------------------------
 
+// This will only be created if enable_platform_update=1, and DXGIFactory2 is the 
+// highest level object we expect to make, so it can be simpler.
+
+static HRESULT WINAPI Hooked_CreateDXGIFactory2(REFIID riid, void **ppFactory2)
+{
+	InitD311();
+	LogInfo("Hooked_CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("  calling original CreateDXGIFactory2 API \n");
+
+	HRESULT hr = WrapFactory2(ppFactory2);
+
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+
 typedef HRESULT(WINAPI *lpfnCreateDXGIFactory1)(REFIID riid, void **ppFactory1);
 SIZE_T nFactory1_ID; 
 lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
+
+static HRESULT WrapFactory1(void **ppFactory1)
+{
+	IDXGIFactory1 *origFactory1;
+	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory1), (void **)&origFactory1);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed with HRESULT=%x \n", hr);
+		return hr;
+	}
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
+
+	HackerDXGIFactory1 *factory1Wrap;
+	factory1Wrap = new HackerDXGIFactory1(origFactory1);
+
+	if (ppFactory1)
+		*ppFactory1 = factory1Wrap;
+	LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", type_name(factory1Wrap), factory1Wrap, origFactory1);
+
+	// ToDo: Skipped null checks as they would throw exceptions- but
+	// we should handle exceptions.
+
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
 
 // It's not legal to mix Factory1 and Factory in the same app, so we'll not
 // look for Factory here.  Bizarrely though, Factory2 is expected.
@@ -176,39 +211,9 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
 	HRESULT hr;
 	if (G->enable_platform_update)
-	{
-		IDXGIFactory2 *origFactory2;
-		hr = fnOrigCreateFactory2(riid, (void **)&origFactory2);
-		if (FAILED(hr))
-		{
-			LogInfo("  failed with HRESULT=%x \n", hr);
-			return hr;
-		}
-		LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
-
-		HackerDXGIFactory2 *factory2Wrap;
-		factory2Wrap = new HackerDXGIFactory2(origFactory2);
-		if (ppFactory1)
-			*ppFactory1 = factory2Wrap;
-		LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
-	}
+		hr = WrapFactory2(ppFactory1);
 	else
-	{
-		IDXGIFactory1 *origFactory1;
-		hr = fnOrigCreateFactory1(riid, (void **)&origFactory1);
-		if (FAILED(hr))
-		{
-			LogInfo("  failed with HRESULT=%x \n", hr);
-			return hr;
-		}
-		LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
-
-		HackerDXGIFactory1 *factory1Wrap;
-		factory1Wrap = new HackerDXGIFactory1(origFactory1);
-		if (ppFactory1)
-			*ppFactory1 = factory1Wrap;
-		LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", type_name(factory1Wrap), factory1Wrap, origFactory1);
-	}
+		hr = WrapFactory1(ppFactory1);
 
 	// This sequence makes Witcher3 crash.  They also send in uuid=IDXGIFactory to this
 	// Factory1 object.  Not supposed to be legal, but apparently the factory will still 
@@ -246,6 +251,7 @@ typedef HRESULT(WINAPI *lpfnCreateDXGIFactory)(REFIID riid, void **ppFactory);
 SIZE_T nFactory_ID;
 lpfnCreateDXGIFactory fnOrigCreateFactory;
 
+// -----------------------------------------------------------------------------
 
 // Actual function called by the game for every CreateDXGIFactory they make.
 // This is only called for the in-process game, not system wide.
@@ -275,40 +281,9 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 
 	HRESULT hr;
 	if (G->enable_platform_update)
-	{
-		IDXGIFactory2 *origFactory2;
-		hr = fnOrigCreateFactory2(riid, (void **)&origFactory2);
-		if (FAILED(hr))
-		{
-			LogInfo("  failed with HRESULT=%x \n", hr);
-			return hr;
-		}
-		LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
-
-		HackerDXGIFactory2 *factory2Wrap;
-		factory2Wrap = new HackerDXGIFactory2(origFactory2);
-		if (ppFactory)
-			*ppFactory = factory2Wrap;
-		LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
-	}
+		hr = WrapFactory2(ppFactory);
 	else
-	{
-		IDXGIFactory1 *origFactory1;
-		hr = fnOrigCreateFactory1(riid, (void **)&origFactory1);
-		if (FAILED(hr))
-		{
-			LogInfo("  failed with HRESULT=%x \n", hr);
-			return hr;
-		}
-		LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
-
-		HackerDXGIFactory1 *factoryWrap1;
-		factoryWrap1 = new HackerDXGIFactory1(origFactory1);
-		if (ppFactory)
-			*ppFactory = factoryWrap1;
-	}
-
-	// ToDo: no more null checks, but we should handle possible exceptions.
+		hr = WrapFactory1(ppFactory);
 
 	return hr;
 }
