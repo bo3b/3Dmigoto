@@ -1163,14 +1163,23 @@ STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 
 	if (riid == __uuidof(IDXGIAdapter1))
 	{
-		IDXGIAdapter1 *origAdapter1 = static_cast<IDXGIAdapter1*>(*ppvObject);
-		HackerDXGIAdapter1 *dxgiAdapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
-		*ppvObject = dxgiAdapterWrap1;
-		LogDebug("  created HackerDXGIAdapter1(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap1), dxgiAdapterWrap1, origAdapter1);
+		// If 'this' object is already a HackerDXGIAdapter1, just return it, not make a new one.
+		if (dynamic_cast<HackerDXGIAdapter1*>(this) != NULL)
+		{
+			LogInfo("  return HackerDXGIAdapter1 wrapper = %p \n", this);
+			*ppvObject = this;
+		}
+		else
+		{
+			IDXGIAdapter1 *origAdapter1 = static_cast<IDXGIAdapter1*>(*ppvObject);
+			HackerDXGIAdapter1 *dxgiAdapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
+			*ppvObject = dxgiAdapterWrap1;
+			LogDebug("  created HackerDXGIAdapter1(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap1), dxgiAdapterWrap1, origAdapter1);
+		}
 	}
 	else if (riid == __uuidof(IDXGIAdapter2))
 	{
-		// Well, bizarrely, this approach to upcasting to a IDXGIAdapter1 is supported on Win7, 
+		// Well, bizarrely, this approach to upcasting to a IDXGIAdapter2 is supported on Win7, 
 		// but only if you have the 'evil update', the platform update installed.  Since that
 		// is an optional update, that certainly means that numerous people do not have it 
 		// installed. Ergo, a game developer cannot in good faith just assume that it's there,
