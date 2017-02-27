@@ -1783,8 +1783,20 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
 	//	*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
 	//}
 
+	// For Dishonored2, this output was not being wrapped, just logged.  Adding this
+	// wrap to close a possible object leak.
 	HRESULT hr = mOrigSwapChain->GetContainingOutput(ppOutput);
-	LogDebug("  returns result = %x, handle = %p \n", hr, *ppOutput);
+	if (SUCCEEDED(hr) && ppOutput)
+	{
+		HackerDXGIOutput *outputWrap = new HackerDXGIOutput(*ppOutput);
+
+		LogInfo("  created HackerDXGIOutput wrapper = %p of %p \n", outputWrap, *ppOutput);
+
+		// Return the wrapped version which the game will use for follow on calls.
+		*ppOutput = reinterpret_cast<IDXGIOutput*>(outputWrap);
+	}
+
+	LogInfo("  returns result = %#x \n", hr);
 	return hr;
 }
         
