@@ -457,8 +457,13 @@ STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
 // releases are requiring Factory2, and when wrapping those, we get a crash of
 // some form, that may not be our fault.
 //
-// Note that we can expect this QueryInterface to get called for any 
+// Note that we can expect this QueryInterface to also get called for any 
 // HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
+// When called here, 'this' will either be HackerDXGIFactory1, or HackerDXGIFactory2.
+
+// In the enable_platform_update case, we will have created a DXGIFactory2 already,
+// and so if they are requesting that, we need to just return 'this' because it
+// is already the correctly wrapped object.
 
 STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
@@ -479,12 +484,8 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 				*ppvObject = NULL;
 				return E_NOINTERFACE;
-			} else if ((G->enable_dxgi1_2 == 1) || (G->enable_platform_update)) {
-				// For when we need to return a legit Factory2.
-				HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
-				LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
-				*ppvObject = factory2Wrap;
 			}
+			
 			// Wrapping DXGIFactory2 here or failing this call
 			// seems to disable the Steam overlay on Winddows 7 and
 			// Windows 8 in some games such as The Witcher 3, but
@@ -500,7 +501,36 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 			// to allow the unwrapped DXGIFactory2 object through,
 			// but this may cause problems if the game itself is
 			// using the Factory2 object, not just the overlay.
+			//
+			// Bo3b: This might be because we have been wrapping the factory again,
+			// and returning a different pointer.  If they are doing pointer comparisons
+			// on the original factory, that would fail.  Might be fixed after I've
+			// adapted this to return the original objects.  ToDo: if this fixes
+			// it, remove this code and special case.
+			else if (G->enable_dxgi1_2 == 2)
+			{
+				// Fall through for logging.
+			}
+
+			// 'This' might already be a IDXGIFactory2, so return it instead of wrapping.
+			// (must use dynamic_cast instead of type_id here, this== base HackerDXGIFactory)
+			else if (dynamic_cast<HackerDXGIFactory2*>(this) != NULL)
+			{
+				LogInfo("  return HackerDXGIFactory2 wrapper = %p \n", this);
+				*ppvObject = this;
+			}
+
+			// None of the above, so we don't presently have a wrapped version of
+			// the object. Not sure this is possible now that CreateDXGIFactory is updated.
+			else if ((G->enable_dxgi1_2 == 1) || (G->enable_platform_update)) 
+			{
+				// For when we need to return a legit Factory2.
+				HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+				LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
+				*ppvObject = factory2Wrap;
+			}
 		}
+	// ToDo: Do we need to return 'this' for __uuidof(IDXGIFactory1)?
 	}
 
 	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
