@@ -1008,7 +1008,13 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
 				{
-					_wfopen_s(&fw, val, L"wb");
+					errno_t err = _wfopen_s(&fw, val, L"wb");
+					if (err != 0)
+					{
+						LogInfo("    !!! Fail to open replace.txt file: 0x%x \n", err);
+						return 0;
+					}
+
 					if (LogFile)
 					{
 						char fileName[MAX_PATH];
