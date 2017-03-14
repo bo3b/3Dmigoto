@@ -97,6 +97,8 @@ cbuffer Unlit : register(b5)
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
+#include <crosshair.hlsl>
+
 void main(
   int4 v0 : position0,
   int2 v1 : texcoord0,
@@ -190,18 +192,23 @@ void main(
 // Push the scope into the screen.
 float4 stereo = StereoParams.Load(0);
 float separation = stereo.x; float convergence = stereo.y;
-float4 params = IniParams.Load(0);
-float hud_depth = params.x;
 
-if (params.y == 1) { // Aiming
-	if (params.w == 0) {
-		// Move to UI depth
-		o0.x += separation * hud_depth * o0.w;
-	} else if (params.w == 1) {
-		// Alternate adjustment to align with weapon
-		o0.x += separation * (o0.w - convergence);
-	}
-}
+float scope_adjustment, auto_adjustment;
+
+// Use standard stereo correction to align with weapon sight:
+scope_adjustment = separation * (o0.w - convergence);
+
+// Adjust based on depth buffer. Since W already has the depth of the
+// sight (not 1), we need to multiply the adjustment by W:
+auto_adjustment = adjust_from_stereo2mono_depth_buffer(0,0) * o0.w;
+
+// Auto adjust the scope depth, but prevent it coming closer than the weapon
+// sight (noticeable when hiding in bushes):
+if (abs(auto_adjustment) > abs(scope_adjustment))
+	o0.x += auto_adjustment;
+else
+	o0.x += scope_adjustment;
+
 
   return;
 }

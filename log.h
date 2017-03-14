@@ -1,6 +1,14 @@
 #pragma once
 
+using namespace std;
+
+#include <string>
+#include <ctime>
+
 // Wrappers to make logging cleaner.
+
+extern FILE *LogFile;
+extern bool gLogDebug;
 
 // Note that for now I've left the definitions of LogFile and LogDebug as they
 // were - either declared locally in a file, as an extern, or from another
@@ -9,11 +17,31 @@
 // logging framework.
 
 #define LogInfo(fmt, ...) \
-	if (LogInfo) fprintf(LogFile, fmt, __VA_ARGS__)
+	do { if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); } while (0)
+#define vLogInfo(fmt, va_args) \
+	do { if (LogFile) vfprintf(LogFile, fmt, va_args); } while (0)
 #define LogInfoW(fmt, ...) \
-	if (LogInfo) fwprintf(LogFile, fmt, __VA_ARGS__)
+	do { if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__); } while (0)
+
 
 #define LogDebug(fmt, ...) \
-	if (LogDebug) LogInfo(fmt, __VA_ARGS__)
+	do { if (gLogDebug) LogInfo(fmt, __VA_ARGS__); } while (0)
+#define vLogDebug(fmt, va_args) \
+	do { if (gLogDebug) vLogInfo(fmt, va_args); } while (0)
 #define LogDebugW(fmt, ...) \
-	if (LogDebug) LogInfoW(fmt, __VA_ARGS__)
+	do { if (gLogDebug) LogInfoW(fmt, __VA_ARGS__); } while (0)
+
+static string LogTime()
+{
+	string timeStr;
+	char cTime[32];
+	tm timestruct;
+
+	time_t ltime = time(0);
+	localtime_s(&timestruct, &ltime);
+	asctime_s(cTime, sizeof(cTime), &timestruct);
+
+	timeStr = cTime;
+	return timeStr;
+}
+

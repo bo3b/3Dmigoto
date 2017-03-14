@@ -7,8 +7,6 @@
 #include <crtdbg.h>
 #include <Windows.h>
 #include <Shlobj.h>
-#include <dinput.h>
-#include <dinputd.h>
 #include <assert.h>
 #include <oleauto.h>
 #include <shellapi.h>

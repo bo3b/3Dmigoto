@@ -18,6 +18,7 @@ del d3d10.lib
 
 del d3d11.dll
 del d3d11_log.txt
+del d3d11_profile_log.txt
 del d3d11.exp
 del d3d11.pdb
 del d3d11.ilk
@@ -55,7 +56,9 @@ del D3DCompiler_43.pdb
 del D3DCompiler_43.ilk
 del D3DCompiler_43.lib
 
-del D3DCompiler_46.dll
+REM games seem to use this often, let's not delete this
+REM file, as it's benign if not used.
+REM del D3DCompiler_46.dll
 del D3DCompiler_46_org.dll
 del D3DCompiler_46_log.txt
 del D3DCompiler_46.exp
@@ -85,12 +88,18 @@ del nvapi64.ilk
 del nvapi64.lib
 
 
+del courierbold.spritefont
 del XInput9_1_0.dll
 del d3dx.ini
+
+del DirectXTK.lib
+del DirectXTK.pdb
+del DirectXTK.ilk
 
 del D3D_Shaders.exe
 del D3D_Shaders.pdb
 del D3D_Shaders.ilk
+del D3D_Shaders.lib
 
 del BinaryDecompiler.lib
 

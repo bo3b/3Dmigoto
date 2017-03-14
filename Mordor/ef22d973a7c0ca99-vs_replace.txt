@@ -55,7 +55,7 @@ cbuffer CBuffer_View : register(b12)
 }
 
 // Manually added struct from ASM.
-struct BufferSrc
+struct ResourceStruct
 {
     float3 vPosition;              // Offset:    0
     float3 vVelocity;              // Offset:   12
@@ -63,8 +63,8 @@ struct BufferSrc
     float fUserData;               // Offset:   28
 };                                 // Offset:    0 Size:    32
 
-// Manually changed to BufferSrc_SB for use below.
-StructuredBuffer<BufferSrc> BufferSrc_SB : register(t0);
+// Manually changed to BufferSrc for use below.
+StructuredBuffer<ResourceStruct> BufferSrc : register(t0);
 
 Texture2D<float4> StereoParams : register(t125);
 
@@ -79,12 +79,14 @@ void main(
   float4 r0,r1,r2,r3;
   uint4 bitmask;
   
+
 // Manual fix for struct addressing.
 //ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r0.xyzw, v0.x, l(0), t0.wxyz
-r0.x = BufferSrc_SB[v0.x].vVelocity.x;
-r0.y = BufferSrc_SB[v0.x].vPosition.x;
-r0.z = BufferSrc_SB[v0.x].vPosition.y;
-r0.w = BufferSrc_SB[v0.x].vPosition.z;
+r0.x = BufferSrc[v0.x].vVelocity.x;
+r0.y = BufferSrc[v0.x].vPosition.x;
+r0.z = BufferSrc[v0.x].vPosition.y;
+r0.w = BufferSrc[v0.x].vPosition.z;
+
   r1.xyz = r0.yzw;
   r1.w = 1.000000000e+000;
   o0.x = dot(k_mObjectToView._m00_m01_m02_m03, r1.xyzw);
@@ -94,12 +96,14 @@ r0.w = BufferSrc_SB[v0.x].vPosition.z;
   r1.x = k_vFogSky.w + r1.x;
   o0.z = r2.x;
   r1.yzw = k_vObjectSpaceEyePos.xyz + -r0.yzw;
+  
+// Seems like it needs unrolling for that mid-struct offset.  
 // Manual fix for struct addressing.
 //ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
-r3.x = BufferSrc_SB[v0.x].vVelocity.y;
-r3.y = BufferSrc_SB[v0.x].vVelocity.z;
-r3.z = BufferSrc_SB[v0.x].fTime.x;
-r3.w = BufferSrc_SB[v0.x].fUserData.x;
+r3.x = BufferSrc[v0.x].vVelocity.y;
+r3.y = BufferSrc[v0.x].vVelocity.z;
+r3.z = BufferSrc[v0.x].fTime.x;
+r3.w = BufferSrc[v0.x].fUserData.x;
   r0.yz = r3.xy;
   o2.xy = r3.zw;
   o1.x = dot(k_mObjectToView._m00_m01_m02, r0.xyz);

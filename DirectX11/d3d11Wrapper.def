@@ -2,6 +2,9 @@ LIBRARY d3d11.dll
 
 HEAPSIZE 10485760
 
+; Tried using __declspec(export) but that would export mangled C++ names, which
+; then to not load as a proper d3d11.dll.
+
 EXPORTS
 	D3DKMTCloseAdapter					@1 
 	D3DKMTDestroyAllocation				@2
@@ -13,6 +16,8 @@ EXPORTS
 	D3DKMTSignalSynchronizationObject   @8 
 	D3DKMTUnlock                        @9 
 	D3DKMTWaitForSynchronizationObject  @10
+; missing-- EnableFeatureLevelUpgrade
+; numbers off from there
 	OpenAdapter10                       @11
 	OpenAdapter10_2                     @12
 	D3D11CoreCreateDevice               @13
@@ -45,4 +50,63 @@ EXPORTS
 	D3DKMTSetGammaRamp                  @40
 	D3DKMTSetVidPnSourceOwner           @41
 	D3DKMTWaitForVerticalBlankEvent     @42
+; missing:
+; D3DPerformance_BeginEvent
+; D3DPerformance_EndEvent
+; D3DPerformance_GetStatus
+; D3DPerformance_SetMarker
 	
+
+; Full list from d3d11.dll, sorted by Hint:
+; D3D11CoreCreateDevice
+; D3D11CoreCreateLayeredDevice
+; D3D11CoreGetLayeredDeviceSize
+; D3D11CoreRegisterLayers
+; D3D11CreateDevice
+; D3D11CreateDeviceAndSwapChain
+; D3DKMTCloseAdapter
+; D3DKMTCreateAllocation
+; D3DKMTCreateContext
+; D3DKMTCreateDevice
+; D3DKMTCreateSynchronizationObject
+; D3DKMTDestroyAllocation
+; D3DKMTDestroyContext
+; D3DKMTDestroyDevice
+; D3DKMTDestroySynchronizationObject
+; D3DKMTEscape
+; D3DKMTGetContextSchedulingPriority
+; D3DKMTGetDeviceState
+; D3DKMTGetDisplayModeList
+; D3DKMTGetMultisampleMethodList
+; D3DKMTGetRuntimeData
+; D3DKMTGetSharedPrimaryHandle
+; D3DKMTLock
+; D3DKMTOpenAdapterFromHdc
+; D3DKMTOpenResource
+; D3DKMTPresent
+; D3DKMTQueryAdapterInfo
+; D3DKMTQueryAllocationResidency
+; D3DKMTQueryResourceInfo
+; D3DKMTRender
+; D3DKMTSetAllocationPriority
+; D3DKMTSetContextSchedulingPriority
+; D3DKMTSetDisplayMode
+; D3DKMTSetDisplayPrivateDriverFormat
+; D3DKMTSetGammaRamp
+; D3DKMTSetVidPnSourceOwner
+; D3DKMTSignalSynchronizationObject
+; D3DKMTUnlock
+; D3DKMTWaitForSynchronizationObject
+; D3DKMTWaitForVerticalBlankEvent
+; D3DPerformance_BeginEvent
+; D3DPerformance_EndEvent
+; D3DPerformance_GetStatus
+; D3DPerformance_SetMarker
+; EnableFeatureLevelUpgrade
+; OpenAdapter10
+; OpenAdapter10_2
+
+; 3DMigoto exports that are not found in the real d3d11.dll
+; We are not exporting an ordinal here, since a text string is less likely to
+; clash with any future changes to the real d3d11.dll or another wrapper.
+Install3DMigotoDriverProfileW

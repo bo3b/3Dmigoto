@@ -1,0 +1,911 @@
+// Lights
+Texture2D<float4> t7 : register(t7);
+
+Texture2D<float4> t6 : register(t6);
+
+Texture2DMS<float4> t5 : register(t5);
+
+Texture2DMS<float4> t4 : register(t4);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[12];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[12];
+}
+
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[16];
+}
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[5];
+}
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+// Hand fix structured buffers missing any names and structs.
+
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t0, 4 
+struct t0_struct
+{
+	float t0_float;
+};
+StructuredBuffer<t0_struct> t0_buff : register(t0);
+
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t1, 28 
+struct t1_struct
+{
+	float4 t1_index0;
+  float3 t1_index16;
+};
+StructuredBuffer<t1_struct> t1_buff : register(t1);
+
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t2, 8 
+struct t2_struct
+{
+	float2 t2_float2;
+};
+StructuredBuffer<t2_struct> t2_buff : register(t2);
+
+// Needs manual fix for instruction: 
+// unknown dcl_: dcl_resource_structured t3, 4 
+struct t3_struct
+{
+	float t3_float;
+};
+StructuredBuffer<t3_struct> t3_buff : register(t3);
+
+
+void main( 
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  float4 x0[16];
+  x0[0].x = cb3[0].z;
+  x0[1].x = cb3[0].w;
+  x0[2].x = cb3[1].x;
+  x0[3].x = cb3[1].y;
+  x0[4].x = cb3[1].z;
+  x0[5].x = cb3[1].w;
+  x0[6].x = cb3[2].x;
+  x0[7].x = cb3[2].y;
+  x0[8].x = cb3[2].z;
+  x0[9].x = cb3[2].w;
+  x0[10].x = cb3[3].x;
+  x0[11].x = cb3[3].y;
+  x0[12].x = cb3[3].z;
+  x0[13].x = cb3[3].w;
+  x0[14].x = cb3[4].x;
+  x0[15].x = cb3[4].y;
+  r0.xy = cb0[11].zw * v0.xy;
+  t4.GetDimensions(fDest.x, fDest.y, fDest.z);
+  r0.zw = fDest.xy;
+  r0.zw = r0.xy * r0.zw;
+  r1.xy = (int2)r0.zw;
+  r1.zw = float2(0,0);
+  r1.xyzw = t4.Load(r1.xy, 0).xyzw;
+  r2.xy = t6.Sample(s0_s, r0.xy).xy;
+  t5.GetDimensions(fDest.x, fDest.y, fDest.z);
+  r0.zw = fDest.xy;
+  r0.zw = r0.xy * r0.zw;
+  r3.xy = (int2)r0.zw;
+  r3.zw = float2(0,0);
+  r3.xyzw = t5.Load(r3.xy, 0).xyzw;
+  r0.z = 255 * r3.z;
+  r0.z = (uint)r0.z;
+  r0.z = (int)r0.z & 15;
+  if (r0.z == 0) {
+    r0.w = 0.0773993805 * r3.x;
+    r2.w = 0.0549999997 + r3.x;
+    r2.w = 0.947867334 * r2.w;
+    r2.w = log2(r2.w);
+    r2.w = 2.4000001 * r2.w;
+    r2.w = exp2(r2.w);
+    r3.z = cmp(0.0404499993 >= r3.x);
+    r0.w = r3.z ? r0.w : r2.w;
+    r4.xyz = r1.xyz + r1.xyz;
+    r2.w = dot(r4.xyz, float3(0.298999995,0.587000012,0.114));
+    r2.w = saturate(r0.w / r2.w);
+    r1.xyz = -r2.www * r4.xyz + r4.xyz;
+    r3.z = r2.w * 2 + -1;
+    r3.z = max(0, r3.z);
+    r4.xyz = r2.www * r4.xyz + -r0.www;
+    r4.xyz = r3.zzz * r4.xyz + r0.www;
+    r3.xw = float2(0,0);
+  } else {
+    r4.xyz = float3(0,0,0);
+  }
+  r0.x = t7.Sample(s1_s, r0.xy).x;
+  r0.x = cb0[9].y * r0.x;
+  r0.yw = float2(0.03125,0.03125) * cb0[11].xy;
+  r0.yw = ceil(r0.yw);
+  r0.yw = float2(32,32) * r0.yw;
+  r2.w = asint(cb3[0].x);
+  r3.z = r0.x / cb3[0].y;
+  r3.z = log2(r3.z);
+  r3.z = 1 + r3.z;
+  r3.z = saturate(r3.z / r2.w);
+  r2.w = r3.z * r2.w;
+  r2.w = (int)r2.w;
+  r2.w = x0[r2.w+0].x;
+  
+  // r5.xy = (uint2)r2.ww >> int2(24,16);
+r5.xy = (int2)r2.ww >> int2(24,16);
+
+  r5.xy = (int2)r5.xy & int2(255,255);
+  r2.w = (int)r2.w & 0x0000ffff;
+  r5.yz = (int2)r5.xy;
+  r5.yz = v0.xy * r5.yz;
+  r0.yw = r5.yz / r0.yw;
+  r0.yw = (int2)r0.yw;
+  r0.w = mad((int)r0.w, (int)r5.x, (int)r2.w);
+  r0.y = (int)r0.y + (int)r0.w;
+  
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, r0.y, l(0), t3.xxxx
+// r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.y = t3_buff[r0.y].t3_float;
+
+
+  // r0.w = (uint)r0.y >> 24;
+r0.w = (int)r0.y >> 24;
+
+  r0.w = (int)r0.w & 255;
+  r2.w = cmp((int)r0.w == 0);
+  if (r0.w == 0) {
+    o0.xyzw = float4(0,0,0,0);
+  }
+  if (r2.w == 0) {
+    r2.z = 1;
+    r2.w = dot(r2.xyz, r2.xyz);
+    r2.xyz = r2.xyz / r2.www;
+    r2.xyz = r2.xyz * float3(2,2,2) + float3(0,0,-1);
+    r5.xy = cb0[10].zw * v1.xy;
+    r0.y = (int)r0.y & 0x00ffffff;
+    r5.z = -1;
+    r6.xyz = r5.xyz * r0.xxx;
+    r0.w = (int)r0.w + (int)r0.y;
+    r7.xyz = float3(0,0,0);
+    r8.xyz = float3(0,0,0);
+    r9.xy = float2(0,1);
+    r2.w = 1e+010;
+    r3.z = r0.y;
+    while (true) {
+      r4.w = cmp((int)r0.w == (int)r3.z);
+      if (r4.w != 0) break;
+	  
+	  // Missing reflection info for shader. No names possible.
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r9.zw, r3.z, l(0), t2.xxxy
+      // r9.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r9.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r9.zw = t2_buff[r3.z].t2_float2.xy;
+	
+      // r4.w = (uint)r9.z >> 16;
+r4.w = (int)r9.z >> 16;
+
+      r4.w = (int)r4.w & 0x0000ffff;
+      r5.w = (int)r9.z & 0x0000ffff;
+	  
+      // Missing reflection info for shader. No names possible.
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r10.xyzw, r4.w, l(0), t1.xyzw
+      // r10.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r10.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r10.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r10.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r10.xyzw = t1_buff[r4.w].t1_index0.xyzw;
+    
+      // Missing reflection info for shader. No names possible.
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r11.xyzw, r5.w, l(0), t1.xyzw
+      // r11.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r11.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r11.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r11.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r11.xyzw = t1_buff[r5.w].t1_index0.xyzw;
+    
+  	  r12.xyz = r5.xyz * r0.xxx + -r10.xyz;
+      r11.xyzw = r11.xyzw + -r10.xyzw;
+      r6.w = dot(r12.xyz, r11.xyz);
+      r7.w = dot(r11.xyz, r11.xyz);
+      r6.w = saturate(r6.w / r7.w);
+      r10.xyzw = r6.wwww * r11.xyzw + r10.xyzw;
+      r10.xyz = -r5.xyz * r0.xxx + r10.xyz;
+	  
+      // Missing reflection info for shader. No names possible.
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r11.xyz, r4.w, l(16), t1.xyzx
+      // r11.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r11.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r11.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r11.xyz = t1_buff[r4.w].t1_index16.xyz;
+	
+      // Missing reflection info for shader. No names possible.
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r12.xyz, r5.w, l(16), t1.xyzx
+      // r12.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r12.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      // r12.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r12.xyz = t1_buff[r5.w].t1_index16.xyz;
+	
+      r12.xyz = r12.xyz + -r11.xyz;
+      r11.xyz = r6.www * r12.xyz + r11.xyz;
+      r4.w = dot(r10.xyz, r10.xyz);
+      r4.w = sqrt(r4.w);
+      r5.w = 0.899999976 * r10.w;
+      r4.w = r4.w / r5.w;
+      r5.w = r4.w + -r2.w;
+      r5.w = saturate(r5.w * 5 + 0.5);
+      r6.w = -r4.w + r2.w;
+      r4.w = r5.w * r6.w + r4.w;
+      r6.w = 0.100000001 * r5.w;
+      r7.w = 1 + -r5.w;
+      r2.w = -r6.w * r7.w + r4.w;
+      r12.xyz = -r10.xyz + r7.xyz;
+      r7.xyz = r5.www * r12.xyz + r10.xyz;
+      r10.xyz = -r11.xyz + r8.xyz;
+      r8.xyz = r5.www * r10.xyz + r11.xyz;
+      r4.w = -r10.w + r9.x;
+      r9.x = r5.w * r4.w + r10.w;
+      r4.w = r9.y + -r9.w;
+      r9.y = r5.w * r4.w + r9.w;
+      r3.z = (int)r3.z + 1;
+    }
+    r0.x = saturate(r2.w);
+    r0.y = r0.x * r0.x + 1;
+    r0.y = sqrt(r0.y);
+    r0.x = r0.x / r0.y;
+    r0.x = 0.707106769 + -r0.x;
+    r0.x = r0.x * r9.y;
+    r0.x = r3.y * r0.x;
+    r0.x = 1.41421354 * r0.x;
+    r0.y = 0.5 * r9.x;
+    r5.xyz = r0.yyy * cb0[6].xyz + r7.xyz;
+    r0.y = dot(r5.xyz, r5.xyz);
+    r0.y = rsqrt(r0.y);
+    r7.xyz = r5.xyz * r0.yyy;
+    r0.w = dot(r6.xyz, r6.xyz);
+    r3.y = sqrt(r0.w);
+    r3.y = -200 + r3.y;
+    r3.y = saturate(0.00124999997 * r3.y);
+    r3.y = 1 + r3.y;
+    r0.x = r3.y * r0.x;
+    r0.w = rsqrt(r0.w);
+    r6.xyz = r6.xyz * r0.www;
+    r0.w = saturate(dot(r2.xyz, r7.xyz));
+    r2.w = 1 + r2.w;
+    r2.w = 1.79999995 * r2.w;
+    r0.w = -r0.w * r0.w + 1;
+    r0.w = sqrt(r0.w);
+    r0.w = r2.w * r0.w + 1;
+    r0.w = 1 / r0.w;
+    r5.xyz = -r5.xyz * r0.yyy + r2.xyz;
+    r5.xyz = r0.www * r5.xyz + r7.xyz;
+    r0.y = dot(r5.xyz, r5.xyz);
+    r0.y = rsqrt(r0.y);
+    r7.xyz = r5.xyz * r0.yyy;
+    r8.xyz = r0.xxx * r8.xyz;
+    r0.x = saturate(dot(r2.xyz, r7.xyz));
+    r8.xyz = r8.xyz * r0.xxx;
+    r0.w = 1 + -r1.w;
+    r2.w = dot(r2.xyz, -r6.xyz);
+    r2.w = max(9.99999997e-007, abs(r2.w));
+    r5.xyz = r5.xyz * r0.yyy + -r6.xyz;
+    r0.y = dot(r5.xyz, r5.xyz);
+    r0.y = rsqrt(r0.y);
+    r5.xyz = r5.xyz * r0.yyy;
+    r0.y = saturate(dot(r7.xyz, r5.xyz));
+    r3.y = saturate(dot(r2.xyz, r5.xyz));
+    if (r0.z == 0) {
+      r3.z = r0.w * r0.w;
+      r3.z = max(0.000500000024, r3.z);
+      r4.w = 2 + -r1.w;
+      r4.w = 0.5 * r4.w;
+      r4.w = r4.w * r4.w;
+      r4.w = max(0.000500000024, r4.w);
+      r5.w = r0.w * -0.337748349 + 1;
+      r6.w = r0.y * r0.y;
+      r6.w = dot(r6.ww, r0.ww);
+      r6.w = r0.w * 0.5 + r6.w;
+      r6.w = -1 + r6.w;
+      r7.w = r0.x * -5.55471992 + -6.98316002;
+      r7.w = r7.w * r0.x;
+      r7.w = exp2(r7.w);
+      r7.w = r6.w * r7.w + 1;
+      r8.w = r2.w * -5.55471992 + -6.98316002;
+      r8.w = r8.w * r2.w;
+      r8.w = exp2(r8.w);
+      r6.w = r6.w * r8.w + 1;
+      r6.w = r7.w * r6.w;
+      r5.w = r6.w * r5.w;
+      r5.w = 0.318309873 * r5.w;
+      r9.xyz = float3(1,1,1) + -r4.xyz;
+      r6.w = r0.y * -5.55471992 + -6.98316002;
+      r6.w = r6.w * r0.y;
+      r6.w = exp2(r6.w);
+      r4.xyz = r9.xyz * r6.www + r4.xyz;
+      r6.w = 0.5 * r4.w;
+      r4.w = -r4.w * 0.5 + 1;
+      r7.w = r0.x * r4.w + r6.w;
+      r7.w = 1 / r7.w;
+      r4.w = r2.w * r4.w + r6.w;
+      r4.w = 1 / r4.w;
+      r4.w = r7.w * r4.w;
+      r4.w = 0.25 * r4.w;
+      r6.w = r3.z * r3.z;
+      r7.w = r3.y * r3.y;
+      r3.z = r3.z * r3.z + -1;
+      r3.z = r7.w * r3.z + 1;
+      r3.z = r3.z * r3.z;
+      r3.z = 3.14159274 * r3.z;
+      r3.z = r6.w / r3.z;
+      r4.xyz = r3.zzz * r4.xyz;
+      r4.xyz = r4.xyz * r4.www;
+      r4.xyz = r5.www * r1.xyz + r4.xyz;
+    } else {
+      r3.z = -cb2[r0.z+0].y + 1;
+      r9.xyz = r3.xxx * -r1.xyz + r1.xyz;
+      r10.xyz = float3(-0.0399999991,-0.0399999991,-0.0399999991) + r1.xyz;
+      r10.xyz = r3.xxx * r10.xyz + float3(0.0399999991,0.0399999991,0.0399999991);
+      r0.z = cb2[r0.z+0].x + -1;
+      r0.z = r3.w * r0.z + 1;
+      r3.z = r3.z + -r0.w;
+      r3.z = r3.w * r3.z + r0.w;
+      r11.xyz = float3(0.0399999991,0.0399999991,0.0399999991) + -r10.xyz;
+      r10.xyz = r3.www * r11.xyz + r10.xyz;
+      r4.w = r0.w * r0.w;
+      r4.w = max(0.000500000024, r4.w);
+      r1.w = 2 + -r1.w;
+      r1.w = 0.5 * r1.w;
+      r1.w = r1.w * r1.w;
+      r1.w = max(0.000500000024, r1.w);
+      r5.w = r3.z * r3.z;
+      r5.w = max(0.000500000024, r5.w);
+      r3.z = 1 + r3.z;
+      r3.z = 0.5 * r3.z;
+      r3.z = r3.z * r3.z;
+      r3.z = max(0.000500000024, r3.z);
+      r11.xyz = float3(1,1,1) + -r10.xyz;
+      r6.w = r0.y * -5.55471992 + -6.98316002;
+      r6.w = r6.w * r0.y;
+      r6.w = exp2(r6.w);
+      r10.xyz = r11.xyz * r6.www + r10.xyz;
+      r11.xyz = -r10.xyz * r3.www + float3(1,1,1);
+      r6.w = 0.5 * r3.z;
+      r3.z = -r3.z * 0.5 + 1;
+      r7.w = r0.x * r3.z + r6.w;
+      r7.w = 1 / r7.w;
+      r3.z = r2.w * r3.z + r6.w;
+      r3.z = 1 / r3.z;
+      r3.z = r7.w * r3.z;
+      r3.z = 0.25 * r3.z;
+      r10.xyz = r10.xyz * r3.zzz;
+      r3.z = r5.w * r5.w;
+      r3.y = r3.y * r3.y;
+      r5.w = r5.w * r5.w + -1;
+      r3.y = r3.y * r5.w + 1;
+      r3.y = r3.y * r3.y;
+      r3.y = 3.14159274 * r3.y;
+      r3.y = r3.z / r3.y;
+      r3.z = dot(r7.xyz, -r5.xyz);
+      r5.w = r3.z * -0.260500014 + 0.669130027;
+      r3.z = r5.w * r3.z + -0.74921;
+      r12.xyz = r3.zzz * -r5.xyz;
+      r7.xyz = r7.xyz * float3(-0.666670024,-0.666670024,-0.666670024) + r12.xyz;
+      r3.z = dot(-r6.xyz, -r5.xyz);
+      r5.w = r3.z * -0.260500014 + 0.669130027;
+      r3.z = r5.w * r3.z + -0.74921;
+      r12.xyz = r3.zzz * -r5.xyz;
+      r6.xyz = r6.xyz * float3(0.666670024,0.666670024,0.666670024) + r12.xyz;
+      r3.z = dot(r6.xyz, r5.xyz);
+      r3.z = -r3.z * r3.z + 1;
+      r5.x = cmp(0.444444448 < r3.z);
+      if (r5.x != 0) {
+        r5.y = 1;
+      }
+      if (r5.x == 0) {
+        r3.z = -r3.z * 2.25 + 1;
+        r3.z = sqrt(r3.z);
+        r5.x = r3.z * -5.55471992 + -6.98316002;
+        r3.z = r5.x * r3.z;
+        r3.z = exp2(r3.z);
+        r5.y = r3.z * 0.959999979 + 0.0400000028;
+      }
+      r3.z = -r5.y * r3.w + 1;
+      r5.xyz = r6.xyz + r7.xyz;
+      r5.w = dot(r5.xyz, r5.xyz);
+      r5.w = rsqrt(r5.w);
+      r5.xyz = r5.xyz * r5.www;
+      r5.x = saturate(dot(r2.xyz, r5.xyz));
+      r5.y = saturate(dot(r2.xyz, r7.xyz));
+      r2.x = saturate(dot(r2.xyz, r6.xyz));
+      r1.xyz = log2(r1.xyz);
+      r1.xyz = r1.xyz * r0.zzz;
+      r1.xyz = exp2(r1.xyz);
+      r1.xyz = r1.xyz * r3.xxx;
+      r1.xyz = r1.xyz * r3.www;
+      r1.xyz = float3(0.85310024,0.882367015,0.871564329) * r1.xyz;
+      r0.z = r0.w * -0.337748349 + 1;
+      r0.y = r0.y * r0.y;
+      r0.y = dot(r0.yy, r0.ww);
+      r0.y = r0.w * 0.5 + r0.y;
+      r0.y = -1 + r0.y;
+      r0.w = r0.x * -5.55471992 + -6.98316002;
+      r0.x = r0.w * r0.x;
+      r0.x = exp2(r0.x);
+      r0.x = r0.y * r0.x + 1;
+      r0.w = r2.w * -5.55471992 + -6.98316002;
+      r0.w = r0.w * r2.w;
+      r0.w = exp2(r0.w);
+      r0.y = r0.y * r0.w + 1;
+      r0.x = r0.x * r0.y;
+      r0.x = r0.x * r0.z;
+      r0.y = 0.5 * r1.w;
+      r0.z = -r1.w * 0.5 + 1;
+      r0.w = r5.y * r0.z + r0.y;
+      r0.w = 1 / r0.w;
+      r0.y = r2.x * r0.z + r0.y;
+      r0.y = 1 / r0.y;
+      r0.y = r0.w * r0.y;
+      r0.xy = float2(0.318309873,0.25) * r0.xy;
+      r0.yzw = r1.xyz * r0.yyy;
+      r1.x = r4.w * r4.w;
+      r1.y = r5.x * r5.x;
+      r1.z = r4.w * r4.w + -1;
+      r1.y = r1.y * r1.z + 1;
+      r1.y = r1.y * r1.y;
+      r1.y = 3.14159274 * r1.y;
+      r1.x = r1.x / r1.y;
+      r0.yzw = r1.xxx * r0.yzw;
+      r0.xyz = r0.xxx * r9.xyz + r0.yzw;
+      r0.xyz = r11.xyz * r0.xyz;
+      r0.xyz = r0.xyz * r3.zzz;
+      r4.xyz = r10.xyz * r3.yyy + r0.xyz;
+    }
+    r0.xyz = r8.xyz * r4.xyz;
+    r0.w = cb1[11].y + cb1[11].y;
+    r0.xyz = r0.xyz * r0.www;
+    
+    // Missing reflection info for shader. No names possible.
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.w, l(0), l(0), t0.xxxx
+    // r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.w = t0_buff[0].t0_float;
+  
+    r0.xyz = r0.xyz * r0.www;
+    o0.xyz = min(float3(55000,55000,55000), r0.xyz);
+    o0.w = 1;
+  }
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) D3D Shader Disassembler
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[12], immediateIndexed
+dcl_constantbuffer cb1[12], immediateIndexed
+dcl_constantbuffer cb2[16], dynamicIndexed
+dcl_constantbuffer cb3[5], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_resource_structured t0, 4 
+dcl_resource_structured t1, 28 
+dcl_resource_structured t2, 8 
+dcl_resource_structured t3, 4 
+dcl_resource_texture2dms(0) (float,float,float,float) t4
+dcl_resource_texture2dms(0) (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 13
+dcl_indexableTemp x0[16], 4
+mov x0[0].x, cb3[0].z
+mov x0[1].x, cb3[0].w
+mov x0[2].x, cb3[1].x
+mov x0[3].x, cb3[1].y
+mov x0[4].x, cb3[1].z
+mov x0[5].x, cb3[1].w
+mov x0[6].x, cb3[2].x
+mov x0[7].x, cb3[2].y
+mov x0[8].x, cb3[2].z
+mov x0[9].x, cb3[2].w
+mov x0[10].x, cb3[3].x
+mov x0[11].x, cb3[3].y
+mov x0[12].x, cb3[3].z
+mov x0[13].x, cb3[3].w
+mov x0[14].x, cb3[4].x
+mov x0[15].x, cb3[4].y
+mul r0.xy, v0.xyxx, cb0[11].zwzz
+resinfo_indexable(texture2dms)(float,float,float,float) r0.zw, l(0), t4.zwxy
+mul r0.zw, r0.zzzw, r0.xxxy
+ftoi r1.xy, r0.zwzz
+mov r1.zw, l(0,0,0,0)
+ldms_indexable(texture2dms)(float,float,float,float) r1.xyzw, r1.xyzw, t4.xyzw, l(0)
+sample_indexable(texture2d)(float,float,float,float) r2.xy, r0.xyxx, t6.xyzw, s0
+resinfo_indexable(texture2dms)(float,float,float,float) r0.zw, l(0), t5.zwxy
+mul r0.zw, r0.zzzw, r0.xxxy
+ftoi r3.xy, r0.zwzz
+mov r3.zw, l(0,0,0,0)
+ldms_indexable(texture2dms)(float,float,float,float) r3.xyzw, r3.xyzw, t5.xyzw, l(0)
+mul r0.z, r3.z, l(255.000000)
+ftou r0.z, r0.z
+and r0.z, r0.z, l(15)
+if_z r0.z
+  mul r0.w, r3.x, l(0.077399)
+  add r2.w, r3.x, l(0.055000)
+  mul r2.w, r2.w, l(0.947867)
+  log r2.w, r2.w
+  mul r2.w, r2.w, l(2.400000)
+  exp r2.w, r2.w
+  ge r3.z, l(0.040450), r3.x
+  movc r0.w, r3.z, r0.w, r2.w
+  add r4.xyz, r1.xyzx, r1.xyzx
+  dp3 r2.w, r4.xyzx, l(0.299000, 0.587000, 0.114000, 0.000000)
+  div_sat r2.w, r0.w, r2.w
+  mad r1.xyz, -r2.wwww, r4.xyzx, r4.xyzx
+  mad r3.z, r2.w, l(2.000000), l(-1.000000)
+  max r3.z, r3.z, l(0.000000)
+  mad r4.xyz, r2.wwww, r4.xyzx, -r0.wwww
+  mad r4.xyz, r3.zzzz, r4.xyzx, r0.wwww
+  mov r3.xw, l(0,0,0,0)
+else 
+  mov r4.xyz, l(0,0,0,0)
+endif 
+sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t7.xyzw, s1
+mul r0.x, r0.x, cb0[9].y
+mul r0.yw, cb0[11].xxxy, l(0.000000, 0.031250, 0.000000, 0.031250)
+round_pi r0.yw, r0.yyyw
+mul r0.yw, r0.yyyw, l(0.000000, 32.000000, 0.000000, 32.000000)
+itof r2.w, cb3[0].x
+div r3.z, r0.x, cb3[0].y
+log r3.z, r3.z
+add r3.z, r3.z, l(1.000000)
+div_sat r3.z, r3.z, r2.w
+mul r2.w, r2.w, r3.z
+ftoi r2.w, r2.w
+mov r2.w, x0[r2.w + 0].x
+ishr r5.xy, r2.wwww, l(24, 16, 0, 0)
+and r5.xy, r5.xyxx, l(255, 255, 0, 0)
+and r2.w, r2.w, l(0x0000ffff)
+itof r5.yz, r5.xxyx
+mul r5.yz, r5.yyzy, v0.xxyx
+div r0.yw, r5.yyyz, r0.yyyw
+ftoi r0.yw, r0.yyyw
+imad r0.w, r0.w, r5.x, r2.w
+iadd r0.y, r0.y, r0.w
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, r0.y, l(0), t3.xxxx
+ishr r0.w, r0.y, l(24)
+and r0.w, r0.w, l(255)
+ieq r2.w, r0.w, l(0)
+if_z r0.w
+  mov o0.xyzw, l(0,0,0,0)
+endif 
+if_z r2.w
+  mov r2.z, l(1.000000)
+  dp3 r2.w, r2.xyzx, r2.xyzx
+  div r2.xyz, r2.xyzx, r2.wwww
+  mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(0.000000, 0.000000, -1.000000, 0.000000)
+  mul r5.xy, v1.xyxx, cb0[10].zwzz
+  and r0.y, r0.y, l(0x00ffffff)
+  mov r5.z, l(-1.000000)
+  mul r6.xyz, r0.xxxx, r5.xyzx
+  iadd r0.w, r0.w, r0.y
+  mov r7.xyz, l(0,0,0,0)
+  mov r8.xyz, l(0,0,0,0)
+  mov r9.xy, l(0,1.000000,0,0)
+  mov r2.w, l(10000000000.000000)
+  mov r3.z, r0.y
+  loop 
+    ieq r4.w, r0.w, r3.z
+    breakc_nz r4.w
+    ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r9.zw, r3.z, l(0), t2.xxxy
+    ishr r4.w, r9.z, l(16)
+    and r4.w, r4.w, l(0x0000ffff)
+    and r5.w, r9.z, l(0x0000ffff)
+    ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r10.xyzw, r4.w, l(0), t1.xyzw
+    ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r11.xyzw, r5.w, l(0), t1.xyzw
+    mad r12.xyz, r5.xyzx, r0.xxxx, -r10.xyzx
+    add r11.xyzw, -r10.xyzw, r11.xyzw
+    dp3 r6.w, r12.xyzx, r11.xyzx
+    dp3 r7.w, r11.xyzx, r11.xyzx
+    div_sat r6.w, r6.w, r7.w
+    mad r10.xyzw, r6.wwww, r11.xyzw, r10.xyzw
+    mad r10.xyz, -r5.xyzx, r0.xxxx, r10.xyzx
+    ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r11.xyz, r4.w, l(16), t1.xyzx
+    ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r12.xyz, r5.w, l(16), t1.xyzx
+    add r12.xyz, -r11.xyzx, r12.xyzx
+    mad r11.xyz, r6.wwww, r12.xyzx, r11.xyzx
+    dp3 r4.w, r10.xyzx, r10.xyzx
+    sqrt r4.w, r4.w
+    mul r5.w, r10.w, l(0.900000)
+    div r4.w, r4.w, r5.w
+    add r5.w, -r2.w, r4.w
+    mad_sat r5.w, r5.w, l(5.000000), l(0.500000)
+    add r6.w, r2.w, -r4.w
+    mad r4.w, r5.w, r6.w, r4.w
+    mul r6.w, r5.w, l(0.100000)
+    add r7.w, -r5.w, l(1.000000)
+    mad r2.w, -r6.w, r7.w, r4.w
+    add r12.xyz, r7.xyzx, -r10.xyzx
+    mad r7.xyz, r5.wwww, r12.xyzx, r10.xyzx
+    add r10.xyz, r8.xyzx, -r11.xyzx
+    mad r8.xyz, r5.wwww, r10.xyzx, r11.xyzx
+    add r4.w, r9.x, -r10.w
+    mad r9.x, r5.w, r4.w, r10.w
+    add r4.w, -r9.w, r9.y
+    mad r9.y, r5.w, r4.w, r9.w
+    iadd r3.z, r3.z, l(1)
+  endloop 
+  mov_sat r0.x, r2.w
+  mad r0.y, r0.x, r0.x, l(1.000000)
+  sqrt r0.y, r0.y
+  div r0.x, r0.x, r0.y
+  add r0.x, -r0.x, l(0.707107)
+  mul r0.x, r9.y, r0.x
+  mul r0.x, r0.x, r3.y
+  mul r0.x, r0.x, l(1.414214)
+  mul r0.y, r9.x, l(0.500000)
+  mad r5.xyz, r0.yyyy, cb0[6].xyzx, r7.xyzx
+  dp3 r0.y, r5.xyzx, r5.xyzx
+  rsq r0.y, r0.y
+  mul r7.xyz, r0.yyyy, r5.xyzx
+  dp3 r0.w, r6.xyzx, r6.xyzx
+  sqrt r3.y, r0.w
+  add r3.y, r3.y, l(-200.000000)
+  mul_sat r3.y, r3.y, l(0.001250)
+  add r3.y, r3.y, l(1.000000)
+  mul r0.x, r0.x, r3.y
+  rsq r0.w, r0.w
+  mul r6.xyz, r0.wwww, r6.xyzx
+  dp3_sat r0.w, r2.xyzx, r7.xyzx
+  add r2.w, r2.w, l(1.000000)
+  mul r2.w, r2.w, l(1.800000)
+  mad r0.w, -r0.w, r0.w, l(1.000000)
+  sqrt r0.w, r0.w
+  mad r0.w, r2.w, r0.w, l(1.000000)
+  div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+  mad r5.xyz, -r5.xyzx, r0.yyyy, r2.xyzx
+  mad r5.xyz, r0.wwww, r5.xyzx, r7.xyzx
+  dp3 r0.y, r5.xyzx, r5.xyzx
+  rsq r0.y, r0.y
+  mul r7.xyz, r0.yyyy, r5.xyzx
+  mul r8.xyz, r8.xyzx, r0.xxxx
+  dp3_sat r0.x, r2.xyzx, r7.xyzx
+  mul r8.xyz, r0.xxxx, r8.xyzx
+  add r0.w, -r1.w, l(1.000000)
+  dp3 r2.w, r2.xyzx, -r6.xyzx
+  max r2.w, |r2.w|, l(0.000001)
+  mad r5.xyz, r5.xyzx, r0.yyyy, -r6.xyzx
+  dp3 r0.y, r5.xyzx, r5.xyzx
+  rsq r0.y, r0.y
+  mul r5.xyz, r0.yyyy, r5.xyzx
+  dp3_sat r0.y, r7.xyzx, r5.xyzx
+  dp3_sat r3.y, r2.xyzx, r5.xyzx
+  if_z r0.z
+    mul r3.z, r0.w, r0.w
+    max r3.z, r3.z, l(0.000500)
+    add r4.w, -r1.w, l(2.000000)
+    mul r4.w, r4.w, l(0.500000)
+    mul r4.w, r4.w, r4.w
+    max r4.w, r4.w, l(0.000500)
+    mad r5.w, r0.w, l(-0.337748), l(1.000000)
+    mul r6.w, r0.y, r0.y
+    dp2 r6.w, r6.wwww, r0.wwww
+    mad r6.w, r0.w, l(0.500000), r6.w
+    add r6.w, r6.w, l(-1.000000)
+    mad r7.w, r0.x, l(-5.554720), l(-6.983160)
+    mul r7.w, r0.x, r7.w
+    exp r7.w, r7.w
+    mad r7.w, r6.w, r7.w, l(1.000000)
+    mad r8.w, r2.w, l(-5.554720), l(-6.983160)
+    mul r8.w, r2.w, r8.w
+    exp r8.w, r8.w
+    mad r6.w, r6.w, r8.w, l(1.000000)
+    mul r6.w, r6.w, r7.w
+    mul r5.w, r5.w, r6.w
+    mul r5.w, r5.w, l(0.318310)
+    add r9.xyz, -r4.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    mad r6.w, r0.y, l(-5.554720), l(-6.983160)
+    mul r6.w, r0.y, r6.w
+    exp r6.w, r6.w
+    mad r4.xyz, r9.xyzx, r6.wwww, r4.xyzx
+    mul r6.w, r4.w, l(0.500000)
+    mad r4.w, -r4.w, l(0.500000), l(1.000000)
+    mad r7.w, r0.x, r4.w, r6.w
+    div r7.w, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+    mad r4.w, r2.w, r4.w, r6.w
+    div r4.w, l(1.000000, 1.000000, 1.000000, 1.000000), r4.w
+    mul r4.w, r4.w, r7.w
+    mul r4.w, r4.w, l(0.250000)
+    mul r6.w, r3.z, r3.z
+    mul r7.w, r3.y, r3.y
+    mad r3.z, r3.z, r3.z, l(-1.000000)
+    mad r3.z, r7.w, r3.z, l(1.000000)
+    mul r3.z, r3.z, r3.z
+    mul r3.z, r3.z, l(3.141593)
+    div r3.z, r6.w, r3.z
+    mul r4.xyz, r4.xyzx, r3.zzzz
+    mul r4.xyz, r4.wwww, r4.xyzx
+    mad r4.xyz, r5.wwww, r1.xyzx, r4.xyzx
+  else 
+    add r3.z, l(1.000000), -cb2[r0.z + 0].y
+    mad r9.xyz, r3.xxxx, -r1.xyzx, r1.xyzx
+    add r10.xyz, r1.xyzx, l(-0.040000, -0.040000, -0.040000, 0.000000)
+    mad r10.xyz, r3.xxxx, r10.xyzx, l(0.040000, 0.040000, 0.040000, 0.000000)
+    add r0.z, l(-1.000000), cb2[r0.z + 0].x
+    mad r0.z, r3.w, r0.z, l(1.000000)
+    add r3.z, -r0.w, r3.z
+    mad r3.z, r3.w, r3.z, r0.w
+    add r11.xyz, -r10.xyzx, l(0.040000, 0.040000, 0.040000, 0.000000)
+    mad r10.xyz, r3.wwww, r11.xyzx, r10.xyzx
+    mul r4.w, r0.w, r0.w
+    max r4.w, r4.w, l(0.000500)
+    add r1.w, -r1.w, l(2.000000)
+    mul r1.w, r1.w, l(0.500000)
+    mul r1.w, r1.w, r1.w
+    max r1.w, r1.w, l(0.000500)
+    mul r5.w, r3.z, r3.z
+    max r5.w, r5.w, l(0.000500)
+    add r3.z, r3.z, l(1.000000)
+    mul r3.z, r3.z, l(0.500000)
+    mul r3.z, r3.z, r3.z
+    max r3.z, r3.z, l(0.000500)
+    add r11.xyz, -r10.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    mad r6.w, r0.y, l(-5.554720), l(-6.983160)
+    mul r6.w, r0.y, r6.w
+    exp r6.w, r6.w
+    mad r10.xyz, r11.xyzx, r6.wwww, r10.xyzx
+    mad r11.xyz, -r10.xyzx, r3.wwww, l(1.000000, 1.000000, 1.000000, 0.000000)
+    mul r6.w, r3.z, l(0.500000)
+    mad r3.z, -r3.z, l(0.500000), l(1.000000)
+    mad r7.w, r0.x, r3.z, r6.w
+    div r7.w, l(1.000000, 1.000000, 1.000000, 1.000000), r7.w
+    mad r3.z, r2.w, r3.z, r6.w
+    div r3.z, l(1.000000, 1.000000, 1.000000, 1.000000), r3.z
+    mul r3.z, r3.z, r7.w
+    mul r3.z, r3.z, l(0.250000)
+    mul r10.xyz, r3.zzzz, r10.xyzx
+    mul r3.z, r5.w, r5.w
+    mul r3.y, r3.y, r3.y
+    mad r5.w, r5.w, r5.w, l(-1.000000)
+    mad r3.y, r3.y, r5.w, l(1.000000)
+    mul r3.y, r3.y, r3.y
+    mul r3.y, r3.y, l(3.141593)
+    div r3.y, r3.z, r3.y
+    dp3 r3.z, r7.xyzx, -r5.xyzx
+    mad r5.w, r3.z, l(-0.260500), l(0.669130)
+    mad r3.z, r5.w, r3.z, l(-0.749210)
+    mul r12.xyz, -r5.xyzx, r3.zzzz
+    mad r7.xyz, r7.xyzx, l(-0.666670, -0.666670, -0.666670, 0.000000), r12.xyzx
+    dp3 r3.z, -r6.xyzx, -r5.xyzx
+    mad r5.w, r3.z, l(-0.260500), l(0.669130)
+    mad r3.z, r5.w, r3.z, l(-0.749210)
+    mul r12.xyz, -r5.xyzx, r3.zzzz
+    mad r6.xyz, r6.xyzx, l(0.666670, 0.666670, 0.666670, 0.000000), r12.xyzx
+    dp3 r3.z, r6.xyzx, r5.xyzx
+    mad r3.z, -r3.z, r3.z, l(1.000000)
+    lt r5.x, l(0.444444), r3.z
+    if_nz r5.x
+      mov r5.y, l(1.000000)
+    endif 
+    if_z r5.x
+      mad r3.z, -r3.z, l(2.250000), l(1.000000)
+      sqrt r3.z, r3.z
+      mad r5.x, r3.z, l(-5.554720), l(-6.983160)
+      mul r3.z, r3.z, r5.x
+      exp r3.z, r3.z
+      mad r5.y, r3.z, l(0.960000), l(0.040000)
+    endif 
+    mad r3.z, -r5.y, r3.w, l(1.000000)
+    add r5.xyz, r7.xyzx, r6.xyzx
+    dp3 r5.w, r5.xyzx, r5.xyzx
+    rsq r5.w, r5.w
+    mul r5.xyz, r5.wwww, r5.xyzx
+    dp3_sat r5.x, r2.xyzx, r5.xyzx
+    dp3_sat r5.y, r2.xyzx, r7.xyzx
+    dp3_sat r2.x, r2.xyzx, r6.xyzx
+    log r1.xyz, r1.xyzx
+    mul r1.xyz, r0.zzzz, r1.xyzx
+    exp r1.xyz, r1.xyzx
+    mul r1.xyz, r3.xxxx, r1.xyzx
+    mul r1.xyz, r3.wwww, r1.xyzx
+    mul r1.xyz, r1.xyzx, l(0.853100, 0.882367, 0.871564, 0.000000)
+    mad r0.z, r0.w, l(-0.337748), l(1.000000)
+    mul r0.y, r0.y, r0.y
+    dp2 r0.y, r0.yyyy, r0.wwww
+    mad r0.y, r0.w, l(0.500000), r0.y
+    add r0.y, r0.y, l(-1.000000)
+    mad r0.w, r0.x, l(-5.554720), l(-6.983160)
+    mul r0.x, r0.x, r0.w
+    exp r0.x, r0.x
+    mad r0.x, r0.y, r0.x, l(1.000000)
+    mad r0.w, r2.w, l(-5.554720), l(-6.983160)
+    mul r0.w, r2.w, r0.w
+    exp r0.w, r0.w
+    mad r0.y, r0.y, r0.w, l(1.000000)
+    mul r0.x, r0.y, r0.x
+    mul r0.x, r0.z, r0.x
+    mul r0.y, r1.w, l(0.500000)
+    mad r0.z, -r1.w, l(0.500000), l(1.000000)
+    mad r0.w, r5.y, r0.z, r0.y
+    div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+    mad r0.y, r2.x, r0.z, r0.y
+    div r0.y, l(1.000000, 1.000000, 1.000000, 1.000000), r0.y
+    mul r0.y, r0.y, r0.w
+    mul r0.xy, r0.xyxx, l(0.318310, 0.250000, 0.000000, 0.000000)
+    mul r0.yzw, r0.yyyy, r1.xxyz
+    mul r1.x, r4.w, r4.w
+    mul r1.y, r5.x, r5.x
+    mad r1.z, r4.w, r4.w, l(-1.000000)
+    mad r1.y, r1.y, r1.z, l(1.000000)
+    mul r1.y, r1.y, r1.y
+    mul r1.y, r1.y, l(3.141593)
+    div r1.x, r1.x, r1.y
+    mul r0.yzw, r0.yyzw, r1.xxxx
+    mad r0.xyz, r0.xxxx, r9.xyzx, r0.yzwy
+    mul r0.xyz, r0.xyzx, r11.xyzx
+    mul r0.xyz, r3.zzzz, r0.xyzx
+    mad r4.xyz, r10.xyzx, r3.yyyy, r0.xyzx
+  endif 
+  mul r0.xyz, r4.xyzx, r8.xyzx
+  add r0.w, cb1[11].y, cb1[11].y
+  mul r0.xyz, r0.wwww, r0.xyzx
+  ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.w, l(0), l(0), t0.xxxx
+  mul r0.xyz, r0.wwww, r0.xyzx
+  min o0.xyz, r0.xyzx, l(55000.000000, 55000.000000, 55000.000000, 0.000000)
+  mov o0.w, l(1.000000)
+endif 
+ret 
+// Approximately 0 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+D:\GAMES\The Crew (Worldwide)\ShaderCache\e2dd065816119289-ps_replace.txt(139,25-41): error X3004: undeclared identifier 'structured_buffer'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

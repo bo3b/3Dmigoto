@@ -8,7 +8,7 @@
 #include "tokens.h"
 #include "reflect.h"
 
-static enum{ MAX_SUB_OPERANDS = 3};
+enum{ MAX_SUB_OPERANDS = 3};
 
 struct Operand
 {
@@ -76,7 +76,7 @@ struct Instruction
 #endif
 };
 
-static enum{ MAX_IMMEDIATE_CONST_BUFFER_VEC4_SIZE = 1024};
+enum{ MAX_IMMEDIATE_CONST_BUFFER_VEC4_SIZE = 1024};
 
 struct ICBVec4 {
 	uint32_t a;
@@ -293,5 +293,9 @@ struct Shader
 	}
 };
 
-
+static const uint32_t MAIN_PHASE = 0;
+static const uint32_t HS_FORK_PHASE = 1;
+static const uint32_t HS_CTRL_POINT_PHASE = 2;
+static const uint32_t HS_JOIN_PHASE = 3;
+enum{ NUM_PHASES = 4};
 

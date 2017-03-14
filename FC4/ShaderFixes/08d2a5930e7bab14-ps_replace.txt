@@ -1,4 +1,38 @@
-// Lights
+// Interior lights
+// Other variations of this shader:
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 5c1136eef70d149e | 0 | N/A  | Medium
+// 890fe252a779dd94 | 0 | N/A  | High
+// e6c730868bfaea0f | 2 | Fill | Medium
+// 0fb3d86dde7b9faa | 2 | Fill | High
+// c49b2cc9175e0bcd | 2 | Edge | Medium
+// fe2394bbe85a5ab1 | 2 | Edge | High
+// 2aac4ac19020f4c3 | 4 | Fill | Medium
+// b973b84590f20a33 | 4 | Fill | High
+// d465646da83c03cf | 4 | Edge | Medium
+// 9ad5264b26733432 | 4 | Edge | High
+// 5a97e76dde4ad4c2 | 8 | Fill | Medium
+// 7929ad6cd34e7942 | 8 | Fill | High
+// 30f216fe42f20408 | 8 | Edge | Medium
+// b08304817ec206b8 | 8 | Edge | High
+//
+// More variations that don't cast shadows:
+// fcff7689c215da76 | 0 | N/A  | Medium
+// 08d2a5930e7bab14 | 0 | N/A  | High
+// d1f4f128cea4159e | 2 | Fill | Medium
+// 5e064d029277e985 | 2 | Fill | High
+// 709e47c2accd64a7 | 2 | Edge | Medium
+// 9768d1b44f6a0d3d | 2 | Edge | High
+// c8313c235c14b44c | 4 | Fill | Medium
+// 0e90ab6213100bfb | 4 | Fill | High
+// 978c5aa6736a9e43 | 4 | Edge | Medium
+// 6fbe28ffd48f0da6 | 4 | Edge | High
+// 0ef114e997119159 | 8 | Fill | Medium
+// 275b4e279ebf7449 | 8 | Fill | High
+// fa3127310dad5173 | 8 | Edge | Medium
+// 22b7bdf16d890164 | 8 | Edge | High
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);
@@ -115,7 +149,9 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30;
-  uint4 bitmask;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   r0.xyzw = DepthVPSampler__TexObj__.SampleLevel(DepthVPSampler__SampObj___s, v1.xy, 0.000000000e+000).xyzw;
   r0.x = _DepthScale.y * r0.x + _DepthScale.x;
   r0.x = 1.000000e+000 / r0.x;
@@ -126,56 +162,28 @@ void main(
   r0.z = -r0.x * _CameraDistances.w + 1.000000000e+000;
   r0.xy = v1.xy * float2(2.000000e+000,-2.000000e+000) + float2(-1.000000e+000,1.000000e+000);
   r0.w = 1.000000000e+000;
-
-// Fix interior light position.
-// Why this constant?
-// Why a subtraction?
-// I haven't a clue
-// No shadow casters here to verify it either
-// float4 stereo = StereoParams.Load(0);
-// float separation = stereo.x; float convergence = stereo.y;
-// r0.x += separation * (r0.w - convergence) * -1.5;
-
   r1.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m00_m10_m20_m30);
   r1.y = dot(r0.xyzw, _InvViewRotProjectionMatrix._m01_m11_m21_m31);
   r1.z = dot(r0.xyzw, _InvViewRotProjectionMatrix._m02_m12_m22_m32);
   r0.x = dot(r0.xyzw, _InvViewRotProjectionMatrix._m03_m13_m23_m33);
   r0.xyz = r1.xyz / r0.xxx;
-  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
-  
-float4 r31, r32, r33, r34;
-r31.xyz = r0.xyz;
-r31.w = 1.0;
-r32.x = dot(r31.xyzw, _ViewProjectionMatrix._m00_m10_m20_m30);
-r32.y = dot(r31.xyzw, _ViewProjectionMatrix._m01_m11_m21_m31);
-r32.z = dot(r31.xyzw, _ViewProjectionMatrix._m02_m12_m22_m32);
-r32.w = dot(r31.xyzw, _ViewProjectionMatrix._m03_m13_m23_m33);  
 
 float4 stereo = StereoParams.Load(0);
-r32.x -= stereo.x * (r32.w - stereo.y);
-  
-r33.x = dot(r32.xyzw, _InvProjectionMatrix._m00_m10_m20_m30);
-r33.y = dot(r32.xyzw, _InvProjectionMatrix._m01_m11_m21_m31);
-r33.z = dot(r32.xyzw, _InvProjectionMatrix._m02_m12_m22_m32);
-r33.w = dot(r32.xyzw, _InvProjectionMatrix._m03_m13_m23_m33); 
-  
-r34.x = dot(r33.xyzw, _InvViewMatrix._m00_m10_m20_m30);
-r34.y = dot(r33.xyzw, _InvViewMatrix._m01_m11_m21_m31);
-r34.z = dot(r33.xyzw, _InvViewMatrix._m02_m12_m22_m32);
-r34.w = dot(r33.xyzw, _InvViewMatrix._m03_m13_m23_m33);  
+float4 tmp = mul(float4(_CameraPosition_DistanceScale.xyz + r0.xyz, 1), _ViewProjectionMatrix);
+float4 adj = float4(stereo.x * (tmp.w - stereo.y), 0, 0, 0);
+r0.xyz -= mul(mul(adj, _InvProjectionMatrix), _InvViewMatrix);
 
-r0.xyz = r34.xyz;
-  
-  
+  r0.xyz = _CameraPosition_DistanceScale.xyz + r0.xyz;
+
   r1.xy = (int2)v0.xy;
   r1.zw = float2(0.000000e+000,0.000000e+000);
   r2.xyzw = GBufferT0.Load(r1.xyw).xyzw;
   r3.xyzw = GBufferT1.Load(r1.xyw).xyzw;
   r4.xyzw = GBufferT2.Load(r1.xyw).xyzw;
-  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 1, 0)).xzwy;
+  r5.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(1, 0)).xzwy;
   r6.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(-1, 0)).xyzw;
-  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 0, 1)).xyzw;
-  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2( 0,-1)).xyzw;
+  r7.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(0, 1)).xyzw;
+  r8.xyzw = GBufferT0.Sample(ColorPointClamp_s, v1.xy, int2(0, -1)).xyzw;
   r9.x = r8.x;
   r9.y = r7.x;
   r9.z = r6.x;
@@ -191,7 +199,7 @@ r0.xyz = r34.xyz;
   r5.z = r6.y;
   r5.y = dot(r5.xyzw, r9.xyzw);
   r5.xw = (int2)r1.xy & int2(1,1);
-  r5.x = r5.x != r5.w;
+  r5.x = (int)r5.x != (int)r5.w;
   r5.z = r2.y;
   r5.yz = r5.xx ? r5.yz : r5.zy;
   r5.x = r2.x * r2.x;
@@ -212,7 +220,7 @@ r0.xyz = r34.xyz;
   r3.w = 1.000000000e+000 + -r3.w;
   r3.w = sqrt(r3.w);
   r5.w = r2.w ? r3.x : r3.w;
-  r7.xy = r2.ww == float2(1.000000e+000,2.000000e+000);
+  r7.xy = (int)r2.ww == int2(1,2);
   r5.xy = r7.xy ? r3.ww : r3.yz;
   r2.w = r2.w ? r3.w : r3.x;
   r2.w = r7.x ? r3.y : r2.w;
@@ -221,7 +229,7 @@ r0.xyz = r34.xyz;
   r7.xyz = float3(2.000000e+000,-2.000000e+000,-2.000000e+000) * r5.www;
   r8.xyz = r7.xxz * r5.yzw + float3(0.000000e+000,0.000000e+000,1.000000e+000);
   r8.xyz = r3.xzx * r5.zyx + r8.xyz;
-  r9.xyzw = r2.xxxx == float4(1.000000e+000,5.000000e+000,6.000000e+000,3.000000e+000);
+  r9.xyzw = (int)r2.xxxx == int4(1,5,6,3);
   if (r9.x != 0) {
     r2.w = 2.550000000e+002 * r4.y;
     r2.w = (uint)r2.w;
@@ -245,7 +253,7 @@ r0.xyz = r34.xyz;
     r4.x = (int)r4.x & 15;
     r4.x = r4.x;
     r3.w = 6.666667014e-002 * r4.x;
-    r4.x = r2.x == 3;
+    r4.x = (int)r2.x == 3;
     if (r4.x != 0) {
       r17.xyz = r16.yzw * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r17.xyz, r17.xyz);
@@ -261,7 +269,7 @@ r0.xyz = r34.xyz;
       r4.x = dot(r17.xyz, r17.xyz);
       r4.x = rsqrt(r4.x);
       r17.xyz = r17.xyz * r4.xxx;
-      r18.xyz = r2.xxx == float3(4.000000e+000,5.000000e+000,6.000000e+000);
+      r18.xyz = (int)r2.xxx == int3(4,5,6);
       r19.xyz = r16.xyz * float3(2.000000e+000,2.000000e+000,2.000000e+000) + float3(-1.000000e+000,-1.000000e+000,-1.000000e+000);
       r4.x = dot(r19.xyz, r19.xyz);
       r4.x = rsqrt(r4.x);
@@ -333,7 +341,7 @@ r0.xyz = r34.xyz;
   r4.x = 1.000000000e+000 + -r4.x;
   r13.xyz = r6.xyz * r4.xxx;
   r16.xyzw = DeferredAmbientTexture_TextureObject.Sample(DeferredAmbientTexture_s, v1.xy).xyzw;
-  r16.xy = r2.xx == float2(2.000000e+000,4.000000e+000);
+  r16.xy = (int)r2.xx == int2(2,4);
   if (r16.x != 0) {
     r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r11.xyz;
     r4.x = r6.w * r6.w;
@@ -442,7 +450,7 @@ r0.xyz = r34.xyz;
           r12.w = max(r12.w, 9.999999747e-006);
           r16.xz = r25.xy / r12.ww;
           r16.xz = r16.xz * _SpotScaleOffsetUVS[r11.w].xy + _SpotScaleOffsetUVS[r11.w].zw;
-          r12.w = r11.w == 1;
+          r12.w = (int)r11.w == 1;
           if (r11.w == 0) {
             r25.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
           } else {
@@ -505,7 +513,7 @@ r0.xyz = r34.xyz;
       r11.w = (int)r11.w + 1;
     }
   } else {
-    r0.w = r2.x == 4;
+    r0.w = (int)r2.x == 4;
     if (r0.w != 0) {
       r17.xyz = float3(1.000000e+000,1.000000e+000,1.000000e+000) + -r11.xyz;
       r0.w = r6.w * r6.w;
@@ -629,7 +637,7 @@ r0.xyz = r34.xyz;
             r12.w = max(r12.w, 9.999999747e-006);
             r16.xz = r28.xy / r12.ww;
             r16.xz = r16.xz * _SpotScaleOffsetUVS[r11.w].xy + _SpotScaleOffsetUVS[r11.w].zw;
-            r12.w = r11.w == 1;
+            r12.w = (int)r11.w == 1;
             if (r11.w == 0) {
               r28.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
             } else {
@@ -703,7 +711,7 @@ r0.xyz = r34.xyz;
       r3.xyz = r17.yyz * r5.yzw + r3.xyz;
       r17.xyz = r17.xyz * r5.zyx + float3(0.000000e+000,1.000000e+000,0.000000e+000);
       r5.xyz = r7.xyz * r5.xwz + r17.xyz;
-      r0.w = r2.x == 0;
+      r0.w = (int)r2.x == 0;
       r0.w = (int)r9.w | (int)r0.w;
       r0.w = (int)r9.y | (int)r0.w;
       r4.x = r9.z ? 1.000000000e+000 : r10.x;
@@ -826,7 +834,7 @@ r0.xyz = r34.xyz;
             r23.xyz = r23.xyz * r15.www;
             r13.w = saturate(dot(r8.xyz, r25.xyz));
             r13.w = r15.w + -r13.w;
-            r13.w = 1.000000000e+000 + -abs(-r13.w);
+            r13.w = 1.000000000e+000 + -abs(r13.w);
             r13.w = log2(r13.w);
             r13.w = r13.w * r6.w;
             r13.w = exp2(r13.w);
@@ -873,7 +881,7 @@ r0.xyz = r34.xyz;
               r13.w = max(r13.w, 9.999999747e-006);
               r16.xz = r27.xy / r13.ww;
               r16.xz = r16.xz * _SpotScaleOffsetUVS[r12.w].xy + _SpotScaleOffsetUVS[r12.w].zw;
-              r13.w = r12.w == 1;
+              r13.w = (int)r12.w == 1;
               if (r12.w == 0) {
                 r27.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
               } else {
@@ -959,7 +967,7 @@ r0.xyz = r34.xyz;
             r24.xyz = r24.xyz * r13.www;
             r14.w = saturate(dot(r8.xyz, r27.xyz));
             r13.w = -r14.w + r13.w;
-            r13.w = 1.000000000e+000 + -abs(-r13.w);
+            r13.w = 1.000000000e+000 + -abs(r13.w);
             r13.w = log2(r13.w);
             r13.w = r13.w * r6.w;
             r13.w = exp2(r13.w);
@@ -1064,7 +1072,7 @@ r0.xyz = r34.xyz;
                 r5.w = dot(r14.xyzw, _SpotShadowProjectionMatrix[r5.w/4]._m03_m13_m23_m33);
                 r12.xw = r22.xy / r5.ww;
                 r12.xw = r12.xw * _SpotScaleOffsetUVS[r4.x].xy + _SpotScaleOffsetUVS[r4.x].zw;
-                r5.w = r4.x == 1;
+                r5.w = (int)r4.x == 1;
                 if (r4.x == 0) {
                   r22.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r12.xw, 0.000000000e+000).xyzw;
                 } else {
@@ -1233,7 +1241,7 @@ r0.xyz = r34.xyz;
                 r8.w = max(r8.w, 9.999999747e-006);
                 r16.xz = r19.xy / r8.ww;
                 r16.xz = r16.xz * _SpotScaleOffsetUVS[r6.z].xy + _SpotScaleOffsetUVS[r6.z].zw;
-                r8.w = r6.z == 1;
+                r8.w = (int)r6.z == 1;
                 if (r6.z == 0) {
                   r19.xyzw = SpotGobo0__TexObj__.SampleLevel(SpotGobo0__SampObj___s, r16.xz, 0.000000000e+000).xyzw;
                 } else {
@@ -1332,7 +1340,7 @@ r0.xyz = r34.xyz;
   r0.w = 1.000000e+000 / r0.w;
   r0.w = _BRDFHighQuality ? r0.w : 1.000000000e+000;
   r3.xyz = r21.xyz * r0.www;
-  r0.w = r2.x != 2;
+  r0.w = (int)r2.x != 2;
   r2.z = saturate(r2.z);
   r1.z = r2.z * r2.z;
   r1.x = r1.z * r1.y + r1.x;
@@ -2742,3 +2750,4 @@ mov o0.w, l(1.000000)
 ret 
 // Approximately 1209 instruction slots used
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

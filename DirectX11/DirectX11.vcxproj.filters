@@ -1,28 +1,55 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="d3d11Wrapper.cpp" />
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
-    <ClCompile Include="MainHook.cpp" />
-    <ClCompile Include="input.cpp" />
+    <ClCompile Include="D3D11Wrapper.cpp" />
+    <ClCompile Include="DLLMainHook.cpp" />
+    <ClCompile Include="HackerContext.cpp" />
+    <ClCompile Include="HackerDevice.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
+    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
+    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="HookedDXGI.cpp" />
+    <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="FrameAnalysis.cpp" />
+    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
+    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
+    <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="ResourceHash.cpp" />
+    <ClCompile Include="HookedContext.cpp" />
+    <ClCompile Include="HookedDevice.cpp" />
+    <ClCompile Include="nvprofile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="d3d11Wrapper.h" />
-    <ClInclude Include="Main.h" />
-    <ClInclude Include="Direct3D11Device.h" />
-    <ClInclude Include="Direct3D11Context.h" />
-    <ClInclude Include="DirectDXGIDevice.h" />
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="..\IDirect3DUnknown.h" />
-    <ClInclude Include="input.h" />
-    <ClInclude Include="vkeys.h" />
+    <ClInclude Include="D3D11Wrapper.h" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="HackerContext.h" />
+    <ClInclude Include="HackerDevice.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="IniHandler.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />
-    <ClInclude Include="globals.h" />
+    <ClInclude Include="vkeys.h" />
+    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="HookedDXGI.h" />
+    <ClInclude Include="DLLMainHook.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
+    <ClInclude Include="HackerDXGI.h" />
     <ClInclude Include="..\version.h" />
+    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
+    <ClInclude Include="CommandList.h" />
+    <ClInclude Include="ResourceHash.h" />
+    <ClInclude Include="HookedContext.h" />
+    <ClInclude Include="HookedDevice.h" />
+    <ClInclude Include="..\shader.h" />
+    <ClInclude Include="nvprofile.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

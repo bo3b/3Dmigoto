@@ -1,0 +1,677 @@
+TextureCube<float4> t7 : register(t7);
+
+Texture2D<float4> t6 : register(t6);
+
+Texture2D<float4> t5 : register(t5);
+
+Texture2D<float4> t4 : register(t4);
+
+Texture2D<float4> t3 : register(t3);
+
+Texture2D<float4> t2 : register(t2);
+
+Texture2D<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s6_s : register(s6);
+
+SamplerState s5_s : register(s5);
+
+SamplerState s4_s : register(s4);
+
+SamplerState s3_s : register(s3);
+
+SamplerState s2_s : register(s2);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[32];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[26];
+}
+
+// Copied from CS eb8c3e5e00a6c476 with 3DMigoto to get access to projection matrix:
+cbuffer cb13 : register(b13)
+{
+  matrix projection : packoffset(c6);
+}
+
+#define cmp -
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_POSITION0,
+  float3 v1 : TANGENT0,
+  float3 v2 : BINORMAL0,
+  float3 v3 : NORMAL0,
+  float4 v4 : TEXCOORD0,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  float4 v9 : TEXCOORD8,
+  float4 v10 : TEXCOORD9,
+  float4 v11 : TEXCOORD10,
+  out float4 o0 : SV_TARGET0,
+  out float4 o1 : SV_TARGET1,
+  out float4 o2 : SV_TARGET2,
+  out float4 o3 : SV_TARGET3)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = v4.xy / v4.ww;
+  r0.zw = r0.xy * cb1[19].xy + cb1[19].wz;
+  r0.xy = cb0[25].xy * r0.xy;
+  r0.zw = cb1[23].xy * r0.zw;
+  r1.xy = (uint2)r0.zw;
+  r1.zw = float2(0,0);
+  r0.z = t0.Load(r1.xyz).x;
+  r0.z = min(0.999999881, r0.z);
+  r0.w = r0.z * cb1[20].z + -cb1[20].w;
+  r0.z = -cb1[20].x + r0.z;
+  r0.z = r0.z / cb1[20].y;
+  r0.w = 1 / r0.w;
+  r1.x = cmp(cb0[25].z >= 1);
+  r0.z = r1.x ? r0.z : r0.w;
+  r0.w = cmp(cb0[25].z < 1);
+  r0.w = r0.w ? r0.z : 1;
+  r0.xy = r0.xy * r0.ww;
+
+
+//Mike_ar69 - Stereo Shift
+float4 stereo = StereoParams.Load(0);
+r0.x -= stereo.x * (r0.w - stereo.y)/projection._m00;
+
+  r1.xyzw = cb1[16].xyzw * r0.yyyy;
+  r1.xyzw = cb1[15].xyzw * r0.xxxx + r1.xyzw;
+  r0.xyzw = cb1[17].xyzw * r0.zzzz + r1.xyzw;
+  r0.xyzw = cb1[18].xyzw + r0.xyzw;
+  r1.xyz = v6.xyz * r0.yyy;
+  r1.xyz = v5.xyz * r0.xxx + r1.xyz;
+  r1.xyz = v7.xyz * r0.zzz + r1.xyz;
+  r1.xyz = v8.xyz * r0.www + r1.xyz;
+  r2.xyz = cmp(r1.xyz < float3(0,0,0));
+  r3.xyz = cmp(float3(1,1,1) < r1.xyz);
+  r2.xyz = (int3)r2.xyz | (int3)r3.xyz;
+  r0.w = (int)r2.y | (int)r2.x;
+  r0.w = (int)r2.z | (int)r0.w;
+  if (r0.w != 0) discard;
+  r1.zw = cb0[22].xy + r0.xy;
+  r0.w = 1 / cb0[22].z;
+  r1.zw = r0.ww * r1.zw;
+  r0.w = t6.SampleBias(s5_s, r1.zw, 0).z;
+  r0.w = cb0[23].w + r0.w;
+  r0.w = 0.00999999978 + r0.w;
+  r1.zw = r1.xy * v10.xy + v10.zw;
+  r2.xy = t5.SampleBias(s4_s, r1.zw, 0).xy;
+  r0.w = r2.x + -r0.w;
+  r0.w = saturate(2.85714293 * r0.w);
+  r2.x = r0.w * r0.w;
+  r0.w = -r0.w * 2 + 3;
+  r0.w = -r2.x * r0.w + 1;
+  r2.x = cmp(0 >= r0.w);
+  r3.w = 0.899999976 * r0.w;
+  if (r2.x != 0) discard;
+  r2.xz = t2.SampleBias(s1_s, r1.zw, 0).xy;
+  r2.xz = r2.xz * float2(2,2) + float2(-1,-1);
+  r3.yz = cb1[31].xx * float2(0.0500000007,-0.0500000007) + r1.zw;
+  r4.xyz = t1.SampleBias(s0_s, r1.zw, 0).xyz;
+  r4.xyz = r4.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.zw = r2.xz * float2(0.5,0.200000003) + r3.yz;
+  r2.xzw = t3.SampleBias(s2_s, r1.zw, 0).xyz;
+  r2.xzw = r2.xzw * float3(2,2,2) + float3(-1,-1,-1);
+  r1.xyzw = r2.xzxz * float4(0.0200000014,0.0200000014,0.0200000014,0.0200000014) + r1.xyxy;
+  r2.xzw = float3(0.200000003,0.200000003,1) * r2.xzw;
+  r1.xyzw = float4(1024,1024,1024,1024) + r1.xyzw;
+  r3.yz = float2(0.00999999978,-0.100000001) * cb1[31].xx;
+  r1.xyzw = r1.xyzw * float4(3,3,3,3) + r3.yzyz;
+  r3.yz = t4.SampleBias(s3_s, r1.zw, 0).yz;
+  r1.xyzw = float4(0.00200000009,0,0,0.00200000009) + r1.xyzw;
+  r0.w = r3.z * 3 + cb1[31].x;
+  r0.w = 0.75 * r0.w;
+  r3.z = cmp(r0.w >= -r0.w);
+  r0.w = frac(abs(r0.w));
+  r0.w = r3.z ? r0.w : -r0.w;
+  r0.w = 1 + -r0.w;
+  r0.w = r0.w * 2 + -1;
+  r3.y = r3.y + -r0.w;
+  r3.y = saturate(1.25 * r3.y);
+  r3.z = r3.y * r3.y;
+  r3.y = -r3.y * 2 + 3;
+  r5.x = r3.z * r3.y;
+  r1.x = t4.SampleBias(s3_s, r1.xy, 0).y;
+  r1.y = t4.SampleBias(s3_s, r1.zw, 0).y;
+  r1.y = r1.y + -r0.w;
+  r0.w = r1.x + -r0.w;
+  r0.w = saturate(1.25 * r0.w);
+  r1.x = saturate(1.25 * r1.y);
+  r1.y = r0.w * r0.w;
+  r0.w = -r0.w * 2 + 3;
+  r5.y = r1.y * r0.w;
+  r0.w = r1.x * r1.x;
+  r1.x = -r1.x * 2 + 3;
+  r5.z = r1.x * r0.w;
+  r1.xyz = float3(12.566371,12.566371,12.566371) * r5.xyz;
+  r1.xyz = sin(r1.xyz);
+  r1.yz = r5.yz * r1.yz;
+  r1.xy = r5.xx * r1.xx + -r1.yz;
+  r2.xz = cb0[23].xx * r1.xy + r2.xz;
+  r1.xyz = -r4.xyz * float3(3,3,1) + r2.xzw;
+  r2.xzw = float3(3,3,1) * r4.xyz;
+  r1.xyz = r2.yyy * r1.xyz + r2.xzw;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r2.xyz = float3(0.200000003,0.200000003,1) * r1.xyz;
+  r4.xyz = -cb1[10].xyz + r0.xyz;
+  r0.w = dot(r4.xyz, r2.xyz);
+  r0.w = r0.w + r0.w;
+  r2.xyz = r2.xyz * -r0.www + r4.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r4.xyz = cb0[19].xyz + cb0[18].xyz;
+  r4.xyz = r4.xyz + -r0.xyz;
+  r4.xyz = r4.xyz / r2.xyz;
+  r5.xyz = cb0[20].xyz + cb0[19].xyz;
+  r5.xyz = r5.xyz + -r0.xyz;
+  r5.xyz = r5.xyz / r2.xyz;
+  r6.xyz = cmp(float3(0,0,0) < r2.xyz);
+  r4.xyz = r6.xyz ? r4.xyz : r5.xyz;
+  r0.w = min(r4.x, r4.y);
+  r0.w = min(r0.w, r4.z);
+  r0.xyz = r2.xyz * r0.www + r0.xyz;
+  r0.xyz = -cb0[19].xyz + r0.xyz;
+  r0.xyz = cb0[21].xyz * r0.xyz;
+  r0.xyz = t7.Sample(s6_s, r0.xyz).xyz;
+  r0.xyz = max(float3(9.99999997e-007,9.99999997e-007,9.99999997e-007), r0.xyz);
+  r0.xyz = log2(r0.xyz);
+  r0.xyz = cb0[23].yyy * r0.xyz;
+  r0.xyz = exp2(r0.xyz);
+  o0.xyz = cb0[23].zzz * r0.xyz;
+  o0.w = r3.w;
+  r0.x = dot(v1.xyz, r1.xyz);
+  r0.y = dot(v2.xyz, r1.xyz);
+  r0.z = dot(v3.xyz, r1.xyz);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  o1.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  o1.w = r3.w;
+  r3.x = 0;
+  o2.xyzw = r3.xxxw;
+  o3.w = r3.w;
+  o3.xyz = float3(0.5,0,0);
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) D3D Shader Disassembler
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TANGENT                  0   xyz         1     NONE   float   xyz 
+// BINORMAL                 0   xyz         2     NONE   float   xyz 
+// NORMAL                   0   xyz         3     NONE   float   xyz 
+// TEXCOORD                 0   xyzw        4     NONE   float   xy w
+// TEXCOORD                 4   xyzw        5     NONE   float   xyz 
+// TEXCOORD                 5   xyzw        6     NONE   float   xyz 
+// TEXCOORD                 6   xyzw        7     NONE   float   xyz 
+// TEXCOORD                 7   xyzw        8     NONE   float   xyz 
+// TEXCOORD                 8   xyzw        9     NONE   float       
+// TEXCOORD                 9   xyzw       10     NONE   float   xyzw
+// TEXCOORD                10   xyzw       11     NONE   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_TARGET                0   xyzw        0   TARGET   float   xyzw
+// SV_TARGET                1   xyzw        1   TARGET   float   xyzw
+// SV_TARGET                2   xyzw        2   TARGET   float   xyzw
+// SV_TARGET                3   xyzw        3   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[26], immediateIndexed
+dcl_constantbuffer cb1[32], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texturecube (float,float,float,float) t7
+dcl_input_ps constant v1.xyz
+dcl_input_ps constant v2.xyz
+dcl_input_ps constant v3.xyz
+dcl_input_ps linear v4.xyw
+dcl_input_ps constant v5.xyz
+dcl_input_ps constant v6.xyz
+dcl_input_ps constant v7.xyz
+dcl_input_ps constant v8.xyz
+dcl_input_ps constant v10.xyzw
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyzw
+dcl_temps 7
+div r0.xy, v4.xyxx, v4.wwww
+mad r0.zw, r0.xxxy, cb1[19].xxxy, cb1[19].wwwz
+mul r0.xy, r0.xyxx, cb0[25].xyxx
+mul r0.zw, r0.zzzw, cb1[23].xxxy
+ftou r1.xy, r0.zwzz
+mov r1.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r0.z, r1.xyzw, t0.yzxw
+min r0.z, r0.z, l(1.000000)
+mad r0.w, r0.z, cb1[20].z, -cb1[20].w
+add r0.z, r0.z, -cb1[20].x
+div r0.z, r0.z, cb1[20].y
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+ge r1.x, cb0[25].z, l(1.000000)
+movc r0.z, r1.x, r0.z, r0.w
+lt r0.w, cb0[25].z, l(1.000000)
+movc r0.w, r0.w, r0.z, l(1.000000)
+mul r0.xy, r0.wwww, r0.xyxx
+mul r1.xyzw, r0.yyyy, cb1[16].xyzw
+mad r1.xyzw, cb1[15].xyzw, r0.xxxx, r1.xyzw
+mad r0.xyzw, cb1[17].xyzw, r0.zzzz, r1.xyzw
+add r0.xyzw, r0.xyzw, cb1[18].xyzw
+mul r1.xyz, r0.yyyy, v6.xyzx
+mad r1.xyz, v5.xyzx, r0.xxxx, r1.xyzx
+mad r1.xyz, v7.xyzx, r0.zzzz, r1.xyzx
+mad r1.xyz, v8.xyzx, r0.wwww, r1.xyzx
+lt r2.xyz, r1.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+lt r3.xyz, l(1.000000, 1.000000, 1.000000, 0.000000), r1.xyzx
+or r2.xyz, r2.xyzx, r3.xyzx
+or r0.w, r2.y, r2.x
+or r0.w, r2.z, r0.w
+discard_nz r0.w
+add r1.zw, r0.xxxy, cb0[22].xxxy
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb0[22].z
+mul r1.zw, r1.zzzw, r0.wwww
+sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t6.xywz, s5, l(0.000000)
+add r0.w, r0.w, cb0[23].w
+add r0.w, r0.w, l(0.010000)
+mad r1.zw, r1.xxxy, v10.xxxy, v10.zzzw
+sample_b_indexable(texture2d)(float,float,float,float) r2.xy, r1.zwzz, t5.xyzw, s4, l(0.000000)
+add r0.w, -r0.w, r2.x
+mul_sat r0.w, r0.w, l(2.857143)
+mul r2.x, r0.w, r0.w
+mad r0.w, -r0.w, l(2.000000), l(3.000000)
+mad r0.w, -r2.x, r0.w, l(1.000000)
+ge r2.x, l(0.000000), r0.w
+mul r3.w, r0.w, l(0.900000)
+discard_nz r2.x
+sample_b_indexable(texture2d)(float,float,float,float) r2.xz, r1.zwzz, t2.xzyw, s1, l(0.000000)
+mad r2.xz, r2.xxzx, l(2.000000, 0.000000, 2.000000, 0.000000), l(-1.000000, 0.000000, -1.000000, 0.000000)
+mad r3.yz, cb1[31].xxxx, l(0.000000, 0.050000, -0.050000, 0.000000), r1.zzwz
+sample_b_indexable(texture2d)(float,float,float,float) r4.xyz, r1.zwzz, t1.xyzw, s0, l(0.000000)
+mad r4.xyz, r4.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mad r1.zw, r2.xxxz, l(0.000000, 0.000000, 0.500000, 0.200000), r3.yyyz
+sample_b_indexable(texture2d)(float,float,float,float) r2.xzw, r1.zwzz, t3.xwyz, s2, l(0.000000)
+mad r2.xzw, r2.xxzw, l(2.000000, 0.000000, 2.000000, 2.000000), l(-1.000000, 0.000000, -1.000000, -1.000000)
+mad r1.xyzw, r2.xzxz, l(0.020000, 0.020000, 0.020000, 0.020000), r1.xyxy
+mul r2.xzw, r2.xxzw, l(0.200000, 0.000000, 0.200000, 1.000000)
+add r1.xyzw, r1.xyzw, l(1024.000000, 1024.000000, 1024.000000, 1024.000000)
+mul r3.yz, cb1[31].xxxx, l(0.000000, 0.010000, -0.100000, 0.000000)
+mad r1.xyzw, r1.xyzw, l(3.000000, 3.000000, 3.000000, 3.000000), r3.yzyz
+sample_b_indexable(texture2d)(float,float,float,float) r3.yz, r1.zwzz, t4.xyzw, s3, l(0.000000)
+add r1.xyzw, r1.xyzw, l(0.002000, 0.000000, 0.000000, 0.002000)
+mad r0.w, r3.z, l(3.000000), cb1[31].x
+mul r0.w, r0.w, l(0.750000)
+ge r3.z, r0.w, -r0.w
+frc r0.w, |r0.w|
+movc r0.w, r3.z, r0.w, -r0.w
+add r0.w, -r0.w, l(1.000000)
+mad r0.w, r0.w, l(2.000000), l(-1.000000)
+add r3.y, -r0.w, r3.y
+mul_sat r3.y, r3.y, l(1.250000)
+mul r3.z, r3.y, r3.y
+mad r3.y, -r3.y, l(2.000000), l(3.000000)
+mul r5.x, r3.y, r3.z
+sample_b_indexable(texture2d)(float,float,float,float) r1.x, r1.xyxx, t4.yxzw, s3, l(0.000000)
+sample_b_indexable(texture2d)(float,float,float,float) r1.y, r1.zwzz, t4.xyzw, s3, l(0.000000)
+add r1.y, -r0.w, r1.y
+add r0.w, -r0.w, r1.x
+mul_sat r0.w, r0.w, l(1.250000)
+mul_sat r1.x, r1.y, l(1.250000)
+mul r1.y, r0.w, r0.w
+mad r0.w, -r0.w, l(2.000000), l(3.000000)
+mul r5.y, r0.w, r1.y
+mul r0.w, r1.x, r1.x
+mad r1.x, -r1.x, l(2.000000), l(3.000000)
+mul r5.z, r0.w, r1.x
+mul r1.xyz, r5.xyzx, l(12.566371, 12.566371, 12.566371, 0.000000)
+sincos r1.xyz, null, r1.xyzx
+mul r1.yz, r1.yyzy, r5.yyzy
+mad r1.xy, r5.xxxx, r1.xxxx, -r1.yzyy
+mad r2.xz, cb0[23].xxxx, r1.xxyx, r2.xxzx
+mad r1.xyz, -r4.xyzx, l(3.000000, 3.000000, 1.000000, 0.000000), r2.xzwx
+mul r2.xzw, r4.xxyz, l(3.000000, 0.000000, 3.000000, 1.000000)
+mad r1.xyz, r2.yyyy, r1.xyzx, r2.xzwx
+dp3 r0.w, r1.xyzx, r1.xyzx
+rsq r0.w, r0.w
+mul r1.xyz, r0.wwww, r1.xyzx
+mul r2.xyz, r1.xyzx, l(0.200000, 0.200000, 1.000000, 0.000000)
+add r4.xyz, r0.xyzx, -cb1[10].xyzx
+dp3 r0.w, r4.xyzx, r2.xyzx
+add r0.w, r0.w, r0.w
+mad r2.xyz, r2.xyzx, -r0.wwww, r4.xyzx
+dp3 r0.w, r2.xyzx, r2.xyzx
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, r2.xyzx
+add r4.xyz, cb0[18].xyzx, cb0[19].xyzx
+add r4.xyz, -r0.xyzx, r4.xyzx
+div r4.xyz, r4.xyzx, r2.xyzx
+add r5.xyz, cb0[19].xyzx, cb0[20].xyzx
+add r5.xyz, -r0.xyzx, r5.xyzx
+div r5.xyz, r5.xyzx, r2.xyzx
+lt r6.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), r2.xyzx
+movc r4.xyz, r6.xyzx, r4.xyzx, r5.xyzx
+min r0.w, r4.y, r4.x
+min r0.w, r4.z, r0.w
+mad r0.xyz, r2.xyzx, r0.wwww, r0.xyzx
+add r0.xyz, r0.xyzx, -cb0[19].xyzx
+mul r0.xyz, r0.xyzx, cb0[21].xyzx
+sample_indexable(texturecube)(float,float,float,float) r0.xyz, r0.xyzx, t7.xyzw, s6
+max r0.xyz, r0.xyzx, l(0.000001, 0.000001, 0.000001, 0.000000)
+log r0.xyz, r0.xyzx
+mul r0.xyz, r0.xyzx, cb0[23].yyyy
+exp r0.xyz, r0.xyzx
+mul o0.xyz, r0.xyzx, cb0[23].zzzz
+mov o0.w, r3.w
+dp3 r0.x, v1.xyzx, r1.xyzx
+dp3 r0.y, v2.xyzx, r1.xyzx
+dp3 r0.z, v3.xyzx, r1.xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+mad o1.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+mov o1.w, r3.w
+mov r3.x, l(0)
+mov o2.xyzw, r3.xxxw
+mov o3.w, r3.w
+mov o3.xyz, l(0.500000,0,0,0)
+ret 
+// Approximately 0 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20789
+//
+//   using 3Dmigoto v1.1.33 on Tue Jul 14 16:01:30 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer cb1
+// {
+//
+//   float4 cb1[32];                    // Offset:    0 Size:   512
+//
+// }
+//
+// cbuffer cb0
+// {
+//
+//   float4 cb0[26];                    // Offset:    0 Size:   416
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// s0_s                              sampler      NA          NA    0        1
+// s1_s                              sampler      NA          NA    1        1
+// s2_s                              sampler      NA          NA    2        1
+// s3_s                              sampler      NA          NA    3        1
+// s4_s                              sampler      NA          NA    4        1
+// s5_s                              sampler      NA          NA    5        1
+// s6_s                              sampler      NA          NA    6        1
+// t0                                texture  float4          2d    0        1
+// t1                                texture  float4          2d    1        1
+// t2                                texture  float4          2d    2        1
+// t3                                texture  float4          2d    3        1
+// t4                                texture  float4          2d    4        1
+// t5                                texture  float4          2d    5        1
+// t6                                texture  float4          2d    6        1
+// t7                                texture  float4        cube    7        1
+// cb0                               cbuffer      NA          NA    0        1
+// cb1                               cbuffer      NA          NA    1        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_POSITION              0   xyzw        0      POS   float       
+// TANGENT                  0   xyz         1     NONE   float   xyz 
+// BINORMAL                 0   xyz         2     NONE   float   xyz 
+// NORMAL                   0   xyz         3     NONE   float   xyz 
+// TEXCOORD                 0   xyzw        4     NONE   float   xy w
+// TEXCOORD                 4   xyzw        5     NONE   float   xyz 
+// TEXCOORD                 5   xyzw        6     NONE   float   xyz 
+// TEXCOORD                 6   xyzw        7     NONE   float   xyz 
+// TEXCOORD                 7   xyzw        8     NONE   float   xyz 
+// TEXCOORD                 8   xyzw        9     NONE   float       
+// TEXCOORD                 9   xyzw       10     NONE   float   xyzw
+// TEXCOORD                10   xyzw       11     NONE   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_TARGET                0   xyzw        0   TARGET   float   xyzw
+// SV_TARGET                1   xyzw        1   TARGET   float   xyzw
+// SV_TARGET                2   xyzw        2   TARGET   float   xyzw
+// SV_TARGET                3   xyzw        3   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb1[32], immediateIndexed
+dcl_constantbuffer cb0[26], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texturecube (float,float,float,float) t7
+dcl_input_ps linear v1.xyz
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xyz
+dcl_input_ps linear v4.xyw
+dcl_input_ps linear v5.xyz
+dcl_input_ps linear v6.xyz
+dcl_input_ps linear v7.xyz
+dcl_input_ps linear v8.xyz
+dcl_input_ps linear v10.xyzw
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_output o3.xyzw
+dcl_temps 7
+div r0.xy, v4.xyxx, v4.wwww
+mad r0.zw, r0.xxxy, cb1[19].xxxy, cb1[19].wwwz
+mul r0.xy, r0.xyxx, cb0[25].xyxx
+mul r0.zw, r0.zzzw, cb1[23].xxxy
+ftou r0.zw, r0.zzzw
+utof r0.zw, r0.zzzw
+ftoi r1.xy, r0.zwzz
+mov r1.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r0.z, r1.xyzw, t0.yzxw
+min r0.z, r0.z, l(1.000000)
+mad r0.w, r0.z, cb1[20].z, -cb1[20].w
+add r0.z, r0.z, -cb1[20].x
+div r0.z, r0.z, cb1[20].y
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+ge r1.x, cb0[25].z, l(1.000000)
+movc r0.z, r1.x, r0.z, r0.w
+lt r0.w, cb0[25].z, l(1.000000)
+movc r0.w, r0.w, r0.z, l(1.000000)
+mul r0.xy, r0.wwww, r0.xyxx
+mul r1.xyzw, r0.yyyy, cb1[16].xyzw
+mad r1.xyzw, cb1[15].xyzw, r0.xxxx, r1.xyzw
+mad r0.xyzw, cb1[17].xyzw, r0.zzzz, r1.xyzw
+add r0.xyzw, r0.xyzw, cb1[18].xyzw
+mul r1.xyz, r0.yyyy, v6.xyzx
+mad r1.xyz, v5.xyzx, r0.xxxx, r1.xyzx
+mad r1.xyz, v7.xyzx, r0.zzzz, r1.xyzx
+mad r1.xyz, v8.xyzx, r0.wwww, r1.xyzx
+lt r2.xyz, r1.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+lt r3.xyz, l(1.000000, 1.000000, 1.000000, 0.000000), r1.xyzx
+or r2.xyz, r2.xyzx, r3.xyzx
+or r0.w, r2.x, r2.y
+or r0.w, r0.w, r2.z
+discard_nz r0.w
+add r1.zw, r0.xxxy, cb0[22].xxxy
+div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb0[22].z
+mul r1.zw, r1.zzzw, r0.wwww
+sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t6.xywz, s5, l(0.000000)
+add r0.w, r0.w, cb0[23].w
+add r0.w, r0.w, l(0.010000)
+mad r1.zw, r1.xxxy, v10.xxxy, v10.zzzw
+sample_b_indexable(texture2d)(float,float,float,float) r2.xy, r1.zwzz, t5.xyzw, s4, l(0.000000)
+add r0.w, -r0.w, r2.x
+mul_sat r0.w, r0.w, l(2.857143)
+mul r2.x, r0.w, r0.w
+mad r0.w, r0.w, l(-2.000000), l(3.000000)
+mad r0.w, -r2.x, r0.w, l(1.000000)
+ge r2.x, l(0.000000), r0.w
+discard_nz r2.x
+mul r2.w, r0.w, l(0.900000)
+sample_b_indexable(texture2d)(float,float,float,float) r3.xy, r1.zwzz, t2.xyzw, s1, l(0.000000)
+mad r3.xy, r3.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r3.zw, cb1[31].xxxx, l(0.000000, 0.000000, 0.010000, -0.100000)
+mad r4.xy, cb1[31].xxxx, l(0.050000, -0.050000, 0.000000, 0.000000), r1.zwzz
+sample_b_indexable(texture2d)(float,float,float,float) r5.xyz, r1.zwzz, t1.xyzw, s0, l(0.000000)
+mad r5.xyz, r5.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mad r1.zw, r3.xxxy, l(0.000000, 0.000000, 0.500000, 0.200000), r4.xxxy
+sample_b_indexable(texture2d)(float,float,float,float) r4.xyz, r1.zwzz, t3.xyzw, s2, l(0.000000)
+mad r4.xyz, r4.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mad r1.xyzw, r4.xyxy, l(0.020000, 0.020000, 0.020000, 0.020000), r1.xyxy
+mul r4.xyz, r4.xyzx, l(0.200000, 0.200000, 1.000000, 0.000000)
+add r1.xyzw, r1.xyzw, l(1024.000000, 1024.000000, 1024.000000, 1024.000000)
+mad r1.xyzw, r1.xyzw, l(3.000000, 3.000000, 3.000000, 3.000000), r3.zwzw
+sample_b_indexable(texture2d)(float,float,float,float) r3.xy, r1.zwzz, t4.yzxw, s3, l(0.000000)
+add r1.xyzw, r1.xyzw, l(0.002000, 0.000000, 0.000000, 0.002000)
+mad r0.w, r3.y, l(3.000000), cb1[31].x
+mul r0.w, r0.w, l(0.750000)
+ge r2.z, r0.w, -r0.w
+frc r0.w, |r0.w|
+movc r0.w, r2.z, r0.w, -r0.w
+add r0.w, -r0.w, l(1.000000)
+mad r0.w, r0.w, l(2.000000), l(-1.000000)
+add r2.z, -r0.w, r3.x
+mul_sat r2.z, r2.z, l(1.250000)
+mul r3.x, r2.z, r2.z
+mad r2.z, r2.z, l(-2.000000), l(3.000000)
+mul r3.x, r2.z, r3.x
+sample_b_indexable(texture2d)(float,float,float,float) r1.x, r1.xyxx, t4.yxzw, s3, l(0.000000)
+sample_b_indexable(texture2d)(float,float,float,float) r1.y, r1.zwzz, t4.xyzw, s3, l(0.000000)
+add r1.y, -r0.w, r1.y
+add r0.w, -r0.w, r1.x
+mul_sat r0.w, r0.w, l(1.250000)
+mul_sat r1.x, r1.y, l(1.250000)
+mul r1.y, r0.w, r0.w
+mad r0.w, r0.w, l(-2.000000), l(3.000000)
+mul r3.y, r0.w, r1.y
+mul r0.w, r1.x, r1.x
+mad r1.x, r1.x, l(-2.000000), l(3.000000)
+mul r3.z, r0.w, r1.x
+mul r1.xyz, r3.xyzx, l(12.566371, 12.566371, 12.566371, 0.000000)
+sincos r1.xyz, null, r1.xyzx
+mul r1.yz, r1.yyzy, r3.yyzy
+mad r1.xy, r3.xxxx, r1.xxxx, -r1.yzyy
+mad r4.xy, cb0[23].xxxx, r1.xyxx, r4.xyxx
+mad r1.xyz, r5.xyzx, l(-3.000000, -3.000000, -1.000000, 0.000000), r4.xyzx
+mul r3.xyz, r5.xyzx, l(3.000000, 3.000000, 1.000000, 0.000000)
+mad r1.xyz, r2.yyyy, r1.xyzx, r3.xyzx
+dp3 r0.w, r1.xyzx, r1.xyzx
+rsq r0.w, r0.w
+mul r1.xyz, r0.wwww, r1.xyzx
+mul r3.xyz, r1.xyzx, l(0.200000, 0.200000, 1.000000, 0.000000)
+add r4.xyz, r0.xyzx, -cb1[10].xyzx
+dp3 r0.w, r4.xyzx, r3.xyzx
+add r0.w, r0.w, r0.w
+mad r3.xyz, r3.xyzx, -r0.wwww, r4.xyzx
+dp3 r0.w, r3.xyzx, r3.xyzx
+rsq r0.w, r0.w
+mul r3.xyz, r0.wwww, r3.xyzx
+add r4.xyz, cb0[18].xyzx, cb0[19].xyzx
+add r4.xyz, -r0.xyzx, r4.xyzx
+div r4.xyz, r4.xyzx, r3.xyzx
+add r5.xyz, cb0[19].xyzx, cb0[20].xyzx
+add r5.xyz, -r0.xyzx, r5.xyzx
+div r5.xyz, r5.xyzx, r3.xyzx
+lt r6.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), r3.xyzx
+movc r4.xyz, r6.xyzx, r4.xyzx, r5.xyzx
+min r0.w, r4.y, r4.x
+min r0.w, r4.z, r0.w
+mad r0.xyz, r3.xyzx, r0.wwww, r0.xyzx
+add r0.xyz, r0.xyzx, -cb0[19].xyzx
+mul r0.xyz, r0.xyzx, cb0[21].xyzx
+sample_indexable(texturecube)(float,float,float,float) r0.xyz, r0.xyzx, t7.xyzw, s6
+max r0.xyz, r0.xyzx, l(0.000001, 0.000001, 0.000001, 0.000000)
+log r0.xyz, r0.xyzx
+mul r0.xyz, r0.xyzx, cb0[23].yyyy
+exp r0.xyz, r0.xyzx
+mul o0.xyz, r0.xyzx, cb0[23].zzzz
+dp3 r0.x, v1.xyzx, r1.xyzx
+dp3 r0.y, v2.xyzx, r1.xyzx
+dp3 r0.z, v3.xyzx, r1.xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+mad o1.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+mov o0.w, r2.w
+mov o1.w, r2.w
+mov r2.x, l(0)
+mov o2.xyzw, r2.xxxw
+mov o3.xyz, l(0.500000,0,0,0)
+mov o3.w, r2.w
+ret 
+// Approximately 140 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

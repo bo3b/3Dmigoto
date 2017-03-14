@@ -1,0 +1,359 @@
+// lights
+cbuffer _Globals : register(b0)
+{
+  float2 g_invScreenSize : packoffset(c0);
+  float4x4 g_invViewProjMatrix : packoffset(c1);
+  float g_colorScale : packoffset(c5);
+  float g_indirectCubeMapMipCount : packoffset(c5.y);
+  float4x4 g_cubeMapLocalToWorld : packoffset(c6);
+  float4x4 g_cubeMapWorldToBBox : packoffset(c10);
+  float3 g_cubeMapExtents : packoffset(c14);
+  float3 g_cubeMapFadeDist : packoffset(c15);
+  float3 g_cubeMapFadeDistInverse : packoffset(c16);
+  float g_cubeMapScale : packoffset(c16.w);
+}
+SamplerState g_indirectCubeMapSampler_s : register(s0);
+TextureCube<float4> g_indirectCubeMap : register(t0);
+Texture2DMS<float4,4> g_depthTexture : register(t1);
+Texture2DMS<float4,4> g_gbufferTexture0 : register(t2);
+Texture2DMS<float4,4> g_gbufferTexture1 : register(t3);
+Texture2DMS<float4,4> g_gbufferTexture2 : register(t4);
+Texture2D<float> g_msaaClassifyTexture : register(t5);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  const float4 icb[] = { { -0.125000, -0.375000, 0, 0},
+                              { 0.375000, -0.125000, 0, 0},
+                              { -0.375000, 0.125000, 0, 0},
+                              { 0.125000, 0.375000, 0, 0} };
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+  
+  //Work out Inverse
+//...Variables
+float4 a1, a2, a3, a4;
+float4 b1, b2, b3, b4;
+float det;
+//...Original Matrix
+a1 = g_invViewProjMatrix._m00_m10_m20_m30;
+a2 = g_invViewProjMatrix._m01_m11_m21_m31;
+a3 = g_invViewProjMatrix._m02_m12_m22_m32;
+a4 = g_invViewProjMatrix._m03_m13_m23_m33;
+//...Determinant
+det  = a1.x*(a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y));
+det += a1.y*(a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.z) + a2.w*(a3.z*a4.x - a3.x*a4.z));
+det += a1.z*(a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x));
+det += a1.w*(a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y));
+//...Inverse Matrix Elements
+b1.x = a2.y*(a3.z*a4.w - a3.w*a4.z) + a2.z*(a3.w*a4.y - a3.y*a4.w) + a2.w*(a3.y*a4.z - a3.z*a4.y);
+b1.y = a1.y*(a3.w*a4.z - a3.z*a4.w) + a1.z*(a3.y*a4.w - a3.w*a4.y) + a1.w*(a3.z*a4.y - a3.y*a4.z);
+b1.z = a1.y*(a2.z*a4.w - a2.w*a4.z) + a1.z*(a2.w*a4.y - a2.y*a4.w) + a1.w*(a2.y*a4.z - a2.z*a4.y);
+b1.w = a1.y*(a2.w*a3.z - a2.z*a3.w) + a1.z*(a2.y*a3.w - a2.w*a3.y) + a1.w*(a2.z*a3.y - a2.y*a3.z);
+b2.x = a2.x*(a3.w*a4.z - a3.z*a4.w) + a2.z*(a3.x*a4.w - a3.w*a4.x) + a2.w*(a3.z*a4.x - a3.x*a4.z);
+b2.y = a1.x*(a3.z*a4.w - a3.w*a4.z) + a1.z*(a3.w*a4.x - a3.x*a4.w) + a1.w*(a3.x*a4.z - a3.z*a4.x);
+b2.z = a1.x*(a2.w*a4.z - a2.z*a4.w) + a1.z*(a2.x*a4.w - a2.w*a4.x) + a1.w*(a2.z*a4.x - a2.x*a4.z);
+b2.w = a1.x*(a2.z*a3.w - a2.w*a3.z) + a1.z*(a2.w*a3.x - a2.x*a3.w) + a1.w*(a2.x*a3.z - a2.z*a3.x);
+b3.x = a2.x*(a3.y*a4.w - a3.w*a4.y) + a2.y*(a3.w*a4.x - a3.x*a4.w) + a2.w*(a3.x*a4.y - a3.y*a4.x);
+b3.y = a1.x*(a3.w*a4.y - a3.y*a4.w) + a1.y*(a3.x*a4.w - a3.w*a4.x) + a1.w*(a3.y*a4.x - a3.x*a4.y);
+b3.z = a1.x*(a2.y*a4.w - a2.w*a4.y) + a1.y*(a2.w*a4.x - a2.x*a4.w) + a1.w*(a2.x*a4.y - a2.y*a4.x);
+b3.w = a1.x*(a2.w*a3.y - a2.y*a3.w) + a1.y*(a2.x*a3.w - a2.w*a3.x) + a1.w*(a2.y*a3.x - a2.x*a3.y);
+b4.x = a2.x*(a3.z*a4.y - a3.y*a4.z) + a2.y*(a3.x*a4.z - a3.z*a4.x) + a2.z*(a3.y*a4.x - a3.x*a4.y);
+b4.y = a1.x*(a3.y*a4.z - a3.z*a4.y) + a1.y*(a3.z*a4.x - a3.x*a4.z) + a1.z*(a3.x*a4.y - a3.y*a4.x);
+b4.z = a1.x*(a2.z*a4.y - a2.y*a4.z) + a1.y*(a2.x*a4.z - a2.z*a4.x) + a1.z*(a2.y*a4.x - a2.x*a4.y);
+b4.w = a1.x*(a2.y*a3.z - a2.z*a3.y) + a1.y*(a2.z*a3.x - a2.x*a3.z) + a1.z*(a2.x*a3.y - a2.y*a3.x);
+b1.xyzw /= det;
+b2.xyzw /= det;
+b3.xyzw /= det;
+b4.xyzw /= det;
+//End Inverse
+
+  r0.xy = (int2)v0.xy;
+  r0.zw = float2(0,0);
+  r1.x = g_msaaClassifyTexture.Load(r0.xyw).x;
+  r1.x = 0 < r1.x;
+  r1.xy = r1.xx ? float2(4,0.25) : float2(1,1);
+  r2.xyz = g_cubeMapFadeDist.xyz + g_cubeMapExtents.xyz;
+  r1.z = g_indirectCubeMapMipCount;
+  r1.w = trunc(g_indirectCubeMapMipCount);
+  r1.z = (int)r1.z + -1;
+  r1.z = (int)r1.z;
+  r3.w = 1;
+  r4.w = 1;
+  r5.xyz = float3(0,0,0);
+  r2.w = 0;
+  while (true) {
+    r5.w = (int)r2.w >= (int)r1.x;
+    if (r5.w != 0) break;
+    r6.xy = icb[r2.w+0].xy * g_invScreenSize.xy;
+    r6.xy = v0.xy * g_invScreenSize.xy + r6.xy;
+    r7.xyzw = g_gbufferTexture0.Load(r0.xy, r2.w).xyzw;
+    r8.xyzw = g_gbufferTexture1.Load(r0.xy, r2.w).xyzw;
+    r5.w = g_gbufferTexture2.Load(r0.xy, r2.w).w;
+    r3.z = g_depthTexture.Load(r0.xy, r2.w).x;
+    r5.w = 255 * r5.w;
+    r5.w = round(r5.w);
+    r5.w = (int)r5.w;
+    r8.xyzw = r8.xyzw * r8.xyzw;
+    r5.w = (int)r5.w == 1;
+    if (r5.w != 0) {
+      r8.xyz = r8.www * r8.xyz;
+    } else {
+      r8.xyz = r8.www;
+    }
+    r6.xy = r6.xy * float2(2,2) + float2(-1,-1);
+    r3.xy = float2(1,-1) * r6.xy;
+    r6.x = dot(r3.xyzw, g_invViewProjMatrix._m00_m10_m20_m30);
+    r6.y = dot(r3.xyzw, g_invViewProjMatrix._m01_m11_m21_m31);
+    r6.z = dot(r3.xyzw, g_invViewProjMatrix._m02_m12_m22_m32);
+    r3.x = dot(r3.xyzw, g_invViewProjMatrix._m03_m13_m23_m33);
+    r3.x = 1 / r3.x;
+	
+	float4 r28, r26, r27;
+r26.xyz = r6.xyz * r3.xxx;
+r26.w = 1.0;
+r28.x = dot(r26.xyzw, b1.xyzw);
+r28.y = dot(r26.xyzw, b2.xyzw);
+r28.z = dot(r26.xyzw, b3.xyzw);
+r28.w = dot(r26.xyzw, b4.xyzw);
+float4 stereo = StereoParams.Load(0);
+r28.x -= stereo.x * (r28.w - stereo.y); 
+r26.x = dot(r28.xyzw, a1.xyzw);
+r26.y = dot(r28.xyzw, a2.xyzw);
+r26.z = dot(r28.xyzw, a3.xyzw);
+r26.w = dot(r28.xyzw, a4.xyzw);
+r6.xyz = r26.xyz / r3.xxx;
+
+    r4.xyz = r6.xyz * r3.xxx;
+    r3.x = dot(r4.xyzw, g_cubeMapLocalToWorld._m00_m10_m20_m30);
+    r3.y = dot(r4.xyzw, g_cubeMapLocalToWorld._m01_m11_m21_m31);
+    r3.z = dot(r4.xyzw, g_cubeMapLocalToWorld._m02_m12_m22_m32);
+    r6.xyz = g_cubeMapWorldToBBox._m01_m11_m21 * r3.yyy;
+    r6.xyz = r3.xxx * g_cubeMapWorldToBBox._m00_m10_m20 + r6.xyz;
+    r3.xyz = r3.zzz * g_cubeMapWorldToBBox._m02_m12_m22 + r6.xyz;
+    r3.xyz = g_cubeMapWorldToBBox._m03_m13_m23 + r3.xyz;
+    r6.xyz = -abs(r3.xyz) + r2.xyz;
+    r6.xyz = g_cubeMapFadeDist.xyz + -r6.xyz;
+    r6.xyz = saturate(-r6.xyz * g_cubeMapFadeDistInverse.xyz + float3(1,1,1));
+    r5.w = min(r6.x, r6.y);
+    r5.w = min(r5.w, r6.z);
+    r5.w = r5.w * r5.w;
+    r6.xyz = r7.xyz * float3(2,2,2) + float3(-1,-1,-1);
+    r6.w = dot(r6.xyz, r6.xyz);
+    r6.w = rsqrt(r6.w);
+    r6.xyz = r6.xyz * r6.www;
+    r6.w = dot(r4.xyz, r4.xyz);
+    r6.w = rsqrt(r6.w);
+    r4.xyz = r6.www * r4.xyz;
+    r6.w = dot(r4.xyz, r6.xyz);
+    r6.w = r6.w + r6.w;
+    r4.xyz = r6.xyz * -r6.www + r4.xyz;
+    r6.x = dot(r4.xyz, r4.xyz);
+    r6.x = rsqrt(r6.x);
+    r4.xyz = r6.xxx * r4.xyz;
+    r6.xyz = g_cubeMapWorldToBBox._m01_m11_m21 * r4.yyy;
+    r6.xyz = r4.xxx * g_cubeMapWorldToBBox._m00_m10_m20 + r6.xyz;
+    r4.xyz = r4.zzz * g_cubeMapWorldToBBox._m02_m12_m22 + r6.xyz;
+    r6.xyz = float3(1,1,1) / r4.xyz;
+    r7.xyz = g_cubeMapExtents.xyz + -r3.xyz;
+    r7.xyz = r7.xyz * r6.xyz;
+    r9.xyz = -g_cubeMapExtents.xyz + -r3.xyz;
+    r6.xyz = r9.xyz * r6.xyz;
+    r9.xyz = float3(0,0,0) < r4.xyz;
+    r6.xyz = r9.xyz ? r7.xyz : r6.xyz;
+    r6.x = min(r6.x, r6.y);
+    r6.x = min(r6.x, r6.z);
+    r3.xyz = r4.xyz * r6.xxx + r3.xyz;
+    r4.x = -r7.w * 15 + r1.w;
+    r4.x = 5 + r4.x;
+    r4.x = max(0, r4.x);
+    r4.x = min(r4.x, r1.z);
+    r3.xyz = g_indirectCubeMap.SampleLevel(g_indirectCubeMapSampler_s, r3.xyz, r4.x).xyz;
+    r3.xyz = r3.xyz * r8.xyz;
+    r3.xyz = r3.xyz * r5.www;
+    r5.xyz = r3.xyz * g_cubeMapScale + r5.xyz;
+    r2.w = (int)r2.w + 1;
+  }
+  o0.xyz = r5.xyz * r1.yyy;
+  o0.w = 0;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//   using 3Dmigoto v1.2.6 on Thu Oct 29 05:37:34 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float2 g_invScreenSize;            // Offset:    0 Size:     8
+//   float4x4 g_invViewProjMatrix;      // Offset:   16 Size:    64
+//   float g_colorScale;                // Offset:   80 Size:     4 [unused]
+//   float g_indirectCubeMapMipCount;   // Offset:   84 Size:     4
+//   float4x4 g_cubeMapLocalToWorld;    // Offset:   96 Size:    64
+//   float4x4 g_cubeMapWorldToBBox;     // Offset:  160 Size:    64
+//   float3 g_cubeMapExtents;           // Offset:  224 Size:    12
+//   float3 g_cubeMapFadeDist;          // Offset:  240 Size:    12
+//   float3 g_cubeMapFadeDistInverse;   // Offset:  256 Size:    12
+//   float g_cubeMapScale;              // Offset:  268 Size:     4
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// g_indirectCubeMapSampler          sampler      NA          NA    0        1
+// g_indirectCubeMap                 texture  float4        cube    0        1
+// g_depthTexture                    texture  float4       2dMS4    1        1
+// g_gbufferTexture0                 texture  float4       2dMS4    2        1
+// g_gbufferTexture1                 texture  float4       2dMS4    3        1
+// g_gbufferTexture2                 texture  float4       2dMS4    4        1
+// g_msaaClassifyTexture             texture   float          2d    5        1
+// $Globals                          cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xyzw        1     NONE   float       
+// TEXCOORD                 1   xyzw        2     NONE   float       
+// TEXCOORD                 2   xyzw        3     NONE   float       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_immediateConstantBuffer { { -0.125000, -0.375000, 0, 0},
+                              { 0.375000, -0.125000, 0, 0},
+                              { -0.375000, 0.125000, 0, 0},
+                              { 0.125000, 0.375000, 0, 0} }
+dcl_constantbuffer cb0[17], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texturecube (float,float,float,float) t0
+dcl_resource_texture2dms(4) (float,float,float,float) t1
+dcl_resource_texture2dms(4) (float,float,float,float) t2
+dcl_resource_texture2dms(4) (float,float,float,float) t3
+dcl_resource_texture2dms(4) (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_output o0.xyzw
+dcl_temps 10
+ftoi r0.xy, v0.xyxx
+mov r0.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r1.x, r0.xyww, t5.xyzw
+lt r1.x, l(0.000000), r1.x
+movc r1.xy, r1.xxxx, l(4,0.250000,0,0), l(1,1.000000,0,0)
+add r2.xyz, cb0[14].xyzx, cb0[15].xyzx
+ftoi r1.z, cb0[5].y
+round_z r1.w, cb0[5].y
+iadd r1.z, r1.z, l(-1)
+itof r1.z, r1.z
+mov r3.w, l(1.000000)
+mov r4.w, l(1.000000)
+mov r5.xyz, l(0,0,0,0)
+mov r2.w, l(0)
+loop 
+  ige r5.w, r2.w, r1.x
+  breakc_nz r5.w
+  mul r6.xy, cb0[0].xyxx, icb[r2.w + 0].xyxx
+  mad r6.xy, v0.xyxx, cb0[0].xyxx, r6.xyxx
+  ldms_indexable(texture2dms)(float,float,float,float) r7.xyzw, r0.xyww, t2.xyzw, r2.w
+  ldms_indexable(texture2dms)(float,float,float,float) r8.xyzw, r0.xyww, t3.xyzw, r2.w
+  ldms_indexable(texture2dms)(float,float,float,float) r5.w, r0.xyww, t4.xyzw, r2.w
+  ldms_indexable(texture2dms)(float,float,float,float) r3.z, r0.xyzw, t1.yzxw, r2.w
+  mul r5.w, r5.w, l(255.000000)
+  round_ne r5.w, r5.w
+  ftoi r5.w, r5.w
+  mul r8.xyzw, r8.xyzw, r8.xyzw
+  ieq r5.w, r5.w, l(1)
+  if_nz r5.w
+    mul r8.xyz, r8.xyzx, r8.wwww
+  else 
+    mov r8.xyz, r8.wwww
+  endif 
+  mad r6.xy, r6.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+  mul r3.xy, r6.xyxx, l(1.000000, -1.000000, 0.000000, 0.000000)
+  dp4 r6.x, r3.xyzw, cb0[1].xyzw
+  dp4 r6.y, r3.xyzw, cb0[2].xyzw
+  dp4 r6.z, r3.xyzw, cb0[3].xyzw
+  dp4 r3.x, r3.xyzw, cb0[4].xyzw
+  div r3.x, l(1.000000, 1.000000, 1.000000, 1.000000), r3.x
+  mul r4.xyz, r3.xxxx, r6.xyzx
+  dp4 r3.x, r4.xyzw, cb0[6].xyzw
+  dp4 r3.y, r4.xyzw, cb0[7].xyzw
+  dp4 r3.z, r4.xyzw, cb0[8].xyzw
+  mul r6.xyz, r3.yyyy, cb0[11].xyzx
+  mad r6.xyz, r3.xxxx, cb0[10].xyzx, r6.xyzx
+  mad r3.xyz, r3.zzzz, cb0[12].xyzx, r6.xyzx
+  add r3.xyz, r3.xyzx, cb0[13].xyzx
+  add r6.xyz, r2.xyzx, -|r3.xyzx|
+  add r6.xyz, -r6.xyzx, cb0[15].xyzx
+  mad_sat r6.xyz, -r6.xyzx, cb0[16].xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+  min r5.w, r6.y, r6.x
+  min r5.w, r6.z, r5.w
+  mul r5.w, r5.w, r5.w
+  mad r6.xyz, r7.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+  dp3 r6.w, r6.xyzx, r6.xyzx
+  rsq r6.w, r6.w
+  mul r6.xyz, r6.wwww, r6.xyzx
+  dp3 r6.w, r4.xyzx, r4.xyzx
+  rsq r6.w, r6.w
+  mul r4.xyz, r4.xyzx, r6.wwww
+  dp3 r6.w, r4.xyzx, r6.xyzx
+  add r6.w, r6.w, r6.w
+  mad r4.xyz, r6.xyzx, -r6.wwww, r4.xyzx
+  dp3 r6.x, r4.xyzx, r4.xyzx
+  rsq r6.x, r6.x
+  mul r4.xyz, r4.xyzx, r6.xxxx
+  mul r6.xyz, r4.yyyy, cb0[11].xyzx
+  mad r6.xyz, r4.xxxx, cb0[10].xyzx, r6.xyzx
+  mad r4.xyz, r4.zzzz, cb0[12].xyzx, r6.xyzx
+  div r6.xyz, l(1.000000, 1.000000, 1.000000, 1.000000), r4.xyzx
+  add r7.xyz, -r3.xyzx, cb0[14].xyzx
+  mul r7.xyz, r6.xyzx, r7.xyzx
+  add r9.xyz, -r3.xyzx, -cb0[14].xyzx
+  mul r6.xyz, r6.xyzx, r9.xyzx
+  lt r9.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), r4.xyzx
+  movc r6.xyz, r9.xyzx, r7.xyzx, r6.xyzx
+  min r6.x, r6.y, r6.x
+  min r6.x, r6.z, r6.x
+  mad r3.xyz, r4.xyzx, r6.xxxx, r3.xyzx
+  mad r4.x, -r7.w, l(15.000000), r1.w
+  add r4.x, r4.x, l(5.000000)
+  max r4.x, r4.x, l(0.000000)
+  min r4.x, r1.z, r4.x
+  sample_l_indexable(texturecube)(float,float,float,float) r3.xyz, r3.xyzx, t0.xyzw, s0, r4.x
+  mul r3.xyz, r8.xyzx, r3.xyzx
+  mul r3.xyz, r5.wwww, r3.xyzx
+  mad r5.xyz, r3.xyzx, cb0[16].wwww, r5.xyzx
+  iadd r2.w, r2.w, l(1)
+endloop 
+mul o0.xyz, r1.yyyy, r5.xyzx
+mov o0.w, l(0)
+ret 
+// Approximately 93 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

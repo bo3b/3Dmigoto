@@ -1,13 +1,41 @@
-// Lighting related (specular highlights, environment reflection, fog, etc)
+// Lighting related/environment (specular highlights, environment reflection, fog, etc)
 // Shader has several variants. Some AA variants have two - one for the fill,
 // one for the anti-aliased polygon edges:
-//       No AA: 18d84611abd87606
-// MSAA2/TXAA2: d4e77294d5c49a53 (fill)
-// MSAA2/TXAA2: 8afc461f52eab3e6 (polygon edges)
-// MSAA4/TXAA4: bae6b98bfda33066 (fill)
-// MSAA4/TXAA4: ea7ccc99799c7228 (polygon edges)
-// MSAA8      : 343df1da0e3edd9e
-// MSAA8      : 6ee0d5531150d4cd
+//
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 18d84611abd87606 | 0 | N/A  | Medium
+// 6d82ce75a16feb83 | 0 | N/A  | High
+// d4e77294d5c49a53 | 2 | Fill | Medium
+// aa0ba3aefd2413b1 | 2 | Fill | High
+// 8afc461f52eab3e6 | 2 | Edge | Medium
+// 26d2628c45dfbeea | 2 | Edge | High
+// bae6b98bfda33066 | 4 | Fill | Medium
+// c73430e1895ff2f8 | 4 | Fill | High
+// ea7ccc99799c7228 | 4 | Edge | Medium
+// 54eae19b7f5cc5a0 | 4 | Edge | High
+// 6ee0d5531150d4cd | 8 | Fill | Medium
+// d120ec3d6d0ad200 | 8 | Fill | High
+// 343df1da0e3edd9e | 8 | Edge | Medium
+// 9a9b807b3669906a | 8 | Edge | High
+//
+// And even more variants without specular highlights (seen in some Himalayas missions):
+// Hash             |AA | Fill | Vegetation
+//------------------+---+------+-----------
+// 8870ff9827077a28 | 0 | N/A  | Medium
+// 40fdd63f0d945497 | 0 | N/A  | High
+// 21bb80dc29b691bb | 2 | Fill | Medium
+// 01f23eabdd55a4de | 2 | Fill | High
+// 5b0fcbe11dff7344 | 2 | Edge | Medium
+// 5059cf988234568b | 2 | Edge | High
+// 325594ab3056df53 | 4 | Fill | Medium
+// f22672f7d2f3e4d5 | 4 | Fill | High
+// 72a6e709c250e563 | 4 | Edge | Medium
+// ef62df7b760ff261 | 4 | Edge | High
+// 375c5401a4ad4241 | 8 | Fill | Medium
+// 775ad5671fae6770 | 8 | Fill | High
+// 8a508f9327f97cf3 | 8 | Edge | Medium
+// dd3d62e85908f373 | 8 | Edge | High
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -724,7 +752,10 @@ r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
           r1.w = dot(r6.xyz, r6.xyz);
           r1.w = rsqrt(r1.w);
           r6.xyz = r6.xyz * r1.www;
-          r1.w = dot(r6.xzy, r0.xyz);
+
+	  // Necessary to improve specular highlight accuracy, esp. fringing on tree leaves
+          r1.w = dot(r6.xzy, adj_r0.xyz);
+
           r5.w = 1.000000000e+000 + -r1.w;
           r6.w = r5.w * r5.w;
           r6.w = r6.w * r6.w;
@@ -796,7 +827,9 @@ r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
   r2.x = 1.000000000e+000 + -r20.w;
   r1.w = r1.w * r2.x + r20.w;
   r2.x = 5.000000000e-001 * r4.z;
-  r5.yzw = -r0.zyx;
+
+  r5.yzw = -adj_r0.zyx; // Use adjusted position to fix fog while camera is tilted
+
   r5.x = 1.000000000e+000;
   r6.x = dot(_FogSHR.xyzw, r5.xyzw);
   r6.y = dot(_FogSHG.xyzw, r5.xyzw);
@@ -847,7 +880,10 @@ r6.xyz = -_SunDirection.xyz + adj_r0.xzy;
   r0.w = dot(r7.xyz, r7.xyz);
   r0.w = rsqrt(r0.w);
   r7.xyz = r7.xyz * r0.www;
-  r7.w = dot(r7.xzy, r0.xyz);
+
+// Use adjusted position to fix environment map reflection with texture quality >= high:
+  r7.w = dot(r7.xzy, adj_r0.xyz);
+
   r7.xyzw = _BRDFHighQuality ? r7.xyzw : r15.xyzw;
   r0.w = r7.w + r7.w;
 

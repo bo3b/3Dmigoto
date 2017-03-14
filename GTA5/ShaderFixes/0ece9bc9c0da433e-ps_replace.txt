@@ -1,0 +1,656 @@
+
+cbuffer rage_matrices : register(b1)
+{
+  row_major float4x4 gWorld : packoffset(c0);
+  row_major float4x4 gWorldView : packoffset(c4);
+  row_major float4x4 gWorldViewProj : packoffset(c8);
+  row_major float4x4 gViewInverse : packoffset(c12);
+}
+
+cbuffer misc_globals : register(b2)
+{
+  float4 globalFade : packoffset(c0);
+  float globalHeightScale : packoffset(c1);
+  float globalShaderQuality : packoffset(c1.y);
+  float globalReuseMe00001 : packoffset(c1.z);
+  float globalReuseMe00002 : packoffset(c1.w);
+  float4 POMFlags : packoffset(c2);
+  float4 g_Rage_Tessellation_CameraPosition : packoffset(c3);
+  float4 g_Rage_Tessellation_CameraZAxis : packoffset(c4);
+  float4 g_Rage_Tessellation_ScreenSpaceErrorParams : packoffset(c5);
+  float4 g_Rage_Tessellation_LinearScale : packoffset(c6);
+  float4 g_Rage_Tessellation_Frustum[4] : packoffset(c7);
+  float4 g_Rage_Tessellation_Epsilons : packoffset(c11);
+  float4 globalScalars : packoffset(c12);
+  float4 globalScalars2 : packoffset(c13);
+  float4 globalScalars3 : packoffset(c14);
+  float4 globalScreenSize : packoffset(c15);
+  uint4 gTargetAAParams : packoffset(c16);
+  float4 colorize : packoffset(c17);
+  float4 gGlobalParticleShadowBias : packoffset(c18);
+  float gGlobalParticleDofAlphaScale : packoffset(c19);
+  float gGlobalFogIntensity : packoffset(c19.y);
+  float4 gPlayerLFootPos : packoffset(c20);
+  float4 gPlayerRFootPos : packoffset(c21);
+  float4 gStereoParams : packoffset(c22);
+  float4 gStereoParams1 : packoffset(c23);
+}
+
+cbuffer csmshader : register(b6)
+{
+  float4 gCSMShaderVars_shared[12] : packoffset(c0);
+  float4 gCSMDepthBias : packoffset(c12);
+  float4 gCSMDepthSlopeBias : packoffset(c13);
+  float4 gCSMResolution : packoffset(c14);
+  float4 gCSMShadowParams : packoffset(c15);
+  row_major float4x4 gLocalLightShadowData[8] : packoffset(c16);
+  float4 gShadowTexParam : packoffset(c48);
+}
+
+cbuffer lighting_locals : register(b13)
+{
+  float4 deferredLightParams[14] : packoffset(c0);
+  float4 deferredLightVolumeParams[2] : packoffset(c14);
+  float4 deferredLightScreenSize : packoffset(c16);
+  float4 deferredProjectionParams : packoffset(c17);
+  float3 deferredPerspectiveShearParams0 : packoffset(c18);
+  float3 deferredPerspectiveShearParams1 : packoffset(c19);
+  float3 deferredPerspectiveShearParams2 : packoffset(c20);
+}
+SamplerState gLocalDitherTextureSamp_s : register(s1);
+SamplerState GBufferTextureSampler0Global_s : register(s7);
+SamplerState GBufferTextureSampler1Global_s : register(s8);
+SamplerState GBufferTextureSampler2Global_s : register(s9);
+SamplerState GBufferTextureSamplerDepthGlobal_s : register(s12);
+SamplerComparisonState gShadowZSamplerCache_s : register(s14);
+Texture2D<float4> gLocalDitherTextureSamp : register(t1);
+Texture2D<float4> GBufferTextureSampler0Global : register(t7);
+Texture2D<float4> GBufferTextureSampler1Global : register(t8);
+Texture2D<float4> GBufferTextureSampler2Global : register(t9);
+Texture2D<uint2> gbufferStencilTextureGlobal : register(t11);
+Texture2D<float4> GBufferTextureSamplerDepthGlobal : register(t12);
+TextureCube<float4> gLocalLightShadowCM0 : register(t14);
+Texture2D<float4> StereoParmsTexture : register(t20);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = v1.xy / v1.ww;
+  r1.xyzw = GBufferTextureSamplerDepthGlobal.Sample(GBufferTextureSamplerDepthGlobal_s, r0.xy).xyzw;
+  r2.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
+  r0.z = deferredProjectionParams.w + -r1.x;
+  r0.z = 1 + r0.z;
+  r0.z = deferredProjectionParams.z / r0.z;
+  r1.xyz = v2.xyz / v2.www;
+  r0.w = 0 != gStereoParams.z;
+  r1.w = v2.w == 1.000000;
+  r0.w = r0.w ? r1.w : 0;
+  if (r0.w != 0) {
+    r0.w = r0.z + -r2.y;
+    r0.w = r2.x * r0.w;
+    r0.w = deferredProjectionParams.x * r0.w;
+    r3.xyz = -gViewInverse._m00_m01_m02 * r0.www + gViewInverse._m30_m31_m32;
+  } else {
+    r4.xyzw = StereoParmsTexture.Load(float4(0,1,0,0)).xyzw;
+    r3.xyz = gViewInverse._m30_m31_m32 + r4.xyz;
+  }
+  r3.xyz = r1.xyz * r0.zzz + r3.xyz;
+  r4.xyz = deferredLightParams[0].xyz + -r3.xyz;
+  r0.w = dot(r4.xyz, r4.xyz);
+  r1.w = saturate(-r0.w * deferredLightParams[4].z + 1);
+  r2.z = 1 + -deferredLightParams[7].x;
+  r2.z = r2.z * r1.w + deferredLightParams[7].x;
+  r1.w = r1.w / r2.z;
+  r3.w = 1;
+  r2.z = dot(r3.xyzw, deferredLightParams[6].xyzw);
+  r2.z = r2.z >= 0;
+  r2.z = r2.z ? 1.000000 : 0;
+  r1.w = r2.z * r1.w;
+  r2.z = r1.w < 9.99999997e-007;
+  if (r2.z != 0) discard;
+  r3.xy = r0.xy * float2(2,-2) + float2(-1,1);
+  r2.y = r0.z + -r2.y;
+  r2.x = r2.x * r2.y;
+  r2.x = deferredProjectionParams.x * r2.x;
+  r2.xyz = gViewInverse._m00_m01_m02 * r2.xxx;
+  r3.z = 1;
+  r5.x = dot(r3.xyz, deferredPerspectiveShearParams0.xyz);
+  r5.y = dot(r3.xyz, deferredPerspectiveShearParams1.xyz);
+  r5.z = dot(r3.xyz, deferredPerspectiveShearParams2.xyz);
+  r2.xyz = r5.xyz * r0.zzz + -r2.xyz;
+  r3.xy = globalScreenSize.xy * r0.xy;
+  r5.xy = (int2)r3.xy;
+  r5.zw = float2(0,0);
+  r5.xyzw = gbufferStencilTextureGlobal.Load(r5.xyz).xyzw;
+  r0.z = (int)r5.y & 8;
+  r0.z = (uint)r0.z;
+  r0.z = r0.z >= 7.9000001;
+  r0.z = r0.z ? 1.000000 : 0;
+  r5.xyzw = GBufferTextureSampler0Global.Sample(GBufferTextureSampler0Global_s, r0.xy).xyzw;
+  r5.xyz = r5.xyz * r5.xyz;
+  r6.xyzw = GBufferTextureSampler2Global.Sample(GBufferTextureSampler2Global_s, r0.xy).xyzw;
+  r2.w = r6.x * r6.x;
+  r7.xyzw = GBufferTextureSampler1Global.Sample(GBufferTextureSampler1Global_s, r0.xy).xyzw;
+  r6.xyw = float3(0.998046875,7.984375,63.875) * r7.www;
+  r6.xyw = frac(r6.xyw);
+  r6.xy = -r6.yw * float2(0.125,0.125) + r6.xy;
+  r6.xyw = r7.xyz * float3(256,256,256) + r6.xyw;
+  r6.xyw = float3(-128,-128,-128) + r6.xyw;
+  r0.x = dot(r6.xyw, r6.xyw);
+  r0.x = rsqrt(r0.x);
+  r6.xyw = r6.xyw * r0.xxx;
+  r0.x = min(1, r2.w);
+  r0.y = rsqrt(r0.w);
+  r4.xyz = r4.xyz * r0.yyy;
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.y = rsqrt(r0.y);
+  r1.xyz = r1.xyz * r0.yyy;
+  r2.xyz = gLocalLightShadowData[0]._m30_m31_m32 + r2.xyz;
+  r7.x = dot(r2.xyz, gLocalLightShadowData[0]._m00_m01_m02);
+  r7.y = dot(r2.xyz, gLocalLightShadowData[0]._m10_m11_m12);
+  r7.z = dot(r2.xyz, gLocalLightShadowData[0]._m20_m21_m22);
+  r0.y = dot(-r7.xyz, -r7.xyz);
+  r0.y = sqrt(r0.y);
+  r2.xyz = -r7.xyz / r0.yyy;
+  r0.w = gLocalLightShadowData[0]._m23 * r0.y;
+  r7.xyz = float3(0,0,0) < r2.xyz;
+  r8.xyz = r2.xyz < float3(0,0,0);
+  r7.xyz = ((int3)r8.xyz ? -1 : 0) + ((int3)r7.xyz ? 1 : 0);
+  r7.xyz = (int3)r7.xyz;
+  r8.xyzw = abs(r2.zzyy) < abs(r2.xyxz);
+  r3.zw = (int2)r8.yw | (int2)r8.xz;
+  r7.xyz = -r7.xyz;
+  r7.w = 0;
+  r8.xyz = r3.www ? r7.wxw : r7.wwy;
+  r7.xyz = r3.zzz ? r8.xyz : r7.wwz;
+  r8.xyz = r7.xyz * r2.zxy;
+  r7.xyz = r2.yzx * r7.yzx + -r8.xyz;
+  r2.w = dot(r7.xyz, r7.xyz);
+  r2.w = rsqrt(r2.w);
+  r7.xyz = r7.xyz * r2.www;
+  r8.xyz = r7.zxy * r2.yzx;
+  r8.xyz = r7.yzx * r2.zxy + -r8.xyz;
+  r9.xyzw = ddx(r2.xyzx);
+  r2.w = ddx(r0.w);
+  r10.xyzw = ddy(r2.xyzx);
+  r0.w = ddy(r0.w);
+  r11.z = dot(r9.yzw, r9.yzw);
+  r3.z = dot(r9.yzw, r10.yzw);
+  r11.x = dot(r10.yzw, r10.yzw);
+  r3.w = r3.z * r3.z;
+  r3.w = r11.z * r11.x + -r3.w;
+  r3.w = 1 / r3.w;
+  r11.y = -r3.z;
+  r12.xyzw = r11.xxxy * r3.wwww;
+  r11.xyzw = r3.wwww * r11.yyyz;
+  r13.xyzw = r11.xyzw * r10.xyzw;
+  r13.xyzw = r9.xyzw * r12.xyzw + r13.xyzw;
+  r3.zw = r11.ww * r10.yz;
+  r3.zw = r9.yz * r12.ww + r3.zw;
+  r9.xyz = r13.xyz * r2.www;
+  r10.x = r0.w * r13.w + r9.x;
+  r10.yz = r0.ww * r3.zw + r9.yz;
+  r9.xyz = max(float3(-1,-1,-1), r10.xyz);
+  r9.xyz = min(float3(1,1,1), r9.xyz);
+  r3.xy = float2(0.015625,0.015625) * r3.xy;
+  r3.xyzw = gLocalDitherTextureSamp.Sample(gLocalDitherTextureSamp_s, r3.xy).xyzw;
+  r3.xy = r3.yx * float2(2,2) + float2(-1,-1);
+  r0.w = 4 * gLocalLightShadowData[0]._m33;
+  r8.xyz = r8.xyz * r0.www;
+  r7.xyz = r7.xyz * r0.www;
+  r10.xyz = r8.xyz * r3.yyy;
+  r11.xyz = r7.xyz * r3.xxx;
+  r12.xyz = r3.yyy * r8.xyz + r11.xyz;
+  r13.xyz = r12.xyz + r2.xyz;
+  r0.w = dot(r9.xyz, r12.xyz);
+  r0.w = r0.y * gLocalLightShadowData[0]._m23 + r0.w;
+  r0.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r13.xyz, r0.w).x;
+  r11.xyz = r3.yyy * r8.xyz + -r11.xyz;
+  r12.xyz = float3(0.5,0.5,0.5) * r11.xyz;
+  r11.xyz = r11.xyz * float3(0.5,0.5,0.5) + r2.xyz;
+  r2.w = dot(r9.xyz, r12.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r11.xyz, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r10.xyz = r3.xxx * r7.xyz + -r10.xyz;
+  r11.xyz = float3(0.25,0.25,0.25) * r10.xyz;
+  r10.xyz = r10.xyz * float3(0.25,0.25,0.25) + r2.xyz;
+  r2.w = dot(r9.xyz, r11.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r10.xyz, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r10.x = -r3.y + -r3.x;
+  r10.y = r3.y + -r3.x;
+  r3.zw = float2(0.544472218,0.544472218) * r10.xy;
+  r10.xyz = r3.zzz * r8.xyz;
+  r11.xyz = r3.www * r7.xyz;
+  r12.xyz = r3.zzz * r8.xyz + r11.xyz;
+  r13.xyz = r12.xyz + r2.xyz;
+  r2.w = dot(r9.xyz, r12.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r13.xyz, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r11.xyz = r3.zzz * r8.xyz + -r11.xyz;
+  r12.xyz = float3(0.5,0.5,0.5) * r11.xyz;
+  r11.xyz = r11.xyz * float3(0.5,0.5,0.5) + r2.xyz;
+  r2.w = dot(r9.xyz, r12.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r11.xyz, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r10.xyz = r3.www * r7.xyz + -r10.xyz;
+  r11.xyz = float3(0.25,0.25,0.25) * r10.xyz;
+  r10.xyz = r10.xyz * float3(0.25,0.25,0.25) + r2.xyz;
+  r2.w = dot(r9.xyz, r11.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r10.xyz, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r3.xy = float2(0.439999998,-0.439999998) * r3.xy;
+  r10.xyz = r3.xxx * r8.xyz;
+  r11.xyz = r3.yyy * r7.xyz;
+  r12.xyz = r3.xxx * r8.xyz + r11.xyz;
+  r13.xyz = r12.xyz + r2.xyz;
+  r2.w = dot(r9.xyz, r12.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r13.xyz, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r3.xzw = r3.xxx * r8.xyz + -r11.xyz;
+  r8.xyz = float3(0.5,0.5,0.5) * r3.xzw;
+  r3.xzw = r3.xzw * float3(0.5,0.5,0.5) + r2.xyz;
+  r2.w = dot(r9.xyz, r8.xyz);
+  r2.w = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r2.w = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r3.xzw, r2.w).x;
+  r0.w = r2.w + r0.w;
+  r3.xyz = r3.yyy * r7.xyz + -r10.xyz;
+  r7.xyz = float3(0.25,0.25,0.25) * r3.xyz;
+  r2.xyz = r3.xyz * float3(0.25,0.25,0.25) + r2.xyz;
+  r2.w = dot(r9.xyz, r7.xyz);
+  r0.y = r0.y * gLocalLightShadowData[0]._m23 + r2.w;
+  r0.y = gLocalLightShadowCM0.SampleCmpLevelZero(gShadowZSamplerCache_s, r2.xyz, r0.y).x;
+  r0.y = r0.w + r0.y;
+  r0.z = r1.w * r0.z;
+  r2.xyz = deferredLightParams[3].xyz * deferredLightParams[3].www;
+  r0.w = saturate(dot(r6.xyw, r4.xyz));
+  r1.x = saturate(dot(-r1.xyz, r6.xyw));
+  r1.x = 1 + -r1.x;
+  r1.y = r1.x * r1.x;
+  r1.y = r1.y * r1.y;
+  r1.x = r1.y * r1.x;
+  r1.y = 1 + -r6.z;
+  r1.x = r6.z * r1.x + r1.y;
+  r0.x = -r0.x * r1.x + 1;
+  r0.x = r0.w * r0.x;
+  r0.y = r0.y * 0.111111112 + -1;
+  r0.y = deferredLightParams[8].y * r0.y + 1;
+  r1.xyz = r5.xyz * r0.xxx;
+  r1.xyz = r1.xyz * r2.xyz;
+  r0.xzw = r1.xyz * r0.zzz;
+  r0.xyz = r0.xzw * r0.yyy;
+  o0.xyz = globalScalars3.zzz * r0.xyz;
+  o0.w = 1;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64 [unused]
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64 [unused]
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer misc_globals
+// {
+//
+//   float4 globalFade;                 // Offset:    0 Size:    16 [unused]
+//   float globalHeightScale;           // Offset:   16 Size:     4 [unused]
+//   float globalShaderQuality;         // Offset:   20 Size:     4 [unused]
+//   float globalReuseMe00001;          // Offset:   24 Size:     4 [unused]
+//   float globalReuseMe00002;          // Offset:   28 Size:     4 [unused]
+//   float4 POMFlags;                   // Offset:   32 Size:    16 [unused]
+//   float4 g_Rage_Tessellation_CameraPosition;// Offset:   48 Size:    16 [unused]
+//   float4 g_Rage_Tessellation_CameraZAxis;// Offset:   64 Size:    16 [unused]
+//   float4 g_Rage_Tessellation_ScreenSpaceErrorParams;// Offset:   80 Size:    16 [unused]
+//   float4 g_Rage_Tessellation_LinearScale;// Offset:   96 Size:    16 [unused]
+//   float4 g_Rage_Tessellation_Frustum[4];// Offset:  112 Size:    64 [unused]
+//   float4 g_Rage_Tessellation_Epsilons;// Offset:  176 Size:    16 [unused]
+//   float4 globalScalars;              // Offset:  192 Size:    16 [unused]
+//   float4 globalScalars2;             // Offset:  208 Size:    16 [unused]
+//   float4 globalScalars3;             // Offset:  224 Size:    16
+//   float4 globalScreenSize;           // Offset:  240 Size:    16
+//   uint4 gTargetAAParams;             // Offset:  256 Size:    16 [unused]
+//   float4 colorize;                   // Offset:  272 Size:    16 [unused]
+//   float4 gGlobalParticleShadowBias;  // Offset:  288 Size:    16 [unused]
+//   float gGlobalParticleDofAlphaScale;// Offset:  304 Size:     4 [unused]
+//   float gGlobalFogIntensity;         // Offset:  308 Size:     4 [unused]
+//   float4 gPlayerLFootPos;            // Offset:  320 Size:    16 [unused]
+//   float4 gPlayerRFootPos;            // Offset:  336 Size:    16 [unused]
+//   float4 gStereoParams;              // Offset:  352 Size:    16
+//   float4 gStereoParams1;             // Offset:  368 Size:    16 [unused]
+//
+// }
+//
+// cbuffer csmshader
+// {
+//
+//   float4 gCSMShaderVars_shared[12];  // Offset:    0 Size:   192 [unused]
+//   float4 gCSMDepthBias;              // Offset:  192 Size:    16 [unused]
+//   float4 gCSMDepthSlopeBias;         // Offset:  208 Size:    16 [unused]
+//   float4 gCSMResolution;             // Offset:  224 Size:    16 [unused]
+//   float4 gCSMShadowParams;           // Offset:  240 Size:    16 [unused]
+//   row_major float4x4 gLocalLightShadowData[8];// Offset:  256 Size:   512
+//   float4 gShadowTexParam;            // Offset:  768 Size:    16 [unused]
+//
+// }
+//
+// cbuffer lighting_locals
+// {
+//
+//   float4 deferredLightParams[14];    // Offset:    0 Size:   224
+//   float4 deferredLightVolumeParams[2];// Offset:  224 Size:    32 [unused]
+//   float4 deferredLightScreenSize;    // Offset:  256 Size:    16 [unused]
+//   float4 deferredProjectionParams;   // Offset:  272 Size:    16
+//   float3 deferredPerspectiveShearParams0;// Offset:  288 Size:    12
+//   float3 deferredPerspectiveShearParams1;// Offset:  304 Size:    12
+//   float3 deferredPerspectiveShearParams2;// Offset:  320 Size:    12
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// gLocalDitherTextureSamp           sampler      NA          NA    1        1
+// GBufferTextureSampler0Global      sampler      NA          NA    7        1
+// GBufferTextureSampler1Global      sampler      NA          NA    8        1
+// GBufferTextureSampler2Global      sampler      NA          NA    9        1
+// GBufferTextureSamplerDepthGlobal    sampler      NA          NA   12        1
+// gShadowZSamplerCache            sampler_c      NA          NA   14        1
+// gLocalDitherTextureSamp           texture  float4          2d    1        1
+// GBufferTextureSampler0Global      texture  float4          2d    7        1
+// GBufferTextureSampler1Global      texture  float4          2d    8        1
+// GBufferTextureSampler2Global      texture  float4          2d    9        1
+// gbufferStencilTextureGlobal       texture   uint2          2d   11        1
+// GBufferTextureSamplerDepthGlobal    texture  float4          2d   12        1
+// gLocalLightShadowCM0              texture  float4        cube   14        1
+// StereoParmsTexture                texture  float4          2d   20        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// misc_globals                      cbuffer      NA          NA    2        1
+// csmshader                         cbuffer      NA          NA    6        1
+// lighting_locals                   cbuffer      NA          NA   13        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xy w
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_4_0
+dcl_constantbuffer cb1[16], immediateIndexed
+dcl_constantbuffer cb2[23], immediateIndexed
+dcl_constantbuffer cb6[20], immediateIndexed
+dcl_constantbuffer cb13[21], immediateIndexed
+dcl_sampler s1, mode_default
+dcl_sampler s7, mode_default
+dcl_sampler s8, mode_default
+dcl_sampler s9, mode_default
+dcl_sampler s12, mode_default
+dcl_sampler s14, mode_comparison
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_resource_texture2d (float,float,float,float) t8
+dcl_resource_texture2d (float,float,float,float) t9
+dcl_resource_texture2d (uint,uint,uint,uint) t11
+dcl_resource_texture2d (float,float,float,float) t12
+dcl_resource_texturecube (float,float,float,float) t14
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input_ps linear v1.xyw
+dcl_input_ps linear v2.xyzw
+dcl_output o0.xyzw
+dcl_temps 14
+div r0.xy, v1.xyxx, v1.wwww
+sample r1.xyzw, r0.xyxx, t12.xyzw, s12
+ld r2.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r0.z, -r1.x, cb13[17].w
+add r0.z, r0.z, l(1.000000)
+div r0.z, cb13[17].z, r0.z
+div r1.xyz, v2.xyzx, v2.wwww
+ne r0.w, l(0.000000, 0.000000, 0.000000, 0.000000), cb2[22].z
+eq r1.w, v2.w, l(1.000000)
+and r0.w, r0.w, r1.w
+if_nz r0.w
+  add r0.w, -r2.y, r0.z
+  mul r0.w, r0.w, r2.x
+  mul r0.w, r0.w, cb13[17].x
+  mad r3.xyz, -cb1[12].xyzx, r0.wwww, cb1[15].xyzx
+else 
+  ld r4.xyzw, l(0, 1, 0, 0), t20.xyzw
+  add r3.xyz, r4.xyzx, cb1[15].xyzx
+endif 
+mad r3.xyz, r1.xyzx, r0.zzzz, r3.xyzx
+add r4.xyz, -r3.xyzx, cb13[0].xyzx
+dp3 r0.w, r4.xyzx, r4.xyzx
+mad_sat r1.w, -r0.w, cb13[4].z, l(1.000000)
+add r2.z, -cb13[7].x, l(1.000000)
+mad r2.z, r2.z, r1.w, cb13[7].x
+div r1.w, r1.w, r2.z
+mov r3.w, l(1.000000)
+dp4 r2.z, r3.xyzw, cb13[6].xyzw
+ge r2.z, r2.z, l(0.000000)
+and r2.z, r2.z, l(0x3f800000)
+mul r1.w, r1.w, r2.z
+lt r2.z, r1.w, l(0.000001)
+discard_nz r2.z
+mad r3.xy, r0.xyxx, l(2.000000, -2.000000, 0.000000, 0.000000), l(-1.000000, 1.000000, 0.000000, 0.000000)
+add r2.y, -r2.y, r0.z
+mul r2.x, r2.y, r2.x
+mul r2.x, r2.x, cb13[17].x
+mul r2.xyz, r2.xxxx, cb1[12].xyzx
+mov r3.z, l(1.000000)
+dp3 r5.x, r3.xyzx, cb13[18].xyzx
+dp3 r5.y, r3.xyzx, cb13[19].xyzx
+dp3 r5.z, r3.xyzx, cb13[20].xyzx
+mad r2.xyz, r5.xyzx, r0.zzzz, -r2.xyzx
+mul r3.xy, r0.xyxx, cb2[15].xyxx
+ftoi r5.xy, r3.xyxx
+mov r5.zw, l(0,0,0,0)
+ld r5.xyzw, r5.xyzw, t11.xyzw
+and r0.z, r5.y, l(8)
+utof r0.z, r0.z
+ge r0.z, r0.z, l(7.900000)
+and r0.z, r0.z, l(0x3f800000)
+sample r5.xyzw, r0.xyxx, t7.xyzw, s7
+mul r5.xyz, r5.xyzx, r5.xyzx
+sample r6.xyzw, r0.xyxx, t9.xyzw, s9
+mul r2.w, r6.x, r6.x
+sample r7.xyzw, r0.xyxx, t8.xyzw, s8
+mul r6.xyw, r7.wwww, l(0.998047, 7.984375, 0.000000, 63.875000)
+frc r6.xyw, r6.xyxw
+mad r6.xy, -r6.ywyy, l(0.125000, 0.125000, 0.000000, 0.000000), r6.xyxx
+mad r6.xyw, r7.xyxz, l(256.000000, 256.000000, 0.000000, 256.000000), r6.xyxw
+add r6.xyw, r6.xyxw, l(-128.000000, -128.000000, 0.000000, -128.000000)
+dp3 r0.x, r6.xywx, r6.xywx
+rsq r0.x, r0.x
+mul r6.xyw, r0.xxxx, r6.xyxw
+min r0.x, r2.w, l(1.000000)
+rsq r0.y, r0.w
+mul r4.xyz, r0.yyyy, r4.xyzx
+dp3 r0.y, r1.xyzx, r1.xyzx
+rsq r0.y, r0.y
+mul r1.xyz, r0.yyyy, r1.xyzx
+add r2.xyz, r2.xyzx, cb6[19].xyzx
+dp3 r7.x, r2.xyzx, cb6[16].xyzx
+dp3 r7.y, r2.xyzx, cb6[17].xyzx
+dp3 r7.z, r2.xyzx, cb6[18].xyzx
+dp3 r0.y, -r7.xyzx, -r7.xyzx
+sqrt r0.y, r0.y
+div r2.xyz, -r7.xyzx, r0.yyyy
+mul r0.w, r0.y, cb6[18].w
+lt r7.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), r2.xyzx
+lt r8.xyz, r2.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+iadd r7.xyz, r8.xyzx, -r7.xyzx
+itof r7.xyz, r7.xyzx
+lt r8.xyzw, |r2.zzyy|, |r2.xyxz|
+or r3.zw, r8.yyyw, r8.xxxz
+mov r7.xyz, -r7.xyzx
+mov r7.w, l(0)
+movc r8.xyz, r3.wwww, r7.wxww, r7.wwyw
+movc r7.xyz, r3.zzzz, r8.xyzx, r7.wwzw
+mul r8.xyz, r2.zxyz, r7.xyzx
+mad r7.xyz, r2.yzxy, r7.yzxy, -r8.xyzx
+dp3 r2.w, r7.xyzx, r7.xyzx
+rsq r2.w, r2.w
+mul r7.xyz, r2.wwww, r7.xyzx
+mul r8.xyz, r2.yzxy, r7.zxyz
+mad r8.xyz, r7.yzxy, r2.zxyz, -r8.xyzx
+deriv_rtx r9.xyzw, r2.xyzx
+deriv_rtx r2.w, r0.w
+deriv_rty r10.xyzw, r2.xyzx
+deriv_rty r0.w, r0.w
+dp3 r11.z, r9.yzwy, r9.yzwy
+dp3 r3.z, r9.yzwy, r10.yzwy
+dp3 r11.x, r10.yzwy, r10.yzwy
+mul r3.w, r3.z, r3.z
+mad r3.w, r11.z, r11.x, -r3.w
+div r3.w, l(1.000000, 1.000000, 1.000000, 1.000000), r3.w
+mov r11.y, -r3.z
+mul r12.xyzw, r3.wwww, r11.xxxy
+mul r11.xyzw, r11.yyyz, r3.wwww
+mul r13.xyzw, r10.xyzw, r11.xyzw
+mad r13.xyzw, r9.xyzw, r12.xyzw, r13.xyzw
+mul r3.zw, r10.yyyz, r11.wwww
+mad r3.zw, r9.yyyz, r12.wwww, r3.zzzw
+mul r9.xyz, r2.wwww, r13.xyzx
+mad r10.x, r0.w, r13.w, r9.x
+mad r10.yz, r0.wwww, r3.zzwz, r9.yyzy
+max r9.xyz, r10.xyzx, l(-1.000000, -1.000000, -1.000000, 0.000000)
+min r9.xyz, r9.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+mul r3.xy, r3.xyxx, l(0.015625, 0.015625, 0.000000, 0.000000)
+sample r3.xyzw, r3.xyxx, t1.xyzw, s1
+mad r3.xy, r3.yxyy, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+mul r0.w, cb6[19].w, l(4.000000)
+mul r8.xyz, r0.wwww, r8.xyzx
+mul r7.xyz, r0.wwww, r7.xyzx
+mul r10.xyz, r3.yyyy, r8.xyzx
+mul r11.xyz, r3.xxxx, r7.xyzx
+mad r12.xyz, r3.yyyy, r8.xyzx, r11.xyzx
+add r13.xyz, r2.xyzx, r12.xyzx
+dp3 r0.w, r9.xyzx, r12.xyzx
+mad r0.w, r0.y, cb6[18].w, r0.w
+sample_c_lz r0.w, r13.xyzx, t14.xxxx, s14, r0.w
+mad r11.xyz, r3.yyyy, r8.xyzx, -r11.xyzx
+mul r12.xyz, r11.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+mad r11.xyz, r11.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), r2.xyzx
+dp3 r2.w, r9.xyzx, r12.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r11.xyzx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+mad r10.xyz, r3.xxxx, r7.xyzx, -r10.xyzx
+mul r11.xyz, r10.xyzx, l(0.250000, 0.250000, 0.250000, 0.000000)
+mad r10.xyz, r10.xyzx, l(0.250000, 0.250000, 0.250000, 0.000000), r2.xyzx
+dp3 r2.w, r9.xyzx, r11.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r10.xyzx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+add r10.x, -r3.x, -r3.y
+add r10.y, -r3.x, r3.y
+mul r3.zw, r10.xxxy, l(0.000000, 0.000000, 0.544472, 0.544472)
+mul r10.xyz, r8.xyzx, r3.zzzz
+mul r11.xyz, r7.xyzx, r3.wwww
+mad r12.xyz, r3.zzzz, r8.xyzx, r11.xyzx
+add r13.xyz, r2.xyzx, r12.xyzx
+dp3 r2.w, r9.xyzx, r12.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r13.xyzx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+mad r11.xyz, r3.zzzz, r8.xyzx, -r11.xyzx
+mul r12.xyz, r11.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+mad r11.xyz, r11.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), r2.xyzx
+dp3 r2.w, r9.xyzx, r12.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r11.xyzx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+mad r10.xyz, r3.wwww, r7.xyzx, -r10.xyzx
+mul r11.xyz, r10.xyzx, l(0.250000, 0.250000, 0.250000, 0.000000)
+mad r10.xyz, r10.xyzx, l(0.250000, 0.250000, 0.250000, 0.000000), r2.xyzx
+dp3 r2.w, r9.xyzx, r11.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r10.xyzx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+mul r3.xy, r3.xyxx, l(0.440000, -0.440000, 0.000000, 0.000000)
+mul r10.xyz, r8.xyzx, r3.xxxx
+mul r11.xyz, r7.xyzx, r3.yyyy
+mad r12.xyz, r3.xxxx, r8.xyzx, r11.xyzx
+add r13.xyz, r2.xyzx, r12.xyzx
+dp3 r2.w, r9.xyzx, r12.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r13.xyzx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+mad r3.xzw, r3.xxxx, r8.xxyz, -r11.xxyz
+mul r8.xyz, r3.xzwx, l(0.500000, 0.500000, 0.500000, 0.000000)
+mad r3.xzw, r3.xxzw, l(0.500000, 0.000000, 0.500000, 0.500000), r2.xxyz
+dp3 r2.w, r9.xyzx, r8.xyzx
+mad r2.w, r0.y, cb6[18].w, r2.w
+sample_c_lz r2.w, r3.xzwx, t14.xxxx, s14, r2.w
+add r0.w, r0.w, r2.w
+mad r3.xyz, r3.yyyy, r7.xyzx, -r10.xyzx
+mul r7.xyz, r3.xyzx, l(0.250000, 0.250000, 0.250000, 0.000000)
+mad r2.xyz, r3.xyzx, l(0.250000, 0.250000, 0.250000, 0.000000), r2.xyzx
+dp3 r2.w, r9.xyzx, r7.xyzx
+mad r0.y, r0.y, cb6[18].w, r2.w
+sample_c_lz r0.y, r2.xyzx, t14.xxxx, s14, r0.y
+add r0.y, r0.y, r0.w
+mul r0.z, r0.z, r1.w
+mul r2.xyz, cb13[3].wwww, cb13[3].xyzx
+dp3_sat r0.w, r6.xywx, r4.xyzx
+dp3_sat r1.x, -r1.xyzx, r6.xywx
+add r1.x, -r1.x, l(1.000000)
+mul r1.y, r1.x, r1.x
+mul r1.y, r1.y, r1.y
+mul r1.x, r1.x, r1.y
+add r1.y, -r6.z, l(1.000000)
+mad r1.x, r6.z, r1.x, r1.y
+mad r0.x, -r0.x, r1.x, l(1.000000)
+mul r0.x, r0.x, r0.w
+mad r0.y, r0.y, l(0.111111), l(-1.000000)
+mad r0.y, cb13[8].y, r0.y, l(1.000000)
+mul r1.xyz, r0.xxxx, r5.xyzx
+mul r1.xyz, r2.xyzx, r1.xyzx
+mul r0.xzw, r0.zzzz, r1.xxyz
+mul r0.xyz, r0.yyyy, r0.xzwx
+mul o0.xyz, r0.xyzx, cb2[14].zzzz
+mov o0.w, l(1.000000)
+ret 
+// Approximately 213 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

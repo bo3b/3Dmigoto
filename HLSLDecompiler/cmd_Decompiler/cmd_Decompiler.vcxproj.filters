@@ -25,10 +25,13 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\DecompileHLSL.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\mojoShader\mojoshader.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="..\..\util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shader.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -41,22 +44,7 @@
     <ClCompile Include="..\DecompileHLSL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Assembler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\mojoShader\mojoshader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\mojoShader\mojoshader_assembler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\mojoShader\mojoshader_common.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\mojoShader\mojoshader_preprocessor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\mojoShader\mojoshader_lexer.cpp">
+    <ClCompile Include="..\..\D3D_Shaders\Assembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

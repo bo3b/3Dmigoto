@@ -1,0 +1,571 @@
+
+cbuffer rage_matrices : register(b1)
+{
+  row_major float4x4 gWorld : packoffset(c0);
+  row_major float4x4 gWorldView : packoffset(c4);
+  row_major float4x4 gWorldViewProj : packoffset(c8);
+  row_major float4x4 gViewInverse : packoffset(c12);
+}
+
+cbuffer lighting_globals : register(b3)
+{
+  float4 gDirectionalLight : packoffset(c0);
+  float4 gDirectionalColour : packoffset(c1);
+  int gNumForwardLights : packoffset(c2);
+  float4 gLightPositionAndInvDistSqr[8] : packoffset(c3);
+  float4 gLightDirectionAndFalloffExponent[8] : packoffset(c11);
+  float4 gLightColourAndCapsuleExtent[8] : packoffset(c19);
+  float gLightConeScale[8] : packoffset(c27);
+  float gLightConeOffset[8] : packoffset(c35);
+  float4 gLightNaturalAmbient0 : packoffset(c43);
+  float4 gLightNaturalAmbient1 : packoffset(c44);
+  float4 gLightArtificialIntAmbient0 : packoffset(c45);
+  float4 gLightArtificialIntAmbient1 : packoffset(c46);
+  float4 gLightArtificialExtAmbient0 : packoffset(c47);
+  float4 gLightArtificialExtAmbient1 : packoffset(c48);
+  float4 gDirectionalAmbientColour : packoffset(c49);
+  float4 globalFogParams[5] : packoffset(c50);
+  float4 globalFogColor : packoffset(c55);
+  float4 globalFogColorE : packoffset(c56);
+  float4 globalFogColorN : packoffset(c57);
+  float4 globalFogColorMoon : packoffset(c58);
+  float4 gReflectionTweaks : packoffset(c59);
+}
+
+cbuffer lighting_locals : register(b13)
+{
+  float4 deferredLightParams[14] : packoffset(c0);
+  float4 deferredLightVolumeParams[2] : packoffset(c14);
+  float4 deferredLightScreenSize : packoffset(c16);
+  float4 deferredProjectionParams : packoffset(c17);
+  float3 deferredPerspectiveShearParams0 : packoffset(c18);
+  float3 deferredPerspectiveShearParams1 : packoffset(c19);
+  float3 deferredPerspectiveShearParams2 : packoffset(c20);
+}
+Texture2D<float4> StereoParmsTexture : register(t20);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float4 o4 : TEXCOORD3,
+  out float4 o5 : TEXCOORD4)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(v0.xyz, v0.xyz);
+  r0.y = rsqrt(r0.x);
+  r0.x = r0.x != 0.000000;
+  r0.yzw = v0.xyz * r0.yyy;
+  r0.xyz = r0.xxx ? r0.yzw : v0.xyz;
+  r0.xyz = r0.xyz * deferredLightParams[4].yyy + deferredLightParams[0].xyz;
+  r1.xyzw = gWorldViewProj._m10_m11_m12_m13 * r0.yyyy;
+  r1.xyzw = r0.xxxx * gWorldViewProj._m00_m01_m02_m03 + r1.xyzw;
+  r1.xyzw = r0.zzzz * gWorldViewProj._m20_m21_m22_m23 + r1.xyzw;
+  r1.xyzw = gWorldViewProj._m30_m31_m32_m33 + r1.xyzw;
+  o0.xyzw = r1.xyzw;
+  o1.xyz = r0.xyz;
+  r0.xyz = -gViewInverse._m30_m31_m32 + r0.xyz;
+  r2.xyz = -deferredLightParams[0].xyz + gViewInverse._m30_m31_m32;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = -deferredLightParams[4].y * deferredLightParams[4].y + r0.w;
+  r2.w = dot(r0.xyz, r0.xyz);
+  r0.w = r2.w * r0.w;
+  r3.x = dot(r2.xyz, r0.xyz);
+  r0.w = r3.x * r3.x + -r0.w;
+  r0.w = sqrt(abs(r0.w));
+  r3.y = -r3.x + -r0.w;
+  r0.w = -r3.x + r0.w;
+  r3.x = min(0, r3.x);
+  r3.xzw = r3.xxx * r0.xyz;
+  r3.xzw = r3.xzw / r2.www;
+  r2.xyz = -r3.xzw + r2.xyz;
+  r2.x = dot(r2.xyz, r2.xyz);
+  r4.y = saturate(r0.w / r2.w);
+  r4.x = saturate(r3.y / r2.w);
+  r0.w = sqrt(r2.w);
+  r2.y = 0 < r0.w;
+  r3.xyz = r0.xyz / r0.www;
+  r3.xyz = r2.yyy ? r3.xyz : 0;
+  r2.zw = r2.yy ? r4.xy : 0;
+  r4.xyz = r0.xyz * r2.www + gViewInverse._m30_m31_m32;
+  r0.xyz = r0.xyz * r2.zzz + gViewInverse._m30_m31_m32;
+  o3.xy = r2.zw;
+  r4.xyz = r4.xyz + -r0.xyz;
+  r0.w = dot(r4.xyz, r4.xyz);
+  r0.w = sqrt(r0.w);
+  r2.z = 0.00499999989 * r0.w;
+  r0.xyz = r3.xyz * r2.zzz + r0.xyz;
+  r0.xyz = -gViewInverse._m30_m31_m32 + r0.xyz;
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.y = -globalFogParams[0].x + r0.x;
+  r0.yw = max(float2(0,1), r0.yw);
+  r0.x = r0.y / r0.x;
+  r0.x = r0.z * r0.x;
+  r0.z = globalFogParams[2].z * r0.x;
+  r0.x = 0.00999999978 < abs(r0.x);
+  r2.z = -1.44269502 * r0.z;
+  r2.z = exp2(r2.z);
+  r2.z = 1 + -r2.z;
+  r0.z = r2.z / r0.z;
+  r0.x = r0.x ? r0.z : 1;
+  r0.z = globalFogParams[1].w * r0.y;
+  r0.y = -globalFogParams[2].x + r0.y;
+  r0.y = max(0, r0.y);
+  r0.y = globalFogParams[1].x * r0.y;
+  r0.y = 1.44269502 * r0.y;
+  r0.y = exp2(r0.y);
+  r0.x = r0.z * r0.x;
+  r0.x = min(1, r0.x);
+  r0.x = 1.44269502 * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = min(1, r0.x);
+  r0.xy = float2(1,1) + -r0.xy;
+  r0.z = -r0.x * globalFogParams[2].y + 1;
+  r0.x = globalFogParams[2].y * r0.x;
+  r0.z = globalFogParams[1].y * r0.z;
+  r0.x = saturate(r0.z * r0.y + r0.x);
+  r0.x = 1 + -r0.x;
+  r0.y = deferredLightVolumeParams[0].x * deferredLightParams[3].w;
+  r0.y = r0.y * r0.w;
+  r1.z = r0.y * r0.x;
+  o2.zw = r1.zw;
+  o5.zw = r1.zw;
+  r0.y = r1.x + r1.w;
+  r0.z = r1.w + -r1.y;
+  o2.xy = float2(0.5,0.5) * r0.yz;
+  o3.z = 0;
+  r0.y = deferredLightParams[4].y * deferredLightParams[4].y;
+  r0.y = r2.x / r0.y;
+  r0.y = 1 + -r0.y;
+  r0.y = r0.y * r0.y;
+  r0.w = 1 + -deferredLightVolumeParams[1].w;
+  r0.w = r0.w * r0.y + deferredLightVolumeParams[1].w;
+  r0.y = r0.y / r0.w;
+  r2.xzw = -deferredLightVolumeParams[1].xyz + deferredLightParams[3].xyz;
+  r2.xzw = r0.yyy * r2.xzw + deferredLightVolumeParams[1].xyz;
+  o4.xyz = r2.yyy ? r2.xzw : 0;
+  r2.xyzw = StereoParmsTexture.Load(float4(0,0,0,0)).xyzw;
+  r0.y = -r2.y + r1.w;
+  r0.y = r2.x * r0.y + r1.x;
+  r0.x = r0.y + r1.w;
+  o5.xy = float2(0.5,0.5) * r0.xz;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64 [unused]
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer lighting_globals
+// {
+//
+//   float4 gDirectionalLight;          // Offset:    0 Size:    16 [unused]
+//   float4 gDirectionalColour;         // Offset:   16 Size:    16 [unused]
+//   int gNumForwardLights;             // Offset:   32 Size:     4 [unused]
+//   float4 gLightPositionAndInvDistSqr[8];// Offset:   48 Size:   128 [unused]
+//   float4 gLightDirectionAndFalloffExponent[8];// Offset:  176 Size:   128 [unused]
+//   float4 gLightColourAndCapsuleExtent[8];// Offset:  304 Size:   128 [unused]
+//   float gLightConeScale[8];          // Offset:  432 Size:   116 [unused]
+//   float gLightConeOffset[8];         // Offset:  560 Size:   116 [unused]
+//   float4 gLightNaturalAmbient0;      // Offset:  688 Size:    16 [unused]
+//   float4 gLightNaturalAmbient1;      // Offset:  704 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient0;// Offset:  720 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient1;// Offset:  736 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient0;// Offset:  752 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient1;// Offset:  768 Size:    16 [unused]
+//   float4 gDirectionalAmbientColour;  // Offset:  784 Size:    16 [unused]
+//   float4 globalFogParams[5];         // Offset:  800 Size:    80
+//   float4 globalFogColor;             // Offset:  880 Size:    16 [unused]
+//   float4 globalFogColorE;            // Offset:  896 Size:    16 [unused]
+//   float4 globalFogColorN;            // Offset:  912 Size:    16 [unused]
+//   float4 globalFogColorMoon;         // Offset:  928 Size:    16 [unused]
+//   float4 gReflectionTweaks;          // Offset:  944 Size:    16 [unused]
+//
+// }
+//
+// cbuffer lighting_locals
+// {
+//
+//   float4 deferredLightParams[14];    // Offset:    0 Size:   224
+//   float4 deferredLightVolumeParams[2];// Offset:  224 Size:    32
+//   float4 deferredLightScreenSize;    // Offset:  256 Size:    16 [unused]
+//   float4 deferredProjectionParams;   // Offset:  272 Size:    16 [unused]
+//   float3 deferredPerspectiveShearParams0;// Offset:  288 Size:    12 [unused]
+//   float3 deferredPerspectiveShearParams1;// Offset:  304 Size:    12 [unused]
+//   float3 deferredPerspectiveShearParams2;// Offset:  320 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// StereoParmsTexture                texture  float4          2d   20        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// lighting_globals                  cbuffer      NA          NA    3        1
+// lighting_locals                   cbuffer      NA          NA   13        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyzw        0     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyz         1     NONE   float   xyz 
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyz         3     NONE   float   xyz 
+// TEXCOORD                 3   xyz         4     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        5     NONE   float   xyzw
+//
+vs_4_0
+dcl_constantbuffer cb1[16], immediateIndexed
+dcl_constantbuffer cb3[53], immediateIndexed
+dcl_constantbuffer cb13[16], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input v0.xyz
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyz
+dcl_output o2.xyzw
+dcl_output o3.xyz
+dcl_output o4.xyz
+dcl_output o5.xyzw
+dcl_temps 5
+dp3 r0.x, v0.xyzx, v0.xyzx
+rsq r0.y, r0.x
+ne r0.x, r0.x, l(0.000000)
+mul r0.yzw, r0.yyyy, v0.xxyz
+movc r0.xyz, r0.xxxx, r0.yzwy, v0.xyzx
+mad r0.xyz, r0.xyzx, cb13[4].yyyy, cb13[0].xyzx
+mul r1.xyzw, r0.yyyy, cb1[9].xyzw
+mad r1.xyzw, r0.xxxx, cb1[8].xyzw, r1.xyzw
+mad r1.xyzw, r0.zzzz, cb1[10].xyzw, r1.xyzw
+add r1.xyzw, r1.xyzw, cb1[11].xyzw
+mov o0.xyzw, r1.xyzw
+mov o1.xyz, r0.xyzx
+add r0.xyz, r0.xyzx, -cb1[15].xyzx
+add r2.xyz, cb1[15].xyzx, -cb13[0].xyzx
+dp3 r0.w, r2.xyzx, r2.xyzx
+mad r0.w, -cb13[4].y, cb13[4].y, r0.w
+dp3 r2.w, r0.xyzx, r0.xyzx
+mul r0.w, r0.w, r2.w
+dp3 r3.x, r2.xyzx, r0.xyzx
+mad r0.w, r3.x, r3.x, -r0.w
+sqrt r0.w, |r0.w|
+add r3.y, -r0.w, -r3.x
+add r0.w, r0.w, -r3.x
+min r3.x, r3.x, l(0.000000)
+mul r3.xzw, r0.xxyz, r3.xxxx
+div r3.xzw, r3.xxzw, r2.wwww
+add r2.xyz, r2.xyzx, -r3.xzwx
+dp3 r2.x, r2.xyzx, r2.xyzx
+div_sat r4.y, r0.w, r2.w
+div_sat r4.x, r3.y, r2.w
+sqrt r0.w, r2.w
+lt r2.y, l(0.000000), r0.w
+div r3.xyz, r0.xyzx, r0.wwww
+and r3.xyz, r2.yyyy, r3.xyzx
+and r2.zw, r4.xxxy, r2.yyyy
+mad r4.xyz, r0.xyzx, r2.wwww, cb1[15].xyzx
+mad r0.xyz, r0.xyzx, r2.zzzz, cb1[15].xyzx
+mov o3.xy, r2.zwzz
+add r4.xyz, -r0.xyzx, r4.xyzx
+dp3 r0.w, r4.xyzx, r4.xyzx
+sqrt r0.w, r0.w
+mul r2.z, r0.w, l(0.005000)
+mad r0.xyz, r3.xyzx, r2.zzzz, r0.xyzx
+add r0.xyz, r0.xyzx, -cb1[15].xyzx
+dp3 r0.x, r0.xyzx, r0.xyzx
+sqrt r0.x, r0.x
+add r0.y, r0.x, -cb3[50].x
+max r0.yw, r0.yyyw, l(0.000000, 0.000000, 0.000000, 1.000000)
+div r0.x, r0.y, r0.x
+mul r0.x, r0.x, r0.z
+mul r0.z, r0.x, cb3[52].z
+lt r0.x, l(0.010000), |r0.x|
+mul r2.z, r0.z, l(-1.442695)
+exp r2.z, r2.z
+add r2.z, -r2.z, l(1.000000)
+div r0.z, r2.z, r0.z
+movc r0.x, r0.x, r0.z, l(1.000000)
+mul r0.z, r0.y, cb3[51].w
+add r0.y, r0.y, -cb3[52].x
+max r0.y, r0.y, l(0.000000)
+mul r0.y, r0.y, cb3[51].x
+mul r0.y, r0.y, l(1.442695)
+exp r0.y, r0.y
+mul r0.x, r0.x, r0.z
+min r0.x, r0.x, l(1.000000)
+mul r0.x, r0.x, l(1.442695)
+exp r0.x, r0.x
+min r0.x, r0.x, l(1.000000)
+add r0.xy, -r0.xyxx, l(1.000000, 1.000000, 0.000000, 0.000000)
+mad r0.z, -r0.x, cb3[52].y, l(1.000000)
+mul r0.x, r0.x, cb3[52].y
+mul r0.z, r0.z, cb3[51].y
+mad_sat r0.x, r0.z, r0.y, r0.x
+add r0.x, -r0.x, l(1.000000)
+mul r0.y, cb13[3].w, cb13[14].x
+mul r0.y, r0.w, r0.y
+mul r1.z, r0.x, r0.y
+mov o2.zw, r1.zzzw
+mov o5.zw, r1.zzzw
+add r0.y, r1.w, r1.x
+add r0.z, -r1.y, r1.w
+mul o2.xy, r0.yzyy, l(0.500000, 0.500000, 0.000000, 0.000000)
+mov o3.z, l(0)
+mul r0.y, cb13[4].y, cb13[4].y
+div r0.y, r2.x, r0.y
+add r0.y, -r0.y, l(1.000000)
+mul r0.y, r0.y, r0.y
+add r0.w, -cb13[15].w, l(1.000000)
+mad r0.w, r0.w, r0.y, cb13[15].w
+div r0.y, r0.y, r0.w
+add r2.xzw, cb13[3].xxyz, -cb13[15].xxyz
+mad r2.xzw, r0.yyyy, r2.xxzw, cb13[15].xxyz
+and o4.xyz, r2.xzwx, r2.yyyy
+ld r2.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r0.y, r1.w, -r2.y
+mad r0.y, r2.x, r0.y, r1.x
+add r0.x, r1.w, r0.y
+mul o5.xy, r0.xzxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+ret 
+// Approximately 99 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.16384
+//
+//   using 3Dmigoto v1.1.36 on Fri Jul 31 21:35:02 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer rage_matrices
+// {
+//
+//   row_major float4x4 gWorld;         // Offset:    0 Size:    64 [unused]
+//   row_major float4x4 gWorldView;     // Offset:   64 Size:    64 [unused]
+//   row_major float4x4 gWorldViewProj; // Offset:  128 Size:    64
+//   row_major float4x4 gViewInverse;   // Offset:  192 Size:    64
+//
+// }
+//
+// cbuffer lighting_globals
+// {
+//
+//   float4 gDirectionalLight;          // Offset:    0 Size:    16 [unused]
+//   float4 gDirectionalColour;         // Offset:   16 Size:    16 [unused]
+//   int gNumForwardLights;             // Offset:   32 Size:     4 [unused]
+//   float4 gLightPositionAndInvDistSqr[8];// Offset:   48 Size:   128 [unused]
+//   float4 gLightDirectionAndFalloffExponent[8];// Offset:  176 Size:   128 [unused]
+//   float4 gLightColourAndCapsuleExtent[8];// Offset:  304 Size:   128 [unused]
+//   float gLightConeScale[8];          // Offset:  432 Size:   116 [unused]
+//   float gLightConeOffset[8];         // Offset:  560 Size:   116 [unused]
+//   float4 gLightNaturalAmbient0;      // Offset:  688 Size:    16 [unused]
+//   float4 gLightNaturalAmbient1;      // Offset:  704 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient0;// Offset:  720 Size:    16 [unused]
+//   float4 gLightArtificialIntAmbient1;// Offset:  736 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient0;// Offset:  752 Size:    16 [unused]
+//   float4 gLightArtificialExtAmbient1;// Offset:  768 Size:    16 [unused]
+//   float4 gDirectionalAmbientColour;  // Offset:  784 Size:    16 [unused]
+//   float4 globalFogParams[5];         // Offset:  800 Size:    80
+//   float4 globalFogColor;             // Offset:  880 Size:    16 [unused]
+//   float4 globalFogColorE;            // Offset:  896 Size:    16 [unused]
+//   float4 globalFogColorN;            // Offset:  912 Size:    16 [unused]
+//   float4 globalFogColorMoon;         // Offset:  928 Size:    16 [unused]
+//   float4 gReflectionTweaks;          // Offset:  944 Size:    16 [unused]
+//
+// }
+//
+// cbuffer lighting_locals
+// {
+//
+//   float4 deferredLightParams[14];    // Offset:    0 Size:   224
+//   float4 deferredLightVolumeParams[2];// Offset:  224 Size:    32
+//   float4 deferredLightScreenSize;    // Offset:  256 Size:    16 [unused]
+//   float4 deferredProjectionParams;   // Offset:  272 Size:    16 [unused]
+//   float3 deferredPerspectiveShearParams0;// Offset:  288 Size:    12 [unused]
+//   float3 deferredPerspectiveShearParams1;// Offset:  304 Size:    12 [unused]
+//   float3 deferredPerspectiveShearParams2;// Offset:  320 Size:    12 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// StereoParmsTexture                texture  float4          2d   20        1
+// rage_matrices                     cbuffer      NA          NA    1        1
+// lighting_globals                  cbuffer      NA          NA    3        1
+// lighting_locals                   cbuffer      NA          NA   13        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// POSITION                 0   xyzw        0     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xyzw
+// TEXCOORD                 0   xyzw        1     NONE   float   xyz 
+// TEXCOORD                 1   xyzw        2     NONE   float   xyzw
+// TEXCOORD                 2   xyzw        3     NONE   float   xyz 
+// TEXCOORD                 3   xyzw        4     NONE   float   xyz 
+// TEXCOORD                 4   xyzw        5     NONE   float   xyzw
+//
+vs_4_0
+dcl_constantbuffer cb1[16], immediateIndexed
+dcl_constantbuffer cb3[53], immediateIndexed
+dcl_constantbuffer cb13[16], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t20
+dcl_input v0.xyz
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyz
+dcl_output o2.xyzw
+dcl_output o3.xyz
+dcl_output o4.xyz
+dcl_output o5.xyzw
+dcl_temps 5
+dp3 r0.x, v0.xyzx, v0.xyzx
+rsq r0.y, r0.x
+ne r0.x, r0.x, l(0.000000)
+mul r0.yzw, r0.yyyy, v0.xxyz
+movc r0.xyz, r0.xxxx, r0.yzwy, v0.xyzx
+mad r0.xyz, r0.xyzx, cb13[4].yyyy, cb13[0].xyzx
+mul r1.xyzw, r0.yyyy, cb1[9].xyzw
+mad r1.xyzw, r0.xxxx, cb1[8].xyzw, r1.xyzw
+mad r1.xyzw, r0.zzzz, cb1[10].xyzw, r1.xyzw
+add r1.xyzw, r1.xyzw, cb1[11].xyzw
+mov o0.xyzw, r1.xyzw
+mov o1.xyz, r0.xyzx
+add r0.xyz, r0.xyzx, -cb1[15].xyzx
+add r2.xyz, cb1[15].xyzx, -cb13[0].xyzx
+dp3 r0.w, r2.xyzx, r2.xyzx
+mad r0.w, -cb13[4].y, cb13[4].y, r0.w
+dp3 r2.w, r0.xyzx, r0.xyzx
+mul r0.w, r0.w, r2.w
+dp3 r3.x, r2.xyzx, r0.xyzx
+mad r0.w, r3.x, r3.x, -r0.w
+sqrt r0.w, |r0.w|
+add r3.y, r0.w, -r3.x
+add r0.w, -r0.w, -r3.x
+min r3.x, r3.x, l(0.000000)
+mul r3.xzw, r0.xxyz, r3.xxxx
+div r3.xzw, r3.xxzw, r2.wwww
+add r2.xyz, r2.xyzx, -r3.xzwx
+dp3 r2.x, r2.xyzx, r2.xyzx
+div_sat r4.x, r0.w, r2.w
+div_sat r4.y, r3.y, r2.w
+sqrt r0.w, r2.w
+lt r2.y, l(0.000000), r0.w
+div r3.xyz, r0.xyzx, r0.wwww
+and r3.xyz, r2.yyyy, r3.xyzx
+and r2.zw, r4.xxxy, r2.yyyy
+mad r4.xyz, r0.xyzx, r2.wwww, cb1[15].xyzx
+mad r0.xyz, r0.xyzx, r2.zzzz, cb1[15].xyzx
+mov o3.xy, r2.zwzz
+add r4.xyz, -r0.xyzx, r4.xyzx
+dp3 r0.w, r4.xyzx, r4.xyzx
+sqrt r4.y, r0.w
+mul r0.w, r4.y, l(0.005000)
+mad r0.xyz, r3.xyzx, r0.wwww, r0.xyzx
+add r0.xyz, r0.xyzx, -cb1[15].xyzx
+dp3 r0.x, r0.xyzx, r0.xyzx
+sqrt r0.x, r0.x
+add r4.x, r0.x, -cb3[50].x
+max r0.yw, r4.xxxy, l(0.000000, 0.000000, 0.000000, 1.000000)
+div r0.x, r0.y, r0.x
+mul r0.x, r0.x, r0.z
+mul r0.z, r0.x, cb3[52].z
+lt r0.x, l(0.010000), |r0.x|
+mul r2.z, r0.z, l(-1.442695)
+exp r2.z, r2.z
+add r2.z, -r2.z, l(1.000000)
+div r0.z, r2.z, r0.z
+movc r0.x, r0.x, r0.z, l(1.000000)
+mul r0.z, r0.y, cb3[51].w
+mul r0.x, r0.x, r0.z
+min r0.x, r0.x, l(1.000000)
+mul r0.x, r0.x, l(1.442695)
+exp r0.x, r0.x
+min r3.x, r0.x, l(1.000000)
+add r0.x, r0.y, -cb3[52].x
+max r0.x, r0.x, l(0.000000)
+mul r0.x, r0.x, cb3[51].x
+mul r0.x, r0.x, l(1.442695)
+exp r3.y, r0.x
+add r0.xy, -r3.xyxx, l(1.000000, 1.000000, 0.000000, 0.000000)
+mad r0.z, -r0.x, cb3[52].y, l(1.000000)
+mul r0.z, r0.z, cb3[51].y
+mul r0.x, r0.x, cb3[52].y
+mad_sat r0.x, r0.z, r0.y, r0.x
+add r0.x, -r0.x, l(1.000000)
+mul r0.y, cb13[3].w, cb13[14].x
+mul r0.y, r0.w, r0.y
+mul r1.z, r0.x, r0.y
+mov o2.zw, r1.zzzw
+mov o5.zw, r1.zzzw
+add r0.y, r1.w, r1.x
+add r0.z, -r1.y, r1.w
+mul o2.xy, r0.yzyy, l(0.500000, 0.500000, 0.000000, 0.000000)
+mov o3.z, l(0)
+mul r0.y, cb13[4].y, cb13[4].y
+div r0.y, r2.x, r0.y
+add r0.y, -r0.y, l(1.000000)
+mul r0.y, r0.y, r0.y
+add r0.w, l(1.000000), -cb13[15].w
+mad r0.w, r0.w, r0.y, cb13[15].w
+div r0.y, r0.y, r0.w
+add r2.xzw, cb13[3].xxyz, -cb13[15].xxyz
+mad r2.xzw, r0.yyyy, r2.xxzw, cb13[15].xxyz
+and o4.xyz, r2.xzwx, r2.yyyy
+ld r2.xyzw, l(0, 0, 0, 0), t20.xyzw
+add r0.y, r1.w, -r2.y
+mad r0.y, r2.x, r0.y, r1.x
+add r0.x, r1.w, r0.y
+mul o5.xy, r0.xzxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+ret 
+// Approximately 99 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

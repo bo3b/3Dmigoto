@@ -1,0 +1,388 @@
+//Lights PS 1
+cbuffer PER_BATCH : register(b0)
+{
+  float4 g_RainVolumeParams : packoffset(c0);
+  float4 g_RainColorMultipliers : packoffset(c1);
+  float4 g_WorldViewPos : packoffset(c2);
+  float4 g_RainPuddleParams : packoffset(c3);
+  float4 g_RainAnimParams : packoffset(c4);
+  row_major float3x4 g_RainOcc_TransMat : packoffset(c5);
+}
+
+cbuffer PER_FRAME : register(b3)
+{
+  float4 g_PS_SkyColor : packoffset(c0);
+  float4 g_PS_SunColor : packoffset(c1);
+  float4 g_PS_SunLightDir : packoffset(c2);
+}
+SamplerState sceneDepthMapSampler_s : register(s0);
+SamplerState sceneSampler_s : register(s1);
+SamplerState reflTargetSampler_s : register(s2);
+SamplerState rainOccMap_s : register(s3);
+SamplerState rainBumpShiftMap_s : register(s4);
+SamplerState rainEnvMap_s : register(s5);
+SamplerState rainWavesMap_s : register(s6);
+SamplerState sceneSpecularAccSampler_s : register(s10);
+SamplerState sceneNormalsSampler_s : register(s12);
+Texture2D<float4> sceneDepthMapSampler : register(t0);
+Texture2D<float4> sceneSampler : register(t1);
+Texture2D<float4> rainOccMap : register(t2);
+Texture2D<float4> rainWavesMap : register(t3);
+Texture2D<float4> rainBumpShiftMap : register(t4);
+Texture2D<float4> reflTargetSampler : register(t5);
+Texture2D<float4> rainEnvMap : register(t6);
+Texture2D<float4> sceneSpecularAccSampler : register(t10);
+Texture2D<float4> sceneNormalsSampler : register(t12);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0,
+  
+      row_major matrix vp : TEXCOORD2,
+  row_major matrix ivp : TEXCOORD6)
+  
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = sceneDepthMapSampler.Sample(sceneDepthMapSampler_s, v1.xy).x;
+  r0.yzw = sceneSampler.Sample(sceneSampler_s, v1.xy).xyz;
+  
+    float4 stereo = StereoParams.Load(0);
+  float4 tmp = mul(vp, v2 * r0.x);
+  tmp.x -= stereo.x * (tmp.w - stereo.y);
+  v2 = mul(ivp, tmp) / r0.x;
+  
+  r1.xyz = r0.xxx * v2.xyz + g_WorldViewPos.xyz;
+  r2.xyzw = sceneNormalsSampler.Sample(sceneNormalsSampler_s, v1.xy).xyzw;
+  r2.xyz = r2.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r3.x = dot(r2.xyz, r2.xyz);
+  r3.x = rsqrt(r3.x);
+  r2.xyz = r3.xxx * r2.xyz;
+  r3.xyz = g_WorldViewPos.xyz + -r1.xyz;
+  r4.xyz = g_RainVolumeParams.xyz + -r1.xyz;
+  r4.xyz = g_RainVolumeParams.www * r4.xyz;
+  r3.w = dot(r4.xyz, r4.xyz);
+  r3.w = 1 + -r3.w;
+  r3.w = max(0, r3.w);
+  r4.x = saturate(g_RainColorMultipliers.w * r0.x + 10);
+  r3.w = r4.x * r3.w;
+  r1.w = 1;
+  r4.x = dot(g_RainOcc_TransMat._m00_m01_m02_m03, r1.xyzw);
+  r4.w = dot(g_RainOcc_TransMat._m10_m11_m12_m13, r1.xyzw);
+  r1.w = dot(g_RainOcc_TransMat._m20_m21_m22_m23, r1.xyzw);
+  r4.z = -r4.w;
+  r4.y = 1 + r4.z;
+  r4.w = rainOccMap.Sample(rainOccMap_s, r4.xy).x;
+  r5.xy = float2(0.001953125,1) + r4.xz;
+  r5.x = rainOccMap.Sample(rainOccMap_s, r5.xy).x;
+  r5.yz = float2(0,1.00195313) + r4.xz;
+  r5.y = rainOccMap.Sample(rainOccMap_s, r5.yz).x;
+  r5.zw = float2(0.001953125,1.00195313) + r4.xz;
+  r6.w = rainOccMap.Sample(rainOccMap_s, r5.zw).x;
+  r6.x = r4.w;
+  r6.yz = r5.xy;
+  r5.xyzw = float4(0.99609375,0.99609375,0.99609375,0.99609375) + -r6.xyzw;
+  r5.xyzw = r5.xyzw < r1.wwww;
+  r6.xyzw = r5.xyzw ? 1.000000 : 0;
+  r4.xy = float2(512,512) * r4.xy;
+  r4.xy = frac(r4.xy);
+  r4.zw = r5.xy ? float2(-1,-1) : float2(-0,-0);
+  r4.zw = r6.zw + r4.zw;
+  r4.yz = r4.yy * r4.zw + r6.xy;
+  r1.w = r4.z + -r4.y;
+  r1.w = r4.x * r1.w + r4.y;
+  r1.w = r3.w * r1.w;
+  r3.w = dot(r3.xy, r3.xy);
+  r3.w = saturate(-g_WorldViewPos.w + r3.w);
+  r1.w = r3.w * r1.w;
+  r3.w = dot(r3.xyz, r3.xyz);
+  r3.w = sqrt(r3.w);
+  r3.xyz = r3.xyz / r3.www;
+  r4.x = saturate(r2.z);
+  r5.xy = float2(2.4000001,2.4000001) * r1.xy;
+  r5.zw = r1.zz * float2(0.600000024,1.20000005) + g_RainAnimParams.yz;
+  r1.z = 0.0500000007 < g_RainPuddleParams.z;
+  if (r1.z != 0) {
+    r1.xy = g_RainPuddleParams.xy + r1.xy;
+    r1.xy = rainWavesMap.Sample(rainWavesMap_s, r1.xy).xy;
+    r1.xy = r1.yx * float2(2,2) + float2(-1,-1);
+    r1.xy = g_RainPuddleParams.zz * r1.xy;
+    r2.xy = r1.xy * r4.xx + r2.xy;
+  }
+  r1.xy = rainBumpShiftMap.Sample(rainBumpShiftMap_s, r5.yw).xy;
+  r1.xy = r1.yx * float2(2,2) + float2(-1,-1);
+  r4.yz = rainBumpShiftMap.Sample(rainBumpShiftMap_s, r5.xw).xy;
+  r4.yz = r4.zy * float2(2,2) + float2(-1,-1);
+  r5.xyz = float3(0.5,0.5,1) * r5.xyz;
+  r5.yw = rainBumpShiftMap.Sample(rainBumpShiftMap_s, r5.yz).xy;
+  r1.xy = r5.wy * float2(2,2) + r1.xy;
+  r1.xy = float2(-1,-1) + r1.xy;
+  r5.xy = rainBumpShiftMap.Sample(rainBumpShiftMap_s, r5.xz).xy;
+  r4.yz = r5.yx * float2(2,2) + r4.yz;
+  r4.yz = float2(-1,-1) + r4.yz;
+  r4.yz = r4.yz * abs(r2.yy);
+  r1.xy = r1.xy * abs(r2.xx) + r4.yz;
+  r1.z = 1 + -r4.x;
+  r2.xy = r1.xy * r1.zz + r2.xy;
+  r1.x = dot(r2.xyz, r2.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = r2.xyz * r1.xxx;
+  r2.x = dot(r1.xyz, r3.xyz);
+  r2.yw = saturate(float2(1,1) + -r2.xw);
+  r2.z = r2.y * r2.y;
+  r2.z = r2.z * 1.5 + 0.800000012;
+  r2.x = r2.x + r2.x;
+  r3.xy = r2.xx * r1.xy + -r3.xy;
+  r4.xy = r1.xy * float2(0.100000001,0.100000001) + v1.xy;
+  r4.xyz = reflTargetSampler.Sample(reflTargetSampler_s, r4.xy).xyz;
+  r2.x = saturate(r1.z * 2 + -1);
+  r2.x = r2.x * r2.y;
+  r1.x = saturate(dot(g_PS_SunLightDir.xyz, r1.xyz));
+  r5.xyz = g_PS_SkyColor.xyz * float3(0.5,0.5,0.5);
+  r5.xyz = r1.xxx * g_PS_SunColor.xyz + r5.xyz;
+  r1.xyw = g_RainColorMultipliers.xyz * r1.www;
+  r0.x = saturate(2000 * r0.x);
+  r0.x = r2.z * r0.x;
+  r2.yz = g_RainAnimParams.ww * float2(0.400000006,0.400000006) + r3.xy;
+  r3.xyz = rainEnvMap.Sample(rainEnvMap_s, r2.yz).xyz;
+  r3.xyz = saturate(float3(-0.200000003,-0.200000003,-0.200000003) + r3.xyz);
+  r3.xyz = r5.xyz * r3.xyz;
+  r1.z = saturate(-r1.z * 0.0900000036 + 0.150000006);
+  r3.xyz = r3.xyz * r1.zzz;
+  r2.xyz = r4.xyz * r2.xxx + r3.xyz;
+  r3.xyz = sceneSpecularAccSampler.Sample(sceneSpecularAccSampler_s, v1.xy).xyz;
+  r3.xyz = saturate(r3.xyz);
+  r1.z = dot(r3.xyz, float3(0.212599993,0.715200007,0.0722000003));
+  r3.x = -r3.w * 0.0500000007 + 1;
+  r3.x = max(0, r3.x);
+  r3.x = g_RainPuddleParams.w * r3.x;
+  r1.z = r3.x * r1.z;
+  r1.z = r1.z * r2.w;
+  r2.xyz = r2.xyz * r0.xxx + r1.zzz;
+  o0.xyz = r1.xyw * r2.xyz + r0.yzw;
+  o0.w = 0;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.27.952.3022
+//
+//   using 3Dmigoto v1.1.34 on Tue Aug 11 21:16:25 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_BATCH
+// {
+//
+//   float4 g_RainVolumeParams;         // Offset:    0 Size:    16
+//   float4 g_RainColorMultipliers;     // Offset:   16 Size:    16
+//   float4 g_WorldViewPos;             // Offset:   32 Size:    16
+//   float4 g_RainPuddleParams;         // Offset:   48 Size:    16
+//   float4 g_RainAnimParams;           // Offset:   64 Size:    16
+//   row_major float3x4 g_RainOcc_TransMat;// Offset:   80 Size:    48
+//
+// }
+//
+// cbuffer PER_FRAME
+// {
+//
+//   float4 g_PS_SkyColor;              // Offset:    0 Size:    16
+//   float4 g_PS_SunColor;              // Offset:   16 Size:    16
+//   float4 g_PS_SunLightDir;           // Offset:   32 Size:    16
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// sceneDepthMapSampler              sampler      NA          NA    0        1
+// sceneSampler                      sampler      NA          NA    1        1
+// reflTargetSampler                 sampler      NA          NA    2        1
+// rainOccMap                        sampler      NA          NA    3        1
+// rainBumpShiftMap                  sampler      NA          NA    4        1
+// rainEnvMap                        sampler      NA          NA    5        1
+// rainWavesMap                      sampler      NA          NA    6        1
+// sceneSpecularAccSampler           sampler      NA          NA   10        1
+// sceneNormalsSampler               sampler      NA          NA   12        1
+// sceneDepthMapSampler              texture  float4          2d    0        1
+// sceneSampler                      texture  float4          2d    1        1
+// rainOccMap                        texture  float4          2d    2        1
+// rainWavesMap                      texture  float4          2d    3        1
+// rainBumpShiftMap                  texture  float4          2d    4        1
+// reflTargetSampler                 texture  float4          2d    5        1
+// rainEnvMap                        texture  float4          2d    6        1
+// sceneSpecularAccSampler           texture  float4          2d   10        1
+// sceneNormalsSampler               texture  float4          2d   12        1
+// PER_BATCH                         cbuffer      NA          NA    0        1
+// PER_FRAME                         cbuffer      NA          NA    3        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float       
+// TEXCOORD                 0   xyzw        1     NONE   float   xy  
+// TEXCOORD                 1   xyzw        2     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[8], immediateIndexed
+dcl_constantbuffer cb3[3], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_default
+dcl_sampler s10, mode_default
+dcl_sampler s12, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t10
+dcl_resource_texture2d (float,float,float,float) t12
+dcl_input_ps linear v1.xy
+dcl_input_ps linear v2.xyz
+dcl_output o0.xyzw
+dcl_temps 7
+sample_indexable(texture2d)(float,float,float,float) r0.x, v1.xyxx, t0.xyzw, s0
+sample_indexable(texture2d)(float,float,float,float) r0.yzw, v1.xyxx, t1.wxyz, s1
+mad r1.xyz, r0.xxxx, v2.xyzx, cb0[2].xyzx
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, v1.xyxx, t12.xyzw, s12
+mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r3.x, r2.xyzx, r2.xyzx
+rsq r3.x, r3.x
+mul r2.xyz, r2.xyzx, r3.xxxx
+add r3.xyz, -r1.xyzx, cb0[2].xyzx
+add r4.xyz, -r1.xyzx, cb0[0].xyzx
+mul r4.xyz, r4.xyzx, cb0[0].wwww
+dp3 r3.w, r4.xyzx, r4.xyzx
+add r3.w, -r3.w, l(1.000000)
+max r3.w, r3.w, l(0.000000)
+mad_sat r4.x, cb0[1].w, r0.x, l(10.000000)
+mul r3.w, r3.w, r4.x
+mov r1.w, l(1.000000)
+dp4 r4.x, cb0[5].xyzw, r1.xyzw
+dp4 r4.w, cb0[6].xyzw, r1.xyzw
+dp4 r1.w, cb0[7].xyzw, r1.xyzw
+mov r4.z, -r4.w
+add r4.y, r4.z, l(1.000000)
+sample_indexable(texture2d)(float,float,float,float) r4.w, r4.xyxx, t2.yzwx, s3
+add r5.xy, r4.xzxx, l(0.001953, 1.000000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r5.x, r5.xyxx, t2.xyzw, s3
+add r5.yz, r4.xxzx, l(0.000000, 0.000000, 1.001953, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r5.y, r5.yzyy, t2.yxzw, s3
+add r5.zw, r4.xxxz, l(0.000000, 0.000000, 0.001953, 1.001953)
+sample_indexable(texture2d)(float,float,float,float) r6.w, r5.zwzz, t2.yzwx, s3
+mov r6.x, r4.w
+mov r6.yz, r5.xxyx
+add r5.xyzw, -r6.xyzw, l(0.996094, 0.996094, 0.996094, 0.996094)
+lt r5.xyzw, r5.xyzw, r1.wwww
+and r6.xyzw, r5.xyzw, l(0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000)
+mul r4.xy, r4.xyxx, l(512.000000, 512.000000, 0.000000, 0.000000)
+frc r4.xy, r4.xyxx
+movc r4.zw, r5.xxxy, l(0,0,-1.000000,-1.000000), l(0,0,-0.000000,-0.000000)
+add r4.zw, r4.zzzw, r6.zzzw
+mad r4.yz, r4.yyyy, r4.zzwz, r6.xxyx
+add r1.w, -r4.y, r4.z
+mad r1.w, r4.x, r1.w, r4.y
+mul r1.w, r1.w, r3.w
+dp2 r3.w, r3.xyxx, r3.xyxx
+add_sat r3.w, r3.w, -cb0[2].w
+mul r1.w, r1.w, r3.w
+dp3 r3.w, r3.xyzx, r3.xyzx
+sqrt r3.w, r3.w
+div r3.xyz, r3.xyzx, r3.wwww
+mov_sat r4.x, r2.z
+mul r5.xy, r1.xyxx, l(2.400000, 2.400000, 0.000000, 0.000000)
+mad r5.zw, r1.zzzz, l(0.000000, 0.000000, 0.600000, 1.200000), cb0[4].yyyz
+lt r1.z, l(0.050000), cb0[3].z
+if_nz r1.z
+  add r1.xy, r1.xyxx, cb0[3].xyxx
+  sample_indexable(texture2d)(float,float,float,float) r1.xy, r1.xyxx, t3.xyzw, s6
+  mad r1.xy, r1.yxyy, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+  mul r1.xy, r1.xyxx, cb0[3].zzzz
+  mad r2.xy, r1.xyxx, r4.xxxx, r2.xyxx
+endif 
+sample_indexable(texture2d)(float,float,float,float) r1.xy, r5.ywyy, t4.xyzw, s4
+mad r1.xy, r1.yxyy, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r4.yz, r5.xwxx, t4.zxyw, s4
+mad r4.yz, r4.zzyz, l(0.000000, 2.000000, 2.000000, 0.000000), l(0.000000, -1.000000, -1.000000, 0.000000)
+mul r5.xyz, r5.xyzx, l(0.500000, 0.500000, 1.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r5.yw, r5.yzyy, t4.zxwy, s4
+mad r1.xy, r5.wyww, l(2.000000, 2.000000, 0.000000, 0.000000), r1.xyxx
+add r1.xy, r1.xyxx, l(-1.000000, -1.000000, 0.000000, 0.000000)
+sample_indexable(texture2d)(float,float,float,float) r5.xy, r5.xzxx, t4.xyzw, s4
+mad r4.yz, r5.yyxy, l(0.000000, 2.000000, 2.000000, 0.000000), r4.yyzy
+add r4.yz, r4.yyzy, l(0.000000, -1.000000, -1.000000, 0.000000)
+mul r4.yz, |r2.yyyy|, r4.yyzy
+mad r1.xy, r1.xyxx, |r2.xxxx|, r4.yzyy
+add r1.z, -r4.x, l(1.000000)
+mad r2.xy, r1.xyxx, r1.zzzz, r2.xyxx
+dp3 r1.x, r2.xyzx, r2.xyzx
+rsq r1.x, r1.x
+mul r1.xyz, r1.xxxx, r2.xyzx
+dp3 r2.x, r1.xyzx, r3.xyzx
+add_sat r2.yw, -r2.xxxw, l(0.000000, 1.000000, 0.000000, 1.000000)
+mul r2.z, r2.y, r2.y
+mad r2.z, r2.z, l(1.500000), l(0.800000)
+add r2.x, r2.x, r2.x
+mad r3.xy, r2.xxxx, r1.xyxx, -r3.xyxx
+mad r4.xy, r1.xyxx, l(0.100000, 0.100000, 0.000000, 0.000000), v1.xyxx
+sample_indexable(texture2d)(float,float,float,float) r4.xyz, r4.xyxx, t5.xyzw, s2
+mad_sat r2.x, r1.z, l(2.000000), l(-1.000000)
+mul r2.x, r2.y, r2.x
+dp3_sat r1.x, cb3[2].xyzx, r1.xyzx
+mul r5.xyz, l(0.500000, 0.500000, 0.500000, 0.000000), cb3[0].xyzx
+mad r5.xyz, r1.xxxx, cb3[1].xyzx, r5.xyzx
+mul r1.xyw, r1.wwww, cb0[1].xyxz
+mul_sat r0.x, r0.x, l(2000.000000)
+mul r0.x, r0.x, r2.z
+mad r2.yz, cb0[4].wwww, l(0.000000, 0.400000, 0.400000, 0.000000), r3.xxyx
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, r2.yzyy, t6.xyzw, s5
+add_sat r3.xyz, r3.xyzx, l(-0.200000, -0.200000, -0.200000, 0.000000)
+mul r3.xyz, r3.xyzx, r5.xyzx
+mad_sat r1.z, -r1.z, l(0.090000), l(0.150000)
+mul r3.xyz, r1.zzzz, r3.xyzx
+mad r2.xyz, r4.xyzx, r2.xxxx, r3.xyzx
+sample_indexable(texture2d)(float,float,float,float) r3.xyz, v1.xyxx, t10.xyzw, s10
+mov_sat r3.xyz, r3.xyzx
+dp3 r1.z, r3.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)
+mad r3.x, -r3.w, l(0.050000), l(1.000000)
+max r3.x, r3.x, l(0.000000)
+mul r3.x, r3.x, cb0[3].w
+mul r1.z, r1.z, r3.x
+mul r1.z, r2.w, r1.z
+mad r2.xyz, r2.xyzx, r0.xxxx, r1.zzzz
+mad o0.xyz, r1.xywx, r2.xyzx, r0.yzwy
+mov o0.w, l(0)
+ret 
+// Approximately 112 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+ 

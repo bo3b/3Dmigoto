@@ -1,15 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="d3dxgiWrapper.cpp" />
+    <ClCompile Include="DXGIWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3dxgiWrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="d3dxgiWrapper.h" />
-    <ClInclude Include="Direct3DXGIFunctions.h" />
-    <ClInclude Include="Main.h" />
-    <ClInclude Include="..\IDirect3DUnknown.h" />
+    <ClInclude Include="DXGIWrapper.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
   </ItemGroup>
 </Project>

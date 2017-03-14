@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Main.h"
+#include "HackerDevice.h"
 
 // The "input" files are a set of objects to handle user input for both gaming 
 // purposes and for tool purposes, like hunting for shaders.
@@ -22,8 +22,8 @@
 
 class InputListener {
 public:
-	virtual void DownEvent(D3D11Base::ID3D11Device *device) = 0;
-	virtual void UpEvent(D3D11Base::ID3D11Device *device);
+	virtual void DownEvent(HackerDevice *device) = 0;
+	virtual void UpEvent(HackerDevice *device);
 };
 
 
@@ -33,7 +33,7 @@ public:
 // callback function may be used with this type signature and registered via
 // RegisterIniKeyBinding:
 
-typedef void(*InputCallback)(D3D11Base::ID3D11Device *device, void *private_data);
+typedef void(*InputCallback)(HackerDevice *device, void *private_data);
 
 // -----------------------------------------------------------------------------
 // InputCallbacks is a key descendant of InputListener, and is used primarily
@@ -50,8 +50,8 @@ private:
 public:
 	InputCallbacks(InputCallback down_cb, InputCallback up_cb, void *private_data);
 
-	void DownEvent(D3D11Base::ID3D11Device *device) override;
-	void UpEvent(D3D11Base::ID3D11Device *device) override;
+	void DownEvent(HackerDevice *device) override;
+	void UpEvent(HackerDevice *device) override;
 };
 
 
@@ -72,8 +72,9 @@ public:
 class VKInputButton : public InputButton {
 public:
 	int vkey;
+	bool invert;
 
-	VKInputButton(wchar_t *keyName);
+	VKInputButton(const wchar_t *keyName);
 	bool CheckState() override;
 };
 
@@ -86,10 +87,23 @@ private:
 	WORD button;
 	BYTE left_trigger;
 	BYTE right_trigger;
+	bool invert;
 
 	bool _CheckState(int controller);
 public:
-	XInputButton(wchar_t *keyName);
+	XInputButton(const wchar_t *keyName);
+	bool CheckState() override;
+};
+
+// -----------------------------------------------------------------------------
+// InputButtonList allows multiple InputButtons to be combined:
+class InputButtonList : public InputButton {
+	vector<InputButton*> buttons;
+	void clear();
+
+public:
+	InputButtonList(wchar_t *keyName);
+	~InputButtonList();
 	bool CheckState() override;
 };
 
@@ -107,7 +121,7 @@ public:
 	InputAction(InputButton *button, InputListener *listener);
 	virtual ~InputAction();
 
-	virtual bool Dispatch(D3D11Base::ID3D11Device *device);
+	virtual bool Dispatch(HackerDevice *device);
 };
 
 // -----------------------------------------------------------------------------
@@ -121,7 +135,7 @@ private:
 
 public:
 	RepeatingInputAction(InputButton *button, InputListener *listener, int repeat);
-	bool Dispatch(D3D11Base::ID3D11Device *device) override;
+	bool Dispatch(HackerDevice *device) override;
 };
 
 // -----------------------------------------------------------------------------
@@ -134,7 +148,7 @@ private:
 	ULONGLONG state_change_time;
 public:
 	DelayedInputAction(InputButton *button, InputListener *listener, int delayDown, int delayUp);
-	bool Dispatch(D3D11Base::ID3D11Device *device) override;
+	bool Dispatch(HackerDevice *device) override;
 };
 
 
@@ -155,4 +169,4 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
 // Note - this is not safe to call from within an input callback!
 void ClearKeyBindings();
 
-bool DispatchInputEvents(D3D11Base::ID3D11Device *device);
+bool DispatchInputEvents(HackerDevice *device);

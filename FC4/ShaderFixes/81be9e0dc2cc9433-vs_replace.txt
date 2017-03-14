@@ -133,7 +133,11 @@ r1.xyzw = r34.xyzw;
   r1.w = 3.125000000e-002 * r0.w;
   r2.xyz = -r0.zxy / r0.www;
   r0.w = min(r1.w, 1.000000000e+000);
-  r0.w = r0.w * _TerrainDecal + _LayerOffset;
+
+// Decompiler chose wrong offset, which can cause Z-fighting:
+  //r0.w = r0.w * _TerrainDecal + _LayerOffset;
+  r0.w = r0.w * _DepthOffset + _LayerOffset;
+
   r2.xyz = r0.www * r2.xyz + r1.xyz;
     
   o5.xyz = r1.xyz;
@@ -394,4 +398,4 @@ ret
 // Approximately 53 instruction slots used
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-   
+    
