@@ -479,7 +479,7 @@ public:
 		pos1 = 0;
 		while (std::string::npos != pos2)
 		{
-			if (pos2 > pos1) //去掉c
+			if (pos2 > pos1) //remove c
 			{
 				v.push_back(s.substr(pos1, pos2 - pos1));
 			}
@@ -910,7 +910,7 @@ public:
 					const char *structHeader2 = "{\n";
 					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
 					while (c[pos] != 0x0a && pos < size) pos++; pos++;
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;	//跳过struct下面一行"//   {\r\n"
+					while (c[pos] != 0x0a && pos < size) pos++; pos++;	//skip struct's next line"//   {\r\n"
 					continue;
 				}
 				if (strstr(buffer, " }"))
@@ -1331,11 +1331,11 @@ public:
 				}
 			}
 		}
-		else if (right[0] == 'c' && right[1] != 'b')	//dx9的常量寄存器，c开头
+		else if (right[0] == 'c' && right[1] != 'b')	//dx9 const register, start with c
 		{
 
 			char * result = strrchr(right, '.');
-			if (result == NULL)		//如果没有swizzle信息，加上.xyzw
+			if (result == NULL)		//if don't have swizzle info锛宎dd .xyzw
 			{
 				strcat(right, ".xyzw");
 			}
@@ -1425,7 +1425,7 @@ public:
 		else
 		{
 			char * result = strrchr(right, '.');
-			if (result == NULL)		//如果没有swizzle信息，加上.xyzw
+			if (result == NULL)		//if don't have swizzle info锛宎dd .xyzw
 			{
 				strcat(right, ".xyzw");		
 			}
@@ -2171,13 +2171,13 @@ public:
 			if (!strncmp(op, "l(1.#INF00", strlen("l(1.#INF00")) || abs(oldValue - o.afImmediates[0]) < 0.1)
 			{
 				if (o.iNumComponents == 4)
-					sprintf_s(op, opcodeSize, "l(%.6f, %.6f, %.6f, %.6f)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
+					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
 				else if (o.iNumComponents == 3)
-					sprintf_s(op, opcodeSize, "l(%.6f, %.6f, %.6f)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
+					sprintf_s(op, opcodeSize, "l(%.9e,%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
 				else if (o.iNumComponents == 2)
-					sprintf_s(op, opcodeSize, "l(%.6f, %.6f)", o.afImmediates[0], o.afImmediates[1]);
+					sprintf_s(op, opcodeSize, "l(%.9e,%.9e)", o.afImmediates[0], o.afImmediates[1]);
 				else if (o.iNumComponents == 1)
-					sprintf_s(op, opcodeSize, "l(%.6f)", o.afImmediates[0]);
+					sprintf_s(op, opcodeSize, "l(%.9e)", o.afImmediates[0]);
 			}
 		}
 		return op;
@@ -3898,15 +3898,15 @@ public:
 							Instruction *nextInstr = &(*inst)[iNr + 1];
 							string outputOp0 = GetComponentStrFromInstruction(instr, 0);
 
-							//nrm生成了两条指令，dp4和rsq
+							//nrm generate two instructions锛宒p4 and rsq
 							if (nextInstr->eOpcode == OPCODE_RSQ && outputOp0.size() == 3)
 							{
 								applySwizzle(op1, op2);
 								sprintf(buffer, "  %s = normalize(%s);\n", writeTarget(op1), ci(op2).c_str());
 								appendOutput(buffer);
 
-								//asm里只有一行，所以不需要调用ReadStatement
-								//指令有两条
+								//asm just one line锛宒on't need call ReadStatement
+								//have two instructions
 								iNr++;
 							}
 							else
@@ -4682,7 +4682,7 @@ public:
 					}
 
 						// New variant found in Mordor.  Example:
-						//   gInstanceBuffer牋牋牋牋牋牋牋牋牋 texture?struct牋牋牋牋 r/o牋?0牋牋牋?1
+						//   gInstanceBuffer锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷 texture?struct锟斤拷锟斤拷锟斤拷锟斤拷 r/o锟斤拷?0锟斤拷锟斤拷锟斤拷?1
 						//   dcl_resource_structured t0, 16 
 						//   ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t0.xyzw
 						// becomes:
