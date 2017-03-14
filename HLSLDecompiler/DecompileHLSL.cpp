@@ -3329,7 +3329,8 @@ public:
 
 		bool skip_shader = false;
 
-		while (pos < size && iNr < shader->psInst.size())
+        vector<Instruction> * inst = NULL;
+        if (shader->dx9Shader)
 		{
 			inst = &shader->asPhase[MAIN_PHASE].psInst;
 		}

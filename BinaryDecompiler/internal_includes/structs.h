@@ -293,9 +293,3 @@ struct Shader
 	}
 };
 
-static const uint32_t MAIN_PHASE = 0;
-static const uint32_t HS_FORK_PHASE = 1;
-static const uint32_t HS_CTRL_POINT_PHASE = 2;
-static const uint32_t HS_JOIN_PHASE = 3;
-enum{ NUM_PHASES = 4};
-
