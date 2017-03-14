@@ -44,12 +44,128 @@
  *
  **/
 
-//#include "nvapi.h"
 #include <D3D11.h>
+#include "nvapi.h"
 #include "log.h"
 
 namespace nv
 {
+	// -----------------------------------------------------------------------------------------------
+
+	// This function was copied from the NV SDK file of DisplayConfiguration.cpp as a display example.
+	// It's been modified to return the PathInfo for just the primary device, as the one that will be
+	// used for 3D display.
+	// If we fail for some reason, just set width/height to zero as it's not that significant.
+	// Defined as 'static' because we only need the one implementation, and nvstereo.h is included 
+	// multiple times.
+
+	static void GetPrimaryDisplayResolution(float &pWidth, float &pHeight)
+	{
+		NvAPI_Status ret;
+		pWidth = 0;
+		pHeight = 0;
+
+		// First retrieve the display path count
+		NvU32 pathCount = 0;
+		NV_DISPLAYCONFIG_PATH_INFO *pathInfo = NULL;
+
+		// Pass 1: Fetch pathCount, # of displays
+		ret = NvAPI_DISP_GetDisplayConfig(&pathCount, NULL);
+		if (ret != NVAPI_OK)
+		{
+			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
+			return;
+		}
+
+		pathInfo = (NV_DISPLAYCONFIG_PATH_INFO*)malloc(pathCount * sizeof(NV_DISPLAYCONFIG_PATH_INFO));
+		if (!pathInfo)
+		{
+			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n");
+			return;
+		}
+
+		// These version params must be set, or it will crash.
+		memset(pathInfo, 0, pathCount * sizeof(NV_DISPLAYCONFIG_PATH_INFO));
+		for (NvU32 i = 0; i < pathCount; i++)
+		{
+			pathInfo[i].version = NV_DISPLAYCONFIG_PATH_INFO_VER;
+
+			// Allocation for the source mode info.
+			pathInfo[i].sourceModeInfo = (NV_DISPLAYCONFIG_SOURCE_MODE_INFO*)malloc(sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
+			if (pathInfo[i].sourceModeInfo == NULL)
+			{
+				LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n");
+				return;
+			}
+			memset(pathInfo[i].sourceModeInfo, 0, sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
+		}
+
+
+		// Pass 2: Retrieve the targetInfo struct count, and the source mode info, which is what we are interested in.
+		ret = NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+		if (ret != NVAPI_OK)
+		{
+			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
+			return;
+		}
+
+		// We don't need this 3rd pass, because we don't need targetInfo.
+		// Pass 3: Fetch targetInfo structs
+		//for (NvU32 i = 0; i < pathCount; i++)
+		//{
+		//	// Allocation for the source mode info.
+		//	pathInfo[i].sourceModeInfo = (NV_DISPLAYCONFIG_SOURCE_MODE_INFO*)malloc(sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
+		//	if (pathInfo[i].sourceModeInfo == NULL)
+		//	{
+		//		LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***", ret);
+		//		return;
+		//	}
+		//	memset(pathInfo[i].sourceModeInfo, 0, sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
+
+		//	// Allocate the target array.
+		//	pathInfo[i].targetInfo = (NV_DISPLAYCONFIG_PATH_TARGET_INFO*)malloc(pathInfo[i].targetInfoCount * sizeof(NV_DISPLAYCONFIG_PATH_TARGET_INFO));
+		//	if (pathInfo[i].targetInfo == NULL)
+		//	{
+		//		LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***", ret);
+		//		return;
+		//	}
+
+		//	memset(pathInfo[i].targetInfo, 0, pathInfo[i].targetInfoCount * sizeof(NV_DISPLAYCONFIG_PATH_TARGET_INFO));
+		//	for (NvU32 j = 0; j < pathInfo[i].targetInfoCount; j++)
+		//	{
+		//		pathInfo[i].targetInfo[j].details = (NV_DISPLAYCONFIG_PATH_ADVANCED_TARGET_INFO*)malloc(sizeof(NV_DISPLAYCONFIG_PATH_ADVANCED_TARGET_INFO));
+		//		memset(pathInfo[i].targetInfo[j].details, 0, sizeof(NV_DISPLAYCONFIG_PATH_ADVANCED_TARGET_INFO));
+		//		pathInfo[i].targetInfo[j].details->version = NV_DISPLAYCONFIG_PATH_ADVANCED_TARGET_INFO_VER;
+		//	}
+		//}
+
+		// Memory allocated for return results, retrieve the full path info, filling in those targetModeInfo structs.
+		//ret = NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+		//if (ret != NVAPI_OK)
+		//{
+		//	LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***", ret);
+		//	return;
+		//}
+
+
+		// Look through the N adapters for the primary display to get resolution.
+		for (NvU32 i = 0; i < pathCount; i++)
+		{
+			if (pathInfo[i].sourceModeInfo->bGDIPrimary)
+			{
+				pWidth = (float)pathInfo[i].sourceModeInfo->resolution.width;
+				pHeight = (float)pathInfo[i].sourceModeInfo->resolution.height;
+			}
+			free(pathInfo[i].sourceModeInfo);
+		}
+		free(pathInfo);
+
+		LogInfo("  nvapi fetched screen width: %f, height: %f\n", pWidth, pHeight);
+	}
+
+
+	// -----------------------------------------------------------------------------------------------
+
 	namespace stereo
 	{
 		typedef struct  _Nv_Stereo_Image_Header
@@ -128,9 +244,14 @@ namespace nv
 			static const int StereoBytesPerPixel = 16;
 
 			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
-				float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4,
-				float screenWidth, float screenHeight)
+				float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4)
 			{
+				float screenWidth, screenHeight;
+
+				// Get screen resolution here, since it becomes part of the stereo texture structure.
+				// This was previously fetched from the swap chain.
+				GetPrimaryDisplayResolution(screenWidth, screenHeight);
+
 				StagingResource* staging = 0;
 				unsigned int stagingWidth = StereoTexWidth * 2;
 				unsigned int stagingHeight = StereoTexHeight + 1;
@@ -162,11 +283,12 @@ namespace nv
 				desc.MiscFlags = 0;
 
 				HRESULT ret = pDevice->CreateTexture2D(&desc, &sysData, &staging);
+				delete sysData.pSysMem;
 				if (ret != S_OK)
 				{
 					LogInfo("    error during creation of stereo staging texture. result = %x.\n", ret);
+					return NULL;
 				}
-				delete sysData.pSysMem;
 				return staging;
 			}
 
@@ -202,7 +324,6 @@ namespace nv
 				mSeparation(0),
 				mSeparationModifier(1),
 				mTuneVariable1(1), mTuneVariable2(1), mTuneVariable3(1), mTuneVariable4(1),
-				mScreenWidth(0), mScreenHeight(0),
 				mForceUpdate(false),
 				mConvergence(0),
 				//mStereoHandle(0),
@@ -282,7 +403,7 @@ namespace nv
 				}
 
 				StagingResource *staging = D3DType::CreateStagingResource(dev, mEyeSeparation, mSeparation * mSeparationModifier, mConvergence,
-					mTuneVariable1, mTuneVariable2, mTuneVariable3, mTuneVariable4, mScreenWidth, mScreenHeight);
+					mTuneVariable1, mTuneVariable2, mTuneVariable3, mTuneVariable4);
 				if (staging)
 				{
 					D3DType::UpdateTextureFromStaging(context, tex, staging);
@@ -297,7 +418,6 @@ namespace nv
 			float mConvergence;
 			float mSeparationModifier;
 			float mTuneVariable1, mTuneVariable2, mTuneVariable3, mTuneVariable4;
-			float mScreenWidth, mScreenHeight;
 			bool mForceUpdate;
 
 			StereoHandle mStereoHandle;

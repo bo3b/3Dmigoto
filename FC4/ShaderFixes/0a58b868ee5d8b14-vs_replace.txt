@@ -1,4 +1,5 @@
-// UI - orange spinny thing when activating a door, etc.
+// UI - orange spinny thing when activating a door, etc. Highlight on
+// directional marker pointing to an enemy about to spot player
 
 cbuffer CSceneFireUiPrimitiveParameterProvider : register(b0)
 {

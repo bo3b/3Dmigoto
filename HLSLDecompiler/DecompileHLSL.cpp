@@ -26,20 +26,22 @@
 
 #include "DecompileHLSL.h"
 
-#include "..\BinaryDecompiler\include\pstdint.h"
-#include "..\BinaryDecompiler\internal_includes\structs.h"
-#include "..\BinaryDecompiler\internal_includes\decode.h"
+#include "BinaryDecompiler\include\pstdint.h"
+#include "BinaryDecompiler\internal_includes\structs.h"
+#include "BinaryDecompiler\internal_includes\decode.h"
 
 #include <excpt.h>
 
 #include "assert.h"
-#include "../log.h"
+#include "log.h"
+#include "version.h"
 
 using namespace std;
 
 enum DataType
 {
 	DT_bool,
+	DT_bool4,
 	DT_float,
 	DT_float2,
 	DT_float3,
@@ -72,6 +74,7 @@ struct BufferEntry
 typedef map<int, BufferEntry> CBufferData;
 typedef map<string, string> StringStringMap;
 
+
 struct ConstantValue
 {
 	string name;
@@ -85,6 +88,19 @@ extern FILE *LogFile;
 extern bool LogInfo;
 extern bool LogDebug;
 
+// Convenience routine to calculate just the number of swizzle components.
+// Used for ibfe.  Inputs like 'o1.xy', return 2.
+
+static string swizCount(char *operand)
+{
+	if (!operand)
+		return "";
+
+	size_t count = strlen(operand) - (strrchr(operand, '.') - operand) - 1;
+	return (count == 1) ? "" : to_string(count);
+}
+
+
 class Decompiler
 {
 public:
@@ -94,12 +110,12 @@ public:
 
 	// Resources.
 	map<string, int> mCBufferNames;
-	
+
 	map<int, string> mSamplerNames;
 	map<int, int>    mSamplerNamesArraySize;
 	map<int, string> mSamplerComparisonNames;
 	map<int, int>    mSamplerComparisonNamesArraySize;
-	
+
 	map<int, string> mTextureNames;
 	map<int, int>    mTextureNamesArraySize;
 	map<int, string> mTextureType;
@@ -122,6 +138,9 @@ public:
 	StringStringMap mRemappedOutputRegisters;
 	vector<pair<string, string> > mRemappedInputRegisters;
 	set<string> mBooleanRegisters;
+
+	int StereoParamsReg;
+	int IniParamsReg;
 
 	vector<char> mOutput;
 	size_t mCodeStartPos;		// Used as index into buffer, name misleadingly suggests pointer usage.
@@ -147,8 +166,8 @@ public:
 	int nestCount;
 
 
-// Suppress all these warnings, as they are an _int64 mismatch for the aging sscanf, which should
-// accept that in x64, but doesn't.  Requiring int instead.  Not worth altering for a benign warning.
+	// Suppress all these warnings, as they are an _int64 mismatch for the aging sscanf, which should
+	// accept that in x64, but doesn't.  Requiring int instead.  Not worth altering for a benign warning.
 #pragma warning(push)
 #pragma warning(disable: 6328)
 
@@ -178,6 +197,7 @@ public:
 		if (!strcmp(name, "float1")) return DT_float;
 		if (!strcmp(name, "float")) return DT_float;
 		if (!strcmp(name, "bool")) return DT_bool;
+		if (!strcmp(name, "bool4")) return DT_bool4;
 		if (!strcmp(name, "uint4")) return DT_uint4;
 		if (!strcmp(name, "uint3")) return DT_uint3;
 		if (!strcmp(name, "uint2")) return DT_uint2;
@@ -190,11 +210,183 @@ public:
 		return DT_Unknown;
 	}
 
-	void ParseInputSignature(const char *c, size_t size)
+	// Make this bump to new line slightly more clear by making it a convenience routine.
+	void NextLine(const char *c, size_t &pos, size_t max)
 	{
+		while (c[pos] != 0x0a && pos < max) 
+			pos++; 
+		pos++;
+	}
+
+	// Just take the current input line, and copy it to the output.
+	// This is used when we aren't sure what to do with something, and gives us the lines
+	// in the output as ASM for reference. Specifically modifying the input pos.
+	void ASMLineOut(const char *c, size_t &pos, size_t max)
+	{
+		char buffer[256];
+
+		const char *startPos = c + pos;
+		const char *eolPos = strchr(startPos, '\n');
+		std::string line(startPos, eolPos);
+		sprintf(buffer, "%s\n", line.c_str());
+		appendOutput(buffer);
+	}
+
+
+	// This is to fix a specific problem seen with Batman, where the fxc compiler
+	// is aggressive and packs the input down to a single float4, where it should
+	// be two float2's. This is going to fix only this specific case, because there
+	// are other times when the packing is right.
+	// We'll do this by reading ahead a full line, and seeing if the upcoming
+	// sequence is of the form:
+	// Name                 Index   Mask Register SysValue  Format   Used
+	// -------------------- ----- ------ -------- -------- ------- ------
+	// TEXCOORD                 0   xy          0     NONE   float   xy  
+	// TEXCOORD                 1   xy          1     NONE   float   xy  
+	//
+	// The goal is to switch from outputing:
+	//		float2 v0 : TEXCOORD0,
+	//		float2 v1 : TEXCOORD1,
+	// to:
+	//		float4 v0 : TEXCOORD0,	// change packing to float4 if different texcoord
+	//		float2 v1 : TEXCOORD1,
+	//
+	// This is only going to be done for TEXCOORD.  I've looked at examples of 
+	// outputs like SV_TARGET, where fxc could have packed them, but it did not.
+	// Adding the extra parts there creates spurious warnings, so for now, 
+	// we'll only do TEXCOORD as a known problem.
+	// This does also unfortunately create warnings for the TEXCOORD outputs, but
+	// I was unable to find any other way to avoid the fxc packing optimization.
+
+	bool SkipPacking(const char *c, map<string, DataType> inUse)
+	{
+		char name[256], mask[16], sysvalue[16], format[16];
+		int index, reg1, reg2; format[0] = 0; mask[0] = 0;
+		size_t pos = 0;
+
+		int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg1, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
+		if (numRead != 6)
+			return false;
+		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
+		if (strcmp(name, "TEXCOORD") != 0)
+			return false;
+
+		// Any v* register already active needs to be skipped, to allow the 
+		// normal packing to succeed.  input:v1.xy + w1.zw. or output:o1.xy + p1.zw
+		if (inUse.find(string("v" + to_string(reg1))) != inUse.end())
+			return false;
+		if (inUse.find(string("o" + to_string(reg1))) != inUse.end())
+			return false;
+
+		// skip pointer in order to parse next line
+		while (c[pos] != 0x0a && pos < 200) pos++; pos++;
+
+		numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
+			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg2, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
+		if (numRead != 6)
+			return false;
+		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
+		if (strcmp(name, "TEXCOORD") != 0)
+			return false;
+
+		string line1, line2;
+		if (gLogDebug)
+		{
+			line1 = string(c + 0);
+			line1 = line1.substr(0, line1.find('\n'));
+			line2 = string(c + pos);
+			line2 = line2.substr(0, line2.find('\n'));
+		}
+
+		// The key aspect is whether we are supposed to use a different Register.
+		if (reg1 == reg2)
+		{
+			LogDebug("    SkipPacking false for v%d==v%d\n", reg1, reg2);
+			LogDebug("      %s\n", line1.c_str());
+			LogDebug("      %s\n", line2.c_str());
+			return false;
+		}
+
+		LogDebug("    SkipPacking true for:\n");
+		LogDebug("      %s\n", line1.c_str());
+		LogDebug("      %s\n", line2.c_str());
+
+		return true;
+	}
+
+	// Looking up the interpolation values for a given input, like 'centroid'
+	// or 'linear centroid'.  These are not found in the text declaration for
+	// Input Signature, so we are fetching them from the already parsed James-
+	// Jones input.  Otherwise we'd need to parse the dcl_input_ps phrases.
+
+	string GetInterpolation(Shader *shader, string vRegister)
+	{
+		string interpolation = "";
+
+		for each(Declaration declaration in shader->psDecl)
+		{
+			if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
+			{
+				int regOut = stoi(vRegister.substr(1));
+				uint32_t binReg = declaration.asOperands[0].ui32RegisterNumber;
+				if (regOut == binReg)
+				{
+					switch (declaration.value.eInterpolation)
+					{
+					case INTERPOLATION_CONSTANT:
+						// The constant interpolation modifier in assembly means do not
+						// interpolate, which in HLSL uses the nointerpolation modifier.
+						// Seen in Arkham Knight
+						interpolation = "nointerpolation ";
+						break;
+					// Let's skip adding this, as it's the default, and adds noise.
+					//case INTERPOLATION_LINEAR:
+					//	interpolation = "linear ";
+					//	break;
+					case INTERPOLATION_LINEAR_CENTROID:
+						interpolation = "linear centroid ";
+						break;
+					case INTERPOLATION_LINEAR_NOPERSPECTIVE:
+						interpolation = "linear noperspective ";
+						break;
+					case INTERPOLATION_LINEAR_NOPERSPECTIVE_CENTROID:
+						interpolation = "linear noperspective centroid ";
+						break;
+					case INTERPOLATION_LINEAR_SAMPLE:
+						interpolation = "linear sample ";
+						break;
+					case INTERPOLATION_LINEAR_NOPERSPECTIVE_SAMPLE:
+						interpolation = "linear noperspective sample ";
+						break;
+
+					default:
+						break;
+					}
+				}
+			}
+		}
+
+		return interpolation;
+	}
+
+
+	// Input signature:
+	//
+	// Name                 Index   Mask Register SysValue  Format   Used
+	// -------------------- ----- ------ -------- -------- ------- ------
+	// TEXCOORD                 0   xy          0     NONE   float   xy  
+	// TEXCOORD                 1   xy          1     NONE   float   xy  
+	// COLOR                    3   xyz         2     NONE   float   xyz 
+
+	void ParseInputSignature(Shader *shader, const char *c, size_t size)
+	{
+		// DataType is not used here, just a convenience for calling SkipPacking.
+		map<string, DataType> usedInputRegisters;
+
 		mRemappedInputRegisters.clear();
-		// Write header.
-		const char *inputHeader = "\nvoid main(\n";
+		// Write header.  Extra space handles odd case for no input and no output sections.
+		const char *inputHeader = "\nvoid main( \n";
 		mOutput.insert(mOutput.end(), inputHeader, inputHeader + strlen(inputHeader));
 
 		// Read until header.
@@ -206,17 +398,16 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
-		set<string> usedInputRegisters;
 		while (pos < size)
 		{
 			char name[256], mask[16], format[16], format2[16];
@@ -224,22 +415,25 @@ public:
 			if (!strncmp(c + pos, "// no Input", strlen("// no Input")))
 				break;
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
+				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
 			if (numRead != 6)
 			{
 				logDecompileError("Error parsing input signature: " + string(c + pos, 80));
 				return;
 			}
 			// finish type.
-			if (strlen(mask) > 1)
-				sprintf(format2, "%s%d", format, strlen(mask));
+			if (SkipPacking(c + pos, usedInputRegisters))
+				sprintf(format2, "%s%d", format, 4);				// force to float4
 			else
-				strcpy(format2, format);
+				if (strlen(mask) > 1)
+					sprintf(format2, "%s%d", format, (int)strlen(mask));	// e.g. float2
+				else
+					strcpy(format2, format);
 			// Already used?
 			char registerName[32];
 			sprintf(registerName, "v%d", slot);
 			string regNameStr = registerName;
-			set<string>::iterator i = usedInputRegisters.find(regNameStr);
+			map<string, DataType>::iterator i = usedInputRegisters.find(regNameStr);
 			if (i != usedInputRegisters.end())
 			{
 				sprintf(registerName, "w%d.", slot);
@@ -264,13 +458,17 @@ public:
 			}
 			else
 			{
-				usedInputRegisters.insert(regNameStr);
+				usedInputRegisters[regNameStr] = TranslateType(format2);
 			}
-			// Write.
+
+			// Now adding interpolation modifiers like 'centroid' as fetched from James-Jones input
+			string modifier = GetInterpolation(shader, regNameStr);
+
+			// Write, e.g.  centroid  float4 v4 : TEXCOORD2,
 			char buffer[256];
-			sprintf(buffer, "  %s %s : %s%d,\n", format2, regNameStr.c_str(), name, index);
+			sprintf(buffer, "  %s%s %s : %s%d,\n", modifier.c_str(), format2, regNameStr.c_str(), name, index);
 			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -291,14 +489,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		while (pos < size)
@@ -307,15 +505,22 @@ public:
 			int index, slot; format[0] = 0; mask[0] = 0;
 			if (!strncmp(c + pos, "// no Output", strlen("// no Output")))
 				break;
+
+			// Name                 Index   Mask Register SysValue  Format   Used
+			// -------------------- ----- ------ -------- -------- ------- ------
+			// SV_Target                0   xyzw        0   TARGET   float   xyzw
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
+				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
 			if (numRead == 6)
 			{
 				// finish type.
-				if (strlen(mask) > 1)
-					sprintf(format2, "%s%d", format, strlen(mask));
+				if (SkipPacking(c + pos, mOutputRegisterType))
+					sprintf(format2, "%s%d", format, 4);				// force to float4
 				else
-					strcpy(format2, format);
+					if (strlen(mask) > 1)
+						sprintf(format2, "%s%d", format, (int)strlen(mask));	// e.g. float2
+					else
+						strcpy(format2, format);
 				// Already used?
 				char registerName[32];
 				sprintf(registerName, "o%d", slot);
@@ -353,12 +558,15 @@ public:
 			}
 			else if (numRead == 3)
 			{
+				char reg[64];
 				char sysValue[64];
-				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
-				// Write.
 				char buffer[256];
-				sprintf(buffer, "  out %s %s : %s,\n", format, sysValue, name);
+				// Name                 Index   Mask Register SysValue  Format   Used
+				// -------------------- ----- ------ -------- -------- ------- ------
+				// SV_Depth                 0    N/A   oDepth    DEPTH   float    YES
+				numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
+					name, (int)sizeof(name), &index, mask, (int)sizeof(mask), reg, (int)sizeof(reg), sysValue, (int)sizeof(sysValue), format, (int)sizeof(format));
+				sprintf(buffer, "  out %s %s : %s,\n", format, reg, name);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
 			if (numRead != 6)
@@ -366,7 +574,7 @@ public:
 				logDecompileError("Error parsing output signature: " + string(c + pos, 80));
 				break;
 			}
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -389,14 +597,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		set<string> outputRegister;
@@ -407,7 +615,7 @@ public:
 			if (!strncmp(c + pos, "// no Output", strlen("// no Output")))
 				break;
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, sizeof(name), &index, mask, sizeof(mask), &slot, format2, sizeof(format2), format, sizeof(format));
+				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
 			if (numRead == 6)
 			{
 				// Already used?
@@ -433,7 +641,7 @@ public:
 			{
 				char sysValue[64];
 				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, sizeof(name), &index, mask, sizeof(mask), sysValue, sizeof(sysValue), format2, sizeof(format2), format, sizeof(format));
+					name, (int)sizeof(name), &index, mask, (int)sizeof(mask), sysValue, (int)sizeof(sysValue), format2, (int)sizeof(format2), format, (int)sizeof(format));
 				// Write.
 				char buffer[256];
 				sprintf(buffer, "  %s = 0;\n", sysValue);
@@ -444,7 +652,7 @@ public:
 				logDecompileError("Error parsing output signature: " + string(c + pos, 80));
 				break;
 			}
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -479,7 +687,7 @@ public:
 		pos1 = 0;
 		while (std::string::npos != pos2)
 		{
-			if (pos2 > pos1) //去掉c
+			if (pos2 > pos1) //脠楼碌么c
 			{
 				v.push_back(s.substr(pos1, pos2 - pos1));
 			}
@@ -600,14 +808,14 @@ public:
 				break;
 			else
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 			}
 		}
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 		// Read list.
 		while (pos < size)
@@ -616,7 +824,7 @@ public:
 			int slot, arraySize;
 			type[0] = 0;
 			int numRead = sscanf_s(c + pos, "// %s %s %s %s %d %d",
-				name, sizeof(name), type, sizeof(type), format, sizeof(format), dim, sizeof(dim), &slot, &arraySize);
+				name, (int)sizeof(name), type, (int)sizeof(type), format, (int)sizeof(format), dim, (int)sizeof(dim), &slot, &arraySize);
 			if (numRead != 6)
 				logDecompileError("Error parsing resource declaration: " + string(c + pos, 80));
 			if (!strcmp(type, "sampler"))
@@ -701,7 +909,7 @@ public:
 			}
 			else if (!strcmp(type, "cbuffer"))
 				mCBufferNames[name] = slot;
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			// End?
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
@@ -711,6 +919,9 @@ public:
 	void WriteResourceDefinitions()
 	{
 		char buffer[256];
+		_snprintf_s(buffer, 256, 256, "\n");
+		mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
 		for (map<int, string>::iterator i = mSamplerNames.begin(); i != mSamplerNames.end(); ++i)
 		{
 			if (mSamplerNamesArraySize[i->first] == 1)
@@ -796,6 +1007,7 @@ public:
 			case DT_uint3:
 			case DT_int3:
 				return 12;
+			case DT_bool4:
 			case DT_float4:
 			case DT_uint4:
 			case DT_int4:
@@ -841,19 +1053,19 @@ public:
 					break;
 				else
 				{
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 				}
 			}
 			if (pos >= size - strlen(headerid)) return;
 			char name[256];
-			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, sizeof(name));
+			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, (int)sizeof(name));
 			if (numRead != 1)
 			{
 				logDecompileError("Error parsing buffer name: " + string(c + pos, 80));
 				return;
 			}
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
+			NextLine(c, pos, size);
 			// Map buffer name to register.
 			map<string, int>::iterator i = mCBufferNames.find(name);
 			if (i == mCBufferNames.end())
@@ -865,7 +1077,7 @@ public:
 			// Write declaration.
 			char buffer[256];
 			if (name[0] == '$') name[0] = '_';
-			sprintf(buffer, "\ncbuffer %s : register(b%d)\n{\n", name, bufferRegister);
+			_snprintf_s(buffer, 256, 256, "\ncbuffer %s : register(b%d)\n{\n", name, bufferRegister);
 			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			do
 			{
@@ -875,7 +1087,7 @@ public:
 				// Skip opening bracket.
 				if (strstr(buffer, " {\n"))
 				{
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 					continue;
 				}
 				// Ignore empty line.
@@ -885,7 +1097,7 @@ public:
 					while (buffer[ePos] != 0 && (buffer[ePos] == ' ' || buffer[ePos] == '\t' || buffer[ePos] == '\n' || buffer[ePos] == '\r')) ++ePos;
 					if (!buffer[ePos])
 					{
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+						NextLine(c, pos, size);
 						continue;
 					}
 				}
@@ -909,8 +1121,9 @@ public:
 					}
 					const char *structHeader2 = "{\n";
 					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;	//跳过struct下面一行"//   {\r\n"
+
+					NextLine(c, pos, size);
+          
 					continue;
 				}
 				if (strstr(buffer, " }"))
@@ -940,6 +1153,10 @@ public:
 					}
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					// Prefix struct attributes.
+					if (structLevel < 0) {
+						logDecompileError("structLevel is negative - malformed shader?\n");
+						return;
+					}
 					size_t arrayPos = structName.find('[');
 					if (arrayPos == string::npos)
 					{
@@ -975,13 +1192,16 @@ public:
 						}
 					}
 					pendingStructAttributes[structLevel].clear();
-					while (c[pos] != 0x0a && pos < size) pos++; pos++;
+					NextLine(c, pos, size);
 					--structLevel;
 					continue;
 				}
 				// Read declaration.
+				// With very long names, the disassembled code can have no space at the end, like:
+				//   float2 __0RealtimeReflMul__1EnvCubeReflMul__2__3;// Offset:   96 Size:     8
+				// This caused the %s %s to fail, so now looking specifically for required semicolon.
 				char type[16]; type[0] = 0;
-				numRead = sscanf_s(c + pos, "// %s %s", type, sizeof(type), name, sizeof(name));
+				numRead = sscanf_s(c + pos, "// %s %[^;]", type, (int)sizeof(type), name, (int)sizeof(name));
 				if (numRead != 2)
 				{
 					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -995,20 +1215,13 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf_s(c + pos, "// %s %s %s", buffer, sizeof(buffer), type, sizeof(type), name, sizeof(name));
+					numRead = sscanf_s(c + pos, "// %s %s %[^;]", buffer, (int)sizeof(buffer), type, (int)sizeof(type), name, (int)sizeof(name));
 					if (numRead != 3)
 					{
 						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
 						return;
 					}
 				}
-				char *endStatement = strchr(name, ';');
-				if (!endStatement)
-				{
-					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
-					return;
-				}
-				*endStatement = 0;
 				pos += 2;
 				while (c[pos] != '/' && pos < size) pos++;
 				int offset = 0;
@@ -1063,7 +1276,7 @@ public:
 				// possible uses of those offsets in the ASM code.
 				size_t ep = e.Name.find('[');
 				if (ep != string::npos &&
-					(e.bt == DT_bool || 
+					(e.bt == DT_bool || e.bt == DT_bool4 ||
 					e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4 ||
 					e.bt == DT_uint || e.bt == DT_uint2 || e.bt == DT_uint3 || e.bt == DT_uint4 ||
 					e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4 ||
@@ -1079,7 +1292,7 @@ public:
 					if (e.bt == DT_float || e.bt == DT_bool || e.bt == DT_uint || e.bt == DT_int) counter = 4;
 					else if (e.bt == DT_float2 || e.bt == DT_uint2 || e.bt == DT_int2) counter = 8;
 					else if (e.bt == DT_float3 || e.bt == DT_uint3 || e.bt == DT_int3) counter = 12;
-					else if (e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
+					else if (e.bt == DT_bool4 || e.bt == DT_float4 || e.bt == DT_uint4 || e.bt == DT_int4) counter = 16;
 					else if (e.bt == DT_float4x2 || e.bt == DT_float2x4) counter = 16 * 2;
 					else if (e.bt == DT_float3x3 || e.bt == DT_float4x3) counter = 16 * 3;
 					else if (e.bt == DT_float3x4 || e.bt == DT_float4x4) counter = 16 * 4;
@@ -1152,7 +1365,7 @@ public:
 				}
 
 				// Default value?
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				const char *defaultid = "//      = ";
 				int packoffset = offset / 16; int suboffset = (offset % 16) / 4;
 				const char INDEX_MASK[] = "xyzw";
@@ -1160,11 +1373,16 @@ public:
 				for (int i = -1; i < structLevel; ++i) structSpacing += "  ";
 				if (!strncmp(c + pos, defaultid, strlen(defaultid)))
 				{
+					// No idea what an assignment to a bool4 would look like in ASM, so let's just log if we see
+					// this, and fix it later.
+					if (e.bt == DT_bool4)
+						logDecompileError("*** assignment to bool4, unknown syntax\n");
 					// For bool values, the usual conversion by %e creates QNAN, so handle them specifically. (e.g. = 0xffffffff)
-					if (e.bt == DT_bool)
+					else if (e.bt == DT_bool)
 					{
 						unsigned int bHex = 0;
 						numRead = sscanf_s(c + pos, "// = 0x%lx", &bHex);
+						NextLine(c, pos, size);
 						string bString = (bHex == 0) ? "false" : "true";
 						if (structLevel < 0)
 						{
@@ -1176,48 +1394,118 @@ public:
 						else
 							sprintf(buffer, "  %s%s%s %s = %s;\n", structSpacing.c_str(), modifier.c_str(), type, name, bString.c_str());
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
 					}
-					else
+					// Special int case, to avoid converting to float badly, creating #QNAN instead. 
+					else if (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4)
 					{
-						float v[4] = { 0, 0, 0, 0 };
 						int in[4] = { 0, 0, 0, 0 };
-						bool useInt = (e.bt == DT_int || e.bt == DT_int2 || e.bt == DT_int3 || e.bt == DT_int4);
 
-						// For int case, also converts to float badly, creating #QNAN instead. 
-						if (useInt)
-							numRead = sscanf_s(c + pos, "// = %i %i %i %i", in + 0, in + 1, in + 2, in + 3);
-						else
-							numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx;", v + 0, v + 1, v + 2, v + 3);
+						numRead = sscanf_s(c + pos, "// = %i %i %i %i", in + 0, in + 1, in + 2, in + 3);
+						NextLine(c, pos, size);
 
 						if (structLevel < 0)
 						{
 							if (suboffset == 0)
-								sprintf(buffer, "  %s%s %s : packoffset(c%d) = %s(", modifier.c_str(), type, name, packoffset, type);
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
 							else
-								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = %s(", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset], type);
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = {", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
 						}
 						else
-							sprintf(buffer, "  %s%s%s %s = %s(", structSpacing.c_str(), modifier.c_str(), type, name, type);
+							sprintf(buffer, "  %s%s%s %s = {", structSpacing.c_str(), modifier.c_str(), type, name);
+						
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 
 						for (int i = 0; i < numRead - 1; ++i)
 						{
-							if (useInt)
-								sprintf(buffer, "%i,", in[i]);
-							else
-								sprintf(buffer, "%e,", v[i]);
+							sprintf(buffer, "%i,", in[i]);
 							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 						}
-						if (useInt)
-							sprintf(buffer, "%i);\n", in[numRead - 1]);
+						sprintf(buffer, "%i};\n", in[numRead - 1]);
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					}
+					else if (e.bt == DT_float || e.bt == DT_float2 || e.bt == DT_float3 || e.bt == DT_float4)
+					{
+						float v[4] = { 0, 0, 0, 0 };
+						numRead = sscanf_s(c + pos, "// = 0x%lx 0x%lx 0x%lx 0x%lx", (unsigned long*)v + 0, (unsigned long*)v + 1, (unsigned long*)v + 2, (unsigned long*)v + 3);
+						NextLine(c, pos, size);
+
+						if (structLevel < 0)
+						{
+							if (suboffset == 0)
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
+							else
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = {", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
+						}
 						else
-							sprintf(buffer, "%e);\n", v[numRead - 1]);
+							sprintf(buffer, "  %s%s%s %s = {", structSpacing.c_str(), modifier.c_str(), type, name);
 
 						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-						while (c[pos] != 0x0a && pos < size) pos++; pos++;
+
+						for (int i = 0; i < numRead - 1; ++i)
+						{
+							sprintf(buffer, "%.9g,", v[i]);
+							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						}
+						sprintf(buffer, "%.9g};\n", v[numRead - 1]);
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					}
+					// Only 4x4 for now, not sure this is all working, so going with known needed case.
+					else if (e.bt == DT_float4x4)
+					{
+						float v[16];
+						for (size_t i = 0; i < 4; i++)
+						{
+							numRead = sscanf_s(c + pos, "//%*[ =]0x%lx 0x%lx 0x%lx 0x%lx", (unsigned long*)&v[i * 4 + 0], (unsigned long*)&v[i * 4 + 1], (unsigned long*)&v[i * 4 + 2], (unsigned long*)&v[i * 4 + 3]);
+							if (numRead != 4)
+							{
+								logDecompileError("Default values for float4x4 not read correctly, n:" + numRead);
+								break;
+							}
+							NextLine(c, pos, size);
+						}
+
+						if (structLevel < 0)
+						{
+							if (suboffset == 0)
+								sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
+							else
+								sprintf(buffer, "  %s%s %s : packoffset(c%d.%c) = {", modifier.c_str(), type, name, packoffset, INDEX_MASK[suboffset]);
+						}
+						else
+							sprintf(buffer, "  %s%s%s %s = {", structSpacing.c_str(), modifier.c_str(), type, name);
+
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+
+						for (int i = 0; i < 16 - 1; ++i)
+						{
+							sprintf(buffer, "%.9g,", v[i]);
+							mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+						}
+						sprintf(buffer, "%.9g};\n", v[15]);
+						mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					}
+					// If we don't know what the initializer is, let's not just keep reading through it.  Let's now scan 
+					// them and output them, with a bad line in between for hand-fixing.  But, the shader will be generated.
+					else
+					{
+						sprintf(buffer, "  %s%s %s : packoffset(c%d) = {", modifier.c_str(), type, name, packoffset);
+						appendOutput(buffer);
+						sprintf(buffer, "Unknown bad code for initializer (needs manual fix):\n");
+						appendOutput(buffer);
+
+						ASMLineOut(c, pos, size);
+						NextLine(c, pos, size);
+
+						// Loop through any remaining constant declarations to output
+						const char *con = "//        0x";
+						while (!strncmp(c + pos, con, strlen(con)))
+						{
+							ASMLineOut(c, pos, size);
+							NextLine(c, pos, size);
+						}
 					}
 				}
+				// No default value.
 				else
 				{
 					if (structLevel < 0)
@@ -1232,7 +1520,8 @@ public:
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				}
 			} while (strncmp(c + pos, "// }", 4));
-			// Write declaration.
+			
+			// Write closing declaration.
 			const char *endBuffer = "}\n";
 			mOutput.insert(mOutput.end(), endBuffer, endBuffer + strlen(endBuffer));
 		}
@@ -1241,6 +1530,15 @@ public:
 	void applySwizzle(const char *left, char *right, bool useInt = false)
 	{
 		char right2[opcodeSize];
+
+		if (strlen(right) == 0) {
+			// If we have been called without a second parameter
+			// for any reason, bail out now before we corrupt the
+			// heap later
+			logDecompileError("applySwizzle called with no second parameter: " + string(left));
+			return;
+		}
+
 		if (right[strlen(right) - 1] == ',') right[strlen(right) - 1] = 0;
 
 		// Strip sign and absolute, so they can be re-added at the end.
@@ -1304,7 +1602,7 @@ public:
 				}
 				if (pos == 1)
 				{
-					sprintf(right2, "%.6f", args[idx[0]]);
+					sprintf(right2, "%.9g", args[idx[0]]);
 				}
 				else
 				{
@@ -1314,7 +1612,7 @@ public:
 						isInt = isInt && (floor(args[idx[i]]) == args[idx[i]]);
 					if (isInt && useInt)
 					{
-						sprintf(right2, "int%d(", pos);
+						sprintf(right2, "int%Id(", pos);
 						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
 							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%d,", int(args[idx[i]]));
 						right2[strlen(right2) - 1] = 0;
@@ -1322,20 +1620,21 @@ public:
 					}
 					else
 					{
-						sprintf(right2, "float%d(", pos);
+						sprintf(right2, "float%Id(", pos);
 						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%.6f,", args[idx[i]]);
+							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%.9g,", args[idx[i]]);
+            
 						right2[strlen(right2) - 1] = 0;
 						strcat(right2, ")");
 					}
 				}
 			}
 		}
-		else if (right[0] == 'c' && right[1] != 'b')	//dx9的常量寄存器，c开头
+		else if (right[0] == 'c' && right[1] != 'b')	//dx9碌脛鲁拢脕驴录脛麓忙脝梅拢卢c驴陋脥路
 		{
 
 			char * result = strrchr(right, '.');
-			if (result == NULL)		//如果没有swizzle信息，加上.xyzw
+			if (result == NULL)		//脠莽鹿没脙禄脫脨swizzle脨脜脧垄拢卢录脫脡脧.xyzw
 			{
 				strcat(right, ".xyzw");
 			}
@@ -1425,12 +1724,21 @@ public:
 		else
 		{
 			char * result = strrchr(right, '.');
-			if (result == NULL)		//如果没有swizzle信息，加上.xyzw
+			if (result == NULL)		//脠莽鹿没脙禄脫脨swizzle脨脜脧垄拢卢录脫脡脧.xyzw
 			{
 				strcat(right, ".xyzw");		
 			}
 
 			strPos = strrchr(right, '.') + 1;
+			if (strPos == (const char *)1) {
+				// If there's no '.' in the string, strrchr
+				// will have returned a NULL pointer. If we
+				// were to continue we would write a 0 to a
+				// random location since right2[1-right] will
+				// run off the start of the buffer.
+				logDecompileError("applySwizzle 2nd parameter missing '.': " + string(right));
+				return;
+			}
 			strncpy(right2, right, strPos - right);
 			right2[strPos - right] = 0;
 			pos = strlen(right2);
@@ -1459,7 +1767,7 @@ public:
 				// crushed the spaces out of the input.
 
 				// Like: -cb2[r12.w+63].xyzx  as : -cb(bufIndex)[(regAndSwiz)+(bufOffset)]
-				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 3)
+				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, (int)sizeof(regAndSwiz), &bufOffset) == 3)
 				{
 					// Some constant buffers no longer have variable names, giving us generic names like cb0[23].
 					// The syntax doesn't work to use those names, so in this scenario, we want to just use the strPos name, unchanged.
@@ -1484,12 +1792,12 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: cb0[r0.w].xy
-				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, sizeof(regAndSwiz)) == 2)
+				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, (int)sizeof(regAndSwiz)) == 2)
 				{
 					bufOffset = 0;
 				}
 				// Like: icb[r0.w+0].xyzw
-				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, sizeof(regAndSwiz), &bufOffset) == 2)
+				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, (int)sizeof(regAndSwiz), &bufOffset) == 2)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 				}
@@ -1500,7 +1808,7 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: icb[r1.z].xy
-				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, sizeof(regAndSwiz)) == 1)
+				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, (int)sizeof(regAndSwiz)) == 1)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 					bufOffset = 0;
@@ -1615,18 +1923,38 @@ public:
 						sprintf_s(right3 + strlen(right3), sizeof(right3) - strlen(right3), "[%s/4]", regAndSwiz);
 					else
 					{
-						// Most common case, like: g_AmbientCube[r3.w]
+						// Most common case, like: g_AmbientCube[r3.w] and Globals[r19.w+63]
 
 						// Bug was to not handle the struct case here, and truncate string.
 						//  Like g_OmniLights[r5.w].m_PositionFar -> g_OmniLights[r5.w]
 						//sprintf(right3 + strlen(right3), "[%s]", indexRegister);
-
+						
 						// Start fresh with original string and just replace, not char* manipulate.
-						// base: g_OmniLights[0].m_PositionFar
+						// base e.g: g_OmniLights[0].m_PositionFar
 						string base = i->second.Name;
 						size_t left = base.find('[') + 1;
 						size_t length = base.find(']') - left;
-						base.replace(left, length, regAndSwiz);
+
+						// Another bug was to miss array indexing into a variable name. So if i->second.Name
+						// is not a zero index element, we need to preserve the offset.
+						// Like a JC3 variant of cb0[r19.w + 63].xyzw becoming Globals[r19.w+63]
+						// Normally an offset turns into an actual named variable.
+
+						int offset;
+						sscanf_s(i->second.Name.c_str(), "%*[^[][%d]", &offset);
+						if (offset == 0)
+						{
+							// e.g. cb0[r21.y + 55] -> PointLight[r21.y]
+							base.replace(left, length, regAndSwiz);
+						}
+						else
+						{
+							// leave it named with register and bufOffset, e.g. cb0[r19.w + 63] -> Globals[r19.w+63]
+							char regAndOffset[opcodeSize];
+							sprintf_s(regAndOffset, "%s+%d", regAndSwiz, bufOffset);
+							base.replace(left, length, regAndOffset);
+						}
+
 						strcpy(right3, base.c_str());
 					}
 				}
@@ -1683,16 +2011,25 @@ public:
 	int ReadStatement(const char *pos)
 	{
 		// Kill newline.
-		static char lineBuffer[256];
+		char lineBuffer[256];
 		strncpy(lineBuffer, pos, 255); lineBuffer[255] = 0;
 		char *newlinePos = strchr(lineBuffer, '\n'); if (newlinePos) *newlinePos = 0;
 		op1[0] = 0; op2[0] = 0; op3[0] = 0; op4[0] = 0; op5[0] = 0; op6[0] = 0; op7[0] = 0; op8[0] = 0;
 		op9[0] = 0; op10[0] = 0; op11[0] = 0; op12[0] = 0; op13[0] = 0; op14[0] = 0; op15[0] = 0;
 
 		int numRead = sscanf_s(lineBuffer, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-			statement, sizeof(statement),
+			statement, (int)sizeof(statement),
 			op1, opcodeSize, op2, opcodeSize, op3, opcodeSize, op4, opcodeSize, op5, opcodeSize, op6, opcodeSize, op7, opcodeSize, op8, opcodeSize,
 			op9, opcodeSize, op10, opcodeSize, op11, opcodeSize, op12, opcodeSize, op13, opcodeSize, op14, opcodeSize, op15, opcodeSize);
+
+		// Cull the [precise] from any instruction using it by moving down all opcodes to recreate
+		// the instruction, minus the 'precise'.  ToDo: add 'precise' keyword to output variable.
+		// e.g. mov [precise(xy)] r1.xy, v1.xyxx
+		// to   mov r1.xy, v1.xyxx
+		if (!strncmp(op1, "[precise", strlen("[precise")))
+		{
+			strcpy(op1, op2); strcpy(op2, op3); strcpy(op3, op4); strcpy(op4, op5); strcpy(op5, op6); strcpy(op6, op7); strcpy(op7, op8); strcpy(op8, op9); strcpy(op9, op10); strcpy(op10, op11); strcpy(op11, op12);
+		}
 
 		// Was previously a subroutine to CollectBrackets, but generated a lot of warnings, so putting it inline allows
 		// the automatic CRT_SECURE macros to find the sizes.
@@ -1886,7 +2223,7 @@ public:
 				cpos[1] = 0;
 				op[5] = '3';	// now: float3(x,y,z)
 			}
-			else if (!strncmp(textype, "TextureCube", 11))
+			else // if (!strncmp(textype, "TextureCube", 11) || !strncmp(textype, "TextureCubeArray", 11))
 			{
 				// left as: float4(x,y,z,w)
 			}
@@ -1990,7 +2327,7 @@ public:
 		{
 			printed = sprintf_s(convert, sizeof(convert), "l(");
 
-			count = sscanf_s(target, "l(0x%x,0x%x,0x%x,0x%x)", &lit[0], &lit[1], &lit[2], &lit[3]);
+			count = sscanf_s(target, "l(%x,%x,%x,%x)", (unsigned int*)&lit[0], (unsigned int*)&lit[1], (unsigned int*)&lit[2], (unsigned int*)&lit[3]);
 			if (count != 0)
 			{
 				for (int i = 0; i < count; i++)
@@ -2012,7 +2349,7 @@ public:
 		}
 	}
 
-	char *convertToInt(char *target)
+	char *_convertToInt(char *target, bool fixupCBs)
 	{
 		char buffer[opcodeSize];
 
@@ -2033,20 +2370,27 @@ public:
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
+		// Fixup for constant buffer reads where the type may not be known due to missing headers:
+		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
+		{
+			_snprintf_s(buffer, opcodeSize, opcodeSize, "asint(%s)", target);
+			strcpy_s(target, opcodeSize, buffer);
+			return target;
+		}
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
 			size_t size = strlen(pos + 1);
 			if (size == 1)
-				sprintf(buffer, "(int)%s", target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(int)%s", target);
 			else
-				sprintf(buffer, "(int%d)%s", size, target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(int%Id)%s", size, target);
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
 	}
 
-	char *convertToUInt(char *target)
+	char *_convertToUInt(char *target, bool fixupCBs)
 	{
 		char buffer[opcodeSize];
 
@@ -2069,17 +2413,44 @@ public:
 			strcpy_s(target, opcodeSize, buffer);
 			return target;
 		}
+		// Fixup for constant buffer reads where the type may not be known due to missing headers:
+		if (fixupCBs && !strncmp(target + isMinus, "cb", 2))
+		{
+			_snprintf_s(buffer, opcodeSize, opcodeSize, "asuint(%s)", target);
+			strcpy_s(target, opcodeSize, buffer);
+			return target;
+		}
 		char *pos = strrchr(target, '.');
 		if (pos)
 		{
 			size_t size = strlen(pos + 1);
 			if (size == 1)
-				sprintf(buffer, "(uint)%s", target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(uint)%s", target);
 			else
-				sprintf(buffer, "(uint%d)%s", size, target);
+				_snprintf_s(buffer, opcodeSize, opcodeSize, "(uint%Id)%s", size, target);
 			strcpy_s(target, opcodeSize, buffer);
 		}
 		return target;
+	}
+
+	char *convertToInt(char *target)
+	{
+		return _convertToInt(target, true);
+	}
+
+	char *convertToUInt(char *target)
+	{
+		return _convertToUInt(target, true);
+	}
+
+	char *castToInt(char *target)
+	{
+		return _convertToInt(target, false);
+	}
+
+	char *castToUInt(char *target)
+	{
+		return _convertToUInt(target, false);
 	}
 
 	// The boolean check routines had the problem that they only looked for the actual register
@@ -2096,6 +2467,11 @@ public:
 
 	// Well, another example is a n "and r0.xyzw, r0.yyyy, r2.xyzw" where r0.y is set early. 
 	// This requires at least single component entries in the mBooleanRegisters.
+
+	// 12-5-15: New change to all users of addBoolean, is that they will call a small helper
+	//  routine to do 'cmp', in order to return -1 or 0, instead of the HLSL 1 or 0.  This
+	//  is intended to fix the problems we see where the assembly is using the -1 numerically
+	//  and not as a boolean.  The helper is now just a macro "#define cmp -" to negate.
 
 	void addBoolean(char *arg)
 	{
@@ -2171,13 +2547,13 @@ public:
 			if (!strncmp(op, "l(1.#INF00", strlen("l(1.#INF00")) || abs(oldValue - o.afImmediates[0]) < 0.1)
 			{
 				if (o.iNumComponents == 4)
-					sprintf_s(op, opcodeSize, "l(%.6f, %.6f, %.6f, %.6f)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
+					sprintf_s(op, opcodeSize, "l(%.9g,%.9g,%.9g,%.9g)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2], o.afImmediates[3]);
 				else if (o.iNumComponents == 3)
-					sprintf_s(op, opcodeSize, "l(%.6f, %.6f, %.6f)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
+					sprintf_s(op, opcodeSize, "l(%.9g,%.9g,%.9g)", o.afImmediates[0], o.afImmediates[1], o.afImmediates[2]);
 				else if (o.iNumComponents == 2)
-					sprintf_s(op, opcodeSize, "l(%.6f, %.6f)", o.afImmediates[0], o.afImmediates[1]);
+					sprintf_s(op, opcodeSize, "l(%.9g,%.9g)", o.afImmediates[0], o.afImmediates[1]);
 				else if (o.iNumComponents == 1)
-					sprintf_s(op, opcodeSize, "l(%.6f)", o.afImmediates[0]);
+					sprintf_s(op, opcodeSize, "l(%.9g)", o.afImmediates[0]);
 			}
 		}
 		return op;
@@ -2759,7 +3135,7 @@ public:
 							char buf[512];
 							if (MatrixPos_MUL1.empty())
 								MatrixPos_MUL1 = string("1,1,1");
-							sprintf(buf, "\nfloat3 stereoMat%dMul = float3(%s);"
+							_snprintf_s(buf, 512, 512, "\nfloat3 stereoMat%dMul = float3(%s);"
 								"\n%s -= viewDirection.x * separation * (wpos - convergence) * stereoMat%dMul.x;"
 								"\n%s -= viewDirection.y * separation * (wpos - convergence) * stereoMat%dMul.y;"
 								"\n%s -= viewDirection.z * separation * (wpos - convergence) * stereoMat%dMul.z;",
@@ -2793,7 +3169,27 @@ public:
 		}
 	}
 
-	
+	// Common routine for handling the no header info case for declarations.
+	// This is grim, because we add the '4' to the format by default, as we
+	// cannot determine the actual size of a declaration without reflection data.
+	// It will mostly work, but generate hand-fix errors at times.
+	void CreateRawFormat(string texType, int bufIndex)
+	{
+		char buffer[128];
+		char format[16];
+
+		sprintf(buffer, "t%d", bufIndex);
+		mTextureNames[bufIndex] = buffer;
+
+		sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
+		string form4 = string(format) + "4";	// Grim. Known to fail sometimes.
+		mTextureType[bufIndex] = texType + "<" + form4 + ">";
+
+		sprintf(buffer, "%s t%d : register(t%d);\n\n", mTextureType[bufIndex].c_str(), bufIndex, bufIndex);
+		mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+		mCodeStartPos += strlen(buffer);
+	}
+
 	// General output routine while decoding shader, to automatically apply indenting to HLSL code.
 	// When we see a '{' or '}' we'll increase or decrease the indent.
 	void appendOutput(char* line)
@@ -2931,8 +3327,9 @@ public:
 		size_t pos = 0;
 		unsigned int iNr = 0;
 
-		vector<Instruction> * inst = NULL;
-		if (shader->dx9Shader)
+		bool skip_shader = false;
+
+		while (pos < size && iNr < shader->psInst.size())
 		{
 			inst = &shader->asPhase[MAIN_PHASE].psInst;
 		}
@@ -2949,7 +3346,7 @@ public:
 			if (!strncmp(c + pos, "#line", 5) ||
 				!strncmp(c + pos, "undecipherable", 14))
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 
@@ -2964,7 +3361,7 @@ public:
 			// Ignore comments. 
 			if (!strncmp(c + pos, "//", 2))
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 			// Read statement.
@@ -2977,11 +3374,30 @@ public:
 			//	op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15);
 			//
 
+			// Some shaders seen in World of Diving contain multiple shader programs.
+			// Ignore any instructions from old shader models that we do not handle to
+			// avoid crashes.
+			if (!strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
+			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4)) {
+				skip_shader = true;
+				NextLine(c, pos, size);
+				continue;
+			}
+
 			if (!strncmp(statement, "vs_", 3) ||
+				!strncmp(statement, "hs_", 3) ||
+				!strncmp(statement, "ds_", 3) ||
+				!strncmp(statement, "gs_", 3) ||
 				!strncmp(statement, "ps_", 3) ||
 				!strncmp(statement, "cs_", 3))
 			{
+				skip_shader = false;
 				mShaderType = statement;
+			}
+			else if (skip_shader)
+			{
+				NextLine(c, pos, size);
+				continue;
 			}
 			else if (!strcmp(statement, "dcl_immediateConstantBuffer"))
 			{
@@ -3029,9 +3445,13 @@ public:
 						logDecompileError("Error parsing buffer size: " + string(op1));
 						return;
 					}
-					CBufferData::iterator i = mCBufferData.find((bufIndex << 16) + 0 * 16);
-					// Create if not existing.
-					if (i == mCBufferData.end())
+					// In the case where headers have been stripped, we will not have any CBufferNames,
+					// but we will have these dcl_constantbuffer declarations.  We are now using
+					// the absence of any mCBufferNames as indication that we have stripped headers,
+					// and create the fake cb2 style names as the best we can do.  
+					// Not sure this will work in all cases, because the offsets into the buffer are
+					// not required to be zero for the first element, but we have no other info here.
+					if (mCBufferNames.empty())
 					{
 						BufferEntry e;
 						e.bt = DT_float4;
@@ -3095,6 +3515,14 @@ public:
 					}
 				}
 			}
+			// for all of these dcl_resource_texture* variants, if we don't have any header information
+			// available, we try to fall back to the raw text definitions, and use registers instead of
+			// named variable.  A big problem though is that the count is unknown if we have no headers,
+			// so it should be Texture2D<float2> for example, but we only see (float,float,float,float).
+			// With no headers and no reflection this can't be done, so for now we'll set them to <*4> 
+			// as the most common use case. But only for this case where the game is being hostile.
+			// It will probably require hand tuning to correct usage of those texture registers.
+			// Also unlikely to work for the (mixed,mixed,mixed,mixed) case.  <mixed4> will be wrong.
 			else if (!strcmp(statement, "dcl_resource_texture2d"))
 			{
 				if (op2[0] == 't')
@@ -3109,12 +3537,7 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2D<float4>";
-						sprintf(buffer, "Texture2D<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("Texture2D", bufIndex);
 					}
 				}
 			}
@@ -3132,12 +3555,7 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2DArray<float4>";
-						sprintf(buffer, "Texture2DArray<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("Texture2DArray", bufIndex);
 					}
 				}
 			}
@@ -3163,13 +3581,36 @@ public:
 					{
 						sprintf(buffer, "t%d", bufIndex);
 						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Texture2DMS<float4>";
+
+						char format[16];
+						sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
+						string form4 = string(format) + "4";
+						mTextureType[bufIndex] = "Texture2DMS<" + form4 + ">";
+
 						if (dim == 0)
-							sprintf(buffer, "Texture2DMS<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
+							sprintf(buffer, "Texture2DMS<%s> t%d : register(t%d);\n\n", form4.c_str(), bufIndex, bufIndex);
 						else
-							sprintf(buffer, "Texture2DMS<float4,%d> t%d : register(t%d);\n\n", dim, bufIndex, bufIndex);
+							sprintf(buffer, "Texture2DMS<%s,%d> t%d : register(t%d);\n\n", form4.c_str(), dim, bufIndex, bufIndex);
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
+					}
+				}
+			}
+			else if (!strcmp(statement, "dcl_resource_texture3d"))
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture register index: " + string(op2));
+						return;
+					}
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						CreateRawFormat("Texture3D", bufIndex);
 					}
 				}
 			}
@@ -3187,16 +3628,11 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "TextureCube<float4>";
-						sprintf(buffer, "TextureCube<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("TextureCube", bufIndex);
 					}
 				}
 			}
-			else if (!strcmp(statement, "dcl_resource_buffer"))
+			else if (!strcmp(statement, "dcl_resource_texturecubearray"))
 			{
 				if (op2[0] == 't')
 				{
@@ -3210,12 +3646,25 @@ public:
 					map<int, string>::iterator i = mTextureNames.find(bufIndex);
 					if (i == mTextureNames.end())
 					{
-						sprintf(buffer, "t%d", bufIndex);
-						mTextureNames[bufIndex] = buffer;
-						mTextureType[bufIndex] = "Buffer<float4>";
-						sprintf(buffer, "Buffer<float4> t%d : register(t%d);\n\n", bufIndex, bufIndex);
-						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer);
+						CreateRawFormat("TextureCubeArray", bufIndex);
+					}
+				}
+			}
+			else if (!strcmp(statement, "dcl_resource_buffer"))		// dcl_resource_buffer (sint,sint,sint,sint) t2
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture register index: " + string(op2));
+						return;
+					}
+					// Create if not existing.  e.g. if no ResourceBinding section in ASM.
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						CreateRawFormat("Buffer", bufIndex);
 					}
 				}
 			}
@@ -3254,12 +3703,24 @@ public:
 				sprintf(buffer, "  float4 %s[%d];\n", varName, numIndex);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
+			else if (!strcmp(statement, "dcl_input"))
+			{
+				// Can have 'vCoverage' variable implicitly defined, 
+				// not in input signature when reflection is stripped.
+				if (!strcmp(op1, "vCoverage"))
+				{
+					char *pos = strstr(mOutput.data(), "void main(");
+					while (*pos != 0x0a) pos++; pos++;
+					sprintf(buffer, "  uint vCoverage : SV_Coverage,\n");
+					mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buffer, buffer + strlen(buffer));
+				}
+			}
 			else if (!strcmp(statement, "dcl_temps"))
 			{
 				const char *varDecl = "  float4 ";
 				mOutput.insert(mOutput.end(), varDecl, varDecl + strlen(varDecl));
 				int numTemps;
-				sscanf_s(c + pos, "%s %d", statement, sizeof(statement), &numTemps);
+				sscanf_s(c + pos, "%s %d", statement, (int)sizeof(statement), &numTemps);
 				for (int i = 0; i < numTemps; ++i)
 				{
 					sprintf(buffer, "r%d,", i);
@@ -3271,9 +3732,46 @@ public:
 				const char *helperDecl = "  uint4 bitmask, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
+			// For Geometry Shaders, e.g. dcl_stream m0  TODO: make it StreamN, add to varlist
+			else if (!strcmp(statement, "dcl_stream"))
+			{
+				// Write out original ASM, inline, for reference.
+				sprintf(buffer, "// Needs manual fix for instruction:  \n//");
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+				ASMLineOut(c, pos, size);
+				// Move back to input section and output something close to right
+				char *main_ptr = strstr(mOutput.data(), "void main(");
+				size_t offset = main_ptr - mOutput.data();
+				NextLine(mOutput.data(), offset, mOutput.size());
+				sprintf(buffer, "  inout TriangleStream<float> m0,\n");
+				mOutput.insert(mOutput.begin() + offset , buffer, buffer + strlen(buffer));
+			}
+			// For Geometry Shaders, e.g. dcl_maxout n
+			else if (!strcmp(statement, "dcl_maxout"))
+			{
+				char *main_ptr = strstr(mOutput.data(), "void main(");
+				size_t offset = main_ptr - mOutput.data();
+				sprintf(buffer, "[maxvertexcount(%s)]\n", op1);
+				mOutput.insert(mOutput.begin() + offset, buffer, buffer + strlen(buffer));
+			}
 			else if (!strncmp(statement, "dcl_", 4))
 			{
-				// Other declarations.
+				// Hateful strcmp logic is upside down, only output for ones we aren't already handling.
+				if (strcmp(statement, "dcl_output") && 
+					strcmp(statement, "dcl_output_siv") &&
+					strcmp(statement, "dcl_globalFlags") &&
+					//strcmp(statement, "dcl_input_siv") && 
+					strcmp(statement, "dcl_input_ps") && 
+					strcmp(statement, "dcl_input_ps_sgv") &&
+					strcmp(statement, "dcl_input_ps_siv"))
+				{
+					// Other declarations, unforeseen.
+					sprintf(buffer, "// Needs manual fix for instruction: \n");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					sprintf(buffer, "// unknown dcl_: ");
+					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+					ASMLineOut(c, pos, size);
+				}
 			}
 			else if (!strcmp(statement, "dcl"))		//dx9 dcl vFace
 			{
@@ -3284,7 +3782,20 @@ public:
 				{
 
 					case OPCODE_ITOF:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
 					case OPCODE_UTOF:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 					case OPCODE_MOV:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
@@ -3446,6 +3957,16 @@ public:
 					}
 
 					case OPCODE_ADD:
+						// OPCODE_ADD is 0. Therefore, it is possible for us to
+						// arrive here if the line has simply not been parsed.
+						// Let's make sure we are actually parsing an 'add' before
+						// we go any further. Only check first three characters
+						// since we still want add_sat to parse.
+						if (strncmp(statement, "add", 3)) {
+							logDecompileError("No opcode: " + string(statement));
+							return;
+						}
+
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
@@ -3457,18 +3978,20 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// IADD is apparently used by the fxc compiler in some cases like an AND operation.
+						// After boolean operations, it will sum up two boolean operators. Since we are now
+						// passing -1:0 instead of 1:0, it should work to just do the IADD operation, respecting
+						// any negation the source applies. A common sequence, compiler trick is:
+						//  lt r0.y, l(0.000000), r0.x
+						//  lt r0.x, r0.x, l(0.000000)
+						//  iadd r0.x, r0.x, -r0.y
+						//  itof r0.x, r0.x
+						//  mul r0.xyz, r0.xxxx, r1.xzwx
 					case OPCODE_IADD:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						if (isBoolean(op2) && isBoolean(op3))
-						{
-							if (op2[0] == '-') strcpy(op2, op2 + 1);
-							else if (op3[0] == '-') strcpy(op3, op3 + 1);
-							sprintf(buffer, "  %s = (%s ? -1 : 0) + (%s ? 1 : 0);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						}
-						else
-							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3557,9 +4080,35 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Add the Firstbit ops, because now Just Cause 3 uses them.
+						// firstbit{_hi|_lo|_shi} dest[.mask], src0[.swizzle]
+					case OPCODE_FIRSTBIT_HI:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					case OPCODE_FIRSTBIT_LO:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbitlow(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					case OPCODE_FIRSTBIT_SHI:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 						// Code generation for this weird instruction is tuned to indent the way we want, 
 						// and still look like a single instruction.  Still has weird indent in middle of instruction,
 						// but it seems more valuable to have it be a single line.
+						//
+						// Meh, you think this is weird? Looks like a less powerful version of rlwinm to me
 					case OPCODE_UBFE:
 					{
 						remapTarget(op1);
@@ -3575,7 +4124,8 @@ public:
 							sprintf(buffer, "  if (%s == 0) %s = 0; else if (%s+%s < 32) { ",
 								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
-							sprintf(buffer, "%s = (int)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
+							// FIXME: May need fixup for read from constant buffer of unidentified type?
+							sprintf(buffer, "%s = (uint)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
 							appendOutput(buffer);
 							sprintf(buffer, " } else %s = (uint)%s >> %s;\n",
 								writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
@@ -3584,6 +4134,39 @@ public:
 						}
 						break;
 					}
+
+					case OPCODE_IBFE:
+						{
+							// Instruction for sign extending field extraction. Used in new versions of Dolphin
+							// ibfe r0.xyzw, l(24, 24, 24, 24), l(0, 0, 0, 0), cb0[12].xyzw
+							remapTarget(op1);
+							removeBoolean(op1);
+							applySwizzle(op1, op2, true);
+							applySwizzle(op1, op3, true);
+							applySwizzle(op1, op4);
+							sprintf(buffer, "  %s = (%s == 0 ? 0 : ("
+										"%s + %s < 32 ? ("
+											"((int%s)%s << (32 - %s - %s)) >> (32 - %s)"
+										") : ("
+											"(int%s)%s >> %s"
+									")));\n",
+									writeTarget(op1), ci(op2).c_str(),
+										ci(op2).c_str(), ci(op3).c_str(),
+											swizCount(op4).c_str(), ci(op4).c_str(), ci(op2).c_str(), ci(op3).c_str(), ci(op2).c_str(),
+											swizCount(op4).c_str(), ci(op4).c_str(), ci(op3).c_str()
+								);
+
+							appendOutput(buffer);
+						}
+						break;
+
+					case OPCODE_BFREV:
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						sprintf(buffer, "  %s = reversebits(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
 
 					case OPCODE_EXP:
 						remapTarget(op1);
@@ -3687,14 +4270,16 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Minor tweak, but if we reverse the order of Min/Max parameters here, the
+						// recompile comes out identical.
 					case OPCODE_MIN:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3704,19 +4289,223 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = min(asuint(%s), asuint(%s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+
+						// Missing opcode for UMax, used in Witcher3
+					case OPCODE_UMAX:
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
+						// Add remaining atomic ops, we see atomic_or in Song of the Deep.
+						// Needs an unclear manual fix, but better than not generating any HLSL at all.
+						// Opcodes found in Witcher3 Compute Shader, manual fix needed.
+					case OPCODE_ATOMIC_AND:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAnd(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_OR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedOr(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_XOR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedXor(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_CMP_STORE:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedCompareStore(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_IADD:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAdd(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_IMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_IMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_ALLOC:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedExchange ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_CONSUME:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  Interlocked... ?(dest, value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IADD:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAdd(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_AND:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedAnd(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_OR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedOr(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_XOR:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedXor(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_EXCH:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedExchange(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_CMP_EXCH:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedCompareExchange(dest, compare_value, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_IMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_UMAX:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMax(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+					case OPCODE_IMM_ATOMIC_UMIN:
+					{
+						sprintf(buffer, "  // Needs manual fix for instruction:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "  InterlockedMin(dest, imm_value, orig_value);\n");
+						appendOutput(buffer);
+						break;
+					}
+
 
 					case OPCODE_MAX:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3725,9 +4514,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3736,9 +4525,9 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -3898,15 +4687,15 @@ public:
 							Instruction *nextInstr = &(*inst)[iNr + 1];
 							string outputOp0 = GetComponentStrFromInstruction(instr, 0);
 
-							//nrm生成了两条指令，dp4和rsq
+							//nrm脡煤鲁脡脕脣脕陆脤玫脰赂脕卯拢卢dp4潞脥rsq
 							if (nextInstr->eOpcode == OPCODE_RSQ && outputOp0.size() == 3)
 							{
 								applySwizzle(op1, op2);
 								sprintf(buffer, "  %s = normalize(%s);\n", writeTarget(op1), ci(op2).c_str());
 								appendOutput(buffer);
 
-								//asm里只有一行，所以不需要调用ReadStatement
-								//指令有两条
+								//asm脌茂脰禄脫脨脪禄脨脨拢卢脣霉脪脭虏禄脨猫脪陋碌梅脫脙ReadStatement
+								//脰赂脕卯脫脨脕陆脤玫
 								iNr++;
 							}
 							else
@@ -4032,7 +4821,7 @@ public:
 					case OPCODE_FTOI:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(castToInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -4040,7 +4829,7 @@ public:
 					case OPCODE_FTOU:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(castToUInt(op2)).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -4110,7 +4899,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4120,7 +4909,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = (int)%s != %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4130,7 +4919,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4140,7 +4929,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = (int)%s == %s;\n", writeTarget(op1), ci(op2).c_str(), ci(convertToInt(op3)).c_str());
+						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4150,7 +4939,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = %s < %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4160,7 +4949,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (int)%s < (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4170,7 +4959,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (uint)%s < (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4180,7 +4969,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = %s >= %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4190,7 +4979,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (int)%s >= (int)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4200,7 +4989,7 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = (uint)%s >= (uint)%s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -4273,6 +5062,15 @@ public:
 						sprintf(buffer, "  }\n");
 						appendOutput(buffer);
 						break;
+					
+						// Found in Witcher3 Compute Shaders 
+					case OPCODE_SYNC:
+						if (!strcmp(statement, "sync_g_t"))
+							sprintf(buffer, "  GroupMemoryBarrierWithGroupSync();\n");
+						else
+							sprintf(buffer, "  Unknown sync instruction;\n");
+						appendOutput(buffer);
+						break;
 
 					case OPCODE_SWAPC:
 					{
@@ -4292,6 +5090,7 @@ public:
 							sprintf(op6, "%s.%c", op1, *pop1);
 							if (pop2) sprintf(op7, "%s.%c", op2, *++pop2); else sprintf(op7, "%s", op2);
 							if (pop3) sprintf(op8, "%s.%c", op3, *++pop3); else sprintf(op8, "%s", op3);
+							// FIXME: May need fixup for read from constant buffer of unidentified type
 							sprintf(buffer, "  %s = (int)%s ? %s : %s; %s = (int)%s ? %s : %s;\n",
 								writeTarget(op6), ci(op8).c_str(), ci(GetSuffix(op5, idx)).c_str(), ci(GetSuffix(op4, idx)).c_str(),
 								writeTarget(op7), ci(op8).c_str(), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op5, idx)).c_str());
@@ -4322,7 +5121,8 @@ public:
 
 							// Fails: bitmask.%c = (((1 << %s) - 1) << %s) & 0xffffffff;
 
-							sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;\n"
+							// FIXME: May need fixup for read from constant buffer of unidentified type
+							sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;"
 								"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
 								*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(),
 								writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);
@@ -4682,7 +5482,7 @@ public:
 					}
 
 						// New variant found in Mordor.  Example:
-						//   gInstanceBuffer牋牋牋牋牋牋牋牋牋 texture?struct牋牋牋牋 r/o牋?0牋牋牋?1
+						//   gInstanceBuffer聽聽聽聽聽聽聽聽聽聽聽聽聽聽聽聽聽聽 texture?struct聽聽聽聽聽聽聽聽 r/o聽聽?0聽聽聽聽聽聽?1
 						//   dcl_resource_structured t0, 16 
 						//   ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t0.xyzw
 						// becomes:
@@ -4717,18 +5517,26 @@ public:
 						string dst0, srcAddress, srcByteOffset, src0;
 						string swiz;
 
+						ResourceBinding* bindings = shader->sInfo->psResourceBindings;
+						if (bindings == NULL)
+						{
+							sprintf(buffer, "// Missing reflection info for shader. No names possible.\n");
+							appendOutput(buffer);
+							src0 = "no_StructuredBufferName";
+							srcAddress = "no_srcAddressRegister";
+							srcByteOffset = "no_srcByteOffsetName";
+						}
+						else
+						{
+							src0 = bindings->Name;
+							srcAddress = instr->asOperands[1].specialName;
+							srcByteOffset = instr->asOperands[2].specialName;
+						}
 						dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
-						srcAddress = instr->asOperands[1].specialName;
-						srcByteOffset = instr->asOperands[2].specialName;
-						src0 = shader->sInfo->psResourceBindings->Name;
 
 						sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, "// %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 
 						// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
 
@@ -4747,7 +5555,8 @@ public:
 								}
 								//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
 								//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-								sprintf(buffer, "%s.%s = StructuredBufferName[srcAddressRegister].srcByteOffsetName.swiz;\n", dst0.c_str(), swiz.c_str());
+								sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
+									dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
 								appendOutput(buffer);
 							}
 						}
@@ -4767,7 +5576,7 @@ public:
 						break;
 					}
 
-						// Missing opcodes for SM5.  Not implemetned yet, but we want to generate some sort of code, in case
+						// Missing opcodes for SM5.  Not implemented yet, but we want to generate some sort of code, in case
 						// these are used in needed shaders.  That way we can hand edit the shader to make it usable, until 
 						// this is completed.
 					case OPCODE_STORE_UAV_TYPED:
@@ -4777,11 +5586,7 @@ public:
 					{
 						sprintf(buffer, "// No code for instruction (needs manual fix):\n");
 						appendOutput(buffer);
-						const char *eolPos = strchr(c + pos, '\n');
-						ptrdiff_t len = eolPos - (c + pos);
-						std::string line(c + pos, len);
-						sprintf(buffer, " %s\n", line.c_str());
-						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
 						break;
 					}
 
@@ -4795,6 +5600,8 @@ public:
 						break;
 
 						// The GetDimensions can also see a 4 parameter version in the immediate case. 
+						// https://msdn.microsoft.com/en-us/library/windows/desktop/hh447214(v=vs.85).aspx
+						//
 						// resinfo[_uint|_rcpFloat] dest[.mask], srcMipLevel.select_component, srcResource[.swizzle]
 						// In different variants based on input texture, becomes:
 						// void Object.GetDimensions(UINT MipLevel, typeX Width, typeX Height, typeX Elements, typeX Depth, typeX NumberOfLevels, typeX NumberOfSamples);
@@ -4813,6 +5620,9 @@ public:
 						// We don't want to knowingly generate code that compiles, but has errors.  Includes _rcpFloat as unknown.
 						//
 						// This also added new ResInfo parsing that was not in our older BinaryCompiler.
+						//
+						// bindInfo is zeroed out, and GetResourceFromBindingPoint fails when the headers have been stripped.
+						// With no reflection information, we are left with only the text.
 					case OPCODE_RESINFO:
 					{
 						remapTarget(op1);
@@ -4823,14 +5633,61 @@ public:
 						Operand texture = instr->asOperands[2];
 						RESINFO_RETURN_TYPE returnType = instr->eResInfoReturnType;
 						int texReg = texture.ui32RegisterNumber;
-						ResourceBinding *bindInfo;
+						ResourceBinding bindInfo;
+						ResourceBinding *bindInfoPtr = &bindInfo;
+
+						memset(&bindInfo, 0, sizeof(bindInfo));
+						int bindstate = GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfoPtr);
+						bool bindStripped = (bindstate == 0);
+
+						if (bindStripped)
+						{
+							// In the case where the reflection information has been stripped from the headers,
+							// we are left with only the text line itself.  Try to parse the text for variants 
+							// we know, and add them to the bindInfo.
+							//
+							// e.g. from Batman and Witcher3:
+							//  resinfo_indexable(texture2d)(float,float,float,float)_uint r1.yw, l(0), t3.zxwy 
+
+							char texType[opcodeSize];
+							char retType[opcodeSize];
+							int numInfo = sscanf_s(statement, "resinfo_indexable(%[^)])%s", texType, opcodeSize, retType, opcodeSize) ;
+
+							bool isConstant = (!strcmp(op2, "l(0),"));
+
+							if ((numInfo == 2) && isConstant)
+							{
+								constZero.eType = OPERAND_TYPE_IMMEDIATE32;
+								constZero.afImmediates[0] = 0.0;
+
+								if (!strcmp(texType, "texture2d"))
+									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2D;
+								else if (!strcmp(texType, "texture2dms"))
+									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS;
+								else if (!strcmp(texType, "texture2darray"))
+									bindInfoPtr->eDimension = REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY;
+
+								bindInfoPtr->Name = string(op3, strrchr(op3, '.'));
+
+								if (strstr(retType, "_uint"))
+									returnType = RESINFO_INSTRUCTION_RETURN_UINT;
+								else
+									returnType = RESINFO_INSTRUCTION_RETURN_FLOAT;
+
+								texture.eType = OPERAND_TYPE_RESOURCE;
+
+								bindStripped = false;
+							}
+						}
 
 						// We only presently handle the float and _uint return types, and the const 0 mode. 
 						// And the texture2d and textures2dms types. That's all we've seen so far.
-						if ((constZero.eType == OPERAND_TYPE_IMMEDIATE32) && (constZero.afImmediates[0] == 0)
+						// This same output sequence is used for both a normal parse case, and the stripped header case.
+
+						if ((constZero.eType == OPERAND_TYPE_IMMEDIATE32) && (constZero.afImmediates[0] == 0.0)
 							&& (returnType == RESINFO_INSTRUCTION_RETURN_UINT || returnType == RESINFO_INSTRUCTION_RETURN_FLOAT)
-							&& GetResourceFromBindingPoint(RTYPE_TEXTURE, texReg, shader->sInfo, &bindInfo)
-							&& texture.eType == OPERAND_TYPE_RESOURCE)
+							&& texture.eType == OPERAND_TYPE_RESOURCE
+							&& !bindStripped)
 						{
 							//string out1, out2, out3;
 
@@ -4848,30 +5705,30 @@ public:
 							//	out3 = "fDst0.x";
 							//}
 
-							if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2D)
+							if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2D)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
 								else
-									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
-							else if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS)
+							else if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
 								else
-									sprintf(buffer, "  %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
-							else if (bindInfo->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY)
+							else if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z, uiDest.w);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z, uiDest.w);\n", bindInfoPtr->Name.c_str());
 								else
-									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z, fDest.w);\n", bindInfo->Name.c_str());
+									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z, fDest.w);\n", bindInfoPtr->Name.c_str());
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
@@ -4900,12 +5757,24 @@ public:
 						}
 						if (unknownVariant)
 						{
+							// Completely new variant, write out the reminder.
 							string line = string(c + pos);
 							line = line.substr(0, line.find('\n'));
-							sprintf(buffer, "  Unknown use of GetDimensions for _resinfo: %s\n", line.c_str());
+							sprintf(buffer, "// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix.\n");
+							appendOutput(buffer);
+							sprintf(buffer, "// %s\n", line.c_str());
+							appendOutput(buffer);
+							sprintf(buffer, "// Example for texture2d type, uint return:\n");
+							appendOutput(buffer);
+							sprintf(buffer, "tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n");
+							appendOutput(buffer);
+							sprintf(buffer, "rx = uiDest;\n");
 							appendOutput(buffer);
 
-							logDecompileError("Unknown _resinfo variant: " + line);
+							sprintf(buffer, " state=%d, constZero.eType=%d, returnType=%d, texture.eType=%d, afImmediates[0]=%f\n", bindstate, constZero.eType, returnType, texture.eType, constZero.afImmediates[0]);
+							appendOutput(buffer);
+
+							//logDecompileError("Unknown _resinfo variant: " + line);
 						}
 						break;
 					}
@@ -4989,6 +5858,27 @@ public:
 						appendOutput(buffer);
 						break;
 
+						// FarCry4 GeometryShader
+					case OPCODE_EMIT_STREAM:
+						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "m0.Append(0); \n");
+						appendOutput(buffer);
+						break;
+					case OPCODE_CUT_STREAM:
+						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						sprintf(buffer, "m0.RestartStrip(); \n");
+						appendOutput(buffer);
+						break;
+
+					case OPCODE_NOP:
+						// Used in MGSV:TPP, perhaps an artefact of having debug
+						// info enabled in the shaders?
+						break;
+
 					default:
 						logDecompileError("Unknown statement: " + string(statement));
 						return;
@@ -4996,8 +5886,7 @@ public:
 				iNr++;
 			}
 
-			// Next line.
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 			mLastStatement = instr;
 		}
 
@@ -5022,7 +5911,7 @@ public:
 			// Ignore comments.
 			if (!strncmp(c + pos, "//", 2))
 			{
-				while (c[pos] != 0x0a && pos < size) pos++; pos++;
+				NextLine(c, pos, size);
 				continue;
 			}
 			// Read statement.
@@ -5032,6 +5921,9 @@ public:
 				return;
 			}
 			if (!strncmp(statement, "vs_", 3) ||
+				!strncmp(statement, "hs_", 3) ||
+				!strncmp(statement, "ds_", 3) ||
+				!strncmp(statement, "gs_", 3) ||
 				!strncmp(statement, "ps_", 3) ||
 				!strncmp(statement, "cs_", 3))
 			{
@@ -5040,26 +5932,64 @@ public:
 			}
 
 			// Next line.
-			while (c[pos] != 0x0a && pos < size) pos++; pos++;
+			NextLine(c, pos, size);
 		}
 	}
 
+
 	// The StereoParams are nearly always useful, but the depth buffer texture is rarely used.
 	// Adding .ini declaration, since declaring it doesn't cost anything and saves typing them in later.
+
 	void WriteAddOnDeclarations()
 	{
-		const char *StereoTextureCode = "\n"
-			"Texture2D<float4> StereoParams : register(t125);\n";
-		mOutput.insert(mOutput.end(), StereoTextureCode, StereoTextureCode + strlen(StereoTextureCode));
-		const char *IniTextureCode = 
-			"Texture1D<float4> IniParams : register(t120);\n";
-		mOutput.insert(mOutput.end(), IniTextureCode, IniTextureCode + strlen(IniTextureCode));
+		string declaration = 
+			"\n\n"
+			"// 3Dmigoto declarations\n";
+
+		// Also inject the helper macro of 'cmp' to fix any boolean comparisons.
+		// This is a bit of a hack, but simply adds a "-" in front of the comparison,
+		// which negates the bool comparison from 1:0 to -1:0. 
+		//    r0.y = cmp(0 < r0.x);   becomes
+		//    r0.y = -(0 < r0.x);
+		// This allows us to avoid having helper routines, and needing different
+		// variants for different swizzle sizes, like .xy or .xyz.
+
+		declaration +=
+			"#define cmp -\n";
+
+		if (IniParamsReg >= 0) {
+			declaration +=
+				"Texture1D<float4> IniParams : register(t" + std::to_string(IniParamsReg) + ");\n";
+		}
+
+		if (StereoParamsReg >= 0) {
+			declaration +=
+				"Texture2D<float4> StereoParams : register(t" + std::to_string(StereoParamsReg) + ");\n";
+		}
 
 		if (mZRepair_DepthBuffer)
 		{
-			const char *DepthTextureCode = "Texture2D<float4> InjectedDepthTexture : register(t126);\n";
-			mOutput.insert(mOutput.end(), DepthTextureCode, DepthTextureCode + strlen(DepthTextureCode));
+			declaration +=
+				"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
 		}
+
+		declaration +=
+			"\n";
+
+		mOutput.insert(mOutput.end(), declaration.c_str(), declaration.c_str() + declaration.length());
+	}
+
+
+	// Header for the file, version and time stamp.  Skipping first line of file, to allow
+	// it to be used for on-screen comments.
+
+	void WriteHeaderDeclarations()
+	{
+		string header =
+			"// ---- Created with 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime();
+
+		// using .begin() to ensure first lines in files.
+		mOutput.insert(mOutput.begin(), header.c_str(), header.c_str() + header.length());
 	}
 };
 
@@ -5072,6 +6002,11 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	d.mOutput.reserve(16 * 1024);
 	d.mErrorOccurred = false;
 	d.mShaderType = "unknown";
+
+	// TODO: We should be able do better than copying all this by just
+	// including params in d:
+	d.StereoParamsReg = params.StereoParamsReg;
+	d.IniParamsReg = params.IniParamsReg;
 	d.mFixSvPosition = params.fixSvPosition;
 	d.mRecompileVs = params.recompileVs;
 	d.mPatched = false;
@@ -5123,7 +6058,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();
 		d.WriteAddOnDeclarations();
-		d.ParseInputSignature(params.decompiled, params.decompiledSize);
+		d.ParseInputSignature(shader, params.decompiled, params.decompiledSize);
 		d.ParseOutputSignature(params.decompiled, params.decompiledSize);
 		if (!params.ZeroOutput)
 		{
@@ -5135,6 +6070,8 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 			d.WriteZeroOutputSignature(params.decompiled, params.decompiledSize);
 		}
 		d.mOutput.push_back('}');
+		d.WriteHeaderDeclarations();
+
 		shaderModel = d.mShaderType;
 		errorOccurred = d.mErrorOccurred;
 		FreeShaderInfo(shader->sInfo);

@@ -299,7 +299,7 @@ void WINAPI PSGPSampleTexture(void *D3DFE_PROCESSVERTICES, unsigned int a, float
 
 STDMETHODIMP D3D9Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
-	LogDebug("D3D9Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", typeid(*this).name());
+	LogDebug("D3D9Wrapper::IDirect3DUnknown::QueryInterface called at 'this': %s\n", type_name(this));
 
 	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IID m2 = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };

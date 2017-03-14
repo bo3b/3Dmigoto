@@ -48,6 +48,7 @@ cbuffer _Globals : register(b0)
 }
 
 Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
 
 void main(
   float3 v0 : SV_POSITION0,
@@ -77,13 +78,21 @@ void main(
   r0.x = dot(k_mObjectToWorld._m10_m11_m12_m13, r0.xyzw);
   r0.x = k_vFogSky.w + r0.x;
   
+float4 params = IniParams.Load(0);
 float4 stereo = StereoParams.Load(0);
+bool aimMode = (params.w == 1);
+bool playMode = (params.z == 1);
 float4 r23;
 r23.xyzw = r1.xyzw;
 if(r23.w==1) //need to stop messing up fire
 {
 	r23.x -= stereo.x * (r23.w - stereo.y); 
 }  
+else if (!playMode)
+{
+	r23.x -= stereo.x * (r23.w - stereo.y); 
+  r23.x += stereo.x * params.x * 50;
+}
   o0.xyzw = r23.xyzw;
   o1.xyz = v1.xyz;
   o2.xy = v2.xy;
@@ -365,3 +374,4 @@ ret
 // Approximately 84 instruction slots used
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  

@@ -1,18 +1,60 @@
-#include "input.h"
+#include "Input.h"
 
-#include "Main.h"
-#include "../log.h"
-#include "../util.h"
-#include <vector>
-#include "vkeys.h"
 #include <Xinput.h>
+#include <vector>
 #include <algorithm>
-#include <ctime>
-#include <exception>
+
+#include "log.h"
+#include "util.h"
+#include "vkeys.h"
+
+// Set a function pointer to the xinput get state call. By default, set it to
+// XInputGetState() in whichever xinput we are linked to (xinput9_1_0.dll). If
+// the d3dx.ini is using the guide button we will try to switch to either
+// xinput 1.3 or 1.4 to get access to the undocumented XInputGetStateEx() call.
+// We can't rely on these existing on Win7 though, so if we fail to load them
+// don't treat it as fatal and continue using the original one.
+static HMODULE xinput_lib;
+typedef DWORD (WINAPI *tXInputGetState)(DWORD dwUserIndex, XINPUT_STATE* pState);
+static tXInputGetState _XInputGetState = XInputGetState;
+
+static void SwitchToXinpuGetStateEx()
+{
+	tXInputGetState XInputGetStateEx;
+
+	if (xinput_lib)
+		return;
+
+	// 3DMigoto is linked against xinput9_1_0.dll, but that version does
+	// not export XInputGetStateEx to get the guide button. Try loading
+	// xinput 1.3 and 1.4, which both support this functionality.
+	xinput_lib = LoadLibrary(L"xinput1_3.dll");
+	if (xinput_lib) {
+		LogInfo("Loaded xinput1_3.dll for guide button support\n");
+	} else {
+		xinput_lib = LoadLibrary(L"xinput1_4.dll");
+		if (xinput_lib) {
+			LogInfo("Loaded xinput1_4.dll for guide button support\n");
+		} else {
+			LogInfo("ERROR: Unable to load xinput 1.3 or 1.4: Guide button will not be available\n");
+			return;
+		}
+	}
+
+	// Unnamed and undocumented exports FTW
+	LPCSTR XInputGetStateExOrdinal = (LPCSTR)100;
+	XInputGetStateEx = (tXInputGetState)GetProcAddress(xinput_lib, XInputGetStateExOrdinal);
+	if (!XInputGetStateEx) {
+		LogInfo("ERROR: Unable to get XInputGetStateEx: Guide button will not be available\n");
+		return;
+	}
+
+	_XInputGetState = XInputGetStateEx;
+}
 
 class KeyParseError: public exception {} keyParseError;
 
-void InputListener::UpEvent(D3D11Base::ID3D11Device *device)
+void InputListener::UpEvent(HackerDevice *device)
 {
 }
 
@@ -25,13 +67,13 @@ InputCallbacks::InputCallbacks(InputCallback down_cb, InputCallback up_cb,
 	private_data(private_data)
 {}
 
-void InputCallbacks::DownEvent(D3D11Base::ID3D11Device *device)
+void InputCallbacks::DownEvent(HackerDevice *device)
 {
 	if (down_cb)
 		return down_cb(device, private_data);
 }
 
-void InputCallbacks::UpEvent(D3D11Base::ID3D11Device *device)
+void InputCallbacks::UpEvent(HackerDevice *device)
 {
 	if (up_cb)
 		return up_cb(device, private_data);
@@ -52,7 +94,7 @@ InputAction::~InputAction()
 	delete listener;
 }
 
-bool InputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool InputAction::Dispatch(HackerDevice *device)
 {
 	bool state = button->CheckState();
 
@@ -72,8 +114,14 @@ bool InputAction::Dispatch(D3D11Base::ID3D11Device *device)
 
 // -----------------------------------------------------------------------------
 
-VKInputButton::VKInputButton(wchar_t *keyName)
+VKInputButton::VKInputButton(const wchar_t *keyName) :
+	invert(false)
 {
+	if (!_wcsnicmp(keyName, L"no_", 3)) {
+		invert = true;
+		keyName += 3;
+	}
+
 	vkey = ParseVKey(keyName);
 	if (vkey < 0)
 		throw keyParseError;
@@ -86,7 +134,7 @@ VKInputButton::VKInputButton(wchar_t *keyName)
 
 bool VKInputButton::CheckState()
 {
-	return (GetAsyncKeyState(vkey) < 0);
+	return ((GetAsyncKeyState(vkey) < 0) ^ invert);
 }
 
 
@@ -110,7 +158,7 @@ RepeatingInputAction::RepeatingInputAction(InputButton *button, InputListener *l
 	InputAction(button, listener)
 {}
 
-bool RepeatingInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool RepeatingInputAction::Dispatch(HackerDevice *device)
 {
 	int ms = (1000 / repeatRate);
 	if (GetTickCount64() < (lastTick + ms))
@@ -143,7 +191,7 @@ DelayedInputAction::DelayedInputAction(InputButton *button, InputListener *liste
 	InputAction(button, listener)
 {}
 
-bool DelayedInputAction::Dispatch(D3D11Base::ID3D11Device *device)
+bool DelayedInputAction::Dispatch(HackerDevice *device)
 {
 	ULONGLONG now = GetTickCount64();
 	bool state = button->CheckState();
@@ -180,16 +228,16 @@ bool XInputButton::_CheckState(int controller)
 	XINPUT_GAMEPAD *gamepad = &XInputState[controller].state.Gamepad;
 
 	if (!XInputState[controller].connected)
-		return false;
+		return false; // Don't invert if it's not connected
 
 	if (button && (gamepad->wButtons & button))
-		return true;
+		return true ^ invert;
 	if (left_trigger && (gamepad->bLeftTrigger >= left_trigger))
-		return true;
+		return true ^ invert;
 	if (right_trigger && (gamepad->bRightTrigger >= right_trigger))
-		return true;
+		return true ^ invert;
 
-	return false;
+	return false ^ invert;
 }
 
 static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
@@ -207,7 +255,7 @@ static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
 	{L"B", XINPUT_GAMEPAD_B},
 	{L"X", XINPUT_GAMEPAD_X},
 	{L"Y", XINPUT_GAMEPAD_Y},
-	{L"GUIDE", 0x400}, /* Placeholder for now - need to use undocumented XInputGetStateEx call */
+	{L"GUIDE", 0x400}, /* Requires undocumented XInputGetStateEx call in xinput 1.3 / 1.4 */
 };
 
 // This function is parsing strings with formats such as:
@@ -220,14 +268,20 @@ static EnumName_t<wchar_t *, WORD> XInputButtons[] = {
 // (either that or I have a very precise 100% reproducable memory corruption
 // issue), which isn't that surprising given that regular expressions are
 // uncommon in the Windows world. Feel free to rewrite this in a cleaner way.
-XInputButton::XInputButton(wchar_t *keyName) :
+XInputButton::XInputButton(const wchar_t *keyName) :
 	controller(-1),
 	button(0),
 	left_trigger(0),
-	right_trigger(0)
+	right_trigger(0),
+	invert(false)
 {
 	int i, threshold = XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
 	BYTE *trigger;
+
+	if (!_wcsnicmp(keyName, L"no_", 3)) {
+		invert = true;
+		keyName += 3;
+	}
 
 	if (_wcsnicmp(keyName, L"XB", 2))
 		throw keyParseError;
@@ -248,6 +302,10 @@ XInputButton::XInputButton(wchar_t *keyName) :
 			break;
 		}
 	}
+
+	if (!_wcsicmp(keyName, L"GUIDE"))
+		SwitchToXinpuGetStateEx();
+
 	if (button)
 		return;
 
@@ -270,7 +328,7 @@ XInputButton::XInputButton(wchar_t *keyName) :
 		threshold = _wtoi(keyName);
 	}
 
-	*trigger = std::min(threshold + 1, 255);
+	*trigger = min(threshold + 1, 255);
 }
 
 bool XInputButton::CheckState()
@@ -288,6 +346,86 @@ bool XInputButton::CheckState()
 	return false;
 }
 
+InputButtonList::InputButtonList(wchar_t *keyName)
+{
+	wchar_t *ptr = keyName, *cur = NULL;
+	wstring cur_key;
+
+	while (*ptr) {
+		// Skip over whitespace:
+		for (; *ptr == L' '; ptr++) {}
+
+		// Mark start of current entry:
+		cur = ptr;
+
+		// Scan until the next whitespace or end of string:
+		for (; *ptr && *ptr != L' '; ptr++) {}
+
+		// Copy the current entry to a new string (don't modify the
+		// string passed from the caller so it can still log properly)
+		// and advance pointer unless it is the end of string:
+		cur_key = wstring(cur, ptr - cur);
+		if (*ptr)
+			ptr++;
+
+		// Special case: "no_modifiers" is expanded to exclude all modifiers:
+		if (!_wcsicmp(cur_key.c_str(), L"no_modifiers")) {
+			buttons.push_back(new VKInputButton(L"NO_CTRL"));
+			buttons.push_back(new VKInputButton(L"NO_ALT"));
+			buttons.push_back(new VKInputButton(L"NO_SHIFT"));
+			// Ctrl, Alt & Shift have left/right independent
+			// variants, but Win does not, exclude both:
+			buttons.push_back(new VKInputButton(L"NO_LWIN"));
+			buttons.push_back(new VKInputButton(L"NO_RWIN"));
+		} else {
+			try {
+				buttons.push_back(new VKInputButton(cur_key.c_str()));
+			} catch (KeyParseError) {
+				try {
+					buttons.push_back(new XInputButton(cur_key.c_str()));
+				} catch (KeyParseError) {
+					goto fail;
+				}
+			}
+		}
+	}
+
+	if (buttons.empty())
+		throw keyParseError;
+
+	return;
+fail:
+	clear();
+	throw keyParseError;
+}
+
+void InputButtonList::clear()
+{
+	vector<InputButton*>::iterator i;
+
+	for (i = buttons.begin(); i < buttons.end(); i++)
+		delete *i;
+
+	buttons.clear();
+}
+
+InputButtonList::~InputButtonList()
+{
+	clear();
+}
+
+bool InputButtonList::CheckState()
+{
+	vector<InputButton*>::iterator i;
+
+	for (i = buttons.begin(); i < buttons.end(); i++) {
+		if (!(*i)->CheckState())
+			return false;
+	}
+
+	return true;
+}
+
 static std::vector<class InputAction *> actions;
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
@@ -299,15 +437,24 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 
 	RightStripW(keyName);
 
+	// We could potentially only use the InputButtonList here, but that
+	// does not work with some of our backwards compatibility key names
+	// that contain spaces ("Num blah", "Prnt Scrn"), so we still try to
+	// parse the keyName as a single key first.
 	try {
 		button = new VKInputButton(keyName);
 	} catch (KeyParseError) {
 		try {
 			button = new XInputButton(keyName);
 		} catch (KeyParseError) {
-			LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", iniKey, keyName);
-			BeepFailure2();
-			return;
+			try {
+				button = new InputButtonList(keyName);
+			} catch (KeyParseError) {
+				LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n",
+						iniKey, keyName);
+				BeepFailure2();
+				return;
+			}
 		}
 	}
 
@@ -347,7 +494,7 @@ void ClearKeyBindings()
 }
 
 
-bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
+bool DispatchInputEvents(HackerDevice *device)
 {
 	std::vector<class InputAction *>::iterator i;
 	class InputAction *action;
@@ -363,9 +510,8 @@ bool DispatchInputEvents(D3D11Base::ID3D11Device *device)
 		if (!XInputState[j].connected && ((now == last_time) || (now % 4 != j)))
 			continue;
 
-		// TODO: Use undocumented XInputGetStateEx so we can also read the guide button
 		XInputState[j].connected =
-			(XInputGetState(j, &XInputState[j].state) == ERROR_SUCCESS);
+			(_XInputGetState(j, &XInputState[j].state) == ERROR_SUCCESS);
 	}
 
 	last_time = now;

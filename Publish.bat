@@ -70,8 +70,9 @@ echo(
 echo(
 echo === Deep Cleaning Output Directories ===
 @echo on
-RMDIR ".\Zip Release\" /S /Q
+RMDIR ".\x32\Zip Release\" /S /Q
 RMDIR ".\x64\Zip Release\" /S /Q
+RMDIR ".\Zip Release\" /S /Q
 @echo off
 
 
@@ -85,12 +86,12 @@ echo(
 echo(
 echo === Building Win32 target ===
 echo(
-MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=Win32 /v:minimal
+MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=Win32 /v:minimal /target:rebuild
 echo(
 echo(
 echo === Building x64 target ===
 echo(
-MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:minimal
+MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:minimal /target:rebuild
 
 
 REM -----------------------------------------------------------------------------
@@ -123,21 +124,31 @@ echo(
 echo === Move builds to target zip directory ===
 echo(
 MKDIR ".\Zip Release\x32\"
-MOVE ".\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
-MOVE ".\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
-MOVE ".\Zip Release\*.dll"  ".\Zip Release\x32\"
+MKDIR ".\Zip Release\x32\ShaderFixes\"
+MOVE ".\x32\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x32\ShaderFixes\"
 
 echo(
 MKDIR ".\Zip Release\x64\"
+MKDIR ".\Zip Release\x64\ShaderFixes\"
 MOVE ".\x64\Zip Release\d3dx.ini"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
+MOVE ".\x64\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x64\ShaderFixes\"
+
+echo(
+MKDIR ".\Zip Release\cmd_Decompiler\"
+MOVE ".\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
+COPY ".\Zip Release\x32\d3dcompiler_46.dll"  ".\Zip Release\cmd_Decompiler\"
 
 echo(
 echo(
 echo === Create Zip release for x32 and x64  ===
 7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x32\"
 7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x64\"
+7zip\7za a ".\Zip Release\cmd_Decompiler-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\cmd_Decompiler\*"
 
 PAUSE
 EXIT

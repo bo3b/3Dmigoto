@@ -1,0 +1,640 @@
+
+cbuffer GlobalBuffer : register(b0)
+{
+  float4x4 View : packoffset(c0);
+  float4x4 Projection : packoffset(c4);
+  float4x4 InvViewProj : packoffset(c8);
+  float3 EyePosition : packoffset(c12) = float3(0,0,0);
+  float3 DirLight0_Dir : packoffset(c13) = float3(-0.577000022,-0.577000022,0.577000022);
+  float4 DirLight0_Diffuse : packoffset(c14) = float4(1,1,1,1);
+  float4 PointLightActive : packoffset(c15) = float4(0,0,0,0);
+  float4 PointLight0_Position_AttenStart : packoffset(c16) = float4(0,0,0,10000);
+  float4 PointLight0_Diffuse_AttenInvRange : packoffset(c17) = float4(1,1,1,1);
+  float4 PointLight1_Position_AttenStart : packoffset(c18) = float4(0,0,0,10000);
+  float4 PointLight1_Diffuse_AttenInvRange : packoffset(c19) = float4(1,1,1,1);
+  float4 PointLight2_Position_AttenStart : packoffset(c20) = float4(0,0,0,10000);
+  float4 PointLight2_Diffuse_AttenInvRange : packoffset(c21) = float4(1,1,1,1);
+  float4 PointLight3_Position_AttenStart : packoffset(c22) = float4(0,0,0,10000);
+  float4 PointLight3_Diffuse_AttenInvRange : packoffset(c23) = float4(1,1,1,1);
+  float4 SHLight[7] : packoffset(c24) = float4(0,0,0,0);
+  
+// Broken here because of missing large array initializer.
+
+SamplerState compositorDiffuseSampler_s : register(s0);
+SamplerState compositorSpecularSampler_s : register(s1);
+SamplerState MuckDiffuseSampler_s : register(s2);
+SamplerState MuckNormalSampler_s : register(s3);
+SamplerState MuckSpecGlossSampler_s : register(s4);
+SamplerState TrackSampler_s : register(s5);
+Texture2D<float4> muckDiffuseTexture : register(t60);
+Texture2D<float4> muckNormalTexture : register(t61);
+Texture2D<float4> muckSpecGlossTexture : register(t62);
+Texture2D<float4> TerrainTrackTexture : register(t65);
+Texture2D<float4> compositorDiffuseTexture : register(t72);
+Texture2D<float4> compositorSpecularTexture : register(t73);
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  float w1 : TEXCOORD3,
+  float w1 : TEXCOORD4,
+  float4 v2 : TEXCOORD1,
+  float3 v3 : TEXCOORD2,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = v3.xz;
+  r0.z = 1;
+  r1.x = dot(r0.xyz, cb0[73].xzwx);
+  r1.y = dot(r0.xyz, cb0[74].xzwx);
+  r0.x = dot(r0.xyz, cb0[76].xzwx);
+  r0.xy = r1.xy / r0.xx;
+  r0.xy = r0.xy * cb0[77].xyxx + cb0[77].zwzz;
+  r1.xyzw = compositorDiffuseTexture.SampleLevel(compositorDiffuseSampler_s, r0.xy, 0).xyzw;
+  r0.xyzw = compositorSpecularTexture.SampleLevel(compositorSpecularSampler_s, r0.xy, 0).xyzw;
+  r0.xy = r0.xy * float2(2,2) + float2(-1,-1);
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = 1 + -r0.w;
+  r0.w = sqrt(r0.w);
+  r2.xyz = float3(1,-1,1) * v2.yxz;
+  r3.xyz = r2.xyz * r0.xxx;
+  r3.xyz = r0.www * v2.xyz + r3.xyz;
+  r4.xyz = float3(1,-1,1) * v2.xzy;
+  r0.xyw = r0.yyy * r4.xyz + r3.xyz;
+  r1.w = dot(r0.xyw, r0.xyw);
+  r1.w = rsqrt(r1.w);
+  r0.xyw = r1.www * r0.xyw;
+  r1.w = r0.z * r0.z;
+  r2.w = sqrt(r0.z);
+  r2.w = min(1, r2.w);
+  r3.x = 0.5 < cb0[83].z;
+  if (r3.x != 0) {
+    r3.y = cb0[71].y * v3.z;
+    r3.zw = v3.xx * cb0[71].xxxx + float2(0.5,0.5);
+    r5.x = cb0[172].z;
+    r5.yw = float2(0.5,0.5);
+    r3.xz = r5.xy + r3.zy;
+    r6.xyzw = TerrainTrackTexture.SampleLevel(TrackSampler_s, r3.xz, 0).xyzw;
+    r5.z = cb0[172].z;
+    r3.xy = r5.zw + r3.wy;
+    r3.xyzw = TerrainTrackTexture.SampleLevel(TrackSampler_s, r3.xy, 0).xyzw;
+    r3.yz = v3.xz * cb0[71].xxyx + float2(0,0.5);
+    r5.xz = float2(0.5,0.5);
+    r5.y = cb0[172].w;
+    r5.xy = r5.xy + r3.yz;
+    r7.xyzw = TerrainTrackTexture.SampleLevel(TrackSampler_s, r5.xy, 0).xyzw;
+    r5.w = cb0[172].w;
+    r3.yz = r5.zw + r3.yz;
+    r5.xyzw = TerrainTrackTexture.SampleLevel(TrackSampler_s, r3.yz, 0).yzwx;
+    r5.x = saturate(r6.x);
+    r5.y = saturate(r3.x);
+    r5.z = saturate(r7.x);
+    r5.w = saturate(r5.w);
+    r3.x = dot(r5.xyzw, float4(0.25,0.25,0.25,0.25));
+    r3.y = w1.x < 0.100000001;
+    r3.z = 0.5 < cb0[173].x;
+    r3.y = (int)r3.z | (int)r3.y;
+    r3.w = w1.x * r3.x;
+    r3.w = saturate(10 * r3.w);
+    r4.w = -0.100000001 + w1.x;
+    r4.w = saturate(-r4.w * 2.85714293 + 1);
+    r4.w = r4.w * r3.x;
+    r3.y = r3.y ? r3.w : r4.w;
+    r6.xyz = float3(0,0,0) < cb0[170].xyzx;
+    if (r6.x != 0) {
+      r6.xw = v3.xz * cb0[70].xxxy + float2(0.5,0.5);
+      r6.xw = cb0[71].zzzw * r6.xw;
+      sincos(cb0[170].w, r7.x, r8.x);
+      r9.x = -r7.x;
+      r9.y = r8.x;
+      r8.x = dot(r9.yx, r6.xw);
+      r9.z = r7.x;
+      r8.y = dot(r9.zy, r6.xw);
+      r6.xw = r3.zz ? r8.xy : r6.xw;
+      r6.xw = cb0[170].xxxx * r6.xw;
+      r7.xyzw = muckDiffuseTexture.Sample(MuckDiffuseSampler_s, r6.xw).xyzw;
+      r8.xyz = r7.xyz * r1.xyz;
+      r9.xyz = r7.xyz + -r1.xyz;
+      r9.xyz = r7.www * r9.xyz + r1.xyz;
+      r7.xyz = -r1.xyz * r7.xyz + r9.xyz;
+      r7.xyz = cb0[173].xxxx * r7.xyz + r8.xyz;
+      r3.w = r7.w * r3.y;
+      r7.xyz = r7.xyz + -r1.xyz;
+      r1.xyz = r3.www * r7.xyz + r1.xyz;
+    }
+    r7.xyz = r1.xyz * r3.yyy;
+    o1.xyz = r7.xyz * float3(-0.149999976,-0.149999976,-0.149999976) + r1.xyz;
+    if (r6.y != 0) {
+      r3.yw = v3.xz * cb0[70].xxxy + float2(0.5,0.5);
+      r3.yw = cb0[71].zzzw * r3.yw;
+      sincos(cb0[170].w, r6.x, r7.x);
+      r8.x = -r6.x;
+      r8.y = r7.x;
+      r7.x = dot(r8.yx, r3.yw);
+      r8.z = r6.x;
+      r7.y = dot(r8.zy, r3.yw);
+      r3.yw = r3.zz ? r7.xy : r3.yw;
+      r3.yw = cb0[170].yyyy * r3.yw;
+      r7.xyzw = muckNormalTexture.Sample(MuckNormalSampler_s, r3.yw).xyzw;
+      r7.xy = r7.wy * float2(2,2) + float2(-1,-1);
+      r3.y = dot(r7.xy, r7.xy);
+      r3.y = 1 + -r3.y;
+      r7.z = sqrt(abs(r3.y));
+      r3.y = dot(r7.xyz, r7.xyz);
+      r3.y = rsqrt(r3.y);
+      r6.xyw = r7.xyz * r3.yyy;
+      r2.xyz = r6.xxx * r2.xyz;
+      r2.xyz = r6.www * v2.xyz + r2.xyz;
+      r2.xyz = r6.yyy * r4.xyz + r2.xyz;
+      r3.y = dot(r2.xyz, r2.xyz);
+      r3.y = rsqrt(r3.y);
+      r2.xyz = r2.xyz * r3.yyy + -r0.xyw;
+      r2.xyz = r3.xxx * r2.xyz + r0.xyw;
+      r3.y = dot(r2.xyz, r2.xyz);
+      r3.y = rsqrt(r3.y);
+      r0.xyw = r3.yyy * r2.xyz;
+    }
+    r2.x = cb0[173].x < 0.5;
+    r4.xy = r5.xy + -r5.zw;
+    r4.z = -r4.x * r4.y + 1;
+    r4.w = -r4.y;
+    r2.y = dot(r4.xzw, r4.xzw);
+    r2.y = rsqrt(r2.y);
+    r2.z = 5 * r3.x;
+    r2.z = min(0.800000012, r2.z);
+    r3.y = saturate(5 * w1.x);
+    r2.z = min(r3.y, r2.z);
+    r4.xyz = r4.xzw * r2.yyy + -r0.xyw;
+    r4.xyz = r2.zzz * r4.xyz + r0.xyw;
+    r2.y = dot(r4.xyz, r4.xyz);
+    r2.y = rsqrt(r2.y);
+    r4.xyz = r4.xyz * r2.yyy;
+    r0.xyw = r2.xxx ? r4.xyz : r0.xyw;
+    if (r6.z != 0) {
+      r2.xy = v3.xz * cb0[70].xyxx + float2(0.5,0.5);
+      r2.xy = cb0[71].zwzz * r2.xy;
+      sincos(cb0[170].w, r4.x, r5.x);
+      r6.x = -r4.x;
+      r6.y = r5.x;
+      r5.x = dot(r6.yx, r2.xy);
+      r6.z = r4.x;
+      r5.y = dot(r6.zy, r2.xy);
+      r2.xy = r3.zz ? r5.xy : r2.xy;
+      r2.xy = cb0[170].zzzz * r2.xy;
+      r4.xyzw = muckSpecGlossTexture.Sample(MuckSpecGlossSampler_s, r2.xy).xyzw;
+      r2.x = cb0[173].x >= 0.5;
+      r2.x = r2.x ? 1.000000 : 0;
+      r2.y = r4.y * r4.y + -r4.x;
+      r2.y = r2.x * r2.y + r4.x;
+      r0.z = -r0.z * r0.z + r2.y;
+      r1.w = r3.x * r0.z + r1.w;
+      r0.z = sqrt(r4.y);
+      r0.z = min(1, r0.z);
+      r0.z = r0.z + -r4.y;
+      r0.z = r2.x * r0.z + r4.y;
+      r0.z = r0.z + -r2.w;
+      r2.w = r3.x * r0.z + r2.w;
+    }
+  } else {
+    o1.xyz = r1.xyz;
+  }
+  r2.w = saturate(r2.w);
+  o1.w = 0.498039246 * r2.w;
+  r1.xyz = r0.xyw >= float3(0,0,0);
+  r1.xyz = r1.xyz ? 1.000000 : 0;
+  r0.y = dot(r1.xyz, float3(2,4,8));
+  o0.xy = abs(r0.xw);
+  o0.z = 0.00392156886 * r0.y;
+  r0.x = 12.9200001 * r1.w;
+  r0.y = log2(abs(r1.w));
+  r0.y = 0.416666657 * r0.y;
+  r0.y = exp2(r0.y);
+  r0.y = r0.y * 1.05499995 + -0.0549999997;
+  r0.z = r1.w < 0.00313080009;
+  r0.x = saturate(r0.z ? r0.x : r0.y);
+  o0.w = 0.498039246 * r0.x;
+  o2.xyzw = v0.zzzz;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.16384
+//
+//   using 3Dmigoto v1.2.7 on Fri Nov 13 19:18:50 2015
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer GlobalBuffer
+// {
+//
+//   float4x4 View;                     // Offset:    0 Size:    64 [unused]
+//   float4x4 Projection;               // Offset:   64 Size:    64 [unused]
+//   float4x4 InvViewProj;              // Offset:  128 Size:    64 [unused]
+//   float3 EyePosition;                // Offset:  192 Size:    12 [unused]
+//      = 0x00000000 0x00000000 0x00000000 
+//   float3 DirLight0_Dir;              // Offset:  208 Size:    12 [unused]
+//      = 0xbf13b646 0xbf13b646 0x3f13b646 
+//   float4 DirLight0_Diffuse;          // Offset:  224 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 PointLightActive;           // Offset:  240 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   float4 PointLight0_Position_AttenStart;// Offset:  256 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x461c4000 
+//   float4 PointLight0_Diffuse_AttenInvRange;// Offset:  272 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 PointLight1_Position_AttenStart;// Offset:  288 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x461c4000 
+//   float4 PointLight1_Diffuse_AttenInvRange;// Offset:  304 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 PointLight2_Position_AttenStart;// Offset:  320 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x461c4000 
+//   float4 PointLight2_Diffuse_AttenInvRange;// Offset:  336 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 PointLight3_Position_AttenStart;// Offset:  352 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x461c4000 
+//   float4 PointLight3_Diffuse_AttenInvRange;// Offset:  368 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 SHLight[7];                 // Offset:  384 Size:   112 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//        0x00000000 0x00000000 0x00000000 0x00000000 
+//        0x00000000 0x00000000 0x00000000 0x00000000 
+//        0x00000000 0x00000000 0x00000000 0x00000000 
+//        0x00000000 0x00000000 0x00000000 0x00000000 
+//        0x00000000 0x00000000 0x00000000 0x00000000 
+//        0x00000000 0x00000000 0x00000000 0x00000000 
+//   float AmbientScale;                // Offset:  496 Size:     4 [unused]
+//      = 0x3f800000 
+//   float AmbientScaleFX;              // Offset:  500 Size:     4 [unused]
+//      = 0x3f800000 
+//   float4 AmbientRotation;            // Offset:  512 Size:    16 [unused]
+//      = 0x3f800000 0x00000000 0x00000000 0x3f800000 
+//   float4x4 unAdjustedShadowViewMatrix;// Offset:  528 Size:    64 [unused]
+//   float4x4 ShadowVPMatrix;           // Offset:  592 Size:    64 [unused]
+//   float4x4 ShadowVPMatrixNear;       // Offset:  656 Size:    64 [unused]
+//   float4x4 ShadowVPMatrixFar;        // Offset:  720 Size:    64 [unused]
+//   float4 ShadowNearShift;            // Offset:  784 Size:    16 [unused]
+//   float4 ShadowNearScale;            // Offset:  800 Size:    16 [unused]
+//   float3 ShadowNearFarCutOff;        // Offset:  816 Size:    12 [unused]
+//   float ShadowTextureResolution;     // Offset:  828 Size:     4 [unused]
+//   float2 ShadowBias;                 // Offset:  832 Size:     8 [unused]
+//      = 0x3f800000 0x3dcccccd 
+//   float2 ShadowSampleOffsetPCF0;     // Offset:  840 Size:     8 [unused]
+//   float2 ShadowSampleOffsetPCF1;     // Offset:  848 Size:     8 [unused]
+//   float2 ShadowSampleOffsetPCF2;     // Offset:  856 Size:     8 [unused]
+//   float2 ShadowSampleOffsetPCF3;     // Offset:  864 Size:     8 [unused]
+//   float ShadowCubeDepthBias;         // Offset:  872 Size:     4 [unused]
+//      = 0x3f800000 
+//   float ShadowCubeNormalBias;        // Offset:  876 Size:     4 [unused]
+//      = 0x3dcccccd 
+//   float3 ShadowCubeCoords[4];        // Offset:  880 Size:    60 [unused]
+//   float ShadowCubeSizes[4];          // Offset:  944 Size:    52 [unused]
+//   int CurrentShadowCube;             // Offset:  996 Size:     4 [unused]
+//      = 0xffffffff 
+//   float4x3 sun_cloud_matrix;         // Offset: 1008 Size:    48 [unused]
+//   float sun_cloud_intensity;         // Offset: 1056 Size:     4 [unused]
+//   float4 fogConstant;                // Offset: 1072 Size:    16 [unused]
+//      = 0x3b83126f 0xc6435000 0x41a00000 0x3fc00000 
+//   float3 fog_light_direction;        // Offset: 1088 Size:    12 [unused]
+//      = 0x3f800000 0x00000000 0x00000000 
+//   float2 g_LAO_Parameters;           // Offset: 1104 Size:     8 [unused]
+//      = 0x00000000 0x00000000 
+//   float4 terrainSizeInv;             // Offset: 1120 Size:    16
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float2 playableSizeInv;            // Offset: 1136 Size:     8
+//      = 0x3f800000 0x3f800000 
+//   float2 chunkSize;                  // Offset: 1144 Size:     8
+//      = 0x3f800000 0x3f800000 
+//   float2 terrainHeightRanges;        // Offset: 1152 Size:     8 [unused]
+//      = 0x43160000 0x43160000 
+//   float4x4 compositorViewProjection; // Offset: 1168 Size:    64
+//   float4 compositorViewRemap;        // Offset: 1232 Size:    16
+//      = 0x3f000000 0x3f000000 0x3f000000 0x3f000000 
+//   float4 dummySpace[2];              // Offset: 1248 Size:    32 [unused]
+//   float4 g_currentTime;              // Offset: 1280 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   float4 snowParameters;             // Offset: 1296 Size:    16 [unused]
+//      = 0x00000000 0x3f800000 0x00000000 0x3f800000 
+//   float4 snowEdgeFadeParameters;     // Offset: 1312 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x41800000 0x40800000 
+//   float4 snowDepthParameters;        // Offset: 1328 Size:    16
+//      = 0x3ecccccd 0x3f800000 0x3f800000 0x3f800000 
+//   float2 snowSparkleParameters;      // Offset: 1344 Size:     8 [unused]
+//      = 0x3fe66666 0x00000000 
+//   float4 g_clipping_parameters;      // Offset: 1360 Size:    16 [unused]
+//   float4 exposure_control;           // Offset: 1376 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x00000000 
+//   float4 g_lighting_parameters;      // Offset: 1392 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x00000000 0x00000000 
+//   float4 g_desaturation;             // Offset: 1408 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   float4 g_soldier_light_desaturation;// Offset: 1424 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   float4 g_vehicle_light_desaturation;// Offset: 1440 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x00000000 0x00000000 
+//   float2 atmosphericSkyBlend;        // Offset: 1456 Size:     8 [unused]
+//      = 0x3d21cac1 0xbd2a64c3 
+//   float4 g_post_process_parameters;  // Offset: 1472 Size:    16 [unused]
+//      = 0x3e3851ec 0x40a00000 0x41200000 0x3f666666 
+//   float postprocess_sepia;           // Offset: 1488 Size:     4 [unused]
+//      = 0x00000000 
+//   float4 g_solder_light_colour;      // Offset: 1504 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 g_solder_light_direction;   // Offset: 1520 Size:    16 [unused]
+//      = 0x00000000 0xbf800000 0x00000000 0x00000000 
+//   float4 g_vehicle_light_colour;     // Offset: 1536 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 g_vehicle_light_direction;  // Offset: 1552 Size:    16 [unused]
+//      = 0x00000000 0xbf800000 0x00000000 0x00000000 
+//   float3 fxlight_sunDirection;       // Offset: 1568 Size:    12 [unused]
+//      = 0x00000000 0x00000000 0x3f800000 
+//   float3 fxlight_sunColour;          // Offset: 1584 Size:    12 [unused]
+//      = 0x3f666666 0x3f800000 0x3f800000 
+//   float3 fxlight_ambColour;          // Offset: 1600 Size:    12 [unused]
+//      = 0x3f000000 0x3f0ccccd 0x3f19999a 
+//   float2 fxlight_modifiers;          // Offset: 1616 Size:     8 [unused]
+//      = 0x3f800000 0x3dcccccd 
+//   float2 fx_texelSizes;              // Offset: 1624 Size:     8 [unused]
+//      = 0x3a000000 0x3f7fe000 
+//   float4 WaterTint;                  // Offset: 1632 Size:    16 [unused]
+//   float2 WaterAspectRatio;           // Offset: 1648 Size:     8 [unused]
+//      = 0x3f800000 0x3f800000 
+//   float2 WaterColourWindScale;       // Offset: 1656 Size:     8 [unused]
+//   float4 WaterReflection_SurfaceOffset;// Offset: 1664 Size:    16 [unused]
+//   float2 WaterReflection_WindDirection;// Offset: 1680 Size:     8 [unused]
+//   float WaterReflection_SurfaceBumpiness;// Offset: 1688 Size:     4 [unused]
+//   float4 WaterReflection_ScreenScaleOffset;// Offset: 1696 Size:    16 [unused]
+//   float4 IceHealthThresholds;        // Offset: 1712 Size:    16 [unused]
+//      = 0x3ea8f5c3 0x3f28f5c3 0x3f800000 0x3f800000 
+//   float4 IceSlushColour_Tiling;      // Offset: 1728 Size:    16 [unused]
+//   float4 IceStressedColour_Tiling;   // Offset: 1744 Size:    16 [unused]
+//   float4 IceSolidColour_Tiling;      // Offset: 1760 Size:    16 [unused]
+//   float2 IceSectorTiling_InvWidth;   // Offset: 1776 Size:     8 [unused]
+//   float2 IceSlushReveal;             // Offset: 1784 Size:     8 [unused]
+//   float4x4 ViewOverride[6];          // Offset: 1792 Size:   384 [unused]
+//   float4x4 ProjectionOverride[6];    // Offset: 2176 Size:   384 [unused]
+//   float4 FOWTextureWorldScaleOffset; // Offset: 2560 Size:    16 [unused]
+//      = 0x3f800000 0x3f800000 0x00000000 0x00000000 
+//   float4 fow_visited;                // Offset: 2576 Size:    16 [unused]
+//   float4 fow_hidden;                 // Offset: 2592 Size:    16 [unused]
+//   float4 fow_blend;                  // Offset: 2608 Size:    16 [unused]
+//   float4 g_topDownRange;             // Offset: 2624 Size:    16 [unused]
+//   float4x4 topDownVPMatrix;          // Offset: 2640 Size:    64 [unused]
+//   float4 g_topDownTexureSize;        // Offset: 2704 Size:    16 [unused]
+//      = 0x00000000 0x00000000 0x3f800000 0x3f800000 
+//   float4 muckParameters;             // Offset: 2720 Size:    16
+//      = 0x3f800000 0x3f800000 0x3f800000 0x3f800000 
+//   float4 g_windVectorAndTime;        // Offset: 2736 Size:    16 [unused]
+//   float4 g_trackMapSize;             // Offset: 2752 Size:    16
+//   float g_snowIsMud;                 // Offset: 2768 Size:     4
+//      = 0x00000000 
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// compositorDiffuseSampler          sampler      NA          NA    0        1
+// compositorSpecularSampler         sampler      NA          NA    1        1
+// MuckDiffuseSampler                sampler      NA          NA    2        1
+// MuckNormalSampler                 sampler      NA          NA    3        1
+// MuckSpecGlossSampler              sampler      NA          NA    4        1
+// TrackSampler                      sampler      NA          NA    5        1
+// muckDiffuseTexture                texture  float4          2d   60        1
+// muckNormalTexture                 texture  float4          2d   61        1
+// muckSpecGlossTexture              texture  float4          2d   62        1
+// TerrainTrackTexture               texture  float4          2d   65        1
+// compositorDiffuseTexture          texture  float4          2d   72        1
+// compositorSpecularTexture         texture  float4          2d   73        1
+// GlobalBuffer                      cbuffer      NA          NA    0        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float     z 
+// TEXCOORD                 0   xy          1     NONE   float       
+// TEXCOORD                 3     z         1     NONE   float     z 
+// TEXCOORD                 4      w        1     NONE   float       
+// TEXCOORD                 1   xyz         2     NONE   float   xyz 
+// TEXCOORD                 2   xyz         3     NONE   float   x z 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+// SV_Target                1   xyzw        1   TARGET   float   xyzw
+// SV_Target                2   xyzw        2   TARGET   float   xyzw
+//
+ps_4_0
+dcl_constantbuffer cb0[174], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_resource_texture2d (float,float,float,float) t60
+dcl_resource_texture2d (float,float,float,float) t61
+dcl_resource_texture2d (float,float,float,float) t62
+dcl_resource_texture2d (float,float,float,float) t65
+dcl_resource_texture2d (float,float,float,float) t72
+dcl_resource_texture2d (float,float,float,float) t73
+dcl_input_ps_siv linear noperspective v0.z, position
+dcl_input_ps linear v1.z
+dcl_input_ps linear v2.xyz
+dcl_input_ps linear v3.xz
+dcl_output o0.xyzw
+dcl_output o1.xyzw
+dcl_output o2.xyzw
+dcl_temps 10
+mov r0.xy, v3.xzxx
+mov r0.z, l(1.000000)
+dp3 r1.x, r0.xyzx, cb0[73].xzwx
+dp3 r1.y, r0.xyzx, cb0[74].xzwx
+dp3 r0.x, r0.xyzx, cb0[76].xzwx
+div r0.xy, r1.xyxx, r0.xxxx
+mad r0.xy, r0.xyxx, cb0[77].xyxx, cb0[77].zwzz
+sample_l r1.xyzw, r0.xyxx, t72.xyzw, s0, l(0.000000)
+sample_l r0.xyzw, r0.xyxx, t73.xyzw, s1, l(0.000000)
+mad r0.xy, r0.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+dp2 r0.w, r0.xyxx, r0.xyxx
+add r0.w, -r0.w, l(1.000000)
+sqrt r0.w, r0.w
+mul r2.xyz, v2.yxzy, l(1.000000, -1.000000, 1.000000, 0.000000)
+mul r3.xyz, r0.xxxx, r2.xyzx
+mad r3.xyz, r0.wwww, v2.xyzx, r3.xyzx
+mul r4.xyz, v2.xzyx, l(1.000000, -1.000000, 1.000000, 0.000000)
+mad r0.xyw, r0.yyyy, r4.xyxz, r3.xyxz
+dp3 r1.w, r0.xywx, r0.xywx
+rsq r1.w, r1.w
+mul r0.xyw, r0.xyxw, r1.wwww
+mul r1.w, r0.z, r0.z
+sqrt r2.w, r0.z
+min r2.w, r2.w, l(1.000000)
+lt r3.x, l(0.500000), cb0[83].z
+if_nz r3.x
+  mul r3.y, v3.z, cb0[71].y
+  mad r3.zw, v3.xxxx, cb0[71].xxxx, l(0.000000, 0.000000, 0.500000, 0.500000)
+  mov r5.x, cb0[172].z
+  mov r5.yw, l(0,0.500000,0,0.500000)
+  add r3.xz, r3.zzyz, r5.xxyx
+  sample_l r6.xyzw, r3.xzxx, t65.xyzw, s5, l(0.000000)
+  mov r5.z, -cb0[172].z
+  add r3.xy, r3.wyww, r5.zwzz
+  sample_l r3.xyzw, r3.xyxx, t65.xyzw, s5, l(0.000000)
+  mad r3.yz, v3.xxzx, cb0[71].xxyx, l(0.000000, 0.000000, 0.500000, 0.000000)
+  mov r5.xz, l(0.500000,0,0.500000,0)
+  mov r5.y, cb0[172].w
+  add r5.xy, r3.yzyy, r5.xyxx
+  sample_l r7.xyzw, r5.xyxx, t65.xyzw, s5, l(0.000000)
+  mov r5.w, -cb0[172].w
+  add r3.yz, r3.yyzy, r5.zzwz
+  sample_l r5.xyzw, r3.yzyy, t65.yzwx, s5, l(0.000000)
+  mov_sat r5.x, r6.x
+  mov_sat r5.y, r3.x
+  mov_sat r5.z, r7.x
+  mov_sat r5.w, r5.w
+  dp4 r3.x, r5.xyzw, l(0.250000, 0.250000, 0.250000, 0.250000)
+  lt r3.y, v1.z, l(0.100000)
+  lt r3.z, l(0.500000), cb0[173].x
+  or r3.y, r3.z, r3.y
+  mul r3.w, r3.x, v1.z
+  mul_sat r3.w, r3.w, l(10.000000)
+  add r4.w, v1.z, l(-0.100000)
+  mad_sat r4.w, -r4.w, l(2.857143), l(1.000000)
+  mul r4.w, r3.x, r4.w
+  movc r3.y, r3.y, r3.w, r4.w
+  lt r6.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), cb0[170].xyzx
+  if_nz r6.x
+    mad r6.xw, v3.xxxz, cb0[70].xxxy, l(0.500000, 0.000000, 0.000000, 0.500000)
+    mul r6.xw, r6.xxxw, cb0[71].zzzw
+    sincos r7.x, r8.x, cb0[170].w
+    mov r9.x, -r7.x
+    mov r9.y, r8.x
+    dp2 r8.x, r9.yxyy, r6.xwxx
+    mov r9.z, r7.x
+    dp2 r8.y, r9.zyzz, r6.xwxx
+    movc r6.xw, r3.zzzz, r8.xxxy, r6.xxxw
+    mul r6.xw, r6.xxxw, cb0[170].xxxx
+    sample r7.xyzw, r6.xwxx, t60.xyzw, s2
+    mul r8.xyz, r1.xyzx, r7.xyzx
+    add r9.xyz, -r1.xyzx, r7.xyzx
+    mad r9.xyz, r7.wwww, r9.xyzx, r1.xyzx
+    mad r7.xyz, -r1.xyzx, r7.xyzx, r9.xyzx
+    mad r7.xyz, cb0[173].xxxx, r7.xyzx, r8.xyzx
+    mul r3.w, r3.y, r7.w
+    add r7.xyz, -r1.xyzx, r7.xyzx
+    mad r1.xyz, r3.wwww, r7.xyzx, r1.xyzx
+  endif 
+  mul r7.xyz, r3.yyyy, r1.xyzx
+  mad o1.xyz, r7.xyzx, l(-0.149999976, -0.149999976, -0.149999976, 0.000000), r1.xyzx
+  if_nz r6.y
+    mad r3.yw, v3.xxxz, cb0[70].xxxy, l(0.000000, 0.500000, 0.000000, 0.500000)
+    mul r3.yw, r3.yyyw, cb0[71].zzzw
+    sincos r6.x, r7.x, cb0[170].w
+    mov r8.x, -r6.x
+    mov r8.y, r7.x
+    dp2 r7.x, r8.yxyy, r3.ywyy
+    mov r8.z, r6.x
+    dp2 r7.y, r8.zyzz, r3.ywyy
+    movc r3.yw, r3.zzzz, r7.xxxy, r3.yyyw
+    mul r3.yw, r3.yyyw, cb0[170].yyyy
+    sample r7.xyzw, r3.ywyy, t61.xyzw, s3
+    mad r7.xy, r7.wyww, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+    dp2 r3.y, r7.xyxx, r7.xyxx
+    add r3.y, -r3.y, l(1.000000)
+    sqrt r7.z, |r3.y|
+    dp3 r3.y, r7.xyzx, r7.xyzx
+    rsq r3.y, r3.y
+    mul r6.xyw, r3.yyyy, r7.xyxz
+    mul r2.xyz, r2.xyzx, r6.xxxx
+    mad r2.xyz, r6.wwww, v2.xyzx, r2.xyzx
+    mad r2.xyz, r6.yyyy, r4.xyzx, r2.xyzx
+    dp3 r3.y, r2.xyzx, r2.xyzx
+    rsq r3.y, r3.y
+    mad r2.xyz, r2.xyzx, r3.yyyy, -r0.xywx
+    mad r2.xyz, r3.xxxx, r2.xyzx, r0.xywx
+    dp3 r3.y, r2.xyzx, r2.xyzx
+    rsq r3.y, r3.y
+    mul r0.xyw, r2.xyxz, r3.yyyy
+  endif 
+  lt r2.x, cb0[173].x, l(0.500000)
+  add r4.xy, -r5.zwzz, r5.xyxx
+  mad r4.z, -r4.x, r4.y, l(1.000000)
+  mov r4.w, -r4.y
+  dp3 r2.y, r4.xzwx, r4.xzwx
+  rsq r2.y, r2.y
+  mul r2.z, r3.x, l(5.000000)
+  min r2.z, r2.z, l(0.800000)
+  mul_sat r3.y, v1.z, l(5.000000)
+  min r2.z, r2.z, r3.y
+  mad r4.xyz, r4.xzwx, r2.yyyy, -r0.xywx
+  mad r4.xyz, r2.zzzz, r4.xyzx, r0.xywx
+  dp3 r2.y, r4.xyzx, r4.xyzx
+  rsq r2.y, r2.y
+  mul r4.xyz, r2.yyyy, r4.xyzx
+  movc r0.xyw, r2.xxxx, r4.xyxz, r0.xyxw
+  if_nz r6.z
+    mad r2.xy, v3.xzxx, cb0[70].xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+    mul r2.xy, r2.xyxx, cb0[71].zwzz
+    sincos r4.x, r5.x, cb0[170].w
+    mov r6.x, -r4.x
+    mov r6.y, r5.x
+    dp2 r5.x, r6.yxyy, r2.xyxx
+    mov r6.z, r4.x
+    dp2 r5.y, r6.zyzz, r2.xyxx
+    movc r2.xy, r3.zzzz, r5.xyxx, r2.xyxx
+    mul r2.xy, r2.xyxx, cb0[170].zzzz
+    sample r4.xyzw, r2.xyxx, t62.xyzw, s4
+    ge r2.x, cb0[173].x, l(0.500000)
+    and r2.x, r2.x, l(0x3f800000)
+    mad r2.y, r4.y, r4.y, -r4.x
+    mad r2.y, r2.x, r2.y, r4.x
+    mad r0.z, -r0.z, r0.z, r2.y
+    mad r1.w, r3.x, r0.z, r1.w
+    sqrt r0.z, r4.y
+    min r0.z, r0.z, l(1.000000)
+    add r0.z, -r4.y, r0.z
+    mad r0.z, r2.x, r0.z, r4.y
+    add r0.z, -r2.w, r0.z
+    mad r2.w, r3.x, r0.z, r2.w
+  endif 
+else 
+  mov o1.xyz, r1.xyzx
+endif 
+mov_sat r2.w, r2.w
+mul o1.w, r2.w, l(0.498039246)
+ge r1.xyz, r0.xywx, l(0.000000, 0.000000, 0.000000, 0.000000)
+and r1.xyz, r1.xyzx, l(0x3f800000, 0x3f800000, 0x3f800000, 0)
+dp3 r0.y, r1.xyzx, l(2.000000, 4.000000, 8.000000, 0.000000)
+mov o0.xy, |r0.xwxx|
+mul o0.z, r0.y, l(0.00392156886)
+mul r0.x, r1.w, l(12.920000)
+log r0.y, |r1.w|
+mul r0.y, r0.y, l(0.416666657)
+exp r0.y, r0.y
+mad r0.y, r0.y, l(1.055000), l(-0.055000)
+lt r0.z, r1.w, l(0.00313080009)
+movc_sat r0.x, r0.z, r0.x, r0.y
+mul o0.w, r0.x, l(0.498039246)
+mov o2.xyzw, v0.zzzz
+ret 
+// Approximately 172 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

@@ -5,18 +5,19 @@
 #include "stdio.h"
 #include "internal_includes/reflect.h"
 #include "internal_includes/debug.h"
+#include "log.h"
 
 #define FOURCC(a, b, c, d) ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8) | ((uint32_t)(uint8_t)(c) << 16) | ((uint32_t)(uint8_t)(d) << 24 ))
-static enum {FOURCC_DXBC = FOURCC('D', 'X', 'B', 'C')}; //DirectX byte code
-static enum {FOURCC_SHDR = FOURCC('S', 'H', 'D', 'R')}; //Shader model 4 code
-static enum {FOURCC_SHEX = FOURCC('S', 'H', 'E', 'X')}; //Shader model 5 code
-static enum {FOURCC_RDEF = FOURCC('R', 'D', 'E', 'F')}; //Resource definition (e.g. constant buffers)
-static enum {FOURCC_ISGN = FOURCC('I', 'S', 'G', 'N')}; //Input signature
-static enum {FOURCC_IFCE = FOURCC('I', 'F', 'C', 'E')}; //Interface (for dynamic linking)
-static enum {FOURCC_OSGN = FOURCC('O', 'S', 'G', 'N')}; //Output signature
+enum {FOURCC_DXBC = FOURCC('D', 'X', 'B', 'C')}; //DirectX byte code
+enum {FOURCC_SHDR = FOURCC('S', 'H', 'D', 'R')}; //Shader model 4 code
+enum {FOURCC_SHEX = FOURCC('S', 'H', 'E', 'X')}; //Shader model 5 code
+enum {FOURCC_RDEF = FOURCC('R', 'D', 'E', 'F')}; //Resource definition (e.g. constant buffers)
+enum {FOURCC_ISGN = FOURCC('I', 'S', 'G', 'N')}; //Input signature
+enum {FOURCC_IFCE = FOURCC('I', 'F', 'C', 'E')}; //Interface (for dynamic linking)
+enum {FOURCC_OSGN = FOURCC('O', 'S', 'G', 'N')}; //Output signature
 
-static enum {FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1')}; //Input signature with Stream and MinPrecision
-static enum {FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1')}; //Output signature with Stream and MinPrecision
+enum {FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1')}; //Input signature with Stream and MinPrecision
+enum {FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1')}; //Output signature with Stream and MinPrecision
 
 typedef struct DXBCContainerHeaderTAG
 {
@@ -43,6 +44,8 @@ static uint64_t instructionID = 0;
 #else
 #define osSprintf(dest, size, src) sprintf(dest, src)
 #endif
+
+class DecompileError: public std::exception {} decompileError;
 
 void DecodeNameToken(const uint32_t* pui32NameToken, Operand* psOperand)
 {
@@ -715,7 +718,22 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
             psDecl->sTGSM.ui32Count = pui32Token[ui32OperandOffset++];
             break;
         }
-        default:
+
+		// Two manually added from newer version of HLSLCrossCompiler.
+		case OPCODE_DCL_STREAM:
+		{
+			psDecl->ui32NumOperands = 1;
+			DecodeOperand(pui32Token + ui32OperandOffset, &psDecl->asOperands[0]);
+			break;
+		}
+		// Not seen yet, needs mod to structs.h-- REALLY need to update to latest JJ.
+		//case OPCODE_DCL_GS_INSTANCE_COUNT:
+		//{
+		//	psDecl->ui32NumOperands = 0;
+		//	psDecl->value.ui32GSInstanceCount = pui32Token[1];
+		//	break;
+		//}
+		default:
         {
             //Reached end of declarations
             return 0;
@@ -891,6 +909,7 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
         case OPCODE_SINCOS:
 		case OPCODE_MIN:
 		case OPCODE_UMIN:		// missing opcode
+		case OPCODE_UMAX:		// missing opcode
 		case OPCODE_IMAX:
 		case OPCODE_IMIN:
 		case OPCODE_MAX:
@@ -1090,8 +1109,12 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
 		case OPCODE_MSAD:
         default:
         {
-			ASSERT(0);
-            break;
+            // We can hit this in practice in shaders with unsupported
+            // instructions (particularly domain, geometry & hull shaders).
+            // Throw an explicit exception now, otherwise we will continue to
+            // use the uninitialised ui32NumOperands and process garbage.
+            LogInfo("    error parsing shader> unsupported opcode %i\n", eOpcode);
+            throw decompileError;
         }
     }
 
@@ -1194,7 +1217,13 @@ const uint32_t* DecodeHullShaderForkPhase(const uint32_t* pui32Tokens, Shader* p
 	Declaration* psDecl;
     psDecl = new Declaration[ui32ShaderLength];
 
-    ASSERT(ui32ForkPhaseIndex < MAX_FORK_PHASES);
+    // Hit this in FC4 - changed the assert to an exception to make sure we
+    // don't access past the end of any buffers
+    //ASSERT(ui32ForkPhaseIndex < MAX_FORK_PHASES);
+    if (ui32ForkPhaseIndex >= MAX_FORK_PHASES) {
+            LogInfo("    DecodeHullShaderForkPhase: ui32ForkPhaseIndex too large: %u\n", ui32ForkPhaseIndex);
+            throw decompileError;
+    }
 
     psShader->ui32ForkPhaseCount++;
 

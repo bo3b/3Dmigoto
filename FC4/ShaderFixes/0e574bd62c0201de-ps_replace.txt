@@ -1,0 +1,269 @@
+// HBAO+ pass 1/2 that results in artefacts on mostly flat surfaces with lots
+// of detail in their normals (e.g. walls, large rocky surfaces, but not grass
+// or vegetation)
+
+// From this particular shader, output xyz look fine, but w is messed up.
+
+// Two shaders of interest:
+// PS 0e574bd62c0201de - Creates Texture2D with broken W channel
+// PS 9a56848a2b205209 - Creates broken Texture3D outputs
+
+// xyz is normal buffer, w is 0:
+Texture2D<float4> t1 : register(t1);
+
+// W buffer:
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[5];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[7];
+}
+
+
+// Copied from the lighting shaders to b13 with 3DMigoto
+cbuffer CViewportShaderParameterProvider : register(b13)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
+
+Texture2D<float4> StereoParams : register(t125);
+Texture1D<float4> IniParams : register(t120);
+
+void main( 
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+float4 stereo = StereoParams.Load(0);
+
+  r0.xy = cb0[6].xy + v0.xy;
+  r0.xy = (int2)r0.xy;
+  r0.zw = float2(0,0);
+  r0.xyz = t1.Load(r0.xyz).xyz;
+  r0.xyz = r0.xyz * cb1[4].xxx + cb1[4].yyy;
+  r1.xyz = cb1[1].xyz * r0.yyy;
+  r0.xyw = r0.xxx * cb1[0].xyz + r1.xyz;
+  r0.xyz = r0.zzz * cb1[2].xyz + r0.xyw;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = cb0[3].x != 0.000000;
+  if (r0.w != 0) {
+    r1.z = t0.SampleLevel(s0_s, v1.xy, 0).x;
+    r2.xy = cb0[1].xy * v1.xy + cb0[1].zw;
+    r1.xy = r2.xy * r1.zz;
+
+// The fix for HBAO+ is pretty simple. We need to remove the view-space stereo
+// formula each time the shader generates a 3D coordinate from the depth
+// buffer. It is important that we adjust all of them, otherwise we will make
+// it more broken.
+
+// We need the projection or inverse projection matrix for the view-space
+// correction, which is not available in this shader. We use 3DMigoto to copy
+// it in from another shader. If you wanted to fix HBAO+ without the projection
+// matrix you could still do so, but it would only be an approximation.
+
+// There are two shaders that need this treatment to eliminate the artefacts
+
+r1.x -= stereo.x * (r1.z - stereo.y) * _InvProjectionMatrix._m00;
+
+    r2.xyzw = cb0[0].zwzw * float4(3,0,-3,0) + v1.xyxy;
+    r3.z = t0.SampleLevel(s0_s, r2.xy, 0).x;
+    r4.xyzw = cb0[1].xyxy * r2.xyzw + cb0[1].zwzw;
+    r3.xy = r4.xy * r3.zz;
+
+r3.x -= stereo.x * (r3.z - stereo.y) * _InvProjectionMatrix._m00;
+
+    r3.xyz = r3.xyz + -r1.xyz;
+    r0.w = dot(r3.xyz, r3.xyz);
+    r1.w = dot(r0.xyz, r3.xyz);
+    r2.x = rsqrt(r0.w);
+    r1.w = saturate(r1.w * r2.x + -cb0[2].w);
+    r0.w = saturate(r0.w * cb0[2].z + 1);
+    r2.z = t0.SampleLevel(s0_s, r2.zw, 0).x;
+    r2.xy = r4.zw * r2.zz;
+
+r2.x -= stereo.x * (r2.z - stereo.y) * _InvProjectionMatrix._m00;
+
+    r2.xyz = r2.xyz + -r1.xyz;
+    r2.w = dot(r2.xyz, r2.xyz);
+    r2.x = dot(r0.xyz, r2.xyz);
+    r2.y = rsqrt(r2.w);
+    r2.x = saturate(r2.x * r2.y + -cb0[2].w);
+    r2.y = saturate(r2.w * cb0[2].z + 1);
+    r2.x = r2.x * r2.y;
+    r0.w = r1.w * r0.w + r2.x;
+    r2.xyzw = cb0[0].zwzw * float4(0,3,0,-3) + v1.xyxy;
+    r3.z = t0.SampleLevel(s0_s, r2.xy, 0).x;
+    r4.xyzw = cb0[1].xyxy * r2.xyzw + cb0[1].zwzw;
+    r3.xy = r4.xy * r3.zz;
+
+r3.x -= stereo.x * (r3.z - stereo.y) * _InvProjectionMatrix._m00;
+
+    r3.xyz = r3.xyz + -r1.xyz;
+    r1.w = dot(r3.xyz, r3.xyz);
+    r2.x = dot(r0.xyz, r3.xyz);
+    r2.y = rsqrt(r1.w);
+    r2.x = saturate(r2.x * r2.y + -cb0[2].w);
+    r1.w = saturate(r1.w * cb0[2].z + 1);
+    r0.w = r2.x * r1.w + r0.w;
+    r2.z = t0.SampleLevel(s0_s, r2.zw, 0).x;
+    r2.xy = r4.zw * r2.zz;
+
+r2.x -= stereo.x * (r2.z - stereo.y) * _InvProjectionMatrix._m00;
+
+    r1.xyz = r2.xyz + -r1.xyz;
+    r1.w = dot(r1.xyz, r1.xyz);
+    r1.x = dot(r0.xyz, r1.xyz);
+    r1.y = rsqrt(r1.w);
+    r1.x = saturate(r1.x * r1.y + -cb0[2].w);
+    r1.y = saturate(r1.w * cb0[2].z + 1);
+    r0.w = r1.x * r1.y + r0.w;
+    o0.w = 0.25 * r0.w;
+  } else {
+    o0.w = 0;
+  }
+  o0.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) D3D Shader Disassembler
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xy          1     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_TARGET                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[7], immediateIndexed
+dcl_constantbuffer cb1[5], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 5
+add r0.xy, v0.xyxx, cb0[6].xyxx
+ftoi r0.xy, r0.xyxx
+mov r0.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyzw, t1.xyzw
+mad r0.xyz, r0.xyzx, cb1[4].xxxx, cb1[4].yyyy
+mul r1.xyz, r0.yyyy, cb1[1].xyzx
+mad r0.xyw, r0.xxxx, cb1[0].xyxz, r1.xyxz
+mad r0.xyz, r0.zzzz, cb1[2].xyzx, r0.xywx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+ne r0.w, cb0[3].x, l(0.000000)
+if_nz r0.w
+  sample_l_indexable(texture2d)(float,float,float,float) r1.z, v1.xyxx, t0.yzxw, s0, l(0.000000)
+  mad r2.xy, cb0[1].xyxx, v1.xyxx, cb0[1].zwzz
+  mul r1.xy, r1.zzzz, r2.xyxx
+  mad r2.xyzw, cb0[0].zwzw, l(3.000000, 0.000000, -3.000000, 0.000000), v1.xyxy
+  sample_l_indexable(texture2d)(float,float,float,float) r3.z, r2.xyxx, t0.yzxw, s0, l(0.000000)
+  mad r4.xyzw, cb0[1].xyxy, r2.xyzw, cb0[1].zwzw
+  mul r3.xy, r3.zzzz, r4.xyxx
+  add r3.xyz, -r1.xyzx, r3.xyzx
+  dp3 r0.w, r3.xyzx, r3.xyzx
+  dp3 r1.w, r0.xyzx, r3.xyzx
+  rsq r2.x, r0.w
+  mad_sat r1.w, r1.w, r2.x, -cb0[2].w
+  mad_sat r0.w, r0.w, cb0[2].z, l(1.000000)
+  sample_l_indexable(texture2d)(float,float,float,float) r2.z, r2.zwzz, t0.yzxw, s0, l(0.000000)
+  mul r2.xy, r2.zzzz, r4.zwzz
+  add r2.xyz, -r1.xyzx, r2.xyzx
+  dp3 r2.w, r2.xyzx, r2.xyzx
+  dp3 r2.x, r0.xyzx, r2.xyzx
+  rsq r2.y, r2.w
+  mad_sat r2.x, r2.x, r2.y, -cb0[2].w
+  mad_sat r2.y, r2.w, cb0[2].z, l(1.000000)
+  mul r2.x, r2.y, r2.x
+  mad r0.w, r1.w, r0.w, r2.x
+  mad r2.xyzw, cb0[0].zwzw, l(0.000000, 3.000000, 0.000000, -3.000000), v1.xyxy
+  sample_l_indexable(texture2d)(float,float,float,float) r3.z, r2.xyxx, t0.yzxw, s0, l(0.000000)
+  mad r4.xyzw, cb0[1].xyxy, r2.xyzw, cb0[1].zwzw
+  mul r3.xy, r3.zzzz, r4.xyxx
+  add r3.xyz, -r1.xyzx, r3.xyzx
+  dp3 r1.w, r3.xyzx, r3.xyzx
+  dp3 r2.x, r0.xyzx, r3.xyzx
+  rsq r2.y, r1.w
+  mad_sat r2.x, r2.x, r2.y, -cb0[2].w
+  mad_sat r1.w, r1.w, cb0[2].z, l(1.000000)
+  mad r0.w, r2.x, r1.w, r0.w
+  sample_l_indexable(texture2d)(float,float,float,float) r2.z, r2.zwzz, t0.yzxw, s0, l(0.000000)
+  mul r2.xy, r2.zzzz, r4.zwzz
+  add r1.xyz, -r1.xyzx, r2.xyzx
+  dp3 r1.w, r1.xyzx, r1.xyzx
+  dp3 r1.x, r0.xyzx, r1.xyzx
+  rsq r1.y, r1.w
+  mad_sat r1.x, r1.x, r1.y, -cb0[2].w
+  mad_sat r1.y, r1.w, cb0[2].z, l(1.000000)
+  mad r0.w, r1.x, r1.y, r0.w
+  mul o0.w, r0.w, l(0.250000)
+else 
+  mov o0.w, l(0)
+endif 
+mad o0.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), l(0.500000, 0.500000, 0.500000, 0.000000)
+ret 
+// Approximately 0 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

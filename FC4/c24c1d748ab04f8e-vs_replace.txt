@@ -1,5 +1,8 @@
 // Distant landscape - bitwise and instruction decompiled incorrectly
 
+// The bitwise AND code is creating (int) coercions, and it is probably
+// better to just use hex constants.  
+
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
   float4 _AmbientColorMultiplier : packoffset(c0);

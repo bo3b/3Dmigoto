@@ -7,7 +7,6 @@
     <ClCompile Include="..\D3DCompiler\d3dcWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Main.h" />
     <ClInclude Include="..\D3DCompiler\d3dcWrapper.h" />
   </ItemGroup>
 </Project>

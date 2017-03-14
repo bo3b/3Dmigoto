@@ -35,13 +35,13 @@ typedef enum
     LANG_440,
 } GLLang;
 
-static enum {MAX_SHADER_VEC4_OUTPUT = 512};
-static enum {MAX_SHADER_VEC4_INPUT = 512};
-static enum {MAX_TEXTURES = 128};
-static enum {MAX_FORK_PHASES = 2};
-static enum {MAX_FUNCTION_BODIES = 1024};
-static enum {MAX_CLASS_TYPES = 1024};
-static enum {MAX_FUNCTION_POINTERS = 128};
+enum {MAX_SHADER_VEC4_OUTPUT = 512};
+enum {MAX_SHADER_VEC4_INPUT = 512};
+enum {MAX_TEXTURES = 128};
+enum {MAX_FORK_PHASES = 2};
+enum {MAX_FUNCTION_BODIES = 1024};
+enum {MAX_CLASS_TYPES = 1024};
+enum {MAX_FUNCTION_POINTERS = 128};
 
 //Reflection
 #define MAX_REFLECT_STRING_LENGTH 512

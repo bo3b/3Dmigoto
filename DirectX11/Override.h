@@ -1,10 +1,12 @@
 #pragma once
 
 #include <DirectXMath.h>
-#include "input.h"
-#include "Main.h"
+#include <d3d11.h>
 #include <vector>
-#include "../util.h"
+
+#include "util.h"
+#include "Input.h"
+#include "HackerDevice.h"
 
 enum class KeyOverrideType {
 	INVALID = -1,
@@ -45,34 +47,44 @@ private:
 	int transition, release_transition;
 	TransitionType transition_type, release_transition_type;
 
+	bool is_conditional;
+	int condition_param_idx;
+	float DirectX::XMFLOAT4::*condition_param_component;
+
 public:
-	DirectX::XMFLOAT4 mOverrideParams;
+	DirectX::XMFLOAT4 mOverrideParams[INI_PARAMS_SIZE];
 	float mOverrideSeparation;
 	float mOverrideConvergence;
 
-	DirectX::XMFLOAT4 mSavedParams;
+	DirectX::XMFLOAT4 mSavedParams[INI_PARAMS_SIZE];
 	float mUserSeparation;
 	float mUserConvergence;
 
 	Override();
-	Override(float x, float y, float z, float w, float separation,
+	Override(DirectX::XMFLOAT4 *params, float separation,
 		 float convergence, int transition, int release_transition,
 		 TransitionType transition_type,
-		 TransitionType release_transition_type) :
-		mOverrideParams({x, y, z, w}),
+		 TransitionType release_transition_type,
+		 bool is_conditional, int condition_param_idx,
+		 float DirectX::XMFLOAT4::*condition_param_component) :
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
 		transition(transition),
 		release_transition(release_transition),
 		transition_type(transition_type),
-		release_transition_type(release_transition_type)
-	{}
+		release_transition_type(release_transition_type),
+		is_conditional(is_conditional),
+		condition_param_idx(condition_param_idx),
+		condition_param_component(condition_param_component)
+	{
+		memcpy(&mOverrideParams, params, sizeof(DirectX::XMFLOAT4[INI_PARAMS_SIZE]));
+	}
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
 
-	void Activate(D3D11Base::ID3D11Device *device);
-	void Deactivate(D3D11Base::ID3D11Device *device);
-	void Toggle(D3D11Base::ID3D11Device *device);
+	void Activate(HackerDevice *device);
+	void Deactivate(HackerDevice *device);
+	void Toggle(HackerDevice *device);
 };
 
 class KeyOverrideBase : public virtual OverrideBase, public InputListener
@@ -89,19 +101,23 @@ public:
 		Override(),
 		type(type)
 	{}
-	KeyOverride(KeyOverrideType type, float x, float y, float z,
-			float w, float separation, float convergence,
+	KeyOverride(KeyOverrideType type, DirectX::XMFLOAT4 *params,
+			float separation, float convergence,
 			int transition, int release_transition,
 			TransitionType transition_type,
-			TransitionType release_transition_type) :
-		Override(x, y, z, w, separation, convergence, transition,
+			TransitionType release_transition_type,
+			bool is_conditional, int condition_param_idx,
+			float DirectX::XMFLOAT4::*condition_param_component) :
+		Override(params, separation, convergence, transition,
 				release_transition, transition_type,
-				release_transition_type),
+				release_transition_type, is_conditional,
+				condition_param_idx,
+				condition_param_component),
 		type(type)
 	{}
 
-	void DownEvent(D3D11Base::ID3D11Device *device);
-	void UpEvent(D3D11Base::ID3D11Device *device);
+	void DownEvent(HackerDevice *device);
+	void UpEvent(HackerDevice *device);
 #pragma warning(suppress : 4250) // Suppress ParseIniSection inheritance via dominance warning
 };
 
@@ -116,7 +132,7 @@ public:
 	{}
 
 	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
-	void DownEvent(D3D11Base::ID3D11Device *device);
+	void DownEvent(HackerDevice *device);
 };
 
 struct OverrideTransitionParam
@@ -139,13 +155,16 @@ struct OverrideTransitionParam
 class OverrideTransition
 {
 public:
-	OverrideTransitionParam x, y, z, w, separation, convergence;
+	OverrideTransitionParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
+	OverrideTransitionParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
+	OverrideTransitionParam separation, convergence;
 
-	void ScheduleTransition(D3D11Base::ID3D11Device *device,
+	void ScheduleTransition(HackerDevice *wrapper,
 			float target_separation, float target_convergence,
-			float target_x, float target_y, float target_z,
-			float target_w, int time, TransitionType transition_type);
-	void OverrideTransition::UpdateTransitions(D3D11Base::ID3D11Device *device);
+			DirectX::XMFLOAT4 *targets,
+			int time, TransitionType transition_type);
+	void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
+	void Stop();
 };
 
 // This struct + class provides a global save for each of the overridable
@@ -169,10 +188,12 @@ public:
 class OverrideGlobalSave
 {
 public:
-	OverrideGlobalSaveParam x, y, z, w, separation, convergence;
+	OverrideGlobalSaveParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
+	OverrideGlobalSaveParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
+	OverrideGlobalSaveParam separation, convergence;
 
-	void Reset(D3D11Wrapper::ID3D11Device* wrapper);
-	void Save(D3D11Base::ID3D11Device *device, Override *preset);
+	void Reset(HackerDevice* wrapper);
+	void Save(HackerDevice *wrapper, Override *preset);
 	void Restore(Override *preset);
 };
 
