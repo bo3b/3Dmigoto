@@ -1569,7 +1569,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Buffer **ppBuffer)
 {
-	LogDebug("ID3D11Device::CreateBuffer called\n");
+	LogDebug("HackerDevice::CreateBuffer called\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
 
