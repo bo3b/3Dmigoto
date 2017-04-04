@@ -313,7 +313,7 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	{
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
@@ -343,7 +343,7 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	{
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
@@ -525,12 +525,6 @@ STDMETHODIMP HackerDXGIDevice2::EnqueueSetEvent(
 // We need to override the QueryInterface here, in the case the caller uses
 // IDXGIFactory::QueryInterface to create a IDXGIFactory2.
 //
-// For our purposes, it presently makes more sense to return an error of E_NOINTERFACE
-// for this request, because the caller must surely be able to handle a downlevel
-// system, and that is better for us in general. Only early access and beta
-// releases are requiring Factory2, and when wrapping those, we get a crash of
-// some form, that may not be our fault.
-//
 // Note that we can expect this QueryInterface to also get called for any 
 // HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
 // When called here, 'this' will either be HackerDXGIFactory1, or HackerDXGIFactory2.
@@ -555,7 +549,7 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 			// Unless we are overriding default behavior from ini file.
 			if ((G->enable_dxgi1_2 == 0) && (!G->enable_platform_update))
 			{
-				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+				LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 				*ppvObject = NULL;
 				return E_NOINTERFACE;
 			}
@@ -1264,7 +1258,7 @@ STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 	{
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
@@ -1273,19 +1267,19 @@ STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 		*ppvObject = dxgiAdapterWrap2;
 		LogDebug("  created HackerDXGIAdapter2(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap2), dxgiAdapterWrap2, origAdapter2);
 	}
-	else if (riid == __uuidof(IDXGIFactory2))
+	else if (riid == __uuidof(IDXGIFactory2)) // TODO: do we need Factory1?
 	{
 		// Called from Batman: Telltale games. 
 
 		if (!G->enable_platform_update)
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		HackerDXGIFactory2 *factoryWrap2 = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+		LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factoryWrap2, *ppvObject);
+		*ppvObject = factoryWrap2;
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
