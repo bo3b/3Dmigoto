@@ -305,10 +305,7 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	if (riid == __uuidof(IDXGIAdapter) || riid == __uuidof(IDXGIAdapter1))
 	{
 		// Always return the IDXGIAdapter1 for these parents, as the superset on Win7.
-		IDXGIAdapter1 *origAdapter1;
-		static_cast<IDXGIAdapter*>(*ppParent)->QueryInterface(IID_PPV_ARGS(&origAdapter1));
-
-		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
+		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(static_cast<IDXGIAdapter1*>(*ppParent));
 		LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p \n", adapterWrap1, *ppParent);
 		*ppParent = adapterWrap1;
 	}
@@ -320,10 +317,9 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
-		// TODO: for platform update, return IDXGIAdapter2
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
-		*ppParent = NULL;
-		return E_NOINTERFACE;
+		HackerDXGIAdapter2 *adapterWrap2 = new HackerDXGIAdapter2(static_cast<IDXGIAdapter2*>(*ppParent));
+		LogInfo("  created HackerDXGIAdapter2 wrapper = %p of %p \n", adapterWrap2, *ppParent);
+		*ppParent = adapterWrap2;
 	}
 	else if (riid == __uuidof(IDXGIFactory))
 	{
@@ -1229,9 +1225,8 @@ STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterOcclusionStatus(THIS_
 
 // -----------------------------------------------------------------------------
 
-// Handle the upcasting/type coercion from a IDXGIAdapter to IDXGIAdapter1.  
-// If it's a request for IDXGIAdapter2, return an error as that requires the
-// evil update, and we return errors for that (at present)
+// Handle the upcasting/type coercion from a IDXGIAdapter to IDXGIAdapter1 or IDXGIAdapter2.
+// If it's a request for IDXGIAdapter2, return that only if the allow_platform_update=1
 
 STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
@@ -1267,28 +1262,16 @@ STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 	}
 	else if (riid == __uuidof(IDXGIAdapter2))
 	{
-		// Well, bizarrely, this approach to upcasting to a IDXGIAdapter2 is supported on Win7, 
-		// but only if you have the 'evil update', the platform update installed.  Since that
-		// is an optional update, that certainly means that numerous people do not have it 
-		// installed. Ergo, a game developer cannot in good faith just assume that it's there,
-		// and it's very unlikely they would require it. No performance advantage on Win8.
-		// So, that means that a game developer must support a fallback path, even if they
-		// actually want Device1 for some reason.
-		//
-		// Sooo... Current plan is to return an error here, and pretend that the platform
-		// update is not installed, or missing feature on Win8.1.  This will force the game
-		// to use a more compatible path and make our job easier.
-
 		if (!G->enable_platform_update) 
 		{
 			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
-		// TODO: for platform update, return IDXGIAdapter2
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		IDXGIAdapter2 *origAdapter2 = static_cast<IDXGIAdapter2*>(*ppvObject);
+		HackerDXGIAdapter2 *dxgiAdapterWrap2 = new HackerDXGIAdapter2(origAdapter2);
+		*ppvObject = dxgiAdapterWrap2;
+		LogDebug("  created HackerDXGIAdapter2(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap2), dxgiAdapterWrap2, origAdapter2);
 	}
 	else if (riid == __uuidof(IDXGIFactory2))
 	{
