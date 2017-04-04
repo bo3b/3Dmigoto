@@ -804,6 +804,11 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
 		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
 	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice2))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetOrigDXGIDevice2();
+	}
 	else {
 		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
 		return E_FAIL;
@@ -994,6 +999,11 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	{
 		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
 		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice2))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetOrigDXGIDevice2();
 	}
 	else {
 		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
