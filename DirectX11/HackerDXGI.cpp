@@ -33,6 +33,11 @@
 // IDXGISwapChain3	Win10			1.4
 // IDXGISwapChain4					1.5
 
+// TODO: Add interfaces for remaining few objects?  For completeness? 
+//  There are several uninteresting objects we don't wrap.
+//  e.g. IDXGIDevice IDXGIDecodeSwapChain IDXGISurface
+
+
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
 
@@ -58,6 +63,7 @@ HackerDXGIObject::HackerDXGIObject(IDXGIObject *pObject)
 	mOrigObject = pObject;
 }
 
+
 // Worth noting- the device and context for the secret path are the Hacker 
 // versions, because we need access to their fields later.
 HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice)
@@ -71,8 +77,14 @@ HackerDXGIDevice1::HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice1, HackerDevice *p
 	: HackerDXGIDevice(pDXGIDevice1, pDevice)
 {
 	mOrigDXGIDevice1 = pDXGIDevice1;
-	mHackerDevice = pDevice;
 }
+
+HackerDXGIDevice2::HackerDXGIDevice2(IDXGIDevice2 *pDXGIDevice2, HackerDevice *pDevice)
+	: HackerDXGIDevice1(pDXGIDevice2, pDevice)
+{
+	mOrigDXGIDevice2 = pDXGIDevice2;
+}
+
 
 HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter)
 	: HackerDXGIObject(pAdapter)
@@ -86,10 +98,23 @@ HackerDXGIAdapter1::HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter1)
 	mOrigAdapter1 = pAdapter1;
 }
 
+HackerDXGIAdapter2::HackerDXGIAdapter2(IDXGIAdapter2 *pAdapter2)
+	: HackerDXGIAdapter1(pAdapter2)
+{
+	mOrigAdapter2 = pAdapter2;
+}
+
+
 HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
 	: HackerDXGIObject(pOutput)
 {
 	mOrigOutput = pOutput;
+}
+
+HackerDXGIOutput1::HackerDXGIOutput1(IDXGIOutput1 *pOutput1)
+	: HackerDXGIOutput(pOutput1)
+{
+	mOrigOutput1 = pOutput1;
 }
 
 
@@ -97,6 +122,19 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 	: HackerDXGIObject(pSubObject)
 {
 	mOrigDeviceSubObject = pSubObject;
+}
+
+
+HackerDXGIResource::HackerDXGIResource(IDXGIResource *pResource)
+	: HackerDXGIDeviceSubObject(pResource)
+{
+	mOrigResource = pResource;
+}
+
+HackerDXGIResource1::HackerDXGIResource1(IDXGIResource1 *pResource1)
+	: HackerDXGIResource(pResource1)
+{
+	mOrigResource1 = pResource1;
 }
 
 
@@ -418,12 +456,6 @@ IDXGIDevice1 *HackerDXGIDevice1::GetOrigDXGIDevice1()
 	return mOrigDXGIDevice1;
 }
 
-HackerDevice *HackerDXGIDevice1::GetHackerDevice()
-{
-	return mHackerDevice;
-}
-
-
 
 STDMETHODIMP HackerDXGIDevice1::SetMaximumFrameLatency(
 	/* [in] */ UINT MaxLatency)
@@ -440,6 +472,52 @@ STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
 {
 	LogInfo("HackerDXGIDevice1::GetMaximumFrameLatency(%s@%p) called \n", type_name(this), this);
 	HRESULT hr = mOrigDXGIDevice1->GetMaximumFrameLatency(pMaxLatency);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+
+IDXGIDevice2 *HackerDXGIDevice2::GetOrigDXGIDevice2()
+{
+	return mOrigDXGIDevice2;
+}
+
+
+STDMETHODIMP HackerDXGIDevice2::OfferResources(
+	/* [annotation][in] */
+	_In_  UINT NumResources,
+	/* [annotation][size_is][in] */
+	_In_reads_(NumResources)  IDXGIResource *const *ppResources,
+	/* [annotation][in] */
+	_In_  DXGI_OFFER_RESOURCE_PRIORITY Priority)
+{
+	LogInfo("HackerDXGIDevice2::OfferResources(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigDXGIDevice2->OfferResources(NumResources, ppResources, Priority);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIDevice2::ReclaimResources(
+	/* [annotation][in] */
+	_In_  UINT NumResources,
+	/* [annotation][size_is][in] */
+	_In_reads_(NumResources)  IDXGIResource *const *ppResources,
+	/* [annotation][size_is][out] */
+	_Out_writes_all_opt_(NumResources)  BOOL *pDiscarded)
+{
+	LogInfo("HackerDXGIDevice2::ReclaimResources(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigDXGIDevice2->ReclaimResources(NumResources, ppResources, pDiscarded);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIDevice2::EnqueueSetEvent(
+	/* [annotation][in] */
+	_In_  HANDLE hEvent)
+{
+	LogInfo("HackerDXGIDevice2::EnqueueSetEvent(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigDXGIDevice2->EnqueueSetEvent(hEvent);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -1299,6 +1377,28 @@ STDMETHODIMP HackerDXGIAdapter1::GetDesc1(THIS_
 
 // -----------------------------------------------------------------------------
 
+STDMETHODIMP HackerDXGIAdapter2::GetDesc2(THIS_
+	/* [annotation][out] */
+	__out  DXGI_ADAPTER_DESC2 *pDesc)
+{
+	LogInfo("HackerDXGIAdapter2::GetDesc2(%s@%p) called \n", type_name(this), this);
+
+	HRESULT hr = mOrigAdapter2->GetDesc2(pDesc);
+	if (LogFile)
+	{
+		char s[MAX_PATH];
+		if (hr == S_OK)
+		{
+			wcstombs(s, pDesc->Description, MAX_PATH);
+			LogInfo("  returns adapter: %s, sysmem=%Iu, vidmem=%Iu, flags=%x\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory, pDesc->Flags);
+		}
+	}
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
 STDMETHODIMP HackerDXGIOutput::GetDesc(THIS_ 
         /* [annotation][out] */ 
         __out  DXGI_OUTPUT_DESC *pDesc)
@@ -1482,6 +1582,78 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 
 	HRESULT hr = mOrigDeviceSubObject->GetDevice(riid, ppDevice);
 	LogDebug("  returns result = %x, handle = %p\n", hr, *ppDevice);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIResource::GetSharedHandle(
+	/* [annotation][out] */
+	_Out_  HANDLE *pSharedHandle)
+{
+	LogInfo("HackerDXGIResource::GetSharedHandle(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->GetSharedHandle(pSharedHandle);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource::GetUsage(
+	/* [annotation][out] */
+	_Out_  DXGI_USAGE *pUsage)
+{
+	LogInfo("HackerDXGIResource::GetUsage(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->GetUsage(pUsage);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource::SetEvictionPriority(
+	/* [in] */ UINT EvictionPriority)
+{
+	LogInfo("HackerDXGIResource::SetEvictionPriority(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->SetEvictionPriority(EvictionPriority);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource::GetEvictionPriority(
+	/* [annotation][retval][out] */
+	_Out_  UINT *pEvictionPriority)
+{
+	LogInfo("HackerDXGIResource::GetEvictionPriority(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->GetEvictionPriority(pEvictionPriority);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIResource1::CreateSubresourceSurface(
+	UINT index,
+	/* [annotation][out] */
+	_Out_  IDXGISurface2 **ppSurface)
+{
+	LogInfo("HackerDXGIResource1::CreateSubresourceSurface(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource1->CreateSubresourceSurface(index, ppSurface);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource1::CreateSharedHandle(
+	/* [annotation][in] */
+	_In_opt_  const SECURITY_ATTRIBUTES *pAttributes,
+	/* [annotation][in] */
+	_In_  DWORD dwAccess,
+	/* [annotation][in] */
+	_In_opt_  LPCWSTR lpName,
+	/* [annotation][out] */
+	_Out_  HANDLE *pHandle)
+{
+	LogInfo("HackerDXGIResource1::CreateSharedHandle(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource1->CreateSharedHandle(pAttributes, dwAccess, lpName, pHandle);
+	LogInfo("  returns hr=%x\n", hr);
 	return hr;
 }
 

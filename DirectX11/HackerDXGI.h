@@ -132,7 +132,7 @@ private:
 	IDXGIAdapter1 *mOrigAdapter1;
 
 public:
-	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter);
+	HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter1);
 
 
 	STDMETHOD(GetDesc1)(THIS_
@@ -142,12 +142,21 @@ public:
 
 // -----------------------------------------------------------------------------
 
-// Requires evil platform update for Win7, so we are specifically not implementing
-// this at present.  
+// Requires platform update for Win7.  
 
-//class HackerDXGIAdapter2 : public HackerDXGIAdapter1
-//{
-//}
+class HackerDXGIAdapter2 : public HackerDXGIAdapter1
+{
+private:
+	IDXGIAdapter2 *mOrigAdapter2;
+
+public:
+	HackerDXGIAdapter2(IDXGIAdapter2 *pAdapter2);
+
+
+	STDMETHOD(GetDesc2)(THIS_
+		/* [annotation][out] */
+		__out  DXGI_ADAPTER_DESC2 *pDesc);
+};
 
 
 // -----------------------------------------------------------------------------
@@ -203,13 +212,10 @@ class HackerDXGIDevice1 : public HackerDXGIDevice
 private:
 	IDXGIDevice1 *mOrigDXGIDevice1;
 
-	HackerDevice *mHackerDevice;
-
 public:
 	HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice, HackerDevice *pDevice);
 
 	IDXGIDevice1 *GetOrigDXGIDevice1();
-	HackerDevice *GetHackerDevice();
 
 
 	STDMETHOD(SetMaximumFrameLatency)(
@@ -222,12 +228,39 @@ public:
 
 // -----------------------------------------------------------------------------
 
-// Requires evil platform update for Win7, so we are specifically not implementing
-// this at present.  
+// Requires platform update for Win7.
 
-//class HackerDXGIDevice2 : public HackerDXGIDevice1
-//{
-//}
+class HackerDXGIDevice2 : public HackerDXGIDevice1
+{
+private:
+	IDXGIDevice2 *mOrigDXGIDevice2;
+
+public:
+	HackerDXGIDevice2(IDXGIDevice2 *pDXGIDevice, HackerDevice *pDevice);
+
+	IDXGIDevice2 *GetOrigDXGIDevice2();
+
+
+	STDMETHOD(OfferResources)(
+		/* [annotation][in] */
+		_In_  UINT NumResources,
+		/* [annotation][size_is][in] */
+		_In_reads_(NumResources)  IDXGIResource *const *ppResources,
+		/* [annotation][in] */
+		_In_  DXGI_OFFER_RESOURCE_PRIORITY Priority);
+
+	STDMETHOD(ReclaimResources)(
+		/* [annotation][in] */
+		_In_  UINT NumResources,
+		/* [annotation][size_is][in] */
+		_In_reads_(NumResources)  IDXGIResource *const *ppResources,
+		/* [annotation][size_is][out] */
+		_Out_writes_all_opt_(NumResources)  BOOL *pDiscarded);
+
+	STDMETHOD(EnqueueSetEvent)(
+		/* [annotation][in] */
+		_In_  HANDLE hEvent);
+};
 
 
 // -----------------------------------------------------------------------------
@@ -298,7 +331,48 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class HackerDXGIDeviceSubObject: public HackerDXGIObject
+class HackerDXGIOutput1: public HackerDXGIOutput
+{
+private:
+	IDXGIOutput1	*mOrigOutput1;
+
+public:
+	HackerDXGIOutput1(IDXGIOutput1 *pOutput1);
+
+
+	virtual HRESULT STDMETHODCALLTYPE GetDisplayModeList1(
+		/* [in] */ DXGI_FORMAT EnumFormat,
+		/* [in] */ UINT Flags,
+		/* [annotation][out][in] */
+		_Inout_  UINT *pNumModes,
+		/* [annotation][out] */
+		_Out_writes_to_opt_(*pNumModes, *pNumModes)  DXGI_MODE_DESC1 *pDesc);
+
+	virtual HRESULT STDMETHODCALLTYPE FindClosestMatchingMode1(
+		/* [annotation][in] */
+		_In_  const DXGI_MODE_DESC1 *pModeToMatch,
+		/* [annotation][out] */
+		_Out_  DXGI_MODE_DESC1 *pClosestMatch,
+		/* [annotation][in] */
+		_In_opt_  IUnknown *pConcernedDevice);
+
+	virtual HRESULT STDMETHODCALLTYPE GetDisplaySurfaceData1(
+		/* [annotation][in] */
+		_In_  IDXGIResource *pDestination);
+
+	virtual HRESULT STDMETHODCALLTYPE DuplicateOutput(
+		/* [annotation][in] */
+		_In_  IUnknown *pDevice,
+		/* [annotation][out] */
+		_Out_  IDXGIOutputDuplication **ppOutputDuplication);
+};
+
+// TODO: Remove all the STDMETHOD uses here, and use the interfaces as defined from 
+// the header file instead.  Keeps it more consistent with header file, less prone to edit errors.
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIDeviceSubObject : public HackerDXGIObject
 {
 private:
 	IDXGIDeviceSubObject *mOrigDeviceSubObject;
@@ -312,6 +386,62 @@ public:
 		_In_  REFIID riid,
 		/* [annotation][retval][out] */
 		_Out_  void **ppDevice);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIResource : public HackerDXGIDeviceSubObject
+{
+private:
+	IDXGIResource *mOrigResource;
+
+public:
+	HackerDXGIResource(IDXGIResource *pResource);
+
+
+	virtual HRESULT STDMETHODCALLTYPE GetSharedHandle(
+		/* [annotation][out] */
+		_Out_  HANDLE *pSharedHandle);
+
+	virtual HRESULT STDMETHODCALLTYPE GetUsage(
+		/* [annotation][out] */
+		_Out_  DXGI_USAGE *pUsage);
+
+	virtual HRESULT STDMETHODCALLTYPE SetEvictionPriority(
+		/* [in] */ UINT EvictionPriority);
+
+	virtual HRESULT STDMETHODCALLTYPE GetEvictionPriority(
+		/* [annotation][retval][out] */
+		_Out_  UINT *pEvictionPriority);
+};
+
+
+// -----------------------------------------------------------------------------
+
+class HackerDXGIResource1 : public HackerDXGIResource
+{
+private:
+	IDXGIResource1 *mOrigResource1;
+
+public:
+	HackerDXGIResource1(IDXGIResource1 *pResource1);
+
+
+	virtual HRESULT STDMETHODCALLTYPE CreateSubresourceSurface(
+		UINT index,
+		/* [annotation][out] */
+		_Out_  IDXGISurface2 **ppSurface);
+
+	virtual HRESULT STDMETHODCALLTYPE CreateSharedHandle(
+		/* [annotation][in] */
+		_In_opt_  const SECURITY_ATTRIBUTES *pAttributes,
+		/* [annotation][in] */
+		_In_  DWORD dwAccess,
+		/* [annotation][in] */
+		_In_opt_  LPCWSTR lpName,
+		/* [annotation][out] */
+		_Out_  HANDLE *pHandle);
 };
 
 
