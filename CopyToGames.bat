@@ -32,3 +32,4 @@ xcopy /C "%1*.*" "W:\Games\The Crew (Worldwide)\" /F /Y /S
 xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Batman The Telltale Series\" /F /Y /S
 xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Dishonored2\" /F /Y /S
 xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\HeadLander\" /F /Y /S
+xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\NieRAutomata\" /F /Y /S
