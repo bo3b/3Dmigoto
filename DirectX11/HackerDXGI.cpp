@@ -1559,6 +1559,60 @@ STDMETHODIMP HackerDXGIOutput::GetFrameStatistics(THIS_
 
 // -----------------------------------------------------------------------------
 
+STDMETHODIMP HackerDXGIOutput1::GetDisplayModeList1(
+	/* [in] */ DXGI_FORMAT EnumFormat,
+	/* [in] */ UINT Flags,
+	/* [annotation][out][in] */
+	_Inout_  UINT *pNumModes,
+	/* [annotation][out] */
+	_Out_writes_to_opt_(*pNumModes, *pNumModes)  DXGI_MODE_DESC1 *pDesc)
+{
+	LogInfo("HackerDXGIOutput1::GetDisplayModeList1(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->GetDisplayModeList1(EnumFormat, Flags, pNumModes, pDesc);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+STDMETHODIMP HackerDXGIOutput1::FindClosestMatchingMode1(
+	/* [annotation][in] */
+	_In_  const DXGI_MODE_DESC1 *pModeToMatch,
+	/* [annotation][out] */
+	_Out_  DXGI_MODE_DESC1 *pClosestMatch,
+	/* [annotation][in] */
+	_In_opt_  IUnknown *pConcernedDevice)
+{
+	LogInfo("HackerDXGIOutput1::FindClosestMatchingMode1(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->FindClosestMatchingMode1(pModeToMatch, pClosestMatch, pConcernedDevice);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIOutput1::GetDisplaySurfaceData1(
+	/* [annotation][in] */
+	_In_  IDXGIResource *pDestination)
+{
+	LogInfo("HackerDXGIOutput1::GetDisplaySurfaceData1(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->GetDisplaySurfaceData1(pDestination);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIOutput1::DuplicateOutput(
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][out] */
+	_Out_  IDXGIOutputDuplication **ppOutputDuplication)
+{
+	LogInfo("HackerDXGIOutput1::DuplicateOutput(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->DuplicateOutput(pDevice, ppOutputDuplication);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
 STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 	/* [annotation][in] */
 	_In_  REFIID riid,
