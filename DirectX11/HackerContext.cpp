@@ -1274,6 +1274,16 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 	FrameAnalysisLog("RSSetViewports(NumViewports:%u, pViewports:0x%p) \n",
 			NumViewports, pViewports);
 
+	// In the 3D Vision Direct Mode, we need to double the width of any ViewPorts
+	if (G->gForceStereo == 2)
+	{
+		for (size_t i = 0; i < NumViewports; i++)
+		{
+			const_cast<D3D11_VIEWPORT *>(pViewports)[i].Width *= 2;
+		}
+		LogDebug("HackerContext::RSSetViewports forced 2x width: %d", pViewports->Width);
+	}
+
 	 mOrigContext->RSSetViewports(NumViewports, pViewports);
 }
 

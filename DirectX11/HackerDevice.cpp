@@ -60,7 +60,7 @@ HRESULT HackerDevice::CreateStereoParamResources()
 	if (nvret != NVAPI_OK)
 	{
 		mStereoHandle = 0;
-		LogInfo("HackerDevice::HackerDevice NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", nvret);
+		LogInfo("HackerDevice::CreateStereoParamResources NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", nvret);
 		return nvret;
 	}
 	mParamTextureManager.mStereoHandle = mStereoHandle;
@@ -1655,6 +1655,14 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
+	// If we are running in 3D Vision Direct Mode, we want to double the 
+	// size of any stencil texture, that will later be passed to CreateDepthStencilView
+	if ((G->gForceStereo == 2) && 
+		pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL))
+	{
+		const_cast<D3D11_TEXTURE2D_DESC *>(pDesc)->Width *= 2;
 	}
 
 	// Hash based on raw texture data

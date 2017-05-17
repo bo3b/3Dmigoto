@@ -1470,7 +1470,7 @@ void LoadConfigFile()
 
 	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, iniFile, NULL);
 	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
-	G->gForceStereo = GetIniBool(L"Device", L"force_stereo", false, iniFile, NULL);
+	G->gForceStereo = GetIniInt(L"Device", L"force_stereo", 0, iniFile, NULL);
 	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, iniFile, NULL);
 
 	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {

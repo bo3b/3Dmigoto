@@ -715,6 +715,14 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
 		LogInfo("->Forcing Height to = %d \n", pDesc->BufferDesc.Height);
 	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.  
+	if (G->gForceStereo == 2)
+	{
+		pDesc->BufferDesc.Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
+	}
 }
 
 
