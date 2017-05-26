@@ -1283,7 +1283,7 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 	{
 		// Really do not want to allocate memory here, so using max possible, 16.
 		D3D11_VIEWPORT ports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
-		memcpy(ports, pViewports, NumViewports);
+		memcpy(ports, pViewports, sizeof(D3D11_VIEWPORT) * NumViewports);
 
 		for (size_t i = 0; i < NumViewports; i++)
 		{
