@@ -1964,6 +1964,14 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
             /* [in] */ UINT SwapChainFlags)
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
+	if (G->gForceStereo == 2)
+	{
+		Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", Width);
+	}
+
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
 	if (SUCCEEDED(hr)) {
