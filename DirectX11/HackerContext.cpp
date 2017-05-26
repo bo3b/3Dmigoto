@@ -1288,7 +1288,7 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 		for (size_t i = 0; i < NumViewports; i++)
 		{
 			ports[i].Width *= 2;
-			LogInfo("HackerContext::RSSetViewports forced 2x width: %d", ports[i].Width);
+			LogInfo("HackerContext::RSSetViewports forced 2x width for Direct Mode: %.0f \n", ports[i].Width);
 		}
 
 		mOrigContext->RSSetViewports(NumViewports, ports);
