@@ -1321,6 +1321,7 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11RenderTargetView **ppRTView)
 {
+	LogDebug("HackerDevice::CreateRenderTargetView(%s@%p)\n", type_name(this), this);
 	return mOrigDevice->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
@@ -1332,6 +1333,7 @@ STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
+	LogDebug("HackerDevice::CreateDepthStencilView(%s@%p)\n", type_name(this), this);
 	return mOrigDevice->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
 }
 
@@ -1659,10 +1661,13 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 
 	// If we are running in 3D Vision Direct Mode, we want to double the 
 	// size of any stencil texture, that will later be passed to CreateDepthStencilView
-	if ((G->gForceStereo == 2) && 
+	// This will also specifically modify the input pDesc, because we want
+	// the game to use the full 2x width, in order to match the ViewPort.
+	if ((G->gForceStereo == 2) &&
 		pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL))
 	{
 		const_cast<D3D11_TEXTURE2D_DESC *>(pDesc)->Width *= 2;
+		LogInfo("->Depth stencil width forced 2x for Direct Mode = %d\n", pDesc->Width);
 	}
 
 	// Hash based on raw texture data

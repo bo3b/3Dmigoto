@@ -1275,24 +1275,16 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 			NumViewports, pViewports);
 
 	// In the 3D Vision Direct Mode, we need to double the width of any ViewPorts
-	// But we want to avoid changing the input parameters, so make a local copy.
-	// Not certain this is required, or makes the most sense.  For the backbuffer
-	// we modify the original parameters.  Also, modifying every ViewPort rect
-	// is possibly wrong, as Direct Mode may only be needed for full-screen rects.
+	// We specifically modify the input, so that the game is using full 2x width.
+	// Modifying every ViewPort rect is possibly wrong, as Direct Mode may only be 
+	// needed for full-screen rects.  
 	if (G->gForceStereo == 2)
 	{
-		// Really do not want to allocate memory here, so using max possible, 16.
-		D3D11_VIEWPORT ports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
-		memcpy(ports, pViewports, sizeof(D3D11_VIEWPORT) * NumViewports);
-
 		for (size_t i = 0; i < NumViewports; i++)
 		{
-			ports[i].Width *= 2;
-			LogInfo("HackerContext::RSSetViewports forced 2x width for Direct Mode: %.0f \n", ports[i].Width);
+			const_cast<D3D11_VIEWPORT *>(pViewports)[i].Width *= 2;
+			LogInfo("-> forced 2x width for Direct Mode: %.0f \n", pViewports[i].Width);
 		}
-
-		mOrigContext->RSSetViewports(NumViewports, ports);
-		return;
 	}
 
 	 mOrigContext->RSSetViewports(NumViewports, pViewports);
