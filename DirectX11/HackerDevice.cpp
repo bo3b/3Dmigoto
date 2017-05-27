@@ -60,14 +60,14 @@ HRESULT HackerDevice::CreateStereoParamResources()
 	if (nvret != NVAPI_OK)
 	{
 		mStereoHandle = 0;
-		LogInfo("HackerDevice::CreateStereoParamResources NvAPI_Stereo_CreateHandleFromIUnknown failed: %d \n", nvret);
+		LogInfo("HackerDevice::CreateStereoParamResources NvAPI_Stereo_CreateHandleFromIUnknown failed: %d\n", nvret);
 		return nvret;
 	}
 	mParamTextureManager.mStereoHandle = mStereoHandle;
-	LogInfo("  created NVAPI stereo handle. Handle = %p \n", mStereoHandle);
+	LogInfo("  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
 
 	// Create stereo parameter texture.
-	LogInfo("  creating stereo parameter texture. \n");
+	LogInfo("  creating stereo parameter texture.\n");
 
 	D3D11_TEXTURE2D_DESC desc;
 	memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
@@ -85,13 +85,13 @@ HRESULT HackerDevice::CreateStereoParamResources()
 	hr = mOrigDevice->CreateTexture2D(&desc, 0, &mStereoTexture);
 	if (FAILED(hr))
 	{
-		LogInfo("    call failed with result = %x. \n", hr);
+		LogInfo("    call failed with result = %x.\n", hr);
 		return hr;
 	}
-	LogInfo("    stereo texture created, handle = %p \n", mStereoTexture);
+	LogInfo("    stereo texture created, handle = %p\n", mStereoTexture);
 
 	// Since we need to bind the texture to a shader input, we also need a resource view.
-	LogInfo("  creating stereo parameter resource view. \n");
+	LogInfo("  creating stereo parameter resource view.\n");
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
 	memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
@@ -102,7 +102,7 @@ HRESULT HackerDevice::CreateStereoParamResources()
 	hr = mOrigDevice->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
 	if (FAILED(hr))
 	{
-		LogInfo("    call failed with result = %x. \n", hr);
+		LogInfo("    call failed with result = %x.\n", hr);
 		return hr;
 	}
 
@@ -175,12 +175,12 @@ void HackerDevice::CreatePinkHuntingResources()
 
 		ID3D10Blob* blob = NULL;
 		HRESULT hr = D3DCompile(hlsl, strlen(hlsl), "JustPink", NULL, NULL, "pshader", "ps_4_0", 0, 0, &blob, NULL);
-		LogInfo("  Created pink mode pixel shader: %d \n", hr);
+		LogInfo("  Created pink mode pixel shader: %d\n", hr);
 		if (SUCCEEDED(hr))
 		{
 			hr = mOrigDevice->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
 			if (FAILED(hr))
-				LogInfo("  Failed to create pinking pixel shader: %d \n", hr);
+				LogInfo("  Failed to create pinking pixel shader: %d\n", hr);
 			blob->Release();
 		}
 	}
@@ -199,7 +199,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
 		if (hr != NVAPI_OK)
 		{
-			LogInfo("    custom surface creation call failed: %d. \n", hr);
+			LogInfo("    custom surface creation call failed: %d.\n", hr);
 			return hr;
 		}
 	}
@@ -214,7 +214,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 
 void HackerDevice::Create3DMigotoResources()
 {
-	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.  \n", type_name(this), this);
+	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called. \n", type_name(this), this);
 
 	// XXX: Ignoring the return values for now because so do our callers.
 	// If we want to change this, keep in mind that failures in
@@ -238,7 +238,7 @@ void HackerDevice::SetHackerContext(HackerContext *pHackerContext)
 
 HackerContext* HackerDevice::GetHackerContext()
 {
-	LogInfo("HackerDevice::GetHackerContext returns %p \n", mHackerContext);
+	LogInfo("HackerDevice::GetHackerContext returns %p\n", mHackerContext);
 	return mHackerContext;
 }
 
@@ -373,12 +373,12 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
+	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigDevice->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
-		LogInfo("  failed result = %x for %p \n", hr, ppvObject);
+		LogInfo("  failed result = %x for %p\n", hr, ppvObject);
 		return hr;
 	}
 
@@ -390,7 +390,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		if (mHackerDXGIDevice1 != nullptr)
 		{
 			*ppvObject = mHackerDXGIDevice1;
-			LogDebug("  return HackerDXGIDevice1(%s@%p) wrapper of %p \n", 
+			LogDebug("  return HackerDXGIDevice1(%s@%p) wrapper of %p\n", 
 				type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, mHackerDXGIDevice1->GetOrigDXGIDevice());
 		}
 		else
@@ -404,7 +404,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 
 			mHackerDXGIDevice1 = new HackerDXGIDevice1(origDXGIDevice1, this);
 			*ppvObject = mHackerDXGIDevice1;
-			LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p \n", type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, origDXGIDevice1);
+			LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p\n", type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, origDXGIDevice1);
 		}
 	}
 	//else if (riid == __uuidof(IDXGIDevice1))
@@ -412,13 +412,13 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	//	IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
 	//	HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
 	//	*ppvObject = dxgiDeviceWrap1;
-	//	LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p \n", type_name(dxgiDeviceWrap1), dxgiDeviceWrap1, origDXGIDevice1);
+	//	LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p\n", type_name(dxgiDeviceWrap1), dxgiDeviceWrap1, origDXGIDevice1);
 	//}
 	else if (riid == __uuidof(IDXGIDevice2))
 	{
 		// an IDXGIDevice2 can only be created on platform update or above, so let's 
 		// continue the philosophy of returning errors for anything optional.
-		LogDebug("  returns E_NOINTERFACE as error for IDXGIDevice2. \n");
+		LogDebug("  returns E_NOINTERFACE as error for IDXGIDevice2.\n");
 		*ppvObject = NULL;
 		return E_NOINTERFACE;
 	}
@@ -428,7 +428,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			// If we are hooking we don't return the wrapped device
 			*ppvObject = this;
 		}
-		LogDebug("  return HackerDevice(%s@%p) wrapper of %p \n", type_name(this), this, mRealOrigDevice);
+		LogDebug("  return HackerDevice(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice);
 	}
 	else if (riid == __uuidof(ID3D11Device1))
 	{
@@ -451,7 +451,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		// and requires the platform update.
 
 		if (!G->enable_platform_update) {
-			LogInfo("  returns E_NOINTERFACE as error for ID3D11Device1 (try allow_platform_update=1 if the game refuses to run). \n");
+			LogInfo("  returns E_NOINTERFACE as error for ID3D11Device1 (try allow_platform_update=1 if the game refuses to run).\n");
 			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
@@ -460,16 +460,16 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			// If we are hooking we don't return the wrapped device
 			*ppvObject = this;
 		}
-		LogDebug("  return HackerDevice1(%s@%p) wrapper of %p \n", type_name(this), this, mRealOrigDevice);
+		LogDebug("  return HackerDevice1(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice);
 
 		//ID3D11Device1 *origDevice1 = static_cast<ID3D11Device1*>(*ppvObject);
 		//ID3D11DeviceContext1 *origContext1;
 		//origDevice1->GetImmediateContext1(&origContext1);
 
 		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
-		//LogDebug("  created HackerDevice1(%s@%p) wrapper of %p \n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
+		//LogDebug("  created HackerDevice1(%s@%p) wrapper of %p\n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
 		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
-		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p \n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
+		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p\n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
 
 		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
 		//hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
@@ -479,7 +479,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 		//*ppvObject = hackerDeviceWrap1;
 	}
 
-	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
+	LogDebug("  returns result = %x for %p\n", hr, *ppvObject);
 	return hr;
 }
 
@@ -498,7 +498,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
 	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text)
 {
-	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls \n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
+	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
 
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
@@ -536,7 +536,7 @@ void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShad
 			char *buf = new char[dataSize];
 			DWORD readSize;
 			if (!ReadFile(f, buf, dataSize, &readSize, 0) || dataSize != readSize)
-				LogInfo("  Error reading file. \n");
+				LogInfo("  Error reading file.\n");
 			CloseHandle(f);
 			if (dataSize == pBytecodeLength && !memcmp(pShaderBytecode, buf, dataSize))
 				exists = true;
@@ -553,13 +553,13 @@ void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShad
 		_wfopen_s(&fw, path, L"wb");
 		if (fw)
 		{
-			LogInfoW(L"    storing original binary shader to %s \n", path);
+			LogInfoW(L"    storing original binary shader to %s\n", path);
 			fwrite(pShaderBytecode, 1, pBytecodeLength, fw);
 			fclose(fw);
 		}
 		else
 		{
-			LogInfoW(L"    error storing original binary shader to %s \n", path);
+			LogInfoW(L"    error storing original binary shader to %s\n", path);
 		}
 	}
 }
@@ -586,7 +586,7 @@ void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 
 	if (f != INVALID_HANDLE_VALUE)
 	{
-		LogInfoW(L"    Replacement binary shader found: %s \n", path);
+		LogInfoW(L"    Replacement binary shader found: %s\n", path);
 
 		DWORD codeSize = GetFileSize(f, 0);
 		pCode = new char[codeSize];
@@ -596,14 +596,14 @@ void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 			|| !GetFileTime(f, NULL, NULL, &ftWrite)
 			|| codeSize != readSize)
 		{
-			LogInfo("    Error reading binary file. \n");
+			LogInfo("    Error reading binary file.\n");
 			delete[] pCode; pCode = 0;
 			CloseHandle(f);
 		}
 		else
 		{
 			pCodeSize = codeSize;
-			LogInfo("    Bytecode loaded. Size = %Iu \n", pCodeSize);
+			LogInfo("    Bytecode loaded. Size = %Iu\n", pCodeSize);
 			CloseHandle(f);
 
 			pShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
@@ -767,7 +767,7 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f != INVALID_HANDLE_VALUE)
 	{
-		LogInfo("    Replacement ASM shader found. Assembling replacement ASM code. \n");
+		LogInfo("    Replacement ASM shader found. Assembling replacement ASM code.\n");
 
 		DWORD srcDataSize = GetFileSize(f, 0);
 		vector<char> asmTextBytes(srcDataSize);
@@ -776,9 +776,9 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 		if (!ReadFile(f, asmTextBytes.data(), srcDataSize, &readSize, 0)
 			|| !GetFileTime(f, NULL, NULL, &ftWrite)
 			|| srcDataSize != readSize)
-			LogInfo("    Error reading file. \n");
+			LogInfo("    Error reading file.\n");
 		CloseHandle(f);
-		LogInfo("    Asm source code loaded. Size = %d \n", srcDataSize);
+		LogInfo("    Asm source code loaded. Size = %d\n", srcDataSize);
 
 		// Disassemble old shader to get shader model.
 		shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
@@ -817,19 +817,19 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 					_wfopen_s(&fw, path, L"wb");
 					if (fw)
 					{
-						LogInfoW(L"    storing reassembled binary to %s \n", path);
+						LogInfoW(L"    storing reassembled binary to %s\n", path);
 						fwrite(byteCode.data(), 1, byteCode.size(), fw);
 						fclose(fw);
 					}
 					else
 					{
-						LogInfoW(L"    error storing reassembled binary to %s \n", path);
+						LogInfoW(L"    error storing reassembled binary to %s\n", path);
 					}
 				}
 			}
 			catch (...)
 			{
-				LogInfo("    reassembly of ASM shader text failed. \n");
+				LogInfo("    reassembly of ASM shader text failed.\n");
 			}
 		}
 	}
@@ -1011,7 +1011,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					errno_t err = _wfopen_s(&fw, val, L"wb");
 					if (err != 0)
 					{
-						LogInfo("    !!! Fail to open replace.txt file: 0x%x \n", err);
+						LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
 						return 0;
 					}
 
@@ -1522,7 +1522,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 	/* [annotation] */
 	__in_opt  const IUnknown *pData)
 {
-	LogInfo("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(guid).c_str());
+	LogInfo("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
 	return mOrigDevice->SetPrivateDataInterface(guid, pData);
 }
@@ -1534,7 +1534,7 @@ STDMETHODIMP_(D3D_FEATURE_LEVEL) HackerDevice::GetFeatureLevel(THIS)
 {
 	D3D_FEATURE_LEVEL featureLevel = mOrigDevice->GetFeatureLevel();
 
-	LogInfo("HackerDevice::GetFeatureLevel(%s@%p) returns FeatureLevel:%x \n", type_name(this), this, featureLevel);
+	LogInfo("HackerDevice::GetFeatureLevel(%s@%p) returns FeatureLevel:%x\n", type_name(this), this, featureLevel);
 	return featureLevel;
 }
 
@@ -1589,7 +1589,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mDataBuffers[*ppBuffer] = hash;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		LogDebug("    Buffer registered: handle = %p, hash = %08lx \n", *ppBuffer, hash);
+		LogDebug("    Buffer registered: handle = %p, hash = %08lx\n", *ppBuffer, hash);
 	}
 	return hr;
 }
@@ -1691,7 +1691,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	hash = data_hash = CalcTexture2DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture2DDescHash(hash, pDesc);
-	LogDebug("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
+	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
 	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
@@ -1825,7 +1825,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	hash = data_hash = CalcTexture3DDataHash(pDesc, pInitialData);
 	if (pDesc)
 		hash = CalcTexture3DDescHash(hash, pDesc);
-	LogInfo("  InitialData = %p, hash = %08lx \n", pInitialData, hash);
+	LogInfo("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
 
@@ -1869,7 +1869,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 			unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
 			if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 			{
-				LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx \n", *ppSRView, i->second.hash);
+				LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
 
 				mZBufferResourceView = *ppSRView;
 			}
@@ -2258,7 +2258,7 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
 {
 	HRESULT hr;
 
-	if (pRasterizerDesc) LogDebug("HackerDevice::CreateRasterizerState called with \n"
+	if (pRasterizerDesc) LogDebug("HackerDevice::CreateRasterizerState called with\n"
 		"  FillMode = %d, CullMode = %d, DepthBias = %d, DepthBiasClamp = %f, SlopeScaledDepthBias = %f,\n"
 		"  DepthClipEnable = %d, ScissorEnable = %d, MultisampleEnable = %d, AntialiasedLineEnable = %d\n",
 		pRasterizerDesc->FillMode, pRasterizerDesc->CullMode, pRasterizerDesc->DepthBias, pRasterizerDesc->DepthBiasClamp,
@@ -2287,13 +2287,13 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DeviceContext **ppDeferredContext)
 {
-	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %#x, ptr:%p \n", 
+	LogInfo("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %#x, ptr:%p\n", 
 		type_name(this), this, ContextFlags, ppDeferredContext);
 
 	HRESULT hr = mOrigDevice->CreateDeferredContext(ContextFlags, ppDeferredContext);
 	if (FAILED(hr))
 	{
-		LogDebug("  failed result = %x for %p \n", hr, ppDeferredContext);
+		LogDebug("  failed result = %x for %p\n", hr, ppDeferredContext);
 		return hr;
 	}
 
@@ -2308,10 +2308,10 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 		else
 			*ppDeferredContext = hackerContext;
 
-		LogInfo("  created HackerContext(%s@%p) wrapper of %p \n", type_name(hackerContext), hackerContext, origContext);
+		LogInfo("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hackerContext), hackerContext, origContext);
 	}
 
-	LogDebug("  returns result = %x for %p \n", hr, *ppDeferredContext);
+	LogDebug("  returns result = %x for %p\n", hr, *ppDeferredContext);
 
 	return hr;
 }
@@ -2341,12 +2341,12 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	/* [annotation] */
 	__out  ID3D11DeviceContext **ppImmediateContext)
 {
-	LogDebug("HackerDevice::GetImmediateContext(%s@%p) called with:%p \n", 
+	LogDebug("HackerDevice::GetImmediateContext(%s@%p) called with:%p\n", 
 		type_name(this), this, ppImmediateContext);
 
 	if (ppImmediateContext == nullptr)
 	{
-		LogInfo("  *** no return possible, nullptr input. \n");
+		LogInfo("  *** no return possible, nullptr input.\n");
 		return;
 	}
 
@@ -2366,13 +2366,13 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	// we need to wrap the immediate context now:
 	if (mHackerContext == nullptr)
 	{
-		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext \n");
+		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext\n");
 
 		mHackerContext = new HackerContext(mRealOrigDevice, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
-		LogInfo("  HackerContext %p created to wrap %p \n", mHackerContext, *ppImmediateContext);
+		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
 	}
 	else if (mHackerContext->GetOrigContext() != *ppImmediateContext)
 	{
@@ -2382,7 +2382,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 
 	if (!(G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT))
 		*ppImmediateContext = mHackerContext;
-	LogDebug("  returns handle = %p  \n", *ppImmediateContext);
+	LogDebug("  returns handle = %p\n", *ppImmediateContext);
 }
 
 	// Original code for reference:
@@ -2440,12 +2440,12 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	/* [annotation] */
 	_Out_  ID3D11DeviceContext1 **ppImmediateContext)
 {
-	LogInfo("HackerDevice1::GetImmediateContext1(%s@%p) called with:%p \n",
+	LogInfo("HackerDevice1::GetImmediateContext1(%s@%p) called with:%p\n",
 		type_name(this), this, ppImmediateContext);
 
 	if (ppImmediateContext == nullptr)
 	{
-		LogInfo("  *** no return possible, nullptr input. \n");
+		LogInfo("  *** no return possible, nullptr input.\n");
 		return;
 	}
 
@@ -2457,11 +2457,11 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	// we need to wrap the immediate context now:
 	if (mHackerContext1 == nullptr)
 	{
-		LogInfo("*** HackerContext1 missing at HackerDevice1::GetImmediateContext1 \n");
+		LogInfo("*** HackerContext1 missing at HackerDevice1::GetImmediateContext1\n");
 
 		mHackerContext1 = new HackerContext1(mOrigDevice1, *ppImmediateContext);
 		mHackerContext1->SetHackerDevice1(this);
-		LogInfo("  mHackerContext1 %p created to wrap %p \n", mHackerContext1, *ppImmediateContext);
+		LogInfo("  mHackerContext1 %p created to wrap %p\n", mHackerContext1, *ppImmediateContext);
 	}
 	else if (mHackerContext1->GetOrigContext() != *ppImmediateContext)
 	{
@@ -2470,7 +2470,7 @@ STDMETHODIMP_(void) HackerDevice1::GetImmediateContext1(
 	}
 
 	*ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(mHackerContext1);
-	LogInfo("  returns handle = %p  \n", *ppImmediateContext);
+	LogInfo("  returns handle = %p\n", *ppImmediateContext);
 }
 
 
@@ -2482,7 +2482,7 @@ STDMETHODIMP HackerDevice1::CreateDeferredContext1(
 	/* [annotation] */
 	_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext)
 {
-	LogInfo("HackerDevice1::CreateDeferredContext1(%s@%p) called with flags = %x \n", type_name(this), this, ContextFlags);
+	LogInfo("HackerDevice1::CreateDeferredContext1(%s@%p) called with flags = %x\n", type_name(this), this, ContextFlags);
 	HRESULT hr = mOrigDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
