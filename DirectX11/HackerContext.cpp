@@ -1057,7 +1057,7 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	FrameAnalysisLog("Begin(pAsync:0x%p)", pAsync);
+	FrameAnalysisLog("Begin(pAsync:0x%p) \n", pAsync);
 	FrameAnalysisLogAsyncQuery(pAsync);
 	
 	mOrigContext->Begin(pAsync);
@@ -1067,7 +1067,7 @@ STDMETHODIMP_(void) HackerContext::End(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	FrameAnalysisLog("End(pAsync:0x%p)", pAsync);
+	FrameAnalysisLog("End(pAsync:0x%p) \n", pAsync);
 	FrameAnalysisLogAsyncQuery(pAsync);
 
 	 mOrigContext->End(pAsync);
@@ -1085,7 +1085,7 @@ STDMETHODIMP HackerContext::GetData(THIS_
 {
 	HRESULT ret = mOrigContext->GetData(pAsync, pData, DataSize, GetDataFlags);
 
-	FrameAnalysisLog("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u",
+	FrameAnalysisLog("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u \n",
 			pAsync, pData, DataSize, GetDataFlags, ret);
 	FrameAnalysisLogAsyncQuery(pAsync);
 	if (SUCCEEDED(ret))
@@ -1100,7 +1100,7 @@ STDMETHODIMP_(void) HackerContext::SetPredication(THIS_
 	/* [annotation] */
 	__in  BOOL PredicateValue)
 {
-	FrameAnalysisLog("SetPredication(pPredicate:0x%p, PredicateValue:%s)",
+	FrameAnalysisLog("SetPredication(pPredicate:0x%p, PredicateValue:%s) \n",
 			pPredicate, PredicateValue ? "true" : "false");
 	FrameAnalysisLogAsyncQuery(pPredicate);
 
