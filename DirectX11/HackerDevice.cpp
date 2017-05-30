@@ -1650,7 +1650,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 
 	// Rectangular depth stencil textures of at least 640x480 may indicate
 	// the game's resolution, for games that upscale to their swap chains:
-	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+	if (pDesc && 
+		(pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
 	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) 
 	{
@@ -1664,8 +1665,9 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// size of any stencil texture, that will later be passed to CreateDepthStencilView
 	// This will also specifically modify the input pDesc, because we want
 	// the game to use the full 2x width, in order to match the ViewPort.
-	if ((G->gForceStereo == 2) &&
-		pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+	if ((G->gForceStereo == 2) && 
+		pDesc &&
+		(pDesc->BindFlags & (D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_RENDER_TARGET)) &&
 		(pDesc->Width == G->mResolutionInfo.width))
 	{
 		const_cast<D3D11_TEXTURE2D_DESC *>(pDesc)->Width *= 2;
