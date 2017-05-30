@@ -1652,7 +1652,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// the game's resolution, for games that upscale to their swap chains:
 	if (pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
 	    G->mResolutionInfo.from == GetResolutionFrom::DEPTH_STENCIL &&
-	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) {
+	    heuristic_could_be_possible_resolution(pDesc->Width, pDesc->Height)) 
+	{
 		G->mResolutionInfo.width = pDesc->Width;
 		G->mResolutionInfo.height = pDesc->Height;
 		LogInfo("Got resolution from depth/stencil buffer: %ix%i\n",
@@ -1664,7 +1665,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// This will also specifically modify the input pDesc, because we want
 	// the game to use the full 2x width, in order to match the ViewPort.
 	if ((G->gForceStereo == 2) &&
-		pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL))
+		pDesc && (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+		(pDesc->Width == G->mResolutionInfo.width))
 	{
 		const_cast<D3D11_TEXTURE2D_DESC *>(pDesc)->Width *= 2;
 		LogInfo("->Depth stencil width forced 2x for Direct Mode = %d\n", pDesc->Width);

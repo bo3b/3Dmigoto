@@ -686,7 +686,8 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 
 	if (G->SCREEN_FULLSCREEN > 0)
 	{
-		if (G->SCREEN_FULLSCREEN == 2) {
+		if (G->SCREEN_FULLSCREEN == 2) 
+		{
 			// We install this hook on demand to avoid any possible
 			// issues with hooking the call when we don't need it:
 			// Unconfirmed, but possibly related to:
@@ -1965,7 +1966,17 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
 
+	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+	{
+		G->mResolutionInfo.width = Width;
+		G->mResolutionInfo.height = Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
 	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
+	// We are specifically modifying the value passed to the call, but saving the desired
+	// resolution before this.
 	if (G->gForceStereo == 2)
 	{
 		Width *= 2;
@@ -1974,15 +1985,9 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-	if (SUCCEEDED(hr)) {
+	if (SUCCEEDED(hr)) 
+	{
 		mOverlay->Resize(Width, Height);
-
-		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-			G->mResolutionInfo.width = Width;
-			G->mResolutionInfo.height = Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
-				G->mResolutionInfo.width, G->mResolutionInfo.height);
-		}
 	}
 
 	LogInfo("  returns result = %x\n", hr); 
@@ -1994,6 +1999,14 @@ STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
             _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
 	LogInfo("HackerDXGISwapChain::ResizeTarget(%s@%p) called \n", type_name(this), this);
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
+	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
+	{
+		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", pNewTargetParameters->Width);
+	}
+
 	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
