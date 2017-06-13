@@ -95,7 +95,7 @@ bool InitializeDLL()
 	//	LogInfo("  *** stereo is disabled: %s  ***\n", errorMessage);
 	//	return false;
 	//}
-		
+
 	LogInfo("\n***  D3D11 DLL successfully initialized.  ***\n\n");
 	return true;
 }
@@ -383,18 +383,18 @@ void InitD311()
 	UINT ret;
 
 	if (hD3D11) return;
-
+	//system("pause");
 	InitializeCriticalSection(&G->mCriticalSection);
 
 	InitializeDLL();
-	
+
 
 	// Chain through to the either the original DLL in the system, or to a proxy
 	// DLL with the same interface, specified in the d3dx.ini file.
 
 	if (G->CHAIN_DLL_PATH[0])
 	{
-		wchar_t sysDir[MAX_PATH] = {0};
+		wchar_t sysDir[MAX_PATH] = { 0 };
 		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
 			LogInfo("GetModuleFileName failed\n");
 			DoubleBeepExit();
@@ -525,7 +525,7 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 		LogInfo("  Filename = %s \n", data->HLSLFileName);
 
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
+		G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
 		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 		return 0xaa77125b;
 	}
@@ -696,12 +696,12 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 
 HRESULT WINAPI D3D11CreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
-					D3D_DRIVER_TYPE     DriverType,
-					HMODULE             Software,
-					UINT                Flags,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
 	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-					UINT                FeatureLevels,
-					UINT                SDKVersion,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
 	_Out_opt_       ID3D11Device        **ppDevice,
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
@@ -814,12 +814,12 @@ HRESULT WINAPI D3D11CreateDevice(
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_In_opt_			IDXGIAdapter         *pAdapter,
-						D3D_DRIVER_TYPE      DriverType,
-						HMODULE              Software,
-						UINT                 Flags,
+	D3D_DRIVER_TYPE      DriverType,
+	HMODULE              Software,
+	UINT                 Flags,
 	_In_opt_ const		D3D_FEATURE_LEVEL    *pFeatureLevels,
-						UINT                 FeatureLevels,
-						UINT                 SDKVersion,
+	UINT                 FeatureLevels,
+	UINT                 SDKVersion,
 	_In_opt_			DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
 	_Out_opt_			IDXGISwapChain		 **ppSwapChain,
 	_Out_opt_			ID3D11Device         **ppDevice,
@@ -830,12 +830,12 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("\n\n *** D3D11CreateDeviceAndSwapChain called with \n");
 	LogInfo("    pAdapter = %p \n", pAdapter);
 	LogInfo("    Flags = %#x \n", Flags);
-	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ?  *pFeatureLevels : 0);
+	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ? *pFeatureLevels : 0);
 	LogInfo("    FeatureLevels = %d \n", FeatureLevels);
 	LogInfo("    pSwapChainDesc = %p \n", pSwapChainDesc);
 	LogInfo("    ppSwapChain = %p \n", ppSwapChain);
 	LogInfo("    ppDevice = %p \n", ppDevice);
-	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
+	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel : 0);
 	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
 
 	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
@@ -861,7 +861,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
+	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n",
 		origDevice, origContext, origSwapChain);
 
 #if _DEBUG_LAYER
@@ -929,10 +929,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
 
-	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
-		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
+		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
-	
+
 	return ret;
 }
 

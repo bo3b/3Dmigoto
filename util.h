@@ -13,7 +13,7 @@
 
 #include "version.h"
 #include "log.h"
-#include "crc32c.h"
+#include "crc32c-hw-1.0.5\include\crc32c.h"
 #include "util_min.h"
 
 #include "D3D_Shaders\stdafx.h"

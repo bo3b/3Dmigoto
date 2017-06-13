@@ -107,7 +107,7 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 // this case, which will save the reference for their GetImmediateContext call.
 
 HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
-	: HackerDXGIDeviceSubObject(pSwapChain)
+	: HackerDXGIDeviceSubObject(pSwapChain), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
 {
 	mOrigSwapChain = pSwapChain;
 
@@ -123,10 +123,108 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 		// Create Overlay class that will be responsible for drawing any text
 		// info over the game. Using the Hacker Device and Context we gave the game.
 		mOverlay = new Overlay(pDevice, pContext, this);
-	} catch (...) {
+	}
+	catch (...) {
 		LogInfo("  *** Failed to create Overlay. Exception caught. \n");
 		mOverlay = NULL;
 	}
+}
+
+HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height)
+	: HackerDXGIDeviceSubObject(pSwapChain), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
+{
+	mOrigSwapChain = pSwapChain;
+
+	if (pContext == NULL)
+	{
+		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&pContext));
+	}
+
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
+	pDevice->SetHackerSwapChain(this);
+
+	// TODO: multisampled swap chain
+	// TODO: swap chain with more than one back buffer
+	D3D11_TEXTURE2D_DESC fake_buffer_desc;
+	std::memset(&fake_buffer_desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
+	fake_buffer_desc.ArraySize = 1;
+	fake_buffer_desc.MipLevels = 1;
+	fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	fake_buffer_desc.SampleDesc.Count = 1;
+	fake_buffer_desc.Format = fake_swap_chain_desc->BufferDesc.Format;
+	fake_buffer_desc.MiscFlags = 0;
+	fake_buffer_desc.Width = fake_swap_chain_desc->BufferDesc.Width;
+	fake_buffer_desc.Height = fake_swap_chain_desc->BufferDesc.Height;
+	fake_buffer_desc.CPUAccessFlags = 0;
+
+	HRESULT res = pDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+
+	mWidth = new_width;
+	mHeight = new_height;
+
+	if (res != S_OK)
+	{
+		LogInfo(" *** Failed to create faked swap chain buffer! \n");
+		mFakeBackBuffer = nullptr;
+		throw;
+	}
+
+	try {
+		// Create Overlay class that will be responsible for drawing any text
+		// info over the game. Using the Hacker Device and Context we gave the game.
+		mOverlay = new Overlay(pDevice, pContext, this);
+	}
+	catch (...) {
+		LogInfo("  *** Failed to create Overlay. Exception caught. \n");
+		mOverlay = NULL;
+	}
+}
+
+HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain* fake_swap_chain, UINT new_width, UINT new_height)
+	: HackerDXGIDeviceSubObject(pSwapChain), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
+{
+
+	mOrigSwapChain = pSwapChain;
+
+	if (pContext == NULL)
+	{
+		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&pContext));
+	}
+
+	mHackerDevice = pDevice;
+	mHackerContext = pContext;
+	pDevice->SetHackerSwapChain(this);
+
+	mFakeSwapChain = fake_swap_chain;
+
+	if (mFakeSwapChain == nullptr)
+	{
+		LogInfo(" *** Failed to create hacker swap chain: provided faked swap chain is invalid! \n");
+		throw;
+	}
+
+	mWidth = new_width;
+	mHeight = new_height;
+
+	try {
+		// Create Overlay class that will be responsible for drawing any text
+		// info over the game. Using the Hacker Device and Context we gave the game.
+		mOverlay = new Overlay(pDevice, pContext, this);
+	}
+	catch (...) {
+		LogInfo("  *** Failed to create Overlay. Exception caught. \n");
+		mOverlay = NULL;
+	}
+}
+
+HackerDXGISwapChain::~HackerDXGISwapChain()
+{
+	if (mFakeSwapChain)
+		mFakeSwapChain->Release();
+	if (mFakeBackBuffer)
+		mFakeBackBuffer->Release();
 }
 
 HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain1, HackerDevice *pDevice, HackerContext *pContext)
@@ -664,8 +762,6 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	LogInfo("  SwapChain = %p \n", ppSwapChain);
 	LogInfo("  Description = %p \n", pDesc);
 
-	ForceDisplayParams(pDesc);
-
 	// CreateSwapChain could be called with a IDXGIDevice or ID3D11Device
 	HackerDevice *hackerDevice = NULL;
 	IUnknown *origDevice = NULL;
@@ -701,7 +797,60 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		return E_FAIL;
 	}
 
-	HRESULT hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+	HRESULT hr;
+
+	HackerDXGISwapChain *swapchainWrap = nullptr;
+	bool set_fullscreen_required = false;
+	if (G->SCREEN_UPSCALING == 0) // no upscaling at all use the usual "old" path
+	{
+		ForceDisplayParams(pDesc);
+		hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+		swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+
+	}
+	else
+	{
+		set_fullscreen_required = !pDesc->Windowed; // to create two swap chains in row we need the swap chains to be in windowed mode
+		pDesc->Windowed = 1; // so store has to be stored to call setFullscreen after and changed to windowed
+							 // NOTE: no ForceDisplayResolution required here
+		InstallSetWindowPosHook(); // This hook is very important in case of upscaling
+								   //TODO: what about the hook and the warning in forceDisplayResolution (Testing required)
+								   //SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
+		DXGI_SWAP_CHAIN_DESC olddesc = *pDesc; // need old description to create fake swap chain (fake texture)
+
+		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
+		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
+
+		switch (G->UPSCALE_MODE) // maybe additional modes will come thats why switch 
+		{
+		case 0:  // create texture in game resolution and use it as the buffer for the game (e.g. GetBuffer returns the texture instead of swap chain buffer)
+		{
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &olddesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT);
+		}
+		// TODO: this mode dont consider the case if there are more than one buffer (bufferCount in REsizeBuffers)
+		// When can this be the case???? // It seems most of the game does not support this way (mostly crashes on CreateRenderTargetView))
+		// cause of invalid parameters. However Witcher seems to run a bit faster and smoother with this mode. Maybe there is a way to make it work with 
+		// all games???
+		break;
+		case 1: // creates second swap chain in game resolution and provide it to the game
+		{
+			IDXGISwapChain* fake_sw_ch = nullptr;
+			hr = mOrigFactory->CreateSwapChain(origDevice, &olddesc, &fake_sw_ch); // The first one should work anyway 
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain); // if the second swap chain is not possible to create then error will be returned
+			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), fake_sw_ch, G->SCREEN_WIDTH, G->SCREEN_HEIGHT);
+		}
+		break;
+		default: // Fall back disable everything
+			G->SCREEN_UPSCALING = 0;
+			G->UPSCALE_MODE = 0;
+			ForceDisplayParams(pDesc);
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &olddesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT);
+			break;
+		}
+	}
+
 	if (FAILED(hr))
 	{
 		LogInfo("  failed result = %#x for device:%p, swapchain:%p \n", hr, pDevice, ppSwapChain);
@@ -710,11 +859,20 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (ppSwapChain)
 	{
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
 		LogInfo("->HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, *ppSwapChain);
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
+
+		if (G->SCREEN_UPSCALING == 2 || set_fullscreen_required)
+		{
+			/*	some games seems to react very strange (like render nothing) if set full screen state is called here)
+			Other games like The Witcher 3 need the call to ensure entering the full screen on start (seems to be game internal stuff)
+			*/
+			(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+		}
 	}
 
+	// TODO: What resolution should be used for the migoto internal resolution: game resolution or upscaled resolution?
+	// Let it be upscaled (did not see any issues with that but maybe it should be reconsidered
 	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
 		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
 		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
@@ -853,6 +1011,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
+	// TODO: do we need fake swap chain here? is there games that use this function?
 	LogInfo("HackerDXGIFactory2::CreateSwapChainForHwnd(%s@%p) called with parameters\n", type_name(this), this);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  HWND = %p\n", hWnd);
@@ -942,6 +1101,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForCoreWindow(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGISwapChain1 **ppSwapChain)
 {
+	// TODO: do we need fake swap chain here? is there games that use this function?
 	LogInfo("HackerDXGIFactory2::CreateSwapChainForCoreWindow(%s@%p) called with parameters\n", type_name(this), this);
 	LogInfo("  Device = %p\n", pDevice);
 	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
@@ -985,6 +1145,7 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForComposition(THIS_
             /* [annotation][out] */ 
             _Outptr_  IDXGISwapChain1 **ppSwapChain)
 {
+	// TODO: do we need fake swap chain here? is there games that use this function?
 	LogInfo("HackerDXGIFactory2::CreateSwapChainForComposition(%s@%p) called with parameters\n", type_name(this), this);
 	LogInfo("  Device = %p\n", pDevice);
 	if (pDesc) LogInfo("  Width = %d\n", pDesc->Width);
@@ -1486,7 +1647,37 @@ static void UpdateStereoParams(HackerDevice *mHackerDevice, HackerContext *mHack
 	}
 }
 
+IDXGISwapChain* HackerDXGISwapChain::GetFakeSwapChain()
+{
+	return mFakeSwapChain;
+}
 
+ID3D11Texture2D* HackerDXGISwapChain::getFakeSwapChainBufferPtr()
+{
+	return mFakeBackBuffer;
+}
+
+BOOL HackerDXGISwapChain::getFakeSwapChainDesc(DXGI_SWAP_CHAIN_DESC* pDesc) const
+{
+	if (mFakeSwapChain)
+	{
+		mFakeSwapChain->GetDesc(pDesc);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOL HackerDXGISwapChain::getFakeSwapChainBufferDesc(D3D11_TEXTURE2D_DESC* pDesc) const
+{
+	if (mFakeBackBuffer)
+	{
+		mFakeBackBuffer->GetDesc(pDesc);
+		return TRUE;
+	}
+
+	return FALSE;
+}
 
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
@@ -1608,27 +1799,67 @@ STDMETHODIMP HackerDXGISwapChain::Present(THIS_
 }
         
 STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
-            /* [in] */ UINT Buffer,
-            /* [annotation][in] */ 
-            _In_  REFIID riid,
-            /* [annotation][out][in] */ 
-            _Out_  void **ppSurface)
+	/* [in] */ UINT Buffer,
+	/* [annotation][in] */
+	_In_  REFIID riid,
+	/* [annotation][out][in] */
+	_Out_  void **ppSurface)
 {
 	LogDebug("HackerDXGISwapChain::GetBuffer(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
-	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
+	HRESULT hr = S_OK;
+
+	if (mFakeBackBuffer)
+		*ppSurface = mFakeBackBuffer;
+	else if (mFakeSwapChain)
+		hr = mFakeSwapChain->GetBuffer(Buffer, riid, ppSurface);
+	else
+		hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
+
 	LogDebug("  returns %x \n", hr);
 	return hr;
 }
-        
+
 STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
-            /* [in] */ BOOL Fullscreen,
-            /* [annotation][in] */ 
-            _In_opt_  IDXGIOutput *pTarget)
+	/* [in] */ BOOL Fullscreen,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pTarget)
 {
 	LogInfo("HackerDXGISwapChain::SetFullscreenState(%s@%p) called with\n", type_name(this), this);
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %p\n", pTarget);
+
+	HRESULT hr;
+
+	if (mFakeBackBuffer || mFakeSwapChain) // we need fullscreen anyway
+	{
+		BOOL fst = FALSE;
+		IDXGIOutput *target = nullptr;
+		mOrigSwapChain->GetFullscreenState(&fst, &target);
+
+		if (target)
+			target->Release();
+
+		// dont call setfullscreenstate again to avoid starting mode switching and flooding winproc with unnecessary messages
+		// can disable fullscreen mode somehow
+		if (fst && Fullscreen)
+		{
+			return S_OK;
+		}
+		else
+		{
+			if (G->SCREEN_UPSCALING == 2)
+			{
+				hr = mOrigSwapChain->SetFullscreenState(TRUE, pTarget); // Witcher seems to require forcing the fullscreen
+			}
+			else
+			{
+				hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
+			}
+		}
+
+		return hr;
+	}
 
 	if (G->SCREEN_FULLSCREEN > 0)
 	{
@@ -1644,7 +1875,6 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 		LogInfo("->Fullscreen forced = %d \n", Fullscreen);
 	}
 
-	HRESULT hr;
 	//if (pTarget)	
 	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
 	//else
@@ -1654,15 +1884,15 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 	LogInfo("  returns %x\n", hr);
 	return hr;
 }
-        
+
 STDMETHODIMP HackerDXGISwapChain::GetFullscreenState(THIS_
-            /* [annotation][out] */ 
-            _Out_opt_  BOOL *pFullscreen,
-            /* [annotation][out] */ 
-            _Out_opt_  IDXGIOutput **ppTarget)
+	/* [annotation][out] */
+	_Out_opt_  BOOL *pFullscreen,
+	/* [annotation][out] */
+	_Out_opt_  IDXGIOutput **ppTarget)
 {
 	LogDebug("HackerDXGISwapChain::GetFullscreenState(%s@%p) called \n", type_name(this), this);
-	
+
 	//IDXGIOutput *origOutput;
 	//HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, &origOutput);
 	//if (hr == S_OK)
@@ -1673,38 +1903,92 @@ STDMETHODIMP HackerDXGISwapChain::GetFullscreenState(THIS_
 	//}
 
 	HRESULT hr = mOrigSwapChain->GetFullscreenState(pFullscreen, ppTarget);
+	//std::cout << "GetFullScreenState called " << *pFullscreen << std::endl;
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
-        
+
 STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
-            /* [annotation][out] */ 
-            _Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
+	/* [annotation][out] */
+	_Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
 {
 	LogDebug("HackerDXGISwapChain::GetDesc(%s@%p) called \n", type_name(this), this);
-	
+
 	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
+
 	if (hr == S_OK)
 	{
+		if (pDesc)
+		{
+			//TODO: not sure whether the upscaled resolution or game resolution should be returned
+			// all tested games did not use this function only migoto does
+			// I let them be the game resolution at the moment
+			if (mFakeBackBuffer)
+			{
+				D3D11_TEXTURE2D_DESC fd;
+				mFakeBackBuffer->GetDesc(&fd);
+				pDesc->BufferDesc.Width = fd.Width;
+				pDesc->BufferDesc.Height = fd.Height;
+				LogDebug("	Fake Swap Chain Sizes Provided!");
+			}
+
+			if (mFakeSwapChain)
+			{
+				hr = mFakeSwapChain->GetDesc(pDesc);
+			}
+		}
+
 		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
 		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
 		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
-		if (pDesc) LogDebug("  returns Refresh rate = %f\n", 
-			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
+		if (pDesc) LogDebug("  returns Refresh rate = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 	}
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
-        
+
 STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
-            /* [in] */ UINT BufferCount,
-            /* [in] */ UINT Width,
-            /* [in] */ UINT Height,
-            /* [in] */ DXGI_FORMAT NewFormat,
-            /* [in] */ UINT SwapChainFlags)
+	/* [in] */ UINT BufferCount,
+	/* [in] */ UINT Width,
+	/* [in] */ UINT Height,
+	/* [in] */ DXGI_FORMAT NewFormat,
+	/* [in] */ UINT SwapChainFlags)
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
-	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+	HRESULT hr;
+
+	if (mFakeBackBuffer) // UPSCALE_MODE 0
+	{
+		// just try to recreate texture with new game resolution
+		// should be possible without any issues (texture just like the swap chain should not be used at this time point)
+		//std::cout << "ResizeBuffer Called: " << Width << "  " << Height << std::endl;
+
+		D3D11_TEXTURE2D_DESC fd;
+		mFakeBackBuffer->GetDesc(&fd);
+
+		if (!(fd.Width == Width && fd.Height == Height))
+		{
+
+			mFakeBackBuffer->Release();
+
+			fd.Width = Width;
+			fd.Height = Height;
+			fd.Format = NewFormat;
+
+			hr = mHackerDevice->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
+		}
+		else  // nothing to resize
+			hr = S_OK;
+
+	}
+	else if (mFakeSwapChain) // UPSCALE_MODE 1
+	{
+		hr = mFakeSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, 0);
+	}
+	else
+		hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
 	if (SUCCEEDED(hr)) {
 		mOverlay->Resize(Width, Height);
@@ -1717,16 +2001,51 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 		}
 	}
 
-	LogInfo("  returns result = %x\n", hr); 
+	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
-        
+
 STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
-            /* [annotation][in] */ 
-            _In_  const DXGI_MODE_DESC *pNewTargetParameters)
+	/* [annotation][in] */
+	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
 	LogInfo("HackerDXGISwapChain::ResizeTarget(%s@%p) called \n", type_name(this), this);
-	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
+
+	// This function is very diffucult to recode
+	// Some games like Witcher seems to drop fullscreen everytime the resizetarget is called (original one)
+	// Some other games seems to require the function 
+	// I did it the way the faked texture mode (upscale_mode == 1) dont call resize target
+	// the other mode does
+	if (G->SCREEN_UPSCALING == 2)
+	{
+		DEVMODE dmScreenSettings;
+		memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
+		dmScreenSettings.dmSize = sizeof(dmScreenSettings);
+		dmScreenSettings.dmPelsWidth = (unsigned long)mWidth;
+		dmScreenSettings.dmPelsHeight = (unsigned long)mHeight;
+		dmScreenSettings.dmBitsPerPel = 32;
+		dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+		// Change the display settings to full screen.
+		LONG hr = ChangeDisplaySettingsEx(NULL, &dmScreenSettings, nullptr, CDS_FULLSCREEN, 0);
+		LogInfo("  returns result = %x\n", hr);
+		return hr == 0 ? S_OK : DXGI_ERROR_INVALID_CALL;
+	}
+	else if (G->SCREEN_UPSCALING == 1)
+	{
+		DXGI_MODE_DESC md = *pNewTargetParameters;
+
+		// force upscaled resolution
+		md.Width = mWidth;
+		md.Height = mHeight;
+
+		HRESULT hr = mOrigSwapChain->ResizeTarget(&md);
+		LogInfo("  returns result = %x\n", hr);
+		return hr;
+	}
+
+	DXGI_MODE_DESC mode = *pNewTargetParameters;
+	HRESULT hr = mOrigSwapChain->ResizeTarget(&mode);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
