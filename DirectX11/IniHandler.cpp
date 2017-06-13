@@ -27,11 +27,11 @@ struct Section {
 	bool prefix;
 };
 static Section CommandListSections[] = {
-	{L"ShaderOverride", true},
-	{L"TextureOverride", true},
-	{L"CustomShader", true},
-	{L"CommandList", true},
-	{L"Present", false},
+	{ L"ShaderOverride", true },
+	{ L"TextureOverride", true },
+	{ L"CustomShader", true },
+	{ L"CommandList", true },
+	{ L"Present", false },
 };
 
 // List all remaining sections so we can verify that every section listed in
@@ -40,17 +40,17 @@ static Section CommandListSections[] = {
 // list a section in both lists - put it above if it is a command list section,
 // and in this list if it is not:
 static Section RegularSections[] = {
-	{L"Logging", false},
-	{L"System", false},
-	{L"Device", false},
-	{L"Stereo", false},
-	{L"Rendering", false},
-	{L"Hunting", false},
-	{L"Constants", false},
-	{L"Profile", false},
-	{L"ConvergenceMap", false}, // Only used in nvapi wrapper
-	{L"Resource", true},
-	{L"Key", true},
+	{ L"Logging", false },
+	{ L"System", false },
+	{ L"Device", false },
+	{ L"Stereo", false },
+	{ L"Rendering", false },
+	{ L"Hunting", false },
+	{ L"Constants", false },
+	{ L"Profile", false },
+	{ L"ConvergenceMap", false }, // Only used in nvapi wrapper
+	{ L"Resource", true },
+	{ L"Key", true },
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -69,7 +69,8 @@ static bool SectionInList(const wchar_t *section, Section section_list[], int li
 			len = wcslen(section_list[i].section);
 			if (!_wcsnicmp(section, section_list[i].section, len))
 				return true;
-		} else {
+		}
+		else {
 			if (!_wcsicmp(section, section_list[i].section))
 				return true;
 		}
@@ -116,7 +117,8 @@ static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, 
 		if (len != wcslen(val)) {
 			LogInfo("  WARNING: Floating point parse error: %S=%S\n", key, val);
 			BeepFailure2();
-		} else {
+		}
+		else {
 			if (found)
 				*found = true;
 			LogInfo("  %S=%f\n", key, ret);
@@ -141,7 +143,8 @@ static int GetIniInt(const wchar_t *section, const wchar_t *key, int def, const 
 		if (len != wcslen(val)) {
 			LogInfo("  WARNING: Integer parse error: %S=%S\n", key, val);
 			BeepFailure2();
-		} else {
+		}
+		else {
 			if (found)
 				*found = true;
 			LogInfo("  %S=%d\n", key, ret);
@@ -181,7 +184,7 @@ static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, con
 	return ret;
 }
 
-class EnumParseError: public exception {} enumParseError;
+class EnumParseError : public exception {} enumParseError;
 
 static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_len, int first)
 {
@@ -204,7 +207,7 @@ static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_
 }
 
 static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found,
-		wchar_t *prefix, wchar_t *names[], int names_len, int first)
+	wchar_t *prefix, wchar_t *names[], int names_len, int first)
 {
 	wchar_t val[MAX_PATH];
 	int ret = def;
@@ -218,7 +221,8 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const
 			if (found)
 				*found = true;
 			LogInfo("  %S=%S\n", key, val);
-		} catch (EnumParseError) {
+		}
+		catch (EnumParseError) {
 			LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
 			BeepFailure2();
 		}
@@ -314,7 +318,8 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 				kptr = vptr;
 				continue;
 			}
-		} else {
+		}
+		else {
 			*vptr = L'\0';
 			vptr++;
 		}
@@ -471,7 +476,8 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			if (custom_resource->override_type == CustomResourceType::INVALID) {
 				LogInfo("  WARNING: Unknown type \"%S\"\n", setting);
 				BeepFailure2();
-			} else {
+			}
+			else {
 				LogInfo("  type=%S\n", setting);
 			}
 		}
@@ -482,7 +488,8 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
 				LogInfo("  WARNING: Unknown mode \"%S\"\n", setting);
 				BeepFailure2();
-			} else {
+			}
+			else {
 				LogInfo("  mode=%S\n", setting);
 			}
 		}
@@ -492,7 +499,8 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
 				LogInfo("  WARNING: Unknown format \"%S\"\n", setting);
 				BeepFailure2();
-			} else {
+			}
+			else {
 				LogInfo("  format=%s\n", TexFormatStr(custom_resource->override_format));
 			}
 		}
@@ -524,8 +532,8 @@ static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 // it can warn about unrecognised keys and detect duplicate keys that aren't
 // part of the command list.
 static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
-		CommandList *pre_command_list, CommandList *post_command_list,
-		wchar_t *whitelist[])
+	CommandList *pre_command_list, CommandList *post_command_list,
+	wchar_t *whitelist[])
 {
 	IniSection section;
 	IniSection::iterator entry;
@@ -582,7 +590,8 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 				key_ptr += 5;
 				command_list = post_command_list;
 				explicit_command_list = post_command_list;
-			} else if (!key->compare(0, 4, L"pre ")) {
+			}
+			else if (!key->compare(0, 4, L"pre ")) {
 				key_ptr += 4;
 				explicit_command_list = pre_command_list;
 			}
@@ -600,7 +609,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
 		BeepFailure2();
 		continue;
-log_continue:
+	log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	}
 }
@@ -720,7 +729,7 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
 		}
-		
+
 		if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
 		{
 			swscanf_s(setting, L"%16llx", &hash2);
@@ -779,7 +788,7 @@ static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile
 	lower = sections.lower_bound(wstring(L"TextureOverride"));
 	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
 
-	for (i = lower; i != upper; i++) 
+	for (i = lower; i != upper; i++)
 	{
 		id = i->c_str();
 
@@ -881,9 +890,9 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	int i;
 
 	i = swscanf_s(val, L"%s %s %s",
-			op_buf, (unsigned)ARRAYSIZE(op_buf),
-			src_buf, (unsigned)ARRAYSIZE(src_buf),
-			dst_buf, (unsigned)ARRAYSIZE(dst_buf));
+		op_buf, (unsigned)ARRAYSIZE(op_buf),
+		src_buf, (unsigned)ARRAYSIZE(src_buf),
+		dst_buf, (unsigned)ARRAYSIZE(dst_buf));
 	if (i != 3) {
 		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
 		BeepFailure2();
@@ -893,21 +902,24 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 
 	try {
 		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
-	} catch (EnumParseError) {
+	}
+	catch (EnumParseError) {
 		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_buf);
 		BeepFailure2();
 	}
 
 	try {
 		*src = (D3D11_BLEND)ParseEnum(src_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
-	} catch (EnumParseError) {
+	}
+	catch (EnumParseError) {
 		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_buf);
 		BeepFailure2();
 	}
 
 	try {
 		*dst = (D3D11_BLEND)ParseEnum(dst_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
-	} catch (EnumParseError) {
+	}
+	catch (EnumParseError) {
 		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
 		BeepFailure2();
 	}
@@ -934,9 +946,9 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 		}
 
 		ParseBlendOp(key, setting,
-				&desc->BlendOp,
-				&desc->SrcBlend,
-				&desc->DestBlend);
+			&desc->BlendOp,
+			&desc->SrcBlend,
+			&desc->DestBlend);
 	}
 
 	wcscpy(key, L"alpha");
@@ -945,9 +957,9 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 	if (GetPrivateProfileString(section, key, 0, setting, MAX_PATH, iniFile)) {
 		override = true;
 		ParseBlendOp(key, setting,
-				&desc->BlendOpAlpha,
-				&desc->SrcBlendAlpha,
-				&desc->DestBlendAlpha);
+			&desc->BlendOpAlpha,
+			&desc->SrcBlendAlpha,
+			&desc->DestBlendAlpha);
 	}
 
 	wcscpy(key, L"mask");
@@ -1050,17 +1062,17 @@ static void ParseRSState(CustomShader *shader, const wchar_t *section, wchar_t *
 	bool found;
 
 	desc->FillMode = (D3D11_FILL_MODE)GetIniEnum(section, L"fill", D3D11_FILL_SOLID, iniFile, &found,
-			L"D3D11_FILL_", FillModes, ARRAYSIZE(FillModes), 2);
+		L"D3D11_FILL_", FillModes, ARRAYSIZE(FillModes), 2);
 	if (found)
 		shader->rs_override = 1;
 
-	desc->CullMode = (D3D11_CULL_MODE)GetIniEnum(section, L"cull", D3D11_CULL_BACK,  iniFile, &found,
-			L"D3D11_CULL_", CullModes, ARRAYSIZE(CullModes), 1);
+	desc->CullMode = (D3D11_CULL_MODE)GetIniEnum(section, L"cull", D3D11_CULL_BACK, iniFile, &found,
+		L"D3D11_CULL_", CullModes, ARRAYSIZE(CullModes), 1);
 	if (found)
 		shader->rs_override = 1;
 
 	desc->FrontCounterClockwise = (BOOL)GetIniEnum(section, L"front", 0, iniFile, &found,
-			NULL, FrontDirection, ARRAYSIZE(FrontDirection), 0);
+		NULL, FrontDirection, ARRAYSIZE(FrontDirection), 0);
 	if (found)
 		shader->rs_override = 1;
 
@@ -1099,48 +1111,48 @@ struct PrimitiveTopology {
 };
 
 static struct PrimitiveTopology PrimitiveTopologies[] = {
-	{ L"UNDEFINED", 0},
-	{ L"POINT_LIST", 1},
-	{ L"LINE_LIST", 2},
-	{ L"LINE_STRIP", 3},
-	{ L"TRIANGLE_LIST", 4},
-	{ L"TRIANGLE_STRIP", 5},
-	{ L"LINE_LIST_ADJ", 10},
-	{ L"LINE_STRIP_ADJ", 11},
-	{ L"TRIANGLE_LIST_ADJ", 12},
-	{ L"TRIANGLE_STRIP_ADJ", 13},
-	{ L"1_CONTROL_POINT_PATCH_LIST", 33},
-	{ L"2_CONTROL_POINT_PATCH_LIST", 34},
-	{ L"3_CONTROL_POINT_PATCH_LIST", 35},
-	{ L"4_CONTROL_POINT_PATCH_LIST", 36},
-	{ L"5_CONTROL_POINT_PATCH_LIST", 37},
-	{ L"6_CONTROL_POINT_PATCH_LIST", 38},
-	{ L"7_CONTROL_POINT_PATCH_LIST", 39},
-	{ L"8_CONTROL_POINT_PATCH_LIST", 40},
-	{ L"9_CONTROL_POINT_PATCH_LIST", 41},
-	{ L"10_CONTROL_POINT_PATCH_LIST", 42},
-	{ L"11_CONTROL_POINT_PATCH_LIST", 43},
-	{ L"12_CONTROL_POINT_PATCH_LIST", 44},
-	{ L"13_CONTROL_POINT_PATCH_LIST", 45},
-	{ L"14_CONTROL_POINT_PATCH_LIST", 46},
-	{ L"15_CONTROL_POINT_PATCH_LIST", 47},
-	{ L"16_CONTROL_POINT_PATCH_LIST", 48},
-	{ L"17_CONTROL_POINT_PATCH_LIST", 49},
-	{ L"18_CONTROL_POINT_PATCH_LIST", 50},
-	{ L"19_CONTROL_POINT_PATCH_LIST", 51},
-	{ L"20_CONTROL_POINT_PATCH_LIST", 52},
-	{ L"21_CONTROL_POINT_PATCH_LIST", 53},
-	{ L"22_CONTROL_POINT_PATCH_LIST", 54},
-	{ L"23_CONTROL_POINT_PATCH_LIST", 55},
-	{ L"24_CONTROL_POINT_PATCH_LIST", 56},
-	{ L"25_CONTROL_POINT_PATCH_LIST", 57},
-	{ L"26_CONTROL_POINT_PATCH_LIST", 58},
-	{ L"27_CONTROL_POINT_PATCH_LIST", 59},
-	{ L"28_CONTROL_POINT_PATCH_LIST", 60},
-	{ L"29_CONTROL_POINT_PATCH_LIST", 61},
-	{ L"30_CONTROL_POINT_PATCH_LIST", 62},
-	{ L"31_CONTROL_POINT_PATCH_LIST", 63},
-	{ L"32_CONTROL_POINT_PATCH_LIST", 64},
+	{ L"UNDEFINED", 0 },
+	{ L"POINT_LIST", 1 },
+	{ L"LINE_LIST", 2 },
+	{ L"LINE_STRIP", 3 },
+	{ L"TRIANGLE_LIST", 4 },
+	{ L"TRIANGLE_STRIP", 5 },
+	{ L"LINE_LIST_ADJ", 10 },
+	{ L"LINE_STRIP_ADJ", 11 },
+	{ L"TRIANGLE_LIST_ADJ", 12 },
+	{ L"TRIANGLE_STRIP_ADJ", 13 },
+	{ L"1_CONTROL_POINT_PATCH_LIST", 33 },
+	{ L"2_CONTROL_POINT_PATCH_LIST", 34 },
+	{ L"3_CONTROL_POINT_PATCH_LIST", 35 },
+	{ L"4_CONTROL_POINT_PATCH_LIST", 36 },
+	{ L"5_CONTROL_POINT_PATCH_LIST", 37 },
+	{ L"6_CONTROL_POINT_PATCH_LIST", 38 },
+	{ L"7_CONTROL_POINT_PATCH_LIST", 39 },
+	{ L"8_CONTROL_POINT_PATCH_LIST", 40 },
+	{ L"9_CONTROL_POINT_PATCH_LIST", 41 },
+	{ L"10_CONTROL_POINT_PATCH_LIST", 42 },
+	{ L"11_CONTROL_POINT_PATCH_LIST", 43 },
+	{ L"12_CONTROL_POINT_PATCH_LIST", 44 },
+	{ L"13_CONTROL_POINT_PATCH_LIST", 45 },
+	{ L"14_CONTROL_POINT_PATCH_LIST", 46 },
+	{ L"15_CONTROL_POINT_PATCH_LIST", 47 },
+	{ L"16_CONTROL_POINT_PATCH_LIST", 48 },
+	{ L"17_CONTROL_POINT_PATCH_LIST", 49 },
+	{ L"18_CONTROL_POINT_PATCH_LIST", 50 },
+	{ L"19_CONTROL_POINT_PATCH_LIST", 51 },
+	{ L"20_CONTROL_POINT_PATCH_LIST", 52 },
+	{ L"21_CONTROL_POINT_PATCH_LIST", 53 },
+	{ L"22_CONTROL_POINT_PATCH_LIST", 54 },
+	{ L"23_CONTROL_POINT_PATCH_LIST", 55 },
+	{ L"24_CONTROL_POINT_PATCH_LIST", 56 },
+	{ L"25_CONTROL_POINT_PATCH_LIST", 57 },
+	{ L"26_CONTROL_POINT_PATCH_LIST", 58 },
+	{ L"27_CONTROL_POINT_PATCH_LIST", 59 },
+	{ L"28_CONTROL_POINT_PATCH_LIST", 60 },
+	{ L"29_CONTROL_POINT_PATCH_LIST", 61 },
+	{ L"30_CONTROL_POINT_PATCH_LIST", 62 },
+	{ L"31_CONTROL_POINT_PATCH_LIST", 63 },
+	{ L"32_CONTROL_POINT_PATCH_LIST", 64 },
 };
 
 static void ParseTopology(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
@@ -1197,7 +1209,10 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"multisample_enable", L"antialiased_line_enable",
 	// IA State overrides:
 	L"topology",
-	NULL
+	// Sampler State overrides
+	L"sampler", // TODO: add additional sampler parameter 
+				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
+				NULL
 };
 static void EnumerateCustomShaderSections(IniSections &sections, wchar_t *iniFile)
 {
@@ -1218,6 +1233,63 @@ static void EnumerateCustomShaderSections(IniSections &sections, wchar_t *iniFil
 		customShaders[shader_id];
 	}
 }
+
+static void ParseSamplerState(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	D3D11_SAMPLER_DESC* desc = &shader->sampler_desc;
+	wchar_t setting[MAX_PATH];
+	wchar_t key[32];
+	int i;
+	bool found;
+
+	memset(desc, 0, sizeof(D3D11_SAMPLER_DESC));
+
+	//TODO: do not really understand the difference between normal and comparison filter 
+	// and how they are depending on the comparison func. 
+	// just used one ==> need further reconsideration
+	desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC;
+	desc->AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc->AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc->AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc->MipLODBias = 0.0f;
+	desc->MaxAnisotropy = 1;
+	desc->ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	desc->BorderColor[0] = 0;
+	desc->BorderColor[1] = 0;
+	desc->BorderColor[2] = 0;
+	desc->BorderColor[3] = 0;
+	desc->MinLOD = 0;
+	desc->MaxLOD = 1;
+
+	if (GetPrivateProfileString(section, L"sampler", 0, setting, MAX_PATH, iniFile))
+	{
+		if (std::wstring(setting) == L"null")
+			return;
+
+		if (std::wstring(setting) == L"point_filter")
+		{
+			desc->Filter = D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+			shader->sampler_override = 1;
+			return;
+		}
+
+		if (std::wstring(setting) == L"linear_filter")
+		{
+			desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+			shader->sampler_override = 1;
+			return;
+		}
+
+		if (std::wstring(setting) == L"anisotropic_filter")
+		{
+			desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC;
+			desc->MaxAnisotropy = 16; // TODO: is 16 necessary or maybe it should be provided by the config ini?
+			shader->sampler_override = 1;
+			return;
+		}
+	}
+}
+
 static void ParseCustomShaderSections(wchar_t *iniFile)
 {
 	CustomShaders::iterator i;
@@ -1253,7 +1325,7 @@ static void ParseCustomShaderSections(wchar_t *iniFile)
 		ParseBlendState(custom_shader, shader_id->c_str(), iniFile);
 		ParseRSState(custom_shader, shader_id->c_str(), iniFile);
 		ParseTopology(custom_shader, shader_id->c_str(), iniFile);
-
+		ParseSamplerState(custom_shader, shader_id->c_str(), iniFile);
 		custom_shader->max_executions_per_frame =
 			GetIniInt(shader_id->c_str(), L"max_executions_per_frame", 0, iniFile, NULL);
 
@@ -1453,17 +1525,19 @@ void LoadConfigFile()
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, iniFile, NULL);
 	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, iniFile, NULL);
 
-	// [Device] (DXGI parameters)
+	// [Device] (DXGI parameters) and upscaling
 	LogInfo("[Device]\n");
 	G->SCREEN_WIDTH = GetIniInt(L"Device", L"width", -1, iniFile, NULL);
 	G->SCREEN_HEIGHT = GetIniInt(L"Device", L"height", -1, iniFile, NULL);
 	G->SCREEN_REFRESH = GetIniInt(L"Device", L"refresh_rate", -1, iniFile, NULL);
+	G->SCREEN_UPSCALING = GetIniInt(L"Device", L"upscaling", 0, iniFile, NULL);
+	G->UPSCALE_MODE = GetIniInt(L"Device", L"upscale_mode", 0, iniFile, NULL);
 
 	if (GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH, iniFile))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-			G->FILTER_REFRESH + 0, G->FILTER_REFRESH + 1, G->FILTER_REFRESH + 2, G->FILTER_REFRESH + 3, 
-			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7, 
+			G->FILTER_REFRESH + 0, G->FILTER_REFRESH + 1, G->FILTER_REFRESH + 2, G->FILTER_REFRESH + 3,
+			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7,
 			G->FILTER_REFRESH + 8, G->FILTER_REFRESH + 9);
 		LogInfoW(L"  filter_refresh_rate=%s\n", setting);
 	}
@@ -1479,9 +1553,11 @@ void LoadConfigFile()
 		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
 			LogInfoW(L"  WARNING: Unknown get_resolution_from %s\n", setting);
 			BeepFailure2();
-		} else
+		}
+		else
 			LogInfoW(L"  get_resolution_from=%s\n", setting);
-	} else
+	}
+	else
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	// [Stereo]
@@ -1503,7 +1579,8 @@ void LoadConfigFile()
 			LogInfoW(L"  WARNING: Unknown shader_hash \"%s\"\n", setting);
 			G->shader_hash_type = ShaderHashType::FNV;
 			BeepFailure2();
-		} else {
+		}
+		else {
 			LogInfoW(L"  shader_hash=%s\n", setting);
 		}
 	}

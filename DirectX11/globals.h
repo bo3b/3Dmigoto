@@ -37,10 +37,10 @@ enum class ShaderHashType {
 	BYTECODE,
 };
 static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
-	{L"3dmigoto", ShaderHashType::FNV},
-	{L"embedded", ShaderHashType::EMBEDDED},
-	{L"bytecode", ShaderHashType::BYTECODE},
-	{NULL, ShaderHashType::INVALID} // End of list marker
+	{ L"3dmigoto", ShaderHashType::FNV },
+	{ L"embedded", ShaderHashType::EMBEDDED },
+	{ L"bytecode", ShaderHashType::BYTECODE },
+	{ NULL, ShaderHashType::INVALID } // End of list marker
 };
 
 // Key is index/vertex buffer, value is hash key.
@@ -103,70 +103,70 @@ typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
 typedef std::unordered_map<ID3D11GeometryShader *, ID3D11GeometryShader *> GeometryShaderReplacementMap;
 
 enum class FrameAnalysisOptions {
-	INVALID         = 0,
-	DUMP_RT         = 0x00000001,
-	DUMP_RT_JPS     = 0x00000002,
-	DUMP_RT_DDS     = 0x00000004,
-	DUMP_RT_MASK    = 0x00000007,
-	CLEAR_RT        = 0x00000008,
-	DUMP_DEPTH      = 0x00000010,
-	DUMP_DEPTH_JPS  = 0x00000020,
-	DUMP_DEPTH_DDS  = 0x00000040,
+	INVALID = 0,
+	DUMP_RT = 0x00000001,
+	DUMP_RT_JPS = 0x00000002,
+	DUMP_RT_DDS = 0x00000004,
+	DUMP_RT_MASK = 0x00000007,
+	CLEAR_RT = 0x00000008,
+	DUMP_DEPTH = 0x00000010,
+	DUMP_DEPTH_JPS = 0x00000020,
+	DUMP_DEPTH_DDS = 0x00000040,
 	DUMP_DEPTH_MASK = 0x00000070,
-	FILENAME_REG    = 0x00000080,
-	DUMP_TEX        = 0x00000100,
-	DUMP_TEX_JPS    = 0x00000200,
-	DUMP_TEX_DDS    = 0x00000400,
-	DUMP_TEX_MASK   = 0x00000700,
-	DUMP_XXX        = 0x00000111,
-	DUMP_XXX_JPS    = 0x00000222,
-	DUMP_XXX_DDS    = 0x00000444,
-	DUMP_XXX_MASK   = 0x00000777,
-	PERSIST         = 0x00000800, // Used by shader/texture triggers
-	STEREO          = 0x00001000,
-	MONO            = 0x00002000,
-	STEREO_MASK     = 0x00003000,
-	DUMP_CB_BIN     = 0x00004000,
-	DUMP_CB_TXT     = 0x00008000,
-	DUMP_CB_MASK    = 0x0000c000,
-	DUMP_VB_BIN     = 0x00010000,
-	DUMP_VB_TXT     = 0x00020000,
-	DUMP_VB_MASK    = 0x00030000,
-	DUMP_IB_BIN     = 0x00040000,
-	DUMP_IB_TXT     = 0x00080000,
-	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x00054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
-	DUMP_XX_TXT     = 0x000a8000, // Not including SRVs, RTs or UAVs for now
+	FILENAME_REG = 0x00000080,
+	DUMP_TEX = 0x00000100,
+	DUMP_TEX_JPS = 0x00000200,
+	DUMP_TEX_DDS = 0x00000400,
+	DUMP_TEX_MASK = 0x00000700,
+	DUMP_XXX = 0x00000111,
+	DUMP_XXX_JPS = 0x00000222,
+	DUMP_XXX_DDS = 0x00000444,
+	DUMP_XXX_MASK = 0x00000777,
+	PERSIST = 0x00000800, // Used by shader/texture triggers
+	STEREO = 0x00001000,
+	MONO = 0x00002000,
+	STEREO_MASK = 0x00003000,
+	DUMP_CB_BIN = 0x00004000,
+	DUMP_CB_TXT = 0x00008000,
+	DUMP_CB_MASK = 0x0000c000,
+	DUMP_VB_BIN = 0x00010000,
+	DUMP_VB_TXT = 0x00020000,
+	DUMP_VB_MASK = 0x00030000,
+	DUMP_IB_BIN = 0x00040000,
+	DUMP_IB_TXT = 0x00080000,
+	DUMP_IB_MASK = 0x000c0000,
+	DUMP_XX_BIN = 0x00054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
+	DUMP_XX_TXT = 0x000a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
-	LOG             = 0x00200000,
-	HOLD            = 0x00400000,
+	LOG = 0x00200000,
+	HOLD = 0x00400000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
-	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
-	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
-	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
-	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
-	{L"dump_depth", FrameAnalysisOptions::DUMP_DEPTH},
-	{L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS}, // Doesn't work yet
-	{L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS},
-	{L"dump_tex", FrameAnalysisOptions::DUMP_TEX},
-	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
-	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
-	{L"persist", FrameAnalysisOptions::PERSIST},
-	{L"stereo", FrameAnalysisOptions::STEREO},
-	{L"mono", FrameAnalysisOptions::MONO},
-	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
-	{L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN},
-	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
-	{L"dump_vb", FrameAnalysisOptions::DUMP_VB_BIN},
-	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
-	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
-	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
-	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
-	{L"log", FrameAnalysisOptions::LOG},
-	{L"hold", FrameAnalysisOptions::HOLD},
-	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
+	{ L"dump_rt", FrameAnalysisOptions::DUMP_RT },
+	{ L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS },
+	{ L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS },
+	{ L"clear_rt", FrameAnalysisOptions::CLEAR_RT },
+	{ L"dump_depth", FrameAnalysisOptions::DUMP_DEPTH },
+	{ L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS }, // Doesn't work yet
+	{ L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS },
+	{ L"dump_tex", FrameAnalysisOptions::DUMP_TEX },
+	{ L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS },
+	{ L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS },
+	{ L"persist", FrameAnalysisOptions::PERSIST },
+	{ L"stereo", FrameAnalysisOptions::STEREO },
+	{ L"mono", FrameAnalysisOptions::MONO },
+	{ L"filename_reg", FrameAnalysisOptions::FILENAME_REG },
+	{ L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN },
+	{ L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT },
+	{ L"dump_vb", FrameAnalysisOptions::DUMP_VB_BIN },
+	{ L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT },
+	{ L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN },
+	{ L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT },
+	{ L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE },
+	{ L"log", FrameAnalysisOptions::LOG },
+	{ L"hold", FrameAnalysisOptions::HOLD },
+	{ NULL, FrameAnalysisOptions::INVALID } // End of list marker
 };
 
 enum class DepthBufferFilter {
@@ -176,10 +176,10 @@ enum class DepthBufferFilter {
 	DEPTH_INACTIVE,
 };
 static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
-	{L"none", DepthBufferFilter::NONE},
-	{L"depth_active", DepthBufferFilter::DEPTH_ACTIVE},
-	{L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE},
-	{NULL, DepthBufferFilter::INVALID} // End of list marker
+	{ L"none", DepthBufferFilter::NONE },
+	{ L"depth_active", DepthBufferFilter::DEPTH_ACTIVE },
+	{ L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE },
+	{ NULL, DepthBufferFilter::INVALID } // End of list marker
 };
 
 struct ShaderOverride {
@@ -246,14 +246,14 @@ struct ShaderInfoData
 };
 
 enum class GetResolutionFrom {
-	INVALID       = -1,
+	INVALID = -1,
 	SWAP_CHAIN,
 	DEPTH_STENCIL,
 };
 static EnumName_t<wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
-	{L"swap_chain", GetResolutionFrom::SWAP_CHAIN},
-	{L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL},
-	{NULL, GetResolutionFrom::INVALID} // End of list marker
+	{ L"swap_chain", GetResolutionFrom::SWAP_CHAIN },
+	{ L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL },
+	{ NULL, GetResolutionFrom::INVALID } // End of list marker
 };
 
 struct ResolutionInfo
@@ -287,7 +287,7 @@ struct Globals
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 
 	EnableHooks enable_hooks;
-	
+
 	bool enable_check_interface;
 	int enable_dxgi1_2;
 	int enable_create_device;
@@ -297,6 +297,8 @@ struct Globals
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
 	int SCREEN_FULLSCREEN;
+	int SCREEN_UPSCALING;
+	int UPSCALE_MODE;
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
 
@@ -427,7 +429,7 @@ struct Globals
 	// Snapshot of all targets for selection.
 	ID3D11Resource *mSelectedRenderTargetSnapshot;
 	std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
-	// Relations
+																			// Relations
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
@@ -487,6 +489,8 @@ struct Globals
 		SCREEN_HEIGHT(-1),
 		SCREEN_REFRESH(-1),
 		SCREEN_FULLSCREEN(0),
+		SCREEN_UPSCALING(0),
+		UPSCALE_MODE(0),
 		SCREEN_ALLOW_COMMANDS(false),
 
 		marking_mode(-1),

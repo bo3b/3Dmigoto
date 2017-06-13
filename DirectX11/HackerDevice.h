@@ -32,7 +32,7 @@ private:
 	void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
 		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text);
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
+		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
 		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);
 	bool NeedOriginalShader(UINT64 hash);
 	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
@@ -44,25 +44,25 @@ private:
 
 	// Templates of nearly identical functions
 	template <class ID3D11Shader,
-		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-				 __in const void *pShaderBytecode,
-				 __in SIZE_T BytecodeLength,
-				 __in_opt ID3D11ClassLinkage *pClassLinkage,
-				 __out_opt ID3D11Shader **ppShader)
-		 >
-	STDMETHODIMP CreateShader(THIS_
-		/* [annotation] */
-		__in  const void *pShaderBytecode,
-		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
-		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
-		/* [annotation] */
-		__out_opt  ID3D11Shader **ppShader,
-		wchar_t *shaderType,
-		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
+		HRESULT(__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+			__in const void *pShaderBytecode,
+			__in SIZE_T BytecodeLength,
+			__in_opt ID3D11ClassLinkage *pClassLinkage,
+			__out_opt ID3D11Shader **ppShader)
+	>
+		STDMETHODIMP CreateShader(THIS_
+			/* [annotation] */
+			__in  const void *pShaderBytecode,
+			/* [annotation] */
+			__in  SIZE_T BytecodeLength,
+			/* [annotation] */
+			__in_opt  ID3D11ClassLinkage *pClassLinkage,
+			/* [annotation] */
+			__out_opt  ID3D11Shader **ppShader,
+			wchar_t *shaderType,
+			std::unordered_map<ID3D11Shader *, UINT64> *shaders,
+			std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
+			std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
 		);
 
 public:
@@ -85,6 +85,7 @@ public:
 	ID3D11Device* GetOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
 	IDXGISwapChain* GetOrigSwapChain();
+	HackerDXGISwapChain* getHackerSwapChain();
 	void HackerDevice::HookDevice();
 
 

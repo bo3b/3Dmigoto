@@ -38,6 +38,34 @@ void main(float4 pos : SV_Position0, out float4 result : SV_Target0)
 			x += width / 2;
 		}
 	}
+	else if (mode == 6)
+	{
+		 int side = y - (int)floor(y /2.0) * (int)2;
+    
+		 if (side == 0)
+		{
+			y1 = 1;
+		}
+		else
+		{
+			y1 = -1;
+			x = x + width / 2;
+		}
+	}
+	else if (mode == 7)
+	{
+		int side = y - (int)floor(y /2.0) * (int)2;
+    
+		if (side == 0)
+		{
+			y1 = 1;
+			x = x + width / 2;
+		}
+		else
+		{
+			y1 = -1;
+		}
+	}
 
 	result = t100.Load(float3(x, y, 0));
 	if (x1 || y1)

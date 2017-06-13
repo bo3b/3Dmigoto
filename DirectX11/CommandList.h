@@ -116,6 +116,10 @@ public:
 	D3D11_RASTERIZER_DESC rs_desc;
 	ID3D11RasterizerState *rs_state;
 
+	int sampler_override;
+	D3D11_SAMPLER_DESC sampler_desc;
+	ID3D11SamplerState* sampler_state;
+
 	D3D11_PRIMITIVE_TOPOLOGY topology;
 
 	CommandList command_list;
@@ -184,33 +188,33 @@ enum class ParamOverrideType {
 	RES_WIDTH,
 	RES_HEIGHT,
 	TEXTURE,	// Needs shader type and slot number specified in
-			// [ShaderOverride]. [TextureOverride] sections can
-			// specify filter_index=N to define the value passed in
-			// here. Special values for no [TextureOverride]
-			// section = 0.0, or [TextureOverride] with no
-			// filter_index = 1.0
-	VERTEX_COUNT,
-	INDEX_COUNT,
-	INSTANCE_COUNT,
-	CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
-	CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
-	CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
-	// TODO:
-	// DEPTH_ACTIVE
-	// etc.
+				// [ShaderOverride]. [TextureOverride] sections can
+				// specify filter_index=N to define the value passed in
+				// here. Special values for no [TextureOverride]
+				// section = 0.0, or [TextureOverride] with no
+				// filter_index = 1.0
+				VERTEX_COUNT,
+				INDEX_COUNT,
+				INSTANCE_COUNT,
+				CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
+				CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
+				CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
+								 // TODO:
+								 // DEPTH_ACTIVE
+								 // etc.
 };
 static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
-	{L"rt_width", ParamOverrideType::RT_WIDTH},
-	{L"rt_height", ParamOverrideType::RT_HEIGHT},
-	{L"res_width", ParamOverrideType::RES_WIDTH},
-	{L"res_height", ParamOverrideType::RES_HEIGHT},
-	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
-	{L"index_count", ParamOverrideType::INDEX_COUNT},
-	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
-	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
-	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
-	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
-	{NULL, ParamOverrideType::INVALID} // End of list marker
+	{ L"rt_width", ParamOverrideType::RT_WIDTH },
+	{ L"rt_height", ParamOverrideType::RT_HEIGHT },
+	{ L"res_width", ParamOverrideType::RES_WIDTH },
+	{ L"res_height", ParamOverrideType::RES_HEIGHT },
+	{ L"vertex_count", ParamOverrideType::VERTEX_COUNT },
+	{ L"index_count", ParamOverrideType::INDEX_COUNT },
+	{ L"instance_count", ParamOverrideType::INSTANCE_COUNT },
+	{ L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE },
+	{ L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X },
+	{ L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y },
+	{ NULL, ParamOverrideType::INVALID } // End of list marker
 };
 class ParamOverride : public CommandListCommand {
 public:
@@ -263,24 +267,24 @@ static EnumName_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[]
 	// Use the same names as HLSL here since they are what shaderhackers
 	// will see in the shaders, even if some of these have no distinction
 	// from our point of view, or are just a misc flag:
-	{L"Buffer", CustomResourceType::BUFFER},
-	{L"StructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
-	{L"AppendStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
-	{L"ConsumeStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
-	{L"ByteAddressBuffer", CustomResourceType::RAW_BUFFER},
-	{L"Texture1D", CustomResourceType::TEXTURE1D},
-	{L"Texture2D", CustomResourceType::TEXTURE2D},
-	{L"Texture3D", CustomResourceType::TEXTURE3D},
-	{L"TextureCube", CustomResourceType::CUBE},
+	{ L"Buffer", CustomResourceType::BUFFER },
+	{ L"StructuredBuffer", CustomResourceType::STRUCTURED_BUFFER },
+	{ L"AppendStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER },
+	{ L"ConsumeStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER },
+	{ L"ByteAddressBuffer", CustomResourceType::RAW_BUFFER },
+	{ L"Texture1D", CustomResourceType::TEXTURE1D },
+	{ L"Texture2D", CustomResourceType::TEXTURE2D },
+	{ L"Texture3D", CustomResourceType::TEXTURE3D },
+	{ L"TextureCube", CustomResourceType::CUBE },
 	// RW variants are identical to the above (it's the usage that counts):
-	{L"RWBuffer", CustomResourceType::BUFFER},
-	{L"RWStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER},
-	{L"RWByteAddressBuffer", CustomResourceType::RAW_BUFFER},
-	{L"RWTexture1D", CustomResourceType::TEXTURE1D},
-	{L"RWTexture2D", CustomResourceType::TEXTURE2D},
-	{L"RWTexture3D", CustomResourceType::TEXTURE3D},
+	{ L"RWBuffer", CustomResourceType::BUFFER },
+	{ L"RWStructuredBuffer", CustomResourceType::STRUCTURED_BUFFER },
+	{ L"RWByteAddressBuffer", CustomResourceType::RAW_BUFFER },
+	{ L"RWTexture1D", CustomResourceType::TEXTURE1D },
+	{ L"RWTexture2D", CustomResourceType::TEXTURE2D },
+	{ L"RWTexture3D", CustomResourceType::TEXTURE3D },
 
-	{NULL, CustomResourceType::INVALID} // End of list marker
+	{ NULL, CustomResourceType::INVALID } // End of list marker
 };
 enum class CustomResourceMode {
 	DEFAULT,
@@ -289,10 +293,10 @@ enum class CustomResourceMode {
 	MONO,
 };
 static EnumName_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[] = {
-	{L"auto", CustomResourceMode::AUTO},
-	{L"stereo", CustomResourceMode::STEREO},
-	{L"mono", CustomResourceMode::MONO},
-	{NULL, CustomResourceMode::DEFAULT} // End of list marker
+	{ L"auto", CustomResourceMode::AUTO },
+	{ L"stereo", CustomResourceMode::STEREO },
+	{ L"mono", CustomResourceMode::MONO },
+	{ NULL, CustomResourceMode::DEFAULT } // End of list marker
 };
 
 // The bind flags are usually set automatically, but there are cases where
@@ -303,31 +307,31 @@ static EnumName_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[]
 // what you are doing. This enumeration is essentially the same as
 // D3D11_BIND_FLAG, but this allows us to use parse_enum_option_string.
 enum class CustomResourceBindFlags {
-	INVALID         = 0x00000000,
-	VERTEX_BUFFER   = 0x00000001,
-	INDEX_BUFFER    = 0x00000002,
+	INVALID = 0x00000000,
+	VERTEX_BUFFER = 0x00000001,
+	INDEX_BUFFER = 0x00000002,
 	CONSTANT_BUFFER = 0x00000004,
 	SHADER_RESOURCE = 0x00000008,
-	STREAM_OUTPUT   = 0x00000010,
-	RENDER_TARGET   = 0x00000020,
-	DEPTH_STENCIL   = 0x00000040,
-	UNORDERED_ACCESS= 0x00000080,
-	DECODER         = 0x00000200,
-	VIDEO_ENCODER   = 0x00000400,
+	STREAM_OUTPUT = 0x00000010,
+	RENDER_TARGET = 0x00000020,
+	DEPTH_STENCIL = 0x00000040,
+	UNORDERED_ACCESS = 0x00000080,
+	DECODER = 0x00000200,
+	VIDEO_ENCODER = 0x00000400,
 };
 SENSIBLE_ENUM(CustomResourceBindFlags);
 static EnumName_t<wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
-	{L"vertex_buffer", CustomResourceBindFlags::VERTEX_BUFFER},
-	{L"index_buffer", CustomResourceBindFlags::INDEX_BUFFER},
-	{L"constant_buffer", CustomResourceBindFlags::CONSTANT_BUFFER},
-	{L"shader_resource", CustomResourceBindFlags::SHADER_RESOURCE},
-	{L"stream_output", CustomResourceBindFlags::STREAM_OUTPUT},
-	{L"render_target", CustomResourceBindFlags::RENDER_TARGET},
-	{L"depth_stencil", CustomResourceBindFlags::DEPTH_STENCIL},
-	{L"unordered_access", CustomResourceBindFlags::UNORDERED_ACCESS},
-	{L"decoder", CustomResourceBindFlags::DECODER},
-	{L"video_encoder", CustomResourceBindFlags::VIDEO_ENCODER},
-	{NULL, CustomResourceBindFlags::INVALID} // End of list marker
+	{ L"vertex_buffer", CustomResourceBindFlags::VERTEX_BUFFER },
+	{ L"index_buffer", CustomResourceBindFlags::INDEX_BUFFER },
+	{ L"constant_buffer", CustomResourceBindFlags::CONSTANT_BUFFER },
+	{ L"shader_resource", CustomResourceBindFlags::SHADER_RESOURCE },
+	{ L"stream_output", CustomResourceBindFlags::STREAM_OUTPUT },
+	{ L"render_target", CustomResourceBindFlags::RENDER_TARGET },
+	{ L"depth_stencil", CustomResourceBindFlags::DEPTH_STENCIL },
+	{ L"unordered_access", CustomResourceBindFlags::UNORDERED_ACCESS },
+	{ L"decoder", CustomResourceBindFlags::DECODER },
+	{ L"video_encoder", CustomResourceBindFlags::VIDEO_ENCODER },
+	{ NULL, CustomResourceBindFlags::INVALID } // End of list marker
 };
 
 class CustomResource
@@ -409,6 +413,7 @@ enum class ResourceCopyTargetType {
 	STEREO_PARAMS,
 	INI_PARAMS,
 	SWAP_CHAIN,
+	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
 };
 
 class ResourceCopyTarget {
@@ -427,65 +432,65 @@ public:
 
 	bool ParseTarget(const wchar_t *target, bool is_source);
 	ID3D11Resource *GetResource(
-			HackerDevice *mHackerDevice,
-			ID3D11Device *mOrigDevice,
-			ID3D11DeviceContext *mOrigContext,
-			ID3D11View **view,
-			UINT *stride,
-			UINT *offset,
-			DXGI_FORMAT *format,
-			UINT *buf_size,
-			DrawCallInfo *call_info);
+		HackerDevice *mHackerDevice,
+		ID3D11Device *mOrigDevice,
+		ID3D11DeviceContext *mOrigContext,
+		ID3D11View **view,
+		UINT *stride,
+		UINT *offset,
+		DXGI_FORMAT *format,
+		UINT *buf_size,
+		DrawCallInfo *call_info);
 	void SetResource(
-			ID3D11DeviceContext *mOrigContext,
-			ID3D11Resource *res,
-			ID3D11View *view,
-			UINT stride,
-			UINT offset,
-			DXGI_FORMAT format,
-			UINT buf_size);
+		ID3D11DeviceContext *mOrigContext,
+		ID3D11Resource *res,
+		ID3D11View *view,
+		UINT stride,
+		UINT offset,
+		DXGI_FORMAT format,
+		UINT buf_size);
 	D3D11_BIND_FLAG BindFlags();
 };
 
 enum class ResourceCopyOptions {
-	INVALID         = 0,
-	COPY            = 0x00000001,
-	REFERENCE       = 0x00000002,
-	UNLESS_NULL     = 0x00000004,
-	RESOLVE_MSAA    = 0x00000008,
-	STEREO          = 0x00000010,
-	MONO            = 0x00000020,
-	STEREO2MONO     = 0x00000040,
-	COPY_DESC       = 0x00000080,
-	SET_VIEWPORT    = 0x00000100,
-	NO_VIEW_CACHE   = 0x00000200,
+	INVALID = 0,
+	COPY = 0x00000001,
+	REFERENCE = 0x00000002,
+	UNLESS_NULL = 0x00000004,
+	RESOLVE_MSAA = 0x00000008,
+	STEREO = 0x00000010,
+	MONO = 0x00000020,
+	STEREO2MONO = 0x00000040,
+	COPY_DESC = 0x00000080,
+	SET_VIEWPORT = 0x00000100,
+	NO_VIEW_CACHE = 0x00000200,
 
-	COPY_MASK       = 0x000000c9, // Anything that implies a copy
-	COPY_TYPE_MASK  = 0x000000cb, // Anything that implies a copy or a reference
+	COPY_MASK = 0x000000c9, // Anything that implies a copy
+	COPY_TYPE_MASK = 0x000000cb, // Anything that implies a copy or a reference
 	CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
 static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
-	{L"copy", ResourceCopyOptions::COPY},
-	{L"ref", ResourceCopyOptions::REFERENCE},
-	{L"reference", ResourceCopyOptions::REFERENCE},
-	{L"copy_desc", ResourceCopyOptions::COPY_DESC},
-	{L"copy_description", ResourceCopyOptions::COPY_DESC},
-	{L"unless_null", ResourceCopyOptions::UNLESS_NULL},
-	{L"stereo", ResourceCopyOptions::STEREO},
-	{L"mono", ResourceCopyOptions::MONO},
-	{L"stereo2mono", ResourceCopyOptions::STEREO2MONO},
-	{L"set_viewport", ResourceCopyOptions::SET_VIEWPORT},
-	{L"no_view_cache", ResourceCopyOptions::NO_VIEW_CACHE},
+	{ L"copy", ResourceCopyOptions::COPY },
+	{ L"ref", ResourceCopyOptions::REFERENCE },
+	{ L"reference", ResourceCopyOptions::REFERENCE },
+	{ L"copy_desc", ResourceCopyOptions::COPY_DESC },
+	{ L"copy_description", ResourceCopyOptions::COPY_DESC },
+	{ L"unless_null", ResourceCopyOptions::UNLESS_NULL },
+	{ L"stereo", ResourceCopyOptions::STEREO },
+	{ L"mono", ResourceCopyOptions::MONO },
+	{ L"stereo2mono", ResourceCopyOptions::STEREO2MONO },
+	{ L"set_viewport", ResourceCopyOptions::SET_VIEWPORT },
+	{ L"no_view_cache", ResourceCopyOptions::NO_VIEW_CACHE },
 
 	// This one currently depends on device support for resolving the
 	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
 	// currently has no fallback, so we can't rely on it - don't encourage
 	// people to use it and don't document it. TODO: Implement a fallback
 	// using a shader to resolve any unsupported formats.
-	{L"resolve_msaa", ResourceCopyOptions::RESOLVE_MSAA},
+	{ L"resolve_msaa", ResourceCopyOptions::RESOLVE_MSAA },
 
-	{NULL, ResourceCopyOptions::INVALID} // End of list marker
+	{ NULL, ResourceCopyOptions::INVALID } // End of list marker
 };
 // TODO: Add support for more behaviour modifiers, here's a few ideas
 // off the top of my head - I don't intend to implement all these
@@ -527,14 +532,14 @@ public:
 
 
 void RunCommandList(HackerDevice *mHackerDevice,
-		HackerContext *mHackerContext,
-		CommandList *command_list, DrawCallInfo *call_info,
-		bool post);
+	HackerContext *mHackerContext,
+	CommandList *command_list, DrawCallInfo *call_info,
+	bool post);
 
 bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
-		CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list);
+	CommandList *explicit_command_list,
+	CommandList *pre_command_list, CommandList *post_command_list);
 bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
-		CommandList *command_list);
+	CommandList *command_list);
 bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
-		CommandList *command_list);
+	CommandList *command_list);
