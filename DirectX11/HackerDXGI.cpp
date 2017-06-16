@@ -946,7 +946,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		// maybe i should better disable upscaling if 3dv direct mode is set
 		if (G->gForceStereo == 2)
 		{		
-			olddesc->BufferDesc.Width *= 2;
+			olddesc.BufferDesc.Width *= 2;
 			LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
 		}
 		
@@ -2108,7 +2108,6 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 		LogInfo("->Fullscreen forced = %d \n", Fullscreen);
 	}
 
-	HRESULT hr;
 	//if (pTarget)	
 	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
 	//else
