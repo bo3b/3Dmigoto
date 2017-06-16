@@ -142,10 +142,13 @@ private:
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
 			ID3D11Resource *handle);
+	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
+			uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle);
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
 	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
+	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
 
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,

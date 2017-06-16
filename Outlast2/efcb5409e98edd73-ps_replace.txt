@@ -1,0 +1,1149 @@
+// ---- Created with 3Dmigoto v1.2.57 on Sun May 07 10:46:31 2017
+
+cbuffer _Globals : register(b0)
+{
+  float3 LightingChannelsAndModel : packoffset(c0);
+  float4 ShadowMapAtlasSize : packoffset(c1);
+  float2 InvClusterScreenSize : packoffset(c2);
+  float3 ReflectionShadowPlane : packoffset(c3);
+  float2 ReflectionInvBufferSize : packoffset(c4);
+  bool bShowLightComplexity : packoffset(c4.z);
+  bool4 bClusteredForwardRenderingOptions : packoffset(c5);
+  float3 DominantDirectionalLightDirection : packoffset(c6);
+  float3 DominantDirectionalLightColor : packoffset(c7);
+}
+
+cbuffer PSOffsetConstants : register(b2)
+{
+  float4 ScreenPositionScaleBias : packoffset(c0);
+  float4 MinZ_MaxZRatio : packoffset(c1);
+  float NvStereoEnabled : packoffset(c2);
+  float MetallicOverrideParameter : packoffset(c2.y);
+  float4 DiffuseOverrideParameter : packoffset(c3);
+  float4 SpecularOverrideParameter : packoffset(c4);
+  float4 CameraPositionPS : packoffset(c5);
+  float4 ScreenAndTexelSize : packoffset(c6);
+  float4 ViewClampRect : packoffset(c7);
+  float2 ProjectionInvScale : packoffset(c8);
+  float4x4 ViewProjectionMatrixPS : packoffset(c9);
+  float2 SceneColorExponentBias : packoffset(c13);
+}
+
+cbuffer ClusteredLightsConstants : register(b6)
+{
+
+  struct
+  {
+    float4 PositionInvRadius;
+    float4 ColorFalloffExponent;
+    float3 Direction;
+    uint LightingChannels;
+    float2 SpotAngles;
+    bool bCastShadows;
+    float HairScatteringScale;
+    float4 SimpleLightFunctionScaleBiasFade;
+    float4x4 WorldToShadowMatrix;
+    float3x3 WorldToLightMatrix;
+    float4 ShadowClipScaleBias;
+    float4 ShadowFilterScale;
+    float4 ShadowFilterBias;
+    float2 ShadowGradientParams;
+    float DiffuseIntensity;
+    float DiffuseBackfaceHack;
+    bool bUseFakeWaterReflection;
+    bool bCastNightVisionShadow;
+    float4 FaceUVScaleBias[6];
+  } ClusteredLights[64] : packoffset(c0);
+
+}
+
+cbuffer ClusteredReflectionsConstants : register(b8)
+{
+
+  struct
+  {
+    float3 Position;
+    float ArrayIndex;
+    float4 RotationXY;
+    float3 Size;
+    uint ReflectionChannels;
+    float3 InvSize;
+    float InvInnerEdgeTransition;
+    float3 TransitionBias;
+    float Fade;
+    float3 TransitionScale;
+    float MinMip;
+  } ClusteredCubeMaps[64] : packoffset(c0);
+
+}
+
+SamplerState PointWrapSampler_s : register(s0);
+SamplerState TrilinearClampSampler_s : register(s1);
+SamplerState WorldNormalGBufferTextureSampler_s : register(s2);
+SamplerState BaseColorGBufferTextureSampler_s : register(s3);
+SamplerState SpecularGBufferTextureSampler_s : register(s4);
+SamplerState SceneDepthTextureSampler_s : register(s5);
+SamplerComparisonState ShadowComparisonSampler_s : register(s6);
+Texture2D<float4> EnvironmentBRDFTexture : register(t0);
+Buffer<uint> LightIndexListTexture : register(t1);
+Texture3D<uint2> ClusteredTexture3D : register(t2);
+Texture2D<float4> ShadowMapAtlasTexture : register(t3);
+Texture3D<float4> RandomAngles3DTexture : register(t4);
+Texture2D<float4> SimpleLightFunctionsAtlasTexture : register(t5);
+TextureCubeArray<float4> EnvironmentReflectionTextureArray : register(t6);
+Texture2D<float4> WorldNormalGBufferTexture : register(t7);
+Texture2D<float4> BaseColorGBufferTexture : register(t8);
+Texture2D<float4> SpecularGBufferTexture : register(t9);
+Texture2D<float4> SceneDepthTexture : register(t10);
+Texture2D<float4> ReflectionShadowMaskTexture : register(t11);
+Texture2D<float4> NightVisionShadowsTexture : register(t12);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main( 
+  float4 v0 : TEXCOORD0,
+  float3 v1 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = v0.xy * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+  r1.xyzw = WorldNormalGBufferTexture.SampleLevel(WorldNormalGBufferTextureSampler_s, r0.xy, 0).xyzw;
+  r0.z = SceneDepthTexture.SampleLevel(SceneDepthTextureSampler_s, r0.xy, 0).x;
+  r0.w = 0.00100000005 + r1.w;
+  r0.w = 3 * r0.w;
+  r0.w = (uint)r0.w;
+  r0.z = max(0.00100000994, r0.z);
+  r0.z = r0.z * MinZ_MaxZRatio.z + -MinZ_MaxZRatio.w;
+  r0.z = 1 / r0.z;
+  r2.xyz = v1.xyz * r0.zzz + CameraPositionPS.xyz;
+  r1.w = RandomAngles3DTexture.CalculateLevelOfDetailUnclamped(PointWrapSampler_s, r2.xyz);
+  if (r0.w != 0) {
+    r3.xyzw = BaseColorGBufferTexture.SampleLevel(BaseColorGBufferTextureSampler_s, r0.xy, 0).xyzw;
+    r4.xyzw = SpecularGBufferTexture.SampleLevel(SpecularGBufferTextureSampler_s, r0.xy, 0).xyzw;
+    r5.xyz = r3.xyz * r3.xyz;
+    r2.w = 0.00100000005 + r3.w;
+    r2.w = 255 * r2.w;
+    r2.w = (uint)r2.w;
+    r3.w = 0.00100000005 + r4.w;
+    r3.w = 31.875 * r3.w;
+    r4.w = frac(r3.w);
+    r4.w = 8 * r4.w;
+    r4.w = (uint)r4.w;
+    r1.xyz = r1.xyz * float3(2,2,2) + float3(-1,-1,-1);
+    r5.w = dot(r1.xyz, r1.xyz);
+    r5.w = rsqrt(r5.w);
+    r1.xyz = r5.www * r1.xyz;
+    r3.w = floor(r3.w);
+    r5.w = 0.0322580636 * r3.w;
+    r0.w = cmp((int)r0.w == 2);
+    SceneDepthTexture.GetDimensions(0, fDest.x, fDest.y, fDest.z);
+    r6.xy = fDest.xy;
+    r6.z = dot(v1.xyz, v1.xyz);
+    r6.z = rsqrt(r6.z);
+    r7.xyz = v1.xyz * r6.zzz;
+    r6.xy = r6.xy * r0.xy;
+    r6.xy = (uint2)r6.xy;
+    r8.xy = (uint2)r6.xy >> int2(6,6);
+    r0.z = 0.00999999978 * r0.z;
+    r0.z = log2(r0.z);
+    r0.z = r0.z * 3.11064339 + 1;
+    r0.z = max(0, r0.z);
+    r8.z = (uint)r0.z;
+    r8.w = 0;
+    r8.xy = ClusteredTexture3D.Load(r8.xyzw).xy;
+    r0.z = (int)r8.y & 255;
+    if (8 == 0) r7.w = 0; else if (8+8 < 32) {     r7.w = (uint)r8.y << (32-(8 + 8)); r7.w = (uint)r7.w >> (32-8);    } else r7.w = (uint)r8.y >> 8;
+    r1.w = round(r1.w);
+    r1.w = exp2(-r1.w);
+    r8.yzw = r2.xyz * r1.www;
+    r8.yz = RandomAngles3DTexture.SampleLevel(PointWrapSampler_s, r8.yzw, 0).xy;
+    r9.x = dot(r1.xyz, -r7.xyz);
+    r1.w = cmp(r9.x < 0);
+    r8.w = r9.x + r9.x;
+    r10.xyz = r1.xyz * -r8.www + -r7.xyz;
+    r10.xyz = r1.www ? r1.xyz : -r10.xyz;
+    r1.w = (int)r4.w & 4;
+    if (r1.w != 0) {
+      r0.x = ReflectionShadowMaskTexture.SampleLevel(TrilinearClampSampler_s, r0.xy, 0).x;
+      r0.y = -ReflectionShadowPlane.x + r2.z;
+      r0.y = ReflectionShadowPlane.y * r0.y;
+      r0.y = 1 + -abs(r0.y);
+      r1.w = saturate(r1.z);
+      r1.w = r1.w * r1.w;
+      r8.w = r0.x + r4.z;
+      r0.x = -r0.x * r4.z + r8.w;
+      r0.y = r1.w * r0.y;
+      r0.y = min(ReflectionShadowPlane.z, r0.y);
+      r0.x = -1 + r0.x;
+      r0.x = r0.y * r0.x + 1;
+    } else {
+      r0.x = r0.w ? r4.y : r5.w;
+    }
+    r9.x = saturate(r9.x);
+    r9.y = r4.z;
+    r9.xy = EnvironmentBRDFTexture.SampleLevel(TrilinearClampSampler_s, r9.xy, 0).xy;
+    r0.y = log2(r4.z);
+    r0.y = r0.y * 1.79999995 + 8;
+    r1.w = MetallicOverrideParameter * r4.x;
+    r3.xyz = r3.xyz * r3.xyz + float3(-0.0399999991,-0.0399999991,-0.0399999991);
+    r3.xyz = r1.www * r3.xyz + float3(0.0399999991,0.0399999991,0.0399999991);
+    r9.xyz = r3.xyz * r9.xxx + r9.yyy;
+    r11.xyz = float3(0,0,0);
+    r4.x = r8.x;
+    r8.w = 0;
+    r9.w = 0;
+    while (true) {
+      r10.w = cmp((uint)r9.w >= (uint)r7.w);
+      if (r10.w != 0) break;
+      r10.w = (int)r4.x + 1;
+      r11.w = LightIndexListTexture.Load(r4.x).x;
+      r11.w = (int)r11.w * 6;
+      r12.x = (int)r4.w & (int)ClusteredCubeMaps[r11.w/6].ReflectionChannels; // r12.x = (int)r4.w & (int18)ClusteredCubeMaps[r11.w].ReflectionChannels;
+      if (r12.x != 0) {
+        r12.xyz = -ClusteredCubeMaps[r11.w/6].Position.xyz + r2.xyz;
+        r13.x = dot(ClusteredCubeMaps[r11.w/6].RotationXY.xy, r12.xy);
+        r13.y = dot(ClusteredCubeMaps[r11.w/6].RotationXY.zw, r12.xy);
+        r13.z = ClusteredCubeMaps[r11.w/6].InvSize.z * r12.z;
+        r12.xyz = saturate(ClusteredCubeMaps[r11.w/6].TransitionBias.xyz + abs(r13.xyz));
+        r12.xyz = ClusteredCubeMaps[r11.w/6].TransitionScale.xyz * r12.xyz;
+        r12.y = max(r12.y, r12.z);
+        r12.x = max(r12.x, r12.y);
+        r12.x = 1 + -r12.x;
+        r12.y = cmp(0 < r12.x);
+        if (r12.y != 0) {
+          r14.x = dot(ClusteredCubeMaps[r11.w/6].RotationXY.xy, r10.xy);
+          r14.y = dot(ClusteredCubeMaps[r11.w/6].RotationXY.zw, r10.xy);
+          r14.z = ClusteredCubeMaps[r11.w/6].InvSize.z * r10.z;
+          r12.yzw = cmp(float3(0,0,0) < r14.xyz);
+          r15.xyz = cmp(r14.xyz < float3(0,0,0));
+          r12.yzw = (int3)r12.yzw + (int3)-r15.xyz;
+          r12.yzw = (int3)r12.yzw;
+          r12.yzw = r13.xyz * r12.yzw + float3(1,1,1);
+          r12.yzw = r12.yzw / abs(r14.xyz);
+          r12.z = min(r12.z, r12.w);
+          r12.y = min(r12.y, r12.z);
+          r12.z = saturate(ClusteredCubeMaps[r11.w/6].InvInnerEdgeTransition * r12.y);
+          r12.w = r12.x * r12.z;
+          r13.xyz = r12.yyy * r10.xyz + r2.xyz;
+          r13.xyz = -ClusteredCubeMaps[r11.w/6].Position.xyz + r13.xyz;
+          r12.y = max(ClusteredCubeMaps[r11.w/6].MinMip, r0.y);
+          r13.w = ClusteredCubeMaps[r11.w/6].ArrayIndex;
+          r13.xyz = EnvironmentReflectionTextureArray.SampleLevel(TrilinearClampSampler_s, r13.xyzw, r12.y).xyz;
+          r13.xyz = ClusteredCubeMaps[r11.w/6].Fade * r13.xyz;
+          r13.xyz = r13.xyz * r9.xyz;
+          r11.xyz = r13.xyz * r12.www + r11.xyz;
+          r8.w = r12.x * r12.z + r8.w;
+        }
+      }
+      r9.w = (int)r9.w + 1;
+      r4.x = r10.w;
+    }
+    r0.y = cmp(1 < r8.w);
+    r9.xyz = r11.xyz / r8.www;
+    r9.xyz = r0.yyy ? r9.xyz : r11.xyz;
+    r9.xyz = r9.xyz * r0.xxx;
+    r0.x = (int)r7.w + (int)r8.x;
+    r6.zw = float2(0,0);
+    r0.y = NightVisionShadowsTexture.Load(r6.xyz).y;
+    r6.xyz = r5.xyz * DiffuseOverrideParameter.www + DiffuseOverrideParameter.xyz;
+    r6.xyz = float3(0.318309873,0.318309873,0.318309873) * r6.xyz;
+    r3.w = -r3.w * 0.0322580636 + 1;
+    r4.x = r4.z * r4.z;
+    r4.w = r4.x * r4.x;
+    r6.w = 2 / r4.w;
+    r6.w = -2 + r6.w;
+    r6.w = max(9.99999975e-006, r6.w);
+    r8.x = 3.14159274 * r4.w;
+    r5.xyz = r1.www * -r5.xyz + r5.xyz;
+    r5.xyz = r5.xyz * DiffuseOverrideParameter.www + DiffuseOverrideParameter.xyz;
+    r5.xyz = float3(0.318309873,0.318309873,0.318309873) * r5.xyz;
+    r1.w = r4.x * r4.x + -0.999499977;
+    r4.x = r4.z * 0.234375 + 0.015625;
+    r4.z = 1 + -r4.x;
+    r10.yz = float2(-1,1);
+    r11.y = -1;
+    r12.xyz = r9.xyz;
+    r8.w = r0.x;
+    r9.w = 0;
+    r11.z = 0;
+    while (true) {
+      r11.w = cmp((uint)r11.z >= (uint)r0.z);
+      if (r11.w != 0) break;
+      r11.w = (int)r8.w + 1;
+      r13.x = LightIndexListTexture.Load(r8.w).x;
+      r13.y = (int)r13.x * 23;
+      r13.z = (int)r2.w & (int)ClusteredLights[r13.y/23].LightingChannels; 
+      if (r13.z != 0) {
+        r14.xyz = ClusteredLights[r13.y/23].PositionInvRadius.xyz + -r2.xyz;
+        r15.xyz = ClusteredLights[r13.y/23].PositionInvRadius.www * r14.xyz;
+        r13.z = dot(r15.xyz, r15.xyz);
+        r13.z = min(1, r13.z);
+        r13.z = 1 + -r13.z;
+        r13.z = log2(r13.z);
+        r13.z = ClusteredLights[r13.y/23].ColorFalloffExponent.w * r13.z;
+        r13.z = exp2(r13.z);
+        r13.w = cmp(0 < ClusteredLights[r13.y/23].SpotAngles.x);
+        if (r13.w != 0) {
+          r14.w = dot(r14.xyz, r14.xyz);
+          r14.w = rsqrt(r14.w);
+          r15.xyz = r14.xyz * r14.www;
+          r14.w = dot(r15.xyz, -ClusteredLights[r13.y/23].Direction.xyz);
+          r14.w = -ClusteredLights[r13.y/23].SpotAngles.x + r14.w;
+          r14.w = saturate(ClusteredLights[r13.y/23].SpotAngles.y * r14.w);
+          r14.w = r14.w * r14.w;
+          r13.z = r14.w * r13.z;
+        }
+        r14.w = cmp(9.99999975e-006 < r13.z);
+        r15.x = dot(r1.xyz, r14.xyz);
+        r15.x = cmp(0 < r15.x);
+        r15.x = (int)r0.w | (int)r15.x;
+        r15.y = cmp(0 != ClusteredLights[r13.y/23].DiffuseBackfaceHack);
+        r15.x = (int)r15.y | (int)r15.x;
+        r14.w = r14.w ? r15.x : 0;
+        if (r14.w != 0) {
+          r14.w = cmp(0 != (int)ClusteredLights[r13.y/23].bCastShadows);
+          r14.w = cmp((int)r14.w == -1);
+          if (r14.w != 0) {
+            if (r13.w != 0) {
+              r15.xyzw = ClusteredLights[r13.y/23].WorldToShadowMatrix._m01_m11_m21_m31 * r2.yyyy;
+              r15.xyzw = ClusteredLights[r13.y/23].WorldToShadowMatrix._m00_m10_m20_m30 * r2.xxxx + r15.xyzw;
+              r15.xyzw = ClusteredLights[r13.y/23].WorldToShadowMatrix._m02_m12_m22_m32 * r2.zzzz + r15.xyzw;
+              r15.xyzw = ClusteredLights[r13.y/23].WorldToShadowMatrix._m23_m03_m13_m33 + r15.zxyw;
+              r15.yz = r15.yz / r15.ww;
+            } else {
+              r13.w = max(abs(r14.y), abs(r14.z));
+              r13.w = max(abs(r14.x), r13.w);
+              r16.xyz = cmp(float3(0,0,0) < -r14.xyz);
+              r17.xyz = cmp(-r14.xyz < float3(0,0,0));
+              r14.w = (int)r16.x + (int)-r17.x;
+              r10.x = (int)r14.w;
+              r18.xy = -r14.zy * r10.xy;
+              r19.xyz = cmp(-r14.xyz == abs(r14.xyz));
+              r16.xw = cmp(abs(r14.xy) == r13.ww);
+              r16.yz = (int2)-r16.yz + (int2)r17.yz;
+              r10.w = (int)r16.y;
+              r17.xy = -r14.xz * r10.zw;
+              r11.x = (int)r16.z;
+              r20.xy = -r14.xy * r11.xy;
+              r19.xyz = r19.xyz ? float3(0,2.80259693e-045,5.60519386e-045) : float3(1,3,5);
+              r17.z = r19.y;
+              r20.z = r19.z;
+              r16.yzw = r16.www ? r17.xyz : r20.xyz;
+              r18.z = r19.x;
+              r16.xyz = r16.xxx ? r18.xyz : r16.yzw;
+              r10.xw = r16.xy / r13.ww;
+              r11.x = mad((int)r13.x, 23, (int)r16.z);
+              r15.yz = r10.xw * ClusteredLights[r11.x].FaceUVScaleBias[0].xy + ClusteredLights[r11.x].FaceUVScaleBias[0].zw;
+              r15.x = ClusteredLights[r13.y/23].PositionInvRadius.w * r13.w;
+            }
+            r16.xyzw = r8.yzzy * ClusteredLights[r13.y/23].ShadowFilterScale.xzyw + ClusteredLights[r13.y/23].ShadowFilterBias.xzyw;
+            r10.xw = r16.xy * float2(0.0829999968,0.0829999968) + r15.yz;
+            r10.x = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r10.xw, r15.x).x;
+            r13.xw = -r16.xy * float2(0.0829999968,0.0829999968) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(-0.0829999968,-0.0829999968) * r16.zw;
+            r13.xw = r16.xy * float2(-0.143999994,-0.143999994) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(0.216999993,0.216999993) * r16.zw;
+            r13.xw = r16.xy * float2(0.125,0.125) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r16.zw * float2(-0.333000004,-0.333000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = -r16.zw * float2(-0.333000004,-0.333000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r17.xyzw = float4(-0.208000004,-0.208000004,0.361000001,0.361000001) * r16.xyzw;
+            r13.xw = r17.xy + r17.zw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r17.xyzw = float4(0.432999998,0.432999998,-0.25,-0.25) * r16.xyzw;
+            r13.xw = r17.xy + r17.zw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r16.xy * float2(-0.583000004,-0.583000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = -r16.xy * float2(-0.583000004,-0.583000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(0.333000004,0.333000004) * r16.zw;
+            r13.xw = r16.xy * float2(0.577000022,0.577000022) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(-0.649999976,-0.649999976) * r16.zw;
+            r13.xw = r16.xy * float2(-0.375,-0.375) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r16.zw * float2(0.833000004,0.833000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = -r16.zw * float2(0.833000004,0.833000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r17.xyzw = float4(0.458000004,0.458000004,-0.79400003,-0.79400003) * r16.xyzw;
+            r13.xw = r17.xy + r17.zw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r16.xyzw = float4(-0.865999997,-0.865999997,0.5,0.5) * r16.xyzw;
+            r13.xw = r16.xy + r16.zw;
+            r16.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r16.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r10.x = 0.0416666679 * r10.x;
+            r10.x = r10.x * r10.x;
+            r13.z = r13.z * r10.x;
+          } else {
+            if (ClusteredLights[r13.y/23].bCastNightVisionShadow != 0) {
+              r13.z = r13.z * r0.y;
+            }
+          }
+          r13.xzw = ClusteredLights[r13.y/23].ColorFalloffExponent.xyz * r13.zzz;
+          r10.x = cmp(0.000000 != ClusteredLights[r13.y/23].SimpleLightFunctionScaleBiasFade.x);
+          if (r10.x != 0) {
+            r15.xyz = ClusteredLights[r13.y/23].WorldToLightMatrix._m01_m11_m21 * -r14.yyy;
+            r15.xyz = ClusteredLights[r13.y/23].WorldToLightMatrix._m00_m10_m20 * -r14.xxx + r15.xyz;
+            r15.xyz = ClusteredLights[r13.y/23].WorldToLightMatrix._m02_m12_m22 * -r14.zzz + r15.xyz;
+            r10.xw = r15.xy / r15.zz;
+            r10.xw = r10.xw * ClusteredLights[r13.y/23].SimpleLightFunctionScaleBiasFade.xx + ClusteredLights[r13.y/23].SimpleLightFunctionScaleBiasFade.yz;
+            r10.xw = abs(r10.xw);
+            r11.x = saturate(ClusteredLights[r13.y/23].SimpleLightFunctionScaleBiasFade.w * r15.z);
+            r15.xyz = SimpleLightFunctionsAtlasTexture.SampleLevel(TrilinearClampSampler_s, r10.xw, 0).xyz;
+            r16.xyz = float3(1,1,1) + -r15.xyz;
+            r15.xyz = r11.xxx * r16.xyz + r15.xyz;
+            r13.xzw = r15.xyz * r13.xzw;
+          }
+          if (r0.w != 0) {
+            r10.x = dot(r14.xyz, r14.xyz);
+            r10.x = rsqrt(r10.x);
+            r15.xyz = r14.xyz * r10.xxx;
+            r16.xyz = r14.xyz * r10.xxx + -r7.xyz;
+            r10.x = dot(r16.xyz, r16.xyz);
+            r10.x = rsqrt(r10.x);
+            r16.xyz = r16.xyz * r10.xxx;
+            r10.x = dot(r1.xyz, r15.xyz);
+            r10.w = saturate(r10.x);
+            r11.x = dot(r1.xyz, r16.xyz);
+            r11.x = max(9.99999997e-007, r11.x);
+            r11.x = min(1, r11.x);
+            r10.x = saturate(r10.x * 5 + 0.5);
+            r10.x = r10.x * r3.w + r5.w;
+            r14.w = r10.w * 0.5 + 0.5;
+            r10.x = r14.w * r10.x;
+            r11.x = log2(r11.x);
+            r11.x = r11.x * r6.w;
+            r11.x = exp2(r11.x);
+            r11.x = r11.x / r8.x;
+            r10.w = r11.x * r10.w;
+            r10.w = 0.00999999978 * r10.w;
+            r15.xyz = r6.xyz * r10.xxx + r10.www;
+            r12.xyz = r15.xyz * r13.xzw + r12.xyz;
+          } else {
+            r10.x = dot(r14.xyz, r14.xyz);
+            r10.x = rsqrt(r10.x);
+            r15.xyz = r14.xyz * r10.xxx;
+            r14.xyz = r14.xyz * r10.xxx + -r7.xyz;
+            r10.x = dot(r14.xyz, r14.xyz);
+            r10.x = rsqrt(r10.x);
+            r14.xyz = r14.xyz * r10.xxx;
+            r10.x = dot(r1.xyz, r15.xyz);
+            r10.w = saturate(r10.x);
+            r11.x = saturate(dot(r1.xyz, r14.xyz));
+            r14.x = saturate(dot(r15.xyz, r14.xyz));
+            r14.y = ClusteredLights[r13.y/23].DiffuseBackfaceHack + r10.x;
+            r14.y = 0.333330005 * r14.y;
+            r10.x = saturate(max(r14.y, r10.x));
+            r10.x = ClusteredLights[r13.y/23].DiffuseIntensity * r10.x;
+            r11.x = r11.x * r11.x;
+            r11.x = r11.x * r1.w + 1;
+            r11.x = r11.x * r11.x;
+            r11.x = 3.14159274 * r11.x;
+            r11.x = r4.w / r11.x;
+            r13.y = r14.x * r14.x;
+            r13.y = r13.y * r4.z + r4.x;
+            r13.y = 4 * r13.y;
+            r13.y = rcp(r13.y);
+            r14.y = r14.x * -5.55472994 + -6.98316002;
+            r14.x = r14.y * r14.x;
+            r14.x = exp2(r14.x);
+            r14.xyz = r14.xxx + r3.xyz;
+            r14.xyz = r14.xyz * SpecularOverrideParameter.www + SpecularOverrideParameter.xyz;
+            r11.x = r13.y * r11.x;
+            r14.xyz = r11.xxx * r14.xyz;
+            r14.xyz = r14.xyz * r10.www;
+            r14.xyz = r5.xyz * r10.xxx + r14.xyz;
+            r12.xyz = r14.xyz * r13.xzw + r12.xyz;
+          }
+        }
+        r9.w = (int)r9.w + 1;
+      }
+      r11.z = (int)r11.z + 1;
+      r8.w = r11.w;
+    }
+    r0.x = (int)r7.w + (int)r9.w;
+    r0.x = (uint)r0.x;
+    r0.x = 0.25 * r0.x;
+    r0.x = min(1, r0.x);
+    r0.y = cmp(0 < r0.x);
+    r12.w = 0;
+    r0.xzw = r0.xxx * float3(1,-1,0) + r12.wyw;
+    r1.xz = r12.xz;
+    r1.y = 1;
+    r0.xzw = r1.xyz + r0.xzw;
+    r0.xyz = r0.yyy ? r0.xzw : r12.xyz;
+    r0.xyz = bShowLightComplexity ? r0.xyz : r12.xyz;
+    r0.xyz = r0.xyz * r4.yyy;
+    r0.xyz = SceneColorExponentBias.xxx * r0.xyz;
+  } else {
+    r0.xyz = float3(0,0,0);
+  }
+  o0.xyz = r0.xyz;
+  o0.w = 0;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer $Globals
+// {
+//
+//   float3 LightingChannelsAndModel;   // Offset:    0 Size:    12 [unused]
+//   float4 ShadowMapAtlasSize;         // Offset:   16 Size:    16 [unused]
+//   float2 InvClusterScreenSize;       // Offset:   32 Size:     8 [unused]
+//   float3 ReflectionShadowPlane;      // Offset:   48 Size:    12
+//   float2 ReflectionInvBufferSize;    // Offset:   64 Size:     8 [unused]
+//   bool bShowLightComplexity;         // Offset:   72 Size:     4
+//   bool4 bClusteredForwardRenderingOptions;// Offset:   80 Size:    16 [unused]
+//   float3 DominantDirectionalLightDirection;// Offset:   96 Size:    12 [unused]
+//   float3 DominantDirectionalLightColor;// Offset:  112 Size:    12 [unused]
+//
+// }
+//
+// cbuffer PSOffsetConstants
+// {
+//
+//   float4 ScreenPositionScaleBias;    // Offset:    0 Size:    16
+//   float4 MinZ_MaxZRatio;             // Offset:   16 Size:    16
+//   float NvStereoEnabled;             // Offset:   32 Size:     4 [unused]
+//   float MetallicOverrideParameter;   // Offset:   36 Size:     4
+//   float4 DiffuseOverrideParameter;   // Offset:   48 Size:    16
+//   float4 SpecularOverrideParameter;  // Offset:   64 Size:    16
+//   float4 CameraPositionPS;           // Offset:   80 Size:    16
+//   float4 ScreenAndTexelSize;         // Offset:   96 Size:    16 [unused]
+//   float4 ViewClampRect;              // Offset:  112 Size:    16 [unused]
+//   float2 ProjectionInvScale;         // Offset:  128 Size:     8 [unused]
+//   float4x4 ViewProjectionMatrixPS;   // Offset:  144 Size:    64 [unused]
+//   float2 SceneColorExponentBias;     // Offset:  208 Size:     8
+//
+// }
+//
+// cbuffer ClusteredLightsConstants
+// {
+//
+//   struct FClusteredLight
+//   {
+//       
+//       float4 PositionInvRadius;      // Offset:    0
+//       float4 ColorFalloffExponent;   // Offset:   16
+//       float3 Direction;              // Offset:   32
+//       uint LightingChannels;         // Offset:   44
+//       float2 SpotAngles;             // Offset:   48
+//       bool bCastShadows;             // Offset:   56
+//       float HairScatteringScale;     // Offset:   60
+//       float4 SimpleLightFunctionScaleBiasFade;// Offset:   64
+//       float4x4 WorldToShadowMatrix;  // Offset:   80
+//       float3x3 WorldToLightMatrix;   // Offset:  144
+//       float4 ShadowClipScaleBias;    // Offset:  192
+//       float4 ShadowFilterScale;      // Offset:  208
+//       float4 ShadowFilterBias;       // Offset:  224
+//       float2 ShadowGradientParams;   // Offset:  240
+//       float DiffuseIntensity;        // Offset:  248
+//       float DiffuseBackfaceHack;     // Offset:  252
+//       bool bUseFakeWaterReflection;  // Offset:  256
+//       bool bCastNightVisionShadow;   // Offset:  260
+//       float4 FaceUVScaleBias[6];     // Offset:  272
+//
+//   } ClusteredLights[64];             // Offset:    0 Size: 23552
+//
+// }
+//
+// cbuffer ClusteredReflectionsConstants
+// {
+//
+//   struct FClusteredCubeMap
+//   {
+//       
+//       float3 Position;               // Offset:    0
+//       float ArrayIndex;              // Offset:   12
+//       float4 RotationXY;             // Offset:   16
+//       float3 Size;                   // Offset:   32
+//       uint ReflectionChannels;       // Offset:   44
+//       float3 InvSize;                // Offset:   48
+//       float InvInnerEdgeTransition;  // Offset:   60
+//       float3 TransitionBias;         // Offset:   64
+//       float Fade;                    // Offset:   76
+//       float3 TransitionScale;        // Offset:   80
+//       float MinMip;                  // Offset:   92
+//
+//   } ClusteredCubeMaps[64];           // Offset:    0 Size:  6144
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// PointWrapSampler                  sampler      NA          NA    0        1
+// TrilinearClampSampler             sampler      NA          NA    1        1
+// WorldNormalGBufferTextureSampler    sampler      NA          NA    2        1
+// BaseColorGBufferTextureSampler    sampler      NA          NA    3        1
+// SpecularGBufferTextureSampler     sampler      NA          NA    4        1
+// SceneDepthTextureSampler          sampler      NA          NA    5        1
+// ShadowComparisonSampler         sampler_c      NA          NA    6        1
+// EnvironmentBRDFTexture            texture  float4          2d    0        1
+// LightIndexListTexture             texture    uint         buf    1        1
+// ClusteredTexture3D                texture   uint2          3d    2        1
+// ShadowMapAtlasTexture             texture  float4          2d    3        1
+// RandomAngles3DTexture             texture  float4          3d    4        1
+// SimpleLightFunctionsAtlasTexture    texture  float4          2d    5        1
+// EnvironmentReflectionTextureArray    texture  float4   cubearray    6        1
+// WorldNormalGBufferTexture         texture  float4          2d    7        1
+// BaseColorGBufferTexture           texture  float4          2d    8        1
+// SpecularGBufferTexture            texture  float4          2d    9        1
+// SceneDepthTexture                 texture  float4          2d   10        1
+// ReflectionShadowMaskTexture       texture  float4          2d   11        1
+// NightVisionShadowsTexture         texture  float4          2d   12        1
+// $Globals                          cbuffer      NA          NA    0        1
+// PSOffsetConstants                 cbuffer      NA          NA    2        1
+// ClusteredLightsConstants          cbuffer      NA          NA    6        1
+// ClusteredReflectionsConstants     cbuffer      NA          NA    8        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 0   xyzw        0     NONE   float   xy  
+// TEXCOORD                 1   xyz         1     NONE   float   xyz 
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[5], immediateIndexed
+dcl_constantbuffer cb2[14], immediateIndexed
+dcl_constantbuffer cb6[1472], dynamicIndexed
+dcl_constantbuffer cb8[384], dynamicIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_sampler s6, mode_comparison
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_buffer (uint,uint,uint,uint) t1
+dcl_resource_texture3d (uint,uint,uint,uint) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture3d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texturecubearray (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_resource_texture2d (float,float,float,float) t8
+dcl_resource_texture2d (float,float,float,float) t9
+dcl_resource_texture2d (float,float,float,float) t10
+dcl_resource_texture2d (float,float,float,float) t11
+dcl_resource_texture2d (float,float,float,float) t12
+dcl_input_ps linear v0.xy
+dcl_input_ps linear v1.xyz
+dcl_output o0.xyzw
+dcl_temps 21
+mad r0.xy, v0.xyxx, cb2[0].xyxx, cb2[0].wzww
+sample_l_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.xyxx, t7.xyzw, s2, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r0.z, r0.xyxx, t10.yzxw, s5, l(0.000000)
+add r0.w, r1.w, l(0.001000)
+mul r0.w, r0.w, l(3.000000)
+ftou r0.w, r0.w
+max r0.z, r0.z, l(0.001000)
+mad r0.z, r0.z, cb2[1].z, -cb2[1].w
+div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.z
+mad r2.xyz, v1.xyzx, r0.zzzz, cb2[5].xyzx
+lod r1.w, r2.xyzx, t4.y, s0
+if_nz r0.w
+  sample_l_indexable(texture2d)(float,float,float,float) r3.xyzw, r0.xyxx, t8.xyzw, s3, l(0.000000)
+  sample_l_indexable(texture2d)(float,float,float,float) r4.xyzw, r0.xyxx, t9.xyzw, s4, l(0.000000)
+  mul r5.xyz, r3.xyzx, r3.xyzx
+  add r2.w, r3.w, l(0.001000)
+  mul r2.w, r2.w, l(255.000000)
+  ftou r2.w, r2.w
+  add r3.w, r4.w, l(0.001000)
+  mul r3.w, r3.w, l(31.875000)
+  frc r4.w, r3.w
+  mul r4.w, r4.w, l(8.000000)
+  ftou r4.w, r4.w
+  mad r1.xyz, r1.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+  dp3 r5.w, r1.xyzx, r1.xyzx
+  rsq r5.w, r5.w
+  mul r1.xyz, r1.xyzx, r5.wwww
+  round_ni r3.w, r3.w
+  mul r5.w, r3.w, l(0.032258)
+  ieq r0.w, r0.w, l(2)
+  resinfo_indexable(texture2d)(float,float,float,float) r6.xy, l(0), t10.xyzw
+  dp3 r6.z, v1.xyzx, v1.xyzx
+  rsq r6.z, r6.z
+  mul r7.xyz, r6.zzzz, v1.xyzx
+  mul r6.xy, r0.xyxx, r6.xyxx
+  ftou r6.xy, r6.xyxx
+  ushr r8.xy, r6.xyxx, l(6, 6, 0, 0)
+  mul r0.z, r0.z, l(0.010000)
+  log r0.z, r0.z
+  mad r0.z, r0.z, l(3.110643), l(1.000000)
+  max r0.z, r0.z, l(0.000000)
+  ftou r8.z, r0.z
+  mov r8.w, l(0)
+  ld_indexable(texture3d)(uint,uint,uint,uint) r8.xy, r8.xyzw, t2.xyzw
+  and r0.z, r8.y, l(255)
+  ubfe r7.w, l(8), l(8), r8.y
+  round_ne r1.w, r1.w
+  exp r1.w, -r1.w
+  mul r8.yzw, r1.wwww, r2.xxyz
+  sample_l_indexable(texture3d)(float,float,float,float) r8.yz, r8.yzwy, t4.zxyw, s0, l(0.000000)
+  dp3 r9.x, r1.xyzx, -r7.xyzx
+  lt r1.w, r9.x, l(0.000000)
+  add r8.w, r9.x, r9.x
+  mad r10.xyz, r1.xyzx, -r8.wwww, -r7.xyzx
+  movc r10.xyz, r1.wwww, r1.xyzx, -r10.xyzx
+  and r1.w, r4.w, l(4)
+  if_nz r1.w
+    sample_l_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t11.xyzw, s1, l(0.000000)
+    add r0.y, r2.z, -cb0[3].x
+    mul r0.y, r0.y, cb0[3].y
+    add r0.y, -|r0.y|, l(1.000000)
+    mov_sat r1.w, r1.z
+    mul r1.w, r1.w, r1.w
+    add r8.w, r4.z, r0.x
+    mad r0.x, -r0.x, r4.z, r8.w
+    mul r0.y, r0.y, r1.w
+    min r0.y, r0.y, cb0[3].z
+    add r0.x, r0.x, l(-1.000000)
+    mad r0.x, r0.y, r0.x, l(1.000000)
+  else 
+    movc r0.x, r0.w, r4.y, r5.w
+  endif 
+  mov_sat r9.x, r9.x
+  mov r9.y, r4.z
+  sample_l_indexable(texture2d)(float,float,float,float) r9.xy, r9.xyxx, t0.xyzw, s1, l(0.000000)
+  log r0.y, r4.z
+  mad r0.y, r0.y, l(1.800000), l(8.000000)
+  mul r1.w, r4.x, cb2[2].y
+  mad r3.xyz, r3.xyzx, r3.xyzx, l(-0.040000, -0.040000, -0.040000, 0.000000)
+  mad r3.xyz, r1.wwww, r3.xyzx, l(0.040000, 0.040000, 0.040000, 0.000000)
+  mad r9.xyz, r3.xyzx, r9.xxxx, r9.yyyy
+  mov r11.xyz, l(0,0,0,0)
+  mov r4.x, r8.x
+  mov r8.w, l(0)
+  mov r9.w, l(0)
+  loop 
+    uge r10.w, r9.w, r7.w
+    breakc_nz r10.w
+    iadd r10.w, r4.x, l(1)
+    ld_indexable(buffer)(uint,uint,uint,uint) r11.w, r4.xxxx, t1.yzwx
+    imul null, r11.w, r11.w, l(6)
+    and r12.x, r4.w, cb8[r11.w + 2].w
+    if_nz r12.x
+      add r12.xyz, r2.xyzx, -cb8[r11.w + 0].xyzx
+      dp2 r13.x, cb8[r11.w + 1].xyxx, r12.xyxx
+      dp2 r13.y, cb8[r11.w + 1].zwzz, r12.xyxx
+      mul r13.z, r12.z, cb8[r11.w + 3].z
+      add_sat r12.xyz, |r13.xyzx|, cb8[r11.w + 4].xyzx
+      mul r12.xyz, r12.xyzx, cb8[r11.w + 5].xyzx
+      max r12.y, r12.z, r12.y
+      max r12.x, r12.y, r12.x
+      add r12.x, -r12.x, l(1.000000)
+      lt r12.y, l(0.000000), r12.x
+      if_nz r12.y
+        dp2 r14.x, cb8[r11.w + 1].xyxx, r10.xyxx
+        dp2 r14.y, cb8[r11.w + 1].zwzz, r10.xyxx
+        mul r14.z, r10.z, cb8[r11.w + 3].z
+        lt r12.yzw, l(0.000000, 0.000000, 0.000000, 0.000000), r14.xxyz
+        lt r15.xyz, r14.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+        iadd r12.yzw, r12.yyzw, -r15.xxyz
+        itof r12.yzw, r12.yyzw
+        mad r12.yzw, r13.xxyz, r12.yyzw, l(0.000000, 1.000000, 1.000000, 1.000000)
+        div r12.yzw, r12.yyzw, |r14.xxyz|
+        min r12.z, r12.w, r12.z
+        min r12.y, r12.z, r12.y
+        mul_sat r12.z, r12.y, cb8[r11.w + 3].w
+        mul r12.w, r12.z, r12.x
+        mad r13.xyz, r12.yyyy, r10.xyzx, r2.xyzx
+        add r13.xyz, r13.xyzx, -cb8[r11.w + 0].xyzx
+        max r12.y, r0.y, cb8[r11.w + 5].w
+        mov r13.w, cb8[r11.w + 0].w
+        sample_l_indexable(texturecubearray)(float,float,float,float) r13.xyz, r13.xyzw, t6.xyzw, s1, r12.y
+        mul r13.xyz, r13.xyzx, cb8[r11.w + 4].wwww
+        mul r13.xyz, r9.xyzx, r13.xyzx
+        mad r11.xyz, r13.xyzx, r12.wwww, r11.xyzx
+        mad r8.w, r12.x, r12.z, r8.w
+      endif 
+    endif 
+    iadd r9.w, r9.w, l(1)
+    mov r4.x, r10.w
+  endloop 
+  lt r0.y, l(1.000000), r8.w
+  div r9.xyz, r11.xyzx, r8.wwww
+  movc r9.xyz, r0.yyyy, r9.xyzx, r11.xyzx
+  mul r9.xyz, r0.xxxx, r9.xyzx
+  iadd r0.x, r7.w, r8.x
+  mov r6.zw, l(0,0,0,0)
+  ld_indexable(texture2d)(float,float,float,float) r0.y, r6.xyzw, t12.xyzw
+  mad r6.xyz, r5.xyzx, cb2[3].wwww, cb2[3].xyzx
+  mul r6.xyz, r6.xyzx, l(0.318310, 0.318310, 0.318310, 0.000000)
+  mad r3.w, -r3.w, l(0.032258), l(1.000000)
+  mul r4.x, r4.z, r4.z
+  mul r4.w, r4.x, r4.x
+  div r6.w, l(2.000000), r4.w
+  add r6.w, r6.w, l(-2.000000)
+  max r6.w, r6.w, l(0.000010)
+  mul r8.x, r4.w, l(3.141593)
+  mad r5.xyz, r1.wwww, -r5.xyzx, r5.xyzx
+  mad r5.xyz, r5.xyzx, cb2[3].wwww, cb2[3].xyzx
+  mul r5.xyz, r5.xyzx, l(0.318310, 0.318310, 0.318310, 0.000000)
+  mad r1.w, r4.x, r4.x, l(-0.999500)
+  mad r4.x, r4.z, l(0.234375), l(0.015625)
+  add r4.z, -r4.x, l(1.000000)
+  mov r10.yz, l(0,-1.000000,1.000000,0)
+  mov r11.y, l(-1.000000)
+  mov r12.xyz, r9.xyzx
+  mov r8.w, r0.x
+  mov r9.w, l(0)
+  mov r11.z, l(0)
+  loop 
+    uge r11.w, r11.z, r0.z
+    breakc_nz r11.w
+    iadd r11.w, r8.w, l(1)
+    ld_indexable(buffer)(uint,uint,uint,uint) r13.x, r8.wwww, t1.xyzw
+    imul null, r13.y, r13.x, l(23)
+    and r13.z, r2.w, cb6[r13.y + 2].w
+    if_nz r13.z
+      add r14.xyz, -r2.xyzx, cb6[r13.y + 0].xyzx
+      mul r15.xyz, r14.xyzx, cb6[r13.y + 0].wwww
+      dp3 r13.z, r15.xyzx, r15.xyzx
+      min r13.z, r13.z, l(1.000000)
+      add r13.z, -r13.z, l(1.000000)
+      log r13.z, r13.z
+      mul r13.z, r13.z, cb6[r13.y + 1].w
+      exp r13.z, r13.z
+      lt r13.w, l(0.000000), cb6[r13.y + 3].x
+      if_nz r13.w
+        dp3 r14.w, r14.xyzx, r14.xyzx
+        rsq r14.w, r14.w
+        mul r15.xyz, r14.wwww, r14.xyzx
+        dp3 r14.w, r15.xyzx, -cb6[r13.y + 2].xyzx
+        add r14.w, r14.w, -cb6[r13.y + 3].x
+        mul_sat r14.w, r14.w, cb6[r13.y + 3].y
+        mul r14.w, r14.w, r14.w
+        mul r13.z, r13.z, r14.w
+      endif 
+      lt r14.w, l(0.000010), r13.z
+      dp3 r15.x, r1.xyzx, r14.xyzx
+      lt r15.x, l(0.000000), r15.x
+      or r15.x, r0.w, r15.x
+      ne r15.y, l(0.000000, 0.000000, 0.000000, 0.000000), cb6[r13.y + 15].w
+      or r15.x, r15.y, r15.x
+      and r14.w, r14.w, r15.x
+      if_nz r14.w
+        ine r14.w, l(0), cb6[r13.y + 3].z
+        ieq r14.w, r14.w, l(-1)
+        if_nz r14.w
+          if_nz r13.w
+            mul r15.xyzw, r2.yyyy, cb6[r13.y + 6].xyzw
+            mad r15.xyzw, cb6[r13.y + 5].xyzw, r2.xxxx, r15.xyzw
+            mad r15.xyzw, cb6[r13.y + 7].xyzw, r2.zzzz, r15.xyzw
+            add r15.xyzw, r15.zxyw, cb6[r13.y + 8].zxyw
+            div r15.yz, r15.yyzy, r15.wwww
+          else 
+            max r13.w, |r14.z|, |r14.y|
+            max r13.w, r13.w, |r14.x|
+            lt r16.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), -r14.xyzx
+            lt r17.xyz, -r14.xyzx, l(0.000000, 0.000000, 0.000000, 0.000000)
+            iadd r14.w, r16.x, -r17.x
+            itof r10.x, r14.w
+            mul r18.xy, r10.xyxx, -r14.zyzz
+            eq r19.xyz, -r14.xyzx, |r14.xyzx|
+            eq r16.xw, |r14.xxxy|, r13.wwww
+            iadd r16.yz, -r16.yyzy, r17.yyzy
+            itof r10.w, r16.y
+            mul r17.xy, r10.zwzz, -r14.xzxx
+            itof r11.x, r16.z
+            mul r20.xy, r11.xyxx, -r14.xyxx
+            movc r19.xyz, r19.xyzx, l(0,2,4,0), l(1,3,5,0)
+            mov r17.z, r19.y
+            mov r20.z, r19.z
+            movc r16.yzw, r16.wwww, r17.xxyz, r20.xxyz
+            mov r18.z, r19.x
+            movc r16.xyz, r16.xxxx, r18.xyzx, r16.yzwy
+            div r10.xw, r16.xxxy, r13.wwww
+            imad r11.x, r13.x, l(23), r16.z
+            mad r15.yz, r10.xxwx, cb6[r11.x + 17].xxyx, cb6[r11.x + 17].zzwz
+            mul r15.x, r13.w, cb6[r13.y + 0].w
+          endif 
+          mad r16.xyzw, r8.yzzy, cb6[r13.y + 13].xzyw, cb6[r13.y + 14].xzyw
+          mad r10.xw, r16.xxxy, l(0.083000, 0.000000, 0.000000, 0.083000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.x, r10.xwxx, t3.xxxx, s6, r15.x
+          mad r13.xw, -r16.xxxy, l(0.083000, 0.000000, 0.000000, 0.083000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r13.xw, r16.zzzw, l(-0.083000, 0.000000, 0.000000, -0.083000)
+          mad r13.xw, r16.xxxy, l(-0.144000, 0.000000, 0.000000, -0.144000), r13.xxxw
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r13.xw, r16.zzzw, l(0.217000, 0.000000, 0.000000, 0.217000)
+          mad r13.xw, r16.xxxy, l(0.125000, 0.000000, 0.000000, 0.125000), r13.xxxw
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mad r13.xw, r16.zzzw, l(-0.333000, 0.000000, 0.000000, -0.333000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mad r13.xw, -r16.zzzw, l(-0.333000, 0.000000, 0.000000, -0.333000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r17.xyzw, r16.xyzw, l(-0.208000, -0.208000, 0.361000, 0.361000)
+          add r13.xw, r17.zzzw, r17.xxxy
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r17.xyzw, r16.xyzw, l(0.433000, 0.433000, -0.250000, -0.250000)
+          add r13.xw, r17.zzzw, r17.xxxy
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mad r13.xw, r16.xxxy, l(-0.583000, 0.000000, 0.000000, -0.583000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mad r13.xw, -r16.xxxy, l(-0.583000, 0.000000, 0.000000, -0.583000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r13.xw, r16.zzzw, l(0.333000, 0.000000, 0.000000, 0.333000)
+          mad r13.xw, r16.xxxy, l(0.577000, 0.000000, 0.000000, 0.577000), r13.xxxw
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r13.xw, r16.zzzw, l(-0.650000, 0.000000, 0.000000, -0.650000)
+          mad r13.xw, r16.xxxy, l(-0.375000, 0.000000, 0.000000, -0.375000), r13.xxxw
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mad r13.xw, r16.zzzw, l(0.833000, 0.000000, 0.000000, 0.833000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mad r13.xw, -r16.zzzw, l(0.833000, 0.000000, 0.000000, 0.833000), r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r17.xyzw, r16.xyzw, l(0.458000, 0.458000, -0.794000, -0.794000)
+          add r13.xw, r17.zzzw, r17.xxxy
+          add r17.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r17.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r16.xyzw, r16.xyzw, l(-0.866000, -0.866000, 0.500000, 0.500000)
+          add r13.xw, r16.zzzw, r16.xxxy
+          add r16.xy, r13.xwxx, r15.yzyy
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r16.xyxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          add r13.xw, -r13.xxxw, r15.yyyz
+          sample_c_lz_indexable(texture2d)(float,float,float,float) r10.w, r13.xwxx, t3.xxxx, s6, r15.x
+          add r10.x, r10.w, r10.x
+          mul r10.x, r10.x, l(0.041667)
+          mul r10.x, r10.x, r10.x
+          mul r13.z, r10.x, r13.z
+        else 
+          if_nz cb6[r13.y + 16].y
+            mul r13.z, r0.y, r13.z
+          endif 
+        endif 
+        mul r13.xzw, r13.zzzz, cb6[r13.y + 1].xxyz
+        ne r10.x, l(0.000000), cb6[r13.y + 4].x
+        if_nz r10.x
+          mul r15.xyz, -r14.yyyy, cb6[r13.y + 10].xyzx
+          mad r15.xyz, cb6[r13.y + 9].xyzx, -r14.xxxx, r15.xyzx
+          mad r15.xyz, cb6[r13.y + 11].xyzx, -r14.zzzz, r15.xyzx
+          div r10.xw, r15.xxxy, r15.zzzz
+          mad r10.xw, r10.xxxw, cb6[r13.y + 4].xxxx, cb6[r13.y + 4].yyyz
+          mov r10.xw, |r10.xxxw|
+          mul_sat r11.x, r15.z, cb6[r13.y + 4].w
+          sample_l_indexable(texture2d)(float,float,float,float) r15.xyz, r10.xwxx, t5.xyzw, s1, l(0.000000)
+          add r16.xyz, -r15.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+          mad r15.xyz, r11.xxxx, r16.xyzx, r15.xyzx
+          mul r13.xzw, r13.xxzw, r15.xxyz
+        endif 
+        if_nz r0.w
+          dp3 r10.x, r14.xyzx, r14.xyzx
+          rsq r10.x, r10.x
+          mul r15.xyz, r10.xxxx, r14.xyzx
+          mad r16.xyz, r14.xyzx, r10.xxxx, -r7.xyzx
+          dp3 r10.x, r16.xyzx, r16.xyzx
+          rsq r10.x, r10.x
+          mul r16.xyz, r10.xxxx, r16.xyzx
+          dp3 r10.x, r1.xyzx, r15.xyzx
+          mov_sat r10.w, r10.x
+          dp3 r11.x, r1.xyzx, r16.xyzx
+          max r11.x, r11.x, l(0.000001)
+          min r11.x, r11.x, l(1.000000)
+          mad_sat r10.x, r10.x, l(5.000000), l(0.500000)
+          mad r10.x, r10.x, r3.w, r5.w
+          mad r14.w, r10.w, l(0.500000), l(0.500000)
+          mul r10.x, r10.x, r14.w
+          log r11.x, r11.x
+          mul r11.x, r6.w, r11.x
+          exp r11.x, r11.x
+          div r11.x, r11.x, r8.x
+          mul r10.w, r10.w, r11.x
+          mul r10.w, r10.w, l(0.010000)
+          mad r15.xyz, r6.xyzx, r10.xxxx, r10.wwww
+          mad r12.xyz, r15.xyzx, r13.xzwx, r12.xyzx
+        else 
+          dp3 r10.x, r14.xyzx, r14.xyzx
+          rsq r10.x, r10.x
+          mul r15.xyz, r10.xxxx, r14.xyzx
+          mad r14.xyz, r14.xyzx, r10.xxxx, -r7.xyzx
+          dp3 r10.x, r14.xyzx, r14.xyzx
+          rsq r10.x, r10.x
+          mul r14.xyz, r10.xxxx, r14.xyzx
+          dp3 r10.x, r1.xyzx, r15.xyzx
+          mov_sat r10.w, r10.x
+          dp3_sat r11.x, r1.xyzx, r14.xyzx
+          dp3_sat r14.x, r15.xyzx, r14.xyzx
+          add r14.y, r10.x, cb6[r13.y + 15].w
+          mul r14.y, r14.y, l(0.333330)
+          max_sat r10.x, r10.x, r14.y
+          mul r10.x, r10.x, cb6[r13.y + 15].z
+          mul r11.x, r11.x, r11.x
+          mad r11.x, r11.x, r1.w, l(1.000000)
+          mul r11.x, r11.x, r11.x
+          mul r11.x, r11.x, l(3.141593)
+          div r11.x, r4.w, r11.x
+          mul r13.y, r14.x, r14.x
+          mad r13.y, r13.y, r4.z, r4.x
+          mul r13.y, r13.y, l(4.000000)
+          rcp r13.y, r13.y
+          mad r14.y, r14.x, l(-5.554730), l(-6.983160)
+          mul r14.x, r14.x, r14.y
+          exp r14.x, r14.x
+          add r14.xyz, r3.xyzx, r14.xxxx
+          mad r14.xyz, r14.xyzx, cb2[4].wwww, cb2[4].xyzx
+          mul r11.x, r11.x, r13.y
+          mul r14.xyz, r14.xyzx, r11.xxxx
+          mul r14.xyz, r10.wwww, r14.xyzx
+          mad r14.xyz, r5.xyzx, r10.xxxx, r14.xyzx
+          mad r12.xyz, r14.xyzx, r13.xzwx, r12.xyzx
+        endif 
+      endif 
+      iadd r9.w, r9.w, l(1)
+    endif 
+    iadd r11.z, r11.z, l(1)
+    mov r8.w, r11.w
+  endloop 
+  iadd r0.x, r7.w, r9.w
+  utof r0.x, r0.x
+  mul r0.x, r0.x, l(0.250000)
+  min r0.x, r0.x, l(1.000000)
+  lt r0.y, l(0.000000), r0.x
+  mov r12.w, l(0)
+  mad r0.xzw, r0.xxxx, l(1.000000, 0.000000, -1.000000, 0.000000), r12.wwyw
+  mov r1.xz, r12.xxzx
+  mov r1.y, l(1.000000)
+  add r0.xzw, r0.xxzw, r1.xxyz
+  movc r0.xyz, r0.yyyy, r0.xzwx, r12.xyzx
+  movc r0.xyz, cb0[4].zzzz, r0.xyzx, r12.xyzx
+  mul r0.xyz, r4.yyyy, r0.xyzx
+  mul r0.xyz, r0.xyzx, cb2[13].xxxx
+else 
+  mov r0.xyz, l(0,0,0,0)
+endif 
+mov o0.xyz, r0.xyzx
+mov o0.w, l(0)
+ret 
+// Approximately 427 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+D:\GAMES\Outlast 2\Binaries\Win64\ShaderCache\efcb5409e98edd73-ps_replace.txt(209,28-32): error X3004: undeclared identifier 'int18'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

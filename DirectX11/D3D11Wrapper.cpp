@@ -95,7 +95,21 @@ bool InitializeDLL()
 	//	LogInfo("  *** stereo is disabled: %s  ***\n", errorMessage);
 	//	return false;
 	//}
-		
+
+	// If we are going to use 3D Vision Direct Mode, we need to set the driver 
+	// into that mode early, before any possible CreateDevice occurs.
+	if (G->gForceStereo == 2)
+	{
+		status = NvAPI_Stereo_SetDriverMode(NVAPI_STEREO_DRIVER_MODE_DIRECT);
+		if (status != NVAPI_OK)
+		{
+			NvAPI_GetErrorMessage(status, errorMessage);
+			LogInfo("*** NvAPI_Stereo_SetDriverMode to Direct, failed: %s\n", errorMessage);
+			return false;
+		}
+		LogInfo("  NvAPI_Stereo_SetDriverMode successfully set to Direct Mode\n");
+	}
+
 	LogInfo("\n***  D3D11 DLL successfully initialized.  ***\n\n");
 	return true;
 }

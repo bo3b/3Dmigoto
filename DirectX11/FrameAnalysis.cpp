@@ -526,8 +526,12 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 		fprintf(fd, "stride: %u\n", stride);
 
 	for (i = offset / 16; i < size / 16; i++) {
-		for (c = offset % 4; c < 4; c++)
-			fprintf(fd, "%cb%i[%d].%c: %.9g\n", type, idx, i, components[c], buf[i*4+c]);
+		for (c = offset % 4; c < 4; c++) {
+			if (idx == -1)
+				fprintf(fd, "buf[%d].%c: %.9g\n", i, components[c], buf[i*4+c]);
+			else
+				fprintf(fd, "%cb%i[%d].%c: %.9g\n", type, idx, i, components[c], buf[i*4+c]);
+		}
 	}
 
 	fclose(fd);
@@ -666,6 +670,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	desc.Usage = D3D11_USAGE_STAGING;
 	desc.BindFlags = 0;
+	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
 	hr = mOrigDevice->CreateBuffer(&desc, NULL, &staging);
@@ -699,8 +704,13 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 			DumpBufferTxt(filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
 		else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
 			DumpVBTxt(filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
-		else if (options & FrameAnalysisOptions::DUMP_IB_TXT, first, count)
+		else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
 			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
+		else if (options & FrameAnalysisOptions::DUMP_ON_UNMAP) {
+			// We don't know what kind of buffer this is, so just
+			// use the generic dump routine:
+			DumpBufferTxt(filename, &map, desc.ByteWidth, '?', idx, stride, offset);
+		}
 	}
 	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
 	// offset, size, first entry and num entries into account.
@@ -821,6 +831,57 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 		// Could create a shorter filename without hashes if this
 		// becomes a problem in practice
 	}
+
+	return hr;
+}
+
+HRESULT HackerContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
+		uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle)
+{
+	struct ResourceHashInfo *info;
+	wchar_t *pos;
+	size_t rem;
+	HRESULT hr;
+
+	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
+
+	// We don't allow hold to be changed mid-frame due to potential
+	// for filename conflicts, so use def_analyse_options:
+	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s-", type);
+
+	if (hash) {
+		try {
+			info = &G->mResourceInfo.at(orig_hash);
+			if (info->hash_contaminated) {
+				StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=!");
+				if (!info->map_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"M");
+				if (!info->update_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"U");
+				if (!info->copy_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"C");
+				if (!info->region_contamination.empty())
+					StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"S");
+				StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"!");
+			}
+		} catch (std::out_of_range) {}
+
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"=%08x", hash);
+
+		if (hash != orig_hash)
+			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"(%08x)", orig_hash);
+	}
+
+	// Always do this for resource dumps since hashes are likely to clash:
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
+
+	hr = StringCchPrintfW(pos, rem, L".XXX");
+	if (FAILED(hr))
+		FALogInfo("Failed to create filename: 0x%x\n", hr);
 
 	return hr;
 }
@@ -1334,5 +1395,40 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 	}
 
+	G->analyse_frame++;
+}
+
+void HackerContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
+{
+	wchar_t filename[MAX_PATH];
+	uint32_t hash = 0, orig_hash = 0;
+	HRESULT hr;
+
+	analyse_options = G->cur_analyse_options;
+
+	if (!(analyse_options & FrameAnalysisOptions::DUMP_ON_UNMAP))
+		return;
+
+	// Don't bother trying to dump as stereo - map/unmap is inherently mono
+	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
+	analyse_options |= FrameAnalysisOptions::MONO;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+
+	try {
+		hash = G->mResources.at(resource).hash;
+		orig_hash = G->mResources.at(resource).orig_hash;
+	} catch (std::out_of_range) {
+	}
+
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"unmap", hash, orig_hash, resource);
+	if (SUCCEEDED(hr)) {
+		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_ON_UNMAP, -1,
+						DXGI_FORMAT_UNKNOWN, 0, 0);
+	}
+
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+
+	// XXX: Might be better to use a second counter for these
 	G->analyse_frame++;
 }

@@ -37,8 +37,26 @@ void main(float4 pos : SV_Position0, out float4 result : SV_Target0)
 		} else if (mode == 5) {
 			x += width / 2;
 		}
+	} else if (mode == 6 || mode == 7) {
+		int side = y - (int)floor(y /2.0) * (int)2; // chooses the side for sampling if y is even side is always 0, else it is always 1
+		if (mode == 6) {
+			if (side == 0) { // left side of the reverse blited image
+				y1 = 1;
+			} else {  // right side of the reverse blited image
+				y1 = -1;
+				x = x + width / 2;
+			}
+		}
+		else if (mode == 7) { // swap eyes
+			if (side == 0) { // right side of the reverse blited image
+				y1 = 1;
+				x = x + width / 2;
+			} else {  // left side of the reverse blited image
+				y1 = -1;
+			}	
+		}
 	}
-
+	
 	result = t100.Load(float3(x, y, 0));
 	if (x1 || y1)
 		result = (result + t100.Load(float3(x + x1, y + y1, 0))) / 2;

@@ -1197,6 +1197,9 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"multisample_enable", L"antialiased_line_enable",
 	// IA State overrides:
 	L"topology",
+	// Sampler State overrides
+	L"sampler", // TODO: add additional sampler parameter 
+				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
 	NULL
 };
 static void EnumerateCustomShaderSections(IniSections &sections, wchar_t *iniFile)
@@ -1218,6 +1221,63 @@ static void EnumerateCustomShaderSections(IniSections &sections, wchar_t *iniFil
 		customShaders[shader_id];
 	}
 }
+
+static void ParseSamplerState(CustomShader *shader, const wchar_t *section, wchar_t *iniFile)
+{
+	D3D11_SAMPLER_DESC* desc = &shader->sampler_desc;
+	wchar_t setting[MAX_PATH];
+	wchar_t key[32];
+	int i;
+	bool found;
+
+	memset(desc, 0, sizeof(D3D11_SAMPLER_DESC));
+
+	//TODO: do not really understand the difference between normal and comparison filter 
+	// and how they are depending on the comparison func. 
+	// just used one ==> need further reconsideration
+	desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC;
+	desc->AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc->AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc->AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	desc->MipLODBias = 0.0f;
+	desc->MaxAnisotropy = 1;
+	desc->ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	desc->BorderColor[0] = 0;
+	desc->BorderColor[1] = 0;
+	desc->BorderColor[2] = 0;
+	desc->BorderColor[3] = 0;
+	desc->MinLOD = 0;
+	desc->MaxLOD = 1;
+
+	if (GetPrivateProfileString(section, L"sampler", 0, setting, MAX_PATH, iniFile))
+	{
+		if (std::wstring(setting) == L"null")
+			return;
+
+		if (std::wstring(setting) == L"point_filter")
+		{
+			desc->Filter = D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+			shader->sampler_override = 1;
+			return;
+		}
+
+		if (std::wstring(setting) == L"linear_filter")
+		{
+			desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+			shader->sampler_override = 1;
+			return;
+		}
+
+		if (std::wstring(setting) == L"anisotropic_filter")
+		{
+			desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC;
+			desc->MaxAnisotropy = 16; // TODO: is 16 necessary or maybe it should be provided by the config ini?
+			shader->sampler_override = 1;
+			return;
+		}
+	}
+}
+
 static void ParseCustomShaderSections(wchar_t *iniFile)
 {
 	CustomShaders::iterator i;
@@ -1253,7 +1313,8 @@ static void ParseCustomShaderSections(wchar_t *iniFile)
 		ParseBlendState(custom_shader, shader_id->c_str(), iniFile);
 		ParseRSState(custom_shader, shader_id->c_str(), iniFile);
 		ParseTopology(custom_shader, shader_id->c_str(), iniFile);
-
+		ParseSamplerState(custom_shader, shader_id->c_str(), iniFile);
+		
 		custom_shader->max_executions_per_frame =
 			GetIniInt(shader_id->c_str(), L"max_executions_per_frame", 0, iniFile, NULL);
 
@@ -1458,7 +1519,9 @@ void LoadConfigFile()
 	G->SCREEN_WIDTH = GetIniInt(L"Device", L"width", -1, iniFile, NULL);
 	G->SCREEN_HEIGHT = GetIniInt(L"Device", L"height", -1, iniFile, NULL);
 	G->SCREEN_REFRESH = GetIniInt(L"Device", L"refresh_rate", -1, iniFile, NULL);
-
+	G->SCREEN_UPSCALING = GetIniInt(L"Device", L"upscaling", 0, iniFile, NULL);
+	G->UPSCALE_MODE = GetIniInt(L"Device", L"upscale_mode", 0, iniFile, NULL);
+	
 	if (GetPrivateProfileString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH, iniFile))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
@@ -1470,7 +1533,7 @@ void LoadConfigFile()
 
 	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, iniFile, NULL);
 	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", iniFile, ToggleFullScreen, NULL, 0, NULL);
-	G->gForceStereo = GetIniBool(L"Device", L"force_stereo", false, iniFile, NULL);
+	G->gForceStereo = GetIniInt(L"Device", L"force_stereo", 0, iniFile, NULL);
 	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, iniFile, NULL);
 
 	if (GetPrivateProfileString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH, iniFile)) {
