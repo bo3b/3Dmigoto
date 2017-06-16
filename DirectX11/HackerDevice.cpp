@@ -263,6 +263,11 @@ IDXGISwapChain* HackerDevice::GetOrigSwapChain()
 	return mHackerSwapChain->GetOrigSwapChain();
 }
 
+HackerDXGISwapChain* HackerDevice::getHackerSwapChain()
+{
+	return mHackerSwapChain;
+}
+
 void HackerDevice::HookDevice()
 {
 	// This will install hooks in the original device (if they have not

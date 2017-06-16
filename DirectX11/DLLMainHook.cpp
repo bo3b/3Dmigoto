@@ -228,12 +228,34 @@ static BOOL WINAPI Hooked_SetWindowPos(
     _In_ int cy,
     _In_ UINT uFlags)
 {
-	if (G->SCREEN_FULLSCREEN == 2) {
-		// Do nothing - passing this call through could change the game
-		// to a borderless window. Needed for The Witness.
-		return true;
+	/*
+		TODO: What about this: (dont know how to test it)
+		We install this hook on demand to avoid any possible
+		issues with hooking the call when we don't need it:
+		Unconfirmed, but possibly related to:
+		https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+		and do nothing - passing this call through could change the game
+		to a borderless window. Needed for The Witness.
+	*/
+	if (G->SCREEN_UPSCALING != 0)
+	{
+		if (cx != 0 && cy != 0) // Force desired resolution if input is not zero (only the case if current resolution is provided!)
+		{
+			cx = G->SCREEN_WIDTH;
+			cy = G->SCREEN_HEIGHT;
+			X = 0;
+			Y = 0;
+		}
 	}
-
+	else
+	{
+		if (G->SCREEN_FULLSCREEN == 2) {
+			// Do nothing - passing this call through could change the game
+			// to a borderless window. Needed for The Witness.
+			return true;
+		}
+	}
+	
 	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 

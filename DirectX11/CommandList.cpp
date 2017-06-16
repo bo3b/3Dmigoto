@@ -419,7 +419,9 @@ CustomShader::CustomShader() :
 	substantiated(false),
 	max_executions_per_frame(0),
 	frame_no(0),
-	executions_this_frame(0)
+	executions_this_frame(0),
+	sampler_override(0),
+	sampler_state(nullptr)
 {
 	int i;
 
@@ -458,7 +460,9 @@ CustomShader::~CustomShader()
 	if (ps_bytecode)
 		ps_bytecode->Release();
 	if (cs_bytecode)
-		cs_bytecode->Release();
+		cs_bytecode->Release();		
+	if (sampler_state)
+		sampler_state->Release();
 }
 
 // This is similar to the other compile routines, but still distinct enough to
@@ -609,6 +613,9 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 
 	if (rs_override == 1) // 2 will use default blend state
 		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
+		
+	if (sampler_override == 1)
+		mOrigDevice->CreateSamplerState(&sampler_desc, &sampler_state);
 }
 
 struct saved_shader_inst
@@ -692,7 +699,14 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {(UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1};
 	UINT i;
 	D3D11_PRIMITIVE_TOPOLOGY saved_topology;
+	UINT num_sampler = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
+	ID3D11SamplerState* saved_sampler_states[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
 
+	for (UINT i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; ++i)
+	{
+		saved_sampler_states[i] = nullptr;
+	}
+	
 	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
 
 	if (custom_shader->max_executions_per_frame) {
@@ -752,7 +766,10 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->IAGetPrimitiveTopology(&saved_topology);
 		mOrigContext->IASetPrimitiveTopology(custom_shader->topology);
 	}
-
+	if (custom_shader->sampler_override) {
+		mOrigContext->PSGetSamplers(0, num_sampler, saved_sampler_states);
+		mOrigContext->PSSetSamplers(0, 1, &custom_shader->sampler_state); //just one slot for the moment TODO: allow more via *.ini file
+	}
 	// We save off the viewports unconditionally for now. We could
 	// potentially skip this by flagging if a command list may alter them,
 	// but that probably wouldn't buy us anything:
@@ -790,7 +807,9 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->RSSetState(saved_rs);
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
 		mOrigContext->IASetPrimitiveTopology(saved_topology);
-
+	if (custom_shader->sampler_override)
+		mOrigContext->PSSetSamplers(0, num_sampler, saved_sampler_states);
+	
 	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
 
@@ -811,6 +830,10 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	if (saved_rs)
 		saved_rs->Release();
 
+	for (i = 0; i < num_sampler; ++i) {
+		if (saved_sampler_states[i])
+			saved_sampler_states[i]->Release();
+	}
 	for (i = 0; i < NumRTVs; i++) {
 		if (saved_rtvs[i])
 			saved_rtvs[i]->Release();
@@ -1632,6 +1655,11 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		type = ResourceCopyTargetType::SWAP_CHAIN;
 		return true;
 	}
+	
+	if (is_source && !wcscmp(target, L"f_bb")) {
+		type = ResourceCopyTargetType::FAKE_SWAP_CHAIN;
+		return true;
+	}
 
 	return false;
 
@@ -1970,7 +1998,10 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
-
+	
+	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
+		mHackerDevice->getHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		return res;
 	}
 
 	return NULL;
@@ -2177,7 +2208,8 @@ void ResourceCopyTarget::SetResource(
 	case ResourceCopyTargetType::STEREO_PARAMS:
 	case ResourceCopyTargetType::INI_PARAMS:
 	case ResourceCopyTargetType::SWAP_CHAIN:
-		// Only way we could "set" a resource to the back buffer is by
+	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
+		// Only way we could "set" a resource to the (fake) back buffer is by
 		// copying to it. Might implement overwrites later, but no
 		// pressing need. To write something to the back buffer, assign
 		// it as a render target instead.
@@ -3621,11 +3653,16 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		SetViewportFromResource(mOrigContext, dst_resource);
 
 out_release:
-	src_resource->Release();
-	if (src_view)
-		src_view->Release();
-	if (options & ResourceCopyOptions::NO_VIEW_CACHE && *pp_cached_view) {
+
+	if (options & ResourceCopyOptions::NO_VIEW_CACHE && *pp_cached_view)
+	{
 		(*pp_cached_view)->Release();
 		*pp_cached_view = NULL;
 	}
+
+	if (src_view)
+		src_view->Release();
+
+	if (src_resource)
+		src_resource->Release();
 }
