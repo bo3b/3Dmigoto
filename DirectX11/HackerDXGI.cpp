@@ -913,7 +913,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	HackerDXGISwapChain *swapchainWrap = nullptr;
 	bool set_fullscreen_required = false;
-	
+
 	if (G->SCREEN_UPSCALING > 2 || G->SCREEN_WIDTH <= 0 || G->SCREEN_HEIGHT <= 0 || G->UPSCALE_MODE >=2)
 	{
 		// TODO: some default parameters for upscaling could be added here
@@ -984,7 +984,6 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (ppSwapChain)
 	{
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
 		LogInfo("->HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, *ppSwapChain);
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
