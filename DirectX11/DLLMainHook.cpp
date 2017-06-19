@@ -237,23 +237,19 @@ static BOOL WINAPI Hooked_SetWindowPos(
 		and do nothing - passing this call through could change the game
 		to a borderless window. Needed for The Witness.
 	*/
-	if (G->SCREEN_UPSCALING != 0)
-	{
-		if (cx != 0 && cy != 0) // Force desired resolution if input is not zero (only the case if current resolution is provided!)
-		{
+	if (G->SCREEN_UPSCALING != 0) {
+		// Force desired upscaled resolution (only when desired resolution is provided!)
+		if (cx != 0 && cy != 0) {
 			cx = G->SCREEN_WIDTH;
 			cy = G->SCREEN_HEIGHT;
 			X = 0;
 			Y = 0;
 		}
 	}
-	else
-	{
-		if (G->SCREEN_FULLSCREEN == 2) {
-			// Do nothing - passing this call through could change the game
-			// to a borderless window. Needed for The Witness.
-			return true;
-		}
+	else if (G->SCREEN_FULLSCREEN == 2) {
+		// Do nothing - passing this call through could change the game
+		// to a borderless window. Needed for The Witness.
+		return true;
 	}
 	
 	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
