@@ -1,4 +1,5 @@
-// This shader creates a quad and texture cooridnates to be used by the pixel shader
+// Upscaling: This shader creates a quad and texture coordinates to be used by the 
+// pixel shader for full screen blits.
 
 void main(
 		out float4 pos : SV_Position0,  out float2 texcoord : TEXCOORD0,
