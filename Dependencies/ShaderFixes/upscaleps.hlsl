@@ -1,5 +1,5 @@
 // This shader uses provided texture coordinates and sampler to blit
-// the game screen with migoto overlays to the actuall swap chain
+// the game screen with 3Dmigoto overlays to the actual swap chain
 
 Texture2D<float4> t101 : register(t101);
 SamplerState SampleType;
