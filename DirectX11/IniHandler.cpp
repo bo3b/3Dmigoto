@@ -1226,9 +1226,6 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section, wcha
 {
 	D3D11_SAMPLER_DESC* desc = &shader->sampler_desc;
 	wchar_t setting[MAX_PATH];
-	wchar_t key[32];
-	int i;
-	bool found;
 
 	memset(desc, 0, sizeof(D3D11_SAMPLER_DESC));
 

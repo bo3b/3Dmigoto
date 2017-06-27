@@ -48,7 +48,9 @@
 #include "Override.h"
 #include "IniHandler.h"
 
-
+#include "nvapi.h"
+#include "nvstereo.h"
+#include <iostream>
 // -----------------------------------------------------------------------------
 // Constructors:
 
@@ -145,7 +147,7 @@ HackerDXGIResource1::HackerDXGIResource1(IDXGIResource1 *pResource1)
 // this case, which will save the reference for their GetImmediateContext call.
 
 HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext)
-	: HackerDXGIDeviceSubObject(pSwapChain), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
+	: HackerDXGIDeviceSubObject(pSwapChain)/*, mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)*/
 {
 	mOrigSwapChain = pSwapChain;
 
@@ -167,96 +169,68 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 	}
 }
 
-HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height)
-	: HackerDXGIDeviceSubObject(pSwapChain), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
+// The upscaling swap chain
+
+HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height,IDXGIFactory* factory)
+	: HackerDXGISwapChain(pSwapChain, pDevice, pContext), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
 {
-	mOrigSwapChain = pSwapChain;
 
-	if (pContext == NULL)
-	{
-		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&pContext));
-	}
-
-	mHackerDevice = pDevice;
-	mHackerContext = pContext;
-	pDevice->SetHackerSwapChain(this);
-
-	// TODO: multisampled swap chain
-	// TODO: swap chain with more than one back buffer
-	D3D11_TEXTURE2D_DESC fake_buffer_desc;
-	std::memset(&fake_buffer_desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
-	fake_buffer_desc.ArraySize = 1;
-	fake_buffer_desc.MipLevels = 1;
-	fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-	fake_buffer_desc.SampleDesc.Count = 1;
-	fake_buffer_desc.Format = fake_swap_chain_desc->BufferDesc.Format;
-	fake_buffer_desc.MiscFlags = 0;
-	fake_buffer_desc.Width = fake_swap_chain_desc->BufferDesc.Width;
-	fake_buffer_desc.Height = fake_swap_chain_desc->BufferDesc.Height;
-	fake_buffer_desc.CPUAccessFlags = 0;
-
-	HRESULT res = pDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+	createRenderTarget(fake_swap_chain_desc, factory);
 
 	mWidth = new_width;
 	mHeight = new_height;
 
-	if (res != S_OK)
-	{
-		LogInfo(" *** Failed to create faked swap chain buffer! \n");
-		mFakeBackBuffer = nullptr;
-		throw;
-	}
-
-	try {
-		// Create Overlay class that will be responsible for drawing any text
-		// info over the game. Using the Hacker Device and Context we gave the game.
-		mOverlay = new Overlay(pDevice, pContext, this);
-	}
-	catch (...) {
-		LogInfo("  *** Failed to create Overlay. Exception caught. \n");
-		mOverlay = NULL;
-	}
+	if (mOverlay)
+		mOverlay->Resize(new_width, new_height);
 }
 
-HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain* fake_swap_chain, UINT new_width, UINT new_height)
-	: HackerDXGIDeviceSubObject(pSwapChain), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
+void HackerUpscalingDXGISwapChain::createRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory)
 {
+	HRESULT hr;
 
-	mOrigSwapChain = pSwapChain;
-
-	if (pContext == NULL)
+	switch (G->UPSCALE_MODE)
 	{
-		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&pContext));
+	case 0:
+		{
+			// TODO: multisampled swap chain
+			// TODO: multiple buffers within one spaw chain
+			// ==> in this case upscale_mode = 1 should be used at the moment
+			D3D11_TEXTURE2D_DESC fake_buffer_desc;
+			std::memset(&fake_buffer_desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
+			fake_buffer_desc.ArraySize = 1;
+			fake_buffer_desc.MipLevels = 1;
+			fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+			fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+			fake_buffer_desc.SampleDesc.Count = 1;
+			fake_buffer_desc.Format = fake_swap_chain_desc->BufferDesc.Format;
+			fake_buffer_desc.MiscFlags = 0;
+			fake_buffer_desc.Width = fake_swap_chain_desc->BufferDesc.Width;
+			fake_buffer_desc.Height = fake_swap_chain_desc->BufferDesc.Height;
+			fake_buffer_desc.CPUAccessFlags = 0;
+
+			hr = mHackerDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+		}
+		break;
+	case 1:
+		{
+			const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc)->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // fake swap chain should have no influence on window
+			hr = factory->CreateSwapChain(mHackerDevice->GetOrigDevice(), const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc), &mFakeSwapChain);
+			const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc)->Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // restore old state in case fall back is required
+		}
+		break;
+	default:
+		throw MigotoException("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed ==> provided upscaling mode is not valid!");
 	}
 
-	mHackerDevice = pDevice;
-	mHackerContext = pContext;
-	pDevice->SetHackerSwapChain(this);
+	LogInfo("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(): result %d \n", hr);
 
-	mFakeSwapChain = fake_swap_chain;
-
-	if (mFakeSwapChain == nullptr)
+	if (FAILED(hr))
 	{
-		LogInfo(" *** Failed to create hacker swap chain: provided faked swap chain is invalid! \n");
-		throw;
-	}
-
-	mWidth = new_width;
-	mHeight = new_height;
-
-	try {
-		// Create Overlay class that will be responsible for drawing any text
-		// info over the game. Using the Hacker Device and Context we gave the game.
-		mOverlay = new Overlay(pDevice, pContext, this);
-	}
-	catch (...) {
-		LogInfo("  *** Failed to create Overlay. Exception caught. \n");
-		mOverlay = NULL;
+		throw MigotoException("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed!");
 	}
 }
 
-HackerDXGISwapChain::~HackerDXGISwapChain()
+HackerUpscalingDXGISwapChain::~HackerUpscalingDXGISwapChain()
 {
 	if (mFakeSwapChain)
 		mFakeSwapChain->Release();
@@ -924,7 +898,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		LogInfo("Upscaling is disabled!");
 		G->SCREEN_UPSCALING = 0;
 	}
-	
+
 	if (G->SCREEN_UPSCALING == 0) // no upscaling at all use the usual "old" path
 	{
 		ForceDisplayParams(pDesc);
@@ -934,45 +908,51 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	else
 	{	
 		set_fullscreen_required = !pDesc->Windowed; // to create two swap chains in row we need the swap chains to be in windowed mode
-		pDesc->Windowed = 1; // so store has to be stored to call setFullscreen after and changed to windowed
-							 // NOTE: no ForceDisplayResolution required here
-		InstallSetWindowPosHook(); // This hook is very important in case of upscaling
-								   //TODO: what about the hook and the warning in forceDisplayResolution (Testing required)
-								   //SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
-		DXGI_SWAP_CHAIN_DESC olddesc = *pDesc; // need old description to create fake swap chain (fake texture)
+		pDesc->Windowed = 1;						// so store has to be stored to call setFullscreen after and changed to windowed
+													// NOTE: no ForceDisplayResolution required here
+		InstallSetWindowPosHook();					// This hook is very important in case of upscaling
+													// TODO: what about the hook and the warning in forceDisplayResolution (Testing required)
+													// SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
 
 		// TODO: testing testing testing
-		// not sure if the upscaling will work that way
-		// maybe i should better disable upscaling if 3dv direct mode is set
+		// not sure if the upscaling will work that way but if direct mode create a double sized swap chain
+		// i would just follow the code and create also double sided fake swap chain
 		if (G->gForceStereo == 2)
-		{		
-			olddesc.BufferDesc.Width *= 2;
+		{
+			pDesc->BufferDesc.Width *= 2;
 			LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
 		}
-		
-		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
+
+		DXGI_SWAP_CHAIN_DESC origDesc = *pDesc;		// need old description to create fake swap chain (fake texture)
+
+		pDesc->BufferDesc.Width = G->gForceStereo == 2 ? G->SCREEN_WIDTH * 2 : G->SCREEN_WIDTH;
 		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
 
-		switch (G->UPSCALE_MODE) // maybe additional modes will come thats why switch 
+		try
 		{
-		case 0:  // create texture in game resolution and use it as the buffer for the game (e.g. GetBuffer returns the texture instead of swap chain buffer)
-			{
-				hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
-				swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &olddesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT);
-			}
-			// TODO: this mode dont consider the case if there are more than one buffer (bufferCount in REsizeBuffers)
-			// When can this be the case???? // It seems most of the game does not support this way (mostly crashes on CreateRenderTargetView))
-			// cause of invalid parameters. However Witcher seems to run a bit faster and smoother with this mode. Maybe there is a way to make it work with 
-			// all games???
-			break;
-		case 1: // creates second swap chain in game resolution and provide it to the game
-			{
-				IDXGISwapChain* fake_sw_ch = nullptr;
-				hr = mOrigFactory->CreateSwapChain(origDevice, &olddesc, &fake_sw_ch); // The first one should work anyway 
-				hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain); // if the second swap chain is not possible to create then error will be returned
-				swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), fake_sw_ch, G->SCREEN_WIDTH, G->SCREEN_HEIGHT);
-			}
-			break;
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+			swapchainWrap = new HackerUpscalingDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &origDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
+		}
+		catch (const MigotoException& e)
+		{
+			// fake swap chain creation failed!
+			// try to create normal swap chain
+			BeepFailure2();
+			
+			LogInfo(e.what().c_str());
+			LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!");
+
+			G->SCREEN_UPSCALING = 0;
+			G->SCREEN_WIDTH = -1;
+			G->SCREEN_HEIGHT = -1;
+
+			// restore orignial state
+			*pDesc = origDesc;
+			pDesc->Windowed = !set_fullscreen_required;
+
+			ForceDisplayParams(pDesc);
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
 		}
 	}
 	
@@ -984,6 +964,15 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (ppSwapChain)
 	{
+		if (G->SCREEN_UPSCALING == 2 || set_fullscreen_required)
+		{
+			/*	
+				Some games seems to react very strange (like render nothing) if set full screen state is called here)
+				Other games like The Witcher 3 need the call to ensure entering the full screen on start (seems to be game internal stuff)
+			*/
+			(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+		}
+
 		LogInfo("->HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, *ppSwapChain);
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
@@ -2038,17 +2027,8 @@ STDMETHODIMP HackerDXGISwapChain::GetBuffer(THIS_
 {
 	LogDebug("HackerDXGISwapChain::GetBuffer(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
 
-	HRESULT hr = S_OK;
-	
-	// if upscaling is on give the game fake back buffer
-	if (mFakeBackBuffer)
-		*ppSurface = mFakeBackBuffer;
-	else if (mFakeSwapChain)
-		hr = mFakeSwapChain->GetBuffer(Buffer, riid, ppSurface);
-	else
-		hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
+	HRESULT hr = mOrigSwapChain->GetBuffer(Buffer, riid, ppSurface);
 	LogDebug("  returns %x \n", hr);
-	
 	return hr;
 }
         
@@ -2061,38 +2041,6 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 	LogInfo("  Fullscreen = %d\n", Fullscreen);
 	LogInfo("  Target = %p\n", pTarget);
 
-	HRESULT hr;
-
-	if (mFakeBackBuffer || mFakeSwapChain) // we need fullscreen anyway
-	{
-		BOOL fst = FALSE;
-		IDXGIOutput *target = nullptr;
-		mOrigSwapChain->GetFullscreenState(&fst, &target);
-
-		if (target)
-			target->Release();
-
-		// dont call setfullscreenstate again to avoid starting mode switching and flooding winproc with unnecessary messages
-		// can disable fullscreen mode somehow
-		if (fst && Fullscreen)
-		{
-			return S_OK;
-		}
-		else
-		{
-			if (G->SCREEN_UPSCALING == 2)
-			{
-				hr = mOrigSwapChain->SetFullscreenState(TRUE, pTarget); // Witcher seems to require forcing the fullscreen
-			}
-			else
-			{
-				hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
-			}
-		}
-
-		return hr;
-	}
-	
 	if (G->SCREEN_FULLSCREEN > 0)
 	{
 		if (G->SCREEN_FULLSCREEN == 2) {
@@ -2112,7 +2060,7 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 	//else
 	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, 0);
 
-	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
+	HRESULT hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
 	LogInfo("  returns %x\n", hr);
 	return hr;
 }
@@ -2146,34 +2094,16 @@ STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
 	LogDebug("HackerDXGISwapChain::GetDesc(%s@%p) called \n", type_name(this), this);
 	
 	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
+	
 	if (hr == S_OK)
-	{
-		if (pDesc)
-		{
-			//TODO: not sure whether the upscaled resolution or game resolution should be returned
-			// all tested games did not use this function only migoto does
-			// I let them be the game resolution at the moment
-			if (mFakeBackBuffer)
-			{
-				D3D11_TEXTURE2D_DESC fd;
-				mFakeBackBuffer->GetDesc(&fd);
-				pDesc->BufferDesc.Width = fd.Width;
-				pDesc->BufferDesc.Height = fd.Height;
-				LogDebug("	Fake Swap Chain Sizes Provided!");
-			}
-
-			if (mFakeSwapChain)
-			{
-				hr = mFakeSwapChain->GetDesc(pDesc);
-			}
-		}
-		
+	{		
 		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
 		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
 		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
 		if (pDesc) LogDebug("  returns Refresh rate = %f\n", 
 			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
 	}
+
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
@@ -2204,38 +2134,7 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
 		LogInfo("-> forced 2x width for Direct Mode: %d \n", Width);
 	}
 
-	HRESULT hr;
-
-	if (mFakeBackBuffer) // UPSCALE_MODE 0
-	{
-		// TODO: need to consider the new code (G->gForceStereo == 2)
-		// would my stuff work this way? i guess yes. What is with the games that are not calling resize buffer
-		// just try to recreate texture with new game resolution
-		// should be possible without any issues (texture just like the swap chain should not be used at this time point)
-
-		D3D11_TEXTURE2D_DESC fd;
-		mFakeBackBuffer->GetDesc(&fd);
-
-		if (!(fd.Width == Width && fd.Height == Height))
-		{
-			mFakeBackBuffer->Release();
-
-			fd.Width = Width;
-			fd.Height = Height;
-			fd.Format = NewFormat;
-			// just recreate texture with new width and height
-			hr = mHackerDevice->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
-		}
-		else  // nothing to resize
-			hr = S_OK;
-	}
-	else if (mFakeSwapChain) // UPSCALE_MODE 1
-	{
-		// the last parameter have to be zero to avoid the influence of the faked swap chain on the resize target function 
-		hr = mFakeSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, 0); 
-	}
-	else
-		hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
 	if (SUCCEEDED(hr)) 
 	{
@@ -2259,45 +2158,6 @@ STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
 		LogInfo("-> forced 2x width for Direct Mode: %d \n", pNewTargetParameters->Width);
 	}
 	
-	/*
-		TODO: what about 3dv direct mode? why the resize target need to use double with?
-		this would resize target window and have some other drawbacks, but again 
-		im not very familiar with directx 11 maybe it will cause no problems:
-		Anyway need to consider new code for the upscaling later
-	*/	
-	// This function is very diffucult to recode
-	// Some games like Witcher seems to drop fullscreen everytime the resizetarget is called (original one)
-	// Some other games seems to require the function 
-	// I did it the way the faked texture mode (upscale_mode == 1) dont call resize target
-	// the other mode does
-	if (G->SCREEN_UPSCALING == 2)
-	{
-		DEVMODE dmScreenSettings;
-		memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
-		dmScreenSettings.dmSize = sizeof(dmScreenSettings);
-		dmScreenSettings.dmPelsWidth = (unsigned long)mWidth;
-		dmScreenSettings.dmPelsHeight = (unsigned long)mHeight;
-		dmScreenSettings.dmBitsPerPel = 32;
-		dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
-
-		// Change the display settings to full screen.
-		LONG hr = ChangeDisplaySettingsEx(NULL, &dmScreenSettings, nullptr, CDS_FULLSCREEN, 0);
-		LogInfo("  returns result = %x\n", hr);
-		return hr == 0 ? S_OK : DXGI_ERROR_INVALID_CALL;
-	}
-	else if (G->SCREEN_UPSCALING == 1)
-	{
-		DXGI_MODE_DESC md = *pNewTargetParameters;
-
-		// force upscaled resolution
-		md.Width = mWidth;
-		md.Height = mHeight;
-
-		HRESULT hr = mOrigSwapChain->ResizeTarget(&md);
-		LogInfo("  returns result = %x\n", hr);
-		return hr;
-	}
-
 	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -2353,6 +2213,238 @@ STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
 	return hr;
 }
 
+// -----------------------------------------------------------------------------
+
+// The HackerUpscalingDXGISwapChain
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::GetBuffer(THIS_
+	/* [in] */ UINT Buffer,
+	/* [annotation][in] */
+	_In_  REFIID riid,
+	/* [annotation][out][in] */
+	_Out_  void **ppSurface)
+{
+	LogDebug("HackerUpscalingDXGISwapChain::GetBuffer(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
+
+	HRESULT hr = S_OK;
+
+	// if upscaling is on give the game fake back buffer
+	if (mFakeBackBuffer)
+		*ppSurface = mFakeBackBuffer;
+	else if (mFakeSwapChain)
+		hr = mFakeSwapChain->GetBuffer(Buffer, riid, ppSurface);
+	else
+		assert(hr); // should never be triggered (class hierarchy)
+
+	LogDebug("  returns %x \n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::SetFullscreenState(THIS_
+	/* [in] */ BOOL Fullscreen,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pTarget)
+{
+	LogInfo("HackerUpscalingDXGISwapChain::SetFullscreenState(%s@%p) called with\n", type_name(this), this);
+	LogInfo("  Fullscreen = %d\n", Fullscreen);
+	LogInfo("  Target = %p\n", pTarget);
+
+	HRESULT hr;
+
+	BOOL fullscreen_state = FALSE;
+	IDXGIOutput *target = nullptr;
+	mOrigSwapChain->GetFullscreenState(&fullscreen_state, &target);
+
+	if (target)
+		target->Release();
+
+	// dont call setfullscreenstate again to avoid starting mode switching and flooding winproc with unnecessary messages
+	// can disable fullscreen mode somehow
+	if (fullscreen_state && Fullscreen)
+	{
+		hr = S_OK;
+	}
+	else
+	{
+		if (G->SCREEN_UPSCALING == 2)
+		{
+			hr = mOrigSwapChain->SetFullscreenState(TRUE, pTarget); // Witcher seems to require forcing the fullscreen
+		}
+		else
+		{
+			hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
+		}
+	}
+	
+	LogInfo("  returns %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::GetDesc(THIS_
+	/* [annotation][out] */
+	_Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
+{
+	LogDebug("HackerUpscalingDXGISwapChain::GetDesc(%s@%p) called \n", type_name(this), this);
+
+	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
+
+	if (hr == S_OK)
+	{
+		if (pDesc)
+		{
+			//TODO: not sure whether the upscaled resolution or game resolution should be returned
+			// all tested games did not use this function only migoto does
+			// I let them be the game resolution at the moment
+			if (mFakeBackBuffer)
+			{
+				D3D11_TEXTURE2D_DESC fd;
+				mFakeBackBuffer->GetDesc(&fd);
+				pDesc->BufferDesc.Width = fd.Width;
+				pDesc->BufferDesc.Height = fd.Height;
+				LogDebug("	Fake Swap Chain Sizes Provided!");
+			}
+
+			if (mFakeSwapChain)
+			{
+				hr = mFakeSwapChain->GetDesc(pDesc);
+			}
+		}
+
+		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
+		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
+		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
+		if (pDesc) LogDebug("  returns Refresh rate = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+	}
+	LogDebug("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
+	/* [in] */ UINT BufferCount,
+	/* [in] */ UINT Width,
+	/* [in] */ UINT Height,
+	/* [in] */ DXGI_FORMAT NewFormat,
+	/* [in] */ UINT SwapChainFlags)
+{
+	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
+
+	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+	{
+		G->mResolutionInfo.width = Width;
+		G->mResolutionInfo.height = Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
+	// We are specifically modifying the value passed to the call, but saving the desired
+	// resolution before this.
+	if (G->gForceStereo == 2)
+	{
+		Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", Width);
+	}
+
+	HRESULT hr;
+
+	if (mFakeBackBuffer) // UPSCALE_MODE 0
+	{
+		// TODO: need to consider the new code (G->gForceStereo == 2)
+		// would my stuff work this way? i guess yes. What is with the games that are not calling resize buffer
+		// just try to recreate texture with new game resolution
+		// should be possible without any issues (texture just like the swap chain should not be used at this time point)
+
+		D3D11_TEXTURE2D_DESC fd;
+		mFakeBackBuffer->GetDesc(&fd);
+
+		if (!(fd.Width == Width && fd.Height == Height))
+		{
+			mFakeBackBuffer->Release();
+
+			fd.Width = Width;
+			fd.Height = Height;
+			fd.Format = NewFormat;
+			// just recreate texture with new width and height
+			hr = mHackerDevice->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
+		}
+		else  // nothing to resize
+			hr = S_OK;
+	}
+	else if (mFakeSwapChain) // UPSCALE_MODE 1
+	{
+		// the last parameter have to be zero to avoid the influence of the faked swap chain on the resize target function 
+		hr = mFakeSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, 0);
+	}
+	else
+	{
+		assert(false); // should never be triggered (class hierarchy)
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		mOverlay->Resize(Width, Height);
+	}
+
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeTarget(THIS_
+	/* [annotation][in] */
+	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
+{
+	LogInfo("HackerUpscalingDXGISwapChain::ResizeTarget(%s@%p) called \n", type_name(this), this);
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
+	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
+	{
+		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", pNewTargetParameters->Width);
+	}
+
+	/*
+		TODO: what about 3dv direct mode? why the resize target need to use double width?
+		this would resize target window and have some other drawbacks, but again
+		im not very familiar with directx 11 maybe it will cause no problems:
+		Anyway need to consider new code for the upscaling later
+	*/
+
+	// Some games like Witcher seems to drop fullscreen everytime the resizetarget is called (original one)
+	// Some other games seems to require the function 
+	// I did it the way the faked texture mode (upscale_mode == 1) dont call resize target
+	// the other mode does
+
+	HRESULT hr;
+
+	if (G->SCREEN_UPSCALING == 2)
+	{
+		DEVMODE dmScreenSettings;
+		memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
+		dmScreenSettings.dmSize = sizeof(dmScreenSettings);
+		dmScreenSettings.dmPelsWidth = (unsigned long)mWidth;
+		dmScreenSettings.dmPelsHeight = (unsigned long)mHeight;
+		dmScreenSettings.dmBitsPerPel = 32;
+		dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+		// Change the display settings to full screen.
+		LONG displ_chainge_res = ChangeDisplaySettingsEx(NULL, &dmScreenSettings, nullptr, CDS_FULLSCREEN, 0);
+		hr = displ_chainge_res == 0 ? S_OK : DXGI_ERROR_INVALID_CALL;
+	}
+	else if (G->SCREEN_UPSCALING == 1)
+	{
+		DXGI_MODE_DESC md = *pNewTargetParameters;
+
+		// force upscaled resolution
+		md.Width = mWidth;
+		md.Height = mHeight;
+
+		hr = mOrigSwapChain->ResizeTarget(&md);
+	}
+
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
 
 
 // -----------------------------------------------------------------------------
