@@ -1800,6 +1800,7 @@ void HackerDXGISwapChain::RunFrameActions()
 	// that purpose rather than breaking the existing behaviour.
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
+	CurrentTransition.UpdatePresets(mHackerDevice);
 	CurrentTransition.UpdateTransitions(mHackerDevice);
 
 	G->frame_no++;
