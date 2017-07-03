@@ -525,7 +525,7 @@ public:
 	virtual ~HackerUpscalingDXGISwapChain();
 	
 private:
-	void createRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory);
+	void CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory);
 
 public:
 
