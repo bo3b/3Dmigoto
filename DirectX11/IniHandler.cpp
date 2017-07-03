@@ -51,6 +51,7 @@ static Section RegularSections[] = {
 	{L"ConvergenceMap", false}, // Only used in nvapi wrapper
 	{L"Resource", true},
 	{L"Key", true},
+	{L"Preset", true},
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -429,6 +430,33 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
+static void ParsePresetOverrideSections(IniSections &sections, LPCWSTR iniFile)
+{
+	wstring preset_id;
+	PresetOverride *preset;
+	IniSections::iterator lower, upper, i;
+
+	presetOverrides.clear();
+
+	lower = sections.lower_bound(wstring(L"Preset"));
+	upper = prefix_upper_bound(sections, wstring(L"Preset"));
+
+	for (i = lower; i != upper; i++) {
+		const wchar_t *id = i->c_str();
+
+		LogInfo("[%S]\n", id);
+
+		// Remove prefix and convert to lower case
+		preset_id = id + 6;
+		std::transform(preset_id.begin(), preset_id.end(), preset_id.begin(), ::towlower);
+
+		// Read parameters from ini
+		presetOverrides[preset_id];
+		preset = &presetOverrides[preset_id];
+		preset->ParseIniSection(id, iniFile);
+	}
+}
+
 static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
 {
 	IniSections::iterator lower, upper, i;
@@ -637,6 +665,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"indexbufferfilter",
 	L"analyse_options",
 	L"model",
+	L"preset",
 	NULL
 };
 static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
@@ -738,6 +767,17 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
 			override->model[ARRAYSIZE(override->model) - 1] = '\0';
 			LogInfo("  model=%s\n", override->model);
+		}
+
+		if (GetPrivateProfileString(id, L"preset", 0, setting, MAX_PATH, iniFile)) {
+			override->preset = setting;
+			std::transform(override->preset.begin(), override->preset.end(), override->preset.begin(), ::towlower);
+			if (presetOverrides.find(override->preset) == presetOverrides.end()) {
+				LogInfo("  WARNING: Unrecognised preset=%S\n", override->preset);
+				override->preset.clear();
+			} else {
+				LogInfo("  preset=%S\n", override->preset);
+			}
 		}
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
@@ -1681,6 +1721,7 @@ void LoadConfigFile()
 	RegisterHuntingKeyBindings(iniFile);
 	RegisterPresetKeyBindings(sections, iniFile);
 
+	ParsePresetOverrideSections(sections, iniFile);
 	ParseResourceSections(sections, iniFile);
 
 	// Splitting the enumeration of these sections out from parsing them as

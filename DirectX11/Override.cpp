@@ -7,6 +7,8 @@
 #include <math.h>
 #include <strsafe.h>
 
+PresetOverrideMap presetOverrides;
+
 OverrideTransition CurrentTransition;
 OverrideGlobalSave OverrideSave;
 
@@ -450,6 +452,45 @@ void KeyOverride::UpEvent(HackerDevice *device)
 	}
 }
 
+void PresetOverride::Activate(HackerDevice *device)
+{
+	NvAPI_Status err;
+	int i;
+
+	if (activated)
+		return;
+
+	// Store current values for deactivation
+	err = NvAPI_Stereo_GetSeparation(device->mStereoHandle, &mUserSeparation);
+	if (err != NVAPI_OK)
+		LogDebug("Stereo_GetSeparation failed: %i\n", err);
+
+	err = NvAPI_Stereo_GetConvergence(device->mStereoHandle, &mUserConvergence);
+	if (err != NVAPI_OK)
+		LogDebug("Stereo_GetConvergence failed: %i\n", err);
+
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		mSavedParams[i].x = CurrentTransition.x[i].target;
+		mSavedParams[i].y = CurrentTransition.y[i].target;
+		mSavedParams[i].z = CurrentTransition.z[i].target;
+		mSavedParams[i].w = CurrentTransition.w[i].target;
+	}
+
+	Override::Activate(device);
+
+	activated = true;
+}
+
+void PresetOverride::Deactivate(HackerDevice *device)
+{
+	if (!activated)
+		return;
+
+	Override::Deactivate(device);
+
+	activated = false;
+}
+
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 		char *name, float current, float val, ULONGLONG now, int time,
 		TransitionType transition_type)
@@ -511,6 +552,31 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 		}
 	}
 	LogInfo("\n");
+}
+
+void OverrideTransition::UpdatePresets(HackerDevice *wrapper)
+{
+	PresetOverrideMap::iterator i;
+	PresetOverride *preset;
+
+	// Deactivate previously activated but not current preset
+	for (i = presetOverrides.begin(); i != presetOverrides.end(); i++) {
+		if (active_preset.empty() || i->first != active_preset) {
+			preset = &i->second;
+			preset->Deactivate(wrapper);
+		}
+	}
+
+	// Activate current preset if any
+	if (!active_preset.empty()) {
+		preset = &presetOverrides[active_preset];
+		preset->Activate(wrapper);
+	}
+
+	// If next frame activates any preset the active_present will be set again.
+	// Otherwise active_preset remains empty until next call, in which case we
+	// deactivate the current active preset.
+	active_preset.clear();
 }
 
 static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONGLONG now)

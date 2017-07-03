@@ -18,6 +18,7 @@
 #include "D3D11Wrapper.h"
 #include "Globals.h"
 #include "ResourceHash.h"
+#include "Override.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -229,6 +230,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
 	bool use_orig = false;
+	bool use_preset = false;
 
 	LogDebug("  override found for shader\n");
 
@@ -239,6 +241,8 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	if (*convergenceValue != FLT_MAX)
 		data->override = true;
 	data->skip = shaderOverride->skip;
+	if (!shaderOverride->preset.empty())
+		use_preset = true;
 
 	// Check iteration.
 	if (!shaderOverride->iterations.empty()) {
@@ -274,6 +278,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		{
 			data->override = false;
 			data->skip = false;
+			use_preset = false;
 		}
 
 		// TODO: This filter currently seems pretty limited as it only
@@ -310,6 +315,8 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 				use_orig = true;
 		}
 	}
+	if (use_orig)
+		use_preset = false;
 
 	RunCommandList(mHackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
 
@@ -326,6 +333,11 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			if (i != G->mOriginalVertexShaders.end())
 				data->oldVertexShader = SwitchVSShader(i->second);
 		}
+	}
+
+	if (use_preset) {
+		LogDebug("  use preset %S\n", shaderOverride->preset);
+		CurrentTransition.active_preset = shaderOverride->preset;
 	}
 }
 

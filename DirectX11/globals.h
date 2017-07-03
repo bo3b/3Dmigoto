@@ -194,6 +194,7 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
+	std::wstring preset;
 
 	CommandList command_list;
 	CommandList post_command_list;
