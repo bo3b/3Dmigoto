@@ -13,7 +13,7 @@
 
 #include "version.h"
 #include "log.h"
-#include "crc32c-hw-1.0.5\include\crc32c.h"
+#include "crc32c.h"
 #include "util_min.h"
 
 #include "D3D_Shaders\stdafx.h"
@@ -794,12 +794,12 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 	return false;
 }
 
-// -------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
 
-// Very simple exception class that can be updated
-// to cover multiple fail cases 
-// for now it is only used by the HackerUpscalingDXGISwapChain
-class MigotoException
+// Very simple exception class that can be updated to cover multiple fail cases.
+// Presently only used by the HackerUpscalingDXGISwapChain.
+
+class 3DmigotoException
 {
 public:
 	MigotoException(const std::string& what): m_what(what) {}
