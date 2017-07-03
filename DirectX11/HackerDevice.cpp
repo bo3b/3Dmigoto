@@ -263,7 +263,7 @@ IDXGISwapChain* HackerDevice::GetOrigSwapChain()
 	return mHackerSwapChain->GetOrigSwapChain();
 }
 
-HackerDXGISwapChain* HackerDevice::getHackerSwapChain()
+HackerDXGISwapChain* HackerDevice::GetHackerSwapChain()
 {
 	return mHackerSwapChain;
 }
