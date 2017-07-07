@@ -666,6 +666,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"analyse_options",
 	L"model",
 	L"preset",
+	L"disable_scissor",
 	NULL
 };
 static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
@@ -779,6 +780,8 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 				LogInfo("  preset=%S\n", override->preset);
 			}
 		}
+
+		override->disable_scissor = GetIniInt(id, L"disable_scissor", -1, iniFile, NULL);
 
 		ParseCommandList(id, iniFile, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
