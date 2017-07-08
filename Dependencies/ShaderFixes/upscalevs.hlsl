@@ -25,6 +25,7 @@ void main(
 			break;
 		default:
 			pos.xy = 0;
+			texcoord = float2(0,0);
 			break;
 	};
 	pos.zw = float2(0, 1);
