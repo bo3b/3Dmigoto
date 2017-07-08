@@ -452,7 +452,7 @@ void KeyOverride::UpEvent(HackerDevice *device)
 	}
 }
 
-void PresetOverride::Activate(HackerDevice *device)
+void PresetOverride::Activate(HackerDevice *device, PresetOverride *prev)
 {
 	NvAPI_Status err;
 	int i;
@@ -460,20 +460,34 @@ void PresetOverride::Activate(HackerDevice *device)
 	if (activated)
 		return;
 
-	// Store current values for deactivation
-	err = NvAPI_Stereo_GetSeparation(device->mStereoHandle, &mUserSeparation);
-	if (err != NVAPI_OK)
-		LogDebug("Stereo_GetSeparation failed: %i\n", err);
+	if (prev == NULL) {
+		// Store current values for deactivation
+		err = NvAPI_Stereo_GetSeparation(device->mStereoHandle, &mUserSeparation);
+		if (err != NVAPI_OK)
+			LogDebug("Stereo_GetSeparation failed: %i\n", err);
 
-	err = NvAPI_Stereo_GetConvergence(device->mStereoHandle, &mUserConvergence);
-	if (err != NVAPI_OK)
-		LogDebug("Stereo_GetConvergence failed: %i\n", err);
+		err = NvAPI_Stereo_GetConvergence(device->mStereoHandle, &mUserConvergence);
+		if (err != NVAPI_OK)
+			LogDebug("Stereo_GetConvergence failed: %i\n", err);
 
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		mSavedParams[i].x = CurrentTransition.x[i].target;
-		mSavedParams[i].y = CurrentTransition.y[i].target;
-		mSavedParams[i].z = CurrentTransition.z[i].target;
-		mSavedParams[i].w = CurrentTransition.w[i].target;
+		for (i = 0; i < INI_PARAMS_SIZE; i++) {
+			mSavedParams[i].x = CurrentTransition.x[i].target;
+			mSavedParams[i].y = CurrentTransition.y[i].target;
+			mSavedParams[i].z = CurrentTransition.z[i].target;
+			mSavedParams[i].w = CurrentTransition.w[i].target;
+		}
+
+	} else {
+		// Store values from the last activated preset which holds the real original data
+		mUserSeparation = prev->mUserSeparation;
+		mUserConvergence = prev->mUserConvergence;
+
+		for (i = 0; i < INI_PARAMS_SIZE; i++) {
+			mSavedParams[i].x = prev->mSavedParams[i].x;
+			mSavedParams[i].y = prev->mSavedParams[i].y;
+			mSavedParams[i].z = prev->mSavedParams[i].z;
+			mSavedParams[i].w = prev->mSavedParams[i].w;
+		}
 	}
 
 	Override::Activate(device);
@@ -489,6 +503,11 @@ void PresetOverride::Deactivate(HackerDevice *device)
 	Override::Deactivate(device);
 
 	activated = false;
+}
+
+bool PresetOverride::IsActivated()
+{
+	return activated;
 }
 
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
@@ -557,20 +576,24 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 void OverrideTransition::UpdatePresets(HackerDevice *wrapper)
 {
 	PresetOverrideMap::iterator i;
+	PresetOverride *prev = NULL;
 	PresetOverride *preset;
 
 	// Deactivate previously activated but not current preset
 	for (i = presetOverrides.begin(); i != presetOverrides.end(); i++) {
 		if (active_preset.empty() || i->first != active_preset) {
 			preset = &i->second;
-			preset->Deactivate(wrapper);
+			if (preset->IsActivated()) {
+				prev = preset;
+				preset->Deactivate(wrapper);
+			}
 		}
 	}
 
 	// Activate current preset if any
 	if (!active_preset.empty()) {
 		preset = &presetOverrides[active_preset];
-		preset->Activate(wrapper);
+		preset->Activate(wrapper, prev);
 	}
 
 	// If next frame activates any preset the active_present will be set again.
