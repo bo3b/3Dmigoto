@@ -799,10 +799,10 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 // Very simple exception class that can be updated to cover multiple fail cases.
 // Presently only used by the HackerUpscalingDXGISwapChain.
 
-class 3DmigotoException
+class Exception3DMigoto
 {
 public:
-	MigotoException(const std::string& what): m_what(what) {}
+	Exception3DMigoto(const std::string& what) : m_what(what) {}
 	__inline const std::string& what() const { return m_what; }
 
 private:

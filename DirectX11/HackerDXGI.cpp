@@ -886,7 +886,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
 			swapchainWrap = new HackerUpscalingDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &origDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
 		}
-		catch (const 3DmigotoException& e)
+		catch (const Exception3DMigoto& e)
 		{
 			// fake swap chain creation failed!
 			// try to create normal swap chain
@@ -2216,14 +2216,14 @@ void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC
 		}
 		break;
 	default:
-		throw 3DmigotoException("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed ==> provided upscaling mode is not valid!\n");
+		throw Exception3DMigoto("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed ==> provided upscaling mode is not valid!\n");
 	}
 
 	LogInfo("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(): result %d \n", hr);
 
 	if (FAILED(hr))
 	{
-		throw 3DmigotoException("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed!\n");
+		throw Exception3DMigoto("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed!\n");
 	}
 }
 
