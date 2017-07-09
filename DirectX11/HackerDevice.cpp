@@ -1581,7 +1581,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		LogDebugResourceDesc(pDesc);
 
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
-	if (hr == S_OK && ppBuffer && G->hunting)
+	if (hr == S_OK && ppBuffer)
 	{
 		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
