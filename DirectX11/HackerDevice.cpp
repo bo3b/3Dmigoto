@@ -2274,11 +2274,6 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
 		pRasterizerDesc->SlopeScaledDepthBias, pRasterizerDesc->DepthClipEnable, pRasterizerDesc->ScissorEnable,
 		pRasterizerDesc->MultisampleEnable, pRasterizerDesc->AntialiasedLineEnable);
 
-	if (G->SCISSOR_DISABLE && pRasterizerDesc && pRasterizerDesc->ScissorEnable)
-	{
-		LogDebug("  disabling scissor mode.\n");
-		const_cast<D3D11_RASTERIZER_DESC*>(pRasterizerDesc)->ScissorEnable = FALSE;
-	}
 	hr = mOrigDevice->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
 
 	LogDebug("  returns result = %x\n", hr);
