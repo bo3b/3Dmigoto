@@ -1581,7 +1581,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		LogDebugResourceDesc(pDesc);
 
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
-	if (hr == S_OK && ppBuffer)
+	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
 		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
@@ -1591,10 +1591,11 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		if (pDesc)
 			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mDataBuffers[*ppBuffer] = hash;
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		LogDebug("    Buffer registered: handle = %p, hash = %08lx\n", *ppBuffer, hash);
+		hr = (*ppBuffer)->SetPrivateData(GUID_BufferResourceHash, sizeof(uint32_t), &hash);
+		if (FAILED(hr))
+			LogInfo("    SetPrivateData failed result = %x for %p\n", hr, *ppBuffer);
+		else
+			LogDebug("    Buffer registered: handle = %p, hash = %08lx\n", *ppBuffer, hash);
 	}
 	return hr;
 }
