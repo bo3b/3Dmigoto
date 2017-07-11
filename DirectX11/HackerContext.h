@@ -7,6 +7,9 @@
 #include "ResourceHash.h"
 #include "DrawCallInfo.h"
 
+extern GUID GUID_RasterizerStateDisableScissor;
+extern GUID GUID_BufferResourceHash;
+
 struct DrawContext
 {
 	bool skip;
@@ -15,6 +18,8 @@ struct DrawContext
 	float oldConvergence;
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
+	ID3D11RasterizerState *oldRasterizerState;
+	int disable_scissor;
 	CommandList *post_commands[5];
 	DrawCallInfo call_info;
 
@@ -26,6 +31,8 @@ struct DrawContext
 		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
+		oldRasterizerState(NULL),
+		disable_scissor(-1),
 		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
@@ -101,6 +108,7 @@ private:
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
+	void ProcessScissorRects(DrawContext &data);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
 	void RecordShaderResourceUsage();
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);

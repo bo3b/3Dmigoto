@@ -263,6 +263,11 @@ IDXGISwapChain* HackerDevice::GetOrigSwapChain()
 	return mHackerSwapChain->GetOrigSwapChain();
 }
 
+HackerDXGISwapChain* HackerDevice::GetHackerSwapChain()
+{
+	return mHackerSwapChain;
+}
+
 void HackerDevice::HookDevice()
 {
 	// This will install hooks in the original device (if they have not
@@ -1576,7 +1581,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		LogDebugResourceDesc(pDesc);
 
 	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
-	if (hr == S_OK && ppBuffer && G->hunting)
+	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
 		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
@@ -1586,10 +1591,11 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		if (pDesc)
 			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-			G->mDataBuffers[*ppBuffer] = hash;
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-		LogDebug("    Buffer registered: handle = %p, hash = %08lx\n", *ppBuffer, hash);
+		hr = (*ppBuffer)->SetPrivateData(GUID_BufferResourceHash, sizeof(uint32_t), &hash);
+		if (FAILED(hr))
+			LogInfo("    SetPrivateData failed result = %x for %p\n", hr, *ppBuffer);
+		else
+			LogDebug("    Buffer registered: handle = %p, hash = %08lx\n", *ppBuffer, hash);
 	}
 	return hr;
 }
@@ -2269,11 +2275,6 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
 		pRasterizerDesc->SlopeScaledDepthBias, pRasterizerDesc->DepthClipEnable, pRasterizerDesc->ScissorEnable,
 		pRasterizerDesc->MultisampleEnable, pRasterizerDesc->AntialiasedLineEnable);
 
-	if (G->SCISSOR_DISABLE && pRasterizerDesc && pRasterizerDesc->ScissorEnable)
-	{
-		LogDebug("  disabling scissor mode.\n");
-		const_cast<D3D11_RASTERIZER_DESC*>(pRasterizerDesc)->ScissorEnable = FALSE;
-	}
 	hr = mOrigDevice->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
 
 	LogDebug("  returns result = %x\n", hr);

@@ -195,6 +195,7 @@ struct ShaderOverride {
 	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	std::wstring preset;
+	int disable_scissor;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -300,6 +301,8 @@ struct Globals
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
 	int SCREEN_FULLSCREEN;
+	int SCREEN_UPSCALING;
+	int UPSCALE_MODE;
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
 
@@ -358,7 +361,6 @@ struct Globals
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
 
-	DataBufferMap mDataBuffers;
 	std::set<uint32_t> mVisitedIndexBuffers;				// std::set is sorted for consistent order while hunting
 	uint32_t mSelectedIndexBuffer;
 	int mSelectedIndexBufferPos;

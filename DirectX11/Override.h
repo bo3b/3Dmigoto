@@ -159,8 +159,9 @@ public:
 		activated(false)
 	{}
 
-	void Activate(HackerDevice *device);
+	void Activate(HackerDevice *device, PresetOverride *prev);
 	void Deactivate(HackerDevice *device);
+	bool IsActivated();
 };
 typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap presetOverrides;

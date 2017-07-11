@@ -449,20 +449,16 @@ public:
 
 class HackerDXGISwapChain : public HackerDXGIDeviceSubObject
 {
-private:
+protected:
 	IDXGISwapChain *mOrigSwapChain;
-
 	HackerDevice *mHackerDevice;
 	HackerContext *mHackerContext;
 	Overlay *mOverlay;
 
 public:
-
 	HackerDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext);
-
 	IDXGISwapChain* GetOrigSwapChain();
 	void RunFrameActions();
-
 
 	STDMETHOD(Present)(THIS_
             /* [in] */ UINT SyncInterval,
@@ -515,6 +511,52 @@ public:
         
 };
 
+class HackerUpscalingDXGISwapChain : public HackerDXGISwapChain
+{
+private:
+	IDXGISwapChain *mFakeSwapChain;
+	ID3D11Texture2D *mFakeBackBuffer;
+
+	UINT mWidth;
+	UINT mHeight;
+
+public:
+	HackerUpscalingDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height,IDXGIFactory* factory);
+	virtual ~HackerUpscalingDXGISwapChain();
+	
+private:
+	void CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory);
+
+public:
+
+	STDMETHOD(GetBuffer)(THIS_
+            /* [in] */ UINT Buffer,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][out][in] */ 
+            _Out_  void **ppSurface);
+        
+    STDMETHOD(SetFullscreenState)(THIS_
+            /* [in] */ BOOL Fullscreen,
+            /* [annotation][in] */ 
+            _In_opt_  IDXGIOutput *pTarget);
+	
+	STDMETHOD(GetDesc)(THIS_
+            /* [annotation][out] */ 
+            _Out_  DXGI_SWAP_CHAIN_DESC *pDesc);
+        
+    STDMETHOD(ResizeBuffers)(THIS_
+            /* [in] */ UINT BufferCount,
+            /* [in] */ UINT Width,
+            /* [in] */ UINT Height,
+            /* [in] */ DXGI_FORMAT NewFormat,
+            /* [in] */ UINT SwapChainFlags);
+        
+    STDMETHOD(ResizeTarget)(THIS_
+            /* [annotation][in] */ 
+            _In_  const DXGI_MODE_DESC *pNewTargetParameters);
+
+};
 
 // -----------------------------------------------------------------------------
 
