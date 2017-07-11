@@ -361,7 +361,6 @@ struct Globals
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
 
-	DataBufferMap mDataBuffers;
 	std::set<uint32_t> mVisitedIndexBuffers;				// std::set is sorted for consistent order while hunting
 	uint32_t mSelectedIndexBuffer;
 	int mSelectedIndexBufferPos;
