@@ -339,7 +339,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	}
 
 	if (use_preset) {
-		LogDebug("  use preset %S\n", shaderOverride->preset);
+		LogDebug("  use preset %S\n", shaderOverride->preset.c_str());
 		CurrentTransition.active_preset = shaderOverride->preset;
 	}
 

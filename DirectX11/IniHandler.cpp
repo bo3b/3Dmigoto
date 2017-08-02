@@ -774,10 +774,10 @@ static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
 			override->preset = setting;
 			std::transform(override->preset.begin(), override->preset.end(), override->preset.begin(), ::towlower);
 			if (presetOverrides.find(override->preset) == presetOverrides.end()) {
-				LogInfo("  WARNING: Unrecognised preset=%S\n", override->preset);
+				LogInfo("  WARNING: Unrecognised preset=%S\n", override->preset.c_str());
 				override->preset.clear();
 			} else {
-				LogInfo("  preset=%S\n", override->preset);
+				LogInfo("  preset=%S\n", override->preset.c_str());
 			}
 		}
 
