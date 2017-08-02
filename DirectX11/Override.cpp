@@ -2,6 +2,7 @@
 
 #include "Globals.h"
 #include "D3D11Wrapper.h"
+#include "IniHandler.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -83,11 +84,11 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		}
 	}
 
-	transition = GetPrivateProfileInt(section, L"transition", 0, ini);
+	transition = GetIniInt(section, L"transition", 0, ini, NULL);
 	if (transition)
 		LogInfo("  transition=%ims\n", transition);
 
-	release_transition = GetPrivateProfileInt(section, L"release_transition", 0, ini);
+	release_transition = GetIniInt(section, L"release_transition", 0, ini, NULL);
 	if (release_transition)
 		LogInfo("  release_transition=%ims\n", release_transition);
 

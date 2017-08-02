@@ -127,7 +127,7 @@ static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, 
 	return ret;
 }
 
-static int GetIniInt(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found)
+int GetIniInt(const wchar_t *section, const wchar_t *key, int def, const wchar_t *iniFile, bool *found)
 {
 	wchar_t val[32];
 	int ret = def;
