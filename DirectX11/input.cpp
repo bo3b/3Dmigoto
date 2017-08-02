@@ -7,6 +7,7 @@
 #include "log.h"
 #include "util.h"
 #include "vkeys.h"
+#include "IniHandler.h"
 
 // Set a function pointer to the xinput get state call. By default, set it to
 // XInputGetState() in whichever xinput we are linked to (xinput9_1_0.dll). If
@@ -476,7 +477,7 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
 	InputCallbacks *callbacks = new InputCallbacks(down_cb, up_cb, private_data);
 	wchar_t keyName[MAX_PATH];
 
-	if (!GetPrivateProfileString(app, iniKey, 0, keyName, MAX_PATH, ini))
+	if (!GetIniString(app, iniKey, 0, keyName, MAX_PATH, ini))
 		return false;
 
 	RegisterKeyBinding(iniKey, keyName, callbacks, auto_repeat, 0, 0);

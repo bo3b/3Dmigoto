@@ -48,37 +48,37 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	wchar_t buf[MAX_PATH], param_name[8];
 	int i;
 
-	if (GetPrivateProfileString(section, L"separation", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"separation", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideSeparation);
 		LogInfo("  separation=%#.2f\n", mOverrideSeparation);
 	}
 
-	if (GetPrivateProfileString(section, L"convergence", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"convergence", 0, buf, MAX_PATH, ini)) {
 		swscanf_s(buf, L"%f", &mOverrideConvergence);
 		LogInfo("  convergence=%#.2f\n", mOverrideConvergence);
 	}
 
 	for (i = 0; i < INI_PARAMS_SIZE; i++) {
 		StringCchPrintf(param_name, 8, L"x%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH, ini)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].x);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].x);
 		}
 
 		StringCchPrintf(param_name, 8, L"y%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH, ini)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].y);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].y);
 		}
 
 		StringCchPrintf(param_name, 8, L"z%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH, ini)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].z);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].z);
 		}
 
 		StringCchPrintf(param_name, 8, L"w%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH, ini)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].w);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].w);
 		}
@@ -92,7 +92,7 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 	if (release_transition)
 		LogInfo("  release_transition=%ims\n", release_transition);
 
-	if (GetPrivateProfileString(section, L"transition_type", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"transition_type", 0, buf, MAX_PATH, ini)) {
 		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
@@ -103,7 +103,7 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		}
 	}
 
-	if (GetPrivateProfileString(section, L"release_transition_type", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"release_transition_type", 0, buf, MAX_PATH, ini)) {
 		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (release_transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
@@ -114,7 +114,7 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		}
 	}
 
-	if (GetPrivateProfileString(section, L"condition", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"condition", 0, buf, MAX_PATH, ini)) {
 		// For now these conditions are just an IniParam being
 		// non-zero. In the future we could implement more complicated
 		// conditionals, perhaps even all the way up to a full logic
@@ -264,21 +264,21 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 
 	for (j = 0; j < INI_PARAMS_SIZE; j++) {
 		StringCchPrintf(buf, 8, L"x%.0i", j);
-		GetPrivateProfileString(section, buf, 0, x[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, x[j].buf, MAX_PATH, ini);
 		StringCchPrintf(buf, 8, L"y%.0i", j);
-		GetPrivateProfileString(section, buf, 0, y[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, y[j].buf, MAX_PATH, ini);
 		StringCchPrintf(buf, 8, L"z%.0i", j);
-		GetPrivateProfileString(section, buf, 0, z[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, z[j].buf, MAX_PATH, ini);
 		StringCchPrintf(buf, 8, L"w%.0i", j);
-		GetPrivateProfileString(section, buf, 0, w[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, w[j].buf, MAX_PATH, ini);
 	}
-	GetPrivateProfileString(section, L"separation", 0, separation.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"convergence", 0, convergence.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"transition", 0, transition.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"release_transition", 0, release_transition.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"transition_type", 0, transition_type.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"condition", 0, condition.buf, MAX_PATH, ini);
+	GetIniString(section, L"separation", 0, separation.buf, MAX_PATH, ini);
+	GetIniString(section, L"convergence", 0, convergence.buf, MAX_PATH, ini);
+	GetIniString(section, L"transition", 0, transition.buf, MAX_PATH, ini);
+	GetIniString(section, L"release_transition", 0, release_transition.buf, MAX_PATH, ini);
+	GetIniString(section, L"transition_type", 0, transition_type.buf, MAX_PATH, ini);
+	GetIniString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH, ini);
+	GetIniString(section, L"condition", 0, condition.buf, MAX_PATH, ini);
 
 	for (i = 1; not_done; i++) {
 		not_done = false;

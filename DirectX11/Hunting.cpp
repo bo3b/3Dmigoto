@@ -1514,7 +1514,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	// Let's also allow an easy toggle of hunting itself, for speed and playability.
 	RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", iniFile, ToggleHunting, NULL, noRepeat, NULL);
 
-	if (GetPrivateProfileString(L"Hunting", L"repeat_rate", 0, buf, 16, iniFile))
+	if (GetIniString(L"Hunting", L"repeat_rate", 0, buf, 16, iniFile))
 		repeat = _wtoi(buf);
 
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", iniFile, NextPixelShader, NULL, repeat, NULL);
@@ -1558,7 +1558,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", iniFile, DisableFix, EnableFix, noRepeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", iniFile, AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
-	if (GetPrivateProfileString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH, iniFile)) {
+	if (GetIniString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH, iniFile)) {
 		LogInfoW(L"  analyse_options=%s\n", buf);
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 			(FrameAnalysisOptionNames, buf, NULL);
@@ -1571,7 +1571,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
 	G->ENABLE_TUNE = GetIniInt(L"Hunting", L"tune_enable", 0, iniFile, NULL) == 1;
 	if (G->ENABLE_TUNE)
 		LogInfo("  tune_enable=1\n");
-	if (GetPrivateProfileString(L"Hunting", L"tune_step", 0, buf, MAX_PATH, iniFile)) {
+	if (GetIniString(L"Hunting", L"tune_step", 0, buf, MAX_PATH, iniFile)) {
 		swscanf_s(buf, L"%f", &G->gTuneStep);
 		LogInfo("  tune_step=%f\n", G->gTuneStep);
 	}
