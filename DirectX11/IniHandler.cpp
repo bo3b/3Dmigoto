@@ -3,12 +3,17 @@
 #include <algorithm>
 #include <string>
 #include <strsafe.h>
+#include <fstream>
 
 #include "log.h"
 #include "Globals.h"
 #include "Override.h"
 #include "Hunting.h"
 #include "nvprofile.h"
+
+// Define this to call both old and new APIs and die if the results differ to
+// verify that the new API is functionally identical to the old:
+#undef VALIDATE_INI_PARSER
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -101,13 +106,240 @@ static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 	return false;
 }
 
+
+// Case insensitive version of the wstring hashing and equality functions for
+// case insensitive maps that we can use to look up ini sections and keys:
+struct WStringInsensitiveHash {
+	size_t operator()(const wstring &s) const
+	{
+		std::wstring l;
+		std::hash<std::wstring> whash;
+
+		l.resize(s.size());
+		std::transform(s.begin(), s.end(), l.begin(), ::towlower);
+		return whash(l);
+	}
+};
+struct WStringInsensitiveEquality {
+	size_t operator()(const wstring &x, const wstring &y) const
+	{
+		return _wcsicmp(x.c_str(), y.c_str()) == 0;
+	}
+};
+
+// Unsorted maps for fast case insensitive key lookups by name
+typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
+typedef std::unordered_map<wstring, IniSectionMap, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionsMap;
+
+IniSectionsMap ini_sections_map;
+
+// Parse the ini file into data structures. We used to use the
+// GetPrivateProfile family of Windows API calls to parse the ini file, but
+// they have the disadvantage that they open and parse the whole ini file every
+// time they are called, which can lead to lengthy ini files taking a long time
+// to parse (e.g. Dreamfall Chapters takes around 1 minute 45). By reading the
+// ini file once we can drastically reduce that time.
+//
+// I considered using a third party library to provide this, but eventually
+// decided against it - ini files are relatively simple and easy to parse
+// ourselves, and we don't strictly adhere to the ini spec since we allow for
+// repeated keys and lines without equals signs, and the order of lines is
+// important in some sections. We could rely on the Windows APIs to provide
+// these guarantees because Microsoft is highly unlikely to change their
+// behaviour, but the same cannot be said of a third party library. Therefore,
+// let's just do it ourselves to be sure it meets our requirements.
+//
+// NOTE: If adding any debugging / logging into this routine and expect to see
+// it, make sure you delay calling it until after the log file has been opened!
+static void ParseIni(const wchar_t *ini)
+{
+	string aline;
+	wstring wline, section, key, val;
+	size_t first, last, delim;
+	bool inserted;
+
+	ini_sections_map.clear();
+
+	ifstream f(ini, ios::in, _SH_DENYNO);
+	if (!f) {
+		LogInfo("  Error opening d3dx.ini\n");
+		return;
+	}
+
+	while (std::getline(f, aline)) {
+		// Convert to wstring for compatibility with GetPrivateProfile*
+		// APIs. If we assume the d3dx.ini is always ASCII we could
+		// drop this, but that would require us to change a great many
+		// types throughout 3DMigoto, so leave that for another day.
+		wline = wstring(aline.begin(), aline.end());
+
+		// Strip preceeding and trailing whitespace:
+		first = wline.find_first_not_of(L" \t");
+		last = wline.find_last_not_of(L" \t");
+		if (first != wline.npos)
+			wline = wline.substr(first, last - first + 1);
+
+		if (wline.empty())
+			continue;
+
+		// Comments are lines that start with a semicolon as the first
+		// non-whitespace character that we want to skip over (note
+		// that a semicolon appearing in the middle of a line is *NOT*
+		// a comment in an ini file. It might be tempting to treat them
+		// as comments since a lot of people do seem to try to do that,
+		// but there may be cases where a semicolon is part of valid
+		// syntax and I am hesitant to change that underlying handling
+		// here, at least not without auditing most of the d3dx.ini
+		// files already in the wild. Let's at least try not to add any
+		// new syntax that includes semicolons anyway!)
+		if (wline[0] == L';')
+			continue;
+
+		// Section?
+		if (wline[0] == L'[') {
+			// To match the behaviour of GetPrivateProfileString,
+			// we use up until the first ] as the section name. If
+			// there is no ] character, we use the rest of the
+			// line.
+			last = wline.find(L']');
+			if (last == wline.npos)
+				last = wline.length();
+
+			// Strip whitespace:
+			first = wline.find_first_not_of(L" \t", 1);
+			last = wline.find_last_not_of(L" \t", last - 1);
+			section = wline.substr(first, last - first + 1);
+
+			// If we find a duplicate section we only parse the
+			// first one to match the behaviour of
+			// GetPrivateProfileString. We might actually want to
+			// think about forgetting conforming to the old API as
+			// there is some advantage to being able to append
+			// additional values to a previous section to help
+			// organise the d3dx.ini into functional sections, and
+			// we did get a feature request to that effect at one
+			// point. If we do that though, we risk confusion if
+			// the user didn't realise they already had a second
+			// section of the same name, which isn't ideal - my
+			// thinking was that the user would have to e.g.
+			// explicitly mark a section as continued elsewhere.
+			// Also, if we do that keep in mind that some types of
+			// sections are considered duplicates if their hash key
+			// matches, which would have to be handled elsewhere.
+			// For now, continue warning about duplicate sections
+			// and match the old behaviour.
+			inserted = ini_sections_map.emplace(section, IniSectionMap{}).second;
+			if (!inserted) {
+				// TODO: Warn here once we remove the old GetIniSections
+				// LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
+				// 		section.c_str());
+				// BeepFailure2();
+				section.clear();
+			}
+			continue;
+		}
+
+		if (section.empty()) {
+			LogInfo("WARNING: d3dx.ini entry outside of section: %S\n",
+					wline.c_str());
+			BeepFailure2();
+			continue;
+		}
+
+		// Key / Val pair
+		delim = wline.find(L"=");
+		if (delim != wline.npos) {
+			// Strip whitespace around delimiter:
+			last = wline.find_last_not_of(L" \t", delim - 1);
+			key = wline.substr(0, last + 1);
+			first = wline.find_first_not_of(L" \t", delim + 1);
+			if (first == wline.npos)
+				val.clear();
+			else
+				val = wline.substr(first);
+
+			// We use "at" on the sections to access an existing
+			// section (alternatively we could use the [] operator
+			// to permit it to be created if it doesn't exist), but
+			// we use emplace within the section so that only the
+			// first item with a given key is inserted to match the
+			// behaviour of GetPrivateProfileString for duplicate
+			// keys within a single section:
+			ini_sections_map.at(section).emplace(key, val);
+		} else {
+			// No = on line, don't store in key lookup maps to
+			// match the behaviour of GetPrivateProfileString, but
+			// we will store it in the other structures for the
+			// command list parser to process.
+		}
+	}
+}
+
+#ifdef VALIDATE_INI_PARSER
+void ValidateGetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
+			  wchar_t *ret, unsigned size, const wchar_t *ini, int rc)
+{
+	int validate_rc;
+	wchar_t validate_ret[MAX_PATH];
+
+	validate_rc = GetPrivateProfileString(section, key, def, validate_ret, min(size, MAX_PATH), ini);
+
+	if (wcscmp(ret, validate_ret) || rc != validate_rc) {
+		LogInfo("BUG: New ini parsing API validation failed on [%S] %S\n", section, key);
+		LogInfo("  New: rc=%i \"%S\"\n", rc, ret);
+		LogInfo("  Old: rc=%i \"%S\"\n", validate_rc, validate_ret);
+		DoubleBeepExit();
+	}
+}
+#else
+#define ValidateGetIniString(...) do { } while (0)
+#endif
+
 // Initially this is just a wrapper around GetPrivateProfileString so that all
 // our ini parsing goes through the one place to facilitate switching to a new
 // more efficient ini parser
 int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size, const wchar_t *ini)
 {
-	return GetPrivateProfileString(section, key, def, ret, size, ini);
+	int rc;
+
+	try {
+		wstring &val = ini_sections_map.at(section).at(key);
+		if (wcscpy_s(ret, size, val.c_str())) {
+			// Funky return code of GetPrivateProfileString Not
+			// sure if we depend on this - if we don't I'd like a
+			// nicer return code or to raise an exception. Note
+			// that wcscpy_s will have returned an empty string,
+			// while the original GetPrivateProfileString would
+			// have only truncated the string.
+			LogInfo("  WARNING: [%S]%S=%S too long\n",
+					section, key, val.c_str());
+			BeepFailure2();
+			rc = size - 1;
+		} else {
+			// I'd also rather not have to calculate the string
+			// length if we don't use it
+			rc = (int)wcslen(ret);
+		}
+	} catch (std::out_of_range) {
+		if (def) {
+			if (wcscpy_s(ret, size, def)) {
+				// If someone passed in a default value that is
+				// too long, treat it as a programming error
+				// and terminate:
+				DoubleBeepExit();
+			} else
+				rc = (int)wcslen(ret);
+		} else {
+			// Return an empty string
+			ret[0] = L'\0';
+			rc = 0;
+		}
+	}
+
+	ValidateGetIniString(section, key, def, ret, size, ini, rc);
+
+	return rc;
 }
 
 // Helper functions to parse common types and log their values. TODO: Convert
@@ -1512,6 +1744,7 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
+	ParseIni(iniFile);
 	GetIniSections(sections, iniFile);
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, iniFile, NULL);
@@ -1901,6 +2134,8 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	}
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
+
+	ParseIni(iniFile);
 
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, iniFile, NULL);
 
