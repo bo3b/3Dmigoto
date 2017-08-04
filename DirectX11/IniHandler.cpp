@@ -151,8 +151,10 @@ typedef std::vector<std::pair<wstring, wstring>> IniSectionVector;
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
 typedef std::unordered_map<wstring, IniSectionMap, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionsMap;
+typedef std::unordered_map<wstring, IniSectionVector, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionVectorsMap;
 
 IniSectionsMap ini_sections_map;
+IniSectionVectorsMap ini_section_vectors_map;
 
 // Returns an iterator to the first element in a set that does not begin with
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
@@ -170,8 +172,126 @@ static IniSectionsSorted::iterator prefix_upper_bound(IniSectionsSorted &section
 	return sections.end();
 }
 
-// FIXME: Drop this
-static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, const wchar_t *iniFile);
+static void ParseIniSectionLine(wstring *wline, wstring *section,
+		bool *warn_duplicates, bool *warn_lines_without_equals,
+		IniSectionsSorted &ini_sections_sorted,
+		IniSectionVector **section_vector)
+{
+	size_t first, last;
+	bool inserted;
+
+	// To match the behaviour of GetPrivateProfileString, we use up until
+	// the first ] as the section name. If there is no ] character, we use
+	// the rest of the line.
+	last = wline->find(L']');
+	if (last == wline->npos)
+		last = wline->length();
+
+	// Strip whitespace:
+	first = wline->find_first_not_of(L" \t", 1);
+	last = wline->find_last_not_of(L" \t", last - 1);
+	*section = wline->substr(first, last - first + 1);
+
+	// If we find a duplicate section we only parse the first one to match
+	// the behaviour of GetPrivateProfileString. We might actually want to
+	// think about forgetting conforming to the old API as there is some
+	// advantage to being able to append additional values to a previous
+	// section to help organise the d3dx.ini into functional sections, and
+	// we did get a feature request to that effect at one point. If we do
+	// that though, we risk confusion if the user didn't realise they
+	// already had a second section of the same name, which isn't ideal -
+	// my thinking was that the user would have to e.g.  explicitly mark a
+	// section as continued elsewhere.  Also, if we do that keep in mind
+	// that some types of sections are considered duplicates if their hash
+	// key matches, which would have to be handled elsewhere.  For now,
+	// continue warning about duplicate sections and match the old
+	// behaviour.
+	inserted = ini_sections_map.emplace(*section, IniSectionMap{}).second;
+	ini_sections_sorted.insert(*section); // FIXME: Merge with ini_sections_map
+	if (!inserted) {
+		LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
+				section->c_str());
+		BeepFailure2();
+		section->clear();
+		*section_vector = NULL;
+		return;
+	}
+
+	*section_vector = &ini_section_vectors_map[*section];
+
+	// Some of the code below has been moved from the old GetIniSection()
+	*warn_duplicates = true;
+	*warn_lines_without_equals = true;
+
+	// Sections that utilise a command list are allowed to have duplicate
+	// keys, while other sections are not. The command list parser will
+	// still check for duplicate keys that are not part of the command
+	// list.
+	if (IsCommandListSection(section->c_str()))
+		*warn_duplicates = false;
+	else if (!IsRegularSection(section->c_str())) {
+		LogInfo("WARNING: Unknown section in d3dx.ini: [%S]\n", section->c_str());
+		BeepFailure2();
+	}
+
+	if (DoesSectionAllowLinesWithoutEquals(section->c_str()))
+		*warn_lines_without_equals = false;
+}
+
+static void ParseIniKeyValLine(wstring *wline, wstring *section,
+		bool warn_duplicates, bool warn_lines_without_equals,
+		IniSectionVector *section_vector)
+{
+	size_t first, last, delim;
+	wstring key, val;
+	bool inserted;
+
+	if (section->empty() || section_vector == NULL) {
+		LogInfo("WARNING: d3dx.ini entry outside of section: %S\n",
+				wline->c_str());
+		BeepFailure2();
+		return;
+	}
+
+	// Key / Val pair
+	delim = wline->find(L"=");
+	if (delim != wline->npos) {
+		// Strip whitespace around delimiter:
+		last = wline->find_last_not_of(L" \t", delim - 1);
+		key = wline->substr(0, last + 1);
+		first = wline->find_first_not_of(L" \t", delim + 1);
+		if (first != wline->npos)
+			val = wline->substr(first);
+
+		// We use "at" on the sections to access an existing
+		// section (alternatively we could use the [] operator
+		// to permit it to be created if it doesn't exist), but
+		// we use emplace within the section so that only the
+		// first item with a given key is inserted to match the
+		// behaviour of GetPrivateProfileString for duplicate
+		// keys within a single section:
+		inserted = ini_sections_map.at(*section).emplace(key, val).second;
+		if (!inserted) {
+			LogInfo("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
+					section->c_str(), key.c_str());
+			BeepFailure2();
+		}
+	} else {
+		// No = on line, don't store in key lookup maps to
+		// match the behaviour of GetPrivateProfileString, but
+		// we will store it in the section vector structure for the
+		// profile parser to process.
+		if (warn_lines_without_equals) {
+			LogInfo("WARNING: Malformed line in d3dx.ini: [%S] \"%S\"\n",
+					section->c_str(), wline->c_str());
+			BeepFailure2();
+			return;
+		}
+	}
+
+	section_vector->emplace_back(key, val);
+}
+
 
 // Parse the ini file into data structures. We used to use the
 // GetPrivateProfile family of Windows API calls to parse the ini file, but
@@ -195,10 +315,13 @@ static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
 {
 	string aline;
 	wstring wline, section, key, val;
-	size_t first, last, delim;
-	bool inserted;
+	size_t first, last;
+	IniSectionVector *section_vector = NULL;
+	bool warn_duplicates = true;
+	bool warn_lines_without_equals = true;
 
 	ini_sections_map.clear();
+	ini_section_vectors_map.clear();
 
 	ifstream f(ini, ios::in, _SH_DENYNO);
 	if (!f) {
@@ -213,7 +336,7 @@ static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
 		// types throughout 3DMigoto, so leave that for another day.
 		wline = wstring(aline.begin(), aline.end());
 
-		// Strip preceeding and trailing whitespace:
+		// Strip preceding and trailing whitespace:
 		first = wline.find_first_not_of(L" \t");
 		last = wline.find_last_not_of(L" \t");
 		if (first != wline.npos)
@@ -237,92 +360,15 @@ static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
 
 		// Section?
 		if (wline[0] == L'[') {
-			// To match the behaviour of GetPrivateProfileString,
-			// we use up until the first ] as the section name. If
-			// there is no ] character, we use the rest of the
-			// line.
-			last = wline.find(L']');
-			if (last == wline.npos)
-				last = wline.length();
-
-			// Strip whitespace:
-			first = wline.find_first_not_of(L" \t", 1);
-			last = wline.find_last_not_of(L" \t", last - 1);
-			section = wline.substr(first, last - first + 1);
-
-			// If we find a duplicate section we only parse the
-			// first one to match the behaviour of
-			// GetPrivateProfileString. We might actually want to
-			// think about forgetting conforming to the old API as
-			// there is some advantage to being able to append
-			// additional values to a previous section to help
-			// organise the d3dx.ini into functional sections, and
-			// we did get a feature request to that effect at one
-			// point. If we do that though, we risk confusion if
-			// the user didn't realise they already had a second
-			// section of the same name, which isn't ideal - my
-			// thinking was that the user would have to e.g.
-			// explicitly mark a section as continued elsewhere.
-			// Also, if we do that keep in mind that some types of
-			// sections are considered duplicates if their hash key
-			// matches, which would have to be handled elsewhere.
-			// For now, continue warning about duplicate sections
-			// and match the old behaviour.
-			inserted = ini_sections_map.emplace(section, IniSectionMap{}).second;
-			ini_sections_sorted.insert(section); // FIXME: Merge with ini_sections_map
-			if (!inserted) {
-				LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
-						section.c_str());
-				BeepFailure2();
-				section.clear();
-			}
-
-			// FIXME: REMOVE THIS ONCE THE APPROPRIATE WARNINGS ARE
-			// ADDED ELSEWHERE IN THIS ROUTINE
-			{
-				IniSectionVector section_vector;
-
-				// Call GetIniSection to warn about any malformed lines or
-				// duplicate keys in the section, discarding the result.
-				GetIniSection(section_vector, section.c_str(), ini);
-				section_vector.clear();
-			}
+			ParseIniSectionLine(&wline, &section, &warn_duplicates,
+					    &warn_lines_without_equals,
+					    ini_sections_sorted,
+					    &section_vector);
 			continue;
 		}
 
-		if (section.empty()) {
-			LogInfo("WARNING: d3dx.ini entry outside of section: %S\n",
-					wline.c_str());
-			BeepFailure2();
-			continue;
-		}
-
-		// Key / Val pair
-		delim = wline.find(L"=");
-		if (delim != wline.npos) {
-			// Strip whitespace around delimiter:
-			last = wline.find_last_not_of(L" \t", delim - 1);
-			key = wline.substr(0, last + 1);
-			first = wline.find_first_not_of(L" \t", delim + 1);
-			if (first == wline.npos)
-				val.clear();
-			else
-				val = wline.substr(first);
-
-			// We use "at" on the sections to access an existing
-			// section (alternatively we could use the [] operator
-			// to permit it to be created if it doesn't exist), but
-			// we use emplace within the section so that only the
-			// first item with a given key is inserted to match the
-			// behaviour of GetPrivateProfileString for duplicate
-			// keys within a single section:
-			ini_sections_map.at(section).emplace(key, val);
-		} else {
-			// No = on line, don't store in key lookup maps to
-			// match the behaviour of GetPrivateProfileString, but
-			// we will store it in the other structures for the
-			// command list parser to process.
-		}
+		ParseIniKeyValLine(&wline, &section, warn_duplicates,
+				   warn_lines_without_equals, section_vector);
 	}
 }
 
@@ -520,14 +566,14 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const
 	return ret;
 }
 
-static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, const wchar_t *iniFile)
+#ifdef VALIDATE_INI_PARSER
+static void GetIniSectionDeprecated(IniSectionVector &key_vals, const wchar_t *section, const wchar_t *iniFile)
 {
 	wchar_t *buf, *kptr, *vptr;
 	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSection
 	// returns 0 instead of the documented (buf_size - 2) in that case.
 	int buf_size = 256;
 	DWORD result;
-	IniSectionsSorted keys;
 	bool warn_duplicates = true;
 	bool warn_lines_without_equals = true;
 
@@ -537,10 +583,6 @@ static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, co
 	// list.
 	if (IsCommandListSection(section))
 		warn_duplicates = false;
-	else if (!IsRegularSection(section)) {
-		LogInfoW(L"WARNING: Unknown section in d3dx.ini: [%s]\n", section);
-		BeepFailure2();
-	}
 
 	if (DoesSectionAllowLinesWithoutEquals(section))
 		warn_lines_without_equals = false;
@@ -564,8 +606,6 @@ static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, co
 		for (vptr = kptr; *vptr && *vptr != L'='; vptr++) {}
 		if (*vptr != L'=') {
 			if (warn_lines_without_equals) {
-				LogInfoW(L"WARNING: Malformed line in d3dx.ini: [%s] \"%s\"\n", section, kptr);
-				BeepFailure2();
 				kptr = vptr;
 				continue;
 			}
@@ -574,13 +614,6 @@ static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, co
 			vptr++;
 		}
 
-		if (warn_duplicates) {
-			if (keys.count(kptr)) {
-				LogInfoW(L"WARNING: Duplicate key found in d3dx.ini: [%s] %s\n", section, kptr);
-				BeepFailure2();
-			}
-			keys.insert(kptr);
-		}
 		key_vals.emplace_back(kptr, vptr);
 		for (kptr = vptr; *kptr; kptr++) {}
 	}
@@ -588,7 +621,33 @@ static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, co
 	delete[] buf;
 }
 
-#ifdef VALIDATE_INI_PARSER
+static void ValidateIniSection(IniSectionVector &key_vals, const wchar_t *section, const wchar_t *iniFile)
+{
+	IniSectionVector old_key_vals;
+	IniSectionVector::iterator i, j;
+
+	GetIniSectionDeprecated(old_key_vals, section, iniFile);
+
+	for (i = old_key_vals.begin(), j = key_vals.begin();
+	     i != old_key_vals.end() && j != key_vals.end();
+	     i++, j++) {
+		if (wcscmp(i->first.c_str(), j->first.c_str())) {
+			LogInfo("BUG: New ini parsing API validation failed on [%S] key %S != %S\n", section, i->first.c_str(), j->first.c_str());
+			DoubleBeepExit();
+		}
+
+		if (wcscmp(i->second.c_str(), j->second.c_str())) {
+			LogInfo("BUG: New ini parsing API validation failed on [%S] value %S != %S\n", section, i->second.c_str(), j->second.c_str());
+			DoubleBeepExit();
+		}
+	}
+
+	if (i != old_key_vals.end() || j != key_vals.end()) {
+		LogInfo("BUG: New ini parsing API validation failed - section ended prematurely\n");
+		DoubleBeepExit();
+	}
+}
+
 static void GetIniSectionsDeprecated(IniSectionsSorted &sections, wchar_t *iniFile)
 {
 	wchar_t *buf, *ptr;
@@ -643,8 +702,21 @@ static void ValidateIniSections(IniSectionsSorted &sections, wchar_t *iniFile)
 	}
 }
 #else
+#define ValidateIniSection(...) do { } while (0)
 #define ValidateIniSections(...) do { } while (0)
 #endif
+
+static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section, const wchar_t *iniFile)
+{
+	try {
+		*key_vals = &ini_section_vectors_map.at(section);
+	} catch (std::out_of_range) {
+		LogInfo("BUG: GetIniSection() called on a section not in the ini_section_vectors_map: %S\n", section);
+		DoubleBeepExit();
+	}
+
+	ValidateIniSection(**key_vals, section, iniFile);
+}
 
 static void RegisterPresetKeyBindings(IniSectionsSorted &sections, LPCWSTR iniFile)
 {
@@ -824,7 +896,7 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		wchar_t *whitelist[])
 {
-	IniSectionVector section;
+	IniSectionVector *section = NULL;
 	IniSectionVector::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
@@ -839,8 +911,8 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		DoubleBeepExit();
 	}
 
-	GetIniSection(section, id, iniFile);
-	for (entry = section.begin(); entry < section.end(); entry++) {
+	GetIniSection(&section, id, iniFile);
+	for (entry = section->begin(); entry < section->end(); entry++) {
 		key = &entry->first;
 		val = &entry->second;
 
@@ -904,7 +976,7 @@ log_continue:
 
 static void ParseDriverProfile(wchar_t *iniFile)
 {
-	IniSectionVector section;
+	IniSectionVector *section = NULL;
 	IniSectionVector::iterator entry;
 	wstring *lhs, *rhs;
 
@@ -912,8 +984,8 @@ static void ParseDriverProfile(wchar_t *iniFile)
 	// settings will only be applied on startup.
 	profile_settings.clear();
 
-	GetIniSection(section, L"Profile", iniFile);
-	for (entry = section.begin(); entry < section.end(); entry++) {
+	GetIniSection(&section, L"Profile", iniFile);
+	for (entry = section->begin(); entry < section->end(); entry++) {
 		lhs = &entry->first;
 		rhs = &entry->second;
 
