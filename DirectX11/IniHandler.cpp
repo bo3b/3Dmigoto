@@ -170,6 +170,9 @@ static IniSectionsSorted::iterator prefix_upper_bound(IniSectionsSorted &section
 	return sections.end();
 }
 
+// FIXME: Drop this
+static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, const wchar_t *iniFile);
+
 // Parse the ini file into data structures. We used to use the
 // GetPrivateProfile family of Windows API calls to parse the ini file, but
 // they have the disadvantage that they open and parse the whole ini file every
@@ -188,7 +191,7 @@ static IniSectionsSorted::iterator prefix_upper_bound(IniSectionsSorted &section
 //
 // NOTE: If adding any debugging / logging into this routine and expect to see
 // it, make sure you delay calling it until after the log file has been opened!
-static void ParseIni(const wchar_t *ini)
+static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
 {
 	string aline;
 	wstring wline, section, key, val;
@@ -266,12 +269,23 @@ static void ParseIni(const wchar_t *ini)
 			// For now, continue warning about duplicate sections
 			// and match the old behaviour.
 			inserted = ini_sections_map.emplace(section, IniSectionMap{}).second;
+			ini_sections_sorted.insert(section); // FIXME: Merge with ini_sections_map
 			if (!inserted) {
-				// TODO: Warn here once we remove the old GetIniSections
-				// LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
-				// 		section.c_str());
-				// BeepFailure2();
+				LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
+						section.c_str());
+				BeepFailure2();
 				section.clear();
+			}
+
+			// FIXME: REMOVE THIS ONCE THE APPROPRIATE WARNINGS ARE
+			// ADDED ELSEWHERE IN THIS ROUTINE
+			{
+				IniSectionVector section_vector;
+
+				// Call GetIniSection to warn about any malformed lines or
+				// duplicate keys in the section, discarding the result.
+				GetIniSection(section_vector, section.c_str(), ini);
+				section_vector.clear();
 			}
 			continue;
 		}
@@ -506,7 +520,7 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const
 	return ret;
 }
 
-static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, wchar_t *iniFile)
+static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, const wchar_t *iniFile)
 {
 	wchar_t *buf, *kptr, *vptr;
 	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSection
@@ -574,14 +588,14 @@ static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, wc
 	delete[] buf;
 }
 
-static void GetIniSections(IniSectionsSorted &sections, wchar_t *iniFile)
+#ifdef VALIDATE_INI_PARSER
+static void GetIniSectionsDeprecated(IniSectionsSorted &sections, wchar_t *iniFile)
 {
 	wchar_t *buf, *ptr;
 	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSectionNames
 	// returns 0 instead of the documented (buf_size - 2) in that case.
 	int buf_size = 256;
 	DWORD result;
-	IniSectionVector section;
 
 	sections.clear();
 
@@ -599,16 +613,7 @@ static void GetIniSections(IniSectionsSorted &sections, wchar_t *iniFile)
 	}
 
 	for (ptr = buf; *ptr; ptr++) {
-		if (sections.count(ptr)) {
-			LogInfoW(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
-			BeepFailure2();
-		}
 		sections.insert(ptr);
-
-		// Call GetIniSection to warn about any malformed lines or
-		// duplicate keys in the section, discarding the result.
-		GetIniSection(section, ptr, iniFile);
-		section.clear();
 
 		for (; *ptr; ptr++) {}
 	}
@@ -616,6 +621,30 @@ static void GetIniSections(IniSectionsSorted &sections, wchar_t *iniFile)
 	delete[] buf;
 }
 
+static void ValidateIniSections(IniSectionsSorted &sections, wchar_t *iniFile)
+{
+	IniSectionsSorted old_sections;
+	IniSectionsSorted::iterator i, j;
+
+	GetIniSectionsDeprecated(old_sections, iniFile);
+
+	for (i = old_sections.begin(), j = sections.begin();
+	     i != old_sections.end() && j != sections.end();
+	     i++, j++) {
+		if (wcscmp(i->c_str(), j->c_str())) {
+			LogInfo("BUG: New ini parsing API validation failed on section [%S] != [%S]\n", i->c_str(), j->c_str());
+			DoubleBeepExit();
+		}
+	}
+
+	if (i != old_sections.end() || j != sections.end()) {
+		LogInfo("BUG: New ini parsing API validation failed - section lists ended prematurely\n");
+		DoubleBeepExit();
+	}
+}
+#else
+#define ValidateIniSections(...) do { } while (0)
+#endif
 
 static void RegisterPresetKeyBindings(IniSectionsSorted &sections, LPCWSTR iniFile)
 {
@@ -1743,8 +1772,8 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ParseIni(iniFile);
-	GetIniSections(sections, iniFile);
+	ParseIni(sections, iniFile);
+	ValidateIniSections(sections, iniFile);
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, iniFile, NULL);
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, iniFile, NULL);
@@ -2112,6 +2141,7 @@ void LoadConfigFile()
 void LoadProfileManagerConfig(const wchar_t *exe_path)
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
+	IniSectionsSorted sections;
 
 	G->gInitialized = true;
 
@@ -2134,7 +2164,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ParseIni(iniFile);
+	ParseIni(sections, iniFile);
 
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, iniFile, NULL);
 
