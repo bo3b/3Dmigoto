@@ -106,6 +106,19 @@ static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 	return false;
 }
 
+// Case insensitive version of less comparitor. This is used to create case
+// insensitive sets of section names in the ini so we can detect duplicate
+// sections that vary only by case, e.g. [Key1] and [KEY1], as these are
+// treated equivelent by the GetPrivateProfileXXX APIs. It also means that the
+// set will be sorted in a case insensitive manner making it easy to iterate
+// over all section names starting with a given case insensitive prefix.
+struct WStringInsensitiveLess {
+	bool operator() (const wstring &x, const wstring &y) const
+	{
+		return _wcsicmp(x.c_str(), y.c_str()) < 0;
+	}
+};
+
 
 // Case insensitive version of the wstring hashing and equality functions for
 // case insensitive maps that we can use to look up ini sections and keys:
@@ -127,11 +140,35 @@ struct WStringInsensitiveEquality {
 	}
 };
 
+// std::set is used so this is sorted for iterating over a prefix:
+typedef std::set<wstring, WStringInsensitiveLess> IniSectionsSorted;
+
+// Whereas settings within a section are in the same order they were in the ini
+// file. This will become more important as shader overrides gains more
+// functionality and dependencies between different features form:
+typedef std::vector<std::pair<wstring, wstring>> IniSectionVector;
+
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
 typedef std::unordered_map<wstring, IniSectionMap, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionsMap;
 
 IniSectionsMap ini_sections_map;
+
+// Returns an iterator to the first element in a set that does not begin with
+// prefix in a case insensitive way. Combined with set::lower_bound, this can
+// be used to iterate over all elements in the sections set that begin with a
+// given prefix.
+static IniSectionsSorted::iterator prefix_upper_bound(IniSectionsSorted &sections, wstring &prefix)
+{
+	IniSectionsSorted::iterator i;
+
+	for (i = sections.lower_bound(prefix); i != sections.end(); i++) {
+		if (_wcsnicmp(i->c_str(), prefix.c_str(), prefix.length()) > 0)
+			return i;
+	}
+
+	return sections.end();
+}
 
 // Parse the ini file into data structures. We used to use the
 // GetPrivateProfile family of Windows API calls to parse the ini file, but
@@ -469,52 +506,14 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, const
 	return ret;
 }
 
-
-// Case insensitive version of less comparitor. This is used to create case
-// insensitive sets of section names in the ini so we can detect duplicate
-// sections that vary only by case, e.g. [Key1] and [KEY1], as these are
-// treated equivelent by the GetPrivateProfileXXX APIs. It also means that the
-// set will be sorted in a case insensitive manner making it easy to iterate
-// over all section names starting with a given case insensitive prefix.
-struct WStringInsensitiveLess {
-	bool operator() (const wstring &x, const wstring &y) const
-	{
-		return _wcsicmp(x.c_str(), y.c_str()) < 0;
-	}
-};
-
-// std::set is used so this is sorted for iterating over a prefix:
-typedef std::set<wstring, WStringInsensitiveLess> IniSections;
-
-// Whereas settings within a section are in the same order they were in the ini
-// file. This will become more important as shader overrides gains more
-// functionality and dependencies between different features form:
-typedef std::vector<std::pair<wstring, wstring>> IniSection;
-
-// Returns an iterator to the first element in a set that does not begin with
-// prefix in a case insensitive way. Combined with set::lower_bound, this can
-// be used to iterate over all elements in the sections set that begin with a
-// given prefix.
-static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
-{
-	IniSections::iterator i;
-
-	for (i = sections.lower_bound(prefix); i != sections.end(); i++) {
-		if (_wcsnicmp(i->c_str(), prefix.c_str(), prefix.length()) > 0)
-			return i;
-	}
-
-	return sections.end();
-}
-
-static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t *iniFile)
+static void GetIniSection(IniSectionVector &key_vals, const wchar_t *section, wchar_t *iniFile)
 {
 	wchar_t *buf, *kptr, *vptr;
 	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSection
 	// returns 0 instead of the documented (buf_size - 2) in that case.
 	int buf_size = 256;
 	DWORD result;
-	IniSections keys;
+	IniSectionsSorted keys;
 	bool warn_duplicates = true;
 	bool warn_lines_without_equals = true;
 
@@ -575,14 +574,14 @@ static void GetIniSection(IniSection &key_vals, const wchar_t *section, wchar_t 
 	delete[] buf;
 }
 
-static void GetIniSections(IniSections &sections, wchar_t *iniFile)
+static void GetIniSections(IniSectionsSorted &sections, wchar_t *iniFile)
 {
 	wchar_t *buf, *ptr;
 	// Don't set initial buffer size too low (< 2?) - GetPrivateProfileSectionNames
 	// returns 0 instead of the documented (buf_size - 2) in that case.
 	int buf_size = 256;
 	DWORD result;
-	IniSection section;
+	IniSectionVector section;
 
 	sections.clear();
 
@@ -618,14 +617,14 @@ static void GetIniSections(IniSections &sections, wchar_t *iniFile)
 }
 
 
-static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
+static void RegisterPresetKeyBindings(IniSectionsSorted &sections, LPCWSTR iniFile)
 {
 	KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
 	KeyOverrideBase *preset;
 	int delay, release_delay;
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 
 	lower = sections.lower_bound(wstring(L"Key"));
 	upper = prefix_upper_bound(sections, wstring(L"Key"));
@@ -671,11 +670,11 @@ static void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
-static void ParsePresetOverrideSections(IniSections &sections, LPCWSTR iniFile)
+static void ParsePresetOverrideSections(IniSectionsSorted &sections, LPCWSTR iniFile)
 {
 	wstring preset_id;
 	PresetOverride *preset;
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 
 	presetOverrides.clear();
 
@@ -698,9 +697,9 @@ static void ParsePresetOverrideSections(IniSections &sections, LPCWSTR iniFile)
 	}
 }
 
-static void ParseResourceSections(IniSections &sections, LPCWSTR iniFile)
+static void ParseResourceSections(IniSectionsSorted &sections, LPCWSTR iniFile)
 {
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 	wstring resource_id;
 	CustomResource *custom_resource;
 	wchar_t setting[MAX_PATH], path[MAX_PATH];
@@ -796,12 +795,12 @@ static void ParseCommandList(const wchar_t *id, wchar_t *iniFile,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		wchar_t *whitelist[])
 {
-	IniSection section;
-	IniSection::iterator entry;
+	IniSectionVector section;
+	IniSectionVector::iterator entry;
 	wstring *key, *val;
 	const wchar_t *key_ptr;
 	CommandList *command_list, *explicit_command_list;
-	IniSections whitelisted_keys;
+	IniSectionsSorted whitelisted_keys;
 	int i;
 
 	// Safety check to make sure we are keeping the command list section
@@ -876,8 +875,8 @@ log_continue:
 
 static void ParseDriverProfile(wchar_t *iniFile)
 {
-	IniSection section;
-	IniSection::iterator entry;
+	IniSectionVector section;
+	IniSectionVector::iterator entry;
 	wstring *lhs, *rhs;
 
 	// Arguably we should only parse this section the first time since the
@@ -910,9 +909,9 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"disable_scissor",
 	NULL
 };
-static void ParseShaderOverrideSections(IniSections &sections, wchar_t *iniFile)
+static void ParseShaderOverrideSections(IniSectionsSorted &sections, wchar_t *iniFile)
 {
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	ShaderOverride *override;
@@ -1046,9 +1045,9 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"deny_cpu_read",
 	NULL
 };
-static void ParseTextureOverrideSections(IniSections &sections, wchar_t *iniFile)
+static void ParseTextureOverrideSections(IniSectionsSorted &sections, wchar_t *iniFile)
 {
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	TextureOverride *override;
@@ -1486,9 +1485,9 @@ wchar_t *CustomShaderIniKeys[] = {
 				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
 	NULL
 };
-static void EnumerateCustomShaderSections(IniSections &sections, wchar_t *iniFile)
+static void EnumerateCustomShaderSections(IniSectionsSorted &sections, wchar_t *iniFile)
 {
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 	wstring shader_id;
 
 	customShaders.clear();
@@ -1613,9 +1612,9 @@ static void ParseCustomShaderSections(wchar_t *iniFile)
 // "Explicit" means that this parses command lists sections that are
 // *explicitly* called [CommandList*], as opposed to other sections that are
 // implicitly command lists (such as ShaderOverride, Present, etc).
-static void EnumerateExplicitCommandListSections(IniSections &sections, wchar_t *iniFile)
+static void EnumerateExplicitCommandListSections(IniSectionsSorted &sections, wchar_t *iniFile)
 {
-	IniSections::iterator lower, upper, i;
+	IniSectionsSorted::iterator lower, upper, i;
 	wstring section_id;
 
 	explicitCommandListSections.clear();
@@ -1717,7 +1716,7 @@ void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 	wchar_t setting[MAX_PATH];
-	IniSections sections;
+	IniSectionsSorted sections;
 	int i;
 
 	G->gInitialized = true;
