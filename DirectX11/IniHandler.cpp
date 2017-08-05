@@ -267,7 +267,7 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// behaviour of GetPrivateProfileString for duplicate
 		// keys within a single section:
 		inserted = ini_sections_map.at(*section).emplace(key, val).second;
-		if (!inserted) {
+		if (warn_duplicates && !inserted) {
 			LogInfo("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
 					section->c_str(), key.c_str());
 			BeepFailure2();
