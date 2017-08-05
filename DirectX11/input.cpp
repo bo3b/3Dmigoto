@@ -470,14 +470,14 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 	actions.push_back(action);
 }
 
-bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey, LPCWSTR ini,
+bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data)
 {
 	InputCallbacks *callbacks = new InputCallbacks(down_cb, up_cb, private_data);
 	wchar_t keyName[MAX_PATH];
 
-	if (!GetIniString(app, iniKey, 0, keyName, MAX_PATH, ini))
+	if (!GetIniString(app, iniKey, 0, keyName, MAX_PATH))
 		return false;
 
 	RegisterKeyBinding(iniKey, keyName, callbacks, auto_repeat, 0, 0);

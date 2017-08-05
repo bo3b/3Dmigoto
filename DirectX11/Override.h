@@ -37,7 +37,7 @@ static EnumName_t<wchar_t *, TransitionType> TransitionTypeNames[] = {
 class OverrideBase
 {
 public:
-	virtual void ParseIniSection(LPCWSTR section, LPCWSTR ini) = 0;
+	virtual void ParseIniSection(LPCWSTR section) = 0;
 };
 
 class Override : public virtual OverrideBase
@@ -80,7 +80,7 @@ public:
 		memcpy(&mOverrideParams, params, sizeof(DirectX::XMFLOAT4[INI_PARAMS_SIZE]));
 	}
 
-	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
+	void ParseIniSection(LPCWSTR section) override;
 
 	void Activate(HackerDevice *device);
 	void Deactivate(HackerDevice *device);
@@ -131,7 +131,7 @@ public:
 		current(0)
 	{}
 
-	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
+	void ParseIniSection(LPCWSTR section) override;
 	void DownEvent(HackerDevice *device);
 };
 
