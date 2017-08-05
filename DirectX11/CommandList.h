@@ -116,6 +116,10 @@ public:
 	D3D11_RASTERIZER_DESC rs_desc;
 	ID3D11RasterizerState *rs_state;
 
+	int sampler_override;
+	D3D11_SAMPLER_DESC sampler_desc;
+	ID3D11SamplerState* sampler_state;
+	
 	D3D11_PRIMITIVE_TOPOLOGY topology;
 
 	CommandList command_list;
@@ -409,6 +413,7 @@ enum class ResourceCopyTargetType {
 	STEREO_PARAMS,
 	INI_PARAMS,
 	SWAP_CHAIN,
+	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
 };
 
 class ResourceCopyTarget {

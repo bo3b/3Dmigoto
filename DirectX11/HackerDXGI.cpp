@@ -33,6 +33,11 @@
 // IDXGISwapChain3	Win10			1.4
 // IDXGISwapChain4					1.5
 
+// TODO: Add interfaces for remaining few objects?  For completeness? 
+//  There are several uninteresting objects we don't wrap.
+//  e.g. IDXGIDevice IDXGIDecodeSwapChain IDXGISurface
+
+
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
 
@@ -43,7 +48,9 @@
 #include "Override.h"
 #include "IniHandler.h"
 
-
+#include "nvapi.h"
+#include "nvstereo.h"
+#include <iostream>
 // -----------------------------------------------------------------------------
 // Constructors:
 
@@ -58,6 +65,7 @@ HackerDXGIObject::HackerDXGIObject(IDXGIObject *pObject)
 	mOrigObject = pObject;
 }
 
+
 // Worth noting- the device and context for the secret path are the Hacker 
 // versions, because we need access to their fields later.
 HackerDXGIDevice::HackerDXGIDevice(IDXGIDevice *pDXGIDevice, HackerDevice *pDevice)
@@ -71,8 +79,14 @@ HackerDXGIDevice1::HackerDXGIDevice1(IDXGIDevice1 *pDXGIDevice1, HackerDevice *p
 	: HackerDXGIDevice(pDXGIDevice1, pDevice)
 {
 	mOrigDXGIDevice1 = pDXGIDevice1;
-	mHackerDevice = pDevice;
 }
+
+HackerDXGIDevice2::HackerDXGIDevice2(IDXGIDevice2 *pDXGIDevice2, HackerDevice *pDevice)
+	: HackerDXGIDevice1(pDXGIDevice2, pDevice)
+{
+	mOrigDXGIDevice2 = pDXGIDevice2;
+}
+
 
 HackerDXGIAdapter::HackerDXGIAdapter(IDXGIAdapter *pAdapter)
 	: HackerDXGIObject(pAdapter)
@@ -86,10 +100,23 @@ HackerDXGIAdapter1::HackerDXGIAdapter1(IDXGIAdapter1 *pAdapter1)
 	mOrigAdapter1 = pAdapter1;
 }
 
+HackerDXGIAdapter2::HackerDXGIAdapter2(IDXGIAdapter2 *pAdapter2)
+	: HackerDXGIAdapter1(pAdapter2)
+{
+	mOrigAdapter2 = pAdapter2;
+}
+
+
 HackerDXGIOutput::HackerDXGIOutput(IDXGIOutput *pOutput)
 	: HackerDXGIObject(pOutput)
 {
 	mOrigOutput = pOutput;
+}
+
+HackerDXGIOutput1::HackerDXGIOutput1(IDXGIOutput1 *pOutput1)
+	: HackerDXGIOutput(pOutput1)
+{
+	mOrigOutput1 = pOutput1;
 }
 
 
@@ -97,6 +124,19 @@ HackerDXGIDeviceSubObject::HackerDXGIDeviceSubObject(IDXGIDeviceSubObject *pSubO
 	: HackerDXGIObject(pSubObject)
 {
 	mOrigDeviceSubObject = pSubObject;
+}
+
+
+HackerDXGIResource::HackerDXGIResource(IDXGIResource *pResource)
+	: HackerDXGIDeviceSubObject(pResource)
+{
+	mOrigResource = pResource;
+}
+
+HackerDXGIResource1::HackerDXGIResource1(IDXGIResource1 *pResource1)
+	: HackerDXGIResource(pResource1)
+{
+	mOrigResource1 = pResource1;
 }
 
 
@@ -128,6 +168,23 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 		mOverlay = NULL;
 	}
 }
+
+// The upscaling swap chain.
+// Constructor can throw 3DmigotoException
+
+HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height,IDXGIFactory* factory)
+	: HackerDXGISwapChain(pSwapChain, pDevice, pContext), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
+{
+
+	CreateRenderTarget(fake_swap_chain_desc, factory);
+
+	mWidth = new_width;
+	mHeight = new_height;
+
+	if (mOverlay)
+		mOverlay->Resize(new_width, new_height);
+}
+
 
 HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain1, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGISwapChain(pSwapChain1, pDevice, pContext)
@@ -267,10 +324,7 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	if (riid == __uuidof(IDXGIAdapter) || riid == __uuidof(IDXGIAdapter1))
 	{
 		// Always return the IDXGIAdapter1 for these parents, as the superset on Win7.
-		IDXGIAdapter1 *origAdapter1;
-		static_cast<IDXGIAdapter*>(*ppParent)->QueryInterface(IID_PPV_ARGS(&origAdapter1));
-
-		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
+		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(static_cast<IDXGIAdapter1*>(*ppParent));
 		LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p \n", adapterWrap1, *ppParent);
 		*ppParent = adapterWrap1;
 	}
@@ -278,14 +332,13 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	{
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
-		// TODO: for platform update, return IDXGIAdapter2
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
-		*ppParent = NULL;
-		return E_NOINTERFACE;
+		HackerDXGIAdapter2 *adapterWrap2 = new HackerDXGIAdapter2(static_cast<IDXGIAdapter2*>(*ppParent));
+		LogInfo("  created HackerDXGIAdapter2 wrapper = %p of %p \n", adapterWrap2, *ppParent);
+		*ppParent = adapterWrap2;
 	}
 	else if (riid == __uuidof(IDXGIFactory))
 	{
@@ -309,7 +362,7 @@ STDMETHODIMP HackerDXGIObject::GetParent(THIS_
 	{
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 			*ppParent = NULL;
 			return E_NOINTERFACE;
 		}
@@ -418,12 +471,6 @@ IDXGIDevice1 *HackerDXGIDevice1::GetOrigDXGIDevice1()
 	return mOrigDXGIDevice1;
 }
 
-HackerDevice *HackerDXGIDevice1::GetHackerDevice()
-{
-	return mHackerDevice;
-}
-
-
 
 STDMETHODIMP HackerDXGIDevice1::SetMaximumFrameLatency(
 	/* [in] */ UINT MaxLatency)
@@ -446,19 +493,64 @@ STDMETHODIMP HackerDXGIDevice1::GetMaximumFrameLatency(
 
 // -----------------------------------------------------------------------------
 
+IDXGIDevice2 *HackerDXGIDevice2::GetOrigDXGIDevice2()
+{
+	return mOrigDXGIDevice2;
+}
+
+
+STDMETHODIMP HackerDXGIDevice2::OfferResources(
+	/* [annotation][in] */
+	_In_  UINT NumResources,
+	/* [annotation][size_is][in] */
+	_In_reads_(NumResources)  IDXGIResource *const *ppResources,
+	/* [annotation][in] */
+	_In_  DXGI_OFFER_RESOURCE_PRIORITY Priority)
+{
+	LogInfo("HackerDXGIDevice2::OfferResources(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigDXGIDevice2->OfferResources(NumResources, ppResources, Priority);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIDevice2::ReclaimResources(
+	/* [annotation][in] */
+	_In_  UINT NumResources,
+	/* [annotation][size_is][in] */
+	_In_reads_(NumResources)  IDXGIResource *const *ppResources,
+	/* [annotation][size_is][out] */
+	_Out_writes_all_opt_(NumResources)  BOOL *pDiscarded)
+{
+	LogInfo("HackerDXGIDevice2::ReclaimResources(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigDXGIDevice2->ReclaimResources(NumResources, ppResources, pDiscarded);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIDevice2::EnqueueSetEvent(
+	/* [annotation][in] */
+	_In_  HANDLE hEvent)
+{
+	LogInfo("HackerDXGIDevice2::EnqueueSetEvent(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigDXGIDevice2->EnqueueSetEvent(hEvent);
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+
 // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404556(v=vs.85).aspx
 //
 // We need to override the QueryInterface here, in the case the caller uses
 // IDXGIFactory::QueryInterface to create a IDXGIFactory2.
 //
-// For our purposes, it presently makes more sense to return an error of E_NOINTERFACE
-// for this request, because the caller must surely be able to handle a downlevel
-// system, and that is better for us in general. Only early access and beta
-// releases are requiring Factory2, and when wrapping those, we get a crash of
-// some form, that may not be our fault.
-//
-// Note that we can expect this QueryInterface to get called for any 
+// Note that we can expect this QueryInterface to also get called for any 
 // HackerFactory1::QueryInterface, as the superclass, to return that Factory2.
+// When called here, 'this' will either be HackerDXGIFactory1, or HackerDXGIFactory2.
+
+// In the enable_platform_update case, we will have created a DXGIFactory2 already,
+// and so if they are requesting that, we need to just return 'this' because it
+// is already the correctly wrapped object.
 
 STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
@@ -476,15 +568,11 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 			// Unless we are overriding default behavior from ini file.
 			if ((G->enable_dxgi1_2 == 0) && (!G->enable_platform_update))
 			{
-				LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+				LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 				*ppvObject = NULL;
 				return E_NOINTERFACE;
-			} else if ((G->enable_dxgi1_2 == 1) || (G->enable_platform_update)) {
-				// For when we need to return a legit Factory2.
-				HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
-				LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
-				*ppvObject = factory2Wrap;
 			}
+			
 			// Wrapping DXGIFactory2 here or failing this call
 			// seems to disable the Steam overlay on Winddows 7 and
 			// Windows 8 in some games such as The Witcher 3, but
@@ -500,7 +588,36 @@ STDMETHODIMP HackerDXGIFactory::QueryInterface(THIS_
 			// to allow the unwrapped DXGIFactory2 object through,
 			// but this may cause problems if the game itself is
 			// using the Factory2 object, not just the overlay.
+			//
+			// Bo3b: This might be because we have been wrapping the factory again,
+			// and returning a different pointer.  If they are doing pointer comparisons
+			// on the original factory, that would fail.  Might be fixed after I've
+			// adapted this to return the original objects.  ToDo: if this fixes
+			// it, remove this code and special case.
+			else if (G->enable_dxgi1_2 == 2)
+			{
+				// Fall through for logging.
+			}
+
+			// 'This' might already be a IDXGIFactory2, so return it instead of wrapping.
+			// (must use dynamic_cast instead of type_id here, this== base HackerDXGIFactory)
+			else if (dynamic_cast<HackerDXGIFactory2*>(this) != NULL)
+			{
+				LogInfo("  return HackerDXGIFactory2 wrapper = %p \n", this);
+				*ppvObject = this;
+			}
+
+			// None of the above, so we don't presently have a wrapped version of
+			// the object. Not sure this is possible now that CreateDXGIFactory is updated.
+			else if ((G->enable_dxgi1_2 == 1) || (G->enable_platform_update)) 
+			{
+				// For when we need to return a legit Factory2.
+				HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+				LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factory2Wrap, *ppvObject);
+				*ppvObject = factory2Wrap;
+			}
 		}
+	// ToDo: Do we need to return 'this' for __uuidof(IDXGIFactory1)?
 	}
 
 	LogInfo("  returns result = %x for %p \n", hr, ppvObject);
@@ -588,7 +705,8 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 
 	if (G->SCREEN_FULLSCREEN > 0)
 	{
-		if (G->SCREEN_FULLSCREEN == 2) {
+		if (G->SCREEN_FULLSCREEN == 2) 
+		{
 			// We install this hook on demand to avoid any possible
 			// issues with hooking the call when we don't need it:
 			// Unconfirmed, but possibly related to:
@@ -616,6 +734,14 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 	{
 		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
 		LogInfo("->Forcing Height to = %d \n", pDesc->BufferDesc.Height);
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.  
+	if (G->gForceStereo == 2)
+	{
+		pDesc->BufferDesc.Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
 	}
 }
 
@@ -664,8 +790,6 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	LogInfo("  SwapChain = %p \n", ppSwapChain);
 	LogInfo("  Description = %p \n", pDesc);
 
-	ForceDisplayParams(pDesc);
-
 	// CreateSwapChain could be called with a IDXGIDevice or ID3D11Device
 	HackerDevice *hackerDevice = NULL;
 	IUnknown *origDevice = NULL;
@@ -696,12 +820,95 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
 		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
 	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice2))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetOrigDXGIDevice2();
+	}
 	else {
 		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
 		return E_FAIL;
 	}
 
-	HRESULT hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+	HRESULT hr;
+
+	HackerDXGISwapChain *swapchainWrap = nullptr;
+	bool set_fullscreen_required = false;
+
+	if (G->SCREEN_UPSCALING > 2 || G->SCREEN_WIDTH <= 0 || G->SCREEN_HEIGHT <= 0 || G->UPSCALE_MODE >=2)
+	{
+		// TODO: some default parameters for upscaling could be added here
+		// TODO: what if user provides wrong screen width or wrong screen height
+		// TODO: maybe enumeration of modes and resolutions should be applied here
+		LogInfo("At least one of provided upscaling paramters is invalid!\n");
+		LogInfo("Please check the d3d11.ini file!\n");
+		LogInfo("Upscaling is disabled!\n");
+		G->SCREEN_UPSCALING = 0;
+	}
+
+	if (G->SCREEN_UPSCALING == 0) // no upscaling, use the standard path
+	{
+		ForceDisplayParams(pDesc);
+		hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+		swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+	}
+	else
+	{	
+		// Upscaling mode:
+		// to create two swap chains in row we need the swap chains to be in windowed mode
+		// so store has to be stored to call SetFullScreenState after and changed to windowed
+		// NOTE: no ForceDisplayParams here, because upscaling and ForceDisplayParams are 
+		// mutually exclusive.
+		set_fullscreen_required = !pDesc->Windowed; 
+		pDesc->Windowed = 1;						
+		
+		// This hook is very important in case of upscaling
+		// TODO: what about the hook and the warning in ForceDisplayParams? (Testing required)
+		// SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
+		InstallSetWindowPosHook();			
+
+		// TODO: testing testing testing
+		// not sure if the upscaling will work that way but if direct mode create a double sized swap chain
+		// i would just follow the code and create also double sided fake swap chain
+		if (G->gForceStereo == 2)
+		{
+			pDesc->BufferDesc.Width *= 2;
+			LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
+		}
+
+		DXGI_SWAP_CHAIN_DESC origDesc = *pDesc;		// need old description to create fake swap chain (fake texture)
+
+		pDesc->BufferDesc.Width = G->gForceStereo == 2 ? G->SCREEN_WIDTH * 2 : G->SCREEN_WIDTH;
+		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
+
+		try
+		{
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+			swapchainWrap = new HackerUpscalingDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &origDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
+		}
+		catch (const Exception3DMigoto& e)
+		{
+			// fake swap chain creation failed!
+			// try to create normal swap chain
+			BeepFailure2();
+			
+			LogInfo(e.what().c_str());
+			LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
+
+			G->SCREEN_UPSCALING = 0;
+			G->SCREEN_WIDTH = -1;
+			G->SCREEN_HEIGHT = -1;
+
+			// restore original state
+			*pDesc = origDesc;
+			pDesc->Windowed = !set_fullscreen_required;
+
+			ForceDisplayParams(pDesc);
+			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+		}
+	}
+	
 	if (FAILED(hr))
 	{
 		LogInfo("  failed result = %#x for device:%p, swapchain:%p \n", hr, pDevice, ppSwapChain);
@@ -710,7 +917,13 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	if (ppSwapChain)
 	{
-		HackerDXGISwapChain *swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+		if (G->SCREEN_UPSCALING == 2 || set_fullscreen_required)
+		{
+			// Some games seems to react very strange (like render nothing) if set full screen state is called here)
+			// Other games like The Witcher 3 need the call to ensure entering the full screen on start (seems to be game internal stuff)
+			(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+		}
+
 		LogInfo("->HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, *ppSwapChain);
 		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
@@ -886,6 +1099,11 @@ STDMETHODIMP HackerDXGIFactory2::CreateSwapChainForHwnd(THIS_
 	{
 		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
 		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
+	}
+	else if (typeid(*pDevice) == typeid(HackerDXGIDevice2))
+	{
+		hackerDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetHackerDevice();
+		origDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetOrigDXGIDevice2();
 	}
 	else {
 		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
@@ -1111,9 +1329,8 @@ STDMETHODIMP_(void) HackerDXGIFactory2::UnregisterOcclusionStatus(THIS_
 
 // -----------------------------------------------------------------------------
 
-// Handle the upcasting/type coercion from a IDXGIAdapter to IDXGIAdapter1.  
-// If it's a request for IDXGIAdapter2, return an error as that requires the
-// evil update, and we return errors for that (at present)
+// Handle the upcasting/type coercion from a IDXGIAdapter to IDXGIAdapter1 or IDXGIAdapter2.
+// If it's a request for IDXGIAdapter2, return that only if the allow_platform_update=1
 
 STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
@@ -1133,49 +1350,46 @@ STDMETHODIMP HackerDXGIAdapter::QueryInterface(THIS_
 
 	if (riid == __uuidof(IDXGIAdapter1))
 	{
-		IDXGIAdapter1 *origAdapter1 = static_cast<IDXGIAdapter1*>(*ppvObject);
-		HackerDXGIAdapter1 *dxgiAdapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
-		*ppvObject = dxgiAdapterWrap1;
-		LogDebug("  created HackerDXGIAdapter1(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap1), dxgiAdapterWrap1, origAdapter1);
+		// If 'this' object is already a HackerDXGIAdapter1, just return it, not make a new one.
+		if (dynamic_cast<HackerDXGIAdapter1*>(this) != NULL)
+		{
+			LogInfo("  return HackerDXGIAdapter1 wrapper = %p \n", this);
+			*ppvObject = this;
+		}
+		else
+		{
+			IDXGIAdapter1 *origAdapter1 = static_cast<IDXGIAdapter1*>(*ppvObject);
+			HackerDXGIAdapter1 *dxgiAdapterWrap1 = new HackerDXGIAdapter1(origAdapter1);
+			*ppvObject = dxgiAdapterWrap1;
+			LogDebug("  created HackerDXGIAdapter1(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap1), dxgiAdapterWrap1, origAdapter1);
+		}
 	}
 	else if (riid == __uuidof(IDXGIAdapter2))
 	{
-		// Well, bizarrely, this approach to upcasting to a IDXGIAdapter1 is supported on Win7, 
-		// but only if you have the 'evil update', the platform update installed.  Since that
-		// is an optional update, that certainly means that numerous people do not have it 
-		// installed. Ergo, a game developer cannot in good faith just assume that it's there,
-		// and it's very unlikely they would require it. No performance advantage on Win8.
-		// So, that means that a game developer must support a fallback path, even if they
-		// actually want Device1 for some reason.
-		//
-		// Sooo... Current plan is to return an error here, and pretend that the platform
-		// update is not installed, or missing feature on Win8.1.  This will force the game
-		// to use a more compatible path and make our job easier.
-
 		if (!G->enable_platform_update) 
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
 			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
-		// TODO: for platform update, return IDXGIAdapter2
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIAdapter2. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		IDXGIAdapter2 *origAdapter2 = static_cast<IDXGIAdapter2*>(*ppvObject);
+		HackerDXGIAdapter2 *dxgiAdapterWrap2 = new HackerDXGIAdapter2(origAdapter2);
+		*ppvObject = dxgiAdapterWrap2;
+		LogDebug("  created HackerDXGIAdapter2(%s@%p) wrapper of %p \n", type_name(dxgiAdapterWrap2), dxgiAdapterWrap2, origAdapter2);
 	}
-	else if (riid == __uuidof(IDXGIFactory2))
+	else if (riid == __uuidof(IDXGIFactory2)) // TODO: do we need Factory1?
 	{
 		// Called from Batman: Telltale games. 
 
 		if (!G->enable_platform_update)
 		{
-			LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+			LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
 			*ppvObject = NULL;
 			return E_NOINTERFACE;
 		}
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
+		HackerDXGIFactory2 *factoryWrap2 = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppvObject));
+		LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p \n", factoryWrap2, *ppvObject);
+		*ppvObject = factoryWrap2;
 	}
 
 	LogDebug("  returns result = %x for %p \n", hr, *ppvObject);
@@ -1245,6 +1459,28 @@ STDMETHODIMP HackerDXGIAdapter1::GetDesc1(THIS_
 	LogInfo("HackerDXGIAdapter1::GetDesc1(%s@%p) called \n", type_name(this), this);
 
 	HRESULT hr = mOrigAdapter1->GetDesc1(pDesc);
+	if (LogFile)
+	{
+		char s[MAX_PATH];
+		if (hr == S_OK)
+		{
+			wcstombs(s, pDesc->Description, MAX_PATH);
+			LogInfo("  returns adapter: %s, sysmem=%Iu, vidmem=%Iu, flags=%x\n", s, pDesc->DedicatedSystemMemory, pDesc->DedicatedVideoMemory, pDesc->Flags);
+		}
+	}
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIAdapter2::GetDesc2(THIS_
+	/* [annotation][out] */
+	__out  DXGI_ADAPTER_DESC2 *pDesc)
+{
+	LogInfo("HackerDXGIAdapter2::GetDesc2(%s@%p) called \n", type_name(this), this);
+
+	HRESULT hr = mOrigAdapter2->GetDesc2(pDesc);
 	if (LogFile)
 	{
 		char s[MAX_PATH];
@@ -1433,6 +1669,60 @@ STDMETHODIMP HackerDXGIOutput::GetFrameStatistics(THIS_
 
 // -----------------------------------------------------------------------------
 
+STDMETHODIMP HackerDXGIOutput1::GetDisplayModeList1(
+	/* [in] */ DXGI_FORMAT EnumFormat,
+	/* [in] */ UINT Flags,
+	/* [annotation][out][in] */
+	_Inout_  UINT *pNumModes,
+	/* [annotation][out] */
+	_Out_writes_to_opt_(*pNumModes, *pNumModes)  DXGI_MODE_DESC1 *pDesc)
+{
+	LogInfo("HackerDXGIOutput1::GetDisplayModeList1(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->GetDisplayModeList1(EnumFormat, Flags, pNumModes, pDesc);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+STDMETHODIMP HackerDXGIOutput1::FindClosestMatchingMode1(
+	/* [annotation][in] */
+	_In_  const DXGI_MODE_DESC1 *pModeToMatch,
+	/* [annotation][out] */
+	_Out_  DXGI_MODE_DESC1 *pClosestMatch,
+	/* [annotation][in] */
+	_In_opt_  IUnknown *pConcernedDevice)
+{
+	LogInfo("HackerDXGIOutput1::FindClosestMatchingMode1(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->FindClosestMatchingMode1(pModeToMatch, pClosestMatch, pConcernedDevice);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIOutput1::GetDisplaySurfaceData1(
+	/* [annotation][in] */
+	_In_  IDXGIResource *pDestination)
+{
+	LogInfo("HackerDXGIOutput1::GetDisplaySurfaceData1(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->GetDisplaySurfaceData1(pDestination);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIOutput1::DuplicateOutput(
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][out] */
+	_Out_  IDXGIOutputDuplication **ppOutputDuplication)
+{
+	LogInfo("HackerDXGIOutput1::DuplicateOutput(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigOutput1->DuplicateOutput(pDevice, ppOutputDuplication);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
 STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 	/* [annotation][in] */
 	_In_  REFIID riid,
@@ -1443,6 +1733,78 @@ STDMETHODIMP HackerDXGIDeviceSubObject::GetDevice(
 
 	HRESULT hr = mOrigDeviceSubObject->GetDevice(riid, ppDevice);
 	LogDebug("  returns result = %x, handle = %p\n", hr, *ppDevice);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIResource::GetSharedHandle(
+	/* [annotation][out] */
+	_Out_  HANDLE *pSharedHandle)
+{
+	LogInfo("HackerDXGIResource::GetSharedHandle(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->GetSharedHandle(pSharedHandle);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource::GetUsage(
+	/* [annotation][out] */
+	_Out_  DXGI_USAGE *pUsage)
+{
+	LogInfo("HackerDXGIResource::GetUsage(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->GetUsage(pUsage);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource::SetEvictionPriority(
+	/* [in] */ UINT EvictionPriority)
+{
+	LogInfo("HackerDXGIResource::SetEvictionPriority(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->SetEvictionPriority(EvictionPriority);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource::GetEvictionPriority(
+	/* [annotation][retval][out] */
+	_Out_  UINT *pEvictionPriority)
+{
+	LogInfo("HackerDXGIResource::GetEvictionPriority(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource->GetEvictionPriority(pEvictionPriority);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+
+// -----------------------------------------------------------------------------
+
+STDMETHODIMP HackerDXGIResource1::CreateSubresourceSurface(
+	UINT index,
+	/* [annotation][out] */
+	_Out_  IDXGISurface2 **ppSurface)
+{
+	LogInfo("HackerDXGIResource1::CreateSubresourceSurface(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource1->CreateSubresourceSurface(index, ppSurface);
+	LogInfo("  returns hr=%x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerDXGIResource1::CreateSharedHandle(
+	/* [annotation][in] */
+	_In_opt_  const SECURITY_ATTRIBUTES *pAttributes,
+	/* [annotation][in] */
+	_In_  DWORD dwAccess,
+	/* [annotation][in] */
+	_In_opt_  LPCWSTR lpName,
+	/* [annotation][out] */
+	_Out_  HANDLE *pHandle)
+{
+	LogInfo("HackerDXGIResource1::CreateSharedHandle(%s@%p) called \n", type_name(this), this);
+	HRESULT hr = mOrigResource1->CreateSharedHandle(pAttributes, dwAccess, lpName, pHandle);
+	LogInfo("  returns hr=%x\n", hr);
 	return hr;
 }
 
@@ -1539,6 +1901,7 @@ void HackerDXGISwapChain::RunFrameActions()
 	// that purpose rather than breaking the existing behaviour.
 	bool newEvent = DispatchInputEvents(mHackerDevice);
 
+	CurrentTransition.UpdatePresets(mHackerDevice);
 	CurrentTransition.UpdateTransitions(mHackerDevice);
 
 	G->frame_no++;
@@ -1644,13 +2007,12 @@ STDMETHODIMP HackerDXGISwapChain::SetFullscreenState(THIS_
 		LogInfo("->Fullscreen forced = %d \n", Fullscreen);
 	}
 
-	HRESULT hr;
 	//if (pTarget)	
 	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
 	//else
 	//	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, 0);
 
-	hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
+	HRESULT hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
 	LogInfo("  returns %x\n", hr);
 	return hr;
 }
@@ -1684,14 +2046,16 @@ STDMETHODIMP HackerDXGISwapChain::GetDesc(THIS_
 	LogDebug("HackerDXGISwapChain::GetDesc(%s@%p) called \n", type_name(this), this);
 	
 	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
+	
 	if (hr == S_OK)
-	{
+	{		
 		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
 		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
 		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
 		if (pDesc) LogDebug("  returns Refresh rate = %f\n", 
 			(float) pDesc->BufferDesc.RefreshRate.Numerator / (float) pDesc->BufferDesc.RefreshRate.Denominator);
 	}
+
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
 }
@@ -1704,17 +2068,29 @@ STDMETHODIMP HackerDXGISwapChain::ResizeBuffers(THIS_
             /* [in] */ UINT SwapChainFlags)
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
+
+	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+	{
+		G->mResolutionInfo.width = Width;
+		G->mResolutionInfo.height = Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
+	// We are specifically modifying the value passed to the call, but saving the desired
+	// resolution before this.
+	if (G->gForceStereo == 2)
+	{
+		Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", Width);
+	}
+
 	HRESULT hr = mOrigSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-	if (SUCCEEDED(hr)) {
+	if (SUCCEEDED(hr)) 
+	{
 		mOverlay->Resize(Width, Height);
-
-		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-			G->mResolutionInfo.width = Width;
-			G->mResolutionInfo.height = Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
-				G->mResolutionInfo.width, G->mResolutionInfo.height);
-		}
 	}
 
 	LogInfo("  returns result = %x\n", hr); 
@@ -1726,6 +2102,14 @@ STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
             _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
 	LogInfo("HackerDXGISwapChain::ResizeTarget(%s@%p) called \n", type_name(this), this);
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
+	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
+	{
+		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", pNewTargetParameters->Width);
+	}
+	
 	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
@@ -1744,8 +2128,20 @@ STDMETHODIMP HackerDXGISwapChain::GetContainingOutput(THIS_
 	//	*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
 	//}
 
+	// For Dishonored2, this output was not being wrapped, just logged.  Adding this
+	// wrap to close a possible object leak.
 	HRESULT hr = mOrigSwapChain->GetContainingOutput(ppOutput);
-	LogDebug("  returns result = %x, handle = %p \n", hr, *ppOutput);
+	if (SUCCEEDED(hr) && ppOutput)
+	{
+		HackerDXGIOutput *outputWrap = new HackerDXGIOutput(*ppOutput);
+
+		LogInfo("  created HackerDXGIOutput wrapper = %p of %p \n", outputWrap, *ppOutput);
+
+		// Return the wrapped version which the game will use for follow on calls.
+		*ppOutput = reinterpret_cast<IDXGIOutput*>(outputWrap);
+	}
+
+	LogInfo("  returns result = %#x \n", hr);
 	return hr;
 }
         
@@ -1769,6 +2165,296 @@ STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
 	return hr;
 }
 
+// -----------------------------------------------------------------------------
+
+// HackerUpscalingDXGISwapChain, to provide post-process upscaling to arbitrary
+// resolutions.  Particularly good for 4K passive 3D.
+
+HackerUpscalingDXGISwapChain::~HackerUpscalingDXGISwapChain()
+{
+	if (mFakeSwapChain)
+		mFakeSwapChain->Release();
+	if (mFakeBackBuffer)
+		mFakeBackBuffer->Release();
+}
+
+
+// CreateRenderTarget can throw 3DmigotoException
+
+void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory)
+{
+	HRESULT hr;
+
+	switch (G->UPSCALE_MODE)
+	{
+	case 0:
+		{
+			// TODO: multisampled swap chain
+			// TODO: multiple buffers within one spaw chain
+			// ==> in this case upscale_mode = 1 should be used at the moment
+			D3D11_TEXTURE2D_DESC fake_buffer_desc;
+			std::memset(&fake_buffer_desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
+			fake_buffer_desc.ArraySize = 1;
+			fake_buffer_desc.MipLevels = 1;
+			fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+			fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+			fake_buffer_desc.SampleDesc.Count = 1;
+			fake_buffer_desc.Format = fake_swap_chain_desc->BufferDesc.Format;
+			fake_buffer_desc.MiscFlags = 0;
+			fake_buffer_desc.Width = fake_swap_chain_desc->BufferDesc.Width;
+			fake_buffer_desc.Height = fake_swap_chain_desc->BufferDesc.Height;
+			fake_buffer_desc.CPUAccessFlags = 0;
+
+			hr = mHackerDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+		}
+		break;
+	case 1:
+		{
+			const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc)->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // fake swap chain should have no influence on window
+			hr = factory->CreateSwapChain(mHackerDevice->GetOrigDevice(), const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc), &mFakeSwapChain);
+			const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc)->Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // restore old state in case fall back is required
+		}
+		break;
+	default:
+		throw Exception3DMigoto("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed ==> provided upscaling mode is not valid!\n");
+	}
+
+	LogInfo("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(): result %d \n", hr);
+
+	if (FAILED(hr))
+	{
+		throw Exception3DMigoto("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed!\n");
+	}
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::GetBuffer(THIS_
+	/* [in] */ UINT Buffer,
+	/* [annotation][in] */
+	_In_  REFIID riid,
+	/* [annotation][out][in] */
+	_Out_  void **ppSurface)
+{
+	LogDebug("HackerUpscalingDXGISwapChain::GetBuffer(%s@%p) called with IID: %s \n", type_name(this), this, NameFromIID(riid).c_str());
+
+	HRESULT hr = S_OK;
+
+	// if upscaling is on give the game fake back buffer
+	if (mFakeBackBuffer)
+		*ppSurface = mFakeBackBuffer;
+	else if (mFakeSwapChain)
+		hr = mFakeSwapChain->GetBuffer(Buffer, riid, ppSurface);
+	else
+		assert(hr); // should never be triggered (class hierarchy)
+
+	LogDebug("  returns %x \n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::SetFullscreenState(THIS_
+	/* [in] */ BOOL Fullscreen,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pTarget)
+{
+	LogInfo("HackerUpscalingDXGISwapChain::SetFullscreenState(%s@%p) called with\n", type_name(this), this);
+	LogInfo("  Fullscreen = %d\n", Fullscreen);
+	LogInfo("  Target = %p\n", pTarget);
+
+	HRESULT hr;
+
+	BOOL fullscreen_state = FALSE;
+	IDXGIOutput *target = nullptr;
+	mOrigSwapChain->GetFullscreenState(&fullscreen_state, &target);
+
+	if (target)
+		target->Release();
+
+	// dont call setfullscreenstate again to avoid starting mode switching and flooding winproc with unnecessary messages
+	// can disable fullscreen mode somehow
+	if (fullscreen_state && Fullscreen)
+	{
+		hr = S_OK;
+	}
+	else
+	{
+		if (G->SCREEN_UPSCALING == 2)
+		{
+			hr = mOrigSwapChain->SetFullscreenState(TRUE, pTarget); // Witcher seems to require forcing the fullscreen
+		}
+		else
+		{
+			hr = mOrigSwapChain->SetFullscreenState(Fullscreen, pTarget);
+		}
+	}
+	
+	LogInfo("  returns %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::GetDesc(THIS_
+	/* [annotation][out] */
+	_Out_  DXGI_SWAP_CHAIN_DESC *pDesc)
+{
+	LogDebug("HackerUpscalingDXGISwapChain::GetDesc(%s@%p) called \n", type_name(this), this);
+
+	HRESULT hr = mOrigSwapChain->GetDesc(pDesc);
+
+	if (hr == S_OK)
+	{
+		if (pDesc)
+		{
+			//TODO: not sure whether the upscaled resolution or game resolution should be returned
+			// all tested games did not use this function only migoto does
+			// I let them be the game resolution at the moment
+			if (mFakeBackBuffer)
+			{
+				D3D11_TEXTURE2D_DESC fd;
+				mFakeBackBuffer->GetDesc(&fd);
+				pDesc->BufferDesc.Width = fd.Width;
+				pDesc->BufferDesc.Height = fd.Height;
+				LogDebug("->Using fake SwapChain Sizes.\n");
+			}
+
+			if (mFakeSwapChain)
+			{
+				hr = mFakeSwapChain->GetDesc(pDesc);
+			}
+		}
+
+		if (pDesc) LogDebug("  returns Windowed = %d\n", pDesc->Windowed);
+		if (pDesc) LogDebug("  returns Width = %d\n", pDesc->BufferDesc.Width);
+		if (pDesc) LogDebug("  returns Height = %d\n", pDesc->BufferDesc.Height);
+		if (pDesc) LogDebug("  returns Refresh rate = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+	}
+	LogDebug("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
+	/* [in] */ UINT BufferCount,
+	/* [in] */ UINT Width,
+	/* [in] */ UINT Height,
+	/* [in] */ DXGI_FORMAT NewFormat,
+	/* [in] */ UINT SwapChainFlags)
+{
+	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
+
+	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+	{
+		G->mResolutionInfo.width = Width;
+		G->mResolutionInfo.height = Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
+	// We are specifically modifying the value passed to the call, but saving the desired
+	// resolution before this.
+	if (G->gForceStereo == 2)
+	{
+		Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", Width);
+	}
+
+	HRESULT hr;
+
+	if (mFakeBackBuffer) // UPSCALE_MODE 0
+	{
+		// TODO: need to consider the new code (G->gForceStereo == 2)
+		// would my stuff work this way? i guess yes. What is with the games that are not calling resize buffer
+		// just try to recreate texture with new game resolution
+		// should be possible without any issues (texture just like the swap chain should not be used at this time point)
+
+		D3D11_TEXTURE2D_DESC fd;
+		mFakeBackBuffer->GetDesc(&fd);
+
+		if (!(fd.Width == Width && fd.Height == Height))
+		{
+			mFakeBackBuffer->Release();
+
+			fd.Width = Width;
+			fd.Height = Height;
+			fd.Format = NewFormat;
+			// just recreate texture with new width and height
+			hr = mHackerDevice->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
+		}
+		else  // nothing to resize
+			hr = S_OK;
+	}
+	else if (mFakeSwapChain) // UPSCALE_MODE 1
+	{
+		// the last parameter have to be zero to avoid the influence of the faked swap chain on the resize target function 
+		hr = mFakeSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, 0);
+	}
+	else
+	{
+		assert(false); // should never be triggered (class hierarchy)
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		mOverlay->Resize(Width, Height);
+	}
+
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
+
+STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeTarget(THIS_
+	/* [annotation][in] */
+	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
+{
+	LogInfo("HackerUpscalingDXGISwapChain::ResizeTarget(%s@%p) called \n", type_name(this), this);
+
+	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
+	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
+	{
+		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
+		LogInfo("-> forced 2x width for Direct Mode: %d \n", pNewTargetParameters->Width);
+	}
+
+	/*
+		TODO: what about 3dv direct mode? why the resize target need to use double width?
+		this would resize target window and have some other drawbacks, but again
+		im not very familiar with directx 11 maybe it will cause no problems:
+		Anyway need to consider new code for the upscaling later
+	*/
+
+	// Some games like Witcher seems to drop fullscreen everytime the resizetarget is called (original one)
+	// Some other games seems to require the function 
+	// I did it the way the faked texture mode (upscale_mode == 1) dont call resize target
+	// the other mode does
+
+	HRESULT hr;
+
+	if (G->SCREEN_UPSCALING == 2)
+	{
+		DEVMODE dmScreenSettings;
+		memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
+		dmScreenSettings.dmSize = sizeof(dmScreenSettings);
+		dmScreenSettings.dmPelsWidth = (unsigned long)mWidth;
+		dmScreenSettings.dmPelsHeight = (unsigned long)mHeight;
+		dmScreenSettings.dmBitsPerPel = 32;
+		dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+		// Change the display settings to full screen.
+		LONG displ_chainge_res = ChangeDisplaySettingsEx(NULL, &dmScreenSettings, nullptr, CDS_FULLSCREEN, 0);
+		hr = displ_chainge_res == 0 ? S_OK : DXGI_ERROR_INVALID_CALL;
+	}
+	else if (G->SCREEN_UPSCALING == 1)
+	{
+		DXGI_MODE_DESC md = *pNewTargetParameters;
+
+		// force upscaled resolution
+		md.Width = mWidth;
+		md.Height = mHeight;
+
+		hr = mOrigSwapChain->ResizeTarget(&md);
+	}
+
+	LogInfo("  returns result = %x\n", hr);
+	return hr;
+}
 
 
 // -----------------------------------------------------------------------------

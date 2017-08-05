@@ -2,10 +2,13 @@
 
 #include "Globals.h"
 #include "D3D11Wrapper.h"
+#include "IniHandler.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <strsafe.h>
+
+PresetOverrideMap presetOverrides;
 
 OverrideTransition CurrentTransition;
 OverrideGlobalSave OverrideSave;
@@ -40,56 +43,56 @@ Override::Override()
 	active = false;
 }
 
-void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
+void Override::ParseIniSection(LPCWSTR section)
 {
 	wchar_t buf[MAX_PATH], param_name[8];
 	int i;
 
-	if (GetPrivateProfileString(section, L"separation", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"separation", 0, buf, MAX_PATH)) {
 		swscanf_s(buf, L"%f", &mOverrideSeparation);
 		LogInfo("  separation=%#.2f\n", mOverrideSeparation);
 	}
 
-	if (GetPrivateProfileString(section, L"convergence", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"convergence", 0, buf, MAX_PATH)) {
 		swscanf_s(buf, L"%f", &mOverrideConvergence);
 		LogInfo("  convergence=%#.2f\n", mOverrideConvergence);
 	}
 
 	for (i = 0; i < INI_PARAMS_SIZE; i++) {
 		StringCchPrintf(param_name, 8, L"x%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].x);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].x);
 		}
 
 		StringCchPrintf(param_name, 8, L"y%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].y);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].y);
 		}
 
 		StringCchPrintf(param_name, 8, L"z%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].z);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].z);
 		}
 
 		StringCchPrintf(param_name, 8, L"w%.0i", i);
-		if (GetPrivateProfileString(section, param_name, 0, buf, MAX_PATH, ini)) {
+		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
 			swscanf_s(buf, L"%f", &mOverrideParams[i].w);
 			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].w);
 		}
 	}
 
-	transition = GetPrivateProfileInt(section, L"transition", 0, ini);
+	transition = GetIniInt(section, L"transition", 0, NULL);
 	if (transition)
 		LogInfo("  transition=%ims\n", transition);
 
-	release_transition = GetPrivateProfileInt(section, L"release_transition", 0, ini);
+	release_transition = GetIniInt(section, L"release_transition", 0, NULL);
 	if (release_transition)
 		LogInfo("  release_transition=%ims\n", release_transition);
 
-	if (GetPrivateProfileString(section, L"transition_type", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"transition_type", 0, buf, MAX_PATH)) {
 		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
@@ -100,7 +103,7 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		}
 	}
 
-	if (GetPrivateProfileString(section, L"release_transition_type", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"release_transition_type", 0, buf, MAX_PATH)) {
 		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (release_transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
@@ -111,7 +114,7 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		}
 	}
 
-	if (GetPrivateProfileString(section, L"condition", 0, buf, MAX_PATH, ini)) {
+	if (GetIniString(section, L"condition", 0, buf, MAX_PATH)) {
 		// For now these conditions are just an IniParam being
 		// non-zero. In the future we could implement more complicated
 		// conditionals, perhaps even all the way up to a full logic
@@ -242,7 +245,7 @@ struct KeyOverrideCycleParam
 	}
 };
 
-void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
+void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 {
 	struct KeyOverrideCycleParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
 	struct KeyOverrideCycleParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
@@ -261,21 +264,21 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 
 	for (j = 0; j < INI_PARAMS_SIZE; j++) {
 		StringCchPrintf(buf, 8, L"x%.0i", j);
-		GetPrivateProfileString(section, buf, 0, x[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, x[j].buf, MAX_PATH);
 		StringCchPrintf(buf, 8, L"y%.0i", j);
-		GetPrivateProfileString(section, buf, 0, y[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, y[j].buf, MAX_PATH);
 		StringCchPrintf(buf, 8, L"z%.0i", j);
-		GetPrivateProfileString(section, buf, 0, z[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, z[j].buf, MAX_PATH);
 		StringCchPrintf(buf, 8, L"w%.0i", j);
-		GetPrivateProfileString(section, buf, 0, w[j].buf, MAX_PATH, ini);
+		GetIniString(section, buf, 0, w[j].buf, MAX_PATH);
 	}
-	GetPrivateProfileString(section, L"separation", 0, separation.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"convergence", 0, convergence.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"transition", 0, transition.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"release_transition", 0, release_transition.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"transition_type", 0, transition_type.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH, ini);
-	GetPrivateProfileString(section, L"condition", 0, condition.buf, MAX_PATH, ini);
+	GetIniString(section, L"separation", 0, separation.buf, MAX_PATH);
+	GetIniString(section, L"convergence", 0, convergence.buf, MAX_PATH);
+	GetIniString(section, L"transition", 0, transition.buf, MAX_PATH);
+	GetIniString(section, L"release_transition", 0, release_transition.buf, MAX_PATH);
+	GetIniString(section, L"transition_type", 0, transition_type.buf, MAX_PATH);
+	GetIniString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH);
+	GetIniString(section, L"condition", 0, condition.buf, MAX_PATH);
 
 	for (i = 1; not_done; i++) {
 		not_done = false;
@@ -450,6 +453,64 @@ void KeyOverride::UpEvent(HackerDevice *device)
 	}
 }
 
+void PresetOverride::Activate(HackerDevice *device, PresetOverride *prev)
+{
+	NvAPI_Status err;
+	int i;
+
+	if (activated)
+		return;
+
+	if (prev == NULL) {
+		// Store current values for deactivation
+		err = NvAPI_Stereo_GetSeparation(device->mStereoHandle, &mUserSeparation);
+		if (err != NVAPI_OK)
+			LogDebug("Stereo_GetSeparation failed: %i\n", err);
+
+		err = NvAPI_Stereo_GetConvergence(device->mStereoHandle, &mUserConvergence);
+		if (err != NVAPI_OK)
+			LogDebug("Stereo_GetConvergence failed: %i\n", err);
+
+		for (i = 0; i < INI_PARAMS_SIZE; i++) {
+			mSavedParams[i].x = CurrentTransition.x[i].target;
+			mSavedParams[i].y = CurrentTransition.y[i].target;
+			mSavedParams[i].z = CurrentTransition.z[i].target;
+			mSavedParams[i].w = CurrentTransition.w[i].target;
+		}
+
+	} else {
+		// Store values from the last activated preset which holds the real original data
+		mUserSeparation = prev->mUserSeparation;
+		mUserConvergence = prev->mUserConvergence;
+
+		for (i = 0; i < INI_PARAMS_SIZE; i++) {
+			mSavedParams[i].x = prev->mSavedParams[i].x;
+			mSavedParams[i].y = prev->mSavedParams[i].y;
+			mSavedParams[i].z = prev->mSavedParams[i].z;
+			mSavedParams[i].w = prev->mSavedParams[i].w;
+		}
+	}
+
+	Override::Activate(device);
+
+	activated = true;
+}
+
+void PresetOverride::Deactivate(HackerDevice *device)
+{
+	if (!activated)
+		return;
+
+	Override::Deactivate(device);
+
+	activated = false;
+}
+
+bool PresetOverride::IsActivated()
+{
+	return activated;
+}
+
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 		char *name, float current, float val, ULONGLONG now, int time,
 		TransitionType transition_type)
@@ -511,6 +572,35 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 		}
 	}
 	LogInfo("\n");
+}
+
+void OverrideTransition::UpdatePresets(HackerDevice *wrapper)
+{
+	PresetOverrideMap::iterator i;
+	PresetOverride *prev = NULL;
+	PresetOverride *preset;
+
+	// Deactivate previously activated but not current preset
+	for (i = presetOverrides.begin(); i != presetOverrides.end(); i++) {
+		if (active_preset.empty() || i->first != active_preset) {
+			preset = &i->second;
+			if (preset->IsActivated()) {
+				prev = preset;
+				preset->Deactivate(wrapper);
+			}
+		}
+	}
+
+	// Activate current preset if any
+	if (!active_preset.empty()) {
+		preset = &presetOverrides[active_preset];
+		preset->Activate(wrapper, prev);
+	}
+
+	// If next frame activates any preset the active_present will be set again.
+	// Otherwise active_preset remains empty until next call, in which case we
+	// deactivate the current active preset.
+	active_preset.clear();
 }
 
 static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONGLONG now)

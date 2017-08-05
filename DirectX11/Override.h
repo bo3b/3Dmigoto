@@ -37,7 +37,7 @@ static EnumName_t<wchar_t *, TransitionType> TransitionTypeNames[] = {
 class OverrideBase
 {
 public:
-	virtual void ParseIniSection(LPCWSTR section, LPCWSTR ini) = 0;
+	virtual void ParseIniSection(LPCWSTR section) = 0;
 };
 
 class Override : public virtual OverrideBase
@@ -80,7 +80,7 @@ public:
 		memcpy(&mOverrideParams, params, sizeof(DirectX::XMFLOAT4[INI_PARAMS_SIZE]));
 	}
 
-	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
+	void ParseIniSection(LPCWSTR section) override;
 
 	void Activate(HackerDevice *device);
 	void Deactivate(HackerDevice *device);
@@ -131,9 +131,40 @@ public:
 		current(0)
 	{}
 
-	void ParseIniSection(LPCWSTR section, LPCWSTR ini) override;
+	void ParseIniSection(LPCWSTR section) override;
 	void DownEvent(HackerDevice *device);
 };
+
+class PresetOverride : public Override
+{
+private:
+	bool activated;
+public:
+	PresetOverride() :
+		Override(),
+		activated(false)
+	{}
+	PresetOverride(DirectX::XMFLOAT4 *params,
+			float separation, float convergence,
+			int transition, int release_transition,
+			TransitionType transition_type,
+			TransitionType release_transition_type,
+			bool is_conditional, int condition_param_idx,
+			float DirectX::XMFLOAT4::*condition_param_component) :
+		Override(params, separation, convergence, transition,
+				release_transition, transition_type,
+				release_transition_type, is_conditional,
+				condition_param_idx,
+				condition_param_component),
+		activated(false)
+	{}
+
+	void Activate(HackerDevice *device, PresetOverride *prev);
+	void Deactivate(HackerDevice *device);
+	bool IsActivated();
+};
+typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
+extern PresetOverrideMap presetOverrides;
 
 struct OverrideTransitionParam
 {
@@ -158,11 +189,13 @@ public:
 	OverrideTransitionParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
 	OverrideTransitionParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
 	OverrideTransitionParam separation, convergence;
+	std::wstring active_preset;
 
 	void ScheduleTransition(HackerDevice *wrapper,
 			float target_separation, float target_convergence,
 			DirectX::XMFLOAT4 *targets,
 			int time, TransitionType transition_type);
+	void UpdatePresets(HackerDevice *wrapper);
 	void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
 	void Stop();
 };
