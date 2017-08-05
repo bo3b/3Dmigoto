@@ -469,7 +469,8 @@ CustomShader::~CustomShader()
 // get it's own function for now - TODO: Refactor out the common code
 bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 {
-	wchar_t path[MAX_PATH];
+	wchar_t wpath[MAX_PATH];
+	char apath[MAX_PATH];
 	HANDLE f;
 	DWORD srcDataSize, readSize;
 	vector<char> srcData;
@@ -477,7 +478,6 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	char shaderModel[7];
 	ID3DBlob **ppBytecode = NULL;
 	ID3DBlob *pErrorMsgs = NULL;
-	string name(wname->begin(), wname->end());
 
 	LogInfo("  %cs=%S\n", type, filename);
 
@@ -515,16 +515,16 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	if (!_wcsicmp(filename, L"null"))
 		return false;
 
-	if (!GetModuleFileName(0, path, MAX_PATH)) {
+	if (!GetModuleFileName(0, wpath, MAX_PATH)) {
 		LogInfo("GetModuleFileName failed\n");
 		goto err;
 	}
-	wcsrchr(path, L'\\')[1] = 0;
-	wcscat(path, filename);
+	wcsrchr(wpath, L'\\')[1] = 0;
+	wcscat(wpath, filename);
 
-	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	f = CreateFile(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
-		LogInfo("    Shader not found: %S\n", path);
+		LogInfo("    Shader not found: %S\n", wpath);
 		goto err;
 	}
 
@@ -546,7 +546,12 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	// for the type of shader, and maybe allow more defines to be specified
 	// in the ini
 
-	hr = D3DCompile(srcData.data(), srcDataSize, name.c_str(), 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+	// Pass the real filename and use the standard include handler so that
+	// #include will work with a relative path from the shader itself.
+	// Later we could add a custom include handler to track dependencies so
+	// that we can make reloading work better when using includes:
+	wcstombs(apath, wpath, MAX_PATH);
+	hr = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
 
 	if (pErrorMsgs && LogFile) { // Check LogFile so the fwrite doesn't crash
