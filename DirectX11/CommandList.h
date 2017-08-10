@@ -57,7 +57,7 @@ typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
 class CheckTextureOverrideCommand : public CommandListCommand {
 public:
-	wstring ini_val;
+	wstring ini_line;
 	// For processing command lists in TextureOverride sections:
 	wchar_t shader_type;
 	unsigned texture_slot;
@@ -82,7 +82,7 @@ extern ExplicitCommandListSections explicitCommandListSections;
 
 class RunExplicitCommandList : public CommandListCommand {
 public:
-	wstring ini_val;
+	wstring ini_line;
 	ExplicitCommandListSection *command_list_section;
 
 	RunExplicitCommandList() :
@@ -143,7 +143,7 @@ extern CustomShaders customShaders;
 
 class RunCustomShaderCommand : public CommandListCommand {
 public:
-	wstring ini_val;
+	wstring ini_line;
 	CustomShader *custom_shader;
 
 	RunCustomShaderCommand() :
@@ -169,6 +169,7 @@ enum class DrawCommandType {
 
 class DrawCommand : public CommandListCommand {
 public:
+	wstring ini_section;
 	DrawCommandType type;
 
 	UINT args[5];
@@ -218,7 +219,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 };
 class ParamOverride : public CommandListCommand {
 public:
-	wstring ini_key, ini_val;
+	wstring ini_line;
 
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
@@ -536,10 +537,11 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		CommandList *command_list, DrawCallInfo *call_info,
 		bool post);
 
-bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
+bool ParseCommandListGeneralCommands(const wchar_t *section,
+		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list, CommandList *post_command_list);
-bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
-		CommandList *command_list);
+bool ParseCommandListIniParamOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list);

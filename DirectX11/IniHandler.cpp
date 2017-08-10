@@ -789,10 +789,10 @@ static void ParseCommandList(const wchar_t *id,
 			}
 		}
 
-		if (ParseCommandListGeneralCommands(key_ptr, val, explicit_command_list, pre_command_list, post_command_list))
+		if (ParseCommandListGeneralCommands(id, key_ptr, val, explicit_command_list, pre_command_list, post_command_list))
 			goto log_continue;
 
-		if (ParseCommandListIniParamOverride(key_ptr, val, command_list))
+		if (ParseCommandListIniParamOverride(id, key_ptr, val, command_list))
 			goto log_continue;
 
 		if (ParseCommandListResourceCopyDirective(id, key_ptr, val, command_list))

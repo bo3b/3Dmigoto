@@ -100,8 +100,11 @@ static void AddCommandToList(CommandListCommand *command,
 	}
 }
 
-static bool ParseCheckTextureOverride(wstring *val, CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list)
+static bool ParseCheckTextureOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
 {
 	int ret, len1;
 
@@ -114,7 +117,7 @@ static bool ParseCheckTextureOverride(wstring *val, CommandList *explicit_comman
 			operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		switch(operation->shader_type) {
 			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-				operation->ini_val = *val;
+				operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 				AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 				return true;
 		}
@@ -124,8 +127,11 @@ static bool ParseCheckTextureOverride(wstring *val, CommandList *explicit_comman
 	return false;
 }
 
-static bool ParseRunShader(wstring *val, CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list)
+static bool ParseRunShader(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
 {
 	RunCustomShaderCommand *operation = new RunCustomShaderCommand();
 	CustomShaders::iterator shader;
@@ -139,7 +145,7 @@ static bool ParseRunShader(wstring *val, CommandList *explicit_command_list,
 	if (shader == customShaders.end())
 		goto bail;
 
-	operation->ini_val = *val;
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->custom_shader = &shader->second;
 	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 	return true;
@@ -149,8 +155,11 @@ bail:
 	return false;
 }
 
-static bool ParseRunExplicitCommandList(wstring *val, CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list)
+static bool ParseRunExplicitCommandList(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
 {
 	RunExplicitCommandList *operation = new RunExplicitCommandList();
 	ExplicitCommandListSections::iterator shader;
@@ -164,7 +173,7 @@ static bool ParseRunExplicitCommandList(wstring *val, CommandList *explicit_comm
 	if (shader == explicitCommandListSections.end())
 		goto bail;
 
-	operation->ini_val = *val;
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->command_list_section = &shader->second;
 	// This function is nearly identical to ParseRunShader, but in case we
 	// later refactor these together note that here we do not specify a
@@ -178,9 +187,11 @@ bail:
 	return false;
 }
 
-static bool ParseDrawCommand(const wchar_t *key, wstring *val,
+static bool ParseDrawCommand(const wchar_t *section,
+		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list)
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
 {
 	DrawCommand *operation = new DrawCommand();
 	int nargs, end = 0;
@@ -236,6 +247,7 @@ static bool ParseDrawCommand(const wchar_t *key, wstring *val,
 	if (end != val->length())
 		goto bail;
 
+	operation->ini_section = section;
 	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 	return true;
 
@@ -244,22 +256,23 @@ bail:
 	return false;
 }
 
-bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
+bool ParseCommandListGeneralCommands(const wchar_t *section,
+		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list, CommandList *post_command_list)
 {
 	if (!wcscmp(key, L"checktextureoverride"))
-		return ParseCheckTextureOverride(val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"run")) {
 		if (!wcsncmp(val->c_str(), L"customshader", 12))
-			return ParseRunShader(val, explicit_command_list, pre_command_list, post_command_list);
+			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 		if (!wcsncmp(val->c_str(), L"commandlist", 11))
-			return ParseRunExplicitCommandList(val, explicit_command_list, pre_command_list, post_command_list);
+			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 	}
 
-	return ParseDrawCommand(key, val, explicit_command_list, pre_command_list, post_command_list);
+	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
 static TextureOverride* FindTextureOverrideBySlot(HackerContext
@@ -330,7 +343,7 @@ void CheckTextureOverrideCommand::run(HackerDevice *mHackerDevice, HackerContext
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
 {
-	mHackerContext->FrameAnalysisLog("3DMigoto checktextureoverride = %S", ini_val.c_str());
+	mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
 
 	TextureOverride *override = FindTextureOverrideBySlot(mHackerContext,
 			mOrigContext, shader_type, texture_slot);
@@ -355,31 +368,31 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 
 	switch (type) {
 		case DrawCommandType::DRAW:
-			mHackerContext->FrameAnalysisLog("3DMigoto Draw(%u, %u)\n", args[0], args[1]);
+			mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
 			mOrigContext->Draw(args[0], args[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
-			mHackerContext->FrameAnalysisLog("3DMigoto DrawAuto()\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawAuto()\n", ini_section.c_str());
 			mOrigContext->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
-			mHackerContext->FrameAnalysisLog("3DMigoto DrawIndexed(%u, %u, %i)\n", args[0], args[1], (INT)args[2]);
+			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
 			mOrigContext->DrawIndexed(args[0], args[1], (INT)args[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
-			mHackerContext->FrameAnalysisLog("3DMigoto DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", args[0], args[1], args[2], (INT)args[3], args[4]);
+			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
 			mOrigContext->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DRAW_INSTANCED:
-			mHackerContext->FrameAnalysisLog("3DMigoto DrawInstanced(%u, %u, %u, %u)\n", args[0], args[1], args[2], args[3]);
+			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
 			mOrigContext->DrawInstanced(args[0], args[1], args[2], args[3]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DISPATCH:
-			mHackerContext->FrameAnalysisLog("3DMigoto Dispatch(%u, %u, %u)\n", args[0], args[1], args[2]);
+			mHackerContext->FrameAnalysisLog("3DMigoto [%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
 			mOrigContext->Dispatch(args[0], args[1], args[2]);
 			break;
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
@@ -388,17 +401,17 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 			DrawCallInfo *info = state->call_info;
 			if (info->InstanceCount) {
 				if (info->IndexCount) {
-					mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 					mOrigContext->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 				} else {
-					mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 					mOrigContext->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 				}
 			} else if (info->IndexCount) {
-				mHackerContext->FrameAnalysisLog("3DMigoto Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", info->IndexCount, info->FirstIndex, info->FirstVertex);
+				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
 				mOrigContext->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
 			} else if (info->VertexCount) {
-				mHackerContext->FrameAnalysisLog("3DMigoto Draw from_caller -> Draw(%u, %u)\n", info->VertexCount, info->FirstVertex);
+				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
 				mOrigContext->Draw(info->VertexCount, info->FirstVertex);
 			}
 			// TODO: Save enough state to know if it's DrawAuto or
@@ -712,7 +725,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_sampler_states[i] = nullptr;
 	}
 	
-	mHackerContext->FrameAnalysisLog("3DMigoto run %S\n", ini_val.c_str());
+	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (custom_shader->max_executions_per_frame) {
 		if (custom_shader->frame_no != G->frame_no) {
@@ -853,7 +866,7 @@ void RunExplicitCommandList::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
 {
-	mHackerContext->FrameAnalysisLog("3DMigoto run = %S", ini_val.c_str());
+	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (state->post)
 		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &command_list_section->post_command_list, state);
@@ -982,7 +995,7 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 			return;
 	}
 
-	mHackerContext->FrameAnalysisLog("3DMigoto %S = %S (%f)\n", ini_key.c_str(), ini_val.c_str(), *dest);
+	mHackerContext->FrameAnalysisLog("3DMigoto %S (%f)\n", ini_line.c_str(), *dest);
 
 	state->update_params |= (*dest != orig);
 }
@@ -992,8 +1005,8 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 // y2 = ps-t0 (use parameter for texture filtering based on texture slot of shader type)
 // z3 = rt_width / rt_height (set parameter to render target width/height)
 // w4 = res_width / res_height (set parameter to resolution width/height)
-bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
-		CommandList *command_list)
+bool ParseCommandListIniParamOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list)
 {
 	int ret, len1;
 	ParamOverride *param = new ParamOverride();
@@ -1028,8 +1041,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		goto bail;
 
 success:
-	param->ini_key = key;
-	param->ini_val = *val;
+	param->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	command_list->push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
 bail:
