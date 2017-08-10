@@ -510,7 +510,7 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 
 class ResourceCopyOperation : public CommandListCommand {
 public:
-	wstring ini_key, ini_val;
+	wstring ini_line;
 
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
@@ -541,5 +541,5 @@ bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
 		CommandList *pre_command_list, CommandList *post_command_list);
 bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
 		CommandList *command_list);
-bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
-		CommandList *command_list);
+bool ParseCommandListResourceCopyDirective(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list);

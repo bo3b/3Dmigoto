@@ -795,7 +795,7 @@ static void ParseCommandList(const wchar_t *id,
 		if (ParseCommandListIniParamOverride(key_ptr, val, command_list))
 			goto log_continue;
 
-		if (ParseCommandListResourceCopyDirective(key_ptr, val, command_list))
+		if (ParseCommandListResourceCopyDirective(id, key_ptr, val, command_list))
 			goto log_continue;
 
 		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
