@@ -882,7 +882,7 @@ static void ParseShaderOverrideSections(IniSectionsSorted &sections)
 		override->convergence = GetIniFloat(id, L"Convergence", FLT_MAX, NULL);
 
 		if (GetIniString(id, L"Handling", 0, setting, MAX_PATH)) {
-			if (!wcscmp(setting, L"skip")) {
+			if (!_wcsicmp(setting, L"skip")) {
 				override->skip = true;
 				LogInfo("  Handling=skip\n");
 			}
@@ -1144,7 +1144,7 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 		override = true;
 
 		// Special value to disable blending:
-		if (!wcscmp(setting, L"disable")) {
+		if (!_wcsicmp(setting, L"disable")) {
 			LogInfo("  %S=disable\n", key);
 			desc->BlendEnable = false;
 			return true;
@@ -1951,11 +1951,11 @@ void LoadConfigFile()
 
 	G->marking_mode = MARKING_MODE_SKIP;
 	if (GetIniString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH)) {
-		if (!wcscmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
-		if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
-		if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
-		if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
-		if (!wcscmp(setting, L"pink")) G->marking_mode = MARKING_MODE_PINK;
+		if (!_wcsicmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
+		if (!_wcsicmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
+		if (!_wcsicmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
+		if (!_wcsicmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
+		if (!_wcsicmp(setting, L"pink")) G->marking_mode = MARKING_MODE_PINK;
 		LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
 	}
 
