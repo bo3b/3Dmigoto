@@ -1360,7 +1360,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, D
 		} else if (desc.ByteWidth > size) {
 			void *new_buf = realloc(*buf, desc.ByteWidth);
 			if (!new_buf) {
-				LogInfo("Out of memory enlarging buffer\n");
+				LogInfo("Out of memory enlarging buffer: [%S]\n", name.c_str());
 				return;
 			}
 			*buf = new_buf;
@@ -1372,16 +1372,16 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, D
 
 	hr = mOrigDevice->CreateBuffer(&desc, pInitialData, &buffer);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S resource\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
 		is_null = false;
 		if (override_format != (DXGI_FORMAT)-1)
 			format = override_format;
 	} else {
-		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
 		BeepFailure();
 	}
@@ -1399,14 +1399,14 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice)
 
 	hr = mOrigDevice->CreateTexture1D(&desc, NULL, &tex1d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S resource\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex1d;
 		is_null = false;
 	} else {
-		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
 		BeepFailure();
 	}
@@ -1424,14 +1424,14 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice)
 
 	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &tex2d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S resource\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex2d;
 		is_null = false;
 	} else {
-		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
 		BeepFailure();
 	}
@@ -1449,14 +1449,14 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice)
 
 	hr = mOrigDevice->CreateTexture3D(&desc, NULL, &tex3d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S resource\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type));
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex3d;
 		is_null = false;
 	} else {
-		LogInfo("Failed to substantiate custom %S resource: 0x%x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), hr);
+		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
 		BeepFailure();
 	}

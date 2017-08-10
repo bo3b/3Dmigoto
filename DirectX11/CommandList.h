@@ -338,6 +338,8 @@ static EnumName_t<wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagName
 class CustomResource
 {
 public:
+	wstring name;
+
 	ID3D11Resource *resource;
 	ID3D11View *view;
 	bool is_null;

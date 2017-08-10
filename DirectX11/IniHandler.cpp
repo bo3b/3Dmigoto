@@ -654,6 +654,7 @@ static void ParseResourceSections(IniSectionsSorted &sections)
 		// CustomResource for each one. Use the [] operator so the
 		// default constructor will be used:
 		custom_resource = &customResources[resource_id];
+		custom_resource->name = *i;
 
 		custom_resource->max_copies_per_frame =
 			GetIniInt(i->c_str(), L"max_copies_per_frame", 0, NULL);
