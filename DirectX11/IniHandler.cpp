@@ -1465,30 +1465,36 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 
 	if (GetIniString(section, L"sampler", 0, setting, MAX_PATH))
 	{
-		if (std::wstring(setting) == L"null")
+		if (!_wcsicmp(setting, L"null"))
 			return;
 
-		if (std::wstring(setting) == L"point_filter")
+		if (!_wcsicmp(setting, L"point_filter"))
 		{
 			desc->Filter = D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
 			shader->sampler_override = 1;
+			LogInfo("  sampler=point_filter\n");
 			return;
 		}
 
-		if (std::wstring(setting) == L"linear_filter")
+		if (!_wcsicmp(setting, L"linear_filter"))
 		{
 			desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 			shader->sampler_override = 1;
+			LogInfo("  sampler=linear_filter\n");
 			return;
 		}
 
-		if (std::wstring(setting) == L"anisotropic_filter")
+		if (!_wcsicmp(setting, L"anisotropic_filter"))
 		{
 			desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC;
 			desc->MaxAnisotropy = 16; // TODO: is 16 necessary or maybe it should be provided by the config ini?
 			shader->sampler_override = 1;
+			LogInfo("  sampler=anisotropic_filter\n");
 			return;
 		}
+
+		LogInfo("  WARNING: Unknown sampler \"%S\"\n", setting);
+		BeepFailure2();
 	}
 }
 
