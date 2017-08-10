@@ -136,9 +136,6 @@ struct WStringInsensitiveEquality {
 	}
 };
 
-// std::set is used so this is sorted for iterating over a prefix:
-typedef std::set<wstring, WStringInsensitiveLess> IniSectionsSorted;
-
 // Whereas settings within a section are in the same order they were in the ini
 // file. This will become more important as shader overrides gains more
 // functionality and dependencies between different features form:
@@ -146,22 +143,25 @@ typedef std::vector<std::pair<wstring, wstring>> IniSectionVector;
 
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
-typedef std::unordered_map<wstring, IniSectionMap, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionsMap;
 typedef std::unordered_map<wstring, IniSectionVector, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionVectorsMap;
+typedef std::unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionSet;
 
-IniSectionsMap ini_sections_map;
+// std::map is used so this is sorted for iterating over a prefix:
+typedef std::map<wstring, IniSectionMap, WStringInsensitiveLess> IniSections;
+
+IniSections ini_sections;
 IniSectionVectorsMap ini_section_vectors_map;
 
 // Returns an iterator to the first element in a set that does not begin with
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
 // be used to iterate over all elements in the sections set that begin with a
 // given prefix.
-static IniSectionsSorted::iterator prefix_upper_bound(IniSectionsSorted &sections, wstring &prefix)
+static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
 {
-	IniSectionsSorted::iterator i;
+	IniSections::iterator i;
 
 	for (i = sections.lower_bound(prefix); i != sections.end(); i++) {
-		if (_wcsnicmp(i->c_str(), prefix.c_str(), prefix.length()) > 0)
+		if (_wcsnicmp(i->first.c_str(), prefix.c_str(), prefix.length()) > 0)
 			return i;
 	}
 
@@ -170,7 +170,6 @@ static IniSectionsSorted::iterator prefix_upper_bound(IniSectionsSorted &section
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		bool *warn_duplicates, bool *warn_lines_without_equals,
-		IniSectionsSorted &ini_sections_sorted,
 		IniSectionVector **section_vector)
 {
 	size_t first, last;
@@ -202,8 +201,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// key matches, which would have to be handled elsewhere.  For now,
 	// continue warning about duplicate sections and match the old
 	// behaviour.
-	inserted = ini_sections_map.emplace(*section, IniSectionMap{}).second;
-	ini_sections_sorted.insert(*section); // FIXME: Merge with ini_sections_map
+	inserted = ini_sections.emplace(*section, IniSectionMap{}).second;
 	if (!inserted) {
 		LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
 				section->c_str());
@@ -266,7 +264,7 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// first item with a given key is inserted to match the
 		// behaviour of GetPrivateProfileString for duplicate
 		// keys within a single section:
-		inserted = ini_sections_map.at(*section).emplace(key, val).second;
+		inserted = ini_sections.at(*section).emplace(key, val).second;
 		if (warn_duplicates && !inserted) {
 			LogInfo("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
 					section->c_str(), key.c_str());
@@ -307,7 +305,7 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 //
 // NOTE: If adding any debugging / logging into this routine and expect to see
 // it, make sure you delay calling it until after the log file has been opened!
-static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
+static void ParseIni(const wchar_t *ini)
 {
 	string aline;
 	wstring wline, section, key, val;
@@ -316,7 +314,7 @@ static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
 	bool warn_duplicates = true;
 	bool warn_lines_without_equals = true;
 
-	ini_sections_map.clear();
+	ini_sections.clear();
 	ini_section_vectors_map.clear();
 
 	ifstream f(ini, ios::in, _SH_DENYNO);
@@ -358,7 +356,6 @@ static void ParseIni(IniSectionsSorted &ini_sections_sorted, const wchar_t *ini)
 		if (wline[0] == L'[') {
 			ParseIniSectionLine(&wline, &section, &warn_duplicates,
 					    &warn_lines_without_equals,
-					    ini_sections_sorted,
 					    &section_vector);
 			continue;
 		}
@@ -377,7 +374,7 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 	int rc;
 
 	try {
-		wstring &val = ini_sections_map.at(section).at(key);
+		wstring &val = ini_sections.at(section).at(key);
 		if (wcscpy_s(ret, size, val.c_str())) {
 			// Funky return code of GetPrivateProfileString Not
 			// sure if we depend on this - if we don't I'd like a
@@ -550,20 +547,20 @@ static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 	}
 }
 
-static void RegisterPresetKeyBindings(IniSectionsSorted &sections)
+static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
 	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
 	KeyOverrideBase *preset;
 	int delay, release_delay;
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 
-	lower = sections.lower_bound(wstring(L"Key"));
-	upper = prefix_upper_bound(sections, wstring(L"Key"));
+	lower = ini_sections.lower_bound(wstring(L"Key"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"Key"));
 
 	for (i = lower; i != upper; i++) {
-		const wchar_t *id = i->c_str();
+		const wchar_t *id = i->first.c_str();
 
 		LogInfo("[%S]\n", id);
 
@@ -603,19 +600,19 @@ static void RegisterPresetKeyBindings(IniSectionsSorted &sections)
 	}
 }
 
-static void ParsePresetOverrideSections(IniSectionsSorted &sections)
+static void ParsePresetOverrideSections()
 {
 	wstring preset_id;
 	PresetOverride *preset;
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 
 	presetOverrides.clear();
 
-	lower = sections.lower_bound(wstring(L"Preset"));
-	upper = prefix_upper_bound(sections, wstring(L"Preset"));
+	lower = ini_sections.lower_bound(wstring(L"Preset"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"Preset"));
 
 	for (i = lower; i != upper; i++) {
-		const wchar_t *id = i->c_str();
+		const wchar_t *id = i->first.c_str();
 
 		LogInfo("[%S]\n", id);
 
@@ -630,23 +627,23 @@ static void ParsePresetOverrideSections(IniSectionsSorted &sections)
 	}
 }
 
-static void ParseResourceSections(IniSectionsSorted &sections)
+static void ParseResourceSections()
 {
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 	wstring resource_id;
 	CustomResource *custom_resource;
 	wchar_t setting[MAX_PATH], path[MAX_PATH];
 
 	customResources.clear();
 
-	lower = sections.lower_bound(wstring(L"Resource"));
-	upper = prefix_upper_bound(sections, wstring(L"Resource"));
+	lower = ini_sections.lower_bound(wstring(L"Resource"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"Resource"));
 	for (i = lower; i != upper; i++) {
-		LogInfoW(L"[%s]\n", i->c_str());
+		LogInfoW(L"[%s]\n", i->first.c_str());
 
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
-		resource_id = *i;
+		resource_id = i->first;
 		std::transform(resource_id.begin(), resource_id.end(), resource_id.begin(), ::towlower);
 
 		// Empty Resource sections are valid (think of them as a
@@ -654,12 +651,12 @@ static void ParseResourceSections(IniSectionsSorted &sections)
 		// CustomResource for each one. Use the [] operator so the
 		// default constructor will be used:
 		custom_resource = &customResources[resource_id];
-		custom_resource->name = *i;
+		custom_resource->name = i->first;
 
 		custom_resource->max_copies_per_frame =
-			GetIniInt(i->c_str(), L"max_copies_per_frame", 0, NULL);
+			GetIniInt(i->first.c_str(), L"max_copies_per_frame", 0, NULL);
 
-		if (GetIniString(i->c_str(), L"filename", 0, setting, MAX_PATH)) {
+		if (GetIniString(i->first.c_str(), L"filename", 0, setting, MAX_PATH)) {
 			LogInfoW(L"  filename=%s\n", setting);
 			GetModuleFileName(0, path, MAX_PATH);
 			wcsrchr(path, L'\\')[1] = 0;
@@ -667,7 +664,7 @@ static void ParseResourceSections(IniSectionsSorted &sections)
 			custom_resource->filename = path;
 		}
 
-		if (GetIniString(i->c_str(), L"type", 0, setting, MAX_PATH)) {
+		if (GetIniString(i->first.c_str(), L"type", 0, setting, MAX_PATH)) {
 			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
 				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
 			if (custom_resource->override_type == CustomResourceType::INVALID) {
@@ -678,7 +675,7 @@ static void ParseResourceSections(IniSectionsSorted &sections)
 			}
 		}
 
-		if (GetIniString(i->c_str(), L"mode", 0, setting, MAX_PATH)) {
+		if (GetIniString(i->first.c_str(), L"mode", 0, setting, MAX_PATH)) {
 			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
 				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
 			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
@@ -689,7 +686,7 @@ static void ParseResourceSections(IniSectionsSorted &sections)
 			}
 		}
 
-		if (GetIniString(i->c_str(), L"format", 0, setting, MAX_PATH)) {
+		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
 			custom_resource->override_format = ParseFormatString(setting);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
 				LogInfo("  WARNING: Unknown format \"%S\"\n", setting);
@@ -699,20 +696,20 @@ static void ParseResourceSections(IniSectionsSorted &sections)
 			}
 		}
 
-		custom_resource->override_width = GetIniInt(i->c_str(), L"width", -1, NULL);
-		custom_resource->override_height = GetIniInt(i->c_str(), L"height", -1, NULL);
-		custom_resource->override_depth = GetIniInt(i->c_str(), L"depth", -1, NULL);
-		custom_resource->override_mips = GetIniInt(i->c_str(), L"mips", -1, NULL);
-		custom_resource->override_array = GetIniInt(i->c_str(), L"array", -1, NULL);
-		custom_resource->override_msaa = GetIniInt(i->c_str(), L"msaa", -1, NULL);
-		custom_resource->override_msaa_quality = GetIniInt(i->c_str(), L"msaa_quality", -1, NULL);
-		custom_resource->override_byte_width = GetIniInt(i->c_str(), L"byte_width", -1, NULL);
-		custom_resource->override_stride = GetIniInt(i->c_str(), L"stride", -1, NULL);
+		custom_resource->override_width = GetIniInt(i->first.c_str(), L"width", -1, NULL);
+		custom_resource->override_height = GetIniInt(i->first.c_str(), L"height", -1, NULL);
+		custom_resource->override_depth = GetIniInt(i->first.c_str(), L"depth", -1, NULL);
+		custom_resource->override_mips = GetIniInt(i->first.c_str(), L"mips", -1, NULL);
+		custom_resource->override_array = GetIniInt(i->first.c_str(), L"array", -1, NULL);
+		custom_resource->override_msaa = GetIniInt(i->first.c_str(), L"msaa", -1, NULL);
+		custom_resource->override_msaa_quality = GetIniInt(i->first.c_str(), L"msaa_quality", -1, NULL);
+		custom_resource->override_byte_width = GetIniInt(i->first.c_str(), L"byte_width", -1, NULL);
+		custom_resource->override_stride = GetIniInt(i->first.c_str(), L"stride", -1, NULL);
 
-		custom_resource->width_multiply = GetIniFloat(i->c_str(), L"width_multiply", 1.0f, NULL);
-		custom_resource->height_multiply = GetIniFloat(i->c_str(), L"height_multiply", 1.0f, NULL);
+		custom_resource->width_multiply = GetIniFloat(i->first.c_str(), L"width_multiply", 1.0f, NULL);
+		custom_resource->height_multiply = GetIniFloat(i->first.c_str(), L"height_multiply", 1.0f, NULL);
 
-		if (GetIniString(i->c_str(), L"bind_flags", 0, setting, MAX_PATH)) {
+		if (GetIniString(i->first.c_str(), L"bind_flags", 0, setting, MAX_PATH)) {
 			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
@@ -734,7 +731,7 @@ static void ParseCommandList(const wchar_t *id,
 	wstring *key, *val;
 	const wchar_t *key_ptr;
 	CommandList *command_list, *explicit_command_list;
-	IniSectionsSorted whitelisted_keys;
+	IniSectionSet whitelisted_keys;
 	int i;
 
 	// Safety check to make sure we are keeping the command list section
@@ -843,9 +840,9 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"disable_scissor",
 	NULL
 };
-static void ParseShaderOverrideSections(IniSectionsSorted &sections)
+static void ParseShaderOverrideSections()
 {
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	ShaderOverride *override;
@@ -857,10 +854,10 @@ static void ParseShaderOverrideSections(IniSectionsSorted &sections)
 
 	G->mShaderOverrideMap.clear();
 
-	lower = sections.lower_bound(wstring(L"ShaderOverride"));
-	upper = prefix_upper_bound(sections, wstring(L"ShaderOverride"));
+	lower = ini_sections.lower_bound(wstring(L"ShaderOverride"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"ShaderOverride"));
 	for (i = lower; i != upper; i++) {
-		id = i->c_str();
+		id = i->first.c_str();
 
 		LogInfo("[%S]\n", id);
 
@@ -979,9 +976,9 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"deny_cpu_read",
 	NULL
 };
-static void ParseTextureOverrideSections(IniSectionsSorted &sections)
+static void ParseTextureOverrideSections()
 {
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	TextureOverride *override;
@@ -993,12 +990,12 @@ static void ParseTextureOverrideSections(IniSectionsSorted &sections)
 
 	G->mTextureOverrideMap.clear();
 
-	lower = sections.lower_bound(wstring(L"TextureOverride"));
-	upper = prefix_upper_bound(sections, wstring(L"TextureOverride"));
+	lower = ini_sections.lower_bound(wstring(L"TextureOverride"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"TextureOverride"));
 
 	for (i = lower; i != upper; i++) 
 	{
-		id = i->c_str();
+		id = i->first.c_str();
 
 		LogInfo("[%S]\n", id);
 
@@ -1419,19 +1416,19 @@ wchar_t *CustomShaderIniKeys[] = {
 				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
 	NULL
 };
-static void EnumerateCustomShaderSections(IniSectionsSorted &sections)
+static void EnumerateCustomShaderSections()
 {
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 	wstring shader_id;
 
 	customShaders.clear();
 
-	lower = sections.lower_bound(wstring(L"CustomShader"));
-	upper = prefix_upper_bound(sections, wstring(L"CustomShader"));
+	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
 	for (i = lower; i != upper; i++) {
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
-		shader_id = *i;
+		shader_id = i->first;
 		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
 
 		// Construct a custom shader in the global list:
@@ -1552,19 +1549,19 @@ static void ParseCustomShaderSections()
 // "Explicit" means that this parses command lists sections that are
 // *explicitly* called [CommandList*], as opposed to other sections that are
 // implicitly command lists (such as ShaderOverride, Present, etc).
-static void EnumerateExplicitCommandListSections(IniSectionsSorted &sections)
+static void EnumerateExplicitCommandListSections()
 {
-	IniSectionsSorted::iterator lower, upper, i;
+	IniSections::iterator lower, upper, i;
 	wstring section_id;
 
 	explicitCommandListSections.clear();
 
-	lower = sections.lower_bound(wstring(L"CommandList"));
-	upper = prefix_upper_bound(sections, wstring(L"CommandList"));
+	lower = ini_sections.lower_bound(wstring(L"CommandList"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CommandList"));
 	for (i = lower; i != upper; i++) {
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
-		section_id = *i;
+		section_id = i->first;
 		std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
 		// Construct an explicit command list section in the global list:
@@ -1656,7 +1653,6 @@ void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 	wchar_t setting[MAX_PATH];
-	IniSectionsSorted sections;
 	int i;
 
 	G->gInitialized = true;
@@ -1683,7 +1679,7 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ParseIni(sections, iniFile);
+	ParseIni(iniFile);
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, NULL);
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, NULL);
@@ -1962,10 +1958,10 @@ void LoadConfigFile()
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 
 	RegisterHuntingKeyBindings();
-	RegisterPresetKeyBindings(sections);
+	RegisterPresetKeyBindings();
 
-	ParsePresetOverrideSections(sections);
-	ParseResourceSections(sections);
+	ParsePresetOverrideSections();
+	ParseResourceSections();
 
 	// Splitting the enumeration of these sections out from parsing them as
 	// they can be referenced from other command list sections (via the run
@@ -1977,14 +1973,14 @@ void LoadConfigFile()
 	// special since they can both refer to other sections and be referred
 	// to by other sections, and we don't want the parse order to determine
 	// if the reference will work or not.
-	EnumerateCustomShaderSections(sections);
-	EnumerateExplicitCommandListSections(sections);
+	EnumerateCustomShaderSections();
+	EnumerateExplicitCommandListSections();
 
 	ParseCustomShaderSections();
 	ParseExplicitCommandListSections();
 
-	ParseShaderOverrideSections(sections);
-	ParseTextureOverrideSections(sections);
+	ParseShaderOverrideSections();
+	ParseTextureOverrideSections();
 
 	LogInfo("[Present]\n");
 	G->present_command_list.clear();
@@ -2051,7 +2047,6 @@ void LoadConfigFile()
 void LoadProfileManagerConfig(const wchar_t *exe_path)
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
-	IniSectionsSorted sections;
 
 	G->gInitialized = true;
 
@@ -2074,7 +2069,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ParseIni(sections, iniFile);
+	ParseIni(iniFile);
 
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, NULL);
 
