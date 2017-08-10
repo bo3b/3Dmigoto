@@ -870,10 +870,10 @@ static void ParseShaderOverrideSections(IniSectionsSorted &sections)
 			continue;
 		}
 		swscanf_s(setting, L"%16llx", &hash);
-		LogInfo("  Hash=%16llx\n", hash);
+		LogInfo("  Hash=%016llx\n", hash);
 
 		if (G->mShaderOverrideMap.count(hash)) {
-			LogInfo("  WARNING: Duplicate ShaderOverride hash: %16llx\n", hash);
+			LogInfo("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
 			BeepFailure2();
 		}
 		override = &G->mShaderOverrideMap[hash];
@@ -909,7 +909,7 @@ static void ParseShaderOverrideSections(IniSectionsSorted &sections)
 		// partner's [ShaderOverride] section.
 		if (GetIniString(id, L"partner", 0, setting, MAX_PATH)) {
 			swscanf_s(setting, L"%16llx", &override->partner_hash);
-			LogInfo("  partner=%16llx\n", override->partner_hash);
+			LogInfo("  partner=%016llx\n", override->partner_hash);
 		}
 
 		if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
@@ -928,7 +928,7 @@ static void ParseShaderOverrideSections(IniSectionsSorted &sections)
 		if (GetIniString(id, L"IndexBufferFilter", 0, setting, MAX_PATH))
 		{
 			swscanf_s(setting, L"%16llx", &hash2);
-			LogInfo("  IndexBufferFilter=%16llx\n", hash2);
+			LogInfo("  IndexBufferFilter=%016llx\n", hash2);
 			override->indexBufferFilter.push_back(hash2);
 		}
 
