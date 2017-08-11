@@ -367,9 +367,12 @@ static void ParseIni(const wchar_t *ini)
 	}
 }
 
-// Initially this is just a wrapper around GetPrivateProfileString so that all
-// our ini parsing goes through the one place to facilitate switching to a new
-// more efficient ini parser
+// This emulates the behaviour of the old GetPrivateProfileString API to
+// facilitate switching to our own ini parser. Later we might consider changing
+// the return values (e.g. return found/not found instead of string length),
+// but we need to check that we don't depend on the existing behaviour first.
+// Note that it is the only GetIni...() function that does not perform any
+// automatic logging of present values
 int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size)
 {
@@ -414,6 +417,17 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 
 // Helper functions to parse common types and log their values. TODO: Convert
 // more of this file to use these where appropriate
+static int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
+		const wchar_t *def, wchar_t *ret, unsigned size)
+{
+	int rc = GetIniString(section, key, def, ret, size);
+
+	if (rc)
+		LogInfo("  %S=%S\n", key, ret);
+
+	return rc;
+}
+
 static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found)
 {
 	wchar_t val[32];
@@ -711,7 +725,7 @@ static void ParseResourceSections()
 		custom_resource->width_multiply = GetIniFloat(i->first.c_str(), L"width_multiply", 1.0f, NULL);
 		custom_resource->height_multiply = GetIniFloat(i->first.c_str(), L"height_multiply", 1.0f, NULL);
 
-		if (GetIniString(i->first.c_str(), L"bind_flags", 0, setting, MAX_PATH)) {
+		if (GetIniStringAndLog(i->first.c_str(), L"bind_flags", 0, setting, MAX_PATH)) {
 			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
@@ -1850,11 +1864,11 @@ void LoadConfigFile()
 		LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
 
-	// Automatic section 
+	// Automatic section
 	G->FIX_SV_Position = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
 	G->FIX_Light_Position = GetIniBool(L"Rendering", L"fix_light_position", false, NULL);
 	G->FIX_Recompile_VS = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
-	if (GetIniString(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
@@ -1863,7 +1877,7 @@ void LoadConfigFile()
 		char *start = buf; while (isspace(*start)) start++;
 		G->ZRepair_DepthTexture1 = start;
 	}
-	if (GetIniString(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
@@ -1872,15 +1886,15 @@ void LoadConfigFile()
 		char *start = buf; while (isspace(*start)) start++;
 		G->ZRepair_DepthTexture2 = start;
 	}
-	if (GetIniString(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH))
 		G->ZRepair_ZPosCalc1 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH))
 		G->ZRepair_ZPosCalc2 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH))
 		G->ZRepair_PositionTexture = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH))
 		G->ZRepair_WorldPosCalc = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
@@ -1892,7 +1906,7 @@ void LoadConfigFile()
 			start = end; if (*start == ',') ++start;
 		}
 	}
-	if (GetIniString(L"Rendering", L"fix_ZRepair_Dependencies2", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_Dependencies2", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
@@ -1904,7 +1918,7 @@ void LoadConfigFile()
 			start = end; if (*start == ',') ++start;
 		}
 	}
-	if (GetIniString(L"Rendering", L"fix_InvTransform", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_InvTransform", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
@@ -1916,31 +1930,28 @@ void LoadConfigFile()
 			start = end; if (*start == ',') ++start;
 		}
 	}
-	if (GetIniString(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTextureHash", 0, setting, MAX_PATH))
 	{
 		uint32_t hash;
 		swscanf_s(setting, L"%08lx", &hash);
 		G->ZBufferHashToInject = hash;
 	}
-	if (GetIniString(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH))
 		G->BackProject_Vector1 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH))
 		G->BackProject_Vector2 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH))
 		G->ObjectPos_ID1 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH))
 		G->ObjectPos_ID2 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH))
 		G->ObjectPos_MUL1 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH))
 		G->ObjectPos_MUL2 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH))
 		G->MatrixPos_ID1 = readStringParameter(setting);
-	if (GetIniString(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
 		G->MatrixPos_MUL1 = readStringParameter(setting);
-
-	// Todo: finish logging all these settings
-	LogInfo("  ... missing automatic ini section\n");
 
 
 	// [Hunting]
