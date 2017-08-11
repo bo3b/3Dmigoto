@@ -143,14 +143,17 @@ typedef std::vector<std::pair<wstring, wstring>> IniSectionVector;
 
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
-typedef std::unordered_map<wstring, IniSectionVector, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionVectorsMap;
 typedef std::unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionSet;
 
+struct IniSection {
+	IniSectionMap kv_map;
+	IniSectionVector kv_vec;
+};
+
 // std::map is used so this is sorted for iterating over a prefix:
-typedef std::map<wstring, IniSectionMap, WStringInsensitiveLess> IniSections;
+typedef std::map<wstring, IniSection, WStringInsensitiveLess> IniSections;
 
 IniSections ini_sections;
-IniSectionVectorsMap ini_section_vectors_map;
 
 // Returns an iterator to the first element in a set that does not begin with
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
@@ -201,7 +204,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// key matches, which would have to be handled elsewhere.  For now,
 	// continue warning about duplicate sections and match the old
 	// behaviour.
-	inserted = ini_sections.emplace(*section, IniSectionMap{}).second;
+	inserted = ini_sections.emplace(*section, IniSection{}).second;
 	if (!inserted) {
 		LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
 				section->c_str());
@@ -211,7 +214,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 		return;
 	}
 
-	*section_vector = &ini_section_vectors_map[*section];
+	*section_vector = &ini_sections[*section].kv_vec;
 
 	// Some of the code below has been moved from the old GetIniSection()
 	*warn_duplicates = true;
@@ -264,7 +267,7 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// first item with a given key is inserted to match the
 		// behaviour of GetPrivateProfileString for duplicate
 		// keys within a single section:
-		inserted = ini_sections.at(*section).emplace(key, val).second;
+		inserted = ini_sections.at(*section).kv_map.emplace(key, val).second;
 		if (warn_duplicates && !inserted) {
 			LogInfo("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
 					section->c_str(), key.c_str());
@@ -315,7 +318,6 @@ static void ParseIni(const wchar_t *ini)
 	bool warn_lines_without_equals = true;
 
 	ini_sections.clear();
-	ini_section_vectors_map.clear();
 
 	ifstream f(ini, ios::in, _SH_DENYNO);
 	if (!f) {
@@ -374,7 +376,7 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 	int rc;
 
 	try {
-		wstring &val = ini_sections.at(section).at(key);
+		wstring &val = ini_sections.at(section).kv_map.at(key);
 		if (wcscpy_s(ret, size, val.c_str())) {
 			// Funky return code of GetPrivateProfileString Not
 			// sure if we depend on this - if we don't I'd like a
@@ -540,9 +542,9 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 {
 	try {
-		*key_vals = &ini_section_vectors_map.at(section);
+		*key_vals = &ini_sections.at(section).kv_vec;
 	} catch (std::out_of_range) {
-		LogInfo("BUG: GetIniSection() called on a section not in the ini_section_vectors_map: %S\n", section);
+		LogInfo("BUG: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
 		DoubleBeepExit();
 	}
 }
