@@ -335,12 +335,36 @@ static EnumName_t<wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagName
 	{NULL, CustomResourceBindFlags::INVALID} // End of list marker
 };
 
+// The ResourcePool holds a pool of cached resources for when a single copy
+// operation or a custom resource may be copied to from multiple distinct
+// incompatible resources (e.g. they may have differing sizes). This saves us
+// from having to destroy the old cache and create a new one any time the game
+// switches.
+//
+// The hash we are using is crc32c for the moment, which I think should (though
+// I have not verified) produce distinct hashes for all distinct permutations
+// of resource types and descriptions. We don't explicitly introduce any
+// variations for different resource types, instead relying on the fact that
+// the description size of each resource type is unique - and it would be
+// highly unusual (though not forbidden) to mix different resource types in a
+// single pool anyway.
+class ResourcePool
+{
+public:
+	unordered_map<uint32_t, ID3D11Resource*> cache;
+
+	~ResourcePool();
+
+	void emplace(uint32_t hash, ID3D11Resource *resource);
+};
+
 class CustomResource
 {
 public:
 	wstring name;
 
 	ID3D11Resource *resource;
+	ResourcePool resource_pool;
 	ID3D11View *view;
 	bool is_null;
 
@@ -520,6 +544,7 @@ public:
 	ResourceCopyOptions options;
 
 	ID3D11Resource *cached_resource;
+	ResourcePool resource_pool;
 	ID3D11View *cached_view;
 
 	// Additional intermediate resources required for certain operations

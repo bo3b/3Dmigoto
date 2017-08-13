@@ -1142,6 +1142,85 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 	}
 }
 
+ResourcePool::~ResourcePool()
+{
+	unordered_map<uint32_t, ID3D11Resource*>::iterator i;
+
+	for (i = cache.begin(); i != cache.end(); i++) {
+		if (i->second)
+			i->second->Release();
+	}
+	cache.clear();
+}
+
+void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource)
+{
+	if (resource)
+		resource->AddRef();
+	cache.emplace(hash, resource);
+}
+
+template <typename ResourceType,
+	 typename DescType,
+	HRESULT (__stdcall ID3D11Device::*CreateResource)(THIS_
+	      const DescType *pDesc,
+	      const D3D11_SUBRESOURCE_DATA *pInitialData,
+	      ResourceType **ppTexture)
+	>
+static ResourceType* GetResourceFromPool(
+		wstring *ini_line,
+		ResourceType *src_resource,
+		ResourceType *dst_resource,
+		ResourcePool *resource_pool,
+		ID3D11Device *device,
+		DescType *desc)
+{
+	ResourceType *resource = NULL;
+	DescType old_desc;
+	uint32_t hash;
+	size_t size;
+	HRESULT hr;
+
+	// We don't want to use the CalTexture2D/3DDescHash functions because
+	// the resolution override could produce the same hash for distinct
+	// texture descriptions. This hash isn't exposed to the user, so
+	// doesn't matter what we use - just has to be fast.
+	hash = crc32c_hw(0, &desc, sizeof(DescType));
+
+	try {
+		resource = (ResourceType*)resource_pool->cache.at(hash);
+		if (resource == dst_resource)
+			return NULL;
+		if (resource) {
+			LogDebug("Switching cached resource %S\n", ini_line->c_str());
+			resource->AddRef();
+		}
+	} catch (std::out_of_range) {
+		LogInfo("Creating cached resource %S\n", ini_line->c_str());
+
+		hr = (device->*CreateResource)(desc, NULL, &resource);
+		if (FAILED(hr)) {
+			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
+			LogResourceDesc(desc);
+			src_resource->GetDesc(&old_desc);
+			LogInfo("Original resource was:\n");
+			LogResourceDesc(&old_desc);
+
+			// Prevent further attempts:
+			resource_pool->emplace(hash, NULL);
+
+			return NULL;
+		}
+		resource_pool->emplace(hash, resource);
+		size = resource_pool->cache.size();
+		if (size > 1)
+			LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
+
+		LogDebugResourceDesc(desc);
+	}
+
+	return resource;
+}
 
 CustomResource::CustomResource() :
 	resource(NULL),
@@ -2303,6 +2382,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ResourceCopyTarget *dst,
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
+		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		D3D11_BIND_FLAG bind_flags,
 		ID3D11Device *device,
@@ -2311,8 +2391,6 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		DXGI_FORMAT format,
 		UINT *buf_dst_size)
 {
-	HRESULT hr;
-	D3D11_BUFFER_DESC old_desc;
 	D3D11_BUFFER_DESC new_desc;
 	ID3D11Buffer *buffer = NULL;
 	UINT dst_size;
@@ -2378,26 +2456,8 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 		dst->custom_resource->OverrideBufferDesc(&new_desc);
 
-	if (dst_resource) {
-		// If destination already exists and the description is
-		// identical we don't need to recreate it.
-		dst_resource->GetDesc(&old_desc);
-		if (!memcmp(&old_desc, &new_desc, sizeof(D3D11_BUFFER_DESC)))
-			return NULL;
-		LogInfo("Recreating cached buffer %S\n", ini_line->c_str());
-	} else
-		LogInfo("Creating cached buffer %S\n", ini_line->c_str());
-
-	hr = device->CreateBuffer(&new_desc, NULL, &buffer);
-	if (FAILED(hr)) {
-		LogInfo("Buffer copy failed %S: 0x%x\n", ini_line->c_str(), hr);
-		LogResourceDesc(&new_desc);
-		return NULL;
-	}
-
-	LogDebugResourceDesc(&new_desc);
-
-	return buffer;
+	return GetResourceFromPool<ID3D11Buffer, D3D11_BUFFER_DESC, &ID3D11Device::CreateBuffer>
+		(ini_line, src_resource, dst_resource, resource_pool, device, &new_desc);
 }
 
 static DXGI_FORMAT MakeTypeless(DXGI_FORMAT fmt)
@@ -2609,15 +2669,13 @@ static ResourceType* RecreateCompatibleTexture(
 		ResourceCopyTarget *dst,
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
+		ResourcePool *resource_pool,
 		D3D11_BIND_FLAG bind_flags,
 		ID3D11Device *device,
 		StereoHandle mStereoHandle,
 		ResourceCopyOptions options)
 {
-	HRESULT hr;
-	DescType old_desc;
 	DescType new_desc;
-	ResourceType *tex = NULL;
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.Usage = D3D11_USAGE_DEFAULT;
@@ -2650,29 +2708,8 @@ static ResourceType* RecreateCompatibleTexture(
 	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
 		dst->custom_resource->OverrideTexDesc(&new_desc);
 
-	if (dst_resource) {
-		// If destination already exists and the description is
-		// identical we don't need to recreate it.
-		dst_resource->GetDesc(&old_desc);
-		if (!memcmp(&old_desc, &new_desc, sizeof(DescType)))
-			return NULL;
-		LogInfo("Recreating cached resource %S\n", ini_line->c_str());
-	} else
-		LogInfo("Creating cached resource %S\n", ini_line->c_str());
-
-	hr = (device->*CreateTexture)(&new_desc, NULL, &tex);
-	if (FAILED(hr)) {
-		LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
-		LogResourceDesc(&new_desc);
-		src_resource->GetDesc(&old_desc);
-		LogInfo("Original resource was:\n");
-		LogResourceDesc(&old_desc);
-		return NULL;
-	}
-
-	LogDebugResourceDesc(&new_desc);
-
-	return tex;
+	return GetResourceFromPool<ResourceType, DescType, CreateTexture>
+		(ini_line, src_resource, dst_resource, resource_pool, device, &new_desc);
 }
 
 static void RecreateCompatibleResource(
@@ -2680,6 +2717,7 @@ static void RecreateCompatibleResource(
 		ResourceCopyTarget *dst,
 		ID3D11Resource *src_resource,
 		ID3D11Resource **dst_resource,
+		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		ID3D11View **dst_view,
 		ID3D11Device *device,
@@ -2738,23 +2776,23 @@ static void RecreateCompatibleResource(
 
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource, src_view,
-					bind_flags, device, stride, offset, format, buf_dst_size);
+			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource,
+				resource_pool, src_view, bind_flags, device, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
-				(ini_line, dst, (ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, bind_flags,
-				 device, mStereoHandle, options);
+				(ini_line, dst, (ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, resource_pool,
+				 bind_flags, device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
-				(ini_line, dst, (ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, bind_flags,
-				 device, mStereoHandle, options);
+				(ini_line, dst, (ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, resource_pool,
+				 bind_flags, device, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
-				(ini_line, dst, (ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, bind_flags,
-				 device, mStereoHandle, options);
+				(ini_line, dst, (ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, resource_pool,
+				 bind_flags, device, mStereoHandle, options);
 			break;
 	}
 
@@ -3529,6 +3567,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
+	ResourcePool *p_resource_pool = &resource_pool;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
 	ID3D11View **pp_cached_view = &cached_view;
@@ -3565,6 +3604,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		// number of extra resources we have floating around if copying
 		// something to a single custom resource from multiple shaders.
 		pp_cached_resource = &dst.custom_resource->resource;
+		p_resource_pool = &dst.custom_resource->resource_pool;
 		pp_cached_view = &dst.custom_resource->view;
 
 		if (dst.custom_resource->max_copies_per_frame) {
@@ -3584,12 +3624,12 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 
 	if (options & ResourceCopyOptions::COPY_MASK) {
 		RecreateCompatibleResource(&ini_line, &dst, src_resource,
-			pp_cached_resource, src_view, pp_cached_view,
+			pp_cached_resource, p_resource_pool, src_view, pp_cached_view,
 			mOrigDevice, mHackerDevice->mStereoHandle,
 			options, stride, offset, format, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
-			LogInfo("Resource copy error: Could not create/update destination resource\n");
+			LogDebug("Resource copy error: Could not create/update destination resource\n");
 			goto out_release;
 		}
 		dst_resource = *pp_cached_resource;
@@ -3615,8 +3655,8 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			// ordinary copy to the final mono resource.
 
 			RecreateCompatibleResource(&(ini_line + L" (intermediate)"),
-				NULL, src_resource,
-				&stereo2mono_intermediate, NULL, NULL,
+				NULL, src_resource, &stereo2mono_intermediate,
+				p_resource_pool, NULL, NULL,
 				mOrigDevice, mHackerDevice->mStereoHandle,
 				(ResourceCopyOptions)(options | ResourceCopyOptions::STEREO),
 				stride, offset, format, NULL);
