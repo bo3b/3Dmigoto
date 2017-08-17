@@ -521,11 +521,11 @@ private:
 	UINT mHeight;
 
 public:
-	HackerUpscalingDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height,IDXGIFactory* factory);
+	HackerUpscalingDXGISwapChain(IDXGISwapChain *pOutput, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, UINT NewWidth, UINT NewHeight, IDXGIFactory* Factory);
 	virtual ~HackerUpscalingDXGISwapChain();
 	
 private:
-	void CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory);
+	void CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, IDXGIFactory* Factory);
 
 public:
 
