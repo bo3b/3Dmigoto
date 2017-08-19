@@ -12,7 +12,7 @@ CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
 
-void _RunCommandList(HackerDevice *mHackerDevice,
+static void _RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice,
 		ID3D11DeviceContext *mOrigContext,
