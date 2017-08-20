@@ -1033,7 +1033,7 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	desc.Height = bitmap.bmHeight;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -1073,7 +1073,6 @@ err_release_dc:
 
 static void UpdateCursorResources(CommandListState *state, ID3D11Device *mOrigDevice)
 {
-
 	if (state->cursor_mask_tex || state->cursor_color_tex)
 		return;
 

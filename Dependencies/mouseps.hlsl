@@ -30,7 +30,7 @@ float4 draw_cursor_color(float2 texcoord)
 	float4 result;
 
 	result = cursor_color.Load(float3(texcoord, 0));
-	result.w = cursor_mask.Load(float3(texcoord, 0));
+	result.w *= 1 - cursor_mask.Load(float3(texcoord, 0));
 
 	return result;
 }
