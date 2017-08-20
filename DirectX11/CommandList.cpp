@@ -922,6 +922,39 @@ static float ProcessParamTextureFilter(HackerContext *mHackerContext,
 	return tex->filter_index;
 }
 
+
+CommandListState::CommandListState() :
+	rt_width(-1),
+	rt_height(-1),
+	call_info(NULL),
+	post(false),
+	update_params(false),
+	cursor_mask_tex(NULL),
+	cursor_mask_view(NULL),
+	cursor_color_tex(NULL),
+	cursor_color_view(NULL),
+	recursion(0)
+{
+	memset(&cursor_info, 0, sizeof(CURSORINFO));
+	memset(&cursor_info_ex, 0, sizeof(ICONINFO));
+}
+
+CommandListState::~CommandListState()
+{
+	if (cursor_info_ex.hbmMask)
+		DeleteObject(cursor_info_ex.hbmMask);
+	if (cursor_info_ex.hbmColor)
+		DeleteObject(cursor_info_ex.hbmColor);
+	if (cursor_mask_view)
+		cursor_mask_view->Release();
+	if (cursor_mask_tex)
+		cursor_mask_tex->Release();
+	if (cursor_color_view)
+		cursor_color_view->Release();
+	if (cursor_color_tex)
+		cursor_color_tex->Release();
+}
+
 static void UpdateCursorInfo(CommandListState *state)
 {
 	if (state->cursor_info.cbSize)
@@ -929,6 +962,132 @@ static void UpdateCursorInfo(CommandListState *state)
 
 	state->cursor_info.cbSize = sizeof(CURSORINFO);
 	GetCursorInfo(&state->cursor_info);
+}
+
+static void UpdateCursorInfoEx(CommandListState *state)
+{
+	if (state->cursor_info_ex.hbmMask)
+		return;
+
+	UpdateCursorInfo(state);
+
+	GetIconInfo(state->cursor_info.hCursor, &state->cursor_info_ex);
+}
+
+static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
+		ID3D11Texture2D **tex, ID3D11ShaderResourceView **view)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc;
+	BITMAPINFOHEADER bmp_info;
+	D3D11_SUBRESOURCE_DATA data;
+	D3D11_TEXTURE2D_DESC desc;
+	BITMAP bitmap;
+	HRESULT hr;
+	HDC dc;
+
+	// XXX: Should maybe be the device context for the window?
+	dc = GetDC(NULL);
+	if (!dc) {
+		LogInfo("Software Mouse: GetDC() failed\n");
+		return;
+	}
+
+	if (!GetObject(hbitmap, sizeof(BITMAP), &bitmap)) {
+		LogInfo("Software Mouse: GetObject() failed\n");
+		goto err_release_dc;
+	}
+
+	bmp_info.biSize = sizeof(BITMAPINFOHEADER);
+	bmp_info.biWidth = bitmap.bmWidth;
+	bmp_info.biHeight = bitmap.bmHeight;
+	// Requesting 32bpp here to simplify the conversion process - the
+	// R1_UNORM format can't be used for the 1bpp mask because that format
+	// has a special purpose, and requesting 8 or 16bpp would require an
+	// array of RGBQUADs after the BITMAPINFO structure for the pallette
+	// that I don't want to deal with, and there is no DXGI_FORMAT for
+	// 24bpp... 32bpp should work for both the mask and palette:
+	bmp_info.biBitCount = 32;
+	bmp_info.biPlanes = 1;
+	bmp_info.biCompression = BI_RGB;
+	// Pretty sure these are ignored / output only in GetDIBits:
+	bmp_info.biSizeImage = 0;
+	bmp_info.biXPelsPerMeter = 0;
+	bmp_info.biYPelsPerMeter = 0;
+	bmp_info.biClrUsed = 0;
+	bmp_info.biClrImportant = 0;
+
+	// This padding came from an example on MSDN, but I can't find
+	// the documentation that indicates exactly what it is supposed
+	// to be. Since we're using 32bpp, this shouldn't matter anyway:
+	data.SysMemPitch = ((bitmap.bmWidth * bmp_info.biBitCount + 31) / 32) * 4;
+
+	data.pSysMem = new char[data.SysMemPitch * bitmap.bmHeight];
+
+	if (!GetDIBits(dc, hbitmap, 0, bmp_info.biHeight,
+			(LPVOID)data.pSysMem, (BITMAPINFO*)&bmp_info, DIB_RGB_COLORS)) {
+		LogInfo("Software Mouse: GetDIBits() failed\n");
+		goto err_free;
+	}
+
+	desc.Width = bitmap.bmWidth;
+	desc.Height = bitmap.bmHeight;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+
+	hr = mOrigDevice->CreateTexture2D(&desc, &data, tex);
+	if (FAILED(hr)) {
+		LogInfo("Software Mouse: CreateTexture2D Failed: 0x%x\n", hr);
+		goto err_free;
+	}
+
+	rv_desc.Format = desc.Format;
+	rv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	rv_desc.Texture2D.MostDetailedMip = 0;
+	rv_desc.Texture2D.MipLevels = 1;
+
+	hr = mOrigDevice->CreateShaderResourceView(*tex, &rv_desc, view);
+	if (FAILED(hr)) {
+		LogInfo("Software Mouse: CreateShaderResourceView Failed: 0x%x\n", hr);
+		goto err_release_tex;
+	}
+
+	delete [] data.pSysMem;
+	ReleaseDC(NULL, dc);
+
+	return;
+err_release_tex:
+	(*tex)->Release();
+	*tex = NULL;
+err_free:
+	delete [] data.pSysMem;
+err_release_dc:
+	ReleaseDC(NULL, dc);
+}
+
+static void UpdateCursorResources(CommandListState *state, ID3D11Device *mOrigDevice)
+{
+
+	if (state->cursor_mask_tex || state->cursor_color_tex)
+		return;
+
+	UpdateCursorInfoEx(state);
+
+	if (state->cursor_info_ex.hbmMask) {
+		CreateTextureFromBitmap(state->cursor_info_ex.hbmMask, mOrigDevice,
+				&state->cursor_mask_tex, &state->cursor_mask_view);
+	}
+
+	if (state->cursor_info_ex.hbmColor) {
+		CreateTextureFromBitmap(state->cursor_info_ex.hbmColor, mOrigDevice,
+				&state->cursor_color_tex, &state->cursor_color_view);
+	}
 }
 
 void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
@@ -990,6 +1149,14 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 		case ParamOverrideType::CURSOR_SCREEN_Y:
 			UpdateCursorInfo(state);
 			*dest = (float)state->cursor_info.ptScreenPos.y;
+			break;
+		case ParamOverrideType::CURSOR_HOTSPOT_X:
+			UpdateCursorInfoEx(state);
+			*dest = (float)state->cursor_info_ex.xHotspot;
+			break;
+		case ParamOverrideType::CURSOR_HOTSPOT_Y:
+			UpdateCursorInfoEx(state);
+			*dest = (float)state->cursor_info_ex.yHotspot;
 			break;
 		default:
 			return;
@@ -1745,6 +1912,16 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		return true;
 	}
 
+	if (is_source && !wcscmp(target, L"cursor_mask")) {
+		type = ResourceCopyTargetType::CURSOR_MASK;
+		return true;
+	}
+
+	if (is_source && !wcscmp(target, L"cursor_color")) {
+		type = ResourceCopyTargetType::CURSOR_COLOR;
+		return true;
+	}
+
 	// XXX: Any reason to allow access to sequential swap chains? Given
 	// they either won't exist or are read only I can't think of one.
 	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
@@ -1830,7 +2007,9 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 			operation->options |= ResourceCopyOptions::REFERENCE;
 		else if (operation->dst.type == ResourceCopyTargetType::SHADER_RESOURCE
 				&& (operation->src.type == ResourceCopyTargetType::STEREO_PARAMS
-				|| operation->src.type == ResourceCopyTargetType::INI_PARAMS))
+				|| operation->src.type == ResourceCopyTargetType::INI_PARAMS
+				|| operation->src.type == ResourceCopyTargetType::CURSOR_MASK
+				|| operation->src.type == ResourceCopyTargetType::CURSOR_COLOR))
 			operation->options |= ResourceCopyOptions::REFERENCE;
 		else
 			operation->options |= ResourceCopyOptions::COPY;
@@ -1867,7 +2046,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		UINT *offset,        // Used by vertex & index buffers
 		DXGI_FORMAT *format, // Used by index buffers
 		UINT *buf_size,      // Used when creating a view of the buffer
-		DrawCallInfo *call_info)
+		CommandListState *state)
 {
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
@@ -1959,8 +2138,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// as if it's too small it will disable the region copy later.
 		// TODO: Add a keyword to ignore offsets in case we want the
 		// whole buffer regardless
-		if (call_info)
-			*offset += call_info->FirstVertex * *stride;
+		if (state->call_info)
+			*offset += state->call_info->FirstVertex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::INDEX_BUFFER:
@@ -1975,8 +2154,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// as if it's too small it will disable the region copy later.
 		// TODO: Add a keyword to ignore offsets in case we want the
 		// whole buffer regardless
-		if (call_info)
-			*offset += call_info->FirstIndex * *stride;
+		if (state->call_info)
+			*offset += state->call_info->FirstIndex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
@@ -2089,6 +2268,16 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::INI_PARAMS:
 		*view = mHackerDevice->mIniResourceView;
 		return mHackerDevice->mIniTexture;
+
+	case ResourceCopyTargetType::CURSOR_MASK:
+		UpdateCursorResources(state, mOrigDevice);
+		*view = state->cursor_mask_view;
+		return state->cursor_mask_tex;
+
+	case ResourceCopyTargetType::CURSOR_COLOR:
+		UpdateCursorResources(state, mOrigDevice);
+		*view = state->cursor_color_view;
+		return state->cursor_color_tex;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
@@ -3583,7 +3772,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 		return;
 	}
 
-	src_resource = src.GetResource(mHackerDevice, mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state->call_info);
+	src_resource = src.GetResource(mHackerDevice, mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {

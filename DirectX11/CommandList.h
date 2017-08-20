@@ -20,28 +20,33 @@
 class HackerDevice;
 class HackerContext;
 
-struct CommandListState {
+class CommandListState {
+public:
 	// Used to avoid querying the render target dimensions twice in the
 	// common case we are going to store both width & height in separate
 	// ini params:
 	float rt_width, rt_height;
 	DrawCallInfo *call_info;
 	bool post;
+
+	// TODO: Cursor info and resources would be better off being cached
+	// somewhere that is updated at most once per frame rather than once
+	// per command list execution, and we would ideally skip the resource
+	// creation if the cursor is unchanged.
 	CURSORINFO cursor_info;
+	ICONINFO cursor_info_ex;
+	ID3D11Texture2D *cursor_mask_tex;
+	ID3D11Texture2D *cursor_color_tex;
+	ID3D11ShaderResourceView *cursor_mask_view;
+	ID3D11ShaderResourceView *cursor_color_view;
+
 	int recursion;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
 
-	CommandListState() :
-		rt_width(-1),
-		rt_height(-1),
-		call_info(NULL),
-		post(false),
-		update_params(false),
-		cursor_info(),
-		recursion(0)
-	{}
+	CommandListState();
+	~CommandListState();
 };
 
 class CommandListCommand {
@@ -200,6 +205,10 @@ enum class ParamOverrideType {
 	CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
 	CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
 	CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
+	// TODO: CURSOR_WINDOW_X,
+	// TODO: CURSOR_WINDOW_Y,
+	CURSOR_HOTSPOT_X,
+	CURSOR_HOTSPOT_Y,
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -215,6 +224,10 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
 	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
 	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
+	// TODO: {L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
+	// TODO: {L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
+	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
+	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {
@@ -439,6 +452,8 @@ enum class ResourceCopyTargetType {
 	CUSTOM_RESOURCE,
 	STEREO_PARAMS,
 	INI_PARAMS,
+	CURSOR_MASK,
+	CURSOR_COLOR,
 	SWAP_CHAIN,
 	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
 };
@@ -467,7 +482,7 @@ public:
 			UINT *offset,
 			DXGI_FORMAT *format,
 			UINT *buf_size,
-			DrawCallInfo *call_info);
+			CommandListState *state);
 	void SetResource(
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11Resource *res,
