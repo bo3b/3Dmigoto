@@ -3765,6 +3765,21 @@ static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
 	return (tmp_resource == resource);
 }
 
+// Returns the equivelent target type of built in targets with pre-existing
+// views, so that we don't go and create a view cache when we already have one
+// we could use directly:
+static ResourceCopyTargetType EquivTarget(ResourceCopyTargetType type)
+{
+	switch(type) {
+		case ResourceCopyTargetType::STEREO_PARAMS:
+		case ResourceCopyTargetType::INI_PARAMS:
+		case ResourceCopyTargetType::CURSOR_MASK:
+		case ResourceCopyTargetType::CURSOR_COLOR:
+			return ResourceCopyTargetType::SHADER_RESOURCE;
+	}
+	return type;
+}
+
 void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
@@ -3886,7 +3901,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	} else {
 		mHackerContext->FrameAnalysisLog("3DMigoto copying by reference\n");
 		dst_resource = src_resource;
-		if (src_view && (src.type == dst.type)) {
+		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;
 		} else if (*pp_cached_view) {
 			if (ViewMatchesResource(*pp_cached_view, dst_resource)) {
