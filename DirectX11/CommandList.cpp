@@ -2262,21 +2262,37 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return custom_resource->resource;
 
 	case ResourceCopyTargetType::STEREO_PARAMS:
+		if (mHackerDevice->mStereoResourceView)
+			mHackerDevice->mStereoResourceView->AddRef();
 		*view = mHackerDevice->mStereoResourceView;
+		if (mHackerDevice->mStereoTexture)
+			mHackerDevice->mStereoTexture->AddRef();
 		return mHackerDevice->mStereoTexture;
 
 	case ResourceCopyTargetType::INI_PARAMS:
+		if (mHackerDevice->mIniResourceView)
+			mHackerDevice->mIniResourceView->AddRef();
 		*view = mHackerDevice->mIniResourceView;
+		if (mHackerDevice->mIniTexture)
+			mHackerDevice->mIniTexture->AddRef();
 		return mHackerDevice->mIniTexture;
 
 	case ResourceCopyTargetType::CURSOR_MASK:
 		UpdateCursorResources(state, mOrigDevice);
+		if (state->cursor_mask_view)
+			state->cursor_mask_view->AddRef();
 		*view = state->cursor_mask_view;
+		if (state->cursor_mask_tex)
+			state->cursor_mask_tex->AddRef();
 		return state->cursor_mask_tex;
 
 	case ResourceCopyTargetType::CURSOR_COLOR:
 		UpdateCursorResources(state, mOrigDevice);
+		if (state->cursor_color_view)
+			state->cursor_color_view->AddRef();
 		*view = state->cursor_color_view;
+		if (state->cursor_color_tex)
+			state->cursor_color_tex->AddRef();
 		return state->cursor_color_tex;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
