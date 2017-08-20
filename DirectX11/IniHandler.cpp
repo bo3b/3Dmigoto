@@ -1519,7 +1519,7 @@ static void ParseCustomShaderSections()
 	wchar_t setting[MAX_PATH];
 	bool failed;
 
-	for (i = customShaders.begin(); i != customShaders.end(); i++) {
+	for (i = customShaders.begin(); i != customShaders.end();) {
 		shader_id = &i->first;
 		custom_shader = &i->second;
 
@@ -1554,9 +1554,10 @@ static void ParseCustomShaderSections()
 		if (failed) {
 			// Don't want to allow a shader to be run if it had an
 			// error since we are likely to call Draw or Dispatch
-			customShaders.erase(*shader_id);
+			i = customShaders.erase(i);
 			continue;
-		}
+		} else
+			i++;
 
 		ParseCommandList(shader_id->c_str(), &custom_shader->command_list, &custom_shader->post_command_list, CustomShaderIniKeys);
 	}
