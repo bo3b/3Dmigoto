@@ -1780,6 +1780,12 @@ void LoadConfigFile()
 	} else
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
+	G->hide_cursor = GetIniBool(L"Device", L"hide_cursor", false, NULL);
+	if (G->hide_cursor) {
+		InstallMouseHooks();
+		SyncMouseCursorVisibility(FALSE);
+	}
+
 	// [Stereo]
 	LogInfo("[Stereo]\n");
 	bool automaticMode = GetIniBool(L"Stereo", L"automatic_mode", false, NULL);				// in NVapi dll
