@@ -1781,10 +1781,8 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	G->hide_cursor = GetIniBool(L"Device", L"hide_cursor", false, NULL);
-	if (G->hide_cursor) {
-		InstallMouseHooks();
-		SyncMouseCursorVisibility(FALSE);
-	}
+	if (G->hide_cursor)
+		InstallMouseHooks(true);
 
 	// [Stereo]
 	LogInfo("[Stereo]\n");
