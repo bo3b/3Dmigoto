@@ -383,7 +383,16 @@ static int WINAPI Hooked_ShowCursor(
 	// ShowCursor(FALSE); to try to force it hidden, but that will mess up
 	// our counters and the cursor will be permanently hidden. So, we have
 	// to tell the truth here and return the hardware counter:
-	return real_count;
+	//
+	// Option 1: Return software counter
+	// Pro: We will return the value the game expects
+	// Con: Steam overlay will hide the cursor one too many times
+	return software_cursor_count;
+	//
+	// Option 2: Return hardware counter
+	// Pro: Steam overlay does the right thing
+	// Con: Witcher 3 menu ==> frozen black screen
+	//return real_count;
 }
 
 BOOL WINAPI Hooked_GetCursorInfo(
