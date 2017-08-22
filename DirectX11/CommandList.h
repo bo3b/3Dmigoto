@@ -20,28 +20,33 @@
 class HackerDevice;
 class HackerContext;
 
-struct CommandListState {
+class CommandListState {
+public:
 	// Used to avoid querying the render target dimensions twice in the
 	// common case we are going to store both width & height in separate
 	// ini params:
 	float rt_width, rt_height;
 	DrawCallInfo *call_info;
 	bool post;
+
+	// TODO: Cursor info and resources would be better off being cached
+	// somewhere that is updated at most once per frame rather than once
+	// per command list execution, and we would ideally skip the resource
+	// creation if the cursor is unchanged.
 	CURSORINFO cursor_info;
+	ICONINFO cursor_info_ex;
+	ID3D11Texture2D *cursor_mask_tex;
+	ID3D11Texture2D *cursor_color_tex;
+	ID3D11ShaderResourceView *cursor_mask_view;
+	ID3D11ShaderResourceView *cursor_color_view;
+
 	int recursion;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
 
-	CommandListState() :
-		rt_width(-1),
-		rt_height(-1),
-		call_info(NULL),
-		post(false),
-		update_params(false),
-		cursor_info(),
-		recursion(0)
-	{}
+	CommandListState();
+	~CommandListState();
 };
 
 class CommandListCommand {
@@ -57,7 +62,7 @@ typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
 class CheckTextureOverrideCommand : public CommandListCommand {
 public:
-	wstring ini_val;
+	wstring ini_line;
 	// For processing command lists in TextureOverride sections:
 	wchar_t shader_type;
 	unsigned texture_slot;
@@ -82,7 +87,7 @@ extern ExplicitCommandListSections explicitCommandListSections;
 
 class RunExplicitCommandList : public CommandListCommand {
 public:
-	wstring ini_val;
+	wstring ini_line;
 	ExplicitCommandListSection *command_list_section;
 
 	RunExplicitCommandList() :
@@ -143,7 +148,7 @@ extern CustomShaders customShaders;
 
 class RunCustomShaderCommand : public CommandListCommand {
 public:
-	wstring ini_val;
+	wstring ini_line;
 	CustomShader *custom_shader;
 
 	RunCustomShaderCommand() :
@@ -169,6 +174,7 @@ enum class DrawCommandType {
 
 class DrawCommand : public CommandListCommand {
 public:
+	wstring ini_section;
 	DrawCommandType type;
 
 	UINT args[5];
@@ -199,6 +205,10 @@ enum class ParamOverrideType {
 	CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
 	CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
 	CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
+	// TODO: CURSOR_WINDOW_X,
+	// TODO: CURSOR_WINDOW_Y,
+	CURSOR_HOTSPOT_X,
+	CURSOR_HOTSPOT_Y,
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -214,11 +224,15 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
 	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
 	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
+	// TODO: {L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
+	// TODO: {L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
+	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
+	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {
 public:
-	wstring ini_key, ini_val;
+	wstring ini_line;
 
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
@@ -334,10 +348,36 @@ static EnumName_t<wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagName
 	{NULL, CustomResourceBindFlags::INVALID} // End of list marker
 };
 
+// The ResourcePool holds a pool of cached resources for when a single copy
+// operation or a custom resource may be copied to from multiple distinct
+// incompatible resources (e.g. they may have differing sizes). This saves us
+// from having to destroy the old cache and create a new one any time the game
+// switches.
+//
+// The hash we are using is crc32c for the moment, which I think should (though
+// I have not verified) produce distinct hashes for all distinct permutations
+// of resource types and descriptions. We don't explicitly introduce any
+// variations for different resource types, instead relying on the fact that
+// the description size of each resource type is unique - and it would be
+// highly unusual (though not forbidden) to mix different resource types in a
+// single pool anyway.
+class ResourcePool
+{
+public:
+	unordered_map<uint32_t, ID3D11Resource*> cache;
+
+	~ResourcePool();
+
+	void emplace(uint32_t hash, ID3D11Resource *resource);
+};
+
 class CustomResource
 {
 public:
+	wstring name;
+
 	ID3D11Resource *resource;
+	ResourcePool resource_pool;
 	ID3D11View *view;
 	bool is_null;
 
@@ -412,6 +452,8 @@ enum class ResourceCopyTargetType {
 	CUSTOM_RESOURCE,
 	STEREO_PARAMS,
 	INI_PARAMS,
+	CURSOR_MASK,
+	CURSOR_COLOR,
 	SWAP_CHAIN,
 	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
 };
@@ -440,7 +482,7 @@ public:
 			UINT *offset,
 			DXGI_FORMAT *format,
 			UINT *buf_size,
-			DrawCallInfo *call_info);
+			CommandListState *state);
 	void SetResource(
 			ID3D11DeviceContext *mOrigContext,
 			ID3D11Resource *res,
@@ -510,13 +552,14 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 
 class ResourceCopyOperation : public CommandListCommand {
 public:
-	wstring ini_key, ini_val;
+	wstring ini_line;
 
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
 	ResourceCopyOptions options;
 
 	ID3D11Resource *cached_resource;
+	ResourcePool resource_pool;
 	ID3D11View *cached_view;
 
 	// Additional intermediate resources required for certain operations
@@ -536,10 +579,11 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		CommandList *command_list, DrawCallInfo *call_info,
 		bool post);
 
-bool ParseCommandListGeneralCommands(const wchar_t *key, wstring *val,
+bool ParseCommandListGeneralCommands(const wchar_t *section,
+		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list, CommandList *post_command_list);
-bool ParseCommandListIniParamOverride(const wchar_t *key, wstring *val,
-		CommandList *command_list);
-bool ParseCommandListResourceCopyDirective(const wchar_t *key, wstring *val,
-		CommandList *command_list);
+bool ParseCommandListIniParamOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list);
+bool ParseCommandListResourceCopyDirective(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list);

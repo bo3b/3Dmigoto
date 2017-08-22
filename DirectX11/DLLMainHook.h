@@ -10,6 +10,8 @@ extern bool bLog;
 
 void InitD311();
 void InstallSetWindowPosHook();
+void InstallMouseHooks();
+int SyncMouseCursorVisibility(BOOL show_hint);
 
 enum class EnableHooks {
 	INVALID                     = 0,

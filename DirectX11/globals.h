@@ -357,6 +357,7 @@ struct Globals
 	CommandList present_command_list;
 	CommandList post_present_command_list;
 	unsigned frame_no;
+	bool hide_cursor;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
@@ -486,6 +487,7 @@ struct Globals
 		IniParamsReg(120),
 
 		frame_no(0),
+		hide_cursor(false),
 
 		ENABLE_CRITICAL_SECTION(false),
 		SCREEN_WIDTH(-1),

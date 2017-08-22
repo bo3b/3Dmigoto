@@ -48,9 +48,7 @@
 #include "Override.h"
 #include "IniHandler.h"
 
-#include "nvapi.h"
-#include "nvstereo.h"
-#include <iostream>
+
 // -----------------------------------------------------------------------------
 // Constructors:
 
@@ -172,19 +170,18 @@ HackerDXGISwapChain::HackerDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevic
 // The upscaling swap chain.
 // Constructor can throw 3DmigotoException
 
-HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height,IDXGIFactory* factory)
+HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain(IDXGISwapChain *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, UINT NewWidth, UINT NewHeight, IDXGIFactory* Factory)
 	: HackerDXGISwapChain(pSwapChain, pDevice, pContext), mFakeBackBuffer(nullptr), mFakeSwapChain(nullptr), mWidth(0), mHeight(0)
 {
 
-	CreateRenderTarget(fake_swap_chain_desc, factory);
+	CreateRenderTarget(FakeSwapChainDesc, Factory);
 
-	mWidth = new_width;
-	mHeight = new_height;
+	mWidth = NewWidth;
+	mHeight = NewHeight;
 
 	if (mOverlay)
-		mOverlay->Resize(new_width, new_height);
+		mOverlay->Resize(NewWidth, NewWidth);
 }
-
 
 HackerDXGISwapChain1::HackerDXGISwapChain1(IDXGISwapChain1 *pSwapChain1, HackerDevice *pDevice, HackerContext *pContext)
 	: HackerDXGISwapChain(pSwapChain1, pDevice, pContext)
@@ -835,77 +832,90 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	HackerDXGISwapChain *swapchainWrap = nullptr;
 	bool set_fullscreen_required = false;
 
-	if (G->SCREEN_UPSCALING > 2 || G->SCREEN_WIDTH <= 0 || G->SCREEN_HEIGHT <= 0 || G->UPSCALE_MODE >=2)
-	{
-		// TODO: some default parameters for upscaling could be added here
-		// TODO: what if user provides wrong screen width or wrong screen height
-		// TODO: maybe enumeration of modes and resolutions should be applied here
-		LogInfo("At least one of provided upscaling paramters is invalid!\n");
-		LogInfo("Please check the d3d11.ini file!\n");
-		LogInfo("Upscaling is disabled!\n");
-		G->SCREEN_UPSCALING = 0;
-	}
-
 	if (G->SCREEN_UPSCALING == 0) // no upscaling, use the standard path
 	{
 		ForceDisplayParams(pDesc);
 		hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
 		swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
 	}
-	else
-	{	
-		// Upscaling mode:
-		// to create two swap chains in row we need the swap chains to be in windowed mode
-		// so store has to be stored to call SetFullScreenState after and changed to windowed
-		// NOTE: no ForceDisplayParams here, because upscaling and ForceDisplayParams are 
-		// mutually exclusive.
-		set_fullscreen_required = !pDesc->Windowed; 
-		pDesc->Windowed = 1;						
-		
-		// This hook is very important in case of upscaling
-		// TODO: what about the hook and the warning in ForceDisplayParams? (Testing required)
-		// SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
-		InstallSetWindowPosHook();			
-
-		// TODO: testing testing testing
-		// not sure if the upscaling will work that way but if direct mode create a double sized swap chain
-		// i would just follow the code and create also double sided fake swap chain
-		if (G->gForceStereo == 2)
+	else if (G->SCREEN_UPSCALING != 0)
+	{
+		if (G->SCREEN_UPSCALING > 2 || G->SCREEN_UPSCALING	<	0	||
+			G->SCREEN_WIDTH <= 0	|| G->SCREEN_HEIGHT		<=	0	||
+			G->UPSCALE_MODE >= 2	|| G->UPSCALE_MODE		<	0	)
 		{
-			pDesc->BufferDesc.Width *= 2;
-			LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
-		}
-
-		DXGI_SWAP_CHAIN_DESC origDesc = *pDesc;		// need old description to create fake swap chain (fake texture)
-
-		pDesc->BufferDesc.Width = G->gForceStereo == 2 ? G->SCREEN_WIDTH * 2 : G->SCREEN_WIDTH;
-		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-
-		try
-		{
-			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
-			swapchainWrap = new HackerUpscalingDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &origDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
-		}
-		catch (const Exception3DMigoto& e)
-		{
-			// fake swap chain creation failed!
-			// try to create normal swap chain
-			BeepFailure2();
-			
-			LogInfo(e.what().c_str());
+			// TODO: some default parameters for upscaling could be added here
+			// TODO: what if user provides wrong screen width or wrong screen height
+			// TODO: maybe enumeration of modes and resolutions should be applied here
+			LogInfo("At least one of provided upscaling paramters is invalid!\n");
+			LogInfo("Please check the d3d11.ini file!\n");
 			LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
+			BeepFailure2();
 
 			G->SCREEN_UPSCALING = 0;
 			G->SCREEN_WIDTH = -1;
 			G->SCREEN_HEIGHT = -1;
 
 			// restore original state
-			*pDesc = origDesc;
-			pDesc->Windowed = !set_fullscreen_required;
-
 			ForceDisplayParams(pDesc);
 			hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
 			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+		}
+		else
+		{
+			// Upscaling mode:
+			// to create two swap chains in row we need the swap chains to be in windowed mode
+			// so store has to be stored to call SetFullScreenState after and changed to windowed
+			// NOTE: no ForceDisplayParams here, because upscaling and ForceDisplayParams are 
+			// mutually exclusive.
+			set_fullscreen_required = !pDesc->Windowed;
+			pDesc->Windowed = 1;
+
+			// This hook is very important in case of upscaling
+			// TODO: what about the hook and the warning in ForceDisplayParams? (Testing required)
+			// SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
+			InstallSetWindowPosHook();
+
+			// TODO: testing testing testing
+			// not sure if the upscaling will work that way but if direct mode create a double sized swap chain
+			// i would just follow the code and create also double sided fake swap chain
+			if (G->gForceStereo == 2)
+			{
+				pDesc->BufferDesc.Width *= 2;
+				LogInfo("->Direct Mode: Forcing Width to = %d \n", pDesc->BufferDesc.Width);
+			}
+
+			DXGI_SWAP_CHAIN_DESC origDesc = *pDesc;		// need old description to create fake swap chain (fake texture)
+
+			pDesc->BufferDesc.Width = G->gForceStereo == 2 ? G->SCREEN_WIDTH * 2 : G->SCREEN_WIDTH;
+			pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
+
+			try
+			{
+				hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+				swapchainWrap = new HackerUpscalingDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &origDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
+			}
+			catch (const Exception3DMigoto& e)
+			{
+				// fake swap chain creation failed!
+				// try to create normal swap chain
+				BeepFailure2();
+
+				LogInfo(e.what().c_str());
+				LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
+
+				G->SCREEN_UPSCALING = 0;
+				G->SCREEN_WIDTH = -1;
+				G->SCREEN_HEIGHT = -1;
+
+				// restore original state
+				*pDesc = origDesc;
+				pDesc->Windowed = !set_fullscreen_required;
+
+				ForceDisplayParams(pDesc);
+				hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+				swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+			}
 		}
 	}
 	
@@ -2181,7 +2191,7 @@ HackerUpscalingDXGISwapChain::~HackerUpscalingDXGISwapChain()
 
 // CreateRenderTarget can throw 3DmigotoException
 
-void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, IDXGIFactory* factory)
+void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, IDXGIFactory* Factory)
 {
 	HRESULT hr;
 
@@ -2199,10 +2209,10 @@ void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC
 			fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 			fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
 			fake_buffer_desc.SampleDesc.Count = 1;
-			fake_buffer_desc.Format = fake_swap_chain_desc->BufferDesc.Format;
+			fake_buffer_desc.Format = FakeSwapChainDesc->BufferDesc.Format;
 			fake_buffer_desc.MiscFlags = 0;
-			fake_buffer_desc.Width = fake_swap_chain_desc->BufferDesc.Width;
-			fake_buffer_desc.Height = fake_swap_chain_desc->BufferDesc.Height;
+			fake_buffer_desc.Width = FakeSwapChainDesc->BufferDesc.Width;
+			fake_buffer_desc.Height = FakeSwapChainDesc->BufferDesc.Height;
 			fake_buffer_desc.CPUAccessFlags = 0;
 
 			hr = mHackerDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
@@ -2210,9 +2220,15 @@ void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC
 		break;
 	case 1:
 		{
-			const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc)->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // fake swap chain should have no influence on window
-			hr = factory->CreateSwapChain(mHackerDevice->GetOrigDevice(), const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc), &mFakeSwapChain);
-			const_cast<DXGI_SWAP_CHAIN_DESC*>(fake_swap_chain_desc)->Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // restore old state in case fall back is required
+			if (Factory == nullptr)
+			{
+				LogDebug("HackerUpscalingDXGISwapChain::createRenderTarget failed provided factory pointer is invalid\n!");
+				throw Exception3DMigoto("HackerUpscalingDXGISwapChain::HackerUpscalingDXGISwapChain() failed!\n");
+			}
+			const UINT flagBackup = FakeSwapChainDesc->Flags;
+			const_cast<DXGI_SWAP_CHAIN_DESC*>(FakeSwapChainDesc)->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // fake swap chain should have no influence on window	
+			hr = Factory->CreateSwapChain(mHackerDevice->GetOrigDevice(), const_cast<DXGI_SWAP_CHAIN_DESC*>(FakeSwapChainDesc), &mFakeSwapChain);
+			const_cast<DXGI_SWAP_CHAIN_DESC*>(FakeSwapChainDesc)->Flags = flagBackup; // restore old state in case fall back is required
 		}
 		break;
 	default:
