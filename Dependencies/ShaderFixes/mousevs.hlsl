@@ -17,6 +17,7 @@ void main(
 
 	// For easy bailing:
 	pos = 0;
+	texcoord = 0;
 
 	// Cursor hidden?
 	if (!IniParams[7].y)

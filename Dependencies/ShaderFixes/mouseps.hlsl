@@ -15,8 +15,8 @@ float4 draw_cursor_bw(float2 texcoord)
 
 	// Black and white cursor - "the upper half is the icon AND bitmask and
 	// the lower half is the icon XOR bitmask".
-	uint xor = cursor_mask.Load(float3(texcoord, 0));
-	uint and = cursor_mask.Load(float3(texcoord.x, texcoord.y + mask_height / 2, 0));
+	uint xor = cursor_mask.Load(float3(texcoord, 0)).x;
+	uint and = cursor_mask.Load(float3(texcoord.x, texcoord.y + mask_height / 2, 0)).x;
 
 	result.xyz = xor;
 	result.w = and ^ xor;
@@ -30,7 +30,7 @@ float4 draw_cursor_color(float2 texcoord)
 	float4 result;
 
 	result = cursor_color.Load(float3(texcoord, 0));
-	result.w *= 1 - cursor_mask.Load(float3(texcoord, 0));
+	result.w *= 1 - cursor_mask.Load(float3(texcoord, 0)).x;
 
 	return result;
 }
