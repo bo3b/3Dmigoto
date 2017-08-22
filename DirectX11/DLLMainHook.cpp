@@ -335,7 +335,7 @@ static HCURSOR InvisibleCursor()
 	if (!cursor) {
 		width = GetSystemMetrics(SM_CXCURSOR);
 		height = GetSystemMetrics(SM_CYCURSOR);
-		pitch = (width + 31 / 32) * 4;
+		pitch = ((width + 31) / 32) * 4;
 		size = pitch * height;
 
 		and = new char[size];
