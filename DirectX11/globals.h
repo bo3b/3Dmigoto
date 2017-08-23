@@ -357,6 +357,7 @@ struct Globals
 	CommandList present_command_list;
 	CommandList post_present_command_list;
 	unsigned frame_no;
+	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
 
 	CRITICAL_SECTION mCriticalSection;
@@ -487,6 +488,7 @@ struct Globals
 		IniParamsReg(120),
 
 		frame_no(0),
+		hWnd(NULL),
 		hide_cursor(false),
 
 		ENABLE_CRITICAL_SECTION(false),

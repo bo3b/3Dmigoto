@@ -962,6 +962,12 @@ static void UpdateCursorInfo(CommandListState *state)
 
 	state->cursor_info.cbSize = sizeof(CURSORINFO);
 	GetCursorInfo(&state->cursor_info);
+	memcpy(&state->cursor_window_coords, &state->cursor_info.ptScreenPos, sizeof(POINT));
+
+	if (G->hWnd)
+		ScreenToClient(G->hWnd, &state->cursor_window_coords);
+	else
+		LogDebug("UpdateCursorInfo: No hWnd\n");
 }
 
 static void UpdateCursorInfoEx(CommandListState *state)
@@ -1148,6 +1154,14 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 		case ParamOverrideType::CURSOR_SCREEN_Y:
 			UpdateCursorInfo(state);
 			*dest = (float)state->cursor_info.ptScreenPos.y;
+			break;
+		case ParamOverrideType::CURSOR_WINDOW_X:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_window_coords.x;
+			break;
+		case ParamOverrideType::CURSOR_WINDOW_Y:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_window_coords.y;
 			break;
 		case ParamOverrideType::CURSOR_HOTSPOT_X:
 			UpdateCursorInfoEx(state);

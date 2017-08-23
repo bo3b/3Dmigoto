@@ -34,6 +34,7 @@ public:
 	// per command list execution, and we would ideally skip the resource
 	// creation if the cursor is unchanged.
 	CURSORINFO cursor_info;
+	POINT cursor_window_coords;
 	ICONINFO cursor_info_ex;
 	ID3D11Texture2D *cursor_mask_tex;
 	ID3D11Texture2D *cursor_color_tex;
@@ -202,11 +203,11 @@ enum class ParamOverrideType {
 	VERTEX_COUNT,
 	INDEX_COUNT,
 	INSTANCE_COUNT,
-	CURSOR_VISIBLE,  // If we later suppress this we may need an 'intent to show'
-	CURSOR_SCREEN_X, // This may not be the best units for windowed games, etc.
-	CURSOR_SCREEN_Y, // and not sure about multi-monitor, but it will do for now.
-	// TODO: CURSOR_WINDOW_X,
-	// TODO: CURSOR_WINDOW_Y,
+	CURSOR_VISIBLE,
+	CURSOR_SCREEN_X,
+	CURSOR_SCREEN_Y,
+	CURSOR_WINDOW_X,
+	CURSOR_WINDOW_Y,
 	CURSOR_HOTSPOT_X,
 	CURSOR_HOTSPOT_Y,
 	// TODO:
@@ -224,8 +225,10 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
 	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
 	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
-	// TODO: {L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
-	// TODO: {L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
+	{L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
+	{L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
+	{L"cursor_x", ParamOverrideType::CURSOR_WINDOW_X},
+	{L"cursor_y", ParamOverrideType::CURSOR_WINDOW_Y},
 	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
 	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
