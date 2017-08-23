@@ -555,11 +555,13 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 
 static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 {
+	static IniSectionVector empty_section_vector;
+
 	try {
 		*key_vals = &ini_sections.at(section).kv_vec;
 	} catch (std::out_of_range) {
-		LogInfo("BUG: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
-		DoubleBeepExit();
+		LogInfo("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
+		*key_vals = &empty_section_vector;
 	}
 }
 
