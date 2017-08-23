@@ -841,7 +841,11 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
 	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
+	HRESULT ret;
+	DXGI_SWAP_CHAIN_DESC origDesc, *pOrigDesc = pSwapChainDesc;
+
 	InitD311();
+
 	LogInfo("\n\n *** D3D11CreateDeviceAndSwapChain called with \n");
 	LogInfo("    pAdapter = %p \n", pAdapter);
 	LogInfo("    Flags = %#x \n", Flags);
@@ -859,37 +863,14 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #if _DEBUG_LAYER
 	Flags = EnableDebugFlags(Flags);
 #endif
-	HRESULT ret;
-	DXGI_SWAP_CHAIN_DESC origDesc = *pSwapChainDesc;
 
-	if (G->SCREEN_UPSCALING == 0)
-	{
-		ForceDisplayParams(pSwapChainDesc);	
+	if (pSwapChainDesc != nullptr) {
+		// Save off the original swap chain description which we need
+		// to create the fake swap chain when upscaling is enabled:
+		memcpy(&origDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+		pOrigDesc = &origDesc;
 	}
-	
-	if (G->SCREEN_UPSCALING > 2 || G->SCREEN_UPSCALING	<	0	||
-		G->SCREEN_WIDTH <= 0	|| G->SCREEN_HEIGHT		<=	0	||
-		G->UPSCALE_MODE >= 2	|| G->UPSCALE_MODE		<	0	)
-	{
-		LogInfo("At least one of provided upscaling paramters is invalid!\n");
-		LogInfo("Please check the d3d11.ini file!\n");
-		LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
-		BeepFailure2();
-
-		G->SCREEN_UPSCALING = 0;
-		G->SCREEN_WIDTH = -1;
-		G->SCREEN_HEIGHT = -1;
-	}
-	else
-	{
-		// This hook is very important in case of upscaling
-		// TODO: what about the hook and the warning in ForceDisplayParams? (Testing required)
-		// SetWindowPos(pDesc->OutputWindow, nullptr, 0, 0, 0, 0, SWP_HIDEWINDOW);
-		InstallSetWindowPosHook();
-
-		pSwapChainDesc->BufferDesc.Width = G->gForceStereo == 2 ? G->SCREEN_WIDTH * 2 : G->SCREEN_WIDTH;
-		pSwapChainDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-	}
+	ForceDisplayParams(pSwapChainDesc);
 
 	ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
@@ -905,7 +886,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n", 
+	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n",
 		origDevice, origContext, origSwapChain);
 
 #if _DEBUG_LAYER
@@ -913,7 +894,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #endif
 
 	// When platform update is desired, we want to create the HackerDevice1 and
-	// HackerContext1 objects instead. 
+	// HackerContext1 objects instead.
 	ID3D11Device1 *origDevice1 = nullptr;
 	ID3D11DeviceContext1 *origContext1 = nullptr;
 	if (G->enable_platform_update)
@@ -954,55 +935,56 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	HackerDXGISwapChain *swapchainWrap = nullptr;
 
-	if (G->SCREEN_UPSCALING == 0)
-	{
-		if (ppSwapChain != nullptr)
+	if (ppSwapChain != nullptr) {
+		if (G->SCREEN_UPSCALING == 0)
 		{
 			swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
 			LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
 		}
+		else
+		{
+			if (G->UPSCALE_MODE == 1)
+			{
+				//TODO: find a way to allow this!
+				BeepFailure();
+				LogInfo("The game uses D3D11CreateDeviceAndSwapChain to create the swap chain! For this function only upscale_mode = 0 is supported!\n");
+				LogInfo("Trying to switch to this mode!\n");
+				G->UPSCALE_MODE = 0;
+			}
+
+
+			// need old description to create fake swap chain (fake texture)
+
+			try
+			{
+				swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, pOrigDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
+				LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
+			}
+			catch (const Exception3DMigoto& e)
+			{
+				// fake swap chain creation failed!
+				// try to create normal swap chain
+				BeepFailure2();
+
+				LogInfo(e.what().c_str());
+				LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
+
+				G->SCREEN_UPSCALING = 0;
+				G->SCREEN_WIDTH = -1;
+				G->SCREEN_HEIGHT = -1;
+
+				// restore original state
+				//  ... Why are we doing this? the description isn't
+				//  used again after this. Is this in case the game
+				//  reads the structure again? Please edit this comment
+				//  to clarify, or delete this next line. -DarkStarSword
+				ForceDisplayParams(pOrigDesc);
+				swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, deviceWrap, contextWrap);
+			}
+		}
+		if (swapchainWrap != nullptr)
+			*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
-	else if (ppSwapChain != nullptr) // do whole upscaling stuff only if original swap chain was created
-	{
-		if (G->UPSCALE_MODE == 1)
-		{
-			//TODO: find a way to allow this!
-			BeepFailure();
-			LogInfo("The game uses D3D11CreateDeviceAndSwapChain to create the swap chain! For this function only upscale_mode = 0 is supported!\n");
-			LogInfo("Trying to switch to this mode!\n");
-			G->UPSCALE_MODE = 0;
-		}
-
-
-		// need old description to create fake swap chain (fake texture)
-
-		try
-		{
-			swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, &origDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
-			LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
-		}
-		catch (const Exception3DMigoto& e)
-		{
-			// fake swap chain creation failed!
-			// try to create normal swap chain
-			BeepFailure2();
-
-			LogInfo(e.what().c_str());
-			LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
-
-			G->SCREEN_UPSCALING = 0;
-			G->SCREEN_WIDTH = -1;
-			G->SCREEN_HEIGHT = -1;
-
-			// restore original state
-			*pSwapChainDesc = origDesc;
-			ForceDisplayParams(pSwapChainDesc);
-			swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, deviceWrap, contextWrap);
-			
-		}
-	}
-	if (swapchainWrap != nullptr)
-		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls in the Hacker objects where we want to return the Hacker versions.
 	if (deviceWrap != nullptr)
@@ -1016,10 +998,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
 
-	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, " 
-		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n", 
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
+		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
-	
+
 	return ret;
 }
 

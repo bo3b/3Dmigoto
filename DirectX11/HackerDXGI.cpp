@@ -702,17 +702,19 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 
 	if (G->SCREEN_FULLSCREEN > 0)
 	{
-		if (G->SCREEN_FULLSCREEN == 2) 
-		{
-			// We install this hook on demand to avoid any possible
-			// issues with hooking the call when we don't need it:
-			// Unconfirmed, but possibly related to:
-			// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
-			InstallSetWindowPosHook();
-		}
-
 		pDesc->Windowed = false;
 		LogInfo("->Forcing Windowed to = %d \n", pDesc->Windowed);
+	}
+
+	if (G->SCREEN_FULLSCREEN == 2 || G->SCREEN_UPSCALING > 0)
+	{
+		// We install this hook on demand to avoid any possible
+		// issues with hooking the call when we don't need it:
+		// Unconfirmed, but possibly related to:
+		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+		//
+		// This hook is very important in case of upscaling
+		InstallSetWindowPosHook();
 	}
 
 	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
