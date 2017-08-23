@@ -40,6 +40,7 @@ public:
 	ID3D11Texture2D *cursor_color_tex;
 	ID3D11ShaderResourceView *cursor_mask_view;
 	ID3D11ShaderResourceView *cursor_color_view;
+	RECT window_rect;
 
 	int recursion;
 
@@ -194,6 +195,8 @@ enum class ParamOverrideType {
 	RT_HEIGHT,
 	RES_WIDTH,
 	RES_HEIGHT,
+	WINDOW_WIDTH,
+	WINDOW_HEIGHT,
 	TEXTURE,	// Needs shader type and slot number specified in
 			// [ShaderOverride]. [TextureOverride] sections can
 			// specify filter_index=N to define the value passed in
@@ -219,6 +222,8 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"rt_height", ParamOverrideType::RT_HEIGHT},
 	{L"res_width", ParamOverrideType::RES_WIDTH},
 	{L"res_height", ParamOverrideType::RES_HEIGHT},
+	{L"window_width", ParamOverrideType::WINDOW_WIDTH},
+	{L"window_height", ParamOverrideType::WINDOW_HEIGHT},
 	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
 	{L"index_count", ParamOverrideType::INDEX_COUNT},
 	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},

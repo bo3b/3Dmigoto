@@ -955,6 +955,14 @@ CommandListState::~CommandListState()
 		cursor_color_tex->Release();
 }
 
+static void UpdateWindowInfo(CommandListState *state)
+{
+	if (G->hWnd)
+		GetClientRect(G->hWnd, &state->window_rect);
+	else
+		LogDebug("UpdateWindowInfo: No hWnd\n");
+}
+
 static void UpdateCursorInfo(CommandListState *state)
 {
 	if (state->cursor_info.cbSize)
@@ -1120,6 +1128,14 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 			break;
 		case ParamOverrideType::RES_HEIGHT:
 			*dest = (float)G->mResolutionInfo.height;
+			break;
+		case ParamOverrideType::WINDOW_WIDTH:
+			UpdateWindowInfo(state);
+			*dest = (float)state->window_rect.right;
+			break;
+		case ParamOverrideType::WINDOW_HEIGHT:
+			UpdateWindowInfo(state);
+			*dest = (float)state->window_rect.bottom;
 			break;
 		case ParamOverrideType::TEXTURE:
 			*dest = ProcessParamTextureFilter(mHackerContext,
