@@ -869,6 +869,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		// to create the fake swap chain when upscaling is enabled:
 		memcpy(&origDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 		pOrigDesc = &origDesc;
+
+		// Save off the window handle so we can translate mouse cursor
+		// coordinates to the window:
+		G->hWnd = pSwapChainDesc->OutputWindow;
 	}
 	ForceDisplayParams(pSwapChainDesc);
 

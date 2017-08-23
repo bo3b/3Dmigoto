@@ -834,6 +834,12 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	HackerDXGISwapChain *swapchainWrap = nullptr;
 	bool set_fullscreen_required = false;
 
+	if (pDesc != nullptr) {
+		// Save off the window handle so we can translate mouse cursor
+		// coordinates to the window:
+		G->hWnd = pDesc->OutputWindow;
+	}
+
 	if (G->SCREEN_UPSCALING == 0) // no upscaling, use the standard path
 	{
 		ForceDisplayParams(pDesc);
