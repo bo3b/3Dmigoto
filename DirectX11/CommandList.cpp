@@ -1047,6 +1047,7 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	desc.Height = bitmap.bmHeight;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
+	// FIXME: Use DXGI_FORMAT_B8G8R8X8_UNORM_SRGB if no alpha channel (there is no API to check)
 	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
