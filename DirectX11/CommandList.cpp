@@ -937,6 +937,7 @@ CommandListState::CommandListState() :
 {
 	memset(&cursor_info, 0, sizeof(CURSORINFO));
 	memset(&cursor_info_ex, 0, sizeof(ICONINFO));
+	memset(&window_rect, 0, sizeof(RECT));
 }
 
 CommandListState::~CommandListState()
@@ -957,6 +958,9 @@ CommandListState::~CommandListState()
 
 static void UpdateWindowInfo(CommandListState *state)
 {
+	if (state->window_rect.right)
+		return;
+
 	if (G->hWnd)
 		GetClientRect(G->hWnd, &state->window_rect);
 	else
@@ -1299,6 +1303,16 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 		case ParamOverrideType::CURSOR_WINDOW_Y:
 			UpdateCursorInfo(state);
 			*dest = (float)state->cursor_window_coords.y;
+			break;
+		case ParamOverrideType::CURSOR_X:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			*dest = (float)state->cursor_window_coords.x / (float)state->window_rect.right;
+			break;
+		case ParamOverrideType::CURSOR_Y:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			*dest = (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
 			break;
 		case ParamOverrideType::CURSOR_HOTSPOT_X:
 			UpdateCursorInfoEx(state);

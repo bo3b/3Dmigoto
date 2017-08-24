@@ -207,10 +207,12 @@ enum class ParamOverrideType {
 	INDEX_COUNT,
 	INSTANCE_COUNT,
 	CURSOR_VISIBLE,
-	CURSOR_SCREEN_X,
+	CURSOR_SCREEN_X, // Cursor in screen coordinates in pixels
 	CURSOR_SCREEN_Y,
-	CURSOR_WINDOW_X,
+	CURSOR_WINDOW_X, // Cursor in window client area coordinates in pixels
 	CURSOR_WINDOW_Y,
+	CURSOR_X, // Cursor position scaled so that client area is the range [0:1]
+	CURSOR_Y,
 	CURSOR_HOTSPOT_X,
 	CURSOR_HOTSPOT_Y,
 	// TODO:
@@ -232,8 +234,8 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
 	{L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
 	{L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
-	{L"cursor_x", ParamOverrideType::CURSOR_WINDOW_X},
-	{L"cursor_y", ParamOverrideType::CURSOR_WINDOW_Y},
+	{L"cursor_x", ParamOverrideType::CURSOR_X},
+	{L"cursor_y", ParamOverrideType::CURSOR_Y},
 	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
 	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
