@@ -988,32 +988,51 @@ static void UpdateCursorInfoEx(CommandListState *state)
 	GetIconInfo(state->cursor_info.hCursor, &state->cursor_info_ex);
 }
 
-static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
+// Uses an undocumented Windows API to get info about animated cursors and
+// calculate the current frame based on the global tick count
+// https://stackoverflow.com/questions/6969801/how-do-i-determine-if-the-current-mouse-cursor-is-animated
+static unsigned GetCursorFrame(HCURSOR cursor)
+{
+	typedef HCURSOR(WINAPI* GET_CURSOR_FRAME_INFO)(HCURSOR, LPCWSTR, DWORD, DWORD*, DWORD*);
+	static GET_CURSOR_FRAME_INFO fnGetCursorFrameInfo = NULL;
+	HMODULE libUser32 = NULL;
+	DWORD period = 6, frames = 1;
+
+	if (!fnGetCursorFrameInfo) {
+		libUser32 = LoadLibraryA("user32.dll");
+		if (!libUser32)
+			return 0;
+
+		fnGetCursorFrameInfo = (GET_CURSOR_FRAME_INFO)GetProcAddress(libUser32, "GetCursorFrameInfo");
+		if (!fnGetCursorFrameInfo)
+			return 0;
+	}
+
+	fnGetCursorFrameInfo(cursor, L"", 0, &period, &frames);
+
+	// Avoid divide by zero if not an animated cursor:
+	if (!period || !frames)
+		return 0;
+
+	// period is a multiple of 1/60 seconds. We should really use the ms
+	// since this cursor was most recently displayed, but the global tick
+	// count works well enough and means we have less state to track:
+	return (GetTickCount() * 6) / (period * 100) % frames;
+}
+
+static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
+		HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 		ID3D11Texture2D **tex, ID3D11ShaderResourceView **view)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc;
 	BITMAPINFOHEADER bmp_info;
 	D3D11_SUBRESOURCE_DATA data;
 	D3D11_TEXTURE2D_DESC desc;
-	BITMAP bitmap;
 	HRESULT hr;
-	HDC dc;
-
-	// XXX: Should maybe be the device context for the window?
-	dc = GetDC(NULL);
-	if (!dc) {
-		LogInfo("Software Mouse: GetDC() failed\n");
-		return;
-	}
-
-	if (!GetObject(hbitmap, sizeof(BITMAP), &bitmap)) {
-		LogInfo("Software Mouse: GetObject() failed\n");
-		goto err_release_dc;
-	}
 
 	bmp_info.biSize = sizeof(BITMAPINFOHEADER);
-	bmp_info.biWidth = bitmap.bmWidth;
-	bmp_info.biHeight = bitmap.bmHeight;
+	bmp_info.biWidth = bitmap_obj->bmWidth;
+	bmp_info.biHeight = bitmap_obj->bmHeight;
 	// Requesting 32bpp here to simplify the conversion process - the
 	// R1_UNORM format can't be used for the 1bpp mask because that format
 	// has a special purpose, and requesting 8 or 16bpp would require an
@@ -1033,9 +1052,9 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	// This padding came from an example on MSDN, but I can't find
 	// the documentation that indicates exactly what it is supposed
 	// to be. Since we're using 32bpp, this shouldn't matter anyway:
-	data.SysMemPitch = ((bitmap.bmWidth * bmp_info.biBitCount + 31) / 32) * 4;
+	data.SysMemPitch = ((bitmap_obj->bmWidth * bmp_info.biBitCount + 31) / 32) * 4;
 
-	data.pSysMem = new char[data.SysMemPitch * bitmap.bmHeight];
+	data.pSysMem = new char[data.SysMemPitch * bitmap_obj->bmHeight];
 
 	if (!GetDIBits(dc, hbitmap, 0, bmp_info.biHeight,
 			(LPVOID)data.pSysMem, (BITMAPINFO*)&bmp_info, DIB_RGB_COLORS)) {
@@ -1043,8 +1062,8 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 		goto err_free;
 	}
 
-	desc.Width = bitmap.bmWidth;
-	desc.Height = bitmap.bmHeight;
+	desc.Width = bitmap_obj->bmWidth;
+	desc.Height = bitmap_obj->bmHeight;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	// FIXME: Use DXGI_FORMAT_B8G8R8X8_UNORM_SRGB if no alpha channel (there is no API to check)
@@ -1074,7 +1093,6 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	}
 
 	delete [] data.pSysMem;
-	ReleaseDC(NULL, dc);
 
 	return;
 err_release_tex:
@@ -1082,26 +1100,128 @@ err_release_tex:
 	*tex = NULL;
 err_free:
 	delete [] data.pSysMem;
-err_release_dc:
-	ReleaseDC(NULL, dc);
+}
+
+static void CreateTextureFromBitmap(HDC dc, HBITMAP hbitmap, ID3D11Device *mOrigDevice,
+		ID3D11Texture2D **tex, ID3D11ShaderResourceView **view)
+{
+	BITMAP bitmap_obj;
+
+	if (!GetObject(hbitmap, sizeof(BITMAP), &bitmap_obj)) {
+		LogInfo("Software Mouse: GetObject() failed\n");
+		return;
+	}
+
+	_CreateTextureFromBitmap(dc, &bitmap_obj, hbitmap, mOrigDevice, tex, view);
+}
+
+static void CreateTextureFromAnimatedCursor(
+		HDC dc,
+		HCURSOR cursor,
+		UINT flags,
+		HBITMAP static_bitmap,
+		ID3D11Device *mOrigDevice,
+		ID3D11Texture2D **tex,
+		ID3D11ShaderResourceView **view
+		)
+{
+	BITMAP bitmap_obj;
+	HDC dc_mem;
+	HBITMAP ani_bitmap;
+	unsigned frame;
+
+	if (!GetObject(static_bitmap, sizeof(BITMAP), &bitmap_obj)) {
+		LogInfo("Software Mouse: GetObject() failed\n");
+		return;
+	}
+
+	dc_mem = CreateCompatibleDC(dc);
+	if (!dc_mem) {
+		LogInfo("Software Mouse: CreateCompatibleDC() failed\n");
+		return;
+	}
+
+	ani_bitmap = CreateCompatibleBitmap(dc, bitmap_obj.bmWidth, bitmap_obj.bmHeight);
+	if (!ani_bitmap) {
+		LogInfo("Software Mouse: CreateCompatibleBitmap() failed\n");
+		goto out_delete_mem_dc;
+	}
+
+	frame = GetCursorFrame(cursor);
+
+	// To get a frame from an animated cursor we have to use DrawIconEx to
+	// draw it to another bitmap, then we can create a texture from that
+	// bitmap:
+	SelectObject(dc_mem, ani_bitmap);
+	if (!DrawIconEx(dc_mem, 0, 0, cursor, bitmap_obj.bmWidth, bitmap_obj.bmHeight, frame, NULL, flags)) {
+		LogInfo("Software Mouse: DrawIconEx failed\n");
+		// Fall back to getting the first frame from the static_bitmap we already have:
+		_CreateTextureFromBitmap(dc, &bitmap_obj, static_bitmap, mOrigDevice, tex, view);
+		goto out_delete_ani_bitmap;
+	}
+
+	_CreateTextureFromBitmap(dc, &bitmap_obj, ani_bitmap, mOrigDevice, tex, view);
+
+out_delete_ani_bitmap:
+	DeleteObject(ani_bitmap);
+out_delete_mem_dc:
+	DeleteDC(dc_mem);
 }
 
 static void UpdateCursorResources(CommandListState *state, ID3D11Device *mOrigDevice)
 {
+	HDC dc;
+
 	if (state->cursor_mask_tex || state->cursor_color_tex)
 		return;
 
 	UpdateCursorInfoEx(state);
 
-	if (state->cursor_info_ex.hbmMask) {
-		CreateTextureFromBitmap(state->cursor_info_ex.hbmMask, mOrigDevice,
-				&state->cursor_mask_tex, &state->cursor_mask_view);
+	// XXX: Should maybe be the device context for the window?
+	dc = GetDC(NULL);
+	if (!dc) {
+		LogInfo("Software Mouse: GetDC() failed\n");
+		return;
 	}
 
 	if (state->cursor_info_ex.hbmColor) {
-		CreateTextureFromBitmap(state->cursor_info_ex.hbmColor, mOrigDevice,
-				&state->cursor_color_tex, &state->cursor_color_view);
+		// Colour cursor, which may or may not be animated, but the
+		// animated routine will work either way:
+		CreateTextureFromAnimatedCursor(
+				dc,
+				state->cursor_info.hCursor,
+				DI_IMAGE,
+				state->cursor_info_ex.hbmColor,
+				mOrigDevice,
+				&state->cursor_color_tex,
+				&state->cursor_color_view);
+
+		if (state->cursor_info_ex.hbmMask) {
+			// Since it's a colour cursor the mask bitmap will be
+			// the regular height, which will work with the
+			// animated routine:
+			CreateTextureFromAnimatedCursor(
+					dc,
+					state->cursor_info.hCursor,
+					DI_MASK,
+					state->cursor_info_ex.hbmMask,
+					mOrigDevice,
+					&state->cursor_mask_tex,
+					&state->cursor_mask_view);
+		}
+	} else if (state->cursor_info_ex.hbmMask) {
+		// Black and white cursor, which means the hbmMask bitmap is
+		// double height and won't work with the animated cursor
+		// routines, so just turn the bitmap into a texture directly:
+		CreateTextureFromBitmap(
+				dc,
+				state->cursor_info_ex.hbmMask,
+				mOrigDevice,
+				&state->cursor_mask_tex,
+				&state->cursor_mask_view);
 	}
+
+	ReleaseDC(NULL, dc);
 }
 
 void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
