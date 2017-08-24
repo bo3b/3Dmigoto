@@ -318,9 +318,13 @@ HCURSOR current_cursor = NULL;
 typedef HCURSOR(WINAPI *lpfnSetCursor)(_In_opt_ HCURSOR hCursor);
 typedef HCURSOR(WINAPI *lpfnGetCursor)(void);
 typedef BOOL(WINAPI *lpfnGetCursorInfo)(_Inout_ PCURSORINFO pci);
+typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
+	_In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
 lpfnSetCursor trampoline_SetCursor = SetCursor;
 lpfnGetCursor trampoline_GetCursor = GetCursor;
 lpfnGetCursorInfo trampoline_GetCursorInfo = GetCursorInfo;
+lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
+lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
 
 // This routine creates an invisible cursor that we can set whenever we are
 // hiding the cursor. It is static, so will only be created the first time this
@@ -386,12 +390,90 @@ BOOL WINAPI Hooked_GetCursorInfo(
 	return rc;
 }
 
+// DefWindowProc can bypass our SetCursor hook, which means that some games
+// such would continue showing the hardware cursor, and our knowledge of what
+// cursor was supposed to be set may be inaccurate (e.g. Akiba's Trip doesn't
+// hide the cursor and sometimes the software cursor uses the busy cursor
+// instead of the arrow cursor). We fix this by hooking DefWindowProc and
+// processing WM_SETCURSOR message just as the original DefWindowProc would
+// have done, but without bypassing our SetCursor hook.
+//
+// An alternative to hooking DefWindowProc in this manner might be to use
+// SetWindowsHookEx since it can also hook window messages.
+LRESULT WINAPI Hooked_DefWindowProc(
+	_In_ HWND   hWnd,
+	_In_ UINT   Msg,
+	_In_ WPARAM wParam,
+	_In_ LPARAM lParam,
+	lpfnDefWindowProc trampoline_DefWindowProc)
+{
+	HWND parent = NULL;
+	HCURSOR cursor = NULL;
+	LPARAM ret = 0;
+
+	if (Msg == WM_SETCURSOR) {
+		// XXX: Should we use GetParent or GetAncestor? GetParent can
+		// return an "owner" window, while GetAncestor only returns
+		// parents... Not sure which the official DefWindowProc uses,
+		// but I suspect the answer is GetAncestor, so go with that:
+		parent = GetAncestor(hWnd, GA_PARENT);
+
+		if (parent) {
+			// Pass the message to the parent window, just like the
+			// real DefWindowProc does. This may call back in here
+			// if the parent also doesn't handle this message, and
+			// we stop processing if the parent handled it.
+			ret = SendMessage(parent, Msg, wParam, lParam);
+			if (ret)
+				return ret;
+		}
+
+		// If the mouse is in the client area and the window class has
+		// a cursor associated with it we set that. This will call into
+		// our hooked version of SetCursor (whereas the real
+		// DefWindowProc would bypass that) so that we can track the
+		// current cursor set by the game and force the hardware cursor
+		// to remain hidden.
+		if ((lParam & 0xffff) == HTCLIENT) {
+			cursor = (HCURSOR)GetClassLongPtr(hWnd, GCLP_HCURSOR);
+			if (cursor)
+				SetCursor(cursor);
+		} else {
+			// Not in client area. We could continue emulating
+			// DefWindowProc by setting an arrow cursor, bypassing
+			// our hook to set the *real* hardware cursor, but
+			// since the real DefWindowProc already bypasses our
+			// hook let's just call that and allow it to take care
+			// of any other edge cases we may not know about (like
+			// HTERROR):
+			return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
+		}
+
+		// Return false to allow children to set their class cursor:
+		return FALSE;
+	}
+
+	return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
+}
+
+LRESULT WINAPI Hooked_DefWindowProcA(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
+}
+
+LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
+}
+
 void InstallMouseHooks(bool hide)
 {
 	HINSTANCE hUser32;
 	void* fnOrigSetCursor;
 	void* fnOrigGetCursor;
 	void* fnOrigGetCursorInfo;
+	void* fnOrigDefWindowProcA;
+	void* fnOrigDefWindowProcW;
 	DWORD dwOsErr;
 	SIZE_T hook_id;
 	static bool hook_installed = false;
@@ -432,6 +514,22 @@ void InstallMouseHooks(bool hide)
 		goto err;
 
 	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCursorInfo, fnOrigGetCursorInfo, Hooked_GetCursorInfo);
+	if (dwOsErr)
+		goto err;
+
+	fnOrigDefWindowProcA = NktHookLibHelpers::GetProcedureAddress(hUser32, "DefWindowProcA");
+	if (fnOrigDefWindowProcA == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_DefWindowProcA, fnOrigDefWindowProcA, Hooked_DefWindowProcA);
+	if (dwOsErr)
+		goto err;
+
+	fnOrigDefWindowProcW = NktHookLibHelpers::GetProcedureAddress(hUser32, "DefWindowProcW");
+	if (fnOrigDefWindowProcW == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_DefWindowProcW, fnOrigDefWindowProcW, Hooked_DefWindowProcW);
 	if (dwOsErr)
 		goto err;
 
