@@ -228,15 +228,6 @@ static BOOL WINAPI Hooked_SetWindowPos(
     _In_ int cy,
     _In_ UINT uFlags)
 {
-	/*
-		TODO: What about this: (dont know how to test it)
-		We install this hook on demand to avoid any possible
-		issues with hooking the call when we don't need it:
-		Unconfirmed, but possibly related to:
-		https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
-		and do nothing - passing this call through could change the game
-		to a borderless window. Needed for The Witness.
-	*/
 	if (G->SCREEN_UPSCALING != 0) {
 		// Force desired upscaled resolution (only when desired resolution is provided!)
 		if (cx != 0 && cy != 0) {

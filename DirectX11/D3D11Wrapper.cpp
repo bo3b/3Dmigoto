@@ -842,7 +842,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
 	HRESULT ret;
-	DXGI_SWAP_CHAIN_DESC origDesc, *pOrigDesc = pSwapChainDesc;
+	DXGI_SWAP_CHAIN_DESC originalSwapChainDesc;
 
 	InitD311();
 
@@ -865,15 +865,17 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #endif
 
 	if (pSwapChainDesc != nullptr) {
-		// Save off the original swap chain description which we need
-		// to create the fake swap chain when upscaling is enabled:
-		memcpy(&origDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
-		pOrigDesc = &origDesc;
-
 		// Save off the window handle so we can translate mouse cursor
 		// coordinates to the window:
 		G->hWnd = pSwapChainDesc->OutputWindow;
+
+		if (G->SCREEN_UPSCALING > 0)
+		{		
+			// Copy input swap chain desc for case the upscaling is on
+			memcpy(&originalSwapChainDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+		}
 	}
+
 	ForceDisplayParams(pSwapChainDesc);
 
 	ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
@@ -956,44 +958,28 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 				G->UPSCALE_MODE = 0;
 			}
 
-
-			// need old description to create fake swap chain (fake texture)
-
 			try
 			{
-				swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, pOrigDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
-				LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
+				swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, &originalSwapChainDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
+				LogInfo("  HackerUpscalingDXGISwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
 			}
 			catch (const Exception3DMigoto& e)
 			{
-				// fake swap chain creation failed!
-				// try to create normal swap chain
-				BeepFailure2();
-
-				LogInfo(e.what().c_str());
-				LogInfo("--> The upscaling is disabled. Trying to switch to normal mode!\n");
-
-				G->SCREEN_UPSCALING = 0;
-				G->SCREEN_WIDTH = -1;
-				G->SCREEN_HEIGHT = -1;
-
-				// restore original state
-				//  ... Why are we doing this? the description isn't
-				//  used again after this. Is this in case the game
-				//  reads the structure again? Please edit this comment
-				//  to clarify, or delete this next line. -DarkStarSword
-				ForceDisplayParams(pOrigDesc);
-				swapchainWrap = new HackerDXGISwapChain(*ppSwapChain, deviceWrap, contextWrap);
+				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s", e.what().c_str());
+				// Something went wrong inform the user with double beep and end!;
+				DoubleBeepExit();
 			}
 		}
+
 		if (swapchainWrap != nullptr)
 			*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 	}
+
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls in the Hacker objects where we want to return the Hacker versions.
 	if (deviceWrap != nullptr)
 		deviceWrap->SetHackerContext(contextWrap);
-	if (deviceWrap != nullptr)
+	if (deviceWrap != nullptr) // Is it not already done in the hackerDXGISwapChain class?
 		deviceWrap->SetHackerSwapChain(swapchainWrap);
 	if (contextWrap != nullptr)
 		contextWrap->SetHackerDevice(deviceWrap);
