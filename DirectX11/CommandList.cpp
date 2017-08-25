@@ -3706,7 +3706,7 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 }
 
 static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
-		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext)
+		HackerDevice *mHackerDevice, ID3D11DeviceContext *mOrigContext)
 {
 	NvAPI_Status nvret;
 	D3D11_RESOURCE_DIMENSION src_dimension;
@@ -3732,12 +3732,21 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	// TODO: Resolve MSAA
 	// TODO: Use intermediate resource if copying from a texture with depth buffer bind flags
 
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
-	if (nvret != NVAPI_OK) {
-		LogInfo("Resource copying failed to enable reverse stereo blit\n");
-		// Fallback path: Copy 2D resource to both sides of the 2x
-		// width destination (TESTME)
-		fallback = 1;
+	// If stereo is disabled the reverse stereo blit won't work and we
+	// would end up with the destination only updated on the left, which
+	// may lead to shaders reading stale or 0 data if they read from the
+	// right hand side. Use the fallback path to copy the source to both
+	// sides of the destination so that the right side will be up to date:
+	fallback = mHackerDevice->mParamTextureManager.mActive ? 0 : 1;
+
+	if (!fallback) {
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			LogInfo("Resource copying failed to enable reverse stereo blit\n");
+			// Fallback path: Copy 2D resource to both sides of the 2x
+			// width destination
+			fallback = 1;
+		}
 	}
 
 	for (fallbackside = 0; fallbackside < 1 + fallback; fallbackside++) {
@@ -3763,7 +3772,8 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 		}
 	}
 
-	NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, false);
+	if (!fallback)
+		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
 }
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
@@ -4046,7 +4056,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 				stride, offset, format, NULL);
 
 			ReverseStereoBlit(stereo2mono_intermediate, src_resource,
-					mHackerDevice->mStereoHandle, mOrigContext);
+					mHackerDevice, mOrigContext);
 
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
 
