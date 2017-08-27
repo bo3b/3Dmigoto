@@ -1407,53 +1407,6 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 	BeepFailure2();
 }
 
-// List of keys in [CustomShader] sections that are processed in this
-// function. Used by ParseCommandList to find any unrecognised lines.
-wchar_t *CustomShaderIniKeys[] = {
-	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
-	L"max_executions_per_frame",
-	// OM Blend State overrides:
-	L"blend", L"alpha", L"mask",
-	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
-	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
-	L"alpha[0]", L"alpha[1]", L"alpha[2]", L"alpha[3]",
-	L"alpha[4]", L"alpha[5]", L"alpha[6]", L"alpha[7]",
-	L"mask[0]", L"mask[1]", L"mask[2]", L"mask[3]",
-	L"mask[4]", L"mask[5]", L"mask[6]", L"mask[7]",
-	L"alpha_to_coverage", L"sample_mask",
-	L"blend_factor[0]", L"blend_factor[1]",
-	L"blend_factor[2]", L"blend_factor[3]",
-	// RS State overrides:
-	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
-	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
-	L"multisample_enable", L"antialiased_line_enable",
-	// IA State overrides:
-	L"topology",
-	// Sampler State overrides
-	L"sampler", // TODO: add additional sampler parameter 
-				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
-	NULL
-};
-static void EnumerateCustomShaderSections()
-{
-	IniSections::iterator lower, upper, i;
-	wstring shader_id;
-
-	customShaders.clear();
-
-	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
-	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
-	for (i = lower; i != upper; i++) {
-		// Convert section name to lower case so our keys will be
-		// consistent in the unordered_map:
-		shader_id = i->first;
-		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
-
-		// Construct a custom shader in the global list:
-		customShaders[shader_id];
-	}
-}
-
 static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_SAMPLER_DESC* desc = &shader->sampler_desc;
@@ -1513,6 +1466,53 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 	}
 }
 
+
+// List of keys in [CustomShader] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *CustomShaderIniKeys[] = {
+	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	L"max_executions_per_frame",
+	// OM Blend State overrides:
+	L"blend", L"alpha", L"mask",
+	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
+	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
+	L"alpha[0]", L"alpha[1]", L"alpha[2]", L"alpha[3]",
+	L"alpha[4]", L"alpha[5]", L"alpha[6]", L"alpha[7]",
+	L"mask[0]", L"mask[1]", L"mask[2]", L"mask[3]",
+	L"mask[4]", L"mask[5]", L"mask[6]", L"mask[7]",
+	L"alpha_to_coverage", L"sample_mask",
+	L"blend_factor[0]", L"blend_factor[1]",
+	L"blend_factor[2]", L"blend_factor[3]",
+	// RS State overrides:
+	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
+	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
+	L"multisample_enable", L"antialiased_line_enable",
+	// IA State overrides:
+	L"topology",
+	// Sampler State overrides
+	L"sampler", // TODO: add additional sampler parameter 
+				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
+	NULL
+};
+static void EnumerateCustomShaderSections()
+{
+	IniSections::iterator lower, upper, i;
+	wstring shader_id;
+
+	customShaders.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
+	for (i = lower; i != upper; i++) {
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		shader_id = i->first;
+		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
+
+		// Construct a custom shader in the global list:
+		customShaders[shader_id];
+	}
+}
 static void ParseCustomShaderSections()
 {
 	CustomShaders::iterator i;
