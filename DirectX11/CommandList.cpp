@@ -427,6 +427,7 @@ CustomShader::CustomShader() :
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
 	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
+	depth_stencil_override(0), depth_stencil_state(NULL), stencil_ref(0),
 	rs_override(0), rs_state(NULL),
 	topology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED),
 	substantiated(false),
@@ -629,9 +630,12 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 	if (blend_override == 1) // 2 will use default blend state
 		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
 
+	if (depth_stencil_override == 1) // 2 will use default depth/stencil state
+		mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+
 	if (rs_override == 1) // 2 will use default blend state
 		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
-		
+
 	if (sampler_override == 1)
 		mOrigDevice->CreateSamplerState(&sampler_desc, &sampler_state);
 }
@@ -704,11 +708,13 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11PixelShader *saved_ps = NULL;
 	ID3D11ComputeShader *saved_cs = NULL;
 	ID3D11BlendState *saved_blend = NULL;
+	ID3D11DepthStencilState *saved_depth_stencil = NULL;
 	ID3D11RasterizerState *saved_rs = NULL;
 	UINT num_viewports = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 	D3D11_VIEWPORT saved_viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 	FLOAT saved_blend_factor[4];
 	UINT saved_sample_mask;
+	UINT saved_stencil_ref;
 	bool saved_post;
 	UINT NumRTVs, UAVStartSlot, NumUAVs;
 	ID3D11RenderTargetView *saved_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
@@ -724,7 +730,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	{
 		saved_sampler_states[i] = nullptr;
 	}
-	
+
 	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (custom_shader->max_executions_per_frame) {
@@ -776,6 +782,10 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
 		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
 	}
+	if (custom_shader->depth_stencil_override) {
+		mOrigContext->OMGetDepthStencilState(&saved_depth_stencil, &saved_stencil_ref);
+		mOrigContext->OMSetDepthStencilState(custom_shader->depth_stencil_state, custom_shader->stencil_ref);
+	}
 	if (custom_shader->rs_override) {
 		mOrigContext->RSGetState(&saved_rs);
 		mOrigContext->RSSetState(custom_shader->rs_state);
@@ -821,13 +831,15 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
 	if (custom_shader->blend_override)
 		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
+	if (custom_shader->depth_stencil_override)
+		mOrigContext->OMSetDepthStencilState(saved_depth_stencil, saved_stencil_ref);
 	if (custom_shader->rs_override)
 		mOrigContext->RSSetState(saved_rs);
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
 		mOrigContext->IASetPrimitiveTopology(saved_topology);
 	if (custom_shader->sampler_override)
 		mOrigContext->PSSetSamplers(0, num_sampler, saved_sampler_states);
-	
+
 	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
 
@@ -845,6 +857,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_cs->Release();
 	if (saved_blend)
 		saved_blend->Release();
+	if (saved_depth_stencil)
+		saved_depth_stencil->Release();
 	if (saved_rs)
 		saved_rs->Release();
 

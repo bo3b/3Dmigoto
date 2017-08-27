@@ -119,6 +119,11 @@ public:
 	FLOAT blend_factor[4];
 	UINT blend_sample_mask;
 
+	int depth_stencil_override;
+	D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
+	ID3D11DepthStencilState *depth_stencil_state;
+	UINT stencil_ref;
+
 	int rs_override;
 	D3D11_RASTERIZER_DESC rs_desc;
 	ID3D11RasterizerState *rs_state;
@@ -126,7 +131,7 @@ public:
 	int sampler_override;
 	D3D11_SAMPLER_DESC sampler_desc;
 	ID3D11SamplerState* sampler_state;
-	
+
 	D3D11_PRIMITIVE_TOPOLOGY topology;
 
 	CommandList command_list;

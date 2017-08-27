@@ -1254,6 +1254,152 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 	}
 }
 
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476113(v=vs.85).aspx
+static wchar_t *DepthWriteMasks[] = {
+	L"ZERO",
+	L"ALL",
+};
+
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476101(v=vs.85).aspx
+static wchar_t *ComparisonFuncs[] = {
+	L"",
+	L"NEVER",
+	L"LESS",
+	L"EQUAL",
+	L"LESS_EQUAL",
+	L"GREATER",
+	L"NOT_EQUAL",
+	L"GREATER_EQUAL",
+	L"ALWAYS",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476219(v=vs.85).aspx
+static wchar_t *StencilOps[] = {
+	L"",
+	L"KEEP",
+	L"ZERO",
+	L"REPLACE",
+	L"INCR_SAT",
+	L"DECR_SAT",
+	L"INVERT",
+	L"INCR",
+	L"DECR",
+};
+
+static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DESC *desc)
+{
+	wchar_t func_buf[32], both_pass_buf[32], depth_fail_buf[32], stencil_fail_buf[32];
+	int i;
+
+	i = swscanf_s(val, L"%s %s %s %s",
+			func_buf, (unsigned)ARRAYSIZE(func_buf),
+			both_pass_buf, (unsigned)ARRAYSIZE(both_pass_buf),
+			depth_fail_buf, (unsigned)ARRAYSIZE(depth_fail_buf),
+			stencil_fail_buf, (unsigned)ARRAYSIZE(stencil_fail_buf));
+	if (i != 4) {
+		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
+		BeepFailure2();
+		return;
+	}
+	LogInfo("  %S=%S\n", key, val);
+
+	try {
+		desc->StencilFunc = (D3D11_COMPARISON_FUNC)ParseEnum(func_buf, L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil function %S\n", func_buf);
+		BeepFailure2();
+	}
+
+	try {
+		desc->StencilPassOp = (D3D11_STENCIL_OP)ParseEnum(both_pass_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
+		BeepFailure2();
+	}
+
+	try {
+		desc->StencilDepthFailOp = (D3D11_STENCIL_OP)ParseEnum(depth_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
+		BeepFailure2();
+	}
+
+	try {
+		desc->StencilFailOp = (D3D11_STENCIL_OP)ParseEnum(stencil_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
+		BeepFailure2();
+	}
+}
+
+static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
+{
+	D3D11_DEPTH_STENCIL_DESC *desc = &shader->depth_stencil_desc;
+	wchar_t setting[MAX_PATH];
+	wchar_t key[32];
+	int ival;
+	bool found;
+
+	memset(desc, 0, sizeof(D3D11_DEPTH_STENCIL_DESC));
+
+	// Set a default stencil state for any missing values:
+	desc->StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+	desc->StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+	desc->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	desc->FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	desc->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	desc->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	desc->BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	desc->BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	desc->DepthEnable = GetIniBool(section, L"depth_enable", true, &found);
+	if (found)
+		shader->depth_stencil_override = 1;
+
+	desc->DepthWriteMask = (D3D11_DEPTH_WRITE_MASK)GetIniEnum(section, L"depth_write_mask", D3D11_DEPTH_WRITE_MASK_ALL, &found,
+			L"D3D11_DEPTH_WRITE_MASK_", DepthWriteMasks, ARRAYSIZE(DepthWriteMasks), 0);
+	if (found)
+		shader->depth_stencil_override = 1;
+
+	desc->DepthFunc = (D3D11_COMPARISON_FUNC)GetIniEnum(section, L"depth_func", D3D11_COMPARISON_LESS, &found,
+			L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
+	if (found)
+		shader->depth_stencil_override = 1;
+
+	desc->StencilEnable = GetIniBool(section, L"stencil_enable", false, &found);
+	if (found)
+		shader->depth_stencil_override = 1;
+
+	if (GetIniString(section, L"stencil_read_mask", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
+		desc->StencilReadMask = ival; // Use an intermediate to be safe
+		LogInfo("  stencil_read_mask=0x%x\n", desc->StencilReadMask);
+	}
+
+	if (GetIniString(section, L"stencil_write_mask", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
+		desc->StencilWriteMask = ival; // Use an intermediate to be safe
+		LogInfo("  stencil_write_mask=0x%x\n", desc->StencilWriteMask);
+	}
+
+	if (GetIniString(section, L"stencil_front", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		ParseStencilOp(key, setting, &desc->FrontFace);
+	}
+
+	if (GetIniString(section, L"stencil_back", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		ParseStencilOp(key, setting, &desc->BackFace);
+	}
+
+	shader->stencil_ref = GetIniInt(section, L"stencil_ref", 0, &found);
+	if (found)
+		shader->depth_stencil_override = 1;
+}
+
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476131(v=vs.85).aspx
 static wchar_t *FillModes[] = {
 	L"",
@@ -1483,6 +1629,10 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"alpha_to_coverage", L"sample_mask",
 	L"blend_factor[0]", L"blend_factor[1]",
 	L"blend_factor[2]", L"blend_factor[3]",
+	// OM Depth Stencil State overrides:
+	L"depth_enable", L"depth_write_mask", L"depth_func",
+	L"stencil_enable", L"stencil_read_mask", L"stencil_write_mask",
+	L"stencil_front", L"stencil_back", L"stencil_ref",
 	// RS State overrides:
 	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
 	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
@@ -1546,10 +1696,11 @@ static void ParseCustomShaderSections()
 
 
 		ParseBlendState(custom_shader, shader_id->c_str());
+		ParseDepthStencilState(custom_shader, shader_id->c_str());
 		ParseRSState(custom_shader, shader_id->c_str());
 		ParseTopology(custom_shader, shader_id->c_str());
 		ParseSamplerState(custom_shader, shader_id->c_str());
-		
+
 		custom_shader->max_executions_per_frame =
 			GetIniInt(shader_id->c_str(), L"max_executions_per_frame", 0, NULL);
 
