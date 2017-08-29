@@ -229,6 +229,7 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 	return pPixelShader;
 }
 
+#define ENABLE_LEGACY_FILTERS 1
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
@@ -237,115 +238,139 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 
 	LogDebug("  override found for shader\n");
 
-	*separationValue = shaderOverride->separation;
-	if (*separationValue != FLT_MAX)
-		data->override = true;
-	*convergenceValue = shaderOverride->convergence;
-	if (*convergenceValue != FLT_MAX)
-		data->override = true;
-	data->skip = shaderOverride->skip;
-	if (!shaderOverride->preset.empty())
-		use_preset = true;
+	// We really want to start deprecating all the old filters and switch
+	// to using the command list for much greater flexibility. This if()
+	// will be optimised out by the compiler, but is here to remind anyone
+	// looking at this that we don't want to extend this code further.
+	if (ENABLE_LEGACY_FILTERS) {
+		// Per draw call separation and convergence overrides are
+		// deprecated since they are rarely used and can be achieved by
+		// editing the vertex shader
+		*separationValue = shaderOverride->separation;
+		if (*separationValue != FLT_MAX)
+			data->override = true;
+		*convergenceValue = shaderOverride->convergence;
+		if (*convergenceValue != FLT_MAX)
+			data->override = true;
 
-	// Check iteration.
-	if (!shaderOverride->iterations.empty()) {
-		std::vector<int>::iterator k = shaderOverride->iterations.begin();
-		int currentiterations = *k = *k + 1;
-		LogDebug("  current iterations = %d\n", currentiterations);
+		// Handling = skip can usually be achieved by editing the
+		// vertex or pixel shader. This is convenient though, so might
+		// be worth keeping and moving to the command list.
+		data->skip = shaderOverride->skip;
+		if (!shaderOverride->preset.empty())
+			use_preset = true;
 
-		data->override = false;
-		while (++k != shaderOverride->iterations.end())
-		{
-			if (currentiterations == *k)
-			{
-				data->override = true;
-				break;
-			}
-		}
-		if (!data->override)
-		{
-			LogDebug("  override skipped\n");
-		}
-	}
+		// Check iteration.
+		// TODO: extend the command list to support things like 'x = x + 1'
+		if (!shaderOverride->iterations.empty()) {
+			std::vector<int>::iterator k = shaderOverride->iterations.begin();
+			int currentiterations = *k = *k + 1;
+			LogDebug("  current iterations = %d\n", currentiterations);
 
-	// Check index buffer filter.
-	if (!shaderOverride->indexBufferFilter.empty()) {
-		bool found = false;
-		for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
-			if (mCurrentIndexBuffer == *l)
-			{
-				found = true;
-				break;
-			}
-		if (!found)
-		{
 			data->override = false;
-			data->skip = false;
+			while (++k != shaderOverride->iterations.end())
+			{
+				if (currentiterations == *k)
+				{
+					data->override = true;
+					break;
+				}
+			}
+			if (!data->override)
+			{
+				LogDebug("  override skipped\n");
+			}
+		}
+
+		// Check index buffer filter.
+		// TODO: Replace this by extending texture filtering in the
+		// command list to cover other slots
+		if (!shaderOverride->indexBufferFilter.empty()) {
+			bool found = false;
+			for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
+				if (mCurrentIndexBuffer == *l)
+				{
+					found = true;
+					break;
+				}
+			if (!found)
+			{
+				data->override = false;
+				data->skip = false;
+				use_preset = false;
+			}
+
+			// TODO: This filter currently seems pretty limited as it only
+			// applies to handling=skip and per-draw separation/convergence.
+		}
+
+		// TODO: Extend the texture filtering in the command list to
+		// support oD, and add a value (-1) for unassigned
+		if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
+			ID3D11DepthStencilView *pDepthStencilView = NULL;
+
+			mOrigContext->OMGetRenderTargets(0, NULL, &pDepthStencilView);
+
+			// Remember - we are NOT switching to the original shader when the condition is true
+			if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
+				use_orig = true;
+			}
+			else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
+				use_orig = true;
+			}
+
+			if (pDepthStencilView)
+				pDepthStencilView->Release();
+
+			// TODO: Add alternate filter type where the depth
+			// buffer state is passed as an input to the shader
+		}
+
+		// Deprecated: Partner filtering can already be achieved with
+		// the command list with far more flexibility than this allows
+		if (shaderOverride->partner_hash) {
+			if (isPixelShader) {
+				if (mCurrentVertexShader != shaderOverride->partner_hash)
+					use_orig = true;
+			}
+			else {
+				if (mCurrentPixelShader != shaderOverride->partner_hash)
+					use_orig = true;
+			}
+		}
+		if (use_orig)
 			use_preset = false;
-		}
-
-		// TODO: This filter currently seems pretty limited as it only
-		// applies to handling=skip and per-draw separation/convergence.
 	}
-
-	if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
-		ID3D11DepthStencilView *pDepthStencilView = NULL;
-
-		mOrigContext->OMGetRenderTargets(0, NULL, &pDepthStencilView);
-
-		// Remember - we are NOT switching to the original shader when the condition is true
-		if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
-			use_orig = true;
-		}
-		else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
-			use_orig = true;
-		}
-
-		if (pDepthStencilView)
-			pDepthStencilView->Release();
-
-		// TODO: Add alternate filter type where the depth
-		// buffer state is passed as an input to the shader
-	}
-
-	if (shaderOverride->partner_hash) {
-		if (isPixelShader) {
-			if (mCurrentVertexShader != shaderOverride->partner_hash)
-				use_orig = true;
-		}
-		else {
-			if (mCurrentPixelShader != shaderOverride->partner_hash)
-				use_orig = true;
-		}
-	}
-	if (use_orig)
-		use_preset = false;
 
 	RunCommandList(mHackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
 
-	// TODO: Add render target filters, texture filters, etc.
-
-	if (use_orig) {
-		if (isPixelShader) {
-			PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(mCurrentPixelShaderHandle);
-			if (i != G->mOriginalPixelShaders.end())
-				data->oldPixelShader = SwitchPSShader(i->second);
+	if (ENABLE_LEGACY_FILTERS) {
+		// Deprecated since the logic can be moved into the shaders with far more flexibility
+		if (use_orig) {
+			if (isPixelShader) {
+				PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(mCurrentPixelShaderHandle);
+				if (i != G->mOriginalPixelShaders.end())
+					data->oldPixelShader = SwitchPSShader(i->second);
+			}
+			else {
+				VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(mCurrentVertexShaderHandle);
+				if (i != G->mOriginalVertexShaders.end())
+					data->oldVertexShader = SwitchVSShader(i->second);
+			}
 		}
-		else {
-			VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(mCurrentVertexShaderHandle);
-			if (i != G->mOriginalVertexShaders.end())
-				data->oldVertexShader = SwitchVSShader(i->second);
+
+		// TODO: Allow preset activation from the command list (e.g.
+		// will gain the ability to activate presets based on textures)
+		if (use_preset) {
+			LogDebug("  use preset %S\n", shaderOverride->preset.c_str());
+			CurrentTransition.active_preset = shaderOverride->preset;
 		}
-	}
 
-	if (use_preset) {
-		LogDebug("  use preset %S\n", shaderOverride->preset.c_str());
-		CurrentTransition.active_preset = shaderOverride->preset;
-	}
-
-	if (!use_orig && shaderOverride->disable_scissor != -1) {
-		LogDebug("  use disable_scissor %i\n", shaderOverride->disable_scissor);
-		data->disable_scissor = shaderOverride->disable_scissor;
+		// TODO: Move to command list
+		if (!use_orig && shaderOverride->disable_scissor != -1) {
+			LogDebug("  use disable_scissor %i\n", shaderOverride->disable_scissor);
+			data->disable_scissor = shaderOverride->disable_scissor;
+		}
 	}
 }
 
