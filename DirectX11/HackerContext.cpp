@@ -988,7 +988,7 @@ STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-	FrameAnalysisLog("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)\n",
+	FrameAnalysisLogNoNL("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)",
 			pResource, Subresource, MapType, MapFlags, pMappedResource);
 	FrameAnalysisLogResourceHash(pResource);
 
@@ -1010,7 +1010,7 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	/* [annotation] */
 	__in  UINT Subresource)
 {
-	FrameAnalysisLog("Unmap(pResource:0x%p, Subresource:%u)\n",
+	FrameAnalysisLogNoNL("Unmap(pResource:0x%p, Subresource:%u)",
 			pResource, Subresource);
 	FrameAnalysisLogResourceHash(pResource);
 
@@ -1525,7 +1525,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
-	FrameAnalysisLog("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)\n",
+	FrameAnalysisLogNoNL("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)",
 			pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 	FrameAnalysisLogResourceHash(pDstResource);
 
@@ -1621,7 +1621,7 @@ STDMETHODIMP_(void) HackerContext::SetResourceMinLOD(THIS_
 	__in  ID3D11Resource *pResource,
 	FLOAT MinLOD)
 {
-	FrameAnalysisLog("SetResourceMinLOD(pResource:0x%p \n)",
+	FrameAnalysisLogNoNL("SetResourceMinLOD(pResource:0x%p)",
 			pResource);
 	FrameAnalysisLogResourceHash(pResource);
 
@@ -1634,7 +1634,7 @@ STDMETHODIMP_(FLOAT) HackerContext::GetResourceMinLOD(THIS_
 {
 	FLOAT ret = mOrigContext->GetResourceMinLOD(pResource);
 
-	FrameAnalysisLog("GetResourceMinLOD(pResource:0x%p) = %f\n",
+	FrameAnalysisLogNoNL("GetResourceMinLOD(pResource:0x%p) = %f",
 			pResource, ret);
 	FrameAnalysisLogResourceHash(pResource);
 	return ret;
@@ -3037,7 +3037,7 @@ void STDMETHODCALLTYPE HackerContext1::UpdateSubresource1(
 	/* [annotation] */
 	_In_  UINT CopyFlags)
 {
-	FrameAnalysisLog("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)\n",
+	FrameAnalysisLogNoNL("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)",
 			pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
 	FrameAnalysisLogResourceHash(pDstResource);
 
@@ -3051,7 +3051,7 @@ void STDMETHODCALLTYPE HackerContext1::DiscardResource(
 	/* [annotation] */
 	_In_  ID3D11Resource *pResource)
 {
-	FrameAnalysisLog("DiscardResource(pResource:0x%p)\n",
+	FrameAnalysisLogNoNL("DiscardResource(pResource:0x%p)",
 			pResource);
 	FrameAnalysisLogResourceHash(pResource);
 

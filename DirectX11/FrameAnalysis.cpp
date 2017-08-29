@@ -82,6 +82,9 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 	uint32_t hash, orig_hash;
 	struct ResourceHashInfo *info;
 
+	// Always complete the line in the debug log:
+	LogDebug("\n");
+
 	if (!G->analyse_frame || !frame_analysis_log)
 		return;
 
