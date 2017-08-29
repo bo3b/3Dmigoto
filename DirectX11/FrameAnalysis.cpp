@@ -304,13 +304,8 @@ void HackerContext::FrameAnalysisLogData(void *buf, UINT size)
 	unsigned char *ptr = (unsigned char*)buf;
 	UINT i;
 
-	if (!G->analyse_frame || !frame_analysis_log)
+	if (!buf || !size || !G->analyse_frame || !frame_analysis_log)
 		return;
-
-	if (!buf || !size) {
-		fprintf(frame_analysis_log, "\n");
-		return;
-	}
 
 	fprintf(frame_analysis_log, "    data: ");
 	for (i = 0; i < size; i++, ptr++)
