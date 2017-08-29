@@ -77,6 +77,14 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
+class PresetCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+	wstring preset;
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
 class ExplicitCommandListSection
 {
 public:

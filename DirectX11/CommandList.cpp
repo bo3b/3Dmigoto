@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "HackerDevice.h"
 #include "HackerContext.h"
+#include "Override.h"
 
 #include <D3DCompiler.h>
 
@@ -187,6 +188,36 @@ bail:
 	return false;
 }
 
+static bool ParsePreset(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	PresetCommand *operation = new PresetCommand();
+
+	PresetOverrideMap::iterator i;
+
+	// Value should already have been transformed to lower case from
+	// ParseCommandList, so our keys will be consistent in the
+	// unordered_map:
+	wstring preset_id(val->c_str());
+
+	i = presetOverrides.find(preset_id);
+	if (i == presetOverrides.end())
+		goto bail;
+
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	operation->preset = *val;
+
+	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return true;
+
+bail:
+	delete operation;
+	return false;
+}
+
 static bool ParseDrawCommand(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
@@ -271,6 +302,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		if (!wcsncmp(val->c_str(), L"commandlist", 11))
 			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 	}
+
+	if (!wcscmp(key, L"preset"))
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -357,6 +391,15 @@ void CheckTextureOverrideCommand::run(HackerDevice *mHackerDevice, HackerContext
 		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->post_command_list, state);
 	else
 		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->command_list, state);
+}
+
+void PresetCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
+
+	CurrentTransition.active_preset = preset;
 }
 
 void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,

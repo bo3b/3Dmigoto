@@ -234,7 +234,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
 	bool use_orig = false;
-	bool use_preset = false;
 
 	LogDebug("  override found for shader\n");
 
@@ -257,8 +256,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		// vertex or pixel shader. This is convenient though, so might
 		// be worth keeping and moving to the command list.
 		data->skip = shaderOverride->skip;
-		if (!shaderOverride->preset.empty())
-			use_preset = true;
 
 		// Check iteration.
 		// TODO: extend the command list to support things like 'x = x + 1'
@@ -297,7 +294,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			{
 				data->override = false;
 				data->skip = false;
-				use_preset = false;
 			}
 
 			// TODO: This filter currently seems pretty limited as it only
@@ -338,8 +334,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 					use_orig = true;
 			}
 		}
-		if (use_orig)
-			use_preset = false;
 	}
 
 	RunCommandList(mHackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
@@ -357,13 +351,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 				if (i != G->mOriginalVertexShaders.end())
 					data->oldVertexShader = SwitchVSShader(i->second);
 			}
-		}
-
-		// TODO: Allow preset activation from the command list (e.g.
-		// will gain the ability to activate presets based on textures)
-		if (use_preset) {
-			LogDebug("  use preset %S\n", shaderOverride->preset.c_str());
-			CurrentTransition.active_preset = shaderOverride->preset;
 		}
 
 		// TODO: Move to command list

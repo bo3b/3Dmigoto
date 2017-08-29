@@ -854,7 +854,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"indexbufferfilter",
 	L"analyse_options",
 	L"model",
-	L"preset",
 	L"disable_scissor",
 	NULL
 };
@@ -939,7 +938,7 @@ static void ParseShaderOverrideSections()
 			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
 		}
-		
+
 		if (GetIniString(id, L"IndexBufferFilter", 0, setting, MAX_PATH))
 		{
 			swscanf_s(setting, L"%16llx", &hash2);
@@ -957,17 +956,6 @@ static void ParseShaderOverrideSections()
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
 			override->model[ARRAYSIZE(override->model) - 1] = '\0';
 			LogInfo("  model=%s\n", override->model);
-		}
-
-		if (GetIniString(id, L"preset", 0, setting, MAX_PATH)) {
-			override->preset = setting;
-			std::transform(override->preset.begin(), override->preset.end(), override->preset.begin(), ::towlower);
-			if (presetOverrides.find(override->preset) == presetOverrides.end()) {
-				LogInfo("  WARNING: Unrecognised preset=%S\n", override->preset.c_str());
-				override->preset.clear();
-			} else {
-				LogInfo("  preset=%S\n", override->preset.c_str());
-			}
 		}
 
 		override->disable_scissor = GetIniInt(id, L"disable_scissor", -1, NULL);
