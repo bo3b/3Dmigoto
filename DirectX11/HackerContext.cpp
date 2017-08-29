@@ -605,9 +605,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 {
 	int i;
 
-	if (data.skip)
-		return;
-
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
 			RunCommandList(mHackerDevice, this, data.post_commands[i], &data.call_info, true);
