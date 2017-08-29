@@ -159,7 +159,7 @@ public:
 		activated(false)
 	{}
 
-	void Activate(HackerDevice *device, PresetOverride *prev);
+	void Activate(HackerDevice *device);
 	void Deactivate(HackerDevice *device);
 	bool IsActivated();
 };
