@@ -203,12 +203,32 @@ static bool ParsePreset(const wchar_t *section,
 	// unordered_map:
 	wstring preset_id(val->c_str());
 
+	// The original preset code did not accept the "Preset" prefix on the
+	// prefix command, as in it would only accept 'preset = Foo', not
+	// 'preset = PresetFoo'. While I agree that the later is redundant
+	// since the word preset now appears twice, it is more consistent with
+	// the way we have referenced other sections in the command list (ps-t0
+	// = ResourceBar, run = CustomShaderBaz, etc), and it makes it easier
+	// to search for 'PresetFoo' to find both where it is used and where it
+	// is referenced, so it is good to support here... but for backwards
+	// compatibility and less redundancy for those that prefer not to say
+	// "preset" twice we support both ways.
+
+	// First, try without the prefix:
 	i = presetOverrides.find(preset_id);
-	if (i == presetOverrides.end())
-		goto bail;
+	if (i == presetOverrides.end()) {
+		// If the 'Preset' prefix was specified, strip it and try again:
+		if (!wcsncmp(val->c_str(), L"preset", 6)) {
+			preset_id = val->c_str() + 6;
+
+			i = presetOverrides.find(preset_id);
+			if (i == presetOverrides.end())
+				goto bail;
+		}
+	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	operation->preset = *val;
+	operation->preset = preset_id;
 
 	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 	return true;
