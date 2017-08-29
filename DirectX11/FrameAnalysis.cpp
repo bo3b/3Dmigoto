@@ -206,6 +206,9 @@ void HackerContext::FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async)
 	ID3D11Predicate *predicate;
 	D3D11_QUERY_DESC desc;
 
+	// Always complete the line in the debug log:
+	LogDebug("\n");
+
 	if (!G->analyse_frame || !frame_analysis_log)
 		return;
 
