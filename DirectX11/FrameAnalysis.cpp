@@ -23,14 +23,17 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 		return;
 	}
 
+	// DSS note: the below comment was originally referring to the
+	// C->cur_analyse_options & FrameAnalysisOptions::LOG test we used to
+	// have here, but even though we removed that test this is still a good
+	// reminder for other settings as well.
+	//
 	// Using the global analyse options here as the local copy in the
 	// context is only updated after draw calls. We could potentially
 	// process the triggers here, but this function is intended to log
 	// other calls as well where that wouldn't make sense. We could change
 	// it so that this is called from FrameAnalysisAfterDraw, but we want
 	// to log calls for deferred contexts here as well.
-	if (!(G->cur_analyse_options & FrameAnalysisOptions::LOG))
-		return;
 
 	if (!frame_analysis_log) {
 		// Use the original context to check the type, otherwise we
@@ -79,7 +82,7 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 	uint32_t hash, orig_hash;
 	struct ResourceHashInfo *info;
 
-	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !frame_analysis_log)
 		return;
 
 	if (!resource) {
@@ -119,7 +122,7 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 
 void HackerContext::FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource)
 {
-	if (!resource || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!resource || !G->analyse_frame || !frame_analysis_log)
 		return;
 
 	FrameAnalysisLogSlot(frame_analysis_log, slot, slot_name);
@@ -132,7 +135,7 @@ void HackerContext::FrameAnalysisLogView(int slot, char *slot_name, ID3D11View *
 {
 	ID3D11Resource *resource;
 
-	if (!view || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!view || !G->analyse_frame || !frame_analysis_log)
 		return;
 
 	FrameAnalysisLogSlot(frame_analysis_log, slot, slot_name);
@@ -151,7 +154,7 @@ void HackerContext::FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Re
 {
 	UINT i;
 
-	if (!ppResources || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!ppResources || !G->analyse_frame || !frame_analysis_log)
 		return;
 
 	for (i = 0; i < len; i++)
@@ -162,7 +165,7 @@ void HackerContext::FrameAnalysisLogViewArray(UINT start, UINT len, ID3D11View *
 {
 	UINT i;
 
-	if (!ppViews || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!ppViews || !G->analyse_frame || !frame_analysis_log)
 		return;
 
 	for (i = 0; i < len; i++)
@@ -174,7 +177,7 @@ void HackerContext::FrameAnalysisLogMiscArray(UINT start, UINT len, void *const 
 	UINT i;
 	void *item;
 
-	if (!array || !G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!array || !G->analyse_frame || !frame_analysis_log)
 		return;
 
 	for (i = 0; i < len; i++) {
@@ -200,7 +203,7 @@ void HackerContext::FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async)
 	ID3D11Predicate *predicate;
 	D3D11_QUERY_DESC desc;
 
-	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !frame_analysis_log)
 		return;
 
 	if (!async) {
@@ -295,7 +298,7 @@ void HackerContext::FrameAnalysisLogData(void *buf, UINT size)
 	unsigned char *ptr = (unsigned char*)buf;
 	UINT i;
 
-	if (!G->analyse_frame || !(G->cur_analyse_options & FrameAnalysisOptions::LOG) || !frame_analysis_log)
+	if (!G->analyse_frame || !frame_analysis_log)
 		return;
 
 	if (!buf || !size) {

@@ -138,7 +138,7 @@ enum class FrameAnalysisOptions {
 	DUMP_XX_BIN     = 0x00854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
 	DUMP_XX_TXT     = 0x008a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
-	LOG             = 0x00200000,
+	LOG_DEPRECATED  = 0x00200000, // Always enabled now - there is no situation we don't want this.
 	HOLD            = 0x00400000,
 	DUMP_ON_UNMAP   = 0x00800000, // XXX: For now including in all XX masks
 };
@@ -165,7 +165,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
 	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
-	{L"log", FrameAnalysisOptions::LOG},
+	{L"log", FrameAnalysisOptions::LOG_DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
 	{L"hold", FrameAnalysisOptions::HOLD},
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
