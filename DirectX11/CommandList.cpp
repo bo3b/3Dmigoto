@@ -228,7 +228,7 @@ static bool ParsePreset(const wchar_t *section,
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	operation->preset = preset_id;
+	operation->preset = &i->second;
 
 	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 	return true;
@@ -419,7 +419,7 @@ void PresetCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 {
 	mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
 
-	CurrentTransition.active_preset = preset;
+	preset->Activate(mHackerDevice);
 }
 
 void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,

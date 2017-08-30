@@ -455,8 +455,7 @@ void KeyOverride::UpEvent(HackerDevice *device)
 
 void PresetOverride::Activate(HackerDevice *device)
 {
-	NvAPI_Status err;
-	int i;
+	triggered = true;
 
 	if (activated)
 		return;
@@ -480,9 +479,13 @@ void PresetOverride::Deactivate(HackerDevice *device)
 	activated = false;
 }
 
-bool PresetOverride::IsActivated()
+// Called on present to update the activation status. If the preset was
+// triggered this frame it will remain active, otherwise it will deactivate.
+void PresetOverride::Update(HackerDevice *wrapper)
 {
-	return activated;
+	if (activated && !triggered)
+		Deactivate(wrapper);
+	triggered = false;
 }
 
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
@@ -551,28 +554,10 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 void OverrideTransition::UpdatePresets(HackerDevice *wrapper)
 {
 	PresetOverrideMap::iterator i;
-	PresetOverride *preset;
 
-	// Deactivate previously activated but not current preset
-	for (i = presetOverrides.begin(); i != presetOverrides.end(); i++) {
-		if (active_preset.empty() || i->first != active_preset) {
-			preset = &i->second;
-			if (preset->IsActivated()) {
-				preset->Deactivate(wrapper);
-			}
-		}
-	}
-
-	// Activate current preset if any
-	if (!active_preset.empty()) {
-		preset = &presetOverrides[active_preset];
-		preset->Activate(wrapper);
-	}
-
-	// If next frame activates any preset the active_present will be set again.
-	// Otherwise active_preset remains empty until next call, in which case we
-	// deactivate the current active preset.
-	active_preset.clear();
+	// Deactivate any presets that were not triggered this frame:
+	for (i = presetOverrides.begin(); i != presetOverrides.end(); i++)
+		i->second.Update(wrapper);
 }
 
 static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONGLONG now)

@@ -77,10 +77,18 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
+// Forward declaration to avoid circular reference since Override.h includes
+// HackerDevice.h includes HackerContext.h includes CommandList.h
+class PresetOverride;
+
 class PresetCommand : public CommandListCommand {
 public:
 	wstring ini_line;
-	wstring preset;
+	PresetOverride *preset;
+
+	PresetCommand() :
+		preset(NULL)
+	{}
 
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
