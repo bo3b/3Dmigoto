@@ -3280,8 +3280,13 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// knocked out the offset for us. We could alternatively do it
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
-	desc->Buffer.FirstElement = offset / stride;
-	desc->Buffer.NumElements = (buf_src_size - offset) / stride;
+	if (stride) {
+		desc->Buffer.FirstElement = offset / stride;
+		desc->Buffer.NumElements = (buf_src_size - offset) / stride;
+	} else {
+		desc->Buffer.FirstElement = 0;
+		desc->Buffer.NumElements = 1;
+	}
 }
 
 static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(
