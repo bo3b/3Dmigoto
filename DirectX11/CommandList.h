@@ -209,6 +209,17 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
+class SkipCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+
+	SkipCommand(wstring section) :
+		ini_section(section)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
 enum class ParamOverrideType {
 	INVALID,
 	VALUE,

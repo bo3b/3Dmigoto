@@ -847,7 +847,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"hash",
 	L"separation",
 	L"convergence",
-	L"handling",
 	L"depth_filter",
 	L"partner",
 	L"iteration",
@@ -895,16 +894,6 @@ static void ParseShaderOverrideSections()
 		override->separation = GetIniFloat(id, L"Separation", FLT_MAX, NULL);
 		override->convergence = GetIniFloat(id, L"Convergence", FLT_MAX, NULL);
 
-		if (GetIniString(id, L"Handling", 0, setting, MAX_PATH)) {
-			if (!_wcsicmp(setting, L"skip")) {
-				override->skip = true;
-				LogInfo("  Handling=skip\n");
-			}
-			else {
-				LogInfoW(L"  WARNING: Unknown handling type \"%s\"\n", setting);
-				BeepFailure2();
-			}
-		}
 		if (GetIniString(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);

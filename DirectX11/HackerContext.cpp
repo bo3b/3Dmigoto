@@ -252,11 +252,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		if (*convergenceValue != FLT_MAX)
 			data->override = true;
 
-		// Handling = skip can usually be achieved by editing the
-		// vertex or pixel shader. This is convenient though, so might
-		// be worth keeping and moving to the command list.
-		data->skip = shaderOverride->skip;
-
 		// Check iteration.
 		// TODO: extend the command list to support things like 'x = x + 1'
 		if (!shaderOverride->iterations.empty()) {
@@ -293,11 +288,17 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			if (!found)
 			{
 				data->override = false;
-				data->skip = false;
 			}
 
 			// TODO: This filter currently seems pretty limited as it only
-			// applies to handling=skip and per-draw separation/convergence.
+			// applies to per-draw separation/convergence.
+			//
+			// XXX: handling=skip will no longer be affected by
+			// the index buffer filter, but since index buffer
+			// filtering was broken until quite recently and not
+			// even llyzs is not actually using it we're not going
+			// to worry about maintaining backwards compatibility
+			// with using these two together.
 		}
 
 		// TODO: Extend the texture filtering in the command list to
@@ -428,7 +429,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
-	data.skip = false;
+	data.call_info.skip = false;
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
@@ -501,7 +502,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				}
 				else if (G->marking_mode == MARKING_MODE_SKIP)
 				{
-					data.skip = true;
+					data.call_info.skip = true;
 				}
 				else if (G->marking_mode == MARKING_MODE_PINK)
 				{
@@ -2703,7 +2704,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u) \n",
 			IndexCount, StartIndexLocation, BaseVertexLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		 mOrigContext->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
 	AfterDraw(c);
 }
@@ -2720,7 +2721,7 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
 			VertexCount, StartVertexLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		 mOrigContext->Draw(VertexCount, StartVertexLocation);
 	AfterDraw(c);
 }
@@ -2782,7 +2783,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
 			IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
 		BaseVertexLocation, StartInstanceLocation);
 	AfterDraw(c);
@@ -2804,7 +2805,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
 			VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 	AfterDraw(c);
 }
@@ -2926,7 +2927,7 @@ STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 
 	FrameAnalysisLog("DrawAuto()\n");
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawAuto();
 	AfterDraw(c);
 }
@@ -2943,7 +2944,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
 }
@@ -2960,7 +2961,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
 }

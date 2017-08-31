@@ -5,6 +5,8 @@ struct DrawCallInfo
 	UINT VertexCount, IndexCount, InstanceCount;
 	UINT FirstVertex, FirstIndex, FirstInstance;
 
+	bool skip;
+
 	DrawCallInfo(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance) :
 		VertexCount(VertexCount),
@@ -12,7 +14,8 @@ struct DrawCallInfo
 		InstanceCount(InstanceCount),
 		FirstVertex(FirstVertex),
 		FirstIndex(FirstIndex),
-		FirstInstance(FirstInstance)
+		FirstInstance(FirstInstance),
+		skip(false)
 	{}
 };
 

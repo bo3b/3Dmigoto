@@ -12,7 +12,6 @@ extern GUID GUID_BufferResourceHash;
 
 struct DrawContext
 {
-	bool skip;
 	bool override;
 	float oldSeparation;
 	float oldConvergence;
@@ -25,7 +24,6 @@ struct DrawContext
 
 	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance) :
-		skip(false),
 		override(false),
 		oldSeparation(FLT_MAX),
 		oldConvergence(FLT_MAX),

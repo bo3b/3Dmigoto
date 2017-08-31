@@ -69,7 +69,7 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	CommandListFlushState(mHackerDevice, mOrigContext, &state);
 }
 
-static void AddCommandToList(CommandListCommand *command,
+static bool AddCommandToList(CommandListCommand *command,
 		CommandList *explicit_command_list,
 		CommandList *sensible_command_list,
 		CommandList *pre_command_list,
@@ -99,6 +99,8 @@ static void AddCommandToList(CommandListCommand *command,
 		if (post_command_list)
 			post_command_list->push_back(p);
 	}
+
+	return true;
 }
 
 static bool ParseCheckTextureOverride(const wchar_t *section,
@@ -119,8 +121,7 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 		switch(operation->shader_type) {
 			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
 				operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-				AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
-				return true;
+				return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 		}
 	}
 
@@ -148,8 +149,7 @@ static bool ParseRunShader(const wchar_t *section,
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->custom_shader = &shader->second;
-	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -180,8 +180,7 @@ static bool ParseRunExplicitCommandList(const wchar_t *section,
 	// later refactor these together note that here we do not specify a
 	// sensible command list, so it will be added to both pre and post
 	// command lists:
-	AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 
 bail:
 	delete operation;
@@ -230,8 +229,7 @@ static bool ParsePreset(const wchar_t *section,
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->preset = &i->second;
 
-	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -299,8 +297,7 @@ static bool ParseDrawCommand(const wchar_t *section,
 		goto bail;
 
 	operation->ini_section = section;
-	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -325,6 +322,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 	if (!wcscmp(key, L"preset"))
 		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+
+	if (!wcscmp(key, L"handling") && !wcscmp(val->c_str(), L"skip"))
+		return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -481,6 +481,18 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 			// an Indirect draw call (and the buffer)
 			break;
 	}
+}
+
+void SkipCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = skip\n", ini_section.c_str());
+
+	if (state->call_info)
+		state->call_info->skip = true;
+	else
+		mHackerContext->FrameAnalysisLog("No active draw call to skip\n");
 }
 
 CustomShader::CustomShader() :
