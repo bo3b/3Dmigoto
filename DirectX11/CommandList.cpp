@@ -2858,6 +2858,8 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 
 		// Constant buffers cannot be structured, so clear that flag:
 		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		// XXX: Should we clear StructureByteStride? Seems to work ok
+		// without clearing that.
 
 		// If the size of the new resource doesn't match the old or
 		// there is an offset we will have to perform a region copy
@@ -4005,8 +4007,17 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 		}
 	}
 
-	if (!*stride)
+	if (!*stride) {
+		// This will catch index buffers, which are not structured and
+		// don't have a view, but they do have a format we can use:
 		*stride = dxgi_format_size(*format);
+
+		// This will catch constant buffers, which are not structured
+		// and don't have either a view or format, so set the stride to
+		// the size of the whole buffer:
+		if (!*stride)
+			*stride = *buf_size;
+	}
 }
 
 static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
