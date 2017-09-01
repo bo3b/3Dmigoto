@@ -463,7 +463,7 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 		case DrawCommandType::FROM_CALLER:
 			DrawCallInfo *info = state->call_info;
 			if (!info) {
-				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from caller -> NO ACTIVE DRAW CALL\n");
+				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
 				break;
 			}
 			if (info->InstanceCount) {
