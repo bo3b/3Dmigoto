@@ -490,7 +490,7 @@ struct Globals
 		frame_no(0),
 		hWnd(NULL),
 		hide_cursor(false),
-		cursor_upscaling_bypass(false),
+		cursor_upscaling_bypass(true),
 
 		ENABLE_CRITICAL_SECTION(false),
 		ORIGINAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
