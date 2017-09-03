@@ -319,6 +319,7 @@ typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
 typedef BOOL(WINAPI* lpfnSetCursorPos)(_In_ int X, _In_ int Y);
 typedef BOOL(WINAPI* lpfnGetCursorPos)(_Out_ LPPOINT lpPoint);
 typedef BOOL(WINAPI* lpfnScreenToClient)(_In_ HWND hWnd,LPPOINT lpPoint);
+typedef BOOL(WINAPI* lpfnGetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRect);
 
 lpfnSetCursor trampoline_SetCursor = SetCursor;
 lpfnGetCursor trampoline_GetCursor = GetCursor;
@@ -328,6 +329,7 @@ lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
 lpfnSetCursorPos trampoline_SetCursorPos = SetCursorPos;
 lpfnGetCursorPos trampoline_GetCursorPos = GetCursorPos;
 lpfnScreenToClient trampoline_ScreenToClient = ScreenToClient;
+lpfnGetClientRect trampoline_GetClientRect = GetClientRect;
 
 // This routine creates an invisible cursor that we can set whenever we are
 // hiding the cursor. It is static, so will only be created the first time this
@@ -417,6 +419,19 @@ BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 	}
 
 	return trampoline_ScreenToClient(hWnd, lpPoint);
+}
+
+BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+{
+	BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
+
+	if (rc && G->SCREEN_UPSCALING > 0 && lpRect != NULL)
+	{
+		lpRect->right = G->ORIGINAL_WIDTH;
+		lpRect->bottom = G->ORIGINAL_HEIGHT;
+	}
+
+	return rc;
 }
 
 BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
@@ -551,6 +566,7 @@ void InstallMouseHooks(bool hide)
 	fail |= InstallHook(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos, true);
 	fail |= InstallHook(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos, true);
 	fail |= InstallHook(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient, true);
+	fail |= InstallHook(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect, true);
 
 	if (fail) {
 		LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
