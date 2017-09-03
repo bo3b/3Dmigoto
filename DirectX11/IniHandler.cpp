@@ -1884,7 +1884,7 @@ void LoadConfigFile()
 	G->SCREEN_REFRESH = GetIniInt(L"Device", L"refresh_rate", -1, NULL);
 	G->SCREEN_UPSCALING = GetIniInt(L"Device", L"upscaling", 0, NULL);
 	G->UPSCALE_MODE = GetIniInt(L"Device", L"upscale_mode", 0, NULL);
-	
+
 	if (GetIniString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
@@ -1911,8 +1911,6 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	G->hide_cursor = GetIniBool(L"Device", L"hide_cursor", false, NULL);
-	if (G->hide_cursor)
-		InstallMouseHooks(true);
 
 	// [Stereo]
 	LogInfo("[Stereo]\n");
@@ -2186,6 +2184,9 @@ void LoadConfigFile()
 	ParseDriverProfile();
 
 	LogInfo("\n");
+
+	if (G->hide_cursor || G->SCREEN_UPSCALING)
+		InstallMouseHooks(G->hide_cursor);
 }
 
 // This variant is called by the profile manager helper with the path to the
