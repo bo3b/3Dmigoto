@@ -444,8 +444,8 @@ BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
 	if (G->hide_cursor && G->SCREEN_UPSCALING > 0)
 	{
 		// TODO: Maybe there is a better way than use globals for the original game resolution
-		const int new_x = X * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
-		const int new_y = Y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+		const int new_x = X * G->SCREEN_WIDTH / G->ORIGINAL_WIDTH;
+		const int new_y = Y * G->SCREEN_HEIGHT / G->ORIGINAL_HEIGHT;
 		return trampoline_SetCursorPos(new_x, new_y);
 	}
 	else
