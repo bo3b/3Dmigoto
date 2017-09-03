@@ -294,6 +294,8 @@ struct Globals
 	int enable_create_device;
 	bool enable_platform_update;
 
+	int ORIGINAL_WIDTH;
+	int ORIGINAL_HEIGHT;
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
@@ -489,6 +491,8 @@ struct Globals
 		hide_cursor(false),
 
 		ENABLE_CRITICAL_SECTION(false),
+		ORIGINAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
+		ORIGINAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions
 		SCREEN_WIDTH(-1),
 		SCREEN_HEIGHT(-1),
 		SCREEN_REFRESH(-1),

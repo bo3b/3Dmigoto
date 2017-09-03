@@ -4,6 +4,7 @@
 #include "HookedDXGI.h"
 #include "globals.h"
 
+
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
 // it does GetSystemDirectory to get System32, and directly access ..\System32\d3d11.dll
@@ -311,11 +312,18 @@ typedef HCURSOR(WINAPI *lpfnGetCursor)(void);
 typedef BOOL(WINAPI *lpfnGetCursorInfo)(_Inout_ PCURSORINFO pci);
 typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
 	_In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+typedef BOOL(WINAPI* lpfnSetCursorPos)(_In_ int X, _In_ int Y);
+typedef BOOL(WINAPI* lpfnGetCursorPos)(_Out_ LPPOINT lpPoint);
+typedef BOOL(WINAPI* lpfnScreenToClient)(_In_ HWND hWnd,LPPOINT lpPoint);
+
 lpfnSetCursor trampoline_SetCursor = SetCursor;
 lpfnGetCursor trampoline_GetCursor = GetCursor;
 lpfnGetCursorInfo trampoline_GetCursorInfo = GetCursorInfo;
 lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
 lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
+lpfnSetCursorPos trampoline_SetCursorPos = SetCursorPos;
+lpfnGetCursorPos trampoline_GetCursorPos = GetCursorPos;
+lpfnScreenToClient trampoline_ScreenToClient = ScreenToClient;
 
 // This routine creates an invisible cursor that we can set whenever we are
 // hiding the cursor. It is static, so will only be created the first time this
@@ -376,9 +384,72 @@ BOOL WINAPI Hooked_GetCursorInfo(
 	BOOL rc = trampoline_GetCursorInfo(pci);
 
 	if (rc && G->hide_cursor && (pci->flags & CURSOR_SHOWING))
+	{
+		// FIXME: commented out this because it causes strange behavior of the software mouse cursor
+		// In general it is necessary to do it, if the game itself call this function
+		// ==> I guess the software mouse code should be updated?
+
+		//if (G->SCREEN_UPSCALING > 0)
+		//{
+		//	pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
+		//	pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+		//}
 		pci->hCursor = current_cursor;
+	}
 
 	return rc;
+}
+
+BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+{
+	// FIXME: commented out this because it causes strange behavior of the software mouse cursor
+	// In general it is necessary to do it, if the game itself call this function
+	// ==> I guess the software mouse code should be updated?
+
+	//if (G->hide_cursor && G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
+	//{
+	//	RECT client_rect;
+	//	BOOL res = GetClientRect(hWnd, &client_rect);
+
+	//	if (res)
+	//	{
+	//		// Convert provided corrdinates in the game orig coords (based on client rect)
+	//		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / (client_rect.right - client_rect.left);
+	//		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / (client_rect.bottom - client_rect.top);
+	//		return true;
+	//	}
+	//}
+	
+	return trampoline_ScreenToClient(hWnd, lpPoint);
+}
+
+BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
+{
+	BOOL res = trampoline_GetCursorPos(lpPoint);
+
+	if (lpPoint != NULL && res == TRUE && G->hide_cursor && G->SCREEN_UPSCALING > 0)
+	{
+		// This should work with all games that uses this function to gatter the mouse coords 
+		// Tested with witcher 3 and dreamfall chapters
+		// TODO: Maybe there is a better way than use globals for the original game resolution
+		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
+		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+	}
+
+	return res;
+}
+
+BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
+{
+	if (G->hide_cursor && G->SCREEN_UPSCALING > 0)
+	{
+		// TODO: Maybe there is a better way than use globals for the original game resolution
+		const int new_x = X * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
+		const int new_y = Y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+		return trampoline_SetCursorPos(new_x, new_y);
+	}
+	else
+		return trampoline_SetCursorPos(X, Y);
 }
 
 // DefWindowProc can bypass our SetCursor hook, which means that some games
@@ -398,6 +469,7 @@ LRESULT WINAPI Hooked_DefWindowProc(
 	_In_ LPARAM lParam,
 	lpfnDefWindowProc trampoline_DefWindowProc)
 {
+
 	HWND parent = NULL;
 	HCURSOR cursor = NULL;
 	LPARAM ret = 0;
@@ -465,6 +537,10 @@ void InstallMouseHooks(bool hide)
 	void* fnOrigGetCursorInfo;
 	void* fnOrigDefWindowProcA;
 	void* fnOrigDefWindowProcW;
+	void* fnOrigSetCursorPos;
+	void* fnOrigGetCursorPos;
+	void* fnOrigScreenToClient;
+
 	DWORD dwOsErr;
 	SIZE_T hook_id;
 	static bool hook_installed = false;
@@ -521,6 +597,30 @@ void InstallMouseHooks(bool hide)
 		goto err;
 
 	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_DefWindowProcW, fnOrigDefWindowProcW, Hooked_DefWindowProcW);
+	if (dwOsErr)
+		goto err;
+
+	fnOrigSetCursorPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetCursorPos");
+	if (fnOrigSetCursorPos == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetCursorPos, fnOrigSetCursorPos, Hooked_SetCursorPos);
+	if (dwOsErr)
+		goto err;
+
+	fnOrigGetCursorPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "GetCursorPos");
+	if (fnOrigGetCursorPos == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCursorPos, fnOrigGetCursorPos, Hooked_GetCursorPos);
+	if (dwOsErr)
+		goto err;
+
+	fnOrigScreenToClient = NktHookLibHelpers::GetProcedureAddress(hUser32, "ScreenToClient");
+	if (fnOrigScreenToClient == NULL)
+		goto err;
+
+	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_ScreenToClient, fnOrigScreenToClient, Hooked_ScreenToClient);
 	if (dwOsErr)
 		goto err;
 

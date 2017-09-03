@@ -848,6 +848,10 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 			// Copy input swap chain desc for case the upscaling is on
 			memcpy(&originalSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 		}
+
+		// Require in case the software mouse and upscaling are on at the same time
+		G->ORIGINAL_WIDTH = pDesc->BufferDesc.Width;
+		G->ORIGINAL_HEIGHT = pDesc->BufferDesc.Height;
 	}
 
 	ForceDisplayParams(pDesc);
@@ -2311,6 +2315,12 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
 {
 	LogInfo("HackerDXGISwapChain::ResizeBuffers(%s@%p) called \n", type_name(this), this);
 
+	// TODO: not sure if it belongs here, in the resize target function or in both
+	// or maybe it is better to put it in the getviewport function?
+	// Require in case the software mouse and upscaling are on at the same time
+	G->ORIGINAL_WIDTH = Width;
+	G->ORIGINAL_HEIGHT = Height;
+
 	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
 	{
 		G->mResolutionInfo.width = Width;
@@ -2377,6 +2387,15 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeTarget(THIS_
 	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
 	LogInfo("HackerUpscalingDXGISwapChain::ResizeTarget(%s@%p) called \n", type_name(this), this);
+
+	if (pNewTargetParameters != nullptr)
+	{
+		// TODO: not sure if it belongs here, in the resize buffers function or in both
+		// or maybe it is better to put it in the getviewport function?
+		// Require in case the software mouse and upscaling are on at the same time
+		G->ORIGINAL_WIDTH = pNewTargetParameters->Width;
+		G->ORIGINAL_HEIGHT = pNewTargetParameters->Height;
+	}
 
 	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
 	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))

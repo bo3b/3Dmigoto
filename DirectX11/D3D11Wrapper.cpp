@@ -874,6 +874,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 			// Copy input swap chain desc for case the upscaling is on
 			memcpy(&originalSwapChainDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 		}
+
+		// Require in case the software mouse and upscaling are on at the same time
+		G->ORIGINAL_WIDTH = pSwapChainDesc->BufferDesc.Width;
+		G->ORIGINAL_HEIGHT = pSwapChainDesc->BufferDesc.Height;
 	}
 
 	ForceDisplayParams(pSwapChainDesc);
