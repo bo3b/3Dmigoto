@@ -26,19 +26,11 @@ bool bLog = false;
 
 typedef HMODULE(WINAPI *lpfnLoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
 static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
-static struct
-{
-	SIZE_T nHookId;
-	lpfnLoadLibraryExW fnLoadLibraryExW;
-} sLoadLibraryExW_Hook = { 0, NULL };
+static lpfnLoadLibraryExW trampoline_LoadLibraryExW = NULL;
 
 typedef BOOL(WINAPI *lpfnIsDebuggerPresent)(VOID);
 static BOOL WINAPI Hooked_IsDebuggerPresent(VOID);
-static struct
-{
-	SIZE_T nHookId;
-	lpfnIsDebuggerPresent fnIsDebuggerPresent;
-} sIsDebuggerPresent_Hook = { 0, NULL };
+static lpfnIsDebuggerPresent trampoline_IsDebuggerPresent = NULL;
 
 
 // ----------------------------------------------------------------------------
@@ -68,7 +60,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
 			lpLibFileName, fullPath);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(fullPath, hFile, dwFlags);
+		return trampoline_LoadLibraryExW(fullPath, hFile, dwFlags);
 	}
 
 	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
@@ -80,7 +72,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 	{
 		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(library, hFile, dwFlags);
+		return trampoline_LoadLibraryExW(library, hFile, dwFlags);
 	}
 
 	return NULL;
@@ -154,7 +146,7 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 		hook_enabled = true;
 
 	// Normal unchanged case.
-	return sLoadLibraryExW_Hook.fnLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+	return trampoline_LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 
 
@@ -162,58 +154,79 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 
 //static BOOL WINAPI Hooked_IsDebuggerPresent()
 //{
-//	return sIsDebuggerPresent_Hook.fnIsDebuggerPresent();
+//	return trampoline_IsDebuggerPresent();
 //}
+
+static void LogHooks(bool LogInfo_is_safe, char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+
+	if (LogInfo_is_safe)
+		vLogInfo(fmt, ap);
+	else if (bLog)
+		NktHookLibHelpers::DebugVPrint(fmt, ap);
+
+	va_end(ap);
+}
+
+static int InstallHook(HINSTANCE module, char *func, void **trampoline, void *hook, bool LogInfo_is_safe)
+{
+	SIZE_T hook_id;
+	DWORD dwOsErr;
+	void *fnOrig;
+
+	// Early exit with error so the caller doesn't need to explicitly deal
+	// with errors getting the module handle:
+	if (!module)
+		return 1;
+
+	fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
+	if (fnOrig == NULL) {
+		LogHooks(LogInfo_is_safe, "Failed to get address of %s\n", func);
+		return 1;
+	}
+
+	dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
+	if (dwOsErr) {
+		LogHooks(LogInfo_is_safe, "Failed to hook %s: 0x%x\n", func, dwOsErr);
+		return 1;
+	}
+
+	return 0;
+}
 
 static bool InstallHooks()
 {
 	HINSTANCE hKernel32;
-	LPVOID fnOrigLoadLibrary;
-	//LPVOID fnOrigIsDebuggerPresent;
-	DWORD dwOsErr;
+	int fail = 0;
 
-	if (bLog) NktHookLibHelpers::DebugPrint("Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
+	LogHooks(false, "Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
 	cHookMgr.SetEnableDebugOutput(bLog);
 
 	hKernel32 = NktHookLibHelpers::GetModuleBaseAddress(L"Kernel32.dll");
 	if (hKernel32 == NULL)
 	{
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get Kernel32 module for Loadlibrary hook.\n");
+		LogHooks(false, "Failed to get Kernel32 module for Loadlibrary hook.\n");
 		return false;
 	}
 
 	// Only ExW version for now, used by nvapi.
-	fnOrigLoadLibrary = NktHookLibHelpers::GetProcedureAddress(hKernel32, "LoadLibraryExW");
-	if (fnOrigLoadLibrary == NULL)
+	fail |= InstallHook(hKernel32, "LoadLibraryExW", (LPVOID*)&trampoline_LoadLibraryExW, Hooked_LoadLibraryExW, false);
+
+	// Next hook IsDebuggerPresent to force it false. Same Kernel32.dll
+	// fail |= InstallHook(hKernel32, "IsDebuggerPresent", (LPVOID*)&trampoline_IsDebuggerPresent, Hooked_IsDebuggerPresent, false);
+
+	if (fail)
 	{
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of LoadLibraryExW for Loadlibrary hook.\n");
+		LogHooks(false, "InstallHooks for LoadLibraryExW using Deviare in-proc failed\n");
 		return false;
 	}
 
-	dwOsErr = cHookMgr.Hook(&(sLoadLibraryExW_Hook.nHookId), (LPVOID*)&(sLoadLibraryExW_Hook.fnLoadLibraryExW),
-		fnOrigLoadLibrary, Hooked_LoadLibraryExW);
+	LogHooks(false, "InstallHooks for LoadLibraryExW using Deviare in-proc succeeded\n");
 
-	if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for LoadLibraryExW using Deviare in-proc: %x\n", dwOsErr);
-
-	if (dwOsErr != 0)
-		return false;
-
-
-	// Next hook IsDebuggerPresent to force it false. Same Kernel32.dll
-	//fnOrigIsDebuggerPresent = NktHookLibHelpers::GetProcedureAddress(hKernel32, "IsDebuggerPresent");
-	//if (fnOrigIsDebuggerPresent == NULL)
-	//{
-	//	if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of IsDebuggerPresent for hook.\n");
-	//	return false;
-	//}
-
-	//dwOsErr = cHookMgr.Hook(&(sIsDebuggerPresent_Hook.nHookId), (LPVOID*)&(sIsDebuggerPresent_Hook.fnIsDebuggerPresent),
-	//	fnOrigIsDebuggerPresent, Hooked_IsDebuggerPresent);
-
-	//if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for IsDebuggerPresent using Deviare in-proc: %x\n", dwOsErr);
-
-
-	return (dwOsErr == 0) ? true : false;
+	return true;
 }
 
 typedef BOOL(WINAPI *lpfnSetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
@@ -250,10 +263,8 @@ static BOOL WINAPI Hooked_SetWindowPos(
 void InstallSetWindowPosHook()
 {
 	HINSTANCE hUser32;
-	void* fnOrigSetWindowPos;
-	DWORD dwOsErr;
-	SIZE_T hook_id;
 	static bool hook_installed = false;
+	int fail = 0;
 
 	// Only attempt to hook it once:
 	if (hook_installed)
@@ -261,22 +272,15 @@ void InstallSetWindowPosHook()
 	hook_installed = true;
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	if (!hUser32)
-		goto err;
+	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos, true);
 
-	fnOrigSetWindowPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetWindowPos");
-	if (fnOrigSetWindowPos == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetWindowPos, fnOrigSetWindowPos, Hooked_SetWindowPos);
-	if (dwOsErr)
-		goto err;
+	if (fail) {
+		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+		BeepFailure2();
+		return;
+	}
 
 	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
-	return;
-err:
-	LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
-	BeepFailure2();
 	return;
 }
 
@@ -532,18 +536,8 @@ LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM 
 void InstallMouseHooks(bool hide)
 {
 	HINSTANCE hUser32;
-	void* fnOrigSetCursor;
-	void* fnOrigGetCursor;
-	void* fnOrigGetCursorInfo;
-	void* fnOrigDefWindowProcA;
-	void* fnOrigDefWindowProcW;
-	void* fnOrigSetCursorPos;
-	void* fnOrigGetCursorPos;
-	void* fnOrigScreenToClient;
-
-	DWORD dwOsErr;
-	SIZE_T hook_id;
 	static bool hook_installed = false;
+	int fail = 0;
 
 	// Only attempt to hook it once:
 	if (hook_installed)
@@ -557,79 +551,22 @@ void InstallMouseHooks(bool hide)
 		SetCursor(InvisibleCursor());
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	if (!hUser32)
-		goto err;
+	fail |= InstallHook(hUser32, "SetCursor", (void**)&trampoline_SetCursor, Hooked_SetCursor, true);
+	fail |= InstallHook(hUser32, "GetCursor", (void**)&trampoline_GetCursor, Hooked_GetCursor, true);
+	fail |= InstallHook(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, Hooked_GetCursorInfo, true);
+	fail |= InstallHook(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, Hooked_DefWindowProcA, true);
+	fail |= InstallHook(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, Hooked_DefWindowProcW, true);
+	fail |= InstallHook(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos, true);
+	fail |= InstallHook(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos, true);
+	fail |= InstallHook(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient, true);
 
-	fnOrigSetCursor = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetCursor");
-	if (fnOrigSetCursor == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetCursor, fnOrigSetCursor, Hooked_SetCursor);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigGetCursor = NktHookLibHelpers::GetProcedureAddress(hUser32, "GetCursor");
-	if (fnOrigGetCursor == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCursor, fnOrigGetCursor, Hooked_GetCursor);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigGetCursorInfo = NktHookLibHelpers::GetProcedureAddress(hUser32, "GetCursorInfo");
-	if (fnOrigGetCursorInfo == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCursorInfo, fnOrigGetCursorInfo, Hooked_GetCursorInfo);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigDefWindowProcA = NktHookLibHelpers::GetProcedureAddress(hUser32, "DefWindowProcA");
-	if (fnOrigDefWindowProcA == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_DefWindowProcA, fnOrigDefWindowProcA, Hooked_DefWindowProcA);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigDefWindowProcW = NktHookLibHelpers::GetProcedureAddress(hUser32, "DefWindowProcW");
-	if (fnOrigDefWindowProcW == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_DefWindowProcW, fnOrigDefWindowProcW, Hooked_DefWindowProcW);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigSetCursorPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetCursorPos");
-	if (fnOrigSetCursorPos == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetCursorPos, fnOrigSetCursorPos, Hooked_SetCursorPos);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigGetCursorPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "GetCursorPos");
-	if (fnOrigGetCursorPos == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCursorPos, fnOrigGetCursorPos, Hooked_GetCursorPos);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigScreenToClient = NktHookLibHelpers::GetProcedureAddress(hUser32, "ScreenToClient");
-	if (fnOrigScreenToClient == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_ScreenToClient, fnOrigScreenToClient, Hooked_ScreenToClient);
-	if (dwOsErr)
-		goto err;
+	if (fail) {
+		LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
+		BeepFailure2();
+		return;
+	}
 
 	LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
-	return;
-err:
-	LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
-	BeepFailure2();
-	return;
 }
 
 static void RemoveHooks()
