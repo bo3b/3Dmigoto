@@ -389,15 +389,11 @@ BOOL WINAPI Hooked_GetCursorInfo(
 
 	if (rc && G->hide_cursor && (pci->flags & CURSOR_SHOWING))
 	{
-		// FIXME: commented out this because it causes strange behavior of the software mouse cursor
-		// In general it is necessary to do it, if the game itself call this function
-		// ==> I guess the software mouse code should be updated?
-
-		//if (G->SCREEN_UPSCALING > 0)
-		//{
-		//	pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
-		//	pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
-		//}
+		if (G->SCREEN_UPSCALING > 0)
+		{
+			pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
+			pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+		}
 		pci->hCursor = current_cursor;
 	}
 
@@ -406,24 +402,20 @@ BOOL WINAPI Hooked_GetCursorInfo(
 
 BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 {
-	// FIXME: commented out this because it causes strange behavior of the software mouse cursor
-	// In general it is necessary to do it, if the game itself call this function
-	// ==> I guess the software mouse code should be updated?
+	if (G->hide_cursor && G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
+	{
+		RECT client_rect;
+		BOOL res = GetClientRect(hWnd, &client_rect);
 
-	//if (G->hide_cursor && G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
-	//{
-	//	RECT client_rect;
-	//	BOOL res = GetClientRect(hWnd, &client_rect);
+		if (res)
+		{
+			// Convert provided corrdinates in the game orig coords (based on client rect)
+			lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / (client_rect.right - client_rect.left);
+			lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / (client_rect.bottom - client_rect.top);
+			return true;
+		}
+	}
 
-	//	if (res)
-	//	{
-	//		// Convert provided corrdinates in the game orig coords (based on client rect)
-	//		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / (client_rect.right - client_rect.left);
-	//		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / (client_rect.bottom - client_rect.top);
-	//		return true;
-	//	}
-	//}
-	
 	return trampoline_ScreenToClient(hWnd, lpPoint);
 }
 
