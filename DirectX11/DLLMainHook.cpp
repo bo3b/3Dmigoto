@@ -389,14 +389,15 @@ static BOOL WINAPI Hooked_GetCursorInfo(
 {
 	BOOL rc = trampoline_GetCursorInfo(pci);
 
-	if (rc && (pci->flags & CURSOR_SHOWING))
+	if (rc)
 	{
 		if (G->SCREEN_UPSCALING > 0)
 		{
 			pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
 			pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
 		}
-		pci->hCursor = current_cursor;
+		if (pci->flags & CURSOR_SHOWING)
+			pci->hCursor = current_cursor;
 	}
 
 	return rc;
