@@ -384,7 +384,7 @@ static HCURSOR WINAPI Hooked_GetCursor(void)
 		return trampoline_GetCursor();
 }
 
-BOOL WINAPI Hooked_GetCursorInfo(
+static BOOL WINAPI Hooked_GetCursorInfo(
     _Inout_ PCURSORINFO pci)
 {
 	BOOL rc = trampoline_GetCursorInfo(pci);
@@ -402,7 +402,7 @@ BOOL WINAPI Hooked_GetCursorInfo(
 	return rc;
 }
 
-BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 {
 	if (G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
 	{
@@ -421,7 +421,7 @@ BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 	return trampoline_ScreenToClient(hWnd, lpPoint);
 }
 
-BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
 	BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
 
@@ -434,7 +434,7 @@ BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
 	return rc;
 }
 
-BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
+static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
 {
 	BOOL res = trampoline_GetCursorPos(lpPoint);
 
@@ -450,7 +450,7 @@ BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
 	return res;
 }
 
-BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
+static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
 {
 	if (G->SCREEN_UPSCALING > 0)
 	{
@@ -473,7 +473,7 @@ BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
 //
 // An alternative to hooking DefWindowProc in this manner might be to use
 // SetWindowsHookEx since it can also hook window messages.
-LRESULT WINAPI Hooked_DefWindowProc(
+static LRESULT WINAPI Hooked_DefWindowProc(
 	_In_ HWND   hWnd,
 	_In_ UINT   Msg,
 	_In_ WPARAM wParam,
@@ -530,12 +530,12 @@ LRESULT WINAPI Hooked_DefWindowProc(
 	return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-LRESULT WINAPI Hooked_DefWindowProcA(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+static LRESULT WINAPI Hooked_DefWindowProcA(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
 }
 
-LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+static LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
 }
