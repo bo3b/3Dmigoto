@@ -358,6 +358,7 @@ struct Globals
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
+	bool cursor_upscaling_bypass;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
@@ -489,6 +490,7 @@ struct Globals
 		frame_no(0),
 		hWnd(NULL),
 		hide_cursor(false),
+		cursor_upscaling_bypass(false),
 
 		ENABLE_CRITICAL_SECTION(false),
 		ORIGINAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before

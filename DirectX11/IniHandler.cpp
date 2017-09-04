@@ -1911,6 +1911,7 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	G->hide_cursor = GetIniBool(L"Device", L"hide_cursor", false, NULL);
+	G->cursor_upscaling_bypass = GetIniBool(L"Device", L"cursor_upscaling_bypass", false, NULL);
 
 	// [Stereo]
 	LogInfo("[Stereo]\n");

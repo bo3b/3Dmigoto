@@ -1055,7 +1055,7 @@ static void UpdateWindowInfo(CommandListState *state)
 		return;
 
 	if (G->hWnd)
-		GetClientRect(G->hWnd, &state->window_rect);
+		CursorUpscalingBypass_GetClientRect(G->hWnd, &state->window_rect);
 	else
 		LogDebug("UpdateWindowInfo: No hWnd\n");
 }
@@ -1066,15 +1066,11 @@ static void UpdateCursorInfo(CommandListState *state)
 		return;
 
 	state->cursor_info.cbSize = sizeof(CURSORINFO);
-	// TODO: need to rethink the code after and maybe code before this call in case the upscaling and software cursor are on at the same time
-	// In this case the GetCursorInfo is hooked and changed the mouse pos into game original mouse position
-	GetCursorInfo(&state->cursor_info); 
+	CursorUpscalingBypass_GetCursorInfo(&state->cursor_info);
 	memcpy(&state->cursor_window_coords, &state->cursor_info.ptScreenPos, sizeof(POINT));
 
 	if (G->hWnd)
-		// In case the upscaling is on this function converts the provided mouse coods into game original client rect coods
-		// If the upscaling feature is properly used the input and out should be identical. 
-		ScreenToClient(G->hWnd, &state->cursor_window_coords);
+		CursorUpscalingBypass_ScreenToClient(G->hWnd, &state->cursor_window_coords);
 	else
 		LogDebug("UpdateCursorInfo: No hWnd\n");
 }

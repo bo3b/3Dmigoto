@@ -375,24 +375,41 @@ static HCURSOR WINAPI Hooked_GetCursor(void)
 		return trampoline_GetCursor();
 }
 
-static BOOL WINAPI Hooked_GetCursorInfo(
+static BOOL WINAPI HideCursor_GetCursorInfo(
     _Inout_ PCURSORINFO pci)
 {
 	BOOL rc = trampoline_GetCursorInfo(pci);
+
+	if (rc && (pci->flags & CURSOR_SHOWING))
+		pci->hCursor = current_cursor;
+
+	return rc;
+}
+
+static BOOL WINAPI Hooked_GetCursorInfo(
+    _Inout_ PCURSORINFO pci)
+{
+	BOOL rc = HideCursor_GetCursorInfo(pci);
 	RECT client;
 
-	if (rc)
+	if (rc && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
 	{
-		if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
-		{
-			pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / client.right;
-			pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / client.bottom;
-		}
-		if (pci->flags & CURSOR_SHOWING)
-			pci->hCursor = current_cursor;
+		pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / client.right;
+		pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / client.bottom;
 	}
 
 	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(
+    _Inout_ PCURSORINFO pci)
+{
+	if (G->cursor_upscaling_bypass)
+	{
+		// Still need to process hide_cursor logic:
+		return HideCursor_GetCursorInfo(pci);
+	}
+	return GetCursorInfo(pci);
 }
 
 static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
@@ -421,6 +438,13 @@ static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 	return rc;
 }
 
+BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+{
+	if (G->cursor_upscaling_bypass)
+		return trampoline_ScreenToClient(hWnd, lpPoint);
+	return ScreenToClient(hWnd, lpPoint);
+}
+
 static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
 	BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
@@ -432,6 +456,13 @@ static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
 	}
 
 	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+{
+	if (G->cursor_upscaling_bypass)
+		return trampoline_GetClientRect(hWnd, lpRect);
+	return GetClientRect(hWnd, lpRect);
 }
 
 static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
