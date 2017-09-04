@@ -24,13 +24,10 @@ bool bLog = true;
 bool bLog = false;
 #endif
 
-typedef HMODULE(WINAPI *lpfnLoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
-static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
-static lpfnLoadLibraryExW trampoline_LoadLibraryExW = NULL;
+static HMODULE(WINAPI *trampoline_LoadLibraryExW)( _In_ LPCWSTR lpLibFileName,
+		_Reserved_ HANDLE hFile, _In_ DWORD dwFlags) = LoadLibraryExW;
 
-typedef BOOL(WINAPI *lpfnIsDebuggerPresent)(VOID);
-static BOOL WINAPI Hooked_IsDebuggerPresent(VOID);
-static lpfnIsDebuggerPresent trampoline_IsDebuggerPresent = NULL;
+static BOOL(WINAPI *trampoline_IsDebuggerPresent)(VOID) = IsDebuggerPresent;
 
 
 // ----------------------------------------------------------------------------
@@ -229,9 +226,9 @@ static bool InstallHooks()
 	return true;
 }
 
-typedef BOOL(WINAPI *lpfnSetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
-		_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags);
-lpfnSetWindowPos trampoline_SetWindowPos;
+static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+		_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags)
+	= SetWindowPos;
 
 static BOOL WINAPI Hooked_SetWindowPos(
     _In_ HWND hWnd,
@@ -311,25 +308,19 @@ void InstallSetWindowPosHook()
 
 HCURSOR current_cursor = NULL;
 
-typedef HCURSOR(WINAPI *lpfnSetCursor)(_In_opt_ HCURSOR hCursor);
-typedef HCURSOR(WINAPI *lpfnGetCursor)(void);
-typedef BOOL(WINAPI *lpfnGetCursorInfo)(_Inout_ PCURSORINFO pci);
 typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
 	_In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
-typedef BOOL(WINAPI* lpfnSetCursorPos)(_In_ int X, _In_ int Y);
-typedef BOOL(WINAPI* lpfnGetCursorPos)(_Out_ LPPOINT lpPoint);
-typedef BOOL(WINAPI* lpfnScreenToClient)(_In_ HWND hWnd,LPPOINT lpPoint);
-typedef BOOL(WINAPI* lpfnGetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRect);
 
-lpfnSetCursor trampoline_SetCursor = SetCursor;
-lpfnGetCursor trampoline_GetCursor = GetCursor;
-lpfnGetCursorInfo trampoline_GetCursorInfo = GetCursorInfo;
-lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
-lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
-lpfnSetCursorPos trampoline_SetCursorPos = SetCursorPos;
-lpfnGetCursorPos trampoline_GetCursorPos = GetCursorPos;
-lpfnScreenToClient trampoline_ScreenToClient = ScreenToClient;
-lpfnGetClientRect trampoline_GetClientRect = GetClientRect;
+static lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
+static lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
+
+static HCURSOR(WINAPI *trampoline_SetCursor)(_In_opt_ HCURSOR hCursor) = SetCursor;
+static HCURSOR(WINAPI *trampoline_GetCursor)(void) = GetCursor;
+static BOOL(WINAPI *trampoline_GetCursorInfo)(_Inout_ PCURSORINFO pci) = GetCursorInfo;
+static BOOL(WINAPI* trampoline_SetCursorPos)(_In_ int X, _In_ int Y) = SetCursorPos;
+static BOOL(WINAPI* trampoline_GetCursorPos)(_Out_ LPPOINT lpPoint) = GetCursorPos;
+static BOOL(WINAPI* trampoline_ScreenToClient)(_In_ HWND hWnd,LPPOINT lpPoint) = ScreenToClient;
+static BOOL(WINAPI* trampoline_GetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRect) = GetClientRect;
 
 // This routine creates an invisible cursor that we can set whenever we are
 // hiding the cursor. It is static, so will only be created the first time this
