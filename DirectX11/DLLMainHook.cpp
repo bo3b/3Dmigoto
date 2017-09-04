@@ -379,13 +379,14 @@ static BOOL WINAPI Hooked_GetCursorInfo(
     _Inout_ PCURSORINFO pci)
 {
 	BOOL rc = trampoline_GetCursorInfo(pci);
+	RECT client;
 
 	if (rc)
 	{
-		if (G->SCREEN_UPSCALING > 0)
+		if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
 		{
-			pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
-			pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+			pci->ptScreenPos.x = pci->ptScreenPos.x * G->ORIGINAL_WIDTH / client.right;
+			pci->ptScreenPos.y = pci->ptScreenPos.y * G->ORIGINAL_HEIGHT / client.bottom;
 		}
 		if (pci->flags & CURSOR_SHOWING)
 			pci->hCursor = current_cursor;
@@ -397,21 +398,24 @@ static BOOL WINAPI Hooked_GetCursorInfo(
 static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 {
 	BOOL rc;
+	RECT client;
+	bool translate = G->SCREEN_UPSCALING > 0 && lpPoint
+		&& trampoline_GetClientRect(G->hWnd, &client);
 
-	if (G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
+	if (translate)
 	{
 		// Scale back to original screen coordinates:
-		lpPoint->x = lpPoint->x * G->SCREEN_WIDTH / G->ORIGINAL_WIDTH;
-		lpPoint->y = lpPoint->y * G->SCREEN_HEIGHT / G->ORIGINAL_HEIGHT;
+		lpPoint->x = lpPoint->x * client.right / G->ORIGINAL_WIDTH;
+		lpPoint->y = lpPoint->y * client.bottom / G->ORIGINAL_HEIGHT;
 	}
 
 	rc = trampoline_ScreenToClient(hWnd, lpPoint);
 
-	if (G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
+	if (translate)
 	{
 		// Now scale to fake game coordinates:
-		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
-		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / client.right;
+		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / client.bottom;
 	}
 
 	return rc;
@@ -433,14 +437,15 @@ static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
 static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
 {
 	BOOL res = trampoline_GetCursorPos(lpPoint);
+	RECT client;
 
-	if (lpPoint != NULL && res == TRUE && G->SCREEN_UPSCALING > 0)
+	if (lpPoint && res && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
 	{
-		// This should work with all games that uses this function to gatter the mouse coords 
+		// This should work with all games that uses this function to gatter the mouse coords
 		// Tested with witcher 3 and dreamfall chapters
 		// TODO: Maybe there is a better way than use globals for the original game resolution
-		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
-		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / client.right;
+		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / client.bottom;
 	}
 
 	return res;
@@ -448,11 +453,13 @@ static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
 
 static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
 {
-	if (G->SCREEN_UPSCALING > 0)
+	RECT client;
+
+	if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
 	{
 		// TODO: Maybe there is a better way than use globals for the original game resolution
-		const int new_x = X * G->SCREEN_WIDTH / G->ORIGINAL_WIDTH;
-		const int new_y = Y * G->SCREEN_HEIGHT / G->ORIGINAL_HEIGHT;
+		const int new_x = X * client.right / G->ORIGINAL_WIDTH;
+		const int new_y = Y * client.bottom / G->ORIGINAL_HEIGHT;
 		return trampoline_SetCursorPos(new_x, new_y);
 	}
 	else
