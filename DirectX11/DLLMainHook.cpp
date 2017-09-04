@@ -396,21 +396,25 @@ static BOOL WINAPI Hooked_GetCursorInfo(
 
 static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 {
+	BOOL rc;
+
 	if (G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
 	{
-		RECT client_rect;
-		BOOL res = GetClientRect(hWnd, &client_rect);
-
-		if (res)
-		{
-			// Convert provided corrdinates in the game orig coords (based on client rect)
-			lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / (client_rect.right - client_rect.left);
-			lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / (client_rect.bottom - client_rect.top);
-			return true;
-		}
+		// Scale back to original screen coordinates:
+		lpPoint->x = lpPoint->x * G->SCREEN_WIDTH / G->ORIGINAL_WIDTH;
+		lpPoint->y = lpPoint->y * G->SCREEN_HEIGHT / G->ORIGINAL_HEIGHT;
 	}
 
-	return trampoline_ScreenToClient(hWnd, lpPoint);
+	rc = trampoline_ScreenToClient(hWnd, lpPoint);
+
+	if (G->SCREEN_UPSCALING > 0 && lpPoint != NULL)
+	{
+		// Now scale to fake game coordinates:
+		lpPoint->x = lpPoint->x * G->ORIGINAL_WIDTH / G->SCREEN_WIDTH;
+		lpPoint->y = lpPoint->y * G->ORIGINAL_HEIGHT / G->SCREEN_HEIGHT;
+	}
+
+	return rc;
 }
 
 static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
