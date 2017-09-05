@@ -5668,7 +5668,14 @@ static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
 		desc->Format = DXGI_FORMAT_R32_TYPELESS;
 		stride = 4;
 	}
-	// TODO Support buffer UAV flags for append and counter buffers.
+	if (options & ResourceCopyOptions::UAV_APPEND) {
+		desc->Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_APPEND;
+		desc->Format = DXGI_FORMAT_UNKNOWN;
+	}
+	if (options & ResourceCopyOptions::UAV_COUNTER) {
+		desc->Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_COUNTER;
+		desc->Format = DXGI_FORMAT_UNKNOWN;
+	}
 
 	FillOutBufferDescCommon<D3D11_BUFFER_UAV>(&desc->Buffer, stride, offset, buf_src_size);
 	return desc;

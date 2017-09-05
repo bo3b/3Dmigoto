@@ -599,6 +599,8 @@ enum class ResourceCopyOptions {
 	SET_VIEWPORT    = 0x00000100,
 	NO_VIEW_CACHE   = 0x00000200,
 	RAW_VIEW        = 0x00000400,
+	UAV_APPEND      = 0x00000800,
+	UAV_COUNTER     = 0x00001000,
 
 	COPY_MASK       = 0x000000c9, // Anything that implies a copy
 	COPY_TYPE_MASK  = 0x000000cb, // Anything that implies a copy or a reference
@@ -618,6 +620,9 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"set_viewport", ResourceCopyOptions::SET_VIEWPORT},
 	{L"no_view_cache", ResourceCopyOptions::NO_VIEW_CACHE},
 	{L"raw", ResourceCopyOptions::RAW_VIEW},
+	{L"append", ResourceCopyOptions::UAV_APPEND},
+	{L"consume", ResourceCopyOptions::UAV_APPEND},
+	{L"counter", ResourceCopyOptions::UAV_COUNTER},
 
 	// This one currently depends on device support for resolving the
 	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
