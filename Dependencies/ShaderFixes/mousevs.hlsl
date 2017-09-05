@@ -1,8 +1,8 @@
 #define cursor_pass     IniParams[5].w
-#define cursor_position IniParams[6].xy
+#define cursor_window   IniParams[6].xy
 #define cursor_hotspot  IniParams[6].zw
 #define cursor_showing  IniParams[7].y
-#define resolution      IniParams[7].zw
+#define window_size     IniParams[7].zw
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
@@ -18,7 +18,6 @@ void main(
 	uint mask_width, mask_height;
 	uint color_width, color_height;
 	float2 cursor_size;
-	float2 mouse_pos;
 
 	// For easy bailing:
 	pos = 0;
@@ -42,7 +41,7 @@ void main(
 		cursor_size = float2(mask_width, mask_height / 2);
 	}
 
-	pos.xy = mouse_pos.xy = cursor_position - cursor_hotspot;
+	pos.xy = cursor_window - cursor_hotspot;
 
 	// Not using vertex buffers so manufacture our own coordinates.
 	switch(vertex) {
@@ -67,12 +66,12 @@ void main(
 	};
 
 	// Scale from pixels to clip space:
-	pos.xy = (pos.xy / resolution * 2 - 1) * float2(1, -1);
+	pos.xy = (pos.xy / window_size * 2 - 1) * float2(1, -1);
 	pos.zw = float2(0, 1);
 
 	// Adjust stereo depth of pos here using whatever means you feel is
 	// suitable for this game, e.g. with a suitable crosshair.hlsl you
 	// could automatically adjust it from the depth buffer:
-	//mouse_pos.xy = (mouse_pos.xy / resolution * 2 - 1);
+	//float2 mouse_pos.xy = (cursor_window / window_size * 2 - 1);
 	//pos.x += adjust_from_depth_buffer(mouse_pos.x, mouse_pos.y);
 }
