@@ -72,6 +72,6 @@ void main(
 	// Adjust stereo depth of pos here using whatever means you feel is
 	// suitable for this game, e.g. with a suitable crosshair.hlsl you
 	// could automatically adjust it from the depth buffer:
-	//float2 mouse_pos.xy = (cursor_window / window_size * 2 - 1);
+	//float2 mouse_pos = (cursor_window / window_size * 2 - 1);
 	//pos.x += adjust_from_depth_buffer(mouse_pos.x, mouse_pos.y);
 }
