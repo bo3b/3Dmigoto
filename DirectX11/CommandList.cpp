@@ -1346,7 +1346,7 @@ bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto)
 }
 
 static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
-		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
+		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format, ResourceCopyOptions options)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
 	D3D11_BUFFER_DESC buf_desc;
@@ -1375,6 +1375,23 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 	// not we will try to fill them in here from either the resource or
 	// view description as they may be necessary later to create a
 	// compatible view or perform a region copy:
+
+	if (options & ResourceCopyOptions::COPY_COUNTER) {
+		// When using copy_counter we don't want to pay any attention
+		// to the source resource, because the desination is almost
+		// entirely unrelated to the source buffer - we want the
+		// destination to be a small buffer holding the counter,
+		// nothing more. We could potentially allow it to be inside a
+		// larger resource, but that's a lot more complexity for
+		// questionable gains.
+		if (*format == DXGI_FORMAT_UNKNOWN)
+			*format = DXGI_FORMAT_R32_UINT;
+		if (!*stride)
+			*stride = dxgi_format_size(*format);
+		if (!*buf_size)
+			*buf_size = 4;
+		return;
+	}
 
 	resource->GetType(&dimension);
 	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
@@ -1493,10 +1510,13 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		return;
 	}
 
+	// FIXME: Consider dumping append/consume/counter value from the existing view:
+	ResourceCopyOptions options = ResourceCopyOptions::INVALID;
+
 	// Fill in any missing info before handing it to frame analysis. The
 	// format is particularly important to try to avoid saving TYPELESS
 	// resources:
-	FillInMissingInfo(target.type, resource, view, &stride, &offset, &buf_size, &format);
+	FillInMissingInfo(target.type, resource, view, &stride, &offset, &buf_size, &format, options);
 
 	state->mHackerContext->FrameAnalysisDump(resource, analyse_options, target_name.c_str(), format, stride, offset);
 
@@ -3621,9 +3641,11 @@ static ResourceType* GetResourceFromPool(
 		if (FAILED(hr)) {
 			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
 			LogResourceDesc(desc);
-			src_resource->GetDesc(&old_desc);
-			LogInfo("Original resource was:\n");
-			LogResourceDesc(&old_desc);
+			if (src_resource) {
+				src_resource->GetDesc(&old_desc);
+				LogInfo("Original resource was:\n");
+				LogResourceDesc(&old_desc);
+			}
 
 			// Prevent further attempts:
 			resource_pool->emplace(hash, NULL);
@@ -4840,7 +4862,8 @@ void ResourceCopyTarget::SetResource(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT buf_size)
+		UINT buf_size,
+		bool reset_uav_counter)
 {
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	ID3D11Buffer *buf = NULL;
@@ -4849,7 +4872,7 @@ void ResourceCopyTarget::SetResource(
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
 	ID3D11UnorderedAccessView *unordered_view = NULL;
-	UINT uav_counter = -1; // TODO: Allow this to be set
+	UINT uav_counter = reset_uav_counter ? 0 : -1; // TODO: Set arbitrary value
 	int i;
 
 	switch(type) {
@@ -4975,17 +4998,14 @@ void ResourceCopyTarget::SetResource(
 		break;
 
 	case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-		// XXX: HERE BE UNTESTED CODE PATHS!
 		unordered_view = (ID3D11UnorderedAccessView*)view;
 		switch(shader_type) {
 		case L'p':
 			// XXX: Not clear if this will unbind other UAVs or not?
-			// TODO: Allow pUAVInitialCounts to optionally be set
 			mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
 				NULL, NULL, slot, 1, &unordered_view, &uav_counter);
 			return;
 		case L'c':
-			// TODO: Allow pUAVInitialCounts to optionally be set
 			mOrigContext1->CSSetUnorderedAccessViews(slot, 1, &unordered_view, &uav_counter);
 			return;
 		default:
@@ -5154,7 +5174,6 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		UINT *buf_dst_size)
 {
 	D3D11_BUFFER_DESC new_desc;
-	ID3D11Buffer *buffer = NULL;
 	UINT dst_size;
 
 	src_resource->GetDesc(&new_desc);
@@ -5485,6 +5504,50 @@ static ResourceType* RecreateCompatibleTexture(
 		(ini_line, src_resource, dst_resource, resource_pool, state, &new_desc);
 }
 
+static void ReleaseOldResource(ID3D11Resource *new_resource, ID3D11Resource **dst_resource, ID3D11View **dst_view)
+{
+	if (!new_resource)
+		return;
+
+	if (*dst_resource)
+		(*dst_resource)->Release();
+	if (dst_view && *dst_view)
+		(*dst_view)->Release();
+
+	*dst_resource = new_resource;
+	if (dst_view)
+		*dst_view = NULL;
+}
+
+static void RecreateUAVCounterBuffer(
+		wstring *ini_line,
+		ResourceCopyTarget *dst,
+		ID3D11Resource **dst_resource,
+		ResourcePool *resource_pool,
+		ID3D11View **dst_view,
+		CommandListState *state)
+{
+	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
+	D3D11_BUFFER_DESC new_desc;
+	ID3D11Buffer *buffer = NULL;
+
+	if (dst)
+		bind_flags = dst->BindFlags();
+
+	memset(&new_desc, 0, sizeof(D3D11_BUFFER_DESC));
+	new_desc.Usage = D3D11_USAGE_DEFAULT;
+	new_desc.BindFlags = bind_flags;
+	new_desc.ByteWidth = bind_flags & D3D11_BIND_CONSTANT_BUFFER ? 16 : 4;
+
+	if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
+		dst->custom_resource->OverrideBufferDesc(&new_desc);
+
+	buffer = GetResourceFromPool<ID3D11Buffer, D3D11_BUFFER_DESC, &ID3D11Device::CreateBuffer>
+		(ini_line, NULL, (ID3D11Buffer*)*dst_resource, resource_pool, state, &new_desc);
+
+	ReleaseOldResource(buffer, dst_resource, dst_view);
+}
+
 static void RecreateCompatibleResource(
 		wstring *ini_line,
 		ResourceCopyTarget *dst, // May be NULL
@@ -5506,6 +5569,11 @@ static void RecreateCompatibleResource(
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
 	ID3D11Resource *res = NULL;
 	bool restore_create_mode = false;
+
+	if (options & ResourceCopyOptions::COPY_COUNTER) {
+		return RecreateUAVCounterBuffer(ini_line, dst, dst_resource,
+				resource_pool, dst_view, state);
+	}
 
 	if (dst)
 		bind_flags = dst->BindFlags();
@@ -5556,16 +5624,7 @@ static void RecreateCompatibleResource(
 	if (restore_create_mode)
 		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 
-	if (res) {
-		if (*dst_resource)
-			(*dst_resource)->Release();
-		if (dst_view && *dst_view)
-			(*dst_view)->Release();
-
-		*dst_resource = res;
-		if (dst_view)
-			*dst_view = NULL;
-	}
+	ReleaseOldResource(res, dst_resource, dst_view);
 }
 
 template <typename DescType>
@@ -6272,6 +6331,28 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	*offset = 0;
 }
 
+static void CopyStructureCounter(ID3D11Buffer *dst_resource,
+		ResourceCopyTarget *src, ID3D11UnorderedAccessView *src_view,
+		ID3D11DeviceContext *mOrigContext)
+{
+	if (!src_view) {
+		LogInfo("Error copying UAV counter: No source view\n");
+		return;
+	}
+
+	// TODO: When we store UAVs (and other views) in CustomResources we
+	// should support copying the counter from there. But, implementing
+	// that presents a hightened risk of bugs, so for now only support
+	// copying the counter from UAV slots.
+
+	if (src->type != ResourceCopyTargetType::UNORDERED_ACCESS_VIEW) {
+		LogInfo("Error copying UAV counter: Source must be a UAV slot (not a CustomResource)\n");
+		return;
+	}
+
+	mOrigContext->CopyStructureCount(dst_resource, 0, src_view);
+}
+
 static UINT get_resource_bind_flags(ID3D11Resource *resource)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
@@ -6325,7 +6406,7 @@ ID3D11View* ClearViewCommand::create_best_view(
 	// and what bind flags the resource has.
 
 	FillInMissingInfo(target.type, resource, NULL, &stride, &offset,
-			&buf_src_size, &format);
+			&buf_src_size, &format, options);
 
 	// If the user specified "depth" and/or "stencil" they gave us
 	// the answer:
@@ -6505,11 +6586,12 @@ void ResourceCopyOperation::run(CommandListState *state)
 	UINT offset = 0;
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	UINT buf_src_size = 0, buf_dst_size = 0;
+	bool reset_uav_counter = !!(options & ResourceCopyOptions::RESET_COUNTER);
 
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
-		dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+		dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0, false);
 		return;
 	}
 
@@ -6522,7 +6604,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 			// this will make errors more obvious if we copy
 			// something that doesn't exist. This behaviour can be
 			// overridden with the unless_null keyword.
-			dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+			dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0, false);
 		}
 		return;
 	}
@@ -6550,7 +6632,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 		dst.custom_resource->OverrideOutOfBandInfo(&format, &stride);
 	}
 
-	FillInMissingInfo(src.type, src_resource, src_view, &stride, &offset, &buf_src_size, &format);
+	FillInMissingInfo(src.type, src_resource, src_view, &stride, &offset, &buf_src_size, &format, options);
 
 	if (options & ResourceCopyOptions::COPY_MASK) {
 		RecreateCompatibleResource(&ini_line, &dst, src_resource,
@@ -6598,6 +6680,9 @@ void ResourceCopyOperation::run(CommandListState *state)
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			COMMAND_LIST_LOG(state, "  resolving MSAA\n");
 			ResolveMSAA(dst_resource, src_resource, state);
+		} else if (options & ResourceCopyOptions::COPY_COUNTER) {
+			COMMAND_LIST_LOG(state, "  copying UAV structure count\n");
+			CopyStructureCounter((ID3D11Buffer*)dst_resource, &src, (ID3D11UnorderedAccessView*)src_view, state->mOrigContext1);
 		} else if (buf_dst_size) {
 			COMMAND_LIST_LOG(state, "  performing region copy\n");
 			SpecialCopyBufferRegion(dst_resource, src_resource,
@@ -6636,7 +6721,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 		*pp_cached_view = dst_view;
 	}
 
-	dst.SetResource(state, dst_resource, dst_view, stride, offset, format, buf_dst_size);
+	dst.SetResource(state, dst_resource, dst_view, stride, offset, format, buf_dst_size, reset_uav_counter);
 
 	if (options & ResourceCopyOptions::SET_VIEWPORT)
 		SetViewportFromResource(state, dst_resource);

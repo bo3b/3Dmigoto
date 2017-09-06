@@ -578,7 +578,8 @@ public:
 			UINT stride,
 			UINT offset,
 			DXGI_FORMAT format,
-			UINT buf_size);
+			UINT buf_size,
+			bool reset_uav_counter);
 	void FindTextureOverrides(
 			CommandListState *state,
 			bool *resource_found,
@@ -601,9 +602,11 @@ enum class ResourceCopyOptions {
 	RAW_VIEW        = 0x00000400,
 	UAV_APPEND      = 0x00000800,
 	UAV_COUNTER     = 0x00001000,
+	RESET_COUNTER   = 0x00002000,
+	COPY_COUNTER    = 0x00004000,
 
-	COPY_MASK       = 0x000000c9, // Anything that implies a copy
-	COPY_TYPE_MASK  = 0x000000cb, // Anything that implies a copy or a reference
+	COPY_MASK       = 0x000020c9, // Anything that implies a copy
+	COPY_TYPE_MASK  = 0x000020cb, // Anything that implies a copy or a reference
 	CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
@@ -622,7 +625,9 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 	{L"raw", ResourceCopyOptions::RAW_VIEW},
 	{L"append", ResourceCopyOptions::UAV_APPEND},
 	{L"consume", ResourceCopyOptions::UAV_APPEND},
-	{L"counter", ResourceCopyOptions::UAV_COUNTER},
+	{L"enable_counter", ResourceCopyOptions::UAV_COUNTER},
+	{L"reset_counter", ResourceCopyOptions::RESET_COUNTER},
+	{L"copy_counter", ResourceCopyOptions::COPY_COUNTER},
 
 	// This one currently depends on device support for resolving the
 	// given texture format (D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE), and
