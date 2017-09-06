@@ -62,21 +62,6 @@ public:
 // destruction of each object:
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
-class CheckTextureOverrideCommand : public CommandListCommand {
-public:
-	wstring ini_line;
-	// For processing command lists in TextureOverride sections:
-	wchar_t shader_type;
-	unsigned texture_slot;
-
-	CheckTextureOverrideCommand() :
-		shader_type(NULL),
-		texture_slot(INT_MAX)
-	{}
-
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
-};
-
 // Forward declaration to avoid circular reference since Override.h includes
 // HackerDevice.h includes HackerContext.h includes CommandList.h
 class PresetOverride;
@@ -223,94 +208,6 @@ public:
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
 
-enum class ParamOverrideType {
-	INVALID,
-	VALUE,
-	RT_WIDTH,
-	RT_HEIGHT,
-	RES_WIDTH,
-	RES_HEIGHT,
-	WINDOW_WIDTH,
-	WINDOW_HEIGHT,
-	TEXTURE,	// Needs shader type and slot number specified in
-			// [ShaderOverride]. [TextureOverride] sections can
-			// specify filter_index=N to define the value passed in
-			// here. Special values for no [TextureOverride]
-			// section = 0.0, or [TextureOverride] with no
-			// filter_index = 1.0
-	VERTEX_COUNT,
-	INDEX_COUNT,
-	INSTANCE_COUNT,
-	CURSOR_VISIBLE,
-	CURSOR_SCREEN_X, // Cursor in screen coordinates in pixels
-	CURSOR_SCREEN_Y,
-	CURSOR_WINDOW_X, // Cursor in window client area coordinates in pixels
-	CURSOR_WINDOW_Y,
-	CURSOR_X, // Cursor position scaled so that client area is the range [0:1]
-	CURSOR_Y,
-	CURSOR_HOTSPOT_X,
-	CURSOR_HOTSPOT_Y,
-	// TODO:
-	// DEPTH_ACTIVE
-	// etc.
-};
-static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
-	{L"rt_width", ParamOverrideType::RT_WIDTH},
-	{L"rt_height", ParamOverrideType::RT_HEIGHT},
-	{L"res_width", ParamOverrideType::RES_WIDTH},
-	{L"res_height", ParamOverrideType::RES_HEIGHT},
-	{L"window_width", ParamOverrideType::WINDOW_WIDTH},
-	{L"window_height", ParamOverrideType::WINDOW_HEIGHT},
-	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
-	{L"index_count", ParamOverrideType::INDEX_COUNT},
-	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
-	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
-	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
-	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
-	{L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
-	{L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
-	{L"cursor_x", ParamOverrideType::CURSOR_X},
-	{L"cursor_y", ParamOverrideType::CURSOR_Y},
-	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
-	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
-	{NULL, ParamOverrideType::INVALID} // End of list marker
-};
-class ParamOverride : public CommandListCommand {
-public:
-	wstring ini_line;
-
-	int param_idx;
-	float DirectX::XMFLOAT4::*param_component;
-
-	ParamOverrideType type;
-	float val;
-
-	// For texture filters:
-	wchar_t shader_type;
-	unsigned texture_slot;
-
-	// TODO: Ability to override value until:
-	// a) From now on
-	// b) Single draw call only
-	// c) Until end of this frame (e.g. mark when post processing starts)
-	// d) Until end of next frame (e.g. for scene detection)
-	// Since the duration of the convergence and separation settings are
-	// not currently consistent between [ShaderOverride] and [Key] sections
-	// we could also make this apply to them to make it consistent, but
-	// still allow for the existing behaviour for the fixes that depend on
-	// it (like DG2).
-
-	ParamOverride() :
-		param_idx(-1),
-		param_component(NULL),
-		type(ParamOverrideType::INVALID),
-		val(FLT_MAX),
-		shader_type(NULL),
-		texture_slot(INT_MAX)
-	{}
-
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
-};
 
 enum class CustomResourceType {
 	INVALID,
@@ -614,6 +511,112 @@ public:
 
 	ResourceCopyOperation();
 	~ResourceCopyOperation();
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
+
+enum class ParamOverrideType {
+	INVALID,
+	VALUE,
+	RT_WIDTH,
+	RT_HEIGHT,
+	RES_WIDTH,
+	RES_HEIGHT,
+	WINDOW_WIDTH,
+	WINDOW_HEIGHT,
+	TEXTURE,	// Needs shader type and slot number specified in
+			// [ShaderOverride]. [TextureOverride] sections can
+			// specify filter_index=N to define the value passed in
+			// here. Special values for no [TextureOverride]
+			// section = 0.0, or [TextureOverride] with no
+			// filter_index = 1.0
+	VERTEX_COUNT,
+	INDEX_COUNT,
+	INSTANCE_COUNT,
+	CURSOR_VISIBLE,
+	CURSOR_SCREEN_X, // Cursor in screen coordinates in pixels
+	CURSOR_SCREEN_Y,
+	CURSOR_WINDOW_X, // Cursor in window client area coordinates in pixels
+	CURSOR_WINDOW_Y,
+	CURSOR_X, // Cursor position scaled so that client area is the range [0:1]
+	CURSOR_Y,
+	CURSOR_HOTSPOT_X,
+	CURSOR_HOTSPOT_Y,
+	// TODO:
+	// DEPTH_ACTIVE
+	// etc.
+};
+static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
+	{L"rt_width", ParamOverrideType::RT_WIDTH},
+	{L"rt_height", ParamOverrideType::RT_HEIGHT},
+	{L"res_width", ParamOverrideType::RES_WIDTH},
+	{L"res_height", ParamOverrideType::RES_HEIGHT},
+	{L"window_width", ParamOverrideType::WINDOW_WIDTH},
+	{L"window_height", ParamOverrideType::WINDOW_HEIGHT},
+	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
+	{L"index_count", ParamOverrideType::INDEX_COUNT},
+	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
+	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
+	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
+	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
+	{L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
+	{L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
+	{L"cursor_x", ParamOverrideType::CURSOR_X},
+	{L"cursor_y", ParamOverrideType::CURSOR_Y},
+	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
+	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
+	{NULL, ParamOverrideType::INVALID} // End of list marker
+};
+class ParamOverride : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	int param_idx;
+	float DirectX::XMFLOAT4::*param_component;
+
+	ParamOverrideType type;
+	float val;
+
+	// For texture filters:
+	wchar_t shader_type;
+	unsigned texture_slot;
+
+	// TODO: Ability to override value until:
+	// a) From now on
+	// b) Single draw call only
+	// c) Until end of this frame (e.g. mark when post processing starts)
+	// d) Until end of next frame (e.g. for scene detection)
+	// Since the duration of the convergence and separation settings are
+	// not currently consistent between [ShaderOverride] and [Key] sections
+	// we could also make this apply to them to make it consistent, but
+	// still allow for the existing behaviour for the fixes that depend on
+	// it (like DG2).
+
+	ParamOverride() :
+		param_idx(-1),
+		param_component(NULL),
+		type(ParamOverrideType::INVALID),
+		val(FLT_MAX),
+		shader_type(NULL),
+		texture_slot(INT_MAX)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
+
+class CheckTextureOverrideCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+	// For processing command lists in TextureOverride sections:
+	wchar_t shader_type;
+	unsigned texture_slot;
+
+	CheckTextureOverrideCommand() :
+		shader_type(NULL),
+		texture_slot(INT_MAX)
+	{}
 
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };
