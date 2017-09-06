@@ -274,8 +274,9 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			}
 		}
 
-		// TODO: Extend the texture filtering in the command list to
-		// support oD, and add a value (-1) for unassigned
+		// Deprecated: The texture filtering support in the command
+		// list can match oD for the depth buffer, which will return
+		// negative zero -0.0 if no depth buffer is assigned.
 		if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
 			ID3D11DepthStencilView *pDepthStencilView = NULL;
 

@@ -1000,33 +1000,19 @@ float ParamOverride::process_texture_filter(CommandListState *state)
 	TextureOverride *texture_override = texture_filter_target.FindTextureOverride(state, &resource_found);
 
 	// If there is no resource bound we want to return a special value that
-	// is distinct from simply not finding a texture override section.
-	// Not certain what the best value is to use, so leaving this commented
-	// out for the moment. Possible choices are:
-	// -1.0: Easy and will probably be fine, but it does change existing
-	//       behaviour, so has the potential to break a fix. We could argue
-	//       that any fix that gets broken by this was not using texture
-	//       filtering properly (testing on a slot not guaranteed to be
-	//       bound for that shader is undefined behaviour?), but I'd hate
-	//       to be on the receiving end of that excuse.
-	// -0.0: Pretty much guaranteed to be backwards compatible, but
-	//       non-trivial to test for in the shaders.
-	//  NAN: Potentially interesting choice, but can have confusing results
-	//       if it gets into certain calculations (e.g. lt a b;if_nz; and
-	//       ge b a;if_z; are usually equivelent and the compiler may
-	//       generate either depending on the phase of the moon, but if a
-	//       NaN has snuck in they won't be equivelent and the former will
-	//       pass while the later will not). Despite the risks this is
-	//       actually quite an interesting choice - it makes some logical
-	//       sense (no resource means the filter index doesn't exist), is
-	//       easy to test for with isnan(), and most existing checks for
-	//       zero/non-zero might end up working out, but needs some testing
-	//       to see how it behaves in practice.
-	// Ini configurable: Fully backwards compatible, no surprises, but one
-	//      more tunable to worry about.
-
-	//if (!resource_found)
-	//	return -1;
+	// is distinct from simply not finding a texture override section. For
+	// backwards compatibility we use negative zero -0.0, because any
+	// existing fixes that test for zero/non-zero to check if a matching
+	// [TextureOverride] is present would expect an unbound texture to
+	// never have a hash and therefore be equal to 0, and -0.0 *is* equal
+	// to +0, so these will continue to work. To explicitly test for an
+	// unassigned resource, use this HLSL to reinterpret the values as
+	// integers and check the sign bit:
+	//
+	// if (asint(IniParams[0].x) == asint(-0.0)) { ... }
+	//
+	if (!resource_found)
+		return -0.0;
 
 	// A resource was bound, but no matching texture override was found:
 	if (!texture_override)
