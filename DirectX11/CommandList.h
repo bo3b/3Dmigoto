@@ -22,6 +22,11 @@ class HackerContext;
 
 class CommandListState {
 public:
+	HackerDevice *mHackerDevice;
+	HackerContext *mHackerContext;
+	ID3D11Device *mOrigDevice;
+	ID3D11DeviceContext *mOrigContext;
+
 	// Used to avoid querying the render target dimensions twice in the
 	// common case we are going to store both width & height in separate
 	// ini params:
@@ -56,7 +61,7 @@ class CommandListCommand {
 public:
 	virtual ~CommandListCommand() {};
 
-	virtual void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) = 0;
+	virtual void run(CommandListState*) = 0;
 };
 
 // Using vector of pointers to allow mixed types, and shared_ptr to handle
@@ -76,7 +81,7 @@ public:
 		preset(NULL)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 class ExplicitCommandListSection
@@ -98,7 +103,7 @@ public:
 		command_list_section(NULL)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 class CustomShader
@@ -167,7 +172,7 @@ public:
 		custom_shader(NULL)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 enum class DrawCommandType {
@@ -195,7 +200,7 @@ public:
 		type(DrawCommandType::INVALID)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 class SkipCommand : public CommandListCommand {
@@ -206,7 +211,7 @@ public:
 		ini_section(section)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 // Handling=abort aborts the current command list, and any command lists that
@@ -220,7 +225,7 @@ public:
 		ini_section(section)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 
@@ -433,18 +438,13 @@ public:
 	{}
 
 	bool ParseTarget(const wchar_t *target, bool is_source);
-	ID3D11Resource *GetResource(
-			HackerDevice *mHackerDevice,
-			ID3D11Device *mOrigDevice,
-			ID3D11DeviceContext *mOrigContext,
+	ID3D11Resource *GetResource(CommandListState *state,
 			ID3D11View **view,
 			UINT *stride,
 			UINT *offset,
 			DXGI_FORMAT *format,
-			UINT *buf_size,
-			CommandListState *state);
-	void SetResource(
-			ID3D11DeviceContext *mOrigContext,
+			UINT *buf_size);
+	void SetResource(CommandListState *state,
 			ID3D11Resource *res,
 			ID3D11View *view,
 			UINT stride,
@@ -452,10 +452,6 @@ public:
 			DXGI_FORMAT format,
 			UINT buf_size);
 	TextureOverride* FindTextureOverride(
-			HackerDevice *mHackerDevice,
-			HackerContext *mHackerContext,
-			ID3D11Device *mOrigDevice,
-			ID3D11DeviceContext *mOrigContext,
 			CommandListState *state,
 			bool *resource_found);
 	D3D11_BIND_FLAG BindFlags();
@@ -537,7 +533,7 @@ public:
 	ResourceCopyOperation();
 	~ResourceCopyOperation();
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 
@@ -624,8 +620,8 @@ public:
 		val(FLT_MAX)
 	{}
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
-	float process_texture_filter(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*);
+	void run(CommandListState*) override;
+	float process_texture_filter(CommandListState*);
 };
 
 
@@ -635,7 +631,7 @@ public:
 	// For processing command lists in TextureOverride sections:
 	ResourceCopyTarget target;
 
-	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	void run(CommandListState*) override;
 };
 
 
