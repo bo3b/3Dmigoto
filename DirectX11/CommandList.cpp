@@ -647,7 +647,7 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 	if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
 		mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 
-	if (rs_override == 1)
+	if (rs_override == 1) // 2 will merge rasterizer state at draw time
 		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
 
 	if (sampler_override == 1)
@@ -705,6 +705,40 @@ void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state
 	stencil_ref = stencil_ref & ~stencil_ref_mask | src_stencil_ref & stencil_ref_mask;
 
 	mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+}
+
+void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *mOrigDevice)
+{
+	D3D11_RASTERIZER_DESC src_desc;
+
+	if (rs_override != 2)
+		return;
+
+	if (rs_state)
+		rs_state->Release();
+	rs_state = NULL;
+
+	if (src_state) {
+		src_state->GetDesc(&src_desc);
+	} else {
+		// There is no state set, so DX will be using defaults. Set the
+		// source description to the defaults so the merge will still
+		// work as expected:
+		src_desc.FillMode = D3D11_FILL_SOLID;
+		src_desc.CullMode = D3D11_CULL_BACK;
+		src_desc.FrontCounterClockwise = FALSE;
+		src_desc.DepthBias = 0;
+		src_desc.SlopeScaledDepthBias = 0.0f;
+		src_desc.DepthBiasClamp = 0.0f;
+		src_desc.DepthClipEnable = TRUE;
+		src_desc.ScissorEnable = FALSE;
+		src_desc.MultisampleEnable = FALSE;
+		src_desc.AntialiasedLineEnable = FALSE;
+	}
+
+	memcpy_masked_merge(&rs_desc, &src_desc, &rs_mask, sizeof(D3D11_RASTERIZER_DESC));
+
+	mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
 }
 
 struct saved_shader_inst
@@ -857,7 +891,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 	if (custom_shader->rs_override) {
 		mOrigContext->RSGetState(&saved_rs);
-		// TODO: Merge if rs_override == 2
+		custom_shader->merge_rasterizer_states(saved_rs, mOrigDevice);
 		mOrigContext->RSSetState(custom_shader->rs_state);
 	}
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {

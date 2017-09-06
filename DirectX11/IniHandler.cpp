@@ -1413,50 +1413,76 @@ static wchar_t *FrontDirection[] = {
 static void ParseRSState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_RASTERIZER_DESC *desc = &shader->rs_desc;
+	D3D11_RASTERIZER_DESC *mask = &shader->rs_mask;
 	bool found;
+
+	memset(mask, 0xff, sizeof(D3D11_RASTERIZER_DESC));
 
 	desc->FillMode = (D3D11_FILL_MODE)GetIniEnum(section, L"fill", D3D11_FILL_SOLID, &found,
 			L"D3D11_FILL_", FillModes, ARRAYSIZE(FillModes), 2);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->FillMode = (D3D11_FILL_MODE)0;
+	}
 
 	desc->CullMode = (D3D11_CULL_MODE)GetIniEnum(section, L"cull", D3D11_CULL_BACK, &found,
 			L"D3D11_CULL_", CullModes, ARRAYSIZE(CullModes), 1);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->CullMode = (D3D11_CULL_MODE)0;
+	}
 
 	desc->FrontCounterClockwise = (BOOL)GetIniEnum(section, L"front", 0, &found,
 			NULL, FrontDirection, ARRAYSIZE(FrontDirection), 0);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->FrontCounterClockwise = 0;
+	}
 
 	desc->DepthBias = GetIniInt(section, L"depth_bias", 0, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->DepthBias = 0;
+	}
 
 	desc->DepthBiasClamp = GetIniFloat(section, L"depth_bias_clamp", 0, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->DepthBiasClamp = 0;
+	}
 
 	desc->SlopeScaledDepthBias = GetIniFloat(section, L"slope_scaled_depth_bias", 0, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->SlopeScaledDepthBias = 0;
+	}
 
 	desc->DepthClipEnable = GetIniBool(section, L"depth_clip_enable", true, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->DepthClipEnable = 0;
+	}
 
 	desc->ScissorEnable = GetIniBool(section, L"scissor_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->ScissorEnable = 0;
+	}
 
 	desc->MultisampleEnable = GetIniBool(section, L"multisample_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->MultisampleEnable = 0;
+	}
 
 	desc->AntialiasedLineEnable = GetIniBool(section, L"antialiased_line_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->AntialiasedLineEnable = 0;
+	}
+
+	if (GetIniBool(section, L"rasterizer_state_merge", false, NULL))
+		shader->rs_override = 2;
 }
 
 struct PrimitiveTopology {
@@ -1626,6 +1652,7 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
 	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
 	L"multisample_enable", L"antialiased_line_enable",
+	L"rasterizer_state_merge",
 	// IA State overrides:
 	L"topology",
 	// Sampler State overrides

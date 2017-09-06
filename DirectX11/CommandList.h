@@ -134,6 +134,7 @@ public:
 
 	int rs_override;
 	D3D11_RASTERIZER_DESC rs_desc;
+	D3D11_RASTERIZER_DESC rs_mask;
 	ID3D11RasterizerState *rs_state;
 
 	int sampler_override;
@@ -158,6 +159,7 @@ public:
 	void substantiate(ID3D11Device *mOrigDevice);
 
 	void merge_depth_stencil_states(ID3D11DepthStencilState *state, UINT stencil_ref, ID3D11Device *mOrigDevice);
+	void merge_rasterizer_states(ID3D11RasterizerState *state, ID3D11Device *mOrigDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;

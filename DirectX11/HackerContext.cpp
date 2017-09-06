@@ -328,7 +328,29 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			}
 		}
 
-		// TODO: Move to command list
+		// This was technically already possible, since the custom
+		// shader sections can be used to selectively override state,
+		// and now with rasterizer_state_merge it is even easier:
+		//
+		// [ShaderOverrideFoo]
+		// hash = foo
+		// run = CustomShaderDisableScissorClipping
+		//
+		// [ShaderOverrideBar]
+		// hash = bar
+		// run = CustomShaderEnableScissorClipping
+		//
+		// [CustomShaderDisableScissorClipping]
+		// scissor_enable = false
+		// rasterizer_state_merge = true
+		// draw = from_caller
+		// handling = skip
+		//
+		// [CustomShaderEnableScissorClipping]
+		// scissor_enable = true
+		// rasterizer_state_merge = true
+		// draw = from_caller
+		// handling = skip
 		if (!use_orig && shaderOverride->disable_scissor != -1) {
 			LogDebug("  use disable_scissor %i\n", shaderOverride->disable_scissor);
 			data->disable_scissor = shaderOverride->disable_scissor;
