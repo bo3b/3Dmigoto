@@ -28,7 +28,7 @@ static void _RunCommandList(HackerDevice *mHackerDevice,
 	}
 
 	state->recursion++;
-	for (i = command_list->begin(); i < command_list->end(); i++) {
+	for (i = command_list->begin(); i < command_list->end() && !state->aborted; i++) {
 		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state);
 	}
 	state->recursion--;
@@ -318,8 +318,13 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	if (!wcscmp(key, L"preset"))
 		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
-	if (!wcscmp(key, L"handling") && !wcscmp(val->c_str(), L"skip"))
-		return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+	if (!wcscmp(key, L"handling")) {
+		 if (!wcscmp(val->c_str(), L"skip"))
+			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+
+		 if (!wcscmp(val->c_str(), L"abort"))
+			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
+	}
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -427,6 +432,15 @@ void SkipCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 		state->call_info->skip = true;
 	else
 		mHackerContext->FrameAnalysisLog("No active draw call to skip\n");
+}
+
+void AbortCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
+		CommandListState *state)
+{
+	mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = abort\n", ini_section.c_str());
+
+	state->aborted = true;
 }
 
 CustomShader::CustomShader() :
@@ -1048,7 +1062,8 @@ CommandListState::CommandListState() :
 	cursor_mask_view(NULL),
 	cursor_color_tex(NULL),
 	cursor_color_view(NULL),
-	recursion(0)
+	recursion(0),
+	aborted(false)
 {
 	memset(&cursor_info, 0, sizeof(CURSORINFO));
 	memset(&cursor_info_ex, 0, sizeof(ICONINFO));

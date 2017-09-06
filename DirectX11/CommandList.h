@@ -28,6 +28,7 @@ public:
 	float rt_width, rt_height;
 	DrawCallInfo *call_info;
 	bool post;
+	bool aborted;
 
 	// TODO: Cursor info and resources would be better off being cached
 	// somewhere that is updated at most once per frame rather than once
@@ -202,6 +203,20 @@ public:
 	wstring ini_section;
 
 	SkipCommand(wstring section) :
+		ini_section(section)
+	{}
+
+	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+};
+
+// Handling=abort aborts the current command list, and any command lists that
+// called it. e.g. it can be used in conjunction with checktextureoverride = oD
+// to abort command list execution if a specific depth target is in use.
+class AbortCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+
+	AbortCommand(wstring section) :
 		ini_section(section)
 	{}
 
