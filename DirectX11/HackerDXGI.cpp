@@ -850,8 +850,8 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		}
 
 		// Require in case the software mouse and upscaling are on at the same time
-		G->ORIGINAL_WIDTH = pDesc->BufferDesc.Width;
-		G->ORIGINAL_HEIGHT = pDesc->BufferDesc.Height;
+		G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
+		G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
 	}
 
 	ForceDisplayParams(pDesc);
@@ -899,8 +899,8 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 	*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
 
 	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
-		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+		G->mResolutionInfo.width = originalSwapChainDesc.BufferDesc.Width;
+		G->mResolutionInfo.height = originalSwapChainDesc.BufferDesc.Height;
 		LogInfo("Got resolution from swap chain: %ix%i\n",
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
@@ -2318,8 +2318,8 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
 	// TODO: not sure if it belongs here, in the resize target function or in both
 	// or maybe it is better to put it in the getviewport function?
 	// Require in case the software mouse and upscaling are on at the same time
-	G->ORIGINAL_WIDTH = Width;
-	G->ORIGINAL_HEIGHT = Height;
+	G->GAME_INTERNAL_WIDTH = Width;
+	G->GAME_INTERNAL_HEIGHT = Height;
 
 	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
 	{
@@ -2393,8 +2393,8 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeTarget(THIS_
 		// TODO: not sure if it belongs here, in the resize buffers function or in both
 		// or maybe it is better to put it in the getviewport function?
 		// Require in case the software mouse and upscaling are on at the same time
-		G->ORIGINAL_WIDTH = pNewTargetParameters->Width;
-		G->ORIGINAL_HEIGHT = pNewTargetParameters->Height;
+		G->GAME_INTERNAL_WIDTH = pNewTargetParameters->Width;
+		G->GAME_INTERNAL_HEIGHT = pNewTargetParameters->Height;
 	}
 
 	// In Direct Mode, we need to ensure that we are keeping our 2x width target.

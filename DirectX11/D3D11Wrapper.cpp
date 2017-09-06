@@ -876,8 +876,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		}
 
 		// Require in case the software mouse and upscaling are on at the same time
-		G->ORIGINAL_WIDTH = pSwapChainDesc->BufferDesc.Width;
-		G->ORIGINAL_HEIGHT = pSwapChainDesc->BufferDesc.Height;
+		G->GAME_INTERNAL_WIDTH = pSwapChainDesc->BufferDesc.Width;
+		G->GAME_INTERNAL_HEIGHT = pSwapChainDesc->BufferDesc.Height;
 	}
 
 	ForceDisplayParams(pSwapChainDesc);
