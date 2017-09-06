@@ -506,7 +506,8 @@ CustomShader::CustomShader() :
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
 	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
-	depth_stencil_override(0), depth_stencil_state(NULL), stencil_ref(0),
+	depth_stencil_override(0), depth_stencil_state(NULL),
+	stencil_ref(0), stencil_ref_mask(~0),
 	rs_override(0), rs_state(NULL),
 	topology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED),
 	substantiated(false),
@@ -539,6 +540,8 @@ CustomShader::~CustomShader()
 
 	if (blend_state)
 		blend_state->Release();
+	if (depth_stencil_state)
+		depth_stencil_state->Release();
 	if (rs_state)
 		rs_state->Release();
 
@@ -553,7 +556,7 @@ CustomShader::~CustomShader()
 	if (ps_bytecode)
 		ps_bytecode->Release();
 	if (cs_bytecode)
-		cs_bytecode->Release();		
+		cs_bytecode->Release();
 	if (sampler_state)
 		sampler_state->Release();
 }
@@ -706,17 +709,70 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 		cs_bytecode = NULL;
 	}
 
-	if (blend_override == 1) // 2 will use default blend state
+	if (blend_override == 1)
 		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
 
-	if (depth_stencil_override == 1) // 2 will use default depth/stencil state
+	if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
 		mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 
-	if (rs_override == 1) // 2 will use default blend state
+	if (rs_override == 1)
 		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
 
 	if (sampler_override == 1)
 		mOrigDevice->CreateSamplerState(&sampler_desc, &sampler_state);
+}
+
+// Similar to memcpy, but also takes a mask. Any bits in the mask that are set
+// to 0 will be unchanged in the destination, while bits that are set to 1 will
+// be copied from the source buffer.
+static void memcpy_masked_merge(void *dest, void *src, void *mask, size_t n)
+{
+	char *c_dest = (char*)dest;
+	char *c_src = (char*)src;
+	char *c_mask = (char*)mask;
+	size_t i;
+
+	for (i = 0; i < n; i++)
+		c_dest[i] = c_dest[i] & ~c_mask[i] | c_src[i] & c_mask[i];
+}
+
+void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *mOrigDevice)
+{
+	D3D11_DEPTH_STENCIL_DESC src_desc;
+
+	if (depth_stencil_override != 2)
+		return;
+
+	if (depth_stencil_state)
+		depth_stencil_state->Release();
+	depth_stencil_state = NULL;
+
+	if (src_state) {
+		src_state->GetDesc(&src_desc);
+	} else {
+		// There is no state set, so DX will be using defaults. Set the
+		// source description to the defaults so the merge will still
+		// work as expected:
+		src_desc.DepthEnable = TRUE;
+		src_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		src_desc.DepthFunc = D3D11_COMPARISON_LESS;
+		src_desc.StencilEnable = FALSE;
+		src_desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+		src_desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+		src_desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		src_desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		src_desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	}
+
+	memcpy_masked_merge(&depth_stencil_desc, &src_desc, &depth_stencil_mask, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	stencil_ref = stencil_ref & ~stencil_ref_mask | src_stencil_ref & stencil_ref_mask;
+
+	mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 }
 
 struct saved_shader_inst
@@ -859,14 +915,17 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	}
 	if (custom_shader->blend_override) {
 		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
+		// TODO: Merge if blend_override == 2
 		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
 	}
 	if (custom_shader->depth_stencil_override) {
 		mOrigContext->OMGetDepthStencilState(&saved_depth_stencil, &saved_stencil_ref);
+		custom_shader->merge_depth_stencil_states(saved_depth_stencil, saved_stencil_ref, mOrigDevice);
 		mOrigContext->OMSetDepthStencilState(custom_shader->depth_stencil_state, custom_shader->stencil_ref);
 	}
 	if (custom_shader->rs_override) {
 		mOrigContext->RSGetState(&saved_rs);
+		// TODO: Merge if rs_override == 2
 		mOrigContext->RSSetState(custom_shader->rs_state);
 	}
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {

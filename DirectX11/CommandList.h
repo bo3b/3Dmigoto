@@ -137,8 +137,9 @@ public:
 
 	int depth_stencil_override;
 	D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
+	D3D11_DEPTH_STENCIL_DESC depth_stencil_mask;
 	ID3D11DepthStencilState *depth_stencil_state;
-	UINT stencil_ref;
+	UINT stencil_ref, stencil_ref_mask;
 
 	int rs_override;
 	D3D11_RASTERIZER_DESC rs_desc;
@@ -164,6 +165,8 @@ public:
 
 	bool compile(char type, wchar_t *filename, const wstring *wname);
 	void substantiate(ID3D11Device *mOrigDevice);
+
+	void merge_depth_stencil_states(ID3D11DepthStencilState *state, UINT stencil_ref, ID3D11Device *mOrigDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;

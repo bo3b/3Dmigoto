@@ -1313,12 +1313,14 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_DEPTH_STENCIL_DESC *desc = &shader->depth_stencil_desc;
+	D3D11_DEPTH_STENCIL_DESC *mask = &shader->depth_stencil_mask;
 	wchar_t setting[MAX_PATH];
 	wchar_t key[32];
 	int ival;
 	bool found;
 
 	memset(desc, 0, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	memset(mask, 0xff, sizeof(D3D11_DEPTH_STENCIL_DESC));
 
 	// Set a default stencil state for any missing values:
 	desc->StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
@@ -1331,27 +1333,36 @@ static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 	desc->BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
 
 	desc->DepthEnable = GetIniBool(section, L"depth_enable", true, &found);
-	if (found)
+	if (found) {
 		shader->depth_stencil_override = 1;
+		mask->DepthEnable = 0;
+	}
 
 	desc->DepthWriteMask = (D3D11_DEPTH_WRITE_MASK)GetIniEnum(section, L"depth_write_mask", D3D11_DEPTH_WRITE_MASK_ALL, &found,
 			L"D3D11_DEPTH_WRITE_MASK_", DepthWriteMasks, ARRAYSIZE(DepthWriteMasks), 0);
-	if (found)
+	if (found) {
 		shader->depth_stencil_override = 1;
+		mask->DepthWriteMask = (D3D11_DEPTH_WRITE_MASK)0;
+	}
 
 	desc->DepthFunc = (D3D11_COMPARISON_FUNC)GetIniEnum(section, L"depth_func", D3D11_COMPARISON_LESS, &found,
 			L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
-	if (found)
+	if (found) {
 		shader->depth_stencil_override = 1;
+		mask->DepthFunc = (D3D11_COMPARISON_FUNC)0;
+	}
 
 	desc->StencilEnable = GetIniBool(section, L"stencil_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->depth_stencil_override = 1;
+		mask->StencilEnable = 0;
+	}
 
 	if (GetIniString(section, L"stencil_read_mask", 0, setting, MAX_PATH)) {
 		shader->depth_stencil_override = 1;
 		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
 		desc->StencilReadMask = ival; // Use an intermediate to be safe
+		mask->StencilReadMask = 0;
 		LogInfo("  stencil_read_mask=0x%x\n", desc->StencilReadMask);
 	}
 
@@ -1359,22 +1370,30 @@ static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 		shader->depth_stencil_override = 1;
 		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
 		desc->StencilWriteMask = ival; // Use an intermediate to be safe
+		mask->StencilWriteMask = 0;
 		LogInfo("  stencil_write_mask=0x%x\n", desc->StencilWriteMask);
 	}
 
 	if (GetIniString(section, L"stencil_front", 0, setting, MAX_PATH)) {
 		shader->depth_stencil_override = 1;
 		ParseStencilOp(key, setting, &desc->FrontFace);
+		memset(&mask->FrontFace, 0, sizeof(D3D11_DEPTH_STENCILOP_DESC));
 	}
 
 	if (GetIniString(section, L"stencil_back", 0, setting, MAX_PATH)) {
 		shader->depth_stencil_override = 1;
 		ParseStencilOp(key, setting, &desc->BackFace);
+		memset(&mask->BackFace, 0, sizeof(D3D11_DEPTH_STENCILOP_DESC));
 	}
 
 	shader->stencil_ref = GetIniInt(section, L"stencil_ref", 0, &found);
-	if (found)
+	if (found) {
 		shader->depth_stencil_override = 1;
+		shader->stencil_ref_mask = 0;
+	}
+
+	if (GetIniBool(section, L"depth_stencil_state_merge", false, NULL))
+		shader->depth_stencil_override = 2;
 }
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476131(v=vs.85).aspx
@@ -1610,6 +1629,7 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"depth_enable", L"depth_write_mask", L"depth_func",
 	L"stencil_enable", L"stencil_read_mask", L"stencil_write_mask",
 	L"stencil_front", L"stencil_back", L"stencil_ref",
+	L"depth_stencil_state_merge",
 	// RS State overrides:
 	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
 	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
