@@ -5506,29 +5506,12 @@ static void RecreateCompatibleResource(
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	D3D11_RESOURCE_DIMENSION src_dimension;
-	D3D11_RESOURCE_DIMENSION dst_dimension;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
 	ID3D11Resource *res = NULL;
 	bool restore_create_mode = false;
 
 	if (dst)
 		bind_flags = dst->BindFlags();
-
-	src_resource->GetType(&src_dimension);
-	if (*dst_resource) {
-		(*dst_resource)->GetType(&dst_dimension);
-		if (src_dimension != dst_dimension) {
-			LogInfo("Resource type changed %S\n", ini_line->c_str());
-
-			(*dst_resource)->Release();
-			if (dst_view && *dst_view)
-				(*dst_view)->Release();
-
-			*dst_resource = NULL;
-			if (dst_view)
-				*dst_view = NULL;
-		}
-	}
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
 		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
@@ -5550,6 +5533,7 @@ static void RecreateCompatibleResource(
 		restore_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 	}
 
+	src_resource->GetType(&src_dimension);
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource,
