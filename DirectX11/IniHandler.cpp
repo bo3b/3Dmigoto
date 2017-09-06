@@ -850,7 +850,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"depth_filter",
 	L"partner",
 	L"iteration",
-	L"indexbufferfilter",
 	L"analyse_options",
 	L"model",
 	L"disable_scissor",
@@ -862,7 +861,7 @@ static void ParseShaderOverrideSections()
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	ShaderOverride *override;
-	UINT64 hash, hash2;
+	UINT64 hash;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -926,13 +925,6 @@ static void ParseShaderOverrideSections()
 			swscanf_s(setting, L"%d", &iteration);
 			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
-		}
-
-		if (GetIniString(id, L"IndexBufferFilter", 0, setting, MAX_PATH))
-		{
-			swscanf_s(setting, L"%16llx", &hash2);
-			LogInfo("  IndexBufferFilter=%016llx\n", hash2);
-			override->indexBufferFilter.push_back(hash2);
 		}
 
 		if (GetIniString(id, L"analyse_options", 0, setting, MAX_PATH)) {

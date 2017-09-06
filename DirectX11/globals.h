@@ -188,7 +188,6 @@ struct ShaderOverride {
 	float separation;
 	float convergence;
 	std::vector<int> iterations; // Only for separation changes, not shaders.
-	std::vector<UINT64> indexBufferFilter;
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;

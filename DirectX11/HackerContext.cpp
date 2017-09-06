@@ -274,30 +274,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			}
 		}
 
-		// Deprecated: Index buffer filtering can be done in the same
-		// manner as texture filtering in the command list, with far
-		// more flexibility than this allows.
-		if (!shaderOverride->indexBufferFilter.empty()) {
-			bool found = false;
-			for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
-				if (mCurrentIndexBuffer == *l)
-				{
-					found = true;
-					break;
-				}
-			if (!found)
-			{
-				data->override = false;
-			}
-
-			// XXX: handling=skip will no longer be affected by
-			// the index buffer filter, but since index buffer
-			// filtering was broken until quite recently and not
-			// even llyzs is not actually using it we're not going
-			// to worry about maintaining backwards compatibility
-			// with using these two together.
-		}
-
 		// TODO: Extend the texture filtering in the command list to
 		// support oD, and add a value (-1) for unassigned
 		if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
