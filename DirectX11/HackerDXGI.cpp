@@ -2440,7 +2440,12 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeTarget(THIS_
 		md.Width = mWidth;
 		md.Height = mHeight;
 
+		// Temporarily disable the GetClientRect() hook since DirectX
+		// itself will call that and we want it to get the real
+		// resolution. Fixes upscaling in ARK: Survival Evolved
+		G->upscaling_hooks_armed = false;
 		hr = mOrigSwapChain->ResizeTarget(&md);
+		G->upscaling_hooks_armed = true;
 	}
 
 	LogInfo("  returns result = %x\n", hr);

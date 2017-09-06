@@ -451,7 +451,7 @@ static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
 	BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
 
-	if (rc && G->SCREEN_UPSCALING > 0 && lpRect != NULL)
+	if (G->upscaling_hooks_armed && rc && G->SCREEN_UPSCALING > 0 && lpRect != NULL)
 	{
 		lpRect->right = G->GAME_INTERNAL_WIDTH;
 		lpRect->bottom = G->GAME_INTERNAL_HEIGHT;

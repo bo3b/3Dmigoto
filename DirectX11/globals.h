@@ -303,6 +303,7 @@ struct Globals
 	int UPSCALE_MODE;
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
+	bool upscaling_hooks_armed;
 
 	int marking_mode;
 	int mark_snapshot;
@@ -499,6 +500,7 @@ struct Globals
 		SCREEN_REFRESH(-1),
 		SCREEN_FULLSCREEN(0),
 		SCREEN_ALLOW_COMMANDS(false),
+		upscaling_hooks_armed(true),
 
 		marking_mode(-1),
 		mark_snapshot(2),
