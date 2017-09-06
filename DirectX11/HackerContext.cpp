@@ -274,9 +274,9 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 			}
 		}
 
-		// Check index buffer filter.
-		// TODO: Replace this by extending texture filtering in the
-		// command list to cover other slots
+		// Deprecated: Index buffer filtering can be done in the same
+		// manner as texture filtering in the command list, with far
+		// more flexibility than this allows.
 		if (!shaderOverride->indexBufferFilter.empty()) {
 			bool found = false;
 			for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
@@ -290,9 +290,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 				data->override = false;
 			}
 
-			// TODO: This filter currently seems pretty limited as it only
-			// applies to per-draw separation/convergence.
-			//
 			// XXX: handling=skip will no longer be affected by
 			// the index buffer filter, but since index buffer
 			// filtering was broken until quite recently and not

@@ -379,6 +379,9 @@ private:
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
 extern CustomResources customResources;
 
+// Forward declaration since TextureOverride also contains a command list
+struct TextureOverride;
+
 enum class ResourceCopyTargetType {
 	INVALID,
 	EMPTY,
@@ -433,6 +436,13 @@ public:
 			UINT offset,
 			DXGI_FORMAT format,
 			UINT buf_size);
+	TextureOverride* FindTextureOverride(
+			HackerDevice *mHackerDevice,
+			HackerContext *mHackerContext,
+			ID3D11Device *mOrigDevice,
+			ID3D11DeviceContext *mOrigContext,
+			CommandListState *state,
+			bool *resource_found);
 	D3D11_BIND_FLAG BindFlags();
 };
 
@@ -579,8 +589,7 @@ public:
 	float val;
 
 	// For texture filters:
-	wchar_t shader_type;
-	unsigned texture_slot;
+	ResourceCopyTarget texture_filter_target;
 
 	// TODO: Ability to override value until:
 	// a) From now on
@@ -597,12 +606,11 @@ public:
 		param_idx(-1),
 		param_component(NULL),
 		type(ParamOverrideType::INVALID),
-		val(FLT_MAX),
-		shader_type(NULL),
-		texture_slot(INT_MAX)
+		val(FLT_MAX)
 	{}
 
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
+	float process_texture_filter(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*);
 };
 
 
@@ -610,13 +618,7 @@ class CheckTextureOverrideCommand : public CommandListCommand {
 public:
 	wstring ini_line;
 	// For processing command lists in TextureOverride sections:
-	wchar_t shader_type;
-	unsigned texture_slot;
-
-	CheckTextureOverrideCommand() :
-		shader_type(NULL),
-		texture_slot(INT_MAX)
-	{}
+	ResourceCopyTarget target;
 
 	void run(HackerDevice*, HackerContext*, ID3D11Device*, ID3D11DeviceContext*, CommandListState*) override;
 };

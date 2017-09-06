@@ -109,20 +109,15 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 		CommandList *pre_command_list,
 		CommandList *post_command_list)
 {
-	int ret, len1;
+	int ret;
 
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
-	// Parse value as "<shader type>s-t<testure slot>", consistent
-	// with texture filtering and resource copying
-	ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &operation->shader_type, 1, &operation->texture_slot, &len1);
-	if (ret == 2 && len1 == val->length() &&
-			operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		switch(operation->shader_type) {
-			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-				operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-				return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
-		}
+	// Parse value as consistent with texture filtering and resource copying
+	ret = operation->target.ParseTarget(val->c_str(), true);
+	if (ret) {
+		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 	}
 
 	delete operation;
@@ -329,78 +324,13 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
-static TextureOverride* FindTextureOverrideBySlot(HackerContext
-		*mHackerContext, ID3D11DeviceContext *mOrigContext,
-		wchar_t shader_type, unsigned texture_slot)
-{
-	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
-	ID3D11ShaderResourceView *view;
-	ID3D11Resource *resource = NULL;
-	TextureOverrideMap::iterator i;
-	TextureOverride *ret = NULL;
-	uint32_t hash = 0;
-
-	switch (shader_type) {
-		case L'v':
-			mOrigContext->VSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'h':
-			mOrigContext->HSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'd':
-			mOrigContext->DSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'g':
-			mOrigContext->GSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'p':
-			mOrigContext->PSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'c':
-			mOrigContext->CSGetShaderResources(texture_slot, 1, &view);
-			break;
-		default:
-			// Should not happen
-			return NULL;
-	}
-	if (!view)
-		return NULL;
-
-	view->GetResource(&resource);
-	if (!resource)
-		goto out_release_view;
-
-	view->GetDesc(&desc);
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		hash = GetResourceHash(resource);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	if (!hash)
-		goto out_release_resource;
-
-	mHackerContext->FrameAnalysisLog(" hash=%08llx", hash);
-
-	i = G->mTextureOverrideMap.find(hash);
-	if (i == G->mTextureOverrideMap.end())
-		goto out_release_resource;
-
-	ret = &i->second;
-
-out_release_resource:
-	resource->Release();
-out_release_view:
-	view->Release();
-	return ret;
-}
-
 void CheckTextureOverrideCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
 		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
 		CommandListState *state)
 {
 	mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
 
-	TextureOverride *override = FindTextureOverrideBySlot(mHackerContext,
-			mOrigContext, shader_type, texture_slot);
+	TextureOverride *override = target.FindTextureOverride(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state, NULL);
 
 	mHackerContext->FrameAnalysisLog(" found=%s\n", override ? "true" : "false");
 
@@ -1063,15 +993,48 @@ out_release_view:
 	view->Release();
 }
 
-static float ProcessParamTextureFilter(HackerContext *mHackerContext,
-		ID3D11DeviceContext *mOrigContext, ParamOverride *override)
+float ParamOverride::process_texture_filter(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
+		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext, CommandListState *state)
 {
-	TextureOverride *tex = FindTextureOverrideBySlot(mHackerContext,
-			mOrigContext, override->shader_type, override->texture_slot);
-	if (!tex)
+	bool resource_found;
+
+	TextureOverride *texture_override = texture_filter_target.FindTextureOverride(
+			mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state, &resource_found);
+
+	// If there is no resource bound we want to return a special value that
+	// is distinct from simply not finding a texture override section.
+	// Not certain what the best value is to use, so leaving this commented
+	// out for the moment. Possible choices are:
+	// -1.0: Easy and will probably be fine, but it does change existing
+	//       behaviour, so has the potential to break a fix. We could argue
+	//       that any fix that gets broken by this was not using texture
+	//       filtering properly (testing on a slot not guaranteed to be
+	//       bound for that shader is undefined behaviour?), but I'd hate
+	//       to be on the receiving end of that excuse.
+	// -0.0: Pretty much guaranteed to be backwards compatible, but
+	//       non-trivial to test for in the shaders.
+	//  NAN: Potentially interesting choice, but can have confusing results
+	//       if it gets into certain calculations (e.g. lt a b;if_nz; and
+	//       ge b a;if_z; are usually equivelent and the compiler may
+	//       generate either depending on the phase of the moon, but if a
+	//       NaN has snuck in they won't be equivelent and the former will
+	//       pass while the later will not). Despite the risks this is
+	//       actually quite an interesting choice - it makes some logical
+	//       sense (no resource means the filter index doesn't exist), is
+	//       easy to test for with isnan(), and most existing checks for
+	//       zero/non-zero might end up working out, but needs some testing
+	//       to see how it behaves in practice.
+	// Ini configurable: Fully backwards compatible, no surprises, but one
+	//      more tunable to worry about.
+
+	//if (!resource_found)
+	//	return -1;
+
+	// A resource was bound, but no matching texture override was found:
+	if (!texture_override)
 		return 0;
 
-	return tex->filter_index;
+	return texture_override->filter_index;
 }
 
 
@@ -1415,8 +1378,7 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 			*dest = (float)state->window_rect.bottom;
 			break;
 		case ParamOverrideType::TEXTURE:
-			*dest = ProcessParamTextureFilter(mHackerContext,
-					mOrigContext, this);
+			*dest = process_texture_filter(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state);
 			break;
 		case ParamOverrideType::VERTEX_COUNT:
 			if (state->call_info)
@@ -1504,17 +1466,11 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		goto success;
 	}
 
-	// Try parsing value as "<shader type>s-t<testure slot>" for texture filtering
-	ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &param->shader_type, 1, &param->texture_slot, &len1);
-	if (ret == 2 && len1 == val->length() &&
-			param->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		switch(param->shader_type) {
-			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-				param->type = ParamOverrideType::TEXTURE;
-				goto success;
-			default:
-				goto bail;
-		}
+	// Try parsing value as a resource target for texture filtering
+	ret = param->texture_filter_target.ParseTarget(val->c_str(), true);
+	if (ret) {
+		param->type = ParamOverrideType::TEXTURE;
+		goto success;
 	}
 
 	// Check special keywords
@@ -2244,7 +2200,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		type = ResourceCopyTargetType::SWAP_CHAIN;
 		return true;
 	}
-	
+
 	if (is_source && !wcscmp(target, L"f_bb")) {
 		type = ResourceCopyTargetType::FAKE_SWAP_CHAIN;
 		return true;
@@ -2454,7 +2410,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// as if it's too small it will disable the region copy later.
 		// TODO: Add a keyword to ignore offsets in case we want the
 		// whole buffer regardless
-		if (state->call_info)
+		if (state->call_info && stride && offset)
 			*offset += state->call_info->FirstVertex * *stride;
 		return buf;
 
@@ -2462,7 +2418,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// TODO: Similar comment as vertex buffers above, provide a
 		// means for a shader to get format + offset.
 		mOrigContext->IAGetIndexBuffer(&buf, format, offset);
-		*stride = dxgi_format_size(*format);
+		if (stride && format)
+			*stride = dxgi_format_size(*format);
 
 		// To simplify things we just copy the part of the buffer
 		// referred to by this call, so adjust the offset with the
@@ -2470,7 +2427,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// as if it's too small it will disable the region copy later.
 		// TODO: Add a keyword to ignore offsets in case we want the
 		// whole buffer regardless
-		if (state->call_info)
+		if (state->call_info && stride && offset)
 			*offset += state->call_info->FirstIndex * *stride;
 		return buf;
 
@@ -2557,10 +2514,14 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
 		custom_resource->Substantiate(mOrigDevice, mHackerDevice->mStereoHandle);
 
-		*stride = custom_resource->stride;
-		*offset = custom_resource->offset;
-		*format = custom_resource->format;
-		*buf_size = custom_resource->buf_size;
+		if (stride)
+			*stride = custom_resource->stride;
+		if (offset)
+			*offset = custom_resource->offset;
+		if (format)
+			*format = custom_resource->format;
+		if (buf_size)
+			*buf_size = custom_resource->buf_size;
 
 		if (custom_resource->is_null) {
 			// Optimisation to allow the resource to be set to null
@@ -2614,7 +2575,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
-	
+
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
 		mHackerDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
@@ -2863,6 +2824,50 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 
 	// Shouldn't happen. No return value makes sense, so raise an exception
 	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
+}
+
+TextureOverride* ResourceCopyTarget::FindTextureOverride(
+			HackerDevice *mHackerDevice,
+			HackerContext *mHackerContext,
+			ID3D11Device *mOrigDevice,
+			ID3D11DeviceContext *mOrigContext,
+			CommandListState *state,
+			bool *resource_found)
+{
+	TextureOverrideMap::iterator i;
+	TextureOverride *ret = NULL;
+	ID3D11Resource *resource = NULL;
+	ID3D11View *view = NULL;
+	uint32_t hash = 0;
+
+	resource = GetResource(mHackerDevice, mOrigDevice, mOrigContext, &view, NULL, NULL, NULL, NULL, state);
+
+	if (resource_found)
+		*resource_found = !!resource;
+
+	if (!resource)
+		return NULL;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	if (!hash)
+		goto out_release_resource;
+
+	mHackerContext->FrameAnalysisLog(" hash=%08llx", hash);
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		goto out_release_resource;
+
+	ret = &i->second;
+
+out_release_resource:
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
+	return ret;
 }
 
 static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
