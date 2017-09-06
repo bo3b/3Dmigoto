@@ -392,7 +392,7 @@ static BOOL WINAPI Hooked_GetCursorInfo(
 	BOOL rc = HideCursor_GetCursorInfo(pci);
 	RECT client;
 
-	if (rc && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
+	if (rc && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom)
 	{
 		pci->ptScreenPos.x = pci->ptScreenPos.x * G->GAME_INTERNAL_WIDTH / client.right;
 		pci->ptScreenPos.y = pci->ptScreenPos.y * G->GAME_INTERNAL_HEIGHT / client.bottom;
@@ -417,7 +417,9 @@ static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 	BOOL rc;
 	RECT client;
 	bool translate = G->SCREEN_UPSCALING > 0 && lpPoint
-		&& trampoline_GetClientRect(G->hWnd, &client);
+		&& trampoline_GetClientRect(G->hWnd, &client)
+		&& client.right && client.bottom
+		&& G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT;
 
 	if (translate)
 	{
@@ -470,7 +472,7 @@ static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
 	BOOL res = trampoline_GetCursorPos(lpPoint);
 	RECT client;
 
-	if (lpPoint && res && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
+	if (lpPoint && res && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom)
 	{
 		// This should work with all games that uses this function to gatter the mouse coords
 		// Tested with witcher 3 and dreamfall chapters
@@ -486,7 +488,7 @@ static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
 {
 	RECT client;
 
-	if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client))
+	if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT)
 	{
 		// TODO: Maybe there is a better way than use globals for the original game resolution
 		const int new_x = X * client.right / G->GAME_INTERNAL_WIDTH;
