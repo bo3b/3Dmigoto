@@ -839,7 +839,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		// Save off the window handle so we can translate mouse cursor
 		// coordinates to the window:
 		G->hWnd = pDesc->OutputWindow;
-		
+
 		if (G->SCREEN_UPSCALING > 0)
 		{
 			// For the case the upscaling is on the information if the fullscreen have to be set after swap chain is created
@@ -850,8 +850,17 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 		}
 
 		// Require in case the software mouse and upscaling are on at the same time
+		// TODO: Use a helper class to track *all* different resolutions
 		G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
 		G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
+
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			// TODO: Use a helper class to track *all* different resolutions
+			G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+			G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
 	}
 
 	ForceDisplayParams(pDesc);
@@ -897,13 +906,6 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 
 	// And again if something would go wrong we would not get here
 	*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
-
-	if (pDesc && G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-		G->mResolutionInfo.width = originalSwapChainDesc.BufferDesc.Width;
-		G->mResolutionInfo.height = originalSwapChainDesc.BufferDesc.Height;
-		LogInfo("Got resolution from swap chain: %ix%i\n",
-			G->mResolutionInfo.width, G->mResolutionInfo.height);
-	}
 
 	LogInfo("->return value = %#x \n\n", hr);
 	return hr;
