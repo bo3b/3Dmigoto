@@ -122,9 +122,10 @@ public:
 
 	int blend_override;
 	D3D11_BLEND_DESC blend_desc;
+	D3D11_BLEND_DESC blend_mask;
 	ID3D11BlendState *blend_state;
-	FLOAT blend_factor[4];
-	UINT blend_sample_mask;
+	FLOAT blend_factor[4], blend_factor_merge_mask[4];
+	UINT blend_sample_mask, blend_sample_mask_merge_mask;
 
 	int depth_stencil_override;
 	D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
@@ -158,6 +159,7 @@ public:
 	bool compile(char type, wchar_t *filename, const wstring *wname);
 	void substantiate(ID3D11Device *mOrigDevice);
 
+	void merge_blend_states(ID3D11BlendState *state, FLOAT blend_factor[4], UINT sample_mask, ID3D11Device *mOrigDevice);
 	void merge_depth_stencil_states(ID3D11DepthStencilState *state, UINT stencil_ref, ID3D11Device *mOrigDevice);
 	void merge_rasterizer_states(ID3D11RasterizerState *state, ID3D11Device *mOrigDevice);
 };

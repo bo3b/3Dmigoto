@@ -1114,7 +1114,10 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	}
 }
 
-static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const wchar_t *section, int index)
+static bool ParseBlendRenderTarget(
+		D3D11_RENDER_TARGET_BLEND_DESC *desc,
+		D3D11_RENDER_TARGET_BLEND_DESC *mask,
+		const wchar_t *section, int index)
 {
 	wchar_t setting[MAX_PATH];
 	bool override = false;
@@ -1131,6 +1134,7 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 		if (!_wcsicmp(setting, L"disable")) {
 			LogInfo("  %S=disable\n", key);
 			desc->BlendEnable = false;
+			mask->BlendEnable = 0;
 			return true;
 		}
 
@@ -1138,6 +1142,9 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 				&desc->BlendOp,
 				&desc->SrcBlend,
 				&desc->DestBlend);
+		mask->BlendOp = (D3D11_BLEND_OP)0;
+		mask->SrcBlend = (D3D11_BLEND)0;
+		mask->DestBlend = (D3D11_BLEND)0;
 	}
 
 	wcscpy(key, L"alpha");
@@ -1149,6 +1156,9 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 				&desc->BlendOpAlpha,
 				&desc->SrcBlendAlpha,
 				&desc->DestBlendAlpha);
+		mask->BlendOpAlpha = (D3D11_BLEND_OP)0;
+		mask->SrcBlendAlpha = (D3D11_BLEND)0;
+		mask->DestBlendAlpha = (D3D11_BLEND)0;
 	}
 
 	wcscpy(key, L"mask");
@@ -1158,11 +1168,14 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 		override = true;
 		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
 		desc->RenderTargetWriteMask = ival; // Use an intermediate to be safe
+		mask->RenderTargetWriteMask = 0;
 		LogInfo("  %S=0x%x\n", key, desc->RenderTargetWriteMask);
 	}
 
-	if (override)
+	if (override) {
 		desc->BlendEnable = true;
+		mask->BlendEnable = 0;
+	}
 
 	return override;
 }
@@ -1170,12 +1183,14 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_BLEND_DESC *desc = &shader->blend_desc;
+	D3D11_BLEND_DESC *mask = &shader->blend_mask;
 	wchar_t setting[MAX_PATH];
 	wchar_t key[32];
 	int i;
 	bool found;
 
 	memset(desc, 0, sizeof(D3D11_BLEND_DESC));
+	memset(mask, 0xff, sizeof(D3D11_BLEND_DESC));
 
 	// Set a default blend state for any missing values:
 	desc->IndependentBlendEnable = false;
@@ -1190,37 +1205,48 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 
 	// Any blend states that are specified without a render target index
 	// are propagated to all render targets:
-	if (ParseBlendRenderTarget(&desc->RenderTarget[0], section, -1))
+	if (ParseBlendRenderTarget(&desc->RenderTarget[0], &mask->RenderTarget[0], section, -1))
 		shader->blend_override = 1;
-	for (i = 1; i < 8; i++)
+	for (i = 1; i < 8; i++) {
 		memcpy(&desc->RenderTarget[i], &desc->RenderTarget[0], sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+		memcpy(&mask->RenderTarget[i], &mask->RenderTarget[0], sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+	}
 
 	// We check all render targets again with the [%i] syntax. We do the
 	// first one again since the last time was for default, while this is
 	// for the specific target:
 	for (i = 0; i < 8; i++) {
-		if (ParseBlendRenderTarget(&desc->RenderTarget[i], section, i)) {
+		if (ParseBlendRenderTarget(&desc->RenderTarget[i], &mask->RenderTarget[i], section, i)) {
 			shader->blend_override = 1;
 			desc->IndependentBlendEnable = true;
+			mask->IndependentBlendEnable = 0;
 		}
 	}
 
 	desc->AlphaToCoverageEnable = GetIniBool(section, L"alpha_to_coverage", false, &found);
-	if (found)
+	if (found) {
 		shader->blend_override = 1;
+		mask->AlphaToCoverageEnable = 0;
+	}
 
 	for (i = 0; i < 4; i++) {
 		swprintf_s(key, ARRAYSIZE(key), L"blend_factor[%i]", i);
 		shader->blend_factor[i] = GetIniFloat(section, key, 0.0f, &found);
-		if (found)
+		if (found) {
 			shader->blend_override = 1;
+			shader->blend_factor_merge_mask[i] = 0;
+		}
 	}
 
 	if (GetIniString(section, L"sample_mask", 0, setting, MAX_PATH)) {
 		shader->blend_override = 1;
 		swscanf_s(setting, L"%x", &shader->blend_sample_mask);
 		LogInfo("  sample_mask=0x%x\n", shader->blend_sample_mask);
+		shader->blend_sample_mask_merge_mask = 0;
 	}
+
+	if (GetIniBool(section, L"blend_state_merge", false, NULL))
+		shader->blend_override = 2;
 }
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476113(v=vs.85).aspx
@@ -1643,6 +1669,7 @@ wchar_t *CustomShaderIniKeys[] = {
 	L"alpha_to_coverage", L"sample_mask",
 	L"blend_factor[0]", L"blend_factor[1]",
 	L"blend_factor[2]", L"blend_factor[3]",
+	L"blend_state_merge",
 	// OM Depth Stencil State overrides:
 	L"depth_enable", L"depth_write_mask", L"depth_func",
 	L"stencil_enable", L"stencil_read_mask", L"stencil_write_mask",

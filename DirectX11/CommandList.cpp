@@ -437,7 +437,8 @@ CustomShader::CustomShader() :
 	vs(NULL), hs(NULL), ds(NULL), gs(NULL), ps(NULL), cs(NULL),
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
-	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
+	blend_override(0), blend_state(NULL),
+	blend_sample_mask(0xffffffff), blend_sample_mask_merge_mask(0xffffffff),
 	depth_stencil_override(0), depth_stencil_state(NULL),
 	stencil_ref(0), stencil_ref_mask(~0),
 	rs_override(0), rs_state(NULL),
@@ -451,8 +452,10 @@ CustomShader::CustomShader() :
 {
 	int i;
 
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < 4; i++) {
 		blend_factor[i] = 1.0f;
+		blend_factor_merge_mask[i] = ~0;
+	}
 }
 
 CustomShader::~CustomShader()
@@ -641,7 +644,7 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 		cs_bytecode = NULL;
 	}
 
-	if (blend_override == 1)
+	if (blend_override == 1) // 2 will merge the blend state at draw time
 		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
 
 	if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
@@ -666,6 +669,49 @@ static void memcpy_masked_merge(void *dest, void *src, void *mask, size_t n)
 
 	for (i = 0; i < n; i++)
 		c_dest[i] = c_dest[i] & ~c_mask[i] | c_src[i] & c_mask[i];
+}
+
+void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *mOrigDevice)
+{
+	D3D11_BLEND_DESC src_desc;
+	int i;
+
+	if (blend_override != 2)
+		return;
+
+	if (blend_state)
+		blend_state->Release();
+	blend_state = NULL;
+
+	if (src_state) {
+		src_state->GetDesc(&src_desc);
+	} else {
+		// There is no state set, so DX will be using defaults. Set the
+		// source description to the defaults so the merge will still
+		// work as expected:
+		src_desc.AlphaToCoverageEnable = FALSE;
+		src_desc.IndependentBlendEnable = FALSE;
+		for (i = 0; i < 8; i++) {
+			src_desc.RenderTarget[i].BlendEnable = FALSE;
+			src_desc.RenderTarget[i].SrcBlend = D3D11_BLEND_ONE;
+			src_desc.RenderTarget[i].DestBlend = D3D11_BLEND_ZERO;
+			src_desc.RenderTarget[i].BlendOp = D3D11_BLEND_OP_ADD;
+			src_desc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
+			src_desc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
+			src_desc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			src_desc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		}
+	}
+
+	memcpy_masked_merge(&blend_desc, &src_desc, &blend_mask, sizeof(D3D11_BLEND_DESC));
+
+	for (i = 0; i < 4; i++) {
+		if (blend_factor_merge_mask[i])
+			blend_factor[i] = src_blend_factor[i];
+	}
+	blend_sample_mask = blend_sample_mask & ~blend_sample_mask_merge_mask | src_sample_mask & blend_sample_mask_merge_mask;
+
+	mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
 }
 
 void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *mOrigDevice)
@@ -881,7 +927,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 	if (custom_shader->blend_override) {
 		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
-		// TODO: Merge if blend_override == 2
+		custom_shader->merge_blend_states(saved_blend, saved_blend_factor, saved_sample_mask, mOrigDevice);
 		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
 	}
 	if (custom_shader->depth_stencil_override) {
