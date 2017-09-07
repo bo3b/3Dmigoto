@@ -326,11 +326,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	TextureOverride *override = target.FindTextureOverride(state, NULL);
-
-	state->mHackerContext->FrameAnalysisLog(" found=%s\n", override ? "true" : "false");
 
 	if (!override)
 		return;
@@ -343,7 +341,7 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 
 void PresetCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	preset->Activate(state->mHackerDevice);
 }
@@ -421,7 +419,7 @@ void SkipCommand::run(CommandListState *state)
 	if (state->call_info)
 		state->call_info->skip = true;
 	else
-		state->mHackerContext->FrameAnalysisLog("No active draw call to skip\n");
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   No active draw call to skip\n");
 }
 
 void AbortCommand::run(CommandListState *state)
@@ -885,7 +883,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 			custom_shader->frame_no = G->frame_no;
 			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
-			state->mHackerContext->FrameAnalysisLog("max_executions_per_frame exceeded\n");
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   max_executions_per_frame exceeded\n");
 			return;
 		}
 	}
@@ -1415,8 +1413,9 @@ static void UpdateCursorResources(CommandListState *state)
 void ParamOverride::run(CommandListState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);
-
 	float orig = *dest;
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	switch (type) {
 		case ParamOverrideType::VALUE:
@@ -1507,7 +1506,7 @@ void ParamOverride::run(CommandListState *state)
 			return;
 	}
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S (%f)\n", ini_line.c_str(), *dest);
+	state->mHackerContext->FrameAnalysisLog("3DMigoto   ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
 }
@@ -2916,7 +2915,7 @@ TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state
 	if (!hash)
 		goto out_release_resource;
 
-	state->mHackerContext->FrameAnalysisLog(" hash=%08llx", hash);
+	state->mHackerContext->FrameAnalysisLog("3DMigoto   found texture hash = %08llx\n", hash);
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
@@ -4240,7 +4239,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 				dst.custom_resource->frame_no = G->frame_no;
 				dst.custom_resource->copies_this_frame = 1;
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
-				mHackerContext->FrameAnalysisLog("max_copies_per_frame exceeded\n");
+				mHackerContext->FrameAnalysisLog("3DMigoto   max_copies_per_frame exceeded\n");
 				return;
 			}
 		}
@@ -4265,9 +4264,9 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
 			// RecreateCompatibleResource has already done the work
-			mHackerContext->FrameAnalysisLog("3DMigoto copying resource description\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
-			mHackerContext->FrameAnalysisLog("3DMigoto performing reverse stereo blit\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   performing reverse stereo blit\n");
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -4294,19 +4293,19 @@ void ResourceCopyOperation::run(CommandListState *state)
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
-			mHackerContext->FrameAnalysisLog("3DMigoto resolving MSAA\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   resolving MSAA\n");
 			ResolveMSAA(dst_resource, src_resource, state);
 		} else if (buf_dst_size) {
-			mHackerContext->FrameAnalysisLog("3DMigoto performing region copy\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   performing region copy\n");
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					state, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
-			mHackerContext->FrameAnalysisLog("3DMigoto performing full copy\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   performing full copy\n");
 			mOrigContext->CopyResource(dst_resource, src_resource);
 		}
 	} else {
-		mHackerContext->FrameAnalysisLog("3DMigoto copying by reference\n");
+		mHackerContext->FrameAnalysisLog("3DMigoto   copying by reference\n");
 		dst_resource = src_resource;
 		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;
