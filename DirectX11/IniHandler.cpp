@@ -845,6 +845,7 @@ static void ParseDriverProfile()
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *ShaderOverrideIniKeys[] = {
 	L"hash",
+	L"allow_duplicate_hash",
 	L"separation",
 	L"convergence",
 	L"depth_filter",
@@ -862,6 +863,7 @@ static void ParseShaderOverrideSections()
 	const wchar_t *id;
 	ShaderOverride *override;
 	UINT64 hash;
+	bool duplicate, allow_duplicates;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -884,14 +886,35 @@ static void ParseShaderOverrideSections()
 		swscanf_s(setting, L"%16llx", &hash);
 		LogInfo("  Hash=%016llx\n", hash);
 
-		if (G->mShaderOverrideMap.count(hash)) {
+		duplicate = !!G->mShaderOverrideMap.count(hash);
+		override = &G->mShaderOverrideMap[hash];
+
+		// We permit hash= to be duplicate, but only if every section
+		// indicates they are ok with it, and the section names still
+		// have to be distinct. This is intended that scripts will set
+		// this flag on any sections they create so that if a user
+		// creates a shaderoverride with the same hash they will get a
+		// warning at first, but can choose to allow it so that they
+		// can add their own commands without having to merge them with
+		// the section from the script, allowing all the auto generated
+		// sections to be grouped together. The section names still
+		// have to be distinct, which offers protection against scripts
+		// adding multiple identical sections if run multiple times.
+		// Note that you won't get warnings of duplicate settings
+		// between the sections, but at least we try not to clobber
+		// their values from earlier sections with the defaults.
+		allow_duplicates = GetIniBool(id, L"allow_duplicate_hash", false, NULL)
+				   && override->allow_duplicate_hashes;
+
+		if (duplicate && !allow_duplicates) {
 			LogInfo("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
 			BeepFailure2();
 		}
-		override = &G->mShaderOverrideMap[hash];
 
-		override->separation = GetIniFloat(id, L"Separation", FLT_MAX, NULL);
-		override->convergence = GetIniFloat(id, L"Convergence", FLT_MAX, NULL);
+		override->allow_duplicate_hashes = allow_duplicates;
+
+		override->separation = GetIniFloat(id, L"Separation", override->separation, NULL);
+		override->convergence = GetIniFloat(id, L"Convergence", override->convergence, NULL);
 
 		if (GetIniString(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
@@ -939,7 +962,7 @@ static void ParseShaderOverrideSections()
 			LogInfo("  model=%s\n", override->model);
 		}
 
-		override->disable_scissor = GetIniInt(id, L"disable_scissor", -1, NULL);
+		override->disable_scissor = GetIniInt(id, L"disable_scissor", override->disable_scissor, NULL);
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
