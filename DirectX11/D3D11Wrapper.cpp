@@ -878,6 +878,14 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		// Require in case the software mouse and upscaling are on at the same time
 		G->GAME_INTERNAL_WIDTH = pSwapChainDesc->BufferDesc.Width;
 		G->GAME_INTERNAL_HEIGHT = pSwapChainDesc->BufferDesc.Height;
+
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			// TODO: Use a helper class to track *all* different resolutions
+			G->mResolutionInfo.width = pSwapChainDesc->BufferDesc.Width;
+			G->mResolutionInfo.height = pSwapChainDesc->BufferDesc.Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
 	}
 
 	ForceDisplayParams(pSwapChainDesc);
