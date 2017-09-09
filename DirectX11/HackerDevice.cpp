@@ -800,11 +800,11 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 
 			vector<byte> byteCode(pBytecodeLength);
 			memcpy(byteCode.data(), pShaderBytecode, pBytecodeLength);
-			
+
 			// Re-assemble the ASM text back to binary
 			try
 			{
-				byteCode = assembler(*reinterpret_cast<vector<byte>*>(&asmTextBytes), byteCode);
+				byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode);
 
 				// ToDo: Any errors to check?  When it fails, throw an exception.
 

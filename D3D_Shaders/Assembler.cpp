@@ -2294,7 +2294,9 @@ vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	return hash;
 }
 
-vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
+// origByteCode is modified in this function, so passing it by value!
+// asmFile is not modified, so passing it by pointer -DarkStarSword
+vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode) {
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
@@ -2302,10 +2304,10 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
 
-	// TODO: Add robust error checking here (buffer is at least as large as
+	// TODO: Add robust error checking here (origBytecode is at least as large as
 	// the header, etc). I've added a check for numChunks < 1 as that
 	// would lead to codeByteStart being used uninitialised
-	byte* pPosition = buffer.data();
+	byte* pPosition = origBytecode.data();
 	std::memcpy(fourcc, pPosition, 4);
 	pPosition += 4;
 	std::memcpy(fHash, pPosition, 16);
@@ -2323,13 +2325,13 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 
 	char* asmBuffer;
 	size_t asmSize;
-	asmBuffer = (char*)asmFile.data();
-	asmSize = asmFile.size();
+	asmBuffer = asmFile->data();
+	asmSize = asmFile->size();
 	byte* codeByteStart;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
 		codeChunk = numChunks - i;
-		codeByteStart = buffer.data() + chunkOffsets[numChunks - i];
+		codeByteStart = origBytecode.data() + chunkOffsets[numChunks - i];
 		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
 			break;
 	}
@@ -2370,25 +2372,25 @@ vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer) {
 		}
 	}
 	codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care
-	auto it = buffer.begin() + chunkOffsets[codeChunk] + 8;
+	auto it = origBytecode.begin() + chunkOffsets[codeChunk] + 8;
 	size_t codeSize = codeStart[1];
-	buffer.erase(it, it + codeSize);
+	origBytecode.erase(it, it + codeSize);
 	size_t newCodeSize = 4 * o.size();
 	codeStart[1] = (DWORD)newCodeSize;
 	vector<byte> newCode(newCodeSize);
 	o[1] = (DWORD)o.size();
 	memcpy(newCode.data(), o.data(), newCodeSize);
-	it = buffer.begin() + chunkOffsets[codeChunk] + 8;
-	buffer.insert(it, newCode.begin(), newCode.end());
-	DWORD* dwordBuffer = (DWORD*)buffer.data();
+	it = origBytecode.begin() + chunkOffsets[codeChunk] + 8;
+	origBytecode.insert(it, newCode.begin(), newCode.end());
+	DWORD* dwordBuffer = (DWORD*)origBytecode.data();
 	for (DWORD i = codeChunk + 1; i < numChunks; i++) {
 		dwordBuffer[8 + i] += (DWORD)(newCodeSize - codeSize);
 	}
-	dwordBuffer[6] = (DWORD)buffer.size();
-	vector<DWORD> hash = ComputeHash((byte const*)buffer.data() + 20, (DWORD)buffer.size() - 20);
+	dwordBuffer[6] = (DWORD)origBytecode.size();
+	vector<DWORD> hash = ComputeHash((byte const*)origBytecode.data() + 20, (DWORD)origBytecode.size() - 20);
 	dwordBuffer[1] = hash[0];
 	dwordBuffer[2] = hash[1];
 	dwordBuffer[3] = hash[2];
 	dwordBuffer[4] = hash[3];
-	return buffer;
+	return origBytecode;
 }

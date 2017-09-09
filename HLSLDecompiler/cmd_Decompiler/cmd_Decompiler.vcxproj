@@ -314,6 +314,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\D3D_Shaders\Assembler.cpp" />
+    <ClCompile Include="..\..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="..\DecompileHLSL.cpp" />
     <ClCompile Include="cmd_Decompiler.cpp" />
     <ClCompile Include="stdafx.cpp" />

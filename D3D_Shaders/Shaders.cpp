@@ -107,7 +107,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				fileName.append("bin");
 				auto BIN = readFile(fileName);
 				
-				auto CBO = assembler(ASM, BIN);
+				auto CBO = assembler((vector<char>*)&ASM, BIN);
 
 				fileName.erase(fileName.size() - 3, 3);
 				fileName.append("cbo");
