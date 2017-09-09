@@ -21,6 +21,7 @@
     <ClCompile Include="HookedContext.cpp" />
     <ClCompile Include="HookedDevice.cpp" />
     <ClCompile Include="nvprofile.cpp" />
+    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />

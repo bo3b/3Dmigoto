@@ -199,7 +199,7 @@ static int validate_section(char section[4], unsigned char *old_section, unsigne
 static int validate_assembly(string *assembly, vector<char> *old_shader)
 {
 	vector<char> assembly_vec(assembly->begin(), assembly->end());
-	string new_assembly;
+	vector<byte> new_shader;
 	struct dxbc_header *old_dxbc_header = NULL, *new_dxbc_header = NULL;
 	struct section_header *old_section_header = NULL, *new_section_header = NULL;
 	uint32_t *old_section_offset_ptr = NULL, *new_section_offset_ptr = NULL;
@@ -214,13 +214,11 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 	// assembly text so that we can check the signature parsing separately
 	// from the assembler. FIXME: We really need to clean up how the
 	// buffers are passed between these functions
-	hret = AssembleFluganWithSignatureParsing(&assembly_vec, &new_assembly);
+	hret = AssembleFluganWithSignatureParsing(&assembly_vec, &new_shader);
 	if (FAILED(hret)) {
 		LogInfo("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
 		return 1;
 	}
-
-	vector<char> new_shader(new_assembly.begin(), new_assembly.end());
 
 	// Get some useful pointers into the buffers:
 	old_dxbc_header = (struct dxbc_header*)old_shader->data();
@@ -432,7 +430,8 @@ static int process(string const *filename)
 
 	if (args.assemble) {
 		LogInfo("Assembling %s...\n", filename->c_str());
-		hret = AssembleFluganWithSignatureParsing(&srcData, &output);
+		vector<byte> new_bytecode;
+		hret = AssembleFluganWithSignatureParsing(&srcData, &new_bytecode);
 		if (FAILED(hret))
 			return EXIT_FAILURE;
 
@@ -440,6 +439,7 @@ static int process(string const *filename)
 		// if (args.validate)
 		// disassemble again and perform fuzzy compare
 
+		output = string(new_bytecode.begin(), new_bytecode.end());
 		if (WriteOutput(filename, ".shdr", &output))
 			return EXIT_FAILURE;
 

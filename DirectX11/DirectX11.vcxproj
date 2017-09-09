@@ -40,6 +40,7 @@
   <ItemGroup>
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
     <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
+    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
