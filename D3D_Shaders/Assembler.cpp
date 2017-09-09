@@ -52,7 +52,7 @@ string convertF(DWORD original) {
 	DWORD newDWORD = strToDWORD(sLiteral);
 	if (newDWORD != original) {
 		if (failFile == NULL)
-			fopen_s(&failFile, "debug.txt", "wb");
+			fopen_s(&failFile, "3Dmigoto_disassembly_debug.txt", "wb");
 		if (failFile) {
 			FILE *f = failFile;
 			fprintf(f, "%s\n", sLiteral.c_str());
