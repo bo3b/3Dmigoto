@@ -229,123 +229,132 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 	return pPixelShader;
 }
 
+#define ENABLE_LEGACY_FILTERS 1
 void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 	DrawContext *data, float *separationValue, float *convergenceValue)
 {
 	bool use_orig = false;
-	bool use_preset = false;
 
 	LogDebug("  override found for shader\n");
 
-	*separationValue = shaderOverride->separation;
-	if (*separationValue != FLT_MAX)
-		data->override = true;
-	*convergenceValue = shaderOverride->convergence;
-	if (*convergenceValue != FLT_MAX)
-		data->override = true;
-	data->skip = shaderOverride->skip;
-	if (!shaderOverride->preset.empty())
-		use_preset = true;
+	// We really want to start deprecating all the old filters and switch
+	// to using the command list for much greater flexibility. This if()
+	// will be optimised out by the compiler, but is here to remind anyone
+	// looking at this that we don't want to extend this code further.
+	if (ENABLE_LEGACY_FILTERS) {
+		// Per draw call separation and convergence overrides are
+		// deprecated since they are rarely used and can be achieved by
+		// editing the vertex shader
+		*separationValue = shaderOverride->separation;
+		if (*separationValue != FLT_MAX)
+			data->override = true;
+		*convergenceValue = shaderOverride->convergence;
+		if (*convergenceValue != FLT_MAX)
+			data->override = true;
 
-	// Check iteration.
-	if (!shaderOverride->iterations.empty()) {
-		std::vector<int>::iterator k = shaderOverride->iterations.begin();
-		int currentiterations = *k = *k + 1;
-		LogDebug("  current iterations = %d\n", currentiterations);
+		// Check iteration.
+		// TODO: extend the command list to support things like 'x = x + 1'
+		if (!shaderOverride->iterations.empty()) {
+			std::vector<int>::iterator k = shaderOverride->iterations.begin();
+			int currentiterations = *k = *k + 1;
+			LogDebug("  current iterations = %d\n", currentiterations);
 
-		data->override = false;
-		while (++k != shaderOverride->iterations.end())
-		{
-			if (currentiterations == *k)
-			{
-				data->override = true;
-				break;
-			}
-		}
-		if (!data->override)
-		{
-			LogDebug("  override skipped\n");
-		}
-	}
-
-	// Check index buffer filter.
-	if (!shaderOverride->indexBufferFilter.empty()) {
-		bool found = false;
-		for (vector<UINT64>::iterator l = shaderOverride->indexBufferFilter.begin(); l != shaderOverride->indexBufferFilter.end(); ++l)
-			if (mCurrentIndexBuffer == *l)
-			{
-				found = true;
-				break;
-			}
-		if (!found)
-		{
 			data->override = false;
-			data->skip = false;
-			use_preset = false;
+			while (++k != shaderOverride->iterations.end())
+			{
+				if (currentiterations == *k)
+				{
+					data->override = true;
+					break;
+				}
+			}
+			if (!data->override)
+			{
+				LogDebug("  override skipped\n");
+			}
 		}
 
-		// TODO: This filter currently seems pretty limited as it only
-		// applies to handling=skip and per-draw separation/convergence.
-	}
+		// Deprecated: The texture filtering support in the command
+		// list can match oD for the depth buffer, which will return
+		// negative zero -0.0 if no depth buffer is assigned.
+		if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
+			ID3D11DepthStencilView *pDepthStencilView = NULL;
 
-	if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
-		ID3D11DepthStencilView *pDepthStencilView = NULL;
+			mOrigContext->OMGetRenderTargets(0, NULL, &pDepthStencilView);
 
-		mOrigContext->OMGetRenderTargets(0, NULL, &pDepthStencilView);
-
-		// Remember - we are NOT switching to the original shader when the condition is true
-		if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
-			use_orig = true;
-		}
-		else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
-			use_orig = true;
-		}
-
-		if (pDepthStencilView)
-			pDepthStencilView->Release();
-
-		// TODO: Add alternate filter type where the depth
-		// buffer state is passed as an input to the shader
-	}
-
-	if (shaderOverride->partner_hash) {
-		if (isPixelShader) {
-			if (mCurrentVertexShader != shaderOverride->partner_hash)
+			// Remember - we are NOT switching to the original shader when the condition is true
+			if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
 				use_orig = true;
-		}
-		else {
-			if (mCurrentPixelShader != shaderOverride->partner_hash)
+			}
+			else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
 				use_orig = true;
+			}
+
+			if (pDepthStencilView)
+				pDepthStencilView->Release();
+
+			// TODO: Add alternate filter type where the depth
+			// buffer state is passed as an input to the shader
+		}
+
+		// Deprecated: Partner filtering can already be achieved with
+		// the command list with far more flexibility than this allows
+		if (shaderOverride->partner_hash) {
+			if (isPixelShader) {
+				if (mCurrentVertexShader != shaderOverride->partner_hash)
+					use_orig = true;
+			}
+			else {
+				if (mCurrentPixelShader != shaderOverride->partner_hash)
+					use_orig = true;
+			}
 		}
 	}
-	if (use_orig)
-		use_preset = false;
 
 	RunCommandList(mHackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
 
-	// TODO: Add render target filters, texture filters, etc.
-
-	if (use_orig) {
-		if (isPixelShader) {
-			PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(mCurrentPixelShaderHandle);
-			if (i != G->mOriginalPixelShaders.end())
-				data->oldPixelShader = SwitchPSShader(i->second);
+	if (ENABLE_LEGACY_FILTERS) {
+		// Deprecated since the logic can be moved into the shaders with far more flexibility
+		if (use_orig) {
+			if (isPixelShader) {
+				PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(mCurrentPixelShaderHandle);
+				if (i != G->mOriginalPixelShaders.end())
+					data->oldPixelShader = SwitchPSShader(i->second);
+			}
+			else {
+				VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(mCurrentVertexShaderHandle);
+				if (i != G->mOriginalVertexShaders.end())
+					data->oldVertexShader = SwitchVSShader(i->second);
+			}
 		}
-		else {
-			VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(mCurrentVertexShaderHandle);
-			if (i != G->mOriginalVertexShaders.end())
-				data->oldVertexShader = SwitchVSShader(i->second);
+
+		// This was technically already possible, since the custom
+		// shader sections can be used to selectively override state,
+		// and now with rasterizer_state_merge it is even easier:
+		//
+		// [ShaderOverrideFoo]
+		// hash = foo
+		// run = CustomShaderDisableScissorClipping
+		//
+		// [ShaderOverrideBar]
+		// hash = bar
+		// run = CustomShaderEnableScissorClipping
+		//
+		// [CustomShaderDisableScissorClipping]
+		// scissor_enable = false
+		// rasterizer_state_merge = true
+		// draw = from_caller
+		// handling = skip
+		//
+		// [CustomShaderEnableScissorClipping]
+		// scissor_enable = true
+		// rasterizer_state_merge = true
+		// draw = from_caller
+		// handling = skip
+		if (!use_orig && shaderOverride->disable_scissor != -1) {
+			LogDebug("  use disable_scissor %i\n", shaderOverride->disable_scissor);
+			data->disable_scissor = shaderOverride->disable_scissor;
 		}
-	}
-
-	if (use_preset) {
-		LogDebug("  use preset %S\n", shaderOverride->preset.c_str());
-		CurrentTransition.active_preset = shaderOverride->preset;
-	}
-
-	if (!use_orig && shaderOverride->disable_scissor != -1) {
-		LogDebug("  use disable_scissor %i\n", shaderOverride->disable_scissor);
-		data->disable_scissor = shaderOverride->disable_scissor;
 	}
 }
 
@@ -416,7 +425,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
 	// Skip?
-	data.skip = false;
+	data.call_info.skip = false;
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
@@ -489,7 +498,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				}
 				else if (G->marking_mode == MARKING_MODE_SKIP)
 				{
-					data.skip = true;
+					data.call_info.skip = true;
 				}
 				else if (G->marking_mode == MARKING_MODE_PINK)
 				{
@@ -604,9 +613,6 @@ void HackerContext::BeforeDraw(DrawContext &data)
 void HackerContext::AfterDraw(DrawContext &data)
 {
 	int i;
-
-	if (data.skip)
-		return;
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
@@ -988,7 +994,7 @@ STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-	FrameAnalysisLog("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)\n",
+	FrameAnalysisLogNoNL("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)",
 			pResource, Subresource, MapType, MapFlags, pMappedResource);
 	FrameAnalysisLogResourceHash(pResource);
 
@@ -1010,7 +1016,7 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 	/* [annotation] */
 	__in  UINT Subresource)
 {
-	FrameAnalysisLog("Unmap(pResource:0x%p, Subresource:%u)\n",
+	FrameAnalysisLogNoNL("Unmap(pResource:0x%p, Subresource:%u)",
 			pResource, Subresource);
 	FrameAnalysisLogResourceHash(pResource);
 
@@ -1146,9 +1152,9 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	FrameAnalysisLog("Begin(pAsync:0x%p)\n", pAsync);
+	FrameAnalysisLogNoNL("Begin(pAsync:0x%p)", pAsync);
 	FrameAnalysisLogAsyncQuery(pAsync);
-	
+
 	mOrigContext->Begin(pAsync);
 }
 
@@ -1156,7 +1162,7 @@ STDMETHODIMP_(void) HackerContext::End(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
-	FrameAnalysisLog("End(pAsync:0x%p)\n", pAsync);
+	FrameAnalysisLogNoNL("End(pAsync:0x%p)", pAsync);
 	FrameAnalysisLogAsyncQuery(pAsync);
 
 	 mOrigContext->End(pAsync);
@@ -1174,7 +1180,7 @@ STDMETHODIMP HackerContext::GetData(THIS_
 {
 	HRESULT ret = mOrigContext->GetData(pAsync, pData, DataSize, GetDataFlags);
 
-	FrameAnalysisLog("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u\n",
+	FrameAnalysisLogNoNL("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u",
 			pAsync, pData, DataSize, GetDataFlags, ret);
 	FrameAnalysisLogAsyncQuery(pAsync);
 	if (SUCCEEDED(ret))
@@ -1189,7 +1195,7 @@ STDMETHODIMP_(void) HackerContext::SetPredication(THIS_
 	/* [annotation] */
 	__in  BOOL PredicateValue)
 {
-	FrameAnalysisLog("SetPredication(pPredicate:0x%p, PredicateValue:%s)\n",
+	FrameAnalysisLogNoNL("SetPredication(pPredicate:0x%p, PredicateValue:%s)",
 			pPredicate, PredicateValue ? "true" : "false");
 	FrameAnalysisLogAsyncQuery(pPredicate);
 
@@ -1525,7 +1531,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
-	FrameAnalysisLog("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)\n",
+	FrameAnalysisLogNoNL("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)",
 			pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 	FrameAnalysisLogResourceHash(pDstResource);
 
@@ -1621,7 +1627,7 @@ STDMETHODIMP_(void) HackerContext::SetResourceMinLOD(THIS_
 	__in  ID3D11Resource *pResource,
 	FLOAT MinLOD)
 {
-	FrameAnalysisLog("SetResourceMinLOD(pResource:0x%p \n)",
+	FrameAnalysisLogNoNL("SetResourceMinLOD(pResource:0x%p)",
 			pResource);
 	FrameAnalysisLogResourceHash(pResource);
 
@@ -1634,7 +1640,7 @@ STDMETHODIMP_(FLOAT) HackerContext::GetResourceMinLOD(THIS_
 {
 	FLOAT ret = mOrigContext->GetResourceMinLOD(pResource);
 
-	FrameAnalysisLog("GetResourceMinLOD(pResource:0x%p) = %f\n",
+	FrameAnalysisLogNoNL("GetResourceMinLOD(pResource:0x%p) = %f",
 			pResource, ret);
 	FrameAnalysisLogResourceHash(pResource);
 	return ret;
@@ -2198,7 +2204,7 @@ STDMETHODIMP_(void) HackerContext::GetPredication(THIS_
 {
 	 mOrigContext->GetPredication(ppPredicate, pPredicateValue);
 
-	FrameAnalysisLog("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)\n",
+	FrameAnalysisLogNoNL("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)",
 			ppPredicate, pPredicateValue);
 	FrameAnalysisLogAsyncQuery(ppPredicate ? *ppPredicate : NULL);
 }
@@ -2694,7 +2700,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u) \n",
 			IndexCount, StartIndexLocation, BaseVertexLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		 mOrigContext->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
 	AfterDraw(c);
 }
@@ -2711,7 +2717,7 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
 			VertexCount, StartVertexLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		 mOrigContext->Draw(VertexCount, StartVertexLocation);
 	AfterDraw(c);
 }
@@ -2773,7 +2779,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
 			IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
 		BaseVertexLocation, StartInstanceLocation);
 	AfterDraw(c);
@@ -2795,7 +2801,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
 			VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 	AfterDraw(c);
 }
@@ -2917,7 +2923,7 @@ STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 
 	FrameAnalysisLog("DrawAuto()\n");
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawAuto();
 	AfterDraw(c);
 }
@@ -2934,7 +2940,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
 }
@@ -2951,7 +2957,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
-	if (!c.skip)
+	if (!c.call_info.skip)
 		mOrigContext->DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 	AfterDraw(c);
 }
@@ -3037,7 +3043,7 @@ void STDMETHODCALLTYPE HackerContext1::UpdateSubresource1(
 	/* [annotation] */
 	_In_  UINT CopyFlags)
 {
-	FrameAnalysisLog("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)\n",
+	FrameAnalysisLogNoNL("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)",
 			pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
 	FrameAnalysisLogResourceHash(pDstResource);
 
@@ -3051,7 +3057,7 @@ void STDMETHODCALLTYPE HackerContext1::DiscardResource(
 	/* [annotation] */
 	_In_  ID3D11Resource *pResource)
 {
-	FrameAnalysisLog("DiscardResource(pResource:0x%p)\n",
+	FrameAnalysisLogNoNL("DiscardResource(pResource:0x%p)",
 			pResource);
 	FrameAnalysisLogResourceHash(pResource);
 

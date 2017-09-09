@@ -555,11 +555,13 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 
 static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 {
+	static IniSectionVector empty_section_vector;
+
 	try {
 		*key_vals = &ini_sections.at(section).kv_vec;
 	} catch (std::out_of_range) {
-		LogInfo("BUG: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
-		DoubleBeepExit();
+		LogInfo("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
+		*key_vals = &empty_section_vector;
 	}
 }
 
@@ -843,16 +845,14 @@ static void ParseDriverProfile()
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *ShaderOverrideIniKeys[] = {
 	L"hash",
+	L"allow_duplicate_hash",
 	L"separation",
 	L"convergence",
-	L"handling",
 	L"depth_filter",
 	L"partner",
 	L"iteration",
-	L"indexbufferfilter",
 	L"analyse_options",
 	L"model",
-	L"preset",
 	L"disable_scissor",
 	NULL
 };
@@ -862,7 +862,8 @@ static void ParseShaderOverrideSections()
 	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	ShaderOverride *override;
-	UINT64 hash, hash2;
+	UINT64 hash;
+	bool duplicate, allow_duplicates;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -885,25 +886,36 @@ static void ParseShaderOverrideSections()
 		swscanf_s(setting, L"%16llx", &hash);
 		LogInfo("  Hash=%016llx\n", hash);
 
-		if (G->mShaderOverrideMap.count(hash)) {
+		duplicate = !!G->mShaderOverrideMap.count(hash);
+		override = &G->mShaderOverrideMap[hash];
+
+		// We permit hash= to be duplicate, but only if every section
+		// indicates they are ok with it, and the section names still
+		// have to be distinct. This is intended that scripts will set
+		// this flag on any sections they create so that if a user
+		// creates a shaderoverride with the same hash they will get a
+		// warning at first, but can choose to allow it so that they
+		// can add their own commands without having to merge them with
+		// the section from the script, allowing all the auto generated
+		// sections to be grouped together. The section names still
+		// have to be distinct, which offers protection against scripts
+		// adding multiple identical sections if run multiple times.
+		// Note that you won't get warnings of duplicate settings
+		// between the sections, but at least we try not to clobber
+		// their values from earlier sections with the defaults.
+		allow_duplicates = GetIniBool(id, L"allow_duplicate_hash", false, NULL)
+				   && override->allow_duplicate_hashes;
+
+		if (duplicate && !allow_duplicates) {
 			LogInfo("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
 			BeepFailure2();
 		}
-		override = &G->mShaderOverrideMap[hash];
 
-		override->separation = GetIniFloat(id, L"Separation", FLT_MAX, NULL);
-		override->convergence = GetIniFloat(id, L"Convergence", FLT_MAX, NULL);
+		override->allow_duplicate_hashes = allow_duplicates;
 
-		if (GetIniString(id, L"Handling", 0, setting, MAX_PATH)) {
-			if (!_wcsicmp(setting, L"skip")) {
-				override->skip = true;
-				LogInfo("  Handling=skip\n");
-			}
-			else {
-				LogInfoW(L"  WARNING: Unknown handling type \"%s\"\n", setting);
-				BeepFailure2();
-			}
-		}
+		override->separation = GetIniFloat(id, L"Separation", override->separation, NULL);
+		override->convergence = GetIniFloat(id, L"Convergence", override->convergence, NULL);
+
 		if (GetIniString(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
@@ -937,13 +949,6 @@ static void ParseShaderOverrideSections()
 			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
 		}
-		
-		if (GetIniString(id, L"IndexBufferFilter", 0, setting, MAX_PATH))
-		{
-			swscanf_s(setting, L"%16llx", &hash2);
-			LogInfo("  IndexBufferFilter=%016llx\n", hash2);
-			override->indexBufferFilter.push_back(hash2);
-		}
 
 		if (GetIniString(id, L"analyse_options", 0, setting, MAX_PATH)) {
 			LogInfoW(L"  analyse_options=%s\n", setting);
@@ -957,18 +962,7 @@ static void ParseShaderOverrideSections()
 			LogInfo("  model=%s\n", override->model);
 		}
 
-		if (GetIniString(id, L"preset", 0, setting, MAX_PATH)) {
-			override->preset = setting;
-			std::transform(override->preset.begin(), override->preset.end(), override->preset.begin(), ::towlower);
-			if (presetOverrides.find(override->preset) == presetOverrides.end()) {
-				LogInfo("  WARNING: Unrecognised preset=%S\n", override->preset.c_str());
-				override->preset.clear();
-			} else {
-				LogInfo("  preset=%S\n", override->preset.c_str());
-			}
-		}
-
-		override->disable_scissor = GetIniInt(id, L"disable_scissor", -1, NULL);
+		override->disable_scissor = GetIniInt(id, L"disable_scissor", override->disable_scissor, NULL);
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
@@ -1143,7 +1137,10 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	}
 }
 
-static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const wchar_t *section, int index)
+static bool ParseBlendRenderTarget(
+		D3D11_RENDER_TARGET_BLEND_DESC *desc,
+		D3D11_RENDER_TARGET_BLEND_DESC *mask,
+		const wchar_t *section, int index)
 {
 	wchar_t setting[MAX_PATH];
 	bool override = false;
@@ -1160,6 +1157,7 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 		if (!_wcsicmp(setting, L"disable")) {
 			LogInfo("  %S=disable\n", key);
 			desc->BlendEnable = false;
+			mask->BlendEnable = 0;
 			return true;
 		}
 
@@ -1167,6 +1165,9 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 				&desc->BlendOp,
 				&desc->SrcBlend,
 				&desc->DestBlend);
+		mask->BlendOp = (D3D11_BLEND_OP)0;
+		mask->SrcBlend = (D3D11_BLEND)0;
+		mask->DestBlend = (D3D11_BLEND)0;
 	}
 
 	wcscpy(key, L"alpha");
@@ -1178,6 +1179,9 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 				&desc->BlendOpAlpha,
 				&desc->SrcBlendAlpha,
 				&desc->DestBlendAlpha);
+		mask->BlendOpAlpha = (D3D11_BLEND_OP)0;
+		mask->SrcBlendAlpha = (D3D11_BLEND)0;
+		mask->DestBlendAlpha = (D3D11_BLEND)0;
 	}
 
 	wcscpy(key, L"mask");
@@ -1187,11 +1191,14 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 		override = true;
 		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
 		desc->RenderTargetWriteMask = ival; // Use an intermediate to be safe
+		mask->RenderTargetWriteMask = 0;
 		LogInfo("  %S=0x%x\n", key, desc->RenderTargetWriteMask);
 	}
 
-	if (override)
+	if (override) {
 		desc->BlendEnable = true;
+		mask->BlendEnable = 0;
+	}
 
 	return override;
 }
@@ -1199,12 +1206,14 @@ static bool ParseBlendRenderTarget(D3D11_RENDER_TARGET_BLEND_DESC *desc, const w
 static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_BLEND_DESC *desc = &shader->blend_desc;
+	D3D11_BLEND_DESC *mask = &shader->blend_mask;
 	wchar_t setting[MAX_PATH];
 	wchar_t key[32];
 	int i;
 	bool found;
 
 	memset(desc, 0, sizeof(D3D11_BLEND_DESC));
+	memset(mask, 0xff, sizeof(D3D11_BLEND_DESC));
 
 	// Set a default blend state for any missing values:
 	desc->IndependentBlendEnable = false;
@@ -1219,37 +1228,213 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 
 	// Any blend states that are specified without a render target index
 	// are propagated to all render targets:
-	if (ParseBlendRenderTarget(&desc->RenderTarget[0], section, -1))
+	if (ParseBlendRenderTarget(&desc->RenderTarget[0], &mask->RenderTarget[0], section, -1))
 		shader->blend_override = 1;
-	for (i = 1; i < 8; i++)
+	for (i = 1; i < 8; i++) {
 		memcpy(&desc->RenderTarget[i], &desc->RenderTarget[0], sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+		memcpy(&mask->RenderTarget[i], &mask->RenderTarget[0], sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+	}
 
 	// We check all render targets again with the [%i] syntax. We do the
 	// first one again since the last time was for default, while this is
 	// for the specific target:
 	for (i = 0; i < 8; i++) {
-		if (ParseBlendRenderTarget(&desc->RenderTarget[i], section, i)) {
+		if (ParseBlendRenderTarget(&desc->RenderTarget[i], &mask->RenderTarget[i], section, i)) {
 			shader->blend_override = 1;
 			desc->IndependentBlendEnable = true;
+			mask->IndependentBlendEnable = 0;
 		}
 	}
 
 	desc->AlphaToCoverageEnable = GetIniBool(section, L"alpha_to_coverage", false, &found);
-	if (found)
+	if (found) {
 		shader->blend_override = 1;
+		mask->AlphaToCoverageEnable = 0;
+	}
 
 	for (i = 0; i < 4; i++) {
 		swprintf_s(key, ARRAYSIZE(key), L"blend_factor[%i]", i);
 		shader->blend_factor[i] = GetIniFloat(section, key, 0.0f, &found);
-		if (found)
+		if (found) {
 			shader->blend_override = 1;
+			shader->blend_factor_merge_mask[i] = 0;
+		}
 	}
 
 	if (GetIniString(section, L"sample_mask", 0, setting, MAX_PATH)) {
 		shader->blend_override = 1;
 		swscanf_s(setting, L"%x", &shader->blend_sample_mask);
 		LogInfo("  sample_mask=0x%x\n", shader->blend_sample_mask);
+		shader->blend_sample_mask_merge_mask = 0;
 	}
+
+	if (GetIniBool(section, L"blend_state_merge", false, NULL))
+		shader->blend_override = 2;
+}
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476113(v=vs.85).aspx
+static wchar_t *DepthWriteMasks[] = {
+	L"ZERO",
+	L"ALL",
+};
+
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476101(v=vs.85).aspx
+static wchar_t *ComparisonFuncs[] = {
+	L"",
+	L"NEVER",
+	L"LESS",
+	L"EQUAL",
+	L"LESS_EQUAL",
+	L"GREATER",
+	L"NOT_EQUAL",
+	L"GREATER_EQUAL",
+	L"ALWAYS",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476219(v=vs.85).aspx
+static wchar_t *StencilOps[] = {
+	L"",
+	L"KEEP",
+	L"ZERO",
+	L"REPLACE",
+	L"INCR_SAT",
+	L"DECR_SAT",
+	L"INVERT",
+	L"INCR",
+	L"DECR",
+};
+
+static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DESC *desc)
+{
+	wchar_t func_buf[32], both_pass_buf[32], depth_fail_buf[32], stencil_fail_buf[32];
+	int i;
+
+	i = swscanf_s(val, L"%s %s %s %s",
+			func_buf, (unsigned)ARRAYSIZE(func_buf),
+			both_pass_buf, (unsigned)ARRAYSIZE(both_pass_buf),
+			depth_fail_buf, (unsigned)ARRAYSIZE(depth_fail_buf),
+			stencil_fail_buf, (unsigned)ARRAYSIZE(stencil_fail_buf));
+	if (i != 4) {
+		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
+		BeepFailure2();
+		return;
+	}
+	LogInfo("  %S=%S\n", key, val);
+
+	try {
+		desc->StencilFunc = (D3D11_COMPARISON_FUNC)ParseEnum(func_buf, L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil function %S\n", func_buf);
+		BeepFailure2();
+	}
+
+	try {
+		desc->StencilPassOp = (D3D11_STENCIL_OP)ParseEnum(both_pass_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
+		BeepFailure2();
+	}
+
+	try {
+		desc->StencilDepthFailOp = (D3D11_STENCIL_OP)ParseEnum(depth_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
+		BeepFailure2();
+	}
+
+	try {
+		desc->StencilFailOp = (D3D11_STENCIL_OP)ParseEnum(stencil_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+	} catch (EnumParseError) {
+		LogInfo("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
+		BeepFailure2();
+	}
+}
+
+static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
+{
+	D3D11_DEPTH_STENCIL_DESC *desc = &shader->depth_stencil_desc;
+	D3D11_DEPTH_STENCIL_DESC *mask = &shader->depth_stencil_mask;
+	wchar_t setting[MAX_PATH];
+	wchar_t key[32];
+	int ival;
+	bool found;
+
+	memset(desc, 0, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	memset(mask, 0xff, sizeof(D3D11_DEPTH_STENCIL_DESC));
+
+	// Set a default stencil state for any missing values:
+	desc->StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+	desc->StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+	desc->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	desc->FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	desc->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	desc->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	desc->BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	desc->BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	desc->DepthEnable = GetIniBool(section, L"depth_enable", true, &found);
+	if (found) {
+		shader->depth_stencil_override = 1;
+		mask->DepthEnable = 0;
+	}
+
+	desc->DepthWriteMask = (D3D11_DEPTH_WRITE_MASK)GetIniEnum(section, L"depth_write_mask", D3D11_DEPTH_WRITE_MASK_ALL, &found,
+			L"D3D11_DEPTH_WRITE_MASK_", DepthWriteMasks, ARRAYSIZE(DepthWriteMasks), 0);
+	if (found) {
+		shader->depth_stencil_override = 1;
+		mask->DepthWriteMask = (D3D11_DEPTH_WRITE_MASK)0;
+	}
+
+	desc->DepthFunc = (D3D11_COMPARISON_FUNC)GetIniEnum(section, L"depth_func", D3D11_COMPARISON_LESS, &found,
+			L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
+	if (found) {
+		shader->depth_stencil_override = 1;
+		mask->DepthFunc = (D3D11_COMPARISON_FUNC)0;
+	}
+
+	desc->StencilEnable = GetIniBool(section, L"stencil_enable", false, &found);
+	if (found) {
+		shader->depth_stencil_override = 1;
+		mask->StencilEnable = 0;
+	}
+
+	if (GetIniString(section, L"stencil_read_mask", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
+		desc->StencilReadMask = ival; // Use an intermediate to be safe
+		mask->StencilReadMask = 0;
+		LogInfo("  stencil_read_mask=0x%x\n", desc->StencilReadMask);
+	}
+
+	if (GetIniString(section, L"stencil_write_mask", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
+		desc->StencilWriteMask = ival; // Use an intermediate to be safe
+		mask->StencilWriteMask = 0;
+		LogInfo("  stencil_write_mask=0x%x\n", desc->StencilWriteMask);
+	}
+
+	if (GetIniString(section, L"stencil_front", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		ParseStencilOp(key, setting, &desc->FrontFace);
+		memset(&mask->FrontFace, 0, sizeof(D3D11_DEPTH_STENCILOP_DESC));
+	}
+
+	if (GetIniString(section, L"stencil_back", 0, setting, MAX_PATH)) {
+		shader->depth_stencil_override = 1;
+		ParseStencilOp(key, setting, &desc->BackFace);
+		memset(&mask->BackFace, 0, sizeof(D3D11_DEPTH_STENCILOP_DESC));
+	}
+
+	shader->stencil_ref = GetIniInt(section, L"stencil_ref", 0, &found);
+	if (found) {
+		shader->depth_stencil_override = 1;
+		shader->stencil_ref_mask = 0;
+	}
+
+	if (GetIniBool(section, L"depth_stencil_state_merge", false, NULL))
+		shader->depth_stencil_override = 2;
 }
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476131(v=vs.85).aspx
@@ -1277,50 +1462,76 @@ static wchar_t *FrontDirection[] = {
 static void ParseRSState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_RASTERIZER_DESC *desc = &shader->rs_desc;
+	D3D11_RASTERIZER_DESC *mask = &shader->rs_mask;
 	bool found;
+
+	memset(mask, 0xff, sizeof(D3D11_RASTERIZER_DESC));
 
 	desc->FillMode = (D3D11_FILL_MODE)GetIniEnum(section, L"fill", D3D11_FILL_SOLID, &found,
 			L"D3D11_FILL_", FillModes, ARRAYSIZE(FillModes), 2);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->FillMode = (D3D11_FILL_MODE)0;
+	}
 
 	desc->CullMode = (D3D11_CULL_MODE)GetIniEnum(section, L"cull", D3D11_CULL_BACK, &found,
 			L"D3D11_CULL_", CullModes, ARRAYSIZE(CullModes), 1);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->CullMode = (D3D11_CULL_MODE)0;
+	}
 
 	desc->FrontCounterClockwise = (BOOL)GetIniEnum(section, L"front", 0, &found,
 			NULL, FrontDirection, ARRAYSIZE(FrontDirection), 0);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->FrontCounterClockwise = 0;
+	}
 
 	desc->DepthBias = GetIniInt(section, L"depth_bias", 0, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->DepthBias = 0;
+	}
 
 	desc->DepthBiasClamp = GetIniFloat(section, L"depth_bias_clamp", 0, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->DepthBiasClamp = 0;
+	}
 
 	desc->SlopeScaledDepthBias = GetIniFloat(section, L"slope_scaled_depth_bias", 0, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->SlopeScaledDepthBias = 0;
+	}
 
 	desc->DepthClipEnable = GetIniBool(section, L"depth_clip_enable", true, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->DepthClipEnable = 0;
+	}
 
 	desc->ScissorEnable = GetIniBool(section, L"scissor_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->ScissorEnable = 0;
+	}
 
 	desc->MultisampleEnable = GetIniBool(section, L"multisample_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->MultisampleEnable = 0;
+	}
 
 	desc->AntialiasedLineEnable = GetIniBool(section, L"antialiased_line_enable", false, &found);
-	if (found)
+	if (found) {
 		shader->rs_override = 1;
+		mask->AntialiasedLineEnable = 0;
+	}
+
+	if (GetIniBool(section, L"rasterizer_state_merge", false, NULL))
+		shader->rs_override = 2;
 }
 
 struct PrimitiveTopology {
@@ -1405,53 +1616,6 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 	BeepFailure2();
 }
 
-// List of keys in [CustomShader] sections that are processed in this
-// function. Used by ParseCommandList to find any unrecognised lines.
-wchar_t *CustomShaderIniKeys[] = {
-	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
-	L"max_executions_per_frame",
-	// OM Blend State overrides:
-	L"blend", L"alpha", L"mask",
-	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
-	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
-	L"alpha[0]", L"alpha[1]", L"alpha[2]", L"alpha[3]",
-	L"alpha[4]", L"alpha[5]", L"alpha[6]", L"alpha[7]",
-	L"mask[0]", L"mask[1]", L"mask[2]", L"mask[3]",
-	L"mask[4]", L"mask[5]", L"mask[6]", L"mask[7]",
-	L"alpha_to_coverage", L"sample_mask",
-	L"blend_factor[0]", L"blend_factor[1]",
-	L"blend_factor[2]", L"blend_factor[3]",
-	// RS State overrides:
-	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
-	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
-	L"multisample_enable", L"antialiased_line_enable",
-	// IA State overrides:
-	L"topology",
-	// Sampler State overrides
-	L"sampler", // TODO: add additional sampler parameter 
-				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
-	NULL
-};
-static void EnumerateCustomShaderSections()
-{
-	IniSections::iterator lower, upper, i;
-	wstring shader_id;
-
-	customShaders.clear();
-
-	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
-	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
-	for (i = lower; i != upper; i++) {
-		// Convert section name to lower case so our keys will be
-		// consistent in the unordered_map:
-		shader_id = i->first;
-		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
-
-		// Construct a custom shader in the global list:
-		customShaders[shader_id];
-	}
-}
-
 static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_SAMPLER_DESC* desc = &shader->sampler_desc;
@@ -1511,6 +1675,60 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 	}
 }
 
+
+// List of keys in [CustomShader] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *CustomShaderIniKeys[] = {
+	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
+	L"max_executions_per_frame",
+	// OM Blend State overrides:
+	L"blend", L"alpha", L"mask",
+	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
+	L"blend[4]", L"blend[5]", L"blend[6]", L"blend[7]",
+	L"alpha[0]", L"alpha[1]", L"alpha[2]", L"alpha[3]",
+	L"alpha[4]", L"alpha[5]", L"alpha[6]", L"alpha[7]",
+	L"mask[0]", L"mask[1]", L"mask[2]", L"mask[3]",
+	L"mask[4]", L"mask[5]", L"mask[6]", L"mask[7]",
+	L"alpha_to_coverage", L"sample_mask",
+	L"blend_factor[0]", L"blend_factor[1]",
+	L"blend_factor[2]", L"blend_factor[3]",
+	L"blend_state_merge",
+	// OM Depth Stencil State overrides:
+	L"depth_enable", L"depth_write_mask", L"depth_func",
+	L"stencil_enable", L"stencil_read_mask", L"stencil_write_mask",
+	L"stencil_front", L"stencil_back", L"stencil_ref",
+	L"depth_stencil_state_merge",
+	// RS State overrides:
+	L"fill", L"cull", L"front", L"depth_bias", L"depth_bias_clamp",
+	L"slope_scaled_depth_bias", L"depth_clip_enable", L"scissor_enable",
+	L"multisample_enable", L"antialiased_line_enable",
+	L"rasterizer_state_merge",
+	// IA State overrides:
+	L"topology",
+	// Sampler State overrides
+	L"sampler", // TODO: add additional sampler parameter 
+				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
+	NULL
+};
+static void EnumerateCustomShaderSections()
+{
+	IniSections::iterator lower, upper, i;
+	wstring shader_id;
+
+	customShaders.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
+	for (i = lower; i != upper; i++) {
+		// Convert section name to lower case so our keys will be
+		// consistent in the unordered_map:
+		shader_id = i->first;
+		std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
+
+		// Construct a custom shader in the global list:
+		customShaders[shader_id];
+	}
+}
 static void ParseCustomShaderSections()
 {
 	CustomShaders::iterator i;
@@ -1544,10 +1762,11 @@ static void ParseCustomShaderSections()
 
 
 		ParseBlendState(custom_shader, shader_id->c_str());
+		ParseDepthStencilState(custom_shader, shader_id->c_str());
 		ParseRSState(custom_shader, shader_id->c_str());
 		ParseTopology(custom_shader, shader_id->c_str());
 		ParseSamplerState(custom_shader, shader_id->c_str());
-		
+
 		custom_shader->max_executions_per_frame =
 			GetIniInt(shader_id->c_str(), L"max_executions_per_frame", 0, NULL);
 
@@ -1754,7 +1973,7 @@ void LoadConfigFile()
 	G->SCREEN_REFRESH = GetIniInt(L"Device", L"refresh_rate", -1, NULL);
 	G->SCREEN_UPSCALING = GetIniInt(L"Device", L"upscaling", 0, NULL);
 	G->UPSCALE_MODE = GetIniInt(L"Device", L"upscale_mode", 0, NULL);
-	
+
 	if (GetIniString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
@@ -1781,10 +2000,7 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
 	G->hide_cursor = GetIniBool(L"Device", L"hide_cursor", false, NULL);
-	if (G->hide_cursor) {
-		InstallMouseHooks();
-		SyncMouseCursorVisibility(FALSE);
-	}
+	G->cursor_upscaling_bypass = GetIniBool(L"Device", L"cursor_upscaling_bypass", true, NULL);
 
 	// [Stereo]
 	LogInfo("[Stereo]\n");
@@ -2058,6 +2274,9 @@ void LoadConfigFile()
 	ParseDriverProfile();
 
 	LogInfo("\n");
+
+	if (G->hide_cursor || G->SCREEN_UPSCALING)
+		InstallMouseHooks(G->hide_cursor);
 }
 
 // This variant is called by the profile manager helper with the path to the

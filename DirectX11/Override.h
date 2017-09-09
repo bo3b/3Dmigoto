@@ -139,6 +139,7 @@ class PresetOverride : public Override
 {
 private:
 	bool activated;
+	bool triggered;
 public:
 	PresetOverride() :
 		Override(),
@@ -156,12 +157,13 @@ public:
 				release_transition_type, is_conditional,
 				condition_param_idx,
 				condition_param_component),
-		activated(false)
+		activated(false),
+		triggered(false)
 	{}
 
-	void Activate(HackerDevice *device, PresetOverride *prev);
+	void Activate(HackerDevice *device);
 	void Deactivate(HackerDevice *device);
-	bool IsActivated();
+	void Update(HackerDevice *device);
 };
 typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap presetOverrides;
@@ -189,7 +191,6 @@ public:
 	OverrideTransitionParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
 	OverrideTransitionParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
 	OverrideTransitionParam separation, convergence;
-	std::wstring active_preset;
 
 	void ScheduleTransition(HackerDevice *wrapper,
 			float target_separation, float target_convergence,

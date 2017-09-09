@@ -10,8 +10,7 @@ extern bool bLog;
 
 void InitD311();
 void InstallSetWindowPosHook();
-void InstallMouseHooks();
-int SyncMouseCursorVisibility(BOOL show_hint);
+void InstallMouseHooks(bool hide);
 
 enum class EnableHooks {
 	INVALID                     = 0,
@@ -45,3 +44,8 @@ static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
 	{L"recommended", EnableHooks::RECOMMENDED},
 	{NULL, EnableHooks::INVALID} // End of list marker
 };
+
+// These functions will bypass our hooks *if* the option to do so has been enabled:
+BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);
+BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(_Inout_ PCURSORINFO pci);
+BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint);

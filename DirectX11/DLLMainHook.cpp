@@ -4,6 +4,7 @@
 #include "HookedDXGI.h"
 #include "globals.h"
 
+
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
 // it does GetSystemDirectory to get System32, and directly access ..\System32\d3d11.dll
@@ -23,21 +24,10 @@ bool bLog = true;
 bool bLog = false;
 #endif
 
-typedef HMODULE(WINAPI *lpfnLoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
-static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
-static struct
-{
-	SIZE_T nHookId;
-	lpfnLoadLibraryExW fnLoadLibraryExW;
-} sLoadLibraryExW_Hook = { 0, NULL };
+static HMODULE(WINAPI *trampoline_LoadLibraryExW)( _In_ LPCWSTR lpLibFileName,
+		_Reserved_ HANDLE hFile, _In_ DWORD dwFlags) = LoadLibraryExW;
 
-typedef BOOL(WINAPI *lpfnIsDebuggerPresent)(VOID);
-static BOOL WINAPI Hooked_IsDebuggerPresent(VOID);
-static struct
-{
-	SIZE_T nHookId;
-	lpfnIsDebuggerPresent fnIsDebuggerPresent;
-} sIsDebuggerPresent_Hook = { 0, NULL };
+static BOOL(WINAPI *trampoline_IsDebuggerPresent)(VOID) = IsDebuggerPresent;
 
 
 // ----------------------------------------------------------------------------
@@ -67,7 +57,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
 			lpLibFileName, fullPath);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(fullPath, hFile, dwFlags);
+		return trampoline_LoadLibraryExW(fullPath, hFile, dwFlags);
 	}
 
 	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
@@ -79,7 +69,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile,
 	{
 		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
-		return sLoadLibraryExW_Hook.fnLoadLibraryExW(library, hFile, dwFlags);
+		return trampoline_LoadLibraryExW(library, hFile, dwFlags);
 	}
 
 	return NULL;
@@ -153,7 +143,7 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 		hook_enabled = true;
 
 	// Normal unchanged case.
-	return sLoadLibraryExW_Hook.fnLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+	return trampoline_LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 
 
@@ -161,63 +151,84 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 
 //static BOOL WINAPI Hooked_IsDebuggerPresent()
 //{
-//	return sIsDebuggerPresent_Hook.fnIsDebuggerPresent();
+//	return trampoline_IsDebuggerPresent();
 //}
+
+static void LogHooks(bool LogInfo_is_safe, char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+
+	if (LogInfo_is_safe)
+		vLogInfo(fmt, ap);
+	else if (bLog)
+		NktHookLibHelpers::DebugVPrint(fmt, ap);
+
+	va_end(ap);
+}
+
+static int InstallHook(HINSTANCE module, char *func, void **trampoline, void *hook, bool LogInfo_is_safe)
+{
+	SIZE_T hook_id;
+	DWORD dwOsErr;
+	void *fnOrig;
+
+	// Early exit with error so the caller doesn't need to explicitly deal
+	// with errors getting the module handle:
+	if (!module)
+		return 1;
+
+	fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
+	if (fnOrig == NULL) {
+		LogHooks(LogInfo_is_safe, "Failed to get address of %s\n", func);
+		return 1;
+	}
+
+	dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
+	if (dwOsErr) {
+		LogHooks(LogInfo_is_safe, "Failed to hook %s: 0x%x\n", func, dwOsErr);
+		return 1;
+	}
+
+	return 0;
+}
 
 static bool InstallHooks()
 {
 	HINSTANCE hKernel32;
-	LPVOID fnOrigLoadLibrary;
-	//LPVOID fnOrigIsDebuggerPresent;
-	DWORD dwOsErr;
+	int fail = 0;
 
-	if (bLog) NktHookLibHelpers::DebugPrint("Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
+	LogHooks(false, "Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
 	cHookMgr.SetEnableDebugOutput(bLog);
 
 	hKernel32 = NktHookLibHelpers::GetModuleBaseAddress(L"Kernel32.dll");
 	if (hKernel32 == NULL)
 	{
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get Kernel32 module for Loadlibrary hook.\n");
+		LogHooks(false, "Failed to get Kernel32 module for Loadlibrary hook.\n");
 		return false;
 	}
 
 	// Only ExW version for now, used by nvapi.
-	fnOrigLoadLibrary = NktHookLibHelpers::GetProcedureAddress(hKernel32, "LoadLibraryExW");
-	if (fnOrigLoadLibrary == NULL)
+	fail |= InstallHook(hKernel32, "LoadLibraryExW", (LPVOID*)&trampoline_LoadLibraryExW, Hooked_LoadLibraryExW, false);
+
+	// Next hook IsDebuggerPresent to force it false. Same Kernel32.dll
+	// fail |= InstallHook(hKernel32, "IsDebuggerPresent", (LPVOID*)&trampoline_IsDebuggerPresent, Hooked_IsDebuggerPresent, false);
+
+	if (fail)
 	{
-		if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of LoadLibraryExW for Loadlibrary hook.\n");
+		LogHooks(false, "InstallHooks for LoadLibraryExW using Deviare in-proc failed\n");
 		return false;
 	}
 
-	dwOsErr = cHookMgr.Hook(&(sLoadLibraryExW_Hook.nHookId), (LPVOID*)&(sLoadLibraryExW_Hook.fnLoadLibraryExW),
-		fnOrigLoadLibrary, Hooked_LoadLibraryExW);
+	LogHooks(false, "InstallHooks for LoadLibraryExW using Deviare in-proc succeeded\n");
 
-	if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for LoadLibraryExW using Deviare in-proc: %x\n", dwOsErr);
-
-	if (dwOsErr != 0)
-		return false;
-
-
-	// Next hook IsDebuggerPresent to force it false. Same Kernel32.dll
-	//fnOrigIsDebuggerPresent = NktHookLibHelpers::GetProcedureAddress(hKernel32, "IsDebuggerPresent");
-	//if (fnOrigIsDebuggerPresent == NULL)
-	//{
-	//	if (bLog) NktHookLibHelpers::DebugPrint("Failed to get address of IsDebuggerPresent for hook.\n");
-	//	return false;
-	//}
-
-	//dwOsErr = cHookMgr.Hook(&(sIsDebuggerPresent_Hook.nHookId), (LPVOID*)&(sIsDebuggerPresent_Hook.fnIsDebuggerPresent),
-	//	fnOrigIsDebuggerPresent, Hooked_IsDebuggerPresent);
-
-	//if (bLog) NktHookLibHelpers::DebugPrint("InstallHooks for IsDebuggerPresent using Deviare in-proc: %x\n", dwOsErr);
-
-
-	return (dwOsErr == 0) ? true : false;
+	return true;
 }
 
-typedef BOOL(WINAPI *lpfnSetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
-		_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags);
-lpfnSetWindowPos trampoline_SetWindowPos;
+static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+		_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags)
+	= SetWindowPos;
 
 static BOOL WINAPI Hooked_SetWindowPos(
     _In_ HWND hWnd,
@@ -228,15 +239,6 @@ static BOOL WINAPI Hooked_SetWindowPos(
     _In_ int cy,
     _In_ UINT uFlags)
 {
-	/*
-		TODO: What about this: (dont know how to test it)
-		We install this hook on demand to avoid any possible
-		issues with hooking the call when we don't need it:
-		Unconfirmed, but possibly related to:
-		https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
-		and do nothing - passing this call through could change the game
-		to a borderless window. Needed for The Witness.
-	*/
 	if (G->SCREEN_UPSCALING != 0) {
 		// Force desired upscaled resolution (only when desired resolution is provided!)
 		if (cx != 0 && cy != 0) {
@@ -258,10 +260,8 @@ static BOOL WINAPI Hooked_SetWindowPos(
 void InstallSetWindowPosHook()
 {
 	HINSTANCE hUser32;
-	void* fnOrigSetWindowPos;
-	DWORD dwOsErr;
-	SIZE_T hook_id;
 	static bool hook_installed = false;
+	int fail = 0;
 
 	// Only attempt to hook it once:
 	if (hook_installed)
@@ -269,22 +269,15 @@ void InstallSetWindowPosHook()
 	hook_installed = true;
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	if (!hUser32)
-		goto err;
+	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos, true);
 
-	fnOrigSetWindowPos = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetWindowPos");
-	if (fnOrigSetWindowPos == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetWindowPos, fnOrigSetWindowPos, Hooked_SetWindowPos);
-	if (dwOsErr)
-		goto err;
+	if (fail) {
+		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+		BeepFailure2();
+		return;
+	}
 
 	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
-	return;
-err:
-	LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
-	BeepFailure2();
 	return;
 }
 
@@ -296,27 +289,69 @@ err:
 // (though the call does not indicate an error and does seem to affect a
 // counter).
 //
-// So, we hook into the ShowCursor() function so that when it is called we will
-// be running in the context of the game thread where it will work. We maintain
-// our own cursor visibility counter separate from Windows, and from this call
-// will synchronise the hardware counter to ours, possibly hiding the cursor if
-// requested in the d3dx.ini.
+// My first attempt to solve this was to hook ShowCursor and keep a separate
+// counter for the software curser visibility, but it turns out the Steam
+// Overlay also hooks this function, but has a bug where it calls the original
+// vs hooked versions inconsistently when showing vs hiding the overlay,
+// leading to it reading the visibility count of the *hardware* cursor when the
+// overlay is shown, then setting the visibility count of the *software* cursor
+// to match when the overlay is hidden, leading to the cursor disappearing.
 //
-// But it doesn't stop there - since we have hidden the hardware cursor
-// GetCursorInfo() won't return it and our software mouse implementation will
-// fail. So we also hook into SetCursor() to catch the cursor handles from the
-// game, and hook GetCursorInfo() so we can return them when the software
-// cursor is supposed to be visible, but the hardware cursor is not.
+// This is a second attempt to suppress the hardware cursor - this time we
+// leave the visibility count alone and instead replace the cursor icon with a
+// completely invisible one. Since the hardware cursor technically is
+// displayed, the visibility counts for software and hardware cursors match, so
+// we no longer need to manage them separately. We hook into SetCursor,
+// GetCursor and GetCursorInfo to keep a handle of the cursor the game set and
+// return it whenever something (including our own software mouse
+// implementation) asks for it.
 
 HCURSOR current_cursor = NULL;
-int software_cursor_count = 0;
 
-typedef HCURSOR(WINAPI *lpfnSetCursor)(_In_opt_ HCURSOR hCursor);
-typedef int(WINAPI *lpfnShowCursor)(_In_ BOOL bShow);
-typedef BOOL(WINAPI *lpfnGetCursorInfo)(_Inout_ PCURSORINFO pci);
-lpfnSetCursor trampoline_SetCursor = SetCursor;
-lpfnShowCursor trampoline_ShowCursor = ShowCursor;
-lpfnGetCursorInfo trampoline_GetCursorInfo = GetCursorInfo;
+typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
+	_In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+
+static lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
+static lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
+
+static HCURSOR(WINAPI *trampoline_SetCursor)(_In_opt_ HCURSOR hCursor) = SetCursor;
+static HCURSOR(WINAPI *trampoline_GetCursor)(void) = GetCursor;
+static BOOL(WINAPI *trampoline_GetCursorInfo)(_Inout_ PCURSORINFO pci) = GetCursorInfo;
+static BOOL(WINAPI* trampoline_SetCursorPos)(_In_ int X, _In_ int Y) = SetCursorPos;
+static BOOL(WINAPI* trampoline_GetCursorPos)(_Out_ LPPOINT lpPoint) = GetCursorPos;
+static BOOL(WINAPI* trampoline_ScreenToClient)(_In_ HWND hWnd,LPPOINT lpPoint) = ScreenToClient;
+static BOOL(WINAPI* trampoline_GetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRect) = GetClientRect;
+
+// This routine creates an invisible cursor that we can set whenever we are
+// hiding the cursor. It is static, so will only be created the first time this
+// is called.
+static HCURSOR InvisibleCursor()
+{
+	static HCURSOR cursor = NULL;
+	int width, height;
+	unsigned pitch, size;
+	char *and, *xor;
+
+	if (!cursor) {
+		width = GetSystemMetrics(SM_CXCURSOR);
+		height = GetSystemMetrics(SM_CYCURSOR);
+		pitch = ((width + 31) / 32) * 4;
+		size = pitch * height;
+
+		and = new char[size];
+		xor = new char[size];
+
+		memset(and, 0xff, size);
+		memset(xor, 0x00, size);
+
+		cursor = CreateCursor(GetModuleHandle(NULL), 0, 0, width, height, and, xor);
+
+		delete [] and;
+		delete [] xor;
+	}
+
+	return cursor;
+}
 
 // We hook the SetCursor call so that we can catch the current cursor that the
 // game has set and return it in the GetCursorInfo call whenever the software
@@ -325,149 +360,257 @@ static HCURSOR WINAPI Hooked_SetCursor(
     _In_opt_ HCURSOR hCursor)
 {
 	current_cursor = hCursor;
-	return trampoline_SetCursor(hCursor);
-}
 
-int SyncMouseCursorVisibility(BOOL show_hint)
-{
-	int real_count;
-
-	if (G->hide_cursor) {
-		// Hiding the cursor - keep the hardware counter negative, but
-		// let's not go crazy so just keep it at -1:
-		real_count = trampoline_ShowCursor(FALSE);
-		while (real_count < -1)
-			real_count = trampoline_ShowCursor(TRUE);
-	} else {
-		// Not hiding the cursor - pass the call through, and if
-		// necessary sync the hardware counter to our software counter:
-		real_count = trampoline_ShowCursor(show_hint);
-		while (real_count != software_cursor_count)
-			real_count = trampoline_ShowCursor(real_count < software_cursor_count);
-	}
-
-	return real_count;
-}
-
-static int WINAPI Hooked_ShowCursor(
-    _In_ BOOL bShow)
-{
-	int real_count;
-
-	// Adjust our software cursor visibility counter.
-	//
-	// XXX: These (unhooked) functions don't behave as I expect when I call
-	// them from a random place, such as RunFrameActions() -
-	// ShowCursor(FALSE) seems to decrement a counter, but does not hide
-	// the cursor. That leads me to think that there is some additional
-	// context associated with the cursor/count that is not part of the
-	// call (possibly the calling thread?), and the hiding only works if
-	// that context is correct, so maybe there are multiple counters
-	// associated with each thread (or something)? If so, having a single
-	// global software cursor counter might be insufficient and we might
-	// have to revisit this:
-	if (bShow)
-		software_cursor_count++;
+	if (G->hide_cursor)
+		return trampoline_SetCursor(InvisibleCursor());
 	else
-		software_cursor_count--;
-
-	real_count = SyncMouseCursorVisibility(bShow);
-
-	// It is tempting to try to hide the real hardware cursor counter from
-	// the game and return our internal software counter instead since that
-	// is what it is expecting, but doing so interacts badly with the Steam
-	// Overlay. The overlay shows the hardware cursor when it is opened -
-	// but we DO NOT see that call. When the overlay is closed we DO see
-	// that call - it does a ShowCursor(TRUE); ShowCursor(FALSE); to read
-	// the counter, but then if we lie here it will do a second
-	// ShowCursor(FALSE); to try to force it hidden, but that will mess up
-	// our counters and the cursor will be permanently hidden. So, we have
-	// to tell the truth here and return the hardware counter:
-	//
-	// Option 1: Return software counter
-	// Pro: We will return the value the game expects
-	// Con: Steam overlay will hide the cursor one too many times
-	return software_cursor_count;
-	//
-	// Option 2: Return hardware counter
-	// Pro: Steam overlay does the right thing
-	// Con: Witcher 3 menu ==> frozen black screen
-	//return real_count;
+		return trampoline_SetCursor(hCursor);
 }
 
-BOOL WINAPI Hooked_GetCursorInfo(
+static HCURSOR WINAPI Hooked_GetCursor(void)
+{
+	if (G->hide_cursor)
+		return current_cursor;
+	else
+		return trampoline_GetCursor();
+}
+
+static BOOL WINAPI HideCursor_GetCursorInfo(
     _Inout_ PCURSORINFO pci)
 {
 	BOOL rc = trampoline_GetCursorInfo(pci);
 
-	if (rc && G->hide_cursor) {
-		pci->flags &= ~CURSOR_SHOWING;
-		if (software_cursor_count >= 0) {
-			pci->flags |= CURSOR_SHOWING;
-			// If the hardware cursor is hidden this will be NULL,
-			// but we need to set it to the current cursor:
-			if (!pci->hCursor)
-				pci->hCursor = current_cursor;
-		}
+	if (rc && (pci->flags & CURSOR_SHOWING))
+		pci->hCursor = current_cursor;
+
+	return rc;
+}
+
+static BOOL WINAPI Hooked_GetCursorInfo(
+    _Inout_ PCURSORINFO pci)
+{
+	BOOL rc = HideCursor_GetCursorInfo(pci);
+	RECT client;
+
+	if (rc && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom)
+	{
+		pci->ptScreenPos.x = pci->ptScreenPos.x * G->GAME_INTERNAL_WIDTH / client.right;
+		pci->ptScreenPos.y = pci->ptScreenPos.y * G->GAME_INTERNAL_HEIGHT / client.bottom;
 	}
 
 	return rc;
 }
 
-void InstallMouseHooks()
+BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(
+    _Inout_ PCURSORINFO pci)
+{
+	if (G->cursor_upscaling_bypass)
+	{
+		// Still need to process hide_cursor logic:
+		return HideCursor_GetCursorInfo(pci);
+	}
+	return GetCursorInfo(pci);
+}
+
+static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+{
+	BOOL rc;
+	RECT client;
+	bool translate = G->SCREEN_UPSCALING > 0 && lpPoint
+		&& trampoline_GetClientRect(G->hWnd, &client)
+		&& client.right && client.bottom
+		&& G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT;
+
+	if (translate)
+	{
+		// Scale back to original screen coordinates:
+		lpPoint->x = lpPoint->x * client.right / G->GAME_INTERNAL_WIDTH;
+		lpPoint->y = lpPoint->y * client.bottom / G->GAME_INTERNAL_HEIGHT;
+	}
+
+	rc = trampoline_ScreenToClient(hWnd, lpPoint);
+
+	if (translate)
+	{
+		// Now scale to fake game coordinates:
+		lpPoint->x = lpPoint->x * G->GAME_INTERNAL_WIDTH / client.right;
+		lpPoint->y = lpPoint->y * G->GAME_INTERNAL_HEIGHT / client.bottom;
+	}
+
+	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+{
+	if (G->cursor_upscaling_bypass)
+		return trampoline_ScreenToClient(hWnd, lpPoint);
+	return ScreenToClient(hWnd, lpPoint);
+}
+
+static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+{
+	BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
+
+	if (G->upscaling_hooks_armed && rc && G->SCREEN_UPSCALING > 0 && lpRect != NULL)
+	{
+		lpRect->right = G->GAME_INTERNAL_WIDTH;
+		lpRect->bottom = G->GAME_INTERNAL_HEIGHT;
+	}
+
+	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+{
+	if (G->cursor_upscaling_bypass)
+		return trampoline_GetClientRect(hWnd, lpRect);
+	return GetClientRect(hWnd, lpRect);
+}
+
+static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
+{
+	BOOL res = trampoline_GetCursorPos(lpPoint);
+	RECT client;
+
+	if (lpPoint && res && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom)
+	{
+		// This should work with all games that uses this function to gatter the mouse coords
+		// Tested with witcher 3 and dreamfall chapters
+		// TODO: Maybe there is a better way than use globals for the original game resolution
+		lpPoint->x = lpPoint->x * G->GAME_INTERNAL_WIDTH / client.right;
+		lpPoint->y = lpPoint->y * G->GAME_INTERNAL_HEIGHT / client.bottom;
+	}
+
+	return res;
+}
+
+static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
+{
+	RECT client;
+
+	if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT)
+	{
+		// TODO: Maybe there is a better way than use globals for the original game resolution
+		const int new_x = X * client.right / G->GAME_INTERNAL_WIDTH;
+		const int new_y = Y * client.bottom / G->GAME_INTERNAL_HEIGHT;
+		return trampoline_SetCursorPos(new_x, new_y);
+	}
+	else
+		return trampoline_SetCursorPos(X, Y);
+}
+
+// DefWindowProc can bypass our SetCursor hook, which means that some games
+// such would continue showing the hardware cursor, and our knowledge of what
+// cursor was supposed to be set may be inaccurate (e.g. Akiba's Trip doesn't
+// hide the cursor and sometimes the software cursor uses the busy cursor
+// instead of the arrow cursor). We fix this by hooking DefWindowProc and
+// processing WM_SETCURSOR message just as the original DefWindowProc would
+// have done, but without bypassing our SetCursor hook.
+//
+// An alternative to hooking DefWindowProc in this manner might be to use
+// SetWindowsHookEx since it can also hook window messages.
+static LRESULT WINAPI Hooked_DefWindowProc(
+	_In_ HWND   hWnd,
+	_In_ UINT   Msg,
+	_In_ WPARAM wParam,
+	_In_ LPARAM lParam,
+	lpfnDefWindowProc trampoline_DefWindowProc)
+{
+
+	HWND parent = NULL;
+	HCURSOR cursor = NULL;
+	LPARAM ret = 0;
+
+	if (Msg == WM_SETCURSOR) {
+		// XXX: Should we use GetParent or GetAncestor? GetParent can
+		// return an "owner" window, while GetAncestor only returns
+		// parents... Not sure which the official DefWindowProc uses,
+		// but I suspect the answer is GetAncestor, so go with that:
+		parent = GetAncestor(hWnd, GA_PARENT);
+
+		if (parent) {
+			// Pass the message to the parent window, just like the
+			// real DefWindowProc does. This may call back in here
+			// if the parent also doesn't handle this message, and
+			// we stop processing if the parent handled it.
+			ret = SendMessage(parent, Msg, wParam, lParam);
+			if (ret)
+				return ret;
+		}
+
+		// If the mouse is in the client area and the window class has
+		// a cursor associated with it we set that. This will call into
+		// our hooked version of SetCursor (whereas the real
+		// DefWindowProc would bypass that) so that we can track the
+		// current cursor set by the game and force the hardware cursor
+		// to remain hidden.
+		if ((lParam & 0xffff) == HTCLIENT) {
+			cursor = (HCURSOR)GetClassLongPtr(hWnd, GCLP_HCURSOR);
+			if (cursor)
+				SetCursor(cursor);
+		} else {
+			// Not in client area. We could continue emulating
+			// DefWindowProc by setting an arrow cursor, bypassing
+			// our hook to set the *real* hardware cursor, but
+			// since the real DefWindowProc already bypasses our
+			// hook let's just call that and allow it to take care
+			// of any other edge cases we may not know about (like
+			// HTERROR):
+			return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
+		}
+
+		// Return false to allow children to set their class cursor:
+		return FALSE;
+	}
+
+	return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
+}
+
+static LRESULT WINAPI Hooked_DefWindowProcA(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
+}
+
+static LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
+}
+
+void InstallMouseHooks(bool hide)
 {
 	HINSTANCE hUser32;
-	void* fnOrigSetCursor;
-	void* fnOrigShowCursor;
-	void* fnOrigGetCursorInfo;
-	DWORD dwOsErr;
-	SIZE_T hook_id;
 	static bool hook_installed = false;
+	int fail = 0;
 
 	// Only attempt to hook it once:
 	if (hook_installed)
 		return;
 	hook_installed = true;
 
-	// Init our software counter to the current hardware counter only when
-	// we first install these hooks:
-	ShowCursor(TRUE);
-	software_cursor_count = ShowCursor(FALSE);
+	// Init our handle to the current cursor now before installing the
+	// hooks, and from now on it will be kept up to date from SetCursor:
+	current_cursor = GetCursor();
+	if (hide)
+		SetCursor(InvisibleCursor());
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	if (!hUser32)
-		goto err;
+	fail |= InstallHook(hUser32, "SetCursor", (void**)&trampoline_SetCursor, Hooked_SetCursor, true);
+	fail |= InstallHook(hUser32, "GetCursor", (void**)&trampoline_GetCursor, Hooked_GetCursor, true);
+	fail |= InstallHook(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, Hooked_GetCursorInfo, true);
+	fail |= InstallHook(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, Hooked_DefWindowProcA, true);
+	fail |= InstallHook(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, Hooked_DefWindowProcW, true);
+	fail |= InstallHook(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos, true);
+	fail |= InstallHook(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos, true);
+	fail |= InstallHook(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient, true);
+	fail |= InstallHook(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect, true);
 
-	fnOrigSetCursor = NktHookLibHelpers::GetProcedureAddress(hUser32, "SetCursor");
-	if (fnOrigSetCursor == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_SetCursor, fnOrigSetCursor, Hooked_SetCursor);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigShowCursor = NktHookLibHelpers::GetProcedureAddress(hUser32, "ShowCursor");
-	if (fnOrigShowCursor == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_ShowCursor, fnOrigShowCursor, Hooked_ShowCursor);
-	if (dwOsErr)
-		goto err;
-
-	fnOrigGetCursorInfo = NktHookLibHelpers::GetProcedureAddress(hUser32, "GetCursorInfo");
-	if (fnOrigGetCursorInfo == NULL)
-		goto err;
-
-	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&trampoline_GetCursorInfo, fnOrigGetCursorInfo, Hooked_GetCursorInfo);
-	if (dwOsErr)
-		goto err;
+	if (fail) {
+		LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
+		BeepFailure2();
+		return;
+	}
 
 	LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
-	return;
-err:
-	LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
-	BeepFailure2();
-	return;
 }
 
 static void RemoveHooks()

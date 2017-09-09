@@ -138,7 +138,7 @@ enum class FrameAnalysisOptions {
 	DUMP_XX_BIN     = 0x00854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
 	DUMP_XX_TXT     = 0x008a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
-	LOG             = 0x00200000,
+	LOG_DEPRECATED  = 0x00200000, // Always enabled now - there is no situation we don't want this.
 	HOLD            = 0x00400000,
 	DUMP_ON_UNMAP   = 0x00800000, // XXX: For now including in all XX masks
 };
@@ -165,7 +165,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
 	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
-	{L"log", FrameAnalysisOptions::LOG},
+	{L"log", FrameAnalysisOptions::LOG_DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
 	{L"hold", FrameAnalysisOptions::HOLD},
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
@@ -187,15 +187,13 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 struct ShaderOverride {
 	float separation;
 	float convergence;
-	bool skip;
 	std::vector<int> iterations; // Only for separation changes, not shaders.
-	std::vector<UINT64> indexBufferFilter;
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
-	std::wstring preset;
 	int disable_scissor;
+	bool allow_duplicate_hashes;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -203,10 +201,11 @@ struct ShaderOverride {
 	ShaderOverride() :
 		separation(FLT_MAX),
 		convergence(FLT_MAX),
-		skip(false),
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		analyse_options(FrameAnalysisOptions::INVALID)
+		analyse_options(FrameAnalysisOptions::INVALID),
+		allow_duplicate_hashes(true),
+		disable_scissor(-1)
 	{
 		model[0] = '\0';
 	}
@@ -297,6 +296,8 @@ struct Globals
 	int enable_create_device;
 	bool enable_platform_update;
 
+	int GAME_INTERNAL_WIDTH; // this variable stores the resolution width provided by the game (required for the upscaling feature)
+	int GAME_INTERNAL_HEIGHT; // this variable stores the resolution height provided by the game (required for the upscaling feature)
 	int SCREEN_WIDTH;
 	int SCREEN_HEIGHT;
 	int SCREEN_REFRESH;
@@ -305,6 +306,7 @@ struct Globals
 	int UPSCALE_MODE;
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
+	bool upscaling_hooks_armed;
 
 	int marking_mode;
 	int mark_snapshot;
@@ -357,7 +359,9 @@ struct Globals
 	CommandList present_command_list;
 	CommandList post_present_command_list;
 	unsigned frame_no;
+	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
+	bool cursor_upscaling_bypass;
 
 	CRITICAL_SECTION mCriticalSection;
 	bool ENABLE_CRITICAL_SECTION;
@@ -487,14 +491,19 @@ struct Globals
 		IniParamsReg(120),
 
 		frame_no(0),
+		hWnd(NULL),
 		hide_cursor(false),
+		cursor_upscaling_bypass(true),
 
 		ENABLE_CRITICAL_SECTION(false),
+		GAME_INTERNAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
+		GAME_INTERNAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions
 		SCREEN_WIDTH(-1),
 		SCREEN_HEIGHT(-1),
 		SCREEN_REFRESH(-1),
 		SCREEN_FULLSCREEN(0),
 		SCREEN_ALLOW_COMMANDS(false),
+		upscaling_hooks_armed(true),
 
 		marking_mode(-1),
 		mark_snapshot(2),

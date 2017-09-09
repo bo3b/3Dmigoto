@@ -12,7 +12,6 @@ extern GUID GUID_BufferResourceHash;
 
 struct DrawContext
 {
-	bool skip;
 	bool override;
 	float oldSeparation;
 	float oldConvergence;
@@ -25,7 +24,6 @@ struct DrawContext
 
 	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance) :
-		skip(false),
 		override(false),
 		oldSeparation(FLT_MAX),
 		oldConvergence(FLT_MAX),
@@ -204,6 +202,11 @@ public:
 
 	// public to allow CommandList access
 	void FrameAnalysisLog(char *fmt, ...);
+	// An alias for the above function that we use to denote that omitting
+	// the newline was done intentionally. For now this is just for our
+	// reference, but later we might actually make the default function
+	// insert a newline:
+#define FrameAnalysisLogNoNL FrameAnalysisLog
 
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);

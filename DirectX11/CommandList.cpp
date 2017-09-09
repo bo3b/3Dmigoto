@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "HackerDevice.h"
 #include "HackerContext.h"
+#include "Override.h"
 
 #include <D3DCompiler.h>
 
@@ -12,12 +13,7 @@ CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
 
-static void _RunCommandList(HackerDevice *mHackerDevice,
-		HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice,
-		ID3D11DeviceContext *mOrigContext,
-		CommandList *command_list,
-		CommandListState *state)
+static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
 	CommandList::iterator i;
 
@@ -27,27 +23,25 @@ static void _RunCommandList(HackerDevice *mHackerDevice,
 	}
 
 	state->recursion++;
-	for (i = command_list->begin(); i < command_list->end(); i++) {
-		(*i)->run(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, state);
+	for (i = command_list->begin(); i < command_list->end() && !state->aborted; i++) {
+		(*i)->run(state);
 	}
 	state->recursion--;
 }
 
-static void CommandListFlushState(HackerDevice *mHackerDevice,
-		ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
+static void CommandListFlushState(CommandListState *state)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT hr;
 
 	if (state->update_params) {
-		hr = mOrigContext->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		hr = state->mOrigContext->Map(state->mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(hr)) {
 			LogInfo("CommandListFlushState: Map failed\n");
 			return;
 		}
 		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-		mOrigContext->Unmap(mHackerDevice->mIniTexture, 0);
+		state->mOrigContext->Unmap(state->mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
 	}
 }
@@ -58,17 +52,19 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		DrawCallInfo *call_info, bool post)
 {
 	CommandListState state;
-	ID3D11Device *mOrigDevice = mHackerDevice->GetOrigDevice();
-	ID3D11DeviceContext *mOrigContext = mHackerContext->GetOrigContext();
+	state.mHackerDevice = mHackerDevice;
+	state.mHackerContext = mHackerContext;
+	state.mOrigDevice = mHackerDevice->GetOrigDevice();
+	state.mOrigContext = mHackerContext->GetOrigContext();
 
 	state.call_info = call_info;
 	state.post = post;
 
-	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, command_list, &state);
-	CommandListFlushState(mHackerDevice, mOrigContext, &state);
+	_RunCommandList(command_list, &state);
+	CommandListFlushState(&state);
 }
 
-static void AddCommandToList(CommandListCommand *command,
+static bool AddCommandToList(CommandListCommand *command,
 		CommandList *explicit_command_list,
 		CommandList *sensible_command_list,
 		CommandList *pre_command_list,
@@ -98,6 +94,8 @@ static void AddCommandToList(CommandListCommand *command,
 		if (post_command_list)
 			post_command_list->push_back(p);
 	}
+
+	return true;
 }
 
 static bool ParseCheckTextureOverride(const wchar_t *section,
@@ -106,21 +104,15 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 		CommandList *pre_command_list,
 		CommandList *post_command_list)
 {
-	int ret, len1;
+	int ret;
 
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
-	// Parse value as "<shader type>s-t<testure slot>", consistent
-	// with texture filtering and resource copying
-	ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &operation->shader_type, 1, &operation->texture_slot, &len1);
-	if (ret == 2 && len1 == val->length() &&
-			operation->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		switch(operation->shader_type) {
-			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-				operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-				AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
-				return true;
-		}
+	// Parse value as consistent with texture filtering and resource copying
+	ret = operation->target.ParseTarget(val->c_str(), true);
+	if (ret) {
+		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 	}
 
 	delete operation;
@@ -147,8 +139,7 @@ static bool ParseRunShader(const wchar_t *section,
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->custom_shader = &shader->second;
-	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -179,8 +170,56 @@ static bool ParseRunExplicitCommandList(const wchar_t *section,
 	// later refactor these together note that here we do not specify a
 	// sensible command list, so it will be added to both pre and post
 	// command lists:
-	AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParsePreset(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	PresetCommand *operation = new PresetCommand();
+
+	PresetOverrideMap::iterator i;
+
+	// Value should already have been transformed to lower case from
+	// ParseCommandList, so our keys will be consistent in the
+	// unordered_map:
+	wstring preset_id(val->c_str());
+
+	// The original preset code did not accept the "Preset" prefix on the
+	// prefix command, as in it would only accept 'preset = Foo', not
+	// 'preset = PresetFoo'. While I agree that the later is redundant
+	// since the word preset now appears twice, it is more consistent with
+	// the way we have referenced other sections in the command list (ps-t0
+	// = ResourceBar, run = CustomShaderBaz, etc), and it makes it easier
+	// to search for 'PresetFoo' to find both where it is used and where it
+	// is referenced, so it is good to support here... but for backwards
+	// compatibility and less redundancy for those that prefer not to say
+	// "preset" twice we support both ways.
+
+	// First, try without the prefix:
+	i = presetOverrides.find(preset_id);
+	if (i == presetOverrides.end()) {
+		// If the 'Preset' prefix was specified, strip it and try again:
+		if (!wcsncmp(val->c_str(), L"preset", 6)) {
+			preset_id = val->c_str() + 6;
+
+			i = presetOverrides.find(preset_id);
+			if (i == presetOverrides.end())
+				goto bail;
+		}
+	}
+
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	operation->preset = &i->second;
+
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -248,8 +287,7 @@ static bool ParseDrawCommand(const wchar_t *section,
 		goto bail;
 
 	operation->ini_section = section;
-	AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
-	return true;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -272,99 +310,49 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 	}
 
+	if (!wcscmp(key, L"preset"))
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+
+	if (!wcscmp(key, L"handling")) {
+		 if (!wcscmp(val->c_str(), L"skip"))
+			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+
+		 if (!wcscmp(val->c_str(), L"abort"))
+			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
+	}
+
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
-static TextureOverride* FindTextureOverrideBySlot(HackerContext
-		*mHackerContext, ID3D11DeviceContext *mOrigContext,
-		wchar_t shader_type, unsigned texture_slot)
+void CheckTextureOverrideCommand::run(CommandListState *state)
 {
-	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
-	ID3D11ShaderResourceView *view;
-	ID3D11Resource *resource = NULL;
-	TextureOverrideMap::iterator i;
-	TextureOverride *ret = NULL;
-	uint32_t hash = 0;
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
-	switch (shader_type) {
-		case L'v':
-			mOrigContext->VSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'h':
-			mOrigContext->HSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'd':
-			mOrigContext->DSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'g':
-			mOrigContext->GSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'p':
-			mOrigContext->PSGetShaderResources(texture_slot, 1, &view);
-			break;
-		case L'c':
-			mOrigContext->CSGetShaderResources(texture_slot, 1, &view);
-			break;
-		default:
-			// Should not happen
-			return NULL;
-	}
-	if (!view)
-		return NULL;
-
-	view->GetResource(&resource);
-	if (!resource)
-		goto out_release_view;
-
-	view->GetDesc(&desc);
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		hash = GetResourceHash(resource);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-	if (!hash)
-		goto out_release_resource;
-
-	mHackerContext->FrameAnalysisLog(" hash=%08llx", hash);
-
-	i = G->mTextureOverrideMap.find(hash);
-	if (i == G->mTextureOverrideMap.end())
-		goto out_release_resource;
-
-	ret = &i->second;
-
-out_release_resource:
-	resource->Release();
-out_release_view:
-	view->Release();
-	return ret;
-}
-
-void CheckTextureOverrideCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
-{
-	mHackerContext->FrameAnalysisLog("3DMigoto %S", ini_line.c_str());
-
-	TextureOverride *override = FindTextureOverrideBySlot(mHackerContext,
-			mOrigContext, shader_type, texture_slot);
-
-	mHackerContext->FrameAnalysisLog(" found=%s\n", override ? "true" : "false");
+	TextureOverride *override = target.FindTextureOverride(state, NULL);
 
 	if (!override)
 		return;
 
 	if (state->post)
-		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->post_command_list, state);
+		_RunCommandList(&override->post_command_list, state);
 	else
-		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &override->command_list, state);
+		_RunCommandList(&override->command_list, state);
 }
 
-void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
+void PresetCommand::run(CommandListState *state)
 {
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+
+	preset->Activate(state->mHackerDevice);
+}
+
+void DrawCommand::run(CommandListState *state)
+{
+	HackerContext *mHackerContext = state->mHackerContext;
+	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
+
 	// Ensure IniParams are visible:
-	CommandListFlushState(mHackerDevice, mOrigContext, state);
+	CommandListFlushState(state);
 
 	switch (type) {
 		case DrawCommandType::DRAW:
@@ -399,6 +387,10 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 		// TODO: 	break;
 		case DrawCommandType::FROM_CALLER:
 			DrawCallInfo *info = state->call_info;
+			if (!info) {
+				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
+				break;
+			}
 			if (info->InstanceCount) {
 				if (info->IndexCount) {
 					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
@@ -420,13 +412,33 @@ void DrawCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext
 	}
 }
 
+void SkipCommand::run(CommandListState *state)
+{
+	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = skip\n", ini_section.c_str());
+
+	if (state->call_info)
+		state->call_info->skip = true;
+	else
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   No active draw call to skip\n");
+}
+
+void AbortCommand::run(CommandListState *state)
+{
+	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = abort\n", ini_section.c_str());
+
+	state->aborted = true;
+}
+
 CustomShader::CustomShader() :
 	vs_override(false), hs_override(false), ds_override(false),
 	gs_override(false), ps_override(false), cs_override(false),
 	vs(NULL), hs(NULL), ds(NULL), gs(NULL), ps(NULL), cs(NULL),
 	vs_bytecode(NULL), hs_bytecode(NULL), ds_bytecode(NULL),
 	gs_bytecode(NULL), ps_bytecode(NULL), cs_bytecode(NULL),
-	blend_override(0), blend_state(NULL), blend_sample_mask(0xffffffff),
+	blend_override(0), blend_state(NULL),
+	blend_sample_mask(0xffffffff), blend_sample_mask_merge_mask(0xffffffff),
+	depth_stencil_override(0), depth_stencil_state(NULL),
+	stencil_ref(0), stencil_ref_mask(~0),
 	rs_override(0), rs_state(NULL),
 	topology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED),
 	substantiated(false),
@@ -438,8 +450,10 @@ CustomShader::CustomShader() :
 {
 	int i;
 
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < 4; i++) {
 		blend_factor[i] = 1.0f;
+		blend_factor_merge_mask[i] = ~0;
+	}
 }
 
 CustomShader::~CustomShader()
@@ -459,6 +473,8 @@ CustomShader::~CustomShader()
 
 	if (blend_state)
 		blend_state->Release();
+	if (depth_stencil_state)
+		depth_stencil_state->Release();
 	if (rs_state)
 		rs_state->Release();
 
@@ -473,7 +489,7 @@ CustomShader::~CustomShader()
 	if (ps_bytecode)
 		ps_bytecode->Release();
 	if (cs_bytecode)
-		cs_bytecode->Release();		
+		cs_bytecode->Release();
 	if (sampler_state)
 		sampler_state->Release();
 }
@@ -626,14 +642,147 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 		cs_bytecode = NULL;
 	}
 
-	if (blend_override == 1) // 2 will use default blend state
+	if (blend_override == 1) // 2 will merge the blend state at draw time
 		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
 
-	if (rs_override == 1) // 2 will use default blend state
+	if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
+		mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+
+	if (rs_override == 1) // 2 will merge rasterizer state at draw time
 		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
-		
+
 	if (sampler_override == 1)
 		mOrigDevice->CreateSamplerState(&sampler_desc, &sampler_state);
+}
+
+// Similar to memcpy, but also takes a mask. Any bits in the mask that are set
+// to 0 will be unchanged in the destination, while bits that are set to 1 will
+// be copied from the source buffer.
+static void memcpy_masked_merge(void *dest, void *src, void *mask, size_t n)
+{
+	char *c_dest = (char*)dest;
+	char *c_src = (char*)src;
+	char *c_mask = (char*)mask;
+	size_t i;
+
+	for (i = 0; i < n; i++)
+		c_dest[i] = c_dest[i] & ~c_mask[i] | c_src[i] & c_mask[i];
+}
+
+void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *mOrigDevice)
+{
+	D3D11_BLEND_DESC src_desc;
+	int i;
+
+	if (blend_override != 2)
+		return;
+
+	if (blend_state)
+		blend_state->Release();
+	blend_state = NULL;
+
+	if (src_state) {
+		src_state->GetDesc(&src_desc);
+	} else {
+		// There is no state set, so DX will be using defaults. Set the
+		// source description to the defaults so the merge will still
+		// work as expected:
+		src_desc.AlphaToCoverageEnable = FALSE;
+		src_desc.IndependentBlendEnable = FALSE;
+		for (i = 0; i < 8; i++) {
+			src_desc.RenderTarget[i].BlendEnable = FALSE;
+			src_desc.RenderTarget[i].SrcBlend = D3D11_BLEND_ONE;
+			src_desc.RenderTarget[i].DestBlend = D3D11_BLEND_ZERO;
+			src_desc.RenderTarget[i].BlendOp = D3D11_BLEND_OP_ADD;
+			src_desc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
+			src_desc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
+			src_desc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			src_desc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		}
+	}
+
+	memcpy_masked_merge(&blend_desc, &src_desc, &blend_mask, sizeof(D3D11_BLEND_DESC));
+
+	for (i = 0; i < 4; i++) {
+		if (blend_factor_merge_mask[i])
+			blend_factor[i] = src_blend_factor[i];
+	}
+	blend_sample_mask = blend_sample_mask & ~blend_sample_mask_merge_mask | src_sample_mask & blend_sample_mask_merge_mask;
+
+	mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
+}
+
+void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *mOrigDevice)
+{
+	D3D11_DEPTH_STENCIL_DESC src_desc;
+
+	if (depth_stencil_override != 2)
+		return;
+
+	if (depth_stencil_state)
+		depth_stencil_state->Release();
+	depth_stencil_state = NULL;
+
+	if (src_state) {
+		src_state->GetDesc(&src_desc);
+	} else {
+		// There is no state set, so DX will be using defaults. Set the
+		// source description to the defaults so the merge will still
+		// work as expected:
+		src_desc.DepthEnable = TRUE;
+		src_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		src_desc.DepthFunc = D3D11_COMPARISON_LESS;
+		src_desc.StencilEnable = FALSE;
+		src_desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+		src_desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+		src_desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		src_desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		src_desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		src_desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	}
+
+	memcpy_masked_merge(&depth_stencil_desc, &src_desc, &depth_stencil_mask, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	stencil_ref = stencil_ref & ~stencil_ref_mask | src_stencil_ref & stencil_ref_mask;
+
+	mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+}
+
+void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *mOrigDevice)
+{
+	D3D11_RASTERIZER_DESC src_desc;
+
+	if (rs_override != 2)
+		return;
+
+	if (rs_state)
+		rs_state->Release();
+	rs_state = NULL;
+
+	if (src_state) {
+		src_state->GetDesc(&src_desc);
+	} else {
+		// There is no state set, so DX will be using defaults. Set the
+		// source description to the defaults so the merge will still
+		// work as expected:
+		src_desc.FillMode = D3D11_FILL_SOLID;
+		src_desc.CullMode = D3D11_CULL_BACK;
+		src_desc.FrontCounterClockwise = FALSE;
+		src_desc.DepthBias = 0;
+		src_desc.SlopeScaledDepthBias = 0.0f;
+		src_desc.DepthBiasClamp = 0.0f;
+		src_desc.DepthClipEnable = TRUE;
+		src_desc.ScissorEnable = FALSE;
+		src_desc.MultisampleEnable = FALSE;
+		src_desc.AntialiasedLineEnable = FALSE;
+	}
+
+	memcpy_masked_merge(&rs_desc, &src_desc, &rs_mask, sizeof(D3D11_RASTERIZER_DESC));
+
+	mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
 }
 
 struct saved_shader_inst
@@ -656,7 +805,7 @@ struct saved_shader_inst
 	}
 };
 
-static void get_all_rts_dsv_uavs(ID3D11DeviceContext *mOrigContext,
+static void get_all_rts_dsv_uavs(CommandListState *state,
 	UINT *NumRTVs,
 	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT],
 	ID3D11DepthStencilView **dsv,
@@ -672,7 +821,7 @@ static void get_all_rts_dsv_uavs(ID3D11DeviceContext *mOrigContext,
 	// information that we don't know. So, we have to do a few extra steps
 	// to find that info.
 
-	mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
+	state->mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
 
 	*NumRTVs = 0;
 	if (rtvs) {
@@ -690,13 +839,13 @@ static void get_all_rts_dsv_uavs(ID3D11DeviceContext *mOrigContext,
 
 	// Finally get all the UAVs. Since we already retrieved the RTVs and
 	// DSV we can skip getting them:
-	mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
+	state->mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
 }
 
-void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
+void RunCustomShaderCommand::run(CommandListState *state)
 {
+	ID3D11Device *mOrigDevice = state->mOrigDevice;
+	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
 	ID3D11VertexShader *saved_vs = NULL;
 	ID3D11HullShader *saved_hs = NULL;
 	ID3D11DomainShader *saved_ds = NULL;
@@ -704,11 +853,13 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	ID3D11PixelShader *saved_ps = NULL;
 	ID3D11ComputeShader *saved_cs = NULL;
 	ID3D11BlendState *saved_blend = NULL;
+	ID3D11DepthStencilState *saved_depth_stencil = NULL;
 	ID3D11RasterizerState *saved_rs = NULL;
 	UINT num_viewports = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 	D3D11_VIEWPORT saved_viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 	FLOAT saved_blend_factor[4];
 	UINT saved_sample_mask;
+	UINT saved_stencil_ref;
 	bool saved_post;
 	UINT NumRTVs, UAVStartSlot, NumUAVs;
 	ID3D11RenderTargetView *saved_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
@@ -724,15 +875,15 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	{
 		saved_sampler_states[i] = nullptr;
 	}
-	
-	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (custom_shader->max_executions_per_frame) {
 		if (custom_shader->frame_no != G->frame_no) {
 			custom_shader->frame_no = G->frame_no;
 			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
-			mHackerContext->FrameAnalysisLog("max_executions_per_frame exceeded\n");
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   max_executions_per_frame exceeded\n");
 			return;
 		}
 	}
@@ -774,10 +925,17 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	}
 	if (custom_shader->blend_override) {
 		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
+		custom_shader->merge_blend_states(saved_blend, saved_blend_factor, saved_sample_mask, mOrigDevice);
 		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
+	}
+	if (custom_shader->depth_stencil_override) {
+		mOrigContext->OMGetDepthStencilState(&saved_depth_stencil, &saved_stencil_ref);
+		custom_shader->merge_depth_stencil_states(saved_depth_stencil, saved_stencil_ref, mOrigDevice);
+		mOrigContext->OMSetDepthStencilState(custom_shader->depth_stencil_state, custom_shader->stencil_ref);
 	}
 	if (custom_shader->rs_override) {
 		mOrigContext->RSGetState(&saved_rs);
+		custom_shader->merge_rasterizer_states(saved_rs, mOrigDevice);
 		mOrigContext->RSSetState(custom_shader->rs_state);
 	}
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {
@@ -793,7 +951,7 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	// but that probably wouldn't buy us anything:
 	mOrigContext->RSGetViewports(&num_viewports, saved_viewports);
 	// Likewise, save off all RTVs, UAVs and DSVs unconditionally:
-	get_all_rts_dsv_uavs(mOrigContext, &NumRTVs, saved_rtvs, &saved_dsv, &UAVStartSlot, &NumUAVs, saved_uavs);
+	get_all_rts_dsv_uavs(state, &NumRTVs, saved_rtvs, &saved_dsv, &UAVStartSlot, &NumUAVs, saved_uavs);
 
 	// Run the command lists. This should generally include a draw or
 	// dispatch call, or call out to another command list which does.
@@ -801,9 +959,9 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	// write 'ps-t100 = ResourceFoo; post ps-t100 = null' and have it work.
 	saved_post = state->post;
 	state->post = false;
-	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &custom_shader->command_list, state);
+	_RunCommandList(&custom_shader->command_list, state);
 	state->post = true;
-	_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &custom_shader->post_command_list, state);
+	_RunCommandList(&custom_shader->post_command_list, state);
 	state->post = saved_post;
 
 	// Finally restore the original shaders
@@ -821,13 +979,15 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
 	if (custom_shader->blend_override)
 		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
+	if (custom_shader->depth_stencil_override)
+		mOrigContext->OMSetDepthStencilState(saved_depth_stencil, saved_stencil_ref);
 	if (custom_shader->rs_override)
 		mOrigContext->RSSetState(saved_rs);
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
 		mOrigContext->IASetPrimitiveTopology(saved_topology);
 	if (custom_shader->sampler_override)
 		mOrigContext->PSSetSamplers(0, num_sampler, saved_sampler_states);
-	
+
 	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
 	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
 
@@ -845,6 +1005,8 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 		saved_cs->Release();
 	if (saved_blend)
 		saved_blend->Release();
+	if (saved_depth_stencil)
+		saved_depth_stencil->Release();
 	if (saved_rs)
 		saved_rs->Release();
 
@@ -862,20 +1024,18 @@ void RunCustomShaderCommand::run(HackerDevice *mHackerDevice, HackerContext *mHa
 	}
 }
 
-void RunExplicitCommandList::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
+void RunExplicitCommandList::run(CommandListState *state)
 {
-	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (state->post)
-		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &command_list_section->post_command_list, state);
+		_RunCommandList(&command_list_section->post_command_list, state);
 	else
-		_RunCommandList(mHackerDevice, mHackerContext, mOrigDevice, mOrigContext, &command_list_section->command_list, state);
+		_RunCommandList(&command_list_section->command_list, state);
 }
 
 
-static void ProcessParamRTSize(ID3D11DeviceContext *mOrigContext, CommandListState *state)
+static void ProcessParamRTSize(CommandListState *state)
 {
 	D3D11_RENDER_TARGET_VIEW_DESC view_desc;
 	D3D11_TEXTURE2D_DESC res_desc;
@@ -886,7 +1046,7 @@ static void ProcessParamRTSize(ID3D11DeviceContext *mOrigContext, CommandListSta
 	if (state->rt_width != -1)
 		return;
 
-	mOrigContext->OMGetRenderTargets(1, &view, NULL);
+	state->mOrigContext->OMGetRenderTargets(1, &view, NULL);
 	if (!view)
 		return;
 
@@ -911,19 +1071,40 @@ out_release_view:
 	view->Release();
 }
 
-static float ProcessParamTextureFilter(HackerContext *mHackerContext,
-		ID3D11DeviceContext *mOrigContext, ParamOverride *override)
+float ParamOverride::process_texture_filter(CommandListState *state)
 {
-	TextureOverride *tex = FindTextureOverrideBySlot(mHackerContext,
-			mOrigContext, override->shader_type, override->texture_slot);
-	if (!tex)
+	bool resource_found;
+
+	TextureOverride *texture_override = texture_filter_target.FindTextureOverride(state, &resource_found);
+
+	// If there is no resource bound we want to return a special value that
+	// is distinct from simply not finding a texture override section. For
+	// backwards compatibility we use negative zero -0.0, because any
+	// existing fixes that test for zero/non-zero to check if a matching
+	// [TextureOverride] is present would expect an unbound texture to
+	// never have a hash and therefore be equal to 0, and -0.0 *is* equal
+	// to +0, so these will continue to work. To explicitly test for an
+	// unassigned resource, use this HLSL to reinterpret the values as
+	// integers and check the sign bit:
+	//
+	// if (asint(IniParams[0].x) == asint(-0.0)) { ... }
+	//
+	if (!resource_found)
+		return -0.0;
+
+	// A resource was bound, but no matching texture override was found:
+	if (!texture_override)
 		return 0;
 
-	return tex->filter_index;
+	return texture_override->filter_index;
 }
 
 
 CommandListState::CommandListState() :
+	mHackerDevice(NULL),
+	mHackerContext(NULL),
+	mOrigDevice(NULL),
+	mOrigContext(NULL),
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
@@ -933,10 +1114,12 @@ CommandListState::CommandListState() :
 	cursor_mask_view(NULL),
 	cursor_color_tex(NULL),
 	cursor_color_view(NULL),
-	recursion(0)
+	recursion(0),
+	aborted(false)
 {
 	memset(&cursor_info, 0, sizeof(CURSORINFO));
 	memset(&cursor_info_ex, 0, sizeof(ICONINFO));
+	memset(&window_rect, 0, sizeof(RECT));
 }
 
 CommandListState::~CommandListState()
@@ -955,13 +1138,30 @@ CommandListState::~CommandListState()
 		cursor_color_tex->Release();
 }
 
+static void UpdateWindowInfo(CommandListState *state)
+{
+	if (state->window_rect.right)
+		return;
+
+	if (G->hWnd)
+		CursorUpscalingBypass_GetClientRect(G->hWnd, &state->window_rect);
+	else
+		LogDebug("UpdateWindowInfo: No hWnd\n");
+}
+
 static void UpdateCursorInfo(CommandListState *state)
 {
 	if (state->cursor_info.cbSize)
 		return;
 
 	state->cursor_info.cbSize = sizeof(CURSORINFO);
-	GetCursorInfo(&state->cursor_info);
+	CursorUpscalingBypass_GetCursorInfo(&state->cursor_info);
+	memcpy(&state->cursor_window_coords, &state->cursor_info.ptScreenPos, sizeof(POINT));
+
+	if (G->hWnd)
+		CursorUpscalingBypass_ScreenToClient(G->hWnd, &state->cursor_window_coords);
+	else
+		LogDebug("UpdateCursorInfo: No hWnd\n");
 }
 
 static void UpdateCursorInfoEx(CommandListState *state)
@@ -974,32 +1174,51 @@ static void UpdateCursorInfoEx(CommandListState *state)
 	GetIconInfo(state->cursor_info.hCursor, &state->cursor_info_ex);
 }
 
-static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
+// Uses an undocumented Windows API to get info about animated cursors and
+// calculate the current frame based on the global tick count
+// https://stackoverflow.com/questions/6969801/how-do-i-determine-if-the-current-mouse-cursor-is-animated
+static unsigned GetCursorFrame(HCURSOR cursor)
+{
+	typedef HCURSOR(WINAPI* GET_CURSOR_FRAME_INFO)(HCURSOR, LPCWSTR, DWORD, DWORD*, DWORD*);
+	static GET_CURSOR_FRAME_INFO fnGetCursorFrameInfo = NULL;
+	HMODULE libUser32 = NULL;
+	DWORD period = 6, frames = 1;
+
+	if (!fnGetCursorFrameInfo) {
+		libUser32 = LoadLibraryA("user32.dll");
+		if (!libUser32)
+			return 0;
+
+		fnGetCursorFrameInfo = (GET_CURSOR_FRAME_INFO)GetProcAddress(libUser32, "GetCursorFrameInfo");
+		if (!fnGetCursorFrameInfo)
+			return 0;
+	}
+
+	fnGetCursorFrameInfo(cursor, L"", 0, &period, &frames);
+
+	// Avoid divide by zero if not an animated cursor:
+	if (!period || !frames)
+		return 0;
+
+	// period is a multiple of 1/60 seconds. We should really use the ms
+	// since this cursor was most recently displayed, but the global tick
+	// count works well enough and means we have less state to track:
+	return (GetTickCount() * 6) / (period * 100) % frames;
+}
+
+static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
+		HBITMAP hbitmap, CommandListState *state,
 		ID3D11Texture2D **tex, ID3D11ShaderResourceView **view)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc;
 	BITMAPINFOHEADER bmp_info;
 	D3D11_SUBRESOURCE_DATA data;
 	D3D11_TEXTURE2D_DESC desc;
-	BITMAP bitmap;
 	HRESULT hr;
-	HDC dc;
-
-	// XXX: Should maybe be the device context for the window?
-	dc = GetDC(NULL);
-	if (!dc) {
-		LogInfo("Software Mouse: GetDC() failed\n");
-		return;
-	}
-
-	if (!GetObject(hbitmap, sizeof(BITMAP), &bitmap)) {
-		LogInfo("Software Mouse: GetObject() failed\n");
-		goto err_release_dc;
-	}
 
 	bmp_info.biSize = sizeof(BITMAPINFOHEADER);
-	bmp_info.biWidth = bitmap.bmWidth;
-	bmp_info.biHeight = bitmap.bmHeight;
+	bmp_info.biWidth = bitmap_obj->bmWidth;
+	bmp_info.biHeight = bitmap_obj->bmHeight;
 	// Requesting 32bpp here to simplify the conversion process - the
 	// R1_UNORM format can't be used for the 1bpp mask because that format
 	// has a special purpose, and requesting 8 or 16bpp would require an
@@ -1019,9 +1238,9 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	// This padding came from an example on MSDN, but I can't find
 	// the documentation that indicates exactly what it is supposed
 	// to be. Since we're using 32bpp, this shouldn't matter anyway:
-	data.SysMemPitch = ((bitmap.bmWidth * bmp_info.biBitCount + 31) / 32) * 4;
+	data.SysMemPitch = ((bitmap_obj->bmWidth * bmp_info.biBitCount + 31) / 32) * 4;
 
-	data.pSysMem = new char[data.SysMemPitch * bitmap.bmHeight];
+	data.pSysMem = new char[data.SysMemPitch * bitmap_obj->bmHeight];
 
 	if (!GetDIBits(dc, hbitmap, 0, bmp_info.biHeight,
 			(LPVOID)data.pSysMem, (BITMAPINFO*)&bmp_info, DIB_RGB_COLORS)) {
@@ -1029,10 +1248,11 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 		goto err_free;
 	}
 
-	desc.Width = bitmap.bmWidth;
-	desc.Height = bitmap.bmHeight;
+	desc.Width = bitmap_obj->bmWidth;
+	desc.Height = bitmap_obj->bmHeight;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
+	// FIXME: Use DXGI_FORMAT_B8G8R8X8_UNORM_SRGB if no alpha channel (there is no API to check)
 	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
@@ -1041,7 +1261,7 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 
-	hr = mOrigDevice->CreateTexture2D(&desc, &data, tex);
+	hr = state->mOrigDevice->CreateTexture2D(&desc, &data, tex);
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateTexture2D Failed: 0x%x\n", hr);
 		goto err_free;
@@ -1052,14 +1272,13 @@ static void CreateTextureFromBitmap(HBITMAP hbitmap, ID3D11Device *mOrigDevice,
 	rv_desc.Texture2D.MostDetailedMip = 0;
 	rv_desc.Texture2D.MipLevels = 1;
 
-	hr = mOrigDevice->CreateShaderResourceView(*tex, &rv_desc, view);
+	hr = state->mOrigDevice->CreateShaderResourceView(*tex, &rv_desc, view);
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateShaderResourceView Failed: 0x%x\n", hr);
 		goto err_release_tex;
 	}
 
 	delete [] data.pSysMem;
-	ReleaseDC(NULL, dc);
 
 	return;
 err_release_tex:
@@ -1067,46 +1286,147 @@ err_release_tex:
 	*tex = NULL;
 err_free:
 	delete [] data.pSysMem;
-err_release_dc:
-	ReleaseDC(NULL, dc);
 }
 
-static void UpdateCursorResources(CommandListState *state, ID3D11Device *mOrigDevice)
+static void CreateTextureFromBitmap(HDC dc, HBITMAP hbitmap, CommandListState *state,
+		ID3D11Texture2D **tex, ID3D11ShaderResourceView **view)
 {
+	BITMAP bitmap_obj;
+
+	if (!GetObject(hbitmap, sizeof(BITMAP), &bitmap_obj)) {
+		LogInfo("Software Mouse: GetObject() failed\n");
+		return;
+	}
+
+	_CreateTextureFromBitmap(dc, &bitmap_obj, hbitmap, state, tex, view);
+}
+
+static void CreateTextureFromAnimatedCursor(
+		HDC dc,
+		HCURSOR cursor,
+		UINT flags,
+		HBITMAP static_bitmap,
+		CommandListState *state,
+		ID3D11Texture2D **tex,
+		ID3D11ShaderResourceView **view
+		)
+{
+	BITMAP bitmap_obj;
+	HDC dc_mem;
+	HBITMAP ani_bitmap;
+	unsigned frame;
+
+	if (!GetObject(static_bitmap, sizeof(BITMAP), &bitmap_obj)) {
+		LogInfo("Software Mouse: GetObject() failed\n");
+		return;
+	}
+
+	dc_mem = CreateCompatibleDC(dc);
+	if (!dc_mem) {
+		LogInfo("Software Mouse: CreateCompatibleDC() failed\n");
+		return;
+	}
+
+	ani_bitmap = CreateCompatibleBitmap(dc, bitmap_obj.bmWidth, bitmap_obj.bmHeight);
+	if (!ani_bitmap) {
+		LogInfo("Software Mouse: CreateCompatibleBitmap() failed\n");
+		goto out_delete_mem_dc;
+	}
+
+	frame = GetCursorFrame(cursor);
+
+	// To get a frame from an animated cursor we have to use DrawIconEx to
+	// draw it to another bitmap, then we can create a texture from that
+	// bitmap:
+	SelectObject(dc_mem, ani_bitmap);
+	if (!DrawIconEx(dc_mem, 0, 0, cursor, bitmap_obj.bmWidth, bitmap_obj.bmHeight, frame, NULL, flags)) {
+		LogInfo("Software Mouse: DrawIconEx failed\n");
+		// Fall back to getting the first frame from the static_bitmap we already have:
+		_CreateTextureFromBitmap(dc, &bitmap_obj, static_bitmap, state, tex, view);
+		goto out_delete_ani_bitmap;
+	}
+
+	_CreateTextureFromBitmap(dc, &bitmap_obj, ani_bitmap, state, tex, view);
+
+out_delete_ani_bitmap:
+	DeleteObject(ani_bitmap);
+out_delete_mem_dc:
+	DeleteDC(dc_mem);
+}
+
+static void UpdateCursorResources(CommandListState *state)
+{
+	HDC dc;
+
 	if (state->cursor_mask_tex || state->cursor_color_tex)
 		return;
 
 	UpdateCursorInfoEx(state);
 
-	if (state->cursor_info_ex.hbmMask) {
-		CreateTextureFromBitmap(state->cursor_info_ex.hbmMask, mOrigDevice,
-				&state->cursor_mask_tex, &state->cursor_mask_view);
+	// XXX: Should maybe be the device context for the window?
+	dc = GetDC(NULL);
+	if (!dc) {
+		LogInfo("Software Mouse: GetDC() failed\n");
+		return;
 	}
 
 	if (state->cursor_info_ex.hbmColor) {
-		CreateTextureFromBitmap(state->cursor_info_ex.hbmColor, mOrigDevice,
-				&state->cursor_color_tex, &state->cursor_color_view);
+		// Colour cursor, which may or may not be animated, but the
+		// animated routine will work either way:
+		CreateTextureFromAnimatedCursor(
+				dc,
+				state->cursor_info.hCursor,
+				DI_IMAGE,
+				state->cursor_info_ex.hbmColor,
+				state,
+				&state->cursor_color_tex,
+				&state->cursor_color_view);
+
+		if (state->cursor_info_ex.hbmMask) {
+			// Since it's a colour cursor the mask bitmap will be
+			// the regular height, which will work with the
+			// animated routine:
+			CreateTextureFromAnimatedCursor(
+					dc,
+					state->cursor_info.hCursor,
+					DI_MASK,
+					state->cursor_info_ex.hbmMask,
+					state,
+					&state->cursor_mask_tex,
+					&state->cursor_mask_view);
+		}
+	} else if (state->cursor_info_ex.hbmMask) {
+		// Black and white cursor, which means the hbmMask bitmap is
+		// double height and won't work with the animated cursor
+		// routines, so just turn the bitmap into a texture directly:
+		CreateTextureFromBitmap(
+				dc,
+				state->cursor_info_ex.hbmMask,
+				state,
+				&state->cursor_mask_tex,
+				&state->cursor_mask_view);
 	}
+
+	ReleaseDC(NULL, dc);
 }
 
-void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
+void ParamOverride::run(CommandListState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);
-
 	float orig = *dest;
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	switch (type) {
 		case ParamOverrideType::VALUE:
 			*dest = val;
 			break;
 		case ParamOverrideType::RT_WIDTH:
-			ProcessParamRTSize(mOrigContext, state);
+			ProcessParamRTSize(state);
 			*dest = state->rt_width;
 			break;
 		case ParamOverrideType::RT_HEIGHT:
-			ProcessParamRTSize(mOrigContext, state);
+			ProcessParamRTSize(state);
 			*dest = state->rt_height;
 			break;
 		case ParamOverrideType::RES_WIDTH:
@@ -1115,9 +1435,16 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 		case ParamOverrideType::RES_HEIGHT:
 			*dest = (float)G->mResolutionInfo.height;
 			break;
+		case ParamOverrideType::WINDOW_WIDTH:
+			UpdateWindowInfo(state);
+			*dest = (float)state->window_rect.right;
+			break;
+		case ParamOverrideType::WINDOW_HEIGHT:
+			UpdateWindowInfo(state);
+			*dest = (float)state->window_rect.bottom;
+			break;
 		case ParamOverrideType::TEXTURE:
-			*dest = ProcessParamTextureFilter(mHackerContext,
-					mOrigContext, this);
+			*dest = process_texture_filter(state);
 			break;
 		case ParamOverrideType::VERTEX_COUNT:
 			if (state->call_info)
@@ -1149,6 +1476,24 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 			UpdateCursorInfo(state);
 			*dest = (float)state->cursor_info.ptScreenPos.y;
 			break;
+		case ParamOverrideType::CURSOR_WINDOW_X:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_window_coords.x;
+			break;
+		case ParamOverrideType::CURSOR_WINDOW_Y:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_window_coords.y;
+			break;
+		case ParamOverrideType::CURSOR_X:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			*dest = (float)state->cursor_window_coords.x / (float)state->window_rect.right;
+			break;
+		case ParamOverrideType::CURSOR_Y:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			*dest = (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
+			break;
 		case ParamOverrideType::CURSOR_HOTSPOT_X:
 			UpdateCursorInfoEx(state);
 			*dest = (float)state->cursor_info_ex.xHotspot;
@@ -1161,7 +1506,7 @@ void ParamOverride::run(HackerDevice *mHackerDevice, HackerContext *mHackerConte
 			return;
 	}
 
-	mHackerContext->FrameAnalysisLog("3DMigoto %S (%f)\n", ini_line.c_str(), *dest);
+	state->mHackerContext->FrameAnalysisLog("3DMigoto   ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
 }
@@ -1187,17 +1532,11 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		goto success;
 	}
 
-	// Try parsing value as "<shader type>s-t<testure slot>" for texture filtering
-	ret = swscanf_s(val->c_str(), L"%lcs-t%u%n", &param->shader_type, 1, &param->texture_slot, &len1);
-	if (ret == 2 && len1 == val->length() &&
-			param->texture_slot < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		switch(param->shader_type) {
-			case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-				param->type = ParamOverrideType::TEXTURE;
-				goto success;
-			default:
-				goto bail;
-		}
+	// Try parsing value as a resource target for texture filtering
+	ret = param->texture_filter_target.ParseTarget(val->c_str(), true);
+	if (ret) {
+		param->type = ParamOverrideType::TEXTURE;
+		goto success;
 	}
 
 	// Check special keywords
@@ -1338,7 +1677,7 @@ static ResourceType* GetResourceFromPool(
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
 		ResourcePool *resource_pool,
-		ID3D11Device *device,
+		CommandListState *state,
 		DescType *desc)
 {
 	ResourceType *resource = NULL;
@@ -1364,7 +1703,7 @@ static ResourceType* GetResourceFromPool(
 	} catch (std::out_of_range) {
 		LogInfo("Creating cached resource %S\n", ini_line->c_str());
 
-		hr = (device->*CreateResource)(desc, NULL, &resource);
+		hr = (state->mOrigDevice->*CreateResource)(desc, NULL, &resource);
 		if (FAILED(hr)) {
 			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
 			LogResourceDesc(desc);
@@ -1927,7 +2266,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		type = ResourceCopyTargetType::SWAP_CHAIN;
 		return true;
 	}
-	
+
 	if (is_source && !wcscmp(target, L"f_bb")) {
 		type = ResourceCopyTargetType::FAKE_SWAP_CHAIN;
 		return true;
@@ -2037,16 +2376,16 @@ bail:
 }
 
 ID3D11Resource *ResourceCopyTarget::GetResource(
-		HackerDevice *mHackerDevice,
-		ID3D11Device *mOrigDevice,
-		ID3D11DeviceContext *mOrigContext,
+		CommandListState *state,
 		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
 		UINT *stride,        // Used by vertex buffers
 		UINT *offset,        // Used by vertex & index buffers
 		DXGI_FORMAT *format, // Used by index buffers
-		UINT *buf_size,      // Used when creating a view of the buffer
-		CommandListState *state)
+		UINT *buf_size)      // Used when creating a view of the buffer
 {
+	HackerDevice *mHackerDevice = state->mHackerDevice;
+	ID3D11Device *mOrigDevice = state->mOrigDevice;
+	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
 	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
@@ -2137,7 +2476,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// as if it's too small it will disable the region copy later.
 		// TODO: Add a keyword to ignore offsets in case we want the
 		// whole buffer regardless
-		if (state->call_info)
+		if (state->call_info && stride && offset)
 			*offset += state->call_info->FirstVertex * *stride;
 		return buf;
 
@@ -2145,7 +2484,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// TODO: Similar comment as vertex buffers above, provide a
 		// means for a shader to get format + offset.
 		mOrigContext->IAGetIndexBuffer(&buf, format, offset);
-		*stride = dxgi_format_size(*format);
+		if (stride && format)
+			*stride = dxgi_format_size(*format);
 
 		// To simplify things we just copy the part of the buffer
 		// referred to by this call, so adjust the offset with the
@@ -2153,7 +2493,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// as if it's too small it will disable the region copy later.
 		// TODO: Add a keyword to ignore offsets in case we want the
 		// whole buffer regardless
-		if (state->call_info)
+		if (state->call_info && stride && offset)
 			*offset += state->call_info->FirstIndex * *stride;
 		return buf;
 
@@ -2240,10 +2580,14 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
 		custom_resource->Substantiate(mOrigDevice, mHackerDevice->mStereoHandle);
 
-		*stride = custom_resource->stride;
-		*offset = custom_resource->offset;
-		*format = custom_resource->format;
-		*buf_size = custom_resource->buf_size;
+		if (stride)
+			*stride = custom_resource->stride;
+		if (offset)
+			*offset = custom_resource->offset;
+		if (format)
+			*format = custom_resource->format;
+		if (buf_size)
+			*buf_size = custom_resource->buf_size;
 
 		if (custom_resource->is_null) {
 			// Optimisation to allow the resource to be set to null
@@ -2277,7 +2621,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return mHackerDevice->mIniTexture;
 
 	case ResourceCopyTargetType::CURSOR_MASK:
-		UpdateCursorResources(state, mOrigDevice);
+		UpdateCursorResources(state);
 		if (state->cursor_mask_view)
 			state->cursor_mask_view->AddRef();
 		*view = state->cursor_mask_view;
@@ -2286,7 +2630,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->cursor_mask_tex;
 
 	case ResourceCopyTargetType::CURSOR_COLOR:
-		UpdateCursorResources(state, mOrigDevice);
+		UpdateCursorResources(state);
 		if (state->cursor_color_view)
 			state->cursor_color_view->AddRef();
 		*view = state->cursor_color_view;
@@ -2297,7 +2641,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
-	
+
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
 		mHackerDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
@@ -2307,7 +2651,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 }
 
 void ResourceCopyTarget::SetResource(
-		ID3D11DeviceContext *mOrigContext,
+		CommandListState *state,
 		ID3D11Resource *res,
 		ID3D11View *view,
 		UINT stride,
@@ -2315,6 +2659,7 @@ void ResourceCopyTarget::SetResource(
 		DXGI_FORMAT format,
 		UINT buf_size)
 {
+	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
 	ID3D11Buffer *buf = NULL;
 	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
 	ID3D11ShaderResourceView *resource_view = NULL;
@@ -2548,6 +2893,44 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
 }
 
+TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state, bool *resource_found)
+{
+	TextureOverrideMap::iterator i;
+	TextureOverride *ret = NULL;
+	ID3D11Resource *resource = NULL;
+	ID3D11View *view = NULL;
+	uint32_t hash = 0;
+
+	resource = GetResource(state, &view, NULL, NULL, NULL, NULL);
+
+	if (resource_found)
+		*resource_found = !!resource;
+
+	if (!resource)
+		return NULL;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(resource);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	if (!hash)
+		goto out_release_resource;
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto   found texture hash = %08llx\n", hash);
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		goto out_release_resource;
+
+	ret = &i->second;
+
+out_release_resource:
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
+	return ret;
+}
+
 static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
 		UINT offset, DXGI_FORMAT format, D3D11_BIND_FLAG bind_flags)
 {
@@ -2589,7 +2972,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		D3D11_BIND_FLAG bind_flags,
-		ID3D11Device *device,
+		CommandListState *state,
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
@@ -2616,6 +2999,8 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 
 		// Constant buffers cannot be structured, so clear that flag:
 		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		// XXX: Should we clear StructureByteStride? Seems to work ok
+		// without clearing that.
 
 		// If the size of the new resource doesn't match the old or
 		// there is an offset we will have to perform a region copy
@@ -2661,7 +3046,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		dst->custom_resource->OverrideBufferDesc(&new_desc);
 
 	return GetResourceFromPool<ID3D11Buffer, D3D11_BUFFER_DESC, &ID3D11Device::CreateBuffer>
-		(ini_line, src_resource, dst_resource, resource_pool, device, &new_desc);
+		(ini_line, src_resource, dst_resource, resource_pool, state, &new_desc);
 }
 
 static DXGI_FORMAT MakeTypeless(DXGI_FORMAT fmt)
@@ -2875,7 +3260,7 @@ static ResourceType* RecreateCompatibleTexture(
 		ResourceType *dst_resource,
 		ResourcePool *resource_pool,
 		D3D11_BIND_FLAG bind_flags,
-		ID3D11Device *device,
+		CommandListState *state,
 		StereoHandle mStereoHandle,
 		ResourceCopyOptions options)
 {
@@ -2913,7 +3298,7 @@ static ResourceType* RecreateCompatibleTexture(
 		dst->custom_resource->OverrideTexDesc(&new_desc);
 
 	return GetResourceFromPool<ResourceType, DescType, CreateTexture>
-		(ini_line, src_resource, dst_resource, resource_pool, device, &new_desc);
+		(ini_line, src_resource, dst_resource, resource_pool, state, &new_desc);
 }
 
 static void RecreateCompatibleResource(
@@ -2924,7 +3309,7 @@ static void RecreateCompatibleResource(
 		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		ID3D11View **dst_view,
-		ID3D11Device *device,
+		CommandListState *state,
 		StereoHandle mStereoHandle,
 		ResourceCopyOptions options,
 		UINT stride,
@@ -2981,22 +3366,22 @@ static void RecreateCompatibleResource(
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource,
-				resource_pool, src_view, bind_flags, device, stride, offset, format, buf_dst_size);
+				resource_pool, src_view, bind_flags, state, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
 				(ini_line, dst, (ID3D11Texture1D*)src_resource, (ID3D11Texture1D*)*dst_resource, resource_pool,
-				 bind_flags, device, mStereoHandle, options);
+				 bind_flags, state, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			res = RecreateCompatibleTexture<ID3D11Texture2D, D3D11_TEXTURE2D_DESC, &ID3D11Device::CreateTexture2D>
 				(ini_line, dst, (ID3D11Texture2D*)src_resource, (ID3D11Texture2D*)*dst_resource, resource_pool,
-				 bind_flags, device, mStereoHandle, options);
+				 bind_flags, state, mStereoHandle, options);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			res = RecreateCompatibleTexture<ID3D11Texture3D, D3D11_TEXTURE3D_DESC, &ID3D11Device::CreateTexture3D>
 				(ini_line, dst, (ID3D11Texture3D*)src_resource, (ID3D11Texture3D*)*dst_resource, resource_pool,
-				 bind_flags, device, mStereoHandle, options);
+				 bind_flags, state, mStereoHandle, options);
 			break;
 	}
 
@@ -3038,8 +3423,13 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// knocked out the offset for us. We could alternatively do it
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
-	desc->Buffer.FirstElement = offset / stride;
-	desc->Buffer.NumElements = (buf_src_size - offset) / stride;
+	if (stride) {
+		desc->Buffer.FirstElement = offset / stride;
+		desc->Buffer.NumElements = (buf_src_size - offset) / stride;
+	} else {
+		desc->Buffer.FirstElement = 0;
+		desc->Buffer.NumElements = 1;
+	}
 }
 
 static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(
@@ -3335,7 +3725,7 @@ template <typename ViewType,
 	>
 static ID3D11View* _CreateCompatibleView(
 		ID3D11Resource *resource,
-		ID3D11Device *device,
+		CommandListState *state,
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
@@ -3401,7 +3791,7 @@ static ID3D11View* _CreateCompatibleView(
 			break;
 	}
 
-	hr = (device->*CreateView)(resource, pDesc, &view);
+	hr = (state->mOrigDevice->*CreateView)(resource, pDesc, &view);
 	if (FAILED(hr)) {
 		LogInfo("Resource copy CreateCompatibleView failed: %x\n", hr);
 		if (pDesc)
@@ -3419,7 +3809,7 @@ static ID3D11View* _CreateCompatibleView(
 static ID3D11View* CreateCompatibleView(
 		ResourceCopyTarget *dst,
 		ID3D11Resource *resource,
-		ID3D11Device *device,
+		CommandListState *state,
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
@@ -3430,27 +3820,27 @@ static ID3D11View* CreateCompatibleView(
 			return _CreateCompatibleView<ID3D11ShaderResourceView,
 			       D3D11_SHADER_RESOURCE_VIEW_DESC,
 			       &ID3D11Device::CreateShaderResourceView>
-				       (resource, device, stride, offset, format, buf_src_size);
+				       (resource, state, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::RENDER_TARGET:
 			return _CreateCompatibleView<ID3D11RenderTargetView,
 			       D3D11_RENDER_TARGET_VIEW_DESC,
 			       &ID3D11Device::CreateRenderTargetView>
-				       (resource, device, stride, offset, format, buf_src_size);
+				       (resource, state, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
 			return _CreateCompatibleView<ID3D11DepthStencilView,
 			       D3D11_DEPTH_STENCIL_VIEW_DESC,
 			       &ID3D11Device::CreateDepthStencilView>
-				       (resource, device, stride, offset, format, buf_src_size);
+				       (resource, state, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 			return _CreateCompatibleView<ID3D11UnorderedAccessView,
 			       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 			       &ID3D11Device::CreateUnorderedAccessView>
-				       (resource, device, stride, offset, format, buf_src_size);
+				       (resource, state, stride, offset, format, buf_src_size);
 	}
 	return NULL;
 }
 
-static void SetViewportFromResource(ID3D11DeviceContext *mOrigContext, ID3D11Resource *resource)
+static void SetViewportFromResource(CommandListState *state, ID3D11Resource *resource)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
 	ID3D11Texture1D *tex1d;
@@ -3486,7 +3876,7 @@ static void SetViewportFromResource(ID3D11DeviceContext *mOrigContext, ID3D11Res
 			viewport.Height = (float)tex3d_desc.Height;
 	}
 
-	mOrigContext->RSSetViewports(1, &viewport);
+	state->mOrigContext->RSSetViewports(1, &viewport);
 }
 
 ResourceCopyOperation::ResourceCopyOperation() :
@@ -3505,8 +3895,7 @@ ResourceCopyOperation::~ResourceCopyOperation()
 		cached_view->Release();
 }
 
-static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext)
+static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resource, CommandListState *state)
 {
 	UINT item, level, index, support;
 	D3D11_RESOURCE_DIMENSION dst_dimension;
@@ -3525,7 +3914,7 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	dst->GetDesc(&desc);
 	fmt = EnsureNotTypeless(desc.Format);
 
-	hr = mOrigDevice->CheckFormatSupport( fmt, &support );
+	hr = state->mOrigDevice->CheckFormatSupport( fmt, &support );
 	if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
 		// TODO: Implement a fallback using a SM5 shader to resolve it
 		LogInfo("Resource copy cannot resolve MSAA format %d\n", fmt);
@@ -3535,13 +3924,12 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	for (item = 0; item < desc.ArraySize; item++) {
 		for (level = 0; level < desc.MipLevels; level++) {
 			index = D3D11CalcSubresource(level, item, max(desc.MipLevels, 1));
-			mOrigContext->ResolveSubresource(dst, index, src, index, fmt);
+			state->mOrigContext->ResolveSubresource(dst, index, src, index, fmt);
 		}
 	}
 }
 
-static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_resource,
-		StereoHandle mStereoHandle, ID3D11DeviceContext *mOrigContext)
+static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_resource, CommandListState *state)
 {
 	NvAPI_Status nvret;
 	D3D11_RESOURCE_DIMENSION src_dimension;
@@ -3567,12 +3955,21 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	// TODO: Resolve MSAA
 	// TODO: Use intermediate resource if copying from a texture with depth buffer bind flags
 
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
-	if (nvret != NVAPI_OK) {
-		LogInfo("Resource copying failed to enable reverse stereo blit\n");
-		// Fallback path: Copy 2D resource to both sides of the 2x
-		// width destination (TESTME)
-		fallback = 1;
+	// If stereo is disabled the reverse stereo blit won't work and we
+	// would end up with the destination only updated on the left, which
+	// may lead to shaders reading stale or 0 data if they read from the
+	// right hand side. Use the fallback path to copy the source to both
+	// sides of the destination so that the right side will be up to date:
+	fallback = state->mHackerDevice->mParamTextureManager.mActive ? 0 : 1;
+
+	if (!fallback) {
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			LogInfo("Resource copying failed to enable reverse stereo blit\n");
+			// Fallback path: Copy 2D resource to both sides of the 2x
+			// width destination
+			fallback = 1;
+		}
 	}
 
 	for (fallbackside = 0; fallbackside < 1 + fallback; fallbackside++) {
@@ -3591,18 +3988,19 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 				index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
 				srcBox.right = width >> level;
 				srcBox.bottom = height >> level;
-				mOrigContext->CopySubresourceRegion(dst_resource, index,
+				state->mOrigContext->CopySubresourceRegion(dst_resource, index,
 						fallbackside * srcBox.right, 0, 0,
 						src, index, &srcBox);
 			}
 		}
 	}
 
-	NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, false);
+	if (!fallback)
+		NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
 }
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
-		ID3D11DeviceContext *mOrigContext, UINT stride, UINT *offset,
+		CommandListState *state, UINT stride, UINT *offset,
 		UINT buf_src_size, UINT buf_dst_size)
 {
 	// We are copying a buffer for use in a constant buffer and the size of
@@ -3627,7 +4025,7 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	src_box.front = 0;
 	src_box.back = 1;
 
-	mOrigContext->CopySubresourceRegion(dst_resource, 0, 0, 0, 0, src_resource, 0, &src_box);
+	state->mOrigContext->CopySubresourceRegion(dst_resource, 0, 0, 0, 0, src_resource, 0, &src_box);
 
 	// We have effectively removed the offset during the region copy, so
 	// set it to 0 to make sure nothing will try to use it again elsewhere:
@@ -3748,8 +4146,17 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 		}
 	}
 
-	if (!*stride)
+	if (!*stride) {
+		// This will catch index buffers, which are not structured and
+		// don't have a view, but they do have a format we can use:
 		*stride = dxgi_format_size(*format);
+
+		// This will catch constant buffers, which are not structured
+		// and don't have either a view or format, so set the stride to
+		// the size of the whole buffer:
+		if (!*stride)
+			*stride = *buf_size;
+	}
 }
 
 static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
@@ -3779,10 +4186,11 @@ static ResourceCopyTargetType EquivTarget(ResourceCopyTargetType type)
 	return type;
 }
 
-void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHackerContext,
-		ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext,
-		CommandListState *state)
+void ResourceCopyOperation::run(CommandListState *state)
 {
+	HackerDevice *mHackerDevice = state->mHackerDevice;
+	HackerContext *mHackerContext = state->mHackerContext;
+	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
@@ -3798,11 +4206,11 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
-		dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+		dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 		return;
 	}
 
-	src_resource = src.GetResource(mHackerDevice, mOrigDevice, mOrigContext, &src_view, &stride, &offset, &format, &buf_src_size, state);
+	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size);
 	if (!src_resource) {
 		LogDebug("Resource copy: Source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -3811,7 +4219,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			// this will make errors more obvious if we copy
 			// something that doesn't exist. This behaviour can be
 			// overridden with the unless_null keyword.
-			dst.SetResource(mOrigContext, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+			dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 		}
 		return;
 	}
@@ -3831,7 +4239,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 				dst.custom_resource->frame_no = G->frame_no;
 				dst.custom_resource->copies_this_frame = 1;
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
-				mHackerContext->FrameAnalysisLog("max_copies_per_frame exceeded\n");
+				mHackerContext->FrameAnalysisLog("3DMigoto   max_copies_per_frame exceeded\n");
 				return;
 			}
 		}
@@ -3844,7 +4252,7 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	if (options & ResourceCopyOptions::COPY_MASK) {
 		RecreateCompatibleResource(&ini_line, &dst, src_resource,
 			pp_cached_resource, p_resource_pool, src_view, pp_cached_view,
-			mOrigDevice, mHackerDevice->mStereoHandle,
+			state, mHackerDevice->mStereoHandle,
 			options, stride, offset, format, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
@@ -3856,9 +4264,9 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
 			// RecreateCompatibleResource has already done the work
-			mHackerContext->FrameAnalysisLog("3DMigoto copying resource description\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
-			mHackerContext->FrameAnalysisLog("3DMigoto performing reverse stereo blit\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   performing reverse stereo blit\n");
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -3876,29 +4284,28 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 			RecreateCompatibleResource(&(ini_line + L" (intermediate)"),
 				NULL, src_resource, &stereo2mono_intermediate,
 				p_resource_pool, NULL, NULL,
-				mOrigDevice, mHackerDevice->mStereoHandle,
+				state, mHackerDevice->mStereoHandle,
 				(ResourceCopyOptions)(options | ResourceCopyOptions::STEREO),
 				stride, offset, format, NULL);
 
-			ReverseStereoBlit(stereo2mono_intermediate, src_resource,
-					mHackerDevice->mStereoHandle, mOrigContext);
+			ReverseStereoBlit(stereo2mono_intermediate, src_resource, state);
 
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
-			mHackerContext->FrameAnalysisLog("3DMigoto resolving MSAA\n");
-			ResolveMSAA(dst_resource, src_resource, mOrigDevice, mOrigContext);
+			mHackerContext->FrameAnalysisLog("3DMigoto   resolving MSAA\n");
+			ResolveMSAA(dst_resource, src_resource, state);
 		} else if (buf_dst_size) {
-			mHackerContext->FrameAnalysisLog("3DMigoto performing region copy\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   performing region copy\n");
 			SpecialCopyBufferRegion(dst_resource, src_resource,
-					mOrigContext, stride, &offset,
+					state, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
-			mHackerContext->FrameAnalysisLog("3DMigoto performing full copy\n");
+			mHackerContext->FrameAnalysisLog("3DMigoto   performing full copy\n");
 			mOrigContext->CopyResource(dst_resource, src_resource);
 		}
 	} else {
-		mHackerContext->FrameAnalysisLog("3DMigoto copying by reference\n");
+		mHackerContext->FrameAnalysisLog("3DMigoto   copying by reference\n");
 		dst_resource = src_resource;
 		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;
@@ -3919,17 +4326,17 @@ void ResourceCopyOperation::run(HackerDevice *mHackerDevice, HackerContext *mHac
 	}
 
 	if (!dst_view) {
-		dst_view = CreateCompatibleView(&dst, dst_resource, mOrigDevice,
+		dst_view = CreateCompatibleView(&dst, dst_resource, state,
 				stride, offset, format, buf_src_size);
 		// Not checking for NULL return as view's are not applicable to
 		// all types. Legitimate failures are logged.
 		*pp_cached_view = dst_view;
 	}
 
-	dst.SetResource(mOrigContext, dst_resource, dst_view, stride, offset, format, buf_dst_size);
+	dst.SetResource(state, dst_resource, dst_view, stride, offset, format, buf_dst_size);
 
 	if (options & ResourceCopyOptions::SET_VIEWPORT)
-		SetViewportFromResource(mOrigContext, dst_resource);
+		SetViewportFromResource(state, dst_resource);
 
 out_release:
 
