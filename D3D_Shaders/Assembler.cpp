@@ -678,7 +678,13 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 		v.insert(v.begin(), op);
 		return v;
 	}
-	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b' || s[0] == 'c' && s[1] == 'b' || s[0] == 'x' || s[0] == 'o' || s[0] == 'v') {
+
+	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b'
+	 || s[0] == 'c' && s[1] == 'b'
+	 || s[0] == 'C' && s[1] == 'B' // Compatibility with d3dcompiler_47 disassembly -DarkStarSword
+	 || s[0] == 'x'
+	 || s[0] == 'o'
+	 || s[0] == 'v') {
 		tOp->num_indices = 2;
 		if (s[0] == 'x') {
 			tOp->file = 3;
