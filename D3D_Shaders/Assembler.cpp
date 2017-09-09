@@ -1015,14 +1015,14 @@ static void assembleSystemValue(string *sv, vector<DWORD> *os)
 	// otherwise we might generate a corrupt shader and crash DirectX.
 }
 
-static int interpolationMode(vector<string> &w)
+static int interpolationMode(vector<string> &w, int def)
 {
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/dn280473(v=vs.85).aspx
 
 	if (w[1] == "constant")
 		return 1;
 	if (w[1] != "linear")
-		return 0; // FIXME: Fail gracefully
+		return def;
 
 	if (w[2] == "noperspective") {
 		if (w[3] == "sample")
@@ -1581,7 +1581,7 @@ static vector<DWORD> assembleIns(string s) {
 		ins->opcode = 0x62;
 		// Switched to use common interpolation mode parsing to catch
 		// more variants -DarkStarSword
-		ins->_11_23 = interpolationMode(w);
+		ins->_11_23 = interpolationMode(w, 0); // FIXME: Default?
 		os = assembleOp(w[w.size() - 1], true);
 		ins->length = 1 + os.size();
 		v.push_back(op);
@@ -1595,7 +1595,7 @@ static vector<DWORD> assembleIns(string s) {
 		//   -DarkStarSword
 		vector<DWORD> os = assembleOp(w[w.size() - 2], true);
 		ins->opcode = 0x63;
-		ins->_11_23 = interpolationMode(w);
+		ins->_11_23 = interpolationMode(w, 1);
 		if (w.size() > 2)
 			assembleSystemValue(&w[w.size() - 1], &os);
 		ins->length = 1 + os.size();
@@ -1608,7 +1608,7 @@ static vector<DWORD> assembleIns(string s) {
 		// missing linear noperspective sample case in WATCH_DOGS2) and
 		// system value parsing (fixes missing viewport_array_index)
 		//   -DarkStarSword
-		ins->_11_23 = interpolationMode(w);
+		ins->_11_23 = interpolationMode(w, 0); // FIXME: Default?
 		os = assembleOp(w[w.size() - 2], true);
 		assembleSystemValue(&w[w.size() - 1], &os);
 		ins->length = 1 + os.size();
