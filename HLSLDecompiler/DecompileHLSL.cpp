@@ -3027,7 +3027,9 @@ public:
 			}
 			else if (!strcmp(statement, "dcl_constantbuffer"))
 			{
-				char *strPos = strstr(op1, "cb");
+				char *strPos46 = strstr(op1, "cb"); // Match d3dcompiler_46 disassembly
+				char *strPos47 = strstr(op1, "CB"); // Match d3dcompiler_47 disassembly
+				char *strPos = strPos46 ? strPos46 : strPos47;
 				if (strPos)
 				{
 					int bufIndex = 0;
