@@ -30,45 +30,49 @@ static DWORD strToDWORD(string s) {
 static string convertF(DWORD original) {
 	char buf[80];
 	char scientific[80];
+	char *scientific_exp = NULL;
 	int exp;
 
 	float fOriginal = reinterpret_cast<float &>(original);
+
+	// This printf produces different results depending on the toolchain
+	// and/or SDK we are using. e.g. the value 0x3CAAAAAB will produce:
+	// VS2013 / Win  8.0 SDK: 2.083333395E-002
+	// VS2015 / Win 10.0 SDK: 2.083333395E-02
+	// So, we can't hardcode where the exponent is - we have to find it.
 	sprintf_s(scientific, 80, "%.9E", fOriginal);
-	size_t len = strlen(scientific);
-	exp = atoi(scientific + len - 3);
-	if (scientific[len - 4] == '-') {
-		switch (exp) {
-		case 1:
-			sprintf_s(buf, 80, "%.9f", fOriginal);
-			break;
-		case 2:
-			sprintf_s(buf, 80, "%.10f", fOriginal);
-			break;
-		case 3:
-			sprintf_s(buf, 80, "%.11f", fOriginal);
-			break;
-		case 4:
-			sprintf_s(buf, 80, "%.12f", fOriginal);
-			break;
-		case 5:
-			sprintf_s(buf, 80, "%.13f", fOriginal);
-			break;
-		case 6:
-			sprintf_s(buf, 80, "%.14f", fOriginal);
-			break;
-		default:
+
+	scientific_exp = strstr(scientific, "E");
+	exp = atoi(scientific_exp + 1);
+
+	switch (exp) {
+	case 0:
+		sprintf_s(buf, 80, "%.8f", fOriginal);
+		break;
+	case -1:
+		sprintf_s(buf, 80, "%.9f", fOriginal);
+		break;
+	case -2:
+		sprintf_s(buf, 80, "%.10f", fOriginal);
+		break;
+	case -3:
+		sprintf_s(buf, 80, "%.11f", fOriginal);
+		break;
+	case -4:
+		sprintf_s(buf, 80, "%.12f", fOriginal);
+		break;
+	case -5:
+		sprintf_s(buf, 80, "%.13f", fOriginal);
+		break;
+	case -6:
+		sprintf_s(buf, 80, "%.14f", fOriginal);
+		break;
+	default:
+		if (exp < 0)
 			sprintf_s(buf, 80, "%.9E", fOriginal);
-			break;
-		}
-	} else {
-		switch (exp) {
-		case 0:
+		else
 			sprintf_s(buf, 80, "%.8f", fOriginal);
-			break;
-		default:
-			sprintf_s(buf, 80, "%.8f", fOriginal);
-			break;
-		}
+		break;
 	}
 	string sLiteral(buf);
 	DWORD newDWORD = strToDWORD(sLiteral);
