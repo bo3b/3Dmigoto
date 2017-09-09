@@ -46,3 +46,4 @@ string convertF(DWORD original);
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment);
 vector<byte> assembler(vector<byte> asmFile, vector<byte> buffer);
 void writeLUT();
+HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, string *bytecode);
