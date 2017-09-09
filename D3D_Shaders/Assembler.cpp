@@ -29,13 +29,14 @@ static DWORD strToDWORD(string s) {
 
 static string convertF(DWORD original) {
 	char buf[80];
-	char buf2[80];
+	char scientific[80];
+	int exp;
 
 	float fOriginal = reinterpret_cast<float &>(original);
-	sprintf_s(buf2, 80, "%.9E", fOriginal);
-	size_t len = strlen(buf2);
-	if (buf2[len - 4] == '-') {
-		int exp = atoi(buf2 + len - 3);
+	sprintf_s(scientific, 80, "%.9E", fOriginal);
+	size_t len = strlen(scientific);
+	exp = atoi(scientific + len - 3);
+	if (scientific[len - 4] == '-') {
 		switch (exp) {
 		case 1:
 			sprintf_s(buf, 80, "%.9f", fOriginal);
@@ -60,7 +61,6 @@ static string convertF(DWORD original) {
 			break;
 		}
 	} else {
-		int exp = atoi(buf2 + len - 3);
 		switch (exp) {
 		case 0:
 			sprintf_s(buf, 80, "%.8f", fOriginal);
@@ -78,6 +78,8 @@ static string convertF(DWORD original) {
 		if (failFile) {
 			FILE *f = failFile;
 			fprintf(f, "%s\n", sLiteral.c_str());
+			fprintf(f, "s:%s\n", scientific);
+			fprintf(f, "e:%d\n", exp);
 			fprintf(f, "o:%08X\n", original);
 			fprintf(f, "n:%08X\n", newDWORD);
 			fprintf(f, "\n");
