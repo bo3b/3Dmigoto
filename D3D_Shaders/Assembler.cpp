@@ -1587,11 +1587,17 @@ static vector<DWORD> assembleIns(string s) {
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_ps_sgv") {
-		vector<DWORD> os = assembleOp(w[1], true);
+		// Fixed for d3dcompiler_47 disassembly that includes an
+		// interpolationMode missing from d3dcompiler_46 disassembly
+		// e.g.
+		// d3dcompiler_46: dcl_input_ps_sgv v6.x, is_front_face
+		// d3dcompiler_47: dcl_input_ps_sgv constant v6.x, is_front_face
+		//   -DarkStarSword
+		vector<DWORD> os = assembleOp(w[w.size() - 2], true);
 		ins->opcode = 0x63;
-		ins->_11_23 = 1;
+		ins->_11_23 = interpolationMode(w);
 		if (w.size() > 2)
-			assembleSystemValue(&w[2], &os);
+			assembleSystemValue(&w[w.size() - 1], &os);
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
