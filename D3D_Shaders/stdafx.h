@@ -37,12 +37,7 @@ struct token_operand
 	unsigned extended : 1;
 };
 
-vector<DWORD> assembleIns(string s);
-vector<byte> readFile(string fileName);
-vector<DWORD> ComputeHash(byte const* input, DWORD size);
 vector<string> stringToLines(const char* start, size_t size);
-DWORD strToDWORD(string s);
-string convertF(DWORD original);
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment);
 vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode);
 void writeLUT();

@@ -5,7 +5,29 @@ using namespace std;
 FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
-string convertF(DWORD original) {
+static DWORD strToDWORD(string s) {
+	if (s == "-1.#IND0000")
+		return 0xFFC00000;
+	if (s == "1.#INF0000")
+		return 0x7F800000;
+	if (s == "-1.#INF0000")
+		return 0xFF800000;
+	if (s == "-1.#QNAN000")
+		return 0xFFC10000;
+	if (s.substr(0, 2) == "0x") {
+		DWORD decimalValue;
+		sscanf_s(s.c_str(), "0x%x", &decimalValue);
+		return decimalValue;
+	}
+	if (s.find('.') < s.size()) {
+		float f = (float)atof(s.c_str());
+		DWORD* pF = (DWORD*)&f;
+		return *pF;
+	}
+	return atoi(s.c_str());
+}
+
+static string convertF(DWORD original) {
 	char buf[80];
 	char buf2[80];
 
@@ -103,339 +125,7 @@ void writeLUT() {
 	fclose(f);
 }
 
-string assembleAndCompare(string s, vector<DWORD> v) {
-	string s2;
-	int numSpaces = 0;
-	while (memcmp(s.c_str(), " ", 1) == 0) {
-		s.erase(s.begin());
-		numSpaces++;
-	}
-	size_t lastLiteral = 0;
-	size_t lastEnd = 0;
-	vector<DWORD> v2 = assembleIns(s);
-	string sNew = s;
-	string s3;
-	bool valid = true;
-	if (v2.size() > 0) {
-		if (v2.size() == v.size()) {
-			for (DWORD i = 0; i < v.size(); i++) {
-				if (v[i] == 0x1835) {
-					int size = v[++i];
-					int loopSize = (size - 2) / 4;
-					lastLiteral = sNew.find("{ { ");
-					for (int j = 0; j < loopSize; j++) {
-						i++;
-						lastLiteral = sNew.find("{ ", lastLiteral + 1);
-						lastEnd = sNew.find(",", lastLiteral + 1);
-						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
-						if (v[i] != v2[i]) {
-							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "{ "
-							lastLiteral = sBegin.size();
-							sBegin.append(sLiteral);
-							sBegin.append(sNew.substr(lastEnd));
-							sNew = sBegin;
-						}
-						i++;
-						lastLiteral = sNew.find(",", lastLiteral + 1);
-						lastEnd = sNew.find(",", lastLiteral + 1);
-						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
-						if (v[i] != v2[i]) {
-							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-							if (sNew[lastLiteral + 1] == ' ')
-								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
-							lastLiteral = sBegin.size();
-							sBegin.append(sLiteral);
-							sBegin.append(sNew.substr(lastEnd));
-							sNew = sBegin;
-						}
-						i++;
-						lastLiteral = sNew.find(",", lastLiteral + 1);
-						lastEnd = sNew.find(",", lastLiteral + 1);
-						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
-						if (v[i] != v2[i]) {
-							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-							if (sNew[lastLiteral + 1] == ' ')
-								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
-							lastLiteral = sBegin.size();
-							sBegin.append(sLiteral);
-							sBegin.append(sNew.substr(lastEnd));
-							sNew = sBegin;
-						}
-						i++;
-						lastLiteral = sNew.find(",", lastLiteral + 1);
-						lastEnd = sNew.find("}", lastLiteral + 1);
-						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
-						if (v[i] != v2[i]) {
-							string sLiteral = convertF(v[i]);
-							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-							if (sNew[lastLiteral + 1] == ' ')
-								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
-							lastLiteral = sBegin.size();
-							sBegin.append(sLiteral);
-							sBegin.append(sNew.substr(lastEnd));
-							sNew = sBegin;
-						}
-					}
-					i++;
-				} else if (v[i] == 0x4001) {
-					i++;
-					lastLiteral = sNew.find("l(", lastLiteral + 1);
-					lastEnd = sNew.find(")", lastLiteral);
-					if (v[i] != v2[i]) {
-						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "l("
-						lastLiteral = sBegin.size();
-						sBegin.append(sLiteral);
-						sBegin.append(sNew.substr(lastEnd));
-						sNew = sBegin;
-					}
-				} else if (v[i] == 0x4002) {
-					i++;
-					lastLiteral = sNew.find("l(", lastLiteral);
-					lastEnd = sNew.find(",", lastLiteral);
-					if (v[i] != v2[i]) {
-						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "l("
-						lastLiteral = sBegin.size();
-						sBegin.append(sLiteral);
-						sBegin.append(sNew.substr(lastEnd));
-						sNew = sBegin;
-					}
-					i++;
-					lastLiteral = sNew.find(",", lastLiteral + 1);
-					lastEnd = sNew.find(",", lastLiteral + 1);
-					if (v[i] != v2[i]) {
-						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-						if (sNew[lastLiteral + 1] == ' ')
-							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
-						lastLiteral = sBegin.size();
-						sBegin.append(sLiteral);
-						sBegin.append(sNew.substr(lastEnd));
-						sNew = sBegin;
-					}
-					i++;
-					lastLiteral = sNew.find(",", lastLiteral + 1);
-					lastEnd = sNew.find(",", lastLiteral + 1);
-					if (v[i] != v2[i]) {
-						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-						if (sNew[lastLiteral + 1] == ' ')
-							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
-						lastLiteral = sBegin.size();
-						sBegin.append(sLiteral);
-						sBegin.append(sNew.substr(lastEnd));
-						sNew = sBegin;
-					}
-					i++;
-					lastLiteral = sNew.find(",", lastLiteral + 1);
-					lastEnd = sNew.find(")", lastLiteral + 1);
-					if (v[i] != v2[i]) {
-						string sLiteral = convertF(v[i]);
-						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-						if (sNew[lastLiteral + 1] == ' ')
-							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
-						sBegin.append(sLiteral);
-						lastLiteral = sBegin.size();
-						sBegin.append(sNew.substr(lastEnd));
-						sNew = sBegin;
-					}
-				} else if (v[i] != v2[i])
-					valid = false;
-			}
-		} else {
-			valid = false;
-		}
-		if (valid) {
-			s2 = "!success ";
-			s2.append(s);
-			// codeBin[s2] = v;
-		} else {
-			if (v.size() == (v2.size() + 1)) {
-				valid = true;
-				int j = 0;
-				for (size_t i = 1; i < v2.size() && valid; i++) {
-					if (v[i + j] != v2[i]) {
-						if (v[i + 1] == 0x1 && (v[i] & 0x7FFFFFFF) == v2[i]) {
-							j = 1;
-						} else {
-							valid = false;
-						}
-					}
-				}
-			}
-			if (valid) {
-				s2 = "!success ";
-				s2.append(s);
-				// codeBin[s2] = v;
-			} else {
-				s2 = s;
-				s2.append(" orig");
-				codeBin[s2] = v;
-				s2 = s;
-				s2.append(" fail");
-				codeBin[s2] = v2;
-			}
-		}
-	} else {
-		if (s != "undecipherable custom data") {
-			s2 = "!missing ";
-			s2.append(s);
-			codeBin[s2] = v;
-		}
-	}
-	string ret = "";
-	for (int i = 0; i < numSpaces; i++) {
-		ret.append(" ");
-	}
-	ret.append(sNew);
-	return ret;
-}
-
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment) {
-	byte fourcc[4];
-	DWORD fHash[4];
-	DWORD one;
-	DWORD fSize;
-	DWORD numChunks;
-	vector<DWORD> chunkOffsets;
-
-	// TODO: Add robust error checking here (buffer is at least as large as
-	// the header, etc). I've added a check for numChunks < 1 as that
-	// would lead to codeByteStart being used uninitialised
-	byte* pPosition = buffer->data();
-	std::memcpy(fourcc, pPosition, 4);
-	pPosition += 4;
-	std::memcpy(fHash, pPosition, 16);
-	pPosition += 16;
-	one = *(DWORD*)pPosition;
-	pPosition += 4;
-	fSize = *(DWORD*)pPosition;
-	pPosition += 4;
-	numChunks = *(DWORD*)pPosition;
-	if (numChunks < 1)
-		return S_FALSE;
-	pPosition += 4;
-	chunkOffsets.resize(numChunks);
-	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
-
-	char* asmBuffer;
-	size_t asmSize;
-	vector<byte> asmBuf;
-	ID3DBlob* pDissassembly = NULL;
-	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
-	if (FAILED(ok))
-		return ok;
-
-	asmBuffer = (char*)pDissassembly->GetBufferPointer();
-	asmSize = pDissassembly->GetBufferSize();
-
-	byte* codeByteStart;
-	int codeChunk = 0;
-	for (DWORD i = 1; i <= numChunks; i++) {
-		codeChunk = numChunks - i;
-		codeByteStart = buffer->data() + chunkOffsets[numChunks - i];
-		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
-			break;
-	}
-	// FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-	vector<string> lines = stringToLines(asmBuffer, asmSize);
-	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
-	bool codeStarted = false;
-	bool multiLine = false;
-	int multiLines = 0;
-	string s2;
-	vector<DWORD> o;
-	for (DWORD i = 0; i < lines.size(); i++) {
-		string s = lines[i];
-		if (s.find("#line") != string::npos)
-			break;
-		if (memcmp(s.c_str(), "//", 2) != 0) {
-			vector<DWORD> v;
-			if (!codeStarted) {
-				if (s.size() > 0 && s[0] != ' ') {
-					codeStarted = true;
-					v.push_back(*codeStart);
-					codeStart += 2;
-					string sNew = assembleAndCompare(s, v);
-					lines[i] = sNew;
-				}
-			} else if (s.find("{ {") < s.size()) {
-				s2 = s;
-				multiLine = true;
-				multiLines = 1;
-			} else if (s.find("} }") < s.size()) {
-				s2.append("\n");
-				s2.append(s);
-				s = s2;
-				multiLine = false;
-				multiLines++;
-				shader_ins* ins = (shader_ins*)codeStart;
-				v.push_back(*codeStart);
-				codeStart++;
-				DWORD length = *codeStart;
-				v.push_back(*codeStart);
-				codeStart++;
-				for (DWORD j = 2; j < length; j++) {
-					v.push_back(*codeStart);
-					codeStart++;
-				}
-				string sNew = assembleAndCompare(s, v);
-				auto sLines = stringToLines(sNew.c_str(), sNew.size());
-				size_t startLine = i - sLines.size() + 1;
-				for (size_t j = 0; j < sLines.size(); j++) {
-					lines[startLine + j] = sLines[j];
-				}
-				//lines[i] = sNew;
-			} else if (multiLine) {
-				s2.append("\n");
-				s2.append(s);
-				multiLines++;
-			} else if (s.size() > 0) {
-				shader_ins* ins = (shader_ins*)codeStart;
-				v.push_back(*codeStart);
-				codeStart++;
-
-				for (DWORD j = 1; j < ins->length; j++) {
-					v.push_back(*codeStart);
-					codeStart++;
-				}
-				string sNew;
-				if (s == "undecipherable custom data") {
-					string prev = lines[i - 1];
-					if (prev == "ret ")
-						v.clear();
-					if (v.size() == 1) {
-						ins = (shader_ins*)++codeStart;
-						while (ins->length == 0) {
-							ins = (shader_ins*)++codeStart;
-						}
-					}
-					sNew = "";
-				} else {
-					sNew = assembleAndCompare(s, v);
-				}
-				lines[i] = sNew;
-			}
-		}
-	}
-	ret->clear();
-	for (size_t i = 0; i < lines.size(); i++) {
-		for (size_t j = 0; j < lines[i].size(); j++) {
-			ret->insert(ret->end(), lines[i][j]);
-		}
-		ret->insert(ret->end(), '\n');
-	}
-
-	pDissassembly->Release();
-
-	return S_OK;
-}
-
-void handleSwizzle(string s, token_operand* tOp, bool special = false) {
+static void handleSwizzle(string s, token_operand* tOp, bool special = false) {
 	if (special == true){
 		// Mask
 		tOp->mode = 0; // Mask
@@ -505,30 +195,7 @@ void handleSwizzle(string s, token_operand* tOp, bool special = false) {
 	}
 }
 
-DWORD strToDWORD(string s) {
-	if (s == "-1.#IND0000")
-		return 0xFFC00000;
-	if (s == "1.#INF0000")
-		return 0x7F800000;
-	if (s == "-1.#INF0000")
-		return 0xFF800000;
-	if (s == "-1.#QNAN000")
-		return 0xFFC10000;
-	if (s.substr(0, 2) == "0x") {
-		DWORD decimalValue;
-		sscanf_s(s.c_str(), "0x%x", &decimalValue);
-		return decimalValue;
-		
-	}
-	if (s.find('.') < s.size()) {
-		float f = (float)atof(s.c_str());
-		DWORD* pF = (DWORD*)&f;
-		return *pF;
-	}
-	return atoi(s.c_str());
-}
-
-vector<DWORD> assembleOp(string s, bool special = false) {
+static vector<DWORD> assembleOp(string s, bool special = false) {
 	vector<DWORD> v;
 	DWORD op = 0;
 	DWORD ext = 0;
@@ -892,7 +559,7 @@ vector<DWORD> assembleOp(string s, bool special = false) {
 	return v;
 }
 
-vector<string> strToWords(string s) {
+static vector<string> strToWords(string s) {
 	vector<string> words;
 	string::size_type start = 0;
 	while (s[start] == ' ') start++;
@@ -938,7 +605,7 @@ vector<string> strToWords(string s) {
 	return words;
 }
 
-DWORD parseAoffimmi(DWORD start, string o) {
+static DWORD parseAoffimmi(DWORD start, string o) {
 	string nums = o.substr(1, o.size() - 2);
 	int n1 = atoi(nums.substr(0, nums.find(',')).c_str());
 	nums = nums.substr(nums.find(',') + 1);
@@ -951,11 +618,11 @@ DWORD parseAoffimmi(DWORD start, string o) {
 	return aoffimmi;
 }
 
-unordered_map<string, vector<DWORD>> hackMap = {
+static unordered_map<string, vector<DWORD>> hackMap = {
 	{ "dcl_output oMask", { 0x02000065, 0x0000F000 } },
 };
 
-unordered_map<string, vector<int>> ldMap = {
+static unordered_map<string, vector<int>> ldMap = {
 	// Hint: Compiling for shader model 5 always uses _indexable variants,
 	//       so use shader model 4 to test vanilla and _aoffimmi (address
 	//       offset immediate) variants. resource_types.hlsl has test cases
@@ -1028,7 +695,7 @@ unordered_map<string, vector<int>> ldMap = {
 	{ "ld_structured_indexable",        { 4, 0xa7, 2 } },
 };
 
-unordered_map<string, vector<int>> insMap = {
+static unordered_map<string, vector<int>> insMap = {
 	{ "add",                       { 3, 0x00    } },
 	{ "and",                       { 3, 0x01    } },
 	{ "break",                     { 0, 0x02    } },
@@ -1261,7 +928,7 @@ unordered_map<string, vector<int>> insMap = {
 	{ "utod",                      { 2, 0xd9    } }, // Added and verified -DarkStarSword
 };
 
-void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
+static void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
 {
 	// The resource declarations all use the same format strings and
 	// encoding, so do this once, consistently, and handle all confirmed
@@ -1285,7 +952,7 @@ void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
 	// nothing here will cause a hang!
 }
 
-void assembleSystemValue(string *sv, vector<DWORD> *os)
+static void assembleSystemValue(string *sv, vector<DWORD> *os)
 {
 	// All possible system values used in any of the dcl_*_s?v
 	// declarations (s?v = system value). Not all system values make sense
@@ -1342,7 +1009,7 @@ void assembleSystemValue(string *sv, vector<DWORD> *os)
 	// otherwise we might generate a corrupt shader and crash DirectX.
 }
 
-int interpolationMode(vector<string> &w)
+static int interpolationMode(vector<string> &w)
 {
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/dn280473(v=vs.85).aspx
 
@@ -1366,7 +1033,7 @@ int interpolationMode(vector<string> &w)
 	return 2;
 }
 
-unsigned parseSyncFlags(string *w)
+static unsigned parseSyncFlags(string *w)
 {
 	unsigned flags = 0;
 	int pos = 4;
@@ -1427,7 +1094,7 @@ unsigned parseSyncFlags(string *w)
 
 }
 
-vector<DWORD> assembleIns(string s) {
+static vector<DWORD> assembleIns(string s) {
 	unsigned msaa_samples = 0;
 
 	if (hackMap.find(s) != hackMap.end()) {
@@ -2101,19 +1768,196 @@ vector<DWORD> assembleIns(string s) {
 	return v;
 }
 
-vector<byte> readFile(string fileName) {
-	vector<byte> buffer;
-	FILE* f;
-	fopen_s(&f, fileName.c_str(), "rb");
-	if (f != NULL) {
-		fseek(f, 0L, SEEK_END);
-		int fileSize = ftell(f);
-		buffer.resize(fileSize);
-		fseek(f, 0L, SEEK_SET);
-		size_t numRead = fread(buffer.data(), 1, buffer.size(), f);
-		fclose(f);
+static string assembleAndCompare(string s, vector<DWORD> v) {
+	string s2;
+	int numSpaces = 0;
+	while (memcmp(s.c_str(), " ", 1) == 0) {
+		s.erase(s.begin());
+		numSpaces++;
 	}
-	return buffer;
+	size_t lastLiteral = 0;
+	size_t lastEnd = 0;
+	vector<DWORD> v2 = assembleIns(s);
+	string sNew = s;
+	string s3;
+	bool valid = true;
+	if (v2.size() > 0) {
+		if (v2.size() == v.size()) {
+			for (DWORD i = 0; i < v.size(); i++) {
+				if (v[i] == 0x1835) {
+					int size = v[++i];
+					int loopSize = (size - 2) / 4;
+					lastLiteral = sNew.find("{ { ");
+					for (int j = 0; j < loopSize; j++) {
+						i++;
+						lastLiteral = sNew.find("{ ", lastLiteral + 1);
+						lastEnd = sNew.find(",", lastLiteral + 1);
+						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+						if (v[i] != v2[i]) {
+							string sLiteral = convertF(v[i]);
+							string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "{ "
+							lastLiteral = sBegin.size();
+							sBegin.append(sLiteral);
+							sBegin.append(sNew.substr(lastEnd));
+							sNew = sBegin;
+						}
+						i++;
+						lastLiteral = sNew.find(",", lastLiteral + 1);
+						lastEnd = sNew.find(",", lastLiteral + 1);
+						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+						if (v[i] != v2[i]) {
+							string sLiteral = convertF(v[i]);
+							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+							if (sNew[lastLiteral + 1] == ' ')
+								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+							lastLiteral = sBegin.size();
+							sBegin.append(sLiteral);
+							sBegin.append(sNew.substr(lastEnd));
+							sNew = sBegin;
+						}
+						i++;
+						lastLiteral = sNew.find(",", lastLiteral + 1);
+						lastEnd = sNew.find(",", lastLiteral + 1);
+						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+						if (v[i] != v2[i]) {
+							string sLiteral = convertF(v[i]);
+							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+							if (sNew[lastLiteral + 1] == ' ')
+								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+							lastLiteral = sBegin.size();
+							sBegin.append(sLiteral);
+							sBegin.append(sNew.substr(lastEnd));
+							sNew = sBegin;
+						}
+						i++;
+						lastLiteral = sNew.find(",", lastLiteral + 1);
+						lastEnd = sNew.find("}", lastLiteral + 1);
+						s3 = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+						if (v[i] != v2[i]) {
+							string sLiteral = convertF(v[i]);
+							string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+							if (sNew[lastLiteral + 1] == ' ')
+								sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+							lastLiteral = sBegin.size();
+							sBegin.append(sLiteral);
+							sBegin.append(sNew.substr(lastEnd));
+							sNew = sBegin;
+						}
+					}
+					i++;
+				} else if (v[i] == 0x4001) {
+					i++;
+					lastLiteral = sNew.find("l(", lastLiteral + 1);
+					lastEnd = sNew.find(")", lastLiteral);
+					if (v[i] != v2[i]) {
+						string sLiteral = convertF(v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "l("
+						lastLiteral = sBegin.size();
+						sBegin.append(sLiteral);
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+				} else if (v[i] == 0x4002) {
+					i++;
+					lastLiteral = sNew.find("l(", lastLiteral);
+					lastEnd = sNew.find(",", lastLiteral);
+					if (v[i] != v2[i]) {
+						string sLiteral = convertF(v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 2); // +2 matches length of "l("
+						lastLiteral = sBegin.size();
+						sBegin.append(sLiteral);
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+					i++;
+					lastLiteral = sNew.find(",", lastLiteral + 1);
+					lastEnd = sNew.find(",", lastLiteral + 1);
+					if (v[i] != v2[i]) {
+						string sLiteral = convertF(v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+						if (sNew[lastLiteral + 1] == ' ')
+							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+						lastLiteral = sBegin.size();
+						sBegin.append(sLiteral);
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+					i++;
+					lastLiteral = sNew.find(",", lastLiteral + 1);
+					lastEnd = sNew.find(",", lastLiteral + 1);
+					if (v[i] != v2[i]) {
+						string sLiteral = convertF(v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+						if (sNew[lastLiteral + 1] == ' ')
+							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+						lastLiteral = sBegin.size();
+						sBegin.append(sLiteral);
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+					i++;
+					lastLiteral = sNew.find(",", lastLiteral + 1);
+					lastEnd = sNew.find(")", lastLiteral + 1);
+					if (v[i] != v2[i]) {
+						string sLiteral = convertF(v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+						if (sNew[lastLiteral + 1] == ' ')
+							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+						sBegin.append(sLiteral);
+						lastLiteral = sBegin.size();
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+				} else if (v[i] != v2[i])
+					valid = false;
+			}
+		} else {
+			valid = false;
+		}
+		if (valid) {
+			s2 = "!success ";
+			s2.append(s);
+			// codeBin[s2] = v;
+		} else {
+			if (v.size() == (v2.size() + 1)) {
+				valid = true;
+				int j = 0;
+				for (size_t i = 1; i < v2.size() && valid; i++) {
+					if (v[i + j] != v2[i]) {
+						if (v[i + 1] == 0x1 && (v[i] & 0x7FFFFFFF) == v2[i]) {
+							j = 1;
+						} else {
+							valid = false;
+						}
+					}
+				}
+			}
+			if (valid) {
+				s2 = "!success ";
+				s2.append(s);
+				// codeBin[s2] = v;
+			} else {
+				s2 = s;
+				s2.append(" orig");
+				codeBin[s2] = v;
+				s2 = s;
+				s2.append(" fail");
+				codeBin[s2] = v2;
+			}
+		}
+	} else {
+		if (s != "undecipherable custom data") {
+			s2 = "!missing ";
+			s2.append(s);
+			codeBin[s2] = v;
+		}
+	}
+	string ret = "";
+	for (int i = 0; i < numSpaces; i++) {
+		ret.append(" ");
+	}
+	ret.append(sNew);
+	return ret;
 }
 
 vector<string> stringToLines(const char* start, size_t size) {
@@ -2144,7 +1988,147 @@ vector<string> stringToLines(const char* start, size_t size) {
 	return lines;
 }
 
-void preprocessLine(string &line)
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment) {
+	byte fourcc[4];
+	DWORD fHash[4];
+	DWORD one;
+	DWORD fSize;
+	DWORD numChunks;
+	vector<DWORD> chunkOffsets;
+
+	// TODO: Add robust error checking here (buffer is at least as large as
+	// the header, etc). I've added a check for numChunks < 1 as that
+	// would lead to codeByteStart being used uninitialised
+	byte* pPosition = buffer->data();
+	std::memcpy(fourcc, pPosition, 4);
+	pPosition += 4;
+	std::memcpy(fHash, pPosition, 16);
+	pPosition += 16;
+	one = *(DWORD*)pPosition;
+	pPosition += 4;
+	fSize = *(DWORD*)pPosition;
+	pPosition += 4;
+	numChunks = *(DWORD*)pPosition;
+	if (numChunks < 1)
+		return S_FALSE;
+	pPosition += 4;
+	chunkOffsets.resize(numChunks);
+	std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
+
+	char* asmBuffer;
+	size_t asmSize;
+	vector<byte> asmBuf;
+	ID3DBlob* pDissassembly = NULL;
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+	if (FAILED(ok))
+		return ok;
+
+	asmBuffer = (char*)pDissassembly->GetBufferPointer();
+	asmSize = pDissassembly->GetBufferSize();
+
+	byte* codeByteStart;
+	int codeChunk = 0;
+	for (DWORD i = 1; i <= numChunks; i++) {
+		codeChunk = numChunks - i;
+		codeByteStart = buffer->data() + chunkOffsets[numChunks - i];
+		if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
+			break;
+	}
+	// FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
+	vector<string> lines = stringToLines(asmBuffer, asmSize);
+	DWORD* codeStart = (DWORD*)(codeByteStart + 8);
+	bool codeStarted = false;
+	bool multiLine = false;
+	int multiLines = 0;
+	string s2;
+	vector<DWORD> o;
+	for (DWORD i = 0; i < lines.size(); i++) {
+		string s = lines[i];
+		if (s.find("#line") != string::npos)
+			break;
+		if (memcmp(s.c_str(), "//", 2) != 0) {
+			vector<DWORD> v;
+			if (!codeStarted) {
+				if (s.size() > 0 && s[0] != ' ') {
+					codeStarted = true;
+					v.push_back(*codeStart);
+					codeStart += 2;
+					string sNew = assembleAndCompare(s, v);
+					lines[i] = sNew;
+				}
+			} else if (s.find("{ {") < s.size()) {
+				s2 = s;
+				multiLine = true;
+				multiLines = 1;
+			} else if (s.find("} }") < s.size()) {
+				s2.append("\n");
+				s2.append(s);
+				s = s2;
+				multiLine = false;
+				multiLines++;
+				shader_ins* ins = (shader_ins*)codeStart;
+				v.push_back(*codeStart);
+				codeStart++;
+				DWORD length = *codeStart;
+				v.push_back(*codeStart);
+				codeStart++;
+				for (DWORD j = 2; j < length; j++) {
+					v.push_back(*codeStart);
+					codeStart++;
+				}
+				string sNew = assembleAndCompare(s, v);
+				auto sLines = stringToLines(sNew.c_str(), sNew.size());
+				size_t startLine = i - sLines.size() + 1;
+				for (size_t j = 0; j < sLines.size(); j++) {
+					lines[startLine + j] = sLines[j];
+				}
+				//lines[i] = sNew;
+			} else if (multiLine) {
+				s2.append("\n");
+				s2.append(s);
+				multiLines++;
+			} else if (s.size() > 0) {
+				shader_ins* ins = (shader_ins*)codeStart;
+				v.push_back(*codeStart);
+				codeStart++;
+
+				for (DWORD j = 1; j < ins->length; j++) {
+					v.push_back(*codeStart);
+					codeStart++;
+				}
+				string sNew;
+				if (s == "undecipherable custom data") {
+					string prev = lines[i - 1];
+					if (prev == "ret ")
+						v.clear();
+					if (v.size() == 1) {
+						ins = (shader_ins*)++codeStart;
+						while (ins->length == 0) {
+							ins = (shader_ins*)++codeStart;
+						}
+					}
+					sNew = "";
+				} else {
+					sNew = assembleAndCompare(s, v);
+				}
+				lines[i] = sNew;
+			}
+		}
+	}
+	ret->clear();
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = 0; j < lines[i].size(); j++) {
+			ret->insert(ret->end(), lines[i][j]);
+		}
+		ret->insert(ret->end(), '\n');
+	}
+
+	pDissassembly->Release();
+
+	return S_OK;
+}
+
+static void preprocessLine(string &line)
 {
 	const char *p;
 	int i;
@@ -2165,7 +2149,7 @@ void preprocessLine(string &line)
 // For anyone confused about what this hash function is doing, there is a
 // clearer implementation here, with details of how this differs from MD5:
 // https://github.com/DarkStarSword/3d-fixes/blob/master/dx11shaderanalyse.py
-vector<DWORD> ComputeHash(byte const* input, DWORD size) {
+static vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 	DWORD esi;
 	DWORD ebx;
 	DWORD i = 0;
