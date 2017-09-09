@@ -105,6 +105,8 @@ del BinaryDecompiler.lib
 
 del ShaderUsage.txt
 
+del 3Dmigoto_disassembly_debug.txt
+
 rmdir /s /q ShaderFixes
 rmdir /s /q ShaderCache
 rmdir /s /q ShaderFromGame
