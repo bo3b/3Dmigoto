@@ -562,7 +562,7 @@ static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 	try {
 		*key_vals = &ini_sections.at(section).kv_vec;
 	} catch (std::out_of_range) {
-		LogInfo("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
+		LogDebug("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
 		*key_vals = &empty_section_vector;
 	}
 }
