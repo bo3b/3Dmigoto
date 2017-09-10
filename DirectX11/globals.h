@@ -359,6 +359,10 @@ struct Globals
 	ResolutionInfo mResolutionInfo;
 	CommandList present_command_list;
 	CommandList post_present_command_list;
+	CommandList clear_rtv_command_list;
+	CommandList post_clear_rtv_command_list;
+	CommandList clear_dsv_command_list;
+	CommandList post_clear_dsv_command_list;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;

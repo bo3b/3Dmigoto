@@ -33,6 +33,8 @@ static Section CommandListSections[] = {
 	{L"CustomShader", true},
 	{L"CommandList", true},
 	{L"Present", false},
+	{L"ClearRenderTargetView", false},
+	{L"ClearDepthStencilView", false},
 };
 
 // List all remaining sections so we can verify that every section listed in
@@ -2223,6 +2225,16 @@ void LoadConfigFile()
 	G->present_command_list.clear();
 	G->post_present_command_list.clear();
 	ParseCommandList(L"Present", &G->present_command_list, &G->post_present_command_list, NULL);
+
+	LogInfo("[ClearRenderTargetView]\n");
+	G->clear_rtv_command_list.clear();
+	G->post_clear_rtv_command_list.clear();
+	ParseCommandList(L"ClearRenderTargetView", &G->clear_rtv_command_list, &G->post_clear_rtv_command_list, NULL);
+
+	LogInfo("[ClearDepthStencilView]\n");
+	G->clear_dsv_command_list.clear();
+	G->post_clear_dsv_command_list.clear();
+	ParseCommandList(L"ClearDepthStencilView", &G->clear_dsv_command_list, &G->post_clear_dsv_command_list, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.

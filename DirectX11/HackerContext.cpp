@@ -1578,6 +1578,9 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 			pUnorderedAccessView, Values);
 	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
 
+	// TODO: Add a command list here, but until we can ID the resource/view
+	// being cleared from the command list this is of limited use (as
+	// opposed to RTV/DSV which are also useful to detect scene changes)
 	mOrigContext->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
 }
 
@@ -1591,6 +1594,9 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 			pUnorderedAccessView, Values);
 	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
 
+	// TODO: Add a command list here, but until we can ID the resource/view
+	// being cleared from the command list this is of limited use (as
+	// opposed to RTV/DSV which are also useful to detect scene changes)
 	mOrigContext->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
 }
 
@@ -1608,7 +1614,10 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 			pDepthStencilView, ClearFlags, Depth, Stencil);
 	FrameAnalysisLogView(-1, NULL, pDepthStencilView);
 
+	// TODO: Have a way for the command list to access the resource/view being cleared
+	RunCommandList(mHackerDevice, this, &G->clear_dsv_command_list, NULL, false);
 	mOrigContext->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
+	RunCommandList(mHackerDevice, this, &G->clear_dsv_command_list, NULL, true);
 }
 
 STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
@@ -2972,7 +2981,10 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 			pRenderTargetView, ColorRGBA);
 	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
 
+	// TODO: Have a way for the command list to access the resource/view being cleared
+	RunCommandList(mHackerDevice, this, &G->clear_rtv_command_list, NULL, false);
 	mOrigContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
+	RunCommandList(mHackerDevice, this, &G->clear_rtv_command_list, NULL, true);
 }
 
 
@@ -3348,6 +3360,10 @@ void STDMETHODCALLTYPE HackerContext1::ClearView(
 			pView, Color, pRect);
 	FrameAnalysisLogView(-1, NULL, pView);
 
+	// TODO: Add a command list here, but we probably actualy want to call
+	// the existing RTV / DSV / UAV clear command lists instead for
+	// compatibility with engines that might use this if the feature level
+	// is high enough, and the others if it is not.
 	mOrigContext1->ClearView(pView, Color, pRect, NumRects);
 }
 
