@@ -119,6 +119,46 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	return false;
 }
 
+static bool ParseResetPerFrameLimits(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	CustomResources::iterator res;
+	CustomShaders::iterator shader;
+
+	ResetPerFrameLimitsCommand *operation = new ResetPerFrameLimitsCommand();
+
+	if (!wcsncmp(val->c_str(), L"resource", 8)) {
+		wstring resource_id(val->c_str());
+
+		res = customResources.find(resource_id);
+		if (res == customResources.end())
+			goto bail;
+
+		operation->resource = &res->second;
+	}
+
+	if (!wcsncmp(val->c_str(), L"customshader", 12)) {
+		wstring shader_id(val->c_str());
+
+		shader = customShaders.find(shader_id);
+		if (shader == customShaders.end())
+			goto bail;
+
+		operation->shader = &shader->second;
+	}
+
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+
+bail:
+	delete operation;
+	return false;
+}
+
+
 static bool ParseRunShader(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
@@ -314,12 +354,19 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"handling")) {
-		 if (!wcscmp(val->c_str(), L"skip"))
+		// skip only makes sense in pre command lists, since it needs
+		// to run before the original draw call:
+		if (!wcscmp(val->c_str(), L"skip"))
 			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
 
-		 if (!wcscmp(val->c_str(), L"abort"))
+		// abort defaults to both command lists, to abort command list
+		// execution both before and after the draw call:
+		if (!wcscmp(val->c_str(), L"abort"))
 			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
 	}
+
+	if (!wcscmp(key, L"reset_per_frame_limits"))
+		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -337,6 +384,17 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 		_RunCommandList(&override->post_command_list, state);
 	else
 		_RunCommandList(&override->command_list, state);
+}
+
+void ResetPerFrameLimitsCommand::run(CommandListState *state)
+{
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+
+	if (shader)
+		shader->executions_this_frame = 0;
+
+	if (resource)
+		resource->copies_this_frame = 0;
 }
 
 void PresetCommand::run(CommandListState *state)

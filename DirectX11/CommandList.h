@@ -638,6 +638,21 @@ public:
 	void run(CommandListState*) override;
 };
 
+class ResetPerFrameLimitsCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	CustomShader *shader;
+	CustomResource *resource;
+
+	ResetPerFrameLimitsCommand() :
+		shader(NULL),
+		resource(NULL)
+	{}
+
+	void run(CommandListState*) override;
+};
+
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
