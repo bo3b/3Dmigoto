@@ -46,10 +46,13 @@ static void CommandListFlushState(CommandListState *state)
 	}
 }
 
-void RunCommandList(HackerDevice *mHackerDevice,
+static void RunCommandListComplete(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		DrawCallInfo *call_info, bool post)
+		DrawCallInfo *call_info,
+		ID3D11Resource *resource,
+		ID3D11View *view,
+		bool post)
 {
 	CommandListState state;
 	state.mHackerDevice = mHackerDevice;
@@ -58,10 +61,50 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	state.mOrigContext = mHackerContext->GetOrigContext();
 
 	state.call_info = call_info;
+	state.resource = resource;
+	state.view = view;
 	state.post = post;
 
 	_RunCommandList(command_list, &state);
 	CommandListFlushState(&state);
+}
+
+void RunCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list,
+		DrawCallInfo *call_info,
+		bool post)
+{
+	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+			call_info, NULL, NULL, post);
+}
+
+void RunResourceCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list,
+		ID3D11Resource *resource,
+		bool post)
+{
+	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+			NULL, resource, NULL, post);
+}
+
+void RunViewCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list,
+		ID3D11View *view,
+		bool post)
+{
+	ID3D11Resource *res = NULL;
+
+	if (view)
+		view->GetResource(&res);
+
+	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+			NULL, res, view, post);
+
+	if (res)
+		res->Release();
 }
 
 static bool AddCommandToList(CommandListCommand *command,
@@ -1166,6 +1209,8 @@ CommandListState::CommandListState() :
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
+	resource(NULL),
+	view(NULL),
 	post(false),
 	update_params(false),
 	cursor_mask_tex(NULL),
@@ -2225,6 +2270,11 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		return true;
 	}
 
+	if (is_source && !wcscmp(target, L"this")) {
+		type = ResourceCopyTargetType::THIS_RESOURCE;
+		return true;
+	}
+
 	// XXX: Any reason to allow access to sequential swap chains? Given
 	// they either won't exist or are read only I can't think of one.
 	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
@@ -2602,6 +2652,14 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		if (state->cursor_color_tex)
 			state->cursor_color_tex->AddRef();
 		return state->cursor_color_tex;
+
+	case ResourceCopyTargetType::THIS_RESOURCE:
+		if (state->view)
+			state->view->AddRef();
+		*view = state->view;
+		if (state->resource)
+			state->resource->AddRef();
+		return state->resource;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);

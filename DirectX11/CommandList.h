@@ -35,6 +35,12 @@ public:
 	bool post;
 	bool aborted;
 
+	// If set this resource is in some way related to the command list
+	// invocation - a constant buffer we are analysing, a render target
+	// being cleared, etc.
+	ID3D11Resource *resource;
+	ID3D11View *view;
+
 	// TODO: Cursor info and resources would be better off being cached
 	// somewhere that is updated at most once per frame rather than once
 	// per command list execution, and we would ideally skip the resource
@@ -423,6 +429,7 @@ enum class ResourceCopyTargetType {
 	INI_PARAMS,
 	CURSOR_MASK,
 	CURSOR_COLOR,
+	THIS_RESOURCE, // For constant buffer analysis & render/depth target clearing
 	SWAP_CHAIN,
 	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
 };
@@ -657,6 +664,14 @@ public:
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list, DrawCallInfo *call_info,
+		bool post);
+void RunResourceCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list, ID3D11Resource *resource,
+		bool post);
+void RunViewCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list, ID3D11View *view,
 		bool post);
 
 bool ParseCommandListGeneralCommands(const wchar_t *section,

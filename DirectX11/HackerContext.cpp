@@ -1683,10 +1683,9 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 			pDepthStencilView, ClearFlags, Depth, Stencil);
 	FrameAnalysisLogView(-1, NULL, pDepthStencilView);
 
-	// TODO: Have a way for the command list to access the resource/view being cleared
-	RunCommandList(mHackerDevice, this, &G->clear_dsv_command_list, NULL, false);
+	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, false);
 	mOrigContext->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
-	RunCommandList(mHackerDevice, this, &G->clear_dsv_command_list, NULL, true);
+	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
@@ -3050,10 +3049,9 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 			pRenderTargetView, ColorRGBA);
 	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
 
-	// TODO: Have a way for the command list to access the resource/view being cleared
-	RunCommandList(mHackerDevice, this, &G->clear_rtv_command_list, NULL, false);
+	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
 	mOrigContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
-	RunCommandList(mHackerDevice, this, &G->clear_rtv_command_list, NULL, true);
+	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, true);
 }
 
 
