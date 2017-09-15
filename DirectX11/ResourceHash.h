@@ -26,18 +26,10 @@ struct ResourceHandleInfo
 		D3D11_TEXTURE3D_DESC desc3D;
 	};
 
-	D3D11_MAPPED_SUBRESOURCE map;
-	bool mapped_writable;
-	void *diverted_map;
-	size_t diverted_size;
-
 	ResourceHandleInfo() :
 		hash(0),
 		orig_hash(0),
-		data_hash(0),
-		mapped_writable(false),
-		diverted_map(NULL),
-		diverted_size(0)
+		data_hash(0)
 	{}
 };
 
@@ -147,14 +139,11 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox);
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
-	ResourceHandleInfo *info,
 	const void *data, UINT rowPitch, UINT depthPitch);
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src);
 
-void MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource,
-	D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE *pMappedResource);
-void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource);
+bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource);
 
 void LogResourceDesc(const D3D11_BUFFER_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc);

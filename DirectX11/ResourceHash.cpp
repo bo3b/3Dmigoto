@@ -844,7 +844,6 @@ out_unlock:
 }
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
-	ResourceHandleInfo *info,
 	const void *data, UINT rowPitch, UINT depthPitch)
 {
 	D3D11_RESOURCE_DIMENSION dim;
@@ -854,18 +853,17 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	D3D11_TEXTURE2D_DESC *desc2D;
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
+	ResourceHandleInfo *info = NULL;
 
 	if (!resource || !data)
 		return;
 
 	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 
-	if (!info) {
-		try {
-			info = &G->mResources.at(resource);
-		} catch (std::out_of_range) {
-			goto out_unlock;
-		}
+	try {
+		info = &G->mResources.at(resource);
+	} catch (std::out_of_range) {
+		goto out_unlock;
 	}
 
 	// Ever noticed that D3D11_SUBRESOURCE_DATA is binary identical to
@@ -984,32 +982,8 @@ out_unlock:
 	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void MapTrackResourceHashUpdate(
-	ID3D11Resource *pResource,
-	UINT Subresource,
-	D3D11_MAP MapType,
-	UINT MapFlags,
-	D3D11_MAPPED_SUBRESOURCE *pMappedResource)
+bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 {
-	D3D11_RESOURCE_DIMENSION dim;
-	ResourceHandleInfo *info;
-	bool divert = false;
-	void *replace;
-
-	if (!pResource)
-		return;
-
-	switch (MapType) {
-		case D3D11_MAP_WRITE_DISCARD:
-			divert = true;
-			// Fall through
-		case D3D11_MAP_WRITE:
-		case D3D11_MAP_WRITE_NO_OVERWRITE:
-			break;
-		default:
-			return;
-	}
-
 	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
 	}
@@ -1019,77 +993,5 @@ void MapTrackResourceHashUpdate(
 	// updates regardless (just not the full resource hash) so the option
 	// can be turned on live and work. But there's a few pieces we would
 	// need for that to work so for now let's not over-complicate things.
-	if (!G->track_texture_updates || Subresource != 0 || !pMappedResource)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-
-	try {
-		info = &G->mResources.at(pResource);
-	} catch (std::out_of_range) {
-		goto out_unlock;
-	}
-
-	if (divert) {
-		pResource->GetType(&dim);
-		switch (dim) {
-			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-				info->diverted_size = pMappedResource->RowPitch * info->desc2D.Height;
-				break;
-			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-				info->diverted_size = pMappedResource->DepthPitch * info->desc3D.Depth;
-				break;
-			default:
-				goto out_unlock;
-		}
-
-		replace = malloc(info->diverted_size);
-		if (!replace) {
-			LogInfo("MapTrackResourceHashUpdate out of memory\n");
-			goto out_unlock;
-		}
-		memset(replace, 0, info->diverted_size);
-
-		info->diverted_map = pMappedResource->pData;
-		pMappedResource->pData = replace;
-	} else {
-		info->diverted_map = NULL;
-	}
-
-	memcpy(&info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
-	info->mapped_writable = true;
-
-out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-}
-
-void MapUpdateResourceHash(ID3D11Resource *pResource, UINT Subresource)
-{
-	ResourceHandleInfo *info;
-
-	if (!G->track_texture_updates || Subresource != 0)
-		return;
-
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-
-	try {
-		info = &G->mResources.at(pResource);
-	} catch (std::out_of_range) {
-		goto out_unlock;
-	}
-
-	if (!info->mapped_writable)
-		goto out_unlock;
-	info->mapped_writable = false;
-
-	UpdateResourceHashFromCPU(pResource, info, info->map.pData, info->map.RowPitch, info->map.DepthPitch);
-
-	// TODO: Measure performance vs. not diverting
-	if (info->diverted_map) {
-		memcpy(info->diverted_map, info->map.pData, info->diverted_size);
-		free(info->map.pData);
-	}
-
-out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	return G->track_texture_updates && Subresource == 0;
 }

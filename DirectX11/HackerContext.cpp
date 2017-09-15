@@ -893,93 +893,163 @@ STDMETHODIMP_(void) HackerContext::VSSetConstantBuffers(THIS_
 	mOrigContext->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-HRESULT HackerContext::MapDenyCPURead(
+bool HackerContext::MapDenyCPURead(
 	ID3D11Resource *pResource,
 	UINT Subresource,
 	D3D11_MAP MapType,
 	UINT MapFlags,
 	D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-	ID3D11Texture2D *tex = (ID3D11Texture2D*)pResource;
-	D3D11_TEXTURE2D_DESC desc;
-	D3D11_RESOURCE_DIMENSION dim;
 	uint32_t hash;
 	TextureOverrideMap::iterator i;
-	HRESULT hr;
-	UINT replace_size;
-	void *replace;
-
-	if (!pResource || (MapType != D3D11_MAP_READ && MapType != D3D11_MAP_READ_WRITE))
-		return E_FAIL;
-
-	pResource->GetType(&dim);
-	if (dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
-		return E_FAIL;
-
-	if (G->mTextureOverrideMap.empty())
-		return E_FAIL;
-
-	tex->GetDesc(&desc);
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-		hash = GetResourceHash(tex);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
-
-	LogDebug("Map Texture2D %08lx (%ux%u) Subresource=%u MapType=%i MapFlags=%u\n",
-			hash, desc.Width, desc.Height, Subresource, MapType, MapFlags);
 
 	// Currently only replacing first subresource to simplify map type, and
 	// only on read access as it is unclear how to handle a read/write access.
-	// Still log others in case we find we need them later.
-	if (Subresource != 0 || MapType != D3D11_MAP_READ)
-		return E_FAIL;
+	if (Subresource != 0)
+		return false;
+
+	if (G->mTextureOverrideMap.empty())
+		return false;
+
+	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(pResource);
+	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
-		return E_FAIL;
+		return false;
 
-	if (!i->second.deny_cpu_read)
-		return E_FAIL;
-
-	// TODO: We can probably skip the original map call altogether avoiding
-	// the latency so long as the D3D11_MAPPED_SUBRESOURCE we return is sane.
-	// Best to call original in case their are unknown side-effects, including
-	// other wrappers who expect to get called.
-	hr = mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
-
-	if (SUCCEEDED(hr) && pMappedResource->pData) {
-		replace_size = pMappedResource->RowPitch * desc.Height;
-		replace = malloc(replace_size);
-		if (!replace) {
-			LogDebug("deny_cpu_read out of memory\n");
-			return E_OUTOFMEMORY;
-		}
-		memset(replace, 0, replace_size);
-		mDeniedMaps[pResource] = replace;
-		LogDebug("deny_cpu_read replaced mapping from 0x%p with %u bytes of 0s at 0x%p\n",
-				pMappedResource->pData, replace_size, replace);
-		pMappedResource->pData = replace;
-	}
-
-	return hr;
+	return i->second.deny_cpu_read;
 }
 
-void HackerContext::FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource)
+void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
+		UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
+		D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-	if (Subresource != 0)
+	D3D11_RESOURCE_DIMENSION dim;
+	union {
+		ID3D11Resource *resource_union = NULL;
+		ID3D11Buffer *buf;
+		ID3D11Texture1D *tex1d;
+		ID3D11Texture2D *tex2d;
+		ID3D11Texture3D *tex3d;
+	};
+	D3D11_BUFFER_DESC buf_desc;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+	MappedResourceInfo *map_info = NULL;
+	void *replace = NULL;
+	bool divertable = false, divert = false, track = false;
+	bool write = false, read = false, deny = false;
+
+	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
 		return;
 
-	if (G->mTextureOverrideMap.empty())
+	switch (MapType) {
+		case D3D11_MAP_READ_WRITE:
+			read = true;
+			// Fall through
+		case D3D11_MAP_WRITE_DISCARD:
+			divertable = true;
+			// Fall through
+		case D3D11_MAP_WRITE:
+		case D3D11_MAP_WRITE_NO_OVERWRITE:
+			write = true;
+			// We can't divert these last two since we have no way
+			// to know which addresses the application wrote to,
+			// and trying anyway crashes FC4. We still need the
+			// hash tracking code to run on these though (necessary
+			// for FC4), so we still go ahead and track the
+			// mapping. We might actually be able to get rid of
+			// diverting altogether for all these and only use
+			// tracking - seems like it might be safe to read from
+			// all these IO mapped addresses, but not sure about
+			// performance or if there might be any unintended
+			// consequences like uninitialised data:
+			divert = track = MapTrackResourceHashUpdate(pResource, Subresource);
+			break;
+
+		case D3D11_MAP_READ:
+			read = divertable = true;
+			divert = deny = MapDenyCPURead(pResource, Subresource, MapType, MapFlags, pMappedResource);
+			break;
+	}
+
+	if (!track && !divert)
 		return;
 
-	DeniedMap::iterator i;
-	i = mDeniedMaps.find(pResource);
-	if (i == mDeniedMaps.end())
+	map_info = &mMappedResources[pResource];
+	map_info->mapped_writable = write;
+	memcpy(&map_info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
+
+	if (!divertable || !divert)
 		return;
 
-	LogDebug("deny_cpu_read freeing map at 0x%p\n", i->second);
+	pResource->GetType(&dim);
+	resource_union = pResource;
+	switch (dim) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			buf->GetDesc(&buf_desc);
+			map_info->size = buf_desc.ByteWidth;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d->GetDesc(&tex1d_desc);
+			map_info->size = dxgi_format_size(tex1d_desc.Format) * tex1d_desc.Width;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d->GetDesc(&tex2d_desc);
+			map_info->size = pMappedResource->RowPitch * tex2d_desc.Height;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d->GetDesc(&tex3d_desc);
+			map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
+			break;
+		default:
+			return;
+	}
 
-	free(i->second);
-	mDeniedMaps.erase(i);
+	replace = malloc(map_info->size);
+	if (!replace) {
+		LogInfo("TrackAndDivertMap out of memory\n");
+		return;
+	}
+
+	if (read && !deny)
+		memcpy(replace, pMappedResource->pData, map_info->size);
+	else
+		memset(replace, 0, map_info->size);
+
+	map_info->orig_pData = pMappedResource->pData;
+	map_info->map.pData = replace;
+	pMappedResource->pData = replace;
+}
+
+void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
+{
+	MappedResources::iterator i;
+	MappedResourceInfo *map_info = NULL;
+
+	if (mMappedResources.empty())
+		return;
+
+	i = mMappedResources.find(pResource);
+	if (i == mMappedResources.end())
+		return;
+	map_info = &i->second;
+
+	if (G->track_texture_updates && Subresource == 0 && map_info->mapped_writable)
+		UpdateResourceHashFromCPU(pResource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
+
+	if (map_info->orig_pData) {
+		// TODO: Measure performance vs. not diverting:
+		if (map_info->mapped_writable)
+			memcpy(map_info->orig_pData, map_info->map.pData, map_info->size);
+
+		free(map_info->map.pData);
+	}
+
+	mMappedResources.erase(i);
 }
 
 STDMETHODIMP HackerContext::Map(THIS_
@@ -994,18 +1064,15 @@ STDMETHODIMP HackerContext::Map(THIS_
 	/* [annotation] */
 	__out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
+	HRESULT hr;
+
 	FrameAnalysisLogNoNL("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)",
 			pResource, Subresource, MapType, MapFlags, pMappedResource);
 	FrameAnalysisLogResourceHash(pResource);
 
-	HRESULT hr = MapDenyCPURead(pResource, Subresource, MapType, MapFlags, pMappedResource);
-	if (SUCCEEDED(hr))
-		return hr;
-
 	hr = mOrigContext->Map(pResource, Subresource, MapType, MapFlags, pMappedResource);
 
-	if (SUCCEEDED(hr))
-		MapTrackResourceHashUpdate(pResource, Subresource, MapType, MapFlags, pMappedResource);
+	TrackAndDivertMap(hr, pResource, Subresource, MapType, MapFlags, pMappedResource);
 
 	return hr;
 }
@@ -1020,8 +1087,7 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 			pResource, Subresource);
 	FrameAnalysisLogResourceHash(pResource);
 
-	MapUpdateResourceHash(pResource, Subresource);
-	FreeDeniedMapping(pResource, Subresource);
+	TrackAndDivertUnmap(pResource, Subresource);
 	mOrigContext->Unmap(pResource, Subresource);
 
 	if (G->analyse_frame)
@@ -1549,7 +1615,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
 	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
-		UpdateResourceHashFromCPU(pDstResource, NULL, pSrcData, SrcRowPitch, SrcDepthPitch);
+		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyStructureCount(THIS_
