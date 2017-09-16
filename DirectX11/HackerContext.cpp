@@ -1643,7 +1643,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 	/* [annotation] */
 	__in  const UINT Values[4])
 {
-	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p \n)",
+	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p\n)",
 			pUnorderedAccessView, Values);
 	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
 
@@ -1659,7 +1659,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 	/* [annotation] */
 	__in  const FLOAT Values[4])
 {
-	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p \n)",
+	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p\n)",
 			pUnorderedAccessView, Values);
 	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
 
@@ -1679,7 +1679,7 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 	/* [annotation] */
 	__in  UINT8 Stencil)
 {
-	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u \n)",
+	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u\n)",
 			pDepthStencilView, ClearFlags, Depth, Stencil);
 	FrameAnalysisLogView(-1, NULL, pDepthStencilView);
 
@@ -1693,7 +1693,7 @@ STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
 	/* [annotation] */
 	__in  ID3D11ShaderResourceView *pShaderResourceView)
 {
-	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p \n)",
+	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p\n)",
 			pShaderResourceView);
 	FrameAnalysisLogView(-1, NULL, pShaderResourceView);
 
@@ -2775,7 +2775,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	DrawContext c = DrawContext(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0);
 	BeforeDraw(c);
 
-	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u) \n",
+	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u)\n",
 			IndexCount, StartIndexLocation, BaseVertexLocation);
 
 	if (!c.call_info.skip)
@@ -2951,7 +2951,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	/* [annotation] */
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	FrameAnalysisLog("OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs:%i, ppRenderTargetViews:0x%p, pDepthStencilView:0x%p, UAVStartSlot:%i, NumUAVs:%u, ppUnorderedAccessViews:0x%p, pUAVInitialCounts:0x%p) \n",
+	FrameAnalysisLog("OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs:%i, ppRenderTargetViews:0x%p, pDepthStencilView:0x%p, UAVStartSlot:%i, NumUAVs:%u, ppUnorderedAccessViews:0x%p, pUAVInitialCounts:0x%p)\n",
 			NumRTVs, ppRenderTargetViews, pDepthStencilView,
 			UAVStartSlot, NumUAVs, ppUnorderedAccessViews,
 			pUAVInitialCounts);
