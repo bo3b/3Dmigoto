@@ -25,6 +25,7 @@
 #include "SpriteFont.h"
 #include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
+#include "ShaderRegex.h"
 
 
 // ToDo: I'd really rather not have these standalone utilities here, this file should
@@ -500,8 +501,8 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 
 // Currently, critical lock must be taken BEFORE this is called.
 
-void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
-	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text)
+static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
+	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text, bool deferred_replacement_candidate)
 {
 	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
 
@@ -513,6 +514,8 @@ void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, w
 	G->mReloadedShaders[ppShader].timeStamp = timeStamp;
 	G->mReloadedShaders[ppShader].replacement = NULL;
 	G->mReloadedShaders[ppShader].infoText = text;
+	G->mReloadedShaders[ppShader].deferred_replacement_candidate = deferred_replacement_candidate;
+	G->mReloadedShaders[ppShader].deferred_replacement_processed = false;
 }
 
 
@@ -2051,7 +2054,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					if (SUCCEEDED(hr)) {
 						memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
 						EnterCriticalSection(&G->mCriticalSection);
-						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine);
+						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
 						LeaveCriticalSection(&G->mCriticalSection);
 					}
 				}
@@ -2071,15 +2074,17 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
-		// have a copy for every shader seen.
-		if (G->hunting && SUCCEEDED(hr))
+		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
+		// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
+		// regex engine counts as deferred, though that may change with optimisations in the future.
+		if (SUCCEEDED(hr) && (G->hunting || !shader_regex_groups.empty()))
 		{
 			EnterCriticalSection(&G->mCriticalSection);
 				ID3DBlob* blob;
 				hr = D3DCreateBlob(BytecodeLength, &blob);
 				if (SUCCEEDED(hr)) {
 					memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine);
+					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine, true);
 
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =

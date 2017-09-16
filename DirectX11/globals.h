@@ -76,6 +76,8 @@ struct OriginalShaderInfo
 	FILETIME timeStamp;
 	ID3D11DeviceChild* replacement;
 	bool found;
+	bool deferred_replacement_candidate;
+	bool deferred_replacement_processed;
 	std::wstring infoText;
 };
 

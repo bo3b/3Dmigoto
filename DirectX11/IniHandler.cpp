@@ -2400,6 +2400,21 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("\n");
 }
 
+static void MarkAllShadersDeferredUnprocessed()
+{
+	ShaderReloadMap::iterator i;
+
+	for (i = G->mReloadedShaders.begin(); i != G->mReloadedShaders.end(); i++) {
+		// Whenever we reload the config we clear the processed flag on
+		// all auto patched shaders to ensure that they will be
+		// re-patched using the current patterns in the d3dx.ini. This
+		// is separate from the deferred_replacement_candidate flag,
+		// which will be set in the shader reload routine for any
+		// shaders that have been removed from disk, and removed from
+		// any that are loaded from disk:
+		i->second.deferred_replacement_processed = false;
+	}
+}
 
 void ReloadConfig(HackerDevice *device)
 {
@@ -2425,6 +2440,8 @@ void ReloadConfig(HackerDevice *device)
 	OverrideSave.Reset(device);
 
 	LoadConfigFile();
+
+	MarkAllShadersDeferredUnprocessed();
 
 	LeaveCriticalSection(&G->mCriticalSection);
 

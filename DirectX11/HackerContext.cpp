@@ -19,6 +19,7 @@
 #include "Globals.h"
 #include "ResourceHash.h"
 #include "Override.h"
+#include "ShaderRegex.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -420,6 +421,169 @@ void HackerContext::ProcessScissorRects(DrawContext &data)
 	oldState->Release();
 }
 
+// This function will run the ShaderRegex engine to automatically patch shaders
+// on the fly and/or insert command lists on the fly. This may seem like a
+// slightly unusual place to run this, but the reason is because of another
+// upcoming feature that may decide to patch shaders at the last possible
+// moment once the pipeline state is known, and this is the best point to do
+// that. Later we can look into running the ShaderRegex engine earlier (at
+// least on initial load when not hunting), but for now to keep things simpler
+// we will do all the auto patching from one place.
+//
+// We do want to avoid replacing a shader that has already been replaced from
+// ShaderFixes, either at shader creation time, or dynamically by the
+// mReloadedShaders map - user replaced shaders should always take priority
+// over automatically replaced shaders.
+template <class ID3D11Shader,
+	void (__stdcall ID3D11DeviceContext::*GetShader)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
+	void (__stdcall ID3D11DeviceContext::*SetShader)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
+	HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
+>
+void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type)
+{
+	ID3D11Shader *orig_shader = NULL, *patched_shader = NULL;
+	ID3D11ClassInstance *class_instances[256];
+	OriginalShaderInfo *orig_info = NULL;
+	UINT num_instances = 0;
+	string asm_text;
+	bool patch_regex = false;
+	HRESULT hr;
+	unsigned i;
+
+	try {
+		orig_info = &G->mReloadedShaders.at(shader);
+	} catch (std::out_of_range) {
+		return;
+	}
+
+	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
+		return;
+
+	LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
+
+	// Remember that we have analysed this one so we don't check it again
+	// (until config reload) regardless of whether we patch it or not:
+	orig_info->deferred_replacement_processed = true;
+
+	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
+			orig_info->byteCode->GetBufferSize());
+	if (asm_text.empty())
+		return;
+
+	try {
+		patch_regex = apply_shader_regex_groups(&asm_text, &orig_info->shaderModel, hash);
+	} catch (...) {
+		LogInfo("    *** Exception while patching shader\n");
+		return;
+	}
+
+	if (!patch_regex) {
+		LogInfo("Patch did not apply\n");
+		return;
+	}
+
+	LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
+
+	vector<char> asm_vector(asm_text.begin(), asm_text.end());
+	vector<byte> patched_bytecode;
+
+	hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode);
+	if (FAILED(hr)) {
+		LogInfo("    *** Assembling patched shader failed\n");
+		return;
+	}
+
+	hr = (mOrigDevice->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),
+			orig_info->linkage, &patched_shader);
+	if (FAILED(hr)) {
+		LogInfo("    *** Creating replacement shader failed\n");
+		return;
+	}
+
+	// Update replacement map so we don't have to repeat this process.
+	// Not updating the bytecode in the replaced shader map - we do that
+	// elsewhere, but I think that is a bug. Need to untangle that first.
+	if (orig_info->replacement)
+		orig_info->replacement->Release();
+	orig_info->replacement = patched_shader;
+
+	// And bind the replaced shader in time for this draw call:
+	(mOrigContext->*GetShader)(&orig_shader, class_instances, &num_instances);
+	(mOrigContext->*SetShader)(patched_shader, class_instances, num_instances);
+	if (orig_shader)
+		orig_shader->Release();
+	for (i = 0; i < num_instances; i++) {
+		if (class_instances[i])
+			class_instances[i]->Release();
+	}
+}
+
+void HackerContext::DeferredShaderReplacementBeforeDraw()
+{
+	if (shader_regex_groups.empty())
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+		if (mCurrentVertexShaderHandle) {
+			DeferredShaderReplacement<ID3D11VertexShader,
+				&ID3D11DeviceContext::VSGetShader,
+				&ID3D11DeviceContext::VSSetShader,
+				&ID3D11Device::CreateVertexShader>
+				(mCurrentVertexShaderHandle, mCurrentVertexShader, L"vs");
+		}
+		if (mCurrentHullShaderHandle) {
+			DeferredShaderReplacement<ID3D11HullShader,
+				&ID3D11DeviceContext::HSGetShader,
+				&ID3D11DeviceContext::HSSetShader,
+				&ID3D11Device::CreateHullShader>
+				(mCurrentHullShaderHandle, mCurrentHullShader, L"hs");
+		}
+		if (mCurrentDomainShaderHandle) {
+			DeferredShaderReplacement<ID3D11DomainShader,
+				&ID3D11DeviceContext::DSGetShader,
+				&ID3D11DeviceContext::DSSetShader,
+				&ID3D11Device::CreateDomainShader>
+				(mCurrentDomainShaderHandle, mCurrentDomainShader, L"ds");
+		}
+		if (mCurrentGeometryShaderHandle) {
+			DeferredShaderReplacement<ID3D11GeometryShader,
+				&ID3D11DeviceContext::GSGetShader,
+				&ID3D11DeviceContext::GSSetShader,
+				&ID3D11Device::CreateGeometryShader>
+				(mCurrentGeometryShaderHandle, mCurrentGeometryShader, L"gs");
+		}
+		if (mCurrentPixelShaderHandle) {
+			DeferredShaderReplacement<ID3D11PixelShader,
+				&ID3D11DeviceContext::PSGetShader,
+				&ID3D11DeviceContext::PSSetShader,
+				&ID3D11Device::CreatePixelShader>
+				(mCurrentPixelShaderHandle, mCurrentPixelShader, L"ps");
+		}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+void HackerContext::DeferredShaderReplacementBeforeDispatch()
+{
+	if (shader_regex_groups.empty())
+		return;
+
+	if (!mCurrentComputeShaderHandle)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+		DeferredShaderReplacement<ID3D11ComputeShader,
+			&ID3D11DeviceContext::CSGetShader,
+			&ID3D11DeviceContext::CSSetShader,
+			&ID3D11Device::CreateComputeShader>
+			(mCurrentComputeShaderHandle, mCurrentComputeShader, L"cs");
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+
 void HackerContext::BeforeDraw(DrawContext &data)
 {
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
@@ -512,6 +676,8 @@ void HackerContext::BeforeDraw(DrawContext &data)
 
 	if (!G->fix_enabled)
 		return;
+
+	DeferredShaderReplacementBeforeDraw();
 
 	// When hunting is off, send stereo texture to all shaders, as any might need it.
 	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
@@ -1349,6 +1515,11 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 				return false;
 		}
 	}
+
+	if (!G->fix_enabled)
+		return true;
+
+	DeferredShaderReplacementBeforeDispatch();
 
 	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 

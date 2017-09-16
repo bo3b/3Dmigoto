@@ -802,8 +802,13 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			G->mReloadedShaders[oldShader].replacement = replacement;
 
 			// New binary shader code, to replace the prior loaded shader byte code. 
+			// FIXME: This looks suspiciously like it might be the cause of our replaced shader issues
 			shaderCode->Release();
 			G->mReloadedShaders[oldShader].byteCode = pShaderBytecode;
+
+			// Any shaders that we load from disk are no longer
+			// candidates for auto patching:
+			G->mReloadedShaders[oldShader].deferred_replacement_candidate = false;
 
 			LogInfo("> successfully reloaded shader: %ls\n", fileName);
 		}
@@ -969,6 +974,12 @@ static void RevertMissingShaders()
 		replacement->AddRef();
 		i->second.replacement = replacement;
 		i->second.timeStamp = { 0 };
+
+		// Any shaders that we revert become candidates for auto
+		// patching. Elsewhere, when reloading the config we also clear
+		// the processed flag so that any updated patterns in the ini
+		// will be [re]applied:
+		i->second.deferred_replacement_candidate = true;
 	}
 }
 

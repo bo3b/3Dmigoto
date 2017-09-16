@@ -108,6 +108,14 @@ private:
 	void AfterDraw(DrawContext &data);
 	bool BeforeDispatch(DispatchContext *context);
 	void AfterDispatch(DispatchContext *context);
+	template <class ID3D11Shader,
+		void (__stdcall ID3D11DeviceContext::*GetShader)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
+		void (__stdcall ID3D11DeviceContext::*SetShader)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
+		HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
+	>
+	void DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type);
+	void DeferredShaderReplacementBeforeDraw();
+	void DeferredShaderReplacementBeforeDispatch();
 	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
 		UINT *replaceDstX, D3D11_BOX *replaceBox);
