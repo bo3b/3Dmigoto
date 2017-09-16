@@ -382,7 +382,7 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 	{
 	InitDXGI();
-	LogInfo("CreateDXGIFactory2 called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
 	
 	LogInfo("  calling original CreateDXGIFactory2 API\n");
 
@@ -393,12 +393,12 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", origFactory2, hr);
 
 	HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(origFactory2, NULL, NULL);
 	if (factory2Wrap == NULL)
 	{
-		LogInfo("  error allocating factory2Wrap. \n");
+		LogInfo("  error allocating factory2Wrap.\n");
 		origFactory2->Release();
 		return E_OUTOFMEMORY;
 	}
@@ -467,7 +467,7 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
 	InitDXGI();
-	LogInfo("CreateDXGIFactory1 called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
 	IDXGIFactory1 *origFactory1;
@@ -477,7 +477,7 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", origFactory1, hr);
 
 	HackerDXGIFactory1 *factory1Wrap;
 	if (riid == __uuidof(IDXGIFactory2))
@@ -496,7 +496,7 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 
 	if (factory1Wrap == NULL)
 	{
-		LogInfo("  error allocating factory1Wrap. \n");
+		LogInfo("  error allocating factory1Wrap.\n");
 		origFactory1->Release();
 		return E_OUTOFMEMORY;
 	}
@@ -509,7 +509,7 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
 	InitDXGI();
-	LogInfo("CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory API\n");
 
 	IDXGIFactory *origFactory;
@@ -519,7 +519,7 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x \n", origFactory, hr);
+	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", origFactory, hr);
 
 	// Must also handle the bizarre case of being passed the DXGIFactory2 riid, where we
 	// need to return that Factory2.  This is not likely to be used much yet, as Factory2
@@ -547,7 +547,7 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 
 	if (factoryWrap == NULL)
 	{
-		LogInfo("  error allocating factoryWrap. \n");
+		LogInfo("  error allocating factoryWrap.\n");
 		origFactory->Release();
 		return E_OUTOFMEMORY;
 	}

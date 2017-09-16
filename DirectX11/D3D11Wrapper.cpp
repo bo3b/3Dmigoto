@@ -439,12 +439,12 @@ void InitD311()
 		// Must remain all lower case to be matched in DLLMainHook.
 		// We need the system d3d11 in order to find the original proc addresses.
 		// We hook LoadLibraryExW, so we need to use that here.
-		LogInfo("Trying to load original_d3d11.dll \n");
+		LogInfo("Trying to load original_d3d11.dll\n");
 		hD3D11 = LoadLibraryEx(L"original_d3d11.dll", NULL, 0);
 		if (hD3D11 == NULL)
 		{
 			wchar_t libPath[MAX_PATH];
-			LogInfo("*** LoadLibrary on original_d3d11.dll failed. \n");
+			LogInfo("*** LoadLibrary on original_d3d11.dll failed.\n");
 
 			// Redirected load failed. Something (like Origin's IGO32.dll
 			// hook in ntdll.dll LdrLoadDll) is interfering with our hook.
@@ -535,8 +535,8 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 		// It can't be both because they are not the same size on x64.
 		// We might be corrupting a pointer by using the wrong function signature
 		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
-		LogInfo("  Bytecode hash = %016llx \n", data->BinaryHash);
-		LogInfo("  Filename = %s \n", data->HLSLFileName);
+		LogInfo("  Bytecode hash = %016llx\n", data->BinaryHash);
+		LogInfo("  Filename = %s\n", data->HLSLFileName);
 
 		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
 			G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
@@ -600,7 +600,7 @@ UINT EnableDebugFlags(UINT flags)
 {
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 	flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
-	LogInfo("  D3D11CreateDevice _DEBUG_LAYER flags set: %#x \n", flags);
+	LogInfo("  D3D11CreateDevice _DEBUG_LAYER flags set: %#x\n", flags);
 
 	return flags;
 }
@@ -672,27 +672,27 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 {
 	if (!featureLevels)
 	{
-		LogInfo("->Feature level null, defaults to D3D_FEATURE_LEVEL_11_0. \n");
+		LogInfo("->Feature level null, defaults to D3D_FEATURE_LEVEL_11_0.\n");
 		return false;
 	}
 
 	if (G->enable_create_device == 1)
 	{
-		LogInfo("->Feature level allowed through unchanged: %#x \n", *featureLevels);
+		LogInfo("->Feature level allowed through unchanged: %#x\n", *featureLevels);
 		return false;
 	}
 	if (G->enable_create_device == 2)
 	{
 		*featureLevels = D3D_FEATURE_LEVEL_11_0;
 
-		LogInfo("->Feature level forced to 11.0: %#x \n", *featureLevels);
+		LogInfo("->Feature level forced to 11.0: %#x\n", *featureLevels);
 		return false;
 	}
 
 	// Error out if we aren't looking for D3D_FEATURE_LEVEL_11_0.
 	if (*featureLevels != D3D_FEATURE_LEVEL_11_0)
 	{
-		LogInfo("->Feature level != 11.0: %#x, returning E_INVALIDARG \n", *featureLevels);
+		LogInfo("->Feature level != 11.0: %#x, returning E_INVALIDARG\n", *featureLevels);
 		return true;
 	}
 
@@ -721,14 +721,14 @@ HRESULT WINAPI D3D11CreateDevice(
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
 	InitD311();
-	LogInfo("\n\n *** D3D11CreateDevice called with  \n");
-	LogInfo("    pAdapter = %p \n", pAdapter);
-	LogInfo("    Flags = %#x \n", Flags);
-	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ? *pFeatureLevels : 0);
-	LogInfo("    FeatureLevels = %d \n", FeatureLevels);
-	LogInfo("    ppDevice = %p \n", ppDevice);
-	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel : 0);
-	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
+	LogInfo("\n\n *** D3D11CreateDevice called with\n");
+	LogInfo("    pAdapter = %p\n", pAdapter);
+	LogInfo("    Flags = %#x\n", Flags);
+	LogInfo("    pFeatureLevels = %#x\n", pFeatureLevels ? *pFeatureLevels : 0);
+	LogInfo("    FeatureLevels = %d\n", FeatureLevels);
+	LogInfo("    ppDevice = %p\n", ppDevice);
+	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
+	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
 	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
@@ -750,7 +750,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 
-	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p \n",
+	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
 		origDevice, origContext);
 
 #if _DEBUG_LAYER
@@ -781,7 +781,7 @@ HRESULT WINAPI D3D11CreateDevice(
 			deviceWrap->HookDevice();
 		else
 			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
+		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice);
 	}
 
 	// Create a wrapped version of the original context to return to the game.
@@ -797,7 +797,7 @@ HRESULT WINAPI D3D11CreateDevice(
 			contextWrap->HookContext();
 		else
 			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
+		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext);
 	}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
@@ -811,7 +811,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
 
-	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p \n\n",
+	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap);
 
 	return ret;
@@ -846,16 +846,16 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	InitD311();
 
-	LogInfo("\n\n *** D3D11CreateDeviceAndSwapChain called with \n");
-	LogInfo("    pAdapter = %p \n", pAdapter);
-	LogInfo("    Flags = %#x \n", Flags);
-	LogInfo("    pFeatureLevels = %#x \n", pFeatureLevels ?  *pFeatureLevels : 0);
-	LogInfo("    FeatureLevels = %d \n", FeatureLevels);
-	LogInfo("    pSwapChainDesc = %p \n", pSwapChainDesc);
-	LogInfo("    ppSwapChain = %p \n", ppSwapChain);
-	LogInfo("    ppDevice = %p \n", ppDevice);
-	LogInfo("    pFeatureLevel = %#x \n", pFeatureLevel ? *pFeatureLevel: 0);
-	LogInfo("    ppImmediateContext = %p \n", ppImmediateContext);
+	LogInfo("\n\n *** D3D11CreateDeviceAndSwapChain called with\n");
+	LogInfo("    pAdapter = %p\n", pAdapter);
+	LogInfo("    Flags = %#x\n", Flags);
+	LogInfo("    pFeatureLevels = %#x\n", pFeatureLevels ?  *pFeatureLevels : 0);
+	LogInfo("    FeatureLevels = %d\n", FeatureLevels);
+	LogInfo("    pSwapChainDesc = %p\n", pSwapChainDesc);
+	LogInfo("    ppSwapChain = %p\n", ppSwapChain);
+	LogInfo("    ppDevice = %p\n", ppDevice);
+	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel: 0);
+	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
 	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
@@ -904,7 +904,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p \n",
+	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p\n",
 		origDevice, origContext, origSwapChain);
 
 #if _DEBUG_LAYER
@@ -933,7 +933,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 			deviceWrap->HookDevice();
 		else
 			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p \n", deviceWrap, origDevice);
+		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice);
 	}
 
 	HackerContext *contextWrap = nullptr;
@@ -948,7 +948,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 			contextWrap->HookContext();
 		else
 			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p \n", contextWrap, origContext);
+		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext);
 	}
 
 	HackerDXGISwapChain *swapchainWrap = nullptr;
@@ -957,7 +957,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		if (G->SCREEN_UPSCALING == 0)
 		{
 			swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
-			LogInfo("  HackerDXGISwapChain %p created to wrap %p \n", swapchainWrap, origSwapChain);
+			LogInfo("  HackerDXGISwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
 		}
 		else
 		{
@@ -1001,7 +1001,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		deviceWrap->Create3DMigotoResources();
 
 	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
-		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p \n\n",
+		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p\n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
 
 	return ret;
@@ -1014,7 +1014,7 @@ void NvAPIOverride()
 	// One shot, override custom settings.
 	NvAPI_Status ret = nvapi_QueryInterface(0xb03bb03b);
 	if (ret != 0xeecc34ab)
-		LogInfo("  overriding NVAPI wrapper failed. \n");
+		LogInfo("  overriding NVAPI wrapper failed.\n");
 
 	//const StereoHandle id1 = (StereoHandle)0x77aa8ebc;
 	//float id2 = 1.23f;

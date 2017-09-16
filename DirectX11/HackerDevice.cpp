@@ -214,7 +214,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 
 void HackerDevice::Create3DMigotoResources()
 {
-	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called. \n", type_name(this), this);
+	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.\n", type_name(this), this);
 
 	// XXX: Ignoring the return values for now because so do our callers.
 	// If we want to change this, keep in mind that failures in

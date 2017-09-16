@@ -364,7 +364,7 @@ public:
 
 		mRemappedInputRegisters.clear();
 		// Write header.  Extra space handles odd case for no input and no output sections.
-		const char *inputHeader = "\nvoid main( \n";
+		const char *inputHeader = "\nvoid main(\n";
 		mOutput.insert(mOutput.end(), inputHeader, inputHeader + strlen(inputHeader));
 
 		// Read until header.
@@ -3372,7 +3372,7 @@ public:
 					strcmp(statement, "dcl_input_ps_siv"))
 				{
 					// Other declarations, unforeseen.
-					sprintf(buffer, "// Needs manual fix for instruction: \n");
+					sprintf(buffer, "// Needs manual fix for instruction:\n");
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					sprintf(buffer, "// unknown dcl_: ");
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
@@ -5247,14 +5247,14 @@ public:
 						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "m0.Append(0); \n");
+						sprintf(buffer, "m0.Append(0);\n");
 						appendOutput(buffer);
 						break;
 					case OPCODE_CUT_STREAM:
 						sprintf(buffer, "// Needs manual fix for instruction, maybe. \n//");
 						appendOutput(buffer);
 						ASMLineOut(c, pos, size);
-						sprintf(buffer, "m0.RestartStrip(); \n");
+						sprintf(buffer, "m0.RestartStrip();\n");
 						appendOutput(buffer);
 						break;
 

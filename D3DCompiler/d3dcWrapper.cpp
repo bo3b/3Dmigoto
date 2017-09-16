@@ -67,7 +67,7 @@ void InitializeDLL()
 		EXPORT_SHADERS = GetPrivateProfileInt(L"Rendering", L"export_shaders", 0, dir) == 1;
 	}
 
-	LogInfo("  DLL initialized. \n");
+	LogInfo("  DLL initialized.\n");
 }
 
 void DestroyDLL()
@@ -418,10 +418,10 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 	if (LogFile && !wrapperCall) 
 	{
 		LogInfo("D3DCompile called with\n"); 
-		LogInfo("  SourceName = %s \n", pSourceName);
-		LogInfo("  Entrypoint = %s \n", pEntrypoint);
-		LogInfo("  Target = %s \n", pTarget);
-		LogInfo("  ppErrorMsgs = %p \n", ppErrorMsgs);
+		LogInfo("  SourceName = %s\n", pSourceName);
+		LogInfo("  Entrypoint = %s\n", pEntrypoint);
+		LogInfo("  Target = %s\n", pTarget);
+		LogInfo("  ppErrorMsgs = %p\n", ppErrorMsgs);
 		
 	}
 
@@ -442,7 +442,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 		binaryHash = fnv_64_buf((*ppCode)->GetBufferPointer(), (*ppCode)->GetBufferSize());
 		sprintf(shaderName, "%08lx%08lx-%s_%08lx%08lx.txt", (UINT32)(binaryHash >> 32), (UINT32)binaryHash, pTarget, (UINT32)(sourceHash >> 32), (UINT32)sourceHash);
 		LogInfo("    Filename = %s\n", shaderName);
-		LogInfo("    Compiled bytecode size = %d, bytecode handle = %p \n", (*ppCode)->GetBufferSize(), (*ppCode)->GetBufferPointer());
+		LogInfo("    Compiled bytecode size = %d, bytecode handle = %p\n", (*ppCode)->GetBufferSize(), (*ppCode)->GetBufferPointer());
 		
 		if (SHADER_PATH[0])
 		{
@@ -737,7 +737,7 @@ HRESULT WINAPI D3DCreateBlob(_In_ SIZE_T Size,
               _Out_ ID3DBlob** ppBlob)
 {
 	InitC46();
-	LogDebug("D3DCreateBlob called \n");	// Too chatty for LogInfo
+	LogDebug("D3DCreateBlob called\n");	// Too chatty for LogInfo
 	
 	return (*_D3DCreateBlob)(Size, ppBlob);
 }

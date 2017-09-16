@@ -241,12 +241,12 @@ static void LoadConfigFile()
 	UnlockConvergence = GetPrivateProfileInt(L"Stereo", L"unlock_convergence", 0, iniFile) == 1;
 
 	LogInfo("[Stereo]\n");
-	LogInfo("  force_no_nvapi=%d \n", ForceNoNvAPI ? 1 : 0);
-	LogInfo("  force_stereo=%d \n", NoStereoDisable ? 1 : 0);
-	LogInfo("  automatic_mode=%d \n", ForceAutomaticStereo ? 1 : 0);
-	LogInfo("  unlock_separation=%d \n", UnlockSeparation ? 1 : 0);
-	LogInfo("  unlock_convergence=%d \n", UnlockConvergence ? 1 : 0);
-	LogInfo("  surface_createmode=%d \n", gSurfaceCreateMode);
+	LogInfo("  force_no_nvapi=%d\n", ForceNoNvAPI ? 1 : 0);
+	LogInfo("  force_stereo=%d\n", NoStereoDisable ? 1 : 0);
+	LogInfo("  automatic_mode=%d\n", ForceAutomaticStereo ? 1 : 0);
+	LogInfo("  unlock_separation=%d\n", UnlockSeparation ? 1 : 0);
+	LogInfo("  unlock_convergence=%d\n", UnlockConvergence ? 1 : 0);
+	LogInfo("  surface_createmode=%d\n", gSurfaceCreateMode);
 }
 
 static void loadDll()
@@ -271,12 +271,12 @@ static void loadDll()
 #else
 #define REAL_NVAPI_DLL L"nvapi.dll"
 #endif
-	LogDebugW(L"Trying to load original_%s \n", REAL_NVAPI_DLL);
+	LogDebugW(L"Trying to load original_%s\n", REAL_NVAPI_DLL);
 	nvDLL = LoadLibraryEx(L"original_" REAL_NVAPI_DLL, NULL, 0);
 	if (nvDLL == NULL)
 	{
 		wchar_t libPath[MAX_PATH];
-		LogInfoW(L"*** LoadLibrary of original_%s failed. *** \n", REAL_NVAPI_DLL);
+		LogInfoW(L"*** LoadLibrary of original_%s failed. ***\n", REAL_NVAPI_DLL);
 
 		// Redirected load failed. Maybe 3DMigoto isn't loaded, or maybe something
 		// (like Origin's IGO32.dll hook in ntdll.dll LdrLoadDll) is interfering
@@ -291,7 +291,7 @@ static void loadDll()
 			nvDLL = LoadLibraryEx(libPath, NULL, 0);
 			if (nvDLL == NULL)
 			{
-				LogInfoW(L"*** LoadLibrary of %ls failed. *** \n", libPath);
+				LogInfoW(L"*** LoadLibrary of %ls failed. ***\n", libPath);
 				DoubleBeepExit();
 			}
 		}
@@ -338,7 +338,7 @@ STDAPI DllUnregisterServer(void)
 
 static NvAPI_Status __cdecl NvAPI_Initialize(void)
 {
-	LogCall("%s - NvAPI_Initialize called. \n", LogTime().c_str());
+	LogCall("%s - NvAPI_Initialize called.\n", LogTime().c_str());
 
 	NvAPI_Status ret;
 
@@ -350,7 +350,7 @@ static NvAPI_Status __cdecl NvAPI_Initialize(void)
 	else 
 	{
 		ret = NVAPI_NO_IMPLEMENTATION;
-		LogCall("  NvAPI_Initialize force return err: %d \n", ret);
+		LogCall("  NvAPI_Initialize force return err: %d\n", ret);
 	}
 
 	return ret;
@@ -517,7 +517,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 
 static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 {
-	if (gLogDebug) LogCall("%s - NvAPI_Stereo_IsEnabled called. \n", LogTime().c_str());
+	if (gLogDebug) LogCall("%s - NvAPI_Stereo_IsEnabled called.\n", LogTime().c_str());
 
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 
@@ -526,10 +526,10 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 		gDirectXOverride = false;
 	} else if (ForceAutomaticStereo) {
 		*pIsStereoEnabled = false;
-		LogCall("  NvAPI_Stereo_IsEnabled force return false \n");
+		LogCall("  NvAPI_Stereo_IsEnabled force return false\n");
 	}
 
-	if (gLogDebug) LogCall("  Returns IsStereoEnabled = %d, Result = %d \n", *pIsStereoEnabled, ret);
+	if (gLogDebug) LogCall("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
 
 	return ret;
 }
@@ -783,7 +783,7 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 
 static NvAPI_Status __cdecl EnableOverride(void)
 {
-	if (gLogDebug) LogCall("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped. \n", LogTime().c_str());
+	if (gLogDebug) LogCall("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", LogTime().c_str());
 
 	gDirectXOverride = true;
 

@@ -322,7 +322,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
-		LogInfo("*** Overlay call CoInitializeEx failed: %d \n", hr);
+		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
 	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
@@ -332,7 +332,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 		backBuffer->Release();
 	}
 
-	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d \n", fullName, hr);
+	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d\n", fullName, hr);
 }
 
 // Similar to above, but this version enables the reverse stereo blit in nvapi
@@ -361,7 +361,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 	hr = pDevice->GetOrigDevice()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
 	if (FAILED(hr)) {
-		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x \n", hr);
+		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
 		return;
 	}
 
@@ -386,12 +386,12 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
-		LogInfo("*** Overlay call CoInitializeEx failed: %d \n", hr);
+		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
 	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
 	hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
-	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d \n", fullName, hr);
+	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
 	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
 out:
@@ -559,9 +559,9 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 	
 	if (wcsstr(fileName, L"_replace"))
 	{
-		LogInfo("   >Replacement shader found. Re-Loading replacement HLSL code from %ls \n", fileName);
-		LogInfo("    Reload source code loaded. Size = %d \n", srcDataSize);
-		LogInfo("    compiling replacement HLSL code with shader model %s \n", shaderModel);
+		LogInfo("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
+		LogInfo("    Reload source code loaded. Size = %d\n", srcDataSize);
+		LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel);
 
 		// TODO: Add #defines for StereoParams and IniParams
 
@@ -598,9 +598,9 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 	}
 	else
 	{
-		LogInfo("   >Replacement shader found. Re-Loading replacement ASM code from %ls \n", fileName);
-		LogInfo("    Reload source code loaded. Size = %d \n", srcDataSize);
-		LogInfo("    assembling replacement ASM code with shader model %s \n", shaderModel);
+		LogInfo("   >Replacement shader found. Re-Loading replacement ASM code from %ls\n", fileName);
+		LogInfo("    Reload source code loaded. Size = %d\n", srcDataSize);
+		LogInfo("    assembling replacement ASM code with shader model %s\n", shaderModel);
 
 		// We need original byte code unchanged, so make a copy.
 		vector<byte> byteCode(origByteCode->GetBufferSize());
@@ -614,7 +614,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		}
 		catch (...)
 		{ 
-			LogInfo("  *** assembler failed. \n");
+			LogInfo("  *** assembler failed.\n");
 			return true;
 		}
 
@@ -624,7 +624,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 			memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
 		}
 		else {
-			LogInfo("    *** failed to allocate new Blob for assemble. \n");
+			LogInfo("    *** failed to allocate new Blob for assemble.\n");
 			return true;
 		}
 	}
@@ -1311,7 +1311,7 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 	for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
 		LogInfo("     visited index buffer hash = %08x\n", *i);
 	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-		LogInfo("     visited vertex shader hash = %016I64x \n", *i);
+		LogInfo("     visited vertex shader hash = %016I64x\n", *i);
 
 	MarkShaderEnd(device, "pixel shader", G->mSelectedPixelShader);
 }
@@ -1322,7 +1322,7 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 		return;
 
 	for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-		LogInfo("     visited index buffer hash = %08lx \n", *i);
+		LogInfo("     visited index buffer hash = %08lx\n", *i);
 	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
 		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
 
@@ -1489,7 +1489,7 @@ static void ToggleHunting(HackerDevice *device, void *private_data)
 		G->hunting = HUNTING_MODE_SOFT_DISABLED;
 	else
 		G->hunting = HUNTING_MODE_ENABLED;
-	LogInfo("> Hunting toggled to %d \n", G->hunting);
+	LogInfo("> Hunting toggled to %d\n", G->hunting);
 }
 
 void RegisterHuntingKeyBindings()
