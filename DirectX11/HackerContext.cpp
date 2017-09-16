@@ -1616,6 +1616,9 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// enable as an option in the future if there is a proven need.
 	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
 		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterUpdate(pDstResource);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyStructureCount(THIS_

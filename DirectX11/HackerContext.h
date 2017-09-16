@@ -170,7 +170,10 @@ private:
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
 	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
+	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
+			FrameAnalysisOptions type_mask, wchar_t *type);
 	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
+	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
 
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,

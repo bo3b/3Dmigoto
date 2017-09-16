@@ -118,10 +118,10 @@ enum class FrameAnalysisOptions {
 	DUMP_TEX_JPS    = 0x00000200,
 	DUMP_TEX_DDS    = 0x00000400,
 	DUMP_TEX_MASK   = 0x00000700,
-	DUMP_XXX        = 0x00800111,
-	DUMP_XXX_JPS    = 0x00800222,
-	DUMP_XXX_DDS    = 0x00800444,
-	DUMP_XXX_MASK   = 0x00800777,
+	DUMP_XXX        = 0x01800111,
+	DUMP_XXX_JPS    = 0x01800222,
+	DUMP_XXX_DDS    = 0x01800444,
+	DUMP_XXX_MASK   = 0x01800777,
 	PERSIST         = 0x00000800, // Used by shader/texture triggers
 	STEREO          = 0x00001000,
 	MONO            = 0x00002000,
@@ -135,12 +135,14 @@ enum class FrameAnalysisOptions {
 	DUMP_IB_BIN     = 0x00040000,
 	DUMP_IB_TXT     = 0x00080000,
 	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x00854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
-	DUMP_XX_TXT     = 0x008a8000, // Not including SRVs, RTs or UAVs for now
+	DUMP_XX_BIN     = 0x01854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
+	DUMP_XX_TXT     = 0x018a8000, // Not including SRVs, RTs or UAVs for now
 	FILENAME_HANDLE = 0x00100000,
 	LOG_DEPRECATED  = 0x00200000, // Always enabled now - there is no situation we don't want this.
 	HOLD            = 0x00400000,
 	DUMP_ON_UNMAP   = 0x00800000, // XXX: For now including in all XX masks
+	DUMP_ON_UPDATE  = 0x01000000, // XXX: For now including in all XX masks
+	DUMP_ON_XXXXXX  = 0x01800000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -168,6 +170,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"log", FrameAnalysisOptions::LOG_DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
 	{L"hold", FrameAnalysisOptions::HOLD},
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
+	{L"dump_on_update", FrameAnalysisOptions::DUMP_ON_UPDATE},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
