@@ -645,6 +645,36 @@ public:
 	void run(CommandListState*) override;
 };
 
+class ClearViewCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	ResourceCopyTarget target;
+
+	FLOAT dsv_depth;
+	UINT8 dsv_stencil;
+
+	// If neither "depth" or "stencil" are specified, both will be used:
+	bool clear_depth;
+	bool clear_stencil;
+
+	// fval is used for RTV colours and UAVs when clearing them with
+	// floating point values. uval is used for UAVs if nothing looked like
+	// a float.
+	FLOAT fval[4];
+	UINT uval[4];
+	bool clear_uav_uint;
+
+	ClearViewCommand();
+
+	ID3D11View* create_best_view(ID3D11Resource *resource,
+		CommandListState *state, UINT stride,
+		UINT offset, DXGI_FORMAT format, UINT buf_src_size);
+	void clear_unknown_view(ID3D11View*, CommandListState *state);
+
+	void run(CommandListState*) override;
+};
+
 class ResetPerFrameLimitsCommand : public CommandListCommand {
 public:
 	wstring ini_line;
