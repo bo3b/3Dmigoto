@@ -35,6 +35,8 @@ static Section CommandListSections[] = {
 	{L"Present", false},
 	{L"ClearRenderTargetView", false},
 	{L"ClearDepthStencilView", false},
+	{L"ClearUnorderedAccessViewUint", false},
+	{L"ClearUnorderedAccessViewFloat", false},
 };
 
 // List all remaining sections so we can verify that every section listed in
@@ -2235,6 +2237,16 @@ void LoadConfigFile()
 	G->clear_dsv_command_list.clear();
 	G->post_clear_dsv_command_list.clear();
 	ParseCommandList(L"ClearDepthStencilView", &G->clear_dsv_command_list, &G->post_clear_dsv_command_list, NULL);
+
+	LogInfo("[ClearUnorderedAccessViewUint]\n");
+	G->clear_uav_uint_command_list.clear();
+	G->post_clear_uav_uint_command_list.clear();
+	ParseCommandList(L"ClearUnorderedAccessViewUint", &G->clear_uav_uint_command_list, &G->post_clear_uav_uint_command_list, NULL);
+
+	LogInfo("[ClearUnorderedAccessViewFloat]\n");
+	G->clear_uav_float_command_list.clear();
+	G->post_clear_uav_float_command_list.clear();
+	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.

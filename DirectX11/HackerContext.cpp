@@ -1647,10 +1647,9 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 			pUnorderedAccessView, Values);
 	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
 
-	// TODO: Add a command list here, but until we can ID the resource/view
-	// being cleared from the command list this is of limited use (as
-	// opposed to RTV/DSV which are also useful to detect scene changes)
+	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, false);
 	mOrigContext->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
+	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
@@ -1663,10 +1662,9 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 			pUnorderedAccessView, Values);
 	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
 
-	// TODO: Add a command list here, but until we can ID the resource/view
-	// being cleared from the command list this is of limited use (as
-	// opposed to RTV/DSV which are also useful to detect scene changes)
+	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, false);
 	mOrigContext->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
+	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
