@@ -543,7 +543,7 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 				for (uint32_t i = 0; i < section_size; i++) {
 					if (i && i % 16 == 0)
 						LogInfo("\n");
-					LogInfo("%02x ", ((unsigned char*)section)[i]);
+					LogInfoNoNL("%02x ", ((unsigned char*)section)[i]);
 				}
 				LogInfo("\n");
 			}
@@ -551,7 +551,7 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 	}
 
 	if (!done) {
-		LogInfo("Did not find an assembly text section!");
+		LogInfo("Did not find an assembly text section!\n");
 		goto out_free;
 	}
 

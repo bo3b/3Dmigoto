@@ -143,7 +143,7 @@ struct KeyOverrideCycleParam
 	void log(wchar_t *name)
 	{
 		if (*cur)
-			LogInfoW(L" %s=%s", name, cur);
+			LogInfoWNoNL(L" %s=%s", name, cur);
 	}
 
 	float as_float(float default)
@@ -229,7 +229,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 		if (!not_done)
 			break;
 
-		LogInfo("  Cycle %i:", i);
+		LogInfoNoNL("  Cycle %i:", i);
 		x.log(L"x");
 		y.log(L"y");
 		z.log(L"z");
@@ -270,7 +270,7 @@ static void UpdateIniParams(D3D10Base::ID3D10Device *device,
 		D3D10Wrapper::ID3D10Device* wrapper,
 		DirectX::XMFLOAT4 *params)
 {
-	LogDebug("UpdateIniParams for DX10- unimplemented");
+	LogDebug("UpdateIniParams for DX10- unimplemented\n");
 
 	//D3D10Base::ID3D10DeviceContext* realContext; device->GetImmediateContext(&realContext);
 	//D3D10Base::D3D10_MAPPED_SUBRESOURCE mappedResource;
@@ -358,7 +358,7 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 		char *name, float current, float val, ULONGLONG now, int time,
 		TransitionType transition_type)
 {
-	LogInfo(" %s: %#.2g -> %#.2g", name, current, val);
+	LogInfoNoNL(" %s: %#.2g -> %#.2g", name, current, val);
 	transition->start = current;
 	transition->target = val;
 	transition->activation_time = now;
@@ -380,10 +380,10 @@ void OverrideTransition::ScheduleTransition(D3D10Base::ID3D10Device *device,
 	if (!wrapper)
 		return;
 
-	LogInfo(" Override");
+	LogInfoNoNL(" Override");
 	if (time) {
-		LogInfo(" transition: %ims", time);
-		LogInfoW(L" transition_type: %s",
+		LogInfoNoNL(" transition: %ims", time);
+		LogInfoWNoNL(L" transition_type: %s",
 			lookup_enum_name<wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
 	}
 

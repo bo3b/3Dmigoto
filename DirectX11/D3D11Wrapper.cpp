@@ -977,7 +977,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 			}
 			catch (const Exception3DMigoto& e)
 			{
-				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s", e.what().c_str());
+				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", e.what().c_str());
 				// Something went wrong inform the user with double beep and end!;
 				DoubleBeepExit();
 			}

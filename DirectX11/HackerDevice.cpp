@@ -1646,11 +1646,11 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		LogDebugResourceDesc(pDesc);
 	if (pInitialData && pInitialData->pSysMem)
 	{
-		LogDebug("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
+		LogDebugNoNL("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
 				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
 		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
 		for (size_t i = 0; i < 16; i++)
-			LogDebug(" %02hX", hex[i]);
+			LogDebugNoNL(" %02hX", hex[i]);
 		LogDebug("\n");
 	}
 

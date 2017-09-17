@@ -653,10 +653,10 @@ STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
 	if (LogFile)
 	{
 		LogInfo("HackerDXGIFactory::MakeWindowAssociation(%s@%p) called with WindowHandle = %p, Flags = %x\n", type_name(this), this, WindowHandle, Flags);
-		if (Flags) LogInfo("  Flags =");
-		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfo(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
-		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfo(" DXGI_MWA_NO_ALT_ENTER");
-		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfo(" DXGI_MWA_NO_PRINT_SCREEN");
+		if (Flags) LogInfoNoNL("  Flags =");
+		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfoNoNL(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
+		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfoNoNL(" DXGI_MWA_NO_ALT_ENTER");
+		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfoNoNL(" DXGI_MWA_NO_PRINT_SCREEN");
 		if (Flags) LogInfo("\n");
 	}
 
@@ -879,7 +879,7 @@ STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
 			}
 			catch (const Exception3DMigoto& e)
 			{
-				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s", e.what().c_str());
+				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", e.what().c_str());
 				// Something went wrong inform the user with double beep and end!;
 				DoubleBeepExit();
 			}

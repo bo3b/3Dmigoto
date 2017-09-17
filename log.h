@@ -30,6 +30,14 @@ extern bool gLogDebug;
 #define LogDebugW(fmt, ...) \
 	do { if (gLogDebug) LogInfoW(fmt, __VA_ARGS__); } while (0)
 
+// Aliases for the above functions that we use to denote that omitting the
+// newline was done intentionally. For now this is just for our reference, but
+// later we might actually make the default function insert a newline:
+#define LogInfoNoNL LogInfo
+#define LogInfoWNoNL LogInfoW
+#define LogDebugNoNL LogDebug
+#define LogDebugWNoNL LogDebugW
+
 static string LogTime()
 {
 	string timeStr;
