@@ -4469,12 +4469,12 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 	view->QueryInterface(__uuidof(ID3D11UnorderedAccessView), (void**)&uav);
 
 	if (rtv) {
-		state->mHackerContext->FrameAnalysisLog("Clearing RTV\n");
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing RTV\n");
 		state->mOrigContext->ClearRenderTargetView(rtv, fval);
 	}
 	if (dsv) {
 		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
-		state->mHackerContext->FrameAnalysisLog("Clearing DSV\n");
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing DSV\n");
 
 		if (!clear_depth && !clear_stencil)
 			flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
@@ -4492,10 +4492,10 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 		// formats, so we try to predict if the float clear will pass
 		// unless the user specificially told us to use the int clear.
 		if (clear_uav_uint || !UAVSupportsFloatClear(uav)) {
-			state->mHackerContext->FrameAnalysisLog("Clearing UAV (uint)\n");
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing UAV (uint)\n");
 			state->mOrigContext->ClearUnorderedAccessViewUint(uav, uval);
 		} else {
-			state->mHackerContext->FrameAnalysisLog("Clearing UAV (float)\n");
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing UAV (float)\n");
 			state->mOrigContext->ClearUnorderedAccessViewFloat(uav, fval);
 		}
 	}
