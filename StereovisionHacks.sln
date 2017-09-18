@@ -4016,6 +4016,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ShaderFixes", "ShaderFixes"
 		Arma3\ShaderFixes\bb7859fd0d031ca8-vs_replace.txt = Arma3\ShaderFixes\bb7859fd0d031ca8-vs_replace.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pcre2", "pcre2", "{2356EA4F-1B7B-439C-803F-6F30F7A86FE3}"
+	ProjectSection(SolutionItems) = preProject
+		pcre2\pcre2-32.lib = pcre2\pcre2-32.lib
+		pcre2\pcre2-32d.lib = pcre2\pcre2-32d.lib
+		pcre2\pcre2-64.lib = pcre2\pcre2-64.lib
+		pcre2\pcre2-64d.lib = pcre2\pcre2-64d.lib
+		pcre2\pcre2.h = pcre2\pcre2.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -4181,5 +4190,6 @@ Global
 		{594BA0F0-332D-414C-931E-9F797AB4BAC8} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
 		{4B42AF93-6C52-4926-8426-B49EB7CC51DC} = {8C63D7F0-AA10-40E2-85E5-017F2A02CFBC}
 		{2AB571AA-200D-4BB3-8072-C4FB3E2431E3} = {4B42AF93-6C52-4926-8426-B49EB7CC51DC}
+		{2356EA4F-1B7B-439C-803F-6F30F7A86FE3} = {83DCC342-4199-4E03-B720-80E5EDF18500}
 	EndGlobalSection
 EndGlobal
