@@ -22,6 +22,7 @@
     <ClCompile Include="HookedDevice.cpp" />
     <ClCompile Include="nvprofile.cpp" />
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
+    <ClCompile Include="ShaderRegex.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -51,6 +52,7 @@
     <ClInclude Include="HookedDevice.h" />
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="nvprofile.h" />
+    <ClInclude Include="ShaderRegex.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
