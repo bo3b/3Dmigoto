@@ -175,6 +175,31 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 	return sections.end();
 }
 
+// These are used to limit the number of audible warnings we will issue
+// whenever we load or reload the d3dx.ini. This prevents things like missing
+// custom shaders, compile failures or duplicate sections from causing an
+// endless cascade of warning tones as every line that refers to them will then
+// fail to parse. This is of particular importance in UE4, which uses a
+// watchdog timer to kill the game after 30 seconds if it believes it has hung.
+static int IniWarningToneCounter = 3;
+
+static void ArmIniWarningTones()
+{
+	IniWarningToneCounter = 3;
+}
+
+static void IniWarning(char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfo(fmt, ap);
+	va_end(ap);
+
+	if (IniWarningToneCounter-- > 0)
+		BeepFailure2();
+}
+
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		bool *warn_duplicates, bool *warn_lines_without_equals,
 		IniSectionVector **section_vector)
@@ -210,9 +235,8 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// behaviour.
 	inserted = ini_sections.emplace(*section, IniSection{}).second;
 	if (!inserted) {
-		LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
+		IniWarning("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
 				section->c_str());
-		BeepFailure2();
 		section->clear();
 		*section_vector = NULL;
 		return;
@@ -231,8 +255,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	if (IsCommandListSection(section->c_str()))
 		*warn_duplicates = false;
 	else if (!IsRegularSection(section->c_str())) {
-		LogInfo("WARNING: Unknown section in d3dx.ini: [%S]\n", section->c_str());
-		BeepFailure2();
+		IniWarning("WARNING: Unknown section in d3dx.ini: [%S]\n", section->c_str());
 	}
 
 	if (DoesSectionAllowLinesWithoutEquals(section->c_str()))
@@ -248,9 +271,8 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 	bool inserted;
 
 	if (section->empty() || section_vector == NULL) {
-		LogInfo("WARNING: d3dx.ini entry outside of section: %S\n",
+		IniWarning("WARNING: d3dx.ini entry outside of section: %S\n",
 				wline->c_str());
-		BeepFailure2();
 		return;
 	}
 
@@ -273,9 +295,8 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// keys within a single section:
 		inserted = ini_sections.at(*section).kv_map.emplace(key, val).second;
 		if (warn_duplicates && !inserted) {
-			LogInfo("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
+			IniWarning("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
 					section->c_str(), key.c_str());
-			BeepFailure2();
 		}
 	} else {
 		// No = on line, don't store in key lookup maps to
@@ -283,9 +304,8 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// we will store it in the section vector structure for the
 		// profile parser to process.
 		if (warn_lines_without_equals) {
-			LogInfo("WARNING: Malformed line in d3dx.ini: [%S] \"%S\"\n",
+			IniWarning("WARNING: Malformed line in d3dx.ini: [%S] \"%S\"\n",
 					section->c_str(), wline->c_str());
-			BeepFailure2();
 			return;
 		}
 	}
@@ -391,9 +411,8 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 			// that wcscpy_s will have returned an empty string,
 			// while the original GetPrivateProfileString would
 			// have only truncated the string.
-			LogInfo("  WARNING: [%S]%S=%S too long\n",
+			IniWarning("  WARNING: [%S]%S=%S too long\n",
 					section, key, val.c_str());
-			BeepFailure2();
 			rc = size - 1;
 		} else {
 			// I'd also rather not have to calculate the string
@@ -444,8 +463,7 @@ static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, 
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%f%n", &ret, &len);
 		if (len != wcslen(val)) {
-			LogInfo("  WARNING: Floating point parse error: %S=%S\n", key, val);
-			BeepFailure2();
+			IniWarning("  WARNING: Floating point parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -469,8 +487,7 @@ int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%d%n", &ret, &len);
 		if (len != wcslen(val)) {
-			LogInfo("  WARNING: Integer parse error: %S=%S\n", key, val);
-			BeepFailure2();
+			IniWarning("  WARNING: Integer parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -504,8 +521,7 @@ static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, boo
 			return false;
 		}
 
-		LogInfo("  WARNING: Boolean parse error: %S=%S\n", key, val);
-		BeepFailure2();
+		IniWarning("  WARNING: Boolean parse error: %S=%S\n", key, val);
 	}
 
 	return ret;
@@ -549,8 +565,7 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 				*found = true;
 			LogInfo("  %S=%S\n", key, val);
 		} catch (EnumParseError) {
-			LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
-			BeepFailure2();
+			IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		}
 	}
 
@@ -587,8 +602,7 @@ static void RegisterPresetKeyBindings()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Key", 0, key, MAX_PATH)) {
-			LogInfo("  WARNING: [%S] missing Key=\n", id);
-			BeepFailure2();
+			IniWarning("  WARNING: [%S] missing Key=\n", id);
 			continue;
 		}
 
@@ -601,8 +615,7 @@ static void RegisterPresetKeyBindings()
 			type = lookup_enum_val<wchar_t *, KeyOverrideType>
 				(KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
 			if (type == KeyOverrideType::INVALID) {
-				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
-				BeepFailure2();
+				IniWarning("  WARNING: UNKNOWN KEY BINDING TYPE %S\n", buf);
 			}
 			else {
 				LogInfoW(L"  type=%s\n", buf);
@@ -690,8 +703,7 @@ static void ParseResourceSections()
 			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
 				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
 			if (custom_resource->override_type == CustomResourceType::INVALID) {
-				LogInfo("  WARNING: Unknown type \"%S\"\n", setting);
-				BeepFailure2();
+				IniWarning("  WARNING: Unknown type \"%S\"\n", setting);
 			} else {
 				LogInfo("  type=%S\n", setting);
 			}
@@ -701,8 +713,7 @@ static void ParseResourceSections()
 			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
 				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
 			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
-				LogInfo("  WARNING: Unknown mode \"%S\"\n", setting);
-				BeepFailure2();
+				IniWarning("  WARNING: Unknown mode \"%S\"\n", setting);
 			} else {
 				LogInfo("  mode=%S\n", setting);
 			}
@@ -711,8 +722,7 @@ static void ParseResourceSections()
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
 			custom_resource->override_format = ParseFormatString(setting);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
-				LogInfo("  WARNING: Unknown format \"%S\"\n", setting);
-				BeepFailure2();
+				IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
 			} else {
 				LogInfo("  format=%s\n", TexFormatStr(custom_resource->override_format));
 			}
@@ -786,8 +796,7 @@ static void ParseCommandList(const wchar_t *id,
 				// whitelisted entries*, so check for
 				// duplicates here:
 				if (whitelisted_keys.count(key->c_str())) {
-					LogInfoW(L"WARNING: Duplicate non-command list key found in d3dx.ini: [%s] %s\n", id, key->c_str());
-					BeepFailure2();
+					IniWarning("WARNING: Duplicate non-command list key found in d3dx.ini: [%S] %S\n", id, key->c_str());
 				}
 				whitelisted_keys.insert(key->c_str());
 
@@ -818,8 +827,7 @@ static void ParseCommandList(const wchar_t *id,
 		if (ParseCommandListResourceCopyDirective(id, key_ptr, val, command_list))
 			goto log_continue;
 
-		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
 		continue;
 log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
@@ -883,8 +891,7 @@ static void ParseShaderOverrideSections()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Hash", 0, setting, MAX_PATH)) {
-			LogInfo("  WARNING: [%S] missing Hash=\n", id);
-			BeepFailure2();
+			IniWarning("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 		swscanf_s(setting, L"%16llx", &hash);
@@ -911,8 +918,7 @@ static void ParseShaderOverrideSections()
 				   && override->allow_duplicate_hashes;
 
 		if (duplicate && !allow_duplicates) {
-			LogInfo("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
-			BeepFailure2();
+			IniWarning("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
 		}
 
 		override->allow_duplicate_hashes = allow_duplicates;
@@ -924,9 +930,8 @@ static void ParseShaderOverrideSections()
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
 			if (override->depth_filter == DepthBufferFilter::INVALID) {
-				LogInfoW(L"  WARNING: Unknown depth_filter \"%s\"\n", setting);
+				IniWarning("  WARNING: Unknown depth_filter \"%S\"\n", setting);
 				override->depth_filter = DepthBufferFilter::NONE;
-				BeepFailure2();
 			}
 			else {
 				LogInfoW(L"  depth_filter=%s\n", setting);
@@ -1014,8 +1019,7 @@ static void ParseTextureOverrideSections()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Hash", 0, setting, MAX_PATH)) {
-			LogInfo("  WARNING: [%S] missing Hash=\n", id);
-			BeepFailure2();
+			IniWarning("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 
@@ -1023,8 +1027,7 @@ static void ParseTextureOverrideSections()
 		LogInfo("  Hash=%08lx\n", hash);
 
 		if (G->mTextureOverrideMap.count(hash)) {
-			LogInfo("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
-			BeepFailure2();
+			IniWarning("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
 		}
 		override = &G->mTextureOverrideMap[hash];
 
@@ -1113,8 +1116,7 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 			src_buf, (unsigned)ARRAYSIZE(src_buf),
 			dst_buf, (unsigned)ARRAYSIZE(dst_buf));
 	if (i != 3) {
-		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
 	LogInfo("  %S=%S\n", key, val);
@@ -1122,22 +1124,19 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	try {
 		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised blend operation %S\n", op_buf);
 	}
 
 	try {
 		*src = (D3D11_BLEND)ParseEnum(src_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised blend source factor %S\n", src_buf);
 	}
 
 	try {
 		*dst = (D3D11_BLEND)ParseEnum(dst_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
 	}
 }
 
@@ -1320,8 +1319,7 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 			depth_fail_buf, (unsigned)ARRAYSIZE(depth_fail_buf),
 			stencil_fail_buf, (unsigned)ARRAYSIZE(stencil_fail_buf));
 	if (i != 4) {
-		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
 	LogInfo("  %S=%S\n", key, val);
@@ -1329,29 +1327,25 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 	try {
 		desc->StencilFunc = (D3D11_COMPARISON_FUNC)ParseEnum(func_buf, L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil function %S\n", func_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil function %S\n", func_buf);
 	}
 
 	try {
 		desc->StencilPassOp = (D3D11_STENCIL_OP)ParseEnum(both_pass_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
 	}
 
 	try {
 		desc->StencilDepthFailOp = (D3D11_STENCIL_OP)ParseEnum(depth_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
 	}
 
 	try {
 		desc->StencilFailOp = (D3D11_STENCIL_OP)ParseEnum(stencil_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
 	}
 }
 
@@ -1616,8 +1610,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 
 	}
 
-	LogInfo("  WARNING: Unrecognised primitive topology=%S\n", val);
-	BeepFailure2();
+	IniWarning("  WARNING: Unrecognised primitive topology=%S\n", val);
 }
 
 static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
@@ -1674,8 +1667,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 			return;
 		}
 
-		LogInfo("  WARNING: Unknown sampler \"%S\"\n", setting);
-		BeepFailure2();
+		IniWarning("  WARNING: Unknown sampler \"%S\"\n", setting);
 	}
 }
 
@@ -1919,6 +1911,7 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
+	ArmIniWarningTones();
 	ParseIni(iniFile);
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, NULL);
@@ -1996,8 +1989,7 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
 			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
 		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
-			LogInfoW(L"  WARNING: Unknown get_resolution_from %s\n", setting);
-			BeepFailure2();
+			IniWarning("  WARNING: Unknown get_resolution_from %S\n", setting);
 		} else
 			LogInfoW(L"  get_resolution_from=%s\n", setting);
 	} else
@@ -2022,9 +2014,8 @@ void LoadConfigFile()
 		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
 			(ShaderHashNames, setting, ShaderHashType::INVALID);
 		if (G->shader_hash_type == ShaderHashType::INVALID) {
-			LogInfoW(L"  WARNING: Unknown shader_hash \"%s\"\n", setting);
+			IniWarning("  WARNING: Unknown shader_hash \"%S\"\n", setting);
 			G->shader_hash_type = ShaderHashType::FNV;
-			BeepFailure2();
 		} else {
 			LogInfoW(L"  shader_hash=%s\n", setting);
 		}
@@ -2076,13 +2067,11 @@ void LoadConfigFile()
 	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, NULL);
 	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, NULL);
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		LogInfo("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
-		BeepFailure2();
+		IniWarning("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		G->StereoParamsReg = -1;
 	}
 	if (G->IniParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		LogInfo("WARNING: ini_params=%i out of range\n", G->IniParamsReg);
-		BeepFailure2();
+		IniWarning("WARNING: ini_params=%i out of range\n", G->IniParamsReg);
 		G->IniParamsReg = -1;
 	}
 
