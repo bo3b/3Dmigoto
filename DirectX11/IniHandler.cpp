@@ -4,12 +4,14 @@
 #include <string>
 #include <strsafe.h>
 #include <fstream>
+#include <sstream>
 
 #include "log.h"
 #include "Globals.h"
 #include "Override.h"
 #include "Hunting.h"
 #include "nvprofile.h"
+#include "ShaderRegex.h"
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -29,6 +31,7 @@ struct Section {
 };
 static Section CommandListSections[] = {
 	{L"ShaderOverride", true},
+	{L"ShaderRegex", true},
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
 	{L"CommandList", true},
@@ -61,8 +64,9 @@ static Section RegularSections[] = {
 
 // List of sections that will not trigger a warning if they contain a line
 // without an equals sign
-static wchar_t *AllowLinesWithoutEquals[] = {
-	L"Profile",
+static Section AllowLinesWithoutEquals[] = {
+	{L"Profile", false},
+	{L"ShaderRegex", true},
 };
 
 static bool SectionInList(const wchar_t *section, Section section_list[], int list_size)
@@ -96,14 +100,7 @@ static bool IsRegularSection(const wchar_t *section)
 
 static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 {
-	int i;
-
-	for (i = 0; i < ARRAYSIZE(AllowLinesWithoutEquals); i++) {
-		if (!_wcsicmp(section, AllowLinesWithoutEquals[i]))
-			return true;
-	}
-
-	return false;
+	return SectionInList(section, AllowLinesWithoutEquals, ARRAYSIZE(AllowLinesWithoutEquals));
 }
 
 // Case insensitive version of less comparitor. This is used to create case
@@ -1038,7 +1035,251 @@ static void ParseShaderOverrideSections()
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
+// Oh C++, do you really not have a .split() in your standard library?
+static std::vector<std::wstring> split_string(const std::wstring *str, wchar_t sep)
+{
+	std::wistringstream tokens(*str);
+	std::wstring token;
+	std::vector<std::wstring> list;
 
+	while (std::getline(tokens, token, sep))
+		list.push_back(token);
+
+	return list;
+}
+static std::vector<std::string> split_string(const std::string *str, char sep)
+{
+	std::istringstream tokens(*str);
+	std::string token;
+	std::vector<std::string> list;
+
+	while (std::getline(tokens, token, sep))
+		list.push_back(token);
+
+	return list;
+}
+
+template <typename T>
+static std::set<T> vec_to_set(std::vector<T> &v)
+{
+	return std::set<T>(v.begin(), v.end());
+}
+
+// List of keys in [ShaderRegex] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *ShaderRegexIniKeys[] = {
+	L"shader_model",
+	L"temps",
+	// L"type" =asm/hlsl? I'd rather not encourage autofixes on HLSL
+	//         shaders, because there is too much potential for trouble
+	NULL
+};
+static bool parse_shader_regex_section_main(const std::wstring *section_id, ShaderRegexGroup *regex_group)
+{
+	std::string setting;
+	std::vector<std::string> items;
+
+	if (!GetIniStringAndLog(section_id->c_str(), L"shader_model", NULL, &setting)) {
+		IniWarning("  WARNING: [%S] missing shader_model\n", section_id->c_str());
+		return false;
+	}
+	regex_group->shader_models = vec_to_set(split_string(&setting, ' '));
+
+	if (GetIniStringAndLog(section_id->c_str(), L"temps", NULL, &setting))
+		regex_group->temp_regs = vec_to_set(split_string(&setting, ' '));
+
+	regex_group->ini_section = *section_id;
+
+	ParseCommandList(section_id->c_str(), &regex_group->command_list, &regex_group->post_command_list, ShaderRegexIniKeys);
+	return true;
+}
+
+static bool parse_shader_regex_section_pattern(const std::wstring *section_id, const std::wstring *pattern_id, ShaderRegexGroup *regex_group)
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	ShaderRegexPattern *regex_pattern;
+	std::wstring *wline;
+	std::string aline, pattern;
+
+	GetIniSection(&section, section_id->c_str());
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		// FIXME: ini parser shouldn't be converting to wide characters
+		// in the first place, but we have to change types all over the
+		// place to fix that, which is a large and risky refactoring
+		// job for another day
+		wline = &entry->raw_line;
+		aline = std::string(wline->begin(), wline->end());
+		LogInfo("  %s\n", aline.c_str());
+		pattern.append(aline);
+	}
+
+	// We also want to show the final pattern used for the regex with all
+	// the newlines, blank lines, initial whitespace and ini file comments
+	// stripped, so that if there is a problem the user can see exactly
+	// what we used. This will look ugly, but will make errors like missing
+	// \n or \s+ easier to spot.
+	LogInfo("--------- final pcre2 regex pattern used after ini parsing ---------\n");
+	LogInfo("%s\n", pattern.c_str());
+	LogInfo("--------------------------------------------------------------------\n");
+
+	regex_pattern = &regex_group->patterns[*pattern_id];
+	if (!regex_pattern->compile(&pattern))
+		return false;
+
+	if (regex_pattern->named_group_overlaps(regex_group->temp_regs)) {
+		IniWarning("  WARNING: Named capture group overlaps with temp regs!\n");
+		return false;
+	}
+
+	// TODO: Also check for overlapping named capture groups between
+	// patterns in a single regex group.
+
+	// TODO: Log the final computed value of PCRE2_INFO_ALLOPTIONS
+
+	return true;
+}
+
+static bool parse_shader_regex_section_declarations(const std::wstring *section_id, const std::wstring *pattern_id, ShaderRegexGroup *regex_group)
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	std::wstring *wline;
+	std::string aline;
+
+	GetIniSection(&section, section_id->c_str());
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		// FIXME: ini parser shouldn't be converting to wide characters
+		// in the first place, but we have to change types all over the
+		// place to fix that, which is a large and risky refactoring
+		// job for another day
+		wline = &entry->raw_line;
+		aline = std::string(wline->begin(), wline->end());
+		LogInfo("  %s\n", aline.c_str());
+		regex_group->declarations.push_back(aline);
+	}
+
+	return true;
+}
+
+static bool parse_shader_regex_section_replace(const std::wstring *section_id, const std::wstring *pattern_id, ShaderRegexGroup *regex_group)
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	ShaderRegexPattern *regex_pattern;
+	std::wstring *wline;
+	std::string aline;
+
+	try {
+		regex_pattern = &regex_group->patterns.at(*pattern_id);
+	} catch (std::out_of_range) {
+		IniWarning("  WARNING: Missing corresponding pattern section for %S\n", section_id->c_str());
+		return false;
+	}
+
+	GetIniSection(&section, section_id->c_str());
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		// FIXME: ini parser shouldn't be converting to wide characters
+		// in the first place, but we have to change types all over the
+		// place to fix that, which is a large and risky refactoring
+		// job for another day
+		wline = &entry->raw_line;
+		aline = std::string(wline->begin(), wline->end());
+		LogInfo("  %s\n", aline.c_str());
+		regex_pattern->replace.append(aline);
+	}
+
+	// Similar to above we want to see the final substitution string after
+	// ini parsing, especially to help spot missing newlines. TODO: Add an
+	// option to automatically add newlines after every ini line.
+	LogInfo("--------- final pcre2 replace string used after ini parsing ---------\n");
+	LogInfo("%s\n", regex_pattern->replace.c_str());
+	LogInfo("---------------------------------------------------------------------\n");
+
+	regex_pattern->do_replace = true;
+	return true;
+}
+
+static ShaderRegexGroup* get_regex_group(std::wstring *regex_id, bool allow_creation)
+{
+	if (allow_creation)
+		return &shader_regex_groups[*regex_id];
+
+	try {
+		return &shader_regex_groups.at(*regex_id);
+	} catch (std::out_of_range) {
+		IniWarning("  WARNING: Missing [%S] section\n", regex_id->c_str());
+		return NULL;
+	}
+}
+
+static void delete_regex_group(std::wstring *regex_id)
+{
+	ShaderRegexGroups::iterator i;
+
+	i = shader_regex_groups.find(*regex_id);
+	shader_regex_groups.erase(i);
+}
+
+static void ParseShaderRegexSections()
+{
+	IniSections::iterator lower, upper, i;
+	const std::wstring *section_id;
+	std::vector<std::wstring> subsection_names;
+	ShaderRegexGroup *regex_group;
+
+	shader_regex_groups.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"ShaderRegex"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"ShaderRegex"));
+	for (i = lower; i != upper; i++) {
+		section_id = &i->first;
+		LogInfo("[%S]\n", section_id->c_str());
+
+		subsection_names = split_string(section_id, L'.');
+
+		regex_group = get_regex_group(&subsection_names[0], subsection_names.size() == 1);
+		if (!regex_group)
+			continue;
+
+		switch (subsection_names.size()) {
+			case 1:
+				if (parse_shader_regex_section_main(section_id, regex_group))
+					continue;
+				break;
+			case 2:
+				if (!_wcsicmp(subsection_names[1].c_str(), L"Pattern")) {
+					// TODO: Allow multiple patterns per regex group, but not before
+					// our custom substitution logic is implemented to allow named capture
+					// groups matched in one pattern to be substituted into another, and
+					// ensure that identically named groups match in all patterns.
+					//
+					// Until then, the user will just have to write longer regex patterns
+					// and substitutions to match everything they need in one go.
+					if (parse_shader_regex_section_pattern(section_id, &subsection_names[1], regex_group))
+						continue;
+				} else if (!_wcsicmp(subsection_names[1].c_str(), L"InsertDeclarations")) {
+					if (parse_shader_regex_section_declarations(section_id, &subsection_names[1], regex_group))
+						continue;
+				}
+				break;
+			case 3:
+				if (!_wcsnicmp(subsection_names[1].c_str(), L"Pattern", 7)
+				 && !_wcsicmp(subsection_names[2].c_str(), L"Replace")) {
+					if (parse_shader_regex_section_replace(section_id, &subsection_names[1], regex_group))
+						continue;
+				}
+				break;
+		}
+
+
+		// We delete the whole regex data structure if any of the subsections
+		// are not present, or fail to parse or compile so that we don't end up
+		// applying an incomplete regex to any shaders.
+		IniWarning("  WARNING: disabling entire shader regex group [%S]\n", subsection_names[0].c_str());
+		delete_regex_group(&subsection_names[0]);
+	}
+}
 
 // List of keys in [TextureOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
@@ -2270,6 +2511,7 @@ void LoadConfigFile()
 	ParseExplicitCommandListSections();
 
 	ParseShaderOverrideSections();
+	ParseShaderRegexSections();
 	ParseTextureOverrideSections();
 
 	LogInfo("[Present]\n");
