@@ -93,7 +93,7 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		return;
 	}
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -118,7 +118,7 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 	} catch (std::out_of_range) {
 	}
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
 }
@@ -1365,7 +1365,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 
 	// Grab the critical section now as we may need it several times during
 	// dumping for mResources
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
 		DumpCBs(compute);
@@ -1392,7 +1392,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
 		DumpDepthStencilTargets();
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {
@@ -1418,7 +1418,7 @@ void HackerContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
 	analyse_options |= FrameAnalysisOptions::MONO;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -1431,7 +1431,7 @@ void HackerContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 		DumpResource(resource, filename, type_mask, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	// XXX: Might be better to use a second counter for these
 	G->analyse_frame++;

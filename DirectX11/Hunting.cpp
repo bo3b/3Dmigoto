@@ -695,7 +695,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 	// This is probably unnecessary, because we modify already existing map entries, but
 	// for consistency, we'll wrap this.
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	// Find the original shader bytecode in the mReloadedShaders Map. This map contains entries for all
 	// shaders from the ShaderFixes and ShaderCache folder, and can also include .bin files that were loaded directly.
@@ -810,7 +810,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 	}	// for every registered shader in mReloadedShaders 
 
 out:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	return rc;
 err:
@@ -1085,9 +1085,9 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
 		G->analyse_frame = 0;
 		if (G->DumpUsage) {
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			EnterCriticalSection(&G->mCriticalSection);
 				DumpUsage(G->ANALYSIS_PATH);
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 }
@@ -1118,7 +1118,7 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<ItemType>::iterator loc = visited->find(*selected);
 		std::set<ItemType>::iterator end = visited->end();
@@ -1147,7 +1147,7 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 		}
 	}
 out:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void NextIndexBuffer(HackerDevice *device, void *private_data)
@@ -1190,7 +1190,7 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 	{
 		std::set<ItemType>::iterator loc = visited->find(*selected);
 		std::set<ItemType>::iterator end = visited->end();
@@ -1220,7 +1220,7 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 		}
 	}
 out:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void PrevIndexBuffer(HackerDevice *device, void *private_data)
@@ -1263,7 +1263,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
@@ -1274,7 +1274,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 	if (G->DumpUsage)
 		DumpUsage(NULL);
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static bool MarkShaderBegin(char *type, UINT64 selected)
@@ -1282,7 +1282,7 @@ static bool MarkShaderBegin(char *type, UINT64 selected)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return false;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	LogInfo(">>>> %s marked: %s hash = %016I64x\n", type, type, selected);
 
@@ -1300,7 +1300,7 @@ static void MarkShaderEnd(HackerDevice *device, char *type, UINT64 selected)
 	if (G->DumpUsage)
 		DumpUsage(NULL);
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void MarkPixelShader(HackerDevice *device, void *private_data)
@@ -1380,7 +1380,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
 	for (std::set<ID3D11Resource *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
@@ -1389,7 +1389,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 	if (G->DumpUsage)
 		DumpUsage(NULL);
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -1458,7 +1458,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	TimeoutHuntingBuffers();
 
@@ -1480,7 +1480,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	G->mSelectedIndexBuffer = -1;
 	G->mSelectedIndexBufferPos = -1;
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 static void ToggleHunting(HackerDevice *device, void *private_data)

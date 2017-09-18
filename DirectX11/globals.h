@@ -376,7 +376,6 @@ struct Globals
 	bool cursor_upscaling_bypass;
 
 	CRITICAL_SECTION mCriticalSection;
-	bool ENABLE_CRITICAL_SECTION;
 
 	std::set<uint32_t> mVisitedIndexBuffers;				// std::set is sorted for consistent order while hunting
 	uint32_t mSelectedIndexBuffer;
@@ -507,7 +506,6 @@ struct Globals
 		hide_cursor(false),
 		cursor_upscaling_bypass(true),
 
-		ENABLE_CRITICAL_SECTION(false),
 		GAME_INTERNAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
 		GAME_INTERNAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions
 		SCREEN_WIDTH(-1),

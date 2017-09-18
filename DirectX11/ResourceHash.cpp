@@ -748,7 +748,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (!dest)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	dstHash = GetOrigResourceHash(dest);
 	if (!dstHash)
@@ -840,7 +840,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	}
 
 out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
@@ -858,7 +858,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	if (!resource || !data)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		info = &G->mResources.at(resource);
@@ -912,7 +912,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	LogDebug("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
 
 out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
@@ -923,7 +923,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		src_info = &G->mResources.at(src);
@@ -979,7 +979,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	LogDebug("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
 
 out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)

@@ -3104,9 +3104,9 @@ TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state
 	if (G->mTextureOverrideMap.empty())
 		goto out_release_resource;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		hash = GetResourceHash(resource);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)
 		goto out_release_resource;
 

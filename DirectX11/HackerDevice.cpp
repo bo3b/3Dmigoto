@@ -1266,7 +1266,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 
 	LogInfoW(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		if (!wcsncmp(shaderType, L"vs", 2)) {
 			ID3D11VertexShader *originalShader;
 			hr = mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
@@ -1298,7 +1298,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 			if (SUCCEEDED(hr))
 				G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
 		}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -1786,7 +1786,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture2D].hash = hash;
 			G->mResources[*ppTexture2D].orig_hash = hash;
 			G->mResources[*ppTexture2D].data_hash = data_hash;
@@ -1796,7 +1796,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	return hr;
@@ -1842,7 +1842,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture3D].hash = hash;
 			G->mResources[*ppTexture3D].orig_hash = hash;
 			G->mResources[*ppTexture3D].data_hash = data_hash;
@@ -1852,7 +1852,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogInfo("  returns result = %x\n", hr);
@@ -1875,7 +1875,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
 			if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 			{
@@ -1883,7 +1883,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 
 				mZBufferResourceView = *ppSRView;
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogDebug("  returns result = %x\n", hr);
@@ -2050,9 +2050,9 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					hr = D3DCreateBlob(replaceShaderSize, &blob);
 					if (SUCCEEDED(hr)) {
 						memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
-						if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+						EnterCriticalSection(&G->mCriticalSection);
 						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine);
-						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+						LeaveCriticalSection(&G->mCriticalSection);
 					}
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -2074,7 +2074,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		// have a copy for every shader seen.
 		if (G->hunting && SUCCEEDED(hr))
 		{
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			EnterCriticalSection(&G->mCriticalSection);
 				ID3DBlob* blob;
 				hr = D3DCreateBlob(BytecodeLength, &blob);
 				if (SUCCEEDED(hr)) {
@@ -2087,12 +2087,12 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					if (originalShaders->count(*ppShader) == 0)
 						(*originalShaders)[*ppShader] = *ppShader;
 				}
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 	if (hr == S_OK && ppShader && pShaderBytecode)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			(*shaders)[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
@@ -2106,7 +2106,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			{
 				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppShader);

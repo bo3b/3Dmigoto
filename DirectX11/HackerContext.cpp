@@ -95,7 +95,7 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 	if (!resource)
 		return NULL;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		// We are using the original resource hash for stat collection - things
 		// get tricky otherwise
@@ -106,7 +106,7 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 		if (orig_hash)
 			G->mShaderResourceInfo.insert(orig_hash);
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	return resource;
 }
@@ -147,7 +147,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	if (!resource)
 		return;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		// We are using the original resource hash for stat collection - things
 		// get tricky otherwise
@@ -163,7 +163,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 		G->mRenderTargetInfo.insert(orig_hash);
 
 out_unlock:
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
@@ -181,7 +181,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	target->GetDesc(&desc);
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		// We are using the original resource hash for stat collection - things
 		// get tricky otherwise
@@ -192,7 +192,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 		mCurrentDepthTarget = resource;
 		G->mDepthTargetInfo.insert(orig_hash);
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
@@ -431,7 +431,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
 		UINT selectedRenderTargetPos;
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 		{
 			// In some cases stat collection can have a significant
 			// performance impact or may result in a runaway
@@ -507,7 +507,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				}
 			}
 		}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	if (!G->fix_enabled)
@@ -911,9 +911,9 @@ bool HackerContext::MapDenyCPURead(
 	if (G->mTextureOverrideMap.empty())
 		return false;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		hash = GetResourceHash(pResource);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
@@ -1492,10 +1492,10 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 
 	srcTex->GetDesc(&srcDesc);
 	dstTex->GetDesc(&dstDesc);
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		srcHash = GetResourceHash(srcTex);
 		dstHash = GetResourceHash(dstTex);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
@@ -1972,9 +1972,9 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
 				if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
-					if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+					EnterCriticalSection(&G->mCriticalSection);
 					visitedShaders->insert(i->second);
-					if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+					LeaveCriticalSection(&G->mCriticalSection);
 				}
 			}
 			else
@@ -2816,9 +2816,9 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 
 			// When hunting, save this as a visited index buffer to cycle through.
 			if (G->hunting == HUNTING_MODE_ENABLED) {
-				if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+				EnterCriticalSection(&G->mCriticalSection);
 				G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
-				if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+				LeaveCriticalSection(&G->mCriticalSection);
 			}
 
 			// second try to hide index buffer.
@@ -2910,10 +2910,10 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	FrameAnalysisLogView(-1, "D", pDepthStencilView);
 
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {
 			for (UINT i = 0; i < NumViews; ++i) {
@@ -2957,10 +2957,10 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	FrameAnalysisLogViewArray(UAVStartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 
 		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
 			if (ppRenderTargetViews) {

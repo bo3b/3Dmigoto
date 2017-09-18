@@ -879,7 +879,8 @@ static void ParseShaderOverrideSections()
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	//  We actually already lock the entire config reload, so this is redundant -DSS
+	EnterCriticalSection(&G->mCriticalSection);
 
 	G->mShaderOverrideMap.clear();
 
@@ -975,7 +976,7 @@ static void ParseShaderOverrideSections()
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -1005,7 +1006,8 @@ static void ParseTextureOverrideSections()
 
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	//  We actually already lock the entire config reload, so this is redundant -DSS
+	EnterCriticalSection(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
 
@@ -1069,7 +1071,7 @@ static void ParseTextureOverrideSections()
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476088(v=vs.85).aspx
@@ -2053,7 +2055,6 @@ void LoadConfigFile()
 	}
 
 	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL);
-	G->ENABLE_CRITICAL_SECTION = GetIniBool(L"Rendering", L"use_criticalsection", false, NULL);
 	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, NULL);
 	G->track_texture_updates = GetIniBool(L"Rendering", L"track_texture_updates", false, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
@@ -2351,7 +2352,10 @@ void ReloadConfig(HackerDevice *device)
 
 	G->gReloadConfigPending = false;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	// Lock the entire config reload as it touches many global structures
+	// that could potentially be accessed from other threads (e.g. deferred
+	// contexts) while we do this
+	EnterCriticalSection(&G->mCriticalSection);
 
 	// Clear the key bindings. There may be other things that need to be
 	// cleared as well, but for the sake of clarity I'd rather clear as
@@ -2363,7 +2367,7 @@ void ReloadConfig(HackerDevice *device)
 
 	LoadConfigFile();
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	// Update the iniParams resource from the config file:
 	// FIXME: THIS CRASHES IF 3D IS DISABLED (ROOT CAUSE LIKELY ELSEWHERE)

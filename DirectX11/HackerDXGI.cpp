@@ -1904,9 +1904,9 @@ void HackerDXGISwapChain::RunFrameActions()
 	// rapidly converge upon all active shaders.
 
 	if (difftime(time(NULL), G->huntTime) > 60) {
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 		TimeoutHuntingBuffers();
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 }
 
