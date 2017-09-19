@@ -140,10 +140,27 @@ struct WStringInsensitiveEquality {
 	}
 };
 
+struct IniLine {
+	// Same syntax as std::pair, whitespace stripped around each:
+	wstring first;
+	wstring second;
+
+	// For when we don't want whitespace around the equals sign stripped,
+	// or when there is no equals sign (whitespace at the start and end of
+	// the whole line is still stripped):
+	wstring raw_line;
+
+	IniLine(wstring &key, wstring &val, wstring &line) :
+		first(key),
+		second(val),
+		raw_line(line)
+	{}
+};
+
 // Whereas settings within a section are in the same order they were in the ini
 // file. This will become more important as shader overrides gains more
 // functionality and dependencies between different features form:
-typedef std::vector<std::pair<wstring, wstring>> IniSectionVector;
+typedef std::vector<IniLine> IniSectionVector;
 
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
@@ -310,7 +327,7 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		}
 	}
 
-	section_vector->emplace_back(key, val);
+	section_vector->emplace_back(key, val, *wline);
 }
 
 
